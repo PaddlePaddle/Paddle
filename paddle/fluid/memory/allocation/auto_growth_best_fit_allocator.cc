@@ -44,7 +44,7 @@ Allocation *AutoGrowthBestFitAllocator::AllocateImpl(size_t size) {
     free_blocks_.erase(iter);
     auto *chunk = block_it->chunk_;
     size_t remaining_size = block_it->size_ - size;
-    if (remaining_size == 0) {
+    if (remaining_size <= alignment_) {
       block_it->is_free_ = false;
     } else {
       auto remaining_free_block = chunk->blocks_.insert(
@@ -72,14 +72,17 @@ Allocation *AutoGrowthBestFitAllocator::AllocateImpl(size_t size) {
     auto &blocks = chunk->blocks_;
 
     size_t remaining_size = realloc_size - size;
-    if (remaining_size > 0) {
+    if (remaining_size <= alignment_) {
+      blocks.emplace_back(p, realloc_size, false, chunk);
+      block_it = blocks.begin();
+    } else {
       blocks.emplace_back(p, remaining_size, true, chunk);
       free_blocks_.emplace(std::make_pair(remaining_size, p), --(blocks.end()));
+      blocks.emplace_back(p + remaining_size, size, false, chunk);
+      block_it = --(blocks.end());
+      VLOG(2) << "Not found and reallocate " << realloc_size
+              << ", and remaining " << remaining_size;
     }
-    blocks.emplace_back(p + remaining_size, size, false, chunk);
-    block_it = --(blocks.end());
-    VLOG(2) << "Not found and reallocate " << realloc_size << ", and remaining "
-            << remaining_size;
   }
   return new BlockAllocation(block_it);
 }
