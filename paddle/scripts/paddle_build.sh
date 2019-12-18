@@ -340,7 +340,6 @@ EOF
         else
             ctest --output-on-failure
         fi
-        dmesg
     fi
 }
 
@@ -779,7 +778,6 @@ set +x
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 8;
         fi
-        dmesg
 set -ex
     fi
 }
@@ -1139,12 +1137,15 @@ function main() {
         ;;
       test)
         parallel_test
+        dmesg
         ;;
       single_test)
         single_test $2
+        dmesg
         ;;
       bind_test)
         bind_test
+        dmesg
         ;;
       gen_doc_lib)
         gen_doc_lib $2
@@ -1169,6 +1170,7 @@ function main() {
         build ${parallel_number}
         enable_unused_var_check
         parallel_test
+        dmesg
         ;;
       cicheck_coverage)
         check_approvals_of_unittest 1
