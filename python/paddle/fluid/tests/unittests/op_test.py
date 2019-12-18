@@ -165,6 +165,11 @@ class OpTest(unittest.TestCase):
 
         _set_use_system_allocator(cls._use_system_allocator)
 
+        if not hasattr(cls, "op_type"):
+            raise AssertionError(
+                "This test do not have op_type in class attrs,"
+                " please set self.__class__.op_type=the_real_op_type manually.")
+
         # cases and ops do no need check_grad
         if cls.__name__ in op_check_grad_white_list.NO_NEED_CHECK_GRAD_CASES \
             or cls.op_type in op_check_grad_white_list.EMPTY_GRAD_OP_LIST:
