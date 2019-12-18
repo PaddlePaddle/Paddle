@@ -71,18 +71,20 @@ class DistributedTranspiler(Fleet):
         trainer_communicator_config = self._transpile_config.get_trainer_runtime_config(
         )
 
-        if not program_config.sync_mode:
-            if program_config.geo_sgd_mode:
-                self._communicator = Communicator(
-                    self.main_program, self.vars_info,
-                    fleet.worker_num(),
-                    self._transpile_config.geo_sgd_need_push_nums,
-                    trainer_communicator_config._communicator_flags)
-            else:
-                self._communicator = Communicator(
-                    self.main_program,
-                    env_flags=trainer_communicator_config._communicator_flags)
-
+        need_communicator_flag = False
+        if isinstance(self._transpile_config, GeoStrategy):
+            need_communicator_flag = True
+            self._communicator = Communicator(
+                self.main_program, self.vars_info,
+                fleet.worker_num(),
+                self._transpile_config.geo_sgd_need_push_nums,
+                trainer_communicator_config.get_communicator_flags())
+        elif isinstance(self._transpile_config, AsyncStrategy):
+            need_communicator_flag = True
+            self._communicator = Communicator(
+                self.main_program,
+                env_flags=trainer_communicator_config.get_communicator_flags())
+        if need_communicator_flag:
             if not self._communicator.is_running():
                 self._communicator.start()
             else:
@@ -263,9 +265,13 @@ class DistributedTranspiler(Fleet):
         self._origin_program = default_main_program().clone(for_test=False)
 
         if program_config.geo_sgd_mode:
-            self._transpiler = GeoSgdTranspiler(program_config, self._transpile_config.get_server_runtime_config())
+            self._transpiler = GeoSgdTranspiler(
+                program_config,
+                self._transpile_config.get_server_runtime_config())
         else:
-            self._transpiler = OriginTranspiler(program_config, self._transpile_config.get_server_runtime_config())
+            self._transpiler = OriginTranspiler(
+                program_config,
+                self._transpile_config.get_server_runtime_config())
 
         if self.is_worker():
             self._transpiler.transpile(
