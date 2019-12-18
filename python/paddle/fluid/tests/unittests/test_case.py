@@ -238,7 +238,7 @@ class TestMutiTask(unittest.TestCase):
 
         switch_id = fluid.data(name='switch_id', shape=[1], dtype='int32')
 
-        one = layers.fill_constant(shape=[1], dtype='int32', value=0)
+        one = layers.fill_constant(shape=[1], dtype='int32', value=1)
         adam = optimizer.Adam(learning_rate=0.001)
         adagrad = optimizer.Adagrad(learning_rate=0.001)
 

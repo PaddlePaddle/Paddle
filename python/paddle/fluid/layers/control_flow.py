@@ -1801,6 +1801,9 @@ class ConditionalBlock(object):
                     intermediate.add(out_var_name)
         input_set = set([ipt.name for ipt in self.inputs])
 
+        # Todo(liym27) Here assume that all params are in recursive parent block
+        # but when minimize() called in control flow, some params may be in
+        # conditional grad block
         param_list = [
             parent_block._var_recursive(each_name) for each_name in params
         ]
@@ -1837,6 +1840,20 @@ class ConditionalBlock(object):
 
     def append_conditional_block_grad(self, parent_block, inside_block,
                                       conditional_block_op):
+        '''
+        Append op `conditional_block_grad` manually.
+        When `optimizer.minimize/append_backward` is called in Paddle control flow,
+        grad ops will be appended before appending op `conditional_block` so that
+        op `conditional_block_grad` can't be appended when calling
+        `optimizer.minimize/append_backward`. After appending op `conditional_block`,
+        `conditional_block_grad` is appended manually.
+
+        Args:
+            parent_block (Block): The block that `conditional_block_op` blongs to.
+            inside_block (Block): The sub block of `conditional_block_op`.
+            conditional_block_op (Operator): The forward op conditional_block.
+        '''
+
         grad_sub_block_idx = inside_block.backward_block_idx
         grad_sub_block = self.helper.main_program.block(grad_sub_block_idx)
 
@@ -1886,8 +1903,10 @@ class ConditionalBlock(object):
         new_op_desc.infer_var_type(grad_sub_block.desc)
         new_op_desc.infer_shape(grad_sub_block.desc)
 
-        # set input
+        # set input and output manually
         new_op_desc.set_input('Input', param_list)
+        new_op_desc.set_output('Input@GRAD',
+                               [param + "@GRAD" for param in param_list])
 
         for arg in new_op_desc.output_arg_names():
             if arg in new_vars:
