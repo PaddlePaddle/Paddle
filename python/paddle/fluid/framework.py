@@ -568,7 +568,6 @@ def _varbase_creator(type=core.VarDesc.VarType.LOD_TENSOR,
                      dtype=None,
                      persistable=None,
                      **kwargs):
-
     if dtype is not None:
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
@@ -1398,7 +1397,9 @@ class Variable(object):
         # TODO(minqiyang): Support lod_level in dygraph mode
         if in_dygraph_mode():
             raise Exception("Dygraph model DO NOT supprt lod")
-        return self.desc.lod_level()
+
+        if self.type == core.VarDesc.VarType.LOD_TENSOR:
+            return self.desc.lod_level()
 
     @property
     def type(self):
@@ -2445,7 +2446,7 @@ class Block(object):
                                    " is inited by multiple init ops " + str(
                                        init_ops))
             elif init_ops_len == 1:
-                #TODO already inited, do nothing, should log a warning
+                # TODO already inited, do nothing, should log a warning
                 pass
             else:
                 initializer(param, self)
@@ -3351,8 +3352,8 @@ class IrGraph(object):
             op_node(IrOpNode): the operator node that is needed to update input's link.
         """
         assert old_output_node.node in self.graph.nodes() and new_output_node.node in \
-        self.graph.nodes() and op_node.node in self.graph.nodes(), \
-        'The three arguments(old_output_node &new_output_node &op_node) must be in the graph nodes.'
+               self.graph.nodes() and op_node.node in self.graph.nodes(), \
+            'The three arguments(old_output_node &new_output_node &op_node) must be in the graph nodes.'
         old_output_node.remove_input(op_node)
         op_node.remove_output(old_output_node)
         new_output_node.append_input(op_node)
@@ -4517,11 +4518,14 @@ class Parameter(Variable):
             be applied on this parameter.
     """
 
-    def __init__(self, block, shape, dtype, **kwargs):
+    def __init__(self, block, shape, dtype, type, **kwargs):
         if shape is None:
             raise ValueError("The shape of Parameter should not be None")
         if dtype is None:
             raise ValueError("The dtype of Parameter should not be None")
+
+        if type is None:
+            type = core.VarDesc.VarType.LOD_TENSOR
 
         if len(shape) == 0:
             raise ValueError(
@@ -4534,7 +4538,13 @@ class Parameter(Variable):
                     % list(shape))
 
         Variable.__init__(
-            self, block, persistable=True, shape=shape, dtype=dtype, **kwargs)
+            self,
+            block,
+            persistable=True,
+            shape=shape,
+            dtype=dtype,
+            type=type,
+            **kwargs)
         self.trainable = kwargs.get('trainable', True)
 
         self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
@@ -4652,7 +4662,7 @@ class ParamBase(core.VarBase):
 
         self.is_distributed = False
 
-        #self.block = default_main_program().global_block()
+        # self.block = default_main_program().global_block()
 
         _dygraph_tracer().trace_var(name, self)
 

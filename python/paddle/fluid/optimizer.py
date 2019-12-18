@@ -165,24 +165,24 @@ class Optimizer(object):
 
         if isinstance(self._learning_rate, LearningRateDecay):
             assert 'global_step' in state_dict, \
-                    'Global step not in state dict, Dygraph use LearningRateDecay, global_step must in state_dict'
+                'Global step not in state dict, Dygraph use LearningRateDecay, global_step must in state_dict'
             global_step = state_dict['global_step']
 
             if isinstance(global_step, core.VarBase):
                 step_np = global_step
                 step_np = np.array(step_np.value().get_tensor())
-                assert step_np.shape == (1,),  \
-                        "global step shape is (1,), the shape is {}".format( step_np.shape )
+                assert step_np.shape == (1,), \
+                    "global step shape is (1,), the shape is {}".format(step_np.shape)
 
                 self._learning_rate.step_num = int(step_np[0])
             elif isinstance(global_step, Variable):
                 step_np = global_step.numpy()
-                assert step_np.shape == (1,),  \
-                        "global step shape is (1,), the shape is {}".format( step_np.shape )
+                assert step_np.shape == (1,), \
+                    "global step shape is (1,), the shape is {}".format(step_np.shape)
                 self._learning_rate.step_num = step_np[0]
             elif isinstance(global_step, np.ndarray):
-                assert global_step.shape == (1,),  \
-                        "global step shape is (1,), the shape is {}".format( global_step.shape )
+                assert global_step.shape == (1,), \
+                    "global step shape is (1,), the shape is {}".format(global_step.shape)
                 self._learning_rate.step_num = global_step[0]
             else:
                 raise RuntimeError(
@@ -193,7 +193,7 @@ class Optimizer(object):
         for k, v in self._accumulators.items():
             for para_name, var_tmp in v.items():
                 assert var_tmp.name in state_dict, \
-                        "optimizer variable {} not found".format( var_tmp.name )
+                    "optimizer variable {} not found".format(var_tmp.name)
                 var = var_tmp.value()
                 tensor = var.get_tensor()
                 model_np = np.array(tensor)
@@ -210,13 +210,13 @@ class Optimizer(object):
                     raise RuntimeError("State dict type {} not supprt".format(
                         str(type(load_para))))
 
-                assert model_np.shape == load_para_np.shape,  \
-                                          "Parameter shape not match, Dygraph Parameter [ {} ] need tensor with shape {} but load tensor with shape {}".format(
-                                                 item.name, model_np.shape, load_para_np.shape)
+                assert model_np.shape == load_para_np.shape, \
+                    "Parameter shape not match, Dygraph Parameter [ {} ] need tensor with shape {} but load tensor with shape {}".format(
+                        item.name, model_np.shape, load_para_np.shape)
 
                 assert model_np.dtype == load_para_np.dtype, \
-                                          "Parameter dtype not match, Dygraph Parameter [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
-                                                item.name, model_np.dtype, load_para_np.dtype)
+                    "Parameter dtype not match, Dygraph Parameter [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
+                        item.name, model_np.dtype, load_para_np.dtype)
 
                 tensor.set(load_para_np, framework._current_expected_place())
 
@@ -324,7 +324,8 @@ class Optimizer(object):
                          param,
                          dtype=None,
                          fill_value=0.0,
-                         shape=None):
+                         shape=None,
+                         type=None):
         """Utility function to add an accumulator for a parameter
 
         Args:
@@ -354,7 +355,7 @@ class Optimizer(object):
             name=var_name,
             persistable=True,
             dtype=dtype or param.dtype,
-            type=param.type,
+            type=param.type if type is None else type,
             shape=shape,
             belong_to_optimizer=True)
         self.helper.set_variable_initializer(
@@ -363,7 +364,7 @@ class Optimizer(object):
         if framework.in_dygraph_mode():
             if len(self._accumulators_holder) > 0:
                 assert var_name in self._accumulators_holder, \
-                        "Optimizer set error, {} should in state dict".format( var_name )
+                    "Optimizer set error, {} should in state dict".format(var_name)
                 var.set_value(self._accumulators_holder[var_name])
 
         self._accumulators[name][param.name] = var
@@ -474,7 +475,7 @@ class Optimizer(object):
         if table_param is not None:
             param_and_grad = [table_param, table_grad]
             with table_param.block.program._optimized_guard(param_and_grad), \
-                    framework.name_scope("optimizer"):
+                 framework.name_scope("optimizer"):
                 self._create_global_learning_rate()
                 # create the optimize op
                 sgd_op = global_block.append_op(
@@ -990,9 +991,9 @@ class DGCMomentumOptimizer(Optimizer):
     def _is_use_dgc(self, param_var, grad_var):
         var_numel = abs(reduce(lambda x, y: x * y, param_var.shape))
         if var_numel < 16384 or \
-           param_var.type == core.VarDesc.VarType.SELECTED_ROWS  or \
-           grad_var.type == core.VarDesc.VarType.SELECTED_ROWS  or  \
-               param_var.dtype != core.VarDesc.VarType.FP32 :
+                param_var.type == core.VarDesc.VarType.SELECTED_ROWS or \
+                grad_var.type == core.VarDesc.VarType.SELECTED_ROWS or \
+                param_var.dtype != core.VarDesc.VarType.FP32:
             return False
         return True
 
@@ -1634,14 +1635,16 @@ class AdamOptimizer(Optimizer):
                 name=self._beta1_pow_acc_str,
                 param=p,
                 fill_value=0.9 if isinstance(self._beta1, Variable) \
-                        else self._beta1,
-                shape=[1])
+                    else self._beta1,
+                shape=[1],
+                type=core.VarDesc.VarType.LOD_TENSOR)
             self._add_accumulator(
                 name=self._beta2_pow_acc_str,
                 param=p,
                 fill_value=0.999 if isinstance(self._beta2, Variable) \
-                        else self._beta2,
-                shape=[1])
+                    else self._beta2,
+                shape=[1],
+                type=core.VarDesc.VarType.LOD_TENSOR)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -2596,7 +2599,7 @@ class LambOptimizer(AdamOptimizer):
                                               param_and_grad[0])
 
         if self._exclude_from_weight_decay_fn is not None \
-            and self._exclude_from_weight_decay_fn(param_and_grad[0]):
+                and self._exclude_from_weight_decay_fn(param_and_grad[0]):
             weight_decay = 0.0
         else:
             weight_decay = self._weight_decay
@@ -3392,7 +3395,7 @@ class PipelineOptimizer(object):
                 for op in ops:
                     if self._is_lr_role_op(op):
                         cur_ops.append(op)
-            #prevent inplace in/out
+            # prevent inplace in/out
             program["input_set"].update(
                 self._find_input_output(
                     cur_ops, [], is_forward=True))
