@@ -520,9 +520,9 @@ function check_approvals_of_unittest() {
         APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 52485244 46782768 6836917 43953930 47554610`
         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
         if [ "${APPROVALS}" == "TRUE" ]; then
-            echo "==================="
-            echo -e "current pr ${GIT_PR_ID} has got approvals. So, Pass CI directly!\n"
-            echo "==================="
+            echo "==================================="
+            echo -e "\n current pr ${GIT_PR_ID} has got approvals. So, Pass CI directly!\n"
+            echo "==================================="
             exit 0
         fi
     elif [ $1 == 2 ]; then
@@ -531,10 +531,12 @@ function check_approvals_of_unittest() {
             APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 46782768 6836917 43953930 47554610`
             echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
             if [ "${APPROVALS}" == "FALSE" ]; then
-                echo "****************"
-                echo -e "You must have one RD (zhouwei25 (recommended) or luotao1 or XiaoguangHu01 or phlrain or lanxianghit) approval for the deletion of unit tests.\n"
-                echo "There are one approved errors."
-                echo "****************"
+                echo "************************************"
+                echo -e "There are one approved errors.\n\n"
+                echo -e "You must have one RD (zhouwei25 (recommended) or luotao1 or XiaoguangHu01 or phlrain or lanxianghit) approval for the deletion of unit tests. \n\n"
+                echo -e "If you have any problems about deleting unit test, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/OP-Specification:-Disabeling-unit-test-is-forbidden]. \n\n"
+                echo -e "You have deleted these unit tests :\n ${unittest_spec_diff} \n"
+                echo "************************************"
                 exit 1
             fi
         fi
