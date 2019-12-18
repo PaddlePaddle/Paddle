@@ -77,6 +77,9 @@ class TestSigmoid(TestActivation):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
 
+    def init_dtype(self):
+        self.dtype = np.float32
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
@@ -93,9 +96,6 @@ class TestLogSigmoid(TestActivation):
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
-
-    def init_dtype(self):
-        self.dtype = np.float32
 
     def test_check_grad(self):
         if self.dtype == np.float16:
