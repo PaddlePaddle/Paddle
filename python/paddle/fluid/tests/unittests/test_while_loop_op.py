@@ -149,7 +149,7 @@ class TestApiWhileLoop_Nested(unittest.TestCase):
 class TestApiWhileLoop_Backward(unittest.TestCase):
     def test_while_loop_backward(self):
         def cond(i, x):
-            return layers.less_than(i, ten)
+            return layers.less_than(i, eleven)
 
         def body(i, x):
             x = layers.elementwise_mul(x=i, y=i)
@@ -162,7 +162,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
             i = layers.data(
                 name='i', shape=[1], dtype='float32', append_batch_size=False)
             i.stop_gradient = False
-            ten = layers.fill_constant(shape=[1], dtype='float32', value=11)
+            eleven = layers.fill_constant(shape=[1], dtype='float32', value=11)
             one = layers.fill_constant(shape=[1], dtype='float32', value=1)
             x = layers.data(
                 name='x', shape=[1], dtype='float32', append_batch_size=False)
