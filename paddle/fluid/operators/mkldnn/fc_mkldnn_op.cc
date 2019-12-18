@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <mkldnn/include/mkldnn_debug.h>
 #include <mkldnn/include/mkldnn_types.h>
 #include <memory>
 #include "paddle/fluid/framework/tensor.h"
