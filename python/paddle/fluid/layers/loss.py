@@ -22,7 +22,8 @@ from ..layer_helper import LayerHelper
 from ..framework import Variable
 from ..data_feeder import check_type_and_dtype
 from ..param_attr import ParamAttr
-from ..initializer import NumpyArrayInitializer
+from ..initializer import NumpyArrayInitializer, Constant
+from .. import core
 
 __all__ = [
     'center_loss',
