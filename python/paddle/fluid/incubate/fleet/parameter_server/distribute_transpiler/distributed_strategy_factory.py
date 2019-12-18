@@ -94,8 +94,8 @@ class DistributedStrategy(object):
                     setattr(self._program_config, key, config[key])
                 else:
                     raise ValueError(
-                        "DistributeTranspilerConfig doesn't have key: '%s'",
-                        key)
+                        "DistributeTranspilerConfig doesn't have key: {}".
+                        format(key))
         else:
             raise TypeError(
                 "program_config only accept input type: dict or DistributeTranspilerConfig"
@@ -112,10 +112,11 @@ class DistributedStrategy(object):
                 if hasattr(self._trainer_runtime_config, key):
                     setattr(self._trainer_runtime_config, key, config[key])
                 elif key in self._trainer_runtime_config._communicator_flags:
-                    self._trainer_runtime_config._communicator_flags[key] = int(config[key])
+                    self._trainer_runtime_config._communicator_flags[key] = int(
+                        config[key])
                 else:
                     raise ValueError(
-                        "TrainerRuntimeConfig doesn't have key: '%s'", key)
+                        "TrainerRuntimeConfig doesn't have key: {}".format(key))
         else:
             raise TypeError(
                 "trainer_runtime_config only accept input type: dict or TrainerRuntimeConfig"
@@ -133,7 +134,7 @@ class DistributedStrategy(object):
                     setattr(self._server_runtime_config, key, config[key])
                 else:
                     raise ValueError(
-                        "ServerRuntimeConfig doesn't have key: '%s'", key)
+                        "ServerRuntimeConfig doesn't have key: {}".format(key))
         else:
             raise TypeError(
                 "server_runtime_config only accept input type: dict or ServerRuntimeConfig"
@@ -150,14 +151,14 @@ class DistributedStrategy(object):
                 if hasattr(self._execute_strategy, key):
                     setattr(self._execute_strategy, key, config[key])
                 else:
-                    raise ValueError("ExecutionStrategy doesn't have key: '%s'",
-                                     key)
+                    raise ValueError(
+                        "ExecutionStrategy doesn't have key: {}".format(key))
         else:
             raise TypeError(
                 "execute_strategy only accept input type: dict or ExecutionStrategy"
             )
 
-    def get_build_trategy(self):
+    def get_build_strategy(self):
         return self._build_strategy
 
     def set_build_strategy(self, config):
@@ -168,8 +169,8 @@ class DistributedStrategy(object):
                 if hasattr(self._build_strategy, key):
                     setattr(self._build_strategy, key, config[key])
                 else:
-                    raise ValueError("BuildStrategy doesn't have key: '%s'",
-                                     key)
+                    raise ValueError(
+                        "BuildStrategy doesn't have key: {}".format(key))
         else:
             raise TypeError(
                 "build_strategy only accept input type: dict or BuildStrategy")
