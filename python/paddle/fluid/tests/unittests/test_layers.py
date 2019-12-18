@@ -118,13 +118,15 @@ class TestLayer(LayerTest):
                 shape=[3, 32, 32],
                 dtype='float32',
                 append_batch_size=False)
-            linear = nn.Linear(32, 4, bias_attr=False)
+            linear = nn.Linear(
+                32, 4, bias_attr=fluid.initializer.ConstantInitializer(value=1))
             ret = linear(t)
             static_ret = self.get_static_graph_result(
                 feed={'data': inp}, fetch_list=[ret])[0]
         with self.dynamic_graph():
             t = base.to_variable(inp)
-            linear = nn.Linear(32, 4, bias_attr=False)
+            linear = nn.Linear(
+                32, 4, bias_attr=fluid.initializer.ConstantInitializer(value=1))
             dy_ret = linear(t)
             dy_ret_value = dy_ret.numpy()
 
