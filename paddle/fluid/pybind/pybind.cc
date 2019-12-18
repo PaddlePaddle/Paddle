@@ -1100,6 +1100,11 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("has_grad_op_maker", [](const std::string op_type) {
     return framework::OpInfoMap::Instance().Get(op_type).HasGradOpMaker();
   });
+  m.def("has_non_empty_grad_op_maker", [](const std::string op_type) {
+    return framework::OpInfoMap::Instance()
+        .Get(op_type)
+        .HasNonEmptyGradOpMaker();
+  });
   m.def("has_infer_inplace", [](const std::string op_type) {
     return framework::OpInfoMap::Instance().Get(op_type).HasInferInplace();
   });
