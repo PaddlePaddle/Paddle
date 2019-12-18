@@ -46,8 +46,8 @@ class PostTrainingQuantization(object):
                  algo="KL",
                  quantizable_op_type=["conv2d", "depthwise_conv2d", "mul"],
                  is_full_quantize=False,
-                 is_memory_constrained=False,
-                 temp_dir="./temp_post_training"):
+                 is_use_cache_file=False,
+                 cache_dir="./temp_post_training"):
         '''
         The class utilizes post training quantization methon to quantize the 
         fp32 model. It uses calibrate data to calculate the scale factor of 
@@ -85,12 +85,12 @@ class PostTrainingQuantization(object):
                 apply quantization to all supported quantizable op type. If set
                 is_full_quantized as False, only apply quantization to the op type 
                 according to the input quantizable_op_type.
-            is_memory_constrained(bool, optional): If set is_memory_constrained as False,
-                all temp data will be saved in memory. If set is_save_sample_data as True,
+            is_use_cache_file(bool, optional): If set is_use_cache_file as False,
+                all temp data will be saved in memory. If set is_use_cache_file as True,
                 it will save temp data to disk. When the fp32 model is complex or
-                the number of calibrate data is large, we should set is_save_sample_data
+                the number of calibrate data is large, we should set is_use_cache_file
                 as True. Defalut is False.
-            temp_dir(str, optional): When is_memory_constrained is True, set temp_dir as
+            cache_dir(str, optional): When is_use_cache_file is True, set cache_dir as
                 the directory for saving temp data. Default is ./temp_post_training.
         Returns:
             None
@@ -140,10 +140,10 @@ class PostTrainingQuantization(object):
         self._batch_nums = batch_nums
         self._scope = global_scope() if scope == None else scope
         self._algo = algo
-        self._is_memory_constrained = is_memory_constrained
-        self._temp_dir = temp_dir
-        if self._is_memory_constrained and not os.path.exists(self._temp_dir):
-            os.mkdir(self._temp_dir)
+        self._is_use_cache_file = is_use_cache_file
+        self._cache_dir = cache_dir
+        if self._is_use_cache_file and not os.path.exists(self._cache_dir):
+            os.mkdir(self._cache_dir)
 
         supported_quantizable_op_type = \
             QuantizationTransformPass._supported_quantizable_op_type + \
@@ -296,11 +296,11 @@ class PostTrainingQuantization(object):
                 var_tensor = self._load_var_value(var_name)
                 self._sampling_data[var_name] = var_tensor
 
-        if self._is_memory_constrained:
+        if self._is_use_cache_file:
             for var_name in self._quantized_act_var_name:
                 var_tensor = self._load_var_value(var_name)
                 var_tensor = var_tensor.ravel()
-                save_path = os.path.join(self._temp_dir,
+                save_path = os.path.join(self._cache_dir,
                                          var_name + "_" + str(iter) + ".npy")
                 np.save(save_path, var_tensor)
         else:
@@ -326,13 +326,13 @@ class PostTrainingQuantization(object):
                 var_name] = scale_factor_per_channel
 
         # apply kl quantization for activation
-        if self._is_memory_constrained:
+        if self._is_use_cache_file:
             for var_name in self._quantized_act_var_name:
                 sampling_data = []
-                filenames = [f for f in os.listdir(self._temp_dir) \
+                filenames = [f for f in os.listdir(self._cache_dir) \
                     if re.match(var_name + '_[0-9]+.npy', f)]
                 for filename in filenames:
-                    file_path = os.path.join(self._temp_dir, filename)
+                    file_path = os.path.join(self._cache_dir, filename)
                     sampling_data.append(np.load(file_path))
                     os.remove(file_path)
                 sampling_data = np.concatenate(sampling_data)
