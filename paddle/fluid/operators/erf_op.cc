@@ -18,6 +18,7 @@ limitations under the License. */
 #include <unordered_map>
 
 #include "paddle/fluid/operators/erf_op.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -30,7 +31,6 @@ class ErfOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    // platform::errors::InvalidArgument("example: %s", str)
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    platform::errors::InvalidArgument(
                        "Input(%s) of ErfOp should not be null.", "X"));
@@ -50,31 +50,27 @@ class ErfOp : public framework::OperatorWithKernel {
   }
 };
 
-class ErfOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
- protected:
-  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
-      const override {
-    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Out"}};
-  }
-};
-
 class ErfGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("Out"), "Input(Out) should not be null");
+                   platform::errors::InvalidArgument(
+                       "Input(%s) of ErfGradOp should not be null.", "DOut"));
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   platform::errors::InvalidArgument(
+                       "Input(%s) of ErfGradOp should not be null.", "X"));
     auto x_grad_name = framework::GradVarName("X");
-    ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("Out"));
+    ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("X"));
+    ctx->ShareLoD("X", /*->*/ x_grad_name);
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Out"), ctx.GetPlace());
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 
@@ -105,7 +101,7 @@ class ErfGradOpMaker : public framework::SingleGradOpMaker<T> {
   std::unique_ptr<T> Apply() const override {
     auto *grad_op = new T();
     grad_op->SetType("erf_grad");
-    grad_op->SetInput("X", this->Output("X"));
+    grad_op->SetInput("X", this->Input("X"));
     grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     grad_op->SetAttrMap(this->Attrs());
@@ -118,13 +114,17 @@ class ErfGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(erf, ops::ErfOp, ops::ErfOpMaker, ops::ErfOpInferVarType,
+REGISTER_OPERATOR(erf, ops::ErfOp, ops::ErfOpMaker,
                   ops::ErfGradOpMaker<paddle::framework::OpDesc>,
                   ops::ErfGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(ref_grad, ops::ErfGradOp);
+REGISTER_OPERATOR(erf_grad, ops::ErfGradOp);
 REGISTER_OP_CPU_KERNEL(
     erf, ops::ErfKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ErfKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::ErfKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ErfKernel<paddle::platform::CPUDeviceContext,
+                   paddle::platform::float16>);
 REGISTER_OP_CPU_KERNEL(
     erf_grad, ops::ErfGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ErfGradKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::ErfGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ErfGradKernel<paddle::platform::CPUDeviceContext,
+                       paddle::platform::float16>);

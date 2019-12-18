@@ -17,37 +17,24 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from scipy.special import erf
-import paddle.fluid as fluid
-import paddle.fluid.dygraph as dg
+from op_test import OpTest, OpTestFp16
 
 
-class TestErfOp(unittest.TestCase):
-    def _test_case1_cpu(self):
-        x = np.random.uniform(-1, 1, size=(11, 17)).astype(np.float32)
-        y_ref = erf(x)
+class TestErfOp(OpTest):
+    def setUp(self):
+        self.op_type = "erf"
+        self.dtype = "float64"
+        self.x_shape = [11, 17]
+        x = np.random.uniform(-1, 1, size=self.x_shape).astype(self.dtype)
+        y_ref = erf(x).astype(self.dtype)
+        self.inputs = {'X': x}
+        self.outputs = {'Out': y_ref}
 
-        place = fluid.CPUPlace()
-        with dg.guard(place) as g:
-            x_var = dg.to_variable(x)
-            y_var = fluid.layers.erf(x_var)
-            y_test = y_var.numpy()
-        self.assertTrue(np.allclose(y_ref, y_test, rtol=1e-05, atol=1e-08))
+    def test_check_output(self):
+        self.check_output()
 
-    def _test_case1_gpu(self):
-        x = np.random.uniform(-1, 1, size=(11, 17)).astype(np.float32)
-        y_ref = erf(x)
-
-        place = fluid.CUDAPlace(0)
-        with dg.guard(place) as g:
-            x_var = dg.to_variable(x)
-            y_var = fluid.layers.erf(x_var)
-            y_test = y_var.numpy()
-        self.assertTrue(np.allclose(y_ref, y_test, rtol=1e-05, atol=1e-08))
-
-    def test_cases(self):
-        self._test_case1_cpu()
-        if fluid.is_compiled_with_cuda():
-            self._test_case1_gpu()
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
 
 if __name__ == '__main__':
