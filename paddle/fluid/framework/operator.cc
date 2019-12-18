@@ -1179,8 +1179,12 @@ Scope* OperatorWithKernel::PrepareData(
       }
 
       if (no_buffer_ins && no_buffer_ins->count(var_name_item.first) > 0) {
-        // If there is Var without Buffer needed and
-        // TODO(jczaja): check kernel_type_for_var
+        // Var without buffer may be needed
+        // for some situation like InferShape().
+        // In this situation We cannot skip Var analysis, as
+        // MKL-DNN shape of Var may differ from kNHWC Var
+        // In such situation corressponding resized Var
+        // has to be created and registered
         if ((tensor_in->layout() != DataLayout::kMKLDNN) ||
             (var->IsType<LoDTensor>() == false) ||
             (expected_kernel_key.data_layout_ == DataLayout::kMKLDNN) ||
