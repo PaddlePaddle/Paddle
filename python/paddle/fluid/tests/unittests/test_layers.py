@@ -33,6 +33,7 @@ import paddle.fluid.layers as layers
 from test_imperative_base import new_program_scope
 from paddle.fluid.dygraph import nn
 from paddle.fluid.dygraph import base
+from paddle.fluid.dygraph import to_variable
 
 
 class LayerTest(unittest.TestCase):
@@ -480,11 +481,11 @@ class TestLayer(LayerTest):
                 fetch_list=[ret])[0]
 
         with self.dynamic_graph():
-            ret = layers.elementwise_add(n, n2)
-            ret = layers.elementwise_pow(ret, n3)
-            ret = layers.elementwise_div(ret, n4)
-            ret = layers.elementwise_sub(ret, n5)
-            dy_ret = layers.elementwise_mul(ret, n6)
+            ret = layers.elementwise_add(to_variable(n), to_variable(n2))
+            ret = layers.elementwise_pow(ret, to_variable(n3))
+            ret = layers.elementwise_div(ret, to_variable(n4))
+            ret = layers.elementwise_sub(ret, to_variable(n5))
+            dy_ret = layers.elementwise_mul(ret, to_variable(n6))
             dy_ret_value = dy_ret.numpy()
         self.assertTrue(np.allclose(static_ret, dy_ret_value))
 
