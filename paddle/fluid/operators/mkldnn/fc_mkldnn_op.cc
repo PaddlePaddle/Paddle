@@ -104,77 +104,6 @@ class FCPrimitiveFactory {
     // Return MKL-DNN primitive ready to be fed into pipeline and executed
     fc_ = inner_product_forward(*fc_prim_desc);
     this->Execute();
-    // return;
-
-    /*
-        auto input_dims = framework::vectorize(input->dims());
-        auto src_desc = CreateMemDescriptor<T_in>(input_dims, input->format());
-
-        // Since MKL-DNN doesn't support 4D column-major data formats in
-        // inner_product
-        // primitive, transpose the weights to be in row-major format
-        weights_ = TransposeWeights(weights);
-
-        auto bias_desc = CreateMemDescriptor<float>(bias,
-       MKLDNNMemoryFormat::x);
-        bias_ = CreateMemory<float>(bias_desc, bias);
-
-        auto dst_dims = framework::vectorize(output->dims());
-        auto dst_desc =
-            CreateMemDescriptor<T_out>(dst_dims, MKLDNNMemoryFormat::any);
-
-        auto w_dims = framework::vectorize(weights->dims());
-        memory::desc weights_desc = weights_->get_desc();
-        memory::desc usr_weights_desc = weights_->get_desc();
-        weights_desc.data.data_type = platform::MKLDNNGetDataType<T_w>();
-        if (src_desc.data.ndims == 3) {
-          std::vector<int64_t> w_dims = {w_dims[1], 1, w_dims[0]};
-          weights_desc = CreateMemDescriptor<T_w>(w_dims,
-       MKLDNNMemoryFormat::any);
-          usr_weights_desc =
-              CreateMemDescriptor<float>(w_dims, MKLDNNMemoryFormat::oiw);
-
-          dst_dims = {input_dims[0] * input_dims[1], w_dims[1]};
-          input_dims[0] *= input_dims[1];
-          input_dims[1] = 1;
-          src_desc = CreateMemDescriptor<T_in>(input_dims, input->format());
-          dst_desc = CreateMemDescriptor<T_out>(dst_dims,
-       MKLDNNMemoryFormat::any);
-        } else if (src_desc.data.ndims == 4) {
-          auto dims = {w_dims[1], input_dims[1], input_dims[2], input_dims[3]};
-          weights_desc = CreateMemDescriptor<T_w>(dims,
-       MKLDNNMemoryFormat::any);
-          usr_weights_desc =
-              CreateMemDescriptor<float>(dims, MKLDNNMemoryFormat::oihw);
-        }
-        input_ = CreateMemory<T_in>(src_desc, input);
-        const auto attrs = CreatePostOps(ctx);
-
-        // Create inner_product descriptor. At this point the format of output
-        // and weights is determined.
-        mkldnn::inner_product_forward::primitive_desc fc_prim_desc =
-            CreateFcPrimDesc(src_desc, weights_desc, bias_desc, dst_desc,
-       attrs);
-
-        // Enforce weights_ to have the same dimensionality as input
-        weights_ = Reorder(usr_weights_desc, usr_weights_desc,
-                           weights_->get_data_handle());
-
-        // Quantize weights and reorder to format chosen by FC primitive
-       descriptor.
-        QuantizeWeights(ctx, fc_prim_desc.weights_desc());
-
-        // If int8 is desired, quantize bias into 32-bit signed int
-        QuantizeBias(fc_prim_desc, ctx);
-
-        // Based on format determined by inner_product, create output in desired
-        // memory format
-        output_ = CreateDstMemory(fc_prim_desc, ctx, output);
-
-        // Return MKL-DNN primitive ready to be fed into pipeline and executed
-        fc_ = inner_product_forward(fc_prim_desc);
-        this->Execute();
-    */
   }
 
   void Execute() {
@@ -465,49 +394,6 @@ class FCPrimitiveFactory {
                                     weights_desc, bias_desc, dst_desc);
 
     return inner_product_forward::primitive_desc(fc_desc, attrs, engine_);
-  }
-
-  // Since MKL-DNN requires the number of input dimensions to be
-  // equal to the number of weight dimensions, we have to convert
-  // weights to 3D memory if input is 3D.
-  mkldnn::memory CreateThreeDimWeightsMemory(const Tensor* input,
-                                             const Tensor* weights) {
-    auto input_dims = framework::vectorize<int>(input->dims());
-    auto weight_dims = framework::vectorize<int>(weights->dims());
-    auto dims = {weight_dims[1], input_dims[1], input_dims[2]};
-
-    auto dst_format = /*MatchWeightFormat(*/ input->format(); /*)*/
-    auto src_desc = CreateMemDescriptor<float>(dims, MKLDNNMemoryFormat::oiw);
-    dst_format = mkldnn_owi;
-    auto dst_desc = CreateMemDescriptor<float>(dims, dst_format);
-
-    return Reorder(src_desc, dst_desc, weights_->get_data_handle());
-  }
-
-  // Since MKL-DNN requires the number of input dimensions to be
-  // equal to the number of weight dimensions, we have to convert
-  // weights to 4D memory if input is 4D. It also requires that
-  // all dimensions of weights and inputs agree, with an exception
-  // for the batch size and number of output channels (the first dim).
-  // In order to perform that we have to prepare the memory descriptor
-  // by hand, as MKL-DNN's reorder does not support conversion
-  // from one dimensionality to another. Hence, we set
-  // the first dimension of weights to resemble number of outputs
-  // and then we use the sizes of number of input channels as well
-  // as image width and height for latter dimensions. Then we create
-  // memories, find a format corresponding with input format and
-  // perform a converion.
-  mkldnn::memory CreateFourDimWeightsMemory(const Tensor* input,
-                                            const Tensor* weights) {
-    auto input_dims = framework::vectorize(input->dims());
-    auto weight_dims = framework::vectorize(weights->dims());
-    auto dims = {weight_dims[1], input_dims[1], input_dims[2], input_dims[3]};
-
-    auto dst_format = /*MatchWeightFormat(*/ input->format(); /*)*/
-    auto src_desc = CreateMemDescriptor<float>(dims, MKLDNNMemoryFormat::oihw);
-    auto dst_desc = CreateMemDescriptor<float>(dims, dst_format);
-
-    return Reorder(src_desc, dst_desc, weights_->get_data_handle());
   }
 
   // Create output memory based on output tensor and inner_product
