@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Grad op is not registered for Ops in EMPTY_GRAD_OP_LIST, so check grad 
+# Grad op is not registered for Ops in EMPTY_GRAD_OP_LIST, so check grad
 # will not be required.
 EMPTY_GRAD_OP_LIST = [
     'fill_zeros_like2', 'gaussian_random_batch_size_like',
@@ -83,4 +83,17 @@ NO_NEED_CHECK_GRAD_CASES = [
     'TestMKLDNNWithSamePad',
     'TestMKLDNNWithValidPad',
     'TestMKLDNNWithValidPad_NHWC',
+]
+
+NEED_TO_FIX_OP_LIST = [
+    'row_conv', 'mul', 'smooth_l1_loss', 'multiplex', 'sequence_conv',
+    'conv_shift', 'margin_rank_loss', 'lstm', 'lstmp', 'lod_reset',
+    'filter_by_instag', 'elementwise_div', 'elementwise_max', 'elementwise_min',
+    'elementwise_add', 'elementwise_sub', 'elementwise_mul', 'affine_channel',
+    'fused_emb_seq_pool', 'huber_loss', 'rank_loss',
+    'fused_elemwise_activation', 'prelu', 'cos_sim', 'deformable_conv',
+    'matmul', 'hissigmod', 'kldiv_loss', 'affine_grad', 'conv3d_transpose',
+    'conv2d_transpose', 'spectral_norm', 'cross_entropy2', 'linear_chain_crf',
+    'lookup_table_v2', 'conv2d', 'gru_unit', 'lookup_table', 'conv3d',
+    'deformable_conv_v1'
 ]

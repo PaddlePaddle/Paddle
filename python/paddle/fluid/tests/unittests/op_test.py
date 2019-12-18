@@ -34,9 +34,7 @@ from paddle.fluid.framework import Program, OpProtoHolder, Variable
 from testsuite import create_op, set_input, append_input_output, append_loss_ops
 from paddle.fluid import unique_name
 
-from white_list import Grad_White_List, Need_To_Fix_Op_List
 from white_list import op_accuracy_white_list, op_check_grad_white_list
-
 
 
 def _set_use_system_allocator(value=None):
@@ -1116,8 +1114,9 @@ class OpTestBase(unittest.TestCase):
         if no_grad_set is None:
             no_grad_set = set()
         else:
-            if (self.op_type not in Need_To_Fix_Op_List) or (
-                    self.op_type not in Grad_White_List):
+            if (self.op_type not in op_check_grad_white_list.NEED_TO_FIX_OP_LIST
+                ) or (self.op_type not in
+                      op_check_grad_white_list.EMPTY_GRAD_OP_LIST):
                 raise AssertionError("no_grad_set muste be None, op_type is " +
                                      self.op_type + " Op.")
 
@@ -1310,7 +1309,7 @@ class OpTestInt8(OpTestBase):
 
 '''
 The op test with float16 precision should inherit OpTestFp16,
-which requires the test to call check_grad. 
+which requires the test to call check_grad.
 '''
 
 
@@ -1379,7 +1378,7 @@ class OpTestFp16(OpTestBase):
 
 '''
 The op test with float32/64 precision should inherit OpTest,
-which requires the test to call check_grad with float64 precision. 
+which requires the test to call check_grad with float64 precision.
 '''
 
 
@@ -1446,7 +1445,7 @@ class OpTest(OpTestBase):
         np.random.set_state(cls._np_rand_state)
         random.setstate(cls._py_rand_state)
 
-        # only for pass ci, but cases in NO_FP64_CHECK_GRAD_CASES 
+        # only for pass ci, but cases in NO_FP64_CHECK_GRAD_CASES
         # and op in NO_FP64_CHECK_GRAD_OP_LIST should be fixed
         if cls.__name__ not in op_accuracy_white_list.NO_FP64_CHECK_GRAD_CASES \
             and not hasattr(cls, 'exist_fp64_check_grad') \
