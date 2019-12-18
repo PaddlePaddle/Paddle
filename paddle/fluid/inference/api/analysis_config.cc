@@ -325,7 +325,7 @@ void AnalysisConfig::Update() {
 
 #ifdef PADDLE_WITH_MKLDNN
   // Do not optimize before quantization
-  if (enable_memory_optim_ && !use_mkldnn_quantizer_) {
+  if (enable_memory_optim_ && !use_mkldnn_) {
 #else
   if (enable_memory_optim_) {
 #endif
