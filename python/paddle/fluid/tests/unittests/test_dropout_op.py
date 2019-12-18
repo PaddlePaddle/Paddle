@@ -36,7 +36,7 @@ class TestDropoutOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', max_relative_error=0.05)
+        self.check_grad(['X'], 'Out')
 
 
 class TestDropoutOp2(TestDropoutOp):

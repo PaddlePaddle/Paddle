@@ -223,6 +223,29 @@ class TestCondInputOutput(unittest.TestCase):
                 "Incompatible return values of true_fn and false_fn in cond" in
                 str(e.exception))
 
+    def test_extremely_simple_net_with_op_in_condition(self):
+        main_program = fluid.Program()
+        startup_program = fluid.Program()
+        with fluid.program_guard(main_program, startup_program):
+            a = fluid.layers.fill_constant(
+                shape=[1], dtype='float32', value=1.23)
+            a.stop_gradient = False
+            b = fluid.layers.fill_constant(
+                shape=[1], dtype='float32', value=1.25)
+            b.stop_gradient = False
+            out = layers.cond(a - b < -1.0, lambda: a, lambda: b)
+        append_backward(out)
+
+        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        ret = exe.run(main_program, fetch_list=[out, a.grad_name, b.grad_name])
+        # Note: fill_constant has loss of precision, you have to assertEqual
+        # with values doens't lose precision in float-point number.
+        self.assertEqual(ret[0][0], 1.25)
+        self.assertEqual(ret[1][0], 0.0)
+        self.assertEqual(ret[2][0], 1.0)
+
 
 class TestCondNestedControlFlow(unittest.TestCase):
     def test_cond_inside_cond(self):
@@ -276,6 +299,33 @@ class TestCondNestedControlFlow(unittest.TestCase):
                           fetch_list=[out.name, a.grad_name])
             self.assertEqual(ret[0][0], expected_ret)
             self.assertEqual(ret[1][0], expected_a_grad)
+
+    def test_cond_op_in_condition(self):
+        main_program = fluid.Program()
+        startup_program = fluid.Program()
+
+        with fluid.program_guard(main_program, startup_program):
+            a = fluid.layers.fill_constant(
+                shape=[1], dtype='float32', value=1.23)
+            a.stop_gradient = False
+            b = fluid.layers.fill_constant(
+                shape=[1], dtype='float32', value=1.24)
+            b.stop_gradient = False
+            out = fluid.layers.cond(
+                a < b,
+                lambda: fluid.layers.cond(a - b < -1.0, lambda: fluid.layers.elementwise_add(a, b), lambda: fluid.layers.elementwise_mul(a, b)),
+                lambda: fluid.layers.cond(a == b, lambda: fluid.layers.elementwise_sub(a, b), lambda: fluid.layers.elementwise_pow(a, b))
+            )
+            append_backward(out)
+
+        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        ret = exe.run(main_program, fetch_list=[out, a.grad_name, b.grad_name])
+        # Note: fill_constant has loss of precision, so we assertAlmostEqual.    
+        self.assertAlmostEqual(ret[0][0], 1.5252)
+        self.assertAlmostEqual(ret[1][0], 1.24)
+        self.assertAlmostEqual(ret[2][0], 1.23)
 
 
 class TestCondBackward(unittest.TestCase):

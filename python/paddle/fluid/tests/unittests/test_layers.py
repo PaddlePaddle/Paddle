@@ -222,7 +222,7 @@ class TestLayer(LayerTest):
                 dtype='float32',
                 append_batch_size=False)
             lm = nn.LayerNorm(
-                'layer_norm',
+                normalized_shape=[32, 32],
                 bias_attr=fluid.initializer.ConstantInitializer(value=1),
                 act='sigmoid')
             ret = lm(t)
@@ -230,14 +230,14 @@ class TestLayer(LayerTest):
                 feed={'data': inp}, fetch_list=[ret])[0]
         with self.dynamic_graph():
             lm = nn.LayerNorm(
-                'layer_norm',
+                normalized_shape=[32, 32],
                 bias_attr=fluid.initializer.ConstantInitializer(value=1),
                 act='sigmoid')
             dy_ret = lm(base.to_variable(inp))
             dy_ret_value = dy_ret.numpy()
         with self.dynamic_graph():
             lm = nn.LayerNorm(
-                'layer_norm',
+                normalized_shape=[32, 32],
                 shift=False,
                 scale=False,
                 param_attr=fluid.initializer.ConstantInitializer(value=1),
@@ -250,6 +250,14 @@ class TestLayer(LayerTest):
 
         self.assertTrue(np.array_equal(static_ret, static_ret2))
         self.assertTrue(np.array_equal(dy_ret_value, static_ret2))
+
+        with self.dynamic_graph():
+            lm = nn.LayerNorm(
+                normalized_shape=[16, 32],
+                bias_attr=fluid.initializer.ConstantInitializer(value=1),
+                act='sigmoid')
+            with self.assertRaises(ValueError):
+                lm(base.to_variable(inp))
 
     def test_relu(self):
         with self.static_graph():
@@ -299,7 +307,8 @@ class TestLayer(LayerTest):
 
         with self.static_graph():
             images = layers.data(name='pixel', shape=[3, 5, 5], dtype='float32')
-            conv2d = nn.Conv2D('conv2d', num_filters=3, filter_size=[2, 2])
+            conv2d = nn.Conv2D(
+                num_channels=3, num_filters=3, filter_size=[2, 2])
             ret = conv2d(images)
             static_ret2 = self.get_static_graph_result(
                 feed={'pixel': np.ones(
@@ -308,14 +317,18 @@ class TestLayer(LayerTest):
 
         with self.dynamic_graph():
             images = np.ones([2, 3, 5, 5], dtype='float32')
-            conv2d = nn.Conv2D('conv2d', num_filters=3, filter_size=[2, 2])
+            conv2d = nn.Conv2D(
+                num_channels=3, num_filters=3, filter_size=[2, 2])
             dy_ret = conv2d(base.to_variable(images))
             dy_ret_value = dy_ret.numpy()
 
         with self.dynamic_graph():
             images = np.ones([2, 3, 5, 5], dtype='float32')
             conv2d = nn.Conv2D(
-                'conv2d', num_filters=3, filter_size=[2, 2], bias_attr=False)
+                num_channels=3,
+                num_filters=3,
+                filter_size=[2, 2],
+                bias_attr=False)
             dy_ret = conv2d(base.to_variable(images))
             self.assertTrue(conv2d._bias_param is None)
 
@@ -328,9 +341,10 @@ class TestLayer(LayerTest):
             weight_attr = fluid.ParamAttr(
                 initializer=fluid.initializer.NumpyArrayInitializer(
                     custom_weight))
-            conv2d1 = nn.Conv2D('conv2d1', num_filters=3, filter_size=[2, 2])
+            conv2d1 = nn.Conv2D(
+                num_channels=3, num_filters=3, filter_size=[2, 2])
             conv2d2 = nn.Conv2D(
-                'conv2d2',
+                num_channels=3,
                 num_filters=3,
                 filter_size=[2, 2],
                 param_attr=weight_attr)
@@ -381,7 +395,7 @@ class TestLayer(LayerTest):
             hidden = layers.data(name='hidden', shape=[-1, D], dtype='float32')
             updated_hidden, reset_hidden_pre, gate = layers.gru_unit(
                 input=x, hidden=hidden, size=D * 3)
-            gru = nn.GRUUnit('gru', size=D * 3)
+            gru = nn.GRUUnit(size=D * 3)
             updated_hidden, reset_hidden_pre, gate = gru(x, hidden)
 
             static_ret2 = self.get_static_graph_result(
@@ -390,7 +404,7 @@ class TestLayer(LayerTest):
                 fetch_list=[updated_hidden, reset_hidden_pre, gate])
 
         with self.dynamic_graph():
-            gru = nn.GRUUnit('gru', size=D * 3)
+            gru = nn.GRUUnit(size=D * 3)
             dy_ret = gru(
                 base.to_variable(input), base.to_variable(hidden_input))
             dy_ret_value = []
@@ -406,8 +420,8 @@ class TestLayer(LayerTest):
             weight_attr = fluid.ParamAttr(
                 initializer=fluid.initializer.NumpyArrayInitializer(
                     custom_weight))
-            gru1 = nn.GRUUnit('gru1', size=D * 3)
-            gru2 = nn.GRUUnit('gru2', size=D * 3, param_attr=weight_attr)
+            gru1 = nn.GRUUnit(size=D * 3)
+            gru2 = nn.GRUUnit(size=D * 3, param_attr=weight_attr)
             dy_ret1 = gru1(
                 base.to_variable(input), base.to_variable(hidden_input))
             dy_ret2 = gru2(
@@ -539,7 +553,7 @@ class TestLayer(LayerTest):
             out = layers.conv2d_transpose(
                 input=img,
                 num_filters=10,
-                output_size=28,
+                filter_size=27,
                 act='sigmoid',
                 bias_attr=fluid.initializer.ConstantInitializer(value=1))
             static_rlt = self.get_static_graph_result(
@@ -547,9 +561,9 @@ class TestLayer(LayerTest):
         with self.static_graph():
             img = layers.data(name='pixel', shape=[3, 2, 2], dtype='float32')
             conv2d_transpose = nn.Conv2DTranspose(
-                'conv2d_transpose',
+                num_channels=3,
                 num_filters=10,
-                output_size=28,
+                filter_size=27,
                 act='sigmoid',
                 bias_attr=fluid.initializer.ConstantInitializer(value=1))
             out = conv2d_transpose(img)
@@ -557,9 +571,9 @@ class TestLayer(LayerTest):
                 feed={'pixel': inp_np}, fetch_list=[out])[0]
         with self.dynamic_graph():
             conv2d_transpose = nn.Conv2DTranspose(
-                'conv2d_transpose',
+                num_channels=3,
                 num_filters=10,
-                output_size=28,
+                filter_size=27,
                 act='sigmoid',
                 bias_attr=fluid.initializer.ConstantInitializer(value=1))
             dy_rlt = conv2d_transpose(base.to_variable(inp_np))
@@ -574,9 +588,9 @@ class TestLayer(LayerTest):
                 initializer=fluid.initializer.NumpyArrayInitializer(
                     custom_weight))
             conv2d1 = nn.Conv2DTranspose(
-                'conv2d1', num_filters=3, filter_size=[2, 2])
+                num_channels=3, num_filters=3, filter_size=[2, 2])
             conv2d2 = nn.Conv2DTranspose(
-                'conv2d2',
+                num_channels=3,
                 num_filters=3,
                 filter_size=[2, 2],
                 param_attr=weight_attr)
@@ -641,7 +655,8 @@ class TestLayer(LayerTest):
                 dtype="float32",
                 append_batch_size=False)
             btp = nn.BilinearTensorProduct(
-                'btp',
+                3,
+                3,
                 6,
                 bias_attr=fluid.initializer.ConstantInitializer(value=1),
                 act='sigmoid')
@@ -651,14 +666,15 @@ class TestLayer(LayerTest):
                       'y': inp_np_y}, fetch_list=[out])[0]
         with self.dynamic_graph():
             btp = nn.BilinearTensorProduct(
-                'btp',
+                3,
+                3,
                 6,
                 bias_attr=fluid.initializer.ConstantInitializer(value=1),
                 act='sigmoid')
             dy_rlt = btp(base.to_variable(inp_np_x), base.to_variable(inp_np_y))
             dy_rlt_value = dy_rlt.numpy()
         with self.dynamic_graph():
-            btp2 = nn.BilinearTensorProduct('btp', 6, act='sigmoid')
+            btp2 = nn.BilinearTensorProduct(3, 3, 6, act='sigmoid')
             dy_rlt2 = btp2(
                 base.to_variable(inp_np_x), base.to_variable(inp_np_y))
             dy_rlt2_value = dy_rlt2.numpy()
@@ -689,9 +705,9 @@ class TestLayer(LayerTest):
             weight_attr = fluid.ParamAttr(
                 initializer=fluid.initializer.NumpyArrayInitializer(
                     custom_weight))
-            btp1 = nn.BilinearTensorProduct('btp1', 6, act='sigmoid')
+            btp1 = nn.BilinearTensorProduct(3, 3, 6, act='sigmoid')
             btp2 = nn.BilinearTensorProduct(
-                'btp2', 6, act='sigmoid', param_attr=weight_attr)
+                3, 3, 6, act='sigmoid', param_attr=weight_attr)
             dy_rlt1 = btp1(
                 base.to_variable(inp_np_x), base.to_variable(inp_np_y))
             dy_rlt2 = btp2(
@@ -732,8 +748,8 @@ class TestLayer(LayerTest):
                 dtype="float32",
                 append_batch_size=False)
             prelu = nn.PRelu(
-                'prelu',
                 mode=mode,
+                input_shape=data_t.shape,
                 param_attr=ParamAttr(initializer=Constant(1.0)))
             out = prelu(data_t)
             static_rlt2 = self.get_static_graph_result(
@@ -741,8 +757,8 @@ class TestLayer(LayerTest):
 
         with self.dynamic_graph():
             prelu = nn.PRelu(
-                'prelu',
                 mode=mode,
+                input_shape=inp_np.shape,
                 param_attr=ParamAttr(initializer=Constant(1.0)))
             dy_rlt = prelu(base.to_variable(inp_np))
             dy_rlt_value = dy_rlt.numpy()
@@ -754,12 +770,12 @@ class TestLayer(LayerTest):
             inp_np = np.random.randn(5, 200, 100, 100).astype("float32")
             inp = base.to_variable(inp_np)
             prelu1 = nn.PRelu(
-                'prelu1',
                 mode=mode,
+                input_shape=inp_np.shape,
                 param_attr=ParamAttr(initializer=Constant(2.0)))
             prelu2 = nn.PRelu(
-                'prelu2',
                 mode=mode,
+                input_shape=inp_np.shape,
                 param_attr=ParamAttr(initializer=Constant(1.0)))
             dy_rlt1 = prelu1(inp)
             dy_rlt2 = prelu2(inp)
@@ -795,19 +811,13 @@ class TestLayer(LayerTest):
         with self.static_graph():
             data_t = layers.data(name='word', shape=[1], dtype='int64')
             emb2 = nn.Embedding(
-                name_scope='embedding',
-                size=[dict_size, 32],
-                param_attr='emb.w',
-                is_sparse=False)
+                size=[dict_size, 32], param_attr='emb.w', is_sparse=False)
             emb_rlt = emb2(data_t)
             static_rlt2 = self.get_static_graph_result(
                 feed={'word': inp_word}, fetch_list=[emb_rlt])[0]
         with self.dynamic_graph():
             emb2 = nn.Embedding(
-                name_scope='embedding',
-                size=[dict_size, 32],
-                param_attr='emb.w',
-                is_sparse=False)
+                size=[dict_size, 32], param_attr='emb.w', is_sparse=False)
             dy_rlt = emb2(base.to_variable(inp_word))
             dy_rlt_value = dy_rlt.numpy()
 
@@ -819,13 +829,9 @@ class TestLayer(LayerTest):
             weight_attr = fluid.ParamAttr(
                 initializer=fluid.initializer.NumpyArrayInitializer(
                     custom_weight))
-            emb1 = nn.Embedding(
-                name_scope='embedding', size=[dict_size, 32], is_sparse=False)
+            emb1 = nn.Embedding(size=[dict_size, 32], is_sparse=False)
             emb2 = nn.Embedding(
-                name_scope='embedding',
-                size=[dict_size, 32],
-                param_attr=weight_attr,
-                is_sparse=False)
+                size=[dict_size, 32], param_attr=weight_attr, is_sparse=False)
             rep1 = emb1(base.to_variable(inp_word))
             rep2 = emb2(base.to_variable(inp_word))
             self.assertFalse(np.array_equal(emb1.weight.numpy(), custom_weight))
@@ -892,10 +898,7 @@ class TestLayer(LayerTest):
             sample_weights = layers.fill_constant(
                 shape=[5, 1], dtype='float32', value=1)
             emb = nn.Embedding(
-                'embedding',
-                size=[dict_size, 32],
-                param_attr='emb.w',
-                is_sparse=False)
+                size=[dict_size, 32], param_attr='emb.w', is_sparse=False)
 
             embs2 = []
             for i in range(window_size):
@@ -906,8 +909,8 @@ class TestLayer(LayerTest):
                 embs2.append(emb_rlt)
 
             embs2 = layers.concat(input=embs2, axis=1)
-            nce = nn.NCE('nce',
-                         num_total_classes=dict_size,
+            nce = nn.NCE(num_total_classes=dict_size,
+                         dim=embs2.shape[1],
                          num_neg_samples=2,
                          sampler="custom_dist",
                          custom_dist=nid_freq_arr.tolist(),
@@ -932,10 +935,7 @@ class TestLayer(LayerTest):
             sample_weights = layers.fill_constant(
                 shape=[5, 1], dtype='float32', value=1)
             emb = nn.Embedding(
-                'embedding',
-                size=[dict_size, 32],
-                param_attr='emb.w',
-                is_sparse=False)
+                size=[dict_size, 32], param_attr='emb.w', is_sparse=False)
 
             embs3 = []
             for i in range(window_size):
@@ -946,8 +946,8 @@ class TestLayer(LayerTest):
                 embs3.append(emb_rlt)
 
             embs3 = layers.concat(input=embs3, axis=1)
-            nce = nn.NCE('nce',
-                         num_total_classes=dict_size,
+            nce = nn.NCE(num_total_classes=dict_size,
+                         dim=embs3.shape[1],
                          num_neg_samples=2,
                          sampler="custom_dist",
                          custom_dist=nid_freq_arr.tolist(),
@@ -974,10 +974,7 @@ class TestLayer(LayerTest):
             sample_weights = layers.fill_constant(
                 shape=[5, 1], dtype='float32', value=1)
             emb = nn.Embedding(
-                'embedding',
-                size=[dict_size, 32],
-                param_attr='emb.w',
-                is_sparse=False)
+                size=[dict_size, 32], param_attr='emb.w', is_sparse=False)
 
             embs3 = []
             for i in range(window_size):
@@ -988,8 +985,8 @@ class TestLayer(LayerTest):
                 embs3.append(emb_rlt)
 
             embs3 = layers.concat(input=embs3, axis=1)
-            nce1 = nn.NCE('nce1',
-                          num_total_classes=dict_size,
+            nce1 = nn.NCE(num_total_classes=dict_size,
+                          dim=embs3.shape[1],
                           num_neg_samples=2,
                           sampler="custom_dist",
                           custom_dist=nid_freq_arr.tolist(),
@@ -998,13 +995,13 @@ class TestLayer(LayerTest):
                           bias_attr='nce1.b',
                           sample_weight=sample_weights)
 
-            nce2 = nn.NCE('nce2',
-                          param_attr=weight_attr,
-                          num_total_classes=dict_size,
+            nce2 = nn.NCE(num_total_classes=dict_size,
+                          dim=embs3.shape[1],
                           num_neg_samples=2,
                           sampler="custom_dist",
                           custom_dist=nid_freq_arr.tolist(),
                           seed=seed,
+                          param_attr=weight_attr,
                           bias_attr='nce2.b',
                           sample_weight=sample_weights)
 
@@ -1040,7 +1037,7 @@ class TestLayer(LayerTest):
         with self.static_graph():
             images = layers.data(
                 name='pixel', shape=[3, 6, 6, 6], dtype='float32')
-            conv3d = nn.Conv3D('conv3d', num_filters=3, filter_size=2)
+            conv3d = nn.Conv3D(num_channels=3, num_filters=3, filter_size=2)
             ret = conv3d(images)
             static_ret2 = self.get_static_graph_result(
                 feed={'pixel': np.ones(
@@ -1049,7 +1046,7 @@ class TestLayer(LayerTest):
 
         with self.dynamic_graph():
             images = np.ones([2, 3, 6, 6, 6], dtype='float32')
-            conv3d = nn.Conv3D('conv3d', num_filters=3, filter_size=2)
+            conv3d = nn.Conv3D(num_channels=3, num_filters=3, filter_size=2)
             dy_ret = conv3d(base.to_variable(images))
             dy_rlt_value = dy_ret.numpy()
 
@@ -1062,9 +1059,12 @@ class TestLayer(LayerTest):
             weight_attr = fluid.ParamAttr(
                 initializer=fluid.initializer.NumpyArrayInitializer(
                     custom_weight))
-            conv3d1 = nn.Conv3D('conv3d1', num_filters=3, filter_size=2)
+            conv3d1 = nn.Conv3D(num_channels=3, num_filters=3, filter_size=2)
             conv3d2 = nn.Conv3D(
-                'conv3d2', num_filters=3, filter_size=2, param_attr=weight_attr)
+                num_channels=3,
+                num_filters=3,
+                filter_size=2,
+                param_attr=weight_attr)
             dy_ret1 = conv3d1(base.to_variable(images))
             dy_ret2 = conv3d2(base.to_variable(images))
             self.assertFalse(np.array_equal(dy_ret1.numpy(), dy_ret2.numpy()))
@@ -1165,7 +1165,7 @@ class TestLayer(LayerTest):
                 dtype='float32',
                 lod_level=1,
                 append_batch_size=False)
-            groupNorm = nn.GroupNorm('GroupNorm', groups=2)
+            groupNorm = nn.GroupNorm(channels=shape[1], groups=2)
             ret = groupNorm(X)
             static_ret2 = self.get_static_graph_result(
                 feed={
@@ -1176,7 +1176,7 @@ class TestLayer(LayerTest):
                 with_lod=True)[0]
 
         with self.dynamic_graph():
-            groupNorm = nn.GroupNorm('GroupNorm', groups=2)
+            groupNorm = nn.GroupNorm(channels=shape[1], groups=2)
             dy_ret = groupNorm(base.to_variable(input))
             dy_rlt_value = dy_ret.numpy()
 
@@ -1216,7 +1216,7 @@ class TestLayer(LayerTest):
                 dtype='float32',
                 lod_level=1,
                 append_batch_size=False)
-            spectralNorm = nn.SpectralNorm('SpectralNorm', dim=1, power_iters=2)
+            spectralNorm = nn.SpectralNorm(shape, dim=1, power_iters=2)
             ret = spectralNorm(Weight)
             static_ret2 = self.get_static_graph_result(
                 feed={
@@ -1227,7 +1227,7 @@ class TestLayer(LayerTest):
                 with_lod=True)[0]
 
         with self.dynamic_graph():
-            spectralNorm = nn.SpectralNorm('SpectralNorm', dim=1, power_iters=2)
+            spectralNorm = nn.SpectralNorm(shape, dim=1, power_iters=2)
             dy_ret = spectralNorm(base.to_variable(input))
             dy_rlt_value = dy_ret.numpy()
 
@@ -1286,7 +1286,7 @@ class TestLayer(LayerTest):
                 lod_level=1,
                 append_batch_size=False)
             treeConv = nn.TreeConv(
-                'TreeConv', output_size=6, num_filters=1, max_depth=2)
+                feature_size=5, output_size=6, num_filters=1, max_depth=2)
             ret = treeConv(NodesVector, EdgeSet)
             static_ret2 = self.get_static_graph_result(
                 feed={
@@ -1300,7 +1300,7 @@ class TestLayer(LayerTest):
 
         with self.dynamic_graph():
             treeConv = nn.TreeConv(
-                'SpectralNorm', output_size=6, num_filters=1, max_depth=2)
+                feature_size=5, output_size=6, num_filters=1, max_depth=2)
             dy_ret = treeConv(base.to_variable(vectors), base.to_variable(adj))
             dy_rlt_value = dy_ret.numpy()
 
@@ -1313,13 +1313,13 @@ class TestLayer(LayerTest):
                 initializer=fluid.initializer.NumpyArrayInitializer(
                     custom_weight))
             treeConv1 = nn.TreeConv(
-                'SpectralNorm1',
+                feature_size=5,
                 output_size=6,
                 num_filters=1,
                 max_depth=2,
                 bias_attr='tc1_b')
             treeConv2 = nn.TreeConv(
-                'SpectralNorm2',
+                feature_size=5,
                 output_size=6,
                 num_filters=1,
                 max_depth=2,
@@ -1359,19 +1359,13 @@ class TestLayer(LayerTest):
         with self.static_graph():
             img = layers.data(name='pixel', shape=[3, 2, 2, 2], dtype='float32')
             conv3d_transpose = nn.Conv3DTranspose(
-                'Conv3DTranspose',
-                num_filters=12,
-                filter_size=12,
-                use_cudnn=False)
+                num_channels=3, num_filters=12, filter_size=12, use_cudnn=False)
             out = conv3d_transpose(img)
             static_rlt2 = self.get_static_graph_result(
                 feed={'pixel': input_array}, fetch_list=[out])[0]
         with self.dynamic_graph():
             conv3d_transpose = nn.Conv3DTranspose(
-                'Conv3DTranspose',
-                num_filters=12,
-                filter_size=12,
-                use_cudnn=False)
+                num_channels=3, num_filters=12, filter_size=12, use_cudnn=False)
             dy_rlt = conv3d_transpose(base.to_variable(input_array))
             dy_rlt_value = dy_rlt.numpy()
         self.assertTrue(np.allclose(static_rlt2, static_rlt))
@@ -1384,13 +1378,13 @@ class TestLayer(LayerTest):
                 initializer=fluid.initializer.NumpyArrayInitializer(
                     custom_weight))
             conv3d1 = nn.Conv3DTranspose(
-                'conv3d1',
+                num_channels=3,
                 num_filters=3,
                 filter_size=2,
                 bias_attr='conv3d1_b',
                 use_cudnn=False)
             conv3d2 = nn.Conv3DTranspose(
-                'conv3d2',
+                num_channels=3,
                 num_filters=3,
                 filter_size=2,
                 param_attr=weight_attr,

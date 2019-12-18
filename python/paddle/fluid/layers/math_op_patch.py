@@ -157,6 +157,9 @@ def monkey_patch_variable():
                    "bias": bias})
         return out
 
+    def _neg_(var):
+        return _scalar_elementwise_op_(var, -1.0, 0.0)
+
     def _scalar_elementwise_add_(var, value):
         return _scalar_elementwise_op_(var, 1.0, value)
 
@@ -273,5 +276,6 @@ def monkey_patch_variable():
         setattr(Variable, method_name,
                 _elemwise_method_creator_(method_name, op_type, reverse,
                                           scalar_method))
-
+    # b = -a
+    Variable.__neg__ = _neg_
     Variable.astype = astype

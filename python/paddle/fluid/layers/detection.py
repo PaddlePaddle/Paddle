@@ -1023,6 +1023,7 @@ def yolo_box(x,
              class_num,
              conf_thresh,
              downsample_ratio,
+             clip_bbox=True,
              name=None):
     """
     ${comment}
@@ -1034,6 +1035,7 @@ def yolo_box(x,
         class_num (int): ${class_num_comment}
         conf_thresh (float): ${conf_thresh_comment}
         downsample_ratio (int): ${downsample_ratio_comment}
+        clip_bbox (bool): ${clip_bbox_comment}
         name (string): The default value is None.  Normally there is no need 
                        for user to set this property.  For more information, 
                        please refer to :ref:`api_guide_Name`
@@ -1081,6 +1083,7 @@ def yolo_box(x,
         "class_num": class_num,
         "conf_thresh": conf_thresh,
         "downsample_ratio": downsample_ratio,
+        "clip_bbox": clip_bbox,
     }
 
     helper.append_op(
