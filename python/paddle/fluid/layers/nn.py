@@ -24,7 +24,7 @@ import os
 import inspect
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant, NumpyArrayInitializer
-from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer_, default_main_program
+from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program
 from ..dygraph import base
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
@@ -857,7 +857,7 @@ def dropout(x,
             'seed': seed if seed is not None else 0,
             'dropout_implementation': dropout_implementation,
         }
-        if _dygraph_tracer_._train_mode == False:
+        if _dygraph_tracer()._train_mode == False:
             # eval mode
             attrs['is_test'] = True
         else:
