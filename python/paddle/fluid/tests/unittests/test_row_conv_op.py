@@ -107,16 +107,16 @@ class TestRowConvOp2(OpTest):
         self.check_grad(
             ['Filter'],
             'Out',
-            no_grad_set=set('X'),
             max_relative_error=0.06,
+            no_grad_set=set('X'),
             check_dygraph=False)
 
     def test_check_grad_ignore_wt(self):
         self.check_grad(
             ['X'],
             'Out',
-            no_grad_set=set('Filter'),
             max_relative_error=0.06,
+            no_grad_set=set('Filter'),
             check_dygraph=False)
 
 
