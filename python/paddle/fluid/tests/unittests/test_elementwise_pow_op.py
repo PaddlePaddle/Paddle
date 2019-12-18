@@ -16,14 +16,15 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid as fluid
 
 
 class TestElementwisePowOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [2, 3]).astype("float32"),
-            'Y': np.random.uniform(0.1, 1, [2, 3]).astype("float32")
+            'X': np.random.uniform(0.1, 1, [2, 3]).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, [2, 3]).astype("float64")
         }
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
@@ -38,8 +39,8 @@ class TestElementwisePowOp_scalar(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [3, 3, 4]).astype(np.float32),
-            'Y': np.random.uniform(0.1, 1, [1]).astype(np.float32)
+            'X': np.random.uniform(0.1, 1, [3, 3, 4]).astype(np.float64),
+            'Y': np.random.uniform(0.1, 1, [1]).astype(np.float64)
         }
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
@@ -48,8 +49,8 @@ class TestElementwisePowOp_tensor(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [32]).astype("float32"),
-            'Y': np.random.uniform(0.1, 1, [32]).astype("float32")
+            'X': np.random.uniform(0.1, 1, [32]).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, [32]).astype("float64")
         }
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
@@ -58,8 +59,8 @@ class TestElementwisePowOp_broadcast_0(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [2, 3, 4]).astype("float32"),
-            'Y': np.random.uniform(0.1, 1, [4]).astype("float32")
+            'X': np.random.uniform(0.1, 1, [2, 3, 4]).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, [4]).astype("float64")
         }
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
@@ -68,8 +69,8 @@ class TestElementwisePowOp_broadcast_1(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [2, 3, 4]).astype("float32"),
-            'Y': np.random.uniform(0.1, 1, [3]).astype("float32")
+            'X': np.random.uniform(0.1, 1, [2, 3, 4]).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, [3]).astype("float64")
         }
         self.attrs = {'axis': 1}
         self.outputs = {
@@ -81,8 +82,8 @@ class TestElementwisePowOp_broadcast_2(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [2, 3, 4]).astype("float32"),
-            'Y': np.random.uniform(0.1, 1, [2]).astype("float32")
+            'X': np.random.uniform(0.1, 1, [2, 3, 4]).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, [2]).astype("float64")
         }
         self.attrs = {'axis': 0}
         self.outputs = {
@@ -94,8 +95,8 @@ class TestElementwisePowOp_broadcast_3(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float32"),
-            'Y': np.random.uniform(0.1, 1, [3, 4]).astype("float32")
+            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, [3, 4]).astype("float64")
         }
         self.attrs = {'axis': 1}
         self.outputs = {
@@ -108,10 +109,53 @@ class TestElementwisePowOp_broadcast_4(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float32"),
-            'Y': np.random.uniform(0.1, 1, [2, 3, 1, 5]).astype("float32")
+            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, [2, 3, 1, 5]).astype("float64")
         }
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
+
+
+class TestElementwisePowOpInt(OpTest):
+    def setUp(self):
+        self.op_type = "elementwise_pow"
+        self.inputs = {'X': np.asarray([1, 3, 6]), 'Y': np.asarray([1, 1, 1])}
+        self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestElementwisePowGradOpInt(unittest.TestCase):
+    def setUp(self):
+        self.x = np.asarray([1, 3, 6])
+        self.y = np.asarray([1, 1, 1])
+        self.res = self.x**self.y
+        # dout = 1
+        self.grad_res = np.asarray([1, 1, 1])
+        # dx = dout * y * pow(x, y-1)
+        self.grad_x = self.grad_res * self.y * (self.x
+                                                **(self.y - 1)).astype("int")
+        # dy = dout * log(x) * pow(x, y)
+        self.grad_y = (self.grad_res * np.log(self.x) *
+                       (self.x**self.y)).astype("int")
+        print(self.grad_res, self.grad_x, self.grad_y)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if fluid.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for place in places:
+            with fluid.dygraph.guard(place):
+                x = fluid.dygraph.to_variable(self.x, zero_copy=False)
+                y = fluid.dygraph.to_variable(self.y, zero_copy=False)
+                print(x, y)
+                x.stop_gradient = False
+                y.stop_gradient = False
+                res = x**y
+                res.backward()
+                self.assertTrue(np.array_equal(res.gradient(), self.grad_res))
+                self.assertTrue(np.array_equal(x.gradient(), self.grad_x))
+                self.assertTrue(np.array_equal(y.gradient(), self.grad_y))
 
 
 if __name__ == '__main__':
