@@ -196,7 +196,6 @@ class TestLstmpOp(LstmTest.TestLstmOp):
             (N, self.D)).astype('float64')
         self.check_grad(
             ['Input', 'Weight', 'ProjWeight', 'Bias'], ['Projection'],
-            max_relative_error=1e-2,
             numeric_grad_delta=0.0000005,
             check_dygraph=False)
 
@@ -216,7 +215,6 @@ class TestLstmpOpHasInitial(TestLstmpOp):
             ['Input', 'Weight', 'ProjWeight', 'Bias', 'H0', 'C0'],
             ['Projection'],
             numeric_grad_delta=0.0000005,
-            max_relative_error=1e-2,
             check_dygraph=False)
 
     def test_check_grad_ingore_bias(self):
@@ -227,7 +225,6 @@ class TestLstmpOpHasInitial(TestLstmpOp):
             (N, self.D)).astype('float64')
         self.check_grad(
             ['Input', 'ProjWeight', 'Weight'], ['Projection'],
-            max_relative_error=1e-2,
             numeric_grad_delta=0.0000005,
             no_grad_set=set('Bias'),
             check_dygraph=False)
@@ -240,7 +237,6 @@ class TestLstmpOpHasInitial(TestLstmpOp):
             (N, self.D)).astype('float64')
         self.check_grad(
             ['Input', 'ProjWeight', 'Bias'], ['Projection'],
-            max_relative_error=1e-2,
             numeric_grad_delta=0.0000005,
             no_grad_set=set('Weight'),
             check_dygraph=False)
@@ -253,7 +249,6 @@ class TestLstmpOpHasInitial(TestLstmpOp):
             (N, self.D)).astype('float64')
         self.check_grad(
             ['Input', 'Weight', 'Bias'], ['Projection'],
-            max_relative_error=1e-2,
             numeric_grad_delta=0.0000005,
             no_grad_set=set('ProjWeight'),
             check_dygraph=False)
@@ -266,7 +261,6 @@ class TestLstmpOpHasInitial(TestLstmpOp):
             (N, self.D)).astype('float64')
         self.check_grad(
             ['Weight', 'ProjWeight', 'Bias'], ['Projection'],
-            max_relative_error=1e-2,
             numeric_grad_delta=0.0000005,
             no_grad_set=set('Input'),
             check_dygraph=False)
@@ -279,7 +273,6 @@ class TestLstmpOpHasInitial(TestLstmpOp):
             (N, self.D)).astype('float64')
         self.check_grad(
             ['Input', 'Weight', 'ProjWeight', 'Bias', 'C0'], ['Projection'],
-            max_relative_error=1e-2,
             numeric_grad_delta=0.0000005,
             no_grad_set=set('H0'),
             check_dygraph=False)
@@ -292,7 +285,6 @@ class TestLstmpOpHasInitial(TestLstmpOp):
             (N, self.D)).astype('float64')
         self.check_grad(
             ['Input', 'Weight', 'ProjWeight', 'Bias', 'H0'], ['Projection'],
-            max_relative_error=1e-2,
             numeric_grad_delta=0.0000005,
             no_grad_set=set('C0'),
             check_dygraph=False)
