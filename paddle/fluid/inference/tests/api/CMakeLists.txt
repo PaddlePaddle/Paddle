@@ -302,7 +302,7 @@ if(WITH_MKLDNN)
   # mobilenet-ssd int8
   set(INT8_MOBILENET_SSD_MODEL_DIR "${INT8_DATA_DIR}/mobilenet-ssd")
   download_int8_data(${INT8_MOBILENET_SSD_MODEL_DIR} "mobilenet_ssd_int8_model.tar.gz" )
-  debug_inference_analysis_api_int8_test_run(debug_test_analyzer_int8_mobilenet_ssd ${INT8_OBJ_DETECT_TEST_APP} ${INT8_MOBILENET_SSD_MODEL_DIR} ${PASCALVOC_DATA_PATH})
+  inference_analysis_api_object_dection_int8_test_run(debug_test_analyzer_int8_mobilenet_ssd ${INT8_OBJ_DETECT_TEST_APP} ${INT8_MOBILENET_SSD_MODEL_DIR} ${PASCALVOC_DATA_PATH})
   set_property(TEST debug_test_analyzer_int8_mobilenet_ssd PROPERTY ENVIRONMENT MKLDNN_VERBOSE=2)
   ### optimized FP32 vs. QAT INT8 tests
   
