@@ -105,15 +105,13 @@ class TestGroupNormOp(OpTest):
             return
 
         place = core.CPUPlace()
-        self.check_grad_with_place(
-            place, set(['X', 'Scale', 'Bias']), 'Y', max_relative_error=0.01)
+        self.check_grad_with_place(place, set(['X', 'Scale', 'Bias']), 'Y')
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
                 place,
                 set(['X', 'Scale', 'Bias']),
-                'Y',
-                max_relative_error=0.005)
+                'Y', )
 
     def init_test_case(self):
         pass
