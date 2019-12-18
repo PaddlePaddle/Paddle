@@ -201,6 +201,13 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             res = (a >= b)
             self.assertTrue(np.array_equal(res.numpy(), a_np >= b_np))
 
+    def test_neg(self):
+        a_np = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(a_np)
+            res = -a
+            self.assertTrue(np.array_equal(res.numpy(), -a_np))
+
 
 if __name__ == '__main__':
     unittest.main()

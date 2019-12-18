@@ -24,10 +24,9 @@ import paddle.fluid.core as core
 
 
 class SimpleNet(fluid.Layer):
-    def __init__(self, name_scope, vocab_size, hidden_size, dtype):
-        super(SimpleNet, self).__init__(name_scope)
+    def __init__(self, vocab_size, hidden_size, dtype):
+        super(SimpleNet, self).__init__()
         self.emb = fluid.dygraph.Embedding(
-            self.full_name(),
             size=[vocab_size, hidden_size],
             dtype=dtype,
             param_attr='emb.w',
@@ -53,11 +52,10 @@ class TestSimpleNet(unittest.TestCase):
                         adam = SGDOptimizer(learning_rate=0.001)
                         # grad_clip = fluid.dygraph_grad_clip.GradClipByGlobalNorm(5.0)
 
-                        input_word = np.array(
-                            [[[1], [2]], [[2], [1]]]).astype('int64')
+                        input_word = np.array([[1, 2], [2, 1]]).astype('int64')
                         input = to_variable(input_word)
 
-                        simplenet = SimpleNet("SimpleNet", 20, 32, dtype)
+                        simplenet = SimpleNet(20, 32, dtype)
                         input_emb, emb = simplenet(input)
 
                         try:
@@ -101,11 +99,10 @@ class TestSimpleNet(unittest.TestCase):
                     grad_clip = fluid.dygraph_grad_clip.GradClipByGlobalNorm(
                         5.0)
 
-                    input_word = np.array(
-                        [[[1], [2]], [[2], [1]]]).astype('int64')
+                    input_word = np.array([[1, 2], [2, 1]]).astype('int64')
                     input = to_variable(input_word)
 
-                    simplenet = SimpleNet("SimpleNet", 20, 32, "float32")
+                    simplenet = SimpleNet(20, 32, "float32")
                     input_emb, emb = simplenet(input)
 
                     try:
