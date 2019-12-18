@@ -801,8 +801,8 @@ class TestConv2dOp_v2(OpTest):
         self.check_grad_with_place(
             place, ['Input'],
             'Output',
-            no_grad_set=set(['Filter']),
             max_relative_error=0.02,
+            no_grad_set=set(['Filter']),
             check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad_no_input(self):
