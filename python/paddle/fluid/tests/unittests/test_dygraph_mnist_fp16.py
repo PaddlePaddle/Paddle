@@ -23,7 +23,7 @@ from paddle.fluid.dygraph.nn import Conv2D, Pool2D, FC
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
     def __init__(self,
-                 name_scope,
+                 num_channels,
                  num_filters,
                  filter_size,
                  pool_size,
@@ -40,10 +40,10 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
                  dtype='float32',
                  param_attr=None,
                  bias_attr=None):
-        super(SimpleImgConvPool, self).__init__(name_scope)
+        super(SimpleImgConvPool, self).__init__()
 
         self._conv2d = Conv2D(
-            self.full_name(),
+            num_channels=num_channels,
             num_filters=num_filters,
             filter_size=filter_size,
             stride=conv_stride,
@@ -57,7 +57,6 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
             act=act)
 
         self._pool2d = Pool2D(
-            self.full_name(),
             pool_size=pool_size,
             pool_type=pool_type,
             pool_stride=pool_stride,
@@ -76,7 +75,7 @@ class MNIST(fluid.dygraph.Layer):
         super(MNIST, self).__init__(name_scope)
 
         self._simple_img_conv_pool_1 = SimpleImgConvPool(
-            self.full_name(),
+            num_channels=3,
             num_filters=20,
             filter_size=5,
             pool_size=2,
@@ -86,7 +85,7 @@ class MNIST(fluid.dygraph.Layer):
             use_cudnn=True)
 
         self._simple_img_conv_pool_2 = SimpleImgConvPool(
-            self.full_name(),
+            num_channels=20,
             num_filters=50,
             filter_size=5,
             pool_size=2,
