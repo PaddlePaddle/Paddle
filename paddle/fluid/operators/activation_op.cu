@@ -47,6 +47,18 @@ REGISTER_OP_CUDA_KERNEL(
         plat::CUDADeviceContext, ops::LeakyReluGradGradFunctor<plat::float16>>);
 /* ========================================================================== */
 
+/* ======================== elu register  ============================ */
+REGISTER_ACTIVATION_CUDA_KERNEL(elu, ELU, ELUFunctor, ELUGradFunctor);
+
+REGISTER_OP_CUDA_KERNEL(
+    elu_grad_grad,
+    ops::ActivationDoubleGradKernel<plat::CUDADeviceContext,
+                                    ops::ELUGradGradFunctor<float>>,
+    ops::ActivationDoubleGradKernel<plat::CUDADeviceContext,
+                                    ops::ELUGradGradFunctor<double>>,
+    ops::ActivationDoubleGradKernel<plat::CUDADeviceContext,
+                                    ops::ELUGradGradFunctor<plat::float16>>);
+
 /* ===========================    relu register  ============================ */
 REGISTER_ACTIVATION_CUDA_KERNEL(relu, Relu, ReluFunctor, ReluGradFunctor);
 

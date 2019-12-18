@@ -38,9 +38,10 @@ namespace paddle {
 namespace operators {
 
 enum ActBwdOpFwdDeps {
-  kNoDeps = 0x00,  // Do not need any forward input/output
-  kDepX = 0x01,    // Only need forward input X
-  kDepOut = 0x02,  // Only need forward output Out
+  kNoDeps = 0x00,      // Do not need any forward input/output
+  kDepX = 0x01,        // Only need forward input X
+  kDepOut = 0x02,      // Only need forward output Out
+  kDepXandOut = 0x03,  // need forward input X and ouput Out
 };
 
 /* The following operator can be used to process SelectedRows, because the
@@ -1087,7 +1088,8 @@ struct ELUGradFunctor : public BaseActivationFunctor<T> {
                        (x < static_cast<T>(0)).template cast<T>();
   }
 
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepXandOut; }
+  // static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
 };
 
 // FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5198
@@ -1406,6 +1408,36 @@ struct LeakyReluGradGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct ELUGradGradFunctor : public BaseActivationFunctor<T> {
+  float alpha;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
+  }
+  template <typename Device>
+  void operator()(const Device& dev, const framework::Tensor* X,
+                  const framework::Tensor* Out, const framework::Tensor* ddX,
+                  framework::Tensor* ddOut, framework::Tensor* dOut,
+                  framework::Tensor* dX) const {
+    auto* d = dev.eigen_device();
+    auto ddx = framework::EigenVector<T>::Flatten(detail::Ref(ddX));
+    auto out = framework::EigenVector<T>::Flatten(detail::Ref(Out));
+    if (ddOut) {
+      // auto* d = dev.eigen_device();
+      // auto ddx = framework::EigenVector<T>::Flatten(detail::Ref(ddX));
+      // auto out = framework::EigenVector<T>::Flatten(detail::Ref(Out));
+      auto ddout = framework::EigenVector<T>::Flatten(detail::Ref(ddOut));
+      auto x = framework::EigenVector<T>::Flatten(detail::Ref(X));
+      ddout.device(*d) = ddx *
+                         ((out > static_cast<T>(0)).template cast<T>() +
+                          static_cast<T>(alpha) * x.exp() *
+                              (out <= static_cast<T>(0)).template cast<T>())
+                             .template cast<T>();
+    }
+  }
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
+};
+
+template <typename T>
 struct SqrtGradGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device>
   void operator()(const Device& dev, const framework::Tensor* Out,
@@ -1690,7 +1722,6 @@ class PowGradKernel
   __macro(softsign, Softsign, SoftsignFunctor, SoftsignGradFunctor);          \
   __macro(relu6, Relu6, Relu6Functor, Relu6GradFunctor);                      \
   __macro(tanh_shrink, TanhShrink, TanhShrinkFunctor, TanhShrinkGradFunctor); \
-  __macro(elu, ELU, ELUFunctor, ELUGradFunctor);                              \
   __macro(hard_shrink, HardShrink, HardShrinkFunctor, HardShrinkGradFunctor); \
   __macro(hard_sigmoid, HardSigmoid, HardSigmoidFunctor,                      \
           HardSigmoidGradFunctor);                                            \
