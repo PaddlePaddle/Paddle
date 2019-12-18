@@ -210,6 +210,8 @@ def create_test_channel_last_class(parent):
 
 
 def create_test_cudnn_channel_last_class(parent):
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
     class TestCudnnChannelLastCase(parent):
         def init_kernel_type(self):
             self.use_cudnn = True
@@ -403,11 +405,15 @@ class TestWithDilation(TestConv3dOp):
 #---------------- Conv3dCUDNN ----------------
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestCUDNN(TestConv3dOp):
     def init_kernel_type(self):
         self.use_cudnn = True
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestFP16CUDNN(TestConv3dOp):
     def init_kernel_type(self):
         self.use_cudnn = True
@@ -420,11 +426,15 @@ class TestFP16CUDNN(TestConv3dOp):
                 self.check_output_with_place(place, atol=2e-2)
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestWithGroup1CUDNN(TestWithGroup1):
     def init_kernel_type(self):
         self.use_cudnn = True
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestFP16WithGroup1CUDNN(TestWithGroup1):
     def init_kernel_type(self):
         self.use_cudnn = True
@@ -437,11 +447,15 @@ class TestFP16WithGroup1CUDNN(TestWithGroup1):
                 self.check_output_with_place(place, atol=2e-2)
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestWithGroup2CUDNN(TestWithGroup2):
     def init_kernel_type(self):
         self.use_cudnn = True
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestFP16WithGroup2CUDNN(TestWithGroup2):
     def init_kernel_type(self):
         self.use_cudnn = True
@@ -454,11 +468,15 @@ class TestFP16WithGroup2CUDNN(TestWithGroup2):
                 self.check_output_with_place(place, atol=2e-2)
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestWith1x1CUDNN(TestWith1x1):
     def init_kernel_type(self):
         self.use_cudnn = True
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestFP16With1x1CUDNN(TestWith1x1):
     def init_kernel_type(self):
         self.use_cudnn = True
@@ -471,11 +489,15 @@ class TestFP16With1x1CUDNN(TestWith1x1):
                 self.check_output_with_place(place, atol=2e-2)
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestWithInput1x1Filter1x1CUDNN(TestWithInput1x1Filter1x1):
     def init_kernel_type(self):
         self.use_cudnn = True
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestFP16WithInput1x1Filter1x1CUDNN(TestWithInput1x1Filter1x1):
     def init_kernel_type(self):
         self.use_cudnn = True

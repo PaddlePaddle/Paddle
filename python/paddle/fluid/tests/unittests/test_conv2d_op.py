@@ -697,7 +697,7 @@ class TestCUDNNExhaustiveSearch(TestConv2dOp):
         self.exhaustive_search = True
 
 
-class TestConv2dOpError(OpTest):
+class TestConv2dOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
 

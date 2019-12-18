@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 from .. import core
-from ..framework import Variable, unique_name, in_dygraph_mode, default_main_program
+from ..framework import Variable, unique_name
 from .layer_function_generator import OpProtoHolder
 from ..initializer import force_init_on_cpu
 
@@ -40,10 +40,7 @@ def monkey_patch_variable():
         return dtype
 
     def current_block(var):
-        if in_dygraph_mode():
-            return default_main_program().global_block()
-        else:
-            return var.block
+        return var.block.program.current_block()
 
     def create_new_tmp_var(block, dtype):
         tmp_name = unique_tmp_name()
@@ -159,6 +156,9 @@ def monkey_patch_variable():
             attrs={"scale": scale,
                    "bias": bias})
         return out
+
+    def _neg_(var):
+        return _scalar_elementwise_op_(var, -1.0, 0.0)
 
     def _scalar_elementwise_add_(var, value):
         return _scalar_elementwise_op_(var, 1.0, value)
@@ -276,9 +276,6 @@ def monkey_patch_variable():
         setattr(Variable, method_name,
                 _elemwise_method_creator_(method_name, op_type, reverse,
                                           scalar_method))
-        setattr(core.VarBase, method_name,
-                _elemwise_method_creator_(method_name, op_type, reverse,
-                                          scalar_method))
-
+    # b = -a
+    Variable.__neg__ = _neg_
     Variable.astype = astype
-    setattr(core.VarBase, "astype", astype)

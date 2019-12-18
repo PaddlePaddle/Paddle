@@ -73,7 +73,7 @@ class LayerHelperBase(object):
             ), "to_variable could only be called in dygraph mode"
             py_var = core.VarBase(
                 value=value,
-                name=name,
+                name=name if name else '',
                 persistable=False,
                 place=_current_expected_place(),
                 zero_copy=False)

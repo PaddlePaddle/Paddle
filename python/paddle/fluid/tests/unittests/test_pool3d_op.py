@@ -209,7 +209,7 @@ class TestPool3d_Op(OpTest):
     def setUp(self):
         self.op_type = "pool3d"
         self.init_kernel_type()
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_test_case()
         self.padding_algorithm = "EXPLICIT"
         self.init_paddings()

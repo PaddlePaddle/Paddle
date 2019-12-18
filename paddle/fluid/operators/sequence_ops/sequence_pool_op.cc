@@ -31,9 +31,11 @@ class SequencePoolOp : public framework::OperatorWithKernel {
 
     if (!ctx->IsRuntime()) {
       // Check the lod_level for compile-time.
+      auto in_lod_level = ctx->GetLoDLevel("X");
       PADDLE_ENFORCE_GT(
-          ctx->GetLoDLevel("X"), 0,
+          in_lod_level, 0,
           "The LoD level Input(X) of sequence_pool should be larger than 0.");
+      ctx->SetLoDLevel("Out", in_lod_level - 1);
     }
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));

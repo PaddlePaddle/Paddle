@@ -11,9 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from __future__ import print_function
-import unittest
-from paddle.fluid.tests.unittests.test_sum_op import TestSumOp, TestSelectedRowsSumOp, TestLoDTensorAndSelectedRowsOp
+import unittest, sys
+sys.path.append("../")
+from test_sum_op import TestSumOp, TestSelectedRowsSumOp, TestLoDTensorAndSelectedRowsOp
 
 if __name__ == "__main__":
     unittest.main()
