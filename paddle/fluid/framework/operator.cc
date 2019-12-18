@@ -1179,6 +1179,7 @@ Scope* OperatorWithKernel::PrepareData(
       }
 
       if (no_buffer_ins && no_buffer_ins->count(var_name_item.first) > 0) {
+#ifdef PADDLE_WITH_MKLDNN
         // Var without buffer may be needed
         // for some situation like InferShape().
         // In this situation We cannot skip Var analysis, as
@@ -1200,6 +1201,7 @@ Scope* OperatorWithKernel::PrepareData(
         out->Resize(tensor_in->dims());
         platform::MatchShapeToLayout(out, tensor_in->layout(),
                                      DataLayout::kNHWC);
+#endif
       } else {
         auto* trans_var = new_scope->Var(var_name);
         input_vars[i] = trans_var;
