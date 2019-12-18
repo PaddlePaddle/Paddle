@@ -40,7 +40,8 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
             backward_strategy.sort_sum_gradient = True
 
             mnist2 = MNIST("mnist")
-            sgd2 = SGDOptimizer(learning_rate=1e-3)
+            sgd2 = SGDOptimizer(
+                learning_rate=1e-3, parameter_list=mnist2.parameters())
             train_reader2 = paddle.batch(
                 paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
 
@@ -69,7 +70,7 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
                             dy_param_init_value2[param.name] = param.numpy()
 
                     avg_loss2.backward(backward_strategy)
-                    sgd2.minimize(avg_loss2, parameter_list=mnist2.parameters())
+                    sgd2.minimize(avg_loss2)
                     mnist2.clear_gradients()
 
                     dy_param_value2 = {}

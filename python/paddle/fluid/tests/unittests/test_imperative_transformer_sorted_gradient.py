@@ -1020,9 +1020,12 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                     learning_rate=learning_rate,
                     beta1=TrainTaskConfig.beta1,
                     beta2=TrainTaskConfig.beta2,
-                    epsilon=TrainTaskConfig.eps)
+                    epsilon=TrainTaskConfig.eps,
+                    parameter_list=transformer.parameters())
             else:
-                optimizer = fluid.optimizer.SGD(learning_rate=0.003)
+                optimizer = fluid.optimizer.SGD(
+                    learning_rate=0.003,
+                    parameter_list=transformer.parameters())
             dy_param_init = dict()
             dy_param_updated = dict()
 
@@ -1057,8 +1060,7 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                         dy_param_init[param.name] = param.numpy()
 
                 dy_avg_cost.backward(backward_strategy)
-                optimizer.minimize(
-                    dy_avg_cost, parameter_list=transformer.parameters())
+                optimizer.minimize(dy_avg_cost)
                 transformer.clear_gradients()
 
                 if i == batch_num - 1:

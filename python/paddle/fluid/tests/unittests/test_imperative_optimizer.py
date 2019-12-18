@@ -45,6 +45,9 @@ class TestImperativeOptimizerBase(unittest.TestCase):
     def setUp(self):
         self.batch_num = 20
 
+    def get_optimizer_dygraph(self, parameter_list):
+        raise NotImplementedError()
+
     def get_optimizer(self):
         raise NotImplementedError()
 
@@ -66,7 +69,8 @@ class TestImperativeOptimizerBase(unittest.TestCase):
             fluid.default_main_program().random_seed = seed
 
             mlp = MLP('mlp')
-            optimizer = self.get_optimizer()
+            optimizer = self.get_optimizer_dygraph(
+                parameter_list=mlp.parameters())
 
             batch_py_reader = fluid.io.PyReader(capacity=1)
             batch_py_reader.decorate_sample_list_generator(
@@ -94,7 +98,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                         dy_param_init_value[param.name] = param.numpy()
 
                 avg_loss.backward()
-                optimizer.minimize(avg_loss, parameter_list=mlp.parameters())
+                optimizer.minimize(avg_loss)
                 mlp.clear_gradients()
                 dy_param_value = {}
                 for param in mlp.parameters():
@@ -162,6 +166,15 @@ class TestImperativeOptimizerBase(unittest.TestCase):
 
 
 class TestImperativeOptimizerPiecewiseDecay(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        bd = [3, 6, 9]
+        optimizer = SGDOptimizer(
+            learning_rate=fluid.layers.piecewise_decay(
+                boundaries=bd,
+                values=[0.1 * (0.1**i) for i in range(len(bd) + 1)]),
+            parameter_list=parameter_list)
+        return optimizer
+
     def get_optimizer(self):
         bd = [3, 6, 9]
         optimizer = SGDOptimizer(learning_rate=fluid.layers.piecewise_decay(
@@ -173,6 +186,16 @@ class TestImperativeOptimizerPiecewiseDecay(TestImperativeOptimizerBase):
 
 
 class TestImperativeOptimizerNaturalExpDecay(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = SGDOptimizer(
+            learning_rate=fluid.layers.natural_exp_decay(
+                learning_rate=0.1,
+                decay_steps=10000,
+                decay_rate=0.5,
+                staircase=True),
+            parameter_list=parameter_list)
+        return optimizer
+
     def get_optimizer(self):
         optimizer = SGDOptimizer(learning_rate=fluid.layers.natural_exp_decay(
             learning_rate=0.1,
@@ -186,6 +209,16 @@ class TestImperativeOptimizerNaturalExpDecay(TestImperativeOptimizerBase):
 
 
 class TestImperativeOptimizerExponentialDecay(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = SGDOptimizer(
+            learning_rate=fluid.layers.exponential_decay(
+                learning_rate=0.1,
+                decay_steps=10000,
+                decay_rate=0.5,
+                staircase=True),
+            parameter_list=parameter_list)
+        return optimizer
+
     def get_optimizer(self):
         optimizer = SGDOptimizer(learning_rate=fluid.layers.exponential_decay(
             learning_rate=0.1,
@@ -199,6 +232,16 @@ class TestImperativeOptimizerExponentialDecay(TestImperativeOptimizerBase):
 
 
 class TestImperativeOptimizerInverseTimeDecay(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = Adam(
+            learning_rate=fluid.layers.inverse_time_decay(
+                learning_rate=0.1,
+                decay_steps=10000,
+                decay_rate=0.5,
+                staircase=True),
+            parameter_list=parameter_list)
+        return optimizer
+
     def get_optimizer(self):
         optimizer = Adam(learning_rate=fluid.layers.inverse_time_decay(
             learning_rate=0.1,
@@ -212,6 +255,13 @@ class TestImperativeOptimizerInverseTimeDecay(TestImperativeOptimizerBase):
 
 
 class TestImperativeOptimizerPolynomialDecay(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = SGDOptimizer(
+            learning_rate=fluid.layers.polynomial_decay(
+                learning_rate=0.1, decay_steps=5, cycle=self.cycle),
+            parameter_list=parameter_list)
+        return optimizer
+
     def get_optimizer(self):
         optimizer = SGDOptimizer(learning_rate=fluid.layers.polynomial_decay(
             learning_rate=0.1, decay_steps=5, cycle=self.cycle))
@@ -227,6 +277,13 @@ class TestImperativeOptimizerPolynomialDecay(TestImperativeOptimizerBase):
 
 
 class TestImperativeOptimizerCosineDecay(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = SGDOptimizer(
+            learning_rate=fluid.layers.cosine_decay(
+                learning_rate=0.1, step_each_epoch=10000, epochs=120),
+            parameter_list=parameter_list)
+        return optimizer
+
     def get_optimizer(self):
         optimizer = SGDOptimizer(learning_rate=fluid.layers.cosine_decay(
             learning_rate=0.1, step_each_epoch=10000, epochs=120))
@@ -237,6 +294,13 @@ class TestImperativeOptimizerCosineDecay(TestImperativeOptimizerBase):
 
 
 class TestImperativeOptimizerNoamDecay(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = SGDOptimizer(
+            learning_rate=fluid.layers.noam_decay(
+                d_model=512, warmup_steps=8000),
+            parameter_list=parameter_list)
+        return optimizer
+
     def get_optimizer(self):
         optimizer = SGDOptimizer(learning_rate=fluid.layers.noam_decay(
             d_model=512, warmup_steps=8000))

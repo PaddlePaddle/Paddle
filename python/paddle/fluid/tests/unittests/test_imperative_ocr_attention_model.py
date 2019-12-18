@@ -432,7 +432,8 @@ class TestDygraphOCRAttention(unittest.TestCase):
                     [50000], [Config.LR, Config.LR * 0.01])
             else:
                 learning_rate = Config.LR
-            optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+            optimizer = fluid.optimizer.SGD(
+                learning_rate=0.001, parameter_list=ocr_attention.parameters())
             dy_param_init_value = {}
             for param in ocr_attention.parameters():
                 dy_param_init_value[param.name] = param.numpy()
@@ -466,8 +467,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
                             dy_grad_value[param.name + core.grad_var_suffix(
                             )] = np_array
 
-                    optimizer.minimize(
-                        avg_loss, parameter_list=ocr_attention.parameters())
+                    optimizer.minimize(avg_loss)
                     ocr_attention.clear_gradients()
                     dy_param_value = {}
                     for param in ocr_attention.parameters():

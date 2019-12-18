@@ -126,7 +126,8 @@ class TestImperativeMnist(unittest.TestCase):
             fluid.default_main_program().random_seed = seed
 
             mnist = MNIST("mnist")
-            sgd = SGDOptimizer(learning_rate=1e-3)
+            sgd = SGDOptimizer(
+                learning_rate=1e-3, parameter_list=mnist.parameters())
 
             batch_py_reader = fluid.io.PyReader(capacity=1)
             batch_py_reader.decorate_sample_list_generator(
@@ -175,7 +176,7 @@ class TestImperativeMnist(unittest.TestCase):
                             dy_param_init_value[param.name] = param.numpy()
 
                     avg_loss.backward()
-                    sgd.minimize(avg_loss, parameter_list=mnist.parameters())
+                    sgd.minimize(avg_loss)
                     mnist.clear_gradients()
 
                     dy_param_value = {}

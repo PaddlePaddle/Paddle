@@ -49,7 +49,9 @@ class TestSimpleNet(unittest.TestCase):
                     with fluid.dygraph.guard(place):
                         backward_strategy = fluid.dygraph.BackwardStrategy()
                         backward_strategy.sort_sum_gradient = sort_sum_gradient
-                        adam = SGDOptimizer(learning_rate=0.001)
+                        adam = SGDOptimizer(
+                            learning_rate=0.001,
+                            parameter_list=simplenet.parameters())
                         # grad_clip = fluid.dygraph_grad_clip.GradClipByGlobalNorm(5.0)
 
                         input_word = np.array([[1, 2], [2, 1]]).astype('int64')
@@ -68,9 +70,7 @@ class TestSimpleNet(unittest.TestCase):
                             pass
 
                         input_emb.backward(backward_strategy)
-                        adam.minimize(
-                            input_emb, parameter_list=simplenet.parameters(
-                            ))  # grad_clip=grad_clip
+                        adam.minimize(input_emb)  # grad_clip=grad_clip
                         emb._w.gradient()
 
                         emb.clear_gradients()
@@ -95,7 +95,9 @@ class TestSimpleNet(unittest.TestCase):
                 with fluid.dygraph.guard(place):
                     backward_strategy = fluid.dygraph.BackwardStrategy()
                     backward_strategy.sort_sum_gradient = sort_sum_gradient
-                    adam = SGDOptimizer(learning_rate=0.001)
+                    adam = SGDOptimizer(
+                        learning_rate=0.001,
+                        parameter_list=simplenet.parameters())
                     grad_clip = fluid.dygraph_grad_clip.GradClipByGlobalNorm(
                         5.0)
 
@@ -115,10 +117,7 @@ class TestSimpleNet(unittest.TestCase):
                         pass
 
                     input_emb.backward(backward_strategy)
-                    adam.minimize(
-                        input_emb,
-                        grad_clip=grad_clip,
-                        parameter_list=simplenet.parameters())
+                    adam.minimize(input_emb, grad_clip=grad_clip)
                     emb._w.gradient()
 
                     emb.clear_gradients()

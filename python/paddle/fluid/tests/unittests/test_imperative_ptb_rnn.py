@@ -239,7 +239,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 init_scale=init_scale,
                 is_sparse=is_sparse)
 
-            sgd = SGDOptimizer(learning_rate=1e-3)
+            sgd = SGDOptimizer(
+                learning_rate=1e-3, parameter_list=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -284,7 +285,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                     for param in ptb_model.parameters():
                         dy_param_init[param.name] = param.numpy()
                 dy_loss.backward()
-                sgd.minimize(dy_loss, parameter_list=ptb_model.parameters())
+                sgd.minimize(dy_loss)
                 ptb_model.clear_gradients()
                 if i == batch_num - 1:
                     for param in ptb_model.parameters():

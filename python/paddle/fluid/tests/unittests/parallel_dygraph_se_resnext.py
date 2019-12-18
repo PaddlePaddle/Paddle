@@ -54,7 +54,7 @@ train_parameters = {
 }
 
 
-def optimizer_setting(params):
+def optimizer_setting(params, parameter_list=None):
     ls = params["learning_strategy"]
     if "total_images" not in params:
         total_images = 6149
@@ -66,11 +66,19 @@ def optimizer_setting(params):
     bd = [step * e for e in ls["epochs"]]
     lr = params["lr"]
     num_epochs = params["num_epochs"]
-    optimizer = fluid.optimizer.Momentum(
-        learning_rate=fluid.layers.cosine_decay(
-            learning_rate=lr, step_each_epoch=step, epochs=num_epochs),
-        momentum=momentum_rate,
-        regularization=fluid.regularizer.L2Decay(l2_decay))
+    if in_dygraph_mode():
+        optimizer = fluid.optimizer.Momentum(
+            learning_rate=fluid.layers.cosine_decay(
+                learning_rate=lr, step_each_epoch=step, epochs=num_epochs),
+            momentum=momentum_rate,
+            regularization=fluid.regularizer.L2Decay(l2_decay),
+            parameter_list=parameter_list)
+    else:
+        optimizer = fluid.optimizer.Momentum(
+            learning_rate=fluid.layers.cosine_decay(
+                learning_rate=lr, step_each_epoch=step, epochs=num_epochs),
+            momentum=momentum_rate,
+            regularization=fluid.regularizer.L2Decay(l2_decay))
 
     return optimizer
 
@@ -305,7 +313,8 @@ class TestSeResNeXt(TestParallelDyGraphRunnerBase):
             paddle.dataset.flowers.test(use_xmap=False),
             batch_size=train_parameters["batch_size"],
             drop_last=True)
-        optimizer = optimizer_setting(train_parameters)
+        optimizer = optimizer_setting(
+            train_parameters, parameter_list=model.parameters())
         return model, train_reader, optimizer
 
     def run_one_loop(self, model, opt, data):

@@ -238,7 +238,8 @@ class TestDygraphDeepCF(unittest.TestCase):
             fluid.default_main_program().random_seed = seed
 
             deepcf = DeepCF('deepcf', num_users, num_items, matrix)
-            adam = fluid.optimizer.AdamOptimizer(0.01)
+            adam = fluid.optimizer.AdamOptimizer(
+                0.01, parameter_list=deepcf.parameters())
             for e in range(NUM_EPOCHES):
                 sys.stderr.write('epoch %d\n' % e)
                 for slice in range(0, BATCH_SIZE * NUM_BATCHES, BATCH_SIZE):
@@ -252,7 +253,7 @@ class TestDygraphDeepCF(unittest.TestCase):
                                               to_variable(labels_np[
                                                   slice:slice + BATCH_SIZE])))
                     loss.backward()
-                    adam.minimize(loss, parameter_list=deepcf.parameters())
+                    adam.minimize(loss)
                     deepcf.clear_gradients()
                     dy_loss = loss.numpy()
                     sys.stderr.write('dynamic loss: %s %s\n' % (slice, dy_loss))
@@ -262,7 +263,8 @@ class TestDygraphDeepCF(unittest.TestCase):
             fluid.default_main_program().random_seed = seed
 
             deepcf2 = DeepCF('deepcf', num_users, num_items, matrix)
-            adam2 = fluid.optimizer.AdamOptimizer(0.01)
+            adam2 = fluid.optimizer.AdamOptimizer(
+                0.01, parameter_list=deepcf2.parameters())
             backward_strategy = fluid.dygraph.BackwardStrategy()
             backward_strategy.sort_sum_gradient = True
             for e in range(NUM_EPOCHES):
@@ -278,7 +280,7 @@ class TestDygraphDeepCF(unittest.TestCase):
                                               to_variable(labels_np[
                                                   slice:slice + BATCH_SIZE])))
                     loss2.backward(backward_strategy)
-                    adam2.minimize(loss2, parameter_list=deepcf2.parameters())
+                    adam2.minimize(loss2)
                     deepcf2.clear_gradients()
                     dy_loss2 = loss2.numpy()
                     sys.stderr.write('dynamic loss: %s %s\n' %

@@ -77,6 +77,10 @@ class Optimizer(object):
                 self._name = unique_name.generate(self.__class__.__name__)
             if parameter_list is not None:
                 self._parameter_list = parameter_list
+            else:
+                raise AttributeError(
+                    "When constructing an Optimizer class instance, you must pass parameter_list parameter in dygraph mode."
+                )
         else:
             if not isinstance(learning_rate, float) and \
                     not isinstance(learning_rate, framework.Variable):
@@ -535,13 +539,8 @@ class Optimizer(object):
 
         self._dtype = loss.dtype
         if framework.in_dygraph_mode():
-            if parameter_list is not None:
-                parameters = parameter_list
-            else:
-                assert False, "please feed parameters"
-
             params_grads = []
-            for param in parameters:
+            for param in self._parameter_list:
                 if not param.trainable:
                     continue
                 if param._grad_ivar() is not None:
@@ -745,10 +744,15 @@ class SGDOptimizer(Optimizer):
 
     """
 
-    def __init__(self, learning_rate, regularization=None, name=None):
+    def __init__(self,
+                 learning_rate,
+                 parameter_list=None,
+                 regularization=None,
+                 name=None):
         assert learning_rate is not None
         super(SGDOptimizer, self).__init__(
             learning_rate=learning_rate,
+            parameter_list=parameter_list,
             regularization=regularization,
             name=name)
         self.type = "sgd"
@@ -835,6 +839,7 @@ class MomentumOptimizer(Optimizer):
     def __init__(self,
                  learning_rate,
                  momentum,
+                 parameter_list=None,
                  use_nesterov=False,
                  regularization=None,
                  name=None):
@@ -842,6 +847,7 @@ class MomentumOptimizer(Optimizer):
         assert momentum is not None
         super(MomentumOptimizer, self).__init__(
             learning_rate=learning_rate,
+            parameter_list=parameter_list,
             regularization=regularization,
             name=name)
         self.type = "momentum"
@@ -944,6 +950,7 @@ class DGCMomentumOptimizer(Optimizer):
                  rampup_begin_step,
                  rampup_step=1,
                  sparsity=[0.999],
+                 parameter_list=None,
                  use_nesterov=False,
                  local_grad_clip_norm=None,
                  num_trainers=None,
@@ -953,6 +960,7 @@ class DGCMomentumOptimizer(Optimizer):
         assert momentum is not None
         super(DGCMomentumOptimizer, self).__init__(
             learning_rate=learning_rate,
+            parameter_list=parameter_list,
             regularization=regularization,
             name=name)
         self.type = "dgc_momentum"
@@ -1312,12 +1320,14 @@ class LarsMomentumOptimizer(Optimizer):
                  momentum,
                  lars_coeff=0.001,
                  lars_weight_decay=0.0005,
+                 parameter_list=None,
                  regularization=None,
                  name=None):
         assert learning_rate is not None
         assert momentum is not None
         super(LarsMomentumOptimizer, self).__init__(
             learning_rate=learning_rate,
+            parameter_list=parameter_list,
             regularization=regularization,
             name=name)
         self.type = "lars_momentum"
@@ -1417,6 +1427,7 @@ class AdagradOptimizer(Optimizer):
     def __init__(self,
                  learning_rate,
                  epsilon=1.0e-6,
+                 parameter_list=None,
                  regularization=None,
                  name=None,
                  initial_accumulator_value=0.0):
@@ -1424,6 +1435,7 @@ class AdagradOptimizer(Optimizer):
         assert epsilon is not None
         super(AdagradOptimizer, self).__init__(
             learning_rate=learning_rate,
+            parameter_list=parameter_list,
             regularization=regularization,
             name=name)
         self.type = "adagrad"
@@ -1613,6 +1625,7 @@ class AdamOptimizer(Optimizer):
                  beta1=0.9,
                  beta2=0.999,
                  epsilon=1e-8,
+                 parameter_list=None,
                  regularization=None,
                  name=None,
                  lazy_mode=False):
@@ -1622,6 +1635,7 @@ class AdamOptimizer(Optimizer):
         assert epsilon is not None
         super(AdamOptimizer, self).__init__(
             learning_rate=learning_rate,
+            parameter_list=parameter_list,
             regularization=regularization,
             name=name)
         self.type = "adam"
@@ -1822,6 +1836,7 @@ class AdamaxOptimizer(Optimizer):
                  beta1=0.9,
                  beta2=0.999,
                  epsilon=1e-8,
+                 parameter_list=None,
                  regularization=None,
                  name=None):
         assert learning_rate is not None
@@ -1830,6 +1845,7 @@ class AdamaxOptimizer(Optimizer):
         assert epsilon is not None
         super(AdamaxOptimizer, self).__init__(
             learning_rate=learning_rate,
+            parameter_list=parameter_list,
             regularization=regularization,
             name=name)
         self.type = "adamax"
@@ -1947,12 +1963,14 @@ class DpsgdOptimizer(Optimizer):
                  learning_rate=0.001,
                  clip=0.9,
                  batch_size=0.999,
-                 sigma=1e-8):
+                 sigma=1e-8,
+                 parameter_list=None):
         assert learning_rate is not None
         assert clip is not None
         assert batch_size is not None
         assert sigma is not None
-        super(DpsgdOptimizer, self).__init__(learning_rate=learning_rate)
+        super(DpsgdOptimizer, self).__init__(
+            learning_rate=learning_rate, parameter_list=parameter_list)
         self.type = "dpsgd"
         self._clip = clip
         self._batch_size = batch_size
@@ -2032,6 +2050,7 @@ class DecayedAdagradOptimizer(Optimizer):
                  learning_rate,
                  decay=0.95,
                  epsilon=1.0e-6,
+                 parameter_list=None,
                  regularization=None,
                  name=None):
         assert learning_rate is not None
@@ -2040,6 +2059,7 @@ class DecayedAdagradOptimizer(Optimizer):
 
         super(DecayedAdagradOptimizer, self).__init__(
             learning_rate=learning_rate,
+            parameter_list=parameter_list,
             regularization=regularization,
             name=name)
         self.type = "decayed_adagrad"
@@ -2127,6 +2147,7 @@ class AdadeltaOptimizer(Optimizer):
                  learning_rate,
                  epsilon=1.0e-6,
                  rho=0.95,
+                 parameter_list=None,
                  regularization=None,
                  name=None):
         if learning_rate is None:
@@ -2137,6 +2158,7 @@ class AdadeltaOptimizer(Optimizer):
             raise ValueError("rho is not set.")
         super(AdadeltaOptimizer, self).__init__(
             learning_rate=learning_rate,
+            parameter_list=parameter_list,
             regularization=regularization,
             name=name)
         self.type = "adadelta"
@@ -2288,10 +2310,12 @@ class RMSPropOptimizer(Optimizer):
                  epsilon=1.0e-6,
                  momentum=0.0,
                  centered=False,
+                 parameter_list=None,
                  regularization=None,
                  name=None):
         super(RMSPropOptimizer, self).__init__(
             learning_rate=learning_rate,
+            parameter_list=parameter_list,
             regularization=regularization,
             name=name)
         if learning_rate is None:
@@ -2448,10 +2472,12 @@ class FtrlOptimizer(Optimizer):
                  l1=0.0,
                  l2=0.0,
                  lr_power=-0.5,
+                 parameter_list=None,
                  regularization=None,
                  name=None):
         super(FtrlOptimizer, self).__init__(
             learning_rate=learning_rate,
+            parameter_list=parameter_list,
             regularization=regularization,
             name=name)
         if learning_rate is None:
@@ -2570,6 +2596,7 @@ class LambOptimizer(AdamOptimizer):
                  beta1=0.9,
                  beta2=0.999,
                  epsilon=1e-6,
+                 parameter_list=None,
                  regularization=None,
                  exclude_from_weight_decay_fn=None,
                  name=None):
@@ -2580,6 +2607,7 @@ class LambOptimizer(AdamOptimizer):
         assert epsilon is not None
         super(LambOptimizer, self).__init__(
             learning_rate=learning_rate,
+            parameter_list=parameter_list,
             regularization=regularization,
             beta1=beta1,
             beta2=beta2,
@@ -2744,10 +2772,14 @@ class ModelAverage(Optimizer):
                  average_window_rate,
                  min_average_window=10000,
                  max_average_window=10000,
+                 parameter_list=None,
                  regularization=None,
                  name=None):
         super(ModelAverage, self).__init__(
-            0.0, regularization=regularization, name=name)
+            0.0,
+            parameter_list=parameter_list,
+            regularization=regularization,
+            name=name)
         self.average_window = average_window_rate
         self.min_average_window = min_average_window
         self.max_average_window = max_average_window

@@ -161,8 +161,9 @@ class TestLayer(LayerTest):
             fc1_bias_init = fc1.bias.detach()
 
             loss1.backward()
-            optimizer1 = fluid.optimizer.SGD(learning_rate=0.1)
-            optimizer1.minimize(loss1, parameter_list=fc1.parameters())
+            optimizer1 = fluid.optimizer.SGD(learning_rate=0.1,
+                                             parameter_list=fc1.parameters())
+            optimizer1.minimize(loss1)
 
             fc1_weight_updated = fc1.weight.detach()
 
@@ -188,8 +189,9 @@ class TestLayer(LayerTest):
             out2 = fc2(base.to_variable(inp))
             loss2 = fluid.layers.reduce_mean(out2)
             loss2.backward()
-            optimizer2 = fluid.optimizer.SGD(learning_rate=0.1)
-            optimizer2.minimize(loss2, parameter_list=fc2.parameters())
+            optimizer2 = fluid.optimizer.SGD(learning_rate=0.1,
+                                             parameter_list=fc2.parameters())
+            optimizer2.minimize(loss2)
 
             self.assertTrue(
                 np.array_equal(fc2.weight.numpy(), fc1_weight_updated.numpy()))

@@ -42,7 +42,7 @@ train_parameters = {
 }
 
 
-def optimizer_setting(params):
+def optimizer_setting(params, parameter_list=None):
     ls = params["learning_strategy"]
     if ls["name"] == "piecewise_decay":
         if "total_images" not in params:
@@ -56,7 +56,11 @@ def optimizer_setting(params):
         #bd = [step * e for e in ls["epochs"]]
         #base_lr = params["lr"]
         #lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
-        optimizer = fluid.optimizer.SGD(learning_rate=0.01)
+        if in_dygraph_mode():
+            optimizer = fluid.optimizer.SGD(learning_rate=0.01,
+                                            parameter_list=parameter_list)
+        else:
+            optimizer = fluid.optimizer.SGD(learning_rate=0.01)
 
     return optimizer
 
@@ -303,7 +307,8 @@ class TestImperativeResneXt(unittest.TestCase):
             fluid.default_main_program().random_seed = seed
 
             se_resnext = SeResNeXt("se_resnext")
-            optimizer = optimizer_setting(train_parameters)
+            optimizer = optimizer_setting(
+                train_parameters, parameter_list=se_resnext.parameters())
             np.random.seed(seed)
             import random
             random.seed = seed
@@ -350,8 +355,7 @@ class TestImperativeResneXt(unittest.TestCase):
                     #                            .get_tensor())
                     #        dy_grad_value[param.name + core.grad_var_suffix()] = np_array
 
-                    optimizer.minimize(
-                        avg_loss, parameter_list=se_resnext.parameters())
+                    optimizer.minimize(avg_loss)
                     se_resnext.clear_gradients()
 
                     dy_param_value = {}
