@@ -1070,9 +1070,9 @@ def append_backward(loss,
     current_block = program.block(current_block_idx)
 
     # todo(done): create grad block
-    flag = loss.block.program.current_block(
-    ) == loss.block.program.global_block()
-    if not flag:
+    is_in_control_flow = loss.block.program.current_block(
+    ) != loss.block.program.global_block()
+    if is_in_control_flow:
         target_grad_block = loss.block.program._create_block(
             parent_idx=current_block.parent_idx)
         target_grad_block._set_forward_block_idx(current_block_idx)
@@ -1145,7 +1145,7 @@ def append_backward(loss,
 
         # todo(todo!): need a better design.
         # not support double grad in control flow
-        if flag:
+        if not is_in_control_flow:
             if program._appending_grad_times > 1:
                 input_grad_names_set = set([_append_grad_suffix_(loss.name)])
 
@@ -1178,7 +1178,8 @@ def append_backward(loss,
         _rename_grad_(block, block_fwd_op_num_dict[block_idx], grad_to_var, {})
         # _append_block_backward_vars_(block, block_fwd_op_num_dict[block_idx],  grad_to_var, grad_info_map)
     grad_info_map = dict()
-    fwd_op_num = block_fwd_op_num_dict[current_block_idx] if flag else 0
+    fwd_op_num = block_fwd_op_num_dict[
+        current_block_idx] if not is_in_control_flow else 0
     _append_backward_vars_(target_grad_block, fwd_op_num, grad_to_var,
                            grad_info_map)
 
