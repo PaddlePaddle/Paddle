@@ -26,9 +26,9 @@ class TestPostTrainingForResnet50(TestPostTrainingQuantization):
         ]
         data_md5s = ['4a5194524823d9b76da6e738e1367881']
         is_full_quantize = False
-        is_memory_constrained = True
+        is_use_cache_file = True
         self.run_test(model, algo, data_urls, data_md5s, is_full_quantize,
-                      is_memory_constrained)
+                      is_use_cache_file)
 
 
 if __name__ == '__main__':
