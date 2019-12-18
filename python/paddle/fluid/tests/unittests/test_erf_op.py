@@ -34,7 +34,7 @@ class TestErfOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out')
 
 
 if __name__ == '__main__':
