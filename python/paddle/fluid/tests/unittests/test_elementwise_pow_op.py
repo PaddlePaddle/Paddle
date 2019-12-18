@@ -23,8 +23,8 @@ class TestElementwisePowOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [2, 3]).astype("float32"),
-            'Y': np.random.uniform(0.1, 1, [2, 3]).astype("float32")
+            'X': np.random.uniform(0.1, 1, [2, 3]).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, [2, 3]).astype("float64")
         }
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
@@ -39,8 +39,8 @@ class TestElementwisePowOp_scalar(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [3, 3, 4]).astype(np.float32),
-            'Y': np.random.uniform(0.1, 1, [1]).astype(np.float32)
+            'X': np.random.uniform(0.1, 1, [3, 3, 4]).astype(np.float64),
+            'Y': np.random.uniform(0.1, 1, [1]).astype(np.float64)
         }
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
@@ -49,8 +49,8 @@ class TestElementwisePowOp_tensor(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [32]).astype("float32"),
-            'Y': np.random.uniform(0.1, 1, [32]).astype("float32")
+            'X': np.random.uniform(0.1, 1, [32]).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, [32]).astype("float64")
         }
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
@@ -59,8 +59,8 @@ class TestElementwisePowOp_broadcast_0(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [2, 3, 4]).astype("float32"),
-            'Y': np.random.uniform(0.1, 1, [4]).astype("float32")
+            'X': np.random.uniform(0.1, 1, [2, 3, 4]).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, [4]).astype("float64")
         }
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
@@ -69,8 +69,8 @@ class TestElementwisePowOp_broadcast_1(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [2, 3, 4]).astype("float32"),
-            'Y': np.random.uniform(0.1, 1, [3]).astype("float32")
+            'X': np.random.uniform(0.1, 1, [2, 3, 4]).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, [3]).astype("float64")
         }
         self.attrs = {'axis': 1}
         self.outputs = {
@@ -82,8 +82,8 @@ class TestElementwisePowOp_broadcast_2(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [2, 3, 4]).astype("float32"),
-            'Y': np.random.uniform(0.1, 1, [2]).astype("float32")
+            'X': np.random.uniform(0.1, 1, [2, 3, 4]).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, [2]).astype("float64")
         }
         self.attrs = {'axis': 0}
         self.outputs = {
@@ -95,8 +95,8 @@ class TestElementwisePowOp_broadcast_3(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float32"),
-            'Y': np.random.uniform(0.1, 1, [3, 4]).astype("float32")
+            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, [3, 4]).astype("float64")
         }
         self.attrs = {'axis': 1}
         self.outputs = {
@@ -109,8 +109,8 @@ class TestElementwisePowOp_broadcast_4(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float32"),
-            'Y': np.random.uniform(0.1, 1, [2, 3, 1, 5]).astype("float32")
+            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, [2, 3, 1, 5]).astype("float64")
         }
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
