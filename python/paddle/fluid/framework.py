@@ -4467,6 +4467,8 @@ class Program(object):
                 self.global_block().var(var.name).is_data = True
             if var.desc.need_check_feed():
                 self.global_block().var(var.name).desc.set_need_check_feed(True)
+            if var.stop_gradient:
+                self.global_block().var(var.name).stop_gradient = True
 
     @dygraph_not_support
     def list_vars(self):
