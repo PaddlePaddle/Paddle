@@ -163,8 +163,8 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
   // output tensor has the same dims as input. Reorder don't change dims
   out->Resize(in.dims());
 
-  if (in_format != out_format && in_format != MKLDNNMemoryFormat::nwc) {
-    // if (in_format != out_format) {
+  // if (in_format != out_format && in_format != MKLDNNMemoryFormat::nwc) {
+  if (in_format != out_format) {
     void* in_data = GetDataFromTensor(in, in_type);
     const std::string key =
         platform::CreateKey(in_tz, in_format, out_format, in_type);
