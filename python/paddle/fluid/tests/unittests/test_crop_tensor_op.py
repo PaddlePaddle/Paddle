@@ -80,7 +80,7 @@ class TestCropTensorOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', max_relative_error=0.006)
+        self.check_grad(['X'], 'Out')
 
 
 class TestCase1(TestCropTensorOp):
@@ -178,7 +178,7 @@ class TestCropTensorOpTensorAttr(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(["X"], "Out", max_relative_error=0.006)
+        self.check_grad(["X"], "Out")
 
 
 class TestCropTensorOpTensorAttrCase1(TestCropTensorOpTensorAttr):
