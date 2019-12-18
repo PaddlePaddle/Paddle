@@ -25,7 +25,7 @@ from paddle.fluid import Program, program_guard
 class TestMulOp(OpTest):
     def setUp(self):
         self.op_type = "mul"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_dtype_type()
         self.inputs = {
             'X': np.random.random((2, 5)).astype(self.dtype),
@@ -69,7 +69,7 @@ class TestMulOpError(unittest.TestCase):
 class TestMulOp2(OpTest):
     def setUp(self):
         self.op_type = "mul"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_dtype_type()
         self.inputs = {
             'X': np.random.random((3, 4, 4, 3)).astype(self.dtype),
