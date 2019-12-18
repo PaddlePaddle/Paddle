@@ -497,7 +497,7 @@ def _find_not_need_ops(grad_op_descs, forward_ops, input_grad_names_set):
             to prune the unnecessary backward ops.
 
     Return:
-        (list[core.OpDesc]): A list of OpDescs which should be pruned.
+        (set[core.OpDesc]): A set of OpDescs which should be pruned.
     """
 
     class Var(object):
@@ -597,8 +597,13 @@ def _find_not_need_ops(grad_op_descs, forward_ops, input_grad_names_set):
                 break
         if remove_ops:
             not_need_op_descs.extend([node.op_desc for node in op_list])
-
-    return set(not_need_op_descs)
+    not_need_op_descs_set = set(not_need_op_descs)
+    grad_op_descs_set = set(grad_op_descs)
+    # If a backward computational graph is simply one sub-graph header, the
+    # not_need_op_descs will be whole graph, this IF clause avoids it. 
+    if grad_op_descs_set == not_need_op_descs_set:
+        return set()
+    return not_need_op_descs_set
 
 
 from .proto import framework_pb2
@@ -797,9 +802,10 @@ def _get_sub_block_path(sub_block, sub_block_op_desc, no_grad_set):
             for op_desc in sub_block.ops:
                 if op_desc.type == "assign" and var in op_desc.output_arg_names:
                     sub_assign_to_out_ops.append(op_desc)
-                    sub_outputs.extend([
-                        sub_block.var(name) for name in op_desc.input_arg_names
-                    ])
+                    for name in op_desc.input_arg_names:
+                        if sub_block.has_var(name):
+                            sub_outputs.append(sub_block.var(name))
+
         sub_block_op_path = _find_op_path_(sub_block, sub_outputs, [],
                                            no_grad_set)
         # TODO better way than finding in list
@@ -1241,7 +1247,9 @@ def _find_op_path_(block, outputs, inputs, no_grad_set):
     # All the inputs of the block are used if inputs is empty,
     if inputs:
         for i, op in enumerate(block.ops):
-            if _some_in_set_(op.desc.input_arg_names(), input_names):
+            if _some_in_set_(
+                    op.desc.input_arg_names(),
+                    input_names) and core.has_non_empty_grad_op_maker(op.type):
                 for name in op.desc.output_arg_names():
                     if name not in no_grad_set:
                         input_names.add(name)
@@ -1249,7 +1257,9 @@ def _find_op_path_(block, outputs, inputs, no_grad_set):
                 relevant_op_flags[i] = False
 
     for i, op in reversed(list(enumerate(block.ops))):
-        if _some_in_set_(op.desc.output_arg_names(), output_names):
+        if _some_in_set_(
+                op.desc.output_arg_names(),
+                output_names) and core.has_non_empty_grad_op_maker(op.type):
             for name in op.desc.input_arg_names():
                 if name not in no_grad_set:
                     output_names.add(name)
