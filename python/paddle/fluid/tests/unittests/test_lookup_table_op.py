@@ -27,7 +27,7 @@ from paddle.fluid import Program, program_guard
 class TestLookupTableOp(OpTest):
     def setUp(self):
         self.op_type = "lookup_table"
-        table = np.random.random((17, 31)).astype("float32")
+        table = np.random.random((17, 31)).astype("float64")
         ids = np.random.randint(0, 17, 4).astype("int64")
         ids_expand = np.expand_dims(ids, axis=1)
         self.inputs = {'W': table, 'Ids': ids_expand}
@@ -43,7 +43,7 @@ class TestLookupTableOp(OpTest):
 class TestLookupTableOpWithTensorIds(OpTest):
     def setUp(self):
         self.op_type = "lookup_table"
-        table = np.random.random((17, 31)).astype("float32")
+        table = np.random.random((17, 31)).astype("float64")
         ids = np.random.randint(
             low=0, high=17, size=(2, 4, 5, 1)).astype("int64")
         self.inputs = {'W': table, 'Ids': ids}
