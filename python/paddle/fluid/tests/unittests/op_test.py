@@ -493,6 +493,10 @@ class OpTestBase(unittest.TestCase):
         """
         # compare expect_outs and actual_outs
         for i, name in enumerate(fetch_list):
+            # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure 
+            # computational consistency.
+            # When inplace_atol is not None, the inplace check uses numpy.allclose
+            # to check inplace result instead of numpy.array_equal.
             if inplace_atol is not None:
                 self.assertTrue(
                     np.allclose(
@@ -944,10 +948,17 @@ class OpTestBase(unittest.TestCase):
                             "Output (" + out_name + ") has different lod at " +
                             str(place) + " in dygraph mode")
 
-        # inplace_atol only used when op doesn't ensure computational consistency
+        # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure 
+        # computational consistency.
+        # For example, group_norm use AtomicAdd on CUDAPlace, which do not ensure
+        # computation order when multiple threads write the same address. So the 
+        # result of group_norm is non-deterministic when datatype is float.
+        # When inplace_atol is not None, the inplace check uses numpy.allclose
+        # to check inplace result instead of numpy.array_equal.
         if inplace_atol is not None:
             warnings.warn(
-                "By default, inplace_atol should not be set, please check it")
+                "inplace_atol should only be set when op doesn't ensure computational consistency, please check it!"
+            )
         # Check inplace for given op, its grad op, its grad_grad op, etc.
         # No effect on original OpTest 
         self.check_inplace_output_with_place(
