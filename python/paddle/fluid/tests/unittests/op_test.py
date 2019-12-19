@@ -1067,9 +1067,8 @@ class OpTest(unittest.TestCase):
                      equal_nan=False,
                      check_dygraph=True,
                      inplace_atol=None,
-                     check_compile_vs_runtime=True):
+                     check_compile_vs_runtime=False):
         self.__class__.op_type = self.op_type
-
         places = self._get_places()
         for place in places:
             res = self.check_output_with_place(place, atol, no_check_set,
