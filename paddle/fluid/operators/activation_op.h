@@ -1089,7 +1089,6 @@ struct ELUGradFunctor : public BaseActivationFunctor<T> {
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepXandOut; }
-  // static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
 };
 
 // FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5198
@@ -1421,12 +1420,9 @@ struct ELUGradGradFunctor : public BaseActivationFunctor<T> {
     auto* d = dev.eigen_device();
     auto ddx = framework::EigenVector<T>::Flatten(detail::Ref(ddX));
     auto out = framework::EigenVector<T>::Flatten(detail::Ref(Out));
+    auto x = framework::EigenVector<T>::Flatten(detail::Ref(X));
     if (ddOut) {
-      // auto* d = dev.eigen_device();
-      // auto ddx = framework::EigenVector<T>::Flatten(detail::Ref(ddX));
-      // auto out = framework::EigenVector<T>::Flatten(detail::Ref(Out));
       auto ddout = framework::EigenVector<T>::Flatten(detail::Ref(ddOut));
-      auto x = framework::EigenVector<T>::Flatten(detail::Ref(X));
       ddout.device(*d) = ddx *
                          ((out > static_cast<T>(0)).template cast<T>() +
                           static_cast<T>(alpha) * x.exp() *
