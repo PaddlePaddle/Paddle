@@ -775,6 +775,7 @@ set +x
         card_test "$single_card_tests" 1    # run cases with single GPU
         card_test "$multiple_card_tests" 2  # run cases with two GPUs
         card_test "$exclusive_tests"        # run cases exclusively, in this cases would be run with 4/8 GPUs
+        dmesg
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 8;
         fi
@@ -1170,7 +1171,6 @@ function main() {
         build ${parallel_number}
         enable_unused_var_check
         parallel_test
-        dmesg
         ;;
       cicheck_coverage)
         check_approvals_of_unittest 1
