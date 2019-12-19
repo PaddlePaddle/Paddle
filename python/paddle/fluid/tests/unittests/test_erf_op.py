@@ -19,6 +19,9 @@ import numpy as np
 from scipy.special import erf
 from op_test import OpTest
 
+import paddle.fluid as fluid
+import paddle.fluid.dygraph as dg
+
 
 class TestErfOp(OpTest):
     def setUp(self):
@@ -38,6 +41,22 @@ class TestErfOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
+
+class TestErfLayer(unittest.TestCase):
+    def _test_case(self, place):
+        x = np.random.uniform(-1, 1, size=(11, 17)).astype(np.float64)
+        y_ref = erf(x)
+        with dg.guard(place) as g:
+            x_var = dg.to_variable(x)
+            y_var = fluid.layers.erf(x_var)
+            y_test = y_var.numpy()
+        self.assertTrue(np.allclose(y_ref, y_test))
+
+    def test_case(self):
+        self._test_case(fluid.CPUPlace())
+        if fluid.is_compiled_with_cuda():
+            self._test_case(fluid.CUDAPlace(0))
 
 
 if __name__ == '__main__':
