@@ -305,6 +305,8 @@ set_tests_properties(test_parallel_executor_seresnext_base_cpu PROPERTIES TIMEOU
 set_tests_properties(test_parallel_executor_seresnext_with_reduce_cpu PROPERTIES TIMEOUT 750)
 set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu PROPERTIES TIMEOUT 750)
 
+add_subdirectory(sequence)
+
 if (WITH_NGRAPH)
     add_subdirectory(ngraph)
 endif()
