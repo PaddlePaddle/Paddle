@@ -124,7 +124,8 @@ static int shell_popen_fork_internal(const char* real_cmd, bool do_read,
   }
 
   close_open_fds_internal();
-  PCHECK(execl("/bin/bash", "bash", "-c", real_cmd, NULL) >= 0);
+  PCHECK(execl("/bin/bash", "bash", "-c", real_cmd,
+               reinterpret_cast<char*>(NULL)) >= 0);
   exit(127);
 #endif
 }
