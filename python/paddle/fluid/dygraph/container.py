@@ -15,7 +15,10 @@
 from ..framework import Parameter
 from .layers import Layer
 
-__all__ = ['Sequential', 'ParameterList']
+__all__ = [
+    'Sequential',
+    'ParameterList',
+]
 
 
 class Sequential(Layer):
@@ -141,9 +144,10 @@ class ParameterList(Layer):
 
     def __init__(self, parameters=None):
         super(ParameterList, self).__init__()
-        for idx, param in enumerate(parameters):
-            assert isinstance(param, Parameter)
-            self.add_parameter(str(idx), param)
+        if parameters is not None:
+            for idx, param in enumerate(parameters):
+                assert isinstance(param, Parameter)
+                self.add_parameter(str(idx), param)
 
     def __getitem__(self, idx):
         return self._parameters[str(idx)]
