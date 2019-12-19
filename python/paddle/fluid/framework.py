@@ -4518,14 +4518,16 @@ class Parameter(Variable):
             be applied on this parameter.
     """
 
-    def __init__(self, block, shape, dtype, type, **kwargs):
+    def __init__(self,
+                 block,
+                 shape,
+                 dtype,
+                 type=core.VarDesc.VarType.LOD_TENSOR,
+                 **kwargs):
         if shape is None:
             raise ValueError("The shape of Parameter should not be None")
         if dtype is None:
             raise ValueError("The dtype of Parameter should not be None")
-
-        if type is None:
-            type = core.VarDesc.VarType.LOD_TENSOR
 
         if len(shape) == 0:
             raise ValueError(
