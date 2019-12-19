@@ -68,15 +68,22 @@ class TestGroupNormOp(OpTest):
         self.attrs['data_layout'] = self.data_format
 
     def test_check_output(self):
-        atol = 1e-4
-        inplace_atol = 1e-4
+        atol = 0.0
+        inplace_atol = 0.0
         place = core.CPUPlace()
-        # add inplace_atol bacause group_norm doesn't ensure computational consistency
-        self.check_output_with_place(
-            place, atol=atol, inplace_atol=inplace_atol)
+
+        self.check_output_with_place(place, atol=atol)
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
+            # group_norm uses AtomicAdd on CUDAPlace, which do not ensure
+            # computation order when multiple threads write the same address. So the 
+            # result of group_norm is non-deterministic when datatype is float.
+            # When inplace_atol is not None, the inplace check uses numpy.allclose
+            # to check inplace result instead of numpy.array_equal.
+            # Set to inplace_atol to 0, which means the absolute error is 0, and the
+            # relative error is 1e-05 in numpy.allclose by default.
+            # Reference: https://docs.scipy.org/doc/numpy/reference/generated/numpy.allclose.html
             self.check_output_with_place(
                 place, atol=atol, inplace_atol=inplace_atol)
 
