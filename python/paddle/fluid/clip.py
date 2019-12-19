@@ -394,20 +394,27 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
         self.context = context
 
     def _create_operators(self, param, grad):
+        # Todo(chengmo): Variable and Op which created by clip op should have flag "clip"
         group_scale_name = self.group_name + "_scale"
         if group_scale_name not in self.context:
             group_norm_var = layers.sums(input=self.context[self.group_name])
             group_norm_var = layers.sqrt(x=group_norm_var)
+            group_norm_var.name = "_".join([group_norm_var.name, "clip"])
+
             clip_var = self.context[self.group_name + "_clip"]
+            clip_div_base_var = layers.elementwise_max(
+                x=clip_var, y=group_norm_var)
+            clip_div_base_var.name = "_".join([clip_div_base_var.name, "clip"])
+
             group_scale_var = layers.elementwise_div(
-                x=clip_var,
-                y=layers.elementwise_max(
-                    x=clip_var, y=group_norm_var))
+                x=clip_var, y=clip_div_base_var)
+            group_scale_var.name = "_".join([group_scale_var.name, "clip"])
             assert group_scale_var.shape == (1, )
             self.context[group_scale_name] = group_scale_var
 
         new_grad = layers.elementwise_mul(
             x=grad, y=self.context[group_scale_name])
+        new_grad.name = "_".join([new_grad.name, "clip"])
 
         return param, new_grad
 
@@ -493,7 +500,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
 
 
 def append_gradient_clip_ops(param_grads):
-    # Todo:  Whether clip related op belong to Optimize guard should be dicussed in future.
+    # Todo(chengmo):  Whether clip related op belong to Optimize guard should be dicussed in future.
     context = dict()
     for p, g in param_grads:
         if g is None:
