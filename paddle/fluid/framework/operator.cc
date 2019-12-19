@@ -1122,46 +1122,6 @@ Scope* OperatorWithKernel::PrepareData(
         continue;
       }
 
-      // In the inference scenerio, the scopes will be reused across the
-      // batches, so the `new_scope` here will result in GPU memroy explosion
-      // over the  running of operators.
-      // We use a thread_local cache to fix that issue, the key in the cache is
-      // the combination of the `scope` argument, from_kernel_type,
-      // target_kernel_type.
-      // Have a discussion with @Superjomn or the inference developers if some
-      // changes on this logic for this macro might not tested on the other
-      // scenerios.
-      // If this op is not called by an Executor or ParallelExecutor, it should
-      // called by a NaiveExecutor, the NaiveExecutor will cache the scopes and
-      // variables, that behavior a lot different.
-      //
-      // To solve issue #15032, have a discussion with @Luotao for cpu
-      // inference, for all cpu kernels cases without GPU participation, here
-      // not do transfer scope caching, and cpu inference performance is not
-      // impacted by test.
-      enable_cache_transfer_scope_ = false;
-      if (!run_by_executor_ &&
-          (platform::is_gpu_place(kernel_type_for_var.place_) ||
-           platform::is_gpu_place(expected_kernel_key.place_))) {
-        new_scope = TryCreateTransferScope(kernel_type_for_var,
-                                           expected_kernel_key, &scope);
-        enable_cache_transfer_scope_ = true;
-      }
-      if (!new_scope) {
-        new_scope = &scope.NewScope();
-      }
-      // For inference, if a gpu model has an op which could only run on CPU,
-      // each result of different input will be the same with the first one.
-      // The reason is that if a gpu tensor is the input of a cpu kernel,
-      // we will create a new cpu tensor in new scope.
-      // However, if enable_cache_runtime_context_, we get the cpu tensor each
-      // time, not the gpu tensor.
-      // Thus, we set pre_scope_ = nullptr to trigger `new RuntimeContext()` in
-      // RunImpl().
-      if (enable_cache_runtime_context_) {
-        pre_scope_ = nullptr;
-      }
-
       auto* tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
 
       // When no_buffer_ins then checking of Tensor::holder_ is
@@ -1180,6 +1140,10 @@ Scope* OperatorWithKernel::PrepareData(
             (expected_kernel_key.data_layout_ != DataLayout::kMKLDNN) &&
             (paddle::platform::get_cur_paddle_data_layout() ==
              DataLayout::kNHWC)) {
+          // Mixed execution : MKL-DNN and GPU is not supported!
+          if (!new_scope) {
+            new_scope = &scope.NewScope();
+          }
           auto* trans_var = new_scope->Var(var_name);
           input_vars[i] = trans_var;
           auto out = trans_var->GetMutable<LoDTensor>();
@@ -1215,6 +1179,49 @@ Scope* OperatorWithKernel::PrepareData(
         VLOG(3) << "Transform Variable " << var_name << " from "
                 << kernel_type_for_var << " to " << expected_kernel_key;
 
+        // In the inference scenerio, the scopes will be reused across the
+        // batches, so the `new_scope` here will result in GPU memroy explosion
+        // over the  running of operators.
+        // We use a thread_local cache to fix that issue, the key in the cache
+        // is
+        // the combination of the `scope` argument, from_kernel_type,
+        // target_kernel_type.
+        // Have a discussion with @Superjomn or the inference developers if some
+        // changes on this logic for this macro might not tested on the other
+        // scenerios.
+        // If this op is not called by an Executor or ParallelExecutor, it
+        // should
+        // called by a NaiveExecutor, the NaiveExecutor will cache the scopes
+        // and
+        // variables, that behavior a lot different.
+        //
+        // To solve issue #15032, have a discussion with @Luotao for cpu
+        // inference, for all cpu kernels cases without GPU participation, here
+        // not do transfer scope caching, and cpu inference performance is not
+        // impacted by test.
+        enable_cache_transfer_scope_ = false;
+        if (!run_by_executor_ &&
+            (platform::is_gpu_place(kernel_type_for_var.place_) ||
+             platform::is_gpu_place(expected_kernel_key.place_))) {
+          new_scope = TryCreateTransferScope(kernel_type_for_var,
+                                             expected_kernel_key, &scope);
+          enable_cache_transfer_scope_ = true;
+        }
+        if (!new_scope) {
+          new_scope = &scope.NewScope();
+        }
+        // For inference, if a gpu model has an op which could only run on CPU,
+        // each result of different input will be the same with the first one.
+        // The reason is that if a gpu tensor is the input of a cpu kernel,
+        // we will create a new cpu tensor in new scope.
+        // However, if enable_cache_runtime_context_, we get the cpu tensor each
+        // time, not the gpu tensor.
+        // Thus, we set pre_scope_ = nullptr to trigger `new RuntimeContext()`
+        // in
+        // RunImpl().
+        if (enable_cache_runtime_context_) {
+          pre_scope_ = nullptr;
+        }
         auto* trans_var = new_scope->Var(var_name);
         input_vars[i] = trans_var;
         Tensor out;
