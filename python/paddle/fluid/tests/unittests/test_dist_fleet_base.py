@@ -170,6 +170,7 @@ class TestFleetBase(unittest.TestCase):
 
     def setUp(self):
         self._mode = "sync"
+        self._reader = "pyreader"
         self._trainers = 2
         self._pservers = 2
         self._port_set = set()
@@ -251,13 +252,13 @@ class TestFleetBase(unittest.TestCase):
             envs['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
             python_path += " -m coverage run --branch -p"
 
-        tr_cmd = "{0} {1} --role trainer --endpoints {2} --current_id {{}} --trainers {3} --mode {4} --geo_sgd_need_push_nums {5}".format(
+        tr_cmd = "{0} {1} --role trainer --endpoints {2} --current_id {{}} --trainers {3} --mode {4} --geo_sgd_need_push_nums {5} --reader {}".format(
             python_path, model, self._ps_endpoints, self._trainers, self._mode,
-            self._geo_sgd_need_push_nums)
+            self._geo_sgd_need_push_nums, self._reader)
 
-        ps_cmd = "{0} {1} --role pserver --endpoints {2} --current_id {{}} --trainers {3} --mode {4} --geo_sgd_need_push_nums {5}".format(
+        ps_cmd = "{0} {1} --role pserver --endpoints {2} --current_id {{}} --trainers {3} --mode {4} --geo_sgd_need_push_nums {5} --reader {}".format(
             python_path, model, self._ps_endpoints, self._trainers, self._mode,
-            self._geo_sgd_need_push_nums)
+            self._geo_sgd_need_push_nums, self._reader)
 
         # Run dist train to compare with local results
         ps0, ps1, ps0_pipe, ps1_pipe = self._start_pserver(ps_cmd, env)

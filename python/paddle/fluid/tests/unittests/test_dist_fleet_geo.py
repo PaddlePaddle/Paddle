@@ -37,8 +37,8 @@ def skip_ci(func):
 
 class TestDistGeoCtr_2x2(TestFleetBase):
     def _setup_config(self):
-        self._sync_mode = False
-        self._geo_sgd = True
+        self._mode = "geo"
+        self._reader = "dataset"
         self._geo_sgd_need_push_nums = 5
 
     def check_with_place(self,
