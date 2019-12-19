@@ -34,6 +34,29 @@ inline cudnnDataType_t ToCudnnDataType(const T& t) {
   return ToCudnnDataType(type);
 }
 
+inline std::vector<int> TransformDimOrder(const std::vector<int>& dims) {
+  std::vector<int> transformed_dims(dims.begin(), dims.end());
+  int H, W, D, C;
+  if (dims.size() == 4) {
+    H = dims[1];
+    W = dims[2];
+    C = dims[3];
+    transformed_dims[1] = C;
+    transformed_dims[2] = H;
+    transformed_dims[3] = W;
+  } else {
+    D = dims[1];
+    H = dims[2];
+    W = dims[3];
+    C = dims[4];
+    transformed_dims[1] = C;
+    transformed_dims[2] = D;
+    transformed_dims[3] = H;
+    transformed_dims[4] = W;
+  }
+  return transformed_dims;
+}
+
 template <>
 inline cudnnDataType_t ToCudnnDataType(
     const framework::proto::VarType::Type& t) {
@@ -117,6 +140,19 @@ class TensorDescriptor {
         dims_with_group.data(), strides.data()));
   }
 
+  void set(const Tensor& tensor, const cudnnTensorFormat_t format) {
+    auto dims = framework::vectorize<int>(tensor.dims());
+    std::vector<int> transformed_dims;
+    if (format == CUDNN_TENSOR_NHWC) {
+      transformed_dims = TransformDimOrder(dims);
+    } else {
+      transformed_dims = dims;
+    }
+    CUDNN_ENFORCE(dynload::cudnnSetTensorNdDescriptorEx(
+        desc_.get(), format, ToCudnnDataType(tensor.type()),
+        transformed_dims.size(), transformed_dims.data()));
+  }
+
  private:
   std::unique_ptr<T, Deleter> desc_;
 };
@@ -143,12 +179,18 @@ class FilterDescriptor {
   void set(const Tensor& tensor, const cudnnTensorFormat_t format,
            const int groups = 1) {
     auto dims = framework::vectorize<int>(tensor.dims());
+    std::vector<int> transformed_dims;
+    if (format == CUDNN_TENSOR_NHWC) {
+      transformed_dims = TransformDimOrder(dims);
+    } else {
+      transformed_dims = dims;
+    }
     if (groups > 1) {
-      dims[1] = dims[1] / groups;
+      transformed_dims[1] = transformed_dims[1] / groups;
     }
     CUDNN_ENFORCE(dynload::cudnnSetFilterNdDescriptor(
-        desc_.get(), ToCudnnDataType(tensor.type()), format, dims.size(),
-        dims.data()));
+        desc_.get(), ToCudnnDataType(tensor.type()), format,
+        transformed_dims.size(), transformed_dims.data()));
   }
 
  private:

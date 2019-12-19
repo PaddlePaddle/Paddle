@@ -17,10 +17,6 @@ INCLUDE(ExternalProject)
 IF(NOT WIN32)
     FIND_PACKAGE(Protobuf QUIET)
 ENDIF(NOT WIN32)
-macro(UNSET_VAR VAR_NAME)
-    UNSET(${VAR_NAME} CACHE)
-    UNSET(${VAR_NAME})
-endmacro()
 
 UNSET_VAR(PROTOBUF_INCLUDE_DIR)
 UNSET_VAR(PROTOBUF_FOUND)
@@ -160,7 +156,7 @@ endif()
 
 FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
     STRING(REPLACE "extern_" "" TARGET_DIR_NAME "${TARGET_NAME}")
-    SET(PROTOBUF_SOURCES_DIR ${THIRD_PARTY_PATH}/${TARGET_DIR_NAME})
+    SET(PROTOBUF_PREFIX_DIR  ${THIRD_PARTY_PATH}/${TARGET_DIR_NAME})
     SET(PROTOBUF_INSTALL_DIR ${THIRD_PARTY_PATH}/install/${TARGET_DIR_NAME})
 
     SET(${TARGET_NAME}_INCLUDE_DIR "${PROTOBUF_INSTALL_DIR}/include" PARENT_SCOPE)
@@ -203,21 +199,26 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
             "-DCMAKE_GENERATOR_PLATFORM=${CMAKE_GENERATOR_PLATFORM}")
     ENDIF()
 
-    SET(PROTOBUF_REPO "https://github.com/protocolbuffers/protobuf.git")
-    SET(PROTOBUF_TAG "9f75c5aa851cd877fb0d93ccc31b8567a6706546")
+    SET(PROTOBUF_REPOSITORY  https://github.com/protocolbuffers/protobuf.git)
+    SET(PROTOBUF_TAG         9f75c5aa851cd877fb0d93ccc31b8567a6706546)
+
+    cache_third_party(${TARGET_NAME}
+        REPOSITORY    ${PROTOBUF_REPOSITORY}
+        TAG           ${PROTOBUF_TAG}
+        DIR           ${PROTOBUF_PREFIX_DIR})
 
     ExternalProject_Add(
         ${TARGET_NAME}
         ${EXTERNAL_PROJECT_LOG_ARGS}
         ${SHALLOW_CLONE}
-        PREFIX          ${PROTOBUF_SOURCES_DIR}
+        "${PROTOBUF_DOWNLOAD_CMD}"
+        PREFIX          ${PROTOBUF_PREFIX_DIR}
+        SOURCE_DIR      ${PROTOBUF_SOURCE_DIR}
         UPDATE_COMMAND  ""
         DEPENDS         zlib
-        GIT_REPOSITORY  ${PROTOBUF_REPO}
-        GIT_TAG         ${PROTOBUF_TAG}
         CONFIGURE_COMMAND
-        ${CMAKE_COMMAND} ${PROTOBUF_SOURCES_DIR}/src/${TARGET_NAME}/cmake
-                        ${OPTIONAL_ARGS}
+                        ${CMAKE_COMMAND} ${PROTOBUF_SOURCE_DIR}/cmake
+                         ${OPTIONAL_ARGS}
                         -Dprotobuf_BUILD_TESTS=OFF
                         -DCMAKE_SKIP_RPATH=ON
                         -DCMAKE_POSITION_INDEPENDENT_CODE=ON

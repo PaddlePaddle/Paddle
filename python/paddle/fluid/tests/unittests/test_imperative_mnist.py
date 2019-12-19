@@ -26,12 +26,13 @@ from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, FC
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
-from utils import DyGraphProgramDescTracerTestHelper
+from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
+from paddle.fluid.dygraph.jit import TracedLayer
 
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
     def __init__(self,
-                 name_scope,
+                 num_channels,
                  num_filters,
                  filter_size,
                  pool_size,
@@ -47,10 +48,10 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
                  use_cudnn=False,
                  param_attr=None,
                  bias_attr=None):
-        super(SimpleImgConvPool, self).__init__(name_scope)
+        super(SimpleImgConvPool, self).__init__()
 
         self._conv2d = Conv2D(
-            self.full_name(),
+            num_channels=num_channels,
             num_filters=num_filters,
             filter_size=filter_size,
             stride=conv_stride,
@@ -62,7 +63,6 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
             use_cudnn=use_cudnn)
 
         self._pool2d = Pool2D(
-            self.full_name(),
             pool_size=pool_size,
             pool_type=pool_type,
             pool_stride=pool_stride,
@@ -81,10 +81,10 @@ class MNIST(fluid.dygraph.Layer):
         super(MNIST, self).__init__(name_scope)
 
         self._simple_img_conv_pool_1 = SimpleImgConvPool(
-            self.full_name(), 20, 5, 2, 2, act="relu")
+            1, 20, 5, 2, 2, act="relu")
 
         self._simple_img_conv_pool_2 = SimpleImgConvPool(
-            self.full_name(), 50, 5, 2, 2, act="relu")
+            20, 50, 5, 2, 2, act="relu")
 
         pool_2_shape = 50 * 4 * 4
         SIZE = 10
@@ -119,6 +119,8 @@ class TestImperativeMnist(unittest.TestCase):
         batch_size = 128
         batch_num = 50
 
+        traced_layer = None
+
         with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
@@ -137,8 +139,8 @@ class TestImperativeMnist(unittest.TestCase):
             mnist.train()
             dy_param_init_value = {}
 
-            helper = DyGraphProgramDescTracerTestHelper(mnist, self)
-
+            helper = DyGraphProgramDescTracerTestHelper(self)
+            program = None
             for epoch in range(epoch_num):
                 for batch_id, data in enumerate(batch_py_reader()):
                     if batch_id >= batch_num:
@@ -149,12 +151,19 @@ class TestImperativeMnist(unittest.TestCase):
                     label.stop_gradient = True
 
                     if batch_id % 10 == 0:
-                        cost, cost_static = helper.run(inputs=img,
-                                                       feed_names=['image'],
-                                                       fetch_names=['cost'])
-                        helper.assertEachVar(cost, cost_static)
+                        cost, traced_layer = TracedLayer.trace(
+                            mnist, inputs=img)
+                        if program is not None:
+                            self.assertTrue(program, traced_layer.program)
+                        program = traced_layer.program
+                        traced_layer.save_inference_model(
+                            './infer_imperative_mnist')
                     else:
                         cost = mnist(img)
+
+                    if traced_layer is not None:
+                        cost_static = traced_layer([img])
+                        helper.assertEachVar(cost, cost_static)
 
                     loss = fluid.layers.cross_entropy(cost, label)
                     avg_loss = fluid.layers.mean(loss)
@@ -220,6 +229,10 @@ class TestImperativeMnist(unittest.TestCase):
 
                     fetch_list = [avg_loss.name]
                     fetch_list.extend(static_param_name_list)
+
+                    if traced_layer is not None:
+                        traced_layer([static_x_data])
+
                     out = exe.run(
                         fluid.default_main_program(),
                         feed={"pixel": static_x_data,

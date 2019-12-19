@@ -26,20 +26,32 @@ namespace ir {
 namespace fusion_group {
 
 struct Operation {
-  Operation() {}
-  Operation(int t, int n, std::string o, std::vector<std::string> e)
-      : type(t), num_operands(n), op_type(o), exprs(e) {}
+  Operation() = default;
+  Operation(int t, int n, std::string o, std::vector<std::string> e,
+            std::vector<std::string> i_n, std::vector<std::string> o_n)
+      : type(t),
+        num_operands(n),
+        op_type(o),
+        exprs(e),
+        input_names(i_n),
+        output_names(o_n) {}
 
   bool IsGradOp() {
     std::string suffix = "_grad";
-    return op_type.rfind(suffix) == (op_type.length() - suffix.length());
+    size_t pos = op_type.rfind(suffix);
+    return pos != std::string::npos &&
+           pos == (op_type.length() - suffix.length());
   }
 
   bool IsValid() {
     if (!IsGradOp() && exprs.size() != 1U) {
+      // When it is a forward operation, it should hold only one expression (for
+      // only one output).
       return false;
     }
     if (IsGradOp() && exprs.size() != static_cast<size_t>(num_operands)) {
+      // When it is a backward opertion, it should hold a expression for each
+      // operand.
       return false;
     }
     return true;
@@ -49,6 +61,8 @@ struct Operation {
   int num_operands;
   std::string op_type;
   std::vector<std::string> exprs;
+  std::vector<std::string> input_names;
+  std::vector<std::string> output_names;
 };
 
 class OperationMap {
@@ -76,13 +90,16 @@ class OperationMap {
   Operation& Get(std::string op_type) {
     auto iter = operations_.find(op_type);
     PADDLE_ENFORCE_NE(iter, operations_.end(),
-                      "Operation %s is not supported yet.", op_type);
+                      platform::errors::Unimplemented(
+                          "Operation %s is not supported yet.", op_type));
     return iter->second;
   }
 
  private:
   void Insert(int type, int num_operands, std::string op_type, std::string expr,
-              std::vector<std::string> grad_exprs);
+              std::vector<std::string> grad_exprs,
+              std::vector<std::string> input_names,
+              std::vector<std::string> output_names);
 
   void InsertUnaryElementwiseOperations();
   void InsertBinaryElementwiseOperations();

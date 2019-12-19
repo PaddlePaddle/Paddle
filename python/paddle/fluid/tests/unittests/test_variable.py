@@ -184,6 +184,28 @@ class TestVariable(unittest.TestCase):
         with fluid.program_guard(default_main_program()):
             self._tostring()
 
+    # NOTE(zhiqiu): for coverage CI
+    # TODO(zhiqiu): code clean for dygraph
+    def test_dygraph_deprecated_api(self):
+        b = default_main_program().current_block()
+        var = b.create_var(dtype="float64", lod_level=0)
+        with fluid.dygraph.guard():
+            self.assertIsNone(var.detach())
+            self.assertIsNone(var.numpy())
+            self.assertIsNone(var.set_value(None))
+            self.assertIsNone(var.backward())
+            self.assertIsNone(var.gradient())
+            self.assertIsNone(var.clear_gradient())
+            self.assertIsNone(var.to_string(True))
+            self.assertIsNone(var.persistable)
+            var.stop_gradient = True
+            self.assertIsNone(var.stop_gradient)
+            var.stop_gradient = 'tmp'
+            self.assertIsNone(var.name)
+            self.assertIsNone(var.shape)
+            self.assertIsNone(var.dtype)
+            self.assertIsNone(var.type)
+
 
 if __name__ == '__main__':
     unittest.main()

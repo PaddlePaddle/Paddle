@@ -40,7 +40,7 @@ def monkey_patch_variable():
         return dtype
 
     def current_block(var):
-        return var.block
+        return var.block.program.current_block()
 
     def create_new_tmp_var(block, dtype):
         tmp_name = unique_tmp_name()
@@ -157,6 +157,9 @@ def monkey_patch_variable():
                    "bias": bias})
         return out
 
+    def _neg_(var):
+        return _scalar_elementwise_op_(var, -1.0, 0.0)
+
     def _scalar_elementwise_add_(var, value):
         return _scalar_elementwise_op_(var, 1.0, value)
 
@@ -223,20 +226,12 @@ def monkey_patch_variable():
 
             out = create_new_tmp_var(current_block(self), dtype=lhs_dtype)
 
-            axis = -1
-            if other_var.shape[0] == -1:
-                axis = 0
-            assert len(self.shape) >= len(other_var.shape), (
-                "The rank of the first argument of an binary operator cannot "
-                "be smaller than the rank of its second argument: %s vs %s" %
-                (len(self.shape), len(other_var.shape)))
-
             current_block(self).append_op(
                 type=op_type,
                 inputs={'X': [self],
                         'Y': [other_var]},
                 outputs={'Out': out},
-                attrs={'axis': axis})
+                attrs={'axis': -1})
             return out
 
         comment = OpProtoHolder.instance().get_op_proto(op_type).comment
@@ -281,5 +276,6 @@ def monkey_patch_variable():
         setattr(Variable, method_name,
                 _elemwise_method_creator_(method_name, op_type, reverse,
                                           scalar_method))
-
+    # b = -a
+    Variable.__neg__ = _neg_
     Variable.astype = astype

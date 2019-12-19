@@ -54,7 +54,7 @@ class CVMOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        platform::CPUPlace());
+        ctx.device_context());
   }
 };
 
@@ -96,7 +96,7 @@ class CVMGradientOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        platform::CPUPlace());
+        ctx.device_context());
   }
 };
 

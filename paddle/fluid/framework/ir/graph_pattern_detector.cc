@@ -41,9 +41,10 @@ size_t PDPattern::id_ = 0UL;
 
 PDNode *PDPattern::NewNode(const std::string &name) {
   if (!name.empty()) {
-    PADDLE_ENFORCE_EQ(node_map_.count(name), 0UL,
-                      "PDNode's name should be unique, get duplicate [%s]",
-                      name);
+    PADDLE_ENFORCE_EQ(
+        node_map_.count(name), 0UL,
+        platform::errors::PreconditionNotMet(
+            "PDNode's name should be unique, get duplicate [%s]", name));
   }
 
   nodes_.emplace_back(new PDNode(this, name));
@@ -54,9 +55,10 @@ PDNode *PDPattern::NewNode(const std::string &name) {
 
 PDNode *PDPattern::NewNode(PDNode::teller_t &&teller, const std::string &name) {
   if (!name.empty()) {
-    PADDLE_ENFORCE_EQ(node_map_.count(name), 0UL,
-                      "PDNode's name should be unique, get duplicate [%s]",
-                      name);
+    PADDLE_ENFORCE_EQ(
+        node_map_.count(name), 0UL,
+        platform::errors::PreconditionNotMet(
+            "PDNode's name should be unique, get duplicate [%s]", name));
   }
 
   nodes_.emplace_back(new PDNode(std::move(teller), this, name));
@@ -75,9 +77,12 @@ PDNode *PDPattern::RetrieveNode(const std::string &id) const {
 }
 
 void PDPattern::AddEdge(PDNode *a, PDNode *b) {
-  PADDLE_ENFORCE(a);
-  PADDLE_ENFORCE(b);
-  PADDLE_ENFORCE(a != b, "can't connect to the same nodes.");
+  PADDLE_ENFORCE_NOT_NULL(
+      a, platform::errors::NotFound("PDNode %s is not found.", a->name()));
+  PADDLE_ENFORCE_NOT_NULL(
+      b, platform::errors::NotFound("PDNode %s is not found.", b->name()));
+  PADDLE_ENFORCE_NE(a, b, platform::errors::PermissionDenied(
+                              "Cannot connect the same node in the graph."));
   edges_.emplace_back(a, b);
 }
 
@@ -609,15 +614,24 @@ bool VarLinksToOp(Node *node, const std::string &op_type) {
 }
 
 bool IsNthInput(Node *var, Node *op, const std::string &argument, size_t nth) {
-  PADDLE_ENFORCE(var->IsVar());
-  PADDLE_ENFORCE(op->IsOp());
+  PADDLE_ENFORCE_EQ(
+      var->IsVar(), true,
+      platform::errors::InvalidArgument(
+          "First parameter of function IsNthInput must be Node::Var"));
+  PADDLE_ENFORCE_EQ(
+      op->IsOp(), true,
+      platform::errors::InvalidArgument(
+          "Second parameter of function IsNthInput must be Node::Op"));
   if (!HasInput(op, argument) || op->Op()->Input(argument).size() <= nth)
     return false;
   return var->Name() == op->Op()->Input(argument)[nth];
 }
 
 bool HasInput(Node *op, const std::string &argument) {
-  PADDLE_ENFORCE(op->IsOp());
+  PADDLE_ENFORCE_EQ(
+      op->IsOp(), true,
+      platform::errors::InvalidArgument(
+          "First parameter of function HasInput must be Node::Op"));
   auto const &names = op->Op()->InputNames();
   if (std::find(names.begin(), names.end(), argument) == names.end())
     return false;
@@ -625,8 +639,14 @@ bool HasInput(Node *op, const std::string &argument) {
 }
 
 bool IsNthOutput(Node *var, Node *op, const std::string &argument, size_t nth) {
-  PADDLE_ENFORCE(var->IsVar());
-  PADDLE_ENFORCE(op->IsOp());
+  PADDLE_ENFORCE_EQ(
+      var->IsVar(), true,
+      platform::errors::InvalidArgument(
+          "First parameter of function IsNthOutput must be Node::Var"));
+  PADDLE_ENFORCE_EQ(
+      op->IsOp(), true,
+      platform::errors::InvalidArgument(
+          "Second parameter of function IsNthOutput must be Node::Op"));
   if (op->Op()->Output(argument).size() <= nth) return false;
   return var->Name() == op->Op()->Output(argument)[nth];
 }
@@ -904,15 +924,17 @@ PDNode *patterns::FCMKLDNN::operator()(paddle::framework::ir::PDNode *x,
 
   auto *fc_op = pattern->NewNode(fc_repr())->assert_is_op("fc");
   // Create variables
+  // Input
+  auto *input_var = pattern->NewNode(input_repr())
+                        ->AsInput()
+                        ->assert_is_op_input("fc", "Input");
   // Filter
   auto *fc_weight_var = pattern->NewNode(weights_repr())
                             ->AsInput()
-                            ->assert_is_persistable_var()
                             ->assert_is_op_input("fc", "W");
   // Bias
   auto *fc_bias_var = pattern->NewNode(bias_repr())
                           ->AsInput()
-                          ->assert_is_persistable_var()
                           ->assert_is_op_input("fc", "Bias");
   // Output
   auto *fc_out_var = pattern->NewNode(output_repr())
@@ -920,7 +942,8 @@ PDNode *patterns::FCMKLDNN::operator()(paddle::framework::ir::PDNode *x,
                          ->assert_is_op_output("fc", "Out")
                          ->assert_is_only_output_of_op("fc");
 
-  fc_op->LinksFrom({x, fc_weight_var, fc_bias_var}).LinksTo({fc_out_var});
+  fc_op->LinksFrom({input_var, fc_weight_var, fc_bias_var})
+      .LinksTo({fc_out_var});
   return fc_out_var;
 }
 
@@ -1164,6 +1187,27 @@ PDNode *patterns::Transpose::operator()() {
   return transpose_out;
 }
 
+PDNode *patterns::Reshape::operator()() {
+  auto prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
+
+  auto reshape_op =
+      pattern->NewNode(reshape_op_repr())->assert_is_op("reshape2");
+
+  auto reshape_in = pattern->NewNode(reshape_in_repr())
+                        ->AsInput()
+                        ->assert_is_op_input("reshape2", "X");
+  auto reshape_out = pattern->NewNode(reshape_out_repr())
+                         ->AsOutput()
+                         ->assert_is_op_output("reshape2", "Out");
+
+  auto next_op = pattern->NewNode(next_op_repr())->assert_is_op();
+
+  prev_op->LinksTo({reshape_in});
+  reshape_op->LinksFrom({reshape_in}).LinksTo({reshape_out});
+  next_op->LinksFrom({reshape_out});
+  return reshape_out;
+}
+
 PDNode *patterns::ConvResidual::operator()(bool with_residual_data) {
   auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
 
@@ -1315,6 +1359,24 @@ PDNode *patterns::ConvDequant::operator()() {
 
   conv_op->LinksTo({conv_out});
   dequant_op->LinksFrom({conv_out}).LinksTo({dequant_out});
+
+  return dequant_out;
+}
+
+PDNode *patterns::FcDequant::operator()() {
+  // Create Operators
+  auto fc_op = pattern->NewNode(fc_op_repr())->assert_is_op("fc");
+  auto dequant_op =
+      pattern->NewNode(dequant_op_repr())->assert_is_op("dequantize");
+
+  auto fc_out =
+      pattern->NewNode(fc_out_repr())->assert_is_op_output("fc", "Out");
+  auto dequant_out = pattern->NewNode(dequant_out_repr())
+                         ->AsOutput()
+                         ->assert_is_op_output("dequantize", "Output");
+
+  fc_op->LinksTo({fc_out});
+  dequant_op->LinksFrom({fc_out}).LinksTo({dequant_out});
 
   return dequant_out;
 }

@@ -56,16 +56,20 @@ class FetchOp : public framework::OperatorBase {
     // FIXME(yuyang18): Should we assume the fetch operator always generate
     // CPU outputs?
     if (src_item.IsInitialized() && src_item.numel() > 0) {
+#ifdef PADDLE_WITH_MKLDNN
       // Conversion from MKL-DNN to Paddle
       if (src_item.layout() == framework::DataLayout::kMKLDNN) {
         framework::Tensor out;
         framework::innerTransDataLayoutFromMKLDNN(
-            src_item.layout(), framework::DataLayout::kNCHW, src_item, &out,
-            platform::CPUPlace());
+            src_item.layout(), paddle::platform::get_cur_paddle_data_layout(),
+            src_item, &out, platform::CPUPlace());
         TensorCopySync(out, platform::CPUPlace(), &dst_item);
       } else {
         TensorCopySync(src_item, platform::CPUPlace(), &dst_item);
       }
+#else
+      TensorCopySync(src_item, platform::CPUPlace(), &dst_item);
+#endif
     } else {
       // Not copy, if the src tensor is empty.
       dst_item.clear();

@@ -330,6 +330,17 @@ class FakeQAT2MkldnnINT8PerfPass(object):
         graph = self._remove_unused_var_nodes(graph)
         return graph
 
+    def apply_fp32(self, graph):
+        assert isinstance(graph,
+                          IrGraph), 'graph must be the instance of IrGraph.'
+
+        graph = self._gather_scales(graph)
+        graph = self._remove_fake_ops(graph)
+        graph = self._dequantize_weights(graph)
+        graph = self._optimize_fp32_graph(graph)
+        graph = self._remove_unused_var_nodes(graph)
+        return graph
+
     def _convert_scale2tensor(self, scale):
         tensor = core.LoDTensor()
         tensor.set(scale, core.CPUPlace())
@@ -514,11 +525,11 @@ class FakeQAT2MkldnnINT8PerfPass(object):
                     weights = np.array(
                         self._load_param(self._scope, weight_var_name))
                     scales = 1.0 / np.amax(
-                        np.abs(weights.reshape(weights.shape[0], -1)),
+                        np.abs(weights.reshape(weights.shape[0], -1)).astype(
+                            np.float64),
                         axis=axis)
 
-                    lod_tensor = self._convert_scale2tensor(
-                        scales.astype(np.float64))
+                    lod_tensor = self._convert_scale2tensor(scales)
                     use_unsigned_int = False
                     self._var_quant_scales[weight_var_name] = (use_unsigned_int,
                                                                lod_tensor)

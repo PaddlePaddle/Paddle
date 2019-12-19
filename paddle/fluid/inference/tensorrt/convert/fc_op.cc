@@ -77,7 +77,8 @@ class FcOpConverter : public OpConverter {
     bool enable_int8 = boost::get<bool>(op_desc.HasAttr("enable_int8"));
     if (enable_int8) {
 #if IS_TRT_VERSION_GE(5000)
-      float in_scale = boost::get<float>(op_desc.GetAttr("input_scale"));
+      CHECK(op_desc.HasAttr(i_name + "_scale"));
+      float in_scale = boost::get<float>(op_desc.GetAttr(i_name + "_scale"));
       auto weight_scale =
           boost::get<std::vector<float>>(op_desc.GetAttr("weight_scale"));
       weight_data = engine_->GetWeightCPUData(op_desc.Input(w_name).front(),
@@ -135,12 +136,6 @@ class FcOpConverter : public OpConverter {
     auto output_name = op_desc.Output("Out").front();
 
     RreplenishLayerAndOutput(layer, "fc", {output_name}, test_mode);
-    if (enable_int8) {
-#if IS_TRT_VERSION_GE(5000)
-      float out_scale = boost::get<float>(op_desc.GetAttr("out_scale"));
-      engine_->SetTensorDynamicRange(layer->getOutput(0), out_scale);
-#endif
-    }
   }
 };
 

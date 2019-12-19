@@ -130,14 +130,21 @@ class ScatterGradMaker : public framework::SingleGradOpMaker<T> {
 DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ScatterGradNoNeedBufferVarsInference,
                                       "Updates");
 
+DECLARE_INPLACE_OP_INFERER(ScatterInplaceInferer, {"X", "Out"});
+DECLARE_INPLACE_OP_INFERER(ScatterGradInplaceInferer,
+                           {framework::GradVarName("Out"),
+                            framework::GradVarName("X")});
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(scatter, ops::ScatterOp, ops::ScatterOpMaker,
                   ops::ScatterGradMaker<paddle::framework::OpDesc>,
-                  ops::ScatterGradMaker<paddle::imperative::OpBase>);
+                  ops::ScatterGradMaker<paddle::imperative::OpBase>,
+                  ops::ScatterInplaceInferer);
 REGISTER_OPERATOR(scatter_grad, ops::ScatterGradOp,
-                  ops::ScatterGradNoNeedBufferVarsInference);
+                  ops::ScatterGradNoNeedBufferVarsInference,
+                  ops::ScatterGradInplaceInferer);
 REGISTER_OP_CPU_KERNEL(scatter, ops::ScatterOpKernel<float>);
 REGISTER_OP_CPU_KERNEL(scatter_grad, ops::ScatterGradientOpKernel<float>);

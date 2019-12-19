@@ -30,7 +30,6 @@ from test_imperative_base import new_program_scope
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
     def __init__(self,
-                 name_scope,
                  num_channels,
                  num_filters,
                  filter_size,
@@ -47,10 +46,10 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
                  use_cudnn=False,
                  param_attr=None,
                  bias_attr=None):
-        super(SimpleImgConvPool, self).__init__(name_scope)
+        super(SimpleImgConvPool, self).__init__()
 
         self._conv2d = Conv2D(
-            self.full_name(),
+            num_channels=num_channels,
             num_filters=num_filters,
             filter_size=filter_size,
             stride=conv_stride,
@@ -62,7 +61,6 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
             use_cudnn=use_cudnn)
 
         self._pool2d = Pool2D(
-            self.full_name(),
             pool_size=pool_size,
             pool_type=pool_type,
             pool_stride=pool_stride,
@@ -81,10 +79,10 @@ class MNIST(fluid.dygraph.Layer):
         super(MNIST, self).__init__(name_scope)
 
         self._simple_img_conv_pool_1 = SimpleImgConvPool(
-            self.full_name(), 1, 20, 5, 2, 2, act="relu")
+            1, 20, 5, 2, 2, act="relu")
 
         self._simple_img_conv_pool_2 = SimpleImgConvPool(
-            self.full_name(), 20, 50, 5, 2, 2, act="relu")
+            20, 50, 5, 2, 2, act="relu")
 
         pool_2_shape = 50 * 4 * 4
         SIZE = 10

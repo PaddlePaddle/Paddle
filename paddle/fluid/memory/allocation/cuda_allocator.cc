@@ -47,7 +47,7 @@ Allocation* CUDAAllocator::AllocateImpl(size_t size) {
   if (result != cudaSuccess) avail = 0;
   platform::RaiseNonOutOfMemoryError(&result);
 
-  PADDLE_THROW_BAD_ALLOC(
+  PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
       "\n\nOut of memory error on GPU %d. "
       "Cannot allocate %s memory on GPU %d, "
       "available memory is only %s.\n\n"
@@ -55,7 +55,7 @@ Allocation* CUDAAllocator::AllocateImpl(size_t size) {
       "1. If yes, please stop them, or start PaddlePaddle on another GPU.\n"
       "2. If no, please decrease the batch size of your model.\n",
       place_.device, string::HumanReadableSize(size), place_.device,
-      string::HumanReadableSize(avail), place_.device);
+      string::HumanReadableSize(avail), place_.device));
 }
 
 }  // namespace allocation

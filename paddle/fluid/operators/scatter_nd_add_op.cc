@@ -64,6 +64,7 @@ class ScatterNdAddOp : public framework::OperatorWithKernel {
                         "Updates has wrong shape");
     }
     ctx->SetOutputDim("Out", ref_dims);
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 
  protected:

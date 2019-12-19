@@ -25,12 +25,12 @@ ProcessorCount(NUM_OF_PROCESSOR)
 
 IF(APPLE)
   SET(BUILD_CMD make -n HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin | sed "s/-Werror//g" | sh)
+  SET(GRPC_INSTALL_CMD make prefix=${GRPC_INSTALL_DIR} install) 
 ELSE()
-  if(${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 8.0)
-    SET(BUILD_CMD make CFLAGS=-Wno-error=sizeof-pointer-memaccess CXXFLAGS=-Wno-error=ignored-qualifiers HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin)
-  else()
-    SET(BUILD_CMD make HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin)
-  endif()
+  SET(GRPC_CFLAGS "-Wno-error -std=c11 ${CLFAGS}")
+  SET(GRPC_CXXFLAGS "-Wno-error -std=c++11 ${CXXFLAGS}")
+  SET(BUILD_CMD make CFLAGS=${GRPC_CFLAGS} CXXFLAGS=${GRPC_CXXFLAGS} HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin) 
+  SET(GRPC_INSTALL_CMD make prefix=${GRPC_INSTALL_DIR} install CFLAGS=${GRPC_CFLAGS} CXXFLAGS=${GRPC_CXXFLAGS})
 ENDIF()
 
 # FIXME(wuyi): do not build zlib cares protobuf twice, find a way to build grpc with them
@@ -56,7 +56,7 @@ ExternalProject_Add(
     # It seems that we cannot configure that by make command.
     # Just dry run make command and remove `-Werror`, then use a shell to run make commands
     BUILD_COMMAND  ${BUILD_CMD}
-    INSTALL_COMMAND make prefix=${GRPC_INSTALL_DIR} install
+    INSTALL_COMMAND ${GRPC_INSTALL_CMD}
 )
 
 ADD_LIBRARY(grpc++_unsecure STATIC IMPORTED GLOBAL)

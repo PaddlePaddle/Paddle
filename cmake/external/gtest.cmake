@@ -21,9 +21,11 @@ ENDIF()
 INCLUDE(GNUInstallDirs)
 INCLUDE(ExternalProject)
 
-SET(GTEST_SOURCES_DIR ${THIRD_PARTY_PATH}/gtest)
-SET(GTEST_INSTALL_DIR ${THIRD_PARTY_PATH}/install/gtest)
-SET(GTEST_INCLUDE_DIR "${GTEST_INSTALL_DIR}/include" CACHE PATH "gtest include directory." FORCE)
+SET(GTEST_PREFIX_DIR    ${THIRD_PARTY_PATH}/gtest)
+SET(GTEST_INSTALL_DIR   ${THIRD_PARTY_PATH}/install/gtest)
+SET(GTEST_INCLUDE_DIR   "${GTEST_INSTALL_DIR}/include" CACHE PATH "gtest include directory." FORCE)
+set(GTEST_REPOSITORY     https://github.com/google/googletest.git)
+set(GTEST_TAG            release-1.8.1)
 
 INCLUDE_DIRECTORIES(${GTEST_INCLUDE_DIR})
 
@@ -44,14 +46,18 @@ IF(WITH_MKLML)
     SET(GTEST_DEPENDS   ${MKLML_PROJECT})
 ENDIF()
 
+cache_third_party(extern_gtest
+    REPOSITORY       ${GTEST_REPOSITORY}
+    TAG              ${GTEST_TAG})
+
 ExternalProject_Add(
     extern_gtest
     ${EXTERNAL_PROJECT_LOG_ARGS}
     ${SHALLOW_CLONE}
+    "${GTEST_DOWNLOAD_CMD}"
     DEPENDS         ${GTEST_DEPENDS}
-    GIT_REPOSITORY  "https://github.com/google/googletest.git"
-    GIT_TAG         "release-1.8.1"
-    PREFIX          ${GTEST_SOURCES_DIR}
+    PREFIX          ${GTEST_PREFIX_DIR}
+    SOURCE_DIR      ${GTEST_SOURCE_DIR}
     UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
@@ -69,8 +75,8 @@ ExternalProject_Add(
                     -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
                     ${EXTERNAL_OPTIONAL_ARGS}
     CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${GTEST_INSTALL_DIR}
-                        -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
-                        -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
+                     -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
+                     -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
 )
 
 ADD_LIBRARY(gtest STATIC IMPORTED GLOBAL)

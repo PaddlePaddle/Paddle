@@ -15,7 +15,8 @@ list(APPEND MIXED_DIST_TEST_OPS test_dgc_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_simple_dist_transpiler)
 list(APPEND MIXED_DIST_TEST_OPS test_listen_and_serv_op)
 list(APPEND MIXED_DIST_TEST_OPS test_nce_remote_table_op)
-list(APPEND MIXED_DIST_TEST_OPS test_hsigmoid_remote_table_op)
+list(APPEND MIXED_DIST_TEST_OPS test_recv_save_op)
+list(APPEND MIXED_DIST_TEST_OPS test_transpiler_ops)
 list(APPEND MIXED_DIST_TEST_OPS test_lookup_remote_table_op)
 list(APPEND MIXED_DIST_TEST_OPS test_launch)
 list(APPEND MIXED_DIST_TEST_OPS test_launch_ps)
@@ -29,6 +30,7 @@ if(NOT WITH_GPU OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_allreduce)
     LIST(REMOVE_ITEM TEST_OPS test_broadcast)
     LIST(REMOVE_ITEM TEST_OPS test_reducescatter)
+    LIST(REMOVE_ITEM TEST_OPS test_reducescatter_api)
 endif()
 
 if(WIN32)
@@ -51,7 +53,7 @@ endif()
 list(REMOVE_ITEM TEST_OPS test_seq_concat_op) # FIXME(helin): https://github.com/PaddlePaddle/Paddle/issues/8290
 list(REMOVE_ITEM TEST_OPS test_lstm_unit_op) # # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5185
 list(REMOVE_ITEM TEST_OPS test_cond_op) # FIXME(qijun): https://github.com/PaddlePaddle/Paddle/issues/5101#issuecomment-339814957
-
+list(REMOVE_ITEM TEST_OPS test_kldiv_loss_op) # FIXME(dengkaipeng): https://github.com/PaddlePaddle/Paddle/issues/21750
 
 list(REMOVE_ITEM TEST_OPS op_test) # op_test is a helper python file, not a test
 list(REMOVE_ITEM TEST_OPS decorator_helper) # decorator_helper is a helper python file, not a test
@@ -147,6 +149,7 @@ endfunction()
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf)
+list(REMOVE_ITEM TEST_OPS test_data_norm_op)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf_auto_growth)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_fetch_feed)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer)
@@ -250,22 +253,32 @@ if(WITH_DISTRIBUTE)
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_base")
 
     py_test_modules(test_lookup_remote_table_op MODULES test_lookup_remote_table_op ENVS ${dist_ENVS})
-    py_test_modules(test_hsigmoid_remote_table_op MODULES test_hsigmoid_remote_table_op ENVS ${dist_ENVS})
     py_test_modules(test_nce_remote_table_op MODULES test_nce_remote_table_op ENVS ${dist_ENVS})
+    py_test_modules(test_recv_save_op MODULES test_recv_save_op ENVS ${dist_ENVS})
+    py_test_modules(test_transpiler_ops MODULES test_transpiler_ops ENVS ${dist_ENVS})
     if(WITH_DGC)
+        # if with dgc, test all dgc tests.
+        # NOTE. dist dgc tests is already in DIST_TEST_OPS
         py_test_modules(test_dgc_op MODULES test_dgc_op)
         py_test_modules(test_dgc_momentum_op MODULES test_dgc_momentum_op)
         py_test_modules(test_dgc_optimizer MODULES test_dgc_optimizer)
+    else()
+        # if not with dgc, must close all dgc tests
+        list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_dgc_nccl")
+        list(REMOVE_ITEM DIST_TEST_OPS "test_dist_se_resnext_dgc")
     endif()
     if(NOT APPLE)
         bash_test_modules(test_listen_and_serv_op MODULES test_listen_and_serv.sh)
-        bash_test_modules(test_launch MODULES test_launch.sh)
-	bash_test_modules(test_launch_ps MODULES test_launch_ps.sh)
+        if(WITH_GPU)
+            # NOTE. test_launch only work in gpu collective mode
+            bash_test_modules(test_launch MODULES test_launch.sh)
+        endif()
+        bash_test_modules(test_launch_ps MODULES test_launch_ps.sh)
 
         set(dist_ut_port 1000)
         foreach(TEST_OP ${DIST_TEST_OPS})
             message(STATUS "set dist_ut_port=${dist_ut_port} on ${TEST_OP}")
-            bash_test_modules(${TEST_OP} MODULES dist_test.sh SERIAL LABELS "RUN_TYPE=EXCLUSIVE" ENVS "PADDLE_DIST_UT_PORT=${dist_ut_port}")
+            bash_test_modules(${TEST_OP} MODULES dist_test.sh LABELS "RUN_TYPE=EXCLUSIVE" ENVS "PADDLE_DIST_UT_PORT=${dist_ut_port}")
             MATH(EXPR dist_ut_port "${dist_ut_port}+50")
         endforeach(TEST_OP)
     endif(NOT APPLE)
@@ -279,6 +292,7 @@ py_test_modules(test_layers MODULES test_layers ENVS FLAGS_cudnn_deterministic=1
 py_test_modules(test_parallel_executor_seresnext_base_cpu MODULES test_parallel_executor_seresnext_base_cpu)
 py_test_modules(test_parallel_executor_seresnext_with_reduce_cpu MODULES test_parallel_executor_seresnext_with_reduce_cpu)
 py_test_modules(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu MODULES test_parallel_executor_seresnext_with_fuse_all_reduce_cpu)
+py_test_modules(test_data_norm_op MODULES test_data_norm_op)
 
 if(NOT WIN32)
     py_test_modules(test_ir_memory_optimize_transformer MODULES test_ir_memory_optimize_transformer)
@@ -300,7 +314,7 @@ if (WITH_MKLDNN)
 endif()
 
 if (WITH_TESTING)
-    set_property(TEST test_parallel_executor_mnist PROPERTY ENVIRONMENT GLOG_vmodule=scope_buffered_ssa_graph_executor=5)
+    set_property(TEST test_parallel_executor_mnist PROPERTY ENVIRONMENT GLOG_vmodule=all_reduce_deps_pass=10)
 endif()
 
 set_tests_properties(test_parallel_executor_test_while_train test_parallel_executor_mnist
@@ -309,4 +323,5 @@ set_tests_properties(test_parallel_executor_test_while_train test_parallel_execu
         test_parallel_executor_crf test_sync_batch_norm_op
         test_parallel_executor_feed_persistable_var
         test_parallel_executor_crf_auto_growth test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
+        test_data_norm_op
         test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")

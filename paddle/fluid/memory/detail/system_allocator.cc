@@ -134,7 +134,7 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
     if (result != cudaSuccess) avail = 0;
     platform::RaiseNonOutOfMemoryError(&result);
 
-    PADDLE_THROW_BAD_ALLOC(
+    PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
         "\n\nOut of memory error on GPU %d. "
         "Cannot allocate %s memory on GPU %d, "
         "available memory is only %s.\n\n"
@@ -148,7 +148,7 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
         "`export FLAGS_fraction_of_gpu_memory_to_use=xxx`.\n\n",
         gpu_id_, string::HumanReadableSize(size), gpu_id_,
         string::HumanReadableSize(avail), gpu_id_,
-        FLAGS_fraction_of_gpu_memory_to_use);
+        FLAGS_fraction_of_gpu_memory_to_use));
   }
 }
 

@@ -141,6 +141,10 @@ class GradOpDescMakerBase {
     return (fwd_op_.Inputs().count(name) > 0);
   }
 
+  bool HasOutput(const std::string& name) const {
+    return (fwd_op_.Outputs().count(name) > 0);
+  }
+
  private:
   const OpDesc& fwd_op_;
   const std::unordered_set<std::string>& no_grad_set_;

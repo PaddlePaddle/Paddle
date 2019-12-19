@@ -42,6 +42,11 @@ class TopkOp : public framework::OperatorWithKernel {
 
     framework::DDim dims = input_dims;
     dims[dims.size() - 1] = k;
+    // If has K as tensor, set k=-1 as not know real size at this time.
+    if (ctx->HasInput("K")) {
+      dims[dims.size() - 1] = -1;
+    }
+
     ctx->SetOutputDim("Out", dims);
     ctx->SetOutputDim("Indices", dims);
     ctx->ShareLoD("X", "Out");

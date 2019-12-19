@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
+#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/trainer.h"
 
 namespace paddle {
@@ -152,7 +153,7 @@ void DistMultiTrainer::Finalize() {
   for (auto &th : threads_) {
     th.join();
   }
-  for (int i = 0; i < need_merge_var_names_.size(); i++) {
+  for (size_t i = 0; i < need_merge_var_names_.size(); i++) {
     Variable *root_var = root_scope_->FindVar(need_merge_var_names_[i]);
     if (root_var == nullptr) {
       continue;

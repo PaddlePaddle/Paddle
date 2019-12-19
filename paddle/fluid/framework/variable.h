@@ -67,7 +67,7 @@ class Variable {
 
  private:
   struct Placeholder {
-    virtual ~Placeholder() = default;
+    virtual ~Placeholder() PADDLE_MAY_THROW {}
 
     inline int Type() const { return type_; }
     inline const void* Ptr() const { return ptr_; }

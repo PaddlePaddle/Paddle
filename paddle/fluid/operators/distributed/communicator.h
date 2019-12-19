@@ -418,7 +418,7 @@ class GeoSgdCommunicator : public Communicator {
 
  private:
   int trainer_nums_ = 1;
-  int geo_need_push_nums_ = 100;
+  size_t geo_need_push_nums_ = 100;
   bool is_geo_sgd_ = false;
   Scope* training_scope_;
   std::shared_ptr<Scope> delta_scope_;  // parameter local delta: recv - old

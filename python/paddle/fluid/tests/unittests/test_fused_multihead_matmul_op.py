@@ -25,7 +25,9 @@ np.random.random(123)
 
 def stable_softmax(x):
     """Compute the softmax of vector x in a numerically stable way."""
-    shiftx = x - np.max(x).clip(-64.)
+    # clip to shiftx, otherwise, when calc loss with
+    # log(exp(shiftx)), may get log(0)=INF
+    shiftx = (x - np.max(x)).clip(-64.)
     exps = np.exp(shiftx)
     return exps / np.sum(exps)
 
@@ -52,7 +54,8 @@ class TestFusedMultiheadMatmulOp(OpTest):
         self.BiasK = np.random.random((1, w)).astype("float32")
         self.BiasV = np.random.random((1, w)).astype("float32")
         self.BiasQK = np.random.random(
-            (1, self.head_number, self.seq_len, self.seq_len)).astype("float32")
+            (self.batch_size, self.head_number, self.seq_len,
+             self.seq_len)).astype("float32")
         # Compute Q path
         fc_q = self.Q + self.BiasQ
         reshape_q = np.reshape(fc_q, (self.batch_size, self.seq_len,
