@@ -1167,7 +1167,34 @@ Scope* OperatorWithKernel::PrepareData(
       // When no_buffer_ins then checking of Tensor::holder_ is
       // not a thread safe. And for infershape scenario checks
       // to be omitted are not really needed
-      if (should_skip_input == false) {
+      if (should_skip_input == true) {
+#ifdef PADDLE_WITH_MKLDNN
+        // Var without buffer may be needed
+        // for some situation like InferShape().
+        // In this situation We cannot skip Var analysis, as
+        // MKL-DNN shape of Var may differ from kNHWC Var
+        // In such situation corressponding resized Var
+        // has to be created and registered
+        if ((tensor_in->layout() == DataLayout::kMKLDNN) &&
+            (var->IsType<LoDTensor>() == true) &&
+            (expected_kernel_key.data_layout_ != DataLayout::kMKLDNN) &&
+            (paddle::platform::get_cur_paddle_data_layout() ==
+             DataLayout::kNHWC)) {
+          auto* trans_var = new_scope->Var(var_name);
+          input_vars[i] = trans_var;
+          auto out = trans_var->GetMutable<LoDTensor>();
+          out->Resize(tensor_in->dims());
+          platform::MatchShapeToLayout(out, tensor_in->layout(),
+                                       DataLayout::kNHWC);
+          VLOG(7) << "Created reshaped dummy input based on MKL-DNN Tensor , "
+                     "but kNHWC layout"
+                  << var_name_item.first << " in Operator " << type_;
+        } else {
+          VLOG(7) << "Skip scanning input " << var_name_item.first
+                  << " in Operator " << type_;
+        }
+#endif
+      } else {
         if (!tensor_in->IsInitialized()) {
           continue;
         }
@@ -1194,30 +1221,6 @@ Scope* OperatorWithKernel::PrepareData(
         TransformData(expected_kernel_key, kernel_type_for_var, *tensor_in,
                       &out);
         SetTensorToVariable(*var, out, trans_var);
-      } else {
-#ifdef PADDLE_WITH_MKLDNN
-        // Var without buffer may be needed
-        // for some situation like InferShape().
-        // In this situation We cannot skip Var analysis, as
-        // MKL-DNN shape of Var may differ from kNHWC Var
-        // In such situation corressponding resized Var
-        // has to be created and registered
-        if ((tensor_in->layout() != DataLayout::kMKLDNN) ||
-            (var->IsType<LoDTensor>() == false) ||
-            (expected_kernel_key.data_layout_ == DataLayout::kMKLDNN) ||
-            (paddle::platform::get_cur_paddle_data_layout() !=
-             DataLayout::kNHWC)) {
-          VLOG(7) << "Skip scanning input " << var_name_item.first
-                  << " in Operator " << type_;
-          continue;
-        }
-        auto* trans_var = new_scope->Var(var_name);
-        input_vars[i] = trans_var;
-        auto out = trans_var->GetMutable<LoDTensor>();
-        out->Resize(tensor_in->dims());
-        platform::MatchShapeToLayout(out, tensor_in->layout(),
-                                     DataLayout::kNHWC);
-#endif
       }
     }
   }
