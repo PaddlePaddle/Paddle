@@ -1106,6 +1106,11 @@ Scope* OperatorWithKernel::PrepareData(
   }
 
   for (auto& var_name_item : Inputs()) {
+    bool should_skip_input = false;
+    if (no_buffer_ins && no_buffer_ins->count(var_name_item.first) > 0) {
+      should_skip_input = true;
+    }
+
     std::vector<Variable*>& input_vars = ctx->inputs[var_name_item.first];
 
     for (size_t i = 0; i < var_name_item.second.size(); ++i) {
@@ -1116,27 +1121,6 @@ Scope* OperatorWithKernel::PrepareData(
       if (var == nullptr || !VarIsTensor(*var)) {
         continue;
       }
-
-      auto* tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
-      if (!tensor_in->IsInitialized()) {
-        continue;
-      }
-
-      auto kernel_type_for_var = GetKernelTypeForVar(
-          var_name_item.first, *tensor_in, expected_kernel_key);
-
-      if (!NeedTransform(kernel_type_for_var, expected_kernel_key)) {
-        continue;
-      }
-
-      auto out_var_names = OutputVars(true);
-      if (std::find(out_var_names.begin(), out_var_names.end(), var_name) !=
-          out_var_names.end()) {
-        transfered_inplace_vars->emplace_back(var_name);
-      }
-
-      VLOG(3) << "Transform Variable " << var_name << " from "
-              << kernel_type_for_var << " to " << expected_kernel_key;
 
       // In the inference scenerio, the scopes will be reused across the
       // batches, so the `new_scope` here will result in GPU memroy explosion
@@ -1178,7 +1162,39 @@ Scope* OperatorWithKernel::PrepareData(
         pre_scope_ = nullptr;
       }
 
-      if (no_buffer_ins && no_buffer_ins->count(var_name_item.first) > 0) {
+      auto* tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
+
+      // When no_buffer_ins then checking of Tensor::holder_ is
+      // not a thread safe. And for infershape scenario checks
+      // to be omitted are not really needed
+      if (should_skip_input == false) {
+        if (!tensor_in->IsInitialized()) {
+          continue;
+        }
+
+        auto kernel_type_for_var = GetKernelTypeForVar(
+            var_name_item.first, *tensor_in, expected_kernel_key);
+
+        if (!NeedTransform(kernel_type_for_var, expected_kernel_key)) {
+          continue;
+        }
+
+        auto out_var_names = OutputVars(true);
+        if (std::find(out_var_names.begin(), out_var_names.end(), var_name) !=
+            out_var_names.end()) {
+          transfered_inplace_vars->emplace_back(var_name);
+        }
+
+        VLOG(3) << "Transform Variable " << var_name << " from "
+                << kernel_type_for_var << " to " << expected_kernel_key;
+
+        auto* trans_var = new_scope->Var(var_name);
+        input_vars[i] = trans_var;
+        Tensor out;
+        TransformData(expected_kernel_key, kernel_type_for_var, *tensor_in,
+                      &out);
+        SetTensorToVariable(*var, out, trans_var);
+      } else {
 #ifdef PADDLE_WITH_MKLDNN
         // Var without buffer may be needed
         // for some situation like InferShape().
@@ -1202,13 +1218,6 @@ Scope* OperatorWithKernel::PrepareData(
         platform::MatchShapeToLayout(out, tensor_in->layout(),
                                      DataLayout::kNHWC);
 #endif
-      } else {
-        auto* trans_var = new_scope->Var(var_name);
-        input_vars[i] = trans_var;
-        Tensor out;
-        TransformData(expected_kernel_key, kernel_type_for_var, *tensor_in,
-                      &out);
-        SetTensorToVariable(*var, out, trans_var);
       }
     }
   }
