@@ -732,7 +732,6 @@ class ReluDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
     op->SetType("relu_grad_grad");
     // input1: Out
     op->SetInput("Out", this->Input("Out"));
-    op->SetInput("X", this->Input("X"));
     // input2: ddx
     op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
     op->SetAttrMap(this->Attrs());
