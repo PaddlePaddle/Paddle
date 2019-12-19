@@ -513,7 +513,7 @@ function generate_api_spec() {
 }
 
 function check_approvals_of_unittest() {
-    # approval_user_list: XiaoguangHu01 46782768,luotao1 6836917,phlrain 43953930,lanxianghit 47554610, zhouwei25 52485244
+    # approval_user_list: XiaoguangHu01 46782768,luotao1 6836917,phlrain 43953930,lanxianghit 47554610, zhouwei25 52485244, kolinwei
     approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
     check_times=$1
     if [ $1 == 1 ]; then
@@ -534,7 +534,7 @@ function check_approvals_of_unittest() {
                 echo "************************************"
                 echo -e "It is forbidden to disable or delete the unit-tests.\n"
                 echo -e "If you must delete it temporarily, please add it [https://github.com/PaddlePaddle/Paddle/wiki/unit-test-that-has-been-disabled-temporarily]\n"
-                echo -e "Then you must have one RD (kolinwei(recommended)or zhouwei25 or luotao1) approval for the deletion of unit tests. \n\n"
+                echo -e "Then you must have one RD (kolinwei(recommended) or zhouwei25 or luotao1) approval for the deletion of unit tests. \n\n"
                 echo -e "If you have any problems about deleting unit test, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/OP-Specification:-Disabeling-unit-test-is-forbidden]. \n\n"
                 echo -e "Following unit-tests are deleted in this PR: \n ${unittest_spec_diff} \n"
                 echo "************************************"
