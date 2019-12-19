@@ -1526,7 +1526,9 @@ def _get_output_names(block, outputs):
             if _some_in_set_(op.desc.output_arg_names(), current_output_names):
                 for name in op.desc.input_arg_names():
                     current_output_names.add(name)
-                    if parent_block.desc.find_var(name.encode("ascii")):
+                    if not current_block.desc.find_var(name.encode(
+                            "ascii")) and parent_block.desc.find_var(
+                                name.encode("ascii")):
                         link_output_names.add(name)
         current_output_names = link_output_names
         current_block = parent_block

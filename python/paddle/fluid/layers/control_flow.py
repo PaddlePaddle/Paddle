@@ -1800,8 +1800,12 @@ class ConditionalBlock(object):
                     intermediate.add(out_var_name)
         input_set = set([ipt.name for ipt in self.inputs])
 
+        # Todo(liym27) Here assume that all params are in recursive parent block
+        # but when minimize() called in control flow, some params may be in
+        # conditional grad block
         param_list = [
             parent_block._var_recursive(each_name) for each_name in params
+            if parent_block._find_var_recursive(each_name)
         ]
 
         out_list = []
@@ -1909,6 +1913,8 @@ class ConditionalBlock(object):
         new_op_desc.infer_var_type(grad_sub_block.desc)
         new_op_desc.infer_shape(grad_sub_block.desc)
         new_op_desc.set_input('Input', param_list)
+        new_op_desc.set_output('Input@GRAD',
+                               [param + "@GRAD" for param in param_list])
 
         for arg in new_op_desc.output_arg_names():
             if arg in new_vars:
