@@ -347,7 +347,7 @@ void DatasetImpl<T>::GlobalShuffle(int thread_num) {
         total_status.push_back(std::move(ret));
       }
       for (auto& t : total_status) {
-        t.wait();
+        fleet_ptr->FutureWait(t);
       }
       ars.clear();
       ars.shrink_to_fit();

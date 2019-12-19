@@ -202,6 +202,8 @@ function cmake_base() {
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
         -DWITH_GRPC=${grpc_flag}
+        -DWITH_PSLIB=${WITH_PSLIB:-ON}
+        -DWITH_PSLIB_BRPC=${WITH_PSLIB_BRPC:-ON}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -233,8 +235,9 @@ EOF
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
-        -DWITH_GRPC=${grpc_flag}
-
+        -DWITH_GRPC=${grpc_flag} \
+        -DWITH_PSLIB=${WITH_PSLIB:-ON} \
+        -DWITH_PSLIB_BRPC=${WITH_PSLIB_BRPC:-ON}
 }
 
 function cmake_gen() {

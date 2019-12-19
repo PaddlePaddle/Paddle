@@ -61,4 +61,9 @@ RUN LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs4/lib:${LD_LIBRARY_PATH} /o
 RUN wget -O /opt/swig-2.0.12.tar.gz https://sourceforge.net/projects/swig/files/swig/swig-2.0.12/swig-2.0.12.tar.gz/download && \
     cd /opt && tar xzf swig-2.0.12.tar.gz && cd /opt/swig-2.0.12 && ./configure && make && make install && cd /opt && rm swig-2.0.12.tar.gz
 
+RUN wget --no-check-certificate https://pslib.bj.bcebos.com/openmpi-1.4.5.tar.gz && tar -xzf openmpi-1.4.5.tar.gz && \
+    cd openmpi-1.4.5 && ./configure --prefix=/usr/local && make all -j8 && make install -j8 && \
+    export LD_LIBRARY_PATH=/usr/local/lib/:$LD_LIBRARY_PATH && export PATH=/usr/local/bin:$PATH && cd .. && \
+    rm -rf openmpi-1.4.5.tar.gz && ldconfig && pip --no-cache-dir install mpi4py && ln -fs /bin/bash /bin/sh
+
 CMD ["bash", "/paddle/paddle/scripts/docker/build.sh"]
