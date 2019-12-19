@@ -846,7 +846,7 @@ class OpTest(unittest.TestCase):
 
     def check_output_with_place(self,
                                 place,
-                                atol,
+                                atol=1e-5,
                                 no_check_set=None,
                                 equal_nan=False,
                                 check_dygraph=True,
