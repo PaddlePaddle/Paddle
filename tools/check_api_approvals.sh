@@ -194,6 +194,12 @@ if [ "${NEW_OP_TEST_ADDED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     fi
 fi
 
+HAS_SKIP_CHECK_GRAD_CI=`git diff -U0 upstream/$BRANCH |grep -o -m 1 "@skip_check_grad_ci" || true`
+if [ ${HAS_SKIP_CHECK_GRAD_CI} ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must have one RD (zhangting2020 (Recommend), luotao1 or phlrain) approval for the usage (either add or delete) of @skip_check_grad_ci. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Grad-checking-is-required-for-Op-test. \n"
+    check_approval 1 26615455 6836917 43953930
+fi
+
 if [ -n "${echo_list}" ];then
   echo "****************"
   echo -e "${echo_list[@]}"
