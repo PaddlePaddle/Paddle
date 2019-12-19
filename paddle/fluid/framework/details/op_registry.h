@@ -221,7 +221,15 @@ struct OpInfoFiller<T, kGradOpDescMaker> {
 
     info->use_default_grad_op_desc_maker_ =
         std::is_base_of<DefaultGradOpMaker<OpDesc, true>, T>::value ||
-        std::is_base_of<DefaultGradOpMaker<OpDesc, false>, T>::value;
+        std::is_base_of<DefaultGradOpMaker<OpDesc, false>, T>::value ||
+        std::is_base_of<DefaultGradOpMaker<imperative::OpBase, true>,
+                        T>::value ||
+        std::is_base_of<DefaultGradOpMaker<imperative::OpBase, false>,
+                        T>::value;
+
+    info->use_empty_grad_op_desc_maker_ =
+        std::is_base_of<EmptyGradOpMaker<OpDesc>, T>::value ||
+        std::is_base_of<EmptyGradOpMaker<imperative::OpBase>, T>::value;
   }
 };
 
