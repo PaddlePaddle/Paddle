@@ -56,11 +56,7 @@ class TestAffineGridOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(
-            ['Theta'],
-            'Output',
-            no_grad_set=['OutputShape'],
-            max_relative_error=0.006)
+        self.check_grad(['Theta'], 'Output', no_grad_set=['OutputShape'])
 
     def initTestCase(self):
         self.theta_shape = (17, 2, 3)

@@ -140,11 +140,11 @@ class TestMaxPoolWithIndex_Op(OpTest):
         self.init_global()
         self.init_adaptive()
 
-        input = np.random.random(self.shape).astype("float32")
+        input = np.random.random(self.shape).astype("float64")
         output, mask = self.pool_forward_naive(input, self.ksize, self.strides,
                                                self.paddings, self.global_pool,
                                                self.adaptive)
-        output = output.astype("float32")
+        output = output.astype("float64")
         mask = mask.astype("int32")
 
         self.attrs = {
