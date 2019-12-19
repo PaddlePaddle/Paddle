@@ -338,7 +338,7 @@ class OpTest(unittest.TestCase):
             dtype (str, optional): Data type, it can be "float32" or "float64". Default: "float32".
 
         Returns:
-            tuple (ndarray, lod) : LoD input data whose batch size is 1.
+            tuple (ndarray, list) : Numpy input data and LoD info, batch size is 1.
         """
         if lod is None:
             lod = [[13]]
