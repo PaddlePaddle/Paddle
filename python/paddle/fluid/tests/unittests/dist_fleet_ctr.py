@@ -18,8 +18,10 @@ import shutil
 import tempfile
 import time
 
+import paddle
 import paddle.fluid as fluid
 import os
+import numpy as np
 
 import ctr_dataset_reader
 from test_dist_fleet_base import runtime_main, FleetDistRunnerBase
@@ -30,10 +32,7 @@ fluid.default_main_program().random_seed = 1
 
 
 class TestDistCTR2x2(FleetDistRunnerBase):
-    def net(self, batch_size=4, lr=0.01):
-        dnn_input_dim, lr_input_dim, train_file_path = ctr_dataset_reader.prepare_data(
-        )
-        """ network definition """
+    def inputs(self):
         dnn_data = fluid.layers.data(
             name="dnn_data",
             shape=[-1, 1],
@@ -53,13 +52,20 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             lod_level=0,
             append_batch_size=False)
 
-        datas = [dnn_data, lr_data, label]
+        self.feeds = [dnn_data, lr_data, label]
+        return self.feeds
+
+    def net(self, inputs, batch_size=4, lr=0.01):
+        dnn_input_dim, lr_input_dim, train_file_path = ctr_dataset_reader.prepare_data(
+        )
+        """ network definition """
+        datas = inputs
 
         # build dnn model
         dnn_layer_dims = [128, 64, 32, 1]
         dnn_embedding = fluid.layers.embedding(
             is_distributed=False,
-            input=dnn_data,
+            input=datas[0],
             size=[dnn_input_dim, dnn_layer_dims[0]],
             param_attr=fluid.ParamAttr(
                 name="deep_embedding",
@@ -81,7 +87,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         # build lr model
         lr_embbding = fluid.layers.embedding(
             is_distributed=False,
-            input=lr_data,
+            input=datas[1],
             size=[lr_input_dim, 1],
             param_attr=fluid.ParamAttr(
                 name="wide_embedding",
@@ -92,13 +98,12 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
 
         predict = fluid.layers.fc(input=merge_layer, size=2, act='softmax')
-        acc = fluid.layers.accuracy(input=predict, label=label)
+        acc = fluid.layers.accuracy(input=predict, label=datas[2])
         auc_var, batch_auc_var, auc_states = fluid.layers.auc(input=predict,
-                                                              label=label)
-        cost = fluid.layers.cross_entropy(input=predict, label=label)
+                                                              label=datas[2])
+        cost = fluid.layers.cross_entropy(input=predict, label=datas[2])
         avg_cost = fluid.layers.mean(x=cost)
 
-        self.feeds = datas
         self.train_file_path = train_file_path
         self.avg_cost = avg_cost
         self.predict = predict
@@ -115,7 +120,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         with open(os.path.join(dirname, "__model__.proto"), "w") as wn:
             wn.write(str(program))
 
-    def do_training(self, fleet):
+    def do_pyreader_training(self, fleet):
         dnn_input_dim, lr_input_dim, train_file_path = ctr_dataset_reader.prepare_data(
         )
 
@@ -125,13 +130,63 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         exe.run(fleet.startup_program)
 
         thread_num = 2
+        batch_size = 128
+        filelist = []
+        for _ in range(thread_num):
+            filelist.append(train_file_path)
+
+        train_reader = paddle.batch(
+            paddle.reader.shuffle(
+                ctr_dataset_reader.CtrReader()._reader_creator(filelist),
+                buf_size=batch_size * 100),
+            batch_size=batch_size)
+        self.reader.decorate_paddle_reader(train_reader)
+
+        compiled_prog = fluid.compiler.CompiledProgram(
+            fleet.main_program).with_data_parallel(
+                loss_name=self.avg_cost.name,
+                build_strategy=self.strategy.get_build_strategy(),
+                exec_strategy=self.strategy.get_execute_strategy())
+
+        for epoch_id in range(1):
+            self.reader.start()
+            try:
+                pass_start = time.time()
+                while True:
+                    loss_val = exe.run(program=compiled_prog,
+                                       fetch_list=[self.avg_cost.name])
+                    loss_val = np.mean(loss_val)
+                    print("TRAIN ---> pass: {} loss: {}\n".format(epoch_id,
+                                                                  loss_val))
+                pass_time = time.time() - pass_start
+            except fluid.core.EOFException:
+                self.reader.reset()
+
+        model_dir = tempfile.mkdtemp()
+        fleet.save_inference_model(
+            exe, model_dir, [feed.name for feed in self.feeds], self.avg_cost)
+        self.check_model_right(model_dir)
+        shutil.rmtree(model_dir)
+        fleet.stop_worker()
+
+    def do_dataset_training(self, fleet):
+        dnn_input_dim, lr_input_dim, train_file_path = ctr_dataset_reader.prepare_data(
+        )
+
+        exe = fluid.Executor(fluid.CPUPlace())
+
+        fleet.init_worker()
+        exe.run(fleet.startup_program)
+
+        thread_num = 2
+        batch_size = 128
         filelist = []
         for _ in range(thread_num):
             filelist.append(train_file_path)
 
         # config dataset
         dataset = fluid.DatasetFactory().create_dataset()
-        dataset.set_batch_size(128)
+        dataset.set_batch_size(batch_size)
         dataset.set_use_var(self.feeds)
         pipe_command = 'python ctr_dataset_reader.py'
         dataset.set_pipe_command(pipe_command)

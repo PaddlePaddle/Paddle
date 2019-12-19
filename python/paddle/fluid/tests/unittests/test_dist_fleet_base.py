@@ -52,17 +52,18 @@ class FleetDistRunnerBase(object):
     """
 
     def generate_strategy(self, args):
-        strategy = None
+        self.strategy = None
         if args.mode == "async":
-            strategy = DistributedStrategyFactory.create_async_strategy()
+            self.strategy = DistributedStrategyFactory.create_async_strategy()
         elif args.mode == "sync":
-            strategy = DistributedStrategyFactory.create_sync_strategy()
+            self.strategy = DistributedStrategyFactory.create_sync_strategy()
         elif args.mode == "half_async":
-            strategy = DistributedStrategyFactory.create_half_async_strategy()
+            self.strategy = DistributedStrategyFactory.create_half_async_strategy(
+            )
         elif args.mode == "geo":
-            strategy = DistributedStrategyFactory.create_geo_strategy(
+            self.strategy = DistributedStrategyFactory.create_geo_strategy(
                 args.geo_sgd_need_push_nums)
-        return strategy
+        return self.strategy
 
     def run_pserver(self, args):
         if args.role.upper() != "PSERVER":
@@ -78,7 +79,8 @@ class FleetDistRunnerBase(object):
 
         strategy = self.generate_strategy(args)
 
-        avg_cost = self.net()
+        inputs = self.inputs()
+        avg_cost = self.net(inputs)
 
         optimizer = fluid.optimizer.SGD(LEARNING_RATE)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
@@ -87,7 +89,7 @@ class FleetDistRunnerBase(object):
         fleet.init_server()
         fleet.run_server()
 
-    def run_trainer(self, args):
+    def run_dataset_trainer(self, args):
         if args.role.upper() != "TRAINER":
             raise ValueError("args role must be TRAINER")
 
@@ -101,21 +103,60 @@ class FleetDistRunnerBase(object):
 
         strategy = self.generate_strategy(args)
 
-        avg_cost = self.net()
+        inputs = self.inputs()
+        avg_cost = self.net(inputs)
 
         optimizer = fluid.optimizer.SGD(LEARNING_RATE)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
 
-        out = self.do_training(fleet)
+        out = self.do_dataset_training(fleet)
 
-    def net(self, batch_size=4, lr=0.01):
+    def run_pyreader_trainer(self, args):
+        if args.role.upper() != "TRAINER":
+            raise ValueError("args role must be TRAINER")
+
+        role = role_maker.UserDefinedRoleMaker(
+            current_id=args.current_id,
+            role=role_maker.Role.WORKER,
+            worker_num=args.trainers,
+            server_endpoints=args.endpoints.split(","))
+
+        fleet.init(role)
+
+        strategy = self.generate_strategy(args)
+
+        inputs = self.inputs()
+        self.reader = fluid.layers.create_py_reader_by_data(
+            capacity=64,
+            feed_list=inputs,
+            name='py_reader',
+            use_double_buffer=False)
+        inputs = fluid.layers.read_file(self.reader)
+
+        avg_cost = self.net(inputs)
+
+        optimizer = fluid.optimizer.SGD(LEARNING_RATE)
+        optimizer = fleet.distributed_optimizer(optimizer, strategy)
+        optimizer.minimize(avg_cost)
+
+        out = self.do_pyreader_training(fleet)
+
+    def inputs(self):
+        raise NotImplementedError(
+            "get inputs should be implemented by child classes.")
+
+    def net(self, inputs, batch_size=4, lr=0.01):
         raise NotImplementedError(
             "get_model should be implemented by child classes.")
 
-    def do_training(self, fleet):
+    def do_dataset_training(self, fleet):
         raise NotImplementedError(
-            "do_training should be implemented by child classes.")
+            "do_dataset_training should be implemented by child classes.")
+
+    def do_pyreader_training(self, fleet):
+        raise NotImplementedError(
+            "do_pyreader_training should be implemented by child classes.")
 
 
 class TestFleetBase(unittest.TestCase):
@@ -214,7 +255,7 @@ class TestFleetBase(unittest.TestCase):
             python_path, model, self._ps_endpoints, self._trainers, self._mode,
             self._geo_sgd_need_push_nums)
 
-        ps_cmd = "{0} {1} --role pserver --endpoints {2} --current_id {{}} --trainers {3}, --mode {4} --geo_sgd_need_push_nums {5}".format(
+        ps_cmd = "{0} {1} --role pserver --endpoints {2} --current_id {{}} --trainers {3} --mode {4} --geo_sgd_need_push_nums {5}".format(
             python_path, model, self._ps_endpoints, self._trainers, self._mode,
             self._geo_sgd_need_push_nums)
 
@@ -303,10 +344,14 @@ def runtime_main(test_class):
     parser.add_argument('--mode', type=str, required=False, default='geo')
     parser.add_argument(
         '--geo_sgd_need_push_nums', type=int, required=False, default=2)
+    parser.add_argument('--reader', type=str, required=False, default='dataset')
     args = parser.parse_args()
 
     model = test_class()
     if args.role == "pserver":
         model.run_pserver(args)
     else:
-        model.run_trainer(args)
+        if args.reader == "dataset":
+            model.run_dataset_trainer(args)
+        else:
+            model.run_pyreader_trainer(args)
