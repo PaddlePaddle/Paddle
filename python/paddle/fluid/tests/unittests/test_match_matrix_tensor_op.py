@@ -71,7 +71,7 @@ class TestMatchMatrixTensorOp(OpTest):
         self.outputs = {'Out': (out, out_lod), 'Tmp': tmp}
 
     def test_check_output(self):
-        self.check_output(check_compile_vs_runtime=True, check_dygraph=False)
+        self.check_output(check_compile_vs_runtime=False, check_dygraph=False)
 
     def test_check_grad(self):
         self.check_grad(

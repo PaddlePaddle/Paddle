@@ -163,6 +163,13 @@ if [ "${HAS_INPLACE_TESTS}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 46782768 47554610 43953930 6836917
 fi
 
+HAS_COMPILERUNTIME_NOT_TEST=`git diff -U0 upstream/$BRANCH |grep "+" |grep -E "check_output[(]*=check_compile_vs_runtime=False*[)]" || true`
+if [ "${HAS_COMPILERUNTIME_NOT_TEST}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="If the operator's output after infershape() is a LodTensor, the output's Lod-Level during compile-time and runtime must be equal. Please set check_compile_vs_runtime=True in op_test.check_output function to enable compile&runtime lod-level check.\n
+If you do not need check_compile_vs_runtime, you must have one RD (XiaoguangHu01, lanxianghit, phlrain, luotao1) approval.\nThe corresponding lines are as follows:\n${HAS_COMPILERUNTIME_NOT_TEST}\n"
+    check_approval 1 46782768 47554610 43953930 6836917
+fi
+
 OP_FILE_CHANGED=`git diff --name-only --diff-filter=AMR upstream/$BRANCH |grep -oE ".+_op..*" || true`
 if [ "${OP_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     for OP_FILE in ${OP_FILE_CHANGED};
@@ -182,7 +189,7 @@ fi
 NEW_OP_TEST_ADDED=`git diff --name-only --diff-filter=AMR upstream/$BRANCH |grep -oE "test_.*.\.py" || true`
 if [ "${NEW_OP_TEST_ADDED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     CHECK_OUTPUT=`git diff -U5 --diff-filter=AMR upstream/$BRANCH |grep "self\.check_output(a*t*o*l*=*[0-9]"|grep "+" || true`
-    CHECK_OUTPUT_WITH_PLACE=`git diff -U5 --diff-filter=AMR upstream/$BRANCH |grep -A2 "self\.check_output_with_place" |grep "[a-z]*, [0-9]*"|grep "+" || true`
+    CHECK_OUTPUT_WITH_PLACE=`git diff -U5 --diff-filter=AMR upstream/$BRANCH |grep -A2 "self\.check_output_with_place" |grep ", [atol*,0-9]"|grep "+" || true`
     CHECK_GRAD=`git diff -U5 --diff-filter=AMR upstream/$BRANCH |grep -A5 -E "self\.check_grad|self\.check_grad_with_place"|grep "max_relative_error=" |grep "+" || true`
     CHECK_GRAD_CHECK=`git diff -U5 --diff-filter=AMR upstream/$BRANCH |grep -A2 -E "checker\.double_grad_check"|grep "eps=|atol=|rtol=" |grep "+" || true`
     CHECK_WHOLE=$CHECK_OUTPUT$CHECK_OUTPUT_WITH_PLACE$CHECK_GRAD$CHECK_GRAD_CHECK
