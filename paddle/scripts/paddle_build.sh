@@ -613,6 +613,7 @@ function single_test() {
     ========================================
 EOF
         ctest --output-on-failure -R ${TEST_NAME}
+        dmesg
     fi
 }
 
@@ -1172,7 +1173,6 @@ function main() {
         enable_unused_var_check
         #parallel_test
         single_test test_qat2_int8_resnet50_mkldnn
-        dmesg
         ;;
       cicheck_coverage)
         check_approvals_of_unittest 1
