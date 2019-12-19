@@ -369,6 +369,11 @@ class TestSeqMaxPool2DInference(TestSeqMaxPool2D):
                                    (-1, 3 * 11))
                 out[i] = np.reshape(np.amax(sub_x, axis=0), (3, 11))
 
+    def test_check_grad(self):
+        """Grad computation does not apply to Sequence MAX
+            Pool executed when is_test is true """
+        return
+
 
 class TestSeqMaxPool2DInferenceLen0(TestSeqMaxPool2DInference):
     def set_lod(self):
