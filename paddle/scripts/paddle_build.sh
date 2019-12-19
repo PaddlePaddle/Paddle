@@ -1145,7 +1145,9 @@ function main() {
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
         enable_unused_var_check
-        parallel_test
+        #parallel_test
+        single_test test_qat2_int8_resnet50_mkldnn
+        dmesg
         ;;
       cicheck_brpc)
         cmake_gen ${PYTHON_ABI:-""}
