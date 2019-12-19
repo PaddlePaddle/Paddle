@@ -127,6 +127,11 @@ function(py_pslib_test_modules TARGET_NAME)
           mpirun -npernode 2 ${PYTHON_EXECUTABLE} -m coverage run --branch -p
           ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_pslib_test_modules_MODULES}
           WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    else()
+      add_test(NAME ${TARGET_NAME}
+          COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_pslib_test_modules_ENVS}
+          mpirun -npernode 2 ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/test_runner.py
+          ${py_pslib_test_modules_MODULES} WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     endif()
     if (py_pslib_test_modules_SERIAL)
       set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
