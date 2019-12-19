@@ -17,24 +17,32 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from scipy.special import erf
-from op_test import OpTest, OpTestFp16
+from op_test import OpTest
 
 
 class TestErfOp(OpTest):
     def setUp(self):
         self.op_type = "erf"
-        self.dtype = "float64"
+        self.dtype = self._init_dtype()
         self.x_shape = [11, 17]
         x = np.random.uniform(-1, 1, size=self.x_shape).astype(self.dtype)
         y_ref = erf(x).astype(self.dtype)
         self.inputs = {'X': x}
         self.outputs = {'Out': y_ref}
 
+    def _init_dtype(self):
+        return "float32"
+
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
+
+class TestErfOpFp64(TestErfOp):
+    def _init_dtype(self):
+        return "float64"
 
 
 if __name__ == '__main__':
