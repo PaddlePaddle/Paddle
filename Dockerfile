@@ -124,9 +124,8 @@ RUN curl -s -q https://glide.sh/get | sh
 #    See https://github.com/PaddlePaddle/Paddle/issues/10129 for details.
 
 RUN wget -q https://paddle-ci.gz.bcebos.com/TensorRT-5.1.5.0.Ubuntu-14.04.5.x86_64-gnu.cuda-10.1.cudnn7.5.tar.gz --no-check-certificate && \
-    tar -zxf TensorRT-4.0.1.6-ubuntu14.04.x86_64-gnu.cuda.8.0.cudnn7.0.tar.gz -C /usr/local && \
-    cp -rf /usr/local/TensorRT-5.1.5.0/include /usr && \
-    cp -rf /usr/local/TensorRT-5.1.5.0/lib /usr
+    tar -zxf TensorRT-5.1.5.0.Ubuntu-14.04.5.x86_64-gnu.cuda-10.1.cudnn7.5.tar.gz -C /usr/local && \
+    cp -rf /usr/local/TensorRT-5.1.5.0/include /usr
 
 # git credential to skip password typing
 RUN git config --global credential.helper store
