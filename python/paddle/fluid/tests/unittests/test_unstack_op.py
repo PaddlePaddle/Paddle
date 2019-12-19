@@ -21,7 +21,7 @@ class TestUnStackOpBase(OpTest):
     def initDefaultParameters(self):
         self.input_dim = (5, 6, 7)
         self.axis = 0
-        self.dtype = 'float32'
+        self.dtype = 'float64'
 
     def initParameters(self):
         pass
