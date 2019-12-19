@@ -31,18 +31,13 @@ class TestErfOp(OpTest):
         self.outputs = {'Out': y_ref}
 
     def _init_dtype(self):
-        return "float32"
+        return "float64"
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
-
-
-class TestErfOpFp64(TestErfOp):
-    def _init_dtype(self):
-        return "float64"
 
 
 if __name__ == '__main__':
