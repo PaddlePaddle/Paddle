@@ -373,6 +373,7 @@ class TestConv2dOp(OpTest):
         self.check_grad_with_place(
             place, ['Input'],
             'Output',
+            max_relative_error=0.02,
             no_grad_set=set(['Filter']),
             check_dygraph=(self.use_mkldnn == False))
 
