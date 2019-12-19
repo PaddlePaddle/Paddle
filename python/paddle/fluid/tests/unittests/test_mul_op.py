@@ -25,7 +25,7 @@ from paddle.fluid import Program, program_guard
 class TestMulOp(OpTest):
     def setUp(self):
         self.op_type = "mul"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_dtype_type()
         self.inputs = {
             'X': np.random.random((2, 5)).astype(self.dtype),
@@ -40,7 +40,7 @@ class TestMulOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.5)
+        self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
@@ -69,7 +69,7 @@ class TestMulOpError(unittest.TestCase):
 class TestMulOp2(OpTest):
     def setUp(self):
         self.op_type = "mul"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_dtype_type()
         self.inputs = {
             'X': np.random.random((3, 4, 4, 3)).astype(self.dtype),
@@ -91,7 +91,7 @@ class TestMulOp2(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.5)
+        self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
