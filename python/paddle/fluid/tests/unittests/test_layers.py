@@ -110,6 +110,41 @@ class TestLayer(LayerTest):
             ret = custom(x, do_fc2=True)
             self.assertTrue(np.array_equal(ret.numpy().shape, [3, 1]))
 
+    def test_linear(self):
+        inp = np.ones([3, 32, 32], dtype='float32')
+        with self.static_graph():
+            t = layers.data(
+                name='data',
+                shape=[3, 32, 32],
+                dtype='float32',
+                append_batch_size=False)
+            linear = nn.Linear(
+                32, 4, bias_attr=fluid.initializer.ConstantInitializer(value=1))
+            ret = linear(t)
+            static_ret = self.get_static_graph_result(
+                feed={'data': inp}, fetch_list=[ret])[0]
+        with self.dynamic_graph():
+            t = base.to_variable(inp)
+            linear = nn.Linear(
+                32, 4, bias_attr=fluid.initializer.ConstantInitializer(value=1))
+            dy_ret = linear(t)
+            dy_ret_value = dy_ret.numpy()
+
+        self.assertTrue(np.array_equal(static_ret, dy_ret_value))
+
+        inp = np.ones([3, 32], dtype='float32')
+        with self.dynamic_graph():
+            t = base.to_variable(inp)
+            linear = nn.Linear(32, 4, bias_attr=False)
+            dy_ret = linear(t)
+            dy_ret_value = dy_ret.numpy()
+        with self.dynamic_graph():
+            t = base.to_variable(inp)
+            fc = nn.FC('fc1', size=4, bias_attr=False, num_flatten_dims=1)
+            dy_ret2 = fc(t)
+            dy_ret_value2 = dy_ret2.numpy()
+        self.assertTrue(np.array_equal(dy_ret_value, dy_ret_value2))
+
     def test_fc(self):
         inp = np.ones([3, 32, 32], dtype='float32')
         with self.static_graph():

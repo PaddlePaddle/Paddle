@@ -84,6 +84,11 @@ void AllReduceOpHandle::AllReduceImpl(
 
     if (i == 0) {
       numel = static_cast<int64_t>(lod_tensor.numel());
+      // only enforce place0, we will enforce other palce numel == place0 numel
+      PADDLE_ENFORCE_GT(
+          numel, 0, platform::errors::InvalidArgument(
+                        "The numel of tensos=[%s] must > 0. But now numel=[%d]",
+                        in_var_handles[i]->name(), numel));
       dtype = lod_tensor.type();
       is_gpu_place = platform::is_gpu_place(lod_tensor.place());
     }
