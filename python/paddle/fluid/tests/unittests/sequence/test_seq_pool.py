@@ -16,8 +16,8 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
-from test_reorder_lod_tensor import convert_to_offset
+from ..op_test import OpTest
+from ..test_reorder_lod_tensor import convert_to_offset
 
 
 def compute_seqpool_sum(x, offset, out, pad_value=0.0):

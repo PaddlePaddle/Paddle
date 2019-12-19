@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from ..op_test import OpTest
 
 
 def sequence_enumerate(input_seq, in_lod, win_size, pad_value):

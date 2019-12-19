@@ -15,7 +15,7 @@
 import unittest
 import six
 import numpy as np
-from op_test import OpTest
+from ..op_test import OpTest
 
 
 class TestSequenceUnpadOp(OpTest):
