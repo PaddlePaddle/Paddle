@@ -1101,67 +1101,119 @@ def append_backward(loss,
         isinstance(callbacks, list)
 
     program = loss.block.program
+
+    # Todo(liym27): when to add 1 in control flow
     program._appending_grad_times += 1
 
     if no_grad_set is None:
         no_grad_set = set()
     no_grad_set = copy.copy(no_grad_set)
     no_grad_dict = _get_stop_gradients_(program)
+    # no_grad_set only contain vars in block 0
+    # Todo(liym27): support vars in sub block
     no_grad_dict[0].update(list(map(_append_grad_suffix_, no_grad_set)))
 
     root_block = program.block(0)
 
-    fwd_op_num = root_block.desc.op_size()
     current_block_idx = program.current_block_idx
+
+    current_block = program.block(current_block_idx)
+
+    # create grad block if in control flow
+    is_in_control_flow = current_block_idx != 0
+    if is_in_control_flow:
+        target_grad_block = program._create_block(
+            parent_idx=current_block.parent_idx)
+        target_grad_block._set_forward_block_idx(current_block_idx)
+        # after _create_block, program.current_block changes
+    else:
+        target_grad_block = root_block
+
+    def _get_son_parent_block_idx_dict(program, current_block_idx):
+        son_parent_block_idx_dict = collections.OrderedDict()
+        while current_block_idx >= 0:
+            parent_block_idx = program.block(current_block_idx).parent_idx
+            son_parent_block_idx_dict[current_block_idx] = parent_block_idx
+            current_block_idx = parent_block_idx
+        return son_parent_block_idx_dict
+
+    son_parent_block_idx_dict = _get_son_parent_block_idx_dict(
+        program, current_block_idx)
+
+    # block_id: fwd_op_num
+    block_fwd_op_num_dict = {}
+    for idx in son_parent_block_idx_dict:
+        block_fwd_op_num_dict[idx] = program.block(idx).desc.op_size()
+
     grad_to_var = dict()
 
     op_desc = _create_loss_op_desc_(loss)
-    root_block.desc.append_op().copy_from(op_desc)
+    target_grad_block.desc.append_op().copy_from(op_desc)
 
-    block_no_grad_set = set(map(_strip_grad_suffix_, no_grad_dict[0]))
-    op_path = _find_op_path_(root_block, [loss], [], block_no_grad_set)
-    no_grad_vars = _find_no_grad_vars(root_block, op_path, [loss],
-                                      block_no_grad_set)
-    block_no_grad_set.update(no_grad_vars)
-    no_grad_dict[0].update(list(map(_append_grad_suffix_, block_no_grad_set)))
+    current_block_no_grad_set = set(
+        map(_strip_grad_suffix_, no_grad_dict[current_block_idx]))
 
-    input_grad_names_set = None
-    # For double backward, input_grad_names is used for filter
-    # some non-used gradients op.
-    if program._appending_grad_times > 1:
-        input_grad_names_set = set([_append_grad_suffix_(loss.name)])
+    op_path_dict = {}  # block idx : op_path
+    no_grad_vars_dict = {}
 
+    for block_idx in son_parent_block_idx_dict:
+        block = program.block(block_idx)
 
-    if checkpoints != None and \
-       isinstance(checkpoints, list) and \
-       len(checkpoints) > 0:
-        program_stat, checkpoint_names, \
-        vars_should_be_hold, \
-        recompute_segments = \
-                        _append_backward_ops_with_checkpoints_(
-                            root_block,
-                            op_path,
-                            root_block,
-                            no_grad_dict,
-                            grad_to_var,
-                            checkpoints)
-    else:
-        _append_backward_ops_(
-            root_block,
-            op_path,
-            root_block,
-            no_grad_dict,
-            grad_to_var,
-            callbacks,
-            input_grad_names_set=input_grad_names_set)
+        block_no_grad_set = set(
+            map(_strip_grad_suffix_, no_grad_dict[block_idx]))
+        op_path_dict[block_idx] = _find_op_path_(block, [loss], [],
+                                                 block_no_grad_set)
 
-    # Because calc_gradient may be called multiple times,
-    # we need rename the internal gradient variables so that they have
-    # different names.
-    _rename_grad_(root_block, fwd_op_num, grad_to_var, {})
+        no_grad_vars_dict[block_idx] = _find_no_grad_vars(
+            block, op_path_dict[block_idx], [loss], block_no_grad_set)
+
+        block_no_grad_set.update(no_grad_vars_dict[block_idx])
+        no_grad_dict[block_idx].update(
+            list(map(_append_grad_suffix_, block_no_grad_set)))
+
+        input_grad_names_set = None
+        # For double backward, input_grad_names is used for filter
+        # some non-used gradients op.
+
+        # Todo(liym27): need a better design.
+        # not support double grad in control flow now
+        if not is_in_control_flow:
+            if program._appending_grad_times > 1:
+                input_grad_names_set = set([_append_grad_suffix_(loss.name)])
+
+        if checkpoints != None and \
+                isinstance(checkpoints, list) and \
+                len(checkpoints) > 0:
+            program_stat, checkpoint_names, \
+            vars_should_be_hold, \
+            recompute_segments = \
+                _append_backward_ops_with_checkpoints_(
+                    root_block,
+                    op_path_dict[block_idx],
+                    root_block,
+                    no_grad_dict,
+                    grad_to_var,
+                    checkpoints)
+        else:
+            _append_backward_ops_(
+                block,  # the block where forward ops are#
+                op_path_dict[block_idx],
+                target_grad_block,
+                no_grad_dict,
+                grad_to_var,
+                callbacks,
+                input_grad_names_set=input_grad_names_set)
+
+        # Because calc_gradient may be called multiple times,
+        # we need rename the internal gradient variables so that they have
+        # different names.
+        _rename_grad_(block, block_fwd_op_num_dict[block_idx], grad_to_var, {})
 
     grad_info_map = dict()
-    _append_backward_vars_(root_block, fwd_op_num, grad_to_var, grad_info_map)
+    fwd_op_num = block_fwd_op_num_dict[
+        current_block_idx] if not is_in_control_flow else 0
+    _append_backward_vars_(target_grad_block, fwd_op_num, grad_to_var,
+                           grad_info_map)
 
     program.current_block_idx = current_block_idx
     program._sync_with_cpp()
@@ -1173,6 +1225,37 @@ def append_backward(loss,
         parameters = [param.name for param in params if param.trainable]
 
     params_and_grads = []
+    op_role_var_attr_name = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
+    if is_in_control_flow:
+        for param in parameters:
+            if cpt.to_text(param) not in grad_info_map:
+                continue
+            grad_info = grad_info_map[param]
+            grad_block = grad_info[1]
+            if not grad_block.has_var(grad_info[0]):
+                raise ValueError("grad block[{0}] did not have grad var {1}".
+                                 format(grad_info[1], grad_info[0]))
+            # Get the param var from the global block
+            param_var = program.global_block().var(param)
+            grad_var = grad_block.var(grad_info[0])
+
+            for op in reversed(grad_block.ops):
+                assert isinstance(op, framework.Operator)
+                if grad_var.name in op.output_arg_names:
+                    grad_var.op = op
+                    break
+            if grad_var.op is None:
+                raise ValueError("Unexpected branch")
+            attr_val = [param_var.name, grad_var.name]
+            if grad_var.op.has_attr(op_role_var_attr_name):
+                attr_val.extend(grad_var.op.attr(op_role_var_attr_name))
+            grad_var.op._set_attr(op_role_var_attr_name, attr_val)
+
+            # control flow: grad_var not in current block but in corresponding grad block
+            params_and_grads.append((param_var, grad_var))
+
+        return params_and_grads
+
     for param in parameters:
         if cpt.to_text(param) not in grad_info_map:
             continue
@@ -1189,7 +1272,6 @@ def append_backward(loss,
         else:
             params_and_grads.append((param_var, None))
 
-    op_role_var_attr_name = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
     for p, g in params_and_grads:
         if g is None:
             continue
@@ -1215,12 +1297,32 @@ def _as_list(x):
     return list(x) if isinstance(x, collections.Sequence) else [x]
 
 
+def _get_output_names(block, outputs):
+    current_block = outputs[0].block
+    current_output_names = set([out.name for out in outputs])
+
+    while current_block.idx != block.idx:
+        link_output_names = set()
+        parent_block = block.program.blocks[current_block.parent_idx]
+        for i, op in reversed(list(enumerate(current_block.ops))):
+            if _some_in_set_(op.desc.output_arg_names(), current_output_names):
+                for name in op.desc.input_arg_names():
+                    current_output_names.add(name)
+                    if not current_block.desc.find_var(name.encode(
+                            "ascii")) and parent_block.desc.find_var(
+                                name.encode("ascii")):
+                        link_output_names.add(name)
+        current_output_names = link_output_names
+        current_block = parent_block
+    return current_output_names
+
+
 def _find_no_grad_vars(block, op_path, targets, no_grad_set):
     """
     Find the vars which is not used in the program, and
-    those var belong to no_grad_var.
+    those vars belong to no_grad_var.
     """
-    output_names = set([out.name for out in targets])
+    output_names = _get_output_names(block, targets)
     no_grad_var = []
     for i, op in reversed(list(enumerate(op_path))):
         # If the op has sub_block, it is too complicated to find the correct no_grad_var.
