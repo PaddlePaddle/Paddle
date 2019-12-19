@@ -56,10 +56,6 @@ EMPTY_GRAD_OP_LIST = [
 
 # Special cases do not need to check grad
 NO_NEED_CHECK_GRAD_CASES = [
-    'TestLookupTableOpWithPadding',
-    'TestLookupTableOpWithTensorIdsAndPadding',
-    'TestLookupTableOpWithPadding',
-    'TestLookupTableOpWithTensorIdsAndPadding',
     'TestSeqMaxPool2DInference',
     'TestSeqMaxPool2DInferenceLen0',
     'TestSeqMaxPool2DInferenceLen0LoDLevel2',

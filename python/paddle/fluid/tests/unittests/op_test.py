@@ -142,6 +142,25 @@ def get_numeric_gradient(place,
     return gradient_flat.reshape(tensor_to_check.shape())
 
 
+def skip_check_grad_ci(func):
+    """Decorator to skip check_grd CI.
+       
+       Check_grad is required for Op test cases. However, there are specical cases 
+       that do not need to check_grad. The decorator is used to avoid failures of 
+       check_grad checking. 
+       
+       Note: the execution of unit test will not be skipped. It just avoids check_grad 
+       checking in tearDownClass method by setting a `no_need_check_grad` flag.
+
+    """
+
+    def wrapper(self, *args, **kw):
+        self.__class__.no_need_check_grad = True
+        return func(self, *args, **kw)
+
+    return wrapper
+
+
 class OpTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -171,7 +190,7 @@ class OpTest(unittest.TestCase):
                 " please set self.__class__.op_type=the_real_op_type manually.")
 
         # cases and ops do no need check_grad
-        if cls.__name__ in op_check_grad_white_list.NO_NEED_CHECK_GRAD_CASES \
+        if hasattr(cls, "no_need_check_grad") \
             or cls.op_type in op_check_grad_white_list.EMPTY_GRAD_OP_LIST:
             return
 

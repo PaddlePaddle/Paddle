@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.compat as cpt
@@ -64,6 +64,7 @@ class TestLookupTableOpWithPadding(TestLookupTableOp):
         self.attrs = {'padding_idx': int(padding_idx)}
         self.check_output()
 
+    @skip_check_grad_ci
     def test_check_grad(self):
         # Since paddings are not trainable and fixed in forward, the gradient of
         # paddings makes no sense and we don't test the gradient here.
@@ -79,6 +80,7 @@ class TestLookupTableOpWithTensorIdsAndPadding(TestLookupTableOpWithTensorIds):
         self.attrs = {'padding_idx': cpt.long_type(padding_idx)}
         self.check_output()
 
+    @skip_check_grad_ci
     def test_check_grad(self):
         # Since paddings are not trainable and fixed in forward, the gradient of
         # paddings makes no sense and we don't test the gradient here.
