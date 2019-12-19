@@ -1398,8 +1398,10 @@ class Variable(object):
         if in_dygraph_mode():
             raise Exception("Dygraph model DO NOT supprt lod")
 
-        if self.type == core.VarDesc.VarType.LOD_TENSOR:
-            return self.desc.lod_level()
+        if self.type == core.VarDesc.VarType.SELECTED_ROWS:
+            raise Exception("SelectedRows DO NOT supprt lod")
+
+        return self.desc.lod_level()
 
     @property
     def type(self):
