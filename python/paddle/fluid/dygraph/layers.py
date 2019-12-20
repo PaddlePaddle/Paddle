@@ -164,6 +164,20 @@ class Layer(core.Layer):
                     ret.append(p)
         return ret
 
+    def named_parameters(self, prefix='', recurse=True):
+        memo = set()
+        sublayers = self.named_sublayers(
+            prefix=prefix) if recurse else [(prefix, self)]
+        for sublayer_prefix, sublayer in sublayers:
+            params = sublayer._parameters.items()
+            for _, v in params:
+                if v is None or v in memo:
+                    continue
+                memo.add(v)
+                name = sublayer_prefix + ('.'
+                                          if sublayer_prefix else '') + v.name
+                yield name, v
+
     def sublayers(self, include_sublayers=True):
         """Returns a list of sub layers.
 
@@ -179,6 +193,20 @@ class Layer(core.Layer):
                 for sub_l in l.sublayers(include_sublayers):
                     ret.append(sub_l)
         return ret
+
+    def named_sublayers(self, memo=None, prefix=''):
+        if memo is None:
+            memo = set()
+        if self not in memo:
+            memo.add(self)
+            yield prefix, self
+            for _, layer in self._sub_layers.items():
+                if layer is None:
+                    continue
+                sublayer_prefix = prefix + ('.' if prefix else ''
+                                            ) + layer.full_name()
+                for p, l in layer.named_sublayers(memo, sublayer_prefix):
+                    yield p, l
 
     def clear_gradients(self):
         for p in self.parameters():
