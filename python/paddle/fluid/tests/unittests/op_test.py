@@ -1170,7 +1170,7 @@ class OpTest(unittest.TestCase):
         if self.dtype == np.float64 and \
             self.op_type not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST:
             numeric_grad_delta = 1e-7
-            max_relative_error = 1e-5
+            max_relative_error = 1e-7
 
         cache_list = None
         if hasattr(self, "cache_name_list"):
