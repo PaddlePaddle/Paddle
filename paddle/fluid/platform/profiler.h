@@ -39,6 +39,11 @@ enum ProfilerState {
   kAll,       // Profile both CPU and GPU. (Currently experimental).
 };
 
+enum TracerOption {
+  kFULL,
+  kOP,
+  kDETAIL,
+};
 void Mark(const std::string& name);
 
 void PushMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
@@ -79,6 +84,7 @@ Event* PushEvent(const std::string& name);
 void PopEvent(const std::string& name);
 
 struct RecordEvent {
+  explicit RecordEvent(const std::string& name, int record_level);
   explicit RecordEvent(const std::string& name);
 
   ~RecordEvent();
@@ -162,6 +168,7 @@ struct EventList {
   std::forward_list<std::vector<T>> event_blocks;
 };
 
+void SetTracerOption(TracerOption option);
 // Enable the profiling function.
 void EnableProfiler(ProfilerState state);
 

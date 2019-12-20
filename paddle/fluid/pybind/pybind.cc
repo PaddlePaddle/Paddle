@@ -1493,6 +1493,12 @@ All parameter, weight, gradient are variables in Paddle.
       .value("kAll", platform::ProfilerState::kAll)
       .export_values();
 
+  py::enum_<platform::TracerOption>(m, "TracerOption", py::arithmetic())
+      .value("kFULL", platform::TracerOption::kFULL)
+      .value("kOP", platform::TracerOption::kOP)
+      .value("kDETAIL", platform::TracerOption::kDETAIL)
+      .export_values();
+
   py::enum_<platform::EventSortingKey>(m, "EventSortingKey", py::arithmetic())
       .value("kDefault", platform::EventSortingKey::kDefault)
       .value("kCalls", platform::EventSortingKey::kCalls)
@@ -1502,6 +1508,7 @@ All parameter, weight, gradient are variables in Paddle.
       .value("kAve", platform::EventSortingKey::kAve)
       .export_values();
 
+  m.def("set_tracer_option", platform::SetTracerOption);
   m.def("enable_profiler", platform::EnableProfiler);
   m.def("disable_profiler", platform::DisableProfiler);
   m.def("is_profiler_enabled", platform::IsProfileEnabled);

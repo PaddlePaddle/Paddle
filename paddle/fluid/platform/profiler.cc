@@ -19,6 +19,7 @@ limitations under the License. */
 #include <map>
 #include <mutex>  // NOLINT
 #include <random>
+#include <stack>
 #include <string>
 #include <vector>
 
@@ -41,6 +42,7 @@ static int64_t profiler_lister_id = 0;
 static bool should_send_profile_state = false;
 std::mutex profiler_mu;
 
+static TracerOption g_tracer_option = TracerOption::kOP;
 // The profiler state, the initial value is ProfilerState::kDisabled
 static ProfilerState g_state = ProfilerState::kDisabled;
 // The thread local event list only can be accessed by the specific thread
@@ -61,6 +63,11 @@ static thread_local std::shared_ptr<EventList<MemEvent>> g_mem_event_list;
 static std::mutex g_all_mem_event_lists_mutex;
 static thread_local int32_t g_mem_thread_id;
 static uint32_t g_mem_next_thread_id = 0;
+
+// static std::stack<std::string> g_record_annotation;
+// static std::mutex g_record_annotation_mu;
+// static uint32_t profile_iter_start = 0;
+// static uint32_t profile_iter_end  = UINT32_MAX;
 
 inline uint64_t GetTimeInNsec() {
   using clock = std::conditional<std::chrono::high_resolution_clock::is_steady,
@@ -136,7 +143,7 @@ void PopEvent(const std::string &name) {
   GetEventList().Record(EventType::kPopRange, name, g_thread_id);
 }
 
-RecordEvent::RecordEvent(const std::string &name)
+RecordEvent::RecordEvent(const std::string &name, int record_level)
     : is_enabled_(false), start_ns_(PosixInNsec()) {
   if (g_state == ProfilerState::kDisabled) return;
   // lock is not needed, the code below is thread-safe
@@ -148,6 +155,20 @@ RecordEvent::RecordEvent(const std::string &name)
   SetCurAnnotation(e);
 }
 
+RecordEvent::RecordEvent(const std::string &name)
+    : is_enabled_(false), start_ns_(PosixInNsec()) {
+  if (g_state == ProfilerState::kDisabled) return;
+  // lock is not needed, the code below is thread-safe
+
+  is_enabled_ = true;
+  name_ = name;
+  // std::lock_guard<std::mutex> guard(g_record_annotation_mu);
+  Event *e = PushEvent(name_);
+  // Maybe need the same push/pop behavior.
+  SetCurAnnotation(e);
+  name_ = e->name();
+}
+
 RecordEvent::~RecordEvent() {
   if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
   // lock is not needed, the code below is thread-safe
@@ -156,6 +177,7 @@ RecordEvent::~RecordEvent() {
     tracer->AddCPURecords(CurAnnotationName(), start_ns_, PosixInNsec(),
                           BlockDepth(), g_thread_id);
   }
+  // std::lock_guard<std::mutex> guard(g_record_annotation_mu);
   ClearCurAnnotation();
   PopEvent(name_);
 }
@@ -454,6 +476,7 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
 
   std::vector<std::vector<EventItem>> events_table;
   size_t max_name_width = 0;
+
   for (size_t i = 0; i < (*analyze_events).size(); i++) {
     double total = 0.;  // the total time in one thread
     std::list<Event> pushed_events;
@@ -469,6 +492,7 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
                rit->name() != (*analyze_events)[i][j].name()) {
           ++rit;
         }
+        // to find the father name event name
 
         if (rit != pushed_events.rend()) {
           double event_time = 0;
@@ -524,6 +548,7 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
         }
       }
     }
+
     // average time
     for (auto &item : event_items) {
       item.ave_time = item.total_time / item.calls;
@@ -651,5 +676,9 @@ void SetProfileListener() {
 }
 int64_t ListenerId() { return profiler_lister_id; }
 
+void SetTracerOption(TracerOption option) {
+  std::lock_guard<std::mutex> l(profiler_mu);
+  g_tracer_option = option;
+}
 }  // namespace platform
 }  // namespace paddle

@@ -126,7 +126,7 @@ def reset_profiler():
     core.reset_profiler()
 
 
-def start_profiler(state):
+def start_profiler(state, tracer_option="OP"):
     """
     Enable the profiler. Uers can use `fluid.profiler.start_profiler` and
     `fluid.profiler.stop_profiler` to profile, which is equal to the usage 
@@ -165,6 +165,17 @@ def start_profiler(state):
         prof_state = core.ProfilerState.kCPU
     else:
         prof_state = core.ProfilerState.kAll
+
+    if tracer_option not in ["FULL", "OP", "DETAIL"]:
+        raise ValueError("tracer option must be 'FULL', 'OP', 'DETAIL'.")
+    if tracer_option == "FULL":
+        prof_tracer_option = core.TracerOption.kFULL
+    elif tracer_option == "OP":
+        prof_tracer_option = core.TracerOption.kOP
+    else:
+        prof_tracer_option = core.TracerOption.kDETAIL
+
+    core.set_tracer_option(prof_tracer_option)
     core.enable_profiler(prof_state)
 
 

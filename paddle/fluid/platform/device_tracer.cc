@@ -446,6 +446,9 @@ class DeviceTracerImpl : public DeviceTracer {
       auto c = correlations_.find(r.correlation_id);
       if (c != correlations_.end() && c->second != nullptr) {
         Event *e = c->second;
+        if (e->fevent()) {
+          e->fevent()->AddCudaElapsedTime(r.start_ns, r.end_ns);
+        }
         e->AddCudaElapsedTime(r.start_ns, r.end_ns);
       }
     }
@@ -453,6 +456,9 @@ class DeviceTracerImpl : public DeviceTracer {
       auto c = correlations_.find(r.correlation_id);
       if (c != correlations_.end() && c->second != nullptr) {
         Event *e = c->second;
+        if (e->fevent()) {
+          e->fevent()->AddCudaElapsedTime(r.start_ns, r.end_ns);
+        }
         e->AddCudaElapsedTime(r.start_ns, r.end_ns);
       }
     }
@@ -622,7 +628,13 @@ DeviceTracer *GetDeviceTracer() {
   return tracer;
 }
 
-void SetCurAnnotation(Event *event) { annotation_stack.push_back(event); }
+void SetCurAnnotation(Event *event) {
+  if (!annotation_stack.empty()) {
+    event->set_fevent(annotation_stack.back());
+    event->set_name(annotation_stack.back()->name() + "::" + event->name());
+  }
+  annotation_stack.push_back(event);
+}
 
 void ClearCurAnnotation() { annotation_stack.pop_back(); }
 

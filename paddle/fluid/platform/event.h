@@ -32,8 +32,15 @@ class Event {
   Event(EventType type, std::string name, uint32_t thread_id);
 
   const EventType& type() const;
+  Event* fevent() const { return father_event_; }
+  void set_fevent(Event* father_event) { father_event_ = father_event; }
   std::string name() const { return name_; }
+  std::string fname() const { return fname_; }
+  void set_fname(std::string fname) { fname_ = fname; }
   uint32_t thread_id() const { return thread_id_; }
+  bool visited() const { return visited_status_; }
+  void set_visited(bool visited_status) { visited_status_ = visited_status; }
+  void set_name(std::string name) { name_ = name; }
 
 #ifdef PADDLE_WITH_CUDA
 #ifndef PADDLE_WITH_CUPTI
@@ -47,9 +54,12 @@ class Event {
 
  private:
   EventType type_;
-  std::string name_;
+  std::string name_{};
+  std::string fname_;
+  Event* father_event_{nullptr};
   uint32_t thread_id_;
   int64_t cpu_ns_;
+  bool visited_status_{false};
 #ifdef PADDLE_WITH_CUDA
 #ifdef PADDLE_WITH_CUPTI
   int64_t gpu_ns_ = 0;
