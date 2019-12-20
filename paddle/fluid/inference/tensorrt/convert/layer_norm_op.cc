@@ -95,5 +95,4 @@ class LayerNormOpConverter : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-USE_OP(layer_norm);
 REGISTER_TRT_OP_CONVERTER(layer_norm, LayerNormOpConverter);

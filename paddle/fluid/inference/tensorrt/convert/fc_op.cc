@@ -44,7 +44,6 @@ void ReorderCKtoKC(TensorRTEngine::Weight& iweights,  // NOLINT
            static_cast<float*>(const_cast<void*>(oweights->get().values)),
            ostrides);
 }
-
 /*
  * FC converter convert a MUL op in Fluid to a FC layer in TRT.
  */
@@ -63,7 +62,6 @@ class FcOpConverter : public OpConverter {
       w_name = "W";
       i_name = "Input";
     }
-
     // Declare inputs
     auto* X = engine_->GetITensor(op_desc.Input(i_name).front());
 
@@ -134,9 +132,11 @@ class FcOpConverter : public OpConverter {
                                 static_cast<void*>(bias_data),
                                 static_cast<size_t>(bias_num)};
 
+    // in order to handle situations in NLP models(input dims < 3,
+    // x_num_col_dims != 1, etc.), reshape input to perform FC correctly.
     auto* reshape_itensor = X;
     int input_dims = X->getDimensions().nbDims;
-    auto input_d = X->getDimensions.d;
+    auto input_d = X->getDimensions().d;
     int reshape_dim3[3] = {0};
     int reshape_dim4[4] = {0};
     PADDLE_ENFORCE_EQ(
@@ -149,7 +149,6 @@ class FcOpConverter : public OpConverter {
                       platform::errors::InvalidArgument(
                           "Params and input dims mismatch. Paddle-TRT FC "
                           "converter expects x_num_col_dims <= input dims"));
-
     if (x_num_col_dims == 1) {
       if (input_dims == 4) {
         PADDLE_ENFORCE_EQ(
@@ -159,7 +158,7 @@ class FcOpConverter : public OpConverter {
                 "dims equals to 4, the last dim of input must be 1, but got %d",
                 input_d[3]));
       }
-      for (int i = 0; i < 3; i++) {
+      for (size_t i = 0; i < 3; i++) {
         if (i < input_dims) {
           reshape_dim3[i] = input_d[i];
         } else {
@@ -176,7 +175,7 @@ class FcOpConverter : public OpConverter {
                         platform::errors::InvalidArgument(
                             "Invalid dimensions. When x_num_col_dims equals to "
                             "2, input_dims should not be 1"));
-      for (int i = 0; i < 4; i++) {
+      for (size_t i = 0; i < 4; i++) {
         if (i < input_dims) {
           reshape_dim4[i] = input_d[i];
         } else {
@@ -190,14 +189,22 @@ class FcOpConverter : public OpConverter {
       reshape_itensor = reshape_layer->getOutput(0);
     }
 
-    auto* layer =
+    // execute FC
+    auto* fc_layer =
         TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *reshape_itensor,
                              n_output, tmp_weight.get(), bias.get());
 
+    // reshape FC output to remove the redundant "1" dims
+    auto* reshape_layer2 =
+        TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *(fc_layer->getOutput(0)));
+    if (x_num_col_dims == 2) {
+      nvinfer1::Dims2 reshape_dim2(input_d[0], n_output);
+      reshape_layer2->setReshapeDimensions(reshape_dim2);
+    }
     engine_->SetWeights(op_desc.Input(w_name).front(), std::move(tmp));
     auto output_name = op_desc.Output("Out").front();
 
-    RreplenishLayerAndOutput(layer, "fc", {output_name}, test_mode);
+    RreplenishLayerAndOutput(reshape_layer2, "fc", {output_name}, test_mode);
   }
 };
 
