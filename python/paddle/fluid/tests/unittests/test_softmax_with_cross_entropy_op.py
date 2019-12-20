@@ -126,7 +126,7 @@ class TestSoftmaxWithCrossEntropyOpFp16(TestSoftmaxWithCrossEntropyOp):
         # NOTE: numpy float16 have very low accuracy, use float32 for numpy check.
         logits = getattr(
             self, "logits",
-            np.random.uniform(0.1, 1.0, self.shape).astype(np.float32))
+            np.random.uniform(0.1, 1.0, self.shape).astype(np.float64))
         softmax = np.apply_along_axis(stable_softmax, self.axis, logits)
 
         axis_dim = self.shape[self.axis]
@@ -425,7 +425,7 @@ class TestSoftmaxWithCrossEntropyOpBoundary0(TestSoftmaxWithCrossEntropyOp):
         self.shape = [3, 5, 7, 11]
         self.axis = -1
         self.ignore_index = -1
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.logits = np.full(self.shape, -500.0).astype(self.dtype)
 
 
@@ -442,7 +442,7 @@ class TestSoftmaxWithCrossEntropyOpBoundary1(TestSoftmaxWithCrossEntropyOp):
         self.shape = [3, 5, 7, 11]
         self.axis = -1
         self.ignore_index = -1
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.logits = np.full(self.shape, 1000.0).astype(self.dtype)
         self.logits[:, :, 0, :] = -1000.0
 
