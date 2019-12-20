@@ -415,16 +415,19 @@ class TestDynamicDecode(unittest.TestCase):
         src_seq_len = 10
         trg_seq_len = 12
         self.data = {
-            "src": np.random.randint(2, self.model_hparams["src_vocab_size"],
-                                     (iter_num * batch_size, src_seq_len)),
-            "src_sequence_length": np.random.randint(1, src_seq_len,
-                                                     (iter_num * batch_size, )),
-            "trg": np.random.randint(2, self.model_hparams["src_vocab_size"],
-                                     (iter_num * batch_size, trg_seq_len)),
-            "trg_sequence_length": np.random.randint(1, trg_seq_len,
-                                                     (iter_num * batch_size, )),
-            "label": np.random.randint(2, self.model_hparams["src_vocab_size"],
-                                       (iter_num * batch_size, trg_seq_len, 1)),
+            "src": np.random.randint(
+                2, self.model_hparams["src_vocab_size"],
+                (iter_num * batch_size, src_seq_len)).astype("int64"),
+            "src_sequence_length": np.random.randint(
+                1, src_seq_len, (iter_num * batch_size, )).astype("int64"),
+            "trg": np.random.randint(
+                2, self.model_hparams["src_vocab_size"],
+                (iter_num * batch_size, trg_seq_len)).astype("int64"),
+            "trg_sequence_length": np.random.randint(
+                1, trg_seq_len, (iter_num * batch_size, )).astype("int64"),
+            "label": np.random.randint(
+                2, self.model_hparams["src_vocab_size"],
+                (iter_num * batch_size, trg_seq_len, 1)).astype("int64"),
         }
 
         place = core.CUDAPlace(0) if core.is_compiled_with_cuda(
