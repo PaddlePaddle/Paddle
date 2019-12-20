@@ -34,8 +34,7 @@ from paddle.fluid.framework import Program, OpProtoHolder, Variable
 from testsuite import create_op, set_input, append_input_output, append_loss_ops
 from paddle.fluid import unique_name
 
-from white_list import op_accuracy_white_list, op_check_grad_white_list, check_shape_white_list
-
+from white_list import op_accuracy_white_list, op_check_grad_white_list, no_grad_set_white_list
 
 
 def _set_use_system_allocator(value=None):
@@ -150,12 +149,12 @@ def get_numeric_gradient(place,
 
 def skip_check_grad_ci(reason=None):
     """Decorator to skip check_grad CI.
-       
+
        Check_grad is required for Op test cases. However, there are some special
-       cases that do not need to do check_grad. This decorator is used to skip the 
+       cases that do not need to do check_grad. This decorator is used to skip the
        check_grad of the above cases.
-       
-       Note: the execution of unit test will not be skipped. It just avoids check_grad 
+
+       Note: the execution of unit test will not be skipped. It just avoids check_grad
        checking in tearDownClass method by setting a `no_need_check_grad` flag.
 
        Example:
@@ -557,7 +556,7 @@ class OpTest(unittest.TestCase):
         """
         # compare expect_outs and actual_outs
         for i, name in enumerate(fetch_list):
-            # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure 
+            # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure
             # computational consistency.
             # When inplace_atol is not None, the inplace check uses numpy.allclose
             # to check inplace result instead of numpy.array_equal.
@@ -1012,10 +1011,10 @@ class OpTest(unittest.TestCase):
                             "Output (" + out_name + ") has different lod at " +
                             str(place) + " in dygraph mode")
 
-        # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure 
+        # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure
         # computational consistency.
         # For example, group_norm uses AtomicAdd on CUDAPlace, which do not ensure
-        # computation order when multiple threads write the same address. So the 
+        # computation order when multiple threads write the same address. So the
         # result of group_norm is non-deterministic when datatype is float.
         # When inplace_atol is not None, the inplace check uses numpy.allclose
         # to check inplace result instead of numpy.array_equal.
@@ -1200,9 +1199,9 @@ class OpTest(unittest.TestCase):
         if no_grad_set is None:
             no_grad_set = set()
         else:
-            if (self.op_type not in op_check_grad_white_list.NEED_TO_FIX_OP_LIST
+            if (self.op_type not in no_grad_set_white_list.NEED_TO_FIX_OP_LIST
                 ) or (self.op_type not in
-                      op_check_grad_white_list.EMPTY_GRAD_OP_LIST):
+                      no_grad_set_white_list.NOT_CHECK_OP_LIST):
                 raise AssertionError("no_grad_set muste be None, op_type is " +
                                      self.op_type + " Op.")
 
@@ -1382,4 +1381,3 @@ class OpTest(unittest.TestCase):
         return list(
             map(np.array,
                 executor.run(prog, feed_dict, fetch_list, return_numpy=False)))
-
