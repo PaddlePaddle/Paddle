@@ -96,31 +96,24 @@ void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
       }
     }
   }
-}
 
-// init communicator here
-if (send_varname_to_ctx.size() > 0) {
-  if (is_half_async) {
-    VLOG(3) << "this is distribute mode, will use HalfAsyncCommunicator";
-    auto *instance = operators::distributed::Communicator::InitInstance<
-        operators::distributed::HalfAsyncCommunicator>(
-        send_varname_to_ctx, recv_varname_to_ctx, scope);
-    if (!instance->IsRunning()) instance->Start();
-  } else {
-    VLOG(3) << "this is distribute mode, will use AsyncCommunicator";
-    auto *instance = operators::distributed::Communicator::InitInstance<
-        operators::distributed::AsyncCommunicator>(send_varname_to_ctx,
-                                                   recv_varname_to_ctx, scope);
-    if (!instance->IsRunning()) instance->Start();
+  // init communicator here
+  if (send_varname_to_ctx.size() > 0) {
+    if (is_half_async) {
+      VLOG(3) << "this is distribute mode, will use HalfAsyncCommunicator";
+      auto *instance = operators::distributed::Communicator::InitInstance<
+          operators::distributed::HalfAsyncCommunicator>(
+          send_varname_to_ctx, recv_varname_to_ctx, scope);
+      if (!instance->IsRunning()) instance->Start();
+    } else {
+      VLOG(3) << "this is distribute mode, will use AsyncCommunicator";
+      auto *instance = operators::distributed::Communicator::InitInstance<
+          operators::distributed::AsyncCommunicator>(
+          send_varname_to_ctx, recv_varname_to_ctx, scope);
+      if (!instance->IsRunning()) instance->Start();
+    }
   }
 
-  VLOG(3) << "this is distribute mode, will use communicator";
-
-  auto *instance = operators::distributed::Communicator::InitInstance<
-      operators::distributed::AsyncCommunicator>(send_varname_to_ctx,
-                                                 recv_varname_to_ctx, scope);
-  if (!instance->IsRunning()) instance->Start();
-}
 #endif
 }  // namespace details
 
@@ -232,6 +225,6 @@ FeedFetchList AsyncSSAGraphExecutor::Run(
   return ret;
 }
 
+}  // namespace details
 }  // namespace framework
-}  // namespace paddle
 }  // namespace paddle

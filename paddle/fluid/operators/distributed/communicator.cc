@@ -194,10 +194,12 @@ void AsyncCommunicator::SendThread() {
           std::vector<std::shared_ptr<Variable>> vars;
           int merged_var_num = 0;
           int wait_times = 0;
-          while (merged_var_num < FLAGS_communicator_max_merge_var_num) {
+          while (merged_var_num <
+                 static_cast<int>(FLAGS_communicator_max_merge_var_num)) {
             if (var_queue->Size() == 0) {
               VLOG(4) << "wait_times -> " << wait_times;
-              if (wait_times >= FLAGS_communicator_send_wait_times) {
+              if (wait_times >=
+                  static_cast<int>(FLAGS_communicator_send_wait_times)) {
                 break;
               }
               std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -1165,10 +1167,12 @@ void HalfAsyncCommunicator::ConsumeThread() {
           std::vector<std::shared_ptr<Variable>> vars;
           size_t merged_var_num = 0;
           size_t wait_times = 0;
-          while (merged_var_num < FLAGS_communicator_max_merge_var_num) {
+          while (merged_var_num < static_cast<unsigned int>(
+                                      FLAGS_communicator_max_merge_var_num)) {
             if (var_queue->Size() == 0) {
               VLOG(3) << "wait_times -> " << wait_times;
-              if (wait_times >= FLAGS_communicator_send_wait_times) {
+              if (wait_times >= static_cast<unsigned int>(
+                                    FLAGS_communicator_send_wait_times)) {
                 break;
               }
               std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -1182,11 +1186,7 @@ void HalfAsyncCommunicator::ConsumeThread() {
           }
           auto before_merge = GetCurrentUS();
 
-          MergeVars(var_name, vars, send_scope_.get());
-
-          auto var_str =
-              operators::GetTensorDetails(*(send_scope_.get()), var_name);
-          VLOG(1) << var_str;
+          MergeVars<float>(var_name, vars, send_scope_.get(), false);
 
           auto after_merge = GetCurrentUS();
           VLOG(3) << "merge " << merged_var_num << " " << var_name

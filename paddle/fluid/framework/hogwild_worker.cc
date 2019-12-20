@@ -161,7 +161,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
     timeline.Start();
   }
 #ifdef PADDLE_WITH_DISTRIBUTE
-  if (need_barrier_) {
+  if (use_barrier_) {
     operators::distributed::Communicator::GetInstance()
         ->BarrierTriggerDecrement();
   }
@@ -192,7 +192,7 @@ void HogwildWorker::TrainFiles() {
     thread_scope_->DropKids();
   }
 #ifdef PADDLE_WITH_DISTRIBUTE
-  if (need_barrier_) {
+  if (use_barrier_) {
     operators::distributed::Communicator::GetInstance()
         ->BarrierTriggerDecrement();
   }
