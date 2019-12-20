@@ -177,8 +177,16 @@ class TestMultiTask(unittest.TestCase):
     def test_1(self):
         pre_1, loss_1 = static()
         pre_2, loss_2 = dynamic()
-        self.assertTrue(np.allclose(pre_1, pre_2))
-        self.assertTrue(np.allclose(loss_1, loss_2))
+
+        print('pre_1 is {} \n pre_2 is {}'.format(pre_1, pre_2))
+        print('loss_1 is {} \n loss_2 is {}'.format(loss_1, loss_2))
+
+        self.assertTrue(
+            np.allclose(pre_1, pre_2),
+            msg='pre_1 is {} \n pre_2 is {}'.format(pre_1, pre_2))
+        self.assertTrue(
+            np.allclose(loss_1, loss_2),
+            msg='loss_1 is {} \n loss_2 is {}'.format(loss_1, loss_2))
 
 
 if __name__ == '__main__':

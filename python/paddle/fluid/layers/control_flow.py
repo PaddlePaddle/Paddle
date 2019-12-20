@@ -1887,30 +1887,36 @@ class ConditionalBlock(object):
         new_op_desc = parent_block.desc.append_op()
         new_op_desc.copy_from(grad_op_desc[0])
         new_op_desc._set_attr(op_role_attr_name, backward)
-
-        new_vars = set()
-        for grad_var_name in new_op_desc.output_arg_names():
-            if grad_sub_block.desc.has_var_recursive(
-                    cpt.to_bytes(grad_var_name)
-            ) or grad_var_name == core.empty_var_name():
-                continue
-            grad_sub_block.desc.var(cpt.to_bytes(grad_var_name))
-            new_vars.add(grad_var_name)
-            if grad_var_name not in op_grad_to_var:
-                continue
-
-        # infer_shape and infer_type
-        new_op_desc.infer_var_type(grad_sub_block.desc)
-        new_op_desc.infer_shape(grad_sub_block.desc)
-
         # set input and output manually
         new_op_desc.set_input('Input', param_list)
         new_op_desc.set_output('Input@GRAD',
                                [param + "@GRAD" for param in param_list])
 
+        new_vars = set()
+        for grad_var_name in new_op_desc.output_arg_names():
+            if parent_block.desc.has_var_recursive(
+                    cpt.to_bytes(grad_var_name)
+            ) or grad_var_name == core.empty_var_name():
+                continue
+            print("----- 2. block id : {}, grad_var_name : {} ".format(
+                parent_block.idx, grad_var_name))
+            parent_block.desc.var(cpt.to_bytes(grad_var_name))
+            new_vars.add(grad_var_name)
+            if grad_var_name not in op_grad_to_var:
+                continue
+
+        # infer_shape and infer_type
+        new_op_desc.infer_var_type(parent_block.desc)
+        new_op_desc.infer_shape(parent_block.desc)
+
+        # # set input and output manually
+        # new_op_desc.set_input('Input', param_list)
+        # new_op_desc.set_output('Input@GRAD',
+        #                        [param + "@GRAD" for param in param_list])
+
         for arg in new_op_desc.output_arg_names():
             if arg in new_vars:
-                _infer_var_data_type_shape_(arg, grad_sub_block)
+                _infer_var_data_type_shape_(arg, parent_block)
 
         self.helper.main_program._sync_with_cpp()
 
@@ -1922,6 +1928,12 @@ def copy_var_to_parent_block(var, layer_helper):
     parent_idx = prog.current_block().parent_idx
     assert parent_idx >= 0, "Got wrong parent block index when assigning var to parent scope in control_flow"
     parent_block = prog.block(parent_idx)
+
+    # No need to create parent_block_var if parent block already has the same var.
+    # Return parent block var directly.
+    if parent_block.has_var(var.name):
+        print("var already in parent block: {}".format(var.name))
+        return parent_block.var(var.name)
 
     parent_block_var = parent_block.create_var(
         dtype=var.dtype, shape=var.shape, type=var.type)

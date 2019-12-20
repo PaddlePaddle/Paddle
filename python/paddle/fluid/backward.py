@@ -958,6 +958,7 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
         for grad_var_name in op_desc.output_arg_names():
             if block.desc.has_var_recursive(cpt.to_bytes(
                     grad_var_name)) or grad_var_name == core.empty_var_name():
+                print("1. grad_var_name : ", grad_var_name)
                 continue
             block.desc.var(cpt.to_bytes(grad_var_name))
             new_vars.add(grad_var_name)
