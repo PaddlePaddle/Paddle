@@ -16,7 +16,9 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest
+import sys
+sys.path.append("../")
+from op_test import OpTest
 
 
 class TestSequenceConcat(OpTest):

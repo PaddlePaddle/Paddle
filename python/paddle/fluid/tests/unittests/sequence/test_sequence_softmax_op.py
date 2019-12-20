@@ -16,9 +16,11 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest
-from paddle.fluid.tests.unittests.test_softmax_op import stable_softmax
 import paddle.fluid.core as core
+import sys
+sys.path.append("../")
+from op_test import OpTest
+from test_softmax_op import stable_softmax
 
 
 class TestSequenceSoftmaxOp(OpTest):

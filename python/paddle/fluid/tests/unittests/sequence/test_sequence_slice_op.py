@@ -17,7 +17,8 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import sys
-from paddle.fluid.tests.unittests.op_test import OpTest
+sys.path.append("../")
+from op_test import OpTest
 
 
 class TestSequenceSliceOp(OpTest):

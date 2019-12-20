@@ -15,7 +15,9 @@
 import unittest
 import six
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest
+import sys
+sys.path.append("../")
+from op_test import OpTest
 
 
 class TestSequenceUnpadOp(OpTest):
