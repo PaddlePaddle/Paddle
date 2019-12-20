@@ -1442,13 +1442,13 @@ class Embedding(layers.Layer):
         self._w = value
 
     def forward(self, input):
+        attrs = {
+            'is_sparse': self._is_sparse,
+            'is_distributed': self._is_distributed,
+            'remote_prefetch': self._remote_prefetch,
+            'padding_idx': self._padding_idx
+        }
         if in_dygraph_mode():
-            attrs = {
-                'is_sparse': self._is_sparse,
-                'is_distributed': self._is_distributed,
-                'remote_prefetch': self._remote_prefetch,
-                'padding_idx': self._padding_idx
-            }
             inputs = {'Ids': [input], 'W': [self._w]}
             outs = core.ops.lookup_table_v2(inputs, attrs)
             return outs['Out'][0]
@@ -1459,12 +1459,7 @@ class Embedding(layers.Layer):
             inputs={'Ids': input,
                     'W': self._w},
             outputs={'Out': out},
-            attrs={
-                'is_sparse': self._is_sparse,
-                'is_distributed': self._is_distributed,
-                'remote_prefetch': self._remote_prefetch,
-                'padding_idx': self._padding_idx
-            })
+            attrs=attrs)
 
         return out
 

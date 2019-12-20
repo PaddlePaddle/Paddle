@@ -256,7 +256,8 @@ def concat(input, axis=0, name=None):
     if in_dygraph_mode():
         inputs = {'X': input}
         if not isinstance(axis, int):
-            raise ValueError("Input starts must be an int.")
+            raise TypeError(
+                "Input 'axis' in concat must be int in Dygraph mode.")
         attrs = {'axis': axis}
         outs = core.ops.concat(inputs, attrs)
         return outs['Out'][0]

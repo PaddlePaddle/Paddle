@@ -1214,13 +1214,14 @@ def softmax_with_cross_entropy(logits,
             out = fluid.layers.softmax_with_cross_entropy(
                 logits=fc, label=label)
     """
+    attrs = {
+        'soft_label': soft_label,
+        'ignore_index': ignore_index,
+        'numeric_stable_mode': numeric_stable_mode,
+        'axis': axis
+    }
+
     if in_dygraph_mode():
-        attrs = {
-            'soft_label': soft_label,
-            'ignore_index': ignore_index,
-            'numeric_stable_mode': numeric_stable_mode,
-            'axis': axis
-        }
         inputs = {'Logits': [logits], 'Label': [label]}
         outs = core.ops.softmax_with_cross_entropy(inputs, attrs)
         if not return_softmax:
@@ -1237,12 +1238,7 @@ def softmax_with_cross_entropy(logits,
                 'Label': label},
         outputs={'Softmax': softmax,
                  'Loss': loss},
-        attrs={
-            'soft_label': soft_label,
-            'ignore_index': ignore_index,
-            'numeric_stable_mode': numeric_stable_mode,
-            'axis': axis
-        })
+        attrs=attrs)
 
     if return_softmax:
         return loss, softmax

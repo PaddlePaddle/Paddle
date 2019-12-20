@@ -292,8 +292,7 @@ class TestImperative(unittest.TestCase):
 
     def test_layer_in_out(self):
         np_inp = np.array([1.0, 2.0, -1.0], dtype=np.float32)
-        place = fluid.CPUPlace()
-        with fluid.dygraph.guard(place):
+        with fluid.dygraph.guard():
             var_inp = fluid.dygraph.base.to_variable(np_inp)
             var_inp.stop_gradient = False
             l = MyLayer("my_layer")

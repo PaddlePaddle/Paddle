@@ -161,18 +161,6 @@ class ConstantInitializer(Initializer):
         Returns:
             the initialization op
         """
-        if in_dygraph_mode():
-            out_dtype = var.dtype
-            attrs = {
-                "shape": var.shape,
-                "dtype": int(out_dtype),
-                "value": float(self._value),
-                'force_cpu': self._force_cpu or force_init_on_cpu()
-            }
-            outputs = {"Out": [var]}
-            core.ops.fill_constant({}, attrs, outputs)
-            return None
-
         assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
 
