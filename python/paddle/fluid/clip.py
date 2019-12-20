@@ -498,7 +498,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
 
 
 def append_gradient_clip_ops(param_grads):
-    # Todo:  Whether clip related op belong to Optimize guard should be dicussed in future.
+    # Todo(chengmo):  Whether clip related op belong to Optimize guard should be dicussed in future.
     context = dict()
     for p, g in param_grads:
         if g is None:
