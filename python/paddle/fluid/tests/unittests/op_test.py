@@ -199,18 +199,21 @@ class OpTest(unittest.TestCase):
                 " please set self.__class__.op_type=the_real_op_type manually.")
 
         # case in NO_FP64_CHECK_GRAD_CASES and op in NO_FP64_CHECK_GRAD_OP_LIST should be fixed
-        if cls.__name__ not in op_check_grad_white_list.NO_NEED_CHECK_GRAD_CASES \
-            and cls.op_type not in op_check_grad_white_list.EMPTY_GRAD_OP_LIST \
-            and cls.op_type not in op_accuracy_white_list.NO_FP64_CHECK_GRAD_OP_LIST:
-            if cls.dtype is None or (cls.dtype in [np.float16, np.int64, np.int32, np.int16] \
-                and not hasattr(cls, "exist_check_grad")):
+        if not hasattr(cls, "no_need_check_grad") \
+            and cls.op_type not in op_check_grad_white_list.EMPTY_GRAD_OP_LIST:
+            if cls.dtype is None or \
+                (cls.dtype in [np.float16, np.int64, np.int32, np.int16] \
+                    and cls.op_type not in op_accuracy_white_list.NO_CHECK_GRAD_OP_LIST \
+                    and not hasattr(cls, "exist_check_grad")):
                 raise AssertionError("This test of %s op needs check_grad." %
                                      cls.op_type)
 
-            if cls.dtype in [np.float32, np.float64] and \
-                not hasattr(cls, 'exist_fp64_check_grad'):
+            if cls.dtype in [np.float32, np.float64] \
+                and cls.op_type not in op_accuracy_white_list.NO_FP64_CHECK_GRAD_OP_LIST \
+                and not hasattr(cls, 'exist_fp64_check_grad'):
                 raise AssertionError(
-                    "This test of %s op needs fp64 check_grad." % cls.op_type)
+                    "This test of %s op needs check_grad with fp64 precision." %
+                    cls.op_type)
 
         if hasattr(get_numeric_gradient, 'check_shape_time') \
             and get_numeric_gradient.check_shape_time == 0 \

@@ -51,5 +51,5 @@ EMPTY_GRAD_OP_LIST = [
     'retinanet_target_assign', 'rpn_target_assign', 'requantize',
     'distribute_fpn_proposals', 'auc', 'quantize', 'positive_negative_pair',
     'hash', 'less_than', 'not_equal', 'eye', 'chunk_eval', 'is_empty',
-    'proximal_gd', 'collect_fpn_proposals', 'unique_with_counts'
+    'proximal_gd', 'collect_fpn_proposals', 'unique_with_counts', 'seed'
 ]
