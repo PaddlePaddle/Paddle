@@ -867,7 +867,8 @@ class OpTest(unittest.TestCase):
                                 check_dygraph=True,
                                 inplace_atol=None):
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
-        if self.dtype == np.float64:
+        if self.dtype == np.float64 and \
+            self.op_type not in op_threshold_white_list.NEED_FIX_FP64_CHECK_OUTPUT_THRESHOLD_OP_LIST:
             atol = 0
 
         if check_dygraph:
@@ -1108,8 +1109,9 @@ class OpTest(unittest.TestCase):
 
         for a, b, name in six.moves.zip(numeric_grads, analytic_grads, names):
             abs_a = np.abs(a)
-            if self.dtype == np.float64:
-                abs_a[abs_a < 1e-10] = 1e-10
+            if self.dtype == np.float64 and \
+                self.op_type not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST:
+                abs_a[abs_a < 1e-7] = 1
             else:
                 abs_a[abs_a < 1e-3] = 1
 
@@ -1169,8 +1171,8 @@ class OpTest(unittest.TestCase):
         self._check_grad_helper()
         if self.dtype == np.float64 and \
             self.op_type not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST:
-            numeric_grad_delta = 1e-7
-            max_relative_error = 1e-10
+            numeric_grad_delta = 1e-5
+            max_relative_error = 1e-7
 
         cache_list = None
         if hasattr(self, "cache_name_list"):
