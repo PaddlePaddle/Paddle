@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-NEED_FIX_FP64_THRESHOLD_OP_LIST = [
+NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST = [
     'abs', 'acos', 'add_position_encoding', 'affine_channel', 'asin', 'assign',
     'atan', 'bilinear_interp', 'bilinear_tensor_product', 'bpr_loss',
     'center_loss', 'concat', 'cos', 'crop', 'crop_tensor', 'cross_entropy',

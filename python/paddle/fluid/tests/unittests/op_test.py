@@ -867,8 +867,7 @@ class OpTest(unittest.TestCase):
                                 check_dygraph=True,
                                 inplace_atol=None):
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
-        if self.dtype == np.float64 and \
-            self.op_type not in op_threshold_white_list.NEED_FIX_FP64_THRESHOLD_OP_LIST:
+        if self.dtype == np.float64:
             atol = 0
 
         if check_dygraph:
@@ -1169,7 +1168,7 @@ class OpTest(unittest.TestCase):
 
         self._check_grad_helper()
         if self.dtype == np.float64 and \
-            self.op_type not in op_threshold_white_list.NEED_FIX_FP64_THRESHOLD_OP_LIST:
+            self.op_type not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST:
             numeric_grad_delta = 1e-7
             max_relative_error = 1e-10
 
