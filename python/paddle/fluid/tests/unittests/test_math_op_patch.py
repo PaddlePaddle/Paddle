@@ -210,7 +210,7 @@ class TestMathOpPatches(unittest.TestCase):
         exe = fluid.Executor(place)
         a_np = numpy.array([3, 4, 10, 14, 9, 18]).astype('float32')
         b_np = numpy.array([3, 4, 11, 15, 8, 18]).astype('float32')
-        # d = c
+
         c_np, = exe.run(fluid.default_main_program(),
                         feed={"a": a_np,
                               "b": b_np},
@@ -219,21 +219,26 @@ class TestMathOpPatches(unittest.TestCase):
         self.assertTrue(numpy.array_equal(c_np, a_np == b_np))
         self.assertEqual(c.dtype, fluid.core.VarDesc.VarType.BOOL)
 
-    # @prog_scope()
-    # def test_equal(self):
-    #     a = fluid.layers.data(name="a", shape=[1], dtype='float')
-    #     b = fluid.layers.data(name="b", shape=[1], dtype='float')
-    #     c = (a == b)
-    #     print(c.dtype)
-    #     place = fluid.CPUPlace()
-    #     exe = fluid.Executor(place)
-    #     a_np = numpy.array([3, 4, 10, 14, 9, 18]).astype('float')
-    #     b_np = numpy.array([3, 4, 11, 15, 8, 18]).astype('float')
-    #     c_np, = exe.run(fluid.default_main_program(),
-    #                     feed={"a": a_np, "b": b_np},
-    #                     fetch_list=[c])
-    #     print(c_np, c)
-    #     self.assertTrue(numpy.array_equal(c_np, b_np == b_np))
+    @prog_scope()
+    def test_equal_and_cond(self):
+        a = fluid.layers.data(name="a", shape=[1], dtype='float32')
+        b = fluid.layers.data(name="b", shape=[1], dtype='float32')
+
+        one = fluid.layers.ones(shape=[1], dtype='int32')
+        zero = fluid.layers.zeros(shape=[1], dtype='int32')
+        cond = (one == zero)
+        c = fluid.layers.cond(cond, lambda: a + b, lambda: a - b)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        a_np = numpy.array([3, 4, 10, 14, 9, 18]).astype('float')
+        b_np = numpy.array([3, 4, 11, 15, 8, 18]).astype('float')
+        c_np, = exe.run(fluid.default_main_program(),
+                        feed={"a": a_np,
+                              "b": b_np},
+                        fetch_list=[c])
+
+        self.assertTrue(numpy.array_equal(c_np, a_np - b_np))
 
     @prog_scope()
     def test_neg(self):
