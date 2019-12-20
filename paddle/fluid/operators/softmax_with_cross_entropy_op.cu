@@ -200,6 +200,10 @@ static __global__ void RowReductionForDiffMaxSum(const T* logits_data,
     softmax[beg_idx] -= diff_max_sum;
     beg_idx += step;
   }
+
+  // Note(zhiqiu): since different threads may use max_data[blockIdx.x] to
+  // calculate diff_max_sum, __syncthreads() is needed here.
+  __syncthreads();
   if (threadIdx.x == 0) max_data[blockIdx.x] = 0;
 }
 

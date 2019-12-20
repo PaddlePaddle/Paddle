@@ -15,17 +15,16 @@
 INCLUDE(ExternalProject)
 
 SET(THREADPOOL_PREFIX_DIR ${THIRD_PARTY_PATH}/threadpool)
-set(THREADPOOL_REPOSITORY https://github.com/progschj/ThreadPool.git)
-set(THREADPOOL_TAG        9a42ec1329f259a5f4881a291db1dcb8f2ad9040)
-
-INCLUDE_DIRECTORIES(${THREADPOOL_INCLUDE_DIR})
+SET(THREADPOOL_REPOSITORY https://github.com/progschj/ThreadPool.git)
+SET(THREADPOOL_TAG        9a42ec1329f259a5f4881a291db1dcb8f2ad9040)
 
 cache_third_party(extern_threadpool
     REPOSITORY   ${THREADPOOL_REPOSITORY}
     TAG          ${THREADPOOL_TAG}
     DIR          ${THREADPOOL_PREFIX_DIR})
 
-include_directories(${THREADPOOL_SOURCE_DIR})
+SET(THREADPOOL_INCLUDE_DIR ${THREADPOOL_SOURCE_DIR})
+INCLUDE_DIRECTORIES(${THREADPOOL_INCLUDE_DIR})
 
 ExternalProject_Add(
     extern_threadpool

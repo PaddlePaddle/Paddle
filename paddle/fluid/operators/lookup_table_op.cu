@@ -94,8 +94,8 @@ class LookupTableCUDAKernel : public framework::OpKernel<T> {
     auto *output_t = context.Output<LoDTensor>("Out");
     int64_t padding_idx = context.Attr<int64_t>("padding_idx");
 
-    auto id_name = context.Inputs("Ids").front();
-    auto out_name = context.Outputs("Out").front();
+    auto id_name = context.InputNames("Ids").front();
+    auto out_name = context.OutputNames("Out").front();
 
     size_t N = table_t->dims()[0];
     size_t D = table_t->dims()[1];

@@ -34,6 +34,14 @@ class ScaleOp : public framework::OperatorWithKernel {
                    "Input(X) of ScaleOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of ScaleOp should not be null.");
+
+    if (ctx->IsRuntime() && ctx->HasInput("ScaleTensor")) {
+      auto scale = ctx->Inputs("ScaleTensor");
+      PADDLE_ENFORCE_EQ(scale.size(), 1,
+                        platform::errors::InvalidArgument(
+                            "Input(ScaleTensor) size must be 1"));
+    }
+
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
@@ -43,6 +51,11 @@ class ScaleOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "(Tensor) Input tensor of scale operator.");
+    AddInput("ScaleTensor",
+             "(Tensor) If provided, use this as "
+             "scale factor, this has a higher priority than "
+             "attr(scale), the shape of this tensor MUST BE 1.")
+        .AsDispensable();
     AddOutput("Out", "(Tensor) Output tensor of scale operator.");
     AddComment(R"DOC(
 **Scale operator**
@@ -90,6 +103,9 @@ class ScaleGradMaker : public framework::SingleGradOpMaker<T> {
     auto *grad_op = new T();
     grad_op->SetType("scale");
     grad_op->SetInput("X", this->OutputGrad("Out"));
+    if (this->HasInput("ScaleTensor") > 0) {
+      grad_op->SetInput("ScaleTensor", this->Input("ScaleTensor"));
+    }
     grad_op->SetOutput("Out", this->InputGrad("X"));
     grad_op->SetAttr("scale", this->GetAttr("scale"));
     grad_op->SetAttr("bias", 0.0f);

@@ -27,9 +27,9 @@ class TestSequenceSoftmaxOp(OpTest):
         self.use_cudnn = False
         self.init_op_type()
 
-        x = np.random.uniform(0.1, 1, (11, 1)).astype("float32")
+        x = np.random.uniform(0.1, 1, (110, 1)).astype("float32")
         self.init_lod()
-        out = np.zeros((11, 1)).astype("float32")
+        out = np.zeros((110, 1)).astype("float32")
         offset = 0
         for i in range(len(self.lod[0])):
             if (self.lod[0][i] == 0):
@@ -46,7 +46,7 @@ class TestSequenceSoftmaxOp(OpTest):
         self.attrs = {'use_cudnn': self.use_cudnn, }
 
     def init_lod(self):
-        self.lod = [[4, 1, 3, 3]]
+        self.lod = [[40, 10, 30, 30]]
 
     def init_op_type(self):
         pass
@@ -61,10 +61,9 @@ class TestSequenceSoftmaxOp(OpTest):
     def test_check_grad(self):
         if self.use_cudnn:
             place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place, ["X"], "Out", max_relative_error=0.01)
+            self.check_grad_with_place(place, ["X"], "Out")
         else:
-            self.check_grad(["X"], "Out", max_relative_error=0.01)
+            self.check_grad(["X"], "Out")
 
 
 # ----------------cudnn Sequencesoftmax----------------
@@ -77,17 +76,17 @@ class TestSequenceSoftmaxCUDNNOp(TestSequenceSoftmaxOp):
 
 class TestSequenceSoftmaxOpSeqLen0Case0(TestSequenceSoftmaxOp):
     def init_lod(self):
-        self.lod = [[4, 0, 4, 3]]
+        self.lod = [[40, 0, 40, 30]]
 
 
 class TestSequenceSoftmaxOpSeqLen0Case1(TestSequenceSoftmaxOp):
     def init_lod(self):
-        self.lod = [[0, 4, 7, 0]]
+        self.lod = [[0, 40, 70, 0]]
 
 
 class TestSequenceSoftmaxOpSeqLen0Case2(TestSequenceSoftmaxOp):
     def init_lod(self):
-        self.lod = [[0, 0, 0, 11]]
+        self.lod = [[0, 0, 0, 110]]
 
 
 if __name__ == "__main__":

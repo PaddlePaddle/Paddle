@@ -299,8 +299,8 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
         gt_match_mask->mutable_data<int>({n, b}, ctx.GetPlace());
 
     const T* gt_score_data;
+    Tensor gtscore;
     if (!gt_score) {
-      Tensor gtscore;
       gtscore.mutable_data<T>({n, b}, ctx.GetPlace());
       math::SetConstant<platform::CPUDeviceContext, T>()(
           ctx.template device_context<platform::CPUDeviceContext>(), &gtscore,
@@ -454,8 +454,8 @@ class Yolov3LossGradKernel : public framework::OpKernel<T> {
     memset(input_grad_data, 0, input_grad->numel() * sizeof(T));
 
     const T* gt_score_data;
+    Tensor gtscore;
     if (!gt_score) {
-      Tensor gtscore;
       gtscore.mutable_data<T>({n, b}, ctx.GetPlace());
       math::SetConstant<platform::CPUDeviceContext, T>()(
           ctx.template device_context<platform::CPUDeviceContext>(), &gtscore,

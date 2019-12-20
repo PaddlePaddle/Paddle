@@ -236,7 +236,7 @@ class PSLib(Fleet):
               fleet.save_inference_model(dirname="hdfs:/my/path")
 
         """
-        self._fleet_ptr.save_model(dirname)
+        self._fleet_ptr.save_model(dirname, 0)
 
     def print_table_stat(self, table_id):
         """

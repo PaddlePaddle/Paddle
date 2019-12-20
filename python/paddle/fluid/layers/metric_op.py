@@ -167,25 +167,31 @@ def auc(input,
     # make tp, tn, fp, fn persistable, so that can accumulate all batches.
 
     # for batch auc
+    # we create slide_step+1 buckets, the first slide_steps buckets store 
+    # historical batch-level values, and the last bucket stores the sum values of 
+    # previous slide_step buckets.
+    # The index of bucket that the newest batch will use is determined by batch_id mod slide_steps,
+    # and batch_id is store in the last posision of following variable
     batch_stat_pos = helper.create_global_variable(
         persistable=True,
         dtype='int64',
-        shape=[slide_steps, num_thresholds + 1])
+        shape=[(1 + slide_steps) * (num_thresholds + 1) + 1])
     batch_stat_neg = helper.create_global_variable(
         persistable=True,
         dtype='int64',
-        shape=[slide_steps, num_thresholds + 1])
+        shape=[(1 + slide_steps) * (num_thresholds + 1) + 1])
 
     # for global auc
+    # Needn't maintain the batch id
     stat_pos = helper.create_global_variable(
-        persistable=True, dtype='int64', shape=[1, num_thresholds + 1])
+        persistable=True, dtype='int64', shape=[num_thresholds + 1])
     stat_neg = helper.create_global_variable(
-        persistable=True, dtype='int64', shape=[1, num_thresholds + 1])
+        persistable=True, dtype='int64', shape=[num_thresholds + 1])
 
     for var in [batch_stat_pos, batch_stat_neg, stat_pos, stat_neg]:
         helper.set_variable_initializer(
             var, Constant(
-                value=0.0, force_cpu=True))
+                value=0.0, force_cpu=False))
 
     # Batch AUC
     helper.append_op(

@@ -46,7 +46,8 @@ inline void VisitDataType(PD_DataType type, Visitor visitor) {
 
   _DataType_(VisitDataTypeCallback);
 #undef VisitDataTypeCallback
-  PADDLE_THROW_ERROR("Unsupported data type. ");
+  PADDLE_THROW(
+      paddle::platform::errors::InvalidArgument("Unsupported data type."));
 }
 
 struct PD_ZeroCopyFunctor {

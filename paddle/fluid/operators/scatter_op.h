@@ -36,7 +36,7 @@ class ScatterOpKernel : public framework::OpKernel<T> {
     double overwrite = ctx.Attr<bool>("overwrite");
 
     // In place output: Out = X, Out[Ids] = Updates
-    framework::TensorCopySync(*X, ctx.GetPlace(), Out);
+    framework::TensorCopy(*X, ctx.GetPlace(), Out);
     // Apply ScatterUpdate: Out[index] = Updates[:]
     const auto &index_type = Ids->type();
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
@@ -76,7 +76,7 @@ class ScatterGradientOpKernel : public framework::OpKernel<T> {
 
     if (dX) {
       // In place gradient: dX = dO
-      framework::TensorCopySync(*dOut, ctx.GetPlace(), dX);
+      framework::TensorCopy(*dOut, ctx.GetPlace(), dX);
     }
     if (dUpdates) {
       dUpdates->mutable_data<T>(ctx.GetPlace());

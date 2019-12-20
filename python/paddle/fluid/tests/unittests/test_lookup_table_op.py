@@ -27,7 +27,7 @@ from paddle.fluid import Program, program_guard
 class TestLookupTableOp(OpTest):
     def setUp(self):
         self.op_type = "lookup_table"
-        table = np.random.random((17, 31)).astype("float32")
+        table = np.random.random((17, 31)).astype("float64")
         ids = np.random.randint(0, 17, 4).astype("int64")
         ids_expand = np.expand_dims(ids, axis=1)
         self.inputs = {'W': table, 'Ids': ids_expand}
@@ -43,7 +43,7 @@ class TestLookupTableOp(OpTest):
 class TestLookupTableOpWithTensorIds(OpTest):
     def setUp(self):
         self.op_type = "lookup_table"
-        table = np.random.random((17, 31)).astype("float32")
+        table = np.random.random((17, 31)).astype("float64")
         ids = np.random.randint(
             low=0, high=17, size=(2, 4, 5, 1)).astype("int64")
         self.inputs = {'W': table, 'Ids': ids}
@@ -85,7 +85,7 @@ class TestLookupTableOpWithTensorIdsAndPadding(TestLookupTableOpWithTensorIds):
         pass
 
 
-class TestLookupTableWIsSelectedRows(OpTest):
+class TestLookupTableWIsSelectedRows(unittest.TestCase):
     def prepare_ids(self, scope, place):
         ids_tensor = scope.var('Ids').get_tensor()
         ids_array = np.array([[0], [4], [3], [5]]).astype("int64")
@@ -152,7 +152,7 @@ class TestLookupTableWithTensorIdsWIsSelectedRows(
             assert (row == result_array[idx]).all()
 
 
-class TestEmbedOpError(OpTest):
+class TestEmbedOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             input_data = np.random.randint(0, 10, (4, 1)).astype("int64")
@@ -250,7 +250,7 @@ class TestLookupTableOpWithTensorIdsAndPaddingInt8(
         pass
 
 
-class TestLookupTableWIsSelectedRowsInt8(OpTest):
+class TestLookupTableWIsSelectedRowsInt8(unittest.TestCase):
     def prepare_ids(self, scope, place):
         ids_tensor = scope.var('Ids').get_tensor()
         ids_array = np.array([[0], [4], [3], [5]]).astype("int64")

@@ -33,7 +33,7 @@ class UniqueNameGenerator {
  public:
   explicit UniqueNameGenerator(std::string prefix = "") : prefix_(prefix) {}
   std::string Generate(std::string key = "tmp") {
-    return prefix_ + key + "_" + std::to_string(++id_);
+    return prefix_ + key + "_" + std::to_string(id_++);
   }
 
  private:
@@ -57,6 +57,9 @@ class Tracer {
   void TraceOp(const std::string& type, const NameVarBaseMap& ins,
                const NameVarBaseMap& outs, framework::AttributeMap attrs,
                const platform::Place& place, bool trace_bacward);
+
+  void TraceOp(const std::string& type, const NameVarBaseMap& ins,
+               const NameVarBaseMap& outs, framework::AttributeMap attrs);
 
   bool ComputeRequiredGrad(const NameVarBaseMap& ins,
                            const NameVarBaseMap& outs, bool trace_backward);
