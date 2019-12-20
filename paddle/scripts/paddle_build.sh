@@ -1143,11 +1143,13 @@ function main() {
         check_style
         ;;
       cicheck)
-        cmake_gen ${PYTHON_ABI:-""}
-        build ${parallel_number}
-        enable_unused_var_check
+        #cmake_gen ${PYTHON_ABI:-""}
+        #build ${parallel_number}
+        #enable_unused_var_check
         #parallel_test
-        single_test test_qat2_int8_resnet50_mkldnn
+        #single_test test_qat2_int8_resnet50_mkldnn
+        nvidia-docker stats --no-stream
+        dmesg
         ;;
       cicheck_brpc)
         cmake_gen ${PYTHON_ABI:-""}
