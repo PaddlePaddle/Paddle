@@ -14,13 +14,14 @@
 
 from __future__ import print_function
 
+from . import core
 import copy
 import six
 
 import functools
 from . import layers
 from . import framework
-from . import core
+from . import name_scope
 
 __all__ = [
     'set_gradient_clip',
@@ -371,43 +372,47 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
                                                               self.clip_norm)
 
     def _process_context(self, context, param, grad):
-        if self.group_name not in context:
-            context[self.group_name] = []
-            context[self.group_name + "_clip_value"] = self.clip_norm
-            context[self.group_name + "_clip"] = layers.fill_constant(
-                shape=[1], dtype="float32", value=self.clip_norm)
-        else:
-            if not self.clip_norm == context[self.group_name + "_clip_value"]:
-                raise ValueError(
-                    "All parameters' 'clip_norm' of a same group should be the same"
-                )
+        with name_scope("gradient_clip_by_global_norm"):
+            if self.group_name not in context:
+                context[self.group_name] = []
+                context[self.group_name + "_clip_value"] = self.clip_norm
+                context[self.group_name + "_clip"] = layers.fill_constant(
+                    shape=[1], dtype="float32", value=self.clip_norm)
+            else:
+                if not self.clip_norm == context[self.group_name +
+                                                 "_clip_value"]:
+                    raise ValueError(
+                        "All parameters' 'clip_norm' of a same group should be the same"
+                    )
 
-        merge_grad = grad
-        if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
-            merge_grad = layers.merge_selected_rows(grad)
-            merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
+            merge_grad = grad
+            if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
+                merge_grad = layers.merge_selected_rows(grad)
+                merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
 
-        square = layers.square(merge_grad)
-        local_norm_var = layers.reduce_sum(input=square)
-        context[self.group_name].append(local_norm_var)
+            square = layers.square(merge_grad)
+            local_norm_var = layers.reduce_sum(input=square)
+            context[self.group_name].append(local_norm_var)
 
         self.context = context
 
     def _create_operators(self, param, grad):
-        group_scale_name = self.group_name + "_scale"
-        if group_scale_name not in self.context:
-            group_norm_var = layers.sums(input=self.context[self.group_name])
-            group_norm_var = layers.sqrt(x=group_norm_var)
-            clip_var = self.context[self.group_name + "_clip"]
-            group_scale_var = layers.elementwise_div(
-                x=clip_var,
-                y=layers.elementwise_max(
-                    x=clip_var, y=group_norm_var))
-            assert group_scale_var.shape == (1, )
-            self.context[group_scale_name] = group_scale_var
+        with name_scope("gradient_clip_by_global_norm"):
+            group_scale_name = self.group_name + "_scale"
+            if group_scale_name not in self.context:
+                group_norm_var = layers.sums(
+                    input=self.context[self.group_name])
+                group_norm_var = layers.sqrt(x=group_norm_var)
+                clip_var = self.context[self.group_name + "_clip"]
+                group_scale_var = layers.elementwise_div(
+                    x=clip_var,
+                    y=layers.elementwise_max(
+                        x=clip_var, y=group_norm_var))
+                assert group_scale_var.shape == (1, )
+                self.context[group_scale_name] = group_scale_var
 
-        new_grad = layers.elementwise_mul(
-            x=grad, y=self.context[group_scale_name])
+            new_grad = layers.elementwise_mul(
+                x=grad, y=self.context[group_scale_name])
 
         return param, new_grad
 
