@@ -18,6 +18,7 @@ import sys
 import numpy as np
 import collections
 import six
+import re
 from . import parallel_helper
 from .. import unique_name
 from paddle.fluid import core
@@ -27,6 +28,14 @@ from paddle.fluid import framework
 from ..param_attr import ParamAttr
 
 __all__ = ['Layer']
+
+_first_cap_re = re.compile('(.)([A-Z][a-z]+)')
+_all_cap_re = re.compile('([a-z])([A-Z])')
+
+
+def _convert_camel_to_snake(name):
+    s1 = _first_cap_re.sub(r'\1_\2', name)
+    return _all_cap_re.sub(r'\1_\2', s1).lower()
 
 
 class Layer(core.Layer):
@@ -49,7 +58,7 @@ class Layer(core.Layer):
 
     def __init__(self, name_scope=None, dtype=core.VarDesc.VarType.FP32):
         if name_scope is None:
-            name_scope = self.__class__.__name__.lower()
+            name_scope = _convert_camel_to_snake(self.__class__.__name__)
             self._full_name = unique_name.generate(name_scope)
         else:
             # TODO: remove name_scope parameter and all hard-coded usages
