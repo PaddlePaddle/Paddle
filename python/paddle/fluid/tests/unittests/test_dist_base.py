@@ -137,6 +137,8 @@ class TestDistRunnerBase(object):
             dist_strategy.use_local_sgd = True
         if args.ut4grad_allreduce:
             dist_strategy._ut4grad_allreduce = True
+        if args.sync_batch_norm:
+            dist_strategy.sync_batch_norm = True
 
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
@@ -487,6 +489,7 @@ def runtime_main(test_class):
         required=False,
         type=bool,
         default=False)
+    parser.add_argument('--sync_batch_norm', action='store_true')
 
     args = parser.parse_args()
 
@@ -837,6 +840,8 @@ class TestDistBase(unittest.TestCase):
                 tr_cmd += " --use_local_sgd"
             if self._ut4grad_allreduce:
                 tr_cmd += " --ut4grad_allreduce"
+            if hasattr(self, '_sync_batch_norm') and self._sync_batch_norm:
+                tr_cmd += " --sync_batch_norm"
 
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
             env['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')

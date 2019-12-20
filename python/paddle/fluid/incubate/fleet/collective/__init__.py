@@ -345,7 +345,7 @@ class CollectiveOptimizer(DistributedOptimizer):
             exec_strategy.num_threads = 1
             logging.warn(
                 "use sync_batch_norm will hang when set num_threads > 1, so "
-                "set num_threads=1, nccl_comm_num=1, use_hierarchical_allreduce=1."
+                "set num_threads=1, nccl_comm_num=1, use_hierarchical_allreduce=False."
             )
 
         if self.print_config:
