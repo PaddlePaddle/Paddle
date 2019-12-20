@@ -56,10 +56,6 @@ class TestLookupTableOpWithTensorIds(OpTest):
         self.check_grad(['W'], 'Out', no_grad_set=set('Ids'))
 
 
-@skip_check_grad_ci(
-    reason="Since paddings are not trainable and fixed in forward,"
-    "the gradient of paddings makes no sense and we don't "
-    "test the gradient here.")
 class TestLookupTableOpWithPadding(TestLookupTableOp):
     def test_check_output(self):
         ids = np.squeeze(self.inputs['Ids'])

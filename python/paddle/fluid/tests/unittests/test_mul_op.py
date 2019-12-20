@@ -17,7 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid.core as core
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
@@ -66,6 +66,7 @@ class TestMulOpError(unittest.TestCase):
             self.assertRaises(TypeError, fluid.layers.mul, x3, x4)
 
 
+@skip_check_grad_ci(reason="for test skip_check_grad_ci approval")
 class TestMulOp2(OpTest):
     def setUp(self):
         self.op_type = "mul"
