@@ -40,7 +40,7 @@ class TestConcatOp(OpTest):
         }
 
     def get_dtype(self):
-        return "float32"
+        return "float64"
 
     def test_check_output(self):
         self.check_output()

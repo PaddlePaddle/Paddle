@@ -54,37 +54,6 @@ EMPTY_GRAD_OP_LIST = [
     'proximal_gd', 'collect_fpn_proposals', 'unique_with_counts'
 ]
 
-# Special cases do not need to check grad
-NO_NEED_CHECK_GRAD_CASES = [
-    'TestLookupTableOpWithPadding',
-    'TestLookupTableOpWithTensorIdsAndPadding',
-    'TestLookupTableOpWithPadding',
-    'TestLookupTableOpWithTensorIdsAndPadding',
-    'TestSeqMaxPool2DInference',
-    'TestSeqMaxPool2DInferenceLen0',
-    'TestSeqMaxPool2DInferenceLen0LoDLevel2',
-    'TestDropoutOp4',
-    'TestDropoutOp5',
-    'TestDropoutOp8',
-    'TestDropoutOp9',
-    'TestFP16DropoutOp',
-    'TestFP16DropoutOp2',
-    'TestExpandOpBoolean',
-    'TestFusedEmbeddingSeqPoolOp',
-    'TestMKLDNNConcatOp',
-    'TestMKLDNNConcatOp',
-    'TestMKLDNNConcatOp3',
-    'TestElementwiseMulMKLDNNOp_Integrated_With_Convs',
-    'TestConv2dTransposeMKLDNNOp',
-    'TestMKLDNNFuseBias',
-    'TestMKLDNNWithPad',
-    'TestMKLDNNWithStride',
-    'TestMKLDNNWithAsymPad',
-    'TestMKLDNNWithSamePad',
-    'TestMKLDNNWithValidPad',
-    'TestMKLDNNWithValidPad_NHWC',
-]
-
 NEED_TO_FIX_OP_LIST = [
     'row_conv', 'mul', 'smooth_l1_loss', 'multiplex', 'sequence_conv',
     'conv_shift', 'margin_rank_loss', 'lstm', 'lstmp', 'lod_reset',
@@ -97,3 +66,4 @@ NEED_TO_FIX_OP_LIST = [
     'lookup_table_v2', 'conv2d', 'gru_unit', 'lookup_table', 'conv3d',
     'deformable_conv_v1'
 ]
+

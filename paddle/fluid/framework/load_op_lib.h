@@ -101,6 +101,7 @@ void LoadOpLib(const std::string &dso_name) {
     info.infer_no_need_buffer_vars_ = n.second.infer_no_need_buffer_vars_;
     info.use_default_grad_op_desc_maker_ =
         n.second.use_default_grad_op_desc_maker_;
+    info.use_empty_grad_op_desc_maker_ = n.second.use_empty_grad_op_desc_maker_;
 
     info_map.Insert(type, info);
   }
