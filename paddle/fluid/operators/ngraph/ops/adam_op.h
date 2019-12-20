@@ -68,8 +68,8 @@ void BuildAdamNode(
   auto delta = ElementwiseScalar<ngraph::op::Multiply>(updated_lr, param_grad);
   auto param_out = std::make_shared<ngraph::op::Subtract>(param, delta);
 
-  auto beta1_pow_out = std::make_shared<ngraph::op::Multiply>(beta1, beta1pow);
-  auto beta2_pow_out = std::make_shared<ngraph::op::Multiply>(beta2, beta2pow);
+  auto beta1_pow_out = ElementwiseScalar<ngraph::op::Multiply>(beta1, beta1pow);
+  auto beta2_pow_out = ElementwiseScalar<ngraph::op::Multiply>(beta2, beta2pow);
 
   platform::SetOutputNode(op, "Moment1Out", moment1out, ngb_node_map);
   platform::SetOutputNode(op, "Moment2Out", moment2out, ngb_node_map);
