@@ -180,11 +180,15 @@ class Conv2D(layers.Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._dtype = dtype
-        if (self._num_channels == self._groups and
-                num_filters % self._num_channels == 0 and not self._use_cudnn):
-            self._l_type = 'depthwise_conv2d'
-        else:
-            self._l_type = 'conv2d'
+
+        # TODO: recover the usage of depthwise_conv2d when it's
+        #  kernel fixed https://github.com/PaddlePaddle/Paddle/issues/17098
+        # if (self._num_channels == self._groups and
+        #         num_filters % self._num_channels == 0 and not self._use_cudnn):
+        #     self._l_type = 'depthwise_conv2d'
+        # else:
+        #     self._l_type = 'conv2d'
+        self._l_type = 'conv2d'
 
         self._num_channels = num_channels
         if self._groups is None:

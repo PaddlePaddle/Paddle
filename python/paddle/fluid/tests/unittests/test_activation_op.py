@@ -42,7 +42,6 @@ class TestSqrtOpError(unittest.TestCase):
 class TestActivation(OpTest):
     def setUp(self):
         self.op_type = "exp"
-        self.dtype = np.float32
         self.init_dtype()
         self.init_kernel_type()
 
@@ -61,7 +60,7 @@ class TestActivation(OpTest):
         self.check_grad(['X'], 'Out')
 
     def init_dtype(self):
-        self.dtype = np.float32
+        self.dtype = np.float64
 
     def init_kernel_type(self):
         pass
@@ -77,6 +76,9 @@ class TestSigmoid(TestActivation):
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
+
+    def init_dtype(self):
+        self.dtype = np.float32
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -105,7 +107,6 @@ class TestTanh(TestActivation):
     def setUp(self):
         self.op_type = "tanh"
         self.init_dtype()
-
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         out = np.tanh(x)
 
@@ -116,6 +117,12 @@ class TestTanh(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+    def init_dtype(self):
+        #TODO If dtype is float64, the output (Out) has diff at CPUPlace
+        # when using and not using inplace. Therefore, set dtype as float32
+        # for now.
+        self.dtype = np.float32
 
 
 class TestAtan(TestActivation):
