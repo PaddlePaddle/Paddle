@@ -33,7 +33,7 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable
 from testsuite import create_op, set_input, append_input_output, append_loss_ops
 from paddle.fluid import unique_name
-from white_list import op_accuracy_white_list, op_check_grad_white_list
+from white_list import op_accuracy_white_list, op_check_grad_white_list, check_shape_white_list
 
 
 def _set_use_system_allocator(value=None):
@@ -69,6 +69,10 @@ def get_numeric_gradient(place,
 
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.shape())
+    if not hasattr(get_numeric_gradient, 'check_shape_time'):
+        get_numeric_gradient.check_shape_time = 0
+    if tensor_size >= 100:
+        get_numeric_gradient.check_shape_time += 1
     tensor_to_check_dtype = tensor_to_check._dtype()
     if tensor_to_check_dtype == core.VarDesc.VarType.FP32:
         tensor_to_check_dtype = np.float32
@@ -142,6 +146,30 @@ def get_numeric_gradient(place,
     return gradient_flat.reshape(tensor_to_check.shape())
 
 
+def skip_check_grad_ci(reason=None):
+    """Decorator to skip check_grad CI.
+       
+       Check_grad is required for Op test cases. However, there are some special
+       cases that do not need to do check_grad. This decorator is used to skip the 
+       check_grad of the above cases.
+       
+       Note: the execution of unit test will not be skipped. It just avoids check_grad 
+       checking in tearDownClass method by setting a `no_need_check_grad` flag.
+
+       Example:
+           @skip_check_grad_ci(reason="For inference, check_grad is not required.")
+           class TestInference(OpTest):
+    """
+    if not isinstance(reason, str):
+        raise AssertionError("The reason for skipping check_grad is required.")
+
+    def wrapper(cls):
+        cls.no_need_check_grad = True
+        return cls
+
+    return wrapper
+
+
 class OpTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -183,6 +211,14 @@ class OpTest(unittest.TestCase):
                 not hasattr(cls, 'exist_fp64_check_grad'):
                 raise AssertionError(
                     "This test of %s op needs fp64 check_grad." % cls.op_type)
+
+        if hasattr(get_numeric_gradient, 'check_shape_time') \
+            and get_numeric_gradient.check_shape_time == 0 \
+            and OpTest.op_type not in check_shape_white_list.NOT_CHECK_OP_LIST \
+            and OpTest.op_type not in check_shape_white_list.NEED_TO_FIX_OP_LIST:
+            raise AssertionError(
+                "At least one input's shape should be large than or equal to 100 for "
+                + OpTest.op_type + " Op.")
 
     def try_call_once(self, data_type):
         if not self.call_once:
@@ -1135,6 +1171,7 @@ class OpTest(unittest.TestCase):
                               max_relative_error=0.005,
                               user_defined_grads=None,
                               check_dygraph=True):
+        OpTest.op_type = self.op_type
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()

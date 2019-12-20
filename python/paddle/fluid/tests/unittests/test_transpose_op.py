@@ -25,13 +25,13 @@ class TestTransposeOp(OpTest):
     def setUp(self):
         self.init_op_type()
         self.initTestCase()
-        self.inputs = {'X': np.random.random(self.shape).astype("float32")}
+        self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {
             'axis': list(self.axis),
             'use_mkldnn': self.use_mkldnn,
         }
         self.outputs = {
-            'XShape': np.random.random(self.shape).astype("float32"),
+            'XShape': np.random.random(self.shape).astype("float64"),
             'Out': self.inputs['X'].transpose(self.axis)
         }
 
@@ -83,7 +83,7 @@ class TestCase4(TestTransposeOp):
 class TestTransposeOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            x = fluid.layers.data(name='x', shape=[10, 5, 3], dtype='float32')
+            x = fluid.layers.data(name='x', shape=[10, 5, 3], dtype='float64')
 
             def test_x_Variable_check():
                 # the Input(x)'s type must be Variable
