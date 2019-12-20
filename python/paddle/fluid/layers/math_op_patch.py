@@ -225,13 +225,15 @@ def monkey_patch_variable():
                 other_var = tmp
 
             out = create_new_tmp_var(current_block(self), dtype=lhs_dtype)
-
+            axis = -1
+            if other_var.shape[0] == -1:
+                axis = 0
             current_block(self).append_op(
                 type=op_type,
                 inputs={'X': [self],
                         'Y': [other_var]},
                 outputs={'Out': out},
-                attrs={'axis': -1})
+                attrs={'axis': axis})
             return out
 
         comment = OpProtoHolder.instance().get_op_proto(op_type).comment
