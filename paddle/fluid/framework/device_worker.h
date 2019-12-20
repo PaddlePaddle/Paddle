@@ -214,6 +214,7 @@ class DownpourWorker : public HogwildWorker {
   bool dump_slot_;
   bool need_to_push_sparse_;
   std::vector<std::string> dump_fields_;
+  std::vector<std::string> loss_names_;
   ChannelWriter<std::string> writer_;
   DownpourWorkerParameter param_;
   float scale_datanorm_;
@@ -260,12 +261,18 @@ class DownpourWorkerOpt : public DownpourWorker {
     DownpourWorkerOpt() {}
     virtual ~DownpourWorkerOpt() {}
     virtual void CreateDeviceResource(const ProgramDesc& main_prog) {}
+    virtual void TrainFiles(); 
 
   protected:
     void CreateThreadOperatorsWithRerank(const ProgramDesc& program);
     std::vector<std::vector<OperatorBase*>> loss_ops_;
+    std::vector<std::vector<OperatorBase*>> loss_op_names_;
+    std::string async_wait_name_;
+    int async_index_ = -1;
+    uint64_t async_tid_ = 0;
 
-}
+
+};
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 using ScopeQueue = operators::reader::BlockingQueue<Scope*>;

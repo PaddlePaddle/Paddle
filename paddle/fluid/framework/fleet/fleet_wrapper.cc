@@ -215,7 +215,7 @@ void FleetWrapper::PullSparseVarsFromLocal(
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
     CHECK(tensor != nullptr) << "tensor of var " << name << " is null";
     int64_t* ids = tensor->data<int64_t>();
-    int len = tensor->numel();
+    size_t len = tensor->numel();
     for (auto i = 0u; i < len; ++i) {
       if (ids[i] == 0u) {
         continue;
@@ -228,7 +228,7 @@ void FleetWrapper::PullSparseVarsFromLocal(
   for (auto& t : *fea_values) {
     t.resize(fea_value_dim);
   }
-  int key_length = fea_keys->size();
+  size_t key_length = fea_keys->size();
   // std::cout << "fleet eraper one request key num: " << key_length << std::endl;
   int local_step = key_length / pull_local_thread_num_;
   std::vector<std::future<void>> task_futures;
@@ -237,7 +237,7 @@ void FleetWrapper::PullSparseVarsFromLocal(
     // uint64_t key = (*fea_keys)[i];
     size_t end = i + local_step < key_length ? i+local_step : key_length;
     auto pull_local_task = [this, i, end, &fea_values, &fea_keys, &fea_value_dim] {
-        for (int j = i; j < end; j++) {
+        for (size_t j = i; j < end; j++) {
             std::memcpy((*fea_values)[j].data(), local_tables_[(*fea_keys)[j] % local_table_shard_num_][(*fea_keys)[j]].data(), fea_value_dim * sizeof(float));  
         }    
     };
@@ -280,7 +280,7 @@ std::future<int32_t> FleetWrapper::PullSparseVarsAsync(
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
     CHECK(tensor != nullptr) << "tensor of var " << name << " is null";
     int64_t* ids = tensor->data<int64_t>();
-    int len = tensor->numel();
+    size_t len = tensor->numel();
     for (auto i = 0u; i < len; ++i) {
       if (ids[i] == 0u) {
         continue;

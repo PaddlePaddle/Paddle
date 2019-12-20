@@ -656,13 +656,13 @@ void MultiSlotDataset::GenerateLocalTablesUnlock(int table_id, int feadim, int r
   std::vector<std::unordered_map<uint64_t, std::vector<float>>>& local_map_tables = fleet_ptr_->GetLocalTable(); 
   local_map_tables.resize(shard_num);
   //read thread
-  size_t channel_num = multi_output_channel_.size();
+  int channel_num = multi_output_channel_.size();
   if (read_thread_num < channel_num) {
     read_thread_num = channel_num;    
   }
   std::vector<std::thread> threads(read_thread_num);
   consume_task_pool_.resize(consume_thread_num);
-  for (int i = 0; i < consume_task_pool_.size(); i++) {
+  for (size_t i = 0; i < consume_task_pool_.size(); i++) {
     consume_task_pool_[i].reset(new ::ThreadPool(1));
   }
   // std::vector<std::vector<std::future<void>>> task_futures(shard_num);
@@ -689,7 +689,7 @@ void MultiSlotDataset::GenerateLocalTablesUnlock(int table_id, int feadim, int r
           }
       }
       
-      for (size_t shard_id = 0; shard_id < shard_num; shard_id++) {
+      for (int shard_id = 0; shard_id < shard_num; shard_id++) {
         task_futures.emplace_back(consume_task_pool_[shard_id]->enqueue(
           consume_func, shard_id, task_keys[shard_id]
           ));
@@ -717,7 +717,7 @@ void MultiSlotDataset::GenerateLocalTablesUnlock(int table_id, int feadim, int r
   for (std::thread& t : threads) {
     t.join();
   }
-  for (int i = 0; i < consume_task_pool_.size(); i++) {
+  for (size_t i = 0; i < consume_task_pool_.size(); i++) {
     consume_task_pool_[i].reset();
   }
   consume_task_pool_.clear();
