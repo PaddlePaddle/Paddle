@@ -4456,17 +4456,25 @@ class Program(object):
             None
         """
         if not isinstance(other, Program):
-            raise TypeError("_copy_param_info_from should be invoked with "
+            raise TypeError("_copy_data_info_from should be invoked with "
                             "Program")
 
         if len(self.blocks) != len(other.blocks):
-            raise ValueError("_copy_param_info_from should be invoked with two "
+            raise ValueError("_copy_data_info_from should be invoked with two "
                              "program, with represent the same topology")
-        for var in list(other.global_block().vars.values()):
-            if var.is_data:
-                self.global_block().var(var.name).is_data = True
-            if var.desc.need_check_feed():
-                self.global_block().var(var.name).desc.set_need_check_feed(True)
+
+        # NOTE(zhiqiu): All vars in cloned program exist in original program.
+        # The reverse is not true, due to backward pruning.
+        for i, block in enumerate(other.blocks):
+            for var in list(block.vars.values()):
+                if not self.blocks[i].has_var(var.name):
+                    continue
+                if var.is_data:
+                    self.blocks[i].var(var.name).is_data = True
+                if var.desc.need_check_feed():
+                    self.blocks[i].var(var.name).desc.set_need_check_feed(True)
+                if var.stop_gradient:
+                    self.blocks[i].var(var.name).stop_gradient = True
 
     @dygraph_not_support
     def list_vars(self):

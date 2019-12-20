@@ -25,7 +25,7 @@ class TestSignOp(OpTest):
     def setUp(self):
         self.op_type = "sign"
         self.inputs = {
-            'X': np.random.uniform(-10, 10, (10, 10)).astype("float32")
+            'X': np.random.uniform(-10, 10, (10, 10)).astype("float64")
         }
         self.outputs = {'Out': np.sign(self.inputs['X'])}
 

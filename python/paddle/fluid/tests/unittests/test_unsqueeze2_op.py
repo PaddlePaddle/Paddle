@@ -25,11 +25,11 @@ class TestUnsqueezeOp(OpTest):
     def setUp(self):
         self.init_test_case()
         self.op_type = "unsqueeze2"
-        self.inputs = {"X": np.random.random(self.ori_shape).astype("float32")}
+        self.inputs = {"X": np.random.random(self.ori_shape).astype("float64")}
         self.init_attrs()
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.new_shape),
-            "XShape": np.random.random(self.ori_shape).astype("float32")
+            "XShape": np.random.random(self.ori_shape).astype("float64")
         }
 
     def test_check_output(self):
@@ -91,13 +91,13 @@ class TestUnsqueezeOp_AxesTensorList(OpTest):
                 (1)).astype('int32') * ele))
 
         self.inputs = {
-            "X": np.random.random(self.ori_shape).astype("float32"),
+            "X": np.random.random(self.ori_shape).astype("float64"),
             "AxesTensorList": axes_tensor_list
         }
         self.init_attrs()
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.new_shape),
-            "XShape": np.random.random(self.ori_shape).astype("float32")
+            "XShape": np.random.random(self.ori_shape).astype("float64")
         }
 
     def test_check_output(self):
@@ -150,13 +150,13 @@ class TestUnsqueezeOp_AxesTensor(OpTest):
         self.op_type = "unsqueeze2"
 
         self.inputs = {
-            "X": np.random.random(self.ori_shape).astype("float32"),
+            "X": np.random.random(self.ori_shape).astype("float64"),
             "AxesTensor": np.array(self.axes).astype("int32")
         }
         self.init_attrs()
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.new_shape),
-            "XShape": np.random.random(self.ori_shape).astype("float32")
+            "XShape": np.random.random(self.ori_shape).astype("float64")
         }
 
     def test_check_output(self):
@@ -205,8 +205,8 @@ class TestUnsqueezeOp4_AxesTensor(TestUnsqueezeOp_AxesTensor):
 # test api
 class TestUnsqueezeAPI(unittest.TestCase):
     def test_api(self):
-        input = np.random.random([3, 2, 5]).astype("float32")
-        x = fluid.data(name='x', shape=[3, 2, 5], dtype="float32")
+        input = np.random.random([3, 2, 5]).astype("float64")
+        x = fluid.data(name='x', shape=[3, 2, 5], dtype="float64")
         positive_3_int32 = fluid.layers.fill_constant([1], "int32", 3)
         positive_1_int64 = fluid.layers.fill_constant([1], "int64", 1)
         axes_tensor_int32 = fluid.data(

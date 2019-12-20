@@ -626,9 +626,8 @@ class LinearLrWarmup(LearningRateDecay):
                 format(learning_rate))
         self.learning_rate = learning_rate
         self.warmup_steps = warmup_steps
-        assert (end_lr > start_lr,
-                "end_lr {} MUST GREATER than start_lr {}".format(end_lr,
-                                                                 start_lr))
+        assert end_lr > start_lr, "end_lr {} must be greater than start_lr {}".format(
+            end_lr, start_lr)
         self.lr_ratio_before_warmup = (
             float(end_lr) - float(start_lr)) / float(warmup_steps)
 

@@ -27,7 +27,7 @@ class TestElementwiseAddOp(OpTest):
 
     def setUp(self):
         self.op_type = "elementwise_add"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.axis = -1
         self.init_dtype()
         self.init_input_output()
@@ -50,10 +50,7 @@ class TestElementwiseAddOp(OpTest):
         if self.dtype == np.float16:
             return
         self.check_grad(
-            ['X', 'Y'],
-            'Out',
-            max_relative_error=0.005,
-            check_dygraph=(self.use_mkldnn == False))
+            ['X', 'Y'], 'Out', check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad_ingore_x(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
@@ -62,7 +59,6 @@ class TestElementwiseAddOp(OpTest):
         self.check_grad(
             ['Y'],
             'Out',
-            max_relative_error=0.005,
             no_grad_set=set("X"),
             check_dygraph=(self.use_mkldnn == False))
 
@@ -73,7 +69,6 @@ class TestElementwiseAddOp(OpTest):
         self.check_grad(
             ['X'],
             'Out',
-            max_relative_error=0.005,
             no_grad_set=set('Y'),
             check_dygraph=(self.use_mkldnn == False))
 
