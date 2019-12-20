@@ -49,9 +49,9 @@ class TestSpectralNormOpNoGrad(OpTest):
     def setUp(self):
         self.initTestCase()
         self.op_type = 'spectral_norm'
-        weight = np.random.random(self.weight_shape).astype('float32')
-        u = np.random.normal(0., 1., self.u_shape).astype('float32')
-        v = np.random.normal(0., 1., self.v_shape).astype('float32')
+        weight = np.random.random(self.weight_shape).astype('float64')
+        u = np.random.normal(0., 1., self.u_shape).astype('float64')
+        v = np.random.normal(0., 1., self.v_shape).astype('float64')
 
         self.attrs = {
             "dim": self.dim,
@@ -96,8 +96,7 @@ class TestSpectralNormOp(TestSpectralNormOpNoGrad):
         self.check_grad(
             ['Weight'],
             'Out',
-            no_grad_set=set(["U", "V"]),
-            max_relative_error=0.1)
+            no_grad_set=set(["U", "V"]), )
 
     def initTestCase(self):
         self.weight_shape = (10, 12)

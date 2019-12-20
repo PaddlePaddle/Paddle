@@ -33,9 +33,9 @@ class TestTeacherStudentSigmoidLossOp(OpTest):
         self.inputs = {
             'X': logit(
                 np.random.uniform(0, 1, (batch_size, num_classes))
-                .astype("float32")),
+                .astype("float64")),
             'Label': np.random.uniform(0, 2, (batch_size, num_classes))
-            .astype("float32")
+            .astype("float64")
         }
         outs = []
         for index, label in enumerate(self.inputs["Label"]):
