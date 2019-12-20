@@ -29,6 +29,12 @@ class AucKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto *predict = ctx.Input<Tensor>("Predict");
     auto *label = ctx.Input<Tensor>("Label");
+    const auto *label_data = label->data<int64_t>();
+    size_t batch_size = predict->dims()[0];
+    if (batch_size == 1 && label_data[0] < 0) {
+      std::cout << "batch: " << batch_size << "label: " << label_data[0] << std::endl;
+      return;    
+    }
 
     int num_thresholds = ctx.Attr<int>("num_thresholds");
     int slide_steps = ctx.Attr<int>("slide_steps");
