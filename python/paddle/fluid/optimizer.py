@@ -1696,49 +1696,6 @@ class AdamOptimizer(Optimizer):
 
         return adam_op
 
-    def _finish_update(self, block, param_and_grads):
-        """Update Beta1 and Beta2 Power accumulators
-        """
-        pass
-        '''
-        assert isinstance(block, framework.Block)
-        main_block = block.program.global_block()
-        for param, grad in param_and_grads:
-            if grad is None or param.trainable is False:
-                continue
-            with param.block.program._optimized_guard(
-                [param, grad]), name_scope("optimizer"):
-                beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
-                                                      param)
-                beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
-                                                      param)
-                inputs = {"X": beta1_pow_acc}
-                attrs = {}
-                if isinstance(self._beta1, Variable):
-                    inputs['ScaleTensor'] = self._beta1
-                else:
-                    attrs['scale'] = self._beta1
-                main_block.append_op(
-                    type="scale",
-                    inputs=inputs,
-                    outputs={"Out": beta1_pow_acc},
-                    attrs=attrs,
-                    stop_gradient=True)
-
-                inputs = {"X": beta2_pow_acc}
-                attrs = {}
-                if isinstance(self._beta2, Variable):
-                    inputs['ScaleTensor'] = self._beta2
-                else:
-                    attrs['scale'] = self._beta2
-                main_block.append_op(
-                    type="scale",
-                    inputs=inputs,
-                    outputs={"Out": beta2_pow_acc},
-                    attrs=attrs,
-                    stop_gradient=True)
-        '''
-
 
 class AdamaxOptimizer(Optimizer):
     """
