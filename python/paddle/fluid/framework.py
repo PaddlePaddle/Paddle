@@ -684,6 +684,12 @@ def _getitem_impl_(var, item):
                     attrs={'axis': -1})
                 slice_end.append(temp_end)
             else:
+                if in_dygraph_mode() and (slice_item >= var.shape[dim] or
+                                          slice_item < -var.shape[dim]):
+                    raise IndexError(
+                        "index {} out of bounds for axis {}, should be [{}, {}) ".
+                        format(slice_item, dim, -var.shape[dim], var.shape[
+                            dim]))
                 slice_end.append(slice_item + 1
                                  if slice_item != -1 else 10000000)
 

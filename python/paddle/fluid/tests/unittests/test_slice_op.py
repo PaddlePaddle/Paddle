@@ -482,7 +482,7 @@ class TestFP16_2(OpTest):
 
 # Test python API
 class TestSliceAPI(unittest.TestCase):
-    def test_1(self):
+    def test_basic(self):
         input = np.random.random([3, 4, 5, 6]).astype("float64")
         minus_1 = fluid.layers.fill_constant([1], "int32", -1)
         minus_3 = fluid.layers.fill_constant([1], "int32", -3)
@@ -526,6 +526,27 @@ class TestSliceAPI(unittest.TestCase):
         assert np.array_equal(res_5, input[-3:3, 0:100, 2:-1, :])
         assert np.array_equal(res_6, input[-3:3, 0:100, :, 2:-1])
         assert np.array_equal(res_7, input[-1, 0:100, :, 2:-1])
+
+    def test_for_ele_in_var_in_dygraph_mode(self):
+
+        with fluid.dygraph.guard():
+            x_np = np.arange(25).astype("float32").reshape((5, 5))
+            x = fluid.dygraph.to_variable(x_np)
+            for i, ele in enumerate(x):
+                assert np.array_equal(ele.numpy(), x_np[i])
+
+    def test_bound_check_dygraph_mode(self):
+        with fluid.dygraph.guard():
+            x_np = np.arange(10).astype("float32").reshape((10, -1))
+            x = fluid.dygraph.to_variable(x_np)
+
+            with self.assertRaises(IndexError) as context:
+                a = x[-11]
+
+            with self.assertRaises(IndexError) as context:
+                a = x[10]
+
+            assert (np.array_equal(x[9].numpy(), x_np[9]))
 
 
 if __name__ == '__main__':
