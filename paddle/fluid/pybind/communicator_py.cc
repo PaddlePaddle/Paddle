@@ -27,10 +27,11 @@ limitations under the License. */
 namespace py = pybind11;
 
 using paddle::framework::ProgramDesc;
+using paddle::framework::Scope;
 using paddle::operators::distributed::Communicator;
 using paddle::operators::distributed::AsyncCommunicator;
+using paddle::operators::distributed::HalfAsyncCommunicator;
 using paddle::operators::distributed::GeoSgdCommunicator;
-using paddle::framework::Scope;
 
 namespace paddle {
 namespace pybind {
@@ -39,9 +40,16 @@ void BindCommunicator(py::module* m) {
   // Communicator is already used by nccl, change to DistCommunicator
   py::class_<Communicator, std::shared_ptr<Communicator>>(*m,
                                                           "DistCommunicator")
-      .def(py::init([](const ProgramDesc& program, Scope* param_scope) {
-        VLOG(0) << "using communicator";
-        Communicator::InitInstance<AsyncCommunicator>(program, param_scope);
+      .def(py::init([](const std::string& mode, const ProgramDesc& program,
+                       Scope* param_scope) {
+        if (mode == "HALF_ASYNC") {
+          Communicator::InitInstance<HalfAsyncCommunicator>(program,
+                                                            param_scope);
+        } else if (mode == "ASYNC") {
+          Communicator::InitInstance<AsyncCommunicator>(program, param_scope);
+        } else {
+          VLOG(0) << "unknown MODE for communicator";
+        }
         return Communicator::GetInstantcePtr();
       }))
       .def(py::init([](

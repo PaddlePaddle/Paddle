@@ -182,7 +182,7 @@ class Communicator {
   virtual bool IsRunning() { return running_; }
 
   virtual void Send(const std::string& var_name,
-                    const framework::Scope& scope) = 0;
+                    const framework::Scope& scope) {}
 
   virtual void Send(const std::vector<std::string>& sparse_var_names,
                     const std::vector<std::string>& sparse_var_tables,
@@ -190,19 +190,23 @@ class Communicator {
 
   virtual void Recv() = 0;
 
+  virtual void Barrier() {}
+  virtual void BarrierTriggerDecrement() {}
+  virtual void BarrierTriggerReset(int init_counter) {}
+
   virtual void InitImpl(const RpcCtxMap& send_varname_to_ctx,
                         const RpcCtxMap& recv_varname_to_ctx,
-                        Scope* recv_scope) = 0;
+                        Scope* recv_scope) {}
 
   virtual void InitImpl(const paddle::framework::ProgramDesc& program,
-                        Scope* recv_scope) = 0;
+                        Scope* recv_scope) {}
 
   // for geo-sgd
   virtual void InitImpl(
       const paddle::framework::ProgramDesc& program, Scope* param_scope,
       std::map<std::string, std::map<std::string, std::vector<std::string>>>&
           vars_info,
-      const int& trainers, const int& geo_need_push_nums) = 0;
+      const int& trainers, const int& geo_need_push_nums) {}
 
   static Communicator* GetInstance() { return communicator_.get(); }
 
@@ -327,6 +331,53 @@ class AsyncCommunicator : public Communicator {
   std::unique_ptr<::ThreadPool> send_threadpool_{nullptr};
   std::unique_ptr<::ThreadPool> recv_threadpool_{nullptr};
   std::atomic_uint grad_num_{0};  // the num of gradient sent since last recv
+};
+
+class HalfAsyncCommunicator : public Communicator {
+ public:
+  HalfAsyncCommunicator() {}
+  ~HalfAsyncCommunicator();
+  void Start() override;
+  void Stop() override;
+
+  void Send(const std::vector<std::string>& var_ins_names,
+            const std::vector<std::string>& var_names,
+            const framework::Scope& scope) override;
+
+  void Recv() override;
+
+  void Barrier() override;
+  void BarrierWeakUp();
+
+  void BarrierTriggerDecrement() override;
+  void BarrierTriggerReset(int initial_val) override;
+
+  void InitImpl(const RpcCtxMap& send_varname_to_ctx,
+                const RpcCtxMap& recv_varname_to_ctx,
+                Scope* recv_scope) override;
+
+  void InitImpl(const paddle::framework::ProgramDesc& program,
+                Scope* recv_scope) override;
+
+  void ConsumeThread();
+
+ private:
+  std::unordered_map<std::string,
+                     std::shared_ptr<BlockingQueue<std::shared_ptr<Variable>>>>
+      send_varname_to_queue_;
+  RpcCtxMap send_varname_to_ctx_;
+  RpcCtxMap recv_varname_to_ctx_;
+  std::unique_ptr<std::thread> consume_thread_{nullptr};
+  Scope* recv_scope_;                  // should be global scope
+  std::unique_ptr<Scope> send_scope_;  // an independent scope
+  std::unique_ptr<::ThreadPool> consume_threadpool_{nullptr};
+  std::unique_ptr<::ThreadPool> recv_threadpool_{nullptr};
+
+  // mutex for Wait for barrier
+  std::mutex barrier_mutex_;
+  std::condition_variable barrier_cond_;
+  std::atomic<int64_t> barrier_trigger_{0};
+  std::atomic<int64_t> barrier_counter_{0};
 };
 
 class GeoSgdCommunicator : public Communicator {

@@ -1045,6 +1045,274 @@ void GeoSgdCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
 void GeoSgdCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
                                   Scope *recv_scope) {}
 
+void HalfAsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
+                                     const RpcCtxMap &recv_varname_to_ctx,
+                                     Scope *recv_scope) {
+  send_varname_to_ctx_ = std::move(send_varname_to_ctx);
+  recv_varname_to_ctx_ = std::move(recv_varname_to_ctx);
+  recv_scope_ = std::move(recv_scope);
+
+  // get all send information from graph, build vars_to_send
+  VLOG(0) << "communicator_send_queue_size: "
+          << FLAGS_communicator_send_queue_size;
+  VLOG(0) << "communicator_thread_pool_size: "
+          << FLAGS_communicator_thread_pool_size;
+  VLOG(0) << "communicator_send_wait_times: "
+          << FLAGS_communicator_send_wait_times;
+  VLOG(0) << "communicator_max_merge_var_num: "
+          << FLAGS_communicator_max_merge_var_num;
+
+  if (send_varname_to_ctx.size() == 0) {
+    VLOG(0) << "nothing need to be send, will not start send_thread";
+  } else {
+    send_scope_.reset(new Scope());
+    for (auto &iter : send_varname_to_ctx_) {
+      send_varname_to_queue_[iter.first] =
+          std::make_shared<BlockingQueue<std::shared_ptr<Variable>>>(
+              FLAGS_communicator_send_queue_size);
+    }
+
+    consume_threadpool_.reset(
+        new ::ThreadPool(FLAGS_communicator_thread_pool_size));
+  }
+
+  if (recv_varname_to_ctx.size() == 0) {
+    VLOG(0) << "nothing need to be received, will not start recv_thread";
+  } else {
+    recv_threadpool_.reset(
+        new ::ThreadPool(FLAGS_communicator_thread_pool_size));
+  }
+}
+
+void HalfAsyncCommunicator::InitImpl(
+    const paddle::framework::ProgramDesc &program, Scope *param_scope) {
+  using RpcCtxMap = operators::distributed::RpcCtxMap;
+  VLOG(3) << "ProcessGraph";
+  RpcCtxMap send_varname_to_ctx;
+  RpcCtxMap recv_varname_to_ctx;
+  for (auto *op : program.Block(0).AllOps()) {
+    VLOG(3) << "node name " << op->Type();
+    if (op->Type() == "send") {
+      auto send_var_name = op->Input("X")[0];
+      auto send_varnames = boost::get<std::vector<std::string>>(
+          op->GetNullableAttr("send_varnames"));
+      auto epmap =
+          boost::get<std::vector<std::string>>(op->GetNullableAttr("epmap"));
+      auto height_section =
+          boost::get<std::vector<int64_t>>(op->GetNullableAttr("sections"));
+      auto trainer_id = boost::get<int>(op->GetNullableAttr("trainer_id"));
+      send_varname_to_ctx[send_var_name] = operators::distributed::RpcContext(
+          send_var_name, send_varnames, epmap, height_section, trainer_id);
+      VLOG(3) << "find and init an send op: "
+              << send_varname_to_ctx[send_var_name];
+    } else if (op->Type() == "recv") {
+      auto do_not_run = boost::get<int>(op->GetNullableAttr("do_not_run"));
+      PADDLE_ENFORCE_GT(do_not_run, 0, "recv should not run!");
+      auto recv_var_name = op->Output("Out")[0];
+      auto recv_varnames = boost::get<std::vector<std::string>>(
+          op->GetNullableAttr("recv_varnames"));
+      auto epmap =
+          boost::get<std::vector<std::string>>(op->GetNullableAttr("epmap"));
+      auto trainer_id = boost::get<int>(op->GetNullableAttr("trainer_id"));
+      recv_varname_to_ctx[recv_var_name] = operators::distributed::RpcContext(
+          recv_var_name, recv_varnames, epmap, {}, trainer_id);
+    }
+  }
+
+  // init communicator here
+  if (send_varname_to_ctx.size() == 0 && recv_varname_to_ctx.size() == 0) {
+    LOG(WARNING) << "no var need to send and recv!!";
+  }
+
+  operators::distributed::HalfAsyncCommunicator::InitImpl(
+      send_varname_to_ctx, recv_varname_to_ctx, param_scope);
+}
+
+HalfAsyncCommunicator::~HalfAsyncCommunicator() {
+  if (FLAGS_v >= 3) {
+    std::string msg("~Communicator");
+    fwrite(msg.c_str(), msg.length(), 1, stdout);
+  }
+  running_ = false;
+  if (consume_thread_) consume_thread_->join();
+  if (FLAGS_v >= 3) {
+    std::string msg("~Communicator done");
+    fwrite(msg.c_str(), msg.length(), 1, stdout);
+  }
+}
+
+void HalfAsyncCommunicator::ConsumeThread() {
+  VLOG(3) << "ConsumeThread start!";
+  while (running_) {
+    while (running_) {
+      if (barrier_counter_.load() >= barrier_trigger_.load()) {
+        break;
+      } else {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      }
+    }
+
+    std::vector<std::future<void>> task_futures;
+    task_futures.reserve(send_varname_to_ctx_.size());
+    VLOG(3) << "run send graph";
+    auto before_run_send_graph = GetCurrentUS();
+    for (auto &iter : send_varname_to_queue_) {
+      auto &var_name = iter.first;
+      auto &var_queue = iter.second;
+      if (var_queue->Size() > 0) {
+        auto send_task = [this, &var_name, &var_queue] {
+          VLOG(3) << var_name << " merge and send";
+          std::vector<std::shared_ptr<Variable>> vars;
+          size_t merged_var_num = 0;
+          size_t wait_times = 0;
+          while (merged_var_num < FLAGS_communicator_max_merge_var_num) {
+            if (var_queue->Size() == 0) {
+              VLOG(3) << "wait_times -> " << wait_times;
+              if (wait_times >= FLAGS_communicator_send_wait_times) {
+                break;
+              }
+              std::this_thread::sleep_for(std::chrono::milliseconds(10));
+              wait_times++;
+              continue;
+            } else {
+              wait_times = 0;
+              vars.push_back(var_queue->Pop());
+              merged_var_num++;
+            }
+          }
+          auto before_merge = GetCurrentUS();
+
+          MergeVars(var_name, vars, send_scope_.get());
+
+          auto var_str =
+              operators::GetTensorDetails(*(send_scope_.get()), var_name);
+          VLOG(1) << var_str;
+
+          auto after_merge = GetCurrentUS();
+          VLOG(3) << "merge " << merged_var_num << " " << var_name
+                  << " use time " << after_merge - before_merge;
+
+          auto send_functor = distributed::ParameterSend<float>();
+          auto &ctx = send_varname_to_ctx_.at(var_name);
+          send_functor(ctx, *send_scope_, true, 1);
+
+          auto after_send = GetCurrentUS();
+          VLOG(3) << "send " << var_name << " use time "
+                  << after_send - after_merge;
+        };
+        task_futures.emplace_back(
+            consume_threadpool_->enqueue(std::move(send_task)));
+      } else {
+        VLOG(4) << var_name << " queue empty";
+      }
+    }
+    for (auto &task_f : task_futures) {
+      task_f.wait();
+    }
+    auto after_run_send_graph = GetCurrentUS();
+
+    VLOG(3) << "run send graph use time "
+            << after_run_send_graph - before_run_send_graph;
+    Recv();
+
+    BarrierWeakUp();
+  }
+  VLOG(0) << "communicator stopped, send thread exit";
+}
+
+void HalfAsyncCommunicator::Send(const std::vector<std::string> &var_ins_names,
+                                 const std::vector<std::string> &var_names,
+                                 const framework::Scope &scope) {
+  auto var_name = var_ins_names[0];
+  VLOG(3) << "communicator send " << var_name;
+  // push var into send queue by var_name
+  auto *grad_var = scope.FindVar(var_name);
+  PADDLE_ENFORCE_EQ(grad_var->IsInitialized(), true,
+                    "grad var should be inited");
+  auto tmp_grad_var = std::make_shared<Variable>();
+  framework::CopyVariable(*grad_var, tmp_grad_var.get());
+  auto &queue = send_varname_to_queue_.at(var_name);
+  VLOG(3) << "send " << var_name << " queue size " << queue->Size();
+  queue->Push(tmp_grad_var);
+}
+
+void HalfAsyncCommunicator::Recv() {
+  VLOG(3) << "parallel run recv graph";
+  if (!running_) return;
+  auto before_send = GetCurrentUS();
+  std::vector<std::future<void>> task_futures;
+  task_futures.reserve(recv_varname_to_ctx_.size());
+  for (auto &iter : recv_varname_to_ctx_) {
+    auto recv_task = [this, &iter] {
+      auto &var_name = iter.first;
+      VLOG(4) << "recv var " << var_name;
+      auto recv_functor = distributed::ParameterRecv<float>();
+      recv_functor(iter.second, *recv_scope_);
+    };
+    task_futures.emplace_back(recv_threadpool_->enqueue(std::move(recv_task)));
+  }
+  for (auto &task : task_futures) {
+    task.wait();
+  }
+  auto after_recv = GetCurrentUS();
+  VLOG(3) << "run recv graph use time " << after_recv - before_send;
+}
+
+void HalfAsyncCommunicator::Barrier() {
+  barrier_counter_++;
+  {
+    std::unique_lock<std::mutex> lk(barrier_mutex_);
+    barrier_cond_.wait(lk, [this] { return (barrier_counter_ == 0); });
+  }
+}
+
+void HalfAsyncCommunicator::BarrierTriggerDecrement() {
+  barrier_trigger_--;
+  VLOG(3) << "BarrierTriggerDecrement decrement barrier trigger to "
+          << barrier_trigger_.load();
+}
+
+void HalfAsyncCommunicator::BarrierTriggerReset(int initial_val) {
+  barrier_trigger_.store(initial_val);
+
+  VLOG(3) << "BarrierTriggerReset reset barrier trigger to "
+          << barrier_trigger_.load();
+}
+
+void HalfAsyncCommunicator::BarrierWeakUp() {
+  barrier_counter_.store(0);
+  barrier_cond_.notify_all();
+}
+
+void HalfAsyncCommunicator::Start() {
+  VLOG(0) << "Communicator start";
+  if (!communicator_) {
+    VLOG(0) << "Communicator is not inited, do nothing";
+  } else {
+    VLOG(1) << "start send thread and recv thread";
+
+    BarrierTriggerReset(FLAGS_communicator_max_merge_var_num);
+    running_ = true;
+    consume_thread_.reset(new std::thread(
+        std::bind(&HalfAsyncCommunicator::ConsumeThread, this)));
+  }
+}
+
+void HalfAsyncCommunicator::Stop() {
+  VLOG(0) << "Communicator stop";
+  running_ = false;
+  if (!communicator_) {
+    VLOG(0) << "Communicator is not inited, do nothing";
+  } else {
+    if (consume_thread_) {
+      VLOG(4) << "stop send thread";
+      consume_thread_->join();
+      consume_thread_.reset(nullptr);
+    }
+  }
+  VLOG(0) << "Communicator stop done";
+}
+
 }  // namespace distributed
 }  // namespace operators
 }  // namespace paddle
