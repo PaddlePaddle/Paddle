@@ -194,6 +194,12 @@ if [ "${NEW_OP_TEST_ADDED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     fi
 fi
 
+CHECK_SHAPE_WHITE_LIST_DIFF=`git diff --name-only upstream/$BRANCH | grep -o "check_shape_white_list.py" || true`
+if [ "${CHECK_SHAPE_WHITE_LIST_DIFF}" != "" ];then
+    echo_line="You must have one RD (hong19860320, luotao1, phlrain) approval for the changes of check_shape_white_list.py. The detailed information is in the link: https://github.com/PaddlePaddle/Paddle/wiki/OP-Test-Input-Shape-Requirements"
+    check_approval 1 9973393 6836917 43953930
+fi
+
 if [ -n "${echo_list}" ];then
   echo "****************"
   echo -e "${echo_list[@]}"
