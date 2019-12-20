@@ -64,11 +64,6 @@ static std::mutex g_all_mem_event_lists_mutex;
 static thread_local int32_t g_mem_thread_id;
 static uint32_t g_mem_next_thread_id = 0;
 
-// static std::stack<std::string> g_record_annotation;
-// static std::mutex g_record_annotation_mu;
-// static uint32_t profile_iter_start = 0;
-// static uint32_t profile_iter_end  = UINT32_MAX;
-
 inline uint64_t GetTimeInNsec() {
   using clock = std::conditional<std::chrono::high_resolution_clock::is_steady,
                                  std::chrono::high_resolution_clock,
@@ -342,6 +337,7 @@ struct EventItem {
 
 // Print results
 void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
+                   const std::multimap<std::string, EventItem> &child_map,
                    const std::string &sorted_domain, const size_t name_width,
                    const size_t data_width, bool merge_thread) {
   // Output header information
@@ -380,24 +376,39 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
             << std::setw(data_width) << "Ratio." << std::endl;
   for (size_t i = 0; i < events_table.size(); ++i) {
     for (size_t j = 0; j < events_table[i].size(); ++j) {
-      const EventItem &event_item = events_table[i][j];
-      std::cout << std::setw(name_width) << event_item.name
-                << std::setw(data_width) << event_item.calls
-                << std::setw(data_width) << event_item.total_time;
-      if (g_state == ProfilerState::kAll) {
-        std::cout << std::setw(data_width * 2)
-                  << string::Sprintf(
-                         "%f (%f)", event_item.cpu_time,
-                         (event_item.cpu_time / event_item.total_time))
-                  << std::setw(data_width * 2)
-                  << string::Sprintf(
-                         "%f (%f)", event_item.gpu_time,
-                         (event_item.gpu_time / event_item.total_time));
+      const EventItem &main_event_item = events_table[i][j];
+      std::vector<EventItem> event_items;
+      event_items.push_back(main_event_item);
+      auto pr = child_map.equal_range(main_event_item.name);
+      if (pr.first != std::end(child_map)) {
+        for (auto iter = pr.first; iter != pr.second; ++iter) {
+          event_items.push_back(iter->second);
+        }
       }
-      std::cout << std::setw(data_width) << event_item.min_time
-                << std::setw(data_width) << event_item.max_time
-                << std::setw(data_width) << event_item.ave_time
-                << std::setw(data_width) << event_item.ratio << std::endl;
+      for (auto &event_item : event_items) {
+        auto print_name = event_item.name;
+        const char *s = "      ";
+        if (print_name.length() > main_event_item.name.length() + 2) {
+          print_name.replace(0, main_event_item.name.length() + 2, s);
+        }
+        std::cout << std::setw(name_width) << print_name
+                  << std::setw(data_width) << event_item.calls
+                  << std::setw(data_width) << event_item.total_time;
+        if (g_state == ProfilerState::kAll) {
+          std::cout << std::setw(data_width * 2)
+                    << string::Sprintf(
+                           "%f (%f)", event_item.cpu_time,
+                           (event_item.cpu_time / event_item.total_time))
+                    << std::setw(data_width * 2)
+                    << string::Sprintf(
+                           "%f (%f)", event_item.gpu_time,
+                           (event_item.gpu_time / event_item.total_time));
+        }
+        std::cout << std::setw(data_width) << event_item.min_time
+                  << std::setw(data_width) << event_item.max_time
+                  << std::setw(data_width) << event_item.ave_time
+                  << std::setw(data_width) << event_item.ratio << std::endl;
+      }
     }
   }
   std::cout << std::endl;
@@ -475,12 +486,14 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
   }
 
   std::vector<std::vector<EventItem>> events_table;
+  std::multimap<std::string, EventItem> child_map;
   size_t max_name_width = 0;
 
   for (size_t i = 0; i < (*analyze_events).size(); i++) {
     double total = 0.;  // the total time in one thread
     std::list<Event> pushed_events;
     std::vector<EventItem> event_items;
+    std::vector<EventItem> main_event_items;
     std::unordered_map<std::string, int> event_idx;
 
     for (size_t j = 0; j < (*analyze_events)[i].size(); j++) {
@@ -554,12 +567,35 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
       item.ave_time = item.total_time / item.calls;
       item.ratio = item.total_time / total;
     }
-    // sort
-    if (sorted_by != EventSortingKey::kDefault) {
-      std::sort(event_items.begin(), event_items.end(), sorted_func);
+
+    auto table_size = event_items.size();
+    std::vector<int> child_index(table_size, 0);
+    for (size_t j = 0; j < table_size; ++j) {
+      std::string fname = event_items[j].name;
+      for (size_t k = 0; k < table_size; ++k) {
+        std::string cname = event_items[k].name;
+        if ((child_index[k] == 0) && cname.length() > fname.length() &&
+            cname.rfind(fname, 0) == 0) {
+          child_map.insert(
+              std::pair<std::string, EventItem>(fname, event_items[k]));
+          child_index[k] = 1;
+          VLOG(0) << "fname: " << fname << "cname: " << cname;
+        }
+      }
     }
 
-    events_table.push_back(event_items);
+    for (size_t j = 0; j < table_size; ++j) {
+      if (child_index[j] == 0) {
+        main_event_items.push_back(event_items[j]);
+      }
+    }
+
+    // sort
+    if (sorted_by != EventSortingKey::kDefault) {
+      std::sort(main_event_items.begin(), main_event_items.end(), sorted_func);
+    }
+
+    events_table.push_back(main_event_items);
     // log warning if there are events with `push` but without `pop`
     std::list<Event>::reverse_iterator rit = pushed_events.rbegin();
     while (rit != pushed_events.rend()) {
@@ -570,7 +606,7 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
   }
 
   // Print report
-  PrintProfiler(events_table, sorted_domain, max_name_width + 4, 12,
+  PrintProfiler(events_table, child_map, sorted_domain, max_name_width + 4, 12,
                 merge_thread);
 }
 
