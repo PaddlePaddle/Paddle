@@ -210,7 +210,8 @@ RUN wget -q https://launchpad.net/ubuntu/+archive/primary/+sourcefiles/binutils/
 RUN wget --no-check-certificate https://pslib.bj.bcebos.com/openmpi-1.4.5.tar.gz && tar -xzf openmpi-1.4.5.tar.gz && \
     cd openmpi-1.4.5 && ./configure --prefix=/usr/local && make all -j8 && make install -j8 && \
     export LD_LIBRARY_PATH=/usr/local/lib/:$LD_LIBRARY_PATH && export PATH=/usr/local/bin:$PATH && cd .. && \
-    rm -rf openmpi-1.4.5.tar.gz && ldconfig && pip --no-cache-dir install mpi4py && ln -fs /bin/bash /bin/sh
+    rm -rf openmpi-1.4.5.tar.gz && ldconfig && pip --no-cache-dir install mpi4py && ln -fs /bin/bash /bin/sh && \
+    apt-get install libprotobuf-dev
 
 # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
 RUN mkdir /var/run/sshd
