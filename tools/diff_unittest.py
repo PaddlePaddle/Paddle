@@ -18,7 +18,7 @@ diffs = []
 for each_diff in result:
     if each_diff[0] == '-':  # delete unit test is not allowed
         error = True
-        diffs.append(each_diff)
+        diffs.append(each_diff[2])
 '''
 If you delete the unit test, such as commenting it out, 
 please ask for approval of one RD below for passing CI:
@@ -26,6 +26,5 @@ please ask for approval of one RD below for passing CI:
     - XiaoguangHu01 or luotao1 or phlrain or lanxianghit or zhouwei25
 '''
 if error:
-    print('Deleted Unit test is: ')
     for each_diff in diffs:
         print(each_diff)
