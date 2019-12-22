@@ -49,7 +49,6 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
             backward_strategy.sort_sum_gradient = True
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
-                "ptb_model",
                 hidden_size=hidden_size,
                 vocab_size=vocab_size,
                 num_layers=num_layers,
@@ -98,7 +97,6 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
             ptb_model = PtbModel(
-                "ptb_model",
                 hidden_size=hidden_size,
                 vocab_size=vocab_size,
                 num_layers=num_layers,

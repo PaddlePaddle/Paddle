@@ -21,7 +21,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, FC
+from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 
@@ -56,7 +56,7 @@ def optimizer_setting(params, parameter_list=None):
         #bd = [step * e for e in ls["epochs"]]
         #base_lr = params["lr"]
         #lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
-        if in_dygraph_mode():
+        if fluid.in_dygraph_mode():
             optimizer = fluid.optimizer.SGD(learning_rate=0.01,
                                             parameter_list=parameter_list)
         else:
@@ -95,25 +95,27 @@ class ConvBNLayer(fluid.dygraph.Layer):
 
 
 class SqueezeExcitation(fluid.dygraph.Layer):
-    def __init__(self, name_scope, num_channels, reduction_ratio):
+    def __init__(self, num_channels, reduction_ratio):
 
-        super(SqueezeExcitation, self).__init__(name_scope)
+        super(SqueezeExcitation, self).__init__()
+        self._num_channels = num_channels
         self._pool = Pool2D(pool_size=0, pool_type='avg', global_pooling=True)
-        self._squeeze = FC(
-            self.full_name(),
-            size=num_channels // reduction_ratio,
+        self._squeeze = Linear(
+            num_channels,
+            num_channels // reduction_ratio,
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.05)),
             act='relu')
-        self._excitation = FC(
-            self.full_name(),
-            size=num_channels,
+        self._excitation = Linear(
+            num_channels // reduction_ratio,
+            num_channels,
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.05)),
             act='sigmoid')
 
     def forward(self, input):
         y = self._pool(input)
+        y = fluid.layers.reshape(y, shape=[-1, self._num_channels])
         y = self._squeeze(y)
         y = self._excitation(y)
         y = fluid.layers.elementwise_mul(x=input, y=y, axis=0)
@@ -145,9 +147,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
             act='relu')
 
         self.scale = SqueezeExcitation(
-            self.full_name(),
-            num_channels=num_filters * 4,
-            reduction_ratio=reduction_ratio)
+            num_channels=num_filters * 4, reduction_ratio=reduction_ratio)
 
         if not shortcut:
             self.short = ConvBNLayer(
@@ -179,8 +179,8 @@ class BottleneckBlock(fluid.dygraph.Layer):
 
 
 class SeResNeXt(fluid.dygraph.Layer):
-    def __init__(self, name_scope, layers=50, class_dim=102):
-        super(SeResNeXt, self).__init__(name_scope)
+    def __init__(self, layers=50, class_dim=102):
+        super(SeResNeXt, self).__init__()
 
         self.layers = layers
         supported_layers = [50, 101, 152]
@@ -262,11 +262,14 @@ class SeResNeXt(fluid.dygraph.Layer):
         import math
         stdv = 1.0 / math.sqrt(2048 * 1.0)
 
-        self.out = FC(self.full_name(),
-                      size=class_dim,
-                      act='softmax',
-                      param_attr=fluid.param_attr.ParamAttr(
-                          initializer=fluid.initializer.Uniform(-stdv, stdv)))
+        self.pool2d_avg_output = num_filters[len(num_filters) - 1] * 4 * 1 * 1
+
+        self.out = Linear(
+            self.pool2d_avg_output,
+            class_dim,
+            act='softmax',
+            param_attr=fluid.param_attr.ParamAttr(
+                initializer=fluid.initializer.Uniform(-stdv, stdv)))
 
     def forward(self, inputs):
         if self.layers == 50 or self.layers == 101:
@@ -282,6 +285,7 @@ class SeResNeXt(fluid.dygraph.Layer):
             y = bottleneck_block(y)
         y = self.pool2d_avg(y)
         y = fluid.layers.dropout(y, dropout_prob=0.2)
+        y = fluid.layers.reshape(y, shape=[-1, self.pool2d_avg_output])
         y = self.out(y)
         return y
 
@@ -306,7 +310,7 @@ class TestImperativeResneXt(unittest.TestCase):
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
-            se_resnext = SeResNeXt("se_resnext")
+            se_resnext = SeResNeXt()
             optimizer = optimizer_setting(
                 train_parameters, parameter_list=se_resnext.parameters())
             np.random.seed(seed)
@@ -369,7 +373,7 @@ class TestImperativeResneXt(unittest.TestCase):
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
 
-            se_resnext = SeResNeXt("se_resnext")
+            se_resnext = SeResNeXt()
             optimizer = optimizer_setting(train_parameters)
 
             np.random.seed(seed)

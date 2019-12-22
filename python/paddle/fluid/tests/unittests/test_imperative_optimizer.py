@@ -23,17 +23,17 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.optimizer import SGDOptimizer, Adam
-from paddle.fluid.dygraph.nn import FC
+from paddle.fluid.dygraph import Linear
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 
 
 class MLP(fluid.Layer):
-    def __init__(self, name_scope, param_attr=None, bias_attr=None):
-        super(MLP, self).__init__(name_scope)
+    def __init__(self, param_attr=None, bias_attr=None):
+        super(MLP, self).__init__()
 
-        self._fc1 = FC(self.full_name(), 10)
-        self._fc2 = FC(self.full_name(), 10)
+        self._fc1 = Linear(784, 10)
+        self._fc2 = Linear(10, 10)
 
     def forward(self, inputs):
         y = self._fc1(inputs)
@@ -54,7 +54,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
     def reader_decorator(self, reader):
         def _reader_imple():
             for item in reader():
-                image = np.array(item[0]).reshape(1, 28, 28)
+                image = np.array(item[0]).reshape(1, 784)
                 label = np.array(item[1]).astype('int64').reshape(1)
                 yield image, label
 
@@ -68,7 +68,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
-            mlp = MLP('mlp')
+            mlp = MLP()
             optimizer = self.get_optimizer_dygraph(
                 parameter_list=mlp.parameters())
 
@@ -89,6 +89,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                 label = data[1]
                 label.stop_gradient = True
 
+                img = fluid.layers.reshape(img, shape=[batch_size, -1])
                 cost = mlp(img)
                 avg_loss = fluid.layers.reduce_mean(cost)
                 dy_out = avg_loss.numpy()
@@ -111,7 +112,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
 
-            mlp = MLP('mlp')
+            mlp = MLP()
             optimizer = self.get_optimizer()
             train_reader = paddle.batch(
                 paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
@@ -119,6 +120,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
             img = fluid.layers.data(
                 name='pixel', shape=[1, 28, 28], dtype='float32')
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            img = fluid.layers.reshape(img, shape=[batch_size, -1])
             cost = mlp(img)
             avg_loss = fluid.layers.reduce_mean(cost)
             optimizer.minimize(avg_loss)

@@ -21,7 +21,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid import Conv2D, Pool2D, BatchNorm, FC
+from paddle.fluid import Conv2D, Pool2D, BatchNorm, Linear
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
@@ -58,7 +58,7 @@ def optimizer_setting(params, parameter_list=None):
         base_lr = params["lr"]
         lr = []
         lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
-        if in_dygraph_mode():
+        if fluid.in_dygraph_mode():
             optimizer = fluid.optimizer.SGD(learning_rate=0.01,
                                             parameter_list=parameter_list)
         else:
@@ -151,8 +151,8 @@ class BottleneckBlock(fluid.Layer):
 
 
 class ResNet(fluid.Layer):
-    def __init__(self, name_scope, layers=50, class_dim=102):
-        super(ResNet, self).__init__(name_scope)
+    def __init__(self, layers=50, class_dim=102):
+        super(ResNet, self).__init__()
 
         self.layers = layers
         supported_layers = [50, 101, 152]
@@ -191,14 +191,17 @@ class ResNet(fluid.Layer):
         self.pool2d_avg = Pool2D(
             pool_size=7, pool_type='avg', global_pooling=True)
 
+        self.pool2d_avg_output = num_filters[len(num_filters) - 1] * 4 * 1 * 1
+
         import math
         stdv = 1.0 / math.sqrt(2048 * 1.0)
 
-        self.out = FC(self.full_name(),
-                      size=class_dim,
-                      act='softmax',
-                      param_attr=fluid.param_attr.ParamAttr(
-                          initializer=fluid.initializer.Uniform(-stdv, stdv)))
+        self.out = Linear(
+            self.pool2d_avg_output,
+            class_dim,
+            act='softmax',
+            param_attr=fluid.param_attr.ParamAttr(
+                initializer=fluid.initializer.Uniform(-stdv, stdv)))
 
     def forward(self, inputs):
         y = self.conv(inputs)
@@ -206,6 +209,7 @@ class ResNet(fluid.Layer):
         for bottleneck_block in self.bottleneck_block_list:
             y = bottleneck_block(y)
         y = self.pool2d_avg(y)
+        y = fluid.layers.reshape(y, shape=[-1, self.pool2d_avg_output])
         y = self.out(y)
         return y
 
@@ -232,7 +236,7 @@ class TestDygraphResnet(unittest.TestCase):
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
-            resnet = ResNet("resnet")
+            resnet = ResNet()
             optimizer = optimizer_setting(
                 train_parameters, parameter_list=resnet.parameters())
             np.random.seed(seed)
@@ -320,7 +324,7 @@ class TestDygraphResnet(unittest.TestCase):
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
 
-            resnet = ResNet("resnet")
+            resnet = ResNet()
             optimizer = optimizer_setting(train_parameters)
 
             np.random.seed(seed)

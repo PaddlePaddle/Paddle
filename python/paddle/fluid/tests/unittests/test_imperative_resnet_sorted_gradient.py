@@ -54,7 +54,7 @@ def optimizer_setting(params, parameter_list=None):
         base_lr = params["lr"]
         lr = []
         lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
-        if in_dygraph_mode():
+        if fluid.in_dygraph_mode():
             optimizer = fluid.optimizer.SGD(learning_rate=0.01,
                                             parameter_list=parameter_list)
         else:
@@ -81,7 +81,7 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
             fluid.default_main_program().random_seed = seed
             backward_strategy = fluid.dygraph.BackwardStrategy()
             backward_strategy.sort_sum_gradient = True
-            resnet = ResNet("resnet")
+            resnet = ResNet()
             optimizer = optimizer_setting(
                 train_parameters, parameter_list=resnet.parameters())
             np.random.seed(seed)
@@ -143,7 +143,7 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
 
-            resnet = ResNet("resnet")
+            resnet = ResNet()
             optimizer = optimizer_setting(train_parameters)
 
             np.random.seed(seed)
