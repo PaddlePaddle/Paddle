@@ -513,6 +513,7 @@ function generate_api_spec() {
 }
 
 function check_approvals_of_unittest() {
+    set +x
     # approval_user_list: XiaoguangHu01 46782768,luotao1 6836917,phlrain 43953930,lanxianghit 47554610, zhouwei25 52485244, kolinwei 22165420
     approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
     check_times=$1
@@ -526,7 +527,9 @@ function check_approvals_of_unittest() {
             exit 0
         fi
     elif [ $1 == 2 ]; then
+        set -x
         unittest_spec_diff=`python ${PADDLE_ROOT}/tools/diff_unittest.py ${PADDLE_ROOT}/paddle/fluid/UNITTEST_DEV.spec ${PADDLE_ROOT}/paddle/fluid/UNITTEST_PR.spec`
+        set +x
         if [ "$unittest_spec_diff" != "" ]; then
             APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22165420 52485244 6836917`
             echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
@@ -536,24 +539,27 @@ function check_approvals_of_unittest() {
                 echo -e "If you must delete it temporarily, please add it to[https://github.com/PaddlePaddle/Paddle/wiki/Temporarily-disabled-Unit-Test]."
                 echo -e "Then you must have one RD (kolinwei(recommended) or zhouwei25 or luotao1) approval for the deletion of unit-test. \n"
                 echo -e "If you have any problems about deleting unit-test, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/Deleting-unit-test-is-forbidden]. \n"
-                echo -e "Following unit-tests are deleted in this PR: \n ${unittest_spec_diff} \n"
+                echo -e "Following unit-tests are deleted in this PR: \n  ${unittest_spec_diff} \n"
                 echo "************************************"
                 exit 1
             fi
         fi
     fi
+    set -x
 }
 
 function check_change_of_unittest() {
-    set +x
-    generate_unittest_spec "PR"
     fetch_upstream_develop_if_not_exist
-    git fetch upstream
-    git reset --hard upstream/$BRANCH
+    cur_branch=`git branch | grep \* | cut -d ' ' -f2`
+    git checkout -b develop_base_pr upstream/$BRANCH
     cmake_gen $1
     generate_unittest_spec "DEV"
-    check_approvals_of_unittest 2
-    set +x
+    rm -rf ${PADDLE_ROOT}/build/*
+    git checkout ${cur_branch}
+    git branch -D develop_base_pr
+    ENABLE_MAKE_CLEAN="OFF"
+    cmake_gen $1
+    generate_unittest_spec "PR"
 }
 
 function generate_unittest_spec() {
@@ -1152,12 +1158,17 @@ function main() {
         check_style
         ;;
       cicheck)
-        check_approvals_of_unittest 1
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
         enable_unused_var_check
         parallel_test
+        ;;
+      cicheck_coverage)
         check_change_of_unittest ${PYTHON_ABI:-""}
+        build ${parallel_number}
+        enable_unused_var_check
+        parallel_test
+        check_approvals_of_unittest 2
         ;;
       cicheck_brpc)
         cmake_gen ${PYTHON_ABI:-""}
@@ -1187,10 +1198,10 @@ function main() {
         ;;
       maccheck_py35)
         check_approvals_of_unittest 1
-        cmake_gen ${PYTHON_ABI:-""}
+        check_change_of_unittest ${PYTHON_ABI:-""}
         build_mac
         run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
-        check_change_of_unittest ${PYTHON_ABI:-""}
+        check_approvals_of_unittest 2
         ;;
       macbuild)
         cmake_gen ${PYTHON_ABI:-""}
