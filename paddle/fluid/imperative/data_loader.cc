@@ -39,9 +39,12 @@ void EraseLoadProcessPID(int64_t key) {
   }
 }
 
+// sigaction doc: http://man7.org/linux/man-pages/man2/sigaction.2.html
+// sigemptyset doc: https://linux.die.net/man/3/sigemptyset
+
 #define REGISTER_SIGNAL_HANDLER(SIGNAL, HANDLER_NAME)             \
   static void HANDLER_NAME(int sig, siginfo_t *info, void *ctx) { \
-    struct sigaction sa {};                                       \
+    struct sigaction sa;                                          \
     sa.sa_handler = SIG_DFL;                                      \
     sa.sa_flags = 0;                                              \
     if (sigemptyset(&sa.sa_mask) != 0 ||                          \
@@ -59,7 +62,7 @@ static void handler_SIGTERM(int sig, siginfo_t *info, void *ctx) {
   if (info->si_pid == getppid()) {
     _exit(EXIT_SUCCESS);
   }
-  struct sigaction sa {};
+  struct sigaction sa;
   sa.sa_handler = SIG_DFL;
   sa.sa_flags = 0;
   if (sigemptyset(&sa.sa_mask) != 0 || sigaction(SIGTERM, &sa, nullptr) != 0) {
