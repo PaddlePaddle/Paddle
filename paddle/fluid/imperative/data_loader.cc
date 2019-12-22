@@ -75,7 +75,7 @@ static void handler_SIGTERM(int sig, siginfo_t *info, void *ctx) {
 static inline void setSignalHandler(int signal,
                                     void (*handler)(int, siginfo_t *, void *),
                                     struct sigaction *old_sa_ptr) {
-  struct sigaction sa {};
+  struct sigaction sa;
   sa.sa_sigaction = handler;
   sa.sa_flags = SA_RESTART | SA_SIGINFO | SA_NOCLDSTOP | SA_NODEFER;
   if (sigemptyset(&sa.sa_mask) != 0 ||
