@@ -1152,7 +1152,12 @@ function main() {
         check_style
         ;;
       cicheck)
-        check_approvals_of_unittest 1
+        cmake_gen ${PYTHON_ABI:-""}
+        build ${parallel_number}
+        enable_unused_var_check
+        parallel_test
+        ;;
+      cicheck_coverage)
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
         enable_unused_var_check
