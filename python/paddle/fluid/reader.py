@@ -35,9 +35,7 @@ if sys.version_info[0] == 2:
 else:
     import queue
 # NOTE: [ avoid hanging ] This value is used in getting data from another process
-MP_CHECK_TIMEOUT = 5.0
-# NOTE: [ avoid hanging ] After a certain number of queue.get timeout, throw error and end
-QUEUE_TIMEOUT_LIMIT = 10
+MP_CHECK_TIMEOUT = 10
 
 __all__ = ['PyReader', 'DataLoader']
 
