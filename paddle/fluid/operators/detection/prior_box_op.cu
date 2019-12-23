@@ -126,6 +126,20 @@ class PriorBoxOpCUDAKernel : public framework::OpKernel<T> {
 
     T step_width, step_height;
     if (step_w == 0 || step_h == 0) {
+      PADDLE_ENFORCE_EQ(
+          im_width % width, 0,
+          platform::errors::InvalidArgument(
+              "The img_width must be divided",
+              "by feature_width. But received img_width = %d, feature_width = "
+              "%d. Please set step_w and step_h.",
+              im_width, width));
+      PADDLE_ENFORCE_EQ(
+          im_height % height, 0,
+          platform::errors::InvalidArgument("The img_width must be divided",
+                                            "by feature_height. But received "
+                                            "img_height = %d, feature_height = "
+                                            "%d. Please set step_w and step_h.",
+                                            im_height, height));
       step_width = static_cast<T>(im_width) / width;
       step_height = static_cast<T>(im_height) / height;
     } else {
