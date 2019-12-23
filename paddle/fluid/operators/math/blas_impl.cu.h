@@ -191,26 +191,50 @@ struct CUBlas<int8_t> {
   template <typename... ARGS>
   static void GEMM_EX(platform::CUDADeviceContext *dev_ctx,
                       cublasOperation_t transa, cublasOperation_t transb, int m,
-                      int n, int k, const void *alpha, const void *A,
+                      int n, int k, const float *alpha, const void *A,
                       cudaDataType_t Atype, int lda, const void *B,
-                      cudaDataType_t Btype, int ldb, const void *beta, void *C,
+                      cudaDataType_t Btype, int ldb, const float *beta, void *C,
                       cudaDataType_t Ctype, int ldc,
                       cudaDataType_t computeType) {
+#if CUDA_VERSION >= 8000
+    cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
 #if CUDA_VERSION >= 9000
-    dev_ctx->CublasCall([&](cublasHandle_t handle) {
+    bool use_tensor_op_math = dev_ctx->tensor_core_available();
+    if (use_tensor_op_math) {
+      algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
+    }
+    VLOG(5) << "use_tensor_op_math: "
+            << (use_tensor_op_math ? "True" : "False");
+#endif  // CUDA_VERSION >= 9000
+
+    dev_ctx->TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasGemmEx(
           handle, transa, transb, m, n, k, alpha, A, Atype, lda, B, Btype, ldb,
-          beta, C, Ctype, ldc, computeType, CUBLAS_GEMM_DEFAULT));
+          beta, C, Ctype, ldc, computeType, algo));
     });
-
 #else
-    dev_ctx->CublasCall([&](cublasHandle_t handle) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasSgemmEx(
-          handle, transa, transb, m, n, k, alpha, A, Atype, lda, B, Btype, ldb,
-          beta, C, Ctype, ldc));
-    });
-
+    PADDLE_THROW("cublasGemmEx is supported on cuda >= 8.0");
 #endif
+
+    /*
+    #if CUDA_VERSION >= 9000
+        dev_ctx->CublasCall([&](cublasHandle_t handle) {
+          PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasGemmEx(
+              handle, transa, transb, m, n, k, alpha, A, Atype, lda, B, Btype,
+    ldb,
+              beta, C, Ctype, ldc, computeType, CUBLAS_GEMM_DEFAULT));
+        });
+
+    #else
+        dev_ctx->CublasCall([&](cublasHandle_t handle) {
+          PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasSgemmEx(
+              handle, transa, transb, m, n, k, alpha, A, Atype, lda, B, Btype,
+    ldb,
+              beta, C, Ctype, ldc));
+        });
+
+    #endif
+    */
   }
 };
 
@@ -416,9 +440,14 @@ void Blas<platform::CUDADeviceContext>::GEMM(bool transA, bool transB, int M,
   cublasOperation_t cuTransB = transB ? CUBLAS_OP_T : CUBLAS_OP_N;
   auto &cuda_ctx = const_cast<platform::CUDADeviceContext &>(context_);
 
-  CUBlas<int8_t>::GEMM_EX(&cuda_ctx, cuTransB, cuTransA, N, M, K, &alpha, B,
-                          CUDA_R_8I, ldb, A, CUDA_R_8I, lda, &beta, C,
-                          CUDA_R_32F, N, CUDA_R_32F);
+  const void *a_ptr = static_cast<const void *>(A);
+  const void *b_ptr = static_cast<const void *>(B);
+  float alpha_f = static_cast<float>(alpha);
+  float beta_f = static_cast<float>(beta);
+  void *c_ptr = static_cast<void *>(C);
+  CUBlas<int8_t>::GEMM_EX(&cuda_ctx, cuTransB, cuTransA, N, M, K, &alpha_f,
+                          b_ptr, CUDA_R_8I, ldb, a_ptr, CUDA_R_8I, lda, &beta_f,
+                          c_ptr, CUDA_R_32F, N, CUDA_R_32F);
 }
 
 }  // namespace math
