@@ -1,9 +1,9 @@
 set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper box_wrapper nccl_wrapper prune
   feed_fetch_method pass_builder parallel_executor profiler layer tracer engine scope_pool
-  analysis_predictor imperative_profiler imperative_flag save_load_util dlpack_tensor device_context data_loader)
+  analysis_predictor imperative_profiler imperative_flag save_load_util dlpack_tensor device_context)
 
 if(NOT WIN32)
-  set(PYBIND_DEPS ${PYBIND_DEPS} nccl_context)
+  set(PYBIND_DEPS ${PYBIND_DEPS} nccl_context data_loader)
 endif(NOT WIN32)
 
 if(WITH_PYTHON)

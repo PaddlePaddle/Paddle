@@ -277,6 +277,7 @@ void BindImperative(py::module *m_ptr) {
           imperative::SetCurrentTracer(tracer);
         });
 
+#ifndef _WIN32
   // Dygraph DataLoader signal handler
   m.def("_set_process_pid", [](int64_t key, pid_t pid) {
     imperative::SetLoadProcessPID(key, pid);
@@ -287,6 +288,7 @@ void BindImperative(py::module *m_ptr) {
         []() { imperative::SetLoadProcessSignalHandler(); });
   m.def("_throw_error_if_process_failed",
         []() { imperative::ThrowErrorIfLoadProcessFailed(); });
+#endif
 
   py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>>(
       m, "VarBase",
