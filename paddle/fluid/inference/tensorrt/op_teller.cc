@@ -58,16 +58,19 @@ struct SimpleOpTypeSetTeller : public Teller {
                                               "swish",
                                               "split"}};
 
+  // use this set for no calib int8.
   std::unordered_set<std::string> int8_teller_set{
-      {"mul", "conv2d", "pool2d", "relu", "softmax", "depthwise_conv2d",
+      {"mul", "conv2d", "pool2d", "relu", "depthwise_conv2d", "softmax",
        "batch_norm", "elementwise_add", "leaky_relu", "fc"}};
 };
 
 bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc,
                     bool use_no_calib_int8) {
   // do not support the op which is labeled the `skip_quant`
-  if (desc.HasAttr("op_namescope") &&
-      boost::get<std::string>(desc.GetAttr("op_namescope")) == "/skip_quant_2/")
+  if ((desc.HasAttr("namescope") &&
+       boost::get<std::string>(desc.GetAttr("op_namescope")) ==
+           "/skip_quant_2/") ||
+      desc.HasAttr("skip_quant"))
     return false;
 
   for (auto& teller : tellers_) {
