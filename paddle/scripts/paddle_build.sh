@@ -39,7 +39,8 @@ function print_usage() {
     ${BLUE}dockerfile${NONE}: generate paddle release dockerfile
     ${BLUE}fluid_inference_lib${NONE}: deploy fluid inference library
     ${BLUE}check_style${NONE}: run code style check
-    ${BLUE}cicheck${NONE}: run CI tasks
+    ${BLUE}cicheck${NONE}: run CI tasks on Linux
+    ${BLUE}maccheck${NONE}: run CI tasks on Mac
     "
 }
 
@@ -77,7 +78,7 @@ function cmake_base() {
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/2.7/bin/python2.7
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/2.7/include/python2.7
             -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/2.7/lib/libpython2.7.dylib"
-            pip install --user -r ${PADDLE_ROOT}/python/requirements.txt
+                pip install --user -r ${PADDLE_ROOT}/python/requirements.txt
             else
                 exit 1
             fi
@@ -468,7 +469,7 @@ function generate_upstream_develop_api_spec() {
     build $2
     generate_api_spec "$1" "DEV"
     git checkout $cur_branch
-    git branch -D develop_base_pr 
+    git branch -D develop_base_pr
     ENABLE_MAKE_CLEAN="OFF"
 }
 
@@ -484,9 +485,17 @@ function generate_api_spec() {
     virtualenv .${spec_kind}_env
     source .${spec_kind}_env/bin/activate
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
-
-    spec_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.spec 
+    spec_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.spec
     python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > $spec_path
+
+    # used to log op_register data_type
+    op_type_path=${PADDLE_ROOT}/paddle/fluid/OP_TYPE_${spec_kind}.spec
+    python ${PADDLE_ROOT}/tools/check_op_register_type.py > $op_type_path
+
+    # print all ops desc in dict to op_desc_path
+    op_desc_path=${PADDLE_ROOT}/paddle/fluid/OP_DESC_${spec_kind}.spec
+    python ${PADDLE_ROOT}/tools/print_op_desc.py > $op_desc_path
+
     awk -F '(' '{print $NF}' $spec_path >${spec_path}.doc
     awk -F '(' '{$NF="";print $0}' $spec_path >${spec_path}.api
     if [ "$1" == "cp35-cp35m" ] || [ "$1" == "cp36-cp36m" ] || [ "$1" == "cp37-cp37m" ]; then 
@@ -501,6 +510,72 @@ function generate_api_spec() {
             ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_op_maker.spec
     fi
     deactivate
+}
+
+function check_approvals_of_unittest() {
+    # approval_user_list: XiaoguangHu01 46782768,luotao1 6836917,phlrain 43953930,lanxianghit 47554610, zhouwei25 52485244, kolinwei 22165420
+    approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
+    check_times=$1
+    if [ $1 == 1 ]; then
+        APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22165420 52485244 6836917`
+        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+        if [ "${APPROVALS}" == "TRUE" ]; then
+            echo "==================================="
+            echo -e "\n current pr ${GIT_PR_ID} has got approvals. So, Pass CI directly!\n"
+            echo "==================================="
+            exit 0
+        fi
+    elif [ $1 == 2 ]; then
+        unittest_spec_diff=`python ${PADDLE_ROOT}/tools/diff_unittest.py ${PADDLE_ROOT}/paddle/fluid/UNITTEST_DEV.spec ${PADDLE_ROOT}/paddle/fluid/UNITTEST_PR.spec`
+        if [ "$unittest_spec_diff" != "" ]; then
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22165420 52485244 6836917`
+            echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+            if [ "${APPROVALS}" == "FALSE" ]; then
+                echo "************************************"
+                echo -e "It is forbidden to disable or delete the unit-test.\n"
+                echo -e "If you must delete it temporarily, please add it to[https://github.com/PaddlePaddle/Paddle/wiki/Temporarily-disabled-Unit-Test]."
+                echo -e "Then you must have one RD (kolinwei(recommended) or zhouwei25 or luotao1) approval for the deletion of unit-test. \n"
+                echo -e "If you have any problems about deleting unit-test, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/Deleting-unit-test-is-forbidden]. \n"
+                echo -e "Following unit-tests are deleted in this PR: \n ${unittest_spec_diff} \n"
+                echo "************************************"
+                exit 1
+            fi
+        fi
+    fi
+}
+
+function check_change_of_unittest() {
+    set +x
+    generate_unittest_spec "PR"
+    fetch_upstream_develop_if_not_exist
+    git fetch upstream
+    git reset --hard upstream/$BRANCH
+    cmake_gen $1
+    generate_unittest_spec "DEV"
+    check_approvals_of_unittest 2
+    set +x
+}
+
+function generate_unittest_spec() {
+    spec_kind=$1
+    if [ "$spec_kind" == "DEV" ]; then
+        cat <<EOF
+        ============================================
+        Generate unit tests.spec of develop.
+        ============================================
+EOF
+    elif [ "$spec_kind" == "PR" ]; then
+        cat <<EOF
+        ============================================
+        Generate unit tests.spec of this PR.
+        ============================================
+EOF
+    else
+        echo "Not supported $1"
+        exit 1
+    fi
+    spec_path=${PADDLE_ROOT}/paddle/fluid/UNITTEST_${spec_kind}.spec
+    ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' > ${spec_path}
 }
 
 
@@ -1077,10 +1152,12 @@ function main() {
         check_style
         ;;
       cicheck)
+        check_approvals_of_unittest 1
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
         enable_unused_var_check
         parallel_test
+        check_change_of_unittest ${PYTHON_ABI:-""}
         ;;
       cicheck_brpc)
         cmake_gen ${PYTHON_ABI:-""}
@@ -1107,6 +1184,13 @@ function main() {
         cmake_gen ${PYTHON_ABI:-""}
         build_mac
         run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
+        ;;
+      maccheck_py35)
+        check_approvals_of_unittest 1
+        cmake_gen ${PYTHON_ABI:-""}
+        build_mac
+        run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
+        check_change_of_unittest ${PYTHON_ABI:-""}
         ;;
       macbuild)
         cmake_gen ${PYTHON_ABI:-""}

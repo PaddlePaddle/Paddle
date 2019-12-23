@@ -43,13 +43,13 @@ void TransformData(const OpKernelType &expected_kernel_type,
 
   // do layout transform
   if (NeedTransformLayout(lout, lin)) {
+#ifdef PADDLE_WITH_MKLDNN
     if (lin == DataLayout::kMKLDNN || lout == DataLayout::kMKLDNN) {
       PADDLE_ENFORCE(
           !(lin == DataLayout::kMKLDNN && lout == DataLayout::kMKLDNN),
           "No layout transform needed between two MKLDNN OPKernels");
 
       if (lin != DataLayout::kMKLDNN && lout == DataLayout::kMKLDNN) {
-#ifdef PADDLE_WITH_MKLDNN
         // Case1 - transform from Non-MKLDNN OPKernel to MKLDNN OPKernel
         // Just set layout/format. No real transform occur
 
@@ -67,7 +67,6 @@ void TransformData(const OpKernelType &expected_kernel_type,
         }
         out.set_layout(DataLayout::kMKLDNN);
         out.set_format(out_format);
-#endif
       } else {
         // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
         // Do transform via MKLDNN lib
@@ -78,6 +77,10 @@ void TransformData(const OpKernelType &expected_kernel_type,
       // Case3 - transfrom between Non-MKLDNN OPKernels
       TransDataLayout(kernel_type_for_var, expected_kernel_type, in, &out);
     }
+#else
+    // Case3 - transfrom between Non-MKLDNN OPKernels
+    TransDataLayout(kernel_type_for_var, expected_kernel_type, in, &out);
+#endif
     transformed = true;
     PassTensorData(&out, &in);
   }

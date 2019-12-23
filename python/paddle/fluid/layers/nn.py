@@ -8693,7 +8693,7 @@ def prelu(x, mode, param_attr=None, name=None):
     if mode == 'channel':
         alpha_shape = [1, x.shape[1], 1, 1]
     elif mode == 'element':
-        alpha_shape = x.shape[1:]
+        alpha_shape = [1, x.shape[1], x.shape[2], x.shape[3]]
     dtype = helper.input_dtype(input_param_name='x')
     alpha = helper.create_parameter(
         attr=helper.param_attr,
@@ -9865,7 +9865,7 @@ def strided_slice(input, axes, starts, ends, strides):
             Given:
                 data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
                 axes = [0, 1]
-                starts = [-1, 1000]
+                starts = [0, 1]
                 ends = [-1, 1000]
                 strides = [1, 3]
             Then:
@@ -12190,12 +12190,15 @@ class PyFuncRegistry(object):
 @templatedoc()
 def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     """
-    This API is used to register customized OP to Fluid. The forward  function 
-    of the registered OP is ``func`` and the backward function of that is 
-    ``backward_func``. Paddle will call ``func`` at forward runtime  and call 
-    ``backward_func`` at backward runtime(if ``backward_func`` is not  None). 
+    This OP is used to register customized Python OP to Paddle Fluid. The design 
+    principe of py_func is that LodTensor and numpy array can be converted to each
+    other easily. So you can use Python and numpy API to register a python OP.
+
+    The forward  function of the registered OP is ``func`` and the backward function 
+    of that is  ``backward_func``. Paddle will call ``func`` at forward runtime and 
+    call ``backward_func`` at backward runtime(if ``backward_func`` is not  None). 
     ``x`` is the input of ``func``, whose type must be LoDTensor; ``out`` is 
-    the output of ``func``, whose type can be either LoDTensor or NumPy array.
+    the output of ``func``, whose type can be either LoDTensor or numpy array.
 
     The input of the backward function ``backward_func`` is ``x``, ``out`` and 
     the gradient of ``out``. If some variables of ``out`` have no gradient, the 
@@ -12212,49 +12215,56 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     Args:
         func (callable): The forward function of the registered OP. When the network
             is running, the forward output ``out`` will be calculated according to this 
-            function and the forward input ``x``.
-        x (Variable): The input of the forward function ``func``, its type can be 
-            Variable | tuple[Variable] | list[Variale], in which Variable is LoDTensor.
-        out (Variable): The output of the forward function ``func``, its type can be
-            Variable | tuple[Variable] | list[Variale], in which Variable can be either 
-            LoDTensor or NumPy array. Since Paddle cannot automatically infer the shape
-            and data type of ``out``, ``out`` must be created in advance.
+            function and the forward input ``x``. In ``func`` , it's suggested that we 
+            actively convert LoDTensor into a numpy array, so that we can use Python and
+            numpy API arbitrarily. If not, some operations of numpy may not be compatible.
+        x (Variable|tuple(Variale)|list[Variale]): The input of the forward function ``func``. 
+            It can be Variable|tuple(Variale)|list[Variale], where Variable is LoDTensor or 
+            Tenosor. In addition, Multiple Variable should be passed in the form of tuple(Variale)
+            or list[Variale].
+        out (Variable|tuple(Variale)|list[Variale]): The output of the forward function ``func``, 
+            it can be Variable|tuple(Variale)|list[Variale], where Variable can be either LoDTensor
+            or numpy array. Since Paddle cannot automatically infer the shape and type of ``out``, 
+            you must create ``out`` in advance.
         backward_func (callable, optional): The backward function of the registered OP. 
             Its default value is None, which means there is no reverse calculation. If 
             it is not None, ``backward_func`` is called to calculate the gradient of 
             ``x`` when the network is at backward runtime.
         skip_vars_in_backward_input (Variable, optional): It's used to limit the input 
-            variable list of ``backward_func``, and it can be single Variable, tuple[Variable]
-            or list[Variable]. It must belong to either ``x`` or ``out``. The default 
-            value is None, which means that no variables need to be removed from ``x`` 
-            and ``out``. If it is not None, these variables will not be the input of 
-            ``backward_func``. This parameter is only useful when ``backward_func`` is 
-            not None.
+            variable list of ``backward_func``, and it can be Variable|tuple(Variale)|list[Variale]. 
+            It must belong to either ``x`` or ``out``. The default  value is None, which means 
+            that no variables need to be removed from ``x`` and ``out``. If it is not None, 
+            these variables will not be the input of ``backward_func``. This parameter is only 
+            useful when ``backward_func`` is not None.
     
     Returns: 
-        Variable: The output ``out`` of the forward function ``func``.
+        Variable|tuple(Variale)|list[Variale]: The output ``out`` of the forward function ``func``.
 
     Examples:
         .. code-block:: python
-
+	    
+            # example 1:
             import paddle.fluid as fluid
             import six
 
-            def create_tmp_var(name, dtype, shape):
-            return fluid.default_main_program().current_block().create_var(
-            name=name, dtype=dtype, shape=shape)
-
-            # Tanh activation function provided by Paddle C++ op
-            # Here, tanh is used as an example to show how to use py_func
+            # Creates a forward function, LodTensor can be input directly without
+            # being converted into numpy array.
             def tanh(x):
                 return np.tanh(x)
 
-            # Skip forward input x
+            # Skip x in backward function and return the gradient of x
+            # LodTensor must be actively converted to numpy array, otherwise, 
+            # operations such as +/- can't be used.
             def tanh_grad(y, dy):
                 return np.array(dy) * (1 - np.square(np.array(y)))
-
+            
+            # Creates a forward function for debugging running networks(print value)
             def debug_func(x):
                 print(x)
+            
+            def create_tmp_var(name, dtype, shape):
+                return fluid.default_main_program().current_block().create_var(
+                    name=name, dtype=dtype, shape=shape)
 
             def simple_net(img, label):
                 hidden = img
@@ -12268,28 +12278,87 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
                         out=new_hidden, backward_func=tanh_grad,
                         skip_vars_in_backward_input=hidden)
 
-                    # User-defined debugging layer, which can print out variable details
+                    # User-defined debug functions that print out the input LodTensor
                     fluid.layers.py_func(func=debug_func, x=hidden, out=None)
 
                 prediction = fluid.layers.fc(hidden, size=10, act='softmax')
                 loss = fluid.layers.cross_entropy(input=prediction, label=label)
                 return fluid.layers.mean(loss)
+
+            # example 2: 
+            # This example shows how to turn LoDTensor into numpy array and 
+            # use numpy API to register an Python OP
+            import paddle.fluid as fluid
+            import numpy as np
+
+            def element_wise_add(x, y): 
+                # LodTensor must be actively converted to numpy array, otherwise, 
+                # numpy.shape can't be used.
+                x = np.array(x)    
+                y = np.array(y)
+
+                if x.shape != y.shape:
+                    raise AssertionError("the shape of inputs must be the same!")
+
+                result = np.zeros(x.shape, dtype='int32')
+                for i in range(len(x)):
+                    for j in range(len(x[0])):
+                        result[i][j] = x[i][j] + y[i][j]
+
+                return result
+
+            def create_tmp_var(name, dtype, shape):
+                return fluid.default_main_program().current_block().create_var(
+                            name=name, dtype=dtype, shape=shape)
+
+            def py_func_demo():
+                start_program = fluid.default_startup_program()
+                main_program = fluid.default_main_program()
+
+                # Input of the forward function
+                x = fluid.data(name='x', shape=[2,3], dtype='int32')
+                y = fluid.data(name='y', shape=[2,3], dtype='int32')
+                
+                # Output of the forward function, name/dtype/shape must be specified
+                output = create_tmp_var('output','int32', [3,1])
+
+                # Multiple Variable should be passed in the form of tuple(Variale) or list[Variale]
+                fluid.layers.py_func(func=element_wise_add, x=[x,y], out=output)
+
+                exe=fluid.Executor(fluid.CPUPlace())
+                exe.run(start_program)
+
+                # Feed numpy array to main_program
+                input1 = np.random.randint(1, 10, size=[2,3], dtype='int32')
+                input2 = np.random.randint(1, 10, size=[2,3], dtype='int32')
+                out = exe.run(main_program, 
+                            feed={'x':input1, 'y':input2},
+                            fetch_list=[output.name])
+                print("{0} + {1} = {2}".format(input1, input2, out))
+
+            py_func_demo()
+
+            # Reference output:
+            # [[5, 9, 9]   + [[7, 8, 4]  =  [array([[12, 17, 13]
+            #  [7, 5, 2]]     [1, 3, 3]]            [8, 8, 5]], dtype=int32)]
     """
     helper = LayerHelper('py_func', **locals())
     if x is None:
         x = []
     elif isinstance(x, Variable):
         x = [x]
-    elif not isinstance(x, (list, tuple)):
+    elif isinstance(x, tuple):
+        x = list(x)
+    elif not isinstance(x, (list, tuple, Variable)):
         raise TypeError('Input must be Variable/list(Variable)/tuple(Variable)')
 
     if out is None:
         out_list = []
     elif isinstance(out, Variable):
         out_list = [out]
-    elif isinstance(out, (list, tuple)):
-        out_list = out
-    else:
+    elif isinstance(out, tuple):
+        out_list = list(out)
+    elif not isinstance(x, (list, tuple, Variable)):
         raise TypeError(
             'Output must be Variable/list(Variable)/tuple(Variable)')
 

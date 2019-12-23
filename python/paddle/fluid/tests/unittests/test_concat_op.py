@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import compiler, Program, program_guard, core
 
 
 class TestConcatOp(OpTest):
@@ -40,7 +40,7 @@ class TestConcatOp(OpTest):
         }
 
     def get_dtype(self):
-        return "float32"
+        return "float64"
 
     def test_check_output(self):
         self.check_output()
@@ -134,6 +134,8 @@ create_test_AxisTensor(TestConcatOp5)
 
 
 def create_test_fp16(parent):
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
     class TestConcatFp16(parent):
         def get_dtype(self):
             return np.float16

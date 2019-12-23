@@ -67,6 +67,8 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* x = context.Input<Tensor>("X");
+    auto* seed =
+        context.HasInput("Seed") ? context.Input<Tensor>("Seed") : nullptr;
     auto* y = context.Output<Tensor>("Out");
     y->mutable_data<T>(context.GetPlace());
     float dropout_prob = context.Attr<float>("dropout_prob");
@@ -84,6 +86,20 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
       auto* mask_data = mask->mutable_data<uint8_t>(context.GetPlace());
       size_t size = framework::product(mask->dims());
       auto* x_data = x->data<T>();
+      int seed_data;
+      std::random_device rnd;
+      if (seed) {
+        if (platform::is_gpu_place(seed->place())) {
+          framework::Tensor temp;
+          TensorCopySync(*seed, platform::CPUPlace(), &temp);
+          seed_data = *(temp.data<int>());
+        } else {
+          seed_data = *(seed->data<int>());
+        }
+      } else {
+        seed_data =
+            context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
+      }
       auto* y_data = y->mutable_data<T>(context.GetPlace());
       if (dropout_prob == 1.0f) {
         PADDLE_ENFORCE_CUDA_SUCCESS(
@@ -93,14 +109,10 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
         return;
       }
 
-      std::random_device rnd;
-      int seed =
-          context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
-
       int threads = 512;
       int grid = (x_numel + threads - 1) / threads;
       RandomGenerator<T, uint8_t><<<grid, threads, 0, stream>>>(
-          size, seed, dropout_prob, x_data, mask_data, y_data,
+          size, seed_data, dropout_prob, x_data, mask_data, y_data,
           upscale_in_train);
     } else {
       auto X = EigenMatrix<T>::Reshape(*x, 1);

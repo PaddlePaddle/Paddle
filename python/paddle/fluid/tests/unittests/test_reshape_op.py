@@ -35,12 +35,11 @@ class TestReshapeOp(OpTest):
         }
 
     def init_data(self):
-        self.ori_shape = (2, 25)
-        self.new_shape = (5, 10)
-        self.infered_shape = (5, 10)
+        self.ori_shape = (2, 60)
+        self.new_shape = (12, 10)
+        self.infered_shape = (12, 10)
 
     def test_check_output(self):
-
         self.check_output(no_check_set=['XShape'])
 
     def test_check_grad(self):
@@ -49,7 +48,7 @@ class TestReshapeOp(OpTest):
 
 class TestReshapeOpDimInfer1(TestReshapeOp):
     def init_data(self):
-        self.ori_shape = (5, 10)
+        self.ori_shape = (5, 25)
         self.new_shape = (5, -1, 5)
         self.infered_shape = (5, -1, 5)
 
@@ -185,8 +184,49 @@ class TestReshapeOpDimInfer2_attr_OnlyShape(TestReshapeOp_attr_OnlyShape):
         self.shape = (2, 0, 3, -1)
 
 
+# test int8 data type on CPU
+class TestReshapeInt8Op(OpTest):
+    def setUp(self):
+        self.init_dtype()
+        self.init_data()
+        self.use_mkldnn = True
+        self._cpu_only = True
+        self.op_type = "reshape2"
+        input = np.random.randint(0, 127, self.ori_shape).astype(self.dtype)
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(input)}
+        self.attrs = {
+            'shape': self.new_shape,
+            'use_mkldnn': self.use_mkldnn,
+        }
+        self.outputs = {
+            "Out": self.inputs["X"].reshape(self.infered_shape),
+            'XShape': np.random.random(self.ori_shape).astype(np.float32)
+        }
+
+    def init_dtype(self):
+        self.dtype = np.int8
+
+    def init_data(self):
+        self.ori_shape = (2, 2, 6)
+        self.new_shape = (2, 0, 3, -1)
+        self.infered_shape = (2, 2, 3, -1)
+
+    def test_check_output(self):
+        self.check_output_with_place(
+            fluid.core.CPUPlace(), atol=1e-5, no_check_set=['XShape'])
+
+    def test_check_grad(self):
+        pass
+
+
+# test unt8 data type on CPU
+class TestReshapeUint8Op(TestReshapeInt8Op):
+    def init_dtype(self):
+        self.dtype = np.uint8
+
+
 # Test python API
-class TestReshapeAPI(OpTest):
+class TestReshapeAPI(unittest.TestCase):
     # situation 1: have shape( list, no tensor), no actual shape(Tensor)
     def test_1(self):
         input = np.random.random([2, 25]).astype("float32")
@@ -227,7 +267,7 @@ class TestReshapeAPI(OpTest):
 
 
 # Test Input Error
-class TestReshapeOpError(OpTest):
+class TestReshapeOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The x type of reshape_op must be Variable.

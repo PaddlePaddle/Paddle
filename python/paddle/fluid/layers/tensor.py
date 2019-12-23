@@ -668,18 +668,23 @@ def fill_constant_batch_size_like(input,
     """
     helper = LayerHelper("fill_constant_batch_size_like", **locals())
     out = helper.create_variable_for_type_inference(dtype=dtype)
+    attrs = {
+        'shape': shape,
+        'dtype': out.dtype,
+        'value': float(value),
+        'input_dim_idx': input_dim_idx,
+        'output_dim_idx': output_dim_idx,
+        'force_cpu': force_cpu or force_init_on_cpu()
+    }
+    if convert_dtype(dtype) in ['int64', 'int32']:
+        attrs['str_value'] = str(int(value))
+    else:
+        attrs['str_value'] = str(float(value))
     helper.append_op(
         type='fill_constant_batch_size_like',
         inputs={'Input': input},
         outputs={'Out': [out]},
-        attrs={
-            'shape': shape,
-            'dtype': out.dtype,
-            'value': float(value),
-            'input_dim_idx': input_dim_idx,
-            'output_dim_idx': output_dim_idx,
-            'force_cpu': force_cpu or force_init_on_cpu()
-        })
+        attrs=attrs)
     out.stop_gradient = True
     return out
 

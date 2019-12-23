@@ -17,9 +17,10 @@ import unittest
 import numpy as np
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 
 
+@skip_check_grad_ci(reason="Not op test but call the method of class OpTest.")
 class TestExecutorReturnTensorNotOverwritingWithOptest(OpTest):
     def setUp(self):
         pass

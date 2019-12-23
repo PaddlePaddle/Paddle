@@ -653,55 +653,6 @@ void OpDesc::Flush() {
   }
 }
 
-static std::once_flag init_infer_shape_funcs;
-
-/**
- * NOTE(paddle-dev): Very tricky code here. Maybe we should find a
- * better way to register compile-time infershape method gentlely.
- *
- * Normally, we can register a class derived from InferShapeBase, so that
- * we can set the field of `infer_shape_` inside OpInfo when registering op.
- *
- * However, there is another way we can set the field of `infer_shape_` inside
- * OpInfo. Usually, we overload InferShape method of OperatorWithKernel. After
- * running the following method InitInferShapeFuncs, `infer_shape_` would be set
- * to be the InferShape method of OperatorWithKernel. That is to say, we borrow
- * the run-time InferShape method of OperatorWithKernel to be the compile-time
- * InferShape method.
- *
- * However, during compiling time, we may not know inputs, outputs and attrs of
- * run-time OperatorWithKernel. So the following code creates a fake
- * OperatorWithKernel object. That is why the field info_ of OperatorBase
- * would be null.
- */
-static void InitInferShapeFuncs() {
-  std::call_once(init_infer_shape_funcs, [] {
-    auto &map = OpInfoMap::Instance();
-    auto &info_map = *map.mutable_map();
-
-    for (auto &kern_pair : OperatorWithKernel::AllOpKernels()) {
-      auto op_type = kern_pair.first;
-      auto it = info_map.find(op_type);
-      PADDLE_ENFORCE(it != info_map.end(), "%s has not been registered",
-                     op_type);
-      auto &op_info = it->second;
-      if (op_info.infer_shape_) {  // infer_shape has been registered.
-        continue;
-      }
-
-      auto op = dynamic_cast<OperatorWithKernel *>(op_info.Creator()(
-          "", VariableNameMap{}, VariableNameMap{}, AttributeMap{}));
-
-      PADDLE_ENFORCE_NOT_NULL(
-          op, "InferShapeBase is not registered to Operator %s", op_type);
-
-      op_info.infer_shape_ = [op](InferShapeContext *ctx) {
-        op->InferShape(ctx);
-      };
-    }
-  });
-}
-
 void OpDesc::CheckAttrs() {
   PADDLE_ENFORCE(!Type().empty(),
                  "CheckAttr() can not be called before type is setted.");
@@ -718,7 +669,6 @@ void OpDesc::CheckAttrs() {
 void OpDesc::InferShape(const BlockDesc &block) const {
   try {
     VLOG(3) << "CompileTime infer shape on " << Type();
-    InitInferShapeFuncs();
     auto &infer_shape = OpInfoMap::Instance().Get(this->Type()).infer_shape_;
     PADDLE_ENFORCE(static_cast<bool>(infer_shape),
                    "%s's infer_shape has not been registered", this->Type());
