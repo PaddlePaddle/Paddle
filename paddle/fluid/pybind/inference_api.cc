@@ -16,10 +16,13 @@
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
 #include <cstring>
+#include <functional>
 #include <iostream>
+#include <iterator>
 #include <map>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -30,14 +33,15 @@ namespace py = pybind11;
 
 namespace paddle {
 namespace pybind {
-using paddle::PaddleDType;
-using paddle::PaddleBuf;
-using paddle::PaddleTensor;
-using paddle::PaddlePlace;
-using paddle::PaddlePredictor;
+using paddle::AnalysisPredictor;
 using paddle::NativeConfig;
 using paddle::NativePaddlePredictor;
-using paddle::AnalysisPredictor;
+using paddle::PaddleBuf;
+using paddle::PaddleDType;
+using paddle::PaddlePlace;
+using paddle::PaddlePredictor;
+using paddle::PaddleTensor;
+using paddle::ZeroCopyTensor;
 
 namespace {
 void BindPaddleDType(py::module *m);
@@ -49,6 +53,7 @@ void BindNativeConfig(py::module *m);
 void BindNativePredictor(py::module *m);
 void BindAnalysisConfig(py::module *m);
 void BindAnalysisPredictor(py::module *m);
+void BindZeroCopyTensor(py::module *m);
 
 #ifdef PADDLE_WITH_MKLDNN
 void BindMkldnnQuantizerConfig(py::module *m);
@@ -57,7 +62,7 @@ void BindMkldnnQuantizerConfig(py::module *m);
 template <typename T>
 PaddleBuf PaddleBufCreate(py::array_t<T> data) {
   PaddleBuf buf(data.size() * sizeof(T));
-  std::copy_n(static_cast<T *>(data.mutable_data()), data.size(),
+  std::copy_n(static_cast<const T *>(data.data()), data.size(),
               static_cast<T *>(buf.data()));
   return buf;
 }
@@ -65,25 +70,25 @@ PaddleBuf PaddleBufCreate(py::array_t<T> data) {
 template <typename T>
 void PaddleBufReset(PaddleBuf &buf, py::array_t<T> data) {  // NOLINT
   buf.Resize(data.size() * sizeof(T));
-  std::copy_n(static_cast<T *>(data.mutable_data()), data.size(),
+  std::copy_n(static_cast<const T *>(data.data()), data.size(),
               static_cast<T *>(buf.data()));
 }
 
 template <typename T>
-PaddleDType PaddleTensorGetDType();
+constexpr PaddleDType PaddleTensorGetDType();
 
 template <>
-PaddleDType PaddleTensorGetDType<int32_t>() {
+constexpr PaddleDType PaddleTensorGetDType<int32_t>() {
   return PaddleDType::INT32;
 }
 
 template <>
-PaddleDType PaddleTensorGetDType<int64_t>() {
+constexpr PaddleDType PaddleTensorGetDType<int64_t>() {
   return PaddleDType::INT64;
 }
 
 template <>
-PaddleDType PaddleTensorGetDType<float>() {
+constexpr PaddleDType PaddleTensorGetDType<float>() {
   return PaddleDType::FLOAT32;
 }
 
@@ -95,7 +100,7 @@ PaddleTensor PaddleTensorCreate(
 
   if (copy) {
     PaddleBuf buf(data.size() * sizeof(T));
-    std::copy_n(static_cast<T *>(data.mutable_data()), data.size(),
+    std::copy_n(static_cast<const T *>(data.data()), data.size(),
                 static_cast<T *>(buf.data()));
     tensor.data = std::move(buf);
   } else {
@@ -111,9 +116,9 @@ PaddleTensor PaddleTensorCreate(
   return tensor;
 }
 
-py::array PaddleTensorGetData(PaddleTensor &tensor) {  // NOLINT
+py::dtype PaddleDTypeToNumpyDType(PaddleDType dtype) {
   py::dtype dt;
-  switch (tensor.dtype) {
+  switch (dtype) {
     case PaddleDType::INT32:
       dt = py::dtype::of<int32_t>();
       break;
@@ -126,7 +131,62 @@ py::array PaddleTensorGetData(PaddleTensor &tensor) {  // NOLINT
     default:
       LOG(FATAL) << "unsupported dtype";
   }
-  return py::array(dt, {tensor.shape}, tensor.data.data());
+
+  return dt;
+}
+
+py::array PaddleTensorGetData(PaddleTensor &tensor) {  // NOLINT
+  py::dtype dt = PaddleDTypeToNumpyDType(tensor.dtype);
+  return py::array(std::move(dt), {tensor.shape}, tensor.data.data());
+}
+
+template <typename T>
+void ZeroCopyTensorCreate(ZeroCopyTensor &tensor,  // NOLINT
+                          py::array_t<T> data) {
+  std::vector<int> shape;
+  std::copy_n(data.shape(), data.ndim(), std::back_inserter(shape));
+  tensor.Reshape(std::move(shape));
+  tensor.copy_from_cpu(static_cast<const T *>(data.data()));
+}
+
+size_t PaddleGetDTypeSize(PaddleDType dt) {
+  size_t size{0};
+  switch (dt) {
+    case PaddleDType::INT32:
+      size = sizeof(int32_t);
+      break;
+    case PaddleDType::INT64:
+      size = sizeof(int64_t);
+      break;
+    case PaddleDType::FLOAT32:
+      size = sizeof(float);
+      break;
+    default:
+      LOG(FATAL) << "unsupported dtype";
+  }
+  return size;
+}
+
+py::array ZeroCopyTensorToNumpy(ZeroCopyTensor &tensor) {  // NOLINT
+  py::dtype dt = PaddleDTypeToNumpyDType(tensor.type());
+  auto tensor_shape = tensor.shape();
+  py::array::ShapeContainer shape(tensor_shape.begin(), tensor_shape.end());
+  py::array array(dt, std::move(shape));
+
+  switch (tensor.type()) {
+    case PaddleDType::INT32:
+      tensor.copy_to_cpu(static_cast<int32_t *>(array.mutable_data()));
+      break;
+    case PaddleDType::INT64:
+      tensor.copy_to_cpu(static_cast<int64_t *>(array.mutable_data()));
+      break;
+    case PaddleDType::FLOAT32:
+      tensor.copy_to_cpu<float>(static_cast<float *>(array.mutable_data()));
+      break;
+    default:
+      LOG(FATAL) << "unsupported dtype";
+  }
+  return array;
 }
 }  // namespace
 
@@ -140,6 +200,7 @@ void BindInferenceApi(py::module *m) {
   BindNativePredictor(m);
   BindAnalysisConfig(m);
   BindAnalysisPredictor(m);
+  BindZeroCopyTensor(m);
 #ifdef PADDLE_WITH_MKLDNN
   BindMkldnnQuantizerConfig(m);
 #endif
@@ -258,6 +319,8 @@ void BindPaddlePredictor(py::module *m) {
            })
       .def("get_input_tensor", &PaddlePredictor::GetInputTensor)
       .def("get_output_tensor", &PaddlePredictor::GetOutputTensor)
+      .def("get_input_names", &PaddlePredictor::GetInputNames)
+      .def("get_output_names", &PaddlePredictor::GetOutputNames)
       .def("zero_copy_run", &PaddlePredictor::ZeroCopyRun)
       .def("clone", &PaddlePredictor::Clone);
 
@@ -418,12 +481,27 @@ void BindAnalysisPredictor(py::module *m) {
           })
       .def("get_input_tensor", &AnalysisPredictor::GetInputTensor)
       .def("get_output_tensor", &AnalysisPredictor::GetOutputTensor)
+      .def("get_input_names", &AnalysisPredictor::GetInputNames)
+      .def("get_output_names", &AnalysisPredictor::GetOutputNames)
       .def("zero_copy_run", &AnalysisPredictor::ZeroCopyRun)
       .def("clone", &AnalysisPredictor::Clone)
       .def("scope", &AnalysisPredictor::scope,
            py::return_value_policy::reference)
       .def("SaveOptimModel", &AnalysisPredictor::SaveOptimModel,
            py::arg("dir"));
+}
+
+void BindZeroCopyTensor(py::module *m) {
+  py::class_<ZeroCopyTensor>(*m, "ZeroCopyTensor")
+      .def("reshape", &ZeroCopyTensor::Reshape)
+      .def("copy_from_cpu", &ZeroCopyTensorCreate<int32_t>)
+      .def("copy_from_cpu", &ZeroCopyTensorCreate<int64_t>)
+      .def("copy_from_cpu", &ZeroCopyTensorCreate<float>)
+      .def("copy_to_cpu", &ZeroCopyTensorToNumpy)
+      .def("shape", &ZeroCopyTensor::shape)
+      .def("set_lod", &ZeroCopyTensor::SetLoD)
+      .def("lod", &ZeroCopyTensor::lod)
+      .def("type", &ZeroCopyTensor::type);
 }
 }  // namespace
 }  // namespace pybind
