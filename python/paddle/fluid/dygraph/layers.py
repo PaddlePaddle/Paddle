@@ -145,13 +145,13 @@ class Layer(core.Layer):
             list of :ref:`api_guide_Variable_en` : a list of Parameters.
         """
         ret = [p for p in self._parameters.values()]
-        memo = set(ret)
+        parameters_set = set(ret)
         if include_sublayers:
             for l in self._sub_layers.values():
                 for p in l.parameters(include_sublayers):
-                    if p in memo:
+                    if p in parameters_set:
                         continue
-                    memo.add(p)
+                    parameters_set.add(p)
                     ret.append(p)
         return ret
 
