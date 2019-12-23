@@ -158,7 +158,7 @@ class FcOpConverter : public OpConverter {
                 "dims equals to 4, the last dim of input must be 1, but got %d",
                 input_d[3]));
       }
-      for (size_t i = 0; i < 3; i++) {
+      for (int i = 0; i < 3; i++) {
         if (i < input_dims) {
           reshape_dim3[i] = input_d[i];
         } else {
@@ -175,7 +175,7 @@ class FcOpConverter : public OpConverter {
                         platform::errors::InvalidArgument(
                             "Invalid dimensions. When x_num_col_dims equals to "
                             "2, input_dims should not be 1"));
-      for (size_t i = 0; i < 4; i++) {
+      for (int i = 0; i < 4; i++) {
         if (i < input_dims) {
           reshape_dim4[i] = input_d[i];
         } else {
@@ -194,17 +194,17 @@ class FcOpConverter : public OpConverter {
         TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *reshape_itensor,
                              n_output, tmp_weight.get(), bias.get());
 
-    // reshape FC output to remove the redundant "1" dims
-    auto* reshape_layer2 =
-        TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *(fc_layer->getOutput(0)));
-    if (x_num_col_dims == 2) {
-      nvinfer1::Dims2 reshape_dim2(input_d[0], n_output);
-      reshape_layer2->setReshapeDimensions(reshape_dim2);
-    }
+    // // reshape FC output to remove the redundant "1" dims
+    // auto* reshape_layer2 =
+    //     TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *(fc_layer->getOutput(0)));
+    // if (x_num_col_dims == 2) {
+    //   nvinfer1::Dims2 reshape_dim2(input_d[0], n_output);
+    //   reshape_layer2->setReshapeDimensions(reshape_dim2);
+    // }
     engine_->SetWeights(op_desc.Input(w_name).front(), std::move(tmp));
     auto output_name = op_desc.Output("Out").front();
 
-    RreplenishLayerAndOutput(reshape_layer2, "fc", {output_name}, test_mode);
+    RreplenishLayerAndOutput(fc_layer, "fc", {output_name}, test_mode);
   }
 };
 

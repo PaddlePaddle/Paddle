@@ -102,23 +102,23 @@ class MultiheadMatMulOpConverter : public OpConverter {
     float* alpha_data = alpha_t->mutable_data<float>(platform::CPUPlace());
     alpha_data[0] = alpha;
 
-    auto* q_input_reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *Q);
-    auto* k_input_reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *K);
-    auto* v_input_reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *V);
-    if (Q->getDimensions().nbDims == 2) {
-      nvinfer1::Dims4 input_reshape_dim(Q->getDimensions().d[0],
-                                        Q->getDimensions().d[1], 1, 1);
-      q_input_reshape_layer->setReshapeDimensions(input_reshape_dim);
-      k_input_reshape_layer->setReshapeDimensions(input_reshape_dim);
-      v_input_reshape_layer->setReshapeDimensions(input_reshape_dim);
-    } else if (Q->getDimensions().nbDims == 3) {
-      nvinfer1::Dims4 input_reshape_dim(Q->getDimensions().d[0],
-                                        Q->getDimensions().d[1],
-                                        Q->getDimensions().d[2], 1);
-      q_input_reshape_layer->setReshapeDimensions(input_reshape_dim);
-      k_input_reshape_layer->setReshapeDimensions(input_reshape_dim);
-      v_input_reshape_layer->setReshapeDimensions(input_reshape_dim);
-    }
+    // auto* q_input_reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *Q);
+    // auto* k_input_reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *K);
+    // auto* v_input_reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *V);
+    // if (Q->getDimensions().nbDims == 2) {
+    //   nvinfer1::Dims4 input_reshape_dim(Q->getDimensions().d[0],
+    //                                     Q->getDimensions().d[1], 1, 1);
+    //   q_input_reshape_layer->setReshapeDimensions(input_reshape_dim);
+    //   k_input_reshape_layer->setReshapeDimensions(input_reshape_dim);
+    //   v_input_reshape_layer->setReshapeDimensions(input_reshape_dim);
+    // } else if (Q->getDimensions().nbDims == 3) {
+    //   nvinfer1::Dims4 input_reshape_dim(Q->getDimensions().d[0],
+    //                                     Q->getDimensions().d[1],
+    //                                     Q->getDimensions().d[2], 1);
+    //   q_input_reshape_layer->setReshapeDimensions(input_reshape_dim);
+    //   k_input_reshape_layer->setReshapeDimensions(input_reshape_dim);
+    //   v_input_reshape_layer->setReshapeDimensions(input_reshape_dim);
+    // }
     TensorRTEngine::Weight scale{nvinfer1::DataType::kFLOAT,
                                  static_cast<void*>(alpha_data), 1};
     TensorRTEngine::Weight shift{nvinfer1::DataType::kFLOAT, nullptr, 0};
@@ -174,15 +174,15 @@ class MultiheadMatMulOpConverter : public OpConverter {
                                            0};
 
     auto* q_eltadd_layer = TRT_ENGINE_ADD_LAYER(
-        engine_, Scale, *(q_input_reshape_layer->getOutput(0)),
+        engine_, Scale, *Q /*(q_input_reshape_layer->getOutput(0))*/,
         nvinfer1::ScaleMode::kCHANNEL, shift_weights_q.get(),
         scale_weights_q.get(), power_weights_q.get());
     auto* k_eltadd_layer = TRT_ENGINE_ADD_LAYER(
-        engine_, Scale, *(k_input_reshape_layer->getOutput(0)),
+        engine_, Scale, *K /*(k_input_reshape_layer->getOutput(0))*/,
         nvinfer1::ScaleMode::kCHANNEL, shift_weights_k.get(),
         scale_weights_k.get(), power_weights_k.get());
     auto* v_eltadd_layer = TRT_ENGINE_ADD_LAYER(
-        engine_, Scale, *(v_input_reshape_layer->getOutput(0)),
+        engine_, Scale, *V /*(v_input_reshape_layer->getOutput(0))*/,
         nvinfer1::ScaleMode::kCHANNEL, shift_weights_v.get(),
         scale_weights_v.get(), power_weights_v.get());
     auto* v_transpose_reshape_layer =
