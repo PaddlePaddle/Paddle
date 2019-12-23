@@ -73,6 +73,13 @@ Output(Indices) gives the sorted order along the given axis Attr(axis).
                  "When axis < 0, the actual axis will be the |axis|'th "
                  "counting backwards. Default -1, the last dimension.")
         .SetDefault(-1);
+    AddAttr<bool>(
+        "descending",
+        "(bool, default false) The descending attribute is a flag to tell"
+        "algorithm how to sort the input data."
+        "If descending is true, will sort by descending order,"
+        "else if false, sort by ascending order. Default value is false.")
+        .SetDefault(false);
   }
 };
 

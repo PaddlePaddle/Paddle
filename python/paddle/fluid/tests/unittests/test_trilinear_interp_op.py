@@ -568,7 +568,7 @@ class TestTrilinearInterp_attr_tensor_Case3(TestTrilinearInterpOp_attr_tensor):
         self.scale_by_1Dtensor = True
 
 
-class TestTrilinearInterpAPI(OpTest):
+class TestTrilinearInterpAPI(unittest.TestCase):
     def test_case(self):
         x = fluid.data(name="x", shape=[2, 3, 6, 9, 4], dtype="float32")
         y = fluid.data(name="y", shape=[2, 6, 9, 4, 3], dtype="float32")
@@ -619,7 +619,7 @@ class TestTrilinearInterpAPI(OpTest):
             self.assertTrue(np.allclose(results[i + 1], expect_res))
 
 
-class TestTrilinearInterpOpException(OpTest):
+class TestTrilinearInterpOpException(unittest.TestCase):
     def test_exception(self):
         input = fluid.data(name="input", shape=[2, 3, 6, 9, 4], dtype="float32")
 

@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+Distribute CTR model for test fleet api
+"""
 
 from __future__ import print_function
 
@@ -30,10 +33,22 @@ fluid.default_main_program().random_seed = 1
 
 
 class TestDistCTR2x2(FleetDistRunnerBase):
+    """
+    For test CTR model, using Fleet api
+    """
+
     def net(self, batch_size=4, lr=0.01):
+        """
+        network definition
+
+        Args:
+            batch_size(int): the size of mini-batch for training
+            lr(float): learning rate of training
+        Returns:
+            avg_cost: LoDTensor of cost.
+        """
         dnn_input_dim, lr_input_dim, train_file_path = ctr_dataset_reader.prepare_data(
         )
-        """ network definition """
         dnn_data = fluid.layers.data(
             name="dnn_data",
             shape=[-1, 1],
@@ -56,7 +71,8 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         datas = [dnn_data, lr_data, label]
 
         # build dnn model
-        dnn_layer_dims = [128, 64, 32, 1]
+        # add 12800 for test huge dense Variable
+        dnn_layer_dims = [128, 128000, 64, 32, 1]
         dnn_embedding = fluid.layers.embedding(
             is_distributed=False,
             input=dnn_data,
@@ -116,6 +132,11 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             wn.write(str(program))
 
     def do_training(self, fleet):
+        """
+        do training using dataset, using fetch handler to catch variable
+        Args:
+            fleet(Fleet api): the fleet object of Parameter Server, define distribute training role
+        """
         dnn_input_dim, lr_input_dim, train_file_path = ctr_dataset_reader.prepare_data(
         )
 
@@ -163,9 +184,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             exe.train_from_dataset(
                 program=fleet.main_program,
                 dataset=dataset,
-                fetch_handler=FH([self.avg_cost.name],
-                                 period_secs=2,
-                                 return_np=True),
+                fetch_handler=FH([self.avg_cost.name], period_secs=2),
                 debug=False)
             pass_time = time.time() - pass_start
 

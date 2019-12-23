@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/lrn_op.h"
+#include <memory>
 #include <string>
 #include <vector>
 #include "paddle/fluid/operators/math/blas.h"
@@ -193,12 +194,6 @@ class LRNOp : public framework::OperatorWithKernel {
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
         platform::CanMKLDNNBeUsed(ctx)) {
-      // TODO(jczaja): Add support for NHWC
-      const std::string data_format = ctx.Attr<std::string>("data_format");
-      PADDLE_ENFORCE_NE(
-          data_format, "NHWC",
-          platform::errors::Unimplemented(
-              "LRN MKLDNN does not support NHWC data format yet"));
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
     }
@@ -206,6 +201,28 @@ class LRNOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
         layout_, library_);
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+#ifdef PADDLE_WITH_MKLDNN
+    if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
+        (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+      auto attrs = Attrs();
+      auto ar = paddle::framework::AttrReader(attrs);
+      const std::string data_format = ar.Get<std::string>("data_format");
+      auto dl = framework::StringToDataLayout(data_format);
+      // Some models may have intentionally set "AnyLayout" for pool
+      // op. Treat this as NCHW (default data_format value)
+      if (dl != framework::DataLayout::kAnyLayout) {
+        return framework::OpKernelType(expected_kernel_type.data_type_,
+                                       tensor.place(), dl);
+      }
+    }
+#endif
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
   }
 };
 
@@ -332,14 +349,31 @@ class LRNOpGrad : public framework::OperatorWithKernel {
         layout_, library_);
   }
 };
+
+template <typename T>
+class LRNGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+  std::unique_ptr<T> Apply() const override {
+    auto* op = new T();
+    op->SetType(this->ForwardOpType() + "_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Out", this->Output("Out"));
+    op->SetInput("MidOut", this->Output("MidOut"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
+    return std::unique_ptr<T>(op);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(
-    lrn, ops::LRNOp, ops::LRNOpMaker<float>,
-    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
-    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
+REGISTER_OPERATOR(lrn, ops::LRNOp, ops::LRNOpMaker<float>,
+                  ops::LRNGradOpMaker<paddle::framework::OpDesc>,
+                  ops::LRNGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(lrn_grad, ops::LRNOpGrad);
 REGISTER_OP_CPU_KERNEL(

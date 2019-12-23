@@ -30,43 +30,30 @@ class FCFunctor<platform::CPUDeviceContext, T> {
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
     framework::Tensor Y1;
     T* Y1_data = nullptr;
-    if (N % 128 == 0 && K % 128 == 0) {
+    if (padding_weights) {
       const int NN = N + 4;
       const int KK = K + 4;
       framework::Tensor X1;
-      T* X1_data = X1.Resize({M * KK}).mutable_data<T>(platform::CPUPlace());
-      Y1_data = Y1.Resize({M * (N + 4)}).mutable_data<T>(platform::CPUPlace());
+      T* X1_data = X1.mutable_data<T>({M * KK}, platform::CPUPlace());
+      Y1_data = Y1.mutable_data<T>({M * (N + 4)}, platform::CPUPlace());
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
       for (int i = 0; i < M; i++) {
-        memcpy(X1_data + i * KK, X + i * K, K * sizeof(X[0]));
+        memcpy(X1_data + i * KK, X + i * K, K * sizeof(T));
       }
-      framework::Tensor W1;
-      T* W1_data = nullptr;
-      if (!padding_weights) {
-        W1_data = W1.Resize({(K + 4) * (N + 4)})
-                      .mutable_data<T>(platform::CPUPlace());
-#ifdef PADDLE_WITH_MKLML
-#pragma omp parallel for
-#endif
-        for (int i = 0; i < K; i++) {
-          memcpy(W1_data + i * NN, W + i * N, N * sizeof(W[0]));
-        }
-      }
-      blas.GEMM(false, false, M, N, K, static_cast<T>(1.0), X1_data, KK,
-                (padding_weights ? W : W1_data), NN, static_cast<T>(0.0),
-                Y1_data, NN);
+      blas.GEMM(false, false, M, N, K, static_cast<T>(1.0), X1_data, KK, W, NN,
+                static_cast<T>(0.0), Y1_data, NN);
     } else {
       blas.MatMul(M, N, K, X, W, Y);
     }
     if (B == NULL) {
-      if (N % 128 == 0 && K % 128 == 0) {
+      if (padding_weights) {
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
         for (int i = 0; i < M; i++) {
-          memcpy(Y + i * N, Y1_data + i * (N + 4), N * sizeof(Y[0]));
+          memcpy(Y + i * N, Y1_data + i * (N + 4), N * sizeof(T));
         }
       }
       PADDLE_ENFORCE_EQ(relu, false,
@@ -74,27 +61,20 @@ class FCFunctor<platform::CPUDeviceContext, T> {
                             "When bias is NULL, relu can not be true."));
       return;
     }
-    if (relu) {
-      auto compute =
-          jit::KernelFuncs<jit::VAddReluTuple<T>, platform::CPUPlace>::Cache()
-              .At(N);
-      for (int i = 0; i < M; i++) {
-        T* dst = Y + i * N;
-        T* src = (N % 128 == 0 && K % 128 == 0) ? Y1_data + i * (N + 4) : dst;
-        compute(B, src, dst, N);
-      }
-    } else {
-      auto compute =
-          jit::KernelFuncs<jit::VAddTuple<T>, platform::CPUPlace>::Cache().At(
-              N);
+    auto compute =
+        relu
+            ? jit::KernelFuncs<jit::VAddReluTuple<T>,
+                               platform::CPUPlace>::Cache()
+                  .At(N)
+            : jit::KernelFuncs<jit::VAddTuple<T>, platform::CPUPlace>::Cache()
+                  .At(N);
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
-      for (int i = 0; i < M; i++) {
-        T* dst = Y + i * N;
-        T* src = (N % 128 == 0 && K % 128 == 0) ? Y1_data + i * (N + 4) : dst;
-        compute(B, src, dst, N);
-      }
+    for (int i = 0; i < M; i++) {
+      T* dst = Y + i * N;
+      T* src = (padding_weights) ? Y1_data + i * (N + 4) : dst;
+      compute(B, src, dst, N);
     }
   }
 };

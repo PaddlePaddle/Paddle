@@ -76,6 +76,7 @@ class FillConstantKernel : public framework::OpKernel<T> {
   void Compute(const paddle::framework::ExecutionContext &ctx) const override {
     auto data_type =
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
+
     auto str_value = ctx.Attr<std::string>("str_value");
     auto float_value = ctx.Attr<float>("value");
     auto force_cpu = ctx.Attr<bool>("force_cpu");

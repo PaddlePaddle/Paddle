@@ -668,18 +668,23 @@ def fill_constant_batch_size_like(input,
     """
     helper = LayerHelper("fill_constant_batch_size_like", **locals())
     out = helper.create_variable_for_type_inference(dtype=dtype)
+    attrs = {
+        'shape': shape,
+        'dtype': out.dtype,
+        'value': float(value),
+        'input_dim_idx': input_dim_idx,
+        'output_dim_idx': output_dim_idx,
+        'force_cpu': force_cpu or force_init_on_cpu()
+    }
+    if convert_dtype(dtype) in ['int64', 'int32']:
+        attrs['str_value'] = str(int(value))
+    else:
+        attrs['str_value'] = str(float(value))
     helper.append_op(
         type='fill_constant_batch_size_like',
         inputs={'Input': input},
         outputs={'Out': [out]},
-        attrs={
-            'shape': shape,
-            'dtype': out.dtype,
-            'value': float(value),
-            'input_dim_idx': input_dim_idx,
-            'output_dim_idx': output_dim_idx,
-            'force_cpu': force_cpu or force_init_on_cpu()
-        })
+        attrs=attrs)
     out.stop_gradient = True
     return out
 
@@ -802,7 +807,7 @@ def argmax(x, axis=0):
     return out
 
 
-def argsort(input, axis=-1, name=None):
+def argsort(input, axis=-1, descending=False, name=None):
     """
     This OP sorts the input along the given axis, and returns sorted output
     data Varibale and its corresponding index Variable with the same shape as
@@ -814,6 +819,9 @@ def argsort(input, axis=-1, name=None):
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is Rank(x). when axis<0, it works the same way
             as axis+R. Default is 0.
+        descending(bool, optional) : Descending is a flag, if set to true,
+            algorithm will sort by descending order, else sort by
+            ascending order. Default is false.
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
@@ -879,7 +887,8 @@ def argsort(input, axis=-1, name=None):
         inputs={'X': input},
         outputs={'Out': out,
                  'Indices': ids},
-        attrs={'axis': axis})
+        attrs={'axis': axis,
+               'descending': descending})
     return out, ids
 
 

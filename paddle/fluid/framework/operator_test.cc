@@ -18,6 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/init.h"
 
+DECLARE_bool(enable_unused_var_check);
+
 namespace paddle {
 namespace framework {
 
@@ -135,10 +137,12 @@ template <typename T1, typename T2>
 class CPUKernelTest : public OpKernel<float> {
  public:
   void Compute(const ExecutionContext& ctx) const {
-    std::cout << ctx.op().DebugString() << std::endl;
+    std::cout << ctx.DebugString() << std::endl;
     cpu_kernel_run_num++;
-    ASSERT_EQ(ctx.op().Input("x"), "IN1");
-    ASSERT_EQ(ctx.op().Output("y"), "OUT1");
+    ASSERT_EQ(ctx.InputName("x"), "IN1");
+    ASSERT_EQ(ctx.OutputName("y"), "OUT1");
+    auto* x = ctx.Input<Tensor>("X");
+    ASSERT_EQ(x, nullptr);
   }
 };
 
@@ -146,10 +150,10 @@ template <typename T1, typename T2>
 class CPUKernel2Test : public OpKernel<float> {
  public:
   void Compute(const ExecutionContext& ctx) const {
-    std::cout << ctx.op().DebugString() << std::endl;
+    std::cout << ctx.DebugString() << std::endl;
     cpu_kernel2_run_num++;
-    ASSERT_EQ(ctx.op().Input("x"), "IN1");
-    ASSERT_EQ(ctx.op().Output("y"), "OUT1");
+    ASSERT_EQ(ctx.InputName("x"), "IN1");
+    ASSERT_EQ(ctx.OutputName("y"), "OUT1");
   }
 };
 
@@ -172,7 +176,7 @@ class OpKernelTestMultiInputsProtoAndCheckerMaker
 class CPUKernalMultiInputsTest : public OpKernel<float> {
  public:
   void Compute(const ExecutionContext& ctx) const {
-    auto xs = ctx.op().Inputs("xs");
+    auto xs = ctx.InputNames("xs");
     ASSERT_EQ(xs.size(), 3UL);
     ASSERT_EQ(xs[0], "x0");
     ASSERT_EQ(xs[1], "x1");
@@ -196,10 +200,10 @@ class CPUKernalMultiInputsTest : public OpKernel<float> {
     auto outTensor0 = ctx.MultiOutput<Tensor>("ys");
     ASSERT_EQ(outTensor0.size(), 2U);
 
-    auto k = ctx.op().Input("k");
+    auto k = ctx.InputName("k");
     ASSERT_EQ(k, "k0");
 
-    auto ys = ctx.op().Outputs("ys");
+    auto ys = ctx.OutputNames("ys");
     ASSERT_EQ(ys.size(), 2UL);
     ASSERT_EQ(ys[0], "y0");
     ASSERT_EQ(ys[1], "y1");
@@ -496,6 +500,41 @@ TEST(IndicateVarDataTypeTest, other) {
   ASSERT_TRUE(caught);
 }
 
+TEST(ExecutionContextAttrAndInOut, new_api) {
+  paddle::framework::InitDevices(true);
+  paddle::framework::proto::OpDesc op_desc;
+  op_desc.set_type("test_operator");
+  BuildVar("input", {"IN1"}, op_desc.add_inputs());
+  BuildVar("output", {"OUT1"}, op_desc.add_outputs());
+
+  auto attr = op_desc.mutable_attrs()->Add();
+  attr->set_name("scale");
+  attr->set_type(paddle::framework::proto::AttrType::FLOAT);
+  attr->set_f(3.14);
+
+  paddle::platform::CPUPlace cpu_place;
+  paddle::framework::Scope scope;
+
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  auto* var = scope.Var("OUT1");
+  var->GetMutable<paddle::framework::LoDTensorArray>();
+
+  paddle::platform::DeviceContextPool& pool =
+      paddle::platform::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(cpu_place);
+
+  paddle::framework::RuntimeContext ctx({}, {});
+  paddle::framework::ExecutionContext exe_context(*(op.get()), scope, *dev_ctx,
+                                                  ctx, nullptr);
+
+  ASSERT_EQ(exe_context.InputSize("input"), 1u);
+  ASSERT_EQ(exe_context.OutputSize("output"), 1u);
+
+  auto attr_map = exe_context.Attrs();
+  ASSERT_EQ(boost::get<float>(attr_map["scale"]), 3.14f);
+  ASSERT_EQ(exe_context.Type(), "test_operator");
+}
+
 namespace paddle {
 namespace framework {
 
@@ -591,3 +630,117 @@ void SetGetLoDLevelTestMain(std::string op_type) {
 TEST(GetLoDLevelTest, base) { SetGetLoDLevelTestMain("get_lod_level_test"); }
 
 TEST(SetLoDLevelTest, base) { SetGetLoDLevelTestMain("set_lod_level_test"); }
+
+namespace paddle {
+namespace framework {
+
+class OpUnusedVarTest : public OperatorWithKernel {
+ public:
+  using OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext* ctx) const override {}
+  OpKernelType GetExpectedKernelType(
+      const ExecutionContext& ctx) const override {
+    return OpKernelType(proto::VarType::FP32, ctx.GetPlace(),
+                        framework::DataLayout::kAnyLayout);
+  }
+};
+
+class OpUnusedVarTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
+ public:
+  void Make() {
+    AddInput("X", "input of test op");
+    AddOutput("Y", "output of test op");
+    AddComment("This is test op for unused var check.");
+  }
+};
+
+template <typename T>
+class OpWithUnusedVarKernelTest : public OpKernel<T> {
+ public:
+  void Compute(const ExecutionContext& ctx) const {
+    ASSERT_EQ(ctx.InputName("X"), "X");
+    ASSERT_EQ(ctx.OutputName("Y"), "Y");
+  }
+};
+
+template <typename T>
+class OpWithoutUnusedVarKernelTest : public OpKernel<T> {
+ public:
+  void Compute(const ExecutionContext& ctx) const {
+    ASSERT_EQ(ctx.InputName("X"), "X");
+    ASSERT_EQ(ctx.OutputName("Y"), "Y");
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Output<Tensor>("Y");
+    ASSERT_NE(x, y);
+    ASSERT_NE(y, nullptr);
+  }
+};
+
+}  // namespace framework
+}  // namespace paddle
+
+REGISTER_OP_WITHOUT_GRADIENT(
+    op_with_unused_var, paddle::framework::OpUnusedVarTest,
+    paddle::framework::OpUnusedVarTestProtoAndCheckerMaker);
+
+REGISTER_OP_CPU_KERNEL(op_with_unused_var,
+                       paddle::framework::OpWithUnusedVarKernelTest<float>);
+
+REGISTER_OP_WITHOUT_GRADIENT(
+    op_without_unused_var, paddle::framework::OpUnusedVarTest,
+    paddle::framework::OpUnusedVarTestProtoAndCheckerMaker);
+
+REGISTER_OP_CPU_KERNEL(op_without_unused_var,
+                       paddle::framework::OpWithoutUnusedVarKernelTest<float>);
+
+// test with single input
+TEST(OpWithUnusedVar, all) {
+  // enable the unused_var_check
+  FLAGS_enable_unused_var_check = true;
+  paddle::framework::InitDevices(true);
+  paddle::framework::proto::OpDesc op_desc;
+  op_desc.set_type("op_with_unused_var");
+  BuildVar("X", {"X"}, op_desc.add_inputs());
+  BuildVar("Y", {"Y"}, op_desc.add_outputs());
+
+  paddle::platform::CPUPlace cpu_place;
+  paddle::framework::Scope scope;
+  auto* x = scope.Var("X")->GetMutable<paddle::framework::LoDTensor>();
+  auto* y = scope.Var("Y")->GetMutable<paddle::framework::LoDTensor>();
+  x->Resize({32, 64});
+  y->Resize({32, 64});
+  x->mutable_data<float>(cpu_place);
+  y->mutable_data<float>(cpu_place);
+
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  // should throw exception
+  ASSERT_THROW(op->Run(scope, cpu_place), paddle::platform::EnforceNotMet);
+  FLAGS_enable_unused_var_check = false;
+}
+
+TEST(OpWithoutUnusedVar, all) {
+  // enable the unused_var_check
+  FLAGS_enable_unused_var_check = true;
+
+  paddle::framework::InitDevices(true);
+  paddle::framework::proto::OpDesc op_desc;
+  op_desc.set_type("op_without_unused_var");
+  BuildVar("X", {"X"}, op_desc.add_inputs());
+  BuildVar("Y", {"Y"}, op_desc.add_outputs());
+
+  paddle::platform::CPUPlace cpu_place;
+  paddle::framework::Scope scope;
+  auto* x = scope.Var("X")->GetMutable<paddle::framework::LoDTensor>();
+  auto* y = scope.Var("Y")->GetMutable<paddle::framework::LoDTensor>();
+  x->Resize({32, 64});
+  y->Resize({32, 64});
+  x->mutable_data<float>(cpu_place);
+  y->mutable_data<float>(cpu_place);
+
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  // should not throw exception
+  ASSERT_NO_THROW(op->Run(scope, cpu_place));
+  FLAGS_enable_unused_var_check = false;
+}

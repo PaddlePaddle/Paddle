@@ -42,7 +42,7 @@ class TestSoftmaxOp(OpTest):
         self.op_type = "softmax"
         self.use_cudnn = False
         self.use_mkldnn = False
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_kernel_type()
         self.shape = self.get_x_shape()
         self.axis = self.get_axis()
@@ -88,7 +88,7 @@ class TestSoftmaxOp(OpTest):
                 check_dygraph=(self.use_mkldnn == False))
 
 
-class TestSoftmaxOpError(OpTest):
+class TestSoftmaxOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of softmax_op must be Variable.

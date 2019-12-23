@@ -53,7 +53,7 @@ __inline__ __device__ T blockReduceSum(T val, unsigned mask) {
 
   // align block_span to warpSize
   int block_span = (blockDim.x + warpSize - 1) >> 5;
-  val = (threadIdx.x < block_span) ? shared[lane] : (T)(0.0f);
+  val = (threadIdx.x < block_span) ? shared[lane] : static_cast<T>(0.0f);
   val = warpReduceSum<T>(val, mask);
 
   return val;
@@ -196,15 +196,13 @@ __global__ void softmax_kernel_with_eltadd(T *qk_buf_, const T *bias_qk_,
                                            const int head_num,
                                            const int seq_len,
                                            const unsigned mask) {
-  int seq_id = blockIdx.x % seq_len;
   int qk_offset = blockIdx.x * seq_len;
-  int bias_offset = blockIdx.x % (head_num * seq_len) * seq_len;
 
   __shared__ float s_sum, s_max;
 
   float qk = threadIdx.x < seq_len
                  ? static_cast<float>((qk_buf_[threadIdx.x + qk_offset] +
-                                       bias_qk_[threadIdx.x + bias_offset]))
+                                       bias_qk_[threadIdx.x + qk_offset]))
                  : 0.0f;
   float tmp = threadIdx.x < seq_len ? static_cast<float>(qk) : -1e20f;
 

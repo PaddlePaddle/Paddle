@@ -83,7 +83,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
 
                 img = data[0]
                 label = data[1]
-                label._stop_gradient = True
+                label.stop_gradient = True
 
                 cost = mlp(img)
                 avg_loss = fluid.layers.reduce_mean(cost)

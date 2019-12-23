@@ -31,11 +31,11 @@ class CumKernel : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto& X = detail::Ref(context.Input<framework::Tensor>("X"),
                           "Cannot get input tensor X, variable name = %s",
-                          context.op().Input("X"));
+                          context.InputName("X"));
 
     auto& Out = detail::Ref(context.Output<framework::Tensor>("Out"),
                             "Cannot get output tensor Out, variable name = %s",
-                            context.op().Output("Out"));
+                            context.OutputName("Out"));
     int axis = context.Attr<int>("axis");
     bool exclusive = context.Attr<bool>("exclusive");
     bool reverse = context.Attr<bool>("reverse");

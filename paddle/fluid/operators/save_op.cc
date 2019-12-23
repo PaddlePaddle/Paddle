@@ -77,18 +77,13 @@ class SaveOpVarTypeInference : public framework::VarTypeInference {
   }
 };
 
-class SaveOpShapeInference : public framework::InferShapeBase {
- public:
-  void operator()(framework::InferShapeContext *ctx) const override {}
-};
-
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(save, ops::SaveOp, ops::SaveOpProtoMaker,
-                  ops::SaveOpVarTypeInference, ops::SaveOpShapeInference);
+                  ops::SaveOpVarTypeInference);
 
 REGISTER_OP_CPU_KERNEL(
     save, ops::SaveOpKernel<paddle::platform::CPUDeviceContext, float>,

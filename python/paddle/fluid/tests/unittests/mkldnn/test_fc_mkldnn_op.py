@@ -42,6 +42,7 @@ class TestFCMKLDNNOp(OpTest):
 
     def setUp(self):
         self.op_type = "fc"
+        self._cpu_only = True
         self.use_mkldnn = True
         self.create_data()
         self.inputs = {'Input': self.matrix.input, 'W': self.matrix.weights}

@@ -1250,7 +1250,7 @@ class AddQuantDequantPass(object):
                  moving_rate=0.9,
                  quant_bits=8,
                  skip_pattern=["skip_quant"],
-                 quantizable_op_type=["elementwise_add", "pool2d", "concat"],
+                 quantizable_op_type=["elementwise_add", "pool2d"],
                  is_full_quantized=False):
         """
         This pass add quant_dequant op for some ops, of which all the inputs must be 
@@ -1269,7 +1269,7 @@ class AddQuantDequantPass(object):
                 detected in an op's name scope, the corresponding op will not be quantized.
                 Default is 'skip_quant'.
             quantizable_op_type(list[str], optional): List the type of ops that will be 
-                quantized. Default is ["elementwise_add", "pool2d", "concat"]. 
+                quantized. Default is ["elementwise_add", "pool2d"]. 
             is_full_quantized(bool, optional): If set is_full_quantized as True, apply 
                 quantization to all supported quantizable op type. If set is_full_quantized
                 as False, only apply quantization to the op type according to the input 
@@ -1300,8 +1300,8 @@ class AddQuantDequantPass(object):
 
     def apply(self, graph):
         """
-        Add quant_dequant before some ops, such as the 'elementwise_add', 
-        'pool2d' and 'concat' op.
+        Add quant_dequant before some ops, such as the 'elementwise_add' and
+        'pool2d' op.
 
         Args:
             graph(IrGraph): the target graph.

@@ -98,7 +98,7 @@ class TestLRNOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', max_relative_error=0.01)
+        self.check_grad(['X'], 'Out')
 
 
 class TestLRNOpAttrDataFormat(TestLRNOp):
@@ -106,7 +106,7 @@ class TestLRNOpAttrDataFormat(TestLRNOp):
         self.data_format = 'NHWC'
 
 
-class TestLRNAPI(OpTest):
+class TestLRNAPI(unittest.TestCase):
     def test_case(self):
         data1 = fluid.data(name='data1', shape=[2, 4, 5, 5], dtype='float32')
         data2 = fluid.data(name='data2', shape=[2, 5, 5, 4], dtype='float32')

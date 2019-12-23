@@ -184,7 +184,7 @@ class DownpourSGD(DeviceWorker):
                 dense_table.dense_value_name.extend(i.dense_variable_name)
                 dense_table.dense_grad_name.extend(
                     i.dense_gradient_variable_name)
-                downpour.skip_ops.extend(worker.get_desc().skip_op)
+        downpour.skip_ops.extend(worker.get_desc().skip_op)
         if self._infer:
             downpour.push_dense = False
             downpour.push_sparse = False

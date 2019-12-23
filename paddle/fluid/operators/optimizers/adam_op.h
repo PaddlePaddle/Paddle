@@ -29,6 +29,16 @@ namespace operators {
 
 namespace scatter = paddle::operators::math::scatter;
 
+static inline float GetAttrFromTensor(const framework::Tensor* tensor) {
+  const float* tensor_data = tensor->data<float>();
+  framework::Tensor cpu_tensor;
+  if (platform::is_gpu_place(tensor->place())) {
+    TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
+    tensor_data = cpu_tensor.data<float>();
+  }
+  return tensor_data[0];
+}
+
 class AdamOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -358,7 +368,7 @@ class AdamOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE(param_var->IsType<framework::LoDTensor>(),
                    "The Var(%s)'s type should be LoDTensor, "
                    "but the received is %s",
-                   ctx.Inputs("Param").front(),
+                   ctx.InputNames("Param").front(),
                    framework::ToTypeName(param_var->Type()));
 
     using paddle::framework::LoDTensor;
@@ -367,8 +377,6 @@ class AdamOpKernel : public framework::OpKernel<T> {
     int64_t min_row_size_to_use_multithread =
         ctx.Attr<int64_t>("min_row_size_to_use_multithread");
     bool lazy_mode = ctx.Attr<bool>("lazy_mode");
-    T beta1 = static_cast<T>(ctx.Attr<float>("beta1"));
-    T beta2 = static_cast<T>(ctx.Attr<float>("beta2"));
     T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
     auto& param = Ref(ctx.Input<LoDTensor>("Param"), "Must set Param");
     // auto& grad = Ref(ctx.Input<LoDTensor>("Grad"), "Must set Grad");
@@ -389,6 +397,17 @@ class AdamOpKernel : public framework::OpKernel<T> {
         Ref(ctx.Output<LoDTensor>("Moment1Out"), "Must set Moment1Out");
     auto& mom2_out =
         Ref(ctx.Output<LoDTensor>("Moment2Out"), "Must set Moment1Out");
+
+    T beta1 = static_cast<T>(ctx.Attr<float>("beta1"));
+    if (ctx.HasInput("Beta1Tensor")) {
+      auto* beta1_tensor = ctx.Input<framework::Tensor>("Beta1Tensor");
+      beta1 = static_cast<T>(GetAttrFromTensor(beta1_tensor));
+    }
+    T beta2 = static_cast<T>(ctx.Attr<float>("beta2"));
+    if (ctx.HasInput("Beta2Tensor")) {
+      auto* beta2_tensor = ctx.Input<framework::Tensor>("Beta2Tensor");
+      beta2 = static_cast<T>(GetAttrFromTensor(beta2_tensor));
+    }
 
     if (grad_var->IsType<framework::LoDTensor>()) {
       auto& grad = Ref(ctx.Input<LoDTensor>("Grad"), "Must set Grad");
