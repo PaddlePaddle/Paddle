@@ -25,7 +25,7 @@ class TestSppOp(OpTest):
     def setUp(self):
         self.op_type = "spp"
         self.init_test_case()
-        input = np.random.random(self.shape).astype("float32")
+        input = np.random.random(self.shape).astype("float64")
         nsize, csize, hsize, wsize = input.shape
         out_level_flatten = []
         for i in range(self.pyramid_height):
@@ -50,13 +50,13 @@ class TestSppOp(OpTest):
             else:
                 output = np.concatenate((output, out_level_flatten[i]), 1)
         # output = np.concatenate(out_level_flatten.tolist(), 0);
-        self.inputs = {'X': input.astype('float32'), }
+        self.inputs = {'X': input.astype('float64'), }
         self.attrs = {
             'pyramid_height': self.pyramid_height,
             'pooling_type': self.pool_type
         }
 
-        self.outputs = {'Out': output.astype('float32')}
+        self.outputs = {'Out': output.astype('float64')}
 
     def test_check_output(self):
         self.check_output()

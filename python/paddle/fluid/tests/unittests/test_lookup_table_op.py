@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.compat as cpt
@@ -56,6 +56,10 @@ class TestLookupTableOpWithTensorIds(OpTest):
         self.check_grad(['W'], 'Out', no_grad_set=set('Ids'))
 
 
+@skip_check_grad_ci(
+    reason="Since paddings are not trainable and fixed in forward,"
+    "the gradient of paddings makes no sense and we don't "
+    "test the gradient here.")
 class TestLookupTableOpWithPadding(TestLookupTableOp):
     def test_check_output(self):
         ids = np.squeeze(self.inputs['Ids'])
@@ -64,12 +68,11 @@ class TestLookupTableOpWithPadding(TestLookupTableOp):
         self.attrs = {'padding_idx': int(padding_idx)}
         self.check_output()
 
-    def test_check_grad(self):
-        # Since paddings are not trainable and fixed in forward, the gradient of
-        # paddings makes no sense and we don't test the gradient here.
-        pass
 
-
+@skip_check_grad_ci(
+    reason="Since paddings are not trainable and fixed in forward,"
+    "the gradient of paddings makes no sense and we don't "
+    "test the gradient here.")
 class TestLookupTableOpWithTensorIdsAndPadding(TestLookupTableOpWithTensorIds):
     def test_check_output(self):
         ids = self.inputs['Ids']
@@ -78,11 +81,6 @@ class TestLookupTableOpWithTensorIdsAndPadding(TestLookupTableOpWithTensorIds):
         self.outputs['Out'][np.squeeze(ids == padding_idx)] = np.zeros(31)
         self.attrs = {'padding_idx': cpt.long_type(padding_idx)}
         self.check_output()
-
-    def test_check_grad(self):
-        # Since paddings are not trainable and fixed in forward, the gradient of
-        # paddings makes no sense and we don't test the gradient here.
-        pass
 
 
 class TestLookupTableWIsSelectedRows(unittest.TestCase):
