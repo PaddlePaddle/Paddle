@@ -27,7 +27,7 @@ class Sequential(Layer):
     The argument passed to the constructor can be iterable Layers or iterable name Layer pairs.
 
     Parameters:
-        layers(iterable): Iterable Layers or iterable name Layer pairs.
+        *layers(tuple): Layers or iterable name Layer pairs.
 
     Examples:
         .. code-block:: python
