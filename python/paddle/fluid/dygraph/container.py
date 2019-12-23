@@ -40,20 +40,18 @@ class Sequential(Layer):
                 data = fluid.dygraph.to_variable(data)
                 # create Sequential with iterable Layers
                 model1 = fluid.dygraph.Sequential(
-                    fluid.FC('fc1', 2),
-                    fluid.FC('fc2', 3)
+                    fluid.Linear(10, 1), fluid.Linear(1, 2)
                 )
-                model1[0]  # access fc1 layer
+                model1[0]  # access the first layer
                 res1 = model1(data)  # sequential execution
 
                 # create Sequential with name Layer pairs
                 model2 = fluid.dygraph.Sequential(
-                    ('l1', fluid.FC('l1', 2)),
-                    ('l2', fluid.FC('l2', 3))
+                    ('l1', fluid.Linear(10, 2)),
+                    ('l2', fluid.Linear(2, 3))
                 )
                 model2['l1']  # access l1 layer
-                model2.add_sublayer('l3', fluid.FC('l3', 3))  # add sublayer
-                print([l.full_name() for l in model2.sublayers()])  # ['l1/FC_0', 'l2/FC_0', 'l3/FC_0']
+                model2.add_sublayer('l3', fluid.Linear(3, 3))  # add sublayer
                 res2 = model2(data)  # sequential execution
 
     """
