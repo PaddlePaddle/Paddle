@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# If the output after infershape() is a lod_tensor, commenly its lod_level
+# should be equal during compile time and run time.
+# For ops in this whiteList, the equality check of lod_level between
+# compiletime&runtime will not be required.
 COMPILE_RUN_OP_WHITE_LIST = [
     'lod_reset', 'sequence_pool', 'sequence_slice', 'generate_mask_labels',
     'sequence_reshape', 'generate_proposals', 'mine_hard_examples',
