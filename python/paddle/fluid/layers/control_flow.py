@@ -1922,12 +1922,6 @@ def copy_var_to_parent_block(var, layer_helper):
     assert parent_idx >= 0, "Got wrong parent block index when assigning var to parent scope in control_flow"
     parent_block = prog.block(parent_idx)
 
-    # No need to create parent_block_var if parent block already has the same var.
-    # Return parent block var directly.
-    if parent_block.has_var(var.name):
-        print("var already in parent block: {}".format(var.name))
-        return parent_block.var(var.name)
-
     parent_block_var = parent_block.create_var(
         dtype=var.dtype, shape=var.shape, type=var.type)
     assign(var, parent_block_var)
