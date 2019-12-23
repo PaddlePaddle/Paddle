@@ -1299,22 +1299,25 @@ def _as_list(x):
 
 
 def _get_output_names(block, outputs):
-    current_block = outputs[0].block
+
     current_output_names = set([out.name for out in outputs])
 
-    while current_block.idx != block.idx:
-        link_output_names = set()
-        parent_block = block.program.blocks[current_block.parent_idx]
-        for i, op in reversed(list(enumerate(current_block.ops))):
-            if _some_in_set_(op.desc.output_arg_names(), current_output_names):
-                for name in op.desc.input_arg_names():
-                    current_output_names.add(name)
-                    if not current_block.desc.find_var(name.encode(
-                            "ascii")) and parent_block.desc.find_var(
-                                name.encode("ascii")):
-                        link_output_names.add(name)
-        current_output_names = link_output_names
-        current_block = parent_block
+    if outputs:
+        current_block = outputs[0].block
+        while current_block.idx != block.idx:
+            link_output_names = set()
+            parent_block = block.program.blocks[current_block.parent_idx]
+            for i, op in reversed(list(enumerate(current_block.ops))):
+                if _some_in_set_(op.desc.output_arg_names(),
+                                 current_output_names):
+                    for name in op.desc.input_arg_names():
+                        current_output_names.add(name)
+                        if not current_block.desc.find_var(
+                                name.encode("ascii")
+                        ) and parent_block.desc.find_var(name.encode("ascii")):
+                            link_output_names.add(name)
+            current_output_names = link_output_names
+            current_block = parent_block
     return current_output_names
 
 
