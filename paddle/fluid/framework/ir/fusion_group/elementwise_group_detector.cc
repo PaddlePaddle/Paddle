@@ -113,9 +113,9 @@ void ElementwiseGroupDetector::Init(Graph* graph, bool backward) {
       elementwise_ops_.insert(n);
     }
   }
-  // LOG(INFO) << "elementise ops for graph:" << graph
-  //           << ", backward=" << backward;
-  // LOG(INFO) << "{\n" << DebugString(elementwise_ops_) << "}\n";
+  LOG(INFO) << "elementise ops for graph:" << graph
+            << ", backward=" << backward;
+  LOG(INFO) << "{\n" << DebugString(elementwise_ops_) << "}\n";
 }
 
 bool ElementwiseGroupDetector::IsElementwiseOp(Node* n) {
@@ -213,6 +213,12 @@ int ElementwiseGroupDetector::Search(Node* n, std::vector<Node*> except_nodes,
 
 SubGraph ElementwiseGroupDetector::operator()(Node* n) {
   SubGraph subgraph(0);
+  if (n && n->IsVar() && n->Var() && n->Name() == "split_1.tmp_0") {
+    LOG(INFO) << DebugString(n);
+    for (auto* out : n->outputs) {
+      LOG(INFO) << DebugString(out);
+    }
+  }
   if (!IsOutputOfElementwiseOp(n) && IsInputOfElementwiseOp(n, "X")) {
     LOG(INFO) << "Begin with node:" << n->Name() << ", backward:" << backward_;
     subgraph.Insert(n);
