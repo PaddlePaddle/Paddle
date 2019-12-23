@@ -96,7 +96,9 @@ def static():
         return mean_softmax_loss
 
     avg_loss = layers.case([(switch_id == id, fn_2)], fn_1)
+    main_program = fluid.default_main_program()
 
+    # print(main_program)
     exe = fluid.Executor(fluid.CPUPlace())
     exe.run(fluid.default_startup_program())
 
