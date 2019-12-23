@@ -58,8 +58,9 @@ struct SimpleOpTypeSetTeller : public Teller {
                                               "swish",
                                               "split"}};
 
+  // use this set for no calib int8.
   std::unordered_set<std::string> int8_teller_set{
-      {"mul", "conv2d", "pool2d", "relu", "softmax", "depthwise_conv2d",
+      {"mul", "conv2d", "pool2d", "relu", "depthwise_conv2d", "softmax",
        "batch_norm", "elementwise_add", "leaky_relu", "fc"}};
 };
 
