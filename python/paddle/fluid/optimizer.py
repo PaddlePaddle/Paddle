@@ -324,7 +324,8 @@ class Optimizer(object):
                          param,
                          dtype=None,
                          fill_value=0.0,
-                         shape=None):
+                         shape=None,
+                         type=None):
         """Utility function to add an accumulator for a parameter
 
         Args:
@@ -354,7 +355,7 @@ class Optimizer(object):
             name=var_name,
             persistable=True,
             dtype=dtype or param.dtype,
-            type=param.type,
+            type=param.type if type is None else type,
             shape=shape,
             belong_to_optimizer=True)
         self.helper.set_variable_initializer(
@@ -1635,13 +1636,15 @@ class AdamOptimizer(Optimizer):
                 param=p,
                 fill_value=0.9 if isinstance(self._beta1, Variable) \
                         else self._beta1,
-                shape=[1])
+                shape=[1],
+                type=core.VarDesc.VarType.LOD_TENSOR)
             self._add_accumulator(
                 name=self._beta2_pow_acc_str,
                 param=p,
                 fill_value=0.999 if isinstance(self._beta2, Variable) \
                         else self._beta2,
-                shape=[1])
+                shape=[1],
+                type=core.VarDesc.VarType.LOD_TENSOR)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)

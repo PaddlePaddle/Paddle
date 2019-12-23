@@ -11,23 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import six.moves.builtins as builtins
-from paddle.check_import_scipy import check_import_scipy
-import unittest
 
+NOT_CHECK_OP_LIST = [
+    # increment's input must be 1-d and only has one data
+    'increment'
+]
 
-def my_import(name, globals=None, locals=None, fromlist=(), level=0):
-    raise ImportError('DLL load failed, unittest: import scipy failed')
-
-
-class importTest(unittest.TestCase):
-    def test_import(self):
-        testOsName = 'nt'
-        old_import = builtins.__import__
-        builtins.__import__ = my_import
-        self.assertRaises(ImportError, check_import_scipy, testOsName)
-        builtins.__import__ = old_import
-
-
-if __name__ == '__main__':
-    unittest.main()
+NEED_TO_FIX_OP_LIST = [
+    'sequence_scatter', 'log_loss', 'sequence_topk_avg_pooling', 'matmul',
+    'add_position_encoding', 'margin_rank_loss', 'elementwise_pow',
+    'fused_elemwise_activation', 'tree_conv', 'mul',
+    'teacher_student_sigmoid_loss'
+]
