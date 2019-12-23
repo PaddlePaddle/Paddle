@@ -1182,6 +1182,7 @@ def append_backward(loss,
             if program._appending_grad_times > 1:
                 input_grad_names_set = set([_append_grad_suffix_(loss.name)])
 
+        # Todo: support _append_backward_ops_with_checkpoints_ in control flow
         if checkpoints != None and \
                 isinstance(checkpoints, list) and \
                 len(checkpoints) > 0:
@@ -1197,7 +1198,7 @@ def append_backward(loss,
                     checkpoints)
         else:
             _append_backward_ops_(
-                block,  # the block where forward ops are#
+                block,  # the block where forward ops are in
                 op_path_dict[block_idx],
                 target_grad_block,
                 no_grad_dict,
@@ -1205,14 +1206,15 @@ def append_backward(loss,
                 callbacks,
                 input_grad_names_set=input_grad_names_set)
 
-        # Because calc_gradient may be called multiple times,
-        # we need rename the internal gradient variables so that they have
-        # different names.
-        _rename_grad_(block, block_fwd_op_num_dict[block_idx], grad_to_var, {})
-
     grad_info_map = dict()
     fwd_op_num = block_fwd_op_num_dict[
         current_block_idx] if not is_in_control_flow else 0
+
+    # Because append_backward may be called multiple times,
+    # we need rename the internal gradient variables so that they have
+    # different names.
+    _rename_grad_(target_grad_block, fwd_op_num, grad_to_var, {})
+
     _append_backward_vars_(target_grad_block, fwd_op_num, grad_to_var,
                            grad_info_map)
 
