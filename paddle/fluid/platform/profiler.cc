@@ -374,6 +374,7 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
   std::cout << std::setw(data_width) << "Min." << std::setw(data_width)
             << "Max." << std::setw(data_width) << "Ave."
             << std::setw(data_width) << "Ratio." << std::endl;
+
   for (size_t i = 0; i < events_table.size(); ++i) {
     for (size_t j = 0; j < events_table[i].size(); ++j) {
       const EventItem &main_event_item = events_table[i][j];
@@ -572,14 +573,14 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
     std::vector<int> child_index(table_size, 0);
     for (size_t j = 0; j < table_size; ++j) {
       std::string fname = event_items[j].name;
+      std::string grad_name = event_items[j].name + "_grad";
       for (size_t k = 0; k < table_size; ++k) {
         std::string cname = event_items[k].name;
         if ((child_index[k] == 0) && cname.length() > fname.length() &&
-            cname.rfind(fname, 0) == 0) {
+            cname.rfind(fname, 0) == 0 && !cname.rfind(grad_name, 0) == 0) {
           child_map.insert(
               std::pair<std::string, EventItem>(fname, event_items[k]));
           child_index[k] = 1;
-          VLOG(0) << "fname: " << fname << "cname: " << cname;
         }
       }
     }

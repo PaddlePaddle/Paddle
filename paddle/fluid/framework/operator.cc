@@ -161,14 +161,8 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
 #endif
     }
 
-    // The profile has a process-wide mutex, results in serious performance
-    // issue
-    // in concurrency scenerio. Here use an `if` to fix this issue.
-    // Please not remove the `if`, ask @Superjomn if there are any concern.
-    if (platform::IsProfileEnabled()) {
+    {
       platform::RecordEvent record_event(Type());
-      RunImpl(scope, place);
-    } else {
       RunImpl(scope, place);
     }
     VLOG(3) << place << " " << DebugStringEx(&scope);
