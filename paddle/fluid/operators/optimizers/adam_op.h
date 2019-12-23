@@ -51,14 +51,12 @@ class AdamOp : public framework::OperatorWithKernel {
 struct GPUAdam;
 struct CPUAdam;
 
-template <typename T>
-struct BetaPowFunctor;
-
 template <typename T, typename Flavour>
-struct AdamFunctor;
+class AdamFunctor;
 
 template <typename T>
-struct BetaPowFunctor {
+class BetaPowFunctor {
+ private:
   T beta1_;
   T beta2_;
   const T* beta1_pow_;
@@ -66,6 +64,7 @@ struct BetaPowFunctor {
   T* beta1_pow_out_;
   T* beta2_pow_out_;
 
+ public:
   BetaPowFunctor(T beta1, T beta2, const T* beta1_pow, const T* beta2_pow,
                  T* beta1_pow_out, T* beta2_pow_out)
       : beta1_(beta1),
@@ -93,7 +92,8 @@ struct BetaPowFunctor {
 };
 
 template <typename T>
-struct AdamFunctor<T, GPUAdam> {
+class AdamFunctor<T, GPUAdam> {
+ private:
   T beta1_;
   T beta2_;
   T epsilon_;
@@ -109,6 +109,7 @@ struct AdamFunctor<T, GPUAdam> {
   const T* param_;
   T* param_out_;
 
+ public:
   AdamFunctor(T beta1, T beta2, T epsilon, const T* beta1_pow,
               const T* beta2_pow, const T* mom1, T* mom1_out, const T* mom2,
               T* mom2_out, const T* lr, const T* grad, const T* param,
@@ -152,7 +153,8 @@ struct AdamFunctor<T, GPUAdam> {
 };
 
 template <typename T>
-struct AdamFunctor<T, CPUAdam> {
+class AdamFunctor<T, CPUAdam> {
+ private:
   T beta1_;
   T beta2_;
   T epsilon_;
@@ -168,6 +170,7 @@ struct AdamFunctor<T, CPUAdam> {
   const T* param_;
   T* param_out_;
 
+ public:
   AdamFunctor(T beta1, T beta2, T epsilon, const T* beta1_pow,
               const T* beta2_pow, const T* mom1, T* mom1_out, const T* mom2,
               T* mom2_out, const T* lr, const T* grad, const T* param,
@@ -217,10 +220,11 @@ struct AdamFunctor<T, CPUAdam> {
 };
 
 template <typename T, typename Flavour>
-struct SparseAdamFunctor;
+class SparseAdamFunctor;
 
 template <typename T>
-struct SparseAdamFunctor<T, GPUAdam> {
+class SparseAdamFunctor<T, GPUAdam> {
+ private:
   T beta1_;
   T beta2_;
   T epsilon_;
@@ -241,6 +245,7 @@ struct SparseAdamFunctor<T, GPUAdam> {
   int64_t row_count_;
   bool lazy_mode_;
 
+ public:
   SparseAdamFunctor(T beta1, T beta2, T epsilon, const T* beta1_pow,
                     const T* beta2_pow, const T* mom1, T* mom1_out,
                     const T* mom2, T* mom2_out, const T* lr, const T* grad,
@@ -299,7 +304,8 @@ struct SparseAdamFunctor<T, GPUAdam> {
 };
 
 template <typename T>
-struct SparseAdamFunctor<T, CPUAdam> {
+class SparseAdamFunctor<T, CPUAdam> {
+ private:
   T beta1_;
   T beta2_;
   T epsilon_;
@@ -319,6 +325,7 @@ struct SparseAdamFunctor<T, CPUAdam> {
   int64_t row_numel_;
   int64_t row_count_;
 
+ public:
   SparseAdamFunctor(T beta1, T beta2, T epsilon, const T* beta1_pow,
                     const T* beta2_pow, const T* mom1, T* mom1_out,
                     const T* mom2, T* mom2_out, const T* lr, const T* grad,
