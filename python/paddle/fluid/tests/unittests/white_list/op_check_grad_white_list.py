@@ -53,17 +53,3 @@ EMPTY_GRAD_OP_LIST = [
     'hash', 'less_than', 'not_equal', 'eye', 'chunk_eval', 'is_empty',
     'proximal_gd', 'collect_fpn_proposals', 'unique_with_counts'
 ]
-
-NEED_TO_FIX_OP_LIST = [
-    'row_conv', 'mul', 'smooth_l1_loss', 'multiplex', 'sequence_conv',
-    'conv_shift', 'margin_rank_loss', 'lstm', 'lstmp', 'lod_reset',
-    'filter_by_instag', 'elementwise_div', 'elementwise_max', 'elementwise_min',
-    'elementwise_add', 'elementwise_sub', 'elementwise_mul', 'affine_channel',
-    'fused_emb_seq_pool', 'huber_loss', 'rank_loss',
-    'fused_elemwise_activation', 'prelu', 'cos_sim', 'deformable_conv',
-    'matmul', 'hissigmod', 'kldiv_loss', 'affine_grad', 'conv3d_transpose',
-    'conv2d_transpose', 'spectral_norm', 'cross_entropy2', 'linear_chain_crf',
-    'lookup_table_v2', 'conv2d', 'gru_unit', 'lookup_table', 'conv3d',
-    'deformable_conv_v1'
-]
-

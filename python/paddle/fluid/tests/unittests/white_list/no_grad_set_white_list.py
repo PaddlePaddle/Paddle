@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # check no_grad_set is None
-NOT_CHECK_LLIST = []
+NOT_CHECK_OP_LIST = []
 # no_grad_set has value in NEED_TO_FIX_OP_LIST
 NEED_TO_FIX_OP_LIST = [
     'row_conv', 'mul', 'smooth_l1_loss', 'multiplex', 'sequence_conv',
