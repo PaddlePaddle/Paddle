@@ -139,8 +139,8 @@ void PrepareParameters(Graph* graph, const Param& param) {
   auto& scope = graph->Get<Scope>(kParamScopeAttr);
 
   // Create new parameters.
-  scope.Var(param.LSTMWeight)->GetMutable<LoDTensor>();
-  scope.Var(param.LSTMBias)->GetMutable<LoDTensor>();
+  scope.Var(param.LSTMWeight)->GetMutable<LoDTensor>();  // input
+  scope.Var(param.LSTMBias)->GetMutable<LoDTensor>();    // input
   scope.Var(param.Hidden)->GetMutable<LoDTensor>();
   scope.Var(param.Cell)->GetMutable<LoDTensor>();
   scope.Var(param.AttentionedX)->GetMutable<LoDTensor>();
