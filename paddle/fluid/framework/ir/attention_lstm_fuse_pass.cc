@@ -98,7 +98,7 @@ void FindWhileOp(Graph* graph) {
   auto* hidden_init = graph->RetrieveNode(8);
 
   auto* lstm_op = graph->CreateOpNode(&op_desc);
-  PrepareParameters(graph, param);
+  PrepareParameters(graph, param, lstm_op);
 
   IR_NODE_LINK_TO(X, lstm_op);
   IR_NODE_LINK_TO(cell_init, lstm_op);
@@ -133,20 +133,29 @@ void PrepareLSTMBias(const LoDTensor& B_forget, const LoDTensor& B_input,
                      const LoDTensor& B_output, const LoDTensor& B_cell,
                      LoDTensor* out);
 
-void PrepareParameters(Graph* graph, const Param& param) {
+void PrepareOutVars(Graph* graph, std::string name, ir::Node* lstm_op) {
+  VarDesc key(name);
+  key.SetPersistable(false);
+  auto* key_node = graph->CreateVarNode(&key);
+  IR_NODE_LINK_TO(lstm_op, key_node);
+}
+
+void PrepareParameters(Graph* graph, const Param& param, ir::Node* lstm_op) {
   // Check parameters
   PADDLE_ENFORCE(graph->Has(kParamScopeAttr));
   auto& scope = graph->Get<Scope>(kParamScopeAttr);
 
   // Create new parameters.
-  scope.Var(param.LSTMWeight)->GetMutable<LoDTensor>();  // input
-  scope.Var(param.LSTMBias)->GetMutable<LoDTensor>();    // input
-  scope.Var(param.Hidden)->GetMutable<LoDTensor>();
-  scope.Var(param.Cell)->GetMutable<LoDTensor>();
-  scope.Var(param.AttentionedX)->GetMutable<LoDTensor>();
-  scope.Var(param.AttentionFCOut)->GetMutable<LoDTensor>();
-  scope.Var(param.LSTMX)->GetMutable<LoDTensor>();
-  scope.Var(param.LSTMOUT)->GetMutable<LoDTensor>();
+  // AddInput
+  scope.Var(param.LSTMWeight)->GetMutable<LoDTensor>();
+  scope.Var(param.LSTMBias)->GetMutable<LoDTensor>();
+  // AddOutput
+  PrepareOutVars(graph, param.Hidden, lstm_op);
+  PrepareOutVars(graph, param.Cell, lstm_op);
+  PrepareOutVars(graph, param.AttentionedX, lstm_op);
+  PrepareOutVars(graph, param.AttentionFCOut, lstm_op);
+  PrepareOutVars(graph, param.LSTMX, lstm_op);
+  PrepareOutVars(graph, param.LSTMOUT, lstm_op);
 
 #define GATE_W(name__)                                               \
   auto* W_##name__##_w0 = scope.FindVar(#name__ ".w_0");             \
