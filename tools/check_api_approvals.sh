@@ -168,6 +168,13 @@ if [ "${HAS_INPLACE_TESTS}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 46782768 47554610 43953930 6836917
 fi
 
+HAS_COMPILERUNTIME_NOT_TEST=`git diff -U0 --diff-filter=A upstream/$BRANCH |grep "+" |grep -E "check_output[(]*check_compile_vs_runtime=False" || true`
+if [ "${HAS_COMPILERUNTIME_NOT_TEST}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="If the operator's output after infershape() is a LodTensor, the output's Lod-Level during compile-time and runtime must be equal. Please set check_compile_vs_runtime=True in op_test.check_output function to enable compile&runtime lod-level check.\n
+If you do not need check_compile_vs_runtime, you must have one RD (lanxianghit, phlrain, luotao1) approval.\nThe corresponding lines are as follows:\n${HAS_COMPILERUNTIME_NOT_TEST}\n"
+    check_approval 1 47554610 43953930 6836917
+fi
+
 OP_FILE_CHANGED=`git diff --name-only --diff-filter=AMR upstream/$BRANCH |grep -oE ".+_op..*" || true`
 if [ "${OP_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     for OP_FILE in ${OP_FILE_CHANGED};
