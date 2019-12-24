@@ -36,6 +36,6 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
 NO_CHECK_GRAD_OP_LIST = [
     'cudnn_lstm', 'elementwise_div', 'elementwise_mul', 'elementwise_pow',
     'expand', 'fused_elemwise_activation', 'increment', 'match_matrix_tensor',
-    'mul', 'pool2d', 'pool3d', 'relu', 'seed', 'sigmoid', 'softmax', 'sqrt',
-    'tanh', 'transpose2', 'var_conv_2d'
+    'mul', 'pool2d', 'pool3d', 'relu', 'sigmoid', 'softmax', 'sqrt', 'tanh',
+    'transpose2', 'var_conv_2d'
 ]

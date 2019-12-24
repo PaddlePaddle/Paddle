@@ -22,9 +22,13 @@ from paddle.fluid.tests.unittests.test_elementwise_mul_op import *
 from paddle.fluid.tests.unittests.test_conv2d_op import conv2d_forward_naive
 from paddle.fluid.tests.unittests.mkldnn.mkldnn_op_test import __assert_close
 import paddle.fluid as fluid
+from paddle.fluid.tests.unittests.op_test import skip_check_grad_ci
 
 
 # For UT coverage, integrate conv2d + elementwise-mul so that nchw16C could be automatically chosen when mkldnn-kernel is enabled
+@skip_check_grad_ci(
+    reason="TODO: this test cannot use white list to skip check_grad, need to add check_grad."
+)
 class TestElementwiseMulMKLDNNOp_Integrated_With_Convs(ElementwiseMulOp):
     def setUp(self):
         self.dtype = np.float32
@@ -144,9 +148,6 @@ class TestElementwiseMulMKLDNNOp_Integrated_With_Convs(ElementwiseMulOp):
                         ground_truth[name], out[id], atol=1e-4), name)
 
     def test_check_grad_normal(self):
-        # Because this unit test do not have check_grad, set dtype to
-        # pass ci. Once add check_grad, delete self.__class_.dtype = np.float32
-        self.__class__.dtype = np.float32
         pass
 
     def test_check_grad_ingore_x(self):
