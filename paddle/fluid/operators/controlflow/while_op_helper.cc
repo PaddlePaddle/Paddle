@@ -208,7 +208,7 @@ bool GetCondData(const framework::LoDTensor &cond) {
   framework::TensorCopySync(cond, platform::CPUPlace(), cpu_cond.get());
 #else
   PADDLE_THROW(platform::errors::PreconditionNotMet(
-      "This version of PaddlePaddle doen NOT support GPU but got GPU tensor "
+      "This version of PaddlePaddle does NOT support GPU but got GPU tensor "
       "Cond in WhileOp. Please compile WITH_GPU option"));
 #endif
   return cpu_cond->data<bool>()[0];
