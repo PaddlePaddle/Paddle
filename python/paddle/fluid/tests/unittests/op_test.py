@@ -202,7 +202,7 @@ class OpTest(unittest.TestCase):
         if not hasattr(cls, "no_need_check_grad") \
             and cls.op_type not in op_check_grad_white_list.EMPTY_GRAD_OP_LIST:
             if cls.dtype is None or \
-                (cls.dtype in [np.float16, np.int64, np.int32, np.int16] \
+                (cls.dtype == np.float16 \
                     and cls.op_type not in op_accuracy_white_list.NO_CHECK_GRAD_OP_LIST \
                     and not hasattr(cls, "exist_check_grad")):
                 raise AssertionError("This test of %s op needs check_grad." %
