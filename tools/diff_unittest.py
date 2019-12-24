@@ -23,9 +23,8 @@ for each_diff in result:
 If you delete the unit test, such as commenting it out, 
 please ask for approval of one RD below for passing CI:
 
-    - XiaoguangHu01 or luotao1 or phlrain or lanxianghit or zhouwei25
+    - kolinwei(recommended) or zhouwei25 or luotao1
 '''
 if error:
-    print('Deleted Unit test is: ')
     for each_diff in diffs:
         print(each_diff)
