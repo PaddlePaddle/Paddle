@@ -229,7 +229,7 @@ void SeqConcatFcFusePass::ApplyImpl(ir::Graph* graph) const {
     IR_NODE_LINK_TO(sequence_expand0_in, op_node);
     IR_NODE_LINK_TO(sequence_expand1_in, op_node);
     IR_NODE_LINK_TO(op_node, fc_out);
-    IR_NODE_LINK_TO(op, fc_out_node);
+    IR_NODE_LINK_TO(op_node, fc_out_node);
 
     // Clean nodes.
     std::unordered_set<const Node*> marked_nodes;

@@ -27,12 +27,14 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+namespace {
 void PrepareOutVars(Graph* graph, const std::string name, ir::Node* op) {
   VarDesc key(name);
   key.SetPersistable(false);
   auto* key_node = graph->CreateVarNode(&key);
   IR_NODE_LINK_TO(op, key_node);
 }
+}  // namespace
 
 static int BuildFusion(Graph* graph, const std::string& name_scope,
                        Scope* scope, bool with_fc_bias) {

@@ -41,7 +41,7 @@ struct Param {
   std::string LSTMOUT = "at.lstmout.new";
 };
 
-void PrepareParameters(Graph* graph, const Param& param);
+void PrepareParameters(Graph* graph, const Param& param, ir::Node* lstm_op);
 
 void FindWhileOp(Graph* graph) {
   GraphPatternDetector gpd;
@@ -133,12 +133,14 @@ void PrepareLSTMBias(const LoDTensor& B_forget, const LoDTensor& B_input,
                      const LoDTensor& B_output, const LoDTensor& B_cell,
                      LoDTensor* out);
 
-void PrepareOutVars(Graph* graph, std::string name, ir::Node* lstm_op) {
+namespace {
+void PrepareOutVars(Graph* graph, const std::string name, ir::Node* op) {
   VarDesc key(name);
   key.SetPersistable(false);
   auto* key_node = graph->CreateVarNode(&key);
-  IR_NODE_LINK_TO(lstm_op, key_node);
+  IR_NODE_LINK_TO(op, key_node);
 }
+}  // namespace
 
 void PrepareParameters(Graph* graph, const Param& param, ir::Node* lstm_op) {
   // Check parameters
