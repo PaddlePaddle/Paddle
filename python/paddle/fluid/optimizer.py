@@ -31,6 +31,7 @@ from .layer_helper import LayerHelper
 from .layers import ops
 from .regularizer import append_regularization_ops
 from .dygraph import base as imperative_base
+from .dygraph import no_grad
 from .dygraph.learning_rate_scheduler import LearningRateDecay
 from paddle.fluid import core
 from paddle.fluid.layers import tensor
@@ -747,9 +748,20 @@ class SGDOptimizer(Optimizer):
             name=name)
         self.type = "sgd"
 
+    @no_grad
     def _append_optimize_op(self, block, param_and_grad):
-        assert isinstance(block, framework.Block)
+        if framework.in_dygraph_mode():
+            inputs = {
+                "Param": [param_and_grad[0]],
+                "Grad": [param_and_grad[1]],
+                "LearningRate": [self._create_param_lr(param_and_grad)]
+            }
+            attrs = {}
+            outputs = {'ParamOut': [param_and_grad[0]]}
+            outs = core.ops.sgd(inputs, attrs, outputs)
+            return outs['ParamOut'][0]
 
+        assert isinstance(block, framework.Block)
         # create the optimize op
         sgd_op = block.append_op(
             type=self.type,
