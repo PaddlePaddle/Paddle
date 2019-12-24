@@ -102,8 +102,6 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
     // TODO(TJ): get from attr
     op_desc.SetAttr("use_seq", true);
 
-    PADDLE_ENFORCE(graph->Has(kParamScopeAttr));
-    auto& scope = graph->Get<Scope>(kParamScopeAttr);
     auto* op = graph->CreateOpNode(&op_desc);
 
     PrepareOutVars(graph, BatchedInput, op);
