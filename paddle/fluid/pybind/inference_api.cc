@@ -28,6 +28,7 @@
 #include <vector>
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/api/paddle_pass_builder.h"
 
 namespace py = pybind11;
 
@@ -38,9 +39,11 @@ using paddle::NativeConfig;
 using paddle::NativePaddlePredictor;
 using paddle::PaddleBuf;
 using paddle::PaddleDType;
+using paddle::PaddlePassBuilder;
 using paddle::PaddlePlace;
 using paddle::PaddlePredictor;
 using paddle::PaddleTensor;
+using paddle::PassStrategy;
 using paddle::ZeroCopyTensor;
 
 namespace {
@@ -54,6 +57,7 @@ void BindNativePredictor(py::module *m);
 void BindAnalysisConfig(py::module *m);
 void BindAnalysisPredictor(py::module *m);
 void BindZeroCopyTensor(py::module *m);
+void BindPaddlePassBuilder(py::module *m);
 
 #ifdef PADDLE_WITH_MKLDNN
 void BindMkldnnQuantizerConfig(py::module *m);
@@ -201,6 +205,7 @@ void BindInferenceApi(py::module *m) {
   BindAnalysisConfig(m);
   BindAnalysisPredictor(m);
   BindZeroCopyTensor(m);
+  BindPaddlePassBuilder(m);
 #ifdef PADDLE_WITH_MKLDNN
   BindMkldnnQuantizerConfig(m);
 #endif
@@ -322,7 +327,8 @@ void BindPaddlePredictor(py::module *m) {
       .def("get_input_names", &PaddlePredictor::GetInputNames)
       .def("get_output_names", &PaddlePredictor::GetOutputNames)
       .def("zero_copy_run", &PaddlePredictor::ZeroCopyRun)
-      .def("clone", &PaddlePredictor::Clone);
+      .def("clone", &PaddlePredictor::Clone)
+      .def("get_serialized_program", &PaddlePredictor::GetSerializedProgram);
 
   auto config = py::class_<PaddlePredictor::Config>(paddle_predictor, "Config");
   config.def(py::init<>())
@@ -402,6 +408,7 @@ void BindAnalysisConfig(py::module *m) {
       .def("enable_memory_optim", &AnalysisConfig::EnableMemoryOptim)
       .def("enable_profile", &AnalysisConfig::EnableProfile)
       .def("disable_glog_info", &AnalysisConfig::DisableGlogInfo)
+      .def("glog_info_disabled", &AnalysisConfig::glog_info_disabled)
       .def("set_optim_cache_dir", &AnalysisConfig::SetOptimCacheDir)
       .def("switch_use_feed_fetch_ops", &AnalysisConfig::SwitchUseFeedFetchOps,
            py::arg("x") = true)
@@ -442,6 +449,10 @@ void BindAnalysisConfig(py::module *m) {
       .def("set_mkldnn_op", &AnalysisConfig::SetMKLDNNOp)
       .def("set_model_buffer", &AnalysisConfig::SetModelBuffer)
       .def("model_from_memory", &AnalysisConfig::model_from_memory)
+      .def("delete_pass",
+           [](AnalysisConfig &self, const std::string &pass) {
+             self.pass_builder()->DeletePass(pass);
+           })
       .def("pass_builder", &AnalysisConfig::pass_builder,
            py::return_value_policy::reference);
 }
@@ -483,10 +494,22 @@ void BindAnalysisPredictor(py::module *m) {
       .def("get_output_tensor", &AnalysisPredictor::GetOutputTensor)
       .def("get_input_names", &AnalysisPredictor::GetInputNames)
       .def("get_output_names", &AnalysisPredictor::GetOutputNames)
+      .def("get_input_tensor_shape", &AnalysisPredictor::GetInputTensorShape)
       .def("zero_copy_run", &AnalysisPredictor::ZeroCopyRun)
+      .def("create_feed_fetch_var", &AnalysisPredictor::CreateFeedFetchVar)
+      .def("prepare_feed_fetch", &AnalysisPredictor::PrepareFeedFetch)
+      .def("prepare_argument", &AnalysisPredictor::PrepareArgument)
+      .def("optimize_inference_program",
+           &AnalysisPredictor::OptimizeInferenceProgram)
+      .def("analysis_argument", &AnalysisPredictor::analysis_argument,
+           py::return_value_policy::reference)
       .def("clone", &AnalysisPredictor::Clone)
       .def("scope", &AnalysisPredictor::scope,
            py::return_value_policy::reference)
+      .def("program", &AnalysisPredictor::program,
+           py::return_value_policy::reference)
+      .def("get_serialized_program", &AnalysisPredictor::GetSerializedProgram)
+      .def("mkldnn_quantize", &AnalysisPredictor::MkldnnQuantize)
       .def("SaveOptimModel", &AnalysisPredictor::SaveOptimModel,
            py::arg("dir"));
 }
@@ -502,6 +525,54 @@ void BindZeroCopyTensor(py::module *m) {
       .def("set_lod", &ZeroCopyTensor::SetLoD)
       .def("lod", &ZeroCopyTensor::lod)
       .def("type", &ZeroCopyTensor::type);
+}
+
+void BindPaddlePassBuilder(py::module *m) {
+  py::class_<PaddlePassBuilder>(*m, "PaddlePassBuilder")
+      .def(py::init<const std::vector<std::string> &>())
+      .def("set_passes",
+           [](PaddlePassBuilder &self, const std::vector<std::string> &passes) {
+             self.ClearPasses();
+             for (auto pass : passes) {
+               self.AppendPass(std::move(pass));
+             }
+           })
+      .def("append_pass", &PaddlePassBuilder::AppendPass)
+      .def("insert_pass", &PaddlePassBuilder::InsertPass)
+      .def("delete_pass",
+           [](PaddlePassBuilder &self, const std::string &pass_type) {
+             self.DeletePass(pass_type);
+           })
+      .def("append_analysis_pass", &PaddlePassBuilder::AppendAnalysisPass)
+      .def("turn_on_debug", &PaddlePassBuilder::TurnOnDebug)
+      .def("debug_string", &PaddlePassBuilder::DebugString)
+      .def("all_passes", &PaddlePassBuilder::AllPasses,
+           py::return_value_policy::reference)
+      .def("analysis_passes", &PaddlePassBuilder::AnalysisPasses);
+
+  py::class_<PassStrategy, PaddlePassBuilder>(*m, "PassStrategy")
+      .def(py::init<const std::vector<std::string> &>())
+      .def("enable_cudnn", &PassStrategy::EnableCUDNN)
+      .def("enable_mkldnn", &PassStrategy::EnableMKLDNN)
+      .def("enable_ngraph", &PassStrategy::EnableNgraph)
+      .def("enable_mkldnn_quantizer", &PassStrategy::EnableMkldnnQuantizer)
+      .def("use_gpu", &PassStrategy::use_gpu);
+
+  py::class_<CpuPassStrategy, PassStrategy>(*m, "CpuPassStrategy")
+      .def(py::init<>())
+      .def(py::init<const CpuPassStrategy &>())
+      .def("enable_cudnn", &CpuPassStrategy::EnableCUDNN)
+      .def("enable_mkldnn", &CpuPassStrategy::EnableMKLDNN)
+      .def("enable_ngraph", &CpuPassStrategy::EnableNgraph)
+      .def("enable_mkldnn_quantizer", &CpuPassStrategy::EnableMkldnnQuantizer);
+
+  py::class_<GpuPassStrategy, PassStrategy>(*m, "GpuPassStrategy")
+      .def(py::init<>())
+      .def(py::init<const GpuPassStrategy &>())
+      .def("enable_cudnn", &GpuPassStrategy::EnableCUDNN)
+      .def("enable_mkldnn", &GpuPassStrategy::EnableMKLDNN)
+      .def("enable_ngraph", &GpuPassStrategy::EnableNgraph)
+      .def("enable_mkldnn_quantizer", &GpuPassStrategy::EnableMkldnnQuantizer);
 }
 }  // namespace
 }  // namespace pybind
