@@ -152,8 +152,8 @@ class TestGroupNormOpBigEps3(TestGroupNormOp):
 
 
 @skip_check_grad_ci(
-    reason="This test case is to compare whether the grads computation results between CPU and GPU are consistent in the same inputs, check_grad is not required."
-)
+    reason='''This test case is to compare whether the grads computation results between CPU and GPU  
+            are consistent in the same inputs, check_grad is not required.''')
 class TestGroupNormOpLargeData(TestGroupNormOp):
     def init_test_case(self):
         self.shape = (2, 32, 64, 64)
@@ -194,8 +194,8 @@ class TestGroupNormOpBigEps3_With_NHWC(TestGroupNormOp):
 
 
 @skip_check_grad_ci(
-    reason="This test case is to compare whether the grads computation results between CPU and GPU are consistent in the same inputs, check_grad is not required."
-)
+    reason='''This test case is to compare whether the grads computation results between CPU and GPU
+            are consistent in the same inputs, check_grad is not required.''')
 class TestGroupNormOpLargeData_With_NHWC(TestGroupNormOp):
     def init_test_case(self):
         self.shape = (2, 64, 32, 32)  # NCHW
