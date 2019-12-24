@@ -24,10 +24,9 @@ import test_imperative_selected_rows_to_lod_tensor
 
 
 class SimpleNetOnlyEmbedding(fluid.Layer):
-    def __init__(self, name_scope, vocab_size, hidden_size, dtype, is_sparse):
-        super(SimpleNetOnlyEmbedding, self).__init__(name_scope)
+    def __init__(self, vocab_size, hidden_size, dtype, is_sparse):
+        super(SimpleNetOnlyEmbedding, self).__init__()
         self.emb = fluid.dygraph.Embedding(
-            self.full_name(),
             size=[vocab_size, hidden_size],
             dtype=dtype,
             param_attr='emb.w',
@@ -39,16 +38,14 @@ class SimpleNetOnlyEmbedding(fluid.Layer):
 
 
 class SimpleNetSharedEmbedding(fluid.Layer):
-    def __init__(self, name_scope, vocab_size, hidden_size, dtype, is_sparse):
-        super(SimpleNetSharedEmbedding, self).__init__(name_scope)
+    def __init__(self, vocab_size, hidden_size, dtype, is_sparse):
+        super(SimpleNetSharedEmbedding, self).__init__()
         self.emb1 = fluid.dygraph.Embedding(
-            self.full_name(),
             size=[vocab_size, hidden_size],
             dtype=dtype,
             param_attr='emb.w1',
             is_sparse=is_sparse)
         self.emb2 = fluid.dygraph.Embedding(
-            self.full_name(),
             size=[vocab_size, hidden_size],
             dtype=dtype,
             param_attr='emb.w2',
@@ -95,7 +92,6 @@ class Test_Grad_Accumulate(unittest.TestCase):
                             input = base.to_variable(input_word)
                             y = base.to_variable(y_data)
                             simplenet = test_imperative_lod_tensor_to_selected_rows.SimpleNet(
-                                "SimpleNet",
                                 hidden_size=20,
                                 vocab_size=32,
                                 num_steps=3,
@@ -136,7 +132,6 @@ class Test_Grad_Accumulate(unittest.TestCase):
                             input = base.to_variable(input_word)
                             y = base.to_variable(y_data)
                             simplenet = test_imperative_lod_tensor_to_selected_rows.SimpleNet(
-                                "SimpleNet",
                                 hidden_size=20,
                                 vocab_size=32,
                                 num_steps=3,
@@ -184,7 +179,6 @@ class Test_Grad_Accumulate(unittest.TestCase):
                             input = base.to_variable(input_word)
                             y = base.to_variable(y_data)
                             simplenet = test_imperative_selected_rows_to_lod_tensor.SimpleNet(
-                                "SimpleNet",
                                 hidden_size=20,
                                 vocab_size=32,
                                 num_steps=3,
@@ -225,7 +219,6 @@ class Test_Grad_Accumulate(unittest.TestCase):
                             input = base.to_variable(input_word)
                             y = base.to_variable(y_data)
                             simplenet = test_imperative_selected_rows_to_lod_tensor.SimpleNet(
-                                "SimpleNet",
                                 hidden_size=20,
                                 vocab_size=32,
                                 num_steps=3,
@@ -258,9 +251,8 @@ class Test_Grad_Accumulate(unittest.TestCase):
                             input_word = np.array(
                                 [[[1], [2]], [[2], [1]]]).astype('int64')
                             input = base.to_variable(input_word)
-                            simplenet = SimpleNetSharedEmbedding(
-                                "SimpleNetSharedEmbedding", 20, 32, dtype,
-                                is_sparse)
+                            simplenet = SimpleNetSharedEmbedding(20, 32, dtype,
+                                                                 is_sparse)
                             input_emb, emb = simplenet(input)
                             input_emb.backward(backward_strategy)
                             adam.minimize(input_emb)
@@ -298,9 +290,8 @@ class Test_Grad_Accumulate(unittest.TestCase):
                             input_word = np.array(
                                 [[[1], [2]], [[2], [1]]]).astype('int64')
                             input = base.to_variable(input_word)
-                            simplenet = SimpleNetOnlyEmbedding(
-                                "SimpleNetOnlyEmbedding", 20, 32, dtype,
-                                is_sparse)
+                            simplenet = SimpleNetOnlyEmbedding(20, 32, dtype,
+                                                               is_sparse)
                             input_emb, emb = simplenet(input)
                             input_emb.backward(backward_strategy)
                             adam.minimize(input_emb)
@@ -352,7 +343,6 @@ class Test_Grad_Accumulate(unittest.TestCase):
                             input = base.to_variable(input_word)
                             y = base.to_variable(y_data)
                             simplenet = test_imperative_selected_rows_to_lod_tensor.SimpleNet(
-                                "SimpleNet",
                                 hidden_size=20,
                                 vocab_size=32,
                                 num_steps=3,
@@ -388,9 +378,8 @@ class Test_Grad_Accumulate(unittest.TestCase):
                             input_word = np.array(
                                 [[[1], [2]], [[2], [1]]]).astype('int64')
                             input = base.to_variable(input_word)
-                            simplenet = SimpleNetSharedEmbedding(
-                                "SimpleNetSharedEmbedding", 20, 32, dtype,
-                                is_sparse)
+                            simplenet = SimpleNetSharedEmbedding(20, 32, dtype,
+                                                                 is_sparse)
                             input_emb, emb = simplenet(input)
                             input_emb.backward(backward_strategy)
                             adam.minimize(input_emb)
@@ -427,9 +416,8 @@ class Test_Grad_Accumulate(unittest.TestCase):
                             input_word = np.array(
                                 [[[1], [2]], [[2], [1]]]).astype('int64')
                             input = base.to_variable(input_word)
-                            simplenet = SimpleNetOnlyEmbedding(
-                                "SimpleNetOnlyEmbedding", 20, 32, dtype,
-                                is_sparse)
+                            simplenet = SimpleNetOnlyEmbedding(20, 32, dtype,
+                                                               is_sparse)
                             input_emb, emb = simplenet(input)
                             input_emb.backward(backward_strategy)
                             emb_gradient = emb._w.gradient()
