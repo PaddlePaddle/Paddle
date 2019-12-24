@@ -958,7 +958,6 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
         for grad_var_name in op_desc.output_arg_names():
             if block.desc.has_var_recursive(cpt.to_bytes(
                     grad_var_name)) or grad_var_name == core.empty_var_name():
-                # print("1. grad_var_name : ", grad_var_name)
                 continue
             block.desc.var(cpt.to_bytes(grad_var_name))
             new_vars.add(grad_var_name)
@@ -1008,6 +1007,17 @@ def _get_stop_gradients_(program):
                 block_no_grad_set.add(_append_grad_suffix_(var.name))
         no_grad_dict[block.idx] = block_no_grad_set
     return no_grad_dict
+
+
+def _get_son_parent_block_idx_dict(program, current_block_idx):
+
+    son_parent_block_idx_dict = collections.OrderedDict()
+    while current_block_idx >= 0:
+        parent_block_idx = program.block(current_block_idx).parent_idx
+        son_parent_block_idx_dict[current_block_idx] = parent_block_idx
+        current_block_idx = parent_block_idx
+
+    return son_parent_block_idx_dict
 
 
 def append_backward(loss,
@@ -1102,27 +1112,31 @@ def append_backward(loss,
         isinstance(callbacks, list)
 
     program = loss.block.program
+    root_block = program.block(0)
+    current_block_idx = program.current_block_idx
+    current_block = program.block(current_block_idx)
 
-    # Todo(liym27): when to add 1 in control flow
-    program._appending_grad_times += 1
+    is_in_control_flow = current_block_idx != 0
+
+    # Double grad is not supported in sub-block (control flow)
+    if not is_in_control_flow:
+        # _appending_grad_times used for double grad
+        program._appending_grad_times += 1
 
     if no_grad_set is None:
         no_grad_set = set()
     no_grad_set = copy.copy(no_grad_set)
     no_grad_dict = _get_stop_gradients_(program)
-    # no_grad_set only contain vars in block 0
+    # no_grad_set only contains vars in block 0
     # Todo(liym27): support vars in sub block
     no_grad_dict[0].update(list(map(_append_grad_suffix_, no_grad_set)))
 
-    root_block = program.block(0)
-
-    current_block_idx = program.current_block_idx
-
-    current_block = program.block(current_block_idx)
-
-    # create grad block if in control flow
-    is_in_control_flow = current_block_idx != 0
+    # Currently it is only to support the optimizer.minimize
+    # in a switch branch, which can append_backward in a sub_block.
+    # Note: while_loop is in control flow, but it makes no sense to call optimizer in while.
+    # Todo: report error when it is in while_loop
     if is_in_control_flow:
+        # create grad block if in switch control flow.
         target_grad_block = program._create_block(
             parent_idx=current_block.parent_idx)
         target_grad_block._set_forward_block_idx(current_block_idx)
@@ -1130,19 +1144,10 @@ def append_backward(loss,
     else:
         target_grad_block = root_block
 
-    def _get_son_parent_block_idx_dict(program, current_block_idx):
-        son_parent_block_idx_dict = collections.OrderedDict()
-        while current_block_idx >= 0:
-            parent_block_idx = program.block(current_block_idx).parent_idx
-            son_parent_block_idx_dict[current_block_idx] = parent_block_idx
-            current_block_idx = parent_block_idx
-        return son_parent_block_idx_dict
-
     son_parent_block_idx_dict = _get_son_parent_block_idx_dict(
         program, current_block_idx)
 
-    # block_id: fwd_op_num
-    block_fwd_op_num_dict = {}
+    block_fwd_op_num_dict = {}  # block_id: fwd_op_num
     for idx in son_parent_block_idx_dict:
         block_fwd_op_num_dict[idx] = program.block(idx).desc.op_size()
 
@@ -1150,9 +1155,6 @@ def append_backward(loss,
 
     op_desc = _create_loss_op_desc_(loss)
     target_grad_block.desc.append_op().copy_from(op_desc)
-
-    current_block_no_grad_set = set(
-        map(_strip_grad_suffix_, no_grad_dict[current_block_idx]))
 
     op_path_dict = {}  # block idx : op_path
     no_grad_vars_dict = {}
@@ -1173,16 +1175,17 @@ def append_backward(loss,
             list(map(_append_grad_suffix_, block_no_grad_set)))
 
         input_grad_names_set = None
-        # For double backward, input_grad_names is used for filter
-        # some non-used gradients op.
+        # For double backward, input_grad_names is used for filtering
+        # some non-used gradients op(s).
 
         # Todo(liym27): need a better design.
-        # not support double grad in control flow now
+        # not support double grad in control flow sub-block now.
         if not is_in_control_flow:
             if program._appending_grad_times > 1:
                 input_grad_names_set = set([_append_grad_suffix_(loss.name)])
 
-        # Todo: support _append_backward_ops_with_checkpoints_ in control flow
+        # Todo: support _append_backward_ops_with_checkpoints_ in
+        #  sub-block (control flow)
         if checkpoints != None and \
                 isinstance(checkpoints, list) and \
                 len(checkpoints) > 0:
@@ -1230,6 +1233,7 @@ def append_backward(loss,
     params_and_grads = []
     op_role_var_attr_name = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
     if is_in_control_flow:
+        # control flow: grad_var not in current block but in corresponding grad block
         for param in parameters:
             if cpt.to_text(param) not in grad_info_map:
                 continue
@@ -1254,7 +1258,6 @@ def append_backward(loss,
                 attr_val.extend(grad_var.op.attr(op_role_var_attr_name))
             grad_var.op._set_attr(op_role_var_attr_name, attr_val)
 
-            # control flow: grad_var not in current block but in corresponding grad block
             params_and_grads.append((param_var, grad_var))
 
         return params_and_grads
@@ -1300,26 +1303,33 @@ def _as_list(x):
     return list(x) if isinstance(x, collections.Sequence) else [x]
 
 
-def _get_output_names(block, outputs):
+def _get_output_names(cur_block, targets):
+    """
+    In `cur_block`, get output names those linked to targets.
+    Note: `targets` can be in `cur_block` or not. Usually, `targets` is in `cur_block`.
+    However, considering control flow, `targets` may be in sub-block but `cur_block` is an ancestor of "targets[0].block".
+    """
+    current_output_names = set([out.name for out in targets])
 
-    current_output_names = set([out.name for out in outputs])
+    block = targets[0].block if targets else cur_block
+    prog = cur_block.program
 
-    if outputs:
-        current_block = outputs[0].block
-        while current_block.idx != block.idx:
-            link_output_names = set()
-            parent_block = block.program.blocks[current_block.parent_idx]
-            for i, op in reversed(list(enumerate(current_block.ops))):
-                if _some_in_set_(op.desc.output_arg_names(),
-                                 current_output_names):
-                    for name in op.desc.input_arg_names():
-                        current_output_names.add(name)
-                        if not current_block.desc.find_var(
-                                name.encode("ascii")
-                        ) and parent_block.desc.find_var(name.encode("ascii")):
-                            link_output_names.add(name)
-            current_output_names = link_output_names
-            current_block = parent_block
+    while block.idx != cur_block.idx:
+        parent_block = prog.block(block.parent_idx)
+        assert parent_block.idx != -1
+
+        parent_block_output_names = set()
+        for op in reversed(block.ops):
+            if _some_in_set_(op.desc.output_arg_names(), current_output_names):
+                for name in op.desc.input_arg_names():
+                    current_output_names.add(name)
+                    if not block.desc.find_var(cpt.to_bytes(name)) \
+                            and parent_block.desc.find_var(cpt.to_bytes(name)):
+                        parent_block_output_names.add(name)
+
+        block = parent_block
+        current_output_names = parent_block_output_names
+
     return current_output_names
 
 
