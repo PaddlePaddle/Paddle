@@ -33,7 +33,7 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable
 from testsuite import create_op, set_input, append_input_output, append_loss_ops
 from paddle.fluid import unique_name
-from white_list import op_accuracy_white_list, op_check_grad_white_list, check_shape_white_list
+from white_list import op_accuracy_white_list, op_check_grad_white_list, check_shape_white_list, compile_vs_runtime_white_list
 
 
 def _set_use_system_allocator(value=None):
@@ -1100,7 +1100,7 @@ class OpTest(unittest.TestCase):
                      equal_nan=False,
                      check_dygraph=True,
                      inplace_atol=None,
-                     check_compile_vs_runtime=False):
+                     check_compile_vs_runtime=True):
         self.__class__.op_type = self.op_type
         places = self._get_places()
         for place in places:
@@ -1110,7 +1110,9 @@ class OpTest(unittest.TestCase):
                 outs, dygraph_outs, fetch_list = res
             else:
                 outs, fetch_list = res
-            if check_compile_vs_runtime:
+            if check_compile_vs_runtime and (
+                    self.op_type not in
+                    compile_vs_runtime_white_list.COMPILE_RUN_OP_WHITE_LIST):
                 self.check_compile_vs_runtime(fetch_list, outs)
 
     def check_output_customized(self, checker):

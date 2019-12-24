@@ -31,6 +31,7 @@ from .layer_helper import LayerHelper
 from .layers import ops
 from .regularizer import append_regularization_ops
 from .dygraph import base as imperative_base
+from .dygraph import no_grad
 from .dygraph.learning_rate_scheduler import LearningRateDecay
 from paddle.fluid import core
 from paddle.fluid.layers import tensor
@@ -324,7 +325,8 @@ class Optimizer(object):
                          param,
                          dtype=None,
                          fill_value=0.0,
-                         shape=None):
+                         shape=None,
+                         type=None):
         """Utility function to add an accumulator for a parameter
 
         Args:
@@ -354,7 +356,7 @@ class Optimizer(object):
             name=var_name,
             persistable=True,
             dtype=dtype or param.dtype,
-            type=param.type,
+            type=param.type if type is None else type,
             shape=shape,
             belong_to_optimizer=True)
         self.helper.set_variable_initializer(
@@ -746,9 +748,20 @@ class SGDOptimizer(Optimizer):
             name=name)
         self.type = "sgd"
 
+    @no_grad
     def _append_optimize_op(self, block, param_and_grad):
-        assert isinstance(block, framework.Block)
+        if framework.in_dygraph_mode():
+            inputs = {
+                "Param": [param_and_grad[0]],
+                "Grad": [param_and_grad[1]],
+                "LearningRate": [self._create_param_lr(param_and_grad)]
+            }
+            attrs = {}
+            outputs = {'ParamOut': [param_and_grad[0]]}
+            outs = core.ops.sgd(inputs, attrs, outputs)
+            return outs['ParamOut'][0]
 
+        assert isinstance(block, framework.Block)
         # create the optimize op
         sgd_op = block.append_op(
             type=self.type,
@@ -1635,13 +1648,15 @@ class AdamOptimizer(Optimizer):
                 param=p,
                 fill_value=0.9 if isinstance(self._beta1, Variable) \
                         else self._beta1,
-                shape=[1])
+                shape=[1],
+                type=core.VarDesc.VarType.LOD_TENSOR)
             self._add_accumulator(
                 name=self._beta2_pow_acc_str,
                 param=p,
                 fill_value=0.999 if isinstance(self._beta2, Variable) \
                         else self._beta2,
-                shape=[1])
+                shape=[1],
+                type=core.VarDesc.VarType.LOD_TENSOR)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -1668,7 +1683,9 @@ class AdamOptimizer(Optimizer):
         outputs = {
             "ParamOut": param_and_grad[0],
             "Moment1Out": moment1,
-            "Moment2Out": moment2
+            "Moment2Out": moment2,
+            "Beta1PowOut": beta1_pow_acc,
+            "Beta2PowOut": beta2_pow_acc,
         }
         attrs = {
             "epsilon": self._epsilon,
@@ -1693,46 +1710,6 @@ class AdamOptimizer(Optimizer):
             stop_gradient=True)
 
         return adam_op
-
-    def _finish_update(self, block, param_and_grads):
-        """Update Beta1 and Beta2 Power accumulators
-        """
-        assert isinstance(block, framework.Block)
-        main_block = block.program.global_block()
-        for param, grad in param_and_grads:
-            if grad is None or param.trainable is False:
-                continue
-            with param.block.program._optimized_guard(
-                [param, grad]), name_scope("optimizer"):
-                beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
-                                                      param)
-                beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
-                                                      param)
-                inputs = {"X": beta1_pow_acc}
-                attrs = {}
-                if isinstance(self._beta1, Variable):
-                    inputs['ScaleTensor'] = self._beta1
-                else:
-                    attrs['scale'] = self._beta1
-                main_block.append_op(
-                    type="scale",
-                    inputs=inputs,
-                    outputs={"Out": beta1_pow_acc},
-                    attrs=attrs,
-                    stop_gradient=True)
-
-                inputs = {"X": beta2_pow_acc}
-                attrs = {}
-                if isinstance(self._beta2, Variable):
-                    inputs['ScaleTensor'] = self._beta2
-                else:
-                    attrs['scale'] = self._beta2
-                main_block.append_op(
-                    type="scale",
-                    inputs=inputs,
-                    outputs={"Out": beta2_pow_acc},
-                    attrs=attrs,
-                    stop_gradient=True)
 
 
 class AdamaxOptimizer(Optimizer):

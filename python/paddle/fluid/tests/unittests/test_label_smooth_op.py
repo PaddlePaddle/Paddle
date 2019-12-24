@@ -53,5 +53,23 @@ class TestLabelSmoothOpWithPriorDist(TestLabelSmoothOp):
         self.outputs = {'Out': smoothed_label}
 
 
+class TestLabelSmoothOp3D(TestLabelSmoothOp):
+    def setUp(self):
+        super(TestLabelSmoothOp3D, self).setUp()
+        self.inputs['X'] = self.inputs['X'].reshape(
+            [2, -1, self.inputs['X'].shape[-1]])
+        self.outputs['Out'] = self.outputs['Out'].reshape(self.inputs['X']
+                                                          .shape)
+
+
+class TestLabelSmoothOpWithPriorDist3D(TestLabelSmoothOpWithPriorDist):
+    def setUp(self):
+        super(TestLabelSmoothOpWithPriorDist3D, self).setUp()
+        self.inputs['X'] = self.inputs['X'].reshape(
+            [2, -1, self.inputs['X'].shape[-1]])
+        self.outputs['Out'] = self.outputs['Out'].reshape(self.inputs['X']
+                                                          .shape)
+
+
 if __name__ == '__main__':
     unittest.main()
