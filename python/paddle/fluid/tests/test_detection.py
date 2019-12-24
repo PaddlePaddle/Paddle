@@ -185,7 +185,8 @@ class TestDensityPriorBox(unittest.TestCase):
                 densities=[3, 4],
                 fixed_sizes=[50., 60.],
                 fixed_ratios=[1.0],
-                clip=True)
+                clip=True,
+                steps=[1, 1])
             assert len(box.shape) == 4
             assert box.shape == var.shape
             assert box.shape[-1] == 4
