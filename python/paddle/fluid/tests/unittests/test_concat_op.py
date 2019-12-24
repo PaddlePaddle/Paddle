@@ -72,9 +72,6 @@ class TestConcatOp3(TestConcatOp):
         self.x2 = np.random.random((1, 128, 170, 256)).astype(self.dtype)
         self.axis = 1
 
-    def test_check_grad(self):
-        pass
-
 
 class TestConcatOp4(TestConcatOp):
     def init_test_data(self):
@@ -82,9 +79,6 @@ class TestConcatOp4(TestConcatOp):
         self.x1 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
         self.x2 = np.random.random((0, 3, 4, 5)).astype(self.dtype)
         self.axis = 0
-
-    def test_check_grad(self):
-        pass
 
 
 class TestConcatOp5(TestConcatOp):
