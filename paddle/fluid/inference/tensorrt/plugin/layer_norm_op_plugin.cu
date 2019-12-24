@@ -32,12 +32,12 @@ LayerNormPlugin *CreateLayerNormPluginDeserialize(const void *buffer,
 REGISTER_TRT_PLUGIN("layer_norm_plugin", CreateLayerNormPluginDeserialize);
 
 int LayerNormPlugin::initialize() {
-  cudaMalloc(&p_gpu_bias_, sizeof(float) * bias_.size());
-  cudaMemcpy(p_gpu_bias_, bias_.data(), bias_.size() * sizeof(float),
-             cudaMemcpyHostToDevice);
-  cudaMalloc(&p_gpu_scale_, sizeof(float) * scale_.size());
-  cudaMemcpy(p_gpu_scale_, scale_.data(), scale_.size() * sizeof(float),
-             cudaMemcpyHostToDevice);
+  // cudaMalloc(&p_gpu_bias_, sizeof(float) * bias_.size());
+  // cudaMemcpy(p_gpu_bias_, bias_.data(), bias_.size() * sizeof(float),
+  //            cudaMemcpyHostToDevice);
+  // cudaMalloc(&p_gpu_scale_, sizeof(float) * scale_.size());
+  // cudaMemcpy(p_gpu_scale_, scale_.data(), scale_.size() * sizeof(float),
+  //            cudaMemcpyHostToDevice);
   return 0;
 }
 
@@ -53,14 +53,31 @@ nvinfer1::Dims LayerNormPlugin::getOutputDimensions(
 int LayerNormPlugin::enqueue(int batch_size, const void *const *inputs,
                              void **outputs, void *workspace,
                              cudaStream_t stream) {
-  // input dims is CHW.
   const auto &input_dims = this->getInputDims(0);
   const float *input = reinterpret_cast<const float *>(inputs[0]);
-  const float *bias = p_gpu_bias_;
-  const float *scale = p_gpu_scale_;
   float *output = reinterpret_cast<float **>(outputs)[0];
   int begin_norm_axis = begin_norm_axis_;
   float eps = eps_;
+
+  int n = batch_size;
+  int c = input_dims.d[begin_norm_axis - 1];
+
+  scale_t.Resize(framework::make_ddim({n, c}));
+  bias_t.Resize(framework::make_ddim({n, c}));
+  int device_id;
+  cudaGetDevice(&device_id);
+  float *scale_d = scale_t.mutable_data<float>(platform::CUDAPlace(device_id));
+  float *bias_d = bias_t.mutable_data<float>(platform::CUDAPlace(device_id));
+
+  for (int i = 0; i < n; i++) {
+    cudaMemcpyAsync(scale_d + i * c, scale_.data(), sizeof(float) * c,
+                    cudaMemcpyHostToDevice, stream);
+    cudaMemcpyAsync(bias_d + i * c, bias_.data(), sizeof(float) * c,
+                    cudaMemcpyHostToDevice, stream);
+  }
+
+  // const float *bias = p_gpu_bias_;
+  // const float *scale = p_gpu_scale_;
 
   std::vector<int> input_shape;
   input_shape.push_back(batch_size);
@@ -69,7 +86,7 @@ int LayerNormPlugin::enqueue(int batch_size, const void *const *inputs,
   }
 
   paddle::operators::LayerNormDirectCUDAFunctor<float> layer_norm;
-  layer_norm(stream, input, input_shape, bias, scale, output, mean_shape_,
+  layer_norm(stream, input, input_shape, bias_d, scale_d, output, mean_shape_,
              variance_shape_, begin_norm_axis, eps);
 
   return cudaGetLastError() != cudaSuccess;

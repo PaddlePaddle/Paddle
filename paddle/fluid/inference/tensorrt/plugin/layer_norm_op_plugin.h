@@ -31,8 +31,10 @@ namespace plugin {
 class LayerNormPlugin : public PluginTensorRT {
   std::vector<float> bias_;
   std::vector<float> scale_;
-  float *p_gpu_bias_;
-  float *p_gpu_scale_;
+  framework::Tensor scale_t;
+  framework::Tensor bias_t;
+  // float *p_gpu_bias_;
+  // float *p_gpu_scale_;
   int begin_norm_axis_;
   float eps_;
   std::vector<int64_t> mean_shape_;
@@ -87,8 +89,8 @@ class LayerNormPlugin : public PluginTensorRT {
     DeserializeValue(&serialData, &serialLength, &variance_shape_);
   }
   ~LayerNormPlugin() {
-    cudaFree(p_gpu_bias_);
-    cudaFree(p_gpu_scale_);
+    // cudaFree(p_gpu_bias_);
+    // cudaFree(p_gpu_scale_);
   }
   int initialize() override;
 

@@ -320,9 +320,8 @@ class TestAdamOptimizer(unittest.TestCase):
         self.assertEqual(len(adam_optimizer.get_accumulators()), 0)
         with framework.program_guard(program, init_program):
             opts = adam_optimizer.apply_gradients(params_grads)
-        self.assertEqual(len(opts), 4)
-        self.assertEqual([op.type for op in opts],
-                         ["scale", "adam", "scale", "scale"])
+        self.assertEqual(len(opts), 2)
+        self.assertEqual([op.type for op in opts], ["scale", "adam"])
 
         # Check accumulators
         accumulators = adam_optimizer.get_accumulators()
