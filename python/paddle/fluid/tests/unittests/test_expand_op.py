@@ -149,6 +149,7 @@ class TestExpandOpRank2_tensor(TestExpandOpRank1_tensor):
 
 
 # Situation 4: input x is Integer
+@skip_check_grad_ci(reason="For int32 type, cannot compute gradients.")
 class TestExpandOpInteger(OpTest):
     def setUp(self):
         self.op_type = "expand"
@@ -162,9 +163,6 @@ class TestExpandOpInteger(OpTest):
 
     def test_check_output(self):
         self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
 
 
 # Situation 5: input x is Bool
@@ -182,6 +180,7 @@ class TestExpandOpBoolean(OpTest):
 
 
 # Situation 56: input x is Integer
+@skip_check_grad_ci(reason="For int64 type, cannot compute gradients.")
 class TestExpandOpInt64_t(OpTest):
     def setUp(self):
         self.op_type = "expand"
@@ -195,9 +194,6 @@ class TestExpandOpInt64_t(OpTest):
 
     def test_check_output(self):
         self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
 
 
 class TestExpandError(unittest.TestCase):
