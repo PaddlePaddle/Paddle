@@ -163,8 +163,12 @@ class TestExpandOpInteger(OpTest):
     def test_check_output(self):
         self.check_output()
 
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
 
 # Situation 5: input x is Bool
+@skip_check_grad_ci(reason="For boolean type, cannot compute gradients.")
 class TestExpandOpBoolean(OpTest):
     def setUp(self):
         self.op_type = "expand"
@@ -191,6 +195,9 @@ class TestExpandOpInt64_t(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
 
 
 class TestExpandError(unittest.TestCase):
