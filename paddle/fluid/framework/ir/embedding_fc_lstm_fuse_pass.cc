@@ -27,7 +27,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void PrepareOutVars(Graph* graph, std::string name, ir::Node* op) {
+void PrepareOutVars(Graph* graph, const std::string name, ir::Node* op) {
   VarDesc key(name);
   key.SetPersistable(false);
   auto* key_node = graph->CreateVarNode(&key);
@@ -165,7 +165,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
 #define OP_SET_OUT(x)                            \
   const std::string x = patterns::UniqueKey(#x); \
   op_desc.SetOutput(#x, {x});                    \
-  PrepareOutVars(graph, #x, op);
+  PrepareOutVars(graph, #x, op)
     OP_SET_OUT(BatchedCell);
     OP_SET_OUT(BatchedHidden);
     OP_SET_OUT(ReorderedH0);
