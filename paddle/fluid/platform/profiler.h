@@ -40,9 +40,9 @@ enum ProfilerState {
 };
 
 enum TracerOption {
-  kFULL,
+  kFull,
   kOP,
-  kDETAIL,
+  kDetail,
 };
 void Mark(const std::string& name);
 
@@ -169,6 +169,8 @@ struct EventList {
 };
 
 void SetTracerOption(TracerOption option);
+
+TracerOption GetTracerOption();
 // Enable the profiling function.
 void EnableProfiler(ProfilerState state);
 

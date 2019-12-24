@@ -138,18 +138,6 @@ void PopEvent(const std::string &name) {
   GetEventList().Record(EventType::kPopRange, name, g_thread_id);
 }
 
-RecordEvent::RecordEvent(const std::string &name, int record_level)
-    : is_enabled_(false), start_ns_(PosixInNsec()) {
-  if (g_state == ProfilerState::kDisabled) return;
-  // lock is not needed, the code below is thread-safe
-
-  is_enabled_ = true;
-  name_ = name;
-  Event *e = PushEvent(name_);
-  // Maybe need the same push/pop behavior.
-  SetCurAnnotation(e);
-}
-
 RecordEvent::RecordEvent(const std::string &name)
     : is_enabled_(false), start_ns_(PosixInNsec()) {
   if (g_state == ProfilerState::kDisabled) return;
@@ -380,15 +368,17 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
       const EventItem &main_event_item = events_table[i][j];
       std::vector<EventItem> event_items;
       event_items.push_back(main_event_item);
-      auto pr = child_map.equal_range(main_event_item.name);
-      if (pr.first != std::end(child_map)) {
-        for (auto iter = pr.first; iter != pr.second; ++iter) {
-          event_items.push_back(iter->second);
+      if (g_tracer_option != TracerOption::kFull) {
+        auto pr = child_map.equal_range(main_event_item.name);
+        if (pr.first != std::end(child_map)) {
+          for (auto iter = pr.first; iter != pr.second; ++iter) {
+            event_items.push_back(iter->second);
+          }
         }
       }
       for (auto &event_item : event_items) {
         auto print_name = event_item.name;
-        const char *s = "      ";
+        const char *s = "  ";
         if (print_name.length() > main_event_item.name.length() + 2) {
           print_name.replace(0, main_event_item.name.length() + 2, s);
         }
@@ -489,6 +479,7 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
   std::vector<std::vector<EventItem>> events_table;
   std::multimap<std::string, EventItem> child_map;
   size_t max_name_width = 0;
+  size_t max_fsize = 0;
 
   for (size_t i = 0; i < (*analyze_events).size(); i++) {
     double total = 0.;  // the total time in one thread
@@ -577,7 +568,8 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
       for (size_t k = 0; k < table_size; ++k) {
         std::string cname = event_items[k].name;
         if ((child_index[k] == 0) && cname.length() > fname.length() &&
-            cname.rfind(fname, 0) == 0 && !cname.rfind(grad_name, 0) == 0) {
+            cname.rfind(fname, 0) == 0 && !cname.rfind(grad_name, 0) == 0 &&
+            cname[fname.length()] == ':') {
           child_map.insert(
               std::pair<std::string, EventItem>(fname, event_items[k]));
           child_index[k] = 1;
@@ -588,6 +580,7 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
     for (size_t j = 0; j < table_size; ++j) {
       if (child_index[j] == 0) {
         main_event_items.push_back(event_items[j]);
+        max_fsize = std::max(max_fsize, event_items[j].name.size());
       }
     }
 
@@ -607,8 +600,8 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
   }
 
   // Print report
-  PrintProfiler(events_table, child_map, sorted_domain, max_name_width + 4, 12,
-                merge_thread);
+  PrintProfiler(events_table, child_map, sorted_domain,
+                max_name_width + 6 - max_fsize, 12, merge_thread);
 }
 
 struct MemoryProfierReport {
@@ -717,5 +710,7 @@ void SetTracerOption(TracerOption option) {
   std::lock_guard<std::mutex> l(profiler_mu);
   g_tracer_option = option;
 }
+
+platform::TracerOption GetTracerOption() { return g_tracer_option; }
 }  // namespace platform
 }  // namespace paddle
