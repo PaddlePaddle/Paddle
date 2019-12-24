@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 
@@ -315,6 +315,7 @@ class TestBilinearInterpCase1Uint8(TestBilinearInterpOpUint8):
         self.align_mode = 1
 
 
+@skip_check_grad_ci(reason="uint8 type only be used in test and inference.")
 class TestBilinearInterpCase2Uint8(TestBilinearInterpOpUint8):
     def init_test_case(self):
         self.interp_method = 'bilinear'
