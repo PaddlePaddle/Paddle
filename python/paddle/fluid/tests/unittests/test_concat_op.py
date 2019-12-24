@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard, core
 
@@ -65,6 +65,7 @@ class TestConcatOp2(TestConcatOp):
         self.axis = 1
 
 
+@skip_check_grad_ci(reason="check_grad on large input is too slow")
 class TestConcatOp3(TestConcatOp):
     def init_test_data(self):
         self.x0 = np.random.random((1, 256, 170, 256)).astype(self.dtype)
@@ -72,13 +73,22 @@ class TestConcatOp3(TestConcatOp):
         self.x2 = np.random.random((1, 128, 170, 256)).astype(self.dtype)
         self.axis = 1
 
+    def test_check_grad(self):
+        pass
 
+
+@skip_check_grad_ci(
+    reason="This test will meet fetch error when there is a nul grad. The detailed information is in PR#17015."
+)
 class TestConcatOp4(TestConcatOp):
     def init_test_data(self):
         self.x0 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
         self.x1 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
         self.x2 = np.random.random((0, 3, 4, 5)).astype(self.dtype)
         self.axis = 0
+
+    def test_check_grad(self):
+        pass
 
 
 class TestConcatOp5(TestConcatOp):
