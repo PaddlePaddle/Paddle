@@ -55,6 +55,8 @@ __all__ = [
     'load',
     'load_program_state',
     'set_program_state',
+    'get_program_parameter',
+    'get_program_persistable_vars',
 ] + reader.__all__ + paddle.reader.__all__
 
 _logger = get_logger(
@@ -112,6 +114,14 @@ def is_belong_to_optimizer(var):
         return is_persistable(var)
 
     return False
+
+
+def get_program_parameter(program):
+    return list(filter(is_parameter, program.list_vars()))
+
+
+def get_program_persistable_vars(program):
+    return list(filter(is_persistable, program.list_vars()))
 
 
 def _clone_var_in_block_(block, var):
@@ -1497,7 +1507,7 @@ def save(program, model_path):
         f.write(program.desc.serialize_to_string())
 
 
-def load(program, model_path, executor=None):
+def load(program, model_path, executor=None, var_list=None):
     """
     This function filter out parameters and optimizer information from program, and then get corresponding value from file.
     An exception will throw if shape or dtype of the parameters is not match.
@@ -1526,8 +1536,76 @@ def load(program, model_path, executor=None):
     assert executor is None or isinstance(executor, Executor)
 
     parameter_file_name = model_path + ".pdparams"
-    assert os.path.exists(parameter_file_name), \
-        "Parameter file [{}] not exits".format(parameter_file_name)
+    #assert os.path.exists(parameter_file_name), \
+    #    "Parameter file [{}] not exits".format(parameter_file_name)
+
+    if not os.path.exists(parameter_file_name):
+        # parameter file not exist, try to load previous save inference
+        # (save_vars, save_params, save_persistables)
+        # get many binary files format
+        _logger.warning(
+            "{} not found, try to load model file save by [ save_params, save_persistables, save_vars ]".
+            format(parameter_file_name))
+        if executor is None:
+            raise ValueError(
+                "When load model file save by [ save_params, save_persistables, save_vars ], executor CAN NOT be None"
+            )
+        if os.path.isdir(model_path):
+            binary_file_set = set()
+            for root, dirs, files in os.walk(model_path, topdown=False):
+                for f in files:
+                    binary_file_set.add(os.path.join(root, f))
+            program_var_list = list(program.list_vars())
+            loaded_var_list = []
+            for var in program_var_list:
+                var_path = os.path.join(model_path, var.name)
+                if var_path in binary_file_set:
+                    loaded_var_list.append(var)
+                    binary_file_set.remove(var_path)
+            if len(binary_file_set) > 0:
+                unused_var_list = " ".join(list(binary_file_set))
+                _logger.warning("variable file [ %s ] not used" %
+                                (" ".join(list(binary_file_set))))
+            try:
+                load_vars(
+                    executor=executor, dirname=model_path, vars=loaded_var_list)
+            except RuntimeError as e:
+                _logger.error(e)
+            except:
+                raise RuntimeError(
+                    "Load model file Failed, Please make sure model file is saved by "
+                    "following APIs: save_params, save_persistables, save_vars")
+
+            return
+        elif os.path.isfile(model_path):
+            if var_list == None:
+                raise ValueError(
+                    "Try to load single model file save by [ save_params, save_persistables, save_vars ], var_list CAN NOT be None"
+                )
+            program_var_list = list(program.list_vars())
+            program_var_name_set = set([var.name for var in program_var_list])
+
+            # check all the variable inlcuded in program
+            for var in var_list:
+                if var.name not in program_var_name_set:
+                    raise LookupError(
+                        "loaded var [{}] not included in program var list")
+
+            dir_name, file_name = os.path.split(model_path)
+            try:
+                load_vars(
+                    executor=executor,
+                    dirname=dir_name,
+                    vars=var_list,
+                    filename=file_name)
+            except RuntimeError as e:
+                _logger.error(e)
+            except:
+                raise RuntimeError( "Load model file Failed, Please make sure model file is saved by " \
+                                    "the following APIs: [ save_params, save_persistables, save_vars ]. " \
+                                    "When these API called, filename CANNOT be None")
+
+            return
 
     def set_var(var, ndarray):
         t = global_scope().find_var(var.name).get_tensor()
