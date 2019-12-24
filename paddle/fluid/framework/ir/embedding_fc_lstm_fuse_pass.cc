@@ -27,6 +27,13 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+void PrepareOutVars(Graph* graph, std::string name, ir::Node* op) {
+  VarDesc key(name);
+  key.SetPersistable(false);
+  auto* key_node = graph->CreateVarNode(&key);
+  IR_NODE_LINK_TO(op, key_node);
+}
+
 static int BuildFusion(Graph* graph, const std::string& name_scope,
                        Scope* scope, bool with_fc_bias) {
   GraphPatternDetector gpd;
@@ -133,10 +140,6 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
         patterns::UniqueKey("BatchedCellPreAct");
     const std::string BatchedGate = patterns::UniqueKey("BatchedGate");
 
-    scope->Var(BatchedInput)->GetMutable<framework::LoDTensor>();
-    scope->Var(BatchedCellPreAct)->GetMutable<framework::LoDTensor>();
-    scope->Var(BatchedGate)->GetMutable<framework::LoDTensor>();
-
     op_desc.SetInput("H0", {});
     op_desc.SetInput("C0", {});
     op_desc.SetOutput("Hidden", {hidden->Name()});
@@ -152,17 +155,23 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
 
     PADDLE_ENFORCE(graph->Has(kParamScopeAttr));
     auto& scope = graph->Get<Scope>(kParamScopeAttr);
+
+    auto* op = graph->CreateOpNode(&op_desc);
+
+    PrepareOutVars(graph, BatchedInput, op);
+    PrepareOutVars(graph, BatchedCellPreAct, op);
+    PrepareOutVars(graph, BatchedGate, op);
+
 #define OP_SET_OUT(x)                            \
   const std::string x = patterns::UniqueKey(#x); \
   op_desc.SetOutput(#x, {x});                    \
-  scope.Var(x)->GetMutable<LoDTensor>()
+  PrepareOutVars(graph, #x, op);
     OP_SET_OUT(BatchedCell);
     OP_SET_OUT(BatchedHidden);
     OP_SET_OUT(ReorderedH0);
     OP_SET_OUT(ReorderedC0);
 #undef OP_SET_OUT
 
-    auto* op = graph->CreateOpNode(&op_desc);
     IR_NODE_LINK_TO(input, op);
     IR_NODE_LINK_TO(weight_x, op);
     IR_NODE_LINK_TO(weight_h, op);
