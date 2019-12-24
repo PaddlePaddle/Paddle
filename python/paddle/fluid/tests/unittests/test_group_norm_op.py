@@ -19,7 +19,7 @@ import numpy as np
 from operator import mul
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 
 from testsuite import create_op
 
@@ -151,6 +151,10 @@ class TestGroupNormOpBigEps3(TestGroupNormOp):
         self.attrs['epsilon'] = 0.5
 
 
+@skip_check_grad_ci(
+    reason='''This test case is used to ensure whether the gradient checking results between CPU and GPU  
+            are consistent when using the same inputs, thus, it doesn't need to call check_grad.'''
+)
 class TestGroupNormOpLargeData(TestGroupNormOp):
     def init_test_case(self):
         self.shape = (2, 32, 64, 64)
@@ -190,6 +194,10 @@ class TestGroupNormOpBigEps3_With_NHWC(TestGroupNormOp):
         self.data_format = "NHWC"
 
 
+@skip_check_grad_ci(
+    reason='''This test case is used to ensure whether the gradient checking results between CPU and GPU  
+            are consistent when using the same inputs, thus, it doesn't need to call check_grad.'''
+)
 class TestGroupNormOpLargeData_With_NHWC(TestGroupNormOp):
     def init_test_case(self):
         self.shape = (2, 64, 32, 32)  # NCHW
