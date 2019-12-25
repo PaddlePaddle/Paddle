@@ -54,7 +54,7 @@ class TestUnStackOpBase(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad('X', self.get_y_names())
+        self.check_grad(['X'], self.get_y_names())
 
 
 class TestStackOp3(TestUnStackOpBase):

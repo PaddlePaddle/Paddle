@@ -1174,7 +1174,7 @@ def append_backward(loss,
             else:
                 raise TypeError(
                     "The type of parameter_list's member must be paddle.fluid.Variable or str, but received %s."
-                    % (type(param_name)))
+                    % (type(param)))
     else:
         params = program.global_block().all_parameters()
         parameters = [param.name for param in params if param.trainable]
