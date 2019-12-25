@@ -169,7 +169,7 @@ class TestPSlib(unittest.TestCase):
 
             with fluid.scope_guard(scope):
                 exe.train_from_dataset(train_program, dataset, scope, thread=1)
-            
+
             prog_id = str(id(train_program))
             tables = fleet._opt_info["program_id_to_worker"][prog_id].\
                 get_desc().dense_table
@@ -178,8 +178,8 @@ class TestPSlib(unittest.TestCase):
                 for i in range(0, len(table.dense_variable_name)):
                     var_name = table.dense_variable_name[i]
                     var_name_list.append(var_name)
-                fleet._fleet_ptr.pull_dense(scope, int(table.table_id),
-                                            var_name_list)
+                fleet._fleet_ptr.pull_dense(scope,
+                                            int(table.table_id), var_name_list)
 
             fleet.print_table_stat(0)
             fleet.save_persistables(exe, "./fleet_model_0")
@@ -204,7 +204,7 @@ class TestPSlib(unittest.TestCase):
                     model_proto_file="./fleet_program_test_0.bin", \
                     var_names=var_names, load_combine=False)
 
-            os.remove("./test_fleet1_a.txt") 
+            os.remove("./test_fleet1_a.txt")
             os.remove("./test_fleet1_b.txt")
 
         fleet._role_maker._barrier_all()

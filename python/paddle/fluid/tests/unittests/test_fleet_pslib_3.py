@@ -183,8 +183,8 @@ class TestPSlib(unittest.TestCase):
                 for i in range(0, len(table.dense_variable_name)):
                     var_name = table.dense_variable_name[i]
                     var_name_list.append(var_name)
-                fleet._fleet_ptr.pull_dense(scope, int(table.table_id),
-                                            var_name_list)
+                fleet._fleet_ptr.pull_dense(scope,
+                                            int(table.table_id), var_name_list)
 
             fleet.print_table_stat(0)
             fleet.save_persistables(exe, "./fleet_model_3")
