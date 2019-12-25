@@ -54,7 +54,7 @@ class TestTreeConvOp(OpTest):
         self.fea_size = 3
         self.output_size = 1
         self.max_depth = 2
-        self.batch_size = 1
+        self.batch_size = 2
         self.num_filters = 1
         adj_array = [
             1, 2, 1, 3, 1, 4, 1, 5, 2, 6, 2, 7, 2, 8, 4, 9, 4, 10, 5, 11, 6, 12,

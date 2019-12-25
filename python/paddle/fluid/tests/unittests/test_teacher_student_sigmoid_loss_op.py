@@ -28,7 +28,7 @@ class TestTeacherStudentSigmoidLossOp(OpTest):
 
     def setUp(self):
         self.op_type = "teacher_student_sigmoid_loss"
-        batch_size = 16
+        batch_size = 100
         num_classes = 1
         self.inputs = {
             'X': logit(

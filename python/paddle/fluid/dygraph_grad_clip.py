@@ -274,16 +274,15 @@ class GradClipByGlobalNorm(GradClipBase):
         norm_global = layers.reduce_sum(norm_global)
         norm_global = layers.sqrt(norm_global)
 
-        clip_scale = layers.elementwise_div(
-            x=self.max_global_norm,
-            y=layers.elementwise_max(
-                x=norm_global, y=self.max_global_norm))
+        clip_scale = self.max_global_norm / (layers.elementwise_max(
+            x=norm_global, y=self.max_global_norm))
 
         for p, g in para_and_grad:
             if g is None:
                 out.append((p, g))
                 continue
-            new_grad = layers.elementwise_mul(x=g, y=clip_scale)
+
+            new_grad = g * clip_scale
 
             out.append((p, new_grad))
 
