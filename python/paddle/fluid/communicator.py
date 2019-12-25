@@ -62,12 +62,12 @@ class Communicator(object):
                 op._set_attr('do_not_run', True)
 
         if mode == AsyncMode.ASYNC:
-            self.communicator_ = core.DistCommunicator(program.desc,
-                                                       global_scope(), "ASYNC")
+            self.communicator_ = core.DistCommunicator("ASYNC", program.desc,
+                                                       global_scope())
         elif mode == AsyncMode.HALF_ASYNC:
-            self.communicator_ = core.DistCommunicator(program.desc,
-                                                       global_scope(),
-                                                       "HALF_ASYNC")
+            self.communicator_ = core.DistCommunicator("HALF_ASYNC",
+                                                       program.desc,
+                                                       global_scope())
         elif mode == AsyncMode.GEO_SGD:
             push_vars = kwargs["push_vars"]
             trainers = int(kwargs["trainers"])
