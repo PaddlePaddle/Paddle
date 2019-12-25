@@ -30,9 +30,9 @@ class ReverseOp : public framework::OperatorWithKernel {
     const auto& axis = ctx->Attrs().Get<std::vector<int>>("axis");
     PADDLE_ENFORCE(!axis.empty(), "'axis' can not be empty.");
     for (int a : axis) {
-      PADDLE_ENFORCE_LT(a, x_dims.size(),
+      PADDLE_ENFORCE_LT(a, x_dims.size(), paddle::platform::errors::OutOfRange(
                         "The axis must be less than input tensor's rank.");
-      PADDLE_ENFORCE_GE(a, -x_dims.size(),
+      PADDLE_ENFORCE_GE(a, -x_dims.size(), paddle::platform::errors::OutOfRange(
                         "The axis must be greater than the negative number of "
                         "input tensor's rank.");
     }
