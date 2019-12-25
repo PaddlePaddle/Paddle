@@ -631,7 +631,7 @@ DeviceTracer *GetDeviceTracer() {
 void SetCurAnnotation(Event *event) {
   if (!annotation_stack.empty()) {
     event->set_fevent(annotation_stack.back());
-    event->set_name(annotation_stack.back()->name() + "::" + event->name());
+    event->set_name(annotation_stack.back()->name() + "/" + event->name());
   }
   annotation_stack.push_back(event);
 }

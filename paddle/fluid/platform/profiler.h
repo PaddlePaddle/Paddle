@@ -40,7 +40,7 @@ enum ProfilerState {
 };
 
 enum TracerOption {
-  kFull,
+  kWhole,
   kOP,
   kDetail,
 };

@@ -166,10 +166,10 @@ def start_profiler(state, tracer_option="OP"):
     else:
         prof_state = core.ProfilerState.kAll
 
-    if tracer_option not in ["Full", "OP", "Detail"]:
-        raise ValueError("tracer option must be 'Full', 'OP', 'Detail'.")
-    if tracer_option == "Full":
-        prof_tracer_option = core.TracerOption.kFull
+    if tracer_option not in ["Whole", "OP", "Detail"]:
+        raise ValueError("tracer option must be 'Whole', 'OP', 'Detail'.")
+    if tracer_option == "Whole":
+        prof_tracer_option = core.TracerOption.kWhole
     elif tracer_option == "OP":
         prof_tracer_option = core.TracerOption.kOP
     else:

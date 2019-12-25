@@ -131,16 +131,18 @@ static LoD GetLoDDebug(const Scope& scope, const std::string& name) {
 }
 static std::string GetTypeName(const VariableNameMap& name_map,
                                const std::string& type_name) {
-  std::string ret = type_name;
+  std::string ret = type_name + "%";
   for (auto it = name_map.begin(); it != name_map.end(); it++) {
     auto name_outputs = it->second;
     if (!name_outputs.empty() &&
         type_name.length() < name_outputs[0].length()) {
       char split_ch = '.';
       size_t split_pos = name_outputs[0].find(split_ch);
-      ret = ret + "/" + name_outputs[0].substr(0, split_pos);
+      ret = ret + name_outputs[0].substr(0, split_pos);
+      break;
     }
   }
+  ret = ret + "%";
   return ret;
 }
 
@@ -176,11 +178,14 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     }
 
     std::string type_name = Type();
-    if (platform::GetTracerOption() == platform::TracerOption::kDetail) {
-      GetTypeName(outputs_, type_name);
-    }
-    {
+    if (platform::IsProfileEnabled() &&
+        platform::GetTracerOption() == platform::TracerOption::kDetail) {
+      type_name = GetTypeName(outputs_, type_name);
+      platform::RecordEvent record_fevent(Type());
       platform::RecordEvent record_event(type_name);
+      RunImpl(scope, place);
+    } else {
+      platform::RecordEvent record_event(Type());
       RunImpl(scope, place);
     }
     VLOG(3) << place << " " << DebugStringEx(&scope);
@@ -950,10 +955,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place,
                                  RuntimeContext* runtime_ctx) const {
-  std::string type_name = Type();
-  if (platform::GetTracerOption() == platform::TracerOption::kDetail) {
-    type_name = GetTypeName(outputs_, type_name);
-  }
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
@@ -967,7 +968,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   std::vector<std::string> transfered_inplace_vars;
   Scope* transfer_scope = nullptr;
   {
-    platform::RecordEvent record_event(type_name + "/data_transform");
+    platform::RecordEvent record_event("data_transform");
     transfer_scope = PrepareData(scope, *kernel_type_, &transfered_inplace_vars,
                                  runtime_ctx);
   }
@@ -981,7 +982,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
   if (!all_kernels_must_compute_runtime_shape_) {
     {
-      platform::RecordEvent record_event(type_name + "/runtime_infer_shape");
+      platform::RecordEvent record_event("runtime_infer_shape");
       RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, *runtime_ctx);
       this->InferShape(&infer_shape_ctx);
     }
@@ -994,7 +995,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
   {
-    platform::RecordEvent record_event(type_name + "/compute");
+    platform::RecordEvent record_event("compute");
     (*kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx,
                                      kernel_configs));
   }
