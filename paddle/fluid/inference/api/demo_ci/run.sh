@@ -87,8 +87,11 @@ D
     -DWITH_GPU=$TEST_GPU_CPU \
     -DWITH_STATIC_LIB=$WITH_STATIC_LIB
   make -j
+  echo 1234
   for use_gpu in $use_gpu_list; do
+    echo $use_gpu
     for vis_demo_name in $vis_demo_list; do
+      echo $vis_demo_name
       ./vis_demo \
         --modeldir=$DATA_DIR/$vis_demo_name/model \
         --data=$DATA_DIR/$vis_demo_name/data.txt \
