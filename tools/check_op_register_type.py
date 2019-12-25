@@ -60,9 +60,9 @@ def read_file(file_path):
 def print_diff(op_type, register_types):
     lack_types = set()
     if len(INTS - register_types) == 1:
-        lack_types += INTS - register_types
+        lack_types |= INTS - register_types
     if len(FLOATS - register_types) == 1:
-        lack_types += FLOATS - register_types
+        lack_types |= FLOATS - register_types
 
     print("{} only supports [{}] now, but lacks [{}].".format(op_type, " ".join(
         register_types), " ".join(lack_types)))
