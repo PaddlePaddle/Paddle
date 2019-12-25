@@ -33,7 +33,7 @@ BuddyAllocator::BuddyAllocator(
     : min_chunk_size_(min_chunk_size),
       max_chunk_size_(max_chunk_size),
       system_allocator_(std::move(system_allocator)) {
-  ptr_to_block_.reserve(1000);
+  ptr_to_block_.reserve(200);
 }
 
 BuddyAllocator::~BuddyAllocator() {

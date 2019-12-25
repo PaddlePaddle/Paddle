@@ -44,18 +44,18 @@ inline size_t hash(const MemoryBlock& metadata, size_t initial_seed) {
 }  // namespace
 
 void MemoryBlock::UpdateGuards() {
-  // #ifdef PADDLE_WITH_TESTING
-  //   guard_begin = hash(*this, 1);
-  //   guard_end = hash(*this, 2);
-  // #endif
+#ifdef PADDLE_WITH_TESTING
+  guard_begin = hash(*this, 1);
+  guard_end = hash(*this, 2);
+#endif
 }
 
 bool MemoryBlock::CheckGuards() const {
-  // #ifdef PADDLE_WITH_TESTING
-  //   return guard_begin == hash(*this, 1) && guard_end == hash(*this, 2);
-  // #else
+#ifdef PADDLE_WITH_TESTING
+  return guard_begin == hash(*this, 1) && guard_end == hash(*this, 2);
+#else
   return true;
-  // #endif
+#endif
 }
 
 }  // namespace detail
