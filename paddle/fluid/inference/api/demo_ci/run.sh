@@ -88,7 +88,6 @@ D
     -DWITH_STATIC_LIB=$WITH_STATIC_LIB
   make -j
   echo 1234
-  for use_gpu in $use_gpu_list; do
     for vis_demo_name in $vis_demo_list; do
       pwd
       echo $vis_demo_name $use_gpu $DATA_DIR
@@ -96,14 +95,25 @@ D
         --modeldir=$DATA_DIR/$vis_demo_name/model \
         --data=$DATA_DIR/$vis_demo_name/data.txt \
         --refer=$DATA_DIR/$vis_demo_name/result.txt \
-        --use_gpu=$use_gpu
+        --use_gpu=false
       if [ $? -ne 0 ]; then
         echo "vis demo $vis_demo_name runs fail."
         exit 1
       fi
       echo ok
-      sleep 60
-    done
+       pwd
+      
+      echo $vis_demo_name $use_gpu $DATA_DIR
+      ./vis_demo \
+        --modeldir=$DATA_DIR/$vis_demo_name/model \
+        --data=$DATA_DIR/$vis_demo_name/data.txt \
+        --refer=$DATA_DIR/$vis_demo_name/result.txt \
+        --use_gpu=true
+      if [ $? -ne 0 ]; then
+        echo "vis demo $vis_demo_name runs fail."
+        exit 1
+      fi
+      echo ok
   done
 
   # --------tensorrt mobilenet------
