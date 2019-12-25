@@ -15,13 +15,16 @@
 from __future__ import print_function
 
 import unittest
+import numpy as np
+from collections import defaultdict
 
 import paddle.fluid as fluid
 import paddle.fluid.optimizer as optimizer
-import numpy as np
 from paddle.fluid.backward import _append_grad_suffix_
-from collections import defaultdict
+
 np.random.seed(10)
+
+SHAPE = [16, 10]
 
 
 class SimpleNetWithCond(object):
@@ -32,21 +35,21 @@ class SimpleNetWithCond(object):
     def __init__(self, test_optimizer, param_lr=1.0, y_no_grad=False):
         self.optimizer = test_optimizer
         self.param_lr = param_lr
-        self.shape = [8, 10]
+        self.shape = SHAPE
         self.y_no_grad = y_no_grad
         self._init_param()
 
     def _init_param(self):
-        self.x = np.random.random(self.shape).astype('float32')
-        self.y = np.random.random(self.shape).astype('float32')
-        self.z = np.random.random(self.shape).astype('float32')
+        self.x = np.ones(self.shape).astype('float32')
+        self.y = np.ones(self.shape).astype('float32') * 2.
+        self.z = np.ones(self.shape).astype('float32') * 3.
 
     def _calc_gradient(self, cond_i):
         """
         Calculate grads of params
         """
         grads = []
-        d_out_val = 1. / np.prod(self.shape) * np.ones_like(self.x)
+        d_out_val = np.ones_like(self.x).astype("float32") / np.prod(self.shape)
         grads.append(d_out_val)  # x_grad
         if cond_i > 1:
             y_grad_ratio, z_grad_ratio = 0 if self.y_no_grad else 3, 1
@@ -202,22 +205,18 @@ class TestOptimizer(unittest.TestCase):
 
                             exe = fluid.Executor(place)
                             exe.run(init_program)
-                            # Train 10 steps to check validity
-                            for batch_i in range(10):
-                                # print("batch_i: ", batch_i)
+                            # Train 2 steps to check validity
+                            for batch_i in range(2):
+
                                 res = exe.run(main_program,
                                               fetch_list=fetch_list)
                                 gt_grads = test_net._calc_gradient(cond_i)
                                 gt_params = self._apply_optimize(test_net,
                                                                  gt_grads)
                                 param_grads = gt_params + gt_grads
-                                for i in range(len(fetch_list)):
-                                    # print((res[i].flatten()-param_grads[i].flatten())/res[i].flatten())
-                                    np.testing.assert_allclose(
-                                        res[i],
-                                        param_grads[i],
-                                        rtol=1e-7,
-                                        atol=1e-7)
+                                for i in range(len(res)):
+                                    np.testing.assert_allclose(res[i],
+                                                               param_grads[i])
 
 
 class TestAdamOptimizer(TestOptimizer):
@@ -237,8 +236,8 @@ class TestAdamOptimizer(TestOptimizer):
             "beta2": beta2,
             "beta1_pow": beta1,
             "beta2_pow": beta2,
-            "moment1": np.zeros([8, 10]).astype("float32"),
-            "moment2": np.zeros([8, 10]).astype("float32"),
+            "moment1": np.zeros(SHAPE).astype("float32"),
+            "moment2": np.zeros(SHAPE).astype("float32"),
             "epsilon": epsilon
         }
 
