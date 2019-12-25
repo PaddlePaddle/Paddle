@@ -62,9 +62,11 @@ def _sample_rois(rpn_rois, gt_classes, is_crowd, gt_boxes, im_info,
     im_scale = im_info[2]
     inv_im_scale = 1. / im_scale
     rpn_rois = rpn_rois * inv_im_scale
-    if is_cascade_rcnn:
-        rpn_rois = rpn_rois[gt_boxes.shape[0]:, :]
-    boxes = np.vstack([gt_boxes, rpn_rois])
+    if not is_cascade_rcnn:
+        #rpn_rois = rpn_rois[gt_boxes.shape[0]:, :]
+        boxes = np.vstack([gt_boxes, rpn_rois])
+    else:
+        boxes = rpn_rois
     gt_overlaps = np.zeros((boxes.shape[0], class_nums))
     box_to_gt_ind_map = np.zeros((boxes.shape[0]), dtype=np.int32)
     if len(gt_boxes) > 0:
