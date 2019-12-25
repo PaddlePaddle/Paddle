@@ -102,6 +102,7 @@ D
         exit 1
       fi
       echo ok
+      sleep 60
     done
   done
 
