@@ -18,6 +18,7 @@ Convert the fluid program to distributed data-parallelism programs.
 """
 import paddle.fluid.io as io
 from paddle.fluid.communicator import Communicator
+from paddle.fluid.communicator import AsyncMode
 from paddle.fluid.framework import default_main_program
 from paddle.fluid.framework import default_startup_program
 from paddle.fluid.framework import Program
@@ -69,11 +70,17 @@ class DistributedTranspiler(Fleet):
         if not self._transpile_config.sync_mode:
             if self._transpile_config.geo_sgd_mode:
                 self._communicator = Communicator(
-                    self.main_program, self.vars_info,
+                    self.main_program, AsyncMode.GEO_SGD, self.vars_info,
                     fleet.worker_num(),
                     self._transpile_config.geo_sgd_need_push_nums)
+
+            elif self._transpile_config.half_async:
+                self._communicator = Communicator(self.main_program,
+                                                  AsyncMode.HALF_ASYNC)
+
             else:
-                self._communicator = Communicator(self.main_program)
+                self._communicator = Communicator(self.main_program,
+                                                  AsyncMode.ASYNC)
 
             if not self._communicator.is_running():
                 self._communicator.start()

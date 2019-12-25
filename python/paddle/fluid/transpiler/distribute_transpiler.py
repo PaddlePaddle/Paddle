@@ -180,6 +180,9 @@ class DistributeTranspilerConfig(object):
     _runtime_split_send_recv = False
     _sync_mode = True
 
+    # half_async
+    half_async = False
+
     # Geo-sgd algorithm
     geo_sgd_mode = False
     geo_sgd_need_push_nums = 100
@@ -706,7 +709,7 @@ class DistributeTranspiler(object):
             for _, var in enumerate(splited_vars):
                 send_vars.append(var)
 
-        send_barrier_out = program.global_block().creuate_var(
+        send_barrier_out = program.global_block().create_var(
             name=framework.generate_control_dev_var_name())
         if self.has_distributed_lookup_table:
             self.grad_name_to_send_dummy_out[

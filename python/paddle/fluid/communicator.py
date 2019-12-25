@@ -26,9 +26,10 @@ __all__ = ['Communicator', 'AsyncMode']
 
 
 class AsyncMode:
-    ASYNC = 1
-    HALF_ASYNC = 2
-    GEO_SGD = 3
+    SYNC = 1
+    ASYNC = 2
+    HALF_ASYNC = 3
+    GEO_SGD = 4
 
 
 class Communicator(object):
