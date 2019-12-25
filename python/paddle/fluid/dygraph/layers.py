@@ -168,6 +168,9 @@ class Layer(core.Layer):
         return ret
 
     def clear_gradients(self):
+        """
+        Clear the gradients of all parameters for this layer.
+        """
         for p in self.parameters():
             if p.trainable:
                 p.clear_gradient()

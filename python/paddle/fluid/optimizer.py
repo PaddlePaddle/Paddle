@@ -644,6 +644,15 @@ class Optimizer(object):
 
         return no_grad_set
 
+    @framework.dygraph_only
+    def clear_gradients(self):
+        """
+        Clear the gradients of all optimized parameters for model.
+        """
+        for p in self._parameter_list:
+            if p.trainable:
+                p.clear_gradient()
+
     @imperative_base.no_grad
     def minimize(self,
                  loss,
