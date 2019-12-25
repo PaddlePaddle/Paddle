@@ -1058,7 +1058,7 @@ function test_fluid_lib() {
     ========================================
 EOF
     cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
-    ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
+    sh -x run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
              ${TENSORRT_INCLUDE_DIR:-/usr/local/TensorRT/include} \
              ${TENSORRT_LIB_DIR:-/usr/local/TensorRT/lib}
     ./clean.sh
@@ -1071,7 +1071,7 @@ function test_fluid_lib_train() {
     ========================================
 EOF
     cd ${PADDLE_ROOT}/paddle/fluid/train/demo
-    ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON}
+    sh -x run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON}
     ./clean.sh
 }
 
