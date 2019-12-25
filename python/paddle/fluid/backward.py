@@ -1021,18 +1021,18 @@ def append_backward(loss,
 
     Parameters:
         loss( :ref:`api_guide_Variable_en` ): The loss variable of the network.
-        parameter_list(list of str, optional): Names of parameters that need
-                                           to be updated by optimizers.
+        parameter_list(list[Variable|str], optional): List of Parameters or Parameter.names
+                                           that need to be updated by optimizers.
                                            If it is None, all parameters
                                            will be updated.
                                            Default: None.
-        no_grad_set(set of str, optional): Variable names in the :ref:`api_guide_Block_en` 0 whose gradients
+        no_grad_set(set[str], optional): Variable names in the :ref:`api_guide_Block_en` 0 whose gradients
                                should be ignored. All variables with
                                `stop_gradient=True` from all blocks will
                                be automatically added into this set.
                                If this parameter is not None, the names in this set will be added to the default set.
                                Default: None.
-        callbacks(list of callable object, optional): List of callback functions.
+        callbacks(list[callable object], optional): List of callback functions.
                                                The callbacks are used for
                                                doing some custom jobs during
                                                backward part building. All
