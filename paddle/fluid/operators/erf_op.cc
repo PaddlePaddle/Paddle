@@ -61,6 +61,9 @@ class ErfGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
                       platform::errors::InvalidArgument(
                           "Input(%s) of ErfGradOp should not be null.", "X"));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
+                      platform::errors::InvalidArgument(
+                          "Output(%s) of ErfGradOp should not be null.", "DX"));
     auto x_grad_name = framework::GradVarName("X");
     ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ x_grad_name);
