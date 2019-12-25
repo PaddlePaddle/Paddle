@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 
@@ -100,7 +100,7 @@ class TestBilinearInterpOp(OpTest):
         self.data_layout = 'NCHW'
         self.init_test_case()
         self.op_type = "bilinear_interp"
-        input_np = np.random.random(self.input_shape).astype("float32")
+        input_np = np.random.random(self.input_shape).astype("float64")
 
         if self.data_layout == "NCHW":
             in_h = self.input_shape[2]
@@ -315,6 +315,7 @@ class TestBilinearInterpCase1Uint8(TestBilinearInterpOpUint8):
         self.align_mode = 1
 
 
+@skip_check_grad_ci(reason="uint8 type only be used in test and inference.")
 class TestBilinearInterpCase2Uint8(TestBilinearInterpOpUint8):
     def init_test_case(self):
         self.interp_method = 'bilinear'
@@ -402,7 +403,7 @@ class TestBilinearInterpOp_attr_tensor(OpTest):
             'align_corners': self.align_corners,
         }
 
-        input_np = np.random.random(self.input_shape).astype("float32")
+        input_np = np.random.random(self.input_shape).astype("float64")
         self.inputs = {'X': input_np}
 
         if self.scale_by_1Dtensor:
@@ -484,7 +485,7 @@ class TestBilinearInterp_attr_tensor_Case3(TestBilinearInterpOp_attr_tensor):
         self.scale_by_1Dtensor = True
 
 
-class TestBilinearInterpOpAPI(OpTest):
+class TestBilinearInterpOpAPI(unittest.TestCase):
     def test_case(self):
         x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
 

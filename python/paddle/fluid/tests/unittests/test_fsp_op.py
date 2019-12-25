@@ -34,6 +34,7 @@ def fsp_matrix(a, b):
     return np.mean(a_r * b_r, axis=1)
 
 
+@unittest.skip("Disable temporarily.")
 class TestFSPOp(OpTest):
     def setUp(self):
         self.op_type = "fsp"
@@ -49,13 +50,11 @@ class TestFSPOp(OpTest):
         self.a_shape = (2, 3, 5, 6)
         self.b_shape = (2, 4, 5, 6)
 
-    @unittest.skip("Disable temporarily.")
     def test_check_output(self):
         self.check_output()
 
-    @unittest.skip("Disable temporarily.")
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.05)
+        self.check_grad(['X', 'Y'], 'Out')
 
 
 if __name__ == '__main__':

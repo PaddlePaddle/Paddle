@@ -31,7 +31,7 @@ class ElementwiseMulOp : public ElementwiseOp {
 #ifdef PADDLE_WITH_MKLDNN
   static bool AreDimsAndFormatCorrect(const framework::ExecutionContext& ctx,
                                       int simd_width,
-                                      mkldnn::memory::format x_format) {
+                                      mkldnn::memory::format_tag x_format) {
     using Tensor = framework::Tensor;
     using paddle::framework::vectorize;
     using mkldnn::memory;
@@ -54,7 +54,7 @@ class ElementwiseMulOp : public ElementwiseOp {
     if (platform::CanMKLDNNBeUsed(ctx)) {
       bool can_use_avx512_kernel =
           platform::MayIUse(platform::avx512f) &&
-          AreDimsAndFormatCorrect(ctx, 16, memory::format::nChw16c);
+          AreDimsAndFormatCorrect(ctx, 16, memory::format_tag::nChw16c);
       if (can_use_avx512_kernel) {
         return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                        framework::DataLayout::kMKLDNN,
