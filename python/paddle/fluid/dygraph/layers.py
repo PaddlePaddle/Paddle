@@ -25,6 +25,7 @@ from .layer_object_helper import LayerObjectHelper
 from .base import program_desc_tracing_guard
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
+import copy
 
 __all__ = ['Layer']
 
@@ -99,11 +100,16 @@ class Layer(core.Layer):
         Returns:
             :ref:`api_guide_Variable_en` : created parameter.
         """
+        '''
         if isinstance(attr, ParamAttr) and (attr.name is not None):
             attr.name = ".".join([self._full_name, attr.name])
         elif isinstance(attr, six.string_types):
             attr = ".".join([self._full_name, attr])
-        return self._helper.create_parameter(attr, shape, dtype, is_bias,
+        '''
+        temp_attr = copy.deepcopy(attr)
+        if isinstance(temp_attr, six.string_types) and temp_attr == "":
+            temp_attr = None
+        return self._helper.create_parameter(temp_attr, shape, dtype, is_bias,
                                              default_initializer)
 
     # TODO: Add more parameter list when we need them
@@ -284,7 +290,10 @@ class Layer(core.Layer):
         else:
             object.__delattr__(self, name)
 
-    def state_dict(self, destination=None, include_sublayers=True):
+    def state_dict(self,
+                   destination=None,
+                   include_sublayers=True,
+                   structured_name_prefix=""):
         '''
         Get all parameters of current layer and its sub-layers. And set all the parameters into a dict
 
@@ -311,19 +320,23 @@ class Layer(core.Layer):
             destination = collections.OrderedDict()
         for name, data in self._parameters.items():
             if data is not None:
-                destination[data.name] = data
+                destination[structured_name_prefix + name] = data
 
         if include_sublayers:
             for layer_name, layer_item in self._sub_layers.items():
                 if layer_item is not None:
                     destination_temp = destination.copy()
                     destination_temp.update(
-                        layer_item.state_dict(destination_temp,
-                                              include_sublayers))
+                        layer_item.state_dict(
+                            destination_temp, include_sublayers,
+                            structured_name_prefix + layer_name + "."))
                     destination = destination_temp
         return destination
 
-    def set_dict(self, stat_dict, include_sublayers=True):
+    def set_dict(self,
+                 stat_dict,
+                 include_sublayers=True,
+                 use_structured_name=True):
         '''
         Set parameters from stat_dict. All the parameters will be reset by the tensor in the stat_dict
 
@@ -348,9 +361,15 @@ class Layer(core.Layer):
                     emb.set_dict( para_state_dict )
 
         '''
-        self.load_dict(stat_dict, include_sublayers=include_sublayers)
+        self.load_dict(
+            stat_dict,
+            include_sublayers=include_sublayers,
+            use_structured_name=use_structured_name)
 
-    def load_dict(self, stat_dict, include_sublayers=True):
+    def load_dict(self,
+                  stat_dict,
+                  include_sublayers=True,
+                  use_structured_name=True):
         '''
         Set parameters from stat_dict. All the parameters will be reset by the tensor in the stat_dict
 
@@ -378,16 +397,14 @@ class Layer(core.Layer):
 
         '''
 
-        self._loaddict_holder = stat_dict
-        for name, item in self.__dict__.get('_parameters', None).items():
-            if item.name in stat_dict:
-                item.set_value(stat_dict[item.name])
+        state_dict = self.state_dict()
+
+        for name, para in state_dict.items():
+            key_name = name if use_structured_name else para.name
+            if key_name in stat_dict:
+                para.set_value(stat_dict[key_name])
             else:
                 raise RuntimeError(
-                    "Parameter not found, Can't not find [ {} ] in stat_dict".
-                    format(item.name))
-
-        if include_sublayers:
-            for layer_name, layer_item in self._sub_layers.items():
-                if layer_item is not None:
-                    layer_item.load_dict(stat_dict)
+                    "Parameter not found, Can't not find [ {} ] in stat_dict"
+                    "use_structured_name is set to [{}]".format(
+                        key_name, use_structured_name))
