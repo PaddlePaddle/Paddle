@@ -133,15 +133,6 @@ void PrepareLSTMBias(const LoDTensor& B_forget, const LoDTensor& B_input,
                      const LoDTensor& B_output, const LoDTensor& B_cell,
                      LoDTensor* out);
 
-namespace {
-void PrepareOutVars(Graph* graph, const std::string name, ir::Node* op) {
-  VarDesc key(name);
-  key.SetPersistable(false);
-  auto* key_node = graph->CreateVarNode(&key);
-  IR_NODE_LINK_TO(op, key_node);
-}
-}  // namespace
-
 void PrepareParameters(Graph* graph, const Param& param, ir::Node* lstm_op) {
   // Check parameters
   PADDLE_ENFORCE(graph->Has(kParamScopeAttr));
@@ -151,13 +142,20 @@ void PrepareParameters(Graph* graph, const Param& param, ir::Node* lstm_op) {
   // AddInput
   scope.Var(param.LSTMWeight)->GetMutable<LoDTensor>();
   scope.Var(param.LSTMBias)->GetMutable<LoDTensor>();
-  // AddOutput
-  PrepareOutVars(graph, param.Hidden, lstm_op);
-  PrepareOutVars(graph, param.Cell, lstm_op);
-  PrepareOutVars(graph, param.AttentionedX, lstm_op);
-  PrepareOutVars(graph, param.AttentionFCOut, lstm_op);
-  PrepareOutVars(graph, param.LSTMX, lstm_op);
-  PrepareOutVars(graph, param.LSTMOUT, lstm_op);
+// AddOutput
+#define IR_NODE(x)                                 \
+  VarDesc key_##x(param.x);                        \
+  key_##x.SetPersistable(false);                   \
+  auto* node_##x = graph->CreateVarNode(&key_##x); \
+  IR_NODE_LINK_TO(lstm_op, node_##x);
+
+  IR_NODE(Hidden);
+  IR_NODE(Cell);
+  IR_NODE(AttentionedX);
+  IR_NODE(AttentionFCOut);
+  IR_NODE(LSTMX);
+  IR_NODE(LSTMOUT);
+#undef IR_NODE
 
 #define GATE_W(name__)                                               \
   auto* W_##name__##_w0 = scope.FindVar(#name__ ".w_0");             \
