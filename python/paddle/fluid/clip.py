@@ -181,18 +181,18 @@ class GradientClipByNorm(BaseGradientClipAttr):
     This class limits the L2 norm of the input :math:`X` within :math:`clip\_norm`.
     .. math::
         Out =
-        \\left \{
-        \\begin{aligned}
-        & X & & if (norm(X) \\leq clip\_norm) \\\\
-        & \\frac{clip\_norm*X}{norm(X)} & & if (norm(X) > clip\_norm) \\\\
-        \\end{aligned}
-        \\right.
+  	\\left \{
+  	\\begin{aligned}
+  	& X & & if (norm(X) \\leq clip\_norm) \\\\
+  	& \\frac{clip\_norm*X}{norm(X)} & & if (norm(X) > clip\_norm) \\\\
+  	\\end{aligned}
+  	\\right.
     where :math:`norm(X)` represents the L2 norm of :math:`X`.
     .. math::
-        norm(X) = ( \\sum_{i=1}^{n}|x\_i|^2)^{ \\frac{1}{2}}
+ 	norm(X) = ( \\sum_{i=1}^{n}|x\_i|^2)^{ \\frac{1}{2}}
     Args:
         clip_norm(float): The maximum norm value
-
+    
     Examples:
         .. code-block:: python
             import paddle.fluid as fluid
@@ -224,11 +224,11 @@ class GradientClipByNorm(BaseGradientClipAttr):
                 paddle.reader.shuffle(
                     paddle.dataset.mnist.train(), buf_size=8192),
                 batch_size=128)
-
+  
             exe = fluid.Executor(place)
             feeder = fluid.DataFeeder(feed_list=[image, label], place=place)
             exe.run(startup_program)
-
+  
             count = 0
             for data in train_reader():
                 count += 1
