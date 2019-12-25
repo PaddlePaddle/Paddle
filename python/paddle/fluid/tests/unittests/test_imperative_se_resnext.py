@@ -207,7 +207,7 @@ class SeResNeXt(fluid.dygraph.Layer):
             num_filters = [128, 256, 512, 1024]
             self.conv0 = ConvBNLayer(
                 num_channels=3,
-                num_filters=3,
+                num_filters=64,
                 filter_size=7,
                 stride=2,
                 act='relu')
@@ -220,27 +220,29 @@ class SeResNeXt(fluid.dygraph.Layer):
             num_filters = [128, 256, 512, 1024]
             self.conv0 = ConvBNLayer(
                 num_channels=3,
-                num_filters=3,
-                filter_size=7,
+                num_filters=64,
+                filter_size=3,
                 stride=2,
                 act='relu')
             self.conv1 = ConvBNLayer(
-                num_channels=3,
-                num_filters=3,
-                filter_size=7,
+                num_channels=64,
+                num_filters=64,
+                filter_size=3,
                 stride=2,
                 act='relu')
             self.conv2 = ConvBNLayer(
-                num_channels=7,
-                num_filters=3,
-                filter_size=7,
-                stride=2,
+                num_channels=64,
+                num_filters=128,
+                filter_size=3,
+                stride=1,
                 act='relu')
             self.pool = Pool2D(
                 pool_size=3, pool_stride=2, pool_padding=1, pool_type='max')
 
         self.bottleneck_block_list = []
         num_channels = 64
+        if layers == 152:
+            num_channels = 128
         for block in range(len(depth)):
             shortcut = False
             for i in range(depth[block]):
@@ -277,8 +279,8 @@ class SeResNeXt(fluid.dygraph.Layer):
             y = self.pool(y)
         elif self.layers == 152:
             y = self.conv0(inputs)
-            y = self.conv1(inputs)
-            y = self.conv2(inputs)
+            y = self.conv1(y)
+            y = self.conv2(y)
             y = self.pool(y)
 
         for bottleneck_block in self.bottleneck_block_list:
