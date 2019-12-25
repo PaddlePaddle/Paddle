@@ -776,13 +776,14 @@ class ELUDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
     auto* op = new T();
     op->SetType("elu_grad_grad");
     // input1: Out;   input2: X
-    op->SetInput("Out", this->Input("Out"));
+    op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
     op->SetInput("X", this->Input("X"));
     // X@GRAD@GRAD: ddx
     op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
     op->SetAttrMap(this->Attrs());
 
     // Out@GRAD@GRAD: ddy
+    op->SetOutput("DX", this->InputGrad("X"));
     op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
     return std::unique_ptr<T>(op);
   }
@@ -1022,18 +1023,17 @@ REGISTER_OPERATOR(elu_grad, ops::ActivationOpGrad,
                   ops::ELUDoubleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(
     elu_grad_grad,
-    ops::ActivationOpDoubleGrad2<ops::ELUGradFunctor<float>::FwdDeps()>,
+    ops::ActivationOpDoubleGrad<ops::ELUGradFunctor<float>::FwdDeps()>,
     ops::ActivationDoubleGradOpInplaceInference);
 
 REGISTER_ACTIVATION_CPU_KERNEL(elu, ELU, ELUFunctor, ELUGradFunctor);
 REGISTER_OP_CPU_KERNEL(
-    elu_grad_grad,
-    ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
-                                    ops::ELUGradGradFunctor<float>>,
-    ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
-                                    ops::ELUGradGradFunctor<double>>,
-    ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
-                                    ops::ELUGradGradFunctor<plat::float16>>);
+    elu_grad_grad, ops::ELUDoubleGradKernel<plat::CPUDeviceContext,
+                                            ops::ELUGradGradFunctor<float>>,
+    ops::ELUDoubleGradKernel<plat::CPUDeviceContext,
+                             ops::ELUGradGradFunctor<double>>,
+    ops::ELUDoubleGradKernel<plat::CPUDeviceContext,
+                             ops::ELUGradGradFunctor<plat::float16>>);
 
 /* ========================================================================== */
 

@@ -1085,10 +1085,10 @@ struct ELUGradFunctor : public BaseActivationFunctor<T> {
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
     dx.device(d) = dout * (x > static_cast<T>(0)).template cast<T>() +
                    dout * static_cast<T>(alpha) * x.exp() *
-                       (x < static_cast<T>(0)).template cast<T>();
+                       (x <= static_cast<T>(0)).template cast<T>();
   }
 
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepXandOut; }
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
 };
 
 // FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5198
@@ -1414,23 +1414,28 @@ struct ELUGradGradFunctor : public BaseActivationFunctor<T> {
   }
   template <typename Device>
   void operator()(const Device& dev, const framework::Tensor* X,
-                  const framework::Tensor* Out, const framework::Tensor* ddX,
-                  framework::Tensor* ddOut, framework::Tensor* dOut,
-                  framework::Tensor* dX) const {
+                  const framework::Tensor* ddX, framework::Tensor* ddOut,
+                  const framework::Tensor* dOut, framework::Tensor* dX) const {
     auto* d = dev.eigen_device();
     auto ddx = framework::EigenVector<T>::Flatten(detail::Ref(ddX));
-    auto out = framework::EigenVector<T>::Flatten(detail::Ref(Out));
     auto x = framework::EigenVector<T>::Flatten(detail::Ref(X));
+
     if (ddOut) {
       auto ddout = framework::EigenVector<T>::Flatten(detail::Ref(ddOut));
-      ddout.device(*d) = ddx *
-                         ((out > static_cast<T>(0)).template cast<T>() +
-                          static_cast<T>(alpha) * x.exp() *
-                              (out <= static_cast<T>(0)).template cast<T>())
-                             .template cast<T>();
+      ddout.device(*d) = ddx * (x > static_cast<T>(0)).template cast<T>() +
+                         ddx * (x <= static_cast<T>(0)).template cast<T>() *
+                             static_cast<T>(alpha) * x.exp();
+    }
+    if (dX) {
+      printf("Caculate dX in ELUGradGradFunctor");
+      auto dx = framework::EigenVector<T>::Flatten(detail::Ref(dX));
+      auto dout = framework::EigenVector<T>::Flatten(detail::Ref(dOut));
+      dx.device(*d) = ddx * dout * static_cast<T>(alpha) * x.exp() *
+                      (x < static_cast<T>(0)).template cast<T>();
+      LOG(ERROR) << dx;
     }
   }
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
 };
 
 template <typename T>
@@ -1522,6 +1527,29 @@ inline void ExtractDoubleGradTensorWithInputDOut(
 
 template <typename DeviceContext, typename Functor>
 class SquareDoubleGradKernel
+    : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
+ public:
+  using T = typename Functor::ELEMENT_TYPE;
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    const framework::Tensor *X, *ddX, *dOut;
+    X = ddX = dOut = nullptr;
+    framework::Tensor *dX, *ddOut;
+    dX = ddOut = nullptr;
+
+    ExtractDoubleGradTensorWithInputDOut(ctx, &X, &ddX, &dX, &dOut, &ddOut);
+
+    if (dX) dX->mutable_data<T>(X->dims(), ctx.GetPlace());
+    if (ddOut) ddOut->mutable_data<T>(ctx.GetPlace());
+
+    auto& place = ctx.template device_context<DeviceContext>();
+
+    Functor functor;
+    functor(place, X, ddX, ddOut, dOut, dX);
+  }
+};
+
+template <typename DeviceContext, typename Functor>
+class ELUDoubleGradKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
  public:
   using T = typename Functor::ELEMENT_TYPE;
