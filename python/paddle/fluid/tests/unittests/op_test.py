@@ -941,9 +941,6 @@ class OpTest(unittest.TestCase):
                 actual_t = np.array(actual)
                 expect = self.outputs[out_name]
                 expect_t = expect[0] if isinstance(expect, tuple) else expect
-                print("diff: ", actual_t - expect_t)
-                np.testing.assert_allclose(
-                    actual_t, expect_t, rtol=1e-07, atol=1e-7)
                 self.assertTrue(
                     np.allclose(
                         actual_t, expect_t, atol=atol, equal_nan=equal_nan),
