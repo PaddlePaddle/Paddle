@@ -33,7 +33,7 @@ class ReverseOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_LT(a, x_dims.size(),
                         "The axis must be less than input tensor's rank.");
       PADDLE_ENFORCE_GE(a, -x_dims.size(),
-                        "The axis must be greater than the negetive number of "
+                        "The axis must be greater than the negative number of "
                         "input tensor's rank.");
     }
     ctx->SetOutputDim("Out", x_dims);
