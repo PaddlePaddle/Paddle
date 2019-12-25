@@ -264,7 +264,7 @@ class SeResNeXt(fluid.dygraph.Layer):
         import math
         stdv = 1.0 / math.sqrt(2048 * 1.0)
 
-        self.pool2d_avg_output = num_filters[len(num_filters) - 1] * 4 * 1 * 1
+        self.pool2d_avg_output = num_filters[-1] * 4 * 1 * 1
 
         self.out = Linear(
             self.pool2d_avg_output,

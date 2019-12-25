@@ -191,7 +191,7 @@ class ResNet(fluid.Layer):
         self.pool2d_avg = Pool2D(
             pool_size=7, pool_type='avg', global_pooling=True)
 
-        self.pool2d_avg_output = num_filters[len(num_filters) - 1] * 4 * 1 * 1
+        self.pool2d_avg_output = num_filters[-1] * 4 * 1 * 1
 
         import math
         stdv = 1.0 / math.sqrt(2048 * 1.0)
