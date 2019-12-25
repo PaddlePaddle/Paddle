@@ -13,7 +13,7 @@
 # limitations under the License.
 
 NOT_CHECK_OP_LIST = [
-    # increment's input must be 1-d and only has one data
+    # The increment's input must be 1-d and only has one data
     'increment'
 ]
 
