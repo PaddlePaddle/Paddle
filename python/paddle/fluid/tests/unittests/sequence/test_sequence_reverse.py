@@ -15,8 +15,10 @@
 import unittest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from op_test import OpTest
 import numpy as np
+import sys
+sys.path.append("../")
+from op_test import OpTest
 
 
 class TestSequenceReverseBase(OpTest):
