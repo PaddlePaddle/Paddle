@@ -296,6 +296,7 @@ class TestImperative(unittest.TestCase):
             var_inp = fluid.dygraph.base.to_variable(np_inp)
             var_inp.stop_gradient = False
             l = MyLayer("my_layer")
+            print(var_inp)
             x = l(var_inp)[0]
             self.assertIsNotNone(x)
             dy_out = x.numpy()
@@ -386,12 +387,14 @@ class TestImperative(unittest.TestCase):
         self.assertEqual(len(sublayers), 2)
 
     def test_dygraph_vs_static(self):
-        inp1 = np.random.rand(4, 3, 3)
-        inp2 = np.random.rand(4, 3, 3)
+        np_inp1 = np.random.rand(4, 3, 3)
+        np_inp2 = np.random.rand(4, 3, 3)
 
         # dynamic graph
         with fluid.dygraph.guard():
-            if np.sum(inp1) < np.sum(inp2):
+            inp1 = fluid.dygraph.to_variable(np_inp1)
+            inp2 = fluid.dygraph.to_variable(np_inp2)
+            if np.sum(np_inp1) < np.sum(np_inp2):
                 x = fluid.layers.elementwise_add(inp1, inp2)
             else:
                 x = fluid.layers.elementwise_sub(inp1, inp2)
@@ -429,8 +432,8 @@ class TestImperative(unittest.TestCase):
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
             static_result = exe.run(fluid.default_main_program(),
-                                    feed={'inp1': inp1,
-                                          'inp2': inp2},
+                                    feed={'inp1': np_inp1,
+                                          'inp2': np_inp2},
                                     fetch_list=out)[0]
         self.assertTrue(np.allclose(dygraph_result, static_result))
 

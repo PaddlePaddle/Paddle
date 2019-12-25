@@ -285,6 +285,7 @@ def monkey_patch_variable():
         setattr(Variable, method_name,
                 _elemwise_method_creator_(method_name, op_type, reverse,
                                           scalar_method))
+
     # b = -a
     Variable.__neg__ = _neg_
     Variable.astype = astype
