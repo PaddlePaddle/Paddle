@@ -338,6 +338,8 @@ int CUDADeviceContext::GetMaxPhysicalThreadCount() const {
   return multi_process_ * max_threads_per_mp_;
 }
 
+int CUDADeviceContext::GetSMCount() const { return multi_process_; }
+
 Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {
   return eigen_device_.get();
 }

@@ -97,6 +97,9 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return the max physical thread count in the device context */
   int GetMaxPhysicalThreadCount() const;
 
+  /*! \brief  Return the SM count in the device context */
+  int GetSMCount() const;
+
   /*! \brief  Return the max grid dim size in the device context */
   dim3 GetCUDAMaxGridDimSize() const;
 
