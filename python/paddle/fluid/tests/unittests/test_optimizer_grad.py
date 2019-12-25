@@ -203,7 +203,7 @@ class TestOptimizer(unittest.TestCase):
                             exe = fluid.Executor(place)
                             exe.run(init_program)
                             # Train 10 steps to check validity
-                            for batch_i in range(40):
+                            for batch_i in range(10):
                                 # print("batch_i: ", batch_i)
                                 res = exe.run(main_program,
                                               fetch_list=fetch_list)
@@ -211,7 +211,6 @@ class TestOptimizer(unittest.TestCase):
                                 gt_params = self._apply_optimize(test_net,
                                                                  gt_grads)
                                 param_grads = gt_params + gt_grads
-
                                 for i in range(len(fetch_list)):
                                     # print((res[i].flatten()-param_grads[i].flatten())/res[i].flatten())
                                     np.testing.assert_allclose(
@@ -261,10 +260,10 @@ class TestAdamOptimizer(TestOptimizer):
                                   (np.sqrt(moment2_out) + epsilon))
 
         # update hyper-parameter of optimizer
-        self.param_attr[name]['beta1_pow'], self.param_attr[name][
-            'beta2_pow'] = beta1_pow * beta1, beta2_pow * beta2
-        self.param_attr[name]['moment1'], self.param_attr[name][
-            'moment2'] = moment1_out, moment2_out
+        self.param_attr[name]['beta1_pow'] = beta1_pow * beta1
+        self.param_attr[name]['beta2_pow'] = beta2_pow * beta2
+        self.param_attr[name]['moment1'] = moment1_out
+        self.param_attr[name]['moment2'] = moment2_out
 
         return param_out
 
