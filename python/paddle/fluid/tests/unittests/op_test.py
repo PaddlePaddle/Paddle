@@ -1198,6 +1198,7 @@ class OpTest(unittest.TestCase):
         if no_grad_set is None:
             no_grad_set = set()
         else:
+            print('need: ', no_grad_set_white_list.NEED_TO_FIX_OP_LIST)
             if (self.op_type not in no_grad_set_white_list.NEED_TO_FIX_OP_LIST
                 ) or (self.op_type not in
                       no_grad_set_white_list.NOT_CHECK_OP_LIST):
