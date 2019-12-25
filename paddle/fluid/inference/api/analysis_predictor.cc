@@ -938,6 +938,7 @@ USE_TRT_CONVERTER(conv2d_transpose);
 USE_TRT_CONVERTER(leaky_relu);
 USE_TRT_CONVERTER(shuffle_channel);
 USE_TRT_CONVERTER(swish);
+USE_TRT_CONVERTER(instance_norm);
 #endif
 
 #if PADDLE_WITH_ANAKIN

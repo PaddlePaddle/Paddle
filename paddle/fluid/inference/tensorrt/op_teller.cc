@@ -52,7 +52,8 @@ struct SimpleOpTypeSetTeller : public Teller {
                                               "fc",
                                               "shuffle_channel",
                                               "swish",
-                                              "split"}};
+                                              "split",
+                                              "instance_norm"}};
 };
 
 bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc) {
