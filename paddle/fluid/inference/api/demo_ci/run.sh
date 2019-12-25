@@ -89,9 +89,8 @@ D
   make -j
   echo 1234
   for use_gpu in $use_gpu_list; do
-    echo $use_gpu
     for vis_demo_name in $vis_demo_list; do
-      echo $vis_demo_name
+      echo $vis_demo_name $use_gpu
       ./vis_demo \
         --modeldir=$DATA_DIR/$vis_demo_name/model \
         --data=$DATA_DIR/$vis_demo_name/data.txt \
@@ -101,6 +100,7 @@ D
         echo "vis demo $vis_demo_name runs fail."
         exit 1
       fi
+      echo ok
     done
   done
 
