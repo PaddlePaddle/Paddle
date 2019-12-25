@@ -359,6 +359,11 @@ inference_analysis_test(test_analyzer_capi SRCS analyzer_capi_tester.cc
 inference_analysis_test(test_analyzer_capi_pd_tensor SRCS analyzer_capi_pd_tensor_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
             ARGS --infer_model=${MOBILENET_INSTALL_DIR}/model)
+if (WITH_GPU)
+    inference_analysis_test(test_analyzer_zerocopytensor_tensor SRCS analyzer_zerocopyTensor_tester.cc
+                EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
+                ARGS --infer_model=${MOBILENET_INSTALL_DIR}/model --use_gpu=true) 
+endif()
 
 if(WITH_MKLDNN)
   inference_analysis_test(test_analyzer_capi_int SRCS analyzer_capi_int_tester.cc
