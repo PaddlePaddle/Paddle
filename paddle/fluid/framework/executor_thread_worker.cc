@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/inference/io.h"
-#include "paddle/fluid/platform/cpu_helper.h"
+#include "paddle/fluid/platform/parallel.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/pybind/pybind.h"

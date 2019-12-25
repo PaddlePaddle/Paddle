@@ -45,8 +45,8 @@ cc_test(place_test SRCS place_test.cc DEPS place glog gflags)
 
 add_subdirectory(dynload)
 
-cc_library(cpu_helper SRCS cpu_helper.cc DEPS cblas enforce)
-cc_test(cpu_helper_test SRCS cpu_helper_test.cc DEPS cpu_helper)
+cc_library(parallel SRCS parallel.cc DEPS cblas enforce)
+cc_test(parallel_test SRCS parallel_test.cc DEPS parallel)
 
 set(dgc_deps "")
 IF(WITH_DGC)
@@ -75,7 +75,7 @@ cc_library(cudnn_workspace_helper SRCS cudnn_workspace_helper.cc DEPS boost)
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
 cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool malloc xxhash ${STREAM_CALLBACK_DEPS}
-    place eigen3 stringpiece cpu_helper cpu_info framework_proto ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}
+    place eigen3 stringpiece parallel cpu_info framework_proto ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}
     ${dgc_deps} dlpack cudnn_workspace_helper)
 
 if (WITH_DISTRIBUTE)

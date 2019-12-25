@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/version.h"
-#include "paddle/fluid/platform/cpu_helper.h"
+#include "paddle/fluid/platform/parallel.h"
 #include "paddle/fluid/pybind/pybind.h"
 
 DEFINE_string(devices, "", "The devices to be used which is joined by comma.");

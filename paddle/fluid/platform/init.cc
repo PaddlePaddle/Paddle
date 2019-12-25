@@ -21,8 +21,8 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/parallel.h"
 #include "paddle/fluid/string/split.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"

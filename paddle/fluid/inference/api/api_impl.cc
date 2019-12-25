@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/api/details/reset_tensor_array.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/cpu_helper.h"
+#include "paddle/fluid/platform/parallel.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DEFINE_bool(profile, false, "Turn on profiler for fluid");

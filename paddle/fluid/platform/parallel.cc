@@ -12,11 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/cpu_helper.h"
+#include "paddle/fluid/platform/parallel.h"
 #include "paddle/fluid/platform/enforce.h"
 
 #ifdef PADDLE_WITH_MKLML
-#include <omp.h>
 #include "paddle/fluid/platform/dynload/mklml.h"
 #endif
 
@@ -36,10 +35,10 @@ void SetNumThreads(int num_threads) {
     num_threads = 1;
   }
 #endif
-  int real_num_threads = num_threads > 1 ? num_threads : 1;
+  int real_num_threads = std::max(num_threads, 1);
   openblas_set_num_threads(real_num_threads);
 #elif defined(PADDLE_WITH_MKLML)
-  int real_num_threads = num_threads > 1 ? num_threads : 1;
+  int real_num_threads = std::max(num_threads, 1);
   platform::dynload::MKL_Set_Num_Threads(real_num_threads);
   omp_set_num_threads(real_num_threads);
 #else

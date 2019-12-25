@@ -36,8 +36,8 @@
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/gpu_info.h"
+#include "paddle/fluid/platform/parallel.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 

@@ -18,7 +18,7 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
-#include "paddle/fluid/platform/cpu_helper.h"
+#include "paddle/fluid/platform/parallel.h"
 
 #include "paddle/fluid/framework/feed_fetch_method.h"
 
