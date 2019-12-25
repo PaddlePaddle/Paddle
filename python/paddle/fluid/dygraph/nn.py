@@ -19,7 +19,7 @@ from six.moves import reduce
 from .. import core
 from ..layers import utils
 from . import layers
-from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter
+from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer_
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 import numpy as np
@@ -1542,18 +1542,24 @@ class Embedding(layers.Layer):
         self._w = value
 
     def forward(self, input):
+        attrs = {
+            'is_sparse': self._is_sparse,
+            'is_distributed': self._is_distributed,
+            'remote_prefetch': self._remote_prefetch,
+            'padding_idx': self._padding_idx
+        }
+        if in_dygraph_mode():
+            inputs = {'Ids': [input], 'W': [self._w]}
+            outs = core.ops.lookup_table_v2(inputs, attrs)
+            return outs['Out'][0]
+
         out = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(
             type='lookup_table_v2',
             inputs={'Ids': input,
                     'W': self._w},
             outputs={'Out': out},
-            attrs={
-                'is_sparse': self._is_sparse,
-                'is_distributed': self._is_distributed,
-                'remote_prefetch': self._remote_prefetch,
-                'padding_idx': self._padding_idx
-            })
+            attrs=attrs)
 
         return out
 

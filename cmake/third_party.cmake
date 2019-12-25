@@ -249,7 +249,6 @@ if(WITH_BOX_PS)
 endif(WITH_BOX_PS)
 
 if(WITH_DISTRIBUTE)
-    list(APPEND third_party_deps extern_cares)
     if(WITH_GRPC)
         list(APPEND third_party_deps extern_grpc)
     else()
