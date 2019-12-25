@@ -33,4 +33,6 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'trilinear_interp', 'var_conv_2d', 'warpctc'
 ]
 
-NO_CHECK_GRAD_OP_LIST = []
+NO_FP16_CHECK_GRAD_OP_LIST = [
+    'fused_elemwise_activation', 'pool2d', 'pool3d', 'softmax'
+]
