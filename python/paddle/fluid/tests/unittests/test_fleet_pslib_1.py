@@ -149,7 +149,7 @@ class TestPSlib(unittest.TestCase):
                 "embedding1": {
                     "sparse_shard_num": 1
                 }
-        })
+            })
         adam.minimize([avg_cost], [scope])
 
         if fleet.is_server():
@@ -161,10 +161,7 @@ class TestPSlib(unittest.TestCase):
             dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
             dataset.set_batch_size(32)
             dataset.set_thread(3)
-            dataset.set_filelist([
-                "test_fleet1_a.txt",
-                "test_fleet1_b.txt"
-            ])
+            dataset.set_filelist(["test_fleet1_a.txt", "test_fleet1_b.txt"])
             dataset.set_pipe_command("cat")
             dataset.set_use_var(slots_vars)
             dataset.load_into_memory()
@@ -175,7 +172,7 @@ class TestPSlib(unittest.TestCase):
             
             prog_id = str(id(train_program))
             tables = fleet._opt_info["program_id_to_worker"][prog_id].\
-            	get_desc().dense_table
+                get_desc().dense_table
             for table in tables:
                 var_name_list = []
                 for i in range(0, len(table.dense_variable_name)):
