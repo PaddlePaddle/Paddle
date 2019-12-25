@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/parallel.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/errors.h"
 
 #ifdef PADDLE_WITH_MKLML
 #include "paddle/fluid/platform/dynload/mklml.h"
@@ -35,14 +36,16 @@ void SetNumThreads(int num_threads) {
     num_threads = 1;
   }
 #endif
-  int real_num_threads = std::max(num_threads, 1);
+  int real_num_threads = num_threads > 1 ? num_threads : 1;
   openblas_set_num_threads(real_num_threads);
 #elif defined(PADDLE_WITH_MKLML)
-  int real_num_threads = std::max(num_threads, 1);
+  int real_num_threads = num_threads > 1 ? num_threads : 1;
   platform::dynload::MKL_Set_Num_Threads(real_num_threads);
   omp_set_num_threads(real_num_threads);
 #else
-  PADDLE_ENFORCE(false, "To be implemented.");
+  PADDLE_THROW(errors::Unimplemented(
+      "Setting the number of threads is not supported when PaddlePaddle is not "
+      "compiled with either OpenBLAS or Intel MKL."));
 #endif
 }
 
