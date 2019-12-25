@@ -27,4 +27,6 @@
 #include "paddle/fluid/pybind/imperative.h"
 
 // This include must be the last line
+#ifndef PADDLE_WITH_PSLIB
 #include "paddle/fluid/pybind/op_function_impl.h"
+#endif

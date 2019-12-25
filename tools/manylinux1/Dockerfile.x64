@@ -64,6 +64,6 @@ RUN wget -O /opt/swig-2.0.12.tar.gz https://sourceforge.net/projects/swig/files/
 RUN wget --no-check-certificate https://pslib.bj.bcebos.com/openmpi-1.4.5.tar.gz && tar -xzf openmpi-1.4.5.tar.gz && \
     cd openmpi-1.4.5 && ./configure --prefix=/usr/local && make all -j8 && make install -j8 && \
     export LD_LIBRARY_PATH=/usr/local/lib/:$LD_LIBRARY_PATH && export PATH=/usr/local/bin:$PATH && cd .. && \
-    rm -rf openmpi-1.4.5.tar.gz && pip --no-cache-dir install mpi4py && ln -fs /bin/bash /bin/sh
+    rm -rf openmpi-1.4.5.tar.gz && /opt/python/cp27-cp27mu/bin/pip install mpi4py -U && ln -fs /bin/bash /bin/sh
 
 CMD ["bash", "/paddle/paddle/scripts/docker/build.sh"]

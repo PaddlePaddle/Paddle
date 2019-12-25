@@ -217,7 +217,9 @@ static imperative::NameVarBaseMap ConvertToNameVarBaseMap(
 void BindImperative(py::module *m_ptr) {
   auto &m = *m_ptr;
 
+  #ifndef PADDLE_WITH_PSLIB
   BindOpFunctions(&m);
+  #endif
 
   py::class_<imperative::detail::BackwardStrategy> backward_strategy(
       m, "BackwardStrategy", R"DOC(

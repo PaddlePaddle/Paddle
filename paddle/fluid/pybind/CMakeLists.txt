@@ -35,6 +35,7 @@ endif()
 
 if(WITH_PYTHON)
 
+if(NOT WITH_PSLIB)
   # generate op pybind functions automatically for dygraph.
   set(OP_FUNCTION_GENERETOR_DEPS pybind proto_desc executor layer tracer engine imperative_profiler imperative_flag)
   list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OP_LIB})
@@ -98,6 +99,7 @@ if(WITH_PYTHON)
   add_dependencies(copy_mkldnn op_function_generator)
   add_dependencies(op_function_cmd copy_mkldnn)  
   endif(WITH_MKLDNN)
+endif(NOT WITH_PSLIB)
 
 
   if(WITH_AMD_GPU)
@@ -117,6 +119,8 @@ if(WITH_PYTHON)
 
   get_property (os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(paddle_pybind ${os_dependency_modules})
+if(NOT WITH_PSLIB)
   add_dependencies(paddle_pybind op_function_cmd) 
+endif(NOT WITH_PSLIB)
 
 endif(WITH_PYTHON)
