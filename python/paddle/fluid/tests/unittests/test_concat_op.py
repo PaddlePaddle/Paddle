@@ -65,7 +65,8 @@ class TestConcatOp2(TestConcatOp):
         self.axis = 1
 
 
-@skip_check_grad_ci(reason="check_grad on large input is too slow")
+@skip_check_grad_ci(
+    reason="The function 'check_grad' for large inputs is too slow.")
 class TestConcatOp3(TestConcatOp):
     def init_test_data(self):
         self.x0 = np.random.random((1, 256, 170, 256)).astype(self.dtype)
@@ -78,7 +79,7 @@ class TestConcatOp3(TestConcatOp):
 
 
 @skip_check_grad_ci(
-    reason="This test will meet fetch error when there is a nul grad. The detailed information is in PR#17015."
+    reason="This test will meet fetch error when there is a null grad. The detailed information is in PR#17015."
 )
 class TestConcatOp4(TestConcatOp):
     def init_test_data(self):
