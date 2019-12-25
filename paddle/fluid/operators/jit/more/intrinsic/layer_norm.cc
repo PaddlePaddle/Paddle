@@ -16,6 +16,7 @@
 #include <limits>
 #include "paddle/fluid/operators/jit/registry.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/parallel.h"
 
 namespace paddle {
 namespace operators {
@@ -29,10 +30,8 @@ void LayerNorm(float* x, float* out, float* mean, float* var,
   int block = YMM_FLOAT_BLOCK;
   const int rest = right % block;
   const int end = right - rest;
-#ifdef PADDLE_WITH_MKLML
-#pragma omp parallel
-  {
-#endif
+
+  auto parallel_compute = [&](int64_t loop_begin, int64_t loop_end) {
     __m256 sum;
     __m256 mean_vec, var_vec;
     __m128 hi, lo;
@@ -50,10 +49,7 @@ void LayerNorm(float* x, float* out, float* mean, float* var,
         rest_mask & 0x8 ? 0xffffffff : 0, rest_mask & 0x4 ? 0xffffffff : 0,
         rest_mask & 0x2 ? 0xffffffff : 0, rest_mask & 0x1 ? 0xffffffff : 0);
 
-#ifdef PADDLE_WITH_MKLML
-#pragma omp for
-#endif
-    for (int i = 0; i < height; ++i) {
+    for (int64_t i = loop_begin; i < loop_end; ++i) {
       offset = i * right;
 
       /* get mean */
@@ -158,9 +154,9 @@ void LayerNorm(float* x, float* out, float* mean, float* var,
         }
       }
     }
-#ifdef PADDLE_WITH_MKLML
-  }
-#endif
+  };
+
+  platform::RunParallelFor(0, height, parallel_compute);
 }
 
 bool LayerNormKernel::CanBeUsed(const int& d) const {
