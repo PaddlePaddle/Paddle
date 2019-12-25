@@ -333,11 +333,6 @@ class DygraphGeneratorLoader(DataLoaderBase):
         self._places = None
         self._feed_list = feed_list
 
-        # dygraph mode check
-        if not in_dygraph_mode():
-            raise RuntimeError(
-                "DygraahGeneratorLoader can only be used in dygraph mode.")
-
         if not capacity:
             raise ValueError("Please give value to capacity.")
         self._capacity = capacity
@@ -419,7 +414,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
             # Set data_queue and process
             self._data_queue = multiprocessing.Queue(self._capacity)
             self._process = multiprocessing.Process(
-                target=self.__reader_process_loop)
+                target=self._reader_process_loop)
             self._process.daemon = True
             self._process.start()
 
@@ -434,11 +429,11 @@ class DygraphGeneratorLoader(DataLoaderBase):
             # Set reader_thread
             self._thread_done_event = threading.Event()
             self._thread = threading.Thread(
-                target=self.__reader_thread_loop_with_process)
+                target=self._reader_thread_loop_with_process)
             self._thread.daemon = True
             self._thread.start()
         else:
-            self._thread = threading.Thread(target=self.__reader_thread_loop)
+            self._thread = threading.Thread(target=self._reader_thread_loop)
             self._thread.daemon = True
             self._thread.start()
 
@@ -488,7 +483,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
 
         signal.signal(signal.SIGCHLD, __handler__)
 
-    def __reader_process_loop(self):
+    def _reader_process_loop(self):
         try:
             # set signal handler
             core._set_process_signal_handler()
@@ -506,7 +501,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
         except:
             six.reraise(*sys.exc_info())
 
-    def __reader_thread_loop_with_process(self):
+    def _reader_thread_loop_with_process(self):
         while not self._thread_done_event.is_set():
             try:
                 # NOTE: [ avoid hanging ] Even with carefully designed data dependencies 
@@ -545,7 +540,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
                 self._blocking_queue.close()
             del sample  # save memory
 
-    def __reader_thread_loop(self):
+    def _reader_thread_loop(self):
         try:
             for sample in self._batch_reader():
                 array = core.LoDTensorArray()
