@@ -57,6 +57,7 @@ cd build
 for WITH_STATIC_LIB in ON; do
 # TODO(Superjomn) reopen this
 # something wrong with the TensorArray reset.
+
 :<<D
   # -----simple_on_word2vec-----
   rm -rf *
