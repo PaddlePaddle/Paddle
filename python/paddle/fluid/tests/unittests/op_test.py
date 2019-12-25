@@ -1199,6 +1199,7 @@ class OpTest(unittest.TestCase):
             no_grad_set = set()
         else:
             a = self.op_type not in no_grad_set_white_list.NEED_TO_FIX_OP_LIST
+            print('op_type: ', self.op_type)
             print('reslut: ', a)
             if (self.op_type not in no_grad_set_white_list.NEED_TO_FIX_OP_LIST
                 ) and (self.op_type not in
