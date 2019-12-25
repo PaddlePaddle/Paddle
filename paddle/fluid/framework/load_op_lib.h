@@ -63,8 +63,12 @@ void LoadOpLib(const std::string &dso_name) {
         type == "conditional_block" || type == "conditional_block_grad") {
       continue;
     }
-    if (info_map.Has(n.first)) {
-      PADDLE_THROW("Op %s has been registered.");
+    // OpInfoMap is implemented in singleton mode, multi dso will use
+    // the same OpInfoMap, this may incur duplicate registration when
+    // loading latter dso, skip info_map processing if an Op is already
+    // regitered here.
+    if (info_map.Has(type)) {
+      continue;
     }
     OpInfo info;
     info.creator_ = n.second.creator_;
