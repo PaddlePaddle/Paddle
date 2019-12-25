@@ -93,4 +93,6 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(argsort,
                        ops::ArgsortKernel<paddle::platform::CPUPlace, float>,
-                       ops::ArgsortKernel<paddle::platform::CPUPlace, double>);
+                       ops::ArgsortKernel<paddle::platform::CPUPlace, double>,
+                       ops::ArgsortKernel<paddle::platform::CPUPlace, int>,
+                       ops::ArgsortKernel<paddle::platform::CPUPlace, int64_t>);
