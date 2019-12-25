@@ -1231,8 +1231,9 @@ void HalfAsyncCommunicator::Send(const std::vector<std::string> &var_ins_names,
   VLOG(3) << "communicator send " << var_name;
   // push var into send queue by var_name
   auto *grad_var = scope.FindVar(var_name);
-  PADDLE_ENFORCE_EQ(grad_var->IsInitialized(), true,
-                    "grad var should be inited");
+  PADDLE_ENFORCE_EQ(
+      grad_var->IsInitialized(), true,
+      platform::errors::InvalidArgument("grad var should is not initialized."));
   auto tmp_grad_var = std::make_shared<Variable>();
   framework::CopyVariable(*grad_var, tmp_grad_var.get());
   auto &queue = send_varname_to_queue_.at(var_name);
