@@ -96,8 +96,7 @@ D
         --modeldir=$DATA_DIR/$vis_demo_name/model \
         --data=$DATA_DIR/$vis_demo_name/data.txt \
         --refer=$DATA_DIR/$vis_demo_name/result.txt \
-        --use_gpu=$use_gpu
-      sleep 5
+        --use_gpu=true
       if [ $? -ne 0 ]; then
         echo "vis demo $vis_demo_name runs fail."
         exit 1
