@@ -33,9 +33,7 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable
 from testsuite import create_op, set_input, append_input_output, append_loss_ops
 from paddle.fluid import unique_name
-from white_list import op_accuracy_white_list, op_check_grad_white_list, no_grad_set_white_list
-from white_list import check_shape_white_list, compile_vs_runtime_white_list
-
+from white_list import op_accuracy_white_list, op_check_grad_white_list, check_shape_white_list, compile_vs_runtime_white_list, no_grad_set_white_list
 
 
 def _set_use_system_allocator(value=None):
