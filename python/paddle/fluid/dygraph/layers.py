@@ -44,9 +44,9 @@ class Layer(core.Layer):
     Parameters:
         name_scope (str, optional): prefix name used by the layer to name parameters.
             If prefix is "my_layer", parameter name in MyLayer
-            can be "mylayer_0.w_n", where w is the parameter
-            base name and n is an unique suffix auto-generated.
-            If None, prefix name will be lower cased class name. Default: None.
+            can be "my_layer_0.w_n", where "w" is the parameter
+            base name and "n" is an unique suffix auto-generated.
+            If None, prefix name will be snake cased class name. Default: None.
         dtype(str or core.VarDesc.VarType, optional): data type of this parameter.
                 If set str, it can be "bool",  "float16", "float32", "float64",
                 "int8", "int16", "int32", "int64", "uint8" or "uint16".
@@ -59,11 +59,7 @@ class Layer(core.Layer):
     def __init__(self, name_scope=None, dtype=core.VarDesc.VarType.FP32):
         if name_scope is None:
             name_scope = _convert_camel_to_snake(self.__class__.__name__)
-            self._full_name = unique_name.generate(name_scope)
-        else:
-            # TODO: remove name_scope parameter and all hard-coded usages
-            self._full_name = unique_name.generate(name_scope + "/" +
-                                                   self.__class__.__name__)
+        self._full_name = unique_name.generate(name_scope)
         self._helper = LayerObjectHelper(self._full_name)
         self._built = False
         self._dtype = dtype
@@ -164,20 +160,6 @@ class Layer(core.Layer):
                     ret.append(p)
         return ret
 
-    def named_parameters(self, prefix='', recurse=True):
-        memo = set()
-        sublayers = self.named_sublayers(
-            prefix=prefix) if recurse else [(prefix, self)]
-        for sublayer_prefix, sublayer in sublayers:
-            params = sublayer._parameters.items()
-            for _, v in params:
-                if v is None or v in memo:
-                    continue
-                memo.add(v)
-                name = sublayer_prefix + ('.'
-                                          if sublayer_prefix else '') + v.name
-                yield name, v
-
     def sublayers(self, include_sublayers=True):
         """Returns a list of sub layers.
 
@@ -194,18 +176,41 @@ class Layer(core.Layer):
                     ret.append(sub_l)
         return ret
 
-    def named_sublayers(self, memo=None, prefix=''):
-        if memo is None:
-            memo = set()
-        if self not in memo:
-            memo.add(self)
+    def named_parameters(self, prefix='', include_sublayers=True):
+        params_set = set()
+        named_sublayers = self.named_sublayers(
+            prefix=prefix,
+            include_sublayers=include_sublayers,
+            include_self=True)
+        for layer_prefix, sublayer in named_sublayers:
+            params = sublayer._parameters.items()
+            for key, param in params:
+                if param is None or param in params_set:
+                    continue
+                params_set.add(param)
+                name = layer_prefix + ('.' if layer_prefix else '') + key
+                yield name, param
+
+    def named_sublayers(self,
+                        layers_set=None,
+                        prefix='',
+                        include_sublayers=True,
+                        include_self=False):
+        if layers_set is None:
+            layers_set = set()
+        if include_self and self not in layers_set:
+            layers_set.add(self)
             yield prefix, self
-            for _, layer in self._sub_layers.items():
+        if include_sublayers:
+            for key, layer in self._sub_layers.items():
                 if layer is None:
                     continue
-                sublayer_prefix = prefix + ('.' if prefix else ''
-                                            ) + layer.full_name()
-                for p, l in layer.named_sublayers(memo, sublayer_prefix):
+                layer_prefix = prefix + ('.' if prefix else '') + key
+                for p, l in layer.named_sublayers(
+                        layers_set,
+                        layer_prefix,
+                        include_sublayers=include_sublayers,
+                        include_self=True):
                     yield p, l
 
     def clear_gradients(self):
