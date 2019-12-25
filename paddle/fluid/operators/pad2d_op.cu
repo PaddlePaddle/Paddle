@@ -460,7 +460,6 @@ class Pad2dGradCUDAKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(pad2d, ops::Pad2dCUDAKernel<float>,
-                        ops::Pad2dCUDAKernel<double>, ops::Pad2dCUDAKernel<int>,
-                        ops::Pad2dCUDAKernel<int64_t>);
+                        ops::Pad2dCUDAKernel<double>);
 REGISTER_OP_CUDA_KERNEL(pad2d_grad, ops::Pad2dGradCUDAKernel<float>,
                         ops::Pad2dGradCUDAKernel<double>);
