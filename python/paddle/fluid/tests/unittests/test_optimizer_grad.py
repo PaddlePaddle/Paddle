@@ -20,15 +20,19 @@ import paddle.fluid as fluid
 import paddle.fluid.optimizer as optimizer
 import numpy as np
 from paddle.fluid.backward import _append_grad_suffix_
-
+from collections import defaultdict
 np.random.seed(10)
 
 
 class SimpleNetWithCond(object):
-    def __init__(self, optimizer, param_lr=1.0, y_no_grad=False):
-        self.optimizer = optimizer
+    """
+    Build net with conditional Block and useless layers.
+    """
+
+    def __init__(self, test_optimizer, param_lr=1.0, y_no_grad=False):
+        self.optimizer = test_optimizer
         self.param_lr = param_lr
-        self.shape = [5, 10]
+        self.shape = [8, 10]
         self.y_no_grad = y_no_grad
         self._init_param()
 
@@ -38,24 +42,21 @@ class SimpleNetWithCond(object):
         self.z = np.random.random(self.shape).astype('float32')
 
     def _calc_gradient(self, cond_i):
-
-        d_out_val = 1. / np.prod(self.shape)
-        x_grad = np.ones_like(self.x) * d_out_val
+        """
+        Calculate grads of params
+        """
+        grads = []
+        d_out_val = 1. / np.prod(self.shape) * np.ones_like(self.x)
+        grads.append(d_out_val)  # x_grad
         if cond_i > 1:
             y_grad_ratio, z_grad_ratio = 0 if self.y_no_grad else 3, 1
         else:
             y_grad_ratio, z_grad_ratio = 3, 0
-        y_grad = np.ones_like(self.y) * d_out_val * y_grad_ratio
-        z_grad = np.ones_like(self.z) * d_out_val * z_grad_ratio
+        if not self.y_no_grad:
+            grads.append(d_out_val * y_grad_ratio)  # y_grad
+        grads.append(d_out_val * z_grad_ratio)  # z_grad
 
-        param_lr = self.param_lr * self.optimizer._learning_rate
-        x_new = self.x - param_lr * x_grad
-        y_new = self.y - param_lr * y_grad
-        z_new = self.z - param_lr * z_grad
-
-        return [x_new, z_new, x_grad, z_grad] if self.y_no_grad else [
-            x_new, y_new, z_new, x_grad, y_grad, z_grad
-        ]
+        return grads
 
     def build_net(self, cond_i):
         """
@@ -96,12 +97,12 @@ class SimpleNetWithCond(object):
         useless = fluid.layers.fc(param_x, size=1, name='fc_useless')
 
         def cond_true():
-            interal = fluid.layers.elementwise_add(
-                param_y, param_z, name='sum_inter')
+            cond_yz = fluid.layers.elementwise_add(
+                param_y, param_z, name='sum_cond_yz')
             # param_y will not be updated
             param_y.stop_gradient = self.y_no_grad
             cond_res = fluid.layers.elementwise_add(
-                interal, param_z, name='sum_cond_true')
+                cond_yz, param_z, name='sum_cond_true')
             cond_useless = fluid.layers.elementwise_mul(param_x, param_y)
             return cond_res
 
@@ -115,89 +116,157 @@ class SimpleNetWithCond(object):
         sum_cond = fluid.layers.cond(cond_i > 1.0, cond_true, cond_false)
         sum_all = fluid.layers.sum([sum_xy, sub_yz, sum_cond])
         mean_out = fluid.layers.mean(sum_all)
-        opts, params_grads = self.optimizer.minimize(mean_out)
+        self.optimizer.minimize(mean_out)
 
         fetch_list = ["param_x", "param_z"] if self.y_no_grad else [
             "param_x", "param_y", "param_z"
         ]
         fetch_list += [_append_grad_suffix_(param) for param in fetch_list]
-        return opts, fetch_list
+        return fetch_list
 
 
 class TestOptimizer(unittest.TestCase):
+    """
+    TestOptimizer BaseClass to be inherited to test other Optimizer.
+    And only need to implement two functions:
+        setUp(): to set config info of optimizer, including Optimizer and its hyper-parameter.
+        _apply_gradient(): to implement the way of updating grad.
+    """
+
     def setUp(self):
-        self.optimizer = optimizer.SGDOptimizer(learning_rate=1.)
+        self._init_config()
+        self.optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
+        self.attr = {}
+
+    def _init_config(self):
         self.NetClass = SimpleNetWithCond
         self.param_lr = [1.0, 2.0]
         self.cond_i = [0.1, 3]
         self.y_no_grad = [True, False]
-        self.opts_scale = ["scale", "sgd"]
-        self.opts_no_scale = ["sgd"]
 
     def test_optimizer(self):
-        self._check_opts()
         self._check_grads()
 
-    def _check_opts(self):
+    def _apply_gradient(self, param, grad, name):
         """
-        To check the validity returned opts.
+        The way of updating grad in optimizer.(such as SGD)
+        This method should be override.
         """
-        # if param_lr not set 1.0, it will create a scale_op to scale lr.
-        for param_lr in self.param_lr:
-            for cond_i in self.cond_i:
-                for y_no_grad in self.y_no_grad:
-                    main_program = fluid.Program()
-                    with fluid.program_guard(main_program):
-                        test_net = self.NetClass(
-                            self.optimizer,
-                            param_lr=param_lr,
-                            y_no_grad=y_no_grad)
-                        opts, _ = test_net.build_net(cond_i)
-                        self.assertListEqual([op.type for op in opts],
-                                             self._get_opts(param_lr,
-                                                            y_no_grad))
+        return param - self.attr['lr'] * grad
+
+    def _apply_optimize(self, net, grads):
+        """
+        apply to update all params in the net.
+        """
+        net.x = self._apply_gradient(net.x, grads[0], 'x')
+        if len(grads) == 2:
+            net.z = self._apply_gradient(net.z, grads[1], 'z')
+            res = [net.x, net.z]
+        else:
+            net.y = self._apply_gradient(net.y, grads[1], 'y')
+            net.z = self._apply_gradient(net.z, grads[2], 'z')
+            res = [net.x, net.y, net.z]
+
+        return res
+
+    def _init_param_attr(self):
+        self.param_attr = {}
+        for key in ['x', 'y', 'z']:
+            self.param_attr[key] = self.attr.copy()
 
     def _check_grads(self):
         """
-        To check the validity of apply_optimize.
+        main logic code to check the validity of apply_optimize.
         """
-        for param_lr in self.param_lr:
-            for cond_i in self.cond_i:
-                for y_no_grad in self.y_no_grad:
-                    main_program = fluid.Program()
-                    init_program = fluid.Program()
-                    with fluid.program_guard(main_program, init_program):
-                        test_net = SimpleNetWithCond(
-                            self.optimizer,
-                            param_lr=param_lr,
-                            y_no_grad=y_no_grad)
-                        test_net._init_param()
-                        opts, fetch_list = test_net.build_net(cond_i)
-                        place = fluid.CPUPlace()
-                        exe = fluid.Executor(place)
-                        exe.run(init_program)
-                        res = exe.run(main_program,
-                                      feed={},
-                                      fetch_list=fetch_list)
+        places = [fluid.CPUPlace()]
+        if fluid.core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        # test on CPU and GPU
+        for place in places:
+            for param_lr in self.param_lr:
+                for cond_i in self.cond_i:
+                    for y_no_grad in self.y_no_grad:
+                        self.attr[
+                            'lr'] = param_lr * self.optimizer._learning_rate
+                        self._init_param_attr()
 
-                        gt_grad = test_net._calc_gradient(cond_i)
-                        for i in range(len(fetch_list)):
-                            np.testing.assert_equal(res[i], gt_grad[i])
+                        main_program = fluid.Program()
+                        init_program = fluid.Program()
+                        with fluid.program_guard(main_program, init_program):
+                            # reset optimizer._accumulators to avoid duplicate name in loop.
+                            self.optimizer._accumulators = defaultdict(
+                                lambda: dict())
+                            test_net = self.NetClass(self.optimizer, param_lr,
+                                                     y_no_grad)
+                            fetch_list = test_net.build_net(cond_i)
 
-    def _get_opts(self, param_lr, y_no_grad):
+                            exe = fluid.Executor(place)
+                            exe.run(init_program)
+                            # Train 10 steps to check validity
+                            for batch_i in range(40):
+                                # print("batch_i: ", batch_i)
+                                res = exe.run(main_program,
+                                              fetch_list=fetch_list)
+                                gt_grads = test_net._calc_gradient(cond_i)
+                                gt_params = self._apply_optimize(test_net,
+                                                                 gt_grads)
+                                param_grads = gt_params + gt_grads
+
+                                for i in range(len(fetch_list)):
+                                    # print((res[i].flatten()-param_grads[i].flatten())/res[i].flatten())
+                                    np.testing.assert_allclose(
+                                        res[i],
+                                        param_grads[i],
+                                        rtol=1e-7,
+                                        atol=1e-7)
+
+
+class TestAdamOptimizer(TestOptimizer):
+    """
+    inherit TestOptimizer and shall override two functions as follows:
+        setUp(): to set config info of optimizer, including Optimizer and its hyper-parameter.
+        _apply_gradient(): to implement the way of updating grad.
+    """
+
+    def setUp(self):
+        self._init_config()
+        beta1, beta2, epsilon = 0.9, 0.999, 1e-8
+        self.optimizer = optimizer.AdamOptimizer(
+            learning_rate=0.01, beta1=beta1, beta2=beta2, epsilon=epsilon)
+        self.attr = {
+            "beta1": beta1,
+            "beta2": beta2,
+            "beta1_pow": beta1,
+            "beta2_pow": beta2,
+            "moment1": np.zeros([8, 10]).astype("float32"),
+            "moment2": np.zeros([8, 10]).astype("float32"),
+            "epsilon": epsilon
+        }
+
+    def _apply_gradient(self, param, grad, name):
         """
-        Return the optimize_ops of different net
+        The way of updating grad in AdamOptimizer
         """
-        if param_lr != 1.0:
-            if y_no_grad:
-                return self.opts_scale * 2
-            else:
-                return self.opts_scale * 3
-        else:
-            if y_no_grad:
-                return self.opts_no_scale * 2
-            else:
-                return self.opts_no_scale * 3
+        attr = self.param_attr[name]
+        beta1, beta2 = attr["beta1"], attr["beta2"]
+        moment1, moment2 = attr['moment1'], attr['moment2']
+        beta1_pow, beta2_pow = attr['beta1_pow'], attr['beta2_pow']
+        epsilon = attr['epsilon']
+
+        moment1_out = beta1 * moment1 + (1. - beta1) * grad
+        moment2_out = beta2 * moment2 + (1. - beta2) * np.square(grad)
+
+        lr = attr['lr'] * np.sqrt(1. - beta2_pow) / (1. - beta1_pow)
+        param_out = param - lr * (moment1_out /
+                                  (np.sqrt(moment2_out) + epsilon))
+
+        # update hyper-parameter of optimizer
+        self.param_attr[name]['beta1_pow'], self.param_attr[name][
+            'beta2_pow'] = beta1_pow * beta1, beta2_pow * beta2
+        self.param_attr[name]['moment1'], self.param_attr[name][
+            'moment2'] = moment1_out, moment2_out
+
+        return param_out
 
 
 if __name__ == '__main__':
