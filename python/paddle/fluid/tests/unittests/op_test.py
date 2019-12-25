@@ -1198,9 +1198,11 @@ class OpTest(unittest.TestCase):
         if no_grad_set is None:
             no_grad_set = set()
         else:
+            a = self.op_type not in no_grad_set_white_list.NEED_TO_FIX_OP_LIST
+            print('reslut: ', a)
             if (self.op_type not in no_grad_set_white_list.NEED_TO_FIX_OP_LIST
-                ) or (self.op_type not in
-                      no_grad_set_white_list.NOT_CHECK_OP_LIST):
+                ) and (self.op_type not in
+                       no_grad_set_white_list.NOT_CHECK_OP_LIST):
                 raise AssertionError("no_grad_set muste be None, op_type is " +
                                      self.op_type + " Op.")
 
