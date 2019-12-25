@@ -234,7 +234,7 @@ class TestConv3dOp(OpTest):
         self.use_cudnn = False
         self.use_mkldnn = False
         self.data_format = "AnyLayout"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_kernel_type()
         self.init_group()
         self.init_dilation()
@@ -276,7 +276,7 @@ class TestConv3dOp(OpTest):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
         self.check_output_with_place(
-            place, atol=1e-5, check_dygraph=(self.use_mkldnn == False))
+            place, atol=0, check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -286,7 +286,7 @@ class TestConv3dOp(OpTest):
         self.check_grad_with_place(
             place, {'Input', 'Filter'},
             'Output',
-            max_relative_error=0.03,
+            max_relative_error=1e-7,
             check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad_no_filter(self):
@@ -297,7 +297,7 @@ class TestConv3dOp(OpTest):
         self.check_grad_with_place(
             place, ['Input'],
             'Output',
-            max_relative_error=0.03,
+            max_relative_error=1e-7,
             no_grad_set=set(['Filter']),
             check_dygraph=(self.use_mkldnn == False))
 
@@ -309,7 +309,7 @@ class TestConv3dOp(OpTest):
         self.check_grad_with_place(
             place, ['Filter'],
             'Output',
-            max_relative_error=0.03,
+            max_relative_error=1e-7,
             no_grad_set=set(['Input']),
             check_dygraph=(self.use_mkldnn == False))
 
@@ -525,7 +525,7 @@ class TestConv3dOp_2(OpTest):
         self.use_cudnn = False
         self.use_mkldnn = False
         self.data_format = "NCDHW"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_kernel_type()
         self.init_group()
         self.init_dilation()
@@ -568,14 +568,14 @@ class TestConv3dOp_2(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
-        self.check_output_with_place(place, atol=1e-5)
+        self.check_output_with_place(place, atol=0)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
         self.check_grad_with_place(
-            place, {'Input', 'Filter'}, 'Output', max_relative_error=0.03)
+            place, {'Input', 'Filter'}, 'Output', max_relative_error=1e-7)
 
     def test_check_grad_no_filter(self):
         if self.dtype == np.float16:
@@ -584,7 +584,7 @@ class TestConv3dOp_2(OpTest):
         self.check_grad_with_place(
             place, ['Input'],
             'Output',
-            max_relative_error=0.03,
+            max_relative_error=1e-7,
             no_grad_set=set(['Filter']))
 
     def test_check_grad_no_input(self):
@@ -594,7 +594,7 @@ class TestConv3dOp_2(OpTest):
         self.check_grad_with_place(
             place, ['Filter'],
             'Output',
-            max_relative_error=0.03,
+            max_relative_error=1e-7,
             no_grad_set=set(['Input']))
 
     def init_test_case(self):
