@@ -54,7 +54,7 @@ cd $current_dir
 mkdir -p build
 cd build
 
-for WITH_STATIC_LIB in OFF; do
+for WITH_STATIC_LIB in ON; do
 # TODO(Superjomn) reopen this
 # something wrong with the TensorArray reset.
 :<<D
