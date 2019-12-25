@@ -30,12 +30,12 @@ class ErfOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   platform::errors::InvalidArgument(
-                       "Input(%s) of ErfOp should not be null.", "X"));
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   platform::errors::InvalidArgument(
-                       "Output(%s) of ErfOp should not be null.", "Out"));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(%s) of ErfOp should not be null.", "X"));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      platform::errors::InvalidArgument(
+                          "Output(%s) of ErfOp should not be null.", "Out"));
 
     ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -54,12 +54,13 @@ class ErfGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   platform::errors::InvalidArgument(
-                       "Input(%s) of ErfGradOp should not be null.", "DOut"));
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   platform::errors::InvalidArgument(
-                       "Input(%s) of ErfGradOp should not be null.", "X"));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput(framework::GradVarName("Out")), true,
+        platform::errors::InvalidArgument(
+            "Input(%s) of ErfGradOp should not be null.", "DOut"));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(%s) of ErfGradOp should not be null.", "X"));
     auto x_grad_name = framework::GradVarName("X");
     ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ x_grad_name);
