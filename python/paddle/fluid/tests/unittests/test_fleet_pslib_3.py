@@ -133,9 +133,9 @@ class TestPSlib(unittest.TestCase):
         adam = fleet.distributed_optimizer(
             adam,
             strategy={
-                "use_cvm" : True,
-                "adjust_ins_weight" : adjust_ins_weight,
-                "scale_datanorm" : 1e-4,
+                "use_cvm": True,
+                "adjust_ins_weight": adjust_ins_weight,
+                "scale_datanorm": 1e-4,
                 "dump_slot": True,
                 "stat_var_names": thread_stat_var_names,
                 "dump_fields": ["click"],
