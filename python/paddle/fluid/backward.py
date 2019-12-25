@@ -1161,7 +1161,20 @@ def append_backward(loss,
     program._sync_with_cpp()
 
     if parameter_list is not None:
-        parameters = parameter_list
+        if not isinstance(parameter_list, (list, tuple, set)):
+            raise TypeError(
+                "The type of parameter_list argument must be list or tuple or set, but received %s."
+                % (type(parameter_list)))
+        parameters = []
+        for i, param in enumerate(parameter_list):
+            if isinstance(param, framework.Variable):
+                parameters.append(param.name)
+            elif isinstance(param, (str, unicode)):
+                parameters.append(param)
+            else:
+                raise TypeError(
+                    "The type of parameter_list's member must be paddle.fluid.Variable or str, but received %s."
+                    % (type(param_name)))
     else:
         params = program.global_block().all_parameters()
         parameters = [param.name for param in params if param.trainable]
