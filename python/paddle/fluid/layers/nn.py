@@ -201,11 +201,37 @@ def _append_activation_in_dygraph(input,
 
     Return the Variable after append activation
     """
+    if not act:
+        return input
+
     attrs = {'use_cudnn': use_cudnn, 'use_mkldnn': use_mkldnn}
     inputs = {"X": [input]}
     act_op = getattr(core.ops, act)
     res = act_op(inputs, attrs)
     return res['Out'][0]
+
+
+@dygraph_only
+def _append_bias_in_dygraph(
+        input,
+        bias=None,
+        axis=1, ):
+    """Append bias operation in dygraph mode.
+
+        Args:
+            input: the input variable. 
+            bias:  the bias to be appended
+            axis:  the axis to perform operation
+
+    Return the Variable after bias operation
+    """
+    if not bias:
+        return input
+
+    attrs = {'axis': axis}
+    inputs = {'X': [input], 'Y': [bias]}
+    outs = core.ops.elementwise_add(inputs, attrs)
+    return outs['Out'][0]
 
 
 @dygraph_only
@@ -219,13 +245,9 @@ def _elementwise_op_in_dygraph(x,
     inputs = {'X': [x], 'Y': [y]}
     op = getattr(core.ops, op_name)
     outs = op(inputs, attrs)
-    pre_act = outs['Out'][0]
+    out = outs['Out'][0]
 
-    if not act:
-        return pre_act
-    else:
-        return _append_activation_in_dygraph(
-            pre_act, act, use_mkldnn=use_mkldnn)
+    return _append_activation_in_dygraph(out, act, use_mkldnn=use_mkldnn)
 
 
 def fc(input,
@@ -4736,15 +4758,23 @@ def topk(input, k, name=None):
             vk_values, vk_indices = layers.topk(input2, k=vk) #vk_values.shape=[None, 13, k], vk_indices.shape=[None, 13, k]
 
     """
+    inputs = {"X": [input]}
+    attrs = {}
+    if isinstance(k, Variable):
+        inputs['K'] = [k]
+    else:
+        attrs = {'k': k}
+
+    if in_dygraph_mode():
+        outs = core.ops.top_k(inputs, attrs)
+        outs['Out'][0].stop_gradient = True
+        outs['Indices'][0].stop_gradient = True
+        return outs['Out'][0], outs['Indices'][0]
+
     helper = LayerHelper("top_k", **locals())
     values = helper.create_variable_for_type_inference(dtype=input.dtype)
     indices = helper.create_variable_for_type_inference(dtype="int64")
-    inputs = {"X": [input]}
-    attrs = None
-    if isinstance(k, Variable):
-        inputs['K'] = k
-    else:
-        attrs = {'k': k}
+
     helper.append_op(
         type="top_k",
         inputs=inputs,
@@ -5594,11 +5624,8 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
 
         inputs = {'X': [x]}
         outs = core.ops.reshape2(inputs, attrs)
-        pre_act = outs['Out'][0]
-        if act is None:
-            return pre_act
-        else:
-            return _append_activation_in_dygraph(pre_act, act)
+        out = outs['Out'][0]
+        return _append_activation_in_dygraph(out, act)
 
     check_type_and_dtype(x, 'x', Variable,
                          ['float16', 'float32', 'float64', 'int32', 'int64'],
@@ -11333,6 +11360,10 @@ def mean(x, name=None):
                 name='data', shape=[2, 3], dtype='float32')
             mean = fluid.layers.mean(input)
     """
+    if in_dygraph_mode():
+        inputs = {"X": [x]}
+        outs = core.ops.mean(inputs)
+        return outs['Out'][0]
 
     helper = LayerHelper("mean", **locals())
     check_type_and_dtype(x, 'x', Variable, ['float16', 'float32', 'float64'],
