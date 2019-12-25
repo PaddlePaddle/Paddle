@@ -2162,8 +2162,10 @@ class PRelu(layers.Layer):
           and element. all: all elements share same weight
           channel:elements in a channel share same weight
           element:each element has a weight
-        input_shape (list or tuple, optional): The shape of input.
-          This parameter is required when mode is not "all". Default: None.
+        channel_or_input_shape (int or list or tuple, optional): The number of channels, or the shape of input.
+          This parameter only works when mode is "channel" or "element".
+          It should be int when mode is "channel", and it should be list or tuple when mode is "element".
+          Default: None.
         param_attr(ParamAttr, optional): The parameter attribute for the learnable
           weight (alpha). Default: None.
         dtype (str, optional): Data type, it can be "float32" or "float64". Default: "float32".
@@ -2185,16 +2187,27 @@ class PRelu(layers.Layer):
           inp_np = np.ones([5, 200, 100, 100]).astype('float32')
           with fluid.dygraph.guard():
               inp_np = to_variable(inp_np)
-              mode = 'channel'
-              prelu = fluid.PRelu(
-                 mode=mode,
-                 input_shape=inp_np.shape,
+              prelu0 = fluid.PRelu(
+                 mode='all',
                  param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(1.0)))
-              dy_rlt = prelu(inp_np)
+              dy_rlt0 = prelu0(inp_np)
+              prelu1 = fluid.PRelu(
+                 mode='channel',
+                 channel_or_input_shape=200,
+                 param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(1.0)))
+              dy_rlt1 = prelu1(inp_np)
+              prelu2 = fluid.PRelu(
+                 mode='element',
+                 channel_or_input_shape=inp_np.shape,
+                 param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(1.0)))
+              dy_rlt2 = prelu2(inp_np)
 
     """
 
-    def __init__(self, mode, input_shape=None, param_attr=None,
+    def __init__(self,
+                 mode,
+                 channel_or_input_shape=None,
+                 param_attr=None,
                  dtype='float32'):
         super(PRelu, self).__init__()
         self._mode = mode
@@ -2204,12 +2217,11 @@ class PRelu(layers.Layer):
         self._dtype = dtype
         self._alpha_shape = [1]
         if mode is not 'all':
-            assert input_shape is not None
-            input_shape = list(input_shape)
+            assert channel_or_input_shape is not None
             if self._mode == 'channel':
-                self._alpha_shape = [1, input_shape[1], 1, 1]
-            elif self._mode == 'element':
-                self._alpha_shape = input_shape
+                self._alpha_shape = [1, channel_or_input_shape, 1, 1]
+            else:
+                self._alpha_shape = list(channel_or_input_shape)
         self._alpha = self.create_parameter(
             attr=self._param_attr,
             shape=self._alpha_shape,
