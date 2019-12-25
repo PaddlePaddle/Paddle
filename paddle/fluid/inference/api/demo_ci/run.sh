@@ -16,7 +16,7 @@ if [ $2 == ON ]; then
   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${MKL_LIB}
 fi
 if [ $3 == ON ]; then
-  use_gpu_list='true false'
+  use_gpu_list='true'
 else
   use_gpu_list='false'
 fi
@@ -96,7 +96,7 @@ D
         --modeldir=$DATA_DIR/$vis_demo_name/model \
         --data=$DATA_DIR/$vis_demo_name/data.txt \
         --refer=$DATA_DIR/$vis_demo_name/result.txt \
-        --use_gpu=true
+        --use_gpu=$use_gpu
       if [ $? -ne 0 ]; then
         echo "vis demo $vis_demo_name runs fail."
         exit 1
