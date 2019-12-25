@@ -62,6 +62,7 @@ class TestConv2dTransposeMKLDNNOp(TestConv2dTransposeOp):
         self.groups = 1
 
     def setUp(self):
+        self.dtype = np.float32
         TestConv2dTransposeOp.setUp(self)
 
         output = self.outputs['Output']
