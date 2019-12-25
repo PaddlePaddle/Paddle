@@ -95,19 +95,6 @@ D
         --modeldir=$DATA_DIR/$vis_demo_name/model \
         --data=$DATA_DIR/$vis_demo_name/data.txt \
         --refer=$DATA_DIR/$vis_demo_name/result.txt \
-        --use_gpu=false
-      if [ $? -ne 0 ]; then
-        echo "vis demo $vis_demo_name runs fail."
-        exit 1
-      fi
-      echo ok
-       pwd
-      
-      echo $vis_demo_name $use_gpu $DATA_DIR
-      ./vis_demo \
-        --modeldir=$DATA_DIR/$vis_demo_name/model \
-        --data=$DATA_DIR/$vis_demo_name/data.txt \
-        --refer=$DATA_DIR/$vis_demo_name/result.txt \
         --use_gpu=true
       if [ $? -ne 0 ]; then
         echo "vis demo $vis_demo_name runs fail."
@@ -115,6 +102,31 @@ D
       fi
       echo ok
   done
+
+  # ---------vis_demo---------
+  rm -rf *
+  cmake .. -DPADDLE_LIB=${inference_install_dir} \
+    -DWITH_MKL=$TURN_ON_MKL \
+    -DDEMO_NAME=vis_demo \
+    -DWITH_GPU=$TEST_GPU_CPU \
+    -DWITH_STATIC_LIB=$WITH_STATIC_LIB
+  make -j
+  echo 1234
+    for vis_demo_name in $vis_demo_list; do
+      pwd
+      echo $vis_demo_name $use_gpu $DATA_DIR
+      ./vis_demo \
+        --modeldir=$DATA_DIR/$vis_demo_name/model \
+        --data=$DATA_DIR/$vis_demo_name/data.txt \
+        --refer=$DATA_DIR/$vis_demo_name/result.txt \
+        --use_gpu=false
+      if [ $? -ne 0 ]; then
+        echo "vis demo $vis_demo_name runs fail."
+        exit 1
+      fi
+      echo ok
+  done
+
 
   # --------tensorrt mobilenet------
   if [ $USE_TENSORRT == ON -a $TEST_GPU_CPU == ON ]; then
