@@ -14,6 +14,8 @@
 
 import unittest
 import numpy as np
+import sys
+sys.path.append("../")
 from op_test import OpTest
 
 
@@ -23,7 +25,7 @@ class TestSequencePadOp(OpTest):
         self.x_len_lod = [[2, 3, 4, 3]]
         self.pad_value = [1.0]
         self.padded_length = -1
-        self.dtype = 'float32'
+        self.dtype = 'float64'
 
     def set_data(self):
         x_data = np.random.uniform(0.1, 0.5, self.x_shape).astype(self.dtype)
@@ -84,7 +86,7 @@ class TestSequencePadOp2(TestSequencePadOp):
         self.x_len_lod = [[2, 3, 4, 3]]
         self.pad_value = [1.0, 2.0, 3.0, 4.0]
         self.padded_length = -1
-        self.dtype = 'float32'
+        self.dtype = 'float64'
 
 
 class TestSequencePadOp3(TestSequencePadOp):
@@ -93,7 +95,7 @@ class TestSequencePadOp3(TestSequencePadOp):
         self.x_len_lod = [[2, 3, 4, 3]]
         self.pad_value = [1.0]
         self.padded_length = 7
-        self.dtype = 'float32'
+        self.dtype = 'float64'
 
 
 class TestSequencePadOp4(TestSequencePadOp):
@@ -102,7 +104,7 @@ class TestSequencePadOp4(TestSequencePadOp):
         self.x_len_lod = [[2, 3, 4, 3]]
         self.pad_value = [1.0, 2.0, 3.0, 4.0]
         self.padded_length = 7
-        self.dtype = 'float32'
+        self.dtype = 'float64'
 
 
 class TestSequencePadOp5(TestSequencePadOp):
@@ -111,7 +113,7 @@ class TestSequencePadOp5(TestSequencePadOp):
         self.x_len_lod = [[2, 3, 4, 3]]
         self.pad_value = [1.0]
         self.padded_length = -1
-        self.dtype = 'float32'
+        self.dtype = 'float64'
 
 
 class TestSequencePadOp6(TestSequencePadOp):
@@ -120,7 +122,7 @@ class TestSequencePadOp6(TestSequencePadOp):
         self.x_len_lod = [[2, 3, 4, 3]]
         self.pad_value = [[1.0, 2.0], [3.0, 4.0]]
         self.padded_length = -1
-        self.dtype = 'float32'
+        self.dtype = 'float64'
 
 
 class TestSequencePadOp7(TestSequencePadOp):
@@ -129,7 +131,7 @@ class TestSequencePadOp7(TestSequencePadOp):
         self.x_len_lod = [[2, 3, 4, 3]]
         self.pad_value = [1.0]
         self.padded_length = 7
-        self.dtype = 'float32'
+        self.dtype = 'float64'
 
 
 class TestSequencePadOp8(TestSequencePadOp):
@@ -138,7 +140,7 @@ class TestSequencePadOp8(TestSequencePadOp):
         self.x_len_lod = [[0, 8, 0, 4, 0]]
         self.pad_value = [1.0]
         self.padded_length = 10
-        self.dtype = 'float32'
+        self.dtype = 'float64'
 
 
 if __name__ == '__main__':

@@ -298,12 +298,12 @@ if(WITH_MKLDNN)
   # build test binary to be used in subsequent tests
   inference_analysis_api_test_build(${QAT_IMG_CLASS_TEST_APP} ${QAT_IMG_CLASS_TEST_APP_SRC})
 
-  # ResNet50 FP32 vs. QAT INT8
-  set(QAT2_RESNET50_MODEL_DIR "${QAT_DATA_DIR}/ResNet50_qat_perf")
-  download_qat_data(${QAT2_RESNET50_MODEL_DIR} "ResNet50_qat_perf.tar.gz")
-  set(QAT2_INT8_RESNET50_MODEL_DIR "${QAT_DATA_DIR}/ResNet50_qat_perf_int8")
-  download_qat_data(${QAT2_INT8_RESNET50_MODEL_DIR} "ResNet50_qat_perf_int8.tar.gz")
-  inference_analysis_api_qat_test_run(test_analyzer_qat_performance_benchmark ${QAT_IMG_CLASS_TEST_APP} ${QAT2_RESNET50_MODEL_DIR}/ResNet50_qat_perf/float ${QAT2_INT8_RESNET50_MODEL_DIR}/ResNet50_qat_perf_int8 ${IMAGENET_DATA_PATH})
+  # MobileNet FP32 vs. QAT INT8
+  set(QAT2_MobileNet_MODEL_DIR "${QAT_DATA_DIR}/MobileNet_qat_perf")
+  download_qat_data(${QAT2_MobileNet_MODEL_DIR} "MobileNet_qat_perf.tar.gz")
+  set(QAT2_INT8_MobileNet_MODEL_DIR "${QAT_DATA_DIR}/MobileNet_qat_perf_int8")
+  download_qat_data(${QAT2_INT8_MobileNet_MODEL_DIR} "MobileNet_qat_perf_int8.tar.gz")
+  inference_analysis_api_qat_test_run(test_analyzer_qat_performance_benchmark ${QAT_IMG_CLASS_TEST_APP} ${QAT2_MobileNet_MODEL_DIR}/MobileNet_qat_perf/float ${QAT2_INT8_MobileNet_MODEL_DIR}/MobileNet_qat_perf_int8 ${IMAGENET_DATA_PATH})
 
 endif()
 

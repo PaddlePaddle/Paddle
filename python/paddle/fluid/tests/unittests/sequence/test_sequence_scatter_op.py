@@ -14,6 +14,8 @@
 
 import unittest
 import numpy as np
+import sys
+sys.path.append("../")
 from op_test import OpTest
 
 
@@ -24,12 +26,12 @@ class TestSequenceScatterOp(OpTest):
     def setUp(self):
         self.op_type = "sequence_scatter"
 
-        X_data = np.random.uniform(0.1, 1.0, [3, 6]).astype('float32')
+        X_data = np.random.uniform(0.1, 1.0, [3, 6]).astype('float64')
         Ids_data = np.array([[0], [1], [2], [5], [4], [3], [0], [1], [3], [2],
                              [5], [4]]).astype('int64')
         Ids_lod = self.init_lod()
 
-        Updates_data = np.random.uniform(0.1, 1.0, [12, 1]).astype('float32')
+        Updates_data = np.random.uniform(0.1, 1.0, [12, 1]).astype('float64')
         Updates_lod = Ids_lod
 
         Out_data = np.copy(X_data)
