@@ -41,36 +41,43 @@ ExternalProject_Add(
                      -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
 )
 
+set(ABSL_LIB_PREFIX ${CMAKE_STATIC_LIBRARY_PREFIX})
+
+if (WIN32)
+  set(ABSL_LIB_PREFIX "")
+endif (WIN32)
+
 add_library(absl_time INTERFACE)
-target_link_libraries(absl_time INTERFACE ${ABSEIL_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}absl_time${CMAKE_STATIC_LIBRARY_SUFFIX}
-                                          ${ABSEIL_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}absl_int128${CMAKE_STATIC_LIBRARY_SUFFIX}
-                                          ${ABSEIL_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}absl_time_zone${CMAKE_STATIC_LIBRARY_SUFFIX})
+target_link_libraries(absl_time INTERFACE ${ABSEIL_LIB_DIR}/${ABSL_LIB_PREFIX}absl_time${CMAKE_STATIC_LIBRARY_SUFFIX}
+                                          ${ABSEIL_LIB_DIR}/${ABSL_LIB_PREFIX}absl_int128${CMAKE_STATIC_LIBRARY_SUFFIX}
+                                          ${ABSEIL_LIB_DIR}/${ABSL_LIB_PREFIX}absl_time_zone${CMAKE_STATIC_LIBRARY_SUFFIX})
 ADD_DEPENDENCIES(absl_time extern_abseil)
 
 add_library(absl_hash INTERFACE)
-target_link_libraries(absl_hash INTERFACE ${ABSEIL_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}absl_hash${CMAKE_STATIC_LIBRARY_SUFFIX}
-                                          ${ABSEIL_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}absl_city${CMAKE_STATIC_LIBRARY_SUFFIX})
+target_link_libraries(absl_hash INTERFACE ${ABSEIL_LIB_DIR}/${ABSL_LIB_PREFIX}absl_hash${CMAKE_STATIC_LIBRARY_SUFFIX}
+                                          ${ABSEIL_LIB_DIR}/${ABSL_LIB_PREFIX}absl_city${CMAKE_STATIC_LIBRARY_SUFFIX})
 ADD_DEPENDENCIES(absl_hash extern_abseil)
 
 add_library(absl_synchronization INTERFACE)
-target_link_libraries(absl_synchronization INTERFACE ${ABSEIL_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}absl_synchronization${CMAKE_STATIC_LIBRARY_SUFFIX}
-                                                     ${ABSEIL_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}absl_symbolize${CMAKE_STATIC_LIBRARY_SUFFIX}
-                                                     ${ABSEIL_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}absl_demangle_internal${CMAKE_STATIC_LIBRARY_SUFFIX}
-                                                     ${ABSEIL_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}absl_stacktrace${CMAKE_STATIC_LIBRARY_SUFFIX}
-                                                     ${ABSEIL_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}absl_debugging_internal${CMAKE_STATIC_LIBRARY_SUFFIX}
-                                                     ${ABSEIL_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}absl_malloc_internal${CMAKE_STATIC_LIBRARY_SUFFIX}
-                                                     ${ABSEIL_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}absl_spinlock_wait${CMAKE_STATIC_LIBRARY_SUFFIX}
+target_link_libraries(absl_synchronization INTERFACE ${ABSEIL_LIB_DIR}/${ABSL_LIB_PREFIX}absl_synchronization${CMAKE_STATIC_LIBRARY_SUFFIX}
+                                                     ${ABSEIL_LIB_DIR}/${ABSL_LIB_PREFIX}absl_symbolize${CMAKE_STATIC_LIBRARY_SUFFIX}
+                                                     ${ABSEIL_LIB_DIR}/${ABSL_LIB_PREFIX}absl_demangle_internal${CMAKE_STATIC_LIBRARY_SUFFIX}
+                                                     ${ABSEIL_LIB_DIR}/${ABSL_LIB_PREFIX}absl_stacktrace${CMAKE_STATIC_LIBRARY_SUFFIX}
+                                                     ${ABSEIL_LIB_DIR}/${ABSL_LIB_PREFIX}absl_debugging_internal${CMAKE_STATIC_LIBRARY_SUFFIX}
+                                                     ${ABSEIL_LIB_DIR}/${ABSL_LIB_PREFIX}absl_malloc_internal${CMAKE_STATIC_LIBRARY_SUFFIX}
+                                                     ${ABSEIL_LIB_DIR}/${ABSL_LIB_PREFIX}absl_spinlock_wait${CMAKE_STATIC_LIBRARY_SUFFIX}
+                                                     ${ABSEIL_LIB_DIR}/${ABSL_LIB_PREFIX}absl_graphcycles_internal${CMAKE_STATIC_LIBRARY_SUFFIX}
                                                      absl_time)
 ADD_DEPENDENCIES(absl_synchronization extern_abseil)
 
 add_library(absl_flat_hash_map INTERFACE)
-target_link_libraries(absl_flat_hash_map INTERFACE  ${ABSEIL_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}absl_hashtablez_sampler${CMAKE_STATIC_LIBRARY_SUFFIX}
+target_link_libraries(absl_flat_hash_map INTERFACE  ${ABSEIL_LIB_DIR}/${ABSL_LIB_PREFIX}absl_hashtablez_sampler${CMAKE_STATIC_LIBRARY_SUFFIX}
                                                     absl_hash
                                                     absl_synchronization
-                                                    ${ABSEIL_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}absl_throw_delegate${CMAKE_STATIC_LIBRARY_SUFFIX}
-                                                    ${ABSEIL_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}absl_raw_logging_internal${CMAKE_STATIC_LIBRARY_SUFFIX}
-                                                    ${ABSEIL_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}absl_base${CMAKE_STATIC_LIBRARY_SUFFIX}
-                                                    ${ABSEIL_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}absl_exponential_biased${CMAKE_STATIC_LIBRARY_SUFFIX}
+                                                    ${ABSEIL_LIB_DIR}/${ABSL_LIB_PREFIX}absl_throw_delegate${CMAKE_STATIC_LIBRARY_SUFFIX}
+                                                    ${ABSEIL_LIB_DIR}/${ABSL_LIB_PREFIX}absl_raw_logging_internal${CMAKE_STATIC_LIBRARY_SUFFIX}
+                                                    ${ABSEIL_LIB_DIR}/${ABSL_LIB_PREFIX}absl_base${CMAKE_STATIC_LIBRARY_SUFFIX}
+                                                    ${ABSEIL_LIB_DIR}/${ABSL_LIB_PREFIX}absl_exponential_biased${CMAKE_STATIC_LIBRARY_SUFFIX}
                                                     )
 ADD_DEPENDENCIES(absl_flat_hash_map extern_abseil)
 
