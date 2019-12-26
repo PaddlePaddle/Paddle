@@ -16,10 +16,11 @@ from __future__ import print_function
 from six.moves import reduce
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
-from ..framework import convert_np_dtype_to_dtype_
+from ..framework import convert_np_dtype_to_dtype_, in_dygraph_mode
 from ..framework import Variable
 from ..initializer import Constant, force_init_on_cpu
 from ..core import VarDesc
+from .. import core
 from .layer_function_generator import templatedoc
 from ..data_feeder import check_type_and_dtype, check_type, check_dtype, convert_dtype
 import numpy
@@ -251,7 +252,16 @@ def concat(input, axis=0, name=None):
                 #  [11 12 13]
                 #  [14 15 16]]
     """
-    helper = LayerHelper('concat', **locals())
+
+    if in_dygraph_mode():
+        inputs = {'X': input}
+        if not isinstance(axis, int):
+            raise TypeError(
+                "Input 'axis' in concat must be int in Dygraph mode.")
+        attrs = {'axis': axis}
+        outs = core.ops.concat(inputs, attrs)
+        return outs['Out'][0]
+
     if not isinstance(input, list):
         warnings.warn(
             "The type of input in concat should be list, but received %s." %
@@ -270,6 +280,7 @@ def concat(input, axis=0, name=None):
     else:
         attrs['axis'] = axis
 
+    helper = LayerHelper('concat', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     helper.append_op(
         type='concat', inputs=inputs, outputs={'Out': [out]}, attrs=attrs)
