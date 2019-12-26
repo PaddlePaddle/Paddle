@@ -193,22 +193,21 @@ class GradientClipByNorm(BaseGradientClipAttr):
 
     .. math::
         Out =
-        \\left \{
-        \\begin{aligned}
-        & X & & if (norm(X) \\leq clip\_norm) \\\\
-        & \\frac{clip\_norm*X}{norm(X)} & & if (norm(X) > clip\_norm) \\\\
-        \\end{aligned}
-        \\right.
+      \\left \{
+      \\begin{aligned}
+      & X & & if (norm(X) \\leq clip\_norm) \\\\
+      & \\frac{clip\_norm*X}{norm(X)} & & if (norm(X) > clip\_norm) \\\\
+      \\end{aligned}
+      \\right.
 
 
     where :math:`norm(X)` represents the L2 norm of :math:`X`.
 
     .. math::
-        norm(X) = ( \\sum_{i=1}^{n}|x\_i|^2)^{ \\frac{1}{2}}
+      norm(X) = ( \\sum_{i=1}^{n}|x\_i|^2)^{ \\frac{1}{2}}
 
     Args:
         clip_norm(float): The maximum norm value
-
     Examples:
         .. code-block:: python
 
