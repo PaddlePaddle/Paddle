@@ -21,6 +21,7 @@ import functools
 from . import layers
 from . import framework
 from . import core
+from . import name_scope
 
 __all__ = [
     'set_gradient_clip',
