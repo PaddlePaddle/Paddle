@@ -2220,7 +2220,7 @@ class PRelu(layers.Layer):
             self._alpha_shape = [1, channel_or_input_shape, 1, 1]
         elif mode == 'element':
             assert isinstance(channel_or_input_shape, (list, tuple))
-            self._alpha_shape = list(channel_or_input_shape)
+            self._alpha_shape = [1] + list(channel_or_input_shape)[1:]
         else:
             raise ValueError('mode should be one of all, channel, element.')
         self._alpha = self.create_parameter(
