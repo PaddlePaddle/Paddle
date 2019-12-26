@@ -68,10 +68,12 @@ ELSE(NOT WIN32)
                             -DCMAKE_INSTALL_PREFIX=${CBLAS_INSTALL_DIR}
                             -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                             -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
+                            -DBUILD_SHARED_LIBS=ON
                             -DMSVC_STATIC_CRT=${MSVC_STATIC_CRT}
                             ${EXTERNAL_OPTIONAL_ARGS}
         CMAKE_CACHE_ARGS    -DCMAKE_INSTALL_PREFIX:PATH=${CBLAS_INSTALL_DIR}
                             -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
                             -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
         )
+    SET(OPENBLAS_SHARED_LIB  ${CBLAS_INSTALL_DIR}/bin/openblas${CMAKE_SHARED_LIBRARY_SUFFIX})
 ENDIF(NOT WIN32)
