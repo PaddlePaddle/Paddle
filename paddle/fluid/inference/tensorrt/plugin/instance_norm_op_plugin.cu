@@ -70,7 +70,9 @@ int InstanceNormPlugin::enqueue(int batch_size, const void *const *inputs,
   const auto &input_dims = this->getInputDims(0);
 
   PADDLE_ENFORCE_EQ(input_dims.nbDims, 3,
-                    "Input Dims should be 3 (except the batch)");
+                    platform::errors::InvalidArgument(
+                        "Input Dims should be 3 (except the batch), got %d",
+                        input_dims.nbDims));
   int n = batch_size;
   int c = input_dims.d[0];
   int h = input_dims.d[1];

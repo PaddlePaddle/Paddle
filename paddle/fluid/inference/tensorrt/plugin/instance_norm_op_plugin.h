@@ -59,9 +59,11 @@ class InstanceNormPlugin : public PluginTensorRT {
   explicit InstanceNormPlugin(const float eps, const std::vector<float> scale,
                               const std::vector<float> bias)
       : eps_(eps), scale_(scale), bias_(bias) {
-    PADDLE_ENFORCE_EQ(
-        scale.size(), bias.size(),
-        "The instanceNorm's scale and bias should be the same size.");
+    PADDLE_ENFORCE_EQ(scale.size(), bias.size(),
+                      platform::errors::InvalidArgument(
+                          "The instanceNorm's scale and bias should be the "
+                          "same size. Got scale size = %d, but bias size = %d",
+                          scale.size(), bias.size()));
   }
 
   // It was used for tensorrt deserialization.
@@ -73,12 +75,7 @@ class InstanceNormPlugin : public PluginTensorRT {
     DeserializeValue(&serialData, &serialLength, &bias_);
   }
 
-  ~InstanceNormPlugin() {
-    platform::dynload::cudnnDestroyTensorDescriptor(x_desc_);
-    platform::dynload::cudnnDestroyTensorDescriptor(y_desc_);
-    platform::dynload::cudnnDestroyTensorDescriptor(b_desc_);
-    platform::dynload::cudnnDestroy(handle_);
-  }
+  ~InstanceNormPlugin() {}
   int initialize() override;
 
   InstanceNormPlugin *clone() const override {
