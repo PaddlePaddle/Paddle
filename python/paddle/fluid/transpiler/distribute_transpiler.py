@@ -62,6 +62,13 @@ LR_SCHED_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.LRSched
 PRINT_LOG = False
 
 
+class Dist_Mode:
+    SYNC = 0
+    HALFASYNC = 1
+    ASYNC = 2
+    GEO = 3
+
+
 def log(*args):
     if PRINT_LOG:
         print(args)
@@ -298,6 +305,13 @@ class DistributeTranspiler(object):
 
         if self.config.split_method is None:
             self.config.split_method = RoundRobin
+
+        if config.sync_mode:
+            self.dist_mode = Dist_Mode.SYNC
+        elif config.runtime_split_send_recv:
+            self.dist_mode = Dist_Mode.ASYNC
+        else:
+            self.dist_mode = Dist_Mode.HALFASYNC
 
         global PRINT_LOG
         if self.config.print_log:
@@ -1309,7 +1323,7 @@ class DistributeTranspiler(object):
             "endpoint": endpoint,
             "pserver_id": self.pserver_endpoints.index(endpoint),
             "Fanin": self.trainer_num,
-            "sync_mode": self.sync_mode,
+            "dist_mode": self.dist_mode,
             "grad_to_block_id": grad_to_block_id,
             "sparse_grad_to_param": sparse_grad_to_param,
             "lr_decay_block_id": lr_decay_block_id,
