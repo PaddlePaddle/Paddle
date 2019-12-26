@@ -16,10 +16,12 @@ if [ $2 == ON ]; then
   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${MKL_LIB}
 fi
 if [ $3 == ON ]; then
-  use_gpu_list='false true'
+  use_gpu_list='true false'
 else
   use_gpu_list='false'
 fi
+
+with_static_lib_list="ON OFF"
 
 USE_TENSORRT=OFF
 if [ -d "$TENSORRT_INCLUDE_DIR" -a -d "$TENSORRT_LIB_DIR" ]; then
@@ -54,10 +56,9 @@ cd $current_dir
 mkdir -p build
 cd build
 
-for WITH_STATIC_LIB in ON; do
+for WITH_STATIC_LIB in $with_static_lib_list; do
 # TODO(Superjomn) reopen this
 # something wrong with the TensorArray reset.
-
 :<<D
   # -----simple_on_word2vec-----
   rm -rf *
