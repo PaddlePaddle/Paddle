@@ -59,28 +59,6 @@ cd build
 function run() {
 # TODO(Superjomn) reopen this
 # something wrong with the TensorArray reset.
-:<<D
-  # -----simple_on_word2vec-----
-  rm -rf *
-  cmake .. -DPADDLE_LIB=${inference_install_dir} \
-    -DWITH_MKL=$TURN_ON_MKL \
-    -DDEMO_NAME=simple_on_word2vec \
-    -DWITH_GPU=$TEST_GPU_CPU \
-    -DWITH_STATIC_LIB=$WITH_STATIC_LIB
-  make -j
-  word2vec_model=$DATA_DIR'/word2vec/word2vec.inference.model'
-  if [ -d $word2vec_model ]; then
-    for use_gpu in $use_gpu_list; do
-      ./simple_on_word2vec \
-        --dirname=$word2vec_model \
-        --use_gpu=$use_gpu
-      if [ $? -ne 0 ]; then
-        echo "simple_on_word2vec demo runs fail."
-        exit 1
-      fi
-    done
-  fi
-D
   # ---------vis_demo---------
   rm -rf *
   cmake .. -DPADDLE_LIB=${inference_install_dir} \
