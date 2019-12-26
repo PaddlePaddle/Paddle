@@ -16,7 +16,7 @@ if [ $2 == ON ]; then
   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${MKL_LIB}
 fi
 if [ $3 == ON ]; then
-  use_gpu_list='true false'
+  use_gpu_list='false true'
 else
   use_gpu_list='false'
 fi
