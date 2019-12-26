@@ -91,6 +91,7 @@ D
   make -j
   for use_gpu in $use_gpu_list; do
     for vis_demo_name in $vis_demo_list; do
+      echo $WITH_STATIC_LIB $use_gpu $vis_demo_name $DATA_DIR
       ./vis_demo \
         --modeldir=$DATA_DIR/$vis_demo_name/model \
         --data=$DATA_DIR/$vis_demo_name/data.txt \
@@ -100,6 +101,7 @@ D
         echo "vis demo $vis_demo_name runs fail."
         exit 1
       fi
+      echo ok
     done
   done
 
