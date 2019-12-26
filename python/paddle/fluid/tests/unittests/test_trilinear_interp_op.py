@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 
@@ -381,7 +381,6 @@ class TestTrilinearInterpCase1Uint8(TestTrilinearInterpOpUint8):
         self.align_mode = 1
 
 
-@skip_check_grad_ci(reason="int8 type only be used in test and inference.")
 class TestTrilinearInterpCase2Uint8(TestTrilinearInterpOpUint8):
     def init_test_case(self):
         self.interp_method = 'trilinear'
