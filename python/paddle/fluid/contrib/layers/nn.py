@@ -23,6 +23,7 @@ import os
 import inspect
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import utils
+from ... import unique_name
 
 __all__ = [
     'fused_elemwise_activation',
