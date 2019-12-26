@@ -111,7 +111,7 @@ no_grad.__doc__ = _no_grad_.__doc__
 def guard(place=None):
     """
     This context will create a dygraph context for dygraph to run, using python ``with`` statement.
-
+    test
     Parameters:
         place(fluid.CPUPlace or fluid.CUDAPlace, optional): Place to execute dygraph. 
             If None, the running place will be determined according to the way of paddle compilation. Default: None

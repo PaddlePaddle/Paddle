@@ -40,7 +40,7 @@ echo_list=()
 function check_approval(){
     person_num=`echo $@|awk '{for (i=2;i<=NF;i++)print $i}'`
     APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py $1 $person_num`
-    if [ "${APPROVALS}" == "FALSE" ]; then
+    if [[ "${APPROVALS}" == "FALSE" && "${echo_line}" != "" ]]; then
         add_failed "${failed_num}. ${echo_line}"
     fi
 }
@@ -61,6 +61,7 @@ api_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/flu
 if [ "$api_spec_diff" != "" ]; then
     echo_line="You must have one RD (XiaoguangHu01 or lanxianghit) and on TPM (saxon-zh or Boyan-Liu or swtkiwi) approval for the api change for the management reason of API interface.\n"
     check_approval 1 46782768 47554610
+    echo_line=""
     check_approval 1 2870059 2870059 27208573 
 fi
 
