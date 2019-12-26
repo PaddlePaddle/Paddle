@@ -28,6 +28,7 @@ from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
 seed = 100
 DATA_DIM = 28
 BATCH_SIZE = 1
+RUN_STEPS = 1
 
 
 class SimpleModel(BaseModel):
@@ -135,7 +136,7 @@ def train(self):
 
     loss = []
     for batch_id, data in enumerate(train_reader()):
-        if batch_id >= 1:
+        if batch_id >= RUN_STEPS:
             break
         local_loss, = exe.run(train_prog,
                               feed=feeder.feed(data),
@@ -145,48 +146,30 @@ def train(self):
     return loss
 
 
+def test(loss_type):
+    entry = Entry()
+    entry.emb_dim = DATA_DIM * DATA_DIM
+    entry.build_program = types.MethodType(build_program, entry)
+    entry.train = types.MethodType(train, entry)
+    entry.set_model(SimpleModel())
+    entry.set_loss_type(loss_type)
+    entry.set_train_batch_size(BATCH_SIZE)
+    entry.set_class_num(10)
+    loss = entry.train()
+    return loss
+
+
 if __name__ == "__main__":
-    entry = Entry()
-    entry.emb_dim = DATA_DIM * DATA_DIM
-    entry.build_program = types.MethodType(build_program, entry)
-    entry.train = types.MethodType(train, entry)
-    entry.set_model(SimpleModel())
-    entry.set_loss_type('arcface')
-    entry.set_train_batch_size(BATCH_SIZE)
-    entry.set_class_num(10)
-    loss_arcface = entry.train()
+    loss_arcface = test('arcface')
+    loss_distarcface = test('dist_arcface')
 
-    entry = Entry()
-    entry.emb_dim = DATA_DIM * DATA_DIM
-    entry.build_program = types.MethodType(build_program, entry)
-    entry.train = types.MethodType(train, entry)
-    entry.set_model(SimpleModel())
-    entry.set_loss_type('dist_arcface')
-    entry.set_train_batch_size(BATCH_SIZE)
-    entry.set_class_num(10)
-    loss_distarcface = entry.train()
-
-    entry = Entry()
-    entry.emb_dim = DATA_DIM * DATA_DIM
-    entry.build_program = types.MethodType(build_program, entry)
-    entry.train = types.MethodType(train, entry)
-    entry.set_model(SimpleModel())
-    entry.set_loss_type('softmax')
-    entry.set_train_batch_size(BATCH_SIZE)
-    entry.set_class_num(10)
-    loss_softmax = entry.train()
-
-    entry = Entry()
-    entry.emb_dim = DATA_DIM * DATA_DIM
-    entry.build_program = types.MethodType(build_program, entry)
-    entry.train = types.MethodType(train, entry)
-    entry.set_model(SimpleModel())
-    entry.set_loss_type('dist_softmax')
-    entry.set_train_batch_size(BATCH_SIZE)
-    entry.set_class_num(10)
-    loss_distsoftmax = entry.train()
+    loss_softmax = test('softmax')
+    loss_distsoftmax = test('dist_softmax')
 
     print("loss_arcface: ", loss_arcface)
     print("loss_distarcface: ", loss_distarcface)
     print("loss_softmax: ", loss_softmax)
     print("loss_distsoftmax: ", loss_distsoftmax)
+
+    assert np.allclose(loss_arcface, loss_distarcface, 1e-5)
+    assert np.allclose(loss_softmax, loss_distsoftmax, 1e-5)
