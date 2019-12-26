@@ -84,5 +84,6 @@ class TestSequenceScatterOpSeqLen0Case5(TestSequenceScatterOp):
         return [[0, 0, 120]]
 
 
+# run the uni tests
 if __name__ == "__main__":
     unittest.main()
