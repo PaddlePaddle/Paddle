@@ -280,7 +280,8 @@ class LayerHelperBase(object):
                          dtype,
                          is_bias=False,
                          default_initializer=None,
-                         stop_gradient=False):
+                         stop_gradient=False,
+                         type=core.VarDesc.VarType.LOD_TENSOR):
         """Create parameters for this layers.
 
            Args:
@@ -334,15 +335,17 @@ class LayerHelperBase(object):
             return self.main_program.global_block().create_parameter(
                 dtype=dtype,
                 shape=shape,
+                type=type,
                 stop_gradient=stop_gradient,
                 **attr._to_kwargs(with_initializer=True))
         else:
             self.startup_program.global_block().create_parameter(
                 dtype=dtype,
                 shape=shape,
+                type=type,
                 **attr._to_kwargs(with_initializer=True))
             return self.main_program.global_block().create_parameter(
-                dtype=dtype, shape=shape, **attr._to_kwargs())
+                dtype=dtype, shape=shape, type=type, **attr._to_kwargs())
 
     def create_variable_for_type_inference(self, dtype, stop_gradient=False):
         """Create a temporary variable that should be type inferred layer.

@@ -216,7 +216,8 @@ def monkey_patch_math_varbase():
 
         setattr(core.VarBase, method_name,
                 _elemwise_method_creator_(method_name, op_type, reverse,
-                                          scalar_method)),
+                                          scalar_method))
+
     # b = -a
     core.VarBase.__neg__ = _neg_
     core.VarBase.astype = astype

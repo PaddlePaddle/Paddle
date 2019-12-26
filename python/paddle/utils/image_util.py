@@ -34,7 +34,7 @@ def flip(im):
     """
     Return the flipped image.
     Flip an image along the horizontal direction.
-    im: input image, (H x W x K) ndarrays
+    im: input image, (K x H x W) ndarrays
     """
     if len(im.shape) == 3:
         return im[:, :, ::-1]
