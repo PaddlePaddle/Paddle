@@ -103,9 +103,7 @@ class FleetDistRunnerBase(object):
 
         strategy = self.generate_strategy(args)
 
-        inputs = self.inputs()
-        avg_cost = self.net(inputs)
-
+        avg_cost = self.net()
         optimizer = fluid.optimizer.SGD(LEARNING_RATE)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
@@ -126,15 +124,13 @@ class FleetDistRunnerBase(object):
 
         strategy = self.generate_strategy(args)
 
-        inputs = self.inputs()
-        self.reader = fluid.layers.create_py_reader_by_data(
-            capacity=64,
-            feed_list=inputs,
-            name='py_reader',
-            use_double_buffer=False)
-        inputs = fluid.layers.read_file(self.reader)
+        avg_cost = self.net()
 
-        avg_cost = self.net(inputs)
+        self.reader = fluid.io.PyReader(
+            feed_list=self.feeds,
+            capacity=64,
+            iterable=False,
+            use_double_buffer=False)
 
         optimizer = fluid.optimizer.SGD(LEARNING_RATE)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
@@ -142,11 +138,7 @@ class FleetDistRunnerBase(object):
 
         out = self.do_pyreader_training(fleet)
 
-    def inputs(self):
-        raise NotImplementedError(
-            "get inputs should be implemented by child classes.")
-
-    def net(self, inputs, batch_size=4, lr=0.01):
+    def net(self, batch_size=4, lr=0.01):
         raise NotImplementedError(
             "get_model should be implemented by child classes.")
 
@@ -252,11 +244,11 @@ class TestFleetBase(unittest.TestCase):
             envs['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
             python_path += " -m coverage run --branch -p"
 
-        tr_cmd = "{0} {1} --role trainer --endpoints {2} --current_id {{}} --trainers {3} --mode {4} --geo_sgd_need_push_nums {5} --reader {}".format(
+        tr_cmd = "{0} {1} --role trainer --endpoints {2} --current_id {{}} --trainers {3} --mode {4} --geo_sgd_need_push_nums {5} --reader {6}".format(
             python_path, model, self._ps_endpoints, self._trainers, self._mode,
             self._geo_sgd_need_push_nums, self._reader)
 
-        ps_cmd = "{0} {1} --role pserver --endpoints {2} --current_id {{}} --trainers {3} --mode {4} --geo_sgd_need_push_nums {5} --reader {}".format(
+        ps_cmd = "{0} {1} --role pserver --endpoints {2} --current_id {{}} --trainers {3} --mode {4} --geo_sgd_need_push_nums {5} --reader {6}".format(
             python_path, model, self._ps_endpoints, self._trainers, self._mode,
             self._geo_sgd_need_push_nums, self._reader)
 

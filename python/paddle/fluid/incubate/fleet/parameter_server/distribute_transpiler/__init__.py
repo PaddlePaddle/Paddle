@@ -76,8 +76,7 @@ class DistributedTranspiler(Fleet):
             need_communicator_flag = True
             self._communicator = Communicator(
                 self.main_program, self.vars_info,
-                fleet.worker_num(),
-                program_config.geo_sgd_need_push_nums,
+                fleet.worker_num(), program_config.geo_sgd_need_push_nums,
                 trainer_communicator_config.get_communicator_flags())
         elif isinstance(self._transpile_config, AsyncStrategy):
             need_communicator_flag = True
@@ -139,7 +138,8 @@ class DistributedTranspiler(Fleet):
         Returns:
             None
         """
-        if not self._transpile_config.sync_mode:
+        if isinstance(self._transpile_config, GeoStrategy) or isinstance(
+                self._transpile_config, AsyncStrategy):
             self._communicator.stop()
         self._executor.close()
         if isinstance(self._role_maker, MPISymetricRoleMaker):

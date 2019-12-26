@@ -32,7 +32,10 @@ fluid.default_main_program().random_seed = 1
 
 
 class TestDistCTR2x2(FleetDistRunnerBase):
-    def inputs(self):
+    def net(self, batch_size=4, lr=0.01):
+        dnn_input_dim, lr_input_dim, train_file_path = ctr_dataset_reader.prepare_data(
+        )
+        """ network definition """
         dnn_data = fluid.layers.data(
             name="dnn_data",
             shape=[-1, 1],
@@ -52,14 +55,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             lod_level=0,
             append_batch_size=False)
 
-        self.feeds = [dnn_data, lr_data, label]
-        return self.feeds
-
-    def net(self, inputs, batch_size=4, lr=0.01):
-        dnn_input_dim, lr_input_dim, train_file_path = ctr_dataset_reader.prepare_data(
-        )
-        """ network definition """
-        datas = inputs
+        datas = [dnn_data, lr_data, label]
 
         # build dnn model
         dnn_layer_dims = [128, 64, 32, 1]
@@ -104,6 +100,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         cost = fluid.layers.cross_entropy(input=predict, label=datas[2])
         avg_cost = fluid.layers.mean(x=cost)
 
+        self.feeds = datas
         self.train_file_path = train_file_path
         self.avg_cost = avg_cost
         self.predict = predict
@@ -140,7 +137,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                 ctr_dataset_reader.CtrReader()._reader_creator(filelist),
                 buf_size=batch_size * 100),
             batch_size=batch_size)
-        self.reader.decorate_paddle_reader(train_reader)
+        self.reader.decorate_sample_list_generator(train_reader)
 
         compiled_prog = fluid.compiler.CompiledProgram(
             fleet.main_program).with_data_parallel(
