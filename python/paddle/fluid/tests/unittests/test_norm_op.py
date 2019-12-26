@@ -63,8 +63,8 @@ class TestNormOp3(TestNormOp):
         self.epsilon = 1e-8
 
 
-@skip_check_grad_ci(reason="'check_grad' on large inputs is too slow, "
-                    + "however it is desirable to cover the forward pass")
+@skip_check_grad_ci(reason="'check_grad' on large inputs is too slow, " +
+                    "however it is desirable to cover the forward pass")
 class TestNormOp4(TestNormOp):
     def init_test_case(self):
         self.shape = [128, 1024, 14, 14]
@@ -75,8 +75,8 @@ class TestNormOp4(TestNormOp):
         pass
 
 
-@skip_check_grad_ci(reason="'check_grad' on large inputs is too slow, "
-                    + "however it is desirable to cover the forward pass")
+@skip_check_grad_ci(reason="'check_grad' on large inputs is too slow, " +
+                    "however it is desirable to cover the forward pass")
 class TestNormOp5(TestNormOp):
     def init_test_case(self):
         self.shape = [2048, 2048]
