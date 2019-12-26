@@ -468,7 +468,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   signal(SIGINT, SignalHandler::StopAndExit);
   signal(SIGTERM, SignalHandler::StopAndExit);
 
-  if (dist_mode == Dist_Mode::kSync) {
+  if (dist_mode == distributed::Dist_Mode::kSync) {
     // start the server listening after all member initialized.
     server_thread_.reset(new std::thread(RunServer, rpc_service_));
     VLOG(3) << "wait server thread to become ready...";
@@ -482,7 +482,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
     RunSyncLoop(&executor, program, &recv_scope, &dev_ctx,
                 prefetch_block_id_list, checkpoint_block_id);
   } else {
-    if (dist_mode == Dist_Mode::kGeo) {
+    if (dist_mode == distributed::Dist_Mode::kGeo) {
       distributed::AsyncSparseParamUpdateRecorder::Init(
           fan_in, sparse_grad_name_to_param_name);
     }
