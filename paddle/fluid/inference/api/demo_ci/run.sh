@@ -105,8 +105,8 @@ function run() {
     fi
   fi
 }
-WITH_STATIC_LIB=ON
-run
 WITH_STATIC_LIB=OFF
+run
+WITH_STATIC_LIB=ON
 run
 set +x
