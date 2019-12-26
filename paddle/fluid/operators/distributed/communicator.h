@@ -293,7 +293,7 @@ using SparseIdsMap =
 
 class AsyncCommunicator : public Communicator {
  public:
-  AsyncCommunicator() : Communicator() {};
+  AsyncCommunicator() : Communicator() {}
   explicit AsyncCommunicator(const std::map<std::string, int>& env_flags)
       : Communicator(env_flags) {}
   ~AsyncCommunicator();
@@ -342,7 +342,7 @@ class AsyncCommunicator : public Communicator {
 
 class GeoSgdCommunicator : public Communicator {
  public:
-  GeoSgdCommunicator() : Communicator() {};
+  GeoSgdCommunicator() : Communicator() {}
   explicit GeoSgdCommunicator(const std::map<std::string, int>& env_flags)
       : Communicator(env_flags) {}
   ~GeoSgdCommunicator();
