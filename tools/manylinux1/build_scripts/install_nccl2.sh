@@ -16,6 +16,7 @@ DIR="/nccl2"
 mkdir -p $DIR
 # we cached the nccl2 deb package in BOS, so we can download it with wget
 # install nccl2: http://docs.nvidia.com/deeplearning/sdk/nccl-install-guide/index.html#down
+
 wget -O --no-proxy $DIR/$DEB $URL
 
 cd $DIR && ar x $DEB && tar xf data.tar.xz
