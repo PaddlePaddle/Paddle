@@ -19,7 +19,7 @@ import numpy as np
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 import math
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 
 np.random.seed(100)
 
@@ -147,7 +147,7 @@ class TestHSigmoidOp(OpTest):
         self.op_type = "hierarchical_sigmoid"
         num_classes = 6
         feature_size = 8
-        batch_size = 4
+        batch_size = 15
         x = np.random.random((batch_size, feature_size)).astype("float32") * 2
         w = np.random.random(
             (num_classes - 1, feature_size)).astype("float32") * 2
@@ -165,6 +165,9 @@ class TestHSigmoidOp(OpTest):
         self.check_grad(['Bias', 'X', 'W'], ['Out'], no_grad_set=set('Label'))
 
 
+@skip_check_grad_ci(
+    reason="For 'TestHSigmoidOpSparse', check_grad is 'TestHSigmoidOpWithSparseGrad'."
+)
 class TestHSigmoidOpSparse(OpTest):
     def setUp(self):
         self.op_type = "hierarchical_sigmoid"

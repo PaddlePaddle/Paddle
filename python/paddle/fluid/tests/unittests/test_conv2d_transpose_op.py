@@ -108,6 +108,7 @@ def conv2dtranspose_forward_naive(input_, filter_, attrs):
 class TestConv2dTransposeOp(OpTest):
     def setUp(self):
         # init as conv transpose
+        self.dtype = np.float32
         self.is_test = False
         self.use_cudnn = False
         self.use_mkldnn = False
@@ -159,26 +160,15 @@ class TestConv2dTransposeOp(OpTest):
                 max_relative_error=0.02,
                 no_grad_set=set(['Input']))
         else:
-            self.check_grad(
-                ['Filter'],
-                'Output',
-                max_relative_error=0.02,
-                no_grad_set=set(['Input']))
+            self.check_grad(['Filter'], 'Output', no_grad_set=set(['Input']))
 
     def test_check_grad_no_filter(self):
         if self.use_cudnn:
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, ['Input'],
-                'Output',
-                max_relative_error=0.02,
-                no_grad_set=set(['Filter']))
+                place, ['Input'], 'Output', no_grad_set=set(['Filter']))
         else:
-            self.check_grad(
-                ['Input'],
-                'Output',
-                max_relative_error=0.02,
-                no_grad_set=set(['Filter']))
+            self.check_grad(['Input'], 'Output', no_grad_set=set(['Filter']))
 
     def test_check_grad(self):
         if self.use_cudnn:

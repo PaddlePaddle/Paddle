@@ -133,7 +133,7 @@ cc_library(op_kernel_type SRCS op_kernel_type.cc DEPS device_context place)
 cc_library(unused_var_check SRCS unused_var_check.cc DEPS glog no_need_buffer_vars_inference)
 
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog trainer_desc_proto data_feed_proto
-    shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack unused_var_check)
+    shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack unused_var_check nan_inf_utils)
 
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
 cc_test(operator_exception_test SRCS operator_exception_test.cc DEPS operator op_registry device_context)
@@ -262,7 +262,8 @@ message(STATUS "branch: ${PADDLE_BRANCH}")
 
 configure_file(commit.h.in commit.h)
 
-set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto)
+
+set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer)
 if(WIN32)
   sep_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
 else(WIN32)
@@ -270,7 +271,9 @@ else(WIN32)
 endif(WIN32)
 
 cc_library(paddle_framework_shared
-    SHARED SRCS executor.cc operator.cc ${CMAKE_CURRENT_SOURCE_DIR}/c/c_api.cc
+    SHARED SRCS executor.cc operator.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/c/c_api.cc
+    ${CMAKE_SOURCE_DIR}/paddle/fluid/imperative/layer.cc
     DEPS ${FLUID_FRAMEWORK_MODULES})
 get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
 set_target_properties(paddle_framework_shared PROPERTIES OUTPUT_NAME paddle_framework)

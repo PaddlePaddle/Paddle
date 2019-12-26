@@ -99,4 +99,6 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(top_k,
                        ops::TopkKernel<paddle::platform::CPUPlace, float>,
-                       ops::TopkKernel<paddle::platform::CPUPlace, double>);
+                       ops::TopkKernel<paddle::platform::CPUPlace, double>,
+                       ops::TopkKernel<paddle::platform::CPUPlace, int>,
+                       ops::TopkKernel<paddle::platform::CPUPlace, int64_t>);
