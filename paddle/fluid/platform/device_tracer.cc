@@ -446,8 +446,10 @@ class DeviceTracerImpl : public DeviceTracer {
       auto c = correlations_.find(r.correlation_id);
       if (c != correlations_.end() && c->second != nullptr) {
         Event *e = c->second;
-        if (e->fevent()) {
-          e->fevent()->AddCudaElapsedTime(r.start_ns, r.end_ns);
+        Event *fe = e->fevent();
+        while (fe) {
+          fe->AddCudaElapsedTime(r.start_ns, r.end_ns);
+          fe = fe->fevent();
         }
         e->AddCudaElapsedTime(r.start_ns, r.end_ns);
       }
@@ -456,8 +458,10 @@ class DeviceTracerImpl : public DeviceTracer {
       auto c = correlations_.find(r.correlation_id);
       if (c != correlations_.end() && c->second != nullptr) {
         Event *e = c->second;
-        if (e->fevent()) {
-          e->fevent()->AddCudaElapsedTime(r.start_ns, r.end_ns);
+        Event *fe = e->fevent();
+        while (fe) {
+          fe->AddCudaElapsedTime(r.start_ns, r.end_ns);
+          fe = fe->fevent();
         }
         e->AddCudaElapsedTime(r.start_ns, r.end_ns);
       }
