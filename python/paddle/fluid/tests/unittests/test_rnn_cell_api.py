@@ -47,7 +47,7 @@ class TestLSTMCell(unittest.TestCase):
         pre_cell = fluid.data(
             name='pre_cell', shape=[None, self.hidden_size], dtype='float32')
 
-        cell = LSTMCell(self.hidden_size)
+        cell = LSTMCell(self.hidden_size, name='lstm_cell')
         lstm_hidden_new, lstm_states_new = cell(inputs, [pre_hidden, pre_cell])
 
         lstm_unit = contrib.layers.rnn_impl.BasicLSTMUnit(
@@ -69,8 +69,8 @@ class TestLSTMCell(unittest.TestCase):
         pre_cell_np = np.random.uniform(
             -0.1, 0.1, (self.batch_size, self.hidden_size)).astype('float32')
 
-        param_names = [["LSTMCell_0.w_0", "basic_lstm_0.w_0"],
-                       ["LSTMCell_0.b_0", "basic_lstm_0.b_0"]]
+        param_names = [["lstm_cell_0.w_0", "basic_lstm_0.w_0"],
+                       ["lstm_cell_0.b_0", "basic_lstm_0.b_0"]]
 
         for names in param_names:
             param = np.array(fluid.global_scope().find_var(names[0]).get_tensor(
@@ -164,7 +164,7 @@ class TestRnn(unittest.TestCase):
             name="sequence_length", shape=[None], dtype='int64')
 
         inputs_dynamic_rnn = layers.transpose(inputs_basic_lstm, perm=[1, 0, 2])
-        cell = LSTMCell(self.hidden_size, name="LSTMCell_for_rnn")
+        cell = LSTMCell(self.hidden_size, name="lstm_cell_for_rnn")
         output, final_state = dynamic_rnn(
             cell=cell,
             inputs=inputs_dynamic_rnn,
@@ -195,8 +195,10 @@ class TestRnn(unittest.TestCase):
         pre_cell_np = np.random.uniform(
             -0.1, 0.1, (self.batch_size, self.hidden_size)).astype('float32')
 
-        param_names = [["LSTMCell_for_rnn_0.w_0", "basic_lstm_layers_0_0.w_0"],
-                       ["LSTMCell_for_rnn_0.b_0", "basic_lstm_layers_0_0.b_0"]]
+        param_names = [
+            ["lstm_cell_for_rnn_0.w_0", "basic_lstm_layers_0_0.w_0"],
+            ["lstm_cell_for_rnn_0.b_0", "basic_lstm_layers_0_0.b_0"]
+        ]
 
         for names in param_names:
             param = np.array(fluid.global_scope().find_var(names[0]).get_tensor(

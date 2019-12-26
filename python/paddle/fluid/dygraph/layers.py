@@ -177,6 +177,30 @@ class Layer(core.Layer):
         return ret
 
     def named_parameters(self, prefix='', include_sublayers=True):
+        """
+        Returns an iterator over all parameters in the Layer, yielding tuple of name and parameter.
+
+        Parameters:
+            prefix(str, optional): Prefix to prepend to all parameter names. Default: ''.
+            include_sublayers(bool, optional): Whether include the parameters of sublayers.
+                If True, also include the named parameters from sublayers. Default: True.
+
+        Yields:
+            (string, Parameter): Tuple of name and Parameter
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                with fluid.dygraph.guard():
+                    fc1 = fluid.Linear(10, 3)
+                    fc2 = fluid.Linear(3, 10, bias_attr=False)
+                    model = fluid.dygraph.Sequential(fc1, fc2)
+                    for name, param in model.named_parameters():
+                        print(name, param)
+
+        """
         params_set = set()
         named_sublayers = self.named_sublayers(
             prefix=prefix,
@@ -192,10 +216,36 @@ class Layer(core.Layer):
                 yield name, param
 
     def named_sublayers(self,
-                        layers_set=None,
                         prefix='',
                         include_sublayers=True,
-                        include_self=False):
+                        include_self=False,
+                        layers_set=None):
+        """
+        Returns an iterator over all sublayers in the Layer, yielding tuple of name and sublayer.
+        The duplicate sublayer will only be yielded once.
+
+        Parameters:
+            prefix(str, optional): Prefix to prepend to all parameter names. Default: ''.
+            include_sublayers(bool, optional): Whether include the sublayers. Default: True.
+            include_self(bool, optional): Whether include the Layer itself. Default: False.
+            layers_set(set, optioanl): The set to record duplicate sublayers. Default: None.
+
+        Yields:
+            (string, Layer): Tuple of name and Layer
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                with fluid.dygraph.guard():
+                    fc1 = fluid.Linear(10, 3)
+                    fc2 = fluid.Linear(3, 10, bias_attr=False)
+                    model = fluid.dygraph.Sequential(fc1, fc2)
+                    for prefix, layer in model.named_sublayers():
+                        print(prefix, layer)
+
+        """
         if layers_set is None:
             layers_set = set()
         if include_self and self not in layers_set:
