@@ -262,10 +262,10 @@ void MatMulWithHeadQK(const platform::CUDADeviceContext &context, int head_num,
   int block = seq_len;
 
   // Align block to 32, also limit seq_len to max block size.
-  PADDLE_ENFORCE_LE(seq_len, 1024,
-                    platform::errors::InvalidArgument("seq_len should <= 1024, "
-                                                      "but seq_len is:%d",
-                                                      seq_len));
+  PADDLE_ENFORCE_LE(seq_len, 1024, platform::errors::InvalidArgument(
+                                       "seq_len should <= 1024, "
+                                       "but received seq_len is:%d",
+                                       seq_len));
   if (seq_len <= 32)
     block = 32;
   else if (seq_len > 32 && seq_len <= 64)
