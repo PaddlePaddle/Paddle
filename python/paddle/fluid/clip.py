@@ -208,6 +208,7 @@ class GradientClipByNorm(BaseGradientClipAttr):
 
     Args:
         clip_norm(float): The maximum norm value
+
     Examples:
         .. code-block:: python
 
@@ -303,7 +304,6 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
         group_name (str, optional): The group name for this clip.
 
     Examples:
-
         .. code-block:: python
             import paddle.fluid as fluid
             import paddle.fluid.core as core
