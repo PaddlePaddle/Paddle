@@ -19,6 +19,7 @@ list(APPEND MIXED_DIST_TEST_OPS test_recv_save_op)
 list(APPEND MIXED_DIST_TEST_OPS test_transpiler_ops)
 list(APPEND MIXED_DIST_TEST_OPS test_lookup_remote_table_op)
 list(APPEND MIXED_DIST_TEST_OPS test_launch)
+list(APPEND MIXED_DIST_TEST_OPS test_plsc)
 list(APPEND MIXED_DIST_TEST_OPS test_launch_ps)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
@@ -272,6 +273,8 @@ if(WITH_DISTRIBUTE)
         if(WITH_GPU)
             # NOTE. test_launch only work in gpu collective mode
             bash_test_modules(test_launch MODULES test_launch.sh)
+            # NOTE. test_plsc only work in gpu collective mode
+            bash_test_modules(test_plsc MODULES test_plsc.sh)
         endif()
         bash_test_modules(test_launch_ps MODULES test_launch_ps.sh)
 
