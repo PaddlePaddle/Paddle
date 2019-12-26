@@ -1351,16 +1351,18 @@ def less_than(x, y, force_cpu=None, cond=None):
 
 
 @templatedoc()
-def less_equal(x, y, cond=None):
+def less_equal(x, y, cond=None, force_cpu=None):
     """
     This OP returns the truth value of :math:`x <= y` elementwise, which is equivalent function to the overloaded operator `<=`.
 
     Args:
-        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
+        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
         y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
         cond(Variable, optional): If is :attr:`None`, the op will create a variable as output tensor, the input shape and data type of \
             this tensor is the same as input :attr:`x`. If is not :attr:`None`, the op will set the variable as output tensor, the input shape \
             and data type of this tensor should be the same as input :attr:`x`. Default value is :attr:`None`.
+        force_cpu(bool, optional): Whether force to store the output tensor in CPU. If :attr:`force_cpu` is False,
+            the output tensor will be stored in running device memory. The defalut value is None, the output tensor will stored in the CPU memory.
 
     Returns:
         Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x`.
@@ -1372,9 +1374,11 @@ def less_equal(x, y, cond=None):
           import numpy as np
           label = fluid.layers.assign(np.array([1, 3], dtype='int32'))
           limit = fluid.layers.assign(np.array([1, 2], dtype='int32'))
+          out_cond =fluid.data(name="input1", shape=[2], dtype='bool')
           out = fluid.layers.less_equal(x=label, y=limit) #out=[True, False]
-          out1 = label<= limit #out1=[True, False]
-
+          out1 = fluid.layers.less_equal(x=label, y=limit, cond=out_cond) #out1=[True, False], out_cond=[True, False]
+          out2 = fluid.layers.less_equal(x=label, y=limit, force_cpu=False) #out2=[True, False]
+          out3 = label<= limit #out3=[True, False]
     """
     helper = LayerHelper("less_equal", **locals())
     if cond is None:
@@ -1382,7 +1386,9 @@ def less_equal(x, y, cond=None):
         cond.stop_gradient = True
 
     attrs = dict()
-    if force_init_on_cpu():
+    if force_cpu is not None:
+        attrs['force_cpu'] = force_cpu
+    elif force_init_on_cpu():
         attrs['force_cpu'] = force_init_on_cpu()
 
     helper.append_op(
@@ -1395,16 +1401,18 @@ def less_equal(x, y, cond=None):
 
 
 @templatedoc()
-def greater_than(x, y, cond=None):
+def greater_than(x, y, cond=None, force_cpu=None):
     """
     This OP returns the truth value of :math:`x > y` elementwise, which is equivalent function to the overloaded operator `>`.
-
+    
     Args:
         x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
         y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
         cond(Variable, optional): If is :attr:`None`, the op will create a variable as output tensor, the shape and data type of this \
             tensor is the same as input :attr:`x` . If is not :attr:`None`, the op will set the variable as output tensor, the shape and data type \
             of this tensor should be the same as input :attr:`x` . Default value is :attr:`None`.
+        force_cpu(bool, optional): Whether force to store the output tensor in CPU. If :attr:`force_cpu` is False, 
+            the output tensor will be stored in running device memory. The defalut value is None, the output tensor will stored in the CPU memory.
 
     Returns:
         Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x` .
@@ -1416,8 +1424,11 @@ def greater_than(x, y, cond=None):
           import numpy as np
           label = fluid.layers.assign(np.array([2, 3], dtype='int32'))
           limit = fluid.layers.assign(np.array([3, 2], dtype='int32'))
+          out_cond =fluid.data(name="input1", shape=[2], dtype='bool')
           out = fluid.layers.greater_than(x=label, y=limit) #out=[False, True]
-          out1 = label > limit #out1=[False, True]
+          out1 = fluid.layers.greater_than(x=label, y=limit, cond=out_cond) #out1=[False, True], out_cond=[False, True]
+          out2 = fluid.layers.greater_than(x=label, y=limit, force_cpu=False) #out2=[False, True]
+          out3 = label > limit #out3=[False, True]
     """
     helper = LayerHelper("greater_than", **locals())
     if cond is None:
@@ -1425,7 +1436,9 @@ def greater_than(x, y, cond=None):
         cond.stop_gradient = True
 
     attrs = dict()
-    if force_init_on_cpu():
+    if force_cpu is not None:
+        attrs['force_cpu'] = force_cpu
+    elif force_init_on_cpu():
         attrs['force_cpu'] = force_init_on_cpu()
 
     helper.append_op(
@@ -1438,16 +1451,18 @@ def greater_than(x, y, cond=None):
 
 
 @templatedoc()
-def greater_equal(x, y, cond=None):
+def greater_equal(x, y, cond=None, force_cpu=None):
     """
     This OP returns the truth value of :math:`x >= y` elementwise, which is equivalent function to the overloaded operator `>=`.
-
+    
     Args:
         x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
         y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
         cond(Variable, optional): If is :attr:`None` , the op will create a variable as output tensor, the shape and data type of this \
             tensor is the same as input :attr:`x`. If is not :attr:`None` , the op will set the variable as output tensor, the shape and data \
             type of this tensor is the same as input :attr:`x`. Default value is :attr:`None`.
+        force_cpu(bool, optional): Whether force to store the output tensor in CPU. If :attr:`force_cpu` is False, 
+            the output tensor will be stored in running device memory. The defalut value is None, the output tensor will stored in the CPU memory.
 
     Returns:
         Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x`.
@@ -1457,12 +1472,13 @@ def greater_equal(x, y, cond=None):
 
           import paddle.fluid as fluid
           import numpy as np
-
           label = fluid.layers.assign(np.array([2, 2], dtype='int32'))
           limit = fluid.layers.assign(np.array([2, 3], dtype='int32'))
+          out_cond =fluid.data(name="input1", shape=[2], dtype='bool')
           out = fluid.layers.greater_equal(x=label, y=limit) #out=[True, False]
-          out_1 = label >= limit #out1=[True, False]
-
+          out1 = fluid.layers.greater_equal(x=label, y=limit, cond=out_cond) #out1=[True, False], out_cond=[True, False]
+          out2 = fluid.layers.greater_equal(x=label, y=limit, force_cpu=False) #out2=[True, False]
+          out3 = label >= limit #out3=[True, False]
     """
     helper = LayerHelper("greater_equal", **locals())
     if cond is None:
@@ -1470,7 +1486,9 @@ def greater_equal(x, y, cond=None):
         cond.stop_gradient = True
 
     attrs = dict()
-    if force_init_on_cpu():
+    if force_cpu is not None:
+        attrs['force_cpu'] = force_cpu
+    elif force_init_on_cpu():
         attrs['force_cpu'] = force_init_on_cpu()
 
     helper.append_op(
@@ -1482,7 +1500,7 @@ def greater_equal(x, y, cond=None):
     return cond
 
 
-def equal(x, y, cond=None):
+def equal(x, y, cond=None, force_cpu=None):
     """
     This layer returns the truth value of :math:`x == y` elementwise.
 
@@ -1492,6 +1510,8 @@ def equal(x, y, cond=None):
         cond(Variable, optional): Optional output which can be any created 
             Variable that meets the requirements to store the result of *equal*.
             if cond is None, a new Varibale will be created to store the result.
+        force_cpu(bool, optional): Whether force to store the output tensor in CPU. If :attr:`force_cpu` is False, 
+            the output tensor will be stored in running device memory. The defalut value is None, the output tensor will stored in the CPU memory.
 
     Returns:
         Variable: output Tensor, it's shape is the same as the input's Tensor,
@@ -1505,22 +1525,30 @@ def equal(x, y, cond=None):
           out_cond =fluid.data(name="input1", shape=[2], dtype='bool')
           label = fluid.layers.assign(np.array([3, 3], dtype="int32"))
           limit = fluid.layers.assign(np.array([3, 2], dtype="int32"))
-          label_cond = fluid.layers.assign(np.array([1, 2], dtype="int32"))
-          out1 = fluid.layers.equal(x=label,y=limit) #out1=[True, False]
-          out2 = fluid.layers.equal(x=label_cond,y=limit, cond=out_cond) #out2=[False, True] out_cond=[False, True]
+          out0 = fluid.layers.equal(x=label,y=limit) #out1=[True, False]
+          out1 = fluid.layers.equal(x=label,y=limit, cond=out_cond) #out2=[True, False] out_cond=[True, False]
+          out2 = fluid.layers.equal(x=label,y=limit,force_cpu=False) #out3=[True, False]
+          out3 = label == limit # out3=[True, False] 
     """
     helper = LayerHelper("equal", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
         cond.stop_gradient = True
 
+    attrs = dict()
+    if force_cpu is not None:
+        attrs['force_cpu'] = force_cpu
+    elif force_init_on_cpu():
+        attrs['force_cpu'] = force_init_on_cpu()
     helper.append_op(
         type='equal', inputs={'X': [x],
-                              'Y': [y]}, outputs={'Out': [cond]})
+                              'Y': [y]}, 
+                             outputs={'Out': [cond]},
+                             attrs=attrs)
     return cond
 
 
-def not_equal(x, y, cond=None):
+def not_equal(x, y, cond=None, force_cpu=None):
     """
     This OP returns the truth value of :math:`x != y` elementwise, which is equivalent function to the overloaded operator `!=`.
 
@@ -1530,27 +1558,41 @@ def not_equal(x, y, cond=None):
         cond(Variable, optional): If is :attr:`None`, the op will create a variable as output tensor, the shape and data type of this \
              tensor is the same as input :attr:`x`. If is not :attr:`None`, the op will set the variable as output tensor, the shape and data \
              type of this tensor should be the same as input :attr:`x`. Default value is :attr:`None`.
-
+        force_cpu(bool, optional): Whether force to store the output tensor in CPU. If :attr:`force_cpu` is False, 
+            the output tensor will be stored in running device memory. The defalut value is None, the output tensor will stored in the CPU memory.
+    
     Returns:
         Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x`.
-
+    
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
           
-          label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-          limit = fluid.layers.fill_constant(shape=[1], value=1, dtype='int64')
-          out = fluid.layers.not_equal(x=label, y=limit)
+          label = fluid.layers.assign(np.array([3, 3], dtype="int32"))
+          limit = fluid.layers.assign(np.array([3, 2], dtype="int32"))
+          out_cond = fluid.layers.assign(np.array([1, 2], dtype="int32"))
+          out = fluid.layers.not_equal(x=label, y=limit) # out=[False, True]
+          out1 = fluid.layers.not_equal(x=label, y=limit, cond=out_cond) #out1=[False, True] out_cond=[False, True]
+          out2 = fluid.layers.not_equal(x=label, y=limit, force_cpu=False) #out2=[False, True]
+          out3 = label != limit #out3=[False, True] 
     """
     helper = LayerHelper("not_equal", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
         cond.stop_gradient = True
 
+    attrs = dict()
+    if force_cpu is not None:
+        attrs['force_cpu'] = force_cpu
+    elif force_init_on_cpu():
+        attrs['force_cpu'] = force_init_on_cpu()
+
     helper.append_op(
         type='not_equal', inputs={'X': [x],
-                                  'Y': [y]}, outputs={'Out': [cond]})
+                                  'Y': [y]}, 
+                                  outputs={'Out': [cond]},
+                                  attrs=attrs)
     return cond
 
 
