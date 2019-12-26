@@ -27,6 +27,8 @@ _supported_int_dtype_ = [
     core.VarDesc.VarType.INT64,
 ]
 
+compare_ops = ['__eq__', '__ne__', '__lt__', '__le__', '__gt__', '__ge__']
+
 
 def monkey_patch_variable():
     def unique_tmp_name():
@@ -224,7 +226,12 @@ def monkey_patch_variable():
                 self = other_var
                 other_var = tmp
 
-            out = create_new_tmp_var(current_block(self), dtype=lhs_dtype)
+            # NOTE(zhiqiu): the output of compare operator should be bool.
+            if method_name in compare_ops:
+                out = create_new_tmp_var(current_block(self), dtype="bool")
+            else:
+                out = create_new_tmp_var(current_block(self), dtype=lhs_dtype)
+
             axis = -1
             if other_var.shape[0] == -1:
                 axis = 0
@@ -278,6 +285,7 @@ def monkey_patch_variable():
         setattr(Variable, method_name,
                 _elemwise_method_creator_(method_name, op_type, reverse,
                                           scalar_method))
+
     # b = -a
     Variable.__neg__ = _neg_
     Variable.astype = astype
