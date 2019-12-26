@@ -38,8 +38,8 @@ namespace distributed {
 
 class RequestSendHandler final : public RequestHandler {
  public:
-  explicit RequestSendHandler(int dist_mode, bool enable_dc_asgd = false)
-      : RequestHandler(dist_mode) {
+  explicit RequestSendHandler(int training_mode, bool enable_dc_asgd = false)
+      : RequestHandler(training_mode) {
     enable_dc_asgd_ = enable_dc_asgd;
   }
   virtual ~RequestSendHandler() {}
@@ -54,8 +54,8 @@ class RequestSendHandler final : public RequestHandler {
 
 class RequestGetHandler final : public RequestHandler {
  public:
-  explicit RequestGetHandler(int dist_mode, bool enable_dc_asgd = false)
-      : RequestHandler(dist_mode) {
+  explicit RequestGetHandler(int training_mode, bool enable_dc_asgd = false)
+      : RequestHandler(training_mode) {
     enable_dc_asgd_ = enable_dc_asgd;
   }
   virtual ~RequestGetHandler() {}
@@ -89,7 +89,8 @@ static inline void BuildVar(const std::string& param_name,
 
 class RequestPrefetchHandler final : public RequestHandler {
  public:
-  explicit RequestPrefetchHandler(int dist_mode) : RequestHandler(dist_mode) {}
+  explicit RequestPrefetchHandler(int training_mode)
+      : RequestHandler(training_mode) {}
   virtual ~RequestPrefetchHandler() {}
   bool Handle(const std::string& varname, framework::Scope* scope,
               framework::Variable* var, framework::Variable** outvar,
@@ -113,8 +114,8 @@ class RequestPrefetchHandler final : public RequestHandler {
 
 class RequestCheckpointHandler final : public RequestHandler {
  public:
-  explicit RequestCheckpointHandler(int dist_mode, int checkpoint_notify_id)
-      : RequestHandler(dist_mode) {
+  explicit RequestCheckpointHandler(int training_mode, int checkpoint_notify_id)
+      : RequestHandler(training_mode) {
     this->checkpoint_notify_id = checkpoint_notify_id;
   }
   virtual ~RequestCheckpointHandler() {}
@@ -129,8 +130,8 @@ class RequestCheckpointHandler final : public RequestHandler {
 
 class RequestNotifyHandler final : public RequestHandler {
  public:
-  explicit RequestNotifyHandler(int dist_mode, int lr_decay_block_id)
-      : RequestHandler(dist_mode) {
+  explicit RequestNotifyHandler(int training_mode, int lr_decay_block_id)
+      : RequestHandler(training_mode) {
     this->lr_decay_block_id = lr_decay_block_id;
   }
   virtual ~RequestNotifyHandler() {}

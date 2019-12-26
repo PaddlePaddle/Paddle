@@ -92,7 +92,7 @@ class RequestSend final : public RequestBase {
       : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
     request_.reset(new GRPCVariableResponse(request_handler->scope(),
                                             request_handler->dev_ctx(),
-                                            request_handler->dist_mode()));
+                                            request_handler->training_mode()));
     int method_id = static_cast<int>(distributed::GrpcMethod::kSendVariable);
     service_->RequestAsyncUnary(
         method_id, &ctx_, request_.get(), &responder_, cq_, cq_,
@@ -403,7 +403,7 @@ class RequestNotify final : public RequestBase {
       : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
     request_.reset(new GRPCVariableResponse(request_handler->scope(),
                                             request_handler->dev_ctx(),
-                                            request_handler->dist_mode()));
+                                            request_handler->training_mode()));
     int method_id = static_cast<int>(distributed::GrpcMethod::kRequestNotify);
     service_->RequestAsyncUnary(
         method_id, &ctx_, request_.get(), &responder_, cq_, cq_,

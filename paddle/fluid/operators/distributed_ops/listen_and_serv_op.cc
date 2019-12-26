@@ -338,7 +338,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   auto &dev_ctx = *pool.Get(dev_place);
   framework::Scope &recv_scope = scope.NewScope();
 
-  int dist_mode = Attr<int>("dist_mode");
+  int training_mode = Attr<int>("training_mode");
   bool dc_sgd = Attr<bool>("dc_asgd");
   auto fan_in = Attr<int>("Fanin");
   auto pserver_id = Attr<int>("pserver_id");
@@ -349,7 +349,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   int checkpoint_block_id = Attr<int>(kCheckpointBlockId);
   int lr_decay_block_id = Attr<int>(kLRDecayBlockId);
 
-  VLOG(4) << "pserver_id: " << pserver_id << ", dist_mode:" << dist_mode
+  VLOG(4) << "pserver_id: " << pserver_id << ", training_mode:" << training_mode
           << ", fan_in:" << fan_in << ", end_point:" << endpoint
           << ", checkpoint_block_id: " << checkpoint_block_id
           << ", lr_decay_block_id: " << lr_decay_block_id;
@@ -357,17 +357,17 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   rpc_service_.reset(new RPCSERVER_T(endpoint, fan_in));
 
   request_send_handler_.reset(
-      new distributed::RequestSendHandler(dist_mode, dc_sgd));
+      new distributed::RequestSendHandler(training_mode, dc_sgd));
   request_get_handler_.reset(
-      new distributed::RequestGetHandler(dist_mode, dc_sgd));
+      new distributed::RequestGetHandler(training_mode, dc_sgd));
   request_prefetch_handler_.reset(
-      new distributed::RequestPrefetchHandler(dist_mode));
+      new distributed::RequestPrefetchHandler(training_mode));
   request_checkpoint_handler_.reset(new distributed::RequestCheckpointHandler(
-      dist_mode, checkpoint_block_id));
+      training_mode, checkpoint_block_id));
   request_get_no_barrier_handler_.reset(
       new distributed::RequestGetNoBarrierHandler());
   request_notify_handler_.reset(
-      new distributed::RequestNotifyHandler(dist_mode, lr_decay_block_id));
+      new distributed::RequestNotifyHandler(training_mode, lr_decay_block_id));
 
   rpc_service_->RegisterRPC(distributed::kRequestSend,
                             request_send_handler_.get(),
@@ -468,7 +468,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   signal(SIGINT, SignalHandler::StopAndExit);
   signal(SIGTERM, SignalHandler::StopAndExit);
 
-  if (dist_mode == distributed::Dist_Mode::kSync) {
+  if (training_mode == distributed::TrainingMode::kSync) {
     // start the server listening after all member initialized.
     server_thread_.reset(new std::thread(RunServer, rpc_service_));
     VLOG(3) << "wait server thread to become ready...";
@@ -482,7 +482,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
     RunSyncLoop(&executor, program, &recv_scope, &dev_ctx,
                 prefetch_block_id_list, checkpoint_block_id);
   } else {
-    if (dist_mode == distributed::Dist_Mode::kGeo) {
+    if (training_mode == distributed::TrainingMode::kGeo) {
       distributed::AsyncSparseParamUpdateRecorder::Init(
           fan_in, sparse_grad_name_to_param_name);
     }
@@ -531,7 +531,7 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
         "['param1@GRAD.block0:1', 'param2@GRAD.blockn:2'] "
         "a map from grad name to it's optimize block id")
         .SetDefault({});
-    AddAttr<int>("dist_mode",
+    AddAttr<int>("training_mode",
                  "indicate distriubte training mode, 0 is sync, 1 is "
                  "half-async, 2 is fully-async, 3 is geo")
         .SetDefault(0);
