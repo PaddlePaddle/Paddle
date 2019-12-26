@@ -47,7 +47,7 @@ class FillKernel : public framework::OpKernel<T> {
     auto &out =
         detail::Ref(ctx.Output<framework::LoDTensor>("Out"),
                     "Cannot get output lod tensor Out, variable name = %s",
-                    ctx.op().Output("Out"));
+                    ctx.OutputName("Out"));
     out.Resize(framework::make_ddim(ctx.Attr<std::vector<int>>("shape")));
     auto dtype =
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));

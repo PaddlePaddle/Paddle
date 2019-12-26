@@ -47,18 +47,16 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   AttrReader Attrs() const override;
 
-  const std::vector<std::string> &Inputs(
-      const std::string &name) const override;
+  std::vector<std::string> Inputs(const std::string &name) const override;
 
-  const std::vector<std::string> &Outputs(
-      const std::string &name) const override;
+  std::vector<std::string> Outputs(const std::string &name) const override;
 
   void ShareDim(const std::string &in, const std::string &out, size_t i = 0,
                 size_t j = 0) override {
     PADDLE_ENFORCE_LT(i, Inputs(in).size());
     PADDLE_ENFORCE_LT(j, Outputs(out).size());
-    const std::string &input_n = Inputs(in)[i];
-    const std::string &output_n = Outputs(out)[j];
+    std::string input_n = Inputs(in)[i];
+    std::string output_n = Outputs(out)[j];
 
     PADDLE_ENFORCE(input_n != framework::kEmptyVarName, "The %s[%d] is @EMPTY@",
                    in, i);
@@ -72,6 +70,33 @@ class CompileTimeInferShapeContext : public InferShapeContext {
                    "The type of %s and %s is not the same.", input_n, output_n);
 
     SetDim(output_n, GetDim(input_n));
+  }
+
+  void ShareAllLoD(const std::string &in,
+                   const std::string &out) const override {
+    auto &in_var_names = op_.Input(in);
+    auto &out_var_names = op_.Output(out);
+
+    PADDLE_ENFORCE_EQ(
+        in_var_names.size(), out_var_names.size(),
+        platform::errors::PreconditionNotMet(
+            "Op [%s]:  Input var number shoule be equal with output var number",
+            op_.Type()));
+
+    for (size_t i = 0; i < in_var_names.size(); ++i) {
+      if (out_var_names[i] == framework::kEmptyVarName) {
+        continue;
+      }
+
+      auto *in_var = block_.FindVarRecursive(in_var_names[i]);
+      auto *out_var = block_.FindVarRecursive(out_var_names[i]);
+      if (in_var->GetType() != proto::VarType::LOD_TENSOR &&
+          in_var->GetType() != proto::VarType::LOD_TENSOR_ARRAY) {
+        VLOG(3) << "input " << in << " is not LoDTensor or LoDTensorArray.";
+        return;
+      }
+      out_var->SetLoDLevel(in_var->GetLoDLevel());
+    }
   }
 
   void ShareLoD(const std::string &in, const std::string &out, size_t i = 0,
@@ -173,7 +198,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   }
 
   void SetOutputDim(const std::string &name, const DDim &dim) override {
-    auto &arg_names = Outputs(name);
+    auto arg_names = Outputs(name);
     PADDLE_ENFORCE_EQ(arg_names.size(), 1UL,
                       "Output(%s) should hold one element, but now it holds %d",
                       name, arg_names.size());
@@ -182,7 +207,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   void SetOutputsDim(const std::string &name,
                      const std::vector<DDim> &dims) override {
-    auto &names = Outputs(name);
+    auto names = Outputs(name);
     SetDims(names, dims);
   }
 
@@ -628,55 +653,6 @@ void OpDesc::Flush() {
   }
 }
 
-static std::once_flag init_infer_shape_funcs;
-
-/**
- * NOTE(paddle-dev): Very tricky code here. Maybe we should find a
- * better way to register compile-time infershape method gentlely.
- *
- * Normally, we can register a class derived from InferShapeBase, so that
- * we can set the field of `infer_shape_` inside OpInfo when registering op.
- *
- * However, there is another way we can set the field of `infer_shape_` inside
- * OpInfo. Usually, we overload InferShape method of OperatorWithKernel. After
- * running the following method InitInferShapeFuncs, `infer_shape_` would be set
- * to be the InferShape method of OperatorWithKernel. That is to say, we borrow
- * the run-time InferShape method of OperatorWithKernel to be the compile-time
- * InferShape method.
- *
- * However, during compiling time, we may not know inputs, outputs and attrs of
- * run-time OperatorWithKernel. So the following code creates a fake
- * OperatorWithKernel object. That is why the field info_ of OperatorBase
- * would be null.
- */
-static void InitInferShapeFuncs() {
-  std::call_once(init_infer_shape_funcs, [] {
-    auto &map = OpInfoMap::Instance();
-    auto &info_map = *map.mutable_map();
-
-    for (auto &kern_pair : OperatorWithKernel::AllOpKernels()) {
-      auto op_type = kern_pair.first;
-      auto it = info_map.find(op_type);
-      PADDLE_ENFORCE(it != info_map.end(), "%s has not been registered",
-                     op_type);
-      auto &op_info = it->second;
-      if (op_info.infer_shape_) {  // infer_shape has been registered.
-        continue;
-      }
-
-      auto op = dynamic_cast<OperatorWithKernel *>(op_info.Creator()(
-          "", VariableNameMap{}, VariableNameMap{}, AttributeMap{}));
-
-      PADDLE_ENFORCE_NOT_NULL(
-          op, "InferShapeBase is not registered to Operator %s", op_type);
-
-      op_info.infer_shape_ = [op](InferShapeContext *ctx) {
-        op->InferShape(ctx);
-      };
-    }
-  });
-}
-
 void OpDesc::CheckAttrs() {
   PADDLE_ENFORCE(!Type().empty(),
                  "CheckAttr() can not be called before type is setted.");
@@ -693,7 +669,6 @@ void OpDesc::CheckAttrs() {
 void OpDesc::InferShape(const BlockDesc &block) const {
   try {
     VLOG(3) << "CompileTime infer shape on " << Type();
-    InitInferShapeFuncs();
     auto &infer_shape = OpInfoMap::Instance().Get(this->Type()).infer_shape_;
     PADDLE_ENFORCE(static_cast<bool>(infer_shape),
                    "%s's infer_shape has not been registered", this->Type());
@@ -789,12 +764,12 @@ AttrReader CompileTimeInferShapeContext::Attrs() const {
   return AttrReader(op_.GetAttrMap());
 }
 
-const std::vector<std::string> &CompileTimeInferShapeContext::Inputs(
+std::vector<std::string> CompileTimeInferShapeContext::Inputs(
     const std::string &name) const {
   return op_.Input(name);
 }
 
-const std::vector<std::string> &CompileTimeInferShapeContext::Outputs(
+std::vector<std::string> CompileTimeInferShapeContext::Outputs(
     const std::string &name) const {
   return op_.Output(name);
 }

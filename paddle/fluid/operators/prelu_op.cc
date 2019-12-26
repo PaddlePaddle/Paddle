@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/prelu_op.h"
+#include <memory>
 #include <string>
 
 namespace paddle {
@@ -130,15 +131,34 @@ class PReluGradOp : public framework::OperatorWithKernel {
   }
 };
 
+template <typename T>
+class PReluGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
+    op->SetType("prelu_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Alpha", this->Input("Alpha"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Alpha"), this->InputGrad("Alpha"));
+    op->SetAttrMap(this->Attrs());
+
+    return op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(
-    prelu, ops::PReluOp, ops::PReluOpMaker,
-    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
-    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
+REGISTER_OPERATOR(prelu, ops::PReluOp, ops::PReluOpMaker,
+                  ops::PReluGradOpMaker<paddle::framework::OpDesc>,
+                  ops::PReluGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(prelu_grad, ops::PReluGradOp);
 REGISTER_OP_CPU_KERNEL(
     prelu, ops::PReluKernel<paddle::platform::CPUDeviceContext, float>);

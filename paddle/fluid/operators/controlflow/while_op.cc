@@ -74,25 +74,26 @@ class WhileOp : public framework::OperatorBase {
     }
 
     PADDLE_ENFORCE_EQ(step_scopes->size(), 0, "The StepScope should be empty.");
-    PADDLE_ENFORCE(platform::is_cpu_place(cond.place()),
-                   "Condition of while op must in CPU memory.");
 
+    bool cond_data = GetCondData(cond);
     bool is_test = Attr<bool>("is_test");
     auto &skip_vars = Attr<std::vector<std::string>>(kSkipEagerDeletionVars);
     VLOG(2) << GetSkipEagerDeletionVarsDebugString(skip_vars);
 
     auto ctx = executor.Prepare(*program, block->ID(), skip_vars);
     if (!is_test) {
-      while (cond.data<bool>()[0]) {
+      while (cond_data) {
         auto &current_scope = scope.NewScope();
         step_scopes->push_back(&current_scope);
         executor.RunPreparedContext(ctx.get(), &current_scope, false, true,
                                     true);
+        cond_data =
+            GetCondData(scope.FindVar(Input(kCondition))->Get<LoDTensor>());
       }
     } else {
       auto &current_scope = scope.NewScope();
       executor.CreateVariables(*program, &current_scope, block->ID());
-      while (cond.data<bool>()[0]) {
+      while (cond_data) {
         for (auto &name : current_scope.LocalVarNames()) {
           auto *var = current_scope.Var(name);
           if (var->IsType<framework::LoDTensor>()) {
@@ -108,6 +109,8 @@ class WhileOp : public framework::OperatorBase {
         }
         executor.RunPreparedContext(ctx.get(), &current_scope, false, false,
                                     false);
+        cond_data =
+            GetCondData(scope.FindVar(Input(kCondition))->Get<LoDTensor>());
       }
       scope.DeleteScope(&current_scope);
     }

@@ -267,6 +267,26 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     return graph;
   }
 
+  /**
+   * NOTE(zengjinle): If BuildStrategy.memory_optimize = None in Python,
+   * set BuildStrategy.memory_optimize according to whether gc is enabled.
+   * If gc is enabled, BuildStrategy.memory_optimize = False.
+   * If gc is disabled, BuildStrategy.memory_optimize = True.
+   * This is because gc+memory_optimize is worse than gc only.
+   *
+   * As an option, users can enable BuildStrategy.memory_optimize forcely
+   * by setting True, and disable it forcely by setting False.
+   */
+  bool is_gc_enabled = (GetEagerDeletionThreshold() >= 0);
+  if (!build_strategy_.memory_optimize_) {
+    build_strategy_.memory_optimize_ = !is_gc_enabled;
+  }
+
+  bool need_mem_opt = build_strategy_.enable_inplace_ ||
+                      build_strategy_.memory_optimize_.get() || is_gc_enabled;
+
+  if (!need_mem_opt) return graph;
+
   std::vector<ir::LastLiveOpsOfVars> last_live_ops_of_vars;
 
   auto ref_cnt_pass = ir::PassRegistry::Instance().Get("reference_count_pass");
@@ -286,21 +306,6 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     VLOG(10) << "buffer_shared_inplace_pass Applied";
     LOG_FIRST_N(INFO, 1) << "Inplace strategy is enabled, when "
                             "build_strategy.enable_inplace = True";
-  }
-
-  /**
-   * NOTE(zengjinle): If BuildStrategy.memory_optimize = None in Python,
-   * set BuildStrategy.memory_optimize according to whether gc is enabled.
-   * If gc is enabled, BuildStrategy.memory_optimize = False.
-   * If gc is disabled, BuildStrategy.memory_optimize = True.
-   * This is because gc+memory_optimize is worse than gc only.
-   *
-   * As an option, users can enable BuildStrategy.memory_optimize forcely
-   * by setting True, and disable it forcely by setting False.
-   */
-  bool is_gc_enabled = (GetEagerDeletionThreshold() >= 0);
-  if (!build_strategy_.memory_optimize_) {
-    build_strategy_.memory_optimize_ = !is_gc_enabled;
   }
 
   if (build_strategy_.memory_optimize_.get()) {

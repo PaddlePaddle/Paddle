@@ -19,7 +19,8 @@ from functools import partial, reduce
 from . import nn
 from .layer_function_generator import templatedoc
 from ..layer_helper import LayerHelper
-from ..framework import Variable
+from ..framework import Variable, in_dygraph_mode
+from .. import core
 from ..data_feeder import check_type_and_dtype
 from ..param_attr import ParamAttr
 from ..initializer import NumpyArrayInitializer
@@ -233,6 +234,7 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
             predict = fluid.layers.fc(input=x, size=class_num, act='softmax')
             cost = fluid.layers.cross_entropy(input=predict, label=label)
     """
+
     check_type_and_dtype(input, 'input', Variable,
                          ['float16', 'float32', 'float64'], 'cross_entropy')
     if not soft_label:
@@ -729,7 +731,6 @@ def nce(input,
         sampler = 1
     elif sampler == "custom_dist":
         assert custom_dist is not None
-        # assert isinstance(custom_dist, Variable)
 
         custom_dist_len = num_total_classes
         alias_probs_ = [0] * custom_dist_len
@@ -1060,8 +1061,9 @@ def sampled_softmax_with_cross_entropy(logits,
                       logits=fc, label=label, num_samples=25)
     """
     helper = LayerHelper('sample_logits', **locals())
-    samples = helper.create_variable_for_type_inference(dtype='int64')
-    probabilities = helper.create_variable_for_type_inference(
+    samples = customized_samples if use_customized_samples else helper.create_variable_for_type_inference(
+        dtype='int64')
+    probabilities = customized_probabilities if use_customized_samples else helper.create_variable_for_type_inference(
         dtype=logits.dtype)
     sampled_logits \
         = helper.create_variable_for_type_inference(dtype=logits.dtype)
@@ -1212,6 +1214,21 @@ def softmax_with_cross_entropy(logits,
             out = fluid.layers.softmax_with_cross_entropy(
                 logits=fc, label=label)
     """
+    attrs = {
+        'soft_label': soft_label,
+        'ignore_index': ignore_index,
+        'numeric_stable_mode': numeric_stable_mode,
+        'axis': axis
+    }
+
+    if in_dygraph_mode():
+        inputs = {'Logits': [logits], 'Label': [label]}
+        outs = core.ops.softmax_with_cross_entropy(inputs, attrs)
+        if not return_softmax:
+            return outs['Loss'][0]
+        else:
+            return outs['Loss'][0], outs['Softmax'][0]
+
     helper = LayerHelper('softmax_with_cross_entropy', **locals())
     softmax = helper.create_variable_for_type_inference(dtype=logits.dtype)
     loss = helper.create_variable_for_type_inference(dtype=logits.dtype)
@@ -1221,12 +1238,7 @@ def softmax_with_cross_entropy(logits,
                 'Label': label},
         outputs={'Softmax': softmax,
                  'Loss': loss},
-        attrs={
-            'soft_label': soft_label,
-            'ignore_index': ignore_index,
-            'numeric_stable_mode': numeric_stable_mode,
-            'axis': axis
-        })
+        attrs=attrs)
 
     if return_softmax:
         return loss, softmax

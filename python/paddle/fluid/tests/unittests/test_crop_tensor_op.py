@@ -52,13 +52,13 @@ class TestCropTensorOp(OpTest):
 
         if self.shape_by_input:
             self.inputs = {
-                'X': np.random.random(self.x_shape).astype("float32"),
+                'X': np.random.random(self.x_shape).astype("float64"),
                 'Shape': np.array(self.crop_shape).astype("int32")
             }
         else:
             self.attrs['shape'] = self.crop_shape
             self.inputs = {
-                'X': np.random.random(self.x_shape).astype("float32"),
+                'X': np.random.random(self.x_shape).astype("float64"),
             }
         if self.offset_by_input:
             self.inputs['Offsets'] = np.array(self.offsets).astype('int32')
@@ -80,7 +80,7 @@ class TestCropTensorOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', max_relative_error=0.006)
+        self.check_grad(['X'], 'Out')
 
 
 class TestCase1(TestCropTensorOp):
@@ -144,7 +144,7 @@ class TestCropTensorOpTensorAttr(OpTest):
                 shape_tensor.append(("x" + str(index), np.ones(
                     (1)).astype('int32') * ele))
             self.inputs = {
-                'X': np.random.random(self.x_shape).astype("float32"),
+                'X': np.random.random(self.x_shape).astype("float64"),
                 'ShapeTensor': shape_tensor
             }
             self.attrs['shape'] = self.shape_attr
@@ -155,7 +155,7 @@ class TestCropTensorOpTensorAttr(OpTest):
                 offsets_tensor.append(("x" + str(index), np.ones(
                     (1)).astype('int32') * ele))
             self.inputs = {
-                'X': np.random.random(self.x_shape).astype("float32"),
+                'X': np.random.random(self.x_shape).astype("float64"),
                 'OffsetsTensor': offsets_tensor
             }
             self.attrs['offsets'] = self.offsets_attr
@@ -178,7 +178,7 @@ class TestCropTensorOpTensorAttr(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(["X"], "Out", max_relative_error=0.006)
+        self.check_grad(["X"], "Out")
 
 
 class TestCropTensorOpTensorAttrCase1(TestCropTensorOpTensorAttr):
@@ -217,7 +217,7 @@ class TestCropTensorOpTensorAttrCase4(TestCropTensorOpTensorAttr):
         self.OffsetsTensor = True
 
 
-class TestCropTensorException(OpTest):
+class TestCropTensorException(unittest.TestCase):
     def test_exception(self):
         input1 = fluid.data(name="input1", shape=[2, 3, 6, 6], dtype="float32")
         input2 = fluid.data(name="input2", shape=[2, 3, 6, 6], dtype="float16")

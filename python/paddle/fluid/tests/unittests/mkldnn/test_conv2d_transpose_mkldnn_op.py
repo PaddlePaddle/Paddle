@@ -126,3 +126,11 @@ class TestMKLDNNWithValidPad(TestConv2dTransposeMKLDNNOp):
         TestConv2dTransposeMKLDNNOp.init_test_case(self)
         self.pad = [1, 1]
         self.padding_algorithm = "VALID"
+
+
+class TestMKLDNNWithValidPad_NHWC(TestMKLDNNWithValidPad):
+    def init_test_case(self):
+        super(TestMKLDNNWithValidPad, self).init_test_case()
+        self.data_format = "NHWC"
+        N, C, H, W = self.input_size
+        self.input_size = [N, H, W, C]

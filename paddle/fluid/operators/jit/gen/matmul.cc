@@ -41,7 +41,7 @@ void MatMulJitCode::genCode() {
   for (size_t g = 0; g < groups.size(); ++g) {
     size_t x_offset = 0;
     size_t wgt_offset_tmp = 0;
-    for (int i = 0; i < g; ++i) {
+    for (size_t i = 0; i < g; ++i) {
       wgt_offset_tmp += groups[i] * block_len;
     }
     for (int k = 0; k < k_; ++k) {

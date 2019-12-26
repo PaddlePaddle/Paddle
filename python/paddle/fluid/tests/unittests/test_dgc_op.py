@@ -44,6 +44,9 @@ class TestDGCOp(unittest.TestCase):
         self.grad_name = "Grad"
         self.grad = np.random.random(size).astype("float32")
 
+        self.param_name = "Param"
+        self.param = np.random.random(size).astype("float32")
+
         self.current_step_name = "current_step"
         self.current_step = np.full((1), 0.0).astype("float32")
 
@@ -65,6 +68,9 @@ class TestDGCOp(unittest.TestCase):
 
         self.grad_tensor = self.scope.var(self.grad_name).get_tensor()
         self.grad_tensor.set(self.grad, place)
+
+        self.param_tensor = self.scope.var(self.param_name).get_tensor()
+        self.param_tensor.set(self.param, place)
 
         self.current_step_tensor = self.scope.var(
             self.current_step_name).get_tensor()
@@ -96,6 +102,7 @@ class TestDGCOp(unittest.TestCase):
             'U': self.u_name,
             'V': self.v_name,
             'Grad': self.grad_name,
+            'Param': self.param_name,
             'current_step': self.current_step_name,
             'nranks': self.nranks_name,
 
@@ -113,6 +120,8 @@ class TestDGCOp(unittest.TestCase):
             'use_nesterov': True,
             'rampup_begin_step': float(0.0),
             'rampup_step': float(10.0),
+            'regular_coeff': float(1e-4),
+            'regular_type': int(2),
         }
 
         dgc_op = Operator('dgc', **kwargs)

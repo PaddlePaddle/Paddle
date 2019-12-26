@@ -129,7 +129,13 @@ class DataNormOpMaker : public framework::OpProtoAndCheckerMaker {
                  "(int, default -1) Dimension of one slot if set, "
                  "when the input is concated by slot-wise embeddings")
         .SetDefault(-1);
+    AddAttr<float>(
+        "summary_decay_rate",
+        "(float, default 0.9999999) The decay rate when update the summary")
+        .SetDefault(0.9999999);
     AddAttr<std::string>("data_layout", "").SetDefault("NCHW");
+    AddAttr<bool>("sync_stats", "(bool, default false) only used in multi-GPU")
+        .SetDefault(false);
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
@@ -254,9 +260,18 @@ class DataNormGradOp : public framework::OperatorWithKernel {
     // check input
     PADDLE_ENFORCE(ctx->HasInput("X"));
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Y")), "");
-    PADDLE_ENFORCE(ctx->HasInput("BatchSize"), "");
-    PADDLE_ENFORCE(ctx->HasInput("BatchSum"), "");
-    PADDLE_ENFORCE(ctx->HasInput("BatchSquareSum"), "");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("BatchSize"), true,
+        platform::errors::NotFound(
+            "Output(BatchSize) of DataNormGradOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("BatchSum"), true,
+        platform::errors::NotFound(
+            "Output(BatchSum) of DataNormGradOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("BatchSquareSum"), true,
+        platform::errors::NotFound(
+            "Output(BatchSquareSum) of DataNormGradOp should not be null."));
     PADDLE_ENFORCE(ctx->HasInput("Means"), "");
     PADDLE_ENFORCE(ctx->HasInput("Scales"), "");
 
@@ -323,9 +338,6 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *x = ctx.Input<Tensor>("X");
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
-    const auto *batch_size = ctx.Input<Tensor>("BatchSize");
-    const auto *batch_sum = ctx.Input<Tensor>("BatchSum");
-    const auto *batch_square_sum = ctx.Input<Tensor>("BatchSquareSum");
     const auto *scales = ctx.Input<Tensor>("Scales");
     const auto *means = ctx.Input<Tensor>("Means");
 
@@ -420,10 +432,6 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
           }
         } else {
           // calculate data sum and squre sum
-          ConstEigenVectorArrayMap<T> batch_size_arr(batch_size->data<T>(), C);
-          ConstEigenVectorArrayMap<T> batch_sum_arr(batch_sum->data<T>(), C);
-          ConstEigenVectorArrayMap<T> batch_square_sum_arr(
-              batch_square_sum->data<T>(), C);
           Eigen::Array<T, Eigen::Dynamic, 1> sample_sum(C);
           Eigen::Array<T, Eigen::Dynamic, 1> sample_square_sum(C);
           // calculate data sample sum and square sum
@@ -459,9 +467,9 @@ class DataNormGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("X", this->Input("X"));
     op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
 
-    op->SetInput("BatchSize", this->Input("BatchSize"));
-    op->SetInput("BatchSum", this->Input("BatchSum"));
-    op->SetInput("BatchSquareSum", this->Input("BatchSquareSum"));
+    op->SetOutput("BatchSize", this->Input("BatchSize"));
+    op->SetOutput("BatchSum", this->Input("BatchSum"));
+    op->SetOutput("BatchSquareSum", this->Input("BatchSquareSum"));
     op->SetInput("Scales", this->Output("Scales"));
     op->SetInput("Means", this->Output("Means"));
 

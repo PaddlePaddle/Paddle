@@ -22,7 +22,7 @@ class TestStackOpBase(OpTest):
         self.num_inputs = 4
         self.input_dim = (5, 6, 7)
         self.axis = 0
-        self.dtype = 'float32'
+        self.dtype = 'float64'
 
     def initParameters(self):
         pass

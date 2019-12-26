@@ -45,8 +45,7 @@ class NgraphEngineInferVarType : public framework::VarTypeInference {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(ngraph_engine, ops::NgraphEngineOp, ops::NgraphEngineOpMaker,
-                  ops::NgraphEngineOpMaker);
+REGISTER_OPERATOR(ngraph_engine, ops::NgraphEngineOp, ops::NgraphEngineOpMaker);
 REGISTER_OP_CPU_KERNEL(
     ngraph_engine,
     ops::NgraphEngineKernel<paddle::platform::CPUDeviceContext, float>);
