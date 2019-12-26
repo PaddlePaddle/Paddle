@@ -91,13 +91,9 @@ std::vector<int> TestSizes() {
 
 std::vector<int> TestMatmul() {
   std::vector<int> s;
-  s.push_back(100);
-  s.push_back(128);
-  s.push_back(500);
-  s.push_back(768);
-  s.push_back(1000);
-  s.push_back(1536);
-  s.push_back(3072);
+  for (int i = 0; i < 20; i++) {
+    s.push_back(i * 128);
+  }
   return s;
 }
 
@@ -151,7 +147,7 @@ using Tensor = paddle::framework::Tensor;
 template <typename KernelTuple, typename PlaceType>
 void BenchKernelMatMul() {
   using T = typename KernelTuple::data_type;
-  for (int m : {1, 2, 30, 128}) {
+  for (int m : {1, 20, 50, 80, 100, 128, 214, 232, 256, 278, 312, 512, 514}) {
     for (int n : TestMatmul()) {
       for (int k : TestMatmul()) {
         Tensor a, b, c;
@@ -181,23 +177,24 @@ void BenchKernelMatMul() {
           auto start_X = paddle::platform::PosixInNsec() * 1e-3;
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
-#endif
           for (int i = 0; i < m; i++) {
             memcpy(X1_data + i * KK, a_data + i * k, k * sizeof(a_data[0]));
           }
           auto end_X = paddle::platform::PosixInNsec() * 1e-3;
           auto sum_X = end_X - start_X;
-          LOG(INFO) << "mem copy X " << sum_X;
-          auto start_W = paddle::platform::PosixInNsec() * 1e-3;
-#ifdef PADDLE_WITH_MKLML
+          LOG(INFO) << "mem copy X "
+                    << "m: " << m << " k:" << k << " n: " << n
+                    << " time: " << sum_X;
+// auto start_W = paddle::platform::PosixInNsec() * 1e-3;
 #pragma omp parallel for
-#endif
           for (int i = 0; i < k; i++) {
             memcpy(W1_data + i * NN, b_data + i * n, n * sizeof(b_data[0]));
           }
-          auto end_W = paddle::platform::PosixInNsec() * 1e-3;
-          auto sum_W = end_W - start_W;
-          LOG(INFO) << "mem copy W " << sum_W;
+// auto end_W = paddle::platform::PosixInNsec() * 1e-3;
+// auto sum_W = end_W - start_W;
+// LOG(INFO) << "mem copy W " << "m: " << m << " k:" << k << " n: " << n <<"
+// time: "<< sum_W;
+#endif
           for (int i = 0; i < FLAGS_burning; ++i) {
             blas.GEMM(false, false, m, m, k, static_cast<T>(1.0), X1_data, KK,
                       W1_data, NN, static_cast<T>(0.0), Y1_data, NN);
@@ -210,8 +207,7 @@ void BenchKernelMatMul() {
             auto end = paddle::platform::PosixInNsec() * 1e-3;
             sum += end - start;
           }
-          LOG(INFO) << "m: " << m << " k:" << k << " n: " << n
-                    << " Matmul time: " << sum / FLAGS_repeat;
+          LOG(INFO) << " Matmul time: " << sum / FLAGS_repeat;
         } else {
           for (int i = 0; i < FLAGS_burning; ++i) {
             blas.MatMul(m, n, k, a_data, b_data, c_data);
