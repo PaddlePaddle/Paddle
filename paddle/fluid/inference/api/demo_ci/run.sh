@@ -56,7 +56,7 @@ cd $current_dir
 mkdir -p build
 cd build
 
-for WITH_STATIC_LIB in $with_static_lib_list; do
+function run() {
 # TODO(Superjomn) reopen this
 # something wrong with the TensorArray reset.
 :<<D
@@ -126,5 +126,9 @@ D
       exit 1
     fi
   fi
-done
+}
+WITH_STATIC_LIB=ON
+run
+WITH_STATIC_LIB=OFF
+run
 set +x
