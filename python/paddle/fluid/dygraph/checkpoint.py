@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import os
 import collections
-from ..framework import Variable, default_main_program, in_dygraph_mode, dygraph_only, Parameter, ParamBase, VarBase
+from ..framework import Variable, default_main_program, in_dygraph_mode, dygraph_only, Parameter, ParamBase
 import pickle
 from . import learning_rate_scheduler
 import warnings
@@ -74,7 +74,7 @@ def save_dygraph(state_dict, model_path):
     model_dict = {}
     name_table = {}
     for k, v in state_dict.items():
-        if isinstance(v, [Variable, VarBase]):
+        if isinstance(v, [Variable, core.VarBase]):
             model_dict[k] = v.numpy()
         else:
             model_dict[k] = v
