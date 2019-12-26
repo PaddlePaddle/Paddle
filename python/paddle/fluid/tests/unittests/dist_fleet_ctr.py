@@ -77,7 +77,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         dnn_layer_dims = [128, 128000, 64, 32, 1]
         dnn_embedding = fluid.layers.embedding(
             is_distributed=False,
-            input=datas[0],
+            input=dnn_data,
             size=[dnn_input_dim, dnn_layer_dims[0]],
             param_attr=fluid.ParamAttr(
                 name="deep_embedding",
@@ -99,7 +99,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         # build lr model
         lr_embbding = fluid.layers.embedding(
             is_distributed=False,
-            input=datas[1],
+            input=lr_data,
             size=[lr_input_dim, 1],
             param_attr=fluid.ParamAttr(
                 name="wide_embedding",
@@ -110,10 +110,10 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
 
         predict = fluid.layers.fc(input=merge_layer, size=2, act='softmax')
-        acc = fluid.layers.accuracy(input=predict, label=datas[2])
+        acc = fluid.layers.accuracy(input=predict, label=label)
         auc_var, batch_auc_var, auc_states = fluid.layers.auc(input=predict,
-                                                              label=datas[2])
-        cost = fluid.layers.cross_entropy(input=predict, label=datas[2])
+                                                              label=label)
+        cost = fluid.layers.cross_entropy(input=predict, label=label)
         avg_cost = fluid.layers.mean(x=cost)
 
         self.feeds = datas

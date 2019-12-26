@@ -63,7 +63,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
         else:
             raise TypeError(
                 "In GeoSgdTranspiler, server_config must be an instance of ServerRuntimeConfig"
-            ) 
+            )
 
         if self.config.split_method is None:
             self.config.split_method = RoundRobin

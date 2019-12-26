@@ -17,6 +17,7 @@ __all__ = [
     "AsyncStrategy", "HalfAsyncStrategy", "GeoStrategy",
     "DistributedStrategyFactory"
 ]
+
 import os
 import paddle.fluid as fluid
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig, ServerRuntimeConfig
