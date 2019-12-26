@@ -30,6 +30,7 @@ __all__ = [
     'GradientClipByGlobalNorm',
 ]
 
+
 class BaseErrorClipAttr(object):
     def __str__(self):
         raise NotImplementedError()
