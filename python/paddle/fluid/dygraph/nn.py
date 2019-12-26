@@ -2212,16 +2212,17 @@ class PRelu(layers.Layer):
         super(PRelu, self).__init__()
         self._mode = mode
         self._param_attr = param_attr
-        if self._mode not in ['all', 'channel', 'element']:
-            raise ValueError('mode should be one of all, channel, element.')
         self._dtype = dtype
-        self._alpha_shape = [1]
-        if mode is not 'all':
-            assert channel_or_input_shape is not None
-            if self._mode == 'channel':
-                self._alpha_shape = [1, channel_or_input_shape, 1, 1]
-            else:
-                self._alpha_shape = list(channel_or_input_shape)
+        if mode == 'all':
+            self._alpha_shape = [1]
+        elif mode == 'channel':
+            assert isinstance(channel_or_input_shape, int)
+            self._alpha_shape = [1, channel_or_input_shape, 1, 1]
+        elif mode == 'element':
+            assert isinstance(channel_or_input_shape, (list, tuple))
+            self._alpha_shape = list(channel_or_input_shape)
+        else:
+            raise ValueError('mode should be one of all, channel, element.')
         self._alpha = self.create_parameter(
             attr=self._param_attr,
             shape=self._alpha_shape,
