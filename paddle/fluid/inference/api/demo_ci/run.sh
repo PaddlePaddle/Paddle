@@ -105,6 +105,7 @@ function run() {
     fi
   fi
 }
+
 WITH_STATIC_LIB=OFF
 run
 
