@@ -111,7 +111,7 @@ no_grad.__doc__ = _no_grad_.__doc__
 def guard(place=None):
     """
     This context will create a dygraph context for dygraph to run, using python ``with`` statement.
-    test
+
     Parameters:
         place(fluid.CPUPlace or fluid.CUDAPlace, optional): Place to execute dygraph. 
             If None, the running place will be determined according to the way of paddle compilation. Default: None
@@ -174,7 +174,7 @@ def _print_debug_msg(limit=5, is_test=False):
 
 # TODO(zhiqiu): Param 'block' should be deprecated, since block is meaningless in dygraph 
 @framework.dygraph_only
-def to_variable(value, block=None, name=None, zero_copy=None):
+def to_variable(value=None, block=None, name=None, zero_copy=None):
     """
     The API will create a ``Variable`` object from numpy\.ndarray or Variable object.
 

@@ -59,7 +59,7 @@ fi
 
 api_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.api  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.api` 
 if [ "$api_spec_diff" != "" ]; then
-    echo_line="You must have one RD (XiaoguangHu01 or lanxianghit) and on TPM (saxon-zh or Boyan-Liu or swtkiwi) approval for the api change for the management reason of API interface.\n"
+    echo_line="You must have one RD (XiaoguangHu01 or lanxianghit) and one TPM (saxon-zh or Boyan-Liu or swtkiwi) approval for the api change for the management reason of API interface.\n"
     check_approval 1 46782768 47554610
     echo_line=""
     check_approval 1 2870059 2870059 27208573 
