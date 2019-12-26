@@ -22,8 +22,9 @@ NEED_TO_FIX_OP_LIST = [
     'elementwise_add', 'elementwise_sub', 'elementwise_mul', 'affine_channel',
     'fused_emb_seq_pool', 'huber_loss', 'rank_loss',
     'fused_elemwise_activation', 'prelu', 'cos_sim', 'deformable_conv',
-    'matmul', 'hissigmod', 'kldiv_loss', 'affine_grad', 'conv3d_transpose',
+    'matmul', 'hsigmoid', 'kldiv_loss', 'affine_grad', 'conv3d_transpose',
     'conv2d_transpose', 'spectral_norm', 'cross_entropy2', 'linear_chain_crf',
     'lookup_table_v2', 'conv2d', 'gru_unit', 'lookup_table', 'conv3d',
-    'deformable_conv_v1'
+    'deformable_conv_v1', 'depthwise_conv2d', 'depthwise_conv2d_transpose',
+    'hierarchical_sigmoid', 'affine_grid', 'data_norm'
 ]
