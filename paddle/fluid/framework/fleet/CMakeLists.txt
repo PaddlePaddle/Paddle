@@ -10,3 +10,5 @@ if(WITH_BOX_PS)
 else()
     cc_library(box_wrapper SRCS box_wrapper.cc DEPS framework_proto lod_tensor)
 endif(WITH_BOX_PS)
+
+cc_library(gloo_wrapper SRCS gloo_wrapper.cc DEPS gloo)

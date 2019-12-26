@@ -1,4 +1,4 @@
-set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper box_wrapper nccl_wrapper prune
+set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper box_wrapper nccl_wrapper prune gloo_wrapper
   feed_fetch_method pass_builder parallel_executor profiler layer tracer engine scope_pool
   analysis_predictor imperative_profiler imperative_flag save_load_util dlpack_tensor device_context)
 
@@ -22,6 +22,7 @@ set(PYBIND_SRCS
   global_value_getter_setter.cc
   reader_py.cc
   fleet_wrapper_py.cc
+  gloo_wrapper_py.cc
   box_helper_py.cc
   nccl_wrapper_py.cc
   data_set_py.cc

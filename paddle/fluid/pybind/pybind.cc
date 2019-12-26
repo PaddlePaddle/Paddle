@@ -62,6 +62,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/fleet_wrapper_py.h"
 #include "paddle/fluid/pybind/global_value_getter_setter.h"
+#include "paddle/fluid/pybind/gloo_wrapper_py.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
@@ -2182,6 +2183,7 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   BindFleetWrapper(&m);
+  BindGlooWrapper(&m);
   BindBoxHelper(&m);
 #ifndef _WIN32
   BindNCCLWrapper(&m);

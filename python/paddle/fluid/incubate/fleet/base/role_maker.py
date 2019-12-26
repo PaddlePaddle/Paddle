@@ -13,10 +13,12 @@
 # limitations under the License.
 
 from __future__ import print_function
+import paddle.fluid as fluid
 
 __all__ = [
     'Role', 'RoleMakerBase', 'MPISymetricRoleMaker', 'UserDefinedRoleMaker',
-    'UserDefinedCollectiveRoleMaker', 'PaddleCloudRoleMaker'
+    'UserDefinedCollectiveRoleMaker', 'PaddleCloudRoleMaker',
+    'PaddleCloudGlooRoleMaker'
 ]
 
 import os
@@ -417,6 +419,165 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         if not self._role_is_generated:
             self.generate_role()
         return self._trainers_num
+
+
+class PaddleCloudGlooRoleMaker(RoleMakerBase):
+    def __init__(self):
+        super(RoleMakerBase, self).__init__()
+        self._role_is_generated = False
+
+    def generate_role(self):
+        if not self._role_is_generated:
+            eplist = os.environ["PADDLE_PSERVERS_IP_PORT_LIST"].split(",")
+            trainers_num = int(os.environ["PADDLE_TRAINERS_NUM"])
+            training_role = os.environ["TRAINING_ROLE"]
+            worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS").split(",")
+            if training_role not in ["TRAINER", "PSERVER"]:
+                raise ValueError("TRAINING_ROLE must be PSERVER or TRAINER")
+            if training_role == "TRAINER":
+                role = Role.WORKER
+                current_id = int(os.environ["PADDLE_TRAINER_ID"])
+                self._node_type = 1
+                self._cur_endpoint = worker_endpoints[current_id]
+                gloo = fluid.core.Gloo()
+                gloo.init(current_id, len(worker_endpoints), "/home/xujiaqi/disk1/test_pslib_split/trainer_gloo_path")
+                self._node_type_comm = gloo
+            elif training_role == "PSERVER":
+                role = Role.SERVER
+                cur_ip = os.environ["POD_IP"]
+                cur_port = os.environ["PADDLE_PORT"]
+                cur_endpoint = ":".join([cur_ip, cur_port])
+                current_id = eplist.index(cur_endpoint)
+                self._node_type = 0
+                self._cur_endpoint = cur_endpoint
+                gloo = fluid.core.Gloo()
+                gloo.init(current_id, len(eplist), "/home/xujiaqi/disk1/test_pslib_split/server_gloo_path")
+                self._node_type_comm = gloo
+
+            gloo = fluid.core.Gloo()
+            all_list = worker_endpoints + eplist
+            gloo.init(all_list.index(self._cur_endpoint), len(all_list), "/home/xujiaqi/disk1/test_pslib_split/allnodes_gloo_path")
+            self._all_comm = gloo
+            self._trainers_num = trainers_num
+            self._server_endpoints = eplist
+            self._role = role
+            self._current_id = current_id
+            self._rank = all_list.index(self._cur_endpoint)
+            self._size = len(all_list)
+            self._worker_endpoints = worker_endpoints
+            self._role_is_generated = True
+
+    def _finalize(self):
+        pass
+
+    def _all_gather(self, obj):
+        if not self._role_is_generated:
+            self.generate_role()
+        self._barrier_all()
+        return self._all_comm.all_gather(obj)
+
+    def _worker_gather(self, obj):
+        if not self._role_is_generated:
+            self.generate_role()
+        if not self.is_worker():
+            return None
+        self._barrier_worker()
+        return self._node_type_comm.all_gather(obj)
+
+    def _get_rank(self):
+        return self._rank
+
+    def _get_size(self):
+        return self._size
+
+    def get_local_endpoint(self):
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._cur_endpoint
+
+    def get_trainer_endpoints(self):
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._worker_endpoints
+
+    def get_pserver_endpoints(self):
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._server_endpoints
+
+    def is_worker(self):
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._role == Role.WORKER
+
+    def is_server(self):
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._role == Role.SERVER
+
+    def is_first_worker(self):
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._role == Role.WORKER and self._current_id == 0
+
+    def worker_index(self):
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._current_id
+
+    def server_index(self):
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._current_id
+
+    def worker_num(self):
+        return self._worker_num()
+
+    def server_num(self):
+        """
+        return the current number of server
+        """
+        return self._server_num()
+
+    def _barrier_worker(self):
+        """
+        barrier all workers in current distributed job
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        if self.is_worker():
+            self._node_type_comm.barrier()
+
+    def _barrier_all(self):
+        if not self._role_is_generated:
+            self.generate_role()
+        self._all_comm.barrier()
+
+    def _barrier_server(self):
+        """
+        barrier all servers in current distributed job
+        """
+        if self._check_role_generation():
+            if self.is_server():
+                self._node_type_comm.barrier()
+        else:
+            raise Exception("You should check role generation first")
+
+    def _worker_num(self):
+        """
+        return the current number of worker
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._trainers_num
+
+    def _server_num(self):
+        """
+        return the current number of server
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return len(self._server_endpoints)
 
 
 class UserDefinedRoleMaker(RoleMakerBase):

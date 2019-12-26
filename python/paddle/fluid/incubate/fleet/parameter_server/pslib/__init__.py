@@ -39,8 +39,10 @@ class PSLib(Fleet):
         self._client2client_connect_timeout_ms = 10000
         self._client2client_max_retry = 3
 
-    def init(self, role_maker=None):
-        super(PSLib, self).init(MPISymetricRoleMaker())
+    def init(self, executor, role_maker=None):
+        if role_maker is None:
+            role_maker = MPISymetricRoleMaker()
+        super(PSLib, self).init(role_maker)
         self._fleet_ptr = fluid.core.Fleet()
 
     def _set_client_communication_config(self, request_timeout_ms,
@@ -77,7 +79,7 @@ class PSLib(Fleet):
             self.all_ips_ = self._role_maker._all_gather(self._local_ip)
             self._fleet_ptr.init_worker(self._dist_desc_str, self.all_ips_,
                                         self._role_maker._get_size(),
-                                        self._role_maker._get_rank())
+                                        self._role_maker.worker_index())
             # barrier_all for init_worker
             self._role_maker._barrier_all()
             # prepare for client to client communication
@@ -161,8 +163,14 @@ class PSLib(Fleet):
                 raise Exception(
                     "You should run DistributedOptimizer.minimize() first")
             self._fleet_ptr.init_server(self._dist_desc_str,
-                                        self._role_maker._get_rank())
-            self._local_ip = self._fleet_ptr.run_server()
+                                        self._role_maker.server_index())
+            if isinstance(self._role_maker, MPISymetricRoleMaker):
+                self._local_ip = self._fleet_ptr.run_server()
+            else:
+                local_endpoint = self._role_maker.get_local_endpoint()
+                local_endpoint = local_endpoint.split(":")
+                self._local_ip = self._fleet_ptr.run_server_with_ip_port(
+                    str(local_endpoint[0]), int(local_endpoint[1]))
 
             # barrier_all for init_server
             self._role_maker._barrier_all()

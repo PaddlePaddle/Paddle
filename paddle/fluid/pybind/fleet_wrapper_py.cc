@@ -73,7 +73,9 @@ void BindFleetWrapper(py::module* m) {
            &framework::FleetWrapper::SetClient2ClientConfig)
       .def("copy_table", &framework::FleetWrapper::CopyTable)
       .def("copy_table_by_feasign",
-           &framework::FleetWrapper::CopyTableByFeasign);
+           &framework::FleetWrapper::CopyTableByFeasign)
+      .def("run_server_with_ip_port",
+           &framework::FleetWrapper::RunServerWithIPPort);
 }  // end FleetWrapper
 }  // end namespace pybind
 }  // end namespace paddle
