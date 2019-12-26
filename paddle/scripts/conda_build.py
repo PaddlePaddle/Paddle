@@ -112,11 +112,10 @@ python setup.py install
     - cudatoolkit>=10.0, <10.1
     - cudnn>=7.3, <7.4
     """
-        self.cuda_version = [self.cuda90, self.cuda100]
-        self.cuda_str = ["cuda9.0", "cuda10.0"]
+        self.cuda_info = [(self.cuda90, "cuda9.0", ".post97"),
+                          (self.cuda100, "cuda10.0", ".post107")]
         self.py_str = ["py27", "py35", "py36", "py37"]
         self.pip_end = ".whl --no-deps"
-        self.pip_post = [".post97", ".post107"]
         self.pip_prefix_linux = "pip install /package/paddlepaddle"
         self.pip_prefix_windows = "pip install C:\package\paddlepaddle"
         self.pip_gpu = "_gpu-"
@@ -239,15 +238,15 @@ def conda_build(paddle_version, var):
             os.system("conda build .")
 
         for i in range(len(var.python_version)):
-            for j in range(len(var.cuda_version)):
-                post = var.pip_post[j]
+            for cuda_str in var.cuda_info:
+                post = cuda_str[2]
                 blt_var = var.pip_prefix_windows + var.pip_gpu + paddle_version + post + var.windows_pip[
                     i] + var.pip_end
-                name = var.py_str[i] + "_gpu_" + var.cuda_str[j] + "_windows"
-                cuda_version = var.cuda_version[j]
+                name = var.py_str[i] + "_gpu_" + cuda_str[1] + "_windows"
+                cuda_cudnn_str = cuda_str[0]
                 python_str = var.python_version[i]
                 meta_build_windows(var, python_str, paddle_version, blt_var,
-                                   name, cuda_version)
+                                   name, cuda_cudnn_str)
                 os.system("conda build .")
 
     elif (sysstr == "Linux"):
@@ -262,15 +261,15 @@ def conda_build(paddle_version, var):
             os.system("conda build .")
 
         for i in range(len(var.python_version)):
-            for j in range(len(var.cuda_version)):
-                post = var.pip_post[j]
+            for cuda_str in var.cuda_info:
+                post = cuda_str[2]
                 build_var = var.pip_prefix_linux + var.pip_gpu + paddle_version + post + var.linux_pip[
                     i] + var.pip_end
-                name = var.py_str[i] + "_gpu_" + var.cuda_str[j] + "_many_linux"
-                cuda_version = var.cuda_version[j]
+                name = var.py_str[i] + "_gpu_" + cuda_str[1] + "_many_linux"
+                cuda_cudnn_str = cuda_str[0]
                 python_str = var.python_version[i]
                 meta_build_linux(var, python_str, paddle_version, build_var,
-                                 name, cuda_version)
+                                 name, cuda_cudnn_str)
                 os.system("conda build .")
 
         os.system("cd ..")
