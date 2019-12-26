@@ -463,12 +463,12 @@ class DygraphGeneratorLoader(DataLoaderBase):
     def _check_input_array(cls, item):
         arr = np.array(item)
         if arr.dtype == np.object:
-            raise TypeError((
+            raise TypeError(
                 "\n\tFaild to convert input data to a regular ndarray :\n\t* Usually "
                 "this means the input data contains nested lists with different lengths. "
                 "\n\t* Check the reader function passed to 'decorate_batch_generator'"
                 " to locate the data causes this issue.\n\t* Please consider using "
-                "'fluid.create_lod_tensor' to convert it to a LoD-Tensor."))
+                "'fluid.create_lod_tensor' to convert it to a LoD-Tensor.")
 
     def __set_child_signal_handler(self):
         core._set_process_pid(id(self), self._process.pid)
@@ -499,6 +499,8 @@ class DygraphGeneratorLoader(DataLoaderBase):
             # NOTE: Main process will raise KeyboardInterrupt anyways, ignore it in child process
             pass
         except:
+            self._data_queue.cancel_join_thread()
+            self._data_queue.close()
             six.reraise(*sys.exc_info())
 
     def _reader_thread_loop_with_process(self):
@@ -512,10 +514,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
                 sample = self._data_queue.get(timeout=MP_CHECK_TIMEOUT)
             except queue.Empty:
                 self._thread_done_event.set()
-                self._data_queue.close
-                self._blocking_queue.close()
-                raise RuntimeError(
-                    "The reader has not read data for a long time.")
+                logging.error("The reader has not read data for a long time.")
 
             if not self._thread_done_event.is_set() and sample is not None:
                 try:
@@ -530,6 +529,8 @@ class DygraphGeneratorLoader(DataLoaderBase):
                     if not self._blocking_queue.push(array):
                         self._blocking_queue.close()
                 except:
+                    self._thread_done_event.set()
+                    self._data_queue.close()
                     self._blocking_queue.kill()
                     logging.warn(
                         "DataLoader dygraph thread raised an exception.")
@@ -538,7 +539,6 @@ class DygraphGeneratorLoader(DataLoaderBase):
                 self._thread_done_event.set()
                 self._data_queue.close()
                 self._blocking_queue.close()
-            del sample  # save memory
 
     def _reader_thread_loop(self):
         try:
@@ -558,7 +558,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
 
             self._blocking_queue.close()
             self._thread = None
-        except Exception as ex:
+        except Exception:
             self._blocking_queue.kill()
             self._thread = None
             logging.warn('Your reader has raised an exception!')

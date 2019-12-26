@@ -178,6 +178,7 @@ list(REMOVE_ITEM TEST_OPS test_imperative_debug_string)
 if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_dataset)
   list(REMOVE_ITEM TEST_OPS test_dataset_dataloader)
+  list(REMOVE_ITEM TEST_OPS test_imperative_data_loader)
 endif()
 
 # Some ops need to check results when gc is enabled
