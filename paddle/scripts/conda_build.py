@@ -103,11 +103,7 @@ python setup.py install
         self.python_version = [
             self.python27, self.python35, self.python36, self.python37
         ]
-        # self.python_version = [self.python36]
-        self.cuda80 = r"""
-    - cudatoolkit>=8.0, <8.1
-    - cudnn>=7.0, <7.3
-    """
+
         self.cuda90 = r"""
     - cudatoolkit>=9.0, <9.1
     - cudnn>=7.3, <7.4
@@ -116,7 +112,7 @@ python setup.py install
     - cudatoolkit>=10.0, <10.1
     - cudnn>=7.3, <7.4
     """
-        self.cuda_version = [self.cuda80, self.cuda90, self.cuda100]
+        self.cuda_version = [self.cuda90, self.cuda100]
         self.cuda_str = ["cuda9.0", "cuda10.0"]
         self.py_str = ["py27", "py35", "py36", "py37"]
         self.pip_end = ".whl --no-deps"
