@@ -174,7 +174,7 @@ def _print_debug_msg(limit=5, is_test=False):
 
 # TODO(zhiqiu): Param 'block' should be deprecated, since block is meaningless in dygraph 
 @framework.dygraph_only
-def to_variable(value=None, block=None, name=None, zero_copy=None):
+def to_variable(value, block=None, name=None, zero_copy=None):
     """
     The API will create a ``Variable`` object from numpy\.ndarray or Variable object.
 
