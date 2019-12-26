@@ -77,6 +77,7 @@ class LiteEngineOp : public framework::OperatorBase {
           inference::analysis::GetFromScope<framework::LoDTensor>(scope,
                                                                   in_names_[i]);
       paddle::lite::Tensor *dst_t = engine_->GetInput(i);
+      VLOG(3) << "fluid -> lite: " << in_names_[i];
       inference::lite::utils::TensorCopyAsync(dst_t, src_t, *ctx);
     }
 #ifdef PADDLE_WITH_CUDA
@@ -85,14 +86,23 @@ class LiteEngineOp : public framework::OperatorBase {
           static_cast<const platform::CUDADeviceContext *>(ctx)->stream());
     }
 #endif
+    VLOG(3) << "lite engine run";
     engine_->Run();
+    VLOG(3) << "lite engine run done";
     for (size_t i = 0; i < out_names_.size(); i++) {
       const paddle::lite::Tensor &src_t = *(engine_->GetOutput(i));
       framework::LoDTensor *dst_t =
           &inference::analysis::GetFromScope<framework::LoDTensor>(
               scope, out_names_[i]);
+      VLOG(3) << "lite -> fluid: " << out_names_[i];
       inference::lite::utils::TensorCopyAsync(dst_t, src_t, *ctx);
     }
+#ifdef PADDLE_WITH_CUDA
+    if (platform::is_gpu_place(dev_place)) {
+      platform::GpuStreamSync(
+          static_cast<const platform::CUDADeviceContext *>(ctx)->stream());
+    }
+#endif
   }
 };
 

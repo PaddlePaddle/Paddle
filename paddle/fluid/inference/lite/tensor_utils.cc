@@ -29,6 +29,7 @@ using paddle::lite_api::DataLayoutType;
 template <typename DstLoD, typename SrcLoD>
 void SetLoD(DstLoD* dst, const SrcLoD& src) {
   dst->reserve(src.size());
+  dst->clear();
   for (auto&& v : src) {
     dst->emplace_back(v);
   }
@@ -41,6 +42,7 @@ template void SetLoD<framework::LoD, paddle::lite::LoD>(
 platform::Place GetNativePlace(const TargetType& type, int id = 0) {
   switch (type) {
     case TargetType::kHost:
+    case TargetType::kX86:
       return platform::CPUPlace();
     case TargetType::kCUDA:
       return platform::CUDAPlace(id);
@@ -65,6 +67,8 @@ PrecisionType GetLitePrecisionType(framework::proto::VarType::Type type) {
       return PrecisionType::kInt8;
     case framework::proto::VarType_Type_INT32:
       return PrecisionType::kInt32;
+    case framework::proto::VarType_Type_INT64:
+      return PrecisionType::kInt64;
     default:
       LOG(FATAL) << "Error precision type.";
       return PrecisionType::kUnk;
@@ -80,6 +84,8 @@ framework::proto::VarType::Type GetNativePrecisionType(
       return framework::proto::VarType_Type_INT8;
     case PrecisionType::kInt32:
       return framework::proto::VarType_Type_INT32;
+    case PrecisionType::kInt64:
+      return framework::proto::VarType_Type_INT64;
     default:
       LOG(FATAL) << "Error precision type.";
       return static_cast<framework::proto::VarType::Type>(-1);
