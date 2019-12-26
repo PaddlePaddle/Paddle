@@ -35,7 +35,6 @@ class NCESamplerKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     bool init_flag = context.Attr<bool>("init_flag");
     if (init_flag) {
-      VLOG(0) << "NCE sampler begin to init";
       auto *dist_probs_var = context.OutputVar("CustomDistProbsInit");
       auto *dist_alias_var = context.OutputVar("CustomDistAliasInit");
       auto *dist_alias_probs_var =
@@ -49,12 +48,13 @@ class NCESamplerKernel : public framework::OpKernel<T> {
           dist_alias_probs_var->GetMutable<framework::LoDTensor>();
 
       auto filename = context.Attr<std::string>("filename");
+      auto factor = context.Attr<std::float>("factor");
       std::ifstream fin(filename);
-      int64_t f_id, f_count, f_count_pow, total_count;
+      int64_t f_count, f_count_pow, total_count;
       total_count = 0;
       std::vector<int64_t> _word_count;
-      while (fin >> f_id >> f_count) {
-        f_count_pow = static_cast<int64_t>(pow(f_count, 0.75));
+      while (fin >> f_count) {
+        f_count_pow = static_cast<int64_t>(pow(f_count, factor));
         _word_count.push_back(f_count_pow);
         total_count += f_count_pow;
       }
@@ -102,8 +102,9 @@ class NCESamplerKernel : public framework::OpKernel<T> {
       for (l_it = L.begin(); l_it != L.end(); ++l_it) {
         _q[*l_it] = 1.0;
       }
+      VLOG(1) << "NCE Sampler Op finish initialization. Dict Size is " << k
+              << "; and Total Word Count is " << total_count;
     } else {
-      VLOG(0) << "NCE sampler begin to sample";
       auto *dist_probs_var = context.InputVar("CustomDistProbs");
       auto *dist_alias_var = context.InputVar("CustomDistAlias");
       auto *dist_alias_probs_var = context.InputVar("CustomDistAliasProbs");

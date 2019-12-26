@@ -74,9 +74,18 @@ class NCESamplerOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("CustomDistAliasInit", "CustomDistAliasInit").AsDispensable();
     AddOutput("CustomDistAliasProbsInit", "CustomDistAliasProbsInit")
         .AsDispensable();
-    AddAttr<std::string>("filename", "string, filename").SetDefault("");
-    AddAttr<bool>("init_flag", "init_flag").SetDefault(false);
-    AddAttr<int>("sample_batch_size", "(int) sample batch size").SetDefault(1);
+    AddAttr<std::string>("filename",
+                         "filepath used to save sample count. i-th line is the "
+                         "count of sample[i]")
+        .SetDefault("");
+    AddAttr<bool>(
+        "init_flag",
+        "If it is true, this op will initialize Probs, Alias and AliasProbS.")
+        .SetDefault(false);
+    AddAttr<int>("sample_batch_size",
+                 "(int) the shape of output of this op is [sample_batch_size, "
+                 "num_neg_samples]")
+        .SetDefault(1);
     AddAttr<int>("seed",
                  "(int) The seed used in sampler. If it is 0, "
                  "the sampler will generate a seed randomly.")
@@ -84,8 +93,13 @@ class NCESamplerOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("num_total_classes",
                  "Total number of classes in all samples.");
     AddAttr<int>("num_neg_samples",
-                 "The number of negative classes. The default value is 10.")
+                 "The number of negative classes needed to sample. The default "
+                 "value is 10.")
         .SetDefault(10);
+    AddAttr<float>("factor",
+                   "(float) factor to increase the probability of element with "
+                   "low frequency to be sampled.")
+        .SetDefault(0.75);
     AddComment(R"DOC("Negative Sampler")DOC");
   }
 };

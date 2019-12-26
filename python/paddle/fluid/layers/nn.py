@@ -13887,7 +13887,36 @@ def nce_sampler(dict_path,
                 num_total_classes,
                 num_neg_samples=10,
                 seed=0,
-                sample_batch_size=1):
+                sample_batch_size=1,
+                factor=0.75):
+    '''
+    This Op will sample `num_neg_samples` items from all samples. Total number of samples is `num_total_classes`.
+    
+    Args:
+        dict_path(string): filepath used to save sample count. i-th line is the count
+            of sample[i].
+        num_total_classes(int): Total number of classes in all samples.
+        num_neg_samples(int): The number of negative classes needed to sample. The default value is 10.
+        seed(int): The seed used in sampler. If it is 0, the sampler will generate a seed randomly.
+        sample_batch_size(int): shape[0] of the output tensor. Every element in output is different. If you need the negative samples is same in one batch, you can set sample_batch_size 1, and then expand the output to shape [batch_size, num_neg_samples].
+        factor(float): factor used to adjuct the distribution of all samples.
+
+    Returns:
+        Variable: A Tensor with the shape [sample_batch_size, num_neg_samples]
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            word_count = [x+1 for x in range(10)]
+            with open("word_count_tmp", 'w') as f:
+                for _ in word_count:
+                    f.write(_)
+                    f.write("\n")
+
+            neg_word = fluid.layers.nce_sampler("word_count_tmp", 10, 2)
+    '''
     helper = LayerHelper('nce_sampler', **locals())
     out = helper.create_variable_for_type_inference(dtype='int64')
     probs_tensor = helper.create_global_variable(
