@@ -41,7 +41,7 @@ if(WIN32)
     file(TO_NATIVE_PATH ${WARPCTC_SOURCE_DIR} native_dst)
     set(WARPCTC_PATCH_COMMAND xcopy ${native_src} ${native_dst} /E/Y)
 else()
-    set(WARPCTC_PATCH_COMMAND cp -r ${PADDLE_SOURCE_DIR}/patches/warpctc/ ${WARPCTC_SOURCE_DIR})
+    set(WARPCTC_PATCH_COMMAND cp -r ${PADDLE_SOURCE_DIR}/patches/warpctc/. ${WARPCTC_SOURCE_DIR})
 endif()
 
 ExternalProject_Add(
