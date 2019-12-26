@@ -14,7 +14,6 @@ ENV LD_LIBRARY_PATH /opt/rh/devtoolset-2/root/usr/lib64:/opt/rh/devtoolset-2/roo
 ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
 
 RUN yum install -y sqlite-devel zlib-devel openssl-devel pcre-devel vim tk-devel tkinter libtool xz graphviz gettext-devel expat-devel cpio perl curl-devel
-
 COPY tools/manylinux1/build_scripts /build_scripts
 RUN bash build_scripts/build.sh && \
   bash build_scripts/install_nccl2.sh && rm -rf build_scripts
