@@ -1111,7 +1111,9 @@ class OpTest(unittest.TestCase):
             abs_a = np.abs(a)
             if self.dtype == np.float64 and \
                 self.op_type not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST:
-                abs_a[abs_a < 1e-7] = 1
+                abs_a[abs_a < 1e-10] = 1e-3
+                abs_a[np.logical_and(abs_a > 1e-10, abs_a <= 1e-8)] *= 1e4
+                abs_a[np.logical_and(abs_a > 1e-8, abs_a <= 1e-6)] *= 1e2
             else:
                 abs_a[abs_a < 1e-3] = 1
 
