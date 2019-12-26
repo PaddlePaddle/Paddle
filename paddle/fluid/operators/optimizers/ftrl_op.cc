@@ -34,16 +34,6 @@ class FTRLOp : public framework::OperatorWithKernel {
                    "Input(Grad) of FTRL should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("LearningRate"),
                    "Input(LearningRate) of FTRL should not be null.");
-    PADDLE_ENFORCE(
-        ctx->GetInputsVarType("Param").front() ==
-            framework::proto::VarType::LOD_TENSOR,
-        "The input var's type should be LoDTensor, but the received is %s",
-        ctx->Inputs("Param").front(), ctx->GetInputsVarType("Param").front());
-    PADDLE_ENFORCE(
-        ctx->GetInputsVarType("Grad").front() ==
-            framework::proto::VarType::LOD_TENSOR,
-        "The input var's type should be LoDTensor, but the received is %s",
-        ctx->Inputs("Grad").front(), ctx->GetInputsVarType("Grad").front());
 
     PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
                    "Output(ParamOut) of FTRL should not be null.");
@@ -71,9 +61,10 @@ class FTRLOp : public framework::OperatorWithKernel {
   }
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input_data_type =
-        OperatorWithKernel::IndicateVarDataType(ctx, "Param");
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    // auto input_data_type = ctx.Input<Tensor>("Param")->type();
+    // return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Param");
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
