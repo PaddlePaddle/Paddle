@@ -21,17 +21,6 @@ import os
 flag_name = os.path.splitext(__file__)[0]
 
 
-def skip_ci(func):
-    on_ci = bool(int(os.environ.get("SKIP_UNSTABLE_CI", '0')))
-
-    def __func__(*args, **kwargs):
-        if on_ci:
-            return
-        return func(*args, **kwargs)
-
-    return __func__
-
-
 class TestDistSeResnetNCCL2DGC(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
@@ -40,7 +29,7 @@ class TestDistSeResnetNCCL2DGC(TestDistBase):
         self._nccl2_mode = True
         self._use_dgc = True
 
-    @skip_ci
+    @unittest.skip(reason="Skip unstable ci")
     def test_dist_train(self):
         import paddle.fluid as fluid
         if fluid.core.is_compiled_with_cuda():

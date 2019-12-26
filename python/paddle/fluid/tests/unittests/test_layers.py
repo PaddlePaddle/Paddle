@@ -33,6 +33,7 @@ import paddle.fluid.layers as layers
 from test_imperative_base import new_program_scope
 from paddle.fluid.dygraph import nn
 from paddle.fluid.dygraph import base
+from paddle.fluid.dygraph import to_variable
 
 
 class LayerTest(unittest.TestCase):
@@ -109,6 +110,41 @@ class TestLayer(LayerTest):
             self.assertTrue(np.array_equal(ret.numpy().shape, [3, 2]))
             ret = custom(x, do_fc2=True)
             self.assertTrue(np.array_equal(ret.numpy().shape, [3, 1]))
+
+    def test_linear(self):
+        inp = np.ones([3, 32, 32], dtype='float32')
+        with self.static_graph():
+            t = layers.data(
+                name='data',
+                shape=[3, 32, 32],
+                dtype='float32',
+                append_batch_size=False)
+            linear = nn.Linear(
+                32, 4, bias_attr=fluid.initializer.ConstantInitializer(value=1))
+            ret = linear(t)
+            static_ret = self.get_static_graph_result(
+                feed={'data': inp}, fetch_list=[ret])[0]
+        with self.dynamic_graph():
+            t = base.to_variable(inp)
+            linear = nn.Linear(
+                32, 4, bias_attr=fluid.initializer.ConstantInitializer(value=1))
+            dy_ret = linear(t)
+            dy_ret_value = dy_ret.numpy()
+
+        self.assertTrue(np.array_equal(static_ret, dy_ret_value))
+
+        inp = np.ones([3, 32], dtype='float32')
+        with self.dynamic_graph():
+            t = base.to_variable(inp)
+            linear = nn.Linear(32, 4, bias_attr=False)
+            dy_ret = linear(t)
+            dy_ret_value = dy_ret.numpy()
+        with self.dynamic_graph():
+            t = base.to_variable(inp)
+            fc = nn.FC('fc1', size=4, bias_attr=False, num_flatten_dims=1)
+            dy_ret2 = fc(t)
+            dy_ret_value2 = dy_ret2.numpy()
+        self.assertTrue(np.array_equal(dy_ret_value, dy_ret_value2))
 
     def test_fc(self):
         inp = np.ones([3, 32, 32], dtype='float32')
@@ -480,11 +516,11 @@ class TestLayer(LayerTest):
                 fetch_list=[ret])[0]
 
         with self.dynamic_graph():
-            ret = layers.elementwise_add(n, n2)
-            ret = layers.elementwise_pow(ret, n3)
-            ret = layers.elementwise_div(ret, n4)
-            ret = layers.elementwise_sub(ret, n5)
-            dy_ret = layers.elementwise_mul(ret, n6)
+            ret = layers.elementwise_add(to_variable(n), to_variable(n2))
+            ret = layers.elementwise_pow(ret, to_variable(n3))
+            ret = layers.elementwise_div(ret, to_variable(n4))
+            ret = layers.elementwise_sub(ret, to_variable(n5))
+            dy_ret = layers.elementwise_mul(ret, to_variable(n6))
             dy_ret_value = dy_ret.numpy()
         self.assertTrue(np.allclose(static_ret, dy_ret_value))
 
@@ -493,8 +529,8 @@ class TestLayer(LayerTest):
         n2 = np.ones([3, 3], dtype='float32') * 2
 
         with self.dynamic_graph():
-            min_ret = layers.elementwise_min(n, n2)
-            max_ret = layers.elementwise_max(n, n2)
+            min_ret = layers.elementwise_min(to_variable(n), to_variable(n2))
+            max_ret = layers.elementwise_max(to_variable(n), to_variable(n2))
             min_ret_value = min_ret.numpy()
             max_ret_value = max_ret.numpy()
 

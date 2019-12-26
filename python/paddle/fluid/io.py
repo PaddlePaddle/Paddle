@@ -268,6 +268,10 @@ def save_vars(executor,
                 outputs={},
                 attrs={'file_path': os.path.join(save_dirname, filename)})
 
+        #NOTE(zhiqiu): save op will add variable kLookupTablePath in save_program.desc,
+        # which leads to diff on save_program and its desc. Call _sync_with_cpp
+        # to keep consistency.
+        save_program._sync_with_cpp()
         executor.run(save_program)
 
 
