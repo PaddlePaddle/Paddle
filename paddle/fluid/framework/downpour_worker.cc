@@ -577,13 +577,6 @@ void DownpourWorker::TrainFilesWithProfiler() {
     timeline.Start();
     if (copy_table_config_.need_copy()) {
       VLOG(3) << "copy_sparse_tables_.size " << copy_sparse_tables_.size();
-      if (copy_table_config_.sparse_copy_by_feasign()) {
-        for (size_t i = 0; i < copy_sparse_tables_.size(); ++i) {
-          uint64_t tid = copy_sparse_tables_[i].first;
-          feasign_set_[tid].insert(sparse_push_keys_[tid].begin(),
-                                   sparse_push_keys_[tid].end());
-        }
-      }
       if (batch_cnt % copy_table_config_.batch_num() == 0) {
         CopySparseTable();
         CopyDenseTable();
@@ -693,6 +686,16 @@ void DownpourWorker::TrainFilesWithProfiler() {
         timeline.Pause();
         push_sparse_time += timeline.ElapsedSec();
         total_time += timeline.ElapsedSec();
+      }
+    }
+
+    if (copy_table_config_.need_copy()) {
+      if (copy_table_config_.sparse_copy_by_feasign()) {
+        for (size_t i = 0; i < copy_sparse_tables_.size(); ++i) {
+          uint64_t tid = copy_sparse_tables_[i].first;
+          feasign_set_[tid].insert(sparse_push_keys_[tid].begin(),
+                                   sparse_push_keys_[tid].end());
+        }
       }
     }
 
