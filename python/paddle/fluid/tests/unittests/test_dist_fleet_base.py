@@ -79,8 +79,7 @@ class FleetDistRunnerBase(object):
 
         strategy = self.generate_strategy(args)
 
-        inputs = self.inputs()
-        avg_cost = self.net(inputs)
+        avg_cost = self.net()
 
         optimizer = fluid.optimizer.SGD(LEARNING_RATE)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
