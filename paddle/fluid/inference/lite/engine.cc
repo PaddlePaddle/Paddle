@@ -12,7 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef PADDLE_WITH_CUDA
+#define LITE_WITH_CUDA 1
+#endif
+
 #include "paddle/fluid/inference/lite/engine.h"
+#include "lite/core/context.h"
+#include "lite/core/device_info.h"
 
 namespace paddle {
 namespace inference {
@@ -34,7 +40,9 @@ paddle::lite::Predictor* EngineManager::Get(const std::string& name) const {
 paddle::lite::Predictor* EngineManager::Create(const std::string& name,
                                                const EngineConfig& cfg) {
   auto* p = new paddle::lite::Predictor();
+#ifdef PADDLE_WITH_CUDA
   paddle::lite::Env<TARGET(kCUDA)>::Init();
+#endif
   p->Build("", cfg.model, cfg.param, cfg.valid_places, cfg.neglected_passes,
            cfg.model_type, cfg.model_from_memory);
   engines_[name].reset(p);

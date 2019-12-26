@@ -123,6 +123,22 @@ struct SimpleOpTeller : public Teller {
     ops_.insert("fusion_elementwise_max_activation");
     ops_.insert("fusion_elementwise_div_activation");
     ops_.insert("pad2d");
+    ops_.insert("sequence_reverse");
+    ops_.insert("lookup_table");
+    ops_.insert("search_seq_arithmetic");
+    ops_.insert("search_grnn");
+    ops_.insert("sequence_pool");
+    ops_.insert("search_group_padding");
+    ops_.insert("search_seq_fc");
+    ops_.insert("search_aligned_mat_mul");
+    ops_.insert("search_attention_padding_mask");
+    ops_.insert("search_seq_softmax");
+    ops_.insert("search_seq_depadding");
+    ops_.insert("match_matrix_tensor");
+    ops_.insert("var_conv_2d");
+    ops_.insert("sequence_concat");
+    ops_.insert("sequence_topk_avg_pooling");
+    ops_.insert("search_fc");
   }
 
   bool operator()(const std::string& op_type,

@@ -221,9 +221,9 @@ void LiteSubgraphPass::SetUpEngine(
 
   bool use_gpu = Get<bool>("use_gpu");
   bool enable_int8 = Get<bool>("enable_int8");
-  lite_api::TargetType target_type = use_gpu ? TARGET(kCUDA) : TARGET(kHost);
+  lite_api::TargetType target_type = use_gpu ? TARGET(kCUDA) : TARGET(kX86);
   paddle::lite_api::PrecisionType precision_type =
-      enable_int8 ? PRECISION(kInt8) : PRECISION(kFloat);
+      enable_int8 ? PRECISION(kInt8) : PRECISION(kInt64);
   std::set<std::string> param_names_set(repetitive_params.begin(),
                                         repetitive_params.end());
   const_cast<std::vector<std::string>&>(repetitive_params)
@@ -232,6 +232,7 @@ void LiteSubgraphPass::SetUpEngine(
   config.model = program->Proto()->SerializeAsString();
   config.valid_places = {
       paddle::lite::Place({target_type, precision_type}),
+      paddle::lite::Place({target_type, PRECISION(kFloat)}),
       paddle::lite::Place({TARGET(kHost), PRECISION(kFloat)}),
   };
   if (dump_model) {
