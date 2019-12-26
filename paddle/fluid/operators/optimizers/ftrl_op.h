@@ -41,6 +41,10 @@ class FTRLOpKernel : public framework::OpKernel<T> {
       auto* sq_accum_out = ctx.Output<Tensor>("SquaredAccumOut");
       auto* lin_accum_out = ctx.Output<Tensor>("LinearAccumOut");
 
+      auto param_data = param_out->mutable_data<T>(ctx.GetPlace());
+      auto sq_accum_data = sq_accum_out->mutable_data<T>(ctx.GetPlace());
+      auto lin_accum_data = lin_accum_out->mutable_data<T>(ctx.GetPlace());
+
       if (grad_var->IsType<framework::LoDTensor>()) {
         auto grad = ctx.Input<Tensor>("Grad");
 
@@ -93,10 +97,6 @@ class FTRLOpKernel : public framework::OpKernel<T> {
 
         s_acc_out.device(place) = sq_accum + g * g;
       } else if (grad_var->IsType<framework::SelectedRows>()) {
-        auto param_data = param_out->mutable_data<T>(ctx.GetPlace());
-        auto sq_accum_data = sq_accum_out->mutable_data<T>(ctx.GetPlace());
-        auto lin_accum_data = lin_accum_out->mutable_data<T>(ctx.GetPlace());
-
         auto lr = *ctx.Input<framework::Tensor>("LearningRate")->data<T>();
 
         auto grad = ctx.Input<framework::SelectedRows>("Grad");
