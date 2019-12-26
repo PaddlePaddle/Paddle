@@ -2803,7 +2803,7 @@ class TestBook(LayerTest):
                 name='X', shape=[4, 50], dtype='float32', lod_level=0)
             out1 = layers.shuffle_batch(x)
             default_main_program().random_seed = 1000
-            out2 = layers.shuffle_batch(x)
+            out2 = fluid.contrib.layers.shuffle_batch(x)
             self.assertIsNotNone(out1)
             self.assertIsNotNone(out2)
             return (out1)
