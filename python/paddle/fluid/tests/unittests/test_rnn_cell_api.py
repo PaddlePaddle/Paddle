@@ -69,8 +69,8 @@ class TestLSTMCell(unittest.TestCase):
         pre_cell_np = np.random.uniform(
             -0.1, 0.1, (self.batch_size, self.hidden_size)).astype('float32')
 
-        param_names = [["basic_lstm_0.w_0", "basic_lstm_0.w_0"],
-                       ["basic_lstm_0.b_0", "basic_lstm_0.b_0"]]
+        param_names = [["LSTMCell_0.w_0", "basic_lstm_0.w_0"],
+                       ["LSTMCell_0.b_0", "basic_lstm_0.b_0"]]
 
         for names in param_names:
             param = np.array(fluid.global_scope().find_var(names[0]).get_tensor(
@@ -195,13 +195,8 @@ class TestRnn(unittest.TestCase):
         pre_cell_np = np.random.uniform(
             -0.1, 0.1, (self.batch_size, self.hidden_size)).astype('float32')
 
-        param_names = [[
-            "LSTMCell_for_rnn/BasicLSTMUnit_0.w_0",
-            "basic_lstm_layers_0/BasicLSTMUnit_0.w_0"
-        ], [
-            "LSTMCell_for_rnn/BasicLSTMUnit_0.b_0",
-            "basic_lstm_layers_0/BasicLSTMUnit_0.b_0"
-        ]]
+        param_names = [["LSTMCell_for_rnn_0.w_0", "basic_lstm_layers_0_0.w_0"],
+                       ["LSTMCell_for_rnn_0.b_0", "basic_lstm_layers_0_0.b_0"]]
 
         for names in param_names:
             param = np.array(fluid.global_scope().find_var(names[0]).get_tensor(
