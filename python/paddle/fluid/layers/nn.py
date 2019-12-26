@@ -24,7 +24,7 @@ import os
 import inspect
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant, NumpyArrayInitializer
-from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program
+from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program, default_startup_program
 from ..dygraph import base
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
@@ -183,6 +183,7 @@ __all__ = [
     'hard_swish',
     'gather_tree',
     'uniform_random',
+    'nce_sampler',
 ]
 
 
@@ -13880,3 +13881,67 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
         outputs={"Out": out})
 
     return helper.append_activation(out)
+
+
+def nce_sampler(dict_path,
+                num_total_classes,
+                num_neg_samples=10,
+                seed=0,
+                sample_batch_size=1):
+    helper = LayerHelper('nce_sampler', **locals())
+    out = helper.create_variable_for_type_inference(dtype='int64')
+    probs_tensor = helper.create_global_variable(
+        dtype='float32', shape=[num_total_classes])
+    alias_tensor = helper.create_global_variable(
+        dtype='int32', shape=[num_total_classes])
+    alias_probs_tensor = helper.create_global_variable(
+        dtype='float32', shape=[num_total_classes])
+
+    helper.set_variable_initializer(probs_tensor, Constant(0.0))
+    helper.set_variable_initializer(alias_tensor, Constant(0))
+    helper.set_variable_initializer(alias_probs_tensor, Constant(0.0))
+
+    block = default_startup_program().global_block()
+    block.append_op(
+        type='nce_sampler',
+        inputs={
+            'CustomDistProbs': probs_tensor,
+            'CustomDistAlias': alias_tensor,
+            'CustomDistAliasProbs': alias_probs_tensor
+        },
+        outputs={
+            'Out': out,
+            'CustomDistProbsInit': probs_tensor,
+            'CustomDistAliasInit': alias_tensor,
+            'CustomDistAliasProbsInit': alias_probs_tensor
+        },
+        attrs={
+            'init_flag': True,
+            'filename': dict_path,
+            'num_total_classes': int(num_total_classes),
+            'num_neg_samples': int(num_neg_samples),
+            'sample_batch_size': int(sample_batch_size),
+            'seed': seed
+        })
+    helper.append_op(
+        type='nce_sampler',
+        inputs={
+            'CustomDistProbs': probs_tensor,
+            'CustomDistAlias': alias_tensor,
+            'CustomDistAliasProbs': alias_probs_tensor
+        },
+        outputs={
+            'Out': out,
+            'CustomDistProbsInit': probs_tensor,
+            'CustomDistAliasInit': alias_tensor,
+            'CustomDistAliasProbsInit': alias_probs_tensor
+        },
+        attrs={
+            'init_flag': False,
+            'filename': dict_path,
+            'num_total_classes': int(num_total_classes),
+            'num_neg_samples': int(num_neg_samples),
+            'sample_batch_size': int(sample_batch_size),
+            'seed': seed
+        })
+    return out
