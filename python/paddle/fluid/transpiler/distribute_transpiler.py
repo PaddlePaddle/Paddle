@@ -306,9 +306,9 @@ class DistributeTranspiler(object):
         if self.config.split_method is None:
             self.config.split_method = RoundRobin
 
-        if config.sync_mode:
+        if self.config.sync_mode:
             self.training_mode = TrainingMode.SYNC
-        elif config.runtime_split_send_recv:
+        elif self.config.runtime_split_send_recv:
             self.training_mode = TrainingMode.ASYNC
         else:
             self.training_mode = TrainingMode.HALFASYNC

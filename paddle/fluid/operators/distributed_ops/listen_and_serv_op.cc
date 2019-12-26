@@ -482,10 +482,8 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
     RunSyncLoop(&executor, program, &recv_scope, &dev_ctx,
                 prefetch_block_id_list, checkpoint_block_id);
   } else {
-    if (training_mode == distributed::TrainingMode::kGeo) {
-      distributed::AsyncSparseParamUpdateRecorder::Init(
-          fan_in, sparse_grad_name_to_param_name);
-    }
+    distributed::AsyncSparseParamUpdateRecorder::Init(
+        fan_in, sparse_grad_name_to_param_name);
 
     VLOG(2) << "RunAsyncLoop";
     auto grad_to_block_id_str =
