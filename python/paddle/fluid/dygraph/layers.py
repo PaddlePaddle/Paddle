@@ -257,10 +257,10 @@ class Layer(core.Layer):
                     continue
                 layer_prefix = prefix + ('.' if prefix else '') + key
                 for p, l in layer.named_sublayers(
-                        layers_set,
-                        layer_prefix,
+                        prefix=layer_prefix,
                         include_sublayers=include_sublayers,
-                        include_self=True):
+                        include_self=True,
+                        layers_set=layers_set):
                     yield p, l
 
     def clear_gradients(self):
