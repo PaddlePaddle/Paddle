@@ -1,4 +1,4 @@
-cc_library(memory_block SRCS memory_block.cc memory_block_desc.cc DEPS place absl::flat_hash_map absl::btree)
+cc_library(memory_block SRCS memory_block.cc memory_block_desc.cc DEPS place absl_flat_hash_map)
 
 if(${WITH_GPU})
   nv_library(system_allocator SRCS system_allocator.cc DEPS gflags cpu_info gpu_info place)
