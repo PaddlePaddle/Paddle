@@ -117,10 +117,46 @@ def is_belong_to_optimizer(var):
 
 
 def get_program_parameter(program):
+    """
+    Get all the parametr from Program.
+
+    Args:
+        var(Program): The Program to get parameter
+
+    Returns:
+        list: The list contains all parameter in the program
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            data = fluid.layers.data(name="img", shape=[64, 784], append_batch_size=False)
+            w = fluid.layers.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
+            b = fluid.layers.create_parameter(shape=[200], dtype='float32', name='fc_b')
+            list_para  = fluid.io.get_program_parameter(  fluid.default_main_program() )
+    """
     return list(filter(is_parameter, program.list_vars()))
 
 
 def get_program_persistable_vars(program):
+    """
+    Get all the persistable vars from Program.
+
+    Args:
+        var(Program): The Program to get persistable vars
+
+    Returns:
+        list: The list contains all persistable vars in the program
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            data = fluid.layers.data(name="img", shape=[64, 784], append_batch_size=False)
+            w = fluid.layers.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
+            b = fluid.layers.create_parameter(shape=[200], dtype='float32', name='fc_b')
+            list_para  = fluid.io.get_program_persistable_vars(  fluid.default_main_program() )
+    """
     return list(filter(is_persistable, program.list_vars()))
 
 
@@ -1509,7 +1545,7 @@ def save(program, model_path):
 
 def load(program, model_path, executor=None, var_list=None):
     """
-    This function filter out parameters and optimizer information from program, and then get corresponding value from file.
+    This function get parameters and optimizer information from program, and then get corresponding value from file.
     An exception will throw if shape or dtype of the parameters is not match.
 
     Args: 
@@ -1536,19 +1572,16 @@ def load(program, model_path, executor=None, var_list=None):
     assert executor is None or isinstance(executor, Executor)
 
     parameter_file_name = model_path + ".pdparams"
-    #assert os.path.exists(parameter_file_name), \
-    #    "Parameter file [{}] not exits".format(parameter_file_name)
 
     if not os.path.exists(parameter_file_name):
-        # parameter file not exist, try to load previous save inference
-        # (save_vars, save_params, save_persistables)
-        # get many binary files format
+        # model file save by fluid.save not found, try to load model file saved with
+        # [save_vars, save_params, save_persistables]
         _logger.warning(
-            "{} not found, try to load model file save by [ save_params, save_persistables, save_vars ]".
+            "{} not found, try to load model file saved with [ save_params, save_persistables, save_vars ]".
             format(parameter_file_name))
         if executor is None:
             raise ValueError(
-                "When load model file save by [ save_params, save_persistables, save_vars ], executor CAN NOT be None"
+                "executor is required when loading model file saved with [ save_params, save_persistables, save_vars ]"
             )
         if os.path.isdir(model_path):
             binary_file_set = set()
@@ -1571,16 +1604,17 @@ def load(program, model_path, executor=None, var_list=None):
                     executor=executor, dirname=model_path, vars=loaded_var_list)
             except RuntimeError as e:
                 _logger.error(e)
+                raise e
             except:
                 raise RuntimeError(
-                    "Load model file Failed, Please make sure model file is saved by "
+                    "Failed to load model file , please make sure model file is saved with the "
                     "following APIs: save_params, save_persistables, save_vars")
 
             return
         elif os.path.isfile(model_path):
             if var_list == None:
                 raise ValueError(
-                    "Try to load single model file save by [ save_params, save_persistables, save_vars ], var_list CAN NOT be None"
+                    "executor is required when loading model file saved with [ save_params, save_persistables, save_vars ]"
                 )
             program_var_list = list(program.list_vars())
             program_var_name_set = set([var.name for var in program_var_list])
@@ -1600,8 +1634,9 @@ def load(program, model_path, executor=None, var_list=None):
                     filename=file_name)
             except RuntimeError as e:
                 _logger.error(e)
+                raise e
             except:
-                raise RuntimeError( "Load model file Failed, Please make sure model file is saved by " \
+                raise RuntimeError( "Failed to load model file , please make sure model file is saved with the " \
                                     "the following APIs: [ save_params, save_persistables, save_vars ]. " \
                                     "When these API called, filename CANNOT be None")
 
