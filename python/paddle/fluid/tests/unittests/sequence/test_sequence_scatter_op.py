@@ -27,7 +27,7 @@ class TestSequenceScatterOp(OpTest):
         self.op_type = "sequence_scatter"
 
         X_data = np.random.uniform(0.1, 1.0, [3, 6]).astype('float64')
-        Ids_data = np.random.randint(0, 1, (120, 1)).astype('int64')
+        Ids_data = np.random.randint(0, 6, (120, 1)).astype('int64')
         Ids_lod = self.init_lod()
 
         Updates_data = np.random.uniform(0.1, 1.0, [120, 1]).astype('float64')
