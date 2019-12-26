@@ -1169,7 +1169,7 @@ def append_backward(loss,
         for i, param in enumerate(parameter_list):
             if isinstance(param, framework.Variable):
                 parameters.append(param.name)
-            elif isinstance(param, (str, unicode)):
+            elif isinstance(param, six.string_types):
                 parameters.append(param)
             else:
                 raise TypeError(
