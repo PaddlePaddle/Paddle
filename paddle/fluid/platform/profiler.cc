@@ -342,10 +342,10 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
     } else if (g_state == ProfilerState::kAll) {
       place = "All";
     } else {
-      PADDLE_THROW(
+      PADDLE_THROW(platform::errors::InvalidArgument(
           "Except profiler state must to be one of ['CPU', 'GPU' 'ALL'], but "
           "received Invalid profiler state %s",
-          g_state);
+          g_state));
     }
 
     if (merge_thread) {
