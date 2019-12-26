@@ -63,15 +63,15 @@ class FTRLOpKernel : public framework::OpKernel<T> {
         auto new_accum = sq_accum + g * g;
         // Special case for lr_power = -0.5
         if (lr_power == static_cast<T>(-0.5)) {
-          l_acc_out.device(place) =
-              lin_accum + g -
-              ((new_accum.sqrt() - sq_accum.sqrt()) /
-              lr.broadcast(grad_dsize)) * p;
+          l_acc_out.device(place) = lin_accum + g -
+                                    ((new_accum.sqrt() - sq_accum.sqrt()) /
+                                     lr.broadcast(grad_dsize)) *
+                                        p;
         } else {
           l_acc_out.device(place) =
               lin_accum + g -
               (new_accum.pow(-lr_power) - sq_accum.pow(-lr_power)) /
-              lr.broadcast(grad_dsize) * p;
+                  lr.broadcast(grad_dsize) * p;
         }
 
         auto x = (l_acc_out.constant(l1) * l_acc_out.sign() - l_acc_out);
@@ -105,8 +105,7 @@ class FTRLOpKernel : public framework::OpKernel<T> {
         math::scatter::MergeAdd<platform::CPUDeviceContext, T> merge_func;
         auto grad_merge =
             merge_func(ctx.template device_context<DeviceContext>(), *grad);
-        auto* grad_merge_data =
-            grad_merge.mutable_value()->template data<T>();
+        auto* grad_merge_data = grad_merge.mutable_value()->template data<T>();
 
         for (size_t i = 0; i < grad_merge.rows().size(); i++) {
           auto tensor_row_idx = grad_merge.rows()[i];
