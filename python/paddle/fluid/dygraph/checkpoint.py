@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import os
 import collections
-from ..framework import Variable, default_main_program, in_dygraph_mode, dygraph_only, Parameter
+from ..framework import Variable, default_main_program, in_dygraph_mode, dygraph_only, Parameter, ParamBase, VarBase
 import pickle
 from . import learning_rate_scheduler
 import warnings
@@ -67,15 +67,26 @@ def save_dygraph(state_dict, model_path):
     assert len(state_dict) > 0, "state_dict is empty, no need to save"
 
     for k, v in state_dict.items():
-        if not isinstance(v, Parameter):
+        if not isinstance(v, ParamBase):
             suffix = ".pdopt"
         break
 
-    core._save_dygraph_dict(model_path + suffix, state_dict)
+    model_dict = {}
+    name_table = {}
+    for k, v in state_dict.items():
+        if isinstance(v, [Variable, VarBase]):
+            model_dict[k] = v.numpy()
+        else:
+            model_dict[k] = v
+        name_table[k] = v.name
+    model_dict["StructuredToParameterName@@"] = name_table
+
+    with open(model_path + suffix, 'wb') as f:
+        pickle.dump(model_dict, f)
 
 
 @dygraph_only
-def load_dygraph(model_path):
+def load_dygraph(model_path, keep_name_table=False):
     '''
     Load parameter state_dict from disk.
 
@@ -109,12 +120,16 @@ def load_dygraph(model_path):
         raise RuntimeError("Parameter file [ {} ] not exists".format(
             params_file_path))
 
-    para_dict = core._load_dygraph_dict(params_file_path)
+    with open(params_file_path, 'rb') as f:
+        para_dict = pickle.load(f)
 
+    if not keep_name_table and "StructuredToParameterName@@" in para_dict:
+        del para_dict["StructuredToParameterName@@"]
     opti_dict = None
     opti_file_path = model_path + ".pdopt"
     if os.path.exists(opti_file_path):
-        opti_dict = core._load_dygraph_dict(opti_file_path)
+        with open(opti_file_path, 'rb') as f:
+            opti_dict = pickle.load(f)
 
     return para_dict, opti_dict
 
