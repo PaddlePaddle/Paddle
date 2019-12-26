@@ -762,7 +762,7 @@ def shuffle_batch(x, seed=None):
 
             import paddle.fluid as fluid
             x = fluid.layers.data(name="x", shape=[-1, 4])
-            out = fluid.layers.shuffle_batch(x)
+            out = fluid.contrib.layers.shuffle_batch(x)
     """
     helper = LayerHelper('shuffle_batch', **locals())
 
