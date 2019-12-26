@@ -1362,7 +1362,7 @@ def less_equal(x, y, cond=None, force_cpu=None):
             this tensor is the same as input :attr:`x`. If is not :attr:`None`, the op will set the variable as output tensor, the input shape \
             and data type of this tensor should be the same as input :attr:`x`. Default value is :attr:`None`.
         force_cpu(bool, optional): Whether force to store the output tensor in CPU. If :attr:`force_cpu` is False,
-            the output tensor will be stored in running device memory. The defalut value is None, the output tensor will stored in the CPU memory.
+            the output tensor will be stored in running device memory. The default value is None, the output tensor will be stored in the CPU memory.
 
     Returns:
         Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x`.
@@ -1412,7 +1412,7 @@ def greater_than(x, y, cond=None, force_cpu=None):
             tensor is the same as input :attr:`x` . If is not :attr:`None`, the op will set the variable as output tensor, the shape and data type \
             of this tensor should be the same as input :attr:`x` . Default value is :attr:`None`.
         force_cpu(bool, optional): Whether force to store the output tensor in CPU. If :attr:`force_cpu` is False, 
-            the output tensor will be stored in running device memory. The defalut value is None, the output tensor will stored in the CPU memory.
+            the output tensor will be stored in running device memory. The default value is None, the output tensor will be stored in the CPU memory.
 
     Returns:
         Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x` .
@@ -1462,7 +1462,7 @@ def greater_equal(x, y, cond=None, force_cpu=None):
             tensor is the same as input :attr:`x`. If is not :attr:`None` , the op will set the variable as output tensor, the shape and data \
             type of this tensor is the same as input :attr:`x`. Default value is :attr:`None`.
         force_cpu(bool, optional): Whether force to store the output tensor in CPU. If :attr:`force_cpu` is False, 
-            the output tensor will be stored in running device memory. The defalut value is None, the output tensor will stored in the CPU memory.
+            the output tensor will be stored in running device memory. The default value is None, the output tensor will be stored in the CPU memory.
 
     Returns:
         Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x`.
@@ -1511,7 +1511,7 @@ def equal(x, y, cond=None, force_cpu=None):
             Variable that meets the requirements to store the result of *equal*.
             if cond is None, a new Varibale will be created to store the result.
         force_cpu(bool, optional): Whether force to store the output tensor in CPU. If :attr:`force_cpu` is False, 
-            the output tensor will be stored in running device memory. The defalut value is None, the output tensor will stored in the CPU memory.
+            the output tensor will be stored in running device memory. The default value is None, the output tensor will be stored in the CPU memory.
 
     Returns:
         Variable: output Tensor, it's shape is the same as the input's Tensor,
@@ -1559,7 +1559,7 @@ def not_equal(x, y, cond=None, force_cpu=None):
              tensor is the same as input :attr:`x`. If is not :attr:`None`, the op will set the variable as output tensor, the shape and data \
              type of this tensor should be the same as input :attr:`x`. Default value is :attr:`None`.
         force_cpu(bool, optional): Whether force to store the output tensor in CPU. If :attr:`force_cpu` is False, 
-            the output tensor will be stored in running device memory. The defalut value is None, the output tensor will stored in the CPU memory.
+            the output tensor will be stored in running device memory. The default value is None, the output tensor will be stored in the CPU memory.
     
     Returns:
         Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x`.
