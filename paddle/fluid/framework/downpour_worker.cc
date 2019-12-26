@@ -828,13 +828,6 @@ void DownpourWorker::TrainFiles() {
   int cur_batch;
   while ((cur_batch = device_reader_->Next()) > 0) {
     if (copy_table_config_.need_copy()) {
-      if (copy_table_config_.sparse_copy_by_feasign()) {
-        for (size_t i = 0; i < copy_sparse_tables_.size(); ++i) {
-          uint64_t tid = copy_sparse_tables_[i].first;
-          feasign_set_[tid].insert(sparse_push_keys_[tid].begin(),
-                                   sparse_push_keys_[tid].end());
-        }
-      }
       if (batch_cnt % copy_table_config_.batch_num() == 0) {
         CopySparseTable();
         CopyDenseTable();
@@ -915,6 +908,16 @@ void DownpourWorker::TrainFiles() {
             sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
             &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
             dump_slot_, &sparse_push_keys_[tid], no_cvm_);
+      }
+    }
+
+    if (copy_table_config_.need_copy()) {
+      if (copy_table_config_.sparse_copy_by_feasign()) {
+        for (size_t i = 0; i < copy_sparse_tables_.size(); ++i) {
+          uint64_t tid = copy_sparse_tables_[i].first;
+          feasign_set_[tid].insert(sparse_push_keys_[tid].begin(),
+                                   sparse_push_keys_[tid].end());
+        }
       }
     }
 
