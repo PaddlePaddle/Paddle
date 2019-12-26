@@ -17,7 +17,7 @@ from __future__ import print_function
 from six.moves import reduce
 from .. import core
 from ..layers import utils
-from ..layers import nn
+from ..dygraph import dygraph_utils
 from . import layers
 from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer_
 from ..param_attr import ParamAttr
@@ -252,9 +252,11 @@ class Conv2D(layers.Layer):
             outs = core.ops.conv2d(inputs, attrs)
             pre_bias = outs['Output'][0]
 
-            pre_act = nn._append_bias_in_dygraph(pre_bias, self._bias_param)
+            pre_act = dygraph_utils._append_bias_in_dygraph(pre_bias,
+                                                            self._bias_param)
 
-            return nn._append_activation_in_dygraph(pre_act, self._act)
+            return dygraph_utils._append_activation_in_dygraph(pre_act,
+                                                               self._act)
 
         pre_bias = self._helper.create_variable_for_type_inference(
             dtype=self._dtype)
@@ -980,9 +982,10 @@ class Linear(layers.Layer):
             outs = core.ops.matmul(inputs, attrs)
             pre_bias = outs['Out'][0]
 
-            pre_act = nn._append_bias_in_dygraph(pre_bias, self.bias)
+            pre_act = dygraph_utils._append_bias_in_dygraph(pre_bias, self.bias)
 
-            return nn._append_activation_in_dygraph(pre_act, self._act)
+            return dygraph_utils._append_activation_in_dygraph(pre_act,
+                                                               self._act)
 
         tmp = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(

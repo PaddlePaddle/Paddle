@@ -26,6 +26,7 @@ from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program
 from ..dygraph import base
+from ..dygraph import dygraph_utils
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
 from .tensor import concat, assign, fill_constant, zeros
@@ -187,54 +188,6 @@ __all__ = [
 
 
 @dygraph_only
-def _append_activation_in_dygraph(input,
-                                  act=None,
-                                  use_cudnn=False,
-                                  use_mkldnn=False):
-    """Append activation in dygraph mode.
-
-        Args:
-            input: the input variable. 
-            act: activation type
-            use_mkldnn: if use mkldnn
-            use_cudnn: if use cudnn
-
-    Return the Variable after append activation
-    """
-    if not act:
-        return input
-
-    attrs = {'use_cudnn': use_cudnn, 'use_mkldnn': use_mkldnn}
-    inputs = {"X": [input]}
-    act_op = getattr(core.ops, act)
-    res = act_op(inputs, attrs)
-    return res['Out'][0]
-
-
-@dygraph_only
-def _append_bias_in_dygraph(
-        input,
-        bias=None,
-        axis=1, ):
-    """Append bias operation in dygraph mode.
-
-        Args:
-            input: the input variable. 
-            bias:  the bias to be appended
-            axis:  the axis to perform operation
-
-    Return the Variable after bias operation
-    """
-    if not bias:
-        return input
-
-    attrs = {'axis': axis}
-    inputs = {'X': [input], 'Y': [bias]}
-    outs = core.ops.elementwise_add(inputs, attrs)
-    return outs['Out'][0]
-
-
-@dygraph_only
 def _elementwise_op_in_dygraph(x,
                                y,
                                axis=-1,
@@ -247,7 +200,8 @@ def _elementwise_op_in_dygraph(x,
     outs = op(inputs, attrs)
     out = outs['Out'][0]
 
-    return _append_activation_in_dygraph(out, act, use_mkldnn=use_mkldnn)
+    return dygraph_utils._append_activation_in_dygraph(
+        out, act, use_mkldnn=use_mkldnn)
 
 
 def fc(input,
@@ -5625,7 +5579,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
         inputs = {'X': [x]}
         outs = core.ops.reshape2(inputs, attrs)
         out = outs['Out'][0]
-        return _append_activation_in_dygraph(out, act)
+        return dygraph_utils._append_activation_in_dygraph(out, act)
 
     check_type_and_dtype(x, 'x', Variable,
                          ['float16', 'float32', 'float64', 'int32', 'int64'],
