@@ -25,7 +25,7 @@ RUN apt-get update && \
     libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
     xz-utils tk-dev libffi-dev liblzma-dev
 
-# Downgrade gcc&&g++
+# Downgrade gcc && g++
 RUN apt-get update
 WORKDIR /usr/bin
 RUN apt install -y gcc-4.8 g++-4.8
