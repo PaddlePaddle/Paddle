@@ -2828,6 +2828,18 @@ class TestBook(LayerTest):
                 name='Filter_tag')
             out1, out2 = layers.filter_by_instag(x1, x2, x3, is_lod=True)
 
+    def test_shuffle_batch(self):
+        # TODO(minqiyang): dygraph do not support lod now
+        with self.static_graph():
+            x = layers.data(
+                name='X', shape=[4, 50], dtype='float32', lod_level=0)
+            out1 = fluid.contrib.layers.shuffle_batch(x)
+            default_main_program().random_seed = 1000
+            out2 = fluid.contrib.layers.shuffle_batch(x)
+            self.assertIsNotNone(out1)
+            self.assertIsNotNone(out2)
+            return (out1)
+
     def test_roi_pool(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
