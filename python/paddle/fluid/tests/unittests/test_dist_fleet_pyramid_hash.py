@@ -26,7 +26,7 @@ class TestPyramidHashOpApi(unittest.TestCase):
         embed_dim = 64
         x_shape, x_lod = [16, 10], [[3, 5, 2, 6]]
         x = fluid.data(name='x', shape=x_shape, dtype='int32', lod_level=1)
-        hash_embd = fluid.contrib.search_pyramid_hash(
+        hash_embd = fluid.contrib.layers.search_pyramid_hash(
             input=x,
             num_emb=embed_dim,
             space_len=num_voc * embed_dim,
@@ -76,7 +76,7 @@ class TestPyramidHashOpApi(unittest.TestCase):
         embed_dim = 64
         x_shape, x_lod = [16, 10], [[3, 5, 2, 6]]
         x = fluid.data(name='x', shape=x_shape, dtype='int32', lod_level=1)
-        hash_embd = fluid.contrib.search_pyramid_hash(
+        hash_embd = fluid.contrib.layers.search_pyramid_hash(
             input=x,
             num_emb=embed_dim,
             space_len=num_voc * embed_dim,
