@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# no_check_set of check_output must be None
 No_Check_Set_White_List = []
 No_Check_Set_Need_To_Fix_Op_List = [
     'fake_quantize_range_abs_max', 'coalesce_tensor', 'flatten2', 'squeeze2',
