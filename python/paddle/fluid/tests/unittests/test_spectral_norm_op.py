@@ -45,7 +45,10 @@ def spectral_norm(weight, u, v, dim, power_iters, eps):
     return weight / sigma
 
 
-@skip_check_grad_ci(reason="Spectral norm do not check grad when power_iters>0")
+@skip_check_grad_ci(
+    reason="Spectral norm do not check grad when power_iters > 0 "
+    "because grad is not calculated in power iterations, "
+    "which cannot be checked by python grad unittests")
 class TestSpectralNormOpNoGrad(OpTest):
     def setUp(self):
         self.initTestCase()
@@ -82,7 +85,10 @@ class TestSpectralNormOpNoGrad(OpTest):
         self.eps = 1e-12
 
 
-@skip_check_grad_ci(reason="Spectral norm do not check grad when power_iters>0")
+@skip_check_grad_ci(
+    reason="Spectral norm do not check grad when power_iters > 0 "
+    "because grad is not calculated in power iterations, "
+    "which cannot be checked by python grad unittests")
 class TestSpectralNormOpNoGrad2(TestSpectralNormOpNoGrad):
     def initTestCase(self):
         self.weight_shape = (2, 3, 3, 3)
