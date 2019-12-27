@@ -29,8 +29,8 @@ API_FILES=("CMakeLists.txt"
            "paddle/fluid/framework/unused_var_check.cc"
            "python/paddle/fluid/tests/unittests/white_list/check_shape_white_list.py"
            "python/paddle/fluid/tests/unittests/white_list/op_check_grad_white_list.py"
-           "python/paddle/fluid/tests/unittests/white_list/no_grad_set_white_list.py"
            "python/paddle/fluid/tests/unittests/white_list/op_accuracy_white_list.py"
+           "python/paddle/fluid/tests/unittests/white_list/no_grad_set_white_list.py"
            )
 
 approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
