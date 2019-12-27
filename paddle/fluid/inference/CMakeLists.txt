@@ -2,6 +2,7 @@ if(WITH_TESTING)
   include(tests/test.cmake) # some generic cmake funtion for inference
 endif()
 
+add_definitions(-DPADDLE_DLL_EXPORT)  # export dll when compile paddle_fluid.dll && paddle_fluid_c.dll on windows
 set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor data_feed_proto)
 
 # TODO(panyx0718): Should this be called paddle_fluid_inference_api_internal?

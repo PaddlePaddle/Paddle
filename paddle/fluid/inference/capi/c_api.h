@@ -19,7 +19,7 @@
 #include <stdio.h>
 
 #if defined(_WIN32)
-#ifdef PADDLE_ON_INFERENCE
+#ifdef PADDLE_DLL_EXPORT
 #define PADDLE_CAPI_EXPORT __declspec(dllexport)
 #else
 #define PADDLE_CAPI_EXPORT __declspec(dllimport)
