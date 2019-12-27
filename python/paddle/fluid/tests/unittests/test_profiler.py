@@ -30,7 +30,7 @@ class TestProfiler(unittest.TestCase):
     def setUpClass(cls):
         os.environ['CPU_NUM'] = str(4)
 
-    def net_profiler(self, state, use_parallel_executor=False):
+    def net_profiler(self, state, option, use_parallel_executor=False):
         profile_path = os.path.join(tempfile.gettempdir(), "profile")
         open(profile_path, "w").write("")
         startup_program = fluid.Program()
@@ -75,7 +75,7 @@ class TestProfiler(unittest.TestCase):
                 main_program=main_program)
 
         pass_acc_calculator = fluid.average.WeightedAverage()
-        with profiler.profiler(state, 'total', profile_path) as prof:
+        with profiler.profiler(state, option, 'total', profile_path) as prof:
             for iter in range(10):
                 if iter == 2:
                     profiler.reset_profiler()
@@ -110,20 +110,20 @@ class TestProfiler(unittest.TestCase):
                 print("Warning: unregister", event.name)
 
     def test_cpu_profiler(self):
-        self.net_profiler('CPU')
-        self.net_profiler('CPU', use_parallel_executor=True)
+        self.net_profiler('CPU', "Whole")
+        self.net_profiler('CPU', "Whole", use_parallel_executor=True)
 
     @unittest.skipIf(not core.is_compiled_with_cuda(),
                      "profiler is enabled only with GPU")
     def test_cuda_profiler(self):
-        self.net_profiler('GPU')
-        self.net_profiler('GPU', use_parallel_executor=True)
+        self.net_profiler('GPU', "OP")
+        self.net_profiler('GPU', "OP", use_parallel_executor=True)
 
     @unittest.skipIf(not core.is_compiled_with_cuda(),
                      "profiler is enabled only with GPU")
     def test_all_profiler(self):
-        self.net_profiler('All')
-        self.net_profiler('All', use_parallel_executor=True)
+        self.net_profiler('All', "Detail")
+        self.net_profiler('All', "Detail", use_parallel_executor=True)
 
 
 if __name__ == '__main__':
