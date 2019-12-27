@@ -14,8 +14,8 @@ ARG WITH_AVX
 ENV WOBOQ OFF
 ENV WITH_GPU=${WITH_GPU:-ON}
 ENV WITH_AVX=${WITH_AVX:-ON}
-
 ENV HOME /root
+
 # Add bash enhancements
 COPY ./paddle/scripts/docker/root/ /root/
 
