@@ -18,6 +18,6 @@ NOT_CHECK_OP_LIST = [
 ]
 
 NEED_TO_FIX_OP_LIST = [
-    'sequence_topk_avg_pooling', 'matmul', 'margin_rank_loss',
-    'elementwise_pow', 'fused_elemwise_activation', 'mul'
+    'sequence_topk_avg_pooling', 'matmul', 'add_position_encoding',
+    'margin_rank_loss', 'elementwise_pow', 'fused_elemwise_activation', 'mul'
 ]
