@@ -179,6 +179,7 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
   auto type = framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
                                       library, customized_type_value);
 #ifdef PADDLE_WITH_CUDA
+  /*
   std::vector<framework::KernelConfig>& configs = kernel_configs_map_[type];
   // TODO(dangqingqing): Currently conv_fusion_op use cudnn but sets use_cudnn
   // to false. It should be fixed and then here should only create if library
@@ -188,6 +189,15 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
         new framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t>());
     configs.push_back(p);
   }
+  */
+  auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+  std::shared_ptr<framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t>> p(
+        new framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t>()); 
+  //dev_ctx.InsertCacheIfEmpty( ctx.Type(), std::make_pair( type.data_type_, type.data_layout_), {p});
+  (const_cast<paddle::platform::CUDADeviceContext*>(&dev_ctx))->InsertCacheIfEmpty( ctx.Type(), 
+          framework::DataLayout::kNCHW, 
+          {p});
+
 #endif
   return type;
 }
@@ -575,6 +585,7 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
       layout_, library_, customized_type_value);
 #ifdef PADDLE_WITH_CUDA
   if (library_ == framework::LibraryType::kCUDNN) {
+    /*
     std::vector<framework::KernelConfig>& configs = kernel_configs_map_[type];
     if (configs.empty()) {
       std::shared_ptr<framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>>
@@ -586,6 +597,17 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
           p2(new framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>());
       configs.push_back(p2);
     }
+    */
+    std::shared_ptr<framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>>
+          p(new framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>());
+
+    std::shared_ptr<
+          framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>>
+          p2(new framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>());
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>(); 
+    (const_cast<paddle::platform::CUDADeviceContext*>(&dev_ctx))->InsertCacheIfEmpty( ctx.Type(), 
+            framework::DataLayout::kNCHW,
+            {p, p2});
   }
 #endif
   return type;
@@ -752,6 +774,7 @@ framework::OpKernelType ConvOpDoubleGrad::GetExpectedKernelType(
       layout_, library_, customized_type_value);
 #ifdef PADDLE_WITH_CUDA
   if (library_ == framework::LibraryType::kCUDNN) {
+    /*
     std::vector<framework::KernelConfig>& configs = kernel_configs_map_[type];
     if (configs.empty()) {
       std::shared_ptr<framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t>> p0(
@@ -759,14 +782,28 @@ framework::OpKernelType ConvOpDoubleGrad::GetExpectedKernelType(
       configs.push_back(p0);
 
       std::shared_ptr<
-          framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>>
-          p1(new framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>());
+          framework::algorithmscache<cudnnconvolutionbwdfilteralgo_t>>
+          p1(new framework::algorithmscache<cudnnconvolutionbwdfilteralgo_t>());
       configs.push_back(p1);
 
-      std::shared_ptr<framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>>
-          p2(new framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>());
+      std::shared_ptr<framework::algorithmscache<cudnnconvolutionbwddataalgo_t>>
+          p2(new framework::algorithmscache<cudnnconvolutionbwddataalgo_t>());
       configs.push_back(p2);
     }
+    */
+    std::shared_ptr<framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t>> p0(
+             new framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t>());
+    
+    std::shared_ptr<
+            framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>>
+            p1(new framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>());
+
+    std::shared_ptr<framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>>
+             p2(new framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>());
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    (const_cast<paddle::platform::CUDADeviceContext*>(&dev_ctx))->InsertCacheIfEmpty( ctx.Type(), 
+            framework::DataLayout::kNCHW,
+            {p0, p1, p2});
   }
 #endif
   return type;

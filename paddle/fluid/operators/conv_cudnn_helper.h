@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator_kernel_configs.h"
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/platform/cudnn_desc.h"
+#include "paddle/fluid/platform/device_context.h"
 namespace paddle {
 namespace operators {
 
@@ -91,12 +92,17 @@ std::ostream& operator<<(std::ostream& out, const std::vector<T>& v) {
 
 using framework::AlgorithmsCache;
 
+static framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t> global_forward_cache;
+static framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t> global_bwddata_cache;
+static framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t> global_bwdfilter_cache;
+
 struct ConvArgs {
   cudnnHandle_t handle;
   platform::TensorDescriptor idesc, odesc;
   platform::FilterDescriptor wdesc;
   platform::ConvolutionDescriptor cdesc;
   const framework::Tensor *x, *w, *o;
+  cudnnDataType_t cudnn_dtype;
 
   // strides
   std::vector<int> s;
@@ -107,8 +113,9 @@ struct ConvArgs {
 
   ConvArgs(const framework::Tensor* x, const framework::Tensor* w,
            const framework::Tensor* o, const std::vector<int> s,
-           const std::vector<int> p, const std::vector<int> d)
-      : x(x), w(w), o(o), s(s), p(p), d(d) {}
+           const std::vector<int> p, const std::vector<int> d,
+           cudnnDataType_t dtype)
+      : x(x), w(w), o(o), s(s), p(p), d(d), cudnn_dtype(dtype) {}
 };
 
 template <typename perf_t>
@@ -122,7 +129,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
   template <typename T>
   static algo_t Find(const ConvArgs& args, bool exhaustive_search,
                      bool deterministic, int algo_cache_id,
-                     const framework::ExecutionContext& ctx) {
+                     const framework::ExecutionContext& ctx ) {
     auto dtype = platform::CudnnDataType<T>::type;
     bool has_got_workspace_size = true;
     bool exhaustive = (exhaustive_search) & (dtype != CUDNN_DATA_HALF);
@@ -177,11 +184,16 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
 #endif
       VLOG(3) << "choose algo " << algo;
     } else {
-      AlgorithmsCache<algo_t>& algo_cache =
-          ctx.GetKernelConfig<AlgorithmsCache<algo_t>>(algo_cache_id);
+      //AlgorithmsCache<algo_t>& algo_cache =
+      //    ctx.GetKernelConfig<AlgorithmsCache<algo_t>>(algo_cache_id);
       auto& dev_ctx =
           ctx.template device_context<platform::CUDADeviceContext>();
       auto workspace_handle = dev_ctx.cudnn_workspace_handle();
+    
+      auto& temp = ctx.cuda_device_context();
+      //AlgorithmsCache<algo_t>& algo_cache = temp.GetKernelList<AlgorithmsCache<algo_t>>( ctx.Type(), 
+      //        framework::DataLayout::kNCHW, algo_cache_id);
+      AlgorithmsCache<algo_t>& algo_cache = global_forward_cache;
 
       auto x_dims = framework::vectorize(args.x->dims());
       auto w_dims = framework::vectorize(args.w->dims());
@@ -192,7 +204,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
                << args.p << ", args.d" << args.d;
 
       algo = algo_cache.GetAlgorithm(
-          x_dims, w_dims, args.s, args.p, args.d, 0, [&]() {
+          x_dims, w_dims, args.s, args.p, args.d, 0, args.cudnn_dtype, [&]() {
             int returned_algo_count;
             std::array<perf_t, kNUM_CUDNN_FWD_ALGS> perf_stat;
 
@@ -238,7 +250,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
   template <typename T>
   static algo_t Find(const ConvArgs& args, bool exhaustive_search,
                      bool deterministic, int algo_cache_id,
-                     const framework::ExecutionContext& ctx) {
+                     const framework::ExecutionContext& ctx ) {
     auto dtype = platform::CudnnDataType<T>::type;
     bool exhaustive = (exhaustive_search) & (dtype != CUDNN_DATA_HALF);
     size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
@@ -310,11 +322,19 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
     } else if (deterministic) {
       return CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
     } else {
-      AlgorithmsCache<algo_t>& algo_cache =
-          ctx.GetKernelConfig<AlgorithmsCache<algo_t>>(algo_cache_id);
+      //AlgorithmsCache<algo_t>& algo_cache =
+      //    ctx.GetKernelConfig<AlgorithmsCache<algo_t>>(algo_cache_id);
       auto& dev_ctx =
           ctx.template device_context<platform::CUDADeviceContext>();
       auto workspace_handle = dev_ctx.cudnn_workspace_handle();
+        
+      AlgorithmsCache<algo_t>& algo_cache = global_bwddata_cache;
+      /*
+      AlgorithmsCache<algo_t>& algo_cache =
+          dev_ctx.GetKernelList<AlgorithmsCache<algo_t>>( ctx.Type(),
+                  framework::DataLayout::kNCHW,
+                  algo_cache_id);
+      */
 
       auto x_dims = framework::vectorize(args.x->dims());
       auto w_dims = framework::vectorize(args.w->dims());
@@ -325,7 +345,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
                << args.p << ", args.d" << args.d;
 
       algo = algo_cache.GetAlgorithm(
-          x_dims, w_dims, args.s, args.p, args.d, 0, [&]() {
+          x_dims, w_dims, args.s, args.p, args.d, 0, args.cudnn_dtype, [&]() {
             int returned_algo_count;
             std::array<perf_t, kNUM_CUDNN_FWD_ALGS> perf_stat;
 
@@ -375,7 +395,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
   template <typename T>
   static algo_t Find(const ConvArgs& args, bool exhaustive_search,
                      bool deterministic, int algo_cache_id,
-                     const framework::ExecutionContext& ctx) {
+                     const framework::ExecutionContext& ctx ) {
     auto dtype = platform::CudnnDataType<T>::type;
     bool exhaustive = (exhaustive_search) & (dtype != CUDNN_DATA_HALF);
     size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
@@ -436,11 +456,18 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
     } else if (deterministic) {
       return CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1;
     } else {
-      AlgorithmsCache<algo_t>& algo_cache =
-          ctx.GetKernelConfig<AlgorithmsCache<algo_t>>(algo_cache_id);
+      //AlgorithmsCache<algo_t>& algo_cache =
+      //    ctx.GetKernelConfig<AlgorithmsCache<algo_t>>(algo_cache_id);
       auto& dev_ctx =
           ctx.template device_context<platform::CUDADeviceContext>();
       auto workspace_handle = dev_ctx.cudnn_workspace_handle();
+      /*
+      AlgorithmsCache<algo_t>& algo_cache =
+          dev_ctx.GetKernelList<AlgorithmsCache<algo_t>>( ctx.Type(),
+                  framework::DataLayout::kNCHW,
+                              algo_cache_id);
+     */
+      AlgorithmsCache<algo_t>& algo_cache = global_bwdfilter_cache;
 
       auto x_dims = framework::vectorize(args.x->dims());
       auto w_dims = framework::vectorize(args.w->dims());
@@ -451,7 +478,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
                << args.p << ", args.d" << args.d;
 
       algo = algo_cache.GetAlgorithm(
-          x_dims, w_dims, args.s, args.p, args.d, 0, [&]() {
+          x_dims, w_dims, args.s, args.p, args.d, 0, args.cudnn_dtype, [&]() {
             int returned_algo_count;
             std::array<perf_t, kNUM_CUDNN_FWD_ALGS> perf_stat;
             auto cudnn_find_func = [&](void* cudnn_workspace_ptr) {

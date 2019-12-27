@@ -33,6 +33,7 @@ class AlgorithmsCache {
       const std::vector<int>& strides, const std::vector<int>& paddings,
       const std::vector<int>& dilations,
       int algorithmFlags,  // can set for different data type
+      cudnnDataType_t cudnn_dtype,
       std::function<TAlgorithm()> gen_func);
 
   TAlgorithm GetAlgorithm(int64_t area, int search_times, int algorithmFlags,
@@ -41,13 +42,14 @@ class AlgorithmsCache {
  private:
   std::unordered_map<int64_t, TAlgorithm> hash_;
   int search_times_;
+  std::mutex cache_mutex;
 };
 
 template <typename TAlgorithm>
 TAlgorithm framework::AlgorithmsCache<TAlgorithm>::GetAlgorithm(
     const std::vector<int64_t>& dims1, const std::vector<int64_t>& dims2,
     const std::vector<int>& strides, const std::vector<int>& paddings,
-    const std::vector<int>& dilations, int algorithmFlags,
+    const std::vector<int>& dilations, int algorithmFlags, cudnnDataType_t cudnn_dtype,
     std::function<TAlgorithm()> gen_func) {
   int64_t seed = 0;
   // Hash all of the inputs, use to try and look up a previously
@@ -81,15 +83,33 @@ TAlgorithm framework::AlgorithmsCache<TAlgorithm>::GetAlgorithm(
   seed ^= hashFn(static_cast<int64_t>(algorithmFlags)) + 0x9e3779b9 +
           (seed << 6) + (seed >> 2) + 5;
 
+  seed ^= hashFn(static_cast<int64_t>(cudnn_dtype)) + 0x9e3779b9 +
+          (seed << 6) + (seed >> 2) + 6;
+
   VLOG(10) << "seed:" << seed << ", hash_.size:" << hash_.size();
 
   if (seed == 0) return gen_func();
+  
+  TAlgorithm ret;
+  auto it = hash_.end();
 
-  if (hash_.find(seed) == hash_.end()) {
-    TAlgorithm value = gen_func();
-    hash_[seed] = value;
+  {
+    std::lock_guard<std::mutex> lock( cache_mutex);
+    it = hash_.find( seed );
   }
-  return hash_[seed];
+
+  if ( it == hash_.end() )
+  {
+    ret = gen_func();
+    std::lock_guard<std::mutex> lock( cache_mutex);
+    hash_[seed] = ret;
+  }
+  else
+  {
+    ret = it->second;
+  }
+
+  return ret;
 }
 
 template <typename TAlgorithm>

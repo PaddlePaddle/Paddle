@@ -218,7 +218,8 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     // ------------------- cudnn descriptors ---------------------
     ConvArgs args{&transformed_input,  &transformed_filter_channel,
                   &transformed_output, strides,
-                  padding_common,      dilations};
+                  padding_common,      dilations,
+                  dtype};
 
     auto handle = dev_ctx.cudnn_handle();
     auto workspace_handle = dev_ctx.cudnn_workspace_handle();
@@ -506,13 +507,15 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
                    &transformed_output_grad_channel,
                    strides,
                    padding_common,
-                   dilations};
+                   dilations,
+                   dtype};
     ConvArgs args2{&transformed_input,
                    &transformed_filter_grad_channel,
                    &transformed_output_grad_channel,
                    strides,
                    padding_common,
-                   dilations};
+                   dilations,
+                   dtype};
 
     auto handle = dev_ctx.cudnn_handle();
     DataLayout layout = compute_format == DataLayout::kNHWC ? DataLayout::kNHWC
@@ -884,13 +887,17 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
 
     ConvArgs args1{&transformed_ddX,         W,
                    &transformed_ddO_channel, strides,
-                   padding_common,           dilations};
+                   padding_common,           dilations,
+                   dtype};
     ConvArgs args2{&transformed_X, ddW,      &transformed_ddO_channel, strides,
-                   padding_common, dilations};
+                   padding_common, dilations,
+                   dtype};
     ConvArgs args3{&transformed_ddX, dW,       &transformed_dO_channel, strides,
-                   padding_common,   dilations};
+                   padding_common,   dilations, 
+                   dtype};
     ConvArgs args4{&transformed_dX, ddW,      &transformed_dO_channel, strides,
-                   padding_common,  dilations};
+                   padding_common,  dilations,
+                   dtype};
 
     cudnnConvolutionFwdAlgo_t fwd_algo1 =
         static_cast<cudnnConvolutionFwdAlgo_t>(0);
