@@ -1039,7 +1039,11 @@ REGISTER_OP_CPU_KERNEL(
     ops::SquareDoubleGradKernel<plat::CPUDeviceContext,
                                 ops::SquareGradGradFunctor<double>>,
     ops::SquareDoubleGradKernel<plat::CPUDeviceContext,
-                                ops::SquareGradGradFunctor<plat::float16>>);
+                                ops::SquareGradGradFunctor<plat::float16>>,
+    ops::SquareDoubleGradKernel<plat::CPUDeviceContext,
+                                ops::SquareGradGradFunctor<int>>,
+    ops::SquareDoubleGradKernel<plat::CPUDeviceContext,
+                                ops::SquareGradGradFunctor<int64_t>>);
 /* ========================================================================== */
 
 /* ==========================   pow register  ============================ */
@@ -1055,9 +1059,13 @@ REGISTER_OPERATOR(pow_grad, ops::PowOpGrad,
 
 REGISTER_OP_CPU_KERNEL(
     pow, ops::PowKernel<plat::CPUDeviceContext, ops::PowFunctor<float>>,
-    ops::PowKernel<plat::CPUDeviceContext, ops::PowFunctor<double>>);
+    ops::PowKernel<plat::CPUDeviceContext, ops::PowFunctor<double>>,
+    ops::PowKernel<plat::CPUDeviceContext, ops::PowFunctor<int>>,
+    ops::PowKernel<plat::CPUDeviceContext, ops::PowFunctor<int64_t>>);
 REGISTER_OP_CPU_KERNEL(
     pow_grad,
     ops::PowGradKernel<plat::CPUDeviceContext, ops::PowGradFunctor<float>>,
-    ops::PowGradKernel<plat::CPUDeviceContext, ops::PowGradFunctor<double>>);
+    ops::PowGradKernel<plat::CPUDeviceContext, ops::PowGradFunctor<double>>,
+    ops::PowGradKernel<plat::CPUDeviceContext, ops::PowGradFunctor<int>>,
+    ops::PowGradKernel<plat::CPUDeviceContext, ops::PowGradFunctor<int64_t>>);
 /* ========================================================================== */

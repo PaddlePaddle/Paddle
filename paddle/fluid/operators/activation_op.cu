@@ -84,7 +84,11 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SquareDoubleGradKernel<paddle::platform::CUDADeviceContext,
                                 ops::SquareGradGradFunctor<double>>,
     ops::SquareDoubleGradKernel<plat::CUDADeviceContext,
-                                ops::SquareGradGradFunctor<plat::float16>>);
+                                ops::SquareGradGradFunctor<plat::float16>>,
+    ops::SquareDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                                ops::SquareGradGradFunctor<int>>,
+    ops::SquareDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                                ops::SquareGradGradFunctor<int64_t>>);
 /* ========================================================================== */
 
 /* ==========================   pow register  ============================ */
@@ -92,11 +96,15 @@ REGISTER_OP_CUDA_KERNEL(
 REGISTER_OP_CUDA_KERNEL(
     pow, ops::PowKernel<plat::CUDADeviceContext, ops::PowFunctor<float>>,
     ops::PowKernel<plat::CUDADeviceContext, ops::PowFunctor<double>>,
+    ops::PowKernel<plat::CUDADeviceContext, ops::PowFunctor<int>>,
+    ops::PowKernel<plat::CUDADeviceContext, ops::PowFunctor<int64_t>>,
     ops::PowKernel<plat::CUDADeviceContext, ops::PowFunctor<plat::float16>>);
 REGISTER_OP_CUDA_KERNEL(
     pow_grad,
     ops::PowGradKernel<plat::CUDADeviceContext, ops::PowGradFunctor<float>>,
     ops::PowGradKernel<plat::CUDADeviceContext, ops::PowGradFunctor<double>>,
+    ops::PowGradKernel<plat::CUDADeviceContext, ops::PowGradFunctor<int>>,
+    ops::PowGradKernel<plat::CUDADeviceContext, ops::PowGradFunctor<int64_t>>,
     ops::PowGradKernel<plat::CUDADeviceContext,
                        ops::PowGradFunctor<plat::float16>>);
 /* ========================================================================== */
