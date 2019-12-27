@@ -255,7 +255,7 @@ void GradientAccumulate(std::shared_ptr<VarBase> src_varbase,
                (!dst_var->Get<framework::LoDTensor>().IsInitialized())) {
       *dst_var = std::move(*(src_varbase->MutableVar()));
     } else {
-      if (dst_varbase->Persistable()) {
+      if (dst_varbase->Trainable()) {
         VarBaseAdd(src_varbase, dst_varbase);
       } else {
         dst_varbase->SetType(framework::proto::VarType::SELECTED_ROWS);
@@ -273,7 +273,7 @@ void GradientAccumulate(std::shared_ptr<VarBase> src_varbase,
          (!dst_var->Get<framework::SelectedRows>().value().IsInitialized()))) {
       *dst_var = std::move(*(src_varbase->MutableVar()));
     } else {
-      if (dst_varbase->Persistable()) {
+      if (dst_varbase->Trainable()) {
         VarBaseAdd(src_varbase, dst_varbase);
       } else {
         *dst_var = std::move(*(src_varbase->MutableVar()));

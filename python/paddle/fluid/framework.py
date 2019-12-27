@@ -4657,10 +4657,10 @@ class ParamBase(core.VarBase):
 
         name = kwargs.get('name', unique_name.generate('_param_base'))
 
-        super(ParamBase, self).__init__(dtype
-                                        if dtype else core.VarDesc.VarType.FP32,
-                                        list(shape) if shape else [], name,
-                                        core.VarDesc.VarType.LOD_TENSOR, True)
+        super(ParamBase, self).__init__(
+            dtype if dtype else core.VarDesc.VarType.FP32,
+            list(shape)
+            if shape else [], name, core.VarDesc.VarType.LOD_TENSOR, True, True)
 
         self.trainable = kwargs.get('trainable', True)
 

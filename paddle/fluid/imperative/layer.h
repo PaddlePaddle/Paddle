@@ -150,7 +150,11 @@ class VarBase {
 
   void SetPersistable(bool persistable) { persistable_ = persistable; }
 
+  void SetTrainable(bool trainable) { trainable_ = trainable; }
+
   bool Persistable() const { return persistable_; }
+
+  bool Trainable() { return trainable_; }
 
   void AddGradOps(const std::weak_ptr<OpBase>& op);
 
@@ -228,6 +232,7 @@ class VarBase {
   int overrided_stop_gradient_{-1};
   bool grad_generated_{false};
   bool persistable_{false};
+  bool trainable_{false};
 
   framework::proto::VarType::Type type_{framework::proto::VarType::LOD_TENSOR};
   framework::proto::VarType::Type data_type_{framework::proto::VarType::FP32};

@@ -283,7 +283,8 @@ void BindImperative(py::module *m_ptr) {
       .def("__init__",
            [](imperative::VarBase &self, framework::proto::VarType::Type dtype,
               const std::vector<int> &dims, const py::handle &name,
-              framework::proto::VarType::Type type, bool persistable) {
+              framework::proto::VarType::Type type, bool persistable,
+              bool trainable = false) {
              std::string act_name = "";
              if (!name.ptr() || name.ptr() == Py_None) {
                act_name = imperative::GetCurrentTracer()->GenerateUniqueName(
@@ -295,6 +296,7 @@ void BindImperative(py::module *m_ptr) {
              self.SetPersistable(persistable);
              self.SetType(type);
              self.SetDataType(dtype);
+             self.SetTrainable(trainable);
              if (type == framework::proto::VarType::LOD_TENSOR) {
                auto *tensor =
                    self.MutableVar()->GetMutable<framework::LoDTensor>();

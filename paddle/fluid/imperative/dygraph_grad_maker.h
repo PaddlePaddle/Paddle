@@ -139,8 +139,8 @@ class GradOpBaseMakerBase {
             tensor->Resize(
                 var_base_temp->Var().Get<framework::LoDTensor>().dims());
           }
-          if (var_base_temp->Persistable()) {
-            grad_var_base_tmp->SetPersistable(true);
+          if (var_base_temp->Trainable()) {
+            grad_var_base_tmp->SetTrainable(true);
           }
           vec_temp.emplace_back(grad_var_base_tmp);
         } else {
