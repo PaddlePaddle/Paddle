@@ -22,25 +22,29 @@ class FusionGroupOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_GE(ctx->Inputs("Inputs").size(), 1UL,
-                      "The number of inputs should be no less than 1.");
-    PADDLE_ENFORCE_GE(ctx->Outputs("Outs").size(), 1UL,
-                      "The number of outputs should be no less than 1.");
-
     const size_t num_ins = ctx->Inputs("Inputs").size();
     const size_t num_outs = ctx->Outputs("Outs").size();
 
+    PADDLE_ENFORCE_GE(
+        num_ins, 1UL,
+        platform::errors::InvalidArgument(
+            "Expected the number of inputs >= 1. Received %d.", num_ins));
+    PADDLE_ENFORCE_GE(
+        num_outs, 1UL,
+        platform::errors::InvalidArgument(
+            "Expected the number of outputs >= 1. Recived %d.", num_outs));
+
     int type = ctx->Attrs().Get<int>("type");
     PADDLE_ENFORCE_EQ(type, 0UL,
-                      "Only support fusion of elementwise operations.");
+                      platform::errors::InvalidArgument(
+                          "Only support fusion of elementwise operations."));
 
     std::vector<framework::DDim> x_dims = ctx->GetInputsDim("Inputs");
-    PADDLE_ENFORCE_EQ(x_dims.size(), num_ins);
-
     if (type == 0) {
       for (size_t i = 1; i < num_ins; ++i) {
         PADDLE_ENFORCE_EQ(x_dims[0], x_dims[i],
-                          "All the inputs' dims should be the same.");
+                          platform::errors::InvalidArgument(
+                              "All the inputs' dims should be the same."));
       }
       std::vector<framework::DDim> out_dims;
       for (size_t j = 0; j < num_outs; ++j) {
