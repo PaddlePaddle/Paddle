@@ -64,7 +64,7 @@ PRINT_LOG = False
 
 class TrainingMode:
     SYNC = 0
-    HALFASYNC = 1
+    HALF_ASYNC = 1
     ASYNC = 2
     GEO = 3
 
@@ -311,7 +311,7 @@ class DistributeTranspiler(object):
         elif self.config.runtime_split_send_recv:
             self.training_mode = TrainingMode.ASYNC
         else:
-            self.training_mode = TrainingMode.HALFASYNC
+            self.training_mode = TrainingMode.HALF_ASYNC
 
         global PRINT_LOG
         if self.config.print_log:
