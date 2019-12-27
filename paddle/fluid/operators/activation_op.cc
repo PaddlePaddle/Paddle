@@ -775,9 +775,9 @@ class ELUDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
   std::unique_ptr<T> Apply() const override {
     auto* op = new T();
     op->SetType("elu_grad_grad");
-    // input1: Out;   input2: X
-    op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
+
     op->SetInput("X", this->Input("X"));
+    op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
     // X@GRAD@GRAD: ddx
     op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
     op->SetAttrMap(this->Attrs());
@@ -966,9 +966,7 @@ REGISTER_OPERATOR(
     relu_grad_grad,
     ops::ActivationOpDoubleGrad2<ops::ReluGradFunctor<float>::FwdDeps()>,
     ops::ActivationDoubleGradOpInplaceInference);
-
 REGISTER_ACTIVATION_CPU_KERNEL(relu, Relu, ReluFunctor, ReluGradFunctor);
-
 REGISTER_OP_CPU_KERNEL(
     relu_grad_grad,
     ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
@@ -977,7 +975,6 @@ REGISTER_OP_CPU_KERNEL(
                                     ops::ReluGradGradFunctor<double>>,
     ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
                                     ops::ReluGradGradFunctor<plat::float16>>);
-/* ========================================================================== */
 
 /* ======================== leaky relu register  ============================ */
 REGISTER_OPERATOR(

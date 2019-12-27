@@ -38,10 +38,9 @@ namespace paddle {
 namespace operators {
 
 enum ActBwdOpFwdDeps {
-  kNoDeps = 0x00,      // Do not need any forward input/output
-  kDepX = 0x01,        // Only need forward input X
-  kDepOut = 0x02,      // Only need forward output Out
-  kDepXandOut = 0x03,  // need forward input X and ouput Out
+  kNoDeps = 0x00,  // Do not need any forward input/output
+  kDepX = 0x01,    // Only need forward input X
+  kDepOut = 0x02,  // Only need forward output Out
 };
 
 /* The following operator can be used to process SelectedRows, because the
@@ -1420,19 +1419,20 @@ struct ELUGradGradFunctor : public BaseActivationFunctor<T> {
     auto ddx = framework::EigenVector<T>::Flatten(detail::Ref(ddX));
     auto x = framework::EigenVector<T>::Flatten(detail::Ref(X));
 
-    if (ddOut) {
-      auto ddout = framework::EigenVector<T>::Flatten(detail::Ref(ddOut));
-      ddout.device(*d) = ddx * (x > static_cast<T>(0)).template cast<T>() +
-                         ddx * (x <= static_cast<T>(0)).template cast<T>() *
-                             static_cast<T>(alpha) * x.exp();
-    }
     if (dX) {
-      printf("Caculate dX in ELUGradGradFunctor");
       auto dx = framework::EigenVector<T>::Flatten(detail::Ref(dX));
       auto dout = framework::EigenVector<T>::Flatten(detail::Ref(dOut));
       dx.device(*d) = ddx * dout * static_cast<T>(alpha) * x.exp() *
                       (x < static_cast<T>(0)).template cast<T>();
-      LOG(ERROR) << dx;
+    }
+
+    if (ddOut) {
+      auto ddout = framework::EigenVector<T>::Flatten(detail::Ref(ddOut));
+      ddout.device(*d) = ddx *
+                         ((x > static_cast<T>(0)).template cast<T>() +
+                          static_cast<T>(alpha) * x.exp() *
+                              (x <= static_cast<T>(0)).template cast<T>())
+                             .template cast<T>();
     }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
@@ -1567,6 +1567,10 @@ class ELUDoubleGradKernel
     auto& place = ctx.template device_context<DeviceContext>();
 
     Functor functor;
+    auto attrs = functor.GetAttrs();
+    for (auto& attr : attrs) {
+      *attr.second = ctx.Attr<float>(attr.first);
+    }
     functor(place, X, ddX, ddOut, dOut, dX);
   }
 };
