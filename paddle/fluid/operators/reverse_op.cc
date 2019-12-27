@@ -31,7 +31,13 @@ class ReverseOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(!axis.empty(), "'axis' can not be empty.");
     for (int a : axis) {
       PADDLE_ENFORCE_LT(a, x_dims.size(),
-                        "The axis must be less than input tensor's rank.");
+                        paddle::platform::errors::OutOfRange(
+                            "The axis must be less than input tensor's rank."));
+      PADDLE_ENFORCE_GE(
+          a, -x_dims.size(),
+          paddle::platform::errors::OutOfRange(
+              "The axis must be greater than the negative number of "
+              "input tensor's rank."));
     }
     ctx->SetOutputDim("Out", x_dims);
   }
