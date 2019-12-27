@@ -234,7 +234,7 @@ class TestStridedSliceOp_starts_ListTensor(OpTest):
         }
 
     def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
+        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [1, 0, 2]
         self.ends = [3, 3, 4]
         self.axes = [0, 1, 2]
@@ -273,7 +273,7 @@ class TestStridedSliceOp_ends_ListTensor(OpTest):
         }
 
     def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
+        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [1, 0, 0]
         self.ends = [3, 3, 4]
         self.axes = [0, 1, 2]
@@ -310,7 +310,7 @@ class TestStridedSliceOp_starts_Tensor(OpTest):
         }
 
     def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
+        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [1, 0, 2]
         self.ends = [2, 3, 4]
         self.axes = [0, 1, 2]
@@ -345,7 +345,7 @@ class TestStridedSliceOp_ends_Tensor(OpTest):
         }
 
     def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
+        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [1, 0, 2]
         self.ends = [2, 3, 4]
         self.axes = [0, 1, 2]
@@ -386,7 +386,7 @@ class TestStridedSliceOp_listTensor_Tensor(OpTest):
         }
 
     def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
+        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [1, 0, 2]
         self.ends = [2, 3, 4]
         self.axes = [0, 1, 2]
@@ -421,7 +421,7 @@ class TestStridedSliceOp_strides_Tensor(OpTest):
         }
 
     def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
+        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [1, -1, 2]
         self.ends = [2, 0, 4]
         self.axes = [0, 1, 2]
@@ -440,7 +440,7 @@ class TestStridedSliceOp_strides_Tensor(OpTest):
 # Test python API
 class TestStridedSliceAPI(unittest.TestCase):
     def test_1(self):
-        input = np.random.random([3, 4, 5, 6]).astype("float32")
+        input = np.random.random([3, 4, 5, 6]).astype("float64")
         minus_1 = fluid.layers.fill_constant([1], "int32", -1)
         minus_3 = fluid.layers.fill_constant([1], "int32", -3)
         starts = fluid.layers.data(
@@ -454,7 +454,7 @@ class TestStridedSliceAPI(unittest.TestCase):
             name="x",
             shape=[3, 4, 5, 6],
             append_batch_size=False,
-            dtype="float32")
+            dtype="float64")
         out_1 = fluid.layers.strided_slice(
             x,
             axes=[0, 1, 2],

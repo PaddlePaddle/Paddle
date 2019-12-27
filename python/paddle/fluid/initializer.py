@@ -15,6 +15,8 @@
 from __future__ import print_function
 
 from . import framework
+from . import core
+from .framework import in_dygraph_mode
 import numpy as np
 from .wrapped_decorator import signature_safe_contextmanager
 from .core import VarDesc

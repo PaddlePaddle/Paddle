@@ -653,14 +653,15 @@ def detection_output(loc,
 
 
 @templatedoc()
-def iou_similarity(x, y, name=None):
+def iou_similarity(x, y, box_normalized=True, name=None):
     """
     ${comment}
 
     Args:
         x (Variable): ${x_comment}.The data type is float32 or float64.
         y (Variable): ${y_comment}.The data type is float32 or float64.
-
+        box_normalized(bool): Whether treat the priorbox as a noramlized box.
+            Set true by default.
     Returns:
         Variable: ${out_comment}.The data type is same with x.
 
@@ -700,7 +701,7 @@ def iou_similarity(x, y, name=None):
         type="iou_similarity",
         inputs={"X": x,
                 "Y": y},
-        attrs={},
+        attrs={"box_normalized": box_normalized},
         outputs={"Out": out})
     return out
 
@@ -1023,6 +1024,7 @@ def yolo_box(x,
              class_num,
              conf_thresh,
              downsample_ratio,
+             clip_bbox=True,
              name=None):
     """
     ${comment}
@@ -1034,6 +1036,7 @@ def yolo_box(x,
         class_num (int): ${class_num_comment}
         conf_thresh (float): ${conf_thresh_comment}
         downsample_ratio (int): ${downsample_ratio_comment}
+        clip_bbox (bool): ${clip_bbox_comment}
         name (string): The default value is None.  Normally there is no need 
                        for user to set this property.  For more information, 
                        please refer to :ref:`api_guide_Name`
@@ -1081,6 +1084,7 @@ def yolo_box(x,
         "class_num": class_num,
         "conf_thresh": conf_thresh,
         "downsample_ratio": downsample_ratio,
+        "clip_bbox": clip_bbox,
     }
 
     helper.append_op(

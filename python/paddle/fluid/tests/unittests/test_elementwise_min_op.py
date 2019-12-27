@@ -25,9 +25,9 @@ class TestElementwiseOp(OpTest):
         # If x and y have the same value, the min() is not differentiable.
         # So we generate test data by the following method
         # to avoid them being too close to each other.
-        x = np.random.uniform(0.1, 1, [13, 17]).astype("float32")
-        sgn = np.random.choice([-1, 1], [13, 17]).astype("float32")
-        y = x + sgn * np.random.uniform(0.1, 1, [13, 17]).astype("float32")
+        x = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
+        sgn = np.random.choice([-1, 1], [13, 17]).astype("float64")
+        y = x + sgn * np.random.uniform(0.1, 1, [13, 17]).astype("float64")
         self.inputs = {'X': x, 'Y': y}
         self.outputs = {'Out': np.minimum(self.inputs['X'], self.inputs['Y'])}
 
@@ -35,7 +35,7 @@ class TestElementwiseOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.005)
+        self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
@@ -49,8 +49,8 @@ class TestElementwiseOp(OpTest):
 class TestElementwiseMinOp_scalar(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_min"
-        x = np.random.random_integers(-5, 5, [10, 3, 4]).astype("float32")
-        y = np.array([0.5]).astype("float32")
+        x = np.random.random_integers(-5, 5, [10, 3, 4]).astype("float64")
+        y = np.array([0.5]).astype("float64")
         self.inputs = {'X': x, 'Y': y}
         self.outputs = {'Out': np.minimum(self.inputs['X'], self.inputs['Y'])}
 
@@ -58,9 +58,9 @@ class TestElementwiseMinOp_scalar(TestElementwiseOp):
 class TestElementwiseMinOp_Vector(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_min"
-        x = np.random.random((100, )).astype("float32")
-        sgn = np.random.choice([-1, 1], (100, )).astype("float32")
-        y = x + sgn * np.random.uniform(0.1, 1, (100, )).astype("float32")
+        x = np.random.random((100, )).astype("float64")
+        sgn = np.random.choice([-1, 1], (100, )).astype("float64")
+        y = x + sgn * np.random.uniform(0.1, 1, (100, )).astype("float64")
         self.inputs = {'X': x, 'Y': y}
         self.outputs = {'Out': np.minimum(self.inputs['X'], self.inputs['Y'])}
 
@@ -68,10 +68,10 @@ class TestElementwiseMinOp_Vector(TestElementwiseOp):
 class TestElementwiseMinOp_broadcast_0(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_min"
-        x = np.random.uniform(0.5, 1, (2, 3, 4)).astype(np.float32)
-        sgn = np.random.choice([-1, 1], (2, )).astype(np.float32)
+        x = np.random.uniform(0.5, 1, (2, 3, 4)).astype(np.float64)
+        sgn = np.random.choice([-1, 1], (2, )).astype(np.float64)
         y = x[:, 0, 0] + sgn * \
-            np.random.uniform(1, 2, (2, )).astype(np.float32)
+            np.random.uniform(1, 2, (2, )).astype(np.float64)
         self.inputs = {'X': x, 'Y': y}
 
         self.attrs = {'axis': 0}
@@ -84,10 +84,10 @@ class TestElementwiseMinOp_broadcast_0(TestElementwiseOp):
 class TestElementwiseMinOp_broadcast_1(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_min"
-        x = np.random.uniform(0.5, 1, (2, 3, 4)).astype(np.float32)
-        sgn = np.random.choice([-1, 1], (3, )).astype(np.float32)
+        x = np.random.uniform(0.5, 1, (2, 3, 4)).astype(np.float64)
+        sgn = np.random.choice([-1, 1], (3, )).astype(np.float64)
         y = x[0, :, 0] + sgn * \
-            np.random.uniform(1, 2, (3, )).astype(np.float32)
+            np.random.uniform(1, 2, (3, )).astype(np.float64)
         self.inputs = {'X': x, 'Y': y}
 
         self.attrs = {'axis': 1}
@@ -100,10 +100,10 @@ class TestElementwiseMinOp_broadcast_1(TestElementwiseOp):
 class TestElementwiseMinOp_broadcast_2(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_min"
-        x = np.random.uniform(0.5, 1, (2, 3, 4)).astype(np.float32)
-        sgn = np.random.choice([-1, 1], (4, )).astype(np.float32)
+        x = np.random.uniform(0.5, 1, (2, 3, 4)).astype(np.float64)
+        sgn = np.random.choice([-1, 1], (4, )).astype(np.float64)
         y = x[0, 0, :] + sgn * \
-            np.random.uniform(1, 2, (4, )).astype(np.float32)
+            np.random.uniform(1, 2, (4, )).astype(np.float64)
         self.inputs = {'X': x, 'Y': y}
 
         self.outputs = {
@@ -115,10 +115,10 @@ class TestElementwiseMinOp_broadcast_2(TestElementwiseOp):
 class TestElementwiseMinOp_broadcast_3(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_min"
-        x = np.random.uniform(0.5, 1, (2, 3, 4, 5)).astype(np.float32)
-        sgn = np.random.choice([-1, 1], (3, 4)).astype(np.float32)
+        x = np.random.uniform(0.5, 1, (2, 3, 4, 5)).astype(np.float64)
+        sgn = np.random.choice([-1, 1], (3, 4)).astype(np.float64)
         y = x[0, :, :, 0] + sgn * \
-            np.random.uniform(1, 2, (3, 4)).astype(np.float32)
+            np.random.uniform(1, 2, (3, 4)).astype(np.float64)
         self.inputs = {'X': x, 'Y': y}
 
         self.attrs = {'axis': 1}
@@ -131,10 +131,10 @@ class TestElementwiseMinOp_broadcast_3(TestElementwiseOp):
 class TestElementwiseMinOp_broadcast_4(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_min"
-        x = np.random.uniform(0.5, 1, (2, 3, 4, 5)).astype(np.float32)
-        sgn = np.random.choice([-1, 1], (2, 3, 1, 5)).astype(np.float32)
+        x = np.random.uniform(0.5, 1, (2, 3, 4, 5)).astype(np.float64)
+        sgn = np.random.choice([-1, 1], (2, 3, 1, 5)).astype(np.float64)
         y = x + sgn * \
-            np.random.uniform(1, 2, (2, 3, 1, 5)).astype(np.float32)
+            np.random.uniform(1, 2, (2, 3, 1, 5)).astype(np.float64)
         self.inputs = {'X': x, 'Y': y}
 
         self.outputs = {'Out': np.minimum(self.inputs['X'], self.inputs['Y'])}

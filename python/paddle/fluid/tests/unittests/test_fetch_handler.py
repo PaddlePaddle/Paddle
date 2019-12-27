@@ -24,6 +24,7 @@ import paddle.fluid as fluid
 
 
 class TestFetchHandler(unittest.TestCase):
+    @unittest.skip(reason="Skip unstable ci")
     def test_fetch_handler(self):
         place = core.CPUPlace()
         scope = core.Scope()

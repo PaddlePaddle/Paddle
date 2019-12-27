@@ -74,6 +74,15 @@ class ConditionalBlockOp : public ConditionalOp {
   }
 };
 
+class ConditionalBlockInferShape : public framework::InferShapeBase {
+ public:
+  void operator()(framework::InferShapeContext *context) const override {
+    PADDLE_ENFORCE_EQ(context->HasInputs(ConditionalOp::kCondition), true,
+                      platform::errors::InvalidArgument(
+                          "conditional_block_op must have condition input"));
+  }
+};
+
 class ConditionalBlockGradOp : public ConditionalOp {
  public:
   ConditionalBlockGradOp(const std::string &type,
@@ -278,6 +287,7 @@ class ConditionalBlockGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(conditional_block, ops::ConditionalBlockOp,
+                  ops::ConditionalBlockInferShape,
                   ops::ConditionalBlockOpProtoMaker,
                   ops::ConditionalBlockGradMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(conditional_block_grad, ops::ConditionalBlockGradOp,
