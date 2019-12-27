@@ -44,6 +44,9 @@ void EraseLoadProcessPID(int64_t key) {
 
 #define REGISTER_SIGNAL_HANDLER(SIGNAL, HANDLER_NAME)             \
   static void HANDLER_NAME(int sig, siginfo_t *info, void *ctx) { \
+    if (info->si_pid == getppid()) {                              \
+      _exit(EXIT_SUCCESS);                                        \
+    }                                                             \
     struct sigaction sa;                                          \
     sa.sa_handler = SIG_DFL;                                      \
     sa.sa_flags = 0;                                              \
@@ -55,22 +58,7 @@ void EraseLoadProcessPID(int64_t key) {
     }                                                             \
   }
 
-REGISTER_SIGNAL_HANDLER(SIGBUS, handler_SIGBUS);
-REGISTER_SIGNAL_HANDLER(SIGSEGV, handler_SIGSEGV);
-
-static void handler_SIGTERM(int sig, siginfo_t *info, void *ctx) {
-  if (info->si_pid == getppid()) {
-    _exit(EXIT_SUCCESS);
-  }
-  struct sigaction sa;
-  sa.sa_handler = SIG_DFL;
-  sa.sa_flags = 0;
-  if (sigemptyset(&sa.sa_mask) != 0 || sigaction(SIGTERM, &sa, nullptr) != 0) {
-    _exit(EXIT_FAILURE);
-  } else {
-    raise(SIGTERM);
-  }
-}
+REGISTER_SIGNAL_HANDLER(SIGTERM, handler_SIGTERM);
 
 static inline void setSignalHandler(int signal,
                                     void (*handler)(int, siginfo_t *, void *),
@@ -85,9 +73,8 @@ static inline void setSignalHandler(int signal,
   }
 }
 
+// Note: maybe need to add other signal handler
 void SetLoadProcessSignalHandler() {
-  setSignalHandler(SIGBUS, &handler_SIGBUS, nullptr);
-  setSignalHandler(SIGSEGV, &handler_SIGSEGV, nullptr);
   setSignalHandler(SIGTERM, &handler_SIGTERM, nullptr);
 }
 

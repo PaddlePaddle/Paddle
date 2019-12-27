@@ -161,21 +161,6 @@ class TestdygraphhDataLoader(unittest.TestCase):
                 loader._data_queue.get(timeout=10)
 
     # NOTE: exception tests
-    def test_sigbus_handler(self):
-        core._set_process_signal_handler()
-        set_signal_handler(signal.SIGBUS)
-        os.kill(os.getpid(), signal.SIGBUS)
-
-    def test_sigsegv_handler(self):
-        core._set_process_signal_handler()
-        set_signal_handler(signal.SIGSEGV)
-        os.kill(os.getpid(), signal.SIGSEGV)
-
-    def test_sigterm_handler(self):
-        core._set_process_signal_handler()
-        set_signal_handler(signal.SIGTERM)
-        os.kill(os.getpid(), signal.SIGTERM)
-
     def test_single_process_with_thread_expection(self):
         def error_sample_genarator(batch_num):
             def __reader__():
