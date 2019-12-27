@@ -532,8 +532,8 @@ class DygraphGeneratorLoader(DataLoaderBase):
                     self._thread_done_event.set()
                     self._data_queue.close()
                     self._blocking_queue.kill()
-                    logging.warn(
-                        "DataLoader dygraph thread raised an exception.")
+                    logging.warning(
+                        "DygraphDataLoader reader thread raised an exception.")
                     six.reraise(*sys.exc_info())
             else:
                 self._thread_done_event.set()
@@ -561,7 +561,8 @@ class DygraphGeneratorLoader(DataLoaderBase):
         except Exception:
             self._blocking_queue.kill()
             self._thread = None
-            logging.warn('Your reader has raised an exception!')
+            logging.warning(
+                "DygraphDataLoader reader thread raised an exception.")
             six.reraise(*sys.exc_info())
 
     def set_sample_generator(self,

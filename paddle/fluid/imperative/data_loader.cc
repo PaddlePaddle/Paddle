@@ -41,24 +41,38 @@ void EraseLoadProcessPID(int64_t key) {
 
 // sigaction doc: http://man7.org/linux/man-pages/man2/sigaction.2.html
 // sigemptyset doc: https://linux.die.net/man/3/sigemptyset
+// siginfo_t doc: https://www.mkssoftware.com/docs/man5/siginfo_t.5.asp
+// waitid doc: https://linux.die.net/man/2/waitid
+
+#define SIGNAL_HANDLE(SIGNAL)                   \
+  do {                                          \
+    struct sigaction sa;                        \
+    sa.sa_handler = SIG_DFL;                    \
+    sa.sa_flags = 0;                            \
+    if (sigemptyset(&sa.sa_mask) != 0 ||        \
+        sigaction(SIGNAL, &sa, nullptr) != 0) { \
+      _exit(EXIT_FAILURE);                      \
+    } else {                                    \
+      raise(SIGNAL);                            \
+    }                                           \
+  } while (0)
 
 #define REGISTER_SIGNAL_HANDLER(SIGNAL, HANDLER_NAME)             \
+  static void HANDLER_NAME(int sig, siginfo_t *info, void *ctx) { \
+    SIGNAL_HANDLE(SIGNAL);                                        \
+  }
+
+#define REGISTER_SPEC_SIGNAL_HANDLER(SIGNAL, HANDLER_NAME)        \
   static void HANDLER_NAME(int sig, siginfo_t *info, void *ctx) { \
     if (info->si_pid == getppid()) {                              \
       _exit(EXIT_SUCCESS);                                        \
     }                                                             \
-    struct sigaction sa;                                          \
-    sa.sa_handler = SIG_DFL;                                      \
-    sa.sa_flags = 0;                                              \
-    if (sigemptyset(&sa.sa_mask) != 0 ||                          \
-        sigaction(SIGNAL, &sa, nullptr) != 0) {                   \
-      _exit(EXIT_FAILURE);                                        \
-    } else {                                                      \
-      raise(SIGNAL);                                              \
-    }                                                             \
+    SIGNAL_HANDLE(SIGNAL);                                        \
   }
 
-REGISTER_SIGNAL_HANDLER(SIGTERM, handler_SIGTERM);
+REGISTER_SIGNAL_HANDLER(SIGSEGV, handler_SIGSEGV);
+REGISTER_SIGNAL_HANDLER(SIGBUS, handler_SIGBUS);
+REGISTER_SPEC_SIGNAL_HANDLER(SIGTERM, handler_SIGTERM);
 
 static inline void setSignalHandler(int signal,
                                     void (*handler)(int, siginfo_t *, void *),
@@ -75,6 +89,8 @@ static inline void setSignalHandler(int signal,
 
 // Note: maybe need to add other signal handler
 void SetLoadProcessSignalHandler() {
+  setSignalHandler(SIGSEGV, &handler_SIGSEGV, nullptr);
+  setSignalHandler(SIGBUS, &handler_SIGBUS, nullptr);
   setSignalHandler(SIGTERM, &handler_SIGTERM, nullptr);
 }
 

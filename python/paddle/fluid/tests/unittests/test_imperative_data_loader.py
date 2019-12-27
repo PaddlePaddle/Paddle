@@ -66,20 +66,7 @@ def batch_generator_creator(batch_size, batch_num):
     return __reader__
 
 
-def set_signal_handler(sig):
-    current_handler = signal.getsignal(sig)
-    if not callable(current_handler):
-        current_handler = None
-
-    def __handler__(signum, frame):
-        core._throw_error_if_process_failed()
-        if current_handler is not None:
-            current_handler(signum, frame)
-
-    signal.signal(sig, __handler__)
-
-
-class TestdygraphhDataLoader(unittest.TestCase):
+class TestDygraphhDataLoader(unittest.TestCase):
     def setUp(self):
         self.batch_size = 8
         self.batch_num = 4
