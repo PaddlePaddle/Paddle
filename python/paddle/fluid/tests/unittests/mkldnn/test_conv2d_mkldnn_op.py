@@ -180,6 +180,7 @@ class TestWithInput1x1Filter1x1(TestConv2dMKLDNNOp):
 class TestConv2dOp_AsyPadding_MKLDNN(TestConv2dOp_v2):
     def init_kernel_type(self):
         self.use_mkldnn = True
+        self.dtype = np.float32
 
     def init_paddings(self):
         self.pad = [0, 0, 1, 2]

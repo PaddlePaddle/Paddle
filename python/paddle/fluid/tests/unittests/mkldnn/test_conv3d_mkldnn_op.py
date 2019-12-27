@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 import unittest
-
+import numpy as np
 from paddle.fluid.tests.unittests.test_conv3d_op import TestConv3dOp, TestCase1, TestWithGroup1, TestWithGroup2, TestWith1x1, TestWithInput1x1Filter1x1, TestConv3dOp_2
 
 
