@@ -29,7 +29,11 @@ namespace platform {
 class CublasHandleHolder {
  public:
   CublasHandleHolder(cudaStream_t stream, cublasMath_t math_type) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cublasCreate(&handle_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::errors::External(
+        dynload::cublasCreate(&handle_),
+        "Cublas handle initialize failed. Please check that the hardware, an "
+        "appropriate version of the driver, and the cuBLAS library are "
+        "correctly installed."));
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cublasSetStream(handle_, stream));
 #if CUDA_VERSION >= 9000
     if (math_type == CUBLAS_TENSOR_OP_MATH) {
