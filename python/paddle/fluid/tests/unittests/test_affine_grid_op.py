@@ -34,7 +34,7 @@ def AffineGrid(theta, size):
     for i in range(len(theta)):
         ret[i] = np.dot(grid[i].reshape([h * w, 3]), theta[i])
 
-#    print ret.reshape([h * w, 2]).astype("float32")    
+#    print ret.reshape([h * w, 2]).astype("float32")
     return ret.reshape([n, h, w, 2]).astype("float32")
 
 
@@ -56,7 +56,8 @@ class TestAffineGridOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['Theta'], 'Output', no_grad_set=['OutputShape'])
+        self.check_grad(
+            ['Theta'], 'Output', no_grad_set=['OutputShape', 'inshape'])
 
     def initTestCase(self):
         self.theta_shape = (17, 2, 3)
