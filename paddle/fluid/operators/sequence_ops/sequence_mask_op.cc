@@ -89,9 +89,11 @@ If maxlen < 0, maxlen = max(X)
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(sequence_mask, paddle::operators::SequenceMaskOp,
-                  paddle::operators::SequenceMaskOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    sequence_mask, paddle::operators::SequenceMaskOp,
+    paddle::operators::SequenceMaskOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(
     sequence_mask,

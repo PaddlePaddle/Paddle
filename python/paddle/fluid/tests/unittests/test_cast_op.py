@@ -43,8 +43,7 @@ class TestCastOp1(op_test.OpTest):
 class TestCastOp2(op_test.OpTest):
     def setUp(self):
         ipt = np.random.random(size=[10, 10])
-        # numpy float16 is binded to fluid float16 via uint16
-        self.inputs = {'X': ipt.astype('float16').view(np.uint16)}
+        self.inputs = {'X': ipt.astype('float16')}
         self.outputs = {'Out': ipt.astype('float32')}
         self.attrs = {
             'in_dtype': int(core.VarDesc.VarType.FP16),
@@ -71,7 +70,7 @@ class TestCastOp3(op_test.OpTest):
         self.check_output(atol=1e-3)
 
 
-class TestCastOpError(op_test.OpTest):
+class TestCastOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of cast_op must be Variable.

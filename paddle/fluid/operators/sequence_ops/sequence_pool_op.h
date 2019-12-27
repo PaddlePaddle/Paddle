@@ -38,9 +38,9 @@ class SequencePoolKernel : public framework::OpKernel<T> {
     auto lod = in->lod();
     auto lod_level = lod.size();
     // InferShape by lod
-    PADDLE_ENFORCE_GT(
-        lod_level, 0,
-        "Input(X) Tensor of SequencePoolOp does not contain LoD information.");
+    PADDLE_ENFORCE_GT(lod_level, 0, platform::errors::InvalidArgument(
+                                        "Input(X) Tensor of SequencePoolOp "
+                                        "does not contain LoD information."));
     PADDLE_ENFORCE_LE(lod_level, 2UL,
                       "The lod level of input shall be no more than 2.");
     PADDLE_ENFORCE_GE(

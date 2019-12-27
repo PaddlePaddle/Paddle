@@ -107,19 +107,20 @@ Out = [[3, 4],
   }
 };
 
-class GatherGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class GatherGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("gather_grad");
-    op->SetInput("Index", Input("Index"));
-    op->SetInput("X", Input("X"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
+    op->SetInput("Index", this->Input("Index"));
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -131,7 +132,8 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(GatherGradNoNeedBufferVarInference, "X");
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(gather, ops::GatherOp, ops::GatherOpMaker,
-                  ops::GatherGradOpDescMaker);
+                  ops::GatherGradOpMaker<paddle::framework::OpDesc>,
+                  ops::GatherGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(gather_grad, ops::GatherGradOp,
                   ops::GatherGradNoNeedBufferVarInference);
 REGISTER_OP_CPU_KERNEL(gather, ops::GatherOpKernel<float>,

@@ -38,6 +38,8 @@ class FillConstantBatchSizeLikeOpMaker : public BatchSizeLikeOpMaker {
         .SetDefault(framework::proto::VarType::FP32);
     AddAttr<float>("value", "default 0. The value to be filled")
         .SetDefault(0.0f);
+    AddAttr<std::string>("str_value", "default empty. The value to be filled")
+        .SetDefault("");
     AddAttr<bool>("force_cpu",
                   "(bool, default false) Force fill output variable to cpu "
                   "memory. Otherwise, fill output variable to the running "
@@ -56,11 +58,12 @@ obtained from the `input` tensor.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fill_constant_batch_size_like,
-                  ops::FillConstantBatchSizeLikeOp,
-                  paddle::framework::EmptyGradOpMaker,
-                  ops::FillConstantBatchSizeLikeOpMaker,
-                  ops::BatchSizeLikeNoNeedBufferVarsInference);
+REGISTER_OPERATOR(
+    fill_constant_batch_size_like, ops::FillConstantBatchSizeLikeOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::FillConstantBatchSizeLikeOpMaker,
+    ops::BatchSizeLikeNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(
     fill_constant_batch_size_like,
     ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUDeviceContext,

@@ -273,24 +273,25 @@ class CropTensorOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-class CropTensorGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class CropTensorGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("crop_tensor_grad");
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetInput("X", Input("X"));
-    if (ForwardOp().Inputs().count("OffsetsTensor") > 0) {
-      op->SetInput("OffsetsTensor", Input("OffsetsTensor"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetInput("X", this->Input("X"));
+    if (this->HasInput("OffsetsTensor")) {
+      op->SetInput("OffsetsTensor", this->Input("OffsetsTensor"));
     }
-    if (ForwardOp().Inputs().count("Offsets") > 0) {
-      op->SetInput("Offsets", Input("Offsets"));
+    if (this->HasInput("Offsets")) {
+      op->SetInput("Offsets", this->Input("Offsets"));
     }
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -300,7 +301,8 @@ class CropTensorGradOpDescMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(crop_tensor, ops::CropTensorOp, ops::CropTensorOpMaker,
-                  ops::CropTensorGradOpDescMaker);
+                  ops::CropTensorGradOpMaker<paddle::framework::OpDesc>,
+                  ops::CropTensorGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(crop_tensor_grad, ops::CropTensorOpGrad);
 REGISTER_OP_CPU_KERNEL(
     crop_tensor,

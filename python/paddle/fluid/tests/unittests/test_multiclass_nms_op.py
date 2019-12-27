@@ -19,6 +19,14 @@ import copy
 from op_test import OpTest
 
 
+def softmax(x):
+    # clip to shiftx, otherwise, when calc loss with
+    # log(exp(shiftx)), may get log(0)=INF
+    shiftx = (x - np.max(x)).clip(-64.)
+    exps = np.exp(shiftx)
+    return exps / np.sum(exps)
+
+
 def iou(box_a, box_b, norm):
     """Apply intersection-over-union overlap between box_a and box_b
     """
@@ -254,11 +262,6 @@ class TestMulticlassNMSOp(OpTest):
 
         scores = np.random.random((N * M, C)).astype('float32')
 
-        def softmax(x):
-            shiftx = x - np.max(x).clip(-64.)
-            exps = np.exp(shiftx)
-            return exps / np.sum(exps)
-
         scores = np.apply_along_axis(softmax, 1, scores)
         scores = np.reshape(scores, (N, M, C))
         scores = np.transpose(scores, (0, 2, 1))
@@ -317,11 +320,6 @@ class TestMulticlassNMSLoDInput(OpTest):
         normalized = False
 
         scores = np.random.random((M, C)).astype('float32')
-
-        def softmax(x):
-            shiftx = x - np.max(x).clip(-64.)
-            exps = np.exp(shiftx)
-            return exps / np.sum(exps)
 
         scores = np.apply_along_axis(softmax, 1, scores)
 
@@ -382,11 +380,6 @@ class TestMulticlassNMS2Op(TestMulticlassNMSOp):
 
         scores = np.random.random((N * M, C)).astype('float32')
 
-        def softmax(x):
-            shiftx = x - np.max(x).clip(-64.)
-            exps = np.exp(shiftx)
-            return exps / np.sum(exps)
-
         scores = np.apply_along_axis(softmax, 1, scores)
         scores = np.reshape(scores, (N, M, C))
         scores = np.transpose(scores, (0, 2, 1))
@@ -446,11 +439,6 @@ class TestMulticlassNMS2LoDInput(TestMulticlassNMSLoDInput):
         normalized = False
 
         scores = np.random.random((M, C)).astype('float32')
-
-        def softmax(x):
-            shiftx = x - np.max(x).clip(-64.)
-            exps = np.exp(shiftx)
-            return exps / np.sum(exps)
 
         scores = np.apply_along_axis(softmax, 1, scores)
 

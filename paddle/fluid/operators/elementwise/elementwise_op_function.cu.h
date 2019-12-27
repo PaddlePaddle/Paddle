@@ -44,6 +44,12 @@ namespace operators {
     inline HOSTDEVICE T operator()(const T& a, const T& b) const { \
       return a expr b;                                             \
     }                                                              \
+  };                                                               \
+  template <typename T, class Enable = void>                       \
+  struct Inverse##Func##Functor {                                  \
+    inline HOSTDEVICE T operator()(const T& a, const T& b) const { \
+      return b expr a;                                             \
+    }                                                              \
   };
 
 DEFINE_SIMPLE_BINARY_FUNCTOR(Add, +)

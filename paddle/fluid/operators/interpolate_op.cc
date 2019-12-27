@@ -423,27 +423,28 @@ class InterpolateOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-class InterpolateGradDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class InterpolateGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
-    op->SetType(ForwardOp().Type() + "_grad");
-    op->SetInput("X", Input("X"));
-    if (ForwardOp().Inputs().count("SizeTensor") > 0) {
-      op->SetInput("SizeTensor", Input("SizeTensor"));
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
+    op->SetType(this->ForwardOpType() + "_grad");
+    op->SetInput("X", this->Input("X"));
+    if (this->HasInput("SizeTensor") > 0) {
+      op->SetInput("SizeTensor", this->Input("SizeTensor"));
     }
-    if (ForwardOp().Inputs().count("OutSize") > 0) {
-      op->SetInput("OutSize", Input("OutSize"));
+    if (this->HasInput("OutSize") > 0) {
+      op->SetInput("OutSize", this->Input("OutSize"));
     }
-    if (ForwardOp().Inputs().count("Scale") > 0) {
-      op->SetInput("Scale", Input("Scale"));
+    if (this->HasInput("Scale") > 0) {
+      op->SetInput("Scale", this->Input("Scale"));
     }
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -456,15 +457,18 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(InterpolateGradNoNeedBufferVarsInference,
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(bilinear_interp, ops::InterpolateOp, ops::InterpolateOpMaker,
-                  ops::InterpolateGradDescMaker);
+                  ops::InterpolateGradMaker<paddle::framework::OpDesc>,
+                  ops::InterpolateGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(bilinear_interp_grad, ops::InterpolateOpGrad,
                   ops::InterpolateGradNoNeedBufferVarsInference);
 REGISTER_OPERATOR(nearest_interp, ops::InterpolateOp, ops::InterpolateOpMaker,
-                  ops::InterpolateGradDescMaker);
+                  ops::InterpolateGradMaker<paddle::framework::OpDesc>,
+                  ops::InterpolateGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(nearest_interp_grad, ops::InterpolateOpGrad,
                   ops::InterpolateGradNoNeedBufferVarsInference);
 REGISTER_OPERATOR(trilinear_interp, ops::InterpolateOp, ops::InterpolateOpMaker,
-                  ops::InterpolateGradDescMaker);
+                  ops::InterpolateGradMaker<paddle::framework::OpDesc>,
+                  ops::InterpolateGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(trilinear_interp_grad, ops::InterpolateOpGrad,
                   ops::InterpolateGradNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(bilinear_interp, ops::InterpolateKernel<float>,

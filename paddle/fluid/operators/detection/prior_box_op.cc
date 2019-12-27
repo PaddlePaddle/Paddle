@@ -203,8 +203,10 @@ https://arxiv.org/abs/1512.02325.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(prior_box, ops::PriorBoxOp, ops::PriorBoxOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    prior_box, ops::PriorBoxOp, ops::PriorBoxOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(prior_box, ops::PriorBoxOpKernel<float, float>,
                        ops::PriorBoxOpKernel<double, double>);

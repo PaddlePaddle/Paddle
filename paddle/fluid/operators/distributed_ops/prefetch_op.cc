@@ -95,6 +95,8 @@ class PrefetchOpShapeInference : public framework::InferShapeBase {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(prefetch, ops::PrefetchOp,
-                  paddle::framework::EmptyGradOpMaker, ops::PrefetchOpMaker,
-                  ops::PrefetchOpShapeInference);
+REGISTER_OPERATOR(
+    prefetch, ops::PrefetchOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::PrefetchOpMaker, ops::PrefetchOpShapeInference);

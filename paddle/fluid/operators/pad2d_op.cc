@@ -627,22 +627,23 @@ class Pad2dOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-class Pad2dOpGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class Pad2dOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* bind = new framework::OpDesc();
-    bind->SetInput("X", Input("X"));
-    if (ForwardOp().Inputs().count("Paddings") > 0) {
-      bind->SetInput("Paddings", Input("Paddings"));
+  std::unique_ptr<T> Apply() const override {
+    auto* bind = new T();
+    bind->SetInput("X", this->Input("X"));
+    if (this->HasInput("Paddings")) {
+      bind->SetInput("Paddings", this->Input("Paddings"));
     }
-    bind->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    bind->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    bind->SetAttrMap(Attrs());
+    bind->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    bind->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    bind->SetAttrMap(this->Attrs());
     bind->SetType("pad2d_grad");
-    return std::unique_ptr<framework::OpDesc>(bind);
+    return std::unique_ptr<T>(bind);
   }
 };
 
@@ -656,7 +657,8 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(Pad2dOpGradNoNeedBufferVarsInference,
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(pad2d, ops::Pad2dOp, ops::Pad2dOpMaker,
-                  ops::Pad2dOpGradMaker);
+                  ops::Pad2dOpGradMaker<paddle::framework::OpDesc>,
+                  ops::Pad2dOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(pad2d_grad, ops::Pad2dOpGrad,
                   ops::Pad2dOpGradNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(pad2d, ops::Pad2dCPUKernel<float>);

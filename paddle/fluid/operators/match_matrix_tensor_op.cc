@@ -101,6 +101,7 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
     framework::VarDesc* y_desc =
         boost::get<framework::VarDesc*>(ctx->GetInputVarPtrs("Y")[0]);
     PADDLE_ENFORCE_GE(y_desc->GetLoDLevel(), 1);
+    ctx->ShareLoD("X", "Out");
   }
 
   std::vector<int64_t> out_dims_vec{out_dim_0};
@@ -316,9 +317,11 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(match_matrix_tensor, ops::MatchMatrixTensorOP,
-                  ops::MatchMatrixTensorOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(
+    match_matrix_tensor, ops::MatchMatrixTensorOP,
+    ops::MatchMatrixTensorOpMaker,
+    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>)
 REGISTER_OPERATOR(match_matrix_tensor_grad, ops::MatchMatrixTensorOpGrad);
 
 REGISTER_OP_CPU_KERNEL(match_matrix_tensor,

@@ -32,32 +32,28 @@ class InplaceOpInference {
  public:
   virtual ~InplaceOpInference() {}
   virtual std::unordered_map<std::string, std::string> operator()(
-      const OpDesc& op_desc, bool use_cuda) const = 0;
-};
-
-/*
-  Inplace In and Out for operator only have an Input and an Output.
-  For example, activation op.
- */
-class SingleOpInplaceInToOut : public InplaceOpInference {
- public:
-  std::unordered_map<std::string, std::string> operator()(
-      const OpDesc& op_desc, bool use_cuda) const override {
-    auto inputs = op_desc.InputNames();
-    auto outputs = op_desc.OutputNames();
-    PADDLE_ENFORCE_EQ(inputs.size(), 1, "Op inputs must be unique");
-    PADDLE_ENFORCE_EQ(outputs.size(), 1, "Op outputs must be unique");
-    return {{inputs[0], outputs[0]}};
-  }
+      bool use_cuda) const = 0;
 };
 
 #define DECLARE_INPLACE_OP_INFERER(class_name, ...)                         \
   class class_name final : public ::paddle::framework::InplaceOpInference { \
    public:                                                                  \
     std::unordered_map<std::string, std::string> operator()(                \
-        const ::paddle::framework::OpDesc& op_desc,                         \
         bool use_cuda) const final {                                        \
       return {__VA_ARGS__};                                                 \
+    }                                                                       \
+  }
+
+#define DECLARE_CUDA_ONLY_INPLACE_OP_INFERER(class_name, ...)               \
+  class class_name final : public ::paddle::framework::InplaceOpInference { \
+   public:                                                                  \
+    std::unordered_map<std::string, std::string> operator()(                \
+        bool use_cuda) const final {                                        \
+      if (use_cuda) {                                                       \
+        return {__VA_ARGS__};                                               \
+      } else {                                                              \
+        return {};                                                          \
+      }                                                                     \
     }                                                                       \
   }
 

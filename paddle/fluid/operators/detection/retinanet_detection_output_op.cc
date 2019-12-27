@@ -557,9 +557,11 @@ empty (None).
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(retinanet_detection_output, ops::RetinanetDetectionOutputOp,
-                  ops::RetinanetDetectionOutputOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    retinanet_detection_output, ops::RetinanetDetectionOutputOp,
+    ops::RetinanetDetectionOutputOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(retinanet_detection_output,
                        ops::RetinanetDetectionOutputKernel<float>,
                        ops::RetinanetDetectionOutputKernel<double>);

@@ -574,13 +574,14 @@ data, i.e. in each mini-batch, the sequence length of all inputs are the same.
   }
 };
 
-class RecurrentGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class RecurrentGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  virtual std::unique_ptr<framework::OpDesc> Apply() const {
-    auto *grad = new framework::OpDesc();
+  virtual std::unique_ptr<T> Apply() const {
+    auto *grad = new T();
     grad->SetType("recurrent_grad");
     for (auto &input_param : this->InputNames()) {
       grad->SetInput(input_param, this->Input(input_param));
@@ -600,9 +601,9 @@ class RecurrentGradOpDescMaker : public framework::SingleGradOpDescMaker {
       }
     }
     grad->SetAttrMap(this->Attrs());
-    grad->SetBlockAttr(RecurrentBase::kStepBlock, grad_block_[0]);
+    grad->SetBlockAttr(RecurrentBase::kStepBlock, this->grad_block_[0]);
 
-    return std::unique_ptr<framework::OpDesc>(grad);
+    return std::unique_ptr<T>(grad);
   }
 };
 
@@ -634,11 +635,9 @@ class RecurrentGradOpShapeInference : public framework::InferShapeBase {
                       RecurrentBase::kOutputs);
 
     // In some case the kInitialStates is empty.
-    if (ctx->HasInputs(RecurrentBase::kInitialStates)) {
-      PADDLE_ENFORCE_EQ(ctx->HasOutputs(framework::GradVarName(
-                            RecurrentBase::kInitialStates)),
-                        true, "The output of(%s) should not be empty.",
-                        framework::GradVarName(RecurrentBase::kInitialStates));
+    if (ctx->HasInputs(RecurrentBase::kInitialStates) &&
+        ctx->HasOutputs(
+            framework::GradVarName(RecurrentBase::kInitialStates))) {
       ctx->SetOutputsDim(framework::GradVarName(RecurrentBase::kInitialStates),
                          ctx->GetInputsDim(RecurrentBase::kInitialStates));
     }
@@ -665,8 +664,9 @@ class RecurrentGradOpShapeInference : public framework::InferShapeBase {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(recurrent, paddle::operators::RecurrentOp,
-                  paddle::operators::RecurrentOpProtoMaker,
-                  paddle::operators::RecurrentGradOpDescMaker);
+REGISTER_OPERATOR(
+    recurrent, paddle::operators::RecurrentOp,
+    paddle::operators::RecurrentOpProtoMaker,
+    paddle::operators::RecurrentGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(recurrent_grad, paddle::operators::RecurrentGradOp,
                   paddle::operators::RecurrentGradOpShapeInference);

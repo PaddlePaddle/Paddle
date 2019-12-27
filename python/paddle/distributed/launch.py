@@ -71,7 +71,7 @@ def _parse_args():
     parser = ArgumentParser(
         description='''start paddle training using multi-process mode.
 NOTE: your train program ***must*** run as distributed nccl2 mode,
-see: http://www.paddlepaddle.org/documentation/docs/zh/1.2/user_guides/howto/training/cluster_howto.html#permalink-8--nccl2-
+see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/training/cluster_howto.html#permalink-8--nccl2-
 And your train program must read environment variables below in order to let different
 process init properly:
 FLAGS_selected_gpus
@@ -95,9 +95,9 @@ POD_IP (current node ip address, not needed for local training)
         help="The current node ip. ")
     parser.add_argument(
         "--use_paddlecloud",
-        type=bool,
-        default="False",
-        help="wheter to use paddlecloud platform to run your multi-process job.")
+        action='store_true',
+        help="wheter to use paddlecloud platform to run your multi-process job. If false, no need to set this argument."
+    )
     parser.add_argument(
         "--started_port",
         type=int,
@@ -147,9 +147,6 @@ def terminate_procs(procs):
 def start_procs(args):
     """
     """
-    procs = []
-    log_fns = []
-
     default_env = os.environ.copy()
 
     current_node_ip = args.node_ip
@@ -213,12 +210,11 @@ paddlecloud environment.".format(args.cluster_node_ips, node_ips))
     current_env.pop("https_proxy", None)
 
     procs = []
+    log_fns = []
     cmds = []
     ranks = []
     for i in range(0, selected_gpus_num):
-
         rank = (node_id * selected_gpus_num + i)
-
         current_env.update({
             "FLAGS_selected_gpus": "%s" % selected_gpus[i],
             "PADDLE_TRAINER_ID": "%d" % rank,
@@ -228,19 +224,14 @@ paddlecloud environment.".format(args.cluster_node_ips, node_ips))
             "PADDLE_TRAINER_ENDPOINTS": trainers_endpoints
         })
 
-        if num_nodes > 1:
-            current_env.update({"FLAGS_sync_nccl_allreduce": "0"})
-
         cmd = [sys.executable, "-u", args.training_script
                ] + args.training_script_args
-
         cmds.append(cmd)
 
         if args.log_dir is not None:
             os.system("mkdir -p {}".format(args.log_dir))
             fn = open("%s/workerlog.%d" % (args.log_dir, i), "w")
             log_fns.append(fn)
-
             proc = subprocess.Popen(cmd, env=current_env, stdout=fn, stderr=fn)
         else:
             proc = subprocess.Popen(cmd, env=current_env)

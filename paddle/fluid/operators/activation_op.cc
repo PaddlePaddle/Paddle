@@ -62,29 +62,29 @@ static constexpr bool CanInplaceAct() {
     }                                                                        \
   }
 
-template <ActBwdOpFwdDeps kDepValue>
-class ActivationGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <ActBwdOpFwdDeps kDepValue, typename T>
+class ActivationGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
-    op->SetType(ForwardOpType() + "_grad");
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
+    op->SetType(this->ForwardOpType() + "_grad");
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
 
     if ((static_cast<int>(kDepValue) &
          static_cast<int>(ActBwdOpFwdDeps::kDepX)) ||
         FLAGS_use_mkldnn || (op->HasAttr("use_mkldnn") &&
                              boost::get<bool>(op->GetAttr("use_mkldnn")))) {
-      op->SetInput("X", Input("X"));
+      op->SetInput("X", this->Input("X"));
     }
 
     if (static_cast<int>(kDepValue) &
         static_cast<int>(ActBwdOpFwdDeps::kDepOut)) {
-      op->SetInput("Out", Output("Out"));
+      op->SetInput("Out", this->Output("Out"));
     }
 
     return op;
@@ -721,91 +721,94 @@ class ActivationOpDoubleGrad2 : public framework::OperatorWithKernel {
 // ReluGrad: dx = dy if y >= 0 else 0
 // ReluGradGrad: ddy = ddx if y >= 0 else 0
 //
-class ReluDoubleGradMaker : public ::paddle::framework::SingleGradOpDescMaker {
+template <typename T>
+class ReluDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
  public:
-  using ::paddle::framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<::paddle::framework::OpDesc> Apply() const override {
-    auto* op = new ::paddle::framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto* op = new T();
     op->SetType("relu_grad_grad");
     // input1: Out
-    op->SetInput("Out", Input("Out"));
+    op->SetInput("Out", this->Input("Out"));
     // input2: ddx
-    op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
-    op->SetAttrMap(Attrs());
+    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
+    op->SetAttrMap(this->Attrs());
     // output: ddy
-    op->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
-    return std::unique_ptr<::paddle::framework::OpDesc>(op);
+    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
+    return std::unique_ptr<T>(op);
   }
 };
 
 // leaky_relu Grad: dx=dy if y>=0 else alpha * dy
 // leaky_relu GradGrad: ddy=ddx if y>=0 else alpha * ddx
+template <typename T>
 class LeakyReluDoubleGradMaker
-    : public ::paddle::framework::SingleGradOpDescMaker {
+    : public ::paddle::framework::SingleGradOpMaker<T> {
  public:
-  using ::paddle::framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<::paddle::framework::OpDesc> Apply() const override {
-    auto* op = new ::paddle::framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto* op = new T();
     op->SetType("leaky_relu_grad_grad");
     // input1: Out
-    op->SetInput("Out", Input("Out"));
+    op->SetInput("Out", this->Input("Out"));
     // X@GRAD@GRAD: ddx
-    op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
-    op->SetAttrMap(Attrs());
+    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
+    op->SetAttrMap(this->Attrs());
     // Out@GRAD@GRAD: ddy
-    op->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
-    return std::unique_ptr<::paddle::framework::OpDesc>(op);
+    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
+    return std::unique_ptr<T>(op);
   }
 };
 
 // sqrt Grad: dx = 0.5 * dy / y
 // sqrt GradGrad: ddy = 0.5 * ddx / y, dy = -1 * dx * ddx
-class SqrtDoubleGradMaker : public ::paddle::framework::SingleGradOpDescMaker {
+template <typename T>
+class SqrtDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
  public:
-  using ::paddle::framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<::paddle::framework::OpDesc> Apply() const override {
-    auto* op = new ::paddle::framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto* op = new T();
     op->SetType("sqrt_grad_grad");
-    op->SetInput("Out", Input("Out"));
-    op->SetInput("DX", Output(framework::GradVarName("X")));
-    op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
-    op->SetAttrMap(Attrs());
-    op->SetOutput("DOut", InputGrad("Out"));
-    op->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
-    return std::unique_ptr<::paddle::framework::OpDesc>(op);
+    op->SetInput("Out", this->Input("Out"));
+    op->SetInput("DX", this->Output(framework::GradVarName("X")));
+    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
+    op->SetAttrMap(this->Attrs());
+    op->SetOutput("DOut", this->InputGrad("Out"));
+    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
+    return std::unique_ptr<T>(op);
   }
 };
 
 // square Grad: dx=2x*dy
 // square GradGrad: ddy=2x*ddx, dx=2dy*ddx
-class SquareDoubleGradMaker
-    : public ::paddle::framework::SingleGradOpDescMaker {
+template <typename T>
+class SquareDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
  public:
-  using ::paddle::framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<::paddle::framework::OpDesc> Apply() const override {
-    auto* op = new ::paddle::framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto* op = new T();
     op->SetType("square_grad_grad");
-    op->SetInput("X", Input("X"));
+    op->SetInput("X", this->Input("X"));
     // Out@GRAD: dy
-    op->SetInput("DOut", Input(framework::GradVarName("Out")));
+    op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
     // X@GRAD@GRAD: ddx
-    op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
+    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
 
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
 
     // X@GRAD: dx
-    op->SetOutput("DX", InputGrad("X"));
+    op->SetOutput("DX", this->InputGrad("X"));
     // Out@GRAD@GRAD: ddy
-    op->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
-    return std::unique_ptr<::paddle::framework::OpDesc>(op);
+    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
+    return std::unique_ptr<T>(op);
   }
 };
 
@@ -815,19 +818,20 @@ DECLARE_INPLACE_OP_INFERER(ActivationGradOpInplaceInference,
 DECLARE_INPLACE_OP_INFERER(ActivationDoubleGradOpInplaceInference,
                            {"DDX", "DDOut"});
 
-class PowGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class PowGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("pow_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetInput("FactorTensor", Input("FactorTensor"));
-    op->SetAttrMap(Attrs());
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetInput("FactorTensor", this->Input("FactorTensor"));
+    op->SetAttrMap(this->Attrs());
 
     return op;
   }
@@ -884,6 +888,7 @@ class PowOpGrad : public framework::OperatorWithKernel {
                                    tensor.place(), tensor.layout());
   }
 };
+DECLARE_INPLACE_OP_INFERER(ActFwdInplaceInferer, {"X", "Out"});
 }  // namespace operators
 }  // namespace paddle
 
@@ -894,10 +899,12 @@ namespace plat = paddle::platform;
   REGISTER_OPERATOR(                                                        \
       KERNEL_TYPE, ops::ActivationOp, ops::OP_NAME##OpMaker,                \
       ops::ActivationOpInferVarType,                                        \
-      ops::ActivationGradOpDescMaker<ops::grad_functor<float>::FwdDeps()>,  \
+      ops::ActivationGradOpMaker<ops::grad_functor<float>::FwdDeps(),       \
+                                 paddle::framework::OpDesc>,                \
+      ops::ActivationGradOpMaker<ops::grad_functor<float>::FwdDeps(),       \
+                                 paddle::imperative::OpBase>,               \
       std::conditional<ops::CanInplaceAct<ops::grad_functor<float>>(),      \
-                       ::paddle::framework::SingleOpInplaceInToOut,         \
-                       void>::type);                                        \
+                       ops::ActFwdInplaceInferer, void>::type);             \
   REGISTER_OPERATOR(KERNEL_TYPE##_grad, ops::ActivationOpGrad,              \
                     ops::ActivationGradOpInplaceInference);
 
@@ -921,11 +928,15 @@ FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_CPU_KERNEL);
 /* ==========================    relu register  ============================= */
 REGISTER_OPERATOR(
     relu, ops::ActivationOp, ops::ReluOpMaker, ops::ActivationOpInferVarType,
-    ops::ActivationGradOpDescMaker<ops::ReluGradFunctor<float>::FwdDeps()>,
-    paddle::framework::SingleOpInplaceInToOut);
+    ops::ActivationGradOpMaker<ops::ReluGradFunctor<float>::FwdDeps(),
+                               paddle::framework::OpDesc>,
+    ops::ActivationGradOpMaker<ops::ReluGradFunctor<float>::FwdDeps(),
+                               paddle::imperative::OpBase>,
+    ops::ActFwdInplaceInferer);
 REGISTER_OPERATOR(relu_grad, ops::ActivationOpGrad,
                   ops::ActivationGradOpInplaceInference,
-                  ops::ReluDoubleGradMaker);
+                  ops::ReluDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::ReluDoubleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(
     relu_grad_grad,
     ops::ActivationOpDoubleGrad2<ops::ReluGradFunctor<float>::FwdDeps()>,
@@ -947,11 +958,15 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OPERATOR(
     leaky_relu, ops::ActivationOp, ops::LeakyReluOpMaker,
     ops::ActivationOpInferVarType,
-    ops::ActivationGradOpDescMaker<ops::LeakyReluGradFunctor<float>::FwdDeps()>,
-    paddle::framework::SingleOpInplaceInToOut);
+    ops::ActivationGradOpMaker<ops::LeakyReluGradFunctor<float>::FwdDeps(),
+                               paddle::framework::OpDesc>,
+    ops::ActivationGradOpMaker<ops::LeakyReluGradFunctor<float>::FwdDeps(),
+                               paddle::imperative::OpBase>,
+    ops::ActFwdInplaceInferer);
 REGISTER_OPERATOR(leaky_relu_grad, ops::ActivationOpGrad,
                   ops::ActivationGradOpInplaceInference,
-                  ops::LeakyReluDoubleGradMaker);
+                  ops::LeakyReluDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::LeakyReluDoubleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(
     leaky_relu_grad_grad,
     ops::ActivationOpDoubleGrad2<ops::LeakyReluGradFunctor<float>::FwdDeps()>,
@@ -972,11 +987,15 @@ REGISTER_OP_CPU_KERNEL(
 /* ===========================   sqrt register  ============================= */
 REGISTER_OPERATOR(
     sqrt, ops::ActivationOp, ops::SqrtOpMaker, ops::ActivationOpInferVarType,
-    ops::ActivationGradOpDescMaker<ops::SqrtGradFunctor<float>::FwdDeps()>,
-    paddle::framework::SingleOpInplaceInToOut);
+    ops::ActivationGradOpMaker<ops::SqrtGradFunctor<float>::FwdDeps(),
+                               paddle::framework::OpDesc>,
+    ops::ActivationGradOpMaker<ops::SqrtGradFunctor<float>::FwdDeps(),
+                               paddle::imperative::OpBase>,
+    ops::ActFwdInplaceInferer);
 REGISTER_OPERATOR(sqrt_grad, ops::ActivationOpGrad,
                   ops::ActivationGradOpInplaceInference,
-                  ops::SqrtDoubleGradMaker);
+                  ops::SqrtDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::SqrtDoubleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(
     sqrt_grad_grad,
     ops::ActivationOpDoubleGrad<ops::SqrtGradGradFunctor<float>::FwdDeps()>,
@@ -996,11 +1015,15 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OPERATOR(
     square, ops::ActivationOp, ops::SquareOpMaker,
     ops::ActivationOpInferVarType,
-    ops::ActivationGradOpDescMaker<ops::SquareGradFunctor<float>::FwdDeps()>,
-    paddle::framework::SingleOpInplaceInToOut);
+    ops::ActivationGradOpMaker<ops::SquareGradFunctor<float>::FwdDeps(),
+                               paddle::framework::OpDesc>,
+    ops::ActivationGradOpMaker<ops::SquareGradFunctor<float>::FwdDeps(),
+                               paddle::imperative::OpBase>,
+    ops::ActFwdInplaceInferer);
 REGISTER_OPERATOR(square_grad, ops::ActivationOpGrad,
                   ops::ActivationGradOpInplaceInference,
-                  ops::SquareDoubleGradMaker);
+                  ops::SquareDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::SquareDoubleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(
     square_grad_grad,
     ops::ActivationOpDoubleGrad<ops::SquareGradGradFunctor<float>::FwdDeps()>,
@@ -1023,9 +1046,10 @@ REGISTER_OP_CPU_KERNEL(
 
 REGISTER_OPERATOR(
     pow, ops::PowOp, ops::PowOpMaker, ops::ActivationOpInferVarType,
-    ops::PowGradOpDescMaker,
+    ops::PowGradOpMaker<paddle::framework::OpDesc>,
+    ops::PowGradOpMaker<paddle::imperative::OpBase>,
     std::conditional<ops::CanInplaceAct<ops::PowGradFunctor<float>>(),
-                     ::paddle::framework::SingleOpInplaceInToOut, void>::type);
+                     ops::ActFwdInplaceInferer, void>::type);
 REGISTER_OPERATOR(pow_grad, ops::PowOpGrad,
                   ops::ActivationGradOpInplaceInference);
 

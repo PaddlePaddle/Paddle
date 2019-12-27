@@ -141,22 +141,23 @@ class KLDivLossOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-class KLDivLossOpGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class KLDivLossOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto* op = new T();
     op->SetType("kldiv_loss_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput("Target", Input("Target"));
-    op->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Target", this->Input("Target"));
+    op->SetInput(framework::GradVarName("Loss"), this->OutputGrad("Loss"));
 
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
 
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    return std::unique_ptr<framework::OpDesc>(op);
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    return std::unique_ptr<T>(op);
   }
 };
 
@@ -165,7 +166,8 @@ class KLDivLossOpGradMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(kldiv_loss, ops::KLDivLossOp, ops::KLDivLossOpMaker,
-                  ops::KLDivLossOpGradMaker);
+                  ops::KLDivLossOpGradMaker<paddle::framework::OpDesc>,
+                  ops::KLDivLossOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(kldiv_loss_grad, ops::KLDivLossOpGrad);
 REGISTER_OP_CPU_KERNEL(
     kldiv_loss, ops::KLDivLossKernel<paddle::platform::CPUDeviceContext, float>,

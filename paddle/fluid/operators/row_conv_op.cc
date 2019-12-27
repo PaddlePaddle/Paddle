@@ -320,20 +320,21 @@ class RowConvGradKernel<platform::CPUDeviceContext, T>
   }
 };
 
-class RowConvGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class RowConvGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("row_conv_grad");
-    op->SetAttrMap(Attrs());
-    op->SetInput("X", Input("X"));
-    op->SetInput("Filter", Input("Filter"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Filter"), InputGrad("Filter"));
+    op->SetAttrMap(this->Attrs());
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Filter", this->Input("Filter"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Filter"), this->InputGrad("Filter"));
     return op;
   }
 };
@@ -343,7 +344,8 @@ class RowConvGradOpDescMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(row_conv, ops::RowConvOp, ops::RowConvOpMaker,
-                  ops::RowConvGradOpDescMaker);
+                  ops::RowConvGradOpMaker<paddle::framework::OpDesc>,
+                  ops::RowConvGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(row_conv_grad, ops::RowConvGradOp);
 REGISTER_OP_CPU_KERNEL(
     row_conv, ops::RowConvKernel<paddle::platform::CPUDeviceContext, float>);

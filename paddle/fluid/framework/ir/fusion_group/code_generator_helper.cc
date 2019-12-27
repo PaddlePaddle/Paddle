@@ -17,53 +17,71 @@ limitations under the License. */
 #include <sstream>
 #include <string>
 #include <vector>
+#include "glog/logging.h"
+#include "paddle/fluid/framework/ir/fusion_group/operation.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
+namespace fusion_group {
 
-OperationExpression::OperationExpression(std::vector<int> input_ids,
-                                         int output_id, std::string op) {
-  input_ids_ = input_ids;
-  output_id_ = output_id;
-  op_ = op;
+template <typename T>
+static T StringTo(const std::string& str) {
+  std::istringstream is(str);
+  T value;
+  is >> value;
+  return value;
 }
 
-std::string OperationExpression::GetRHSTemplate() {
-  std::stringstream ret;
-  std::string rhs_end = ";";
-  auto rhs = support_table[op_];
-  for (size_t i = 0; i < input_ids_.size(); i++) {
-    auto replaced_str = replaced_element_in_order[i];
-    auto pos = rhs.find(replaced_str);
-    auto index = input_ids_[i];
-    rhs.replace(pos, replaced_str.length(), std::to_string(index) + R"([idx])");
+std::string OperationExpression::GetRHS(std::unordered_set<int>* used,
+                                        size_t i) const {
+  auto rhs = OperationMap::Instance().Get(op_type_).exprs[i];
+  for (size_t i = 0; i < rhs.size(); i++) {
+    size_t pos = i;
+    if (rhs[pos] == '$' && rhs[pos + 1] == '{') {
+      int length = 0;
+      while (rhs[pos + 2 + length] != '}') {
+        length++;
+      }
+      std::string index_str = rhs.substr(pos + 2, length);
+      int index = StringTo<int>(index_str);
+      PADDLE_ENFORCE_LT(index, input_ids_.size(),
+                        "Only %d inputs are provided, but need %d.",
+                        input_ids_.size(), index + 1);
+      PADDLE_ENFORCE_GE(input_ids_[index], 0,
+                        "Input id should be no less than 0.");
+      rhs.replace(pos, length + 3, TmpName(input_ids_[index]));
+      used->insert(input_ids_[index]);
+    }
   }
-  ret << rhs << rhs_end;
-  return ret.str();
+  return rhs;
 }
 
-std::string OperationExpression::GetLHSTemplate() {
+std::string OperationExpression::GetLHS(size_t i) const {
   std::stringstream ret;
-  ret << "var" << output_id_ << R"([idx] = )";
+  ret << TmpName(output_ids_[i]);
   return ret.str();
 }
 
-bool OperationExpression::SupportState() {
-  return (support_table.find(op_) == support_table.end());
+bool OperationExpression::IsSupport() const {
+  return OperationMap::Instance().Has(op_type_);
 }
 
 // we Traverse the graph and get the group , all input id and output id is
 // unique for the node which belong the group
-std::string OperationExpression::GetExpression() {
+std::string OperationExpression::GetExpression(
+    std::string dtype, std::unordered_set<int>* used) const {
   std::stringstream ret;
-  if (!SupportState()) {
-    ret << GetLHSTemplate() << GetRHSTemplate();
+  if (IsSupport()) {
+    for (size_t i = 0; i < output_ids_.size(); ++i) {
+      ret << dtype << " " << GetLHS(i) << " = " << GetRHS(used, i) << ";";
+    }
   }
 
   return ret.str();
 }
 
+}  // namespace fusion_group
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

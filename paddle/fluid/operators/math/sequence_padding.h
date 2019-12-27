@@ -37,6 +37,16 @@ inline static size_t MaximumSequenceLength(
   return max_seq_len;
 }
 
+inline static size_t TotalSequenceLength(
+    const framework::Vector<size_t>& seq_offset) {
+  size_t seq_num = seq_offset.size() - 1;
+  size_t total_seq_len = 0;
+  for (size_t i = 0; i < seq_num; ++i) {
+    total_seq_len += seq_offset[i + 1] - seq_offset[i];
+  }
+  return total_seq_len;
+}
+
 inline static void CheckDims(const framework::DDim& seq_tensor_dims,
                              const framework::DDim& pad_tensor_dims,
                              const framework::Vector<size_t>& seq_offset,

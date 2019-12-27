@@ -170,12 +170,14 @@ if avx_supported():
         from .core_avx import _append_python_callable_object_and_return_id
         from .core_avx import _cleanup, _Scope
         from .core_avx import _get_use_default_grad_op_desc_maker_ops
+        from .core_avx import _get_all_register_op_kernels
         from .core_avx import _is_program_version_supported
         from .core_avx import _set_eager_deletion_mode
         from .core_avx import _set_fuse_parameter_group_size
         from .core_avx import _set_fuse_parameter_memory_size
         from .core_avx import _is_dygraph_debug_enabled
         from .core_avx import _dygraph_debug_level
+        from .core_avx import _switch_tracer
         from .core_avx import _set_paddle_lib_path
         from .core_avx import _save_static_dict
         from .core_avx import _load_static_dict
@@ -204,12 +206,14 @@ if load_noavx:
         from .core_noavx import _append_python_callable_object_and_return_id
         from .core_noavx import _cleanup, _Scope
         from .core_noavx import _get_use_default_grad_op_desc_maker_ops
+        from .core_noavx import _get_all_register_op_kernels
         from .core_noavx import _is_program_version_supported
         from .core_noavx import _set_eager_deletion_mode
         from .core_noavx import _set_fuse_parameter_group_size
         from .core_noavx import _set_fuse_parameter_memory_size
         from .core_noavx import _is_dygraph_debug_enabled
         from .core_noavx import _dygraph_debug_level
+        from .core_noavx import _switch_tracer
         from .core_noavx import _set_paddle_lib_path
         from .core_noavx import _save_static_dict
         from .core_noavx import _load_static_dict

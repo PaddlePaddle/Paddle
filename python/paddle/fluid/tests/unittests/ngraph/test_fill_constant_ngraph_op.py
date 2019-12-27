@@ -14,9 +14,10 @@
 
 from __future__ import print_function
 
-import unittest
+import unittest, sys
+sys.path.append("../")
 import numpy as np
-from paddle.fluid.tests.unittests.test_fill_constant_op import TestFillConstantOp1, TestFillConstantOp2, TestFillConstantOpWithSelectedRows
+from test_fill_constant_op import TestFillConstantOp1, TestFillConstantOp2, TestFillConstantOpWithSelectedRows
 
 
 class TestNGRAPHFillConstantFP64(TestFillConstantOp1):

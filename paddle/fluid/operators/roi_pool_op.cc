@@ -161,20 +161,21 @@ https://stackoverflow.com/questions/43430056/what-is-roi-layer-in-fast-rcnn
   }
 };
 
-class ROIPoolGradDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ROIPoolGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("roi_pool_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput("ROIs", Input("ROIs"));
-    op->SetInput("Argmax", Output("Argmax"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("ROIs", this->Input("ROIs"));
+    op->SetInput("Argmax", this->Output("Argmax"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -184,7 +185,8 @@ class ROIPoolGradDescMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(roi_pool, ops::ROIPoolOp, ops::ROIPoolOpMaker,
-                  ops::ROIPoolGradDescMaker);
+                  ops::ROIPoolGradMaker<paddle::framework::OpDesc>,
+                  ops::ROIPoolGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(roi_pool_grad, ops::ROIPoolGradOp);
 REGISTER_OP_CPU_KERNEL(
     roi_pool,

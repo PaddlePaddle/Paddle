@@ -251,25 +251,26 @@ class StridedSliceOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-class StridedSliceOpGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class StridedSliceOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *bind = new framework::OpDesc();
-    bind->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    bind->SetInput("Input", Input("Input"));
-    bind->SetInput("StartsTensor", Input("StartsTensor"));
-    bind->SetInput("EndsTensor", Input("EndsTensor"));
-    bind->SetInput("StridesTensor", Input("StridesTensor"));
-    bind->SetInput("StartsTensorList", Input("StartsTensorList"));
-    bind->SetInput("EndsTensorList", Input("EndsTensorList"));
-    bind->SetInput("StridesTensorList", Input("StridesTensorList"));
-    bind->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
-    bind->SetAttrMap(Attrs());
+  std::unique_ptr<T> Apply() const override {
+    auto *bind = new T();
+    bind->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    bind->SetInput("Input", this->Input("Input"));
+    bind->SetInput("StartsTensor", this->Input("StartsTensor"));
+    bind->SetInput("EndsTensor", this->Input("EndsTensor"));
+    bind->SetInput("StridesTensor", this->Input("StridesTensor"));
+    bind->SetInput("StartsTensorList", this->Input("StartsTensorList"));
+    bind->SetInput("EndsTensorList", this->Input("EndsTensorList"));
+    bind->SetInput("StridesTensorList", this->Input("StridesTensorList"));
+    bind->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
+    bind->SetAttrMap(this->Attrs());
     bind->SetType("strided_slice_grad");
-    return std::unique_ptr<framework::OpDesc>(bind);
+    return std::unique_ptr<T>(bind);
   }
 };
 
@@ -281,7 +282,8 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(strided_slice, ops::StridedSliceOp, ops::StridedSliceOpMaker,
-                  ops::StridedSliceOpGradMaker);
+                  ops::StridedSliceOpGradMaker<paddle::framework::OpDesc>,
+                  ops::StridedSliceOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(strided_slice_grad, ops::StridedSliceOpGrad,
                   ops::StridedSliceOpGradNoNeedBufferVarsInference);
 

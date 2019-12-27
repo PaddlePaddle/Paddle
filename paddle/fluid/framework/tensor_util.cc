@@ -25,6 +25,12 @@ namespace framework {
 
 void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                 const platform::DeviceContext& ctx, Tensor* dst) {
+  if (&src == dst) {
+    auto src_copy = src;
+    TensorCopy(src_copy, dst_place, ctx, dst);
+    return;
+  }
+
   VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
           << dst_place;
   src.check_memory_size();
@@ -33,17 +39,17 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
   dst->set_layout(src.layout());
   auto src_place = src.place();
   auto src_ptr = src.data<void>();
-
   auto dst_ptr = dst->mutable_data(dst_place, src.type());
+
+  if (src_ptr == dst_ptr && src_place == dst_place) {
+    VLOG(3) << "Skip copy the same data async from " << src_place << " to "
+            << dst_place;
+    return;
+  }
 
   auto size = src.numel() * SizeOfType(src.type());
 
   if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
-    if (src_ptr == dst_ptr) {
-      VLOG(3) << "Skip copy the same data async from " << src_place << " to "
-              << dst_place;
-      return;
-    }
     memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
                  boost::get<platform::CPUPlace>(src_place), src_ptr, size);
   }
@@ -79,11 +85,6 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
     if (platform::is_same_place(src_place, dst_place)) {
-      if (src_ptr == dst_ptr) {
-        VLOG(3) << "Skip copy the same data async from " << src_place << " to "
-                << dst_place;
-        return;
-      }
       memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size,
                    stream);
     } else {
@@ -119,6 +120,12 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
 
 void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
                     Tensor* dst) {
+  if (&src == dst) {
+    auto src_copy = src;
+    TensorCopySync(src_copy, dst_place, dst);
+    return;
+  }
+
   VLOG(3) << "TensorCopySync " << src.dims() << " from " << src.place()
           << " to " << dst_place;
   src.check_memory_size();
@@ -127,43 +134,36 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
   auto src_place = src.place();
   auto src_ptr = src.data<void>();
   auto dst_ptr = dst->mutable_data(dst_place, src.type());
+
+  if (src_ptr == dst_ptr && src_place == dst_place) {
+    VLOG(3) << "Skip copy the same data from " << src_place << " to "
+            << dst_place;
+    return;
+  }
+
   auto size = src.numel() * SizeOfType(src.type());
   if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
-    if (src_ptr == dst_ptr) {
-      VLOG(3) << "Skip copy the same data from " << src_place << " to "
-              << dst_place;
-      return;
-    }
     memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr,
                  boost::get<platform::CPUPlace>(src_place), src_ptr, size);
   }
 #ifdef PADDLE_WITH_CUDA
   else if (platform::is_gpu_place(src_place) &&  // NOLINT
            platform::is_cpu_place(dst_place)) {
-    platform::RecordEvent record_event("TensorCopy:GPU->CPU");
     auto src_gpu_place = boost::get<platform::CUDAPlace>(src_place);
     auto dst_cpu_place = boost::get<platform::CPUPlace>(dst_place);
     memory::Copy(dst_cpu_place, dst_ptr, src_gpu_place, src_ptr, size, nullptr);
   } else if (platform::is_cpu_place(src_place) &&
              platform::is_gpu_place(dst_place)) {
-    platform::RecordEvent record_event("TensorCopy:CPU->GPU");
     auto src_cpu_place = boost::get<platform::CPUPlace>(src_place);
     auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
     memory::Copy(dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, nullptr);
   } else if (platform::is_gpu_place(src_place) &&
              platform::is_gpu_place(dst_place)) {
-    platform::RecordEvent record_event("TensorCopy:GPU->GPU");
-    if (src_ptr == dst_ptr && platform::is_same_place(src_place, dst_place)) {
-      VLOG(3) << "Skip copy the same data from " << src_place << " to "
-              << dst_place;
-      return;
-    }
     auto src_gpu_place = boost::get<platform::CUDAPlace>(src_place);
     auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
     memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, nullptr);
   } else if (platform::is_cuda_pinned_place(src_place) &&
              platform::is_gpu_place(dst_place)) {
-    platform::RecordEvent record_event("TensorCopy:CUDAPinned->GPU");
     auto src_pinned_place = boost::get<platform::CUDAPinnedPlace>(src_place);
     auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
     memory::Copy(dst_gpu_place, dst_ptr, src_pinned_place, src_ptr, size,
@@ -404,8 +404,9 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
     uint64_t size = tensor.numel() * framework::SizeOfType(tensor.type());
 
     auto* data_ptr = tensor.data<void>();
-    PADDLE_ENFORCE(size < std::numeric_limits<std::streamsize>::max(),
-                   "Index overflow when writing tensor");
+    PADDLE_ENFORCE_LT(size, std::numeric_limits<std::streamsize>::max(),
+                      platform::errors::ResourceExhausted(
+                          "tensor size %d overflow when writing tensor", size));
     if (platform::is_gpu_place(tensor.place())) {
 #ifdef PADDLE_WITH_CUDA
       constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
@@ -426,7 +427,8 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
         size -= size_to_write;
       }
 #else
-      PADDLE_THROW("Unexpected branch");
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "CUDAPlace is not supported when not compiled with CUDA"));
 #endif
     } else {
       os.write(static_cast<const char*>(data_ptr),
@@ -451,10 +453,68 @@ struct DeserializedDataFunctor {
 };
 
 void TensorFromStream(std::istream& is, Tensor* tensor,
+                      const platform::DeviceContext& dev_ctx,
+                      const size_t& seek, const std::vector<int64_t>& shape) {
+  uint32_t version;
+  is.read(reinterpret_cast<char*>(&version), sizeof(version));
+
+  PADDLE_ENFORCE_EQ(
+      version, 0U,
+      platform::errors::InvalidArgument(
+          "tensor version %u is not supported, Only version 0 is supported",
+          version));
+
+  proto::VarType::TensorDesc desc;
+  {  // int32_t size
+    // proto buffer
+    int32_t size;
+    is.read(reinterpret_cast<char*>(&size), sizeof(size));
+    std::unique_ptr<char[]> buf(new char[size]);
+    is.read(reinterpret_cast<char*>(buf.get()), size);
+    PADDLE_ENFORCE_EQ(
+        desc.ParseFromArray(buf.get(), size), true,
+        platform::errors::InvalidArgument("Cannot parse tensor desc"));
+  }
+  {  // read tensor
+    tensor->Resize(framework::make_ddim(shape));
+    size_t seekg = seek * framework::SizeOfType(desc.data_type());
+    is.seekg(seekg, is.cur);
+
+    void* buf;
+    auto ctx = platform::CPUDeviceContext();
+    size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
+    if (platform::is_gpu_place(dev_ctx.GetPlace())) {
+#ifdef PADDLE_WITH_CUDA
+      Tensor cpu_tensor;
+      cpu_tensor.Resize(framework::make_ddim(shape));
+      framework::VisitDataType(
+          desc.data_type(),
+          DeserializedDataFunctor(&buf, &cpu_tensor, ctx.GetPlace()));
+      is.read(static_cast<char*>(buf), size);
+      auto dst_place = dev_ctx.GetPlace();
+      framework::TensorCopy(cpu_tensor, dst_place, dev_ctx, tensor);
+#else
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "CUDAPlace is not supported when not compiled with CUDA"));
+#endif
+    } else {
+      framework::VisitDataType(
+          desc.data_type(),
+          DeserializedDataFunctor(&buf, tensor, ctx.GetPlace()));
+      is.read(static_cast<char*>(buf), size);
+    }
+  }
+}
+
+void TensorFromStream(std::istream& is, Tensor* tensor,
                       const platform::DeviceContext& dev_ctx) {
   uint32_t version;
   is.read(reinterpret_cast<char*>(&version), sizeof(version));
-  PADDLE_ENFORCE_EQ(version, 0U, "Only version 0 is supported");
+  PADDLE_ENFORCE_EQ(
+      version, 0U,
+      platform::errors::InvalidArgument(
+          "tensor version %u is not supported, Only version 0 is supported",
+          version));
   proto::VarType::TensorDesc desc;
   {  // int32_t size
      // proto buffer
@@ -462,8 +522,9 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
     is.read(reinterpret_cast<char*>(&size), sizeof(size));
     std::unique_ptr<char[]> buf(new char[size]);
     is.read(reinterpret_cast<char*>(buf.get()), size);
-    PADDLE_ENFORCE(desc.ParseFromArray(buf.get(), size),
-                   "Cannot parse tensor desc");
+    PADDLE_ENFORCE_EQ(
+        desc.ParseFromArray(buf.get(), size), true,
+        platform::errors::InvalidArgument("Cannot parse tensor desc"));
   }
   {  // read tensor
     std::vector<int64_t> dims;
@@ -484,7 +545,8 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
       auto dst_place = dev_ctx.GetPlace();
       framework::TensorCopy(cpu_tensor, dst_place, dev_ctx, tensor);
 #else
-      PADDLE_THROW("Unexpected branch");
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "CUDAPlace is not supported when not compiled with CUDA"));
 #endif
     } else {
       framework::VisitDataType(

@@ -132,10 +132,9 @@ class TestFakeQuantizeRangeAbsMaxOp2(OpTest):
         }
         x = (np.random.random((8, 16, 7, 7)) - 0.5) * 10
         x = x.astype("float32")
-        scale = np.max(np.abs(x)).astype("float32") - 1.0
+        scale = np.array([np.max(np.abs(x)).astype("float32") - 1.0])
         out_scales = np.zeros(self.attrs['window_size']).astype("float32")
         out_scales[0] = scale
-
         self.inputs = {
             'X': x,
             'Iter': np.zeros(1).astype("int64"),

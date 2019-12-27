@@ -220,14 +220,15 @@ The functor_list records the functions to be fused, for example
   }
 };
 
+template <typename T>
 class FusedElemwiseActivationGradMaker
-    : public framework::SingleGradOpDescMaker {
+    : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *grad_op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto *grad_op = new T();
     grad_op->SetType(this->ForwardOpType() + "_grad");
 
     for (auto &input_param : this->InputNames()) {
@@ -249,7 +250,7 @@ class FusedElemwiseActivationGradMaker
     grad_op->SetAttr("functor_list", functor_names);
 
     if (boost::get<bool>(grad_op->GetAttr("save_intermediate_out"))) {
-      PADDLE_ENFORCE_NE(Output("IntermediateOut").size(), 0);
+      // PADDLE_ENFORCE_NE(Output("IntermediateOut").size(), 0);
       grad_op->SetInput("IntermediateOut", this->Output("IntermediateOut"));
       grad_op->SetOutput(framework::GradVarName("IntermediateOut"),
                          this->OutputGrad("IntermediateOut"));
@@ -258,7 +259,7 @@ class FusedElemwiseActivationGradMaker
       grad_op->SetOutput(framework::GradVarName("IntermediateOut"), {});
     }
 
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+    return std::unique_ptr<T>(grad_op);
   }
 };
 
@@ -336,9 +337,11 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fused_elemwise_activation, ops::FusedElemwiseActivationOp,
-                  ops::FusedElemwiseActivationMaker,
-                  ops::FusedElemwiseActivationGradMaker);
+REGISTER_OPERATOR(
+    fused_elemwise_activation, ops::FusedElemwiseActivationOp,
+    ops::FusedElemwiseActivationMaker,
+    ops::FusedElemwiseActivationGradMaker<paddle::framework::OpDesc>,
+    ops::FusedElemwiseActivationGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(fused_elemwise_activation_grad,
                   ops::FusedElemwiseActivationOpGrad);
 

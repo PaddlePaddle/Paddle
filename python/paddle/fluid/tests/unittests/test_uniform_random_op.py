@@ -164,7 +164,7 @@ class TestUniformRandomOp(OpTest):
                 hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
 
 
-class TestUniformRandomOpError(OpTest):
+class TestUniformRandomOpError(unittest.TestCase):
     def test_errors(self):
         main_prog = Program()
         start_prog = Program()
@@ -414,6 +414,16 @@ class TestUniformRandomOpSelectedRowsShapeTensorList(unittest.TestCase):
         self.assertTrue(
             np.allclose(
                 hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
+
+
+class TestUniformRandomDygraphMode(unittest.TestCase):
+    def test_check_output(self):
+        with fluid.dygraph.guard():
+            x = fluid.layers.uniform_random(
+                [10], dtype="float32", min=0.0, max=1.0)
+            x_np = x.numpy()
+            for i in range(10):
+                self.assertTrue((x_np[i] > 0 and x_np[i] < 1.0))
 
 
 if __name__ == "__main__":

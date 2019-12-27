@@ -239,20 +239,22 @@ class SoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-class SoftmaxGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SoftmaxGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* grad_op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto* grad_op = new T();
     grad_op->SetType("softmax_with_cross_entropy_grad");
-    grad_op->SetInput("Label", Input("Label"));
-    grad_op->SetInput("Softmax", Output("Softmax"));
-    grad_op->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
-    grad_op->SetOutput(framework::GradVarName("Logits"), InputGrad("Logits"));
-    grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+    grad_op->SetInput("Label", this->Input("Label"));
+    grad_op->SetInput("Softmax", this->Output("Softmax"));
+    grad_op->SetInput(framework::GradVarName("Loss"), this->OutputGrad("Loss"));
+    grad_op->SetOutput(framework::GradVarName("Logits"),
+                       this->InputGrad("Logits"));
+    grad_op->SetAttrMap(this->Attrs());
+    return std::unique_ptr<T>(grad_op);
   }
 };
 
@@ -268,7 +270,9 @@ DECLARE_INPLACE_OP_INFERER(SoftmaxWithCrossEntropyGradInplaceInference,
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(softmax_with_cross_entropy, ops::SoftmaxWithCrossEntropyOp,
-                  ops::SoftmaxWithCrossEntropyOpMaker, ops::SoftmaxGradMaker,
+                  ops::SoftmaxWithCrossEntropyOpMaker,
+                  ops::SoftmaxGradMaker<paddle::framework::OpDesc>,
+                  ops::SoftmaxGradMaker<paddle::imperative::OpBase>,
                   ops::SoftmaxWithCrossEntropyInplaceInference);
 REGISTER_OPERATOR(softmax_with_cross_entropy_grad,
                   ops::SoftmaxWithCrossEntropyOpGrad,

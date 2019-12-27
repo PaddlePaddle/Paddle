@@ -35,7 +35,7 @@ class TestConv2dInt8Op(TestConv2dOp):
         self.exhaustive_search = False
         self.use_cuda = False
         self.use_mkldnn = False
-        self.data_format = "AnyLayout"
+        self.data_format = "NCHW"
         self.weighttype = np.float32
         self.use_mkldnn = True
         self.init_group()
@@ -146,7 +146,9 @@ class TestConv2dInt8Op(TestConv2dOp):
         self.outputs = {'Output': output}
 
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace(), atol=0)
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_output_with_place(
+            core.CPUPlace(), atol=0, check_dygraph=False)
 
     def test_check_grad(self):
         pass
@@ -342,6 +344,28 @@ create_test_int8_class(TestWithStride)
 create_test_int8_class(TestWithGroup)
 create_test_int8_class(TestWith1x1)
 create_test_int8_class(TestWithInput1x1Filter1x1)
+
+
+class TestConv2dOp_AsyPadding_INT_MKLDNN(TestConv2dInt8Op):
+    def init_kernel_type(self):
+        self.use_mkldnn = True
+
+    def init_paddings(self):
+        self.pad = [0, 0, 1, 2]
+        self.padding_algorithm = "EXPLICIT"
+
+
+class TestConv2dOp_Same_INT_MKLDNN(TestConv2dOp_AsyPadding_INT_MKLDNN):
+    def init_paddings(self):
+        self.pad = [0, 0]
+        self.padding_algorithm = "SAME"
+
+
+class TestConv2dOp_Valid_INT_MKLDNN(TestConv2dOp_AsyPadding_INT_MKLDNN):
+    def init_paddings(self):
+        self.pad = [1, 1]
+        self.padding_algorithm = "VALID"
+
 
 if __name__ == '__main__':
     unittest.main()

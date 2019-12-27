@@ -17,7 +17,8 @@
 namespace plat = paddle::platform;
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(stack, ops::StackOp, ops::StackOpMaker,
-                  ops::StackGradOpDescMaker);
+                  ops::StackGradOpMaker<paddle::framework::OpDesc>,
+                  ops::StackGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(stack_grad, ops::StackOpGrad);
 
 REGISTER_OP_CPU_KERNEL(stack, ops::StackKernel<plat::CPUDeviceContext, float>,

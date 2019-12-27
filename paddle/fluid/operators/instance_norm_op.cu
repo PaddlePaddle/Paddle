@@ -328,7 +328,7 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
           epsilon, saved_mean_data, saved_var_data));
     } else {
       if (d_x) {
-        GradComputeDX<T, block><<<grid, block, 0, dev_ctx.stream()>>>(
+        GradComputeDX<T, block><<<NxC, block, 0, dev_ctx.stream()>>>(
             d_y->data<T>(), scale->data<BatchNormParamType<T>>(),
             saved_mean_data, x->data<T>(), saved_var_data, C, H * W * D,
             d_x->data<T>());

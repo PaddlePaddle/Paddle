@@ -197,22 +197,23 @@ class AffineGridOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-class AffineGridGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class AffineGridGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto* op = new T();
     op->SetType("affine_grid_grad");
-    op->SetInput("Theta", Input("Theta"));
-    op->SetInput("OutputShape", Input("OutputShape"));
-    op->SetInput(framework::GradVarName("Output"), OutputGrad("Output"));
+    op->SetInput("Theta", this->Input("Theta"));
+    op->SetInput("OutputShape", this->Input("OutputShape"));
+    op->SetInput(framework::GradVarName("Output"), this->OutputGrad("Output"));
 
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
 
-    op->SetOutput(framework::GradVarName("Theta"), InputGrad("Theta"));
-    return std::unique_ptr<framework::OpDesc>(op);
+    op->SetOutput(framework::GradVarName("Theta"), this->InputGrad("Theta"));
+    return std::unique_ptr<T>(op);
   }
 };
 
@@ -221,7 +222,8 @@ class AffineGridGradMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(affine_grid, ops::AffineGridOp, ops::AffineGridOpMaker,
-                  ops::AffineGridGradMaker);
+                  ops::AffineGridGradMaker<paddle::framework::OpDesc>,
+                  ops::AffineGridGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(affine_grid_grad, ops::AffineGridOpGrad);
 
 REGISTER_OP_CPU_KERNEL(

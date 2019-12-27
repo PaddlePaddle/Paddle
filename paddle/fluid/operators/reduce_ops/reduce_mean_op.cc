@@ -24,23 +24,24 @@ namespace operators {
 // calcualtion, but will incur a reduce_mean_grad op after
 // reduce_mean_grad_grad, delete Input(Out) here.
 // This change has no effect on reduce_mean_grad calculations.
-class ReduceMeanOpGradDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ReduceMeanOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("reduce_mean_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetAttrMap(Attrs());
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetAttrMap(this->Attrs());
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     return op;
   }
 };
 
-class ReduceMeanDoubleGradMaker : public framework::GradOpDescMakerBase {
+class ReduceMeanDoubleGradDescMaker : public framework::GradOpDescMakerBase {
  public:
   using framework::GradOpDescMakerBase::GradOpDescMakerBase;
 
@@ -60,7 +61,26 @@ class ReduceMeanDoubleGradMaker : public framework::GradOpDescMakerBase {
     return ops;
   }
 };
+class ReduceMeanDoubleGradOpBaseMaker : public imperative::GradOpBaseMakerBase {
+ public:
+  using imperative::GradOpBaseMakerBase::GradOpBaseMakerBase;
 
+  std::vector<std::unique_ptr<imperative::OpBase>> operator()() const override {
+    std::vector<std::unique_ptr<imperative::OpBase>> ops;
+    auto x_gg = OutputGrad(framework::GradVarName("X"));  // input ddx
+    auto out_grads = InputGrad(framework::GradVarName("Out"));
+    if (!out_grads.empty()) {
+      auto* out_grad_op = new imperative::OpBase();
+      out_grad_op->SetType("reduce_mean");
+      out_grad_op->SetInput("X", x_gg);
+      out_grad_op->SetAttrMap(Attrs());
+      out_grad_op->SetOutput("Out", out_grads);
+      ops.emplace_back(out_grad_op);
+    }
+
+    return ops;
+  }
+};
 DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ReduceMeanGradNoNeedBufferVarInference,
                                       "X");
 }  // namespace operators
@@ -73,9 +93,11 @@ class __reduce_meanMaker__ : public ops::ReduceOpMaker {
 };
 
 REGISTER_OPERATOR(reduce_mean, ops::ReduceOp, __reduce_meanMaker__,
-                  ops::ReduceMeanOpGradDescMaker);
+                  ops::ReduceMeanOpGradMaker<paddle::framework::OpDesc>,
+                  ops::ReduceMeanOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(reduce_mean_grad, ops::ReduceGradOp,
-                  ops::ReduceMeanDoubleGradMaker,
+                  ops::ReduceMeanDoubleGradDescMaker,
+                  ops::ReduceMeanDoubleGradOpBaseMaker,
                   ops::ReduceMeanGradNoNeedBufferVarInference);
 REGISTER_OP_CPU_KERNEL(reduce_mean,
                        ops::ReduceKernel<paddle::platform::CPUDeviceContext,

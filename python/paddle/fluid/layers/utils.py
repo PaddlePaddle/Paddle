@@ -231,3 +231,16 @@ def assert_same_structure(nest1, nest2, check_types=True):
                          "Second structure (%i elements): %s" %
                          (len_nest1, nest1, len_nest2, nest2))
     _recursive_assert_same_structure(nest1, nest2, check_types)
+
+
+def _is_symmetric_padding(padding, data_dim):
+    """
+    Check whether padding is symmetrical.
+    """
+    assert len(padding) == data_dim * 2 or len(padding) == data_dim
+    is_sys = True
+    if len(padding) == data_dim * 2:
+        for i in range(data_dim):
+            if padding[i * 2] != padding[i * 2 + 1]:
+                is_sys = False
+    return is_sys

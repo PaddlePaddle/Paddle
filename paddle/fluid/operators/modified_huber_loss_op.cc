@@ -111,20 +111,20 @@ class ModifiedHuberLossGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class ModifiedHuberLossGradOpDescMaker
-    : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ModifiedHuberLossGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("modified_huber_loss_grad");
-    op->SetInput("Y", Input("Y"));
-    op->SetInput("IntermediateVal", Output("IntermediateVal"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput("IntermediateVal", this->Output("IntermediateVal"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -133,9 +133,11 @@ class ModifiedHuberLossGradOpDescMaker
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(modified_huber_loss, ops::ModifiedHuberLossOp,
-                  ops::ModifiedHuberLossOpMaker,
-                  ops::ModifiedHuberLossGradOpDescMaker);
+REGISTER_OPERATOR(
+    modified_huber_loss, ops::ModifiedHuberLossOp,
+    ops::ModifiedHuberLossOpMaker,
+    ops::ModifiedHuberLossGradOpMaker<paddle::framework::OpDesc>,
+    ops::ModifiedHuberLossGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(modified_huber_loss_grad, ops::ModifiedHuberLossGradOp);
 
 REGISTER_OP_CPU_KERNEL(

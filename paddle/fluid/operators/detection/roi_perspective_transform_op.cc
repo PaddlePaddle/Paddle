@@ -620,22 +620,23 @@ class ROIPerspectiveTransformOpMaker
   }
 };
 
-class ROIPerspectiveTransformGradDescMaker
-    : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ROIPerspectiveTransformGradMaker
+    : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("roi_perspective_transform_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput("ROIs", Input("ROIs"));
-    op->SetInput("Out2InIdx", Output("Out2InIdx"));
-    op->SetInput("Out2InWeights", Output("Out2InWeights"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("ROIs", this->Input("ROIs"));
+    op->SetInput("Out2InIdx", this->Output("Out2InIdx"));
+    op->SetInput("Out2InWeights", this->Output("Out2InWeights"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -644,9 +645,11 @@ class ROIPerspectiveTransformGradDescMaker
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(roi_perspective_transform, ops::ROIPerspectiveTransformOp,
-                  ops::ROIPerspectiveTransformOpMaker,
-                  ops::ROIPerspectiveTransformGradDescMaker);
+REGISTER_OPERATOR(
+    roi_perspective_transform, ops::ROIPerspectiveTransformOp,
+    ops::ROIPerspectiveTransformOpMaker,
+    ops::ROIPerspectiveTransformGradMaker<paddle::framework::OpDesc>,
+    ops::ROIPerspectiveTransformGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(roi_perspective_transform_grad,
                   ops::ROIPerspectiveTransformGradOp);
 REGISTER_OP_CPU_KERNEL(roi_perspective_transform,

@@ -70,8 +70,10 @@ A layer for sampling id from multinomial distribution from the
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(sampling_id, ops::SamplingIdOp, ops::SamplingIdOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    sampling_id, ops::SamplingIdOp, ops::SamplingIdOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(sampling_id, paddle::operators::SamplingIdKernel<float>,
                        paddle::operators::SamplingIdKernel<double>);

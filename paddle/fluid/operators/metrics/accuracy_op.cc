@@ -106,8 +106,10 @@ with the input Out(Inference).
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(accuracy, ops::AccuracyOp, ops::AccuracyOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    accuracy, ops::AccuracyOp, ops::AccuracyOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 // FIXME(typhoonzero): types of T is for infernece data.
 // label data is always int.
 REGISTER_OP_CPU_KERNEL(accuracy,

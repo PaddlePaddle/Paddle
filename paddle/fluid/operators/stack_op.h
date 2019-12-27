@@ -205,17 +205,18 @@ class StackOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-class StackGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class StackGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("stack_grad");
-    op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X", false));
-    op->SetAttrMap(Attrs());
+    op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X", false));
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };

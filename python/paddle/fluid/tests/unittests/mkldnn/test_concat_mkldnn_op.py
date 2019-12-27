@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 import unittest
-from paddle.fluid.tests.unittests.test_concat_op import TestConcatOp, TestConcatOp2, TestConcatOp3
+from paddle.fluid.tests.unittests.test_concat_op import TestConcatOp, TestConcatOp2, TestConcatOp3, TestConcatOp4
 
 
 class TestMKLDNNConcatOp(TestConcatOp):
@@ -23,6 +23,10 @@ class TestMKLDNNConcatOp(TestConcatOp):
         super(TestMKLDNNConcatOp, self).setUp()
         self.attrs["use_mkldnn"] = True
         self._cpu_only = True
+
+    def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_output(check_dygraph=(self.attrs["use_mkldnn"] == False))
 
     def test_check_grad(self):
         pass
@@ -37,6 +41,10 @@ class TestMKLDNNConcatOp2(TestConcatOp2):
         self.attrs["use_mkldnn"] = True
         self._cpu_only = True
 
+    def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_output(check_dygraph=(self.attrs["use_mkldnn"] == False))
+
     def test_check_grad(self):
         pass
 
@@ -49,6 +57,27 @@ class TestMKLDNNConcatOp3(TestConcatOp3):
         super(TestMKLDNNConcatOp3, self).setUp()
         self.attrs["use_mkldnn"] = True
         self._cpu_only = True
+
+    def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_output(check_dygraph=(self.attrs["use_mkldnn"] == False))
+
+    def test_check_grad(self):
+        pass
+
+    def init_kernel_type(self):
+        self.use_mkldnn = True
+
+
+class TestMKLDNNConcatOp4(TestConcatOp4):
+    def setUp(self):
+        super(TestMKLDNNConcatOp4, self).setUp()
+        self.attrs["use_mkldnn"] = True
+        self._cpu_only = True
+
+    def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_output(check_dygraph=(self.attrs["use_mkldnn"] == False))
 
     def test_check_grad(self):
         pass

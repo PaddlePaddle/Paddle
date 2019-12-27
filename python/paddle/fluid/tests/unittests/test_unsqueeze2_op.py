@@ -25,11 +25,11 @@ class TestUnsqueezeOp(OpTest):
     def setUp(self):
         self.init_test_case()
         self.op_type = "unsqueeze2"
-        self.inputs = {"X": np.random.random(self.ori_shape).astype("float32")}
+        self.inputs = {"X": np.random.random(self.ori_shape).astype("float64")}
         self.init_attrs()
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.new_shape),
-            "XShape": np.random.random(self.ori_shape).astype("float32")
+            "XShape": np.random.random(self.ori_shape).astype("float64")
         }
 
     def test_check_output(self):
@@ -39,9 +39,9 @@ class TestUnsqueezeOp(OpTest):
         self.check_grad(["X"], "Out")
 
     def init_test_case(self):
-        self.ori_shape = (3, 5)
+        self.ori_shape = (3, 40)
         self.axes = (1, 2)
-        self.new_shape = (3, 1, 1, 5)
+        self.new_shape = (3, 1, 1, 40)
 
     def init_attrs(self):
         self.attrs = {"axes": self.axes}
@@ -91,13 +91,13 @@ class TestUnsqueezeOp_AxesTensorList(OpTest):
                 (1)).astype('int32') * ele))
 
         self.inputs = {
-            "X": np.random.random(self.ori_shape).astype("float32"),
+            "X": np.random.random(self.ori_shape).astype("float64"),
             "AxesTensorList": axes_tensor_list
         }
         self.init_attrs()
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.new_shape),
-            "XShape": np.random.random(self.ori_shape).astype("float32")
+            "XShape": np.random.random(self.ori_shape).astype("float64")
         }
 
     def test_check_output(self):
@@ -150,13 +150,13 @@ class TestUnsqueezeOp_AxesTensor(OpTest):
         self.op_type = "unsqueeze2"
 
         self.inputs = {
-            "X": np.random.random(self.ori_shape).astype("float32"),
+            "X": np.random.random(self.ori_shape).astype("float64"),
             "AxesTensor": np.array(self.axes).astype("int32")
         }
         self.init_attrs()
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.new_shape),
-            "XShape": np.random.random(self.ori_shape).astype("float32")
+            "XShape": np.random.random(self.ori_shape).astype("float64")
         }
 
     def test_check_output(self):
@@ -203,31 +203,39 @@ class TestUnsqueezeOp4_AxesTensor(TestUnsqueezeOp_AxesTensor):
 
 
 # test api
-class TestUnsqueezeAPI(OpTest):
+class TestUnsqueezeAPI(unittest.TestCase):
     def test_api(self):
-        input = np.random.random([3, 2, 5]).astype("float32")
-        x = fluid.data(name='x', shape=[3, 2, 5], dtype="float32")
-        positive_3 = fluid.layers.fill_constant([1], "int32", 3)
-        axes_tensor = fluid.data(name='axes_tensor', shape=[3], dtype="int32")
+        input = np.random.random([3, 2, 5]).astype("float64")
+        x = fluid.data(name='x', shape=[3, 2, 5], dtype="float64")
+        positive_3_int32 = fluid.layers.fill_constant([1], "int32", 3)
+        positive_1_int64 = fluid.layers.fill_constant([1], "int64", 1)
+        axes_tensor_int32 = fluid.data(
+            name='axes_tensor_int32', shape=[3], dtype="int32")
+        axes_tensor_int64 = fluid.data(
+            name='axes_tensor_int64', shape=[3], dtype="int64")
 
         out_1 = fluid.layers.unsqueeze(x, axes=[3, 1, 1])
-        out_2 = fluid.layers.unsqueeze(x, axes=[positive_3, 1, 1])
-        out_3 = fluid.layers.unsqueeze(x, axes=axes_tensor)
+        out_2 = fluid.layers.unsqueeze(
+            x, axes=[positive_3_int32, positive_1_int64, 1])
+        out_3 = fluid.layers.unsqueeze(x, axes=axes_tensor_int32)
         out_4 = fluid.layers.unsqueeze(x, axes=3)
+        out_5 = fluid.layers.unsqueeze(x, axes=axes_tensor_int64)
 
         exe = fluid.Executor(place=fluid.CPUPlace())
-        res_1, res_2, res_3, res_4 = exe.run(
+        res_1, res_2, res_3, res_4, res_5 = exe.run(
             fluid.default_main_program(),
             feed={
                 "x": input,
-                "axes_tensor": np.array([3, 1, 1]).astype("int32")
+                "axes_tensor_int32": np.array([3, 1, 1]).astype("int32"),
+                "axes_tensor_int64": np.array([3, 1, 1]).astype("int64")
             },
-            fetch_list=[out_1, out_2, out_3, out_4])
+            fetch_list=[out_1, out_2, out_3, out_4, out_5])
 
         assert np.array_equal(res_1, input.reshape([3, 1, 1, 2, 5, 1]))
         assert np.array_equal(res_2, input.reshape([3, 1, 1, 2, 5, 1]))
         assert np.array_equal(res_3, input.reshape([3, 1, 1, 2, 5, 1]))
         assert np.array_equal(res_4, input.reshape([3, 2, 5, 1]))
+        assert np.array_equal(res_5, input.reshape([3, 1, 1, 2, 5, 1]))
 
     def test_error(self):
         def test_axes_type():

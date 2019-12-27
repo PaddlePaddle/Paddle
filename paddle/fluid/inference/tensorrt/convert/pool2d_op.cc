@@ -160,10 +160,11 @@ class Pool2dOpConverter : public OpConverter {
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "pool2d", {output_name}, test_mode);
 
-    if (op_desc.HasAttr("out_scale")) {
+    if (op_desc.HasAttr("enable_int8")) {
 #if IS_TRT_VERSION_GE(5000)
-      float out_scale = boost::get<float>(op_desc.GetAttr("out_scale"));
-      engine_->SetTensorDynamicRange(layer->getOutput(0), out_scale);
+      CHECK(op_desc.HasAttr("X_scale"));
+      float input_scale = boost::get<float>(op_desc.GetAttr("X_scale"));
+      engine_->SetTensorDynamicRange(input1, input_scale);
 #endif
     }
   }

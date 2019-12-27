@@ -97,6 +97,7 @@ namespace ops = paddle::operators;
 USE_CPU_ONLY_OP(concat);
 
 REGISTER_OPERATOR(split_byref, ops::SplitByrefOp, ops::SplitByrefOpMaker,
-                  ops::SplitGradMaker);
+                  ops::SplitGradMaker<paddle::framework::OpDesc>,
+                  ops::SplitGradMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     split_byref, ops::SplitByrefOpKernel<paddle::platform::CPUPlace, float>);

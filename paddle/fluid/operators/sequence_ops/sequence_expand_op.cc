@@ -214,19 +214,20 @@ class SequenceExpandOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-class SequenceExpandOpGradDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SequenceExpandOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("sequence_expand_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput("Y", Input("Y"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -242,7 +243,8 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_expand, ops::SequenceExpandOp,
                   ops::SequenceExpandOpMaker,
-                  ops::SequenceExpandOpGradDescMaker,
+                  ops::SequenceExpandOpGradMaker<paddle::framework::OpDesc>,
+                  ops::SequenceExpandOpGradMaker<paddle::imperative::OpBase>,
                   ops::SequenceExpandOpNoNeedBufferVarsInference);
 REGISTER_OPERATOR(sequence_expand_grad, ops::SequenceExpandOpGrad,
                   ops::SequenceExpandGradOpNoNeedBufferVarsInference);

@@ -42,6 +42,11 @@ class TopkOp : public framework::OperatorWithKernel {
 
     framework::DDim dims = input_dims;
     dims[dims.size() - 1] = k;
+    // If has K as tensor, set k=-1 as not know real size at this time.
+    if (ctx->HasInput("K")) {
+      dims[dims.size() - 1] = -1;
+    }
+
     ctx->SetOutputDim("Out", dims);
     ctx->SetOutputDim("Indices", dims);
     ctx->ShareLoD("X", "Out");
@@ -88,8 +93,12 @@ For matrices, this operator computes the top k entries in each row. )DOC");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(top_k, ops::TopkOp, ops::TopkOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    top_k, ops::TopkOp, ops::TopkOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(top_k,
                        ops::TopkKernel<paddle::platform::CPUPlace, float>,
-                       ops::TopkKernel<paddle::platform::CPUPlace, double>);
+                       ops::TopkKernel<paddle::platform::CPUPlace, double>,
+                       ops::TopkKernel<paddle::platform::CPUPlace, int>,
+                       ops::TopkKernel<paddle::platform::CPUPlace, int64_t>);

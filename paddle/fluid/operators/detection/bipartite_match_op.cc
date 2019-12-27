@@ -284,8 +284,9 @@ If Tensor, the height of ColToRowMatchIndices is 1.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(bipartite_match, ops::BipartiteMatchOp,
-                  ops::BipartiteMatchOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    bipartite_match, ops::BipartiteMatchOp, ops::BipartiteMatchOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(bipartite_match, ops::BipartiteMatchKernel<float>,
                        ops::BipartiteMatchKernel<double>);

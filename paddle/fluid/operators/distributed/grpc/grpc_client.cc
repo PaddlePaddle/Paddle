@@ -438,26 +438,40 @@ VarHandlePtr GRPCClient::AsyncCheckpointNotify(const std::string& ep,
   return h;
 }
 
-VarHandlePtr GRPCClient::AsyncDistributeNotify(const std::string& ep,
-                                               const std::string& type,
-                                               int64_t time_out) {
-  const auto ch = GetChannel(ep);
-
-  DistributeNotifyProcessor* s = new DistributeNotifyProcessor(ch);
-
+VarHandlePtr GRPCClient::AsyncDistributeNotify(
+    const std::string& ep, const platform::DeviceContext& ctx,
+    const framework::Scope& scope, const std::string& var_name,
+    int64_t time_out) {
+  const platform::DeviceContext* p_ctx = &ctx;
+  const std::string ep_val = ep;
+  const std::string var_name_val = var_name;
+  const framework::Scope* p_scope = &scope;
+  const auto ch = GetChannel(ep_val);
   const std::string method = kRequestNotify;
 
-  VarHandlePtr h(
-      new VarHandle(ep, method, LEARNING_RATE_DECAY_MESSAGE, nullptr, nullptr));
+  SendProcessor* s = new SendProcessor(ch);
+  VarHandlePtr h(new VarHandle(ep, method, var_name_val, p_ctx, p_scope));
   s->Prepare(h, time_out);
 
-  sendrecv::VariableMessage req;
-  req.set_varname(type);
+  framework::AsyncIO([var_name_val, p_scope, p_ctx, s, method, h, this] {
+    auto* var = p_scope->FindVar(var_name_val);
 
-  platform::RecordRPCEvent record_event(method);
+    ::grpc::ByteBuffer req;
+    SerializeToByteBuffer(var_name_val, var, *p_ctx, &req, "", trainer_id_);
 
-  auto rpc = s->stub_->AsyncDistributeNotify(s->context_.get(), req, &cq_);
-  rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
+    VLOG(3) << s->GetVarHandlePtr()->String() << " begin";
+
+    // stub context
+    s->response_call_back_ = nullptr;
+
+    platform::RecordRPCEvent record_event(method);
+
+    auto call = s->stub_g_.PrepareUnaryCall(
+        s->context_.get(), "/sendrecv.SendRecvService/DistributeNotify", req,
+        &cq_);
+    call->StartCall();
+    call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
+  });
   req_count_++;
 
   if (UNLIKELY(platform::IsProfileEnabled())) {

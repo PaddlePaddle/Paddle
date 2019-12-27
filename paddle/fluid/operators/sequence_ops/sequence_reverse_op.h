@@ -155,17 +155,18 @@ class SequenceReverseOpKernel : public framework::OpKernel<T> {
   }
 };
 
-class SequenceReverseGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SequenceReverseGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("sequence_reverse");
-    op->SetInput("X", OutputGrad("Y"));
-    op->SetOutput("Y", InputGrad("X"));
-    op->SetAttrMap(Attrs());
+    op->SetInput("X", this->OutputGrad("Y"));
+    op->SetOutput("Y", this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };

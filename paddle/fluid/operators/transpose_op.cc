@@ -71,16 +71,24 @@ class TransposeOp : public framework::OperatorWithKernel {
     framework::LibraryType library_{framework::LibraryType::kPlain};
     std::string data_format = ctx.Attr<std::string>("data_format");
     framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+    int customized_type_value =
+        framework::OpKernelType::kDefaultCustomizedTypeValue;
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
         platform::CanMKLDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
+      using framework::proto::VarType;
+      auto input_data_type = ctx.Input<Tensor>("X")->type();
+      customized_type_value = (input_data_type == VarType::INT8 ||
+                               input_data_type == VarType::UINT8)
+                                  ? kTransposeMKLDNNINT8
+                                  : kTransposeMKLDNNFP32;
     }
 #endif
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
-        layout_, library_);
+        layout_, library_, customized_type_value);
   }
 };
 
@@ -106,6 +114,13 @@ class TransposeOpMaker : public framework::OpProtoAndCheckerMaker {
         "Defaults to \"NHWC\". Specify the data format of the output data, "
         "the input will be transformed automatically. ")
         .SetDefault("AnyLayout");
+    /* int8 parameters */
+    AddAttr<bool>("use_quantizer",
+                  "(bool, default false) "
+                  "Set to true for operators that should be quantized and use "
+                  "int8 kernel. "
+                  "Only used on CPU.")
+        .SetDefault(false);
     AddComment(R"DOC(
 Transpose Operator.
 
@@ -203,17 +218,25 @@ class Transpose2Op : public TransposeOp {
       const framework::ExecutionContext &ctx) const override {
     framework::LibraryType library_{framework::LibraryType::kPlain};
     std::string data_format = ctx.Attr<std::string>("data_format");
+    int customized_type_value =
+        framework::OpKernelType::kDefaultCustomizedTypeValue;
     framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
         platform::CanMKLDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
+      using framework::proto::VarType;
+      auto input_data_type = ctx.Input<Tensor>("X")->type();
+      customized_type_value = (input_data_type == VarType::INT8 ||
+                               input_data_type == VarType::UINT8)
+                                  ? kTransposeMKLDNNINT8
+                                  : kTransposeMKLDNNFP32;
     }
 #endif
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
-        layout_, library_);
+        layout_, library_, customized_type_value);
   }
 };
 
@@ -225,18 +248,19 @@ class Transpose2OpMaker : public TransposeOpMaker {
   }
 };
 
-class Transpose2GradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class Transpose2GradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *grad_op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto *grad_op = new T();
     grad_op->SetType("transpose2_grad");
-    grad_op->SetInput("XShape", Output("XShape"));
-    grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+    grad_op->SetInput("XShape", this->Output("XShape"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    grad_op->SetAttrMap(this->Attrs());
+    return std::unique_ptr<T>(grad_op);
   }
 };
 
@@ -280,8 +304,10 @@ class Transpose2OpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(transpose, ops::TransposeOp, ops::TransposeOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(
+    transpose, ops::TransposeOp, ops::TransposeOpMaker,
+    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
 REGISTER_OPERATOR(transpose_grad, ops::TransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
@@ -293,7 +319,8 @@ REGISTER_OP_CPU_KERNEL(
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, double>);
 
 REGISTER_OPERATOR(transpose2, ops::Transpose2Op, ops::Transpose2OpMaker,
-                  ops::Transpose2GradMaker);
+                  ops::Transpose2GradMaker<paddle::framework::OpDesc>,
+                  ops::Transpose2GradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(transpose2_grad, ops::Transpose2OpGrad);
 
 REGISTER_OP_CPU_KERNEL(

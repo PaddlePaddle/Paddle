@@ -408,26 +408,13 @@ class InMemoryDataset(DatasetBase):
         """
         self.fleet_send_sleep_seconds = fleet_send_sleep_seconds
 
-    def set_merge_by_lineid(self,
-                            var_list,
-                            erase_duplicate_feas=True,
-                            min_merge_size=2,
-                            keep_unmerged_ins=True):
+    def set_merge_by_lineid(self, merge_size=2):
         """
         Set merge by line id, instances of same line id will be merged after
         shuffle, you should parse line id in data generator.
 
         Args:
-            var_list(list): slots that can be merge. each element in var_list
-                            is Variable. some slots such as show and click, we
-                            usually don't merge them for same line id, so user
-                            should specify which slot can be merged.
-            erase_duplicate_feas(bool): whether erase duplicate feasigns when
-                                        merge. default is True.
-            min_merge_size(int): minimal size to merge. default is 2.
-            keep_unmerged_ins(bool): whether to keep unmerged ins, such as
-                                     ins with unique id or the num of ins with
-                                     same id is less than min_merge_size.
+            merge_size(int): ins size to merge. default is 2.
 
         Examples:
             .. code-block:: python
@@ -437,10 +424,9 @@ class InMemoryDataset(DatasetBase):
               dataset.set_merge_by_lineid()
 
         """
-        var_name_list = [i.name for i in var_list]
-        self.dataset.set_merge_by_lineid(var_name_list, erase_duplicate_feas,
-                                         min_merge_size, keep_unmerged_ins)
+        self.dataset.set_merge_by_lineid(merge_size)
         self.merge_by_lineid = True
+        self.parse_ins_id = True
 
     def load_into_memory(self):
         """
@@ -786,7 +772,7 @@ class BoxPSDataset(InMemoryDataset):
         .. code-block:: python
 
           import paddle.fluid as fluid
-          dataset = fluid.DatasetFactory.create_dataset("BoxPSDataset")
+          dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
     """
 
     def __init__(self):
@@ -800,34 +786,72 @@ class BoxPSDataset(InMemoryDataset):
     def begin_pass(self):
         """
         Begin Pass
-        Notify BoxPS to begin next pass
-	"""
+        Notify BoxPS to load sparse parameters of next pass to GPU Memory 
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
+              dataset.begin_pass()
+        """
         self.boxps.begin_pass()
 
     def end_pass(self):
         """
         End Pass
-        Notify BoxPS to end current pass
-	"""
+        Notify BoxPS that current pass ended 
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
+              dataset.end_pass()
+        """
         self.boxps.end_pass()
 
     def wait_preload_done(self):
         """
         Wait async proload done
         Wait Until Feed Pass Done
-	"""
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
+              filelist = ["a.txt", "b.txt"]
+              dataset.set_filelist(filelist)
+              dataset.preload_into_memory()
+              dataset.wait_preload_done()
+        """
         self.boxps.wait_feed_pass_done()
 
     def load_into_memory(self):
         """
-	Load next pass into memory and notify boxps to fetch its emb from SSD
-	"""
+        Load next pass into memory and notify boxps to fetch its emb from SSD
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
+              filelist = ["a.txt", "b.txt"]
+              dataset.set_filelist(filelist)
+              dataset.load_into_memory()
+	    """
         self._prepare_to_run()
         self.boxps.load_into_memory()
 
     def preload_into_memory(self):
         """
-	begin async preload next pass while current pass may be training
-	"""
+        Begin async preload next pass while current pass may be training
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
+              filelist = ["a.txt", "b.txt"]
+              dataset.set_filelist(filelist)
+              dataset.preload_into_memory()
+        """
         self._prepare_to_run()
         self.boxps.preload_into_memory()

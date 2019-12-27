@@ -16,9 +16,9 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import compiler, Program, program_guard, core
 
 
 class TestConcatOp(OpTest):
@@ -40,7 +40,7 @@ class TestConcatOp(OpTest):
         }
 
     def get_dtype(self):
-        return "float32"
+        return "float64"
 
     def test_check_output(self):
         self.check_output()
@@ -65,6 +65,8 @@ class TestConcatOp2(TestConcatOp):
         self.axis = 1
 
 
+@skip_check_grad_ci(
+    reason="The function 'check_grad' for large inputs is too slow.")
 class TestConcatOp3(TestConcatOp):
     def init_test_data(self):
         self.x0 = np.random.random((1, 256, 170, 256)).astype(self.dtype)
@@ -76,6 +78,9 @@ class TestConcatOp3(TestConcatOp):
         pass
 
 
+@skip_check_grad_ci(
+    reason="This test will meet fetch error when there is a null grad. The detailed information is in PR#17015."
+)
 class TestConcatOp4(TestConcatOp):
     def init_test_data(self):
         self.x0 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
@@ -134,6 +139,8 @@ create_test_AxisTensor(TestConcatOp5)
 
 
 def create_test_fp16(parent):
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
     class TestConcatFp16(parent):
         def get_dtype(self):
             return np.float16
@@ -150,7 +157,7 @@ create_test_fp16(TestConcatOp4)
 create_test_fp16(TestConcatOp5)
 
 
-class TestConcatOpError(OpTest):
+class TestConcatOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of concat_op should be list.
@@ -177,7 +184,7 @@ class TestConcatOpError(OpTest):
             self.assertRaises(TypeError, test_axis_type)
 
 
-class TestConcatAPI(OpTest):
+class TestConcatAPI(unittest.TestCase):
     def test_api(self):
         x_1 = fluid.data(shape=[None, 1, 4, 5], dtype='int32', name='x_1')
         fluid.layers.concat([x_1, x_1], 0)
@@ -186,19 +193,22 @@ class TestConcatAPI(OpTest):
         input_3 = np.random.random([2, 2, 4, 5]).astype("int32")
         x_2 = fluid.data(shape=[2, 1, 4, 5], dtype='int32', name='x_2')
         x_3 = fluid.data(shape=[2, 2, 4, 5], dtype='int32', name='x_3')
-        positive_1 = fluid.layers.fill_constant([1], "int32", 1)
+        positive_1_int32 = fluid.layers.fill_constant([1], "int32", 1)
+        positive_1_int64 = fluid.layers.fill_constant([1], "int64", 1)
         out_1 = fluid.layers.concat(input=[x_2, x_3], axis=1)
-        out_2 = fluid.layers.concat(input=[x_2, x_3], axis=positive_1)
+        out_2 = fluid.layers.concat(input=[x_2, x_3], axis=positive_1_int32)
+        out_3 = fluid.layers.concat(input=[x_2, x_3], axis=positive_1_int64)
 
         exe = fluid.Executor(place=fluid.CPUPlace())
-        [res_1, res_2] = exe.run(
+        [res_1, res_2, res_3] = exe.run(
             fluid.default_main_program(),
             feed={"x_1": input_2,
                   "x_2": input_2,
                   "x_3": input_3},
-            fetch_list=[out_1, out_2])
+            fetch_list=[out_1, out_2, out_3])
         assert np.array_equal(res_1, np.concatenate((input_2, input_3), axis=1))
         assert np.array_equal(res_2, np.concatenate((input_2, input_3), axis=1))
+        assert np.array_equal(res_3, np.concatenate((input_2, input_3), axis=1))
 
 
 if __name__ == '__main__':

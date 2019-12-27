@@ -58,9 +58,7 @@ class SequenceUnpadOp : public framework::OperatorWithKernel {
     }
     ctx->SetOutputDim("Out", framework::make_ddim(out_dims_vec));
     if (!ctx->IsRuntime()) {
-      framework::VarDesc* out_desc =
-          boost::get<framework::VarDesc*>(ctx->GetOutputVarPtrs("Out")[0]);
-      out_desc->SetLoDLevel(1);
+      ctx->SetLoDLevel("Out", 1);
     }
   }
 
@@ -138,18 +136,19 @@ class SequenceUnpadGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class SequenceUnpadGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SequenceUnpadGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("sequence_unpad_grad");
-    op->SetAttrMap(Attrs());
-    op->SetInput("X", Input("X"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     return op;
   }
 };
@@ -162,7 +161,9 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_unpad, ops::SequenceUnpadOp,
-                  ops::SequenceUnpadOpMaker, ops::SequenceUnpadGradOpDescMaker);
+                  ops::SequenceUnpadOpMaker,
+                  ops::SequenceUnpadGradOpMaker<paddle::framework::OpDesc>,
+                  ops::SequenceUnpadGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(sequence_unpad_grad, ops::SequenceUnpadGradOp,
                   ops::SequenceUnpadGradOpNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(

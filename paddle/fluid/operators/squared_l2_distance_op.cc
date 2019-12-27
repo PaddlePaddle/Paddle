@@ -74,26 +74,26 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
 DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(SquaredL2DistanceGradOpNoBuffer, "X",
                                       "Y");
 
-class SquaredL2DistanceGradOpDescMaker
-    : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SquaredL2DistanceGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
 
     op->SetType("squared_l2_distance_grad");
 
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetInput("sub_result", Output("sub_result"));
-    op->SetInput("X", Input("X"));
-    op->SetInput("Y", Input("Y"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetInput("sub_result", this->Output("sub_result"));
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
 
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
 
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
 
     return op;
   }
@@ -164,9 +164,11 @@ class SquaredL2DistanceGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(squared_l2_distance, ops::SquaredL2DistanceOp,
-                  ops::SquaredL2DistanceOpMaker,
-                  ops::SquaredL2DistanceGradOpDescMaker);
+REGISTER_OPERATOR(
+    squared_l2_distance, ops::SquaredL2DistanceOp,
+    ops::SquaredL2DistanceOpMaker,
+    ops::SquaredL2DistanceGradOpMaker<paddle::framework::OpDesc>,
+    ops::SquaredL2DistanceGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(squared_l2_distance_grad, ops::SquaredL2DistanceGradOp,
                   ops::SquaredL2DistanceGradOpNoBuffer);
 REGISTER_OP_CPU_KERNEL(

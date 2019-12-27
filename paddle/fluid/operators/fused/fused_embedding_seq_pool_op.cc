@@ -151,20 +151,21 @@ class FusedEmbeddingSeqPoolOpGradVarTypeInference
   }
 };
 
-class FusedEmbeddingSeqPoolGradOpDescMaker
-    : public framework::SingleGradOpDescMaker {
+template <typename T>
+class FusedEmbeddingSeqPoolGradOpMaker
+    : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("fused_embedding_seq_pool_grad");
-    op->SetInput("Ids", Input("Ids"));
-    op->SetInput("W", Input("W"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("W"), InputGrad("W"));
-    op->SetAttrMap(Attrs());
+    op->SetInput("Ids", this->Input("Ids"));
+    op->SetInput("W", this->Input("W"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("W"), this->InputGrad("W"));
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -173,9 +174,12 @@ class FusedEmbeddingSeqPoolGradOpDescMaker
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fused_embedding_seq_pool, ops::FusedEmbeddingSeqPoolOp,
-                  ops::FusedEmbeddingSeqPoolGradOpDescMaker,
-                  ops::FusedEmbeddingSeqPoolOpMaker);
+
+REGISTER_OPERATOR(
+    fused_embedding_seq_pool, ops::FusedEmbeddingSeqPoolOp,
+    ops::FusedEmbeddingSeqPoolGradOpMaker<paddle::framework::OpDesc>,
+    ops::FusedEmbeddingSeqPoolGradOpMaker<paddle::imperative::OpBase>,
+    ops::FusedEmbeddingSeqPoolOpMaker);
 REGISTER_OPERATOR(fused_embedding_seq_pool_grad,
                   ops::FusedEmbeddingSeqPoolOpGrad,
                   ops::FusedEmbeddingSeqPoolOpGradVarTypeInference);

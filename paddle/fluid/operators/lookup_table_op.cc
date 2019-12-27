@@ -133,23 +133,24 @@ or not. And the output only shares the LoD information with input Ids.
 
 DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(LookupTableGradOpNoBuffer, "W");
 
-class LookupTableGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class LookupTableGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
 
     op->SetType("lookup_table_grad");
 
-    op->SetInput("W", Input("W"));
-    op->SetInput("Ids", Input("Ids"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetInput("W", this->Input("W"));
+    op->SetInput("Ids", this->Input("Ids"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
 
-    op->SetOutput(framework::GradVarName("W"), InputGrad("W"));
+    op->SetOutput(framework::GradVarName("W"), this->InputGrad("W"));
 
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -196,13 +197,15 @@ class LookupTableOpGradVarTypeInference : public framework::VarTypeInference {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(lookup_table, ops::LookupTableOp, ops::LookupTableOpMaker,
-                  ops::LookupTableGradOpDescMaker);
+                  ops::LookupTableGradOpMaker<paddle::framework::OpDesc>,
+                  ops::LookupTableGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(lookup_table_grad, ops::LookupTableOpGrad,
                   ops::LookupTableGradOpNoBuffer,
                   ops::LookupTableOpGradVarTypeInference);
 
 REGISTER_OP_CPU_KERNEL(lookup_table, ops::LookupTableKernel<float>,
-                       ops::LookupTableKernel<double>);
+                       ops::LookupTableKernel<double>,
+                       ops::LookupTableKernel<int8_t>);
 REGISTER_OP_CPU_KERNEL(lookup_table_grad, ops::LookupTableGradKernel<float>,
                        ops::LookupTableGradKernel<double>);

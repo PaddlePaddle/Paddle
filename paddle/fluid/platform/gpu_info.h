@@ -48,6 +48,9 @@ int GetCUDAMaxThreadsPerMultiProcessor(int i);
 //! Get the current GPU device id in system.
 int GetCurrentDeviceId();
 
+//! Get the maximum GridDim size for GPU buddy allocator.
+dim3 GetGpuMaxGridDimSize(int);
+
 //! Get a list of device ids from environment variable or use all.
 std::vector<int> GetSelectedDevices();
 
@@ -94,6 +97,9 @@ void GpuMemcpyPeerSync(void *dst, int dst_device, const void *src,
 
 //! Set memory dst with value count size asynchronously
 void GpuMemsetAsync(void *dst, int value, size_t count, cudaStream_t stream);
+
+//! Raise error if status is not cudaSuccess or OOM, otherwise reset status.
+void RaiseNonOutOfMemoryError(cudaError_t *status);
 
 }  // namespace platform
 }  // namespace paddle

@@ -1,4 +1,4 @@
-# Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,12 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-set(WITH_XBYAK ON)
-if(WIN32 OR APPLE)
-    SET(WITH_XBYAK OFF CACHE STRING "Disable XBYAK in Windows and MacOS" FORCE)
-    return()
-endif()
 
 include(ExternalProject)
 
@@ -37,6 +31,7 @@ add_definitions(-DXBYAK_NO_OP_NAMES)
 ExternalProject_Add(
     ${XBYAK_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
+    ${SHALLOW_CLONE}
     DEPENDS             ""
     GIT_REPOSITORY      "https://github.com/herumi/xbyak.git"
     GIT_TAG             "v5.661"  # Jul 26th

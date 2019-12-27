@@ -1,4 +1,4 @@
-# Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,18 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-IF(NOT ${WITH_PSLIB})
-  return()
-ENDIF(NOT ${WITH_PSLIB})
-
-IF(WIN32 OR APPLE)
-    MESSAGE(WARNING
-        "Windows or Mac is not supported with PSLIB in Paddle yet."
-        "Force WITH_PSLIB=OFF")
-    SET(WITH_PSLIB OFF CACHE STRING "Disable PSLIB package in Windows and MacOS" FORCE)
-    return()
-ENDIF()
 
 INCLUDE(ExternalProject)
 
