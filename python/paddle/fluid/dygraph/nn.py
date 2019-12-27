@@ -253,7 +253,7 @@ class Conv2D(layers.Layer):
             pre_bias = outs['Output'][0]
 
             pre_act = dygraph_utils._append_bias_in_dygraph(pre_bias,
-                                                            self._bias_param)
+                                                            self._bias_param, 1)
 
             return dygraph_utils._append_activation_in_dygraph(pre_act,
                                                                self._act)
@@ -982,7 +982,8 @@ class Linear(layers.Layer):
             outs = core.ops.matmul(inputs, attrs)
             pre_bias = outs['Out'][0]
 
-            pre_act = dygraph_utils._append_bias_in_dygraph(pre_bias, self.bias)
+            pre_act = dygraph_utils._append_bias_in_dygraph(
+                pre_bias, self.bias, axis=len(input.shape) - 1)
 
             return dygraph_utils._append_activation_in_dygraph(pre_act,
                                                                self._act)
