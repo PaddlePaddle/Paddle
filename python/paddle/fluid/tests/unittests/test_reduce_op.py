@@ -65,6 +65,8 @@ class TestMaxOp(OpTest):
     def test_check_output(self):
         self.check_output()
 
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
 
 class TestMinOp(OpTest):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
@@ -80,6 +82,8 @@ class TestMinOp(OpTest):
     def test_check_output(self):
         self.check_output()
 
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
 
 class TestProdOp(OpTest):
     def setUp(self):
