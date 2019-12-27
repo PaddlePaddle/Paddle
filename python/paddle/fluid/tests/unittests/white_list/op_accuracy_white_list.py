@@ -28,7 +28,7 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'reduce_min', 'relu', 'reshape2', 'roi_perspective_transform', 'row_conv',
     'scale', 'scatter', 'sequence_conv', 'sequence_pool', 'sequence_reverse',
     'sequence_slice', 'sequence_topk_avg_pooling', 'shuffle_channel', 'sigmoid',
-    'smooth_l1_loss', 'softmax', 'spectral_norm', 'spp', 'sqrt',
+    'smooth_l1_loss', 'softmax', 'spectral_norm', 'sqrt',
     'squared_l2_distance', 'squared_l2_norm', 'tanh', 'transpose2',
     'trilinear_interp', 'var_conv_2d', 'warpctc'
 ]
