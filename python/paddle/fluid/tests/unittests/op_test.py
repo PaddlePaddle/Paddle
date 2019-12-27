@@ -43,6 +43,7 @@ def _set_use_system_allocator(value=None):
     core.globals()[USE_SYSTEM_ALLOCATOR_FLAG] = value
     return old_value
 
+
 def randomize_probability(batch_size, class_num, dtype='float32'):
     prob = np.random.uniform(
         0.1, 1.0, size=(batch_size, class_num)).astype(dtype)
@@ -147,12 +148,12 @@ def get_numeric_gradient(place,
 
 def skip_check_grad_ci(reason=None):
     """Decorator to skip check_grad CI.
-       
+
        Check_grad is required for Op test cases. However, there are some special
-       cases that do not need to do check_grad. This decorator is used to skip the 
+       cases that do not need to do check_grad. This decorator is used to skip the
        check_grad of the above cases.
-       
-       Note: the execution of unit test will not be skipped. It just avoids check_grad 
+
+       Note: the execution of unit test will not be skipped. It just avoids check_grad
        checking in tearDownClass method by setting a `no_need_check_grad` flag.
 
        Example:
@@ -552,7 +553,7 @@ class OpTest(unittest.TestCase):
         """
         # compare expect_outs and actual_outs
         for i, name in enumerate(fetch_list):
-            # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure 
+            # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure
             # computational consistency.
             # When inplace_atol is not None, the inplace check uses numpy.allclose
             # to check inplace result instead of numpy.array_equal.
@@ -1007,10 +1008,10 @@ class OpTest(unittest.TestCase):
                             "Output (" + out_name + ") has different lod at " +
                             str(place) + " in dygraph mode")
 
-        # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure 
+        # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure
         # computational consistency.
         # For example, group_norm uses AtomicAdd on CUDAPlace, which do not ensure
-        # computation order when multiple threads write the same address. So the 
+        # computation order when multiple threads write the same address. So the
         # result of group_norm is non-deterministic when datatype is float.
         # When inplace_atol is not None, the inplace check uses numpy.allclose
         # to check inplace result instead of numpy.array_equal.
