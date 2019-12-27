@@ -754,7 +754,7 @@ class DistributeTranspiler(object):
                 attrs={
                     "endpoints": pserver_endpoints,
                     "trainer_id": self.trainer_id,
-                    "is_communicator": False,
+                    "half_async": False,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
 
