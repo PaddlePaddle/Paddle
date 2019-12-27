@@ -80,7 +80,7 @@ class TestInstanceNormOpTraining(unittest.TestCase):
 
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
-        self.no_grad_set = set()
+        self.no_grad_set = ['no_grad_set']  #set()
         self.fetch_list = [
             'y', 'saved_mean', 'saved_variance', 'x@GRAD', 'scale@GRAD',
             'bias@GRAD'
