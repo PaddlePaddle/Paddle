@@ -183,6 +183,18 @@ int GetCUDAMaxThreadsPerMultiProcessor(int id) {
   return count;
 }
 
+int GetCUDAMaxThreadsPerBlock(int id) {
+  PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
+  int count;
+  auto error_code =
+      cudaDeviceGetAttribute(&count, cudaDevAttrMaxThreadsPerBlock, id);
+  PADDLE_ENFORCE(error_code,
+                 "cudaDeviceGetAttribute failed in paddle::"
+                 "platform::GetCUDAMaxThreadsPerBlock, error code : %d, %s",
+                 error_code, CudaErrorWebsite());
+  return count;
+}
+
 int GetCurrentDeviceId() {
   int device_id;
   auto error_code = cudaGetDevice(&device_id);

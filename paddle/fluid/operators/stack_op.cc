@@ -28,14 +28,22 @@ class StackOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_GT(ctx->Inputs("X").size(), 0,
-                      "Number of Inputs(X) must be larger than 0");
+                      platform::errors::InvalidArgument(
+                          "Number of Inputs(X) must be larger than 0, but"
+                          " received value is:%d.",
+                          ctx->Inputs("X").size()));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Y"), true,
-                      "Output(Y) of stack_op should not be null.");
+                      platform::errors::InvalidArgument(
+                          "Output(Y) of stack_op should not be null."));
 
     auto input_dims = ctx->GetInputsDim("X");
     for (size_t i = 1; i < input_dims.size(); ++i) {
       PADDLE_ENFORCE_EQ(input_dims[i], input_dims[0],
-                        "Dims of all Inputs(X) must be the same");
+                        platform::errors::InvalidArgument(
+                            "Dims of all Inputs(X) must be the same, but"
+                            " received input %d dim is:%d not equal to input 0"
+                            " dim:%d.",
+                            i, input_dims[i], input_dims[0]));
     }
 
     // Only lod of X[0] would be shared with Y
@@ -45,10 +53,18 @@ class StackOp : public framework::OperatorWithKernel {
     int rank = input_dims[0].size();
     PADDLE_ENFORCE_GE(
         axis, -(rank + 1),
-        "Attr(axis) must be inside [-(rank+1), rank+1), where rank = %d", rank);
+        platform::errors::InvalidArgument(
+            "Attr(axis) must be inside [-(rank+1), rank+1), where rank = %d, "
+            "but received axis is:%d.",
+            rank, axis));
+
     PADDLE_ENFORCE_LT(
         axis, rank + 1,
-        "Attr(axis) must be inside [-(rank+1), rank+1), where rank = %d", rank);
+        platform::errors::InvalidArgument(
+            "Attr(axis) must be inside [-(rank+1), rank+1), where rank = %d, "
+            "but received axis is:%d",
+            rank, axis));
+
     if (axis < 0) axis += (rank + 1);
 
     auto vec = framework::vectorize<int>(input_dims[0]);
@@ -77,23 +93,36 @@ class StackOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Y")), true,
-                      "Input(Y@Grad) must exist.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput(framework::GradVarName("Y")), true,
+        platform::errors::InvalidArgument("Input(Y@Grad) not exist."));
 
     int axis = ctx->Attrs().Get<int>("axis");
     auto dy_dim = ctx->GetInputDim(framework::GradVarName("Y"));
     int rank = dy_dim.size();
     PADDLE_ENFORCE_GE(
-        axis, -rank, "Attr(axis) must be inside [-rank, rank), where rank = %d",
-        rank);
+        axis, -rank,
+        platform::errors::InvalidArgument(
+            "Attr(axis) must be inside [-rank, rank), where rank = %d, "
+            "but received axis is:%d.",
+            rank, axis));
     PADDLE_ENFORCE_LT(
-        axis, rank, "Attr(axis) must be inside [-rank, rank), where rank = %d",
-        rank);
-    if (axis < 0) axis += rank;
+        axis, rank,
+        platform::errors::InvalidArgument(
+            "Attr(axis) must be inside [-rank, rank), where rank = %d, "
+            "but received axis is:%d.",
+            rank, axis));
 
-    PADDLE_ENFORCE_EQ(ctx->Outputs(framework::GradVarName("X")).size(),
-                      static_cast<size_t>(dy_dim[axis]),
-                      "Number of Outputs(X@Grad) is wrong");
+    if (axis < 0) axis += rank;
+    PADDLE_ENFORCE_EQ(
+        ctx->Outputs(framework::GradVarName("X")).size(),
+        static_cast<size_t>(dy_dim[axis]),
+        platform::errors::InvalidArgument(
+            "Number of Outputs(X@Grad) is equal to dy dim at axis, but"
+            " received outputs size is:%d, dy dims is:%d.",
+            ctx->Outputs(framework::GradVarName("X")).size(),
+            static_cast<size_t>(dy_dim[axis])));
+
     auto vec = framework::vectorize<int>(dy_dim);
     vec.erase(vec.begin() + axis);
     ctx->SetOutputsDim(

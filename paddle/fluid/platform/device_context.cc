@@ -217,6 +217,7 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   multi_process_ = GetCUDAMultiProcessors(place_.device);
   max_threads_per_mp_ = GetCUDAMaxThreadsPerMultiProcessor(place_.device);
   max_grid_dim_size_ = GetGpuMaxGridDimSize(place_.device);
+  max_threads_per_block_ = GetCUDAMaxThreadsPerBlock(place_.device);
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream_));
   eigen_stream_.reset(new EigenCudaStreamDevice());
   eigen_stream_->Reinitialize(&stream_, place);
@@ -338,7 +339,11 @@ int CUDADeviceContext::GetMaxPhysicalThreadCount() const {
   return multi_process_ * max_threads_per_mp_;
 }
 
-int CUDADeviceContext::GetSMCount() const { return multi_process_; }
+int CUDADeviceContext::GetGpuSMCount() const { return multi_process_; }
+
+int CUDADeviceContext::GetMaxGpuThreadsPerBlock() const {
+  return max_threads_per_block_;
+}
 
 Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {
   return eigen_device_.get();

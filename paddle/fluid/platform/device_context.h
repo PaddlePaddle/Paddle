@@ -98,7 +98,10 @@ class CUDADeviceContext : public DeviceContext {
   int GetMaxPhysicalThreadCount() const;
 
   /*! \brief  Return the SM count in the device context */
-  int GetSMCount() const;
+  int GetGpuSMCount() const;
+
+  /*! \brief  Return the Max thread num of block in the device context */
+  int GetMaxGpuThreadsPerBlock() const;
 
   /*! \brief  Return the max grid dim size in the device context */
   dim3 GetCUDAMaxGridDimSize() const;
@@ -191,6 +194,7 @@ class CUDADeviceContext : public DeviceContext {
   int driver_version_;
   int multi_process_;
   int max_threads_per_mp_;
+  int max_threads_per_block_;
   dim3 max_grid_dim_size_;
 
   // StreamCallbackManager is thread-safe
