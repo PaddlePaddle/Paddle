@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -127,54 +128,48 @@ class SumKernel : public framework::OpKernel<T> {
 
     bool in_place = out_var == in_vars[0];
 
+    auto item_size = 0;
     if (out_var->IsType<framework::LoDTensor>()) {
       auto *out = out_var->GetMutable<framework::LoDTensor>();
       auto *out_ptr = out->mutable_data<T>(context.GetPlace());
       if (in_num >= 1 && in_vars[0]->IsType<framework::LoDTensor>()) {
         auto &in_0_tensor = in_vars[0]->Get<framework::LoDTensor>();
+        item_size = in_0_tensor.numel();
         if (in_0_tensor.numel() > 0) {
           in_place = (in_0_tensor.data<T>() == out_ptr);
         }
       }
+      size_t start = in_place ? 1 : 0;
 
-      auto result = EigenVector<T>::Flatten(*out);
-      auto &place =
-          *context.template device_context<DeviceContext>().eigen_device();
-      int start = in_place ? 1 : 0;
-      if (!in_place) {
-        if ((in_num >= 2) && in_vars[0]->IsType<framework::LoDTensor>() &&
-            in_vars[1]->IsType<framework::LoDTensor>()) {
-          auto &in_0 = in_vars[0]->Get<framework::LoDTensor>();
-          auto &in_1 = in_vars[1]->Get<framework::LoDTensor>();
-          if (in_0.numel() && in_1.numel()) {
-            auto in_0_e = EigenVector<T>::Flatten(in_0);
-            auto in_1_e = EigenVector<T>::Flatten(in_1);
-            result.device(place) = in_0_e + in_1_e;
-            start = 2;
-          }
-        }
-        if (start != 2) {
-          math::SetConstant<DeviceContext, T> constant_functor;
-          constant_functor(context.template device_context<DeviceContext>(),
-                           out, static_cast<T>(0));
-        }
-      }
-
+      std::vector<T *> tensor;
       math::SelectedRowsAddToTensor<DeviceContext, T> functor;
-      // If in_place, just skip the first tensor
-      for (size_t i = start; i < in_num; i++) {
+      for (size_t i = start; i < in_num; ++i) {
         if (in_vars[i]->IsType<framework::LoDTensor>()) {
-          auto &in_t = in_vars[i]->Get<framework::LoDTensor>();
-          if (in_t.numel() == 0) {
-            continue;
+          auto in_tensor = in_vars[i]->Get<framework::LoDTensor>();
+          if (in_tensor.numel()) {
+            auto in_data = in_tensor.data<T>();
+            tensor.push_back(in_data);
           }
-          auto in = EigenVector<T>::Flatten(in_t);
-          result.device(place) = result + in;
         } else if (in_vars[i]->IsType<framework::SelectedRows>()) {
           auto &in_t = in_vars[i]->Get<framework::SelectedRows>();
           functor(context.template device_context<DeviceContext>(), in_t, out);
         } else {
           PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
+        }
+      }
+
+      if (tensor.size() == 0) {
+        math::SetConstant<DeviceContext, T> constant_functor;
+        constant_functor(context.template device_context<DeviceContext>(), out,
+                         static_cast<T>(0));
+      } else {
+        for (size_t i = 0; i < item_size; ++i) {
+          T result_temp = 0;
+          for (size_t j = 0; j < tensor.size(); ++j) {
+            auto in0_ptr = tensor[j];
+            result_temp = result_temp + in0_ptr[i];
+          }
+          out_ptr[i] = result_temp;
         }
       }
     } else if (out_var->IsType<framework::SelectedRows>()) {
