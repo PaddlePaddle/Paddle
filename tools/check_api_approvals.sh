@@ -28,7 +28,8 @@ API_FILES=("CMakeLists.txt"
            "paddle/fluid/operators/distributed/send_recv.proto.in"
            "paddle/fluid/framework/unused_var_check.cc"
            "python/paddle/fluid/tests/unittests/white_list/check_shape_white_list.py"
-           "python/paddle/fluid/tests/unittests/white_list/op_check_grad_white_list.py")
+           "python/paddle/fluid/tests/unittests/white_list/op_check_grad_white_list.py"
+           "python/paddle/fluid/tests/unittests/white_list/no_grad_set_white_list.py")
 
 approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
 git_files=`git diff --numstat upstream/$BRANCH| wc -l`
@@ -49,22 +50,22 @@ function check_approval(){
 function add_failed(){
     failed_num=`expr $failed_num + 1`
     echo_list="${echo_list[@]}$1"
-} 
+}
 
 
 if [[ $git_files -gt 19 || $git_count -gt 999 ]];then
     echo_line="You must have Dianhai approval for change 20+ files or add than 1000+ lines of content.\n"
     check_approval 1 38231817
-fi    
+fi
 
-api_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.api  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.api` 
+api_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.api  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.api`
 if [ "$api_spec_diff" != "" ]; then
     echo_line="You must have one RD (XiaoguangHu01 or lanxianghit) and on TPM (saxon-zh or Boyan-Liu or swtkiwi) approval for the api change for the management reason of API interface.\n"
     check_approval 1 46782768 47554610
-    check_approval 1 2870059 2870059 27208573 
+    check_approval 1 2870059 2870059 27208573
 fi
 
-api_doc_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.doc  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.doc` 
+api_doc_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.doc  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.doc`
 if [ "$api_doc_spec_diff" != "" ]; then
     echo_line="You must have one TPM (saxon-zh or Boyan-Liu or swtkiwi) approval for the api change for the management reason of API document.\n"
     check_approval 1 31623103 2870059 27208573
@@ -112,6 +113,9 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/op_check_grad_white_list.py" ];then
           echo_line="You must have one RD (zhangting2020 (Recommend), luotao1 or phlrain) approval for the python/paddle/fluid/tests/unittests/white_list/op_check_grad_white_list.py, which manages the white list of operators without gradient. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Gradient-Check-Is-Required-for-Op-Test. \n"
           check_approval 1 26615455 6836917 43953930
+      elif ["${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/no_grad_set_white_list.py" ];then
+          echo_line="You must have one RD (chenjiaoAngel (Recommend), luotao1 or phlrain) approval for the python/paddle/fluid/tests/unittests/white_list/no_grad_set_white_list.py\n"
+          check_approval 1 38650344 6836917 43953930
       else
           echo_line="You must have one RD (XiaoguangHu01,Xreki,luotao1,sneaxiy) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
           check_approval 1 3048612 46782768 12538138 6836917 32832641
@@ -180,6 +184,16 @@ If you do not need check_compile_vs_runtime, you must have one RD (lanxianghit, 
     check_approval 1 47554610 43953930 6836917
 fi
 
+NO_GRAD_SET_VALUE=`git diff --name-only --diff-filter=AMR upstream/$BRANCH |grep -oE "test_.*.\.py" || true`
+if ["${NO_GRAD_SET_VALUE}" != ""] && [ "${GIT_PR_ID}" != "" ]; then
+    CHECK_GRAD=`git diff -U5 --diff-filter=AMR upstream/$BRANCH |grep -A5 -E "self\.check_grad|self\.check_grad_with_place"|grep "no_grad_set=None" |grep "+" || true`
+    if [ "${CHECK_GRAD}" != "" ] ; then
+      ERROR_LINES=${CHECK_GRAD//+/'\n+'}
+      echo_line="not_grad_set must be None'. If you don't use the default value, you must have one RD (chenjiaoAngel (Recommend), luotao1 or phlrain) approval for the usage of other value"
+      check_approval 1 38650344 6836917 43953930
+    fi
+fi
+
 OP_FILE_CHANGED=`git diff --name-only --diff-filter=AMR upstream/$BRANCH |grep -oE ".+_op..*" || true`
 if [ "${OP_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     for OP_FILE in ${OP_FILE_CHANGED};
@@ -204,7 +218,7 @@ if [ "${NEW_OP_TEST_ADDED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     CHECK_GRAD_CHECK=`git diff -U5 --diff-filter=AMR upstream/$BRANCH |grep -A2 -E "checker\.double_grad_check"|grep "eps=|atol=|rtol=" |grep "+" || true`
     CHECK_WHOLE=$CHECK_OUTPUT$CHECK_OUTPUT_WITH_PLACE$CHECK_GRAD$CHECK_GRAD_CHECK
     if [ "${CHECK_WHOLE}" != "" ] ; then
-        CHECK_OP=${CHECK_WHOLE//+/'\n+'}       
+        CHECK_OP=${CHECK_WHOLE//+/'\n+'}
         echo_line="Please use the default precision parameters of 'atol, rtol, eps, max_relative_error'. If you don't use the default value, you must have one RD (Xreki (Recommend), luotao1, lanxianghit or phlrain) approval for the usage of other values. The detailed information is in the link: https://github.cor/PaddlePaddle/Paddle/wiki/OP-test-accuracy-requirements. The error line is ${CHECK_OP}\n"
         check_approval 1 6836917 47554610 12538138 43953930
     fi
