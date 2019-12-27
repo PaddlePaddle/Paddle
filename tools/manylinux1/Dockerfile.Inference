@@ -35,7 +35,7 @@ RUN rm gcc
 RUN rm g++
 RUN ln -s gcc-4.8 gcc
 RUN ln -s g++-4.8 g++
-
+  
 # Install Python3.6
 RUN mkdir -p /root/python_build/ && wget -q https://www.sqlite.org/2018/sqlite-autoconf-3250300.tar.gz && \
     tar -zxf sqlite-autoconf-3250300.tar.gz && cd sqlite-autoconf-3250300 && \
