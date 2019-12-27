@@ -51,36 +51,5 @@ EMPTY_GRAD_OP_LIST = [
     'retinanet_target_assign', 'rpn_target_assign', 'requantize',
     'distribute_fpn_proposals', 'auc', 'quantize', 'positive_negative_pair',
     'hash', 'less_than', 'not_equal', 'eye', 'chunk_eval', 'is_empty',
-    'proximal_gd', 'collect_fpn_proposals', 'unique_with_counts'
-]
-
-# Special cases do not need to check grad
-NO_NEED_CHECK_GRAD_CASES = [
-    'TestLookupTableOpWithPadding',
-    'TestLookupTableOpWithTensorIdsAndPadding',
-    'TestLookupTableOpWithPadding',
-    'TestLookupTableOpWithTensorIdsAndPadding',
-    'TestSeqMaxPool2DInference',
-    'TestSeqMaxPool2DInferenceLen0',
-    'TestSeqMaxPool2DInferenceLen0LoDLevel2',
-    'TestDropoutOp4',
-    'TestDropoutOp5',
-    'TestDropoutOp8',
-    'TestDropoutOp9',
-    'TestFP16DropoutOp',
-    'TestFP16DropoutOp2',
-    'TestExpandOpBoolean',
-    'TestFusedEmbeddingSeqPoolOp',
-    'TestMKLDNNConcatOp',
-    'TestMKLDNNConcatOp',
-    'TestMKLDNNConcatOp3',
-    'TestElementwiseMulMKLDNNOp_Integrated_With_Convs',
-    'TestConv2dTransposeMKLDNNOp',
-    'TestMKLDNNFuseBias',
-    'TestMKLDNNWithPad',
-    'TestMKLDNNWithStride',
-    'TestMKLDNNWithAsymPad',
-    'TestMKLDNNWithSamePad',
-    'TestMKLDNNWithValidPad',
-    'TestMKLDNNWithValidPad_NHWC',
+    'proximal_gd', 'collect_fpn_proposals', 'unique_with_counts', 'seed'
 ]

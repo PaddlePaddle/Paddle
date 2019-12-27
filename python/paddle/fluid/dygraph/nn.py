@@ -19,7 +19,7 @@ from six.moves import reduce
 from .. import core
 from ..layers import utils
 from . import layers
-from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter
+from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer_
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 import numpy as np
@@ -180,11 +180,15 @@ class Conv2D(layers.Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._dtype = dtype
-        if (self._num_channels == self._groups and
-                num_filters % self._num_channels == 0 and not self._use_cudnn):
-            self._l_type = 'depthwise_conv2d'
-        else:
-            self._l_type = 'conv2d'
+
+        # TODO: recover the usage of depthwise_conv2d when it's
+        #  kernel fixed https://github.com/PaddlePaddle/Paddle/issues/17098
+        # if (self._num_channels == self._groups and
+        #         num_filters % self._num_channels == 0 and not self._use_cudnn):
+        #     self._l_type = 'depthwise_conv2d'
+        # else:
+        #     self._l_type = 'conv2d'
+        self._l_type = 'conv2d'
 
         self._num_channels = num_channels
         if self._groups is None:
@@ -1538,18 +1542,24 @@ class Embedding(layers.Layer):
         self._w = value
 
     def forward(self, input):
+        attrs = {
+            'is_sparse': self._is_sparse,
+            'is_distributed': self._is_distributed,
+            'remote_prefetch': self._remote_prefetch,
+            'padding_idx': self._padding_idx
+        }
+        if in_dygraph_mode():
+            inputs = {'Ids': [input], 'W': [self._w]}
+            outs = core.ops.lookup_table_v2(inputs, attrs)
+            return outs['Out'][0]
+
         out = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(
             type='lookup_table_v2',
             inputs={'Ids': input,
                     'W': self._w},
             outputs={'Out': out},
-            attrs={
-                'is_sparse': self._is_sparse,
-                'is_distributed': self._is_distributed,
-                'remote_prefetch': self._remote_prefetch,
-                'padding_idx': self._padding_idx
-            })
+            attrs=attrs)
 
         return out
 

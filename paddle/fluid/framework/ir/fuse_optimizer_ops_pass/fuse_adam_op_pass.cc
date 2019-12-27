@@ -39,13 +39,6 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
       const std::vector<ir::Node *> &adam_ops, ir::Graph *graph) const {
     auto fused_adam_node =
         FuseAdamOps(aux_var_set, fused_vars_name, adam_ops, graph);
-    auto fused_scale1 =
-        FuseScaleOps(aux_var_set.at("Beta1Pow"), fused_vars_name.at("Beta1Pow"),
-                     adam_ops, graph);
-    auto fused_scale2 =
-        FuseScaleOps(aux_var_set.at("Beta2Pow"), fused_vars_name.at("Beta2Pow"),
-                     adam_ops, graph);
-    RemoveCycleDepsBetweenOpNodes(graph, fused_scale1, fused_scale2);
     return fused_adam_node;
   }
 
@@ -139,6 +132,8 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
     adam_desc.SetOutput("ParamOut", {fused_vars_name.at(kParam)});
     adam_desc.SetOutput("Moment1Out", {fused_vars_name.at("Moment1")});
     adam_desc.SetOutput("Moment2Out", {fused_vars_name.at("Moment2")});
+    adam_desc.SetOutput("Beta1PowOut", {fused_vars_name.at("Beta1Pow")});
+    adam_desc.SetOutput("Beta2PowOut", {fused_vars_name.at("Beta2Pow")});
     adam_desc.SetAttr("beta1", beta1);
     adam_desc.SetAttr("beta2", beta2);
     adam_desc.SetAttr("epsilon", epsilon);
