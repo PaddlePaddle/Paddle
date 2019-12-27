@@ -19,7 +19,8 @@ import unittest
 import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
+from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig, ServerRuntimeConfig
+from paddle.fluid.transpiler.geo_sgd_transpiler import GeoSgdTranspiler
 from test_dist_fleet_base import TestFleetBase
 from dist_simnet_bow import train_network
 
@@ -57,6 +58,18 @@ class TestDistGeoCtr_2x2(TestFleetBase):
 
 
 class TestGeoSgdTranspiler(unittest.TestCase):
+    def test_init(self):
+        config = DistributeTranspilerConfig()
+        server_config = ServerRuntimeConfig()
+
+        # test geo_transpiler exception
+        self.assertRaises(Exception, GeoSgdTranspiler, dict())
+        self.assertRaises(Exception, GeoSgdTranspiler, config, dict())
+
+        transpiler = GeoSgdTranspiler(config, server_config)
+        transpiler = GeoSgdTranspiler(config)
+        transpiler = GeoSgdTranspiler(None, server_config)
+
     def test_pserver(self):
         role = role_maker.UserDefinedRoleMaker(
             current_id=0,

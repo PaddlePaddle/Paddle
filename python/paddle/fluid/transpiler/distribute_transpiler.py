@@ -237,15 +237,6 @@ class ServerRuntimeConfig(object):
         self._rpc_prefetch_thread_num = int(
             os.getenv("FLAGS_rpc_prefetch_thread_num", "12"))
 
-    def __str__(self):
-        print_str = "rpc_send_thread_num: {}\nrpc_get_thread_num: {}\nrpc_prefetch_thread_num: {}" % (
-            self._rpc_send_thread_num, self._rpc_get_thread_num,
-            self._rpc_prefetch_thread_num)
-        return print_str
-
-    def __repr__(self):
-        return self.__str__()
-
 
 class DistributeTranspiler(object):
     """
