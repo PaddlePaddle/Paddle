@@ -62,10 +62,10 @@ class TestSppOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', max_relative_error=0.05)
+        self.check_grad(['X'], 'Out')
 
     def init_test_case(self):
-        self.shape = [4, 2, 4, 4]
+        self.shape = [3, 2, 4, 4]
         self.pyramid_height = 3
         self.pool2D_forward_naive = max_pool2D_forward_naive
         self.pool_type = "max"
