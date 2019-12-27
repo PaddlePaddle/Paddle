@@ -21,24 +21,23 @@ from op_test import OpTest
 
 class TestSequenceScatterOp(OpTest):
     def init_lod(self):
-        return [[3, 5, 4]]
+        return [[30, 50, 40]]
 
     def setUp(self):
         self.op_type = "sequence_scatter"
 
         X_data = np.random.uniform(0.1, 1.0, [3, 6]).astype('float64')
-        Ids_data = np.array([[0], [1], [2], [5], [4], [3], [0], [1], [3], [2],
-                             [5], [4]]).astype('int64')
+        Ids_data = np.random.randint(0, 6, (120, 1)).astype('int64')
         Ids_lod = self.init_lod()
 
-        Updates_data = np.random.uniform(0.1, 1.0, [12, 1]).astype('float64')
+        Updates_data = np.random.uniform(0.1, 1.0, [120, 1]).astype('float64')
         Updates_lod = Ids_lod
 
         Out_data = np.copy(X_data)
         offset = 0
         for i in range(3):
-            Out_data[i][Ids_data[offset:(offset + Ids_lod[0][
-                i])]] += Updates_data[offset:(offset + Ids_lod[0][i])]
+            for j in range(Ids_lod[0][i]):
+                Out_data[i][Ids_data[offset + j]] += Updates_data[offset + j]
             offset += Ids_lod[0][i]
 
         self.inputs = {
@@ -57,18 +56,34 @@ class TestSequenceScatterOp(OpTest):
 
 class TestSequenceScatterOpSeqLen0(TestSequenceScatterOp):
     def init_lod(self):
-        return [[6, 0, 6]]
+        return [[60, 60, 00]]
 
 
 class TestSequenceScatterOpSeqLen0Case1(TestSequenceScatterOp):
     def init_lod(self):
-        return [[0, 6, 6]]
+        return [[0, 60, 60]]
 
 
 class TestSequenceScatterOpSeqLen0Case2(TestSequenceScatterOp):
     def init_lod(self):
-        return [[6, 6, 0]]
+        return [[60, 0, 60]]
 
 
+class TestSequenceScatterOpSeqLen0Case3(TestSequenceScatterOp):
+    def init_lod(self):
+        return [[120, 0, 0]]
+
+
+class TestSequenceScatterOpSeqLen0Case4(TestSequenceScatterOp):
+    def init_lod(self):
+        return [[0, 120, 0]]
+
+
+class TestSequenceScatterOpSeqLen0Case5(TestSequenceScatterOp):
+    def init_lod(self):
+        return [[0, 0, 120]]
+
+
+# run the uni tests
 if __name__ == "__main__":
     unittest.main()
