@@ -14,7 +14,7 @@
 
 import unittest
 import paddle.fluid as fluid
-from dist_transpiler_test_base import TranspilerTest
+from test_dist_transpiler import TranspilerTest
 
 
 class TestBasicModelAsync(TranspilerTest):
