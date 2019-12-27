@@ -102,7 +102,7 @@ class FTRLOpKernel : public framework::OpKernel<T> {
         auto grad = ctx.Input<framework::SelectedRows>("Grad");
         auto grad_row_width = grad->value().dims()[1];
 
-        math::scatter::MergeAdd<platform::CPUDeviceContext, T> merge_func;
+        math::scatter::MergeAdd<DeviceContext, T> merge_func;
         auto grad_merge =
             merge_func(ctx.template device_context<DeviceContext>(), *grad);
         auto* grad_merge_data = grad_merge.mutable_value()->template data<T>();
@@ -177,7 +177,7 @@ class FTRLOpKernel : public framework::OpKernel<T> {
       auto grad = ctx.Input<framework::SelectedRows>("Grad");
       auto grad_row_width = grad->value().dims()[1];
 
-      math::scatter::MergeAdd<platform::CPUDeviceContext, T> merge_func;
+      math::scatter::MergeAdd<DeviceContext, T> merge_func;
       auto grad_merge =
           merge_func(ctx.template device_context<DeviceContext>(), *grad);
       auto* grad_merge_data = grad_merge.mutable_value()->template data<T>();
