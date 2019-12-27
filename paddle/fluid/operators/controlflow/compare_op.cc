@@ -73,9 +73,12 @@ calculated by $%s$
 };
 
 template <typename OpComment>
-class CompareOpInferShape : public framework::InferShapeBase {
+class CompareOp : public framework::OperatorWithKernel {
  public:
-  void operator()(framework::InferShapeContext* context) const override {
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext* context) const override {
     OpComment comment;
     PADDLE_ENFORCE(context->HasInput("X"), "%s operator must has input X",
                    comment.type);
@@ -89,13 +92,7 @@ class CompareOpInferShape : public framework::InferShapeBase {
     context->SetOutputDim("Out", context->GetInputDim("X"));
     context->ShareLoD("X", "Out");
   }
-};
 
-class CompareOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
- protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
@@ -118,9 +115,8 @@ class CompareOp : public framework::OperatorWithKernel {
   char _##op_type##Comment::type[]{#op_type};                           \
   char _##op_type##Comment::equation[]{_equation};                      \
   REGISTER_OPERATOR(                                                    \
-      op_type, ::paddle::operators::CompareOp,                          \
+      op_type, ::paddle::operators::CompareOp<_##op_type##Comment>,     \
       ::paddle::operators::CompareOpProtoMaker<_##op_type##Comment>,    \
-      ::paddle::operators::CompareOpInferShape<_##op_type##Comment>,    \
       ::paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>, \
       ::paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 

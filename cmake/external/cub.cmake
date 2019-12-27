@@ -23,7 +23,8 @@ cache_third_party(extern_cub
     TAG           ${CUB_TAG}
     DIR           ${CUB_PREFIX_DIR})
 
-include_directories(${CUB_SOURCE_DIR})
+SET(CUB_INCLUDE_DIR ${CUB_SOURCE_DIR})
+include_directories(${CUB_INCLUDE_DIR})
 
 ExternalProject_Add(
   extern_cub

@@ -71,9 +71,15 @@ function(copy_part_of_thrid_party TARGET DST)
         endif()
     elseif(${CBLAS_PROVIDER} STREQUAL EXTERN_OPENBLAS)
         set(dst_dir "${DST}/third_party/install/openblas")
+	if(WIN32)
+            copy(${TARGET}
+                    SRCS ${CBLAS_INSTALL_DIR}/lib ${OPENBLAS_SHARED_LIB} ${CBLAS_INSTALL_DIR}/include
+                    DSTS ${dst_dir} ${dst_dir}/lib ${dst_dir})
+	else()
             copy(${TARGET}
                     SRCS ${CBLAS_INSTALL_DIR}/lib ${CBLAS_INSTALL_DIR}/include
                     DSTS ${dst_dir} ${dst_dir})
+	endif()
     endif()
 
     if(WITH_MKLDNN)
@@ -84,8 +90,8 @@ function(copy_part_of_thrid_party TARGET DST)
                     DSTS ${dst_dir} ${dst_dir}/lib ${dst_dir}/lib)
         else()
             copy(${TARGET}
-                    SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB}
-                    DSTS ${dst_dir} ${dst_dir}/lib)
+                    SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB} ${MKLDNN_SHARED_LIB_1}
+                    DSTS ${dst_dir} ${dst_dir}/lib ${dst_dir}/lib)
         endif()
     endif()
 

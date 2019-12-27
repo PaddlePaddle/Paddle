@@ -151,19 +151,13 @@ def create_test_cudnn_fp16_class(parent, grad_check=True):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
-                    place, ['Input'],
-                    'Output',
-                    max_relative_error=0.02,
-                    no_grad_set=set(['Filter']))
+                    place, ['Input'], 'Output', no_grad_set=set(['Filter']))
 
         def test_check_grad_no_input(self):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
-                    place, ['Filter'],
-                    'Output',
-                    max_relative_error=0.02,
-                    no_grad_set=set(['Input']))
+                    place, ['Filter'], 'Output', no_grad_set=set(['Input']))
 
     cls_name = "{0}_{1}".format(parent.__name__, "CUDNNFp16")
     TestConv2DCUDNNFp16.__name__ = cls_name
@@ -221,19 +215,13 @@ def create_test_cudnn_channel_last_fp16_class(parent, grad_check=True):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
-                    place, ['Input'],
-                    'Output',
-                    max_relative_error=0.02,
-                    no_grad_set=set(['Filter']))
+                    place, ['Input'], 'Output', no_grad_set=set(['Filter']))
 
         def test_check_grad_no_input(self):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
-                    place, ['Filter'],
-                    'Output',
-                    max_relative_error=0.02,
-                    no_grad_set=set(['Input']))
+                    place, ['Filter'], 'Output', no_grad_set=set(['Input']))
 
         def init_data_format(self):
             self.data_format = "NHWC"
@@ -397,7 +385,6 @@ class TestConv2dOp(OpTest):
         self.check_grad_with_place(
             place, ['Filter'],
             'Output',
-            max_relative_error=0.02,
             no_grad_set=set(['Input']),
             check_dygraph=(self.use_mkldnn == False))
 
@@ -697,7 +684,7 @@ class TestCUDNNExhaustiveSearch(TestConv2dOp):
         self.exhaustive_search = True
 
 
-class TestConv2dOpError(OpTest):
+class TestConv2dOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
 
@@ -827,7 +814,6 @@ class TestConv2dOp_v2(OpTest):
         self.check_grad_with_place(
             place, ['Filter'],
             'Output',
-            max_relative_error=0.02,
             no_grad_set=set(['Input']),
             check_dygraph=(self.use_mkldnn == False))
 
@@ -1250,7 +1236,7 @@ create_test_cudnn_channel_last_fp16_class(
 
 
 # --------- test python API ---------------
-class TestConv2dAPI(OpTest):
+class TestConv2dAPI(unittest.TestCase):
     def test_api(self):
 
         input_NHWC = fluid.layers.data(
@@ -1326,7 +1312,7 @@ class TestConv2dAPI(OpTest):
             data_format="NCHW")
 
 
-class TestConv2dAPI_Error(OpTest):
+class TestConv2dAPI_Error(unittest.TestCase):
     def test_api(self):
         input = fluid.layers.data(
             name="input",

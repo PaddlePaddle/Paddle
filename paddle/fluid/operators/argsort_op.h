@@ -104,7 +104,7 @@ class ArgsortKernel : public framework::OpKernel<T> {
       }
       trans.push_back(axis);
       framework::DDim trans_dims(in_dims);
-      for (int i = 0; i < trans.size(); i++) {
+      for (size_t i = 0; i < trans.size(); i++) {
         trans_dims[i] = in_dims[trans[i]];
       }
 

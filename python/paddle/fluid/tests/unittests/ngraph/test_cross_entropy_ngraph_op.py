@@ -14,8 +14,9 @@
 
 from __future__ import print_function
 
-import unittest
-from paddle.fluid.tests.unittests.test_cross_entropy_op import TestCrossEntropyOp, TestCrossEntropyOp2, TestCrossEntropyOp3, TestCrossEntropyOp4, TestCrossEntropyOp5, TestCrossEntropyOp6, TestCrossEntropyOp7
+import unittest, sys
+sys.path.append("../")
+from test_cross_entropy_op import TestCrossEntropyOp, TestCrossEntropyOp2, TestCrossEntropyOp3, TestCrossEntropyOp4, TestCrossEntropyOp5, TestCrossEntropyOp6, TestCrossEntropyOp7
 
 if __name__ == "__main__":
     unittest.main()

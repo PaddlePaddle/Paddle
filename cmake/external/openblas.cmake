@@ -22,7 +22,7 @@ IF(NOT WIN32)
         CACHE FILEPATH "openblas library." FORCE)
     SET(CBLAS_INC_DIR "${CBLAS_INSTALL_DIR}/include" CACHE PATH "openblas include directory." FORCE)
     SET(OPENBLAS_CC "${CMAKE_C_COMPILER} -Wno-unused-but-set-variable -Wno-unused-variable")
-    SET(OPENBLAS_COMMIT "v0.2.20")
+    SET(OPENBLAS_COMMIT "v0.3.7")
 
     IF(APPLE)
         SET(OPENBLAS_CC "${CMAKE_C_COMPILER} -isysroot ${CMAKE_OSX_SYSROOT}")
@@ -44,7 +44,6 @@ IF(NOT WIN32)
         BUILD_IN_SOURCE     1
         BUILD_COMMAND       make -j$(nproc) ${COMMON_ARGS} ${OPTIONAL_ARGS}
         INSTALL_COMMAND     make install NO_SHARED=1 NO_LAPACK=1 PREFIX=<INSTALL_DIR> 
-                            && rm -r ${CBLAS_INSTALL_DIR}/lib/cmake ${CBLAS_INSTALL_DIR}/lib/pkgconfig
         UPDATE_COMMAND      ""
         CONFIGURE_COMMAND   ""
     )
@@ -69,10 +68,12 @@ ELSE(NOT WIN32)
                             -DCMAKE_INSTALL_PREFIX=${CBLAS_INSTALL_DIR}
                             -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                             -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
+                            -DBUILD_SHARED_LIBS=ON
                             -DMSVC_STATIC_CRT=${MSVC_STATIC_CRT}
                             ${EXTERNAL_OPTIONAL_ARGS}
         CMAKE_CACHE_ARGS    -DCMAKE_INSTALL_PREFIX:PATH=${CBLAS_INSTALL_DIR}
                             -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
                             -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
         )
+    SET(OPENBLAS_SHARED_LIB  ${CBLAS_INSTALL_DIR}/bin/openblas${CMAKE_SHARED_LIBRARY_SUFFIX})
 ENDIF(NOT WIN32)

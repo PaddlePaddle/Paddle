@@ -149,7 +149,7 @@ class WarpCTCKernel : public framework::OpKernel<T> {
 
       logits_lod.push_back(0);
       label_lod.push_back(0);
-      for (auto i = 0; i < num_sequences; i++) {
+      for (size_t i = 0; i < num_sequences; i++) {
         logits_lod.push_back(logits_lod[i] +
                              logits_length_cpu.data<int64_t>()[i]);
         label_lod.push_back(label_lod[i] +
