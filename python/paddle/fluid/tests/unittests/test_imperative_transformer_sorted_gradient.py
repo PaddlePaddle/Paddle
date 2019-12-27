@@ -18,7 +18,7 @@ import unittest
 import paddle.fluid as fluid
 from paddle.fluid import Embedding, LayerNorm, FC, Layer
 from paddle.fluid.dygraph import to_variable, guard
-from paddle.fluid.dygraph.jit import TracedLayer
+from paddle.fluid.dygraph import TracedLayer
 from test_imperative_base import new_program_scope
 from paddle.fluid import core
 import numpy as np
