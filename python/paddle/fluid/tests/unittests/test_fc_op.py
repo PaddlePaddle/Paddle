@@ -51,15 +51,14 @@ class MatrixGenerate:
 
 class TestFCOp(OpTest):
     def config(self):
-        self.with_bias = True
-        self.with_relu = True
         self.matrix = MatrixGenerate(1, 10, 15, 3, 3, 2)
 
     def setUp(self):
         self.op_type = "fc"
         self.config()
 
-        if self.with_bias:
+    def set_params(self, with_bias, with_relu):
+        if with_bias:
             self.inputs = {
                 'Input': self.matrix.input,
                 'W': self.matrix.weights,
@@ -68,66 +67,37 @@ class TestFCOp(OpTest):
         else:
             self.inputs = {'Input': self.matrix.input, 'W': self.matrix.weights}
 
-        if self.with_relu:
-            activation_type = "relu"
-        else:
-            activation_type = ""
+        activation_type = "relu" if with_relu else ""
         self.attrs = {'use_mkldnn': False, 'activation_type': activation_type}
 
-        self.outputs = {
-            'Out': fc_refer(self.matrix, self.with_bias, self.with_relu)
-        }
+        self.outputs = {'Out': fc_refer(self.matrix, with_bias, with_relu)}
 
     def test_check_output(self):
-        self.check_output()
+        for with_bias in [False, True]:
+            for with_relu in [False, True]:
+                if with_relu and not with_bias:
+                    continue
+                self.set_params(with_bias, with_relu)
+                self.check_output()
 
 
-class TestFCOpNoBias1(TestFCOp):
+class TestFCOpCase1(TestFCOp):
     def config(self):
-        self.with_bias = False
-        self.with_relu = False
-        self.matrix = MatrixGenerate(2, 8, 10, 1, 1, 2)
+        self.matrix = MatrixGenerate(3, 8, 10, 1, 1, 2)
 
 
-class TestFCOpNoBias2(TestFCOp):
+class TestFCOpCase2(TestFCOp):
     def config(self):
-        self.with_bias = False
-        self.with_relu = False
         self.matrix = MatrixGenerate(4, 5, 6, 2, 2, 1)
 
 
-class TestFCOpNoBias4(TestFCOp):
+class TestFCOpCase3(TestFCOp):
     def config(self):
-        self.with_bias = False
-        self.with_relu = False
         self.matrix = MatrixGenerate(1, 32, 64, 3, 3, 1)
-
-
-class TestFCOpWithBias1(TestFCOp):
-    def config(self):
-        self.with_bias = True
-        self.with_relu = False
-        self.matrix = MatrixGenerate(3, 8, 10, 2, 1, 2)
-
-
-class TestFCOpWithBias2(TestFCOp):
-    def config(self):
-        self.with_bias = True
-        self.with_relu = True
-        self.matrix = MatrixGenerate(4, 5, 6, 2, 2, 1)
-
-
-class TestFCOpWithBias3(TestFCOp):
-    def config(self):
-        self.with_bias = True
-        self.with_relu = True
-        self.matrix = MatrixGenerate(1, 64, 32, 3, 3, 1)
 
 
 class TestFCOpWithPadding(TestFCOp):
     def config(self):
-        self.with_bias = True
-        self.with_relu = True
         self.matrix = MatrixGenerate(1, 4, 3, 128, 128, 2)
 
 

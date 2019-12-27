@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/parallel.h"
+#include <random>
 #include <vector>
 #include "gtest/gtest.h"
 

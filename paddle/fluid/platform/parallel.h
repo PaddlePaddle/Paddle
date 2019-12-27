@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <stdint.h>
 #include <algorithm>
+#include <functional>
 #ifdef PADDLE_WITH_MKLML
 #include <omp.h>
 #endif
