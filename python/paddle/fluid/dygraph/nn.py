@@ -20,7 +20,6 @@ from .. import core
 from ..layers import utils
 from . import layers
 from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer_
-from .container import ParameterList
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 import numpy as np
@@ -1041,9 +1040,10 @@ class FC(layers.Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._act = act
-        self.weights = ParameterList()
+        self.__w = list()
 
     def _build_once(self, input):
+        i = 0
         for inp, param in self._helper.iter_inputs_and_params(input,
                                                               self._param_attr):
             input_shape = inp.shape
@@ -1052,27 +1052,49 @@ class FC(layers.Layer):
                 reduce(lambda a, b: a * b, input_shape[self._num_flatten_dims:],
                        1)
             ] + [self._size]
-            self.weights.append(
-                self.create_parameter(
-                    attr=param,
-                    shape=param_shape,
-                    dtype=self._dtype,
-                    is_bias=False))
+            self.__w.append(
+                self.add_parameter(
+                    '_w%d' % i,
+                    self.create_parameter(
+                        attr=param,
+                        shape=param_shape,
+                        dtype=self._dtype,
+                        is_bias=False)))
+            i += 1
+
         size = list([self._size])
-        self.bias = self.create_parameter(
+        self._b = self.create_parameter(
             attr=self._bias_attr, shape=size, dtype=self._dtype, is_bias=True)
+
+    # TODO(songyouwei): We should remove _w property
+    @property
+    def _w(self, i=0):
+        return self.__w[i]
+
+    @_w.setter
+    def _w(self, value, i=0):
+        assert isinstance(self.__w[i], Variable)
+        self.__w[i].set_value(value)
 
     @property
     def weight(self):
-        if len(self.weights) == 1:
-            return self.weights[0]
+        if len(self.__w) > 1:
+            return self.__w
         else:
-            return self.weights
+            return self.__w[0]
 
     @weight.setter
     def weight(self, value):
-        if len(self.weights) == 1:
-            self.weights[0] = value
+        if len(self.__w) == 1:
+            self.__w[0] = value
+
+    @property
+    def bias(self):
+        return self._b
+
+    @bias.setter
+    def bias(self, value):
+        self._b = value
 
     def forward(self, input):
         mul_results = list()
@@ -1083,7 +1105,7 @@ class FC(layers.Layer):
             self._helper.append_op(
                 type="mul",
                 inputs={"X": inp,
-                        "Y": self.weights[i]},
+                        "Y": self.__w[i]},
                 outputs={"Out": tmp},
                 attrs={
                     "x_num_col_dims": self._num_flatten_dims,
@@ -1103,13 +1125,13 @@ class FC(layers.Layer):
                 outputs={"Out": pre_bias},
                 attrs={"use_mkldnn": False})
 
-        if self.bias:
+        if self._b:
             pre_activation = self._helper.create_variable_for_type_inference(
                 dtype=self._dtype)
             self._helper.append_op(
                 type='elementwise_add',
                 inputs={'X': [pre_bias],
-                        'Y': [self.bias]},
+                        'Y': [self._b]},
                 outputs={'Out': [pre_activation]},
                 attrs={'axis': self._num_flatten_dims})
         else:
