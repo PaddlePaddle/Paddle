@@ -966,7 +966,9 @@ REGISTER_OPERATOR(
     relu_grad_grad,
     ops::ActivationOpDoubleGrad2<ops::ReluGradFunctor<float>::FwdDeps()>,
     ops::ActivationDoubleGradOpInplaceInference);
+
 REGISTER_ACTIVATION_CPU_KERNEL(relu, Relu, ReluFunctor, ReluGradFunctor);
+
 REGISTER_OP_CPU_KERNEL(
     relu_grad_grad,
     ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
@@ -975,6 +977,7 @@ REGISTER_OP_CPU_KERNEL(
                                     ops::ReluGradGradFunctor<double>>,
     ops::ActivationDoubleGradKernel<plat::CPUDeviceContext,
                                     ops::ReluGradGradFunctor<plat::float16>>);
+/* ========================================================================== */
 
 /* ======================== leaky relu register  ============================ */
 REGISTER_OPERATOR(

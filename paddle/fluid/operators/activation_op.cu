@@ -57,6 +57,7 @@ REGISTER_OP_CUDA_KERNEL(
                              ops::ELUGradGradFunctor<double>>,
     ops::ELUDoubleGradKernel<plat::CUDADeviceContext,
                              ops::ELUGradGradFunctor<plat::float16>>);
+/* ========================================================================== */
 
 /* ===========================    relu register  ============================ */
 REGISTER_ACTIVATION_CUDA_KERNEL(relu, Relu, ReluFunctor, ReluGradFunctor);
