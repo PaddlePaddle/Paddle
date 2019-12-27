@@ -4676,8 +4676,6 @@ class ParamBase(core.VarBase):
 
         # self.block = default_main_program().global_block()
 
-        _dygraph_tracer().trace_var(name, self)
-
     def __str__(self):
         return self.to_string(True)
 
