@@ -1,4 +1,4 @@
-# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserve.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,13 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-NOT_CHECK_OP_LIST = [
-    # The increment's input must be 1-d and only has one data
-    'increment'
-]
-
-NEED_TO_FIX_OP_LIST = [
-    'sequence_topk_avg_pooling', 'matmul', 'add_position_encoding',
-    'margin_rank_loss', 'elementwise_pow', 'fused_elemwise_activation', 'mul'
-]
