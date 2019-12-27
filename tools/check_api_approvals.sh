@@ -66,7 +66,6 @@ if [ "$api_spec_diff" != "" ]; then
     check_approval 1 46782768 47554610
     echo_line=""
     check_approval 1 2870059 2870059 27208573
-
 fi
 
 api_doc_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.doc  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.doc`
