@@ -717,20 +717,7 @@ class DistributeTranspiler(object):
                     name=framework.generate_control_dev_var_name())
         input_deps = list(self.grad_name_to_send_dummy_out.values())
 
-        if self.sync_mode:
-            fetch_barrier_input = []
-
-            program.global_block().append_op(
-                type="send_barrier",
-                inputs={"X": list(input_deps)},
-                outputs={"Out": send_barrier_out},
-                attrs={
-                    "endpoints": pserver_endpoints,
-                    "trainer_id": self.trainer_id,
-                    RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-                })
-            fetch_barrier_input.append(send_barrier_out)
-        else:
+        if not self.sync_mode:
             lr_ops = self._get_lr_ops()
             if len(lr_ops) > 0 and self.counter_var:
                 decay_dummy_output = program.global_block().create_var(
@@ -758,6 +745,8 @@ class DistributeTranspiler(object):
                 input_deps.append(decay_dummy_output)
 
         if self.sync_mode:
+            fetch_barrier_input = []
+
             program.global_block().append_op(
                 type="send_barrier",
                 inputs={"X": list(input_deps)},
@@ -768,6 +757,8 @@ class DistributeTranspiler(object):
                     "is_communicator": False,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
+
+            fetch_barrier_input.append(send_barrier_out)
         else:
             if self.config.runtime_split_send_recv and self.config.half_async:
                 program.global_block().append_op(
