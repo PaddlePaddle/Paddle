@@ -108,6 +108,7 @@ def conv2dtranspose_forward_naive(input_, filter_, attrs):
 class TestConv2dTransposeOp(OpTest):
     def setUp(self):
         # init as conv transpose
+        self.dtype = np.float64
         self.is_test = False
         self.use_cudnn = False
         self.use_mkldnn = False
@@ -192,20 +193,6 @@ class TestConv2dTransposeOp(OpTest):
 
     def init_op_type(self):
         self.op_type = "conv2d_transpose"
-
-    def init_kernel_type(self):
-        self.dtype = np.float64
-
-
-'''
-class TestWithFloat32(TestConv2dTransposeOp):
-    def init_op_type(self):
-        self.op_type = "conv2d_transpose"
-        self.use_cudnn = True 
-
-    def init_kernel_type(self):
-        self.dtype = np.float32 
-'''
 
 
 class TestWithSymmetricPad(TestConv2dTransposeOp):
