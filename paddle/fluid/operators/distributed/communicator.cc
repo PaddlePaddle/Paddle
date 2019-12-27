@@ -144,8 +144,9 @@ void AsyncCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
               << send_varname_to_ctx[send_var_name];
     } else if (op->Type() == "recv") {
       auto do_not_run = boost::get<int>(op->GetNullableAttr("do_not_run"));
-      PADDLE_ENFORCE_GT(do_not_run, 0, platform::errors::InvalidArgument(
-                                           "recv should not run!"));
+      PADDLE_ENFORCE_GT(do_not_run, 0,
+                        platform::errors::InvalidArgument(
+                            "recv op's attr `do_not_run` must be True!"));
       auto recv_var_name = op->Output("Out")[0];
       auto recv_varnames = boost::get<std::vector<std::string>>(
           op->GetNullableAttr("recv_varnames"));
@@ -1112,8 +1113,9 @@ void HalfAsyncCommunicator::InitImpl(
               << send_varname_to_ctx[send_var_name];
     } else if (op->Type() == "recv") {
       auto do_not_run = boost::get<int>(op->GetNullableAttr("do_not_run"));
-      PADDLE_ENFORCE_GT(do_not_run, 0, platform::errors::InvalidArgument(
-                                           "recv should not run!"));
+      PADDLE_ENFORCE_GT(do_not_run, 0,
+                        platform::errors::InvalidArgument(
+                            "recv op's attr `do_not_run` must be True!"));
       auto recv_var_name = op->Output("Out")[0];
       auto recv_varnames = boost::get<std::vector<std::string>>(
           op->GetNullableAttr("recv_varnames"));
