@@ -234,7 +234,7 @@ class TestConv3dOp(OpTest):
         self.use_cudnn = False
         self.use_mkldnn = False
         self.data_format = "AnyLayout"
-        self.init_dtype()
+        self.dtype = np.float64
         self.init_kernel_type()
         self.init_group()
         self.init_dilation()
@@ -332,9 +332,6 @@ class TestConv3dOp(OpTest):
 
     def init_kernel_type(self):
         pass
-
-    def init_dtype(self):
-        self.dtype = np.float64
 
 
 class TestCase1(TestConv3dOp):
