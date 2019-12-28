@@ -79,6 +79,7 @@ class TestConv3dOp_Same_MKLDNN(TestConv3dOp_AsyPadding_MKLDNN):
 
     def init_kernel_type(self):
         self.use_mkldnn = True
+        self.data_format = "NCHW"
         self.dtype = np.float32
 
 
@@ -89,6 +90,7 @@ class TestConv3dOp_Valid_MKLDNN(TestConv3dOp_AsyPadding_MKLDNN):
 
     def init_kernel_type(self):
         self.use_mkldnn = True
+        self.data_format = "NCHW"
         self.dtype = np.float32
 
 
