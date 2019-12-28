@@ -35,11 +35,20 @@ SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${MKLDNN_INSTALL_DIR}/${LIBDIR
 
 INCLUDE_DIRECTORIES(${MKLDNN_INC_DIR}) # For MKLDNN code to include internal headers.
 
+IF(${CBLAS_PROVIDER} STREQUAL "MKLML")
+    SET(MKLDNN_DEPENDS   ${MKLML_PROJECT})
+    MESSAGE(STATUS "Build MKLDNN with MKLML ${MKLML_ROOT}")
+ELSE()
+    MESSAGE(FATAL_ERROR "Should enable MKLML when build MKLDNN")
+ENDIF()
+
 IF(NOT WIN32)
     SET(MKLDNN_FLAG "-Wno-error=strict-overflow -Wno-error=unused-result -Wno-error=array-bounds")
     SET(MKLDNN_FLAG "${MKLDNN_FLAG} -Wno-unused-result -Wno-unused-value")
     SET(MKLDNN_CFLAG "${CMAKE_C_FLAGS} ${MKLDNN_FLAG}")
     SET(MKLDNN_CXXFLAG "${CMAKE_CXX_FLAGS} ${MKLDNN_FLAG}")
+    set(MKLDNN_SHARED_LINKER_FLAG "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-as-needed -L${MKLML_LIB_DIR} -liomp5")
+    set(FORBID "-fopenmp")
 ELSE()
     SET(MKLDNN_CXXFLAG "${CMAKE_CXX_FLAGS} /EHsc")
 ENDIF(NOT WIN32)
@@ -72,6 +81,8 @@ ExternalProject_Add(
                         -DCMAKE_C_FLAGS=${MKLDNN_CFLAG}
                         -DCMAKE_CXX_FLAGS=${MKLDNN_CXXFLAG}
                         -DDNNL_BUILD_TESTS=OFF -DDNNL_BUILD_EXAMPLES=OFF
+                        -DCMAKE_SHARED_LINKER_FLAGS=${MKLDNN_SHARED_LINKER_FLAG}
+                        -DCMAKE_CXX_CREATE_SHARED_LIBRARY_FORBIDDEN_FLAGS=${FORBID}
     CMAKE_CACHE_ARGS    -DCMAKE_INSTALL_PREFIX:PATH=${MKLDNN_INSTALL_DIR}
 )
 if(WIN32)
