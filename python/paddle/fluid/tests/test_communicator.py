@@ -16,7 +16,10 @@ from __future__ import print_function
 
 import unittest
 import time
+import threading
+import numpy
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.communicator import Communicator
 from paddle.fluid.communicator import AsyncMode
@@ -76,7 +79,7 @@ class TestCommunicatorHalfAsync(unittest.TestCase):
 
         cost = fluid.layers.square_error_cost(input=y_predict, label=y)
         avg_cost = fluid.layers.mean(cost)
-        return avg_cost
+        return avg_cost, x, y
 
     def test_communicator_init_and_start(self):
         role = role_maker.UserDefinedRoleMaker(
@@ -86,18 +89,53 @@ class TestCommunicatorHalfAsync(unittest.TestCase):
             server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"])
 
         fleet.init(role)
-        avg_cost = self.net()
+        avg_cost, x, y = self.net()
 
         optimizer = fluid.optimizer.SGD(0.01)
 
         strategy = DistributeTranspilerConfig()
-        strategy.sync_mode = True
+        strategy.sync_mode = False 
+        strategy.runtime_split_send_recv = True
+        strategy.half_async = True
         strategy.wait_port = False
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
 
+        def reader():
+            for i in range(1000):
+                x = numpy.random.random((1, 13)).astype('float32')
+                y = numpy.random.randint(0, 2, (1, 1)).astype('int64')
+                return x,y
+
+        def run_trainer(startup, main):
+            place = fluid.core.CPUPlace()
+            exe = fluid.Executor(place)
+
+            op_ids = []
+            for op in startup.global_block().ops:
+                if op.type == "recv" or op.type == "fetch_barrier":
+                    op_ids.append(startup.global_block().ops.index(op))
+
+            for idx in op_ids[::-1]:
+                startup.global_block()._remove_op(idx)
+
+            with open("xx.start", "w") as wb:
+                wb.write(str(startup))
+
+            exe.run(startup)
+
+            feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
+            data = reader()
+
+            exe.run(main, feed=feeder.feed([data]), fetch_list=[])
+
         comm = Communicator(fleet.main_program, AsyncMode.HALF_ASYNC)
         comm.start()
+
+        t = threading.Thread(target=run_trainer, args=(fleet.startup_program, fleet.main_program))
+        t.start()
+        #t.join()
+
         time.sleep(10)
         comm.stop()
 
