@@ -76,6 +76,9 @@ class TestConv3dOp_Same_MKLDNN(TestConv3dOp_AsyPadding_MKLDNN):
     def init_paddings(self):
         self.pad = [0, 0, 0]
         self.padding_algorithm = "SAME"
+
+    def init_kernel_type(self):
+        self.use_mkldnn = True
         self.dtype = np.float32
 
 
