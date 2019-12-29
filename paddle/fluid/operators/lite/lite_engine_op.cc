@@ -41,5 +41,4 @@ class LiteInferVarType : public framework::VarTypeInference {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(lite_engine, ops::LiteEngineOp, ops::LiteEngineOpMaker,
-                  ops::LiteEngineOpMaker);
+REGISTER_OPERATOR(lite_engine, ops::LiteEngineOp, ops::LiteEngineOpMaker);
