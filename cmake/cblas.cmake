@@ -14,7 +14,7 @@
 
 # Find the CBlas and lapack libraries
 #
-# It will search MKLML, atlas, OpenBlas, reference-cblas in order.
+# It will search MKLML, OpenBlas, reference-cblas, extern-openblas in order.
 #
 # If any cblas implementation found, the following variable will be set.
 #    CBLAS_PROVIDER  # one of MKLML, OPENBLAS, REFERENCE

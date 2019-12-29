@@ -14,9 +14,10 @@
 
 from __future__ import print_function
 
-import unittest
+import unittest, sys
+sys.path.append("../")
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest
+from op_test import OpTest
 
 
 class TestNGRAPHIncrementOp(OpTest):
@@ -38,7 +39,7 @@ class TestNGRAPHIncrementOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 if __name__ == "__main__":

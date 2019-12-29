@@ -58,7 +58,7 @@ class TestAccuracyOpFp16(TestAccuracyOp):
         self.check_output(atol=1e-3)
 
 
-class TestAccuracyOpError(OpTest):
+class TestAccuracyOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of accuracy_op must be Variable.

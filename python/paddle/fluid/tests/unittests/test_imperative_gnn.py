@@ -131,7 +131,8 @@ class TestDygraphGNN(unittest.TestCase):
                                                            to_variable(labels))
             loss = fluid.layers.reduce_sum(loss)
             loss.backward()
-            adam = AdamOptimizer(learning_rate=1e-3)
+            adam = AdamOptimizer(
+                learning_rate=1e-3, parameter_list=model.parameters())
 
             adam.minimize(loss)
             model.clear_gradients()
@@ -156,7 +157,8 @@ class TestDygraphGNN(unittest.TestCase):
                 logits2, to_variable(labels2))
             loss2 = fluid.layers.reduce_sum(loss2)
             loss2.backward()
-            adam2 = AdamOptimizer(learning_rate=1e-3)
+            adam2 = AdamOptimizer(
+                learning_rate=1e-3, parameter_list=model2.parameters())
             adam2.minimize(loss2)
             model2.clear_gradients()
             loss2_value = loss2.numpy()

@@ -27,18 +27,29 @@ RUN apt-get install -y python-dev python-pip wget vim git
 
 # install cmake
 WORKDIR /home
-RUN wget https://cmake.org/files/v3.4/cmake-3.4.0-Linux-x86_64.tar.gz
-RUN tar -xvf cmake-3.4.0-Linux-x86_64.tar.gz
+RUN wget -q https://cmake.org/files/v3.10/cmake-3.10.0-Linux-x86_64.tar.gz
+RUN tar -xvf cmake-3.10.0-Linux-x86_64.tar.gz
 RUN apt install libidn11
-ENV PATH=/home/cmake-3.4.0-Linux-x86_64/bin:$PATH
+ENV PATH=/home/cmake-3.10.0-Linux-x86_64/bin:$PATH
 WORKDIR /usr/bin
-RUN apt install -y gcc-8 g++-8
+RUN wget -q http://mirror.linux-ia64.org/gnu/gcc/releases/gcc-8.2.0/gcc-8.2.0.tar.xz && \
+  tar -xvf gcc-8.2.0.tar.xz && \
+  cd gcc-8.2.0 && \
+  unset LIBRARY_PATH CPATH C_INCLUDE_PATH PKG_CONFIG_PATH CPLUS_INCLUDE_PATH INCLUDE && \
+  ./contrib/download_prerequisites && \
+  cd .. && mkdir temp_gcc82 && cd temp_gcc82 && \
+  ../gcc-8.2.0/configure --prefix=/usr/local/gcc-8.2 --enable-threads=posix --disable-checking --disable-multilib && \
+  make -j8 && make install
 RUN cp gcc gcc.bak
 RUN cp g++ g++.bak
 RUN rm gcc
 RUN rm g++
-RUN ln -s gcc-8 gcc
-RUN ln -s g++-8 g++
+RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/local/bin/gcc
+RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/local/bin/g++
+RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc
+RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++
+ENV PATH=/usr/local/gcc-8.2/bin:$PATH
+RUN cd .. && rm -rf /usr/bin/temp_gcc82
 
 # Install Python3.6
 RUN mkdir -p /root/python_build/ && wget -q https://www.sqlite.org/2018/sqlite-autoconf-3250300.tar.gz && \

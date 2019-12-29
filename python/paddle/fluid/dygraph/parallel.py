@@ -184,6 +184,15 @@ class DataParallel(layers.Layer):
                 [coalesced_grad, grad_vars, g_var_shapes])
         return coalesced_grads_and_grad_vars
 
+    def _reshape_inplace(self, x, shape):
+        x_shape = self._helper.create_variable_for_type_inference(dtype=x.dtype)
+        self._helper.append_op(
+            type="reshape2",
+            inputs={'X': x},
+            attrs={'shape': shape},
+            outputs={'Out': x,
+                     'XShape': x_shape})
+
     def _split_tensors(self, coalesced_grads_and_grad_vars):
         from ..layers import nn
         for coalesced_grad, origin_grad_vars, grad_shapes in coalesced_grads_and_grad_vars:
@@ -195,7 +204,8 @@ class DataParallel(layers.Layer):
                 attrs={'sections': grad_var_len,
                        'axis': 0})
             for g_var, g_shape in zip(origin_grad_vars, grad_shapes):
-                nn.reshape(x=g_var, shape=g_shape, inplace=True)
+                self._reshape_inplace(x=g_var, shape=g_shape)
+                assert g_var.shape == g_shape
 
     @no_grad
     def apply_collective_grads(self):
@@ -209,12 +219,8 @@ class DataParallel(layers.Layer):
         grad_vars = []
         for param in self._layers.parameters():
             # NOTE(zcd): The grad_ivar maybe no generated.
-            if param.trainable and param._ivar._grad_ivar():
-                g_var = framework.Variable(
-                    block=self._helper.main_program.current_block(),
-                    name=param._ivar._grad_name(),
-                    stop_gradient=True,
-                    ivar=param._ivar._grad_ivar())
+            if param.trainable and param._grad_ivar():
+                g_var = param._grad_ivar()
                 grad_vars.append(g_var)
                 assert g_var not in grad_var_set
                 grad_var_set.add(g_var)

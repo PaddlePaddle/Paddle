@@ -99,8 +99,8 @@ REGISTER_ELEMWISE_EXPLICIT_OP_WITHOUT_GRAD(elementwise_add, Add);
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    elementwise_add_grad, ops::ElementwiseOpExplicitGrad,
-    ops::ElementwiseGradOpInplace, ops::ElementwiseGradNoBufVarsInference,
+    elementwise_add_grad, ops::ElementwiseOpGrad, ops::ElementwiseGradOpInplace,
+    ops::ElementwiseGradNoBufVarsInference,
     ops::ElementwiseAddDoubleGradMaker<paddle::framework::OpDesc>,
     ops::ElementwiseAddDoubleGradMaker<paddle::imperative::OpBase>);
 

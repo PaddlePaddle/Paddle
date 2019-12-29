@@ -158,7 +158,6 @@ class PtbModel(fluid.Layer):
             init_scale=init_scale,
             dropout=dropout)
         self.embedding = Embedding(
-            self.full_name(),
             size=[vocab_size, hidden_size],
             dtype='float32',
             is_sparse=False,
@@ -208,7 +207,6 @@ class PtbModel(fluid.Layer):
         loss = fluid.layers.reshape(loss, shape=[-1, self.num_steps])
         loss = fluid.layers.reduce_mean(loss, dim=[0])
         loss = fluid.layers.reduce_sum(loss)
-        loss.permissions = True
 
         return loss, last_hidden, last_cell
 
@@ -240,7 +238,7 @@ class TestSaveLoadBase(unittest.TestCase):
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
             x = fluid.layers.data(
-                name="x", shape=[-1, num_steps, 1], dtype='int64')
+                name="x", shape=[-1, num_steps], dtype='int64')
             y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
             init_hidden = fluid.layers.data(
                 name="init_hidden", shape=[1], dtype='float32')
@@ -341,7 +339,7 @@ class TestSaveLoadPartial(unittest.TestCase):
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
             x = fluid.layers.data(
-                name="x", shape=[-1, num_steps, 1], dtype='int64')
+                name="x", shape=[-1, num_steps], dtype='int64')
             y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
             init_hidden = fluid.layers.data(
                 name="init_hidden", shape=[1], dtype='float32')
@@ -451,7 +449,7 @@ class TestSaveLoadSetStateDict(unittest.TestCase):
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
             x = fluid.layers.data(
-                name="x", shape=[-1, num_steps, 1], dtype='int64')
+                name="x", shape=[-1, num_steps], dtype='int64')
             y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
             init_hidden = fluid.layers.data(
                 name="init_hidden", shape=[1], dtype='float32')
@@ -552,7 +550,7 @@ class TestProgramStatePartial(unittest.TestCase):
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
             x = fluid.layers.data(
-                name="x", shape=[-1, num_steps, 1], dtype='int64')
+                name="x", shape=[-1, num_steps], dtype='int64')
             y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
             init_hidden = fluid.layers.data(
                 name="init_hidden", shape=[1], dtype='float32')

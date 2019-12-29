@@ -159,7 +159,8 @@ class TensorRTEngine {
                   std::unique_ptr<framework::Tensor> w_tensor) {
     static int suffix_counter = 0;
     std::string suffix = std::to_string(suffix_counter);
-    weight_map[w_name + suffix] = std::move(w_tensor);
+    std::string splitter = "__";
+    weight_map[w_name + splitter + suffix] = std::move(w_tensor);
     suffix_counter += 1;
   }
 

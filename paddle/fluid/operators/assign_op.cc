@@ -41,6 +41,14 @@ class AssignOp : public framework::OperatorWithKernel {
   }
 
  protected:
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   expected_kernel_type.place_,
+                                   tensor.layout());
+  }
+
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(

@@ -20,6 +20,7 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/executor.h"
@@ -212,11 +213,25 @@ class TensorRTEngineOp : public framework::OperatorBase {
                                                i_shape.end());
         std::vector<int64_t> runtime_input_shape(t_shape.begin() + 1,
                                                  t_shape.end());
-        PADDLE_ENFORCE_EQ(model_input_shape == runtime_input_shape, true,
-                          "Input shapes are inconsistent with the model. TRT 5 "
-                          "or lower version "
-                          "does not support dynamic input shapes. Please check "
-                          "your input shapes.");
+        auto comma_fold = [](std::string a, int b) {
+          return std::move(a) + ", " + std::to_string(b);
+        };
+        std::string model_input_shape_str = std::accumulate(
+            std::next(model_input_shape.begin()), model_input_shape.end(),
+            std::to_string(model_input_shape[0]), comma_fold);
+        std::string runtime_input_shape_str = std::accumulate(
+            std::next(runtime_input_shape.begin()), runtime_input_shape.end(),
+            std::to_string(runtime_input_shape[0]), comma_fold);
+        PADDLE_ENFORCE_EQ(
+            model_input_shape == runtime_input_shape, true,
+            platform::errors::InvalidArgument(
+                "Input shapes are inconsistent with the model. Expect [%s] in "
+                "model description, but got [%s] in runtime. TRT 5 "
+                "or lower version "
+                "does not support dynamic input shapes. Please check and "
+                "modify "
+                "your input shapes.",
+                model_input_shape_str, runtime_input_shape_str));
       }
 
       runtime_batch = t_shape[0];

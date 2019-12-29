@@ -128,19 +128,19 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
       in_vars[1]->IsType<framework::LoDTensor>()) {
     auto &in_0 = in_vars[0]->Get<framework::LoDTensor>();
     auto &in_1 = in_vars[1]->Get<framework::LoDTensor>();
-
-    auto length = in_0.numel();
-    if (length && in_0.IsInitialized() && in_1.IsInitialized()) {
+    int64_t length_0 = in_0.numel();
+    int64_t length_1 = in_1.numel();
+    if (length_0 && length_1 && in_0.IsInitialized() && in_1.IsInitialized()) {
       auto result = EigenVector<T>::Flatten(*out);
       auto &place = *dev_ctx.eigen_device();
       auto in_0_e = EigenVector<T>::Flatten(in_0);
       auto in_1_e = EigenVector<T>::Flatten(in_1);
       result.device(place) = in_0_e + in_1_e;
-    } else if (length && in_0.IsInitialized()) {
+    } else if (length_0 && in_0.IsInitialized()) {
       auto result = EigenVector<T>::Flatten(*out);
       auto &place = *dev_ctx.eigen_device();
       result.device(place) = EigenVector<T>::Flatten(in_0);
-    } else if (length && in_1.IsInitialized()) {
+    } else if (length_1 && in_1.IsInitialized()) {
       auto result = EigenVector<T>::Flatten(*out);
       auto &place = *dev_ctx.eigen_device();
       result.device(place) = EigenVector<T>::Flatten(in_1);

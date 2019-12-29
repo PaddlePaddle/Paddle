@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 
-#include <set>
 #include <sstream>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/platform/enforce.h"
@@ -27,28 +27,36 @@ namespace framework {
 namespace ir {
 namespace fusion_group {
 
-static std::string VarName(int index) { return "var" + std::to_string(index); }
+static inline std::string ArgName(int index) {
+  return "arg" + std::to_string(index);
+}
+static inline std::string TmpName(int index) {
+  return "tmp" + std::to_string(index);
+}
 
 class OperationExpression {
  public:
-  explicit OperationExpression(std::string op, std::vector<int> input_ids,
+  explicit OperationExpression(std::string op_type, std::vector<int> input_ids,
                                std::vector<int> output_ids)
-      : op_(op), input_ids_(input_ids), output_ids_(output_ids) {}
+      : op_type_(op_type), input_ids_(input_ids), output_ids_(output_ids) {}
 
-  std::vector<int> GetInputIds() { return input_ids_; }
-  std::vector<int> GetOutputIds() { return output_ids_; }
+  std::string GetOpType() const { return op_type_; }
+  std::vector<int> GetInputIds() const { return input_ids_; }
+  std::vector<int> GetOutputIds() const { return output_ids_; }
 
   // Check whether this operation type is supported in OperationMap.
-  bool IsSupport();
+  bool IsSupport() const;
 
-  std::string GetExpression();
-
-  // TODO(wangchao): make offset more flexible we add stride and basic offset
-  std::string GetRHS(size_t i = 0);
-  std::string GetLHS(size_t i = 0);
+  std::string GetExpression(std::string dtype,
+                            std::unordered_set<int>* used) const;
 
  private:
-  std::string op_;
+  // TODO(wangchao): make offset more flexible we add stride and basic offset
+  std::string GetRHS(std::unordered_set<int>* used, size_t i = 0) const;
+  std::string GetLHS(size_t i = 0) const;
+
+ private:
+  std::string op_type_;
   std::vector<int> input_ids_;
   std::vector<int> output_ids_;
 };
@@ -58,6 +66,7 @@ class TemplateVariable {
   void Add(std::string identifier, std::string expression) {
     strings_[identifier] = expression;
   }
+
   void Remove(std::string identifier, std::string expression) {
     for (auto it = strings_.begin(); it != strings_.end();) {
       if (it->first == identifier) {
@@ -155,7 +164,6 @@ __device__ double real_max(double x, double y) { return ::fmax(x, y); }
 )";
 
 static const char elementwise_cuda_template[] = R"(
-
 extern "C" __global__ void $func_name($parameters) {
   for(int idx = blockIdx.x * blockDim.x + threadIdx.x;
       idx < N;
@@ -164,6 +172,28 @@ extern "C" __global__ void $func_name($parameters) {
   }
 }
 )";
+
+static std::string DebugString(const OperationExpression& expr) {
+  std::stringstream ret;
+  ret << "Op(" << expr.GetOpType() << "), inputs:{";
+  auto input_ids = expr.GetInputIds();
+  for (size_t i = 0; i < input_ids.size(); ++i) {
+    if (i != 0) {
+      ret << ",";
+    }
+    ret << expr.GetInputIds()[i];
+  }
+  ret << "}, outputs:{";
+  auto output_ids = expr.GetOutputIds();
+  for (size_t i = 0; i < output_ids.size(); ++i) {
+    if (i != 0) {
+      ret << ",";
+    }
+    ret << expr.GetOutputIds()[i];
+  }
+  ret << "}";
+  return ret.str();
+}
 
 }  // namespace fusion_group
 }  // namespace ir

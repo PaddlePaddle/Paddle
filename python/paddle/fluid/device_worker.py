@@ -160,7 +160,8 @@ class DownpourSGD(DeviceWorker):
                                                   .sparse_table[i].slot_value)
             sparse_table.sparse_grad_name.extend(worker.get_desc().sparse_table[
                 i].slot_gradient)
-            if opt_info["use_cvm"]:
+            if opt_info["use_cvm"] or "no_cvm" in opt_info and opt_info[
+                    "no_cvm"] == True:
                 sparse_table.emb_dim = \
                     self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
                     i].accessor.fea_dim
@@ -183,7 +184,7 @@ class DownpourSGD(DeviceWorker):
                 dense_table.dense_value_name.extend(i.dense_variable_name)
                 dense_table.dense_grad_name.extend(
                     i.dense_gradient_variable_name)
-                downpour.skip_ops.extend(worker.get_desc().skip_op)
+        downpour.skip_ops.extend(worker.get_desc().skip_op)
         if self._infer:
             downpour.push_dense = False
             downpour.push_sparse = False

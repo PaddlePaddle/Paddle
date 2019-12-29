@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <string>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
@@ -22,14 +23,15 @@ namespace operators {
 template <typename DeviceContext, typename T>
 class FillConstantBatchSizeLikeOpKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
+  void Compute(const framework::ExecutionContext &ctx) const override {
     auto data_type =
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
-    auto value = ctx.Attr<float>("value");
+    auto float_value = ctx.Attr<float>("value");
+    auto str_value = ctx.Attr<std::string>("str_value");
     auto force_cpu = ctx.Attr<bool>("force_cpu");
 
-    auto* out = ctx.Output<framework::Tensor>("Out");
-    auto* in = ctx.Input<framework::LoDTensor>("Input");
+    auto *out = ctx.Output<framework::Tensor>("Out");
+    auto *in = ctx.Input<framework::LoDTensor>("Input");
     if (in->lod().size() && ctx.Attr<int>("input_dim_idx") == 0) {
       // set the correct batch size for the LoDTensor.
       auto odims = out->dims();
@@ -38,15 +40,39 @@ class FillConstantBatchSizeLikeOpKernel : public framework::OpKernel<T> {
       out->mutable_data<T>(odims, ctx.GetPlace());
     }
 
-    if (force_cpu) {
-      out->mutable_data(platform::CPUPlace(), data_type);
+    T value;
+    if (str_value.empty()) {
+      value = static_cast<T>(float_value);
     } else {
-      out->mutable_data(ctx.GetPlace(), data_type);
+      std::stringstream convert_stream(str_value);
+      if (std::is_same<int64_t, T>::value) {
+        int64_t tmp_value;
+        convert_stream >> tmp_value;
+        value = static_cast<T>(tmp_value);
+      } else {
+        double tmp_value;
+        convert_stream >> tmp_value;
+        value = static_cast<T>(tmp_value);
+      }
     }
 
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto& dev_ctx = *pool.Get(ctx.GetPlace());
-    math::set_constant(dev_ctx, out, value);
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(ctx.GetPlace());
+    bool cpu_place = force_cpu || ctx.GetPlace() == platform::CPUPlace();
+    if (cpu_place) {
+      math::SetConstant<platform::CPUDeviceContext, T> functor;
+      out->mutable_data(platform::CPUPlace(), data_type);
+      functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
+              out, static_cast<T>(value));
+    }
+#ifdef PADDLE_WITH_CUDA
+    if (!cpu_place) {
+      math::SetConstant<platform::CUDADeviceContext, T> functor;
+      out->mutable_data(ctx.GetPlace(), data_type);
+      functor(reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx),
+              out, static_cast<T>(value));
+    }
+#endif
   }
 };
 

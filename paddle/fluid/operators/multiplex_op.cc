@@ -114,7 +114,7 @@ class MultiplexGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    auto& dxs = ctx->Outputs(framework::GradVarName("X"));
+    auto dxs = ctx->Outputs(framework::GradVarName("X"));
     PADDLE_ENFORCE(!dxs.empty(), "Output(X@Grad) should not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) should not be null.");

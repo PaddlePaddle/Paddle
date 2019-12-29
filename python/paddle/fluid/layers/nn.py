@@ -24,7 +24,7 @@ import os
 import inspect
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant, NumpyArrayInitializer
-from ..framework import Variable, OpProtoHolder, in_dygraph_mode
+from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program
 from ..dygraph import base
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
@@ -184,6 +184,48 @@ __all__ = [
     'gather_tree',
     'uniform_random',
 ]
+
+
+@dygraph_only
+def _append_activation_in_dygraph(input,
+                                  act=None,
+                                  use_cudnn=False,
+                                  use_mkldnn=False):
+    """Append activation in dygraph mode.
+
+        Args:
+            input: the input variable. 
+            act: activation type
+            use_mkldnn: if use mkldnn
+            use_cudnn: if use cudnn
+
+    Return the Variable after append activation
+    """
+    attrs = {'use_cudnn': use_cudnn, 'use_mkldnn': use_mkldnn}
+    inputs = {"X": [input]}
+    act_op = getattr(core.ops, act)
+    res = act_op(inputs, attrs)
+    return res['Out'][0]
+
+
+@dygraph_only
+def _elementwise_op_in_dygraph(x,
+                               y,
+                               axis=-1,
+                               act=None,
+                               use_mkldnn=False,
+                               op_name=None):
+    attrs = {'axis': axis, 'use_mkldnn': use_mkldnn}
+    inputs = {'X': [x], 'Y': [y]}
+    op = getattr(core.ops, op_name)
+    outs = op(inputs, attrs)
+    pre_act = outs['Out'][0]
+
+    if not act:
+        return pre_act
+    else:
+        return _append_activation_in_dygraph(
+            pre_act, act, use_mkldnn=use_mkldnn)
 
 
 def fc(input,
@@ -804,28 +846,41 @@ def dropout(x,
             droped = fluid.layers.dropout(x, dropout_prob=0.5)
     """
 
+    def get_attrs(prog, dropout_prob, is_test, seed):
+        if (seed is None or seed == 0) and prog.random_seed != 0:
+            seed = prog.random_seed
+        attrs = {
+            'dropout_prob': dropout_prob,
+            'is_test': is_test,
+            'fix_seed': seed is not None,
+            'seed': seed if seed is not None else 0,
+            'dropout_implementation': dropout_implementation,
+        }
+        return attrs
+
+    if in_dygraph_mode():
+        attrs = get_attrs(default_main_program(), dropout_prob, is_test, seed)
+        attrs['is_test'] = not _dygraph_tracer()._train_mode
+        inputs = {'X': [x]}
+        outs = core.ops.dropout(inputs, attrs)
+        return outs['Out'][0]
+
     helper = LayerHelper('dropout', **locals())
     check_type_and_dtype(x, 'x', Variable, ['float16', 'float32', 'float64'],
                          'dropout')
+
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     mask = helper.create_variable_for_type_inference(
         dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
 
-    if (seed is None or seed == 0) and helper.main_program.random_seed != 0:
-        seed = helper.main_program.random_seed
+    attrs = get_attrs(helper.main_program, dropout_prob, is_test, seed)
 
     helper.append_op(
         type='dropout',
         inputs={'X': [x]},
         outputs={'Out': [out],
                  'Mask': [mask]},
-        attrs={
-            'dropout_prob': dropout_prob,
-            'is_test': is_test,
-            'fix_seed': seed is not None,
-            'seed': seed if seed is not None else 0,
-            'dropout_implementation': dropout_implementation,
-        })
+        attrs=attrs)
     return out
 
 
@@ -1213,7 +1268,8 @@ def conv2d(input,
         name(str|None): For detailed information, please refer 
            to :ref:`api_guide_Name`. Usually name is no need to set and 
            None by default.
-        data_format (str): The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
             `[batch_size, input_channels, input_height, input_width]`.
 
@@ -1222,6 +1278,19 @@ def conv2d(input,
         same with input. If act is None, the tensor variable storing the convolution 
         result, and if act is not None, the tensor variable storing convolution 
         and non-linearity activation result.
+
+    Raises:
+        ValueError: If the type of `use_cudnn` is not bool.
+        ValueError: If `data_format` is not "NCHW" or "NHWC".
+        ValueError: If the channel dimmention of the input is less than or equal to zero.
+        ValueError: If `padding` is a string, but not "SAME" or "VALID".
+        ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0 
+            or the element corresponding to the input's channel is not 0.
+        ShapeError: If the input is not 4-D Tensor.
+        ShapeError: If the input's dimension size and filter's dimension size not equal.
+        ShapeError: If the dimension size of input minus the size of `stride` is not 2.
+        ShapeError: If the number of input channels is not equal to filter's channels * groups.
+        ShapeError: If the number of output channels is not be divided by groups.
 
     Examples:
         .. code-block:: python
@@ -1467,15 +1536,29 @@ def conv3d(input,
         name(str|None): For detailed information, please refer 
            to :ref:`api_guide_Name`. Usually name is no need to set and 
            None by default.
-        data_format (str): The data format of the input and output data. An optional string from: `"NCDHW"`, `"NDHWC"`.
-            The default is `"NCDHW"`. When it is `"NCDHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_depth, input_height, input_width]`.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
         A Variable holding Tensor representing the conv3d, whose data type is 
         the same with input. If act is None, the tensor variable storing the 
         convolution result, and if act is not None, the tensor variable storing 
         convolution and non-linearity activation result.
+
+    Raises:
+        ValueError: If the type of `use_cudnn` is not bool.
+        ValueError: If `data_format` is not "NCDHW" or "NDHWC".
+        ValueError: If the channel dimmention of the input is less than or equal to zero.
+        ValueError: If `padding` is a string, but not "SAME" or "VALID".
+        ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0 
+            or the element corresponding to the input's channel is not 0.
+        ShapeError: If the input is not 5-D Tensor.
+        ShapeError: If the input's dimension size and filter's dimension size not equal.
+        ShapeError: If the dimension size of input minus the size of `stride` is not 2.
+        ShapeError: If the number of input channels is not equal to filter's channels * groups.
+        ShapeError: If the number of output channels is not be divided by groups.
 
     Examples:
         .. code-block:: python
@@ -2404,13 +2487,14 @@ def batch_norm(input,
         sync_batch_norm automatically.
 
     Args:
-        input(variable): The rank of input variable can be 2, 3, 4, 5. The data type 
+        input(Variable): The rank of input variable can be 2, 3, 4, 5. The data type 
             is float16 or float32 or float64.
         act(string, Default None): Activation type, linear|relu|prelu|...
         is_test (bool, Default False): A flag indicating whether it is in
             test phrase or not.
-        momentum(float, Default 0.9): The value used for the moving_mean and
-            moving_var computation. The updated formula is:
+        momentum(float|Variable, Default 0.9): The value used for the moving_mean and
+            moving_var computation. This should be a float number or a Variable with
+            shape [1] and data type as float32. The updated formula is:
             :math:`moving\_mean = moving\_mean * momentum + new\_mean * (1. - momentum)`
             :math:`moving\_var = moving\_var * momentum + new\_var * (1. - momentum)`
             Default is 0.9.
@@ -2426,7 +2510,10 @@ def batch_norm(input,
 	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr. 
 	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
 	     Default: None.
-        data_layout(str, default NCHW): the data_layout of input, is NCHW or NHWC.
+        data_layout (str, optional): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`.
         in_place(bool, Default False): Make the input and output of batch norm reuse memory.
         name(str|None): For detailed information, please refer to :ref:`api_guide_Name`. 
             Usually name is no need to set and None by default. 
@@ -2456,6 +2543,33 @@ def batch_norm(input,
             x = fluid.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
             hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
             hidden2 = fluid.layers.batch_norm(input=hidden1)
+
+        .. code-block:: python
+
+            # batch_norm with momentum as Variable
+            import paddle.fluid as fluid
+            import paddle.fluid.layers.learning_rate_scheduler as lr_scheduler
+
+            def get_decay_momentum(momentum_init, decay_steps, decay_rate):
+                global_step = lr_scheduler._decay_step_counter()
+                momentum = fluid.layers.create_global_var(
+		    shape=[1],
+		    value=float(momentum_init),
+		    dtype='float32',
+		    # set persistable for save checkpoints and resume
+		    persistable=True,
+		    name="momentum")
+                div_res = global_step / decay_steps
+                decayed_momentum = momentum_init * (decay_rate**div_res)
+                fluid.layers.assign(decayed_momentum, momentum)
+
+                return momentum
+
+            x = fluid.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
+            hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
+            momentum = get_decay_momentum(0.9, 1e5, 0.9)
+            hidden2 = fluid.layers.batch_norm(input=hidden1, momentum=momentum)
+
     """
     assert bias_attr is not False, "bias_attr should not be False in batch_norm."
     helper = LayerHelper('batch_norm', **locals())
@@ -2463,6 +2577,13 @@ def batch_norm(input,
     check_type_and_dtype(input, 'input', Variable,
                          ['float16', 'float32', 'float64'], 'batch_norm')
     dtype = helper.input_dtype()
+
+    has_reserve_space = False
+    if data_layout == 'NHWC':
+        flag = os.environ.get('FLAGS_cudnn_batchnorm_spatial_persistent')
+        if flag is not None and flag.lower() in ['true', '1']:
+            has_reserve_space = True
+
     # use fp32 for bn parameter
     if dtype == core.VarDesc.VarType.FP16:
         dtype = core.VarDesc.VarType.FP32
@@ -2517,34 +2638,46 @@ def batch_norm(input,
     saved_variance = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
 
+    reserve_space = None
+    if has_reserve_space:
+        reserve_space = helper.create_variable_for_type_inference(
+            dtype=core.VarDesc.VarType.FP16, stop_gradient=True)
+
     batch_norm_out = input if in_place else helper.create_variable_for_type_inference(
         dtype)
 
+    inputs = {
+        "X": input,
+        "Scale": scale,
+        "Bias": bias,
+        "Mean": mean,
+        "Variance": variance
+    }
+    attrs = {
+        "epsilon": epsilon,
+        "is_test": is_test,
+        "data_layout": data_layout,
+        "use_mkldnn": False,
+        "fuse_with_relu": False,
+        "use_global_stats": use_global_stats
+    }
+    if isinstance(momentum, Variable):
+        inputs['MomemtumTensor'] = momentum
+    else:
+        attrs['momentum'] = momentum
+
+    outputs = {
+        "Y": batch_norm_out,
+        "MeanOut": mean_out,
+        "VarianceOut": variance_out,
+        "SavedMean": saved_mean,
+        "SavedVariance": saved_variance
+    }
+    if reserve_space is not None:
+        outputs["ReserveSpace"] = reserve_space
+
     helper.append_op(
-        type="batch_norm",
-        inputs={
-            "X": input,
-            "Scale": scale,
-            "Bias": bias,
-            "Mean": mean,
-            "Variance": variance
-        },
-        outputs={
-            "Y": batch_norm_out,
-            "MeanOut": mean_out,
-            "VarianceOut": variance_out,
-            "SavedMean": saved_mean,
-            "SavedVariance": saved_variance
-        },
-        attrs={
-            "momentum": momentum,
-            "epsilon": epsilon,
-            "is_test": is_test,
-            "data_layout": data_layout,
-            "use_mkldnn": False,
-            "fuse_with_relu": False,
-            "use_global_stats": use_global_stats
-        })
+        type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs)
 
     return helper.append_activation(batch_norm_out)
 
@@ -2672,7 +2805,10 @@ def data_norm(input,
               name=None,
               moving_mean_name=None,
               moving_variance_name=None,
-              do_model_average_for_mean_and_var=True):
+              do_model_average_for_mean_and_var=True,
+              slot_dim=-1,
+              sync_stats=False,
+              summary_decay_rate=0.9999999):
     """
     **Data Normalization Layer**
 
@@ -2700,7 +2836,10 @@ def data_norm(input,
         act(string, Default None): Activation type, linear|relu|prelu|...
         epsilon(float, Default 1e-05):
         param_attr(ParamAttr): The parameter attribute for Parameter `scale`.
-        data_layout(string, default NCHW): NCHW|NHWC
+        data_layout (str, optional): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`.
         in_place(bool, Default False): Make the input and output of batch norm reuse memory.
         name(string, Default None): A name for this layer(optional). If set None, the layer
             will be named automatically.
@@ -2708,6 +2847,16 @@ def data_norm(input,
         moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
         do_model_average_for_mean_and_var(bool, Default True): Whether parameter mean and variance
             should do model average when model average is enabled.
+        slot_dim(int): The embedding dimension of one slot. Slot is a set of one specific feature. In pslib mode, we 
+            distinguish feature ids by slot and pull their embeddings from parameter server (pslib). The first
+            place of the embedding is the historical show number (occurence time of this feature id with a label 0).
+            If the input of this op is concated by slot-wise embeddings, and the show number is zero when this slot 
+            is new or empty, the normalization result may be impractical. To avoid this, we add slot_dim to locate 
+            the show number and judge if the show number is zero. If so, we choose to skip normalization on this
+            embedding.
+        sync_stats(bool, Default False): When running with multiple GPU cards, using allreduce to sync the
+            summary messages.
+        summary_decay_rate(float, Default 0.9999999): The decay rate when updating summary.
 
     Returns:
         Variable: A tensor variable which is the result after applying data normalization on the input.
@@ -2782,10 +2931,20 @@ def data_norm(input,
             "BatchSum": batch_sum,
             "BatchSquareSum": batch_square_sum
         },
-        outputs={"Y": data_norm_out,
-                 "Means": means,
-                 "Scales": scales},
-        attrs={"epsilon": epsilon})
+        outputs={
+            "Y": data_norm_out,
+            "Means": means,
+            "Scales": scales,
+            "BatchSize": batch_size,
+            "BatchSum": batch_sum,
+            "BatchSquareSum": batch_square_sum
+        },
+        attrs={
+            "epsilon": epsilon,
+            "slot_dim": slot_dim,
+            "sync_stats": sync_stats,
+            "summary_decay_rate": summary_decay_rate
+        })
 
     return helper.append_activation(data_norm_out)
 
@@ -2944,9 +3103,10 @@ def group_norm(input,
             Default: None, the default bias parameter attribute is used. For more information, please
             refer to :ref:`api_guide_ParamAttr` .
         act(str, optional): Activation to be applied to the output of group normalizaiton.
-        data_layout(str, optional): The data format of the input and output data. An optional string
-            from: `"NCHW"`, `"NHWC"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, channels, height, width]`. Default: "NCHW".
+        data_layout(str, optional): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`.
         name (str, optional): The default value is None. Normally there is no need for user to set this
             property. For more information, please refer to :ref:`api_guide_Name` .
 
@@ -2955,6 +3115,12 @@ def group_norm(input,
 
     Raises:
         ValueError: If `data_layout` is neither 'NCHW' nor 'NHWC'.
+        ValueError: If `groups` is greater than the number of input channels.
+        ValueError: If `groups` is less than 1.
+        ShapeError: If the param_attr(Scale) is not 1-D Tensor.
+        ShapeError: If the param_attr(Scale)'s first dimension size is not equal to the input channels.
+        ShapeError: If the bias_attr(Bias) is not 1-D Tensor.
+        ShapeError: If the bias_attr(Bias)'s first dimension size is not equal to the input channels.
 
     Examples:
        .. code-block:: python
@@ -3240,9 +3406,10 @@ def conv2d_transpose(input,
         name(str, optional): For detailed information, please refer 
            to :ref:`api_guide_Name`. Usually name is no need to set and 
            None by default.
-        data_format(str, optional): The data format of the input and output data. An optional string
-            from: `"NCHW"`, `"NHWC"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`. Default: 'NCHW'.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
         A Variable holding Tensor representing the conv2d_transpose, whose 
@@ -3253,8 +3420,17 @@ def conv2d_transpose(input,
         result.
 
     Raises:
-        ValueError: If the shapes of output, input, filter_size, stride, padding and
-                    groups mismatch.
+        ValueError: If the type of `use_cudnn` is not bool.
+        ValueError: If `data_format` is not "NCHW" or "NHWC".
+        ValueError: If `padding` is a string, but not "SAME" or "VALID".
+        ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0 
+            or the element corresponding to the input's channel is not 0.
+        ValueError: If `output_size` and filter_size are None at the same time.
+        ShapeError: If the input is not 4-D Tensor.
+        ShapeError: If the input's dimension size and filter's dimension size not equal.
+        ShapeError: If the dimension size of input minus the size of `stride` is not 2.
+        ShapeError: If the number of input channels is not equal to filter's channels.
+        ShapeError: If the size of `output_size` is not equal to that of `stride`.
 
     Examples:
        .. code-block:: python
@@ -3519,9 +3695,10 @@ def conv3d_transpose(input,
         name(str, optional): For detailed information, please refer 
            to :ref:`api_guide_Name`. Usually name is no need to set and 
            None by default.
-        data_format(str, optional):The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
-            When it is `"NCHW"`, the data is stored in the order of: `[batch_size, input_channels, input_height, input_width]`.
-            Default: 'NCDHW'.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
         A Variable holding Tensor representing the conv3d_transpose, whose data 
@@ -3531,8 +3708,17 @@ def conv3d_transpose(input,
         variable storing transposed convolution and non-linearity activation result.
 
     Raises:
-        ValueError: If the shapes of output, input, filter_size, stride, padding and
-                    groups mismatch.
+        ValueError: If the type of `use_cudnn` is not bool.
+        ValueError: If `data_format` is not "NCDHW" or "NDHWC".
+        ValueError: If `padding` is a string, but not "SAME" or "VALID".
+        ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0 
+            or the element corresponding to the input's channel is not 0.
+        ValueError: If `output_size` and filter_size are None at the same time.
+        ShapeError: If the input is not 5-D Tensor.
+        ShapeError: If the input's dimension size and filter's dimension size not equal.
+        ShapeError: If the dimension size of input minus the size of `stride` is not 2.
+        ShapeError: If the number of input channels is not equal to filter's channels.
+        ShapeError: If the size of `output_size` is not equal to that of `stride`.
 
     Examples:
        .. code-block:: python
@@ -3716,21 +3902,28 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_sum(y, dim=[0, 1]) # [16, 20]
 
     """
-    helper = LayerHelper('reduce_sum', **locals())
-    check_type_and_dtype(input, 'input', Variable,
-                         ['float32', 'float64', 'int32', 'int64'], 'reduce_sum')
-    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
+    attrs = {
+        'dim': dim if dim != None else [0],
+        'keep_dim': keep_dim,
+        'reduce_all': True if dim == None else False
+    }
+
+    if in_dygraph_mode():
+        inputs = {'X': [input]}
+        outs = core.ops.reduce_sum(inputs, attrs)
+        return outs['Out'][0]
+
+    check_type_and_dtype(input, 'input', Variable,
+                         ['float32', 'float64', 'int32', 'int64'], 'reduce_sum')
+    helper = LayerHelper('reduce_sum', **locals())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     helper.append_op(
         type='reduce_sum',
         inputs={'X': input},
         outputs={'Out': out},
-        attrs={
-            'dim': dim if dim != None else [0],
-            'keep_dim': keep_dim,
-            'reduce_all': True if dim == None else False
-        })
+        attrs=attrs)
     return out
 
 
@@ -3783,22 +3976,30 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_mean(y, dim=[1, 2]) # [2.5, 6.5]
             fluid.layers.reduce_mean(y, dim=[0, 1]) # [4.0, 5.0]
     """
-    helper = LayerHelper('reduce_mean', **locals())
+
+    if dim is not None and not isinstance(dim, list):
+        dim = [dim]
+    attrs = {
+        'dim': dim if dim != None else [0],
+        'keep_dim': keep_dim,
+        'reduce_all': True if dim == None else False
+    }
+
+    if in_dygraph_mode():
+        inputs = {'X': [input]}
+        outs = core.ops.reduce_mean(inputs, attrs)
+        return outs['Out'][0]
+
     check_type_and_dtype(input, 'input', Variable,
                          ['float32', 'float64', 'int32', 'int64'],
                          'reduce_mean')
+    helper = LayerHelper('reduce_mean', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    if dim is not None and not isinstance(dim, list):
-        dim = [dim]
     helper.append_op(
         type='reduce_mean',
         inputs={'X': input},
         outputs={'Out': out},
-        attrs={
-            'dim': dim if dim != None else [0],
-            'keep_dim': keep_dim,
-            'reduce_all': True if dim == None else False
-        })
+        attrs=attrs)
     return out
 
 
@@ -4149,6 +4350,37 @@ def split(input, num_or_sections, dim=-1, name=None):
             # x1.shape [3, 3, 5]
             # x2.shape [3, 4, 5]
     """
+    if in_dygraph_mode():
+        inputs = {'X': [input]}
+        attrs = {}
+        if isinstance(dim, int):
+            dim = (len(input.shape) + dim) if dim < 0 else dim
+            attrs['axis'] = dim
+        else:
+            dim.stop_gradient = True
+            inputs['AxisTensor'] = [dim]
+
+        if isinstance(num_or_sections, int):
+            num = num_or_sections
+            attrs['num'] = num_or_sections
+            res = core.ops.split(inputs, attrs, {}, {'Out': num})
+            return res['Out']
+        elif isinstance(num_or_sections, list):
+            num = len(num_or_sections)
+            attrs['sections'] = list(
+                map(lambda ele: -1 if isinstance(ele, Variable) else ele,
+                    num_or_sections))
+            contain_var = not all(not isinstance(ele, Variable)
+                                  for ele in num_or_sections)
+            if contain_var:
+                raise TypeError(
+                    "The type of 'num_or_sections' in split must be int or list[int] in Dygraph mode, but "
+                    "received %s." % ('list[Variable]'))
+        else:
+            raise TypeError(
+                "The type of 'num_or_sections' in split must be int or list in Dygraph mode, but "
+                "received %s." % (type(num_or_sections)))
+
     if not isinstance(num_or_sections, (int, list, tuple)):
         raise TypeError(
             "The type of 'num_or_sections' in split must be int, list or "
@@ -4377,6 +4609,16 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
             y = fluid.layers.data(name='y', shape=[3, 2], dtype='float32')
             out = fluid.layers.matmul(x, y, True, True)
     """
+    attrs = {
+        'transpose_X': transpose_x,
+        'transpose_Y': transpose_y,
+        'alpha': float(alpha),
+    }
+
+    if in_dygraph_mode():
+        inputs = {'X': [x], 'Y': [y]}
+        outs = core.ops.matmul(inputs, attrs)
+        return outs['Out'][0]
 
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
@@ -4423,11 +4665,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
         inputs={'X': x,
                 'Y': y},
         outputs={'Out': out},
-        attrs={
-            'transpose_X': transpose_x,
-            'transpose_Y': transpose_y,
-            'alpha': float(alpha),
-        })
+        attrs=attrs)
     return out
 
 
@@ -4732,10 +4970,17 @@ def transpose(x, perm, name=None):
             #(3L, 2L, 4L)
 
     """
+    if in_dygraph_mode():
+        attrs = {'axis': perm}
+        inputs = {'X': [x]}
+        outs = core.ops.transpose2(inputs, attrs)
+        return outs['Out'][0]
+
     check_type_and_dtype(x, 'x', Variable,
                          ['float16', 'float32', 'float64', 'int32', 'int64'],
                          'transpose')
     check_type(perm, 'perm', list, 'transpose')
+
     if len(perm) != len(x.shape):
         raise ValueError(
             "Input(perm) is the permutation of dimensions of Input(x), "
@@ -5174,16 +5419,16 @@ def one_hot(input, depth, allow_out_of_range=False):
 
     if in_dygraph_mode():
         inputs = {'X': input}
-        attrs = {'depth': depth}
+        attrs = {'depth': depth, 'allow_out_of_range': allow_out_of_range}
     else:
         if not isinstance(depth, Variable):
             # user attribute
             inputs = {'X': input}
-            attrs = {'depth': depth}
+            attrs = {'depth': depth, 'allow_out_of_range': allow_out_of_range}
         else:
             depth.stop_gradient = True
             inputs = {'X': input, 'depth_tensor': depth}
-            attrs = {}
+            attrs = {'allow_out_of_range': allow_out_of_range}
     helper.append_op(
         type="one_hot",
         inputs=inputs,
@@ -5327,14 +5572,41 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
             reshaped_2 = fluid.layers.reshape(data_2, shape=[dim, 10])
             # the shape of reshaped_2 is [5,10].
     """
+    if in_dygraph_mode():
+        #TODO(zhiqiu): open inplace if we can.
+        if inplace:
+            warnings.warn(
+                "Inplace on reshape is not allowed and will be discarded in dygraph mode currently."
+            )
+        attrs = {}
+        if isinstance(shape, (list, tuple)):
+            contain_var = not all(not isinstance(ele, Variable)
+                                  for ele in shape)
+            if contain_var:
+                raise TypeError(
+                    "The type of 'shape' in reshape must be list[int] or tuple(int) in Dygraph mode, but "
+                    "received %s, which contains Variable." % type(shape))
+            attrs['shape'] = shape
+        else:
+            raise TypeError(
+                "The type of 'shape' in reshape must be list[int] or tuple(int) in Dygraph mode, but "
+                "received %s." % type(shape))
+
+        inputs = {'X': [x]}
+        outs = core.ops.reshape2(inputs, attrs)
+        pre_act = outs['Out'][0]
+        if act is None:
+            return pre_act
+        else:
+            return _append_activation_in_dygraph(pre_act, act)
+
     check_type_and_dtype(x, 'x', Variable,
                          ['float16', 'float32', 'float64', 'int32', 'int64'],
                          'reshape')
     check_type(shape, 'shape', (list, tuple, Variable), 'reshape')
     check_type(actual_shape, 'actual_shape', (Variable, type(None)), 'reshape')
+
     helper = LayerHelper("reshape2", **locals())
-    inputs = {"X": x}
-    attrs = {}
 
     def contain_var(one_list):
         for ele in one_list:
@@ -5382,23 +5654,20 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                         (dim_idx, str(dim_size)))
         return attrs_shape
 
-    if in_dygraph_mode():
-        inputs = {'X': x}
-        attrs = {'shape': shape}
-    else:
-        if isinstance(shape, Variable):
-            shape.stop_gradient = True
-            inputs["Shape"] = shape
-        elif isinstance(shape, (list, tuple)):
-            assert len(shape) > 0, (
-                "The size of 'shape' in reshape can't be zero, "
-                "but received %s." % len(shape))
-            attrs["shape"] = get_attr_shape(shape)
-            if contain_var(shape):
-                inputs['ShapeTensor'] = get_new_shape_tensor(shape)
-            elif isinstance(actual_shape, Variable):
-                actual_shape.stop_gradient = True
-                inputs["Shape"] = actual_shape
+    inputs = {"X": x}
+    attrs = {}
+    if isinstance(shape, Variable):
+        shape.stop_gradient = True
+        inputs["Shape"] = shape
+    elif isinstance(shape, (list, tuple)):
+        assert len(shape) > 0, ("The size of 'shape' in reshape can't be zero, "
+                                "but received %s." % len(shape))
+        attrs["shape"] = get_attr_shape(shape)
+        if contain_var(shape):
+            inputs['ShapeTensor'] = get_new_shape_tensor(shape)
+        elif isinstance(actual_shape, Variable):
+            actual_shape.stop_gradient = True
+            inputs["Shape"] = actual_shape
 
     out = x if inplace else helper.create_variable_for_type_inference(
         dtype=x.dtype)
@@ -5742,9 +6011,11 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None,
         beta (float, optional): The exponent, positive. Default:0.75
         name (str, optional): The default value is None. Normally there is no need for user to set 
             this property. For more information, please refer to :ref:`api_guide_Name` 
-        data_format(str, optional): The data format of the input and output data. An optional string
-            from: `"NCHW"`, `"NHWC"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`. Default: 'NCHW'.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`.
+        
     Returns:
         Variable: A tensor variable storing the transformation result with the same shape and data type as input.
 
@@ -6376,11 +6647,11 @@ def image_resize(input,
         align_mode(int)  :  An optional for bilinear interpolation. can be \'0\' 
                             for src_idx = scale*(dst_indx+0.5)-0.5 , can be \'1\' for 
                             src_idx = scale*dst_index.
-        data_format(str, optional): NCHW(num_batches, channels, height, width) or 
-                                    NHWC(num_batches, height, width, channels) for 4-D Tensor,
-                                    NCDHW(num_batches, channels, depth, height, width) or 
-                                    NDHWC(num_batches, depth, height, width, channels) for 5-D Tensor.
-                                    Default: 'NCHW'.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`, `"NCDHW"`,
+            `"NDHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`. When it is `"NCHW"`, the data is stored 
+            in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
 
     Returns:
         A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
@@ -6696,8 +6967,10 @@ def resize_bilinear(input,
                                 Default: None
         align_corners(bool): ${align_corners_comment}
         align_mode(bool): ${align_mode_comment}
-        data_format(str, optional): NCHW(num_batches, channels, height, width) or 
-                                    NHWC(num_batches, height, width, channels). Default: 'NCHW'.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
@@ -6858,9 +7131,10 @@ def resize_trilinear(input,
                                 Default: None
         align_corners(bool): ${align_corners_comment}
         align_mode(bool): ${align_mode_comment}
-        data_format(str, optional): NCDHW(num_batches, channels, depth, height, width) or 
-                                    NDHWC(num_batches, depth, height, width, channels).
-                                    Default: 'NCDHW'.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCDHW"`, `"NDHWC"`.
+            The default is `"NCDHW"`. When it is `"NCDHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_depth, input_height, input_width]`.
 
     Returns:
         Variable: A 5-D Tensor(NCDHW or NDHWC) 
@@ -7010,9 +7284,10 @@ def resize_nearest(input,
                                 errors would be occured in graph constructing stage.
                                 Default: None
         align_corners(bool): ${align_corners_comment}
-        data_format(str, optional): NCHW(num_batches, channels, height, width) or 
-                                    NHWC(num_batches, height, width, channels).
-                                    Default: 'NCHW'.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
 	Variable: 4-D tensor(NCHW or NHWC).
@@ -7434,7 +7709,7 @@ def scatter_nd_add(ref, index, updates, name=None):
         raise ValueError("ref and updates must have same data type.")
 
     helper = LayerHelper('scatter_nd_add', **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='ref')
     if name is None:
         output = helper.create_variable_for_type_inference(dtype)
     else:
@@ -8556,7 +8831,7 @@ def prelu(x, mode, param_attr=None, name=None):
     if mode == 'channel':
         alpha_shape = [1, x.shape[1], 1, 1]
     elif mode == 'element':
-        alpha_shape = x.shape[1:]
+        alpha_shape = [1, x.shape[1], x.shape[2], x.shape[3]]
     dtype = helper.input_dtype(input_param_name='x')
     alpha = helper.create_parameter(
         attr=helper.param_attr,
@@ -9599,6 +9874,45 @@ def slice(input, axes, starts, ends):
             # sliced_2 is input[0:3, 0:2, 2:4].
     """
 
+    def contain_var(one_list):
+        for ele in one_list:
+            if isinstance(ele, Variable):
+                return True
+        return False
+
+    if in_dygraph_mode():
+        infer_flags = list(1 for i in range(len(axes)))
+        inputs = {'Input': [input]}
+
+        if isinstance(starts, (list, tuple)):
+            if contain_var(starts):
+                raise TypeError(
+                    "The type of 'starts' in slice must be list[int] or tuple(int) in Dygraph mode, but "
+                    "received %s, which contains Variable." % type(shape))
+        else:
+            raise TypeError(
+                "The type of 'starts' in slice must be list[int] or tuple(int) in Dygraph mode, but "
+                "received %s." % type(shape))
+
+        if isinstance(ends, (list, tuple)):
+            if contain_var(ends):
+                raise TypeError(
+                    "The type of 'ends' in slice must be list[int] or tuple(int) in Dygraph mode, but "
+                    "received %s, which contains Variable." % type(shape))
+        else:
+            raise TypeError(
+                "The type of 'ends' in slice must be list[int] or tuple(int) in Dygraph mode, but "
+                "received %s." % type(shape))
+
+        attrs = {
+            'axes': axes,
+            'starts': starts,
+            'ends': ends,
+            'infer_flags': infer_flags
+        }
+        outs = core.ops.slice(inputs, attrs)
+        return outs['Out'][0]
+
     if not isinstance(starts, (list, tuple, Variable)):
         raise ValueError(
             "Input starts must be an Variable, python list or tuple.")
@@ -9607,12 +9921,6 @@ def slice(input, axes, starts, ends):
             "Input ends must be an Variable, python list or tuple.")
 
     helper = LayerHelper('slice', **locals())
-
-    def contain_var(one_list):
-        for ele in one_list:
-            if isinstance(ele, Variable):
-                return True
-        return False
 
     def get_new_list_tensor(old_list):
         new_list_tensor = []
@@ -9631,52 +9939,43 @@ def slice(input, axes, starts, ends):
     attrs = {'axes': axes}
     infer_flags = list(1 for i in range(len(axes)))
 
-    if in_dygraph_mode():
-        inputs = {'Input': input}
-        attrs = {
-            'axes': axes,
-            'starts': starts,
-            'ends': ends,
-            'infer_flags': infer_flags
-        }
-    else:
-        # starts
-        if isinstance(starts, Variable):
-            starts.stop_gradient = True
-            inputs['StartsTensor'] = starts
-            infer_flags = list(-1 for i in range(len(axes)))
-        elif isinstance(starts, (list, tuple)):
-            attrs['starts'] = []
-            if not contain_var(starts):
-                attrs['starts'] = starts
-            else:
-                inputs['StartsTensorList'] = get_new_list_tensor(starts)
-                for i, dim in enumerate(starts):
-                    if isinstance(dim, Variable):
-                        attrs['starts'].append(-1)
-                        infer_flags[i] = -1
-                    else:
-                        attrs['starts'].append(dim)
+    # starts
+    if isinstance(starts, Variable):
+        starts.stop_gradient = True
+        inputs['StartsTensor'] = starts
+        infer_flags = list(-1 for i in range(len(axes)))
+    elif isinstance(starts, (list, tuple)):
+        attrs['starts'] = []
+        if not contain_var(starts):
+            attrs['starts'] = starts
+        else:
+            inputs['StartsTensorList'] = get_new_list_tensor(starts)
+            for i, dim in enumerate(starts):
+                if isinstance(dim, Variable):
+                    attrs['starts'].append(-1)
+                    infer_flags[i] = -1
+                else:
+                    attrs['starts'].append(dim)
 
-        # ends
-        if isinstance(ends, Variable):
-            ends.stop_gradient = True
-            inputs['EndsTensor'] = ends
-            infer_flags = list(-1 for i in range(len(axes)))
-        elif isinstance(ends, (list, tuple)):
-            attrs['ends'] = []
-            if not contain_var(ends):
-                attrs['ends'] = ends
-            else:
-                inputs['EndsTensorList'] = get_new_list_tensor(ends)
-                for i, dim in enumerate(ends):
-                    if isinstance(dim, Variable):
-                        attrs['ends'].append(-1)
-                        infer_flags[i] = -1
-                    else:
-                        attrs['ends'].append(dim)
-        # infer_flags
-        attrs['infer_flags'] = infer_flags
+    # ends
+    if isinstance(ends, Variable):
+        ends.stop_gradient = True
+        inputs['EndsTensor'] = ends
+        infer_flags = list(-1 for i in range(len(axes)))
+    elif isinstance(ends, (list, tuple)):
+        attrs['ends'] = []
+        if not contain_var(ends):
+            attrs['ends'] = ends
+        else:
+            inputs['EndsTensorList'] = get_new_list_tensor(ends)
+            for i, dim in enumerate(ends):
+                if isinstance(dim, Variable):
+                    attrs['ends'].append(-1)
+                    infer_flags[i] = -1
+                else:
+                    attrs['ends'].append(dim)
+    # infer_flags
+    attrs['infer_flags'] = infer_flags
     out = helper.create_variable_for_type_inference(
         dtype=helper.input_dtype('input'))
     helper.append_op(
@@ -9728,7 +10027,7 @@ def strided_slice(input, axes, starts, ends, strides):
             Given:
                 data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
                 axes = [0, 1]
-                starts = [-1, 1000]
+                starts = [0, 1]
                 ends = [-1, 1000]
                 strides = [1, 3]
             Then:
@@ -10029,7 +10328,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
     Args:
         x(Variable): Input N-D Tensor of scale operator. Data type can be float32, float64, int8, int16, int32, int64, uint8.
-        scale(float): The scale factor of the input.
+        scale(float|Variable): The scale factor of the input, it should be a float number or a Variable with shape [1] and data type as float32.
         bias(float): The bias to be put on the input.
         bias_after_scale(bool): Apply bias addition after or before scaling. It is useful for numeric stability in some circumstances.
         act(str, optional): Activation applied to the output such as tanh, softmax, sigmoid, relu.
@@ -10054,6 +10353,27 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
             res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
             print(res) # [array([[ 3.,  5.,  7.], [ 9., 11., 13.]], dtype=float32)]
+
+        .. code-block:: python
+
+            # scale with parameter scale as Variable
+            import paddle.fluid as fluid
+            import numpy as np
+
+            inputs = fluid.layers.data(name="x", shape=[2, 3], dtype='float32')
+            scale = fluid.layers.data(name="scale", shape=[1], dtype='float32',
+                                      append_batch_size=False)
+            output = fluid.layers.scale(inputs, scale = scale, bias = 1.0)
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+
+            img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
+            scale_np = np.array([2.]).astype(np.float32)
+
+            res = exe.run(fluid.default_main_program(), feed={'x':img, 'scale':scale_np}, fetch_list=[output])
+            print(res) # [array([[ 3.,  5.,  7.], [ 9., 11., 13.]], dtype=float32)]
+
     """
 
     helper = LayerHelper('scale', **locals())
@@ -10063,15 +10383,18 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
         out = helper.create_variable(
             name=name, dtype=x.dtype, persistable=False)
 
+    inputs = {'X': x}
+    attrs = {
+        'bias': float(bias),
+        'bias_after_scale': bias_after_scale,
+    }
+    if isinstance(scale, Variable):
+        inputs['ScaleTensor'] = scale
+    else:
+        attrs['scale'] = float(scale)
+
     helper.append_op(
-        type='scale',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={
-            'scale': float(scale),
-            'bias': float(bias),
-            'bias_after_scale': bias_after_scale
-        })
+        type='scale', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return helper.append_activation(out)
 
 
@@ -10149,6 +10472,10 @@ Examples:
         print(z_value) # z.shape=[2,3,4,5]
 
     """
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name='elementwise_add')
+
     return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 
 
@@ -10226,6 +10553,10 @@ Examples:
         print(z_value) # z.shape=[2,3,4,5]
 
     """
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name='elementwise_div')
+
     return _elementwise_op(LayerHelper('elementwise_div', **locals()))
 
 
@@ -10303,6 +10634,10 @@ Examples:
         print(z_value) # z.shape=[2,3,4,5]
 
     """
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name='elementwise_sub')
+
     return _elementwise_op(LayerHelper('elementwise_sub', **locals()))
 
 
@@ -10380,6 +10715,10 @@ Examples:
         print(z_value) # z.shape=[2,3,4,5]
  
     """
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name='elementwise_mul')
+
     return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
 
 
@@ -10434,6 +10773,10 @@ Examples:
         print(z_value)#[[[[1., 1., 1., 1., 1.] .... [1., 1., 1., 1., 1.]]]]
 
     """
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name='elementwise_max')
+
     return _elementwise_op(LayerHelper('elementwise_max', **locals()))
 
 
@@ -10516,7 +10859,9 @@ Examples:
 
         print(z_value) #[2, 243, 16]
     """
-
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name='elementwise_pow')
     return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
 
 
@@ -10546,6 +10891,10 @@ Examples:
 
         print(z_value) #[1, 3, 3]
     """
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name='elementwise_mod')
+
     return _elementwise_op(LayerHelper('elementwise_mod', **locals()))
 
 
@@ -10575,6 +10924,10 @@ Examples:
 
         print(z_value) #[3, 2, 1]
     """
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name='elementwise_floordiv')
+
     return _elementwise_op(LayerHelper('elementwise_floordiv', **locals()))
 
 
@@ -11104,6 +11457,7 @@ def maxout(x, groups, name=None, axis=1):
 
     Raises:
         ValueError: If `axis` is not 1, -1 or 3.
+        ValueError: If the number of input channels can not be divisible by `groups`.
 
     Examples:
         .. code-block:: python
@@ -11264,8 +11618,11 @@ def affine_channel(x,
         bias (Variable): 1D input of shape (C), the c-th element is the bias
             of the affine transformation for the c-th channel of the input.
             The data type is float32 or float64.
-        data_layout (str, default NCHW): NCHW or NHWC. If input is 2D
-            tensor, you can ignore data_layout.
+        data_layout (str, optional): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`. If input is 2D Tensor, you can ignore 
+            data_layout.
         name (str, default None): The name of this layer. For more information,
             please refer to :ref:`api_guide_Name` .
         act (str, default None): Activation to be applied to the output of this layer.
@@ -12025,12 +12382,15 @@ class PyFuncRegistry(object):
 @templatedoc()
 def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     """
-    This API is used to register customized OP to Fluid. The forward  function 
-    of the registered OP is ``func`` and the backward function of that is 
-    ``backward_func``. Paddle will call ``func`` at forward runtime  and call 
-    ``backward_func`` at backward runtime(if ``backward_func`` is not  None). 
+    This OP is used to register customized Python OP to Paddle Fluid. The design 
+    principe of py_func is that LodTensor and numpy array can be converted to each
+    other easily. So you can use Python and numpy API to register a python OP.
+
+    The forward  function of the registered OP is ``func`` and the backward function 
+    of that is  ``backward_func``. Paddle will call ``func`` at forward runtime and 
+    call ``backward_func`` at backward runtime(if ``backward_func`` is not  None). 
     ``x`` is the input of ``func``, whose type must be LoDTensor; ``out`` is 
-    the output of ``func``, whose type can be either LoDTensor or NumPy array.
+    the output of ``func``, whose type can be either LoDTensor or numpy array.
 
     The input of the backward function ``backward_func`` is ``x``, ``out`` and 
     the gradient of ``out``. If some variables of ``out`` have no gradient, the 
@@ -12047,49 +12407,56 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     Args:
         func (callable): The forward function of the registered OP. When the network
             is running, the forward output ``out`` will be calculated according to this 
-            function and the forward input ``x``.
-        x (Variable): The input of the forward function ``func``, its type can be 
-            Variable | tuple[Variable] | list[Variale], in which Variable is LoDTensor.
-        out (Variable): The output of the forward function ``func``, its type can be
-            Variable | tuple[Variable] | list[Variale], in which Variable can be either 
-            LoDTensor or NumPy array. Since Paddle cannot automatically infer the shape
-            and data type of ``out``, ``out`` must be created in advance.
+            function and the forward input ``x``. In ``func`` , it's suggested that we 
+            actively convert LoDTensor into a numpy array, so that we can use Python and
+            numpy API arbitrarily. If not, some operations of numpy may not be compatible.
+        x (Variable|tuple(Variale)|list[Variale]): The input of the forward function ``func``. 
+            It can be Variable|tuple(Variale)|list[Variale], where Variable is LoDTensor or 
+            Tenosor. In addition, Multiple Variable should be passed in the form of tuple(Variale)
+            or list[Variale].
+        out (Variable|tuple(Variale)|list[Variale]): The output of the forward function ``func``, 
+            it can be Variable|tuple(Variale)|list[Variale], where Variable can be either LoDTensor
+            or numpy array. Since Paddle cannot automatically infer the shape and type of ``out``, 
+            you must create ``out`` in advance.
         backward_func (callable, optional): The backward function of the registered OP. 
             Its default value is None, which means there is no reverse calculation. If 
             it is not None, ``backward_func`` is called to calculate the gradient of 
             ``x`` when the network is at backward runtime.
         skip_vars_in_backward_input (Variable, optional): It's used to limit the input 
-            variable list of ``backward_func``, and it can be single Variable, tuple[Variable]
-            or list[Variable]. It must belong to either ``x`` or ``out``. The default 
-            value is None, which means that no variables need to be removed from ``x`` 
-            and ``out``. If it is not None, these variables will not be the input of 
-            ``backward_func``. This parameter is only useful when ``backward_func`` is 
-            not None.
+            variable list of ``backward_func``, and it can be Variable|tuple(Variale)|list[Variale]. 
+            It must belong to either ``x`` or ``out``. The default  value is None, which means 
+            that no variables need to be removed from ``x`` and ``out``. If it is not None, 
+            these variables will not be the input of ``backward_func``. This parameter is only 
+            useful when ``backward_func`` is not None.
     
     Returns: 
-        Variable: The output ``out`` of the forward function ``func``.
+        Variable|tuple(Variale)|list[Variale]: The output ``out`` of the forward function ``func``.
 
     Examples:
         .. code-block:: python
-
+	    
+            # example 1:
             import paddle.fluid as fluid
             import six
 
-            def create_tmp_var(name, dtype, shape):
-            return fluid.default_main_program().current_block().create_var(
-            name=name, dtype=dtype, shape=shape)
-
-            # Tanh activation function provided by Paddle C++ op
-            # Here, tanh is used as an example to show how to use py_func
+            # Creates a forward function, LodTensor can be input directly without
+            # being converted into numpy array.
             def tanh(x):
                 return np.tanh(x)
 
-            # Skip forward input x
+            # Skip x in backward function and return the gradient of x
+            # LodTensor must be actively converted to numpy array, otherwise, 
+            # operations such as +/- can't be used.
             def tanh_grad(y, dy):
                 return np.array(dy) * (1 - np.square(np.array(y)))
-
+            
+            # Creates a forward function for debugging running networks(print value)
             def debug_func(x):
                 print(x)
+            
+            def create_tmp_var(name, dtype, shape):
+                return fluid.default_main_program().current_block().create_var(
+                    name=name, dtype=dtype, shape=shape)
 
             def simple_net(img, label):
                 hidden = img
@@ -12103,28 +12470,87 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
                         out=new_hidden, backward_func=tanh_grad,
                         skip_vars_in_backward_input=hidden)
 
-                    # User-defined debugging layer, which can print out variable details
+                    # User-defined debug functions that print out the input LodTensor
                     fluid.layers.py_func(func=debug_func, x=hidden, out=None)
 
                 prediction = fluid.layers.fc(hidden, size=10, act='softmax')
                 loss = fluid.layers.cross_entropy(input=prediction, label=label)
                 return fluid.layers.mean(loss)
+
+            # example 2: 
+            # This example shows how to turn LoDTensor into numpy array and 
+            # use numpy API to register an Python OP
+            import paddle.fluid as fluid
+            import numpy as np
+
+            def element_wise_add(x, y): 
+                # LodTensor must be actively converted to numpy array, otherwise, 
+                # numpy.shape can't be used.
+                x = np.array(x)    
+                y = np.array(y)
+
+                if x.shape != y.shape:
+                    raise AssertionError("the shape of inputs must be the same!")
+
+                result = np.zeros(x.shape, dtype='int32')
+                for i in range(len(x)):
+                    for j in range(len(x[0])):
+                        result[i][j] = x[i][j] + y[i][j]
+
+                return result
+
+            def create_tmp_var(name, dtype, shape):
+                return fluid.default_main_program().current_block().create_var(
+                            name=name, dtype=dtype, shape=shape)
+
+            def py_func_demo():
+                start_program = fluid.default_startup_program()
+                main_program = fluid.default_main_program()
+
+                # Input of the forward function
+                x = fluid.data(name='x', shape=[2,3], dtype='int32')
+                y = fluid.data(name='y', shape=[2,3], dtype='int32')
+                
+                # Output of the forward function, name/dtype/shape must be specified
+                output = create_tmp_var('output','int32', [3,1])
+
+                # Multiple Variable should be passed in the form of tuple(Variale) or list[Variale]
+                fluid.layers.py_func(func=element_wise_add, x=[x,y], out=output)
+
+                exe=fluid.Executor(fluid.CPUPlace())
+                exe.run(start_program)
+
+                # Feed numpy array to main_program
+                input1 = np.random.randint(1, 10, size=[2,3], dtype='int32')
+                input2 = np.random.randint(1, 10, size=[2,3], dtype='int32')
+                out = exe.run(main_program, 
+                            feed={'x':input1, 'y':input2},
+                            fetch_list=[output.name])
+                print("{0} + {1} = {2}".format(input1, input2, out))
+
+            py_func_demo()
+
+            # Reference output:
+            # [[5, 9, 9]   + [[7, 8, 4]  =  [array([[12, 17, 13]
+            #  [7, 5, 2]]     [1, 3, 3]]            [8, 8, 5]], dtype=int32)]
     """
     helper = LayerHelper('py_func', **locals())
     if x is None:
         x = []
     elif isinstance(x, Variable):
         x = [x]
-    elif not isinstance(x, (list, tuple)):
+    elif isinstance(x, tuple):
+        x = list(x)
+    elif not isinstance(x, (list, tuple, Variable)):
         raise TypeError('Input must be Variable/list(Variable)/tuple(Variable)')
 
     if out is None:
         out_list = []
     elif isinstance(out, Variable):
         out_list = [out]
-    elif isinstance(out, (list, tuple)):
-        out_list = out
-    else:
+    elif isinstance(out, tuple):
+        out_list = list(out)
+    elif not isinstance(x, (list, tuple, Variable)):
         raise TypeError(
             'Output must be Variable/list(Variable)/tuple(Variable)')
 
@@ -12580,7 +13006,7 @@ def unique_with_counts(x, dtype='int32'):
     This OP return a unique tensor for `x` , and count tensor that the count of unqiue result in raw input, \
     and an index tensor pointing to this unique tensor. 
 
-    **NOTICE**: This op just be supported in device of CPU, and support the variable type of Tensor only.
+    **NOTICE**: This op support the variable type of Tensor only.
 
     Args:
         x(Variable): A 1-D input tensor with input shape of :math:`[N]` , the input data type is float32, float64, int32, int64.
@@ -13181,10 +13607,6 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     """
     op_type = 'shard_index'
     helper = LayerHelper(op_type, **locals())
-    if index_num % nshards != 0:
-        raise ValueError(
-            'The index_num(%d) cannot be evenly divided by nshards(%d)' %
-            (index_num, nshards))
     if shard_id < 0 or shard_id >= nshards:
         raise ValueError('The shard_id(%d) should be in [0, %d)' %
                          (shard_id, nshards))

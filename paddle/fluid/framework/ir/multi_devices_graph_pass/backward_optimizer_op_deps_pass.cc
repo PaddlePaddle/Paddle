@@ -172,46 +172,32 @@ class BackWardOpDepsPass : public ir::Pass {
   void GetBackWardOpHandles(
       ir::Node* node, std::vector<details::OpHandleBase*>* backward_op_handles,
       details::ParamsAndGrads* params_grads) const {
-    try {
-      bool is_bk_op =
-          static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
-                                OpProtoAndCheckerMaker::OpRoleAttrName())) &
-                            static_cast<int>(OpRole::kBackward));
-      if (!is_bk_op) return;
+    auto& op_desc = *(node->Op());
+    bool is_bk_op = details::IsOpRole(op_desc, OpRole::kBackward);
+    if (!is_bk_op) return;
 
-      // Currently, we assume that once gradient is generated, it can be
-      // broadcast, and each gradient is only broadcast once.
-      auto backward_vars =
-          boost::get<std::vector<std::string>>(node->Op()->GetNullableAttr(
-              OpProtoAndCheckerMaker::OpRoleVarAttrName()));
-      PADDLE_ENFORCE_EQ(backward_vars.size() % 2, static_cast<size_t>(0));
-      PADDLE_ENFORCE(node->IsWrappedBy<details::OpHandleBase>());
+    // Currently, we assume that once gradient is generated, it can be
+    // broadcast, and each gradient is only broadcast once.
+    auto backward_vars = details::GetOpRoleVarsOrEmpty(op_desc);
+    PADDLE_ENFORCE_EQ(node->IsWrappedBy<details::OpHandleBase>(), true,
+                      platform::errors::InvalidArgument(
+                          "Node must be wrapped by OpHandleBase"));
 
-      backward_op_handles->emplace_back(
-          &node->Wrapper<details::OpHandleBase>());
+    backward_op_handles->emplace_back(&node->Wrapper<details::OpHandleBase>());
 
-      for (size_t i = 0; i < backward_vars.size(); i += 2) {
-        VLOG(10) << "Trainable parameter: " << backward_vars[i]
-                 << ", gradient: " << backward_vars[i + 1];
+    for (size_t i = 0; i < backward_vars.size(); i += 2) {
+      VLOG(10) << "Trainable parameter: " << backward_vars[i]
+               << ", gradient: " << backward_vars[i + 1];
 
-        params_grads->emplace_back(std::make_pair(
-            backward_vars[i] /*param*/, backward_vars[i + 1] /*grad*/));
-      }
-    } catch (boost::bad_get e) {
+      params_grads->emplace_back(std::make_pair(backward_vars[i] /*param*/,
+                                                backward_vars[i + 1] /*grad*/));
     }
   }
 
   void GetOptimizerOpHandles(
       ir::Node* node, std::vector<details::OpHandleBase*>* opt_handles) const {
-    try {
-      bool is_opt_op =
-          static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
-                                OpProtoAndCheckerMaker::OpRoleAttrName())) &
-                            static_cast<int>(OpRole::kOptimize));
-      if (!is_opt_op) return;
-
+    if (details::IsOpRole(*(node->Op()), OpRole::kOptimize)) {
       opt_handles->emplace_back(&node->Wrapper<details::OpHandleBase>());
-    } catch (boost::bad_get e) {
     }
   }
 };

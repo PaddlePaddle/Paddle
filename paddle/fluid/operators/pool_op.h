@@ -35,6 +35,10 @@ class PoolOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override;
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const;
 };
 
 class PoolOpGrad : public framework::OperatorWithKernel {
@@ -57,17 +61,19 @@ class Pool3dOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override;
 };
-inline void UpdatePadding(std::vector<int>* paddings, const bool global_pooling,
+
+template <typename T = int>
+inline void UpdatePadding(std::vector<T>* paddings, const bool global_pooling,
                           const bool adaptive,
                           const std::string padding_algorithm,
                           const framework::DDim data_dims,
-                          const std::vector<int>& strides,
-                          const std::vector<int>& ksize) {
+                          const std::vector<T>& strides,
+                          const std::vector<T>& ksize) {
   // set padding size == data_dims.size() * 2
-  auto data_shape = framework::vectorize<int>(data_dims);
-  if (paddings->size() == data_dims.size()) {
-    for (size_t i = 0; i < data_dims.size(); ++i) {
-      int copy_pad = *(paddings->begin() + 2 * i);
+  auto data_shape = framework::vectorize<T>(data_dims);
+  if (static_cast<int>(paddings->size()) == data_dims.size()) {
+    for (int i = 0; i < data_dims.size(); ++i) {
+      T copy_pad = *(paddings->begin() + 2 * i);
       paddings->insert(paddings->begin() + 2 * i + 1, copy_pad);
     }
   } else {
@@ -79,11 +85,12 @@ inline void UpdatePadding(std::vector<int>* paddings, const bool global_pooling,
   // when padding_algorithm is "VALID" or "SAME"
   if (padding_algorithm == "SAME") {
     for (int i = 0; i < data_dims.size(); ++i) {
-      int out_size = (data_dims[i] + strides[i] - 1) / strides[i];
-      int pad_sum =
-          std::max((out_size - 1) * strides[i] + ksize[i] - data_shape[i], 0);
-      int pad_0 = pad_sum / 2;
-      int pad_1 = pad_sum - pad_0;
+      T out_size = (data_dims[i] + strides[i] - 1) / strides[i];
+      T pad_sum =
+          std::max((out_size - 1) * strides[i] + ksize[i] - data_shape[i],
+                   static_cast<T>(0));
+      T pad_0 = pad_sum / 2;
+      T pad_1 = pad_sum - pad_0;
       *(paddings->begin() + i * 2) = pad_0;
       *(paddings->begin() + i * 2 + 1) = pad_1;
     }
@@ -101,11 +108,12 @@ inline void UpdatePadding(std::vector<int>* paddings, const bool global_pooling,
   }
 }
 
-inline void UpdateKsize(std::vector<int>* ksize,
+template <typename T = int>
+inline void UpdateKsize(std::vector<T>* ksize,
                         const framework::DDim data_dims) {
   ksize->resize(static_cast<size_t>(data_dims.size()));
   for (size_t i = 0; i < ksize->size(); ++i) {
-    *(ksize->begin() + i) = static_cast<int>(data_dims[i]);
+    *(ksize->begin() + i) = static_cast<T>(data_dims[i]);
   }
 }
 
@@ -140,8 +148,8 @@ class PoolKernel : public framework::OpKernel<T> {
 
     UpdatePadding(&paddings, global_pooling, adaptive, padding_algorithm,
                   data_dims, strides, ksize);
-    if (data_dims.size() * 2 == paddings.size()) {
-      for (size_t i = 0; i < data_dims.size(); ++i) {
+    if (data_dims.size() * 2 == static_cast<int>(paddings.size())) {
+      for (int i = 0; i < data_dims.size(); ++i) {
         paddings.erase(paddings.begin() + i + 1);
       }
     }
@@ -226,8 +234,8 @@ class PoolGradKernel : public framework::OpKernel<T> {
     }
     UpdatePadding(&paddings, global_pooling, adaptive, padding_algorithm,
                   data_dims, strides, ksize);
-    if (data_dims.size() * 2 == paddings.size()) {
-      for (size_t i = 0; i < data_dims.size(); ++i) {
+    if (data_dims.size() * 2 == static_cast<int>(paddings.size())) {
+      for (int i = 0; i < data_dims.size(); ++i) {
         paddings.erase(paddings.begin() + i + 1);
       }
     }

@@ -389,7 +389,7 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
       const T* c0_data = c0->data<T>();
       prev_h_data = reordered_h0_data;
       prev_c_data = reordered_c0_data;
-      size_t sz = sizeof(T) * D;
+      size_t sz = D;
       for (int i = 0; i < max_bs; ++i) {
         blas.VCOPY(sz, h0_data + seq_order[i] * D, reordered_h0_data);
         blas.VCOPY(sz, c0_data + seq_order[i] * D, reordered_c0_data);

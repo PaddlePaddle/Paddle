@@ -73,6 +73,13 @@ Output(Indices) gives the sorted order along the given axis Attr(axis).
                  "When axis < 0, the actual axis will be the |axis|'th "
                  "counting backwards. Default -1, the last dimension.")
         .SetDefault(-1);
+    AddAttr<bool>(
+        "descending",
+        "(bool, default false) The descending attribute is a flag to tell"
+        "algorithm how to sort the input data."
+        "If descending is true, will sort by descending order,"
+        "else if false, sort by ascending order. Default value is false.")
+        .SetDefault(false);
   }
 };
 
@@ -86,4 +93,6 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(argsort,
                        ops::ArgsortKernel<paddle::platform::CPUPlace, float>,
-                       ops::ArgsortKernel<paddle::platform::CPUPlace, double>);
+                       ops::ArgsortKernel<paddle::platform::CPUPlace, double>,
+                       ops::ArgsortKernel<paddle::platform::CPUPlace, int>,
+                       ops::ArgsortKernel<paddle::platform::CPUPlace, int64_t>);

@@ -55,7 +55,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
   VLOG(6) << "Find " << fuse_op_type << " operators : " << opt_ops_num
           << ", and " << opt_nodes.size() << " for dense gradients.";
 
-  if (opt_nodes.size() == 0) return;
+  if (opt_nodes.size() <= 1) return;
   if (result.Has(details::kFusedOptType)) {
     auto &opt_type = result.Get<details::FusedOptType>(details::kFusedOptType);
     VLOG(6) << "Currently only support fusing one type of optimizer op, "
@@ -416,6 +416,8 @@ void FuseOptimizerOpPass::FuseVarsToContinuousSpace(
       result->Get<details::ProgramDescs>(details::kProgramDescs).back();
   auto *global_block = program_desc.MutableBlock(0);
   for (auto &var_name : aux_var_names) {
+    VLOG(6) << "aux_var_names : " << var_name
+            << ". fused_vars_name: " << fused_vars_name.at(var_name);
     AppendCoalesceTensorOp(aux_var_map.at(var_name), aux_var_map.at(var_name),
                            fused_vars_name.at(var_name), dtype, global_block,
                            true);

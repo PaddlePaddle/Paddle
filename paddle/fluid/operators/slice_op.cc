@@ -271,10 +271,18 @@ class SliceOpGradMaker : public framework::SingleGradOpMaker<T> {
   std::unique_ptr<T> Apply() const override {
     auto *bind = new T();
     bind->SetInput("Input", this->Input("Input"));
-    bind->SetInput("StartsTensor", this->Input("StartsTensor"));
-    bind->SetInput("EndsTensor", this->Input("EndsTensor"));
-    bind->SetInput("StartsTensorList", this->Input("StartsTensorList"));
-    bind->SetInput("EndsTensorList", this->Input("EndsTensorList"));
+    if (this->HasInput("StartsTensor")) {
+      bind->SetInput("StartsTensor", this->Input("StartsTensor"));
+    }
+    if (this->HasInput("EndsTensor")) {
+      bind->SetInput("EndsTensor", this->Input("EndsTensor"));
+    }
+    if (this->HasInput("StartsTensorList")) {
+      bind->SetInput("StartsTensorList", this->Input("StartsTensorList"));
+    }
+    if (this->HasInput("EndsTensorList")) {
+      bind->SetInput("EndsTensorList", this->Input("EndsTensorList"));
+    }
     bind->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     bind->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
     bind->SetAttrMap(this->Attrs());
