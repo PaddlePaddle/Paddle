@@ -241,6 +241,21 @@ void GradientAccumulate(std::shared_ptr<VarBase> src_varbase,
   auto* dst_var = dst_varbase->MutableVar();
   auto* src_var = src_varbase->MutableVar();
 
+  // Note(wangzhongpu) Because dst_var may not be initialized at this time,
+  //   you need to determine whether it is initialized.
+  // 1.  if src_var's type is SelectedRows:
+  // 1.1 (1) if dst_var is not initialized or (2) dst_var is initialized but
+  //     dst_var's type is SelectedRows and SelectedRows is not initialized;
+  //     yot need use std::move to initialize dst_var.
+  // 1.2 Except 1.1, if dst_var is parameter, grad accumulate; otherwise use
+  //     std::move to initialize dst_var.
+  // 2.  if src_var's type is LoDTensor:
+  // 2.1 (1) if dst_var is not initialized or (2) dst_var is initialized but
+  //     dst_var's type is LoDTensor and dst_var is not initialized; yot need
+  //     use std::move to initialize dst_var or (3) dst_var is initialized
+  //     and dst_var's type is SelectedRows.
+  // 2.2 Except 2.1, if dst_var is parameter, grad accumulate; otherwise use
+  //     std::move to initialize dst_var.
   if (src_var->IsType<framework::SelectedRows>()) {
     if ((!dst_var->IsInitialized()) ||
         (dst_var->IsInitialized() &&
@@ -250,10 +265,6 @@ void GradientAccumulate(std::shared_ptr<VarBase> src_varbase,
       std::shared_ptr<VarBase> temp =
           SelectedRowsMerge(*src_var, *dst_var, false);
       *dst_var = std::move(*(temp->MutableVar()));
-    } else if (dst_var->IsInitialized() &&
-               dst_var->IsType<framework::LoDTensor>() &&
-               (!dst_var->Get<framework::LoDTensor>().IsInitialized())) {
-      *dst_var = std::move(*(src_varbase->MutableVar()));
     } else {
       if (dst_varbase->Trainable()) {
         VarBaseAdd(src_varbase, dst_varbase);
@@ -267,10 +278,7 @@ void GradientAccumulate(std::shared_ptr<VarBase> src_varbase,
   } else {
     if ((!dst_var->IsInitialized()) ||
         (dst_var->IsInitialized() && dst_var->IsType<framework::LoDTensor>() &&
-         (!dst_var->Get<framework::LoDTensor>().IsInitialized())) ||
-        (dst_var->IsInitialized() &&
-         dst_var->IsType<framework::SelectedRows>() &&
-         (!dst_var->Get<framework::SelectedRows>().value().IsInitialized()))) {
+         (!dst_var->Get<framework::LoDTensor>().IsInitialized()))) {
       *dst_var = std::move(*(src_varbase->MutableVar()));
     } else {
       if (dst_varbase->Trainable()) {

@@ -305,7 +305,7 @@ void BindImperative(py::module *m_ptr) {
            [](imperative::VarBase &self, framework::proto::VarType::Type dtype,
               const std::vector<int> &dims, const py::handle &name,
               framework::proto::VarType::Type type, bool persistable,
-              bool trainable = false) {
+              bool trainable) {
              std::string act_name = "";
              if (!name.ptr() || name.ptr() == Py_None) {
                act_name = imperative::GetCurrentTracer()->GenerateUniqueName(

@@ -78,8 +78,6 @@ class Test_Grad_Accumulate(unittest.TestCase):
                             fluid.default_main_program().random_seed = seed
                             backward_strategy = fluid.dygraph.BackwardStrategy()
                             backward_strategy.sort_sum_gradient = sort_sum_gradient
-                            adam = fluid.optimizer.SGDOptimizer(
-                                learning_rate=0.001)
 
                             input_word = np.array(
                                 [0, 1, 2, 3, 4, 5, 6, 7, 8]).reshape(
@@ -98,6 +96,9 @@ class Test_Grad_Accumulate(unittest.TestCase):
                                 init_scale=0.1,
                                 is_sparse=is_sparse,
                                 dtype=dtype)
+                            adam = fluid.optimizer.SGDOptimizer(
+                                learning_rate=0.001,
+                                parameter_list=simplenet.parameters())
                             outs = simplenet(input, y)
                             outs = outs / 2
                             outs.backward(backward_strategy)
@@ -115,8 +116,6 @@ class Test_Grad_Accumulate(unittest.TestCase):
                             fluid.default_main_program().random_seed = seed
                             backward_strategy = fluid.dygraph.BackwardStrategy()
                             backward_strategy.sort_sum_gradient = sort_sum_gradient
-                            adam = fluid.optimizer.SGDOptimizer(
-                                learning_rate=0.001)
 
                             input_word = np.array([
                                 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6,
@@ -138,6 +137,9 @@ class Test_Grad_Accumulate(unittest.TestCase):
                                 init_scale=0.1,
                                 is_sparse=is_sparse,
                                 dtype=dtype)
+                            adam = fluid.optimizer.SGDOptimizer(
+                                learning_rate=0.001,
+                                parameter_list=simplenet.parameters())
                             outs = simplenet(input, y)
                             outs.backward(backward_strategy)
                             emb_gradient_one_large_batch = simplenet.embedding._w.gradient(
@@ -165,8 +167,6 @@ class Test_Grad_Accumulate(unittest.TestCase):
                             fluid.default_main_program().random_seed = seed
                             backward_strategy = fluid.dygraph.BackwardStrategy()
                             backward_strategy.sort_sum_gradient = sort_sum_gradient
-                            adam = fluid.optimizer.SGDOptimizer(
-                                learning_rate=0.001)
 
                             input_word = np.array(
                                 [0, 1, 2, 3, 4, 5, 6, 7, 8]).reshape(
@@ -185,6 +185,9 @@ class Test_Grad_Accumulate(unittest.TestCase):
                                 init_scale=0.1,
                                 is_sparse=is_sparse,
                                 dtype=dtype)
+                            adam = fluid.optimizer.SGDOptimizer(
+                                learning_rate=0.001,
+                                parameter_list=simplenet.parameters())
                             outs = simplenet(input, y)
                             outs = outs / 2
                             outs.backward(backward_strategy)
@@ -202,8 +205,6 @@ class Test_Grad_Accumulate(unittest.TestCase):
                             fluid.default_main_program().random_seed = seed
                             backward_strategy = fluid.dygraph.BackwardStrategy()
                             backward_strategy.sort_sum_gradient = sort_sum_gradient
-                            adam = fluid.optimizer.SGDOptimizer(
-                                learning_rate=0.001)
 
                             input_word = np.array([
                                 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6,
@@ -225,6 +226,9 @@ class Test_Grad_Accumulate(unittest.TestCase):
                                 init_scale=0.1,
                                 is_sparse=is_sparse,
                                 dtype=dtype)
+                            adam = fluid.optimizer.SGDOptimizer(
+                                learning_rate=0.001,
+                                parameter_list=simplenet.parameters())
                             outs = simplenet(input, y)
                             outs.backward(backward_strategy)
                             emb_gradient_one_large_batch = simplenet.embedding._w.gradient(
@@ -245,14 +249,15 @@ class Test_Grad_Accumulate(unittest.TestCase):
                         with fluid.dygraph.guard(place):
                             backward_strategy = fluid.dygraph.BackwardStrategy()
                             backward_strategy.sort_sum_gradient = sort_sum_gradient
-                            adam = fluid.optimizer.SGDOptimizer(
-                                learning_rate=0.001)
 
                             input_word = np.array(
                                 [[[1], [2]], [[2], [1]]]).astype('int64')
                             input = base.to_variable(input_word)
                             simplenet = SimpleNetSharedEmbedding(20, 32, dtype,
                                                                  is_sparse)
+                            adam = fluid.optimizer.SGDOptimizer(
+                                learning_rate=0.001,
+                                parameter_list=simplenet.parameters())
                             input_emb, emb = simplenet(input)
                             input_emb.backward(backward_strategy)
                             adam.minimize(input_emb)
@@ -284,14 +289,15 @@ class Test_Grad_Accumulate(unittest.TestCase):
                         with fluid.dygraph.guard(place):
                             backward_strategy = fluid.dygraph.BackwardStrategy()
                             backward_strategy.sort_sum_gradient = sort_sum_gradient
-                            adam = fluid.optimizer.SGDOptimizer(
-                                learning_rate=0.001)
 
                             input_word = np.array(
                                 [[[1], [2]], [[2], [1]]]).astype('int64')
                             input = base.to_variable(input_word)
                             simplenet = SimpleNetOnlyEmbedding(20, 32, dtype,
                                                                is_sparse)
+                            adam = fluid.optimizer.SGDOptimizer(
+                                learning_rate=0.001,
+                                parameter_list=simplenet.parameters())
                             input_emb, emb = simplenet(input)
                             input_emb.backward(backward_strategy)
                             adam.minimize(input_emb)
@@ -329,8 +335,6 @@ class Test_Grad_Accumulate(unittest.TestCase):
                             fluid.default_main_program().random_seed = seed
                             backward_strategy = fluid.dygraph.BackwardStrategy()
                             backward_strategy.sort_sum_gradient = sort_sum_gradient
-                            adam = fluid.optimizer.SGDOptimizer(
-                                learning_rate=0.001)
 
                             input_word = np.array(
                                 [0, 1, 2, 3, 4, 5, 6, 7, 8]).reshape(
@@ -349,6 +353,9 @@ class Test_Grad_Accumulate(unittest.TestCase):
                                 init_scale=0.1,
                                 is_sparse=is_sparse,
                                 dtype=dtype)
+                            adam = fluid.optimizer.SGDOptimizer(
+                                learning_rate=0.001,
+                                parameter_list=simplenet.parameters())
                             outs = simplenet(input, y)
                             outs.backward(backward_strategy)
                             emb_gradient = simplenet.embedding._w.gradient()
@@ -372,14 +379,15 @@ class Test_Grad_Accumulate(unittest.TestCase):
                         with fluid.dygraph.guard(place):
                             backward_strategy = fluid.dygraph.BackwardStrategy()
                             backward_strategy.sort_sum_gradient = sort_sum_gradient
-                            adam = fluid.optimizer.SGDOptimizer(
-                                learning_rate=0.001)
 
                             input_word = np.array(
                                 [[[1], [2]], [[2], [1]]]).astype('int64')
                             input = base.to_variable(input_word)
                             simplenet = SimpleNetSharedEmbedding(20, 32, dtype,
                                                                  is_sparse)
+                            adam = fluid.optimizer.SGDOptimizer(
+                                learning_rate=0.001,
+                                parameter_list=simplenet.parameters())
                             input_emb, emb = simplenet(input)
                             input_emb.backward(backward_strategy)
                             adam.minimize(input_emb)
@@ -410,14 +418,15 @@ class Test_Grad_Accumulate(unittest.TestCase):
                         with fluid.dygraph.guard(place):
                             backward_strategy = fluid.dygraph.BackwardStrategy()
                             backward_strategy.sort_sum_gradient = sort_sum_gradient
-                            adam = fluid.optimizer.SGDOptimizer(
-                                learning_rate=0.001)
 
                             input_word = np.array(
                                 [[[1], [2]], [[2], [1]]]).astype('int64')
                             input = base.to_variable(input_word)
                             simplenet = SimpleNetOnlyEmbedding(20, 32, dtype,
                                                                is_sparse)
+                            adam = fluid.optimizer.SGDOptimizer(
+                                learning_rate=0.001,
+                                parameter_list=simplenet.parameters())
                             input_emb, emb = simplenet(input)
                             input_emb.backward(backward_strategy)
                             emb_gradient = emb._w.gradient()
