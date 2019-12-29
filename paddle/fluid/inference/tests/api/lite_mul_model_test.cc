@@ -18,11 +18,13 @@ limitations under the License. */
 
 #include <cmath>
 
+/*
 #ifdef PADDLE_WITH_LITE
 #include "lite/api/paddle_use_kernels.h"
 #include "lite/api/paddle_use_ops.h"
 #include "lite/api/paddle_use_passes.h"
 #endif
+*/
 
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 

@@ -22,9 +22,11 @@
 #include "paddle/fluid/operators/lite/lite_engine_op.h"
 #include "paddle/fluid/operators/lite/ut_helper.h"
 
+/*
 #include "lite/api/paddle_use_kernels.h"
 #include "lite/api/paddle_use_ops.h"
 #include "lite/api/paddle_use_passes.h"
+*/
 
 USE_NO_KERNEL_OP(lite_engine)
 
