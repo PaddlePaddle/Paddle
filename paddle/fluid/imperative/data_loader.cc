@@ -70,9 +70,9 @@ void EraseLoadProcessPID(int64_t key) {
     SIGNAL_HANDLE(SIGNAL);                                        \
   }
 
-REGISTER_SIGNAL_HANDLER(SIGSEGV, handler_SIGSEGV);
-REGISTER_SIGNAL_HANDLER(SIGBUS, handler_SIGBUS);
-REGISTER_SPEC_SIGNAL_HANDLER(SIGTERM, handler_SIGTERM);
+REGISTER_SIGNAL_HANDLER(SIGSEGV, SIGSEGV_handler);
+REGISTER_SIGNAL_HANDLER(SIGBUS, SIGBUS_handler);
+REGISTER_SPEC_SIGNAL_HANDLER(SIGTERM, SIGTERM_handler);
 
 static inline void setSignalHandler(int signal,
                                     void (*handler)(int, siginfo_t *, void *),
@@ -89,9 +89,9 @@ static inline void setSignalHandler(int signal,
 
 // Note: maybe need to add other signal handler
 void SetLoadProcessSignalHandler() {
-  setSignalHandler(SIGSEGV, &handler_SIGSEGV, nullptr);
-  setSignalHandler(SIGBUS, &handler_SIGBUS, nullptr);
-  setSignalHandler(SIGTERM, &handler_SIGTERM, nullptr);
+  setSignalHandler(SIGSEGV, &SIGSEGV_handler, nullptr);
+  setSignalHandler(SIGBUS, &SIGBUS_handler, nullptr);
+  setSignalHandler(SIGTERM, &SIGTERM_handler, nullptr);
 }
 
 void ThrowErrorIfLoadProcessFailed() {

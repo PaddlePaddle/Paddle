@@ -19,6 +19,7 @@ import unittest
 import multiprocessing
 import time
 
+import paddle.compat as cpt
 from paddle.fluid import core
 
 
@@ -37,27 +38,53 @@ def set_child_signal_handler(self, child_pid):
 
 
 class TestDygraphDataLoaderSingalHandler(unittest.TestCase):
-    def kill_child_process_by_signal(self, sig):
+    def test_child_process_exit_will_error(self):
         def __test_process__():
             core._set_process_signal_handler()
+            sys.exit(1)
+
+        exception = None
+        try:
+            test_process = multiprocessing.Process(target=__test_process__)
+            test_process.start()
+
+            set_child_signal_handler(id(self), test_process.pid)
             time.sleep(1)
-            os.kill(os.getpid(), sig)
+        except core.EnforceNotMet as ex:
+            self.assertIn("FatalError", cpt.get_exception_message(ex))
+            exception = ex
+
+        self.assertIsNotNone(exception)
+
+    def test_child_process_killed_by_sigsegv(self):
+        def __test_process__():
+            core._set_process_signal_handler()
+            os.kill(os.getpid(), signal.SIGSEGV)
+
+        exception = None
+        try:
+            test_process = multiprocessing.Process(target=__test_process__)
+            test_process.start()
+
+            set_child_signal_handler(id(self), test_process.pid)
+            time.sleep(1)
+        except core.EnforceNotMet as ex:
+            self.assertIn("FatalError", cpt.get_exception_message(ex))
+            exception = ex
+
+        self.assertIsNotNone(exception)
+
+    def test_child_process_killed_by_sigterm(self):
+        def __test_process__():
+            core._set_process_signal_handler()
+            time.sleep(10)
 
         test_process = multiprocessing.Process(target=__test_process__)
         test_process.daemon = True
         test_process.start()
 
         set_child_signal_handler(id(self), test_process.pid)
-        test_process.join()
-
-    def test_child_process_killed_by_sigsegv(self):
-        self.kill_child_process_by_signal(signal.SIGSEGV)
-
-    def test_child_process_killed_by_sigbus(self):
-        self.kill_child_process_by_signal(signal.SIGBUS)
-
-    def test_child_process_killed_by_sigterm(self):
-        self.kill_child_process_by_signal(signal.SIGTERM)
+        time.sleep(1)
 
 
 if __name__ == '__main__':

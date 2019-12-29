@@ -424,7 +424,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
             # with SIGSEGV and SIGBUS of child process; 2. if the main process end before child
             # process, it shuts the all its daemonic children down with a SIGTERM (instead of 
             # joining them without a timeout), so here nedd to deal with SIGTERM.
-            self.__set_child_signal_handler()
+            self._set_child_signal_handler()
 
             # Set reader_thread
             self._thread_done_event = threading.Event()
@@ -470,7 +470,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
                 " to locate the data causes this issue.\n\t* Please consider using "
                 "'fluid.create_lod_tensor' to convert it to a LoD-Tensor.")
 
-    def __set_child_signal_handler(self):
+    def _set_child_signal_handler(self):
         core._set_process_pid(id(self), self._process.pid)
         current_handler = signal.getsignal(signal.SIGCHLD)
         if not callable(current_handler):
