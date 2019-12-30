@@ -368,7 +368,7 @@ class TestLayer(LayerTest):
                 filter_size=[2, 2],
                 bias_attr=False)
             dy_ret = conv2d(base.to_variable(images))
-            self.assertTrue(conv2d._bias_param is None)
+            self.assertTrue(conv2d.bias is None)
 
         self.assertTrue(np.allclose(static_ret, dy_ret_value))
         self.assertTrue(np.allclose(static_ret, static_ret2))
