@@ -43,14 +43,14 @@ public:
 
   virtual ~HdfsStore() {}
 
-  void set(const std::string& key, const std::vector<char>& data) override;
+  virtual void set(const std::string& key, const std::vector<char>& data);
 
-  std::vector<char> get(const std::string& key) override;
+  virtual std::vector<char> get(const std::string& key);
 
-  void wait(const std::vector<std::string>& keys) override;
+  virtual void wait(const std::vector<std::string>& keys);
 
-  void wait(const std::vector<std::string>& keys,
-            const std::chrono::milliseconds& timeout) override;
+  virtual void wait(const std::vector<std::string>& keys,
+                    const std::chrono::milliseconds& timeout);
 
 protected:
 
@@ -124,7 +124,7 @@ public:
 
 protected:
   bool is_initialized_ = false;
-  std::shared_ptr<gloo::Context> context_ = nullptr;;
+  std::shared_ptr<gloo::Context> context_ = nullptr;
   int rank_ = 0;
   int size_ = 0;
 
