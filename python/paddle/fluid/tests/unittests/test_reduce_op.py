@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
@@ -50,7 +50,7 @@ class TestMeanOp(OpTest):
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
 
-
+@skip_check_grad_ci(reason="reduce_max is discontinuous non-derivable function, its gradient check is not supported by unittest framework")
 class TestMaxOp(OpTest):
     """Remove Max with subgradient from gradient check to confirm the success of CI."""
 
@@ -65,10 +65,7 @@ class TestMaxOp(OpTest):
     def test_check_output(self):
         self.check_output()
 
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
-
-
+@skip_check_grad_ci(reason="reduce_min is discontinuous non-derivable function, its gradient check is not supported by unittest framework")
 class TestMinOp(OpTest):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
@@ -82,9 +79,6 @@ class TestMinOp(OpTest):
 
     def test_check_output(self):
         self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
 
 
 class TestProdOp(OpTest):
