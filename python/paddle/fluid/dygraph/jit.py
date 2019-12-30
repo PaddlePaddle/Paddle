@@ -279,14 +279,7 @@ class TracedLayer(object):
                 model. Default None.
 
         Returns:
-            A tuple of two lists. The first list is the feed variable's
-            names of the saved inference model, and the second list is the
-            fetch variable's names of the saved inference model. These two
-            lists can be used when users want to load inference model in 
-            Python and run the program in static graph mode.    
-
-        Return Type:
-            tuple
+            None
 
         Examples:
             .. code-block:: python:
@@ -303,15 +296,22 @@ class TracedLayer(object):
                     def forward(self, input):
                         return self._fc(input)
 
+                save_dirname = './saved_infer_model'
+                in_np = np.random.random([2, 3]).astype('float32')
+
                 with fluid.dygraph.guard():
                     layer = ExampleLayer()
-                    in_np = np.random.random([2, 3]).astype('float32')
                     in_var = to_variable(in_np)
                     out_dygraph, static_layer = TracedLayer.trace(layer, inputs=[in_var])
-                    feed_var_names, fetch_var_names = static_layer.save_inference_model(
-                                './saved_infer_model', feed=[0], fetch=[0])
-                    print(feed_var_names) # [u'feed_0']
-                    print(fetch_var_names) # [u'save_infer_model/scale_0']
+                    static_layer.save_inference_model(save_dirname, feed=[0], fetch=[0])
+                
+                place = fluid.CPUPlace() 
+                exe = fluid.Executor(place)
+                program, feed_vars, fetch_vars = fluid.io.load_inference_model(save_dirname,
+                                                    exe) 
+
+                fetch, = exe.run(program, feed={feed_vars[0]: in_np}, fetch_list=fetch_vars)
+                print(fetch.shape) # (2, 10)
         """
         from paddle.fluid.io import save_inference_model
 
@@ -330,11 +330,9 @@ class TracedLayer(object):
                 assert target_var is not None, "{} cannot be found".format(name)
                 target_vars.append(target_var)
 
-            fetched_var_names = save_inference_model(
+            save_inference_model(
                 dirname=dirname,
                 feeded_var_names=feeded_var_names,
                 target_vars=target_vars,
                 executor=self._exe,
                 main_program=self._program.clone())
-
-            return feeded_var_names, fetched_var_names
