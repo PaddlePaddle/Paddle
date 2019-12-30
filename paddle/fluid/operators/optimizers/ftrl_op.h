@@ -159,7 +159,7 @@ class FTRLOpKernel : public framework::OpKernel<T> {
           }
         }
       } else {
-        PADDLE_THROW("Unsupported Variable Type of Grad");
+        PADDLE_THROW("Unsupported Variable Type of Gradient.");
       }
     } else if (param_var->IsType<framework::SelectedRows>()) {
       auto lr = *ctx.Input<framework::Tensor>("LearningRate")->data<T>();
@@ -241,7 +241,7 @@ class FTRLOpKernel : public framework::OpKernel<T> {
         }
       }
     } else {
-      PADDLE_THROW("Unsupported Variable Type of Parameter");
+      PADDLE_THROW("Unsupported Variable Type of Parameter.");
     }
   }
 };
