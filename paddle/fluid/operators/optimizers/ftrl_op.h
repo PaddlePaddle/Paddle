@@ -29,7 +29,6 @@ template <typename DeviceContext, typename T>
 class FTRLOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const auto* param_var = ctx.InputVar("Param");
     const auto* grad_var = ctx.InputVar("Grad");
 
     auto* param_out = ctx.Output<Tensor>("ParamOut");
