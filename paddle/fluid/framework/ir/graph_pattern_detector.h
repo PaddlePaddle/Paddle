@@ -1032,6 +1032,17 @@ struct DequantAny : public PatternBase {
   PATTERN_DECL_NODE(next_op);
 };
 
+// anyOp + more then one quantize op
+// This pattern is used for squashing multiple quantize with the same scale.
+struct MultipleQuantize : public PatternBase {
+  MultipleQuantize(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "multiple_quantize") {}
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(prev_op);
+  PATTERN_DECL_NODE(prev_out);
+};
+
 struct TransposeFlattenConcat : public PatternBase {
   TransposeFlattenConcat(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "transpose_flatten_concat") {}
