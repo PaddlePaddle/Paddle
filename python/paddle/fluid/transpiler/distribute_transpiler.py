@@ -2590,6 +2590,9 @@ class DistributeTranspiler(object):
                 ) and CLIP_OP_NAME_SCOPE in op.attr(
                         OP_NAME_SCOPE
                 ) and self.config.mode != "nccl2" and self.config.mode != "collective":
+                    op._set_attr(
+                        "op_role",
+                        int(core.op_proto_and_checker_maker.OpRole.Backward))
                     continue
                 opt_ops.append(op)
                 if op.attr(OP_ROLE_VAR_ATTR_NAME):
