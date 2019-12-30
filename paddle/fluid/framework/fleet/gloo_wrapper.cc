@@ -61,17 +61,19 @@ std::vector<char> HdfsStore::get(const std::string& key) {
     result.push_back(buffer);
   }
   VLOG(3) << "HdfsStore::get read_count " << read_count;
-  return result;
 #endif
+  return result;
 }
 
 void HdfsStore::wait(const std::vector<std::string>& keys) {
+#ifdef PADDLE_WITH_GLOO
   wait(keys, gloo::rendezvous::Store::kDefaultTimeout);
+#endif
 }
 
 void HdfsStore::wait(const std::vector<std::string>& keys,
                      const std::chrono::milliseconds& timeout) {
-#ifdef _LINUX
+#ifdef PADDLE_WITH_GLOO
   auto start = std::chrono::steady_clock::now();
   while (!Check(keys)) {
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
