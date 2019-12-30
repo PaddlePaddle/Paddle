@@ -51,7 +51,7 @@ class TestMeanOp(OpTest):
         self.check_grad(['X'], 'Out')
 
 @skip_check_grad_ci(reason="reduce_max is discontinuous non-derivable function,"
-                           "its gradient check is not supported by unittest framework")
+                           "its gradient check is not supported by unittest framework.")
 class TestMaxOp(OpTest):
     """Remove Max with subgradient from gradient check to confirm the success of CI."""
 
@@ -67,7 +67,7 @@ class TestMaxOp(OpTest):
         self.check_output()
 
 @skip_check_grad_ci(reason="reduce_min is discontinuous non-derivable function,"
-                           "its gradient check is not supported by unittest framework")
+                           "its gradient check is not supported by unittest framework.")
 class TestMinOp(OpTest):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
