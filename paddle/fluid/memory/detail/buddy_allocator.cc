@@ -18,6 +18,7 @@ limitations under the License. */
 #include <utility>
 
 #include "glog/logging.h"
+#include "paddle/fluid/platform/enforce.h"
 
 #ifdef PADDLE_WITH_CUDA
 DECLARE_uint64(reallocate_gpu_memory_in_mb);
@@ -93,12 +94,12 @@ void* BuddyAllocator::Alloc(size_t unaligned_size) {
 }
 
 void BuddyAllocator::Free(void* p) {
-  // Point back to metadata
-  auto block = ptr_to_block_.at(p);
-  ptr_to_block_.erase(p);
-
   // Acquire the allocator lock
   std::lock_guard<std::mutex> lock(mutex_);
+
+  // PADDLE_ENFORCE_EQ(ptr_to_block_.count(p), 1, "unexpected behaviour");
+  auto block = ptr_to_block_.at(p);
+  ptr_to_block_.erase(p);
 
   VLOG(10) << "Free from address " << block;
 
@@ -166,8 +167,6 @@ void* BuddyAllocator::SystemAlloc(size_t size) {
 
   if (p == nullptr) return nullptr;
 
-  // auto block = new MemoryBlock(p, MemoryBlock::HUGE_CHUNK, index, size,
-  // nullptr, nullptr);
   auto block = mb_pool_.Get();
   block->Init(p, MemoryBlock::HUGE_CHUNK, index, size, nullptr, nullptr);
   ptr_to_block_.insert({p, block});
@@ -236,7 +235,8 @@ MemoryBlock* BuddyAllocator::FindExistChunk(size_t size) {
 }
 
 MemoryBlock* BuddyAllocator::SplitToAlloc(MemoryBlock* block, size_t size) {
-  // pool_.erase(it);
+  // PADDLE_ENFORCE_EQ(ptr_to_block_.count(block->get_data()), 0, "pointer
+  // should not exist in map now");
   ptr_to_block_.insert({block->get_data(), block});
 
   VLOG(10) << "Split block (" << block->get_data() << ", " << block->get_size()
@@ -259,6 +259,7 @@ MemoryBlock* BuddyAllocator::SplitToAlloc(MemoryBlock* block, size_t size) {
 
     pools_[right_buddy->get_index()].insert(right_buddy);
   }
+
   return block;
 }
 
