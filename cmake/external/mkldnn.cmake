@@ -19,7 +19,7 @@ SET(MKLDNN_PREFIX_DIR    ${THIRD_PARTY_PATH}/mkldnn)
 SET(MKLDNN_INSTALL_DIR    ${THIRD_PARTY_PATH}/install/mkldnn)
 SET(MKLDNN_INC_DIR        "${MKLDNN_INSTALL_DIR}/include" CACHE PATH "mkldnn include directory." FORCE)
 SET(MKLDNN_REPOSITORY     https://github.com/intel/mkl-dnn.git)
-SET(MKLDNN_TAG            aef88b7c233f48f8b945da310f1b973da31ad033)
+SET(MKLDNN_TAG            518a316a8cd6deb82dc7866bc04bd0355a25c3a4)
 
 # Introduce variables:
 # * CMAKE_INSTALL_LIBDIR
@@ -34,13 +34,6 @@ SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${MKLDNN_INSTALL_DIR}/${LIBDIR}")
 
 INCLUDE_DIRECTORIES(${MKLDNN_INC_DIR}) # For MKLDNN code to include internal headers.
-
-IF(${CBLAS_PROVIDER} STREQUAL "MKLML")
-    SET(MKLDNN_DEPENDS   ${MKLML_PROJECT})
-    MESSAGE(STATUS "Build MKLDNN with MKLML ${MKLML_ROOT}")
-ELSE()
-    MESSAGE(FATAL_ERROR "Should enable MKLML when build MKLDNN")
-ENDIF()
 
 IF(NOT WIN32)
     SET(MKLDNN_FLAG "-Wno-error=strict-overflow -Wno-error=unused-result -Wno-error=array-bounds")
@@ -63,7 +56,8 @@ ExternalProject_Add(
     DEPENDS             ${MKLDNN_DEPENDS}
     PREFIX              ${MKLDNN_PREFIX_DIR}
     SOURCE_DIR          ${MKLDNN_SOURCE_DIR}
-    UPDATE_COMMAND      ""
+    BUILD_ALWAYS        1
+    # UPDATE_COMMAND      ""
     CMAKE_ARGS          -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                         -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
@@ -77,9 +71,8 @@ ExternalProject_Add(
                         -DMKLROOT=${MKLML_ROOT}
                         -DCMAKE_C_FLAGS=${MKLDNN_CFLAG}
                         -DCMAKE_CXX_FLAGS=${MKLDNN_CXXFLAG}
-                        -DWITH_TEST=OFF -DWITH_EXAMPLE=OFF
+                        -DMKLDNN_BUILD_TESTS=OFF -DMKLDNN_BUILD_EXAMPLES=OFF
     CMAKE_CACHE_ARGS    -DCMAKE_INSTALL_PREFIX:PATH=${MKLDNN_INSTALL_DIR}
-                        -DMKLROOT:PATH=${MKLML_ROOT}
 )
 if(WIN32)
     SET(MKLDNN_LIB "${MKLDNN_INSTALL_DIR}/${LIBDIR}/mkldnn.lib" CACHE FILEPATH "mkldnn library." FORCE)
@@ -98,7 +91,7 @@ add_definitions(-DPADDLE_WITH_MKLDNN)
 SET(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/mkldnn_dummy.c)
 FILE(WRITE ${dummyfile} "const char * dummy = \"${dummyfile}\";")
 ADD_LIBRARY(mkldnn STATIC ${dummyfile})
-TARGET_LINK_LIBRARIES(mkldnn ${MKLDNN_LIB} ${MKLML_LIB} ${MKLML_IOMP_LIB})
+TARGET_LINK_LIBRARIES(mkldnn ${MKLDNN_LIB} ${MKLML_IOMP_LIB})
 ADD_DEPENDENCIES(mkldnn ${MKLDNN_PROJECT})
 
 # copy the real so.0 lib to install dir
@@ -107,6 +100,9 @@ if(WIN32)
     SET(MKLDNN_SHARED_LIB ${MKLDNN_INSTALL_DIR}/bin/mkldnn.dll)
 else(WIN32)
     SET(MKLDNN_SHARED_LIB ${MKLDNN_INSTALL_DIR}/libmkldnn.so.0)
+    SET(MKLDNN_SHARED_LIB_1 ${MKLDNN_INSTALL_DIR}/libmkldnn.so.1)
     ADD_CUSTOM_COMMAND(TARGET ${MKLDNN_PROJECT} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_LIB} ${MKLDNN_SHARED_LIB})
+    ADD_CUSTOM_COMMAND(TARGET ${MKLDNN_PROJECT} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_LIB} ${MKLDNN_SHARED_LIB_1})
 endif(WIN32)

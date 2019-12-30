@@ -52,7 +52,7 @@ T *ZeroCopyTensor::mutable_data(PaddlePlace place) {
       return tensor->mutable_data<T>(platform::CPUPlace());
     }
     case static_cast<int>(PaddlePlace::kGPU): {
-      return tensor->mutable_data<T>(platform::CUDAPlace());
+      return tensor->mutable_data<T>(platform::CUDAPlace(device_));
     }
     default:
       PADDLE_THROW("Unsupported place: %d", static_cast<int>(place));

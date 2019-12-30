@@ -100,8 +100,8 @@ class AutoPruneLayer3(fluid.Layer):
 class MyLayer(fluid.Layer):
     def __init__(self, name_scope, vocab_size, size, dtype="float32"):
         super(MyLayer, self).__init__(name_scope, dtype)
-        self.embed0 = fluid.Embedding(self.full_name(), size=(vocab_size, size))
-        self.embed1 = fluid.Embedding(self.full_name(), size=(vocab_size, size))
+        self.embed0 = fluid.Embedding(size=(vocab_size, size))
+        self.embed1 = fluid.Embedding(size=(vocab_size, size))
         self.fc0 = fluid.FC(self.full_name(), size=size, dtype=dtype)
         self.fc1 = fluid.FC(self.full_name(), size=size, dtype=dtype)
 
@@ -122,8 +122,8 @@ class MyLayer(fluid.Layer):
 class MyLayer2(fluid.Layer):
     def __init__(self, name_scope, vocab_size, size, dtype="float32"):
         super(MyLayer2, self).__init__(name_scope, dtype)
-        self.embed0 = fluid.Embedding(self.full_name(), size=(vocab_size, size))
-        self.embed1 = fluid.Embedding(self.full_name(), size=(vocab_size, size))
+        self.embed0 = fluid.Embedding(size=(vocab_size, size))
+        self.embed1 = fluid.Embedding(size=(vocab_size, size))
         self.fc0 = fluid.FC(self.full_name(), size=size, dtype=dtype)
         self.fc1 = fluid.FC(self.full_name(), size=size, dtype=dtype)
 
@@ -258,7 +258,9 @@ class TestImperativeAutoPrune(unittest.TestCase):
             fc2_origin = fc2._w.numpy()
             fc2._w.stop_gradient = True
             out2.backward()
-            optimizer = fluid.optimizer.SGD(learning_rate=0.003)
+            optimizer = fluid.optimizer.SGD(
+                learning_rate=0.003,
+                parameter_list=(fc.parameters() + fc2.parameters()))
             optimizer.minimize(out2)
             self.assertTrue(np.array_equal(fc2_origin, fc2._w.numpy()))
             self.assertFalse(np.array_equal(fc_origin, fc._w.numpy()))
@@ -279,7 +281,9 @@ class TestImperativeAutoPrune(unittest.TestCase):
             fc2_origin = fc2._w.numpy()
             out2.stop_gradient = True
             out2.backward()
-            optimizer = fluid.optimizer.SGD(learning_rate=0.003)
+            optimizer = fluid.optimizer.SGD(
+                learning_rate=0.003,
+                parameter_list=(fc.parameters() + fc2.parameters()))
             optimizer.minimize(out2)
             self.assertTrue(np.array_equal(fc2_origin, fc2._w.numpy()))
             self.assertTrue(np.array_equal(fc_origin, fc._w.numpy()))
@@ -320,7 +324,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
         place = fluid.CPUPlace()
         with fluid.dygraph.guard(place):
             model = MyLayer("mylayer", vocab_size, size)
-            optimizer = fluid.optimizer.AdamOptimizer(0.001)
+            optimizer = fluid.optimizer.AdamOptimizer(
+                0.001, parameter_list=model.parameters())
             grad_clip = fluid.dygraph_grad_clip.GradClipByGlobalNorm(0.001)
 
             indices = fluid.dygraph.to_variable(indices)
@@ -338,7 +343,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
 
         with fluid.dygraph.guard(place):
             model = MyLayer2("mylayer", vocab_size, size)
-            optimizer = fluid.optimizer.AdamOptimizer(0.001)
+            optimizer = fluid.optimizer.AdamOptimizer(
+                0.001, parameter_list=model.parameters())
             grad_clip = fluid.dygraph_grad_clip.GradClipByGlobalNorm(0.001)
 
             indices = fluid.dygraph.to_variable(indices)

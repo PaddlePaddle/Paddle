@@ -133,7 +133,6 @@ endif()
 include(third_party)        # download, build, install third_party
 
 if(WITH_DISTRIBUTE)
-    include(external/cares)
     if(WITH_GRPC)
         message(STATUS "Use grpc framework.")
         include(external/grpc)
