@@ -52,7 +52,7 @@ from . import collective
 LOOKUP_TABLE_TYPE = "lookup_table"
 LOOKUP_TABLE_GRAD_TYPE = "lookup_table_grad"
 OP_NAME_SCOPE = "op_namescope"
-CLIP_OP_NAME_SCOPE = "clip"
+CLIP_OP_NAME_SCOPE = "_clip"
 OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
 RPC_OP_ROLE_ATTR_NAME = op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(
 )
