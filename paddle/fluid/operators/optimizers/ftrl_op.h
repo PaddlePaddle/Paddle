@@ -159,11 +159,8 @@ class FTRLOpKernel : public framework::OpKernel<T> {
           }
         }
       } else {
-        PADDLE_THROW(
-            "Unsupported Variable Type of Grad. The Var(%s)'s type should be "
-            "LoDTensor or SelectedRows, but the received is %s",
-            ctx.InputNames("Grad").front(),
-            framework::ToTypeName(grad_var->Type()));
+        PADDLE_THROW("Gradient's type[%s] is not supported by ftrl_op.",
+                     framework::ToTypeName(grad_var->Type()));
       }
     } else if (param_var->IsType<framework::SelectedRows>()) {
       auto lr = *ctx.Input<framework::Tensor>("LearningRate")->data<T>();
@@ -245,11 +242,8 @@ class FTRLOpKernel : public framework::OpKernel<T> {
         }
       }
     } else {
-      PADDLE_THROW(
-          "Unsupported Variable Type of Parameter. The Var(%s)'s type should "
-          "be LoDTensor or SelectedRows, but the received is %s",
-          ctx.InputNames("Param").front(),
-          framework::ToTypeName(param_var->Type()));
+      PADDLE_THROW("Parameter's type[%s] is not supported by ftrl_op.",
+                   framework::ToTypeName(param_var->Type()));
     }
   }
 };
