@@ -22,6 +22,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/framework/check_empty_grap_op.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -47,6 +48,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/operators/activation_op.h"
+#include "paddle/fluid/operators/empty_grap_op.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/platform/cpu_helper.h"
@@ -145,6 +147,10 @@ bool IsCompiledWithDIST() {
 #else
   return false;
 #endif
+}
+
+bool IsEmptyGradOp(const char *op_type, bool is_mkldnn_op) {
+  return paddle::framework::EmptyGradOp::Instance().Has(op_type, is_mkldnn_op);
 }
 
 template <typename PlaceType1, typename PlaceType2>
@@ -1455,6 +1461,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
+  m.def("is_empty_grad_op", IsEmptyGradOp);
 #ifdef PADDLE_WITH_CUDA
   m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {
     // Only GPUs with Compute Capability >= 53 support float16

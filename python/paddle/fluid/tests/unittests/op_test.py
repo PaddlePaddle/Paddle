@@ -193,6 +193,13 @@ class OpTest(unittest.TestCase):
 
         _set_use_system_allocator(cls._use_system_allocator)
 
+        def is_empty_grad_op(op_type):
+            if hasattr(cls, "use_mkldnn") and cls.use_mkldnn == True:
+                # for mkldnn unit tests, check if grad_op is registered
+                return core.is_empty_grad_op(op_type, True)
+            else:
+                return core.is_empty_grad_op(op_type, False)
+
         if not hasattr(cls, "op_type"):
             raise AssertionError(
                 "This test do not have op_type in class attrs,"
@@ -200,7 +207,7 @@ class OpTest(unittest.TestCase):
 
         # case in NO_FP64_CHECK_GRAD_CASES and op in NO_FP64_CHECK_GRAD_OP_LIST should be fixed
         if not hasattr(cls, "no_need_check_grad") \
-            and cls.op_type not in op_check_grad_white_list.EMPTY_GRAD_OP_LIST:
+            and not is_empty_grad_op(cls.op_type):
             if cls.dtype is None or \
                 (cls.dtype == np.float16 \
                     and cls.op_type not in op_accuracy_white_list.NO_FP16_CHECK_GRAD_OP_LIST \
@@ -299,6 +306,8 @@ class OpTest(unittest.TestCase):
 
     def _append_ops(self, block):
         self.__class__.op_type = self.op_type  # for ci check, please not delete it for now
+        if hasattr(self, "use_mkldnn"):
+            self.__class__.use_mkldnn = self.use_mkldnn
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
         "infer datatype from inputs and outputs for this test case"
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
@@ -1102,6 +1111,8 @@ class OpTest(unittest.TestCase):
                      inplace_atol=None,
                      check_compile_vs_runtime=True):
         self.__class__.op_type = self.op_type
+        if hasattr(self, "use_mkldnn"):
+            self.__class__.use_mkldnn = self.use_mkldnn
         places = self._get_places()
         for place in places:
             res = self.check_output_with_place(place, atol, no_check_set,

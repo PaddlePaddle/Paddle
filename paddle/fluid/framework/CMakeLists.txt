@@ -131,9 +131,11 @@ cc_library(transfer_scope_cache SRCS transfer_scope_cache.cc DEPS scope framewor
 cc_library(op_kernel_type SRCS op_kernel_type.cc DEPS device_context place)
 
 cc_library(unused_var_check SRCS unused_var_check.cc DEPS glog no_need_buffer_vars_inference)
+cc_library(check_empty_grap_op SRCS check_empty_grap_op.cc DEPS)
 
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog trainer_desc_proto data_feed_proto
-    shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack unused_var_check nan_inf_utils)
+    shape_inference data_transform lod_tensor profiler transfer_scope_cache
+    op_kernel_type op_call_stack unused_var_check nan_inf_utils check_empty_grap_op)
 
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
 cc_test(operator_exception_test SRCS operator_exception_test.cc DEPS operator op_registry device_context)
