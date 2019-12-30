@@ -21,6 +21,7 @@ limitations under the License. */
 #include <string>
 #include <utility>
 #include <vector>
+#ifdef PADDLE_WITH_GLOO
 #include <gloo/allreduce.h>
 #include <gloo/barrier.h>
 #include <gloo/rendezvous/context.h>
@@ -29,6 +30,7 @@ limitations under the License. */
 #include <gloo/rendezvous/store.h>
 #include <gloo/transport/tcp/device.h>
 #include <gloo/allgather.h>
+#endif
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/framework/io/fs.h"
 
@@ -79,30 +81,7 @@ public:
   
   void Init(int rank, int size, const std::string& path, 
             const std::string& fs_name, const std::string& fs_ugi,
-            const std::string& iface, const std::string& prefix) {
-    if (is_initialized_) {
-        return;
-    }
-    this->rank = rank;
-    this->size = size;
-    std::string cmd = std::string("hadoop fs");
-    cmd += " -D fs.default.name=" + fs_name;
-    cmd += " -D hadoop.job.ugi=" + fs_ugi;
-    paddle::framework::hdfs_set_command(cmd);
-    gloo::transport::tcp::attr attr;
-    attr.iface = iface;
-    auto fileStore = gloo::rendezvous::HdfsStore(path);//, fs_name, fs_ugi);
-    auto prefixStore = gloo::rendezvous::PrefixStore(prefix, fileStore);
-    auto dev = gloo::transport::tcp::CreateDevice(attr);
-    auto context = std::make_shared<gloo::rendezvous::Context>(rank, size);
-    context->connectFullMesh(prefixStore, dev);
-    this->kContext = std::move(context);
-//    std::string cmd = std::string("hadoop fs");//
-//    cmd += " -D fs.default.name=" + fs_name;
-//    cmd += " -D hadoop.job.ugi=" + fs_ugi;
-//    paddle::framework::hdfs_set_command(cmd);
-    is_initialized_ = true;
-  }
+            const std::string& iface, const std::string& prefix);
 
   int Rank() {
     CHECK_EQ(is_initialized_, true);

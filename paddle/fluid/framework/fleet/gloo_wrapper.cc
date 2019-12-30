@@ -108,6 +108,29 @@ bool HdfsStore::Check(const std::vector<std::string>& keys) {
 namespace paddle {
 namespace framework {
 
+void GlooWrapper::Init(int rank, int size, const std::string& path,
+                       const std::string& fs_name, const std::string& fs_ugi,
+                       const std::string& iface, const std::string& prefix) {
+  if (is_initialized_) {
+    return;
+  }
+  this->rank = rank;
+  this->size = size;
+  std::string cmd = std::string("hadoop fs");
+  cmd += " -D fs.default.name=" + fs_name;
+  cmd += " -D hadoop.job.ugi=" + fs_ugi;
+  paddle::framework::hdfs_set_command(cmd);
+  gloo::transport::tcp::attr attr;
+  attr.iface = iface;
+  auto fileStore = gloo::rendezvous::HdfsStore(path);
+  auto prefixStore = gloo::rendezvous::PrefixStore(prefix, fileStore);
+  auto dev = gloo::transport::tcp::CreateDevice(attr);
+  auto context = std::make_shared<gloo::rendezvous::Context>(rank, size);
+  context->connectFullMesh(prefixStore, dev);
+  this->kContext = std::move(context);
+  is_initialized_ = true;
+}
+
 template void GlooWrapper::AllReduce<int64_t>(                            // NOLINT
     const std::vector<int64_t>& sendbuf, std::vector<int64_t>& recvbuf);  // NOLINT
 template void GlooWrapper::AllReduce<double>(                             // NOLINT
