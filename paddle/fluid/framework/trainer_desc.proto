@@ -47,6 +47,7 @@ message TrainerDesc {
   // adjust ins weight
   optional AdjustInsWeightConfig adjust_ins_weight_config = 20;
   optional bool no_cvm = 21 [ default = false ];
+  repeated string loss_names = 22;
 
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;
@@ -163,4 +164,7 @@ message TableParameter {
   optional int32 emb_dim = 10;
   optional int32 fea_dim = 11;
   optional string label_var_name = 12;
+  optional bool is_local = 13 [ default = false ];
+  optional bool is_async = 14 [ default = false ];
+  optional string async_wait_op_name = 15;
 }

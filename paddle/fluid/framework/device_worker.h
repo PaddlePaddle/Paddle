@@ -215,6 +215,7 @@ class DownpourWorker : public HogwildWorker {
   bool dump_slot_;
   bool need_to_push_sparse_;
   std::vector<std::string> dump_fields_;
+  std::vector<std::string> loss_names_;
   ChannelWriter<std::string> writer_;
   DownpourWorkerParameter param_;
   float scale_datanorm_;
@@ -254,6 +255,24 @@ class DownpourWorker : public HogwildWorker {
   std::vector<std::pair<uint64_t, uint64_t>> copy_sparse_tables_;
   std::vector<std::pair<uint64_t, uint64_t>> copy_dense_tables_;
   std::unordered_map<uint64_t, std::unordered_set<uint64_t>> feasign_set_;
+};
+
+class DownpourWorkerOpt : public DownpourWorker {
+  public:
+    DownpourWorkerOpt() {}
+    virtual ~DownpourWorkerOpt() {}
+    virtual void CreateDeviceResource(const ProgramDesc& main_prog) {}
+    virtual void TrainFiles(); 
+
+  protected:
+    void CreateThreadOperatorsWithRerank(const ProgramDesc& program);
+    std::vector<std::vector<OperatorBase*>> loss_ops_;
+    std::vector<std::vector<OperatorBase*>> loss_op_names_;
+    std::string async_wait_name_;
+    int async_index_ = -1;
+    uint64_t async_tid_ = 0;
+
+
 };
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
