@@ -25,7 +25,7 @@ class TestSignOp(OpTest):
     def setUp(self):
         self.op_type = "sign"
         self.inputs = {
-            'X': np.random.uniform(-10, 10, (10, 10)).astype("float32")
+            'X': np.random.uniform(-10, 10, (10, 10)).astype("float64")
         }
         self.outputs = {'Out': np.sign(self.inputs['X'])}
 
@@ -36,7 +36,7 @@ class TestSignOp(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-class TestSignOpError(OpTest):
+class TestSignOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of sign_op must be Variable or numpy.ndarray.

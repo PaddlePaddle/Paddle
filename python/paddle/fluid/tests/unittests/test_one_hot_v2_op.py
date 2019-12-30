@@ -134,7 +134,7 @@ class TestOneHotOp_out_of_range(OpTest):
         self.check_output(check_dygraph=False)
 
 
-class TestOneHotOp_exception(OpTest):
+class TestOneHotOp_exception(unittest.TestCase):
     def setUp(self):
         self.op_type = 'one_hot_v2'
         self.depth = 10

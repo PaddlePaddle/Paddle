@@ -159,7 +159,8 @@ class PipelineTrainer : public TrainerBase {
   std::vector<DataFeed*> readers_;
 
   void InitFirstScopeQueue(ScopeQueue* scope_queue, int pipeline_id,
-                           const ProgramDesc& main_program);
+                           const ProgramDesc& main_program,
+                           const Scope& root_scope);
   void CopyParameters(const Scope& root_scope, int pipeline_id);
   void construct_sync_functor();
 };

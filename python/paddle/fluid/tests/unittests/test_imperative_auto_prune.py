@@ -100,8 +100,8 @@ class AutoPruneLayer3(fluid.Layer):
 class MyLayer(fluid.Layer):
     def __init__(self, name_scope, vocab_size, size, dtype="float32"):
         super(MyLayer, self).__init__(name_scope, dtype)
-        self.embed0 = fluid.Embedding(self.full_name(), size=(vocab_size, size))
-        self.embed1 = fluid.Embedding(self.full_name(), size=(vocab_size, size))
+        self.embed0 = fluid.Embedding(size=(vocab_size, size))
+        self.embed1 = fluid.Embedding(size=(vocab_size, size))
         self.fc0 = fluid.FC(self.full_name(), size=size, dtype=dtype)
         self.fc1 = fluid.FC(self.full_name(), size=size, dtype=dtype)
 
@@ -122,8 +122,8 @@ class MyLayer(fluid.Layer):
 class MyLayer2(fluid.Layer):
     def __init__(self, name_scope, vocab_size, size, dtype="float32"):
         super(MyLayer2, self).__init__(name_scope, dtype)
-        self.embed0 = fluid.Embedding(self.full_name(), size=(vocab_size, size))
-        self.embed1 = fluid.Embedding(self.full_name(), size=(vocab_size, size))
+        self.embed0 = fluid.Embedding(size=(vocab_size, size))
+        self.embed1 = fluid.Embedding(size=(vocab_size, size))
         self.fc0 = fluid.FC(self.full_name(), size=size, dtype=dtype)
         self.fc1 = fluid.FC(self.full_name(), size=size, dtype=dtype)
 
@@ -153,8 +153,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
             v2 = fluid.dygraph.to_variable(value2)
             loss = case1(v1, v2)
             loss.backward()
-            self.assertTrue(case1.fc2._w._ivar._grad_ivar() is not None)
-            self.assertTrue(case1.fc1._w._ivar._grad_ivar() is not None)
+            self.assertTrue(case1.fc2._w._grad_ivar() is not None)
+            self.assertTrue(case1.fc1._w._grad_ivar() is not None)
 
     def test_auto_prune2(self):
         with fluid.dygraph.guard():
@@ -166,8 +166,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
             loss = case2(v1, v2)
 
             loss.backward()
-            self.assertTrue(case2.fc2._w._ivar._grad_ivar() is None)
-            self.assertTrue(case2.fc1._w._ivar._grad_ivar() is not None)
+            self.assertTrue(case2.fc2._w._grad_ivar() is None)
+            self.assertTrue(case2.fc1._w._grad_ivar() is not None)
 
     def test_auto_prune3(self):
         with fluid.dygraph.guard():
@@ -178,7 +178,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             v2 = fluid.dygraph.to_variable(value2)
             loss, part2 = case3(v1, v2, 1)
             loss.backward()
-            self.assertTrue(case3.fc._w._ivar._grad_ivar() is not None)
+            self.assertTrue(case3.fc._w._grad_ivar() is not None)
             self.assertTrue((part2.gradient() == 0).all())
 
     def test_auto_prune4(self):
@@ -190,7 +190,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             v2 = fluid.dygraph.to_variable(value2)
             loss, part2 = case4(v1, v2, 1)
             part2.backward()
-            self.assertTrue(case4.fc._w._ivar._grad_ivar() is not None)
+            self.assertTrue(case4.fc._w._grad_ivar() is not None)
             self.assertTrue((part2.gradient() == 1).all())
 
     def test_auto_prune5(self):
@@ -202,7 +202,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             v2 = fluid.dygraph.to_variable(value2)
             loss, part1, part2 = case4(v1, v2, 2)
             part1.backward()
-            self.assertTrue(case4.fc._w._ivar._grad_ivar() is not None)
+            self.assertTrue(case4.fc._w._grad_ivar() is not None)
             self.assertTrue((part2.gradient() == 0).all())
 
     def test_auto_prune6(self):
@@ -258,7 +258,9 @@ class TestImperativeAutoPrune(unittest.TestCase):
             fc2_origin = fc2._w.numpy()
             fc2._w.stop_gradient = True
             out2.backward()
-            optimizer = fluid.optimizer.SGD(learning_rate=0.003)
+            optimizer = fluid.optimizer.SGD(
+                learning_rate=0.003,
+                parameter_list=(fc.parameters() + fc2.parameters()))
             optimizer.minimize(out2)
             self.assertTrue(np.array_equal(fc2_origin, fc2._w.numpy()))
             self.assertFalse(np.array_equal(fc_origin, fc._w.numpy()))
@@ -279,7 +281,9 @@ class TestImperativeAutoPrune(unittest.TestCase):
             fc2_origin = fc2._w.numpy()
             out2.stop_gradient = True
             out2.backward()
-            optimizer = fluid.optimizer.SGD(learning_rate=0.003)
+            optimizer = fluid.optimizer.SGD(
+                learning_rate=0.003,
+                parameter_list=(fc.parameters() + fc2.parameters()))
             optimizer.minimize(out2)
             self.assertTrue(np.array_equal(fc2_origin, fc2._w.numpy()))
             self.assertTrue(np.array_equal(fc_origin, fc._w.numpy()))
@@ -320,7 +324,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
         place = fluid.CPUPlace()
         with fluid.dygraph.guard(place):
             model = MyLayer("mylayer", vocab_size, size)
-            optimizer = fluid.optimizer.AdamOptimizer(0.001)
+            optimizer = fluid.optimizer.AdamOptimizer(
+                0.001, parameter_list=model.parameters())
             grad_clip = fluid.dygraph_grad_clip.GradClipByGlobalNorm(0.001)
 
             indices = fluid.dygraph.to_variable(indices)
@@ -333,12 +338,13 @@ class TestImperativeAutoPrune(unittest.TestCase):
             for items in params_grads:
                 assert items[0].name is not model.embed1._w.name
                 assert items[0].name is not model.fc1._w.name
-            assert model.embed1._w._ivar._grad_ivar() is None
-            assert model.fc1._w._ivar._grad_ivar() is None
+            assert model.embed1._w._grad_ivar() is None
+            assert model.fc1._w._grad_ivar() is None
 
         with fluid.dygraph.guard(place):
             model = MyLayer2("mylayer", vocab_size, size)
-            optimizer = fluid.optimizer.AdamOptimizer(0.001)
+            optimizer = fluid.optimizer.AdamOptimizer(
+                0.001, parameter_list=model.parameters())
             grad_clip = fluid.dygraph_grad_clip.GradClipByGlobalNorm(0.001)
 
             indices = fluid.dygraph.to_variable(indices)
@@ -351,8 +357,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
             for items in params_grads:
                 assert items[0].name is not model.embed1._w.name
                 assert items[0].name is not model.fc1._w.name
-            assert model.embed1._w._ivar._grad_ivar() is None
-            assert model.fc1._w._ivar._grad_ivar() is None
+            assert model.embed1._w._grad_ivar() is None
+            assert model.fc1._w._grad_ivar() is None
 
     def test_case2_prune_no_grad_branch(self):
         with fluid.dygraph.guard():
@@ -363,8 +369,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
             case3 = AutoPruneLayer2("l2")
             loss = case3(v1, v2)
             loss.backward()
-            self.assertTrue(case3.fc2._w._ivar._grad_ivar() is None)
-            self.assertTrue(case3.fc._w._ivar._grad_ivar() is not None)
+            self.assertTrue(case3.fc2._w._grad_ivar() is None)
+            self.assertTrue(case3.fc._w._grad_ivar() is not None)
 
     def test_case2_prune_no_grad_branch(self):
         with fluid.dygraph.guard():
@@ -375,8 +381,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
             case3 = AutoPruneLayer2("l2")
             loss = case3(v1, v2)
             loss.backward()
-            self.assertTrue(case3.fc2._w._ivar._grad_ivar() is None)
-            self.assertTrue(case3.fc._w._ivar._grad_ivar() is not None)
+            self.assertTrue(case3.fc2._w._grad_ivar() is None)
+            self.assertTrue(case3.fc._w._grad_ivar() is not None)
 
     def test_case3_prune_no_grad_branch2(self):
         with fluid.dygraph.guard():
@@ -389,14 +395,14 @@ class TestImperativeAutoPrune(unittest.TestCase):
             out = fluid.layers.one_hot(input=label, depth=100)
             loss = fluid.layers.mean(out)
             loss.backward()
-            self.assertTrue(fc._w._ivar._grad_ivar() is None)
+            self.assertTrue(fc._w._grad_ivar() is None)
 
     def test_case4_with_no_grad_op_maker(self):
         with fluid.dygraph.guard():
             out = fluid.layers.gaussian_random(shape=[20, 30])
             loss = fluid.layers.mean(out)
             loss.backward()
-            self.assertTrue(out._ivar._grad_ivar() is None)
+            self.assertTrue(out._grad_ivar() is None)
 
 
 if __name__ == '__main__':

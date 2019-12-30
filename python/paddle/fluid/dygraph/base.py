@@ -138,6 +138,7 @@ def guard(place=None):
     train = framework.Program()
     startup = framework.Program()
     tracer = Tracer()
+    VarBase = core.VarBase
 
     if place is None:
         if core.is_compiled_with_cuda():
@@ -153,14 +154,14 @@ def guard(place=None):
                     yield
 
 
-def _print_debug_msg(limit=5, is_test=False):
+def _print_debug_msg(parameter_list, limit=5, is_test=False):
     if not core._is_dygraph_debug_enabled():
         logging.warn(
             'Debug mode is not enabled. Please set FLAGS_dygraph_debug=1 to enable debug'
         )
         return
     unique_name_size = len(framework.unique_name.generator.ids)
-    tracer_var_size = len(framework._dygraph_tracer()._vars)
+    tracer_var_size = len(parameter_list)
     alive_cpp_var_size = len(core.VarBase._alive_vars())
     if not is_test:
         logging.warn(
@@ -172,18 +173,18 @@ def _print_debug_msg(limit=5, is_test=False):
 
 
 @framework.dygraph_only
-def to_variable(value, block=None, name=None, zero_copy=None):
+def to_variable(value, name=None, zero_copy=None):
     """
     The API will create a ``Variable`` object from numpy\.ndarray or Variable object.
 
     Parameters:
-        value(ndarray): The numpy\.ndarray object that needs to be converted, it can be multi-dimension, and the data type is one of numpy\.{float16, float32, float64, int16, int32, int64, uint8, uint16}.
-        block(fluid.Block, optional): Which block this variable will be in. Default: None.
+        value(ndarray|Variable): The numpy\.ndarray or Variable object that needs to be converted, it can be multi-dimension, and the data type is one of numpy\.{float16, float32, float64, int16, int32, int64, uint8, uint16}.
         name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
         zero_copy(bool, optional): Whether to share memory with the input numpy array. This parameter only works with CPUPlace and will be set to True when it is None. Default: None.
 
     Returns:
-        Variable: ``Tensor`` created from the specified numpy\.ndarray object, data type and shape is the same as ``value`` .
+        Variable: If ``value`` is a numpy\.ndarray object, return ``Tensor`` created from the specified numpy\.ndarray object, which has same data type and shape with ``value``. If ``value`` is a Variable object, just return ``value``.
+
 
     Examples:
 
@@ -205,28 +206,21 @@ def to_variable(value, block=None, name=None, zero_copy=None):
     if isinstance(value, np.ndarray):
         assert framework.in_dygraph_mode(
         ), "to_variable could only be called in dygraph mode"
-
-        if not block:
-            block = framework.default_main_program().current_block()
-        py_var = framework.Variable(
-            block,
-            type=core.VarDesc.VarType.LOD_TENSOR,
-            name=name,
-            shape=value.shape,
-            dtype=value.dtype,
-            stop_gradient=True)
-        var = py_var._ivar.value()
-        tensor = var.get_tensor()
         if isinstance(framework._current_expected_place(),
                       framework.core.CPUPlace):
             if zero_copy is None:
                 zero_copy = True
-            tensor.set(value, framework._current_expected_place(), zero_copy)
         else:
             assert not zero_copy, "zero_copy mode can only be used with CPUPlace"
-            tensor.set(value, framework._current_expected_place(), False)
+            zero_copy = False
+        py_var = core.VarBase(
+            value=value,
+            place=framework._current_expected_place(),
+            persistable=False,
+            zero_copy=zero_copy,
+            name=name if name else '')
         return py_var
-    elif isinstance(value, framework.Variable):
+    elif isinstance(value, (core.VarBase, framework.Variable)):
         return value
     else:
         raise TypeError(
