@@ -225,9 +225,11 @@ def _expand_bbox_targets(bbox_targets_input, class_nums, is_cls_agnostic):
 
 class TestGenerateProposalLabelsOp(OpTest):
     def set_data(self):
+        self.init_test_cascade()
         self.init_test_params()
         self.init_test_input()
         self.init_test_output()
+
         self.inputs = {
             'RpnRois': (self.rpn_rois[0], self.rpn_rois_lod),
             'GtClasses': (self.gt_classes[0], self.gts_lod),
@@ -262,6 +264,9 @@ class TestGenerateProposalLabelsOp(OpTest):
         self.op_type = 'generate_proposal_labels'
         self.set_data()
 
+    def init_test_cascade(self, ):
+        self.is_cascade_rcnn = True
+
     def init_test_params(self):
         self.batch_size_per_im = 512
         self.fg_fraction = 0.25
@@ -269,9 +274,7 @@ class TestGenerateProposalLabelsOp(OpTest):
         self.bg_thresh_hi = 0.5
         self.bg_thresh_lo = 0.0
         self.bbox_reg_weights = [0.1, 0.1, 0.2, 0.2]
-        #self.class_nums = 81
-        self.is_cls_agnostic = False  #True
-        self.is_cascade_rcnn = True
+        self.is_cls_agnostic = False
         self.class_nums = 2 if self.is_cls_agnostic else 81
 
     def init_test_input(self):
@@ -309,6 +312,26 @@ class TestGenerateProposalLabelsOp(OpTest):
         self.bbox_targets = np.vstack(self.bbox_targets)
         self.bbox_inside_weights = np.vstack(self.bbox_inside_weights)
         self.bbox_outside_weights = np.vstack(self.bbox_outside_weights)
+
+
+class TestCascade(TestGenerateProposalLabelsOp):
+    def init_test_cascade(self):
+        self.is_cascade_rcnn = True
+
+
+class TestClsAgnostic(TestGenerateProposalLabelsOp):
+    def init_test_cascade(self):
+        self.is_cascade_rcnn = True
+
+    def init_test_params(self):
+        self.batch_size_per_im = 512
+        self.fg_fraction = 0.25
+        self.fg_thresh = 0.5
+        self.bg_thresh_hi = 0.5
+        self.bg_thresh_lo = 0.0
+        self.bbox_reg_weights = [0.1, 0.1, 0.2, 0.2]
+        self.is_cls_agnostic = True
+        self.class_nums = 2 if self.is_cls_agnostic else 81
 
 
 def _generate_proposals(images_shape, proposal_nums):
