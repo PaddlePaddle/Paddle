@@ -2584,8 +2584,12 @@ class DistributeTranspiler(object):
         origin_var_dict = self.origin_program.global_block().vars
         for op in block.ops:
             if self._is_opt_role_op(op):
+                # Todo(chengmo): Whether clip related op belongs to Optimize guard should be discussed
+                # delete clip op from opt_ops when run in Parameter Server mode 
                 if OP_NAME_SCOPE in op.all_attrs(
-                ) and CLIP_OP_NAME_SCOPE in op.attr(OP_NAME_SCOPE):
+                ) and CLIP_OP_NAME_SCOPE in op.attr(
+                        OP_NAME_SCOPE
+                ) and self.config.mode != "nccl2" and self.config.mode != "collective":
                     continue
                 opt_ops.append(op)
                 if op.attr(OP_ROLE_VAR_ATTR_NAME):
