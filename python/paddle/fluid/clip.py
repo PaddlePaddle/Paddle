@@ -531,7 +531,7 @@ def append_gradient_clip_ops(param_grads):
             res.append(clip_attr._create_operators(param=p, grad=g))
 
     # change wrong mapping relation between param & grad in clip op
-    clip_flag = 'append_graident_clip'
+    clip_flag = '_clip'
     for op in p.block.program.global_block().ops:
         if 'op_namescope' in op.all_attrs() and clip_flag in op.attr(
                 "op_namescope"):
