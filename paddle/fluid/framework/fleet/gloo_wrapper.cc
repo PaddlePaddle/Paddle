@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <vector>
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
+#include <vector>
 #include "paddle/fluid/framework/io/fs.h"
 
 namespace gloo {
@@ -61,7 +61,7 @@ void HdfsStore::wait(const std::vector<std::string>& keys) {
 }
 
 void HdfsStore::wait(const std::vector<std::string>& keys,
-          const std::chrono::milliseconds& timeout) {
+                     const std::chrono::milliseconds& timeout) {
   auto start = std::chrono::steady_clock::now();
   while (!Check(keys)) {
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
@@ -104,7 +104,6 @@ bool HdfsStore::Check(const std::vector<std::string>& keys) {
 }  // namespace rendezvous
 }  // namespace gloo
 
-
 namespace paddle {
 namespace framework {
 
@@ -114,20 +113,20 @@ void GlooWrapper::Init(int rank, int size, const std::string& path,
   if (is_initialized_) {
     return;
   }
-  this->rank = rank;
-  this->size = size;
+  rank_ = rank;
+  size_ = size;
   std::string cmd = std::string("hadoop fs");
   cmd += " -D fs.default.name=" + fs_name;
   cmd += " -D hadoop.job.ugi=" + fs_ugi;
   paddle::framework::hdfs_set_command(cmd);
   gloo::transport::tcp::attr attr;
   attr.iface = iface;
-  auto fileStore = gloo::rendezvous::HdfsStore(path);
-  auto prefixStore = gloo::rendezvous::PrefixStore(prefix, fileStore);
+  auto file_store = gloo::rendezvous::HdfsStore(path);
+  auto prefix_store = gloo::rendezvous::PrefixStore(prefix, file_store);
   auto dev = gloo::transport::tcp::CreateDevice(attr);
   auto context = std::make_shared<gloo::rendezvous::Context>(rank, size);
-  context->connectFullMesh(prefixStore, dev);
-  this->kContext = std::move(context);
+  context->connectFullMesh(prefix_store, dev);
+  context_ = std::move(context);
   is_initialized_ = true;
 }
 

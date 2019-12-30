@@ -13,4 +13,4 @@ endif(WITH_BOX_PS)
 
 if(WITH_GLOO)
     cc_library(gloo_wrapper SRCS gloo_wrapper.cc DEPS framework_proto variable_helper scope gloo)
-iendif(WITH_GLOO)
+endif(WITH_GLOO)

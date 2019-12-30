@@ -85,17 +85,17 @@ public:
 
   int Rank() {
     CHECK_EQ(is_initialized_, true);
-    return rank;
+    return rank_;
   }
 
   int Size () {
     CHECK_EQ(is_initialized_, true);
-    return size;
+    return size_;
   }
 
   void Barrier() {
     CHECK_EQ(is_initialized_, true);
-    gloo::BarrierOptions opts(kContext);
+    gloo::BarrierOptions opts(context_);
     gloo::barrier(opts);
   }
 
@@ -103,7 +103,7 @@ public:
   void AllReduce(const std::vector<T>& sendbuf, std::vector<T>& recvbuf) {  // NOLINT
     CHECK_EQ(is_initialized_, true);
     CHECK_EQ(sendbuf.size() == recvbuf.size(), true);
-    gloo::AllreduceOptions opts(kContext);
+    gloo::AllreduceOptions opts(context_);
     opts.setInput(const_cast<T*>((const T*) sendbuf.data()), sendbuf.size());
     opts.setOutput(recvbuf.data(), recvbuf.size());
     opts.setReduceFunction(
@@ -114,20 +114,19 @@ public:
   template<typename T>
   std::vector<T> AllGather(const T& input) {
     CHECK_EQ(is_initialized_, true);
-    std::vector<T> ret(size, T());
-    gloo::AllgatherOptions opts(kContext);
+    std::vector<T> ret(size_, T());
+    gloo::AllgatherOptions opts(context_);
     opts.setInput(const_cast<T*>(&input), 1);
-    opts.setOutput(ret.data(), size);
+    opts.setOutput(ret.data(), size_);
     gloo::allgather(opts);
     return std::move(ret);
   }
 
 protected:
-  bool is_initialized_ =false;
-  std::shared_ptr<gloo::Context> kContext;
-
-  int rank;
-  int size;
+  bool is_initialized_ = false;
+  std::shared_ptr<gloo::Context> context_ = nullptr;;
+  int rank_ = 0;
+  int size_ = 0;
 
 };
 
