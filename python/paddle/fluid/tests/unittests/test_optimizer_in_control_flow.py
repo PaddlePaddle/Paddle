@@ -23,54 +23,67 @@ import paddle.fluid.optimizer as optimizer
 from paddle.fluid.framework import Program, program_guard
 
 BATCH_SIZE = 1
-INPUT_SIZE = 784
+INPUT_SIZE = 32
 
-CLASS_NUM = 10
-FC_SIZE = 40
-EPOCH_NUM = 5
-SWITCH_ID = 3
-SEED = 123
+CLASS_NUM = 2
+FC_SIZE = 4
+EPOCH_NUM = 3
+SWITCH_ID = 2
+SEED = 1
+
+# BATCH_SIZE = 1
+# INPUT_SIZE = 784
+#
+# CLASS_NUM = 10
+# FC_SIZE = 40
+# EPOCH_NUM = 5
+# SWITCH_ID = 3
+# SEED = 123
 
 
 def random_input(seed,
                  image_shape=[BATCH_SIZE, INPUT_SIZE],
                  label_shape=[BATCH_SIZE, 1]):
-    np.random.seed(seed)
-    image_np = np.random.random(size=image_shape).astype('float32')
-    np.random.seed(seed)
-    label_np = np.random.random_integers(
+    # np.random.seed(seed)
+    #     # image_np = np.random.random(size=image_shape).astype('float32')
+    #     # np.random.seed(seed)
+    #     # label_np = np.random.random_integers(
+    #     #     low=0, high=CLASS_NUM - 1, size=label_shape).astype('int64')
+    image_np = np.ones(image_shape).astype('float32')
+    label_np = np.random.randint(
         low=0, high=CLASS_NUM - 1, size=label_shape).astype('int64')
     return image_np, label_np
 
 
-def random_param(size, seed=100):
-    np.random.seed(seed)
-    np_param = np.random.random(size=size).astype('float32')
-    return np_param
+# def random_param(size, seed=100):
+#     np.random.seed(seed)
+#     np_param = np.random.random(size=size).astype('float32')
+#     return np_param
 
 
-def static():
+def static(train_data):
     def simple_fc_net(image):
         hidden = layers.fc(
             image,
             size=FC_SIZE,
-            act='relu',
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.99)),
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.5)),
-            name="hidden")
-
-        prediction = layers.fc(
-            hidden,
-            size=CLASS_NUM,
             act='softmax',
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.2)),
+            # param_attr=fluid.ParamAttr(
+            #     initializer=fluid.initializer.Constant(value=1)),
             bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.8)),
-            name="prediction")
-        return hidden, prediction
+                initializer=fluid.initializer.Constant(value=1)),
+            name="hidden")
+        return hidden
+        # prediction = layers.fc(
+        #     hidden,
+        #     size=CLASS_NUM,
+        #     act='softmax',
+        #     param_attr=fluid.ParamAttr(
+        #         initializer=fluid.initializer.Constant(value=1)),
+        #     bias_attr=fluid.ParamAttr(
+        #         initializer=fluid.initializer.Constant(value=1)),
+        #     name="prediction")
+        #
+        # return hidden, prediction
 
     main_program = Program()
     main_program.random_seed = SEED
@@ -83,7 +96,8 @@ def static():
         id = fluid.data(name='id', shape=[1], dtype='int32')
 
         two = layers.fill_constant(shape=[1], dtype='int32', value=2)
-        hidden, prediction = simple_fc_net(image)
+        # hidden, prediction = simple_fc_net(image)
+        prediction = simple_fc_net(image)
 
         adam = optimizer.Adam(learning_rate=0.001)
         adagrad = optimizer.Adagrad(learning_rate=0.001)
@@ -111,7 +125,8 @@ def static():
         exe.run(fluid.default_startup_program())
 
         for epoch in range(EPOCH_NUM):
-            feed_image, feed_label = random_input(epoch)
+            # feed_image, feed_label = random_input(epoch)
+            feed_image, feed_label = train_data[epoch]
             out = exe.run(main_program,
                           feed={
                               'image': feed_image,
@@ -119,15 +134,14 @@ def static():
                               'id': np.array([epoch]).astype('int32')
                           },
                           fetch_list=[
-                              hidden,
                               prediction,
                               avg_loss,
                           ])
-            out_hidden, out_prediction, loss = out
+            out_prediction, loss = out
             print(epoch)
             print(out_prediction)
             # print(loss)
-    return out_hidden, out_prediction, loss
+    return out_prediction, loss
 
 
 class DygraphLayer(fluid.dygraph.Layer):
@@ -136,28 +150,29 @@ class DygraphLayer(fluid.dygraph.Layer):
         self.fc0 = fluid.dygraph.nn.Linear(
             INPUT_SIZE,
             FC_SIZE,
-            act='relu',
-            param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-                value=0.99)),
-            bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-                value=0.5)), )
-
-        self.pre = fluid.dygraph.nn.Linear(
-            FC_SIZE,
-            CLASS_NUM,
             act='softmax',
-            param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-                value=1.2)),
+            # param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+            #     value=1)),
             bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-                value=0.8)))
+                value=1)), )
+
+        # self.pre = fluid.dygraph.nn.Linear(
+        #     FC_SIZE,
+        #     CLASS_NUM,
+        #     act='softmax',
+        #     param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+        #         value=1)),
+        #     bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+        #         value=1)))
 
     def forward(self, inputs):
         h_0 = self.fc0(inputs)
-        prediction = self.pre(h_0)
-        return h_0, prediction
+        return h_0
+        # prediction = self.pre(h_0)
+        # return h_0, prediction
 
 
-def dynamic():
+def dynamic(train_data):
     with fluid.dygraph.guard():
         fluid.default_startup_program().random_seed = SEED
         fluid.default_main_program().random_seed = SEED
@@ -165,13 +180,13 @@ def dynamic():
         adam = fluid.optimizer.Adam(
             learning_rate=0.001, parameter_list=my_layer.parameters())
         adagrad = fluid.optimizer.Adagrad(
-            learning_rate=0.002, parameter_list=my_layer.parameters())
-        print("--- liyamei: num of param", len(my_layer.parameters()))
+            learning_rate=0.001, parameter_list=my_layer.parameters())
         for epoch in range(EPOCH_NUM):
-            image_data, label = random_input(epoch)
+            # image_data, label = random_input(epoch)
+            image_data, label = train_data[epoch]
             var_input = fluid.dygraph.to_variable(image_data)
             var_lable = fluid.dygraph.to_variable(label)
-            hidden, prediction = my_layer(var_input)
+            prediction = my_layer(var_input)
 
             if epoch % 2 != 0:
                 cross_entropy_loss = layers.cross_entropy(prediction, var_lable)
@@ -188,16 +203,20 @@ def dynamic():
             my_layer.clear_gradients()
             print(epoch)
             print(prediction.numpy())
-        return hidden.numpy(), prediction.numpy(), loss.numpy()
+        return prediction.numpy(), loss.numpy()
 
 
 class TestMultiTask(unittest.TestCase):
     def test_1(self):
+        data = []
+        for i in range(EPOCH_NUM):
+            data.append(random_input(i))
+        # print(data)
         print("-" * 20, " static ", "-" * 20)
-        hidden_1, pre_1, loss_1 = static()
+        pre_1, loss_1 = static(data)
 
         print("-" * 20, " dynamic ", "-" * 20)
-        hidden_2, pre_2, loss_2 = dynamic()
+        pre_2, loss_2 = dynamic(data)
 
         # self.assertTrue(
         #     np.allclose(hidden_1, hidden_2),
@@ -207,10 +226,10 @@ class TestMultiTask(unittest.TestCase):
             np.allclose(pre_1, pre_2),
             msg='static prediction is {} \n dynamic prediction is {}'.format(
                 pre_1, pre_2))
-        # self.assertTrue(
-        #     np.allclose(loss_1, loss_2),
-        #     msg='static loss is {} \n dynamic loss is {}'.format(loss_1,
-        #                                                          loss_2))
+        self.assertTrue(
+            np.allclose(loss_1, loss_2),
+            msg='static loss is {} \n dynamic loss is {}'.format(loss_1,
+                                                                 loss_2))
 
 
 if __name__ == '__main__':
