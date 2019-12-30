@@ -19,6 +19,7 @@ import os
 import tempfile
 import numpy as np
 import paddle.fluid as fluid
+import paddle.fluid.timeline as timeline
 import paddle.fluid.profiler as profiler
 import paddle.fluid.layers as layers
 import paddle.fluid.core as core
@@ -32,6 +33,7 @@ class TestProfiler(unittest.TestCase):
 
     def net_profiler(self, state, use_parallel_executor=False):
         profile_path = os.path.join(tempfile.gettempdir(), "profile")
+        timeline_path = os.path.join(tempfile.gettempdir(), "timeline")
         open(profile_path, "w").write("")
         startup_program = fluid.Program()
         main_program = fluid.Program()
@@ -93,6 +95,7 @@ class TestProfiler(unittest.TestCase):
                 b_size = np.array(outs[2])
                 pass_acc_calculator.add(value=acc, weight=b_size)
                 pass_acc = pass_acc_calculator.eval()
+        timeline.generate_timeline(profile_path, timeline_path)
         data = open(profile_path, 'rb').read()
         self.assertGreater(len(data), 0)
         profile_pb = profiler_pb2.Profile()

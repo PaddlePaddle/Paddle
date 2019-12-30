@@ -21,6 +21,8 @@ import unittest
 import google.protobuf.text_format as text_format
 import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
 
+__all__ = ['generate_timeline', ]
+
 
 class _ChromeTraceFormatter(object):
     def __init__(self):
@@ -276,10 +278,6 @@ def generate_timeline(profile_path='/tmp/profile',
         should be trainer1=file1,trainer2=file2,ps=file3')
         timeline_path (str): The outpout timeline file 
     """
-    if args.profile_path:
-        profile_path = args.profile_path
-    if args.timeline_path:
-        timeline_path = args.timeline_path
 
     profile_paths = profile_path.split(',')
     profile_dict = dict()
