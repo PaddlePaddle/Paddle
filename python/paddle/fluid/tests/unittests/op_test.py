@@ -1099,8 +1099,7 @@ class OpTest(unittest.TestCase):
                      no_check_set=None,
                      equal_nan=False,
                      check_dygraph=True,
-                     inplace_atol=None,
-                     check_compile_vs_runtime=True):
+                     inplace_atol=None):
         self.__class__.op_type = self.op_type
         places = self._get_places()
         for place in places:
@@ -1110,9 +1109,7 @@ class OpTest(unittest.TestCase):
                 outs, dygraph_outs, fetch_list = res
             else:
                 outs, fetch_list = res
-            if check_compile_vs_runtime and (
-                    self.op_type not in
-                    compile_vs_runtime_white_list.COMPILE_RUN_OP_WHITE_LIST):
+            if self.op_type not in compile_vs_runtime_white_list.COMPILE_RUN_OP_WHITE_LIST:
                 self.check_compile_vs_runtime(fetch_list, outs)
 
     def check_output_customized(self, checker):
