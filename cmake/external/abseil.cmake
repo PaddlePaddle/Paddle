@@ -34,6 +34,7 @@ ExternalProject_Add(
                     -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
                     -DCMAKE_INSTALL_PREFIX=${ABSEIL_INSTALL_DIR}
                     -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+                    -DCMAKE_CXX_STANDARD=11
                     -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
                     ${EXTERNAL_OPTIONAL_ARGS}
     CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${ABSEIL_INSTALL_DIR}
@@ -64,6 +65,7 @@ target_link_libraries(absl_synchronization INTERFACE ${ABSEIL_LIB_DIR}/${ABSL_LI
                                                      ${ABSEIL_LIB_DIR}/${ABSL_LIB_PREFIX}absl_demangle_internal${CMAKE_STATIC_LIBRARY_SUFFIX}
                                                      ${ABSEIL_LIB_DIR}/${ABSL_LIB_PREFIX}absl_stacktrace${CMAKE_STATIC_LIBRARY_SUFFIX}
                                                      ${ABSEIL_LIB_DIR}/${ABSL_LIB_PREFIX}absl_debugging_internal${CMAKE_STATIC_LIBRARY_SUFFIX}
+                                                     ${ABSEIL_LIB_DIR}/${ABSL_LIB_PREFIX}absl_dynamic_annotations${CMAKE_STATIC_LIBRARY_SUFFIX}
                                                      ${ABSEIL_LIB_DIR}/${ABSL_LIB_PREFIX}absl_malloc_internal${CMAKE_STATIC_LIBRARY_SUFFIX}
                                                      ${ABSEIL_LIB_DIR}/${ABSL_LIB_PREFIX}absl_spinlock_wait${CMAKE_STATIC_LIBRARY_SUFFIX}
                                                      ${ABSEIL_LIB_DIR}/${ABSL_LIB_PREFIX}absl_graphcycles_internal${CMAKE_STATIC_LIBRARY_SUFFIX}
