@@ -2,7 +2,8 @@ file(GLOB TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
 if(NOT WITH_DISTRIBUTE)
-  list(REMOVE_ITEM TEST_OPS test_communicator)
+  list(REMOVE_ITEM TEST_OPS test_communicator_async)
+  list(REMOVE_ITEM TEST_OPS test_communicator_half_async)
 endif(NOT WITH_DISTRIBUTE)
 
 foreach(src ${TEST_OPS})
