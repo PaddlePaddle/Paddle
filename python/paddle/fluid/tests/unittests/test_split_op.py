@@ -34,7 +34,7 @@ class TestSplitOp(OpTest):
             for i in range(len(out))]}
 
     def get_dtype(self):
-        return "float32"
+        return "float64"
 
     def _set_op_type(self):
         self.op_type = "split"
@@ -71,7 +71,7 @@ class TestSplitOp_2(OpTest):
         self.indices_or_sections = 3
 
     def get_dtype(self):
-        return "float32"
+        return "float64"
 
     def _set_op_type(self):
         self.op_type = "split"
@@ -107,7 +107,7 @@ class TestSplitOp_AxisTensor(OpTest):
         self.indices_or_sections = 3
 
     def get_dtype(self):
-        return "float32"
+        return "float64"
 
     def _set_op_type(self):
         self.op_type = "split"
@@ -153,7 +153,7 @@ class TestSplitOp_SectionsTensor(OpTest):
         self.indices_or_sections = [2, 3]
 
     def get_dtype(self):
-        return "float32"
+        return "float64"
 
     def _set_op_type(self):
         self.op_type = "split"
@@ -189,7 +189,7 @@ class TestSplitOp_unk_section(OpTest):
         self.indices_or_sections = [2, 3]
 
     def get_dtype(self):
-        return "float32"
+        return "float64"
 
     def _set_op_type(self):
         self.op_type = "split"

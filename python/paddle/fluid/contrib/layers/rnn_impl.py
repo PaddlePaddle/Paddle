@@ -104,12 +104,12 @@ class BasicGRUUnit(Layer):
             dtype=self._dtype)
 
         self._gate_bias = self.create_parameter(
-            self._bias_attr,
+            attr=self._bias_attr,
             shape=[2 * self._hiden_size],
             dtype=self._dtype,
             is_bias=True)
         self._candidate_bias = self.create_parameter(
-            self._bias_attr,
+            attr=self._bias_attr,
             shape=[self._hiden_size],
             dtype=self._dtype,
             is_bias=True)

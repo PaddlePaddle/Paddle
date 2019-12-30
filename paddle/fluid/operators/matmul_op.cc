@@ -349,10 +349,11 @@ class MatMulOp : public framework::OperatorWithKernel {
 #else
     PADDLE_ENFORCE_EQ(
         mat_dim_x.width_, mat_dim_y.height_,
-        "ShapeError: Input X's width should be equal to the Y's height, "
-        "but received X's shape: %s,"
-        "Y's shape: %s.",
-        DumpMatrixShape(mat_dim_x).c_str(), DumpMatrixShape(mat_dim_y).c_str());
+        platform::errors::InvalidArgument(
+            "ShapeError: Input X's width should be equal to the Y's height, "
+            "but received X's shape: [%s],"
+            "Y's shape: [%s].",
+            dim_x, dim_y));
 #endif
 
     std::vector<int64_t> dim_out;

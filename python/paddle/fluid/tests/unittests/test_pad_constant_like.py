@@ -40,7 +40,7 @@ class TestPadOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['Y'], 'Out', max_relative_error=0.006)
+        self.check_grad(['Y'], 'Out')
 
     def initTestCase(self):
         self.x_shape = (16, 16)

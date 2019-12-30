@@ -237,7 +237,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
     def generate_quantized_model(self,
                                  model_path,
                                  algo="KL",
-                                 is_full_quantize=False):
+                                 is_full_quantize=False,
+                                 is_use_cache_file=False):
         try:
             os.system("mkdir " + self.int8_model)
         except Exception as e:
@@ -259,11 +260,13 @@ class TestPostTrainingQuantization(unittest.TestCase):
             model_dir=model_path,
             algo=algo,
             quantizable_op_type=quantizable_op_type,
-            is_full_quantize=is_full_quantize)
+            is_full_quantize=is_full_quantize,
+            is_use_cache_file=is_use_cache_file)
         ptq.quantize()
         ptq.save_quantized_model(self.int8_model)
 
-    def run_test(self, model, algo, data_urls, data_md5s):
+    def run_test(self, model, algo, data_urls, data_md5s, is_full_quantize,
+                 is_use_cache_file):
         infer_iterations = self.infer_iterations
         batch_size = self.batch_size
         sample_iterations = self.sample_iterations
@@ -277,8 +280,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
         print("Start INT8 post training quantization for {0} on {1} images ...".
               format(model, sample_iterations * batch_size))
-        self.generate_quantized_model(
-            model_cache_folder + "/model", algo=algo, is_full_quantize=True)
+        self.generate_quantized_model(model_cache_folder + "/model", algo,
+                                      is_full_quantize, is_use_cache_file)
 
         print("Start INT8 inference for {0} on {1} images ...".format(
             model, infer_iterations * batch_size))
@@ -305,7 +308,10 @@ class TestPostTrainingForMobilenetv1(TestPostTrainingQuantization):
             'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
         ]
         data_md5s = ['13892b0716d26443a8cdea15b3c6438b']
-        self.run_test(model, algo, data_urls, data_md5s)
+        is_full_quantize = True
+        is_use_cache_file = False
+        self.run_test(model, algo, data_urls, data_md5s, is_full_quantize,
+                      is_use_cache_file)
 
 
 if __name__ == '__main__':
