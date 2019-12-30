@@ -184,9 +184,9 @@ def auc(input,
     # for global auc
     # Needn't maintain the batch id
     stat_pos = helper.create_global_variable(
-        persistable=True, dtype='int64', shape=[num_thresholds + 1])
+        persistable=True, dtype='int64', shape=[1, num_thresholds + 1])
     stat_neg = helper.create_global_variable(
-        persistable=True, dtype='int64', shape=[num_thresholds + 1])
+        persistable=True, dtype='int64', shape=[1, num_thresholds + 1])
 
     for var in [batch_stat_pos, batch_stat_neg, stat_pos, stat_neg]:
         helper.set_variable_initializer(

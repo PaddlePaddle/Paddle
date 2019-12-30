@@ -18,8 +18,10 @@
 #include <gtest/gtest_prod.h>
 #endif
 
+#include <map>
 #include <memory>
 #include <numeric>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -296,7 +298,7 @@ class GraphPatternDetector {
   using hit_rcd_t =
       std::pair<Node* /*node in graph*/, PDNode* /*node in pattern*/>;
   PDPattern pattern_;
-  std::unordered_map<const PDNode*, std::unordered_set<Node*>> pdnodes2nodes_;
+  std::map<const PDNode*, std::set<Node*>> pdnodes2nodes_;
 };
 
 // some helper methods.

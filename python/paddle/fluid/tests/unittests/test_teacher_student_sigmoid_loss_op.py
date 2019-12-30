@@ -28,14 +28,14 @@ class TestTeacherStudentSigmoidLossOp(OpTest):
 
     def setUp(self):
         self.op_type = "teacher_student_sigmoid_loss"
-        batch_size = 16
+        batch_size = 100
         num_classes = 1
         self.inputs = {
             'X': logit(
                 np.random.uniform(0, 1, (batch_size, num_classes))
-                .astype("float32")),
+                .astype("float64")),
             'Label': np.random.uniform(0, 2, (batch_size, num_classes))
-            .astype("float32")
+            .astype("float64")
         }
         outs = []
         for index, label in enumerate(self.inputs["Label"]):
