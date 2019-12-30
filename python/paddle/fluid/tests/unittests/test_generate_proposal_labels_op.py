@@ -25,7 +25,7 @@ from op_test import OpTest
 def generate_proposal_labels_in_python(
         rpn_rois, gt_classes, is_crowd, gt_boxes, im_info, batch_size_per_im,
         fg_fraction, fg_thresh, bg_thresh_hi, bg_thresh_lo, bbox_reg_weights,
-        class_nums, is_cls_agnostic, is_cascade_rcnn):
+        class_nums, use_random, is_cls_agnostic, is_cascade_rcnn):
     rois = []
     labels_int32 = []
     bbox_targets = []
@@ -36,11 +36,11 @@ def generate_proposal_labels_in_python(
         im_info), 'batch size of rpn_rois and ground_truth is not matched'
 
     for im_i in range(len(im_info)):
-        frcn_blobs = _sample_rois(rpn_rois[im_i], gt_classes[im_i],
-                                  is_crowd[im_i], gt_boxes[im_i], im_info[im_i],
-                                  batch_size_per_im, fg_fraction, fg_thresh,
-                                  bg_thresh_hi, bg_thresh_lo, bbox_reg_weights,
-                                  class_nums, is_cls_agnostic, is_cascade_rcnn)
+        frcn_blobs = _sample_rois(
+            rpn_rois[im_i], gt_classes[im_i], is_crowd[im_i], gt_boxes[im_i],
+            im_info[im_i], batch_size_per_im, fg_fraction, fg_thresh,
+            bg_thresh_hi, bg_thresh_lo, bbox_reg_weights, class_nums,
+            use_random, is_cls_agnostic, is_cascade_rcnn)
         lod.append(frcn_blobs['rois'].shape[0])
         rois.append(frcn_blobs['rois'])
         labels_int32.append(frcn_blobs['labels_int32'])
@@ -53,8 +53,8 @@ def generate_proposal_labels_in_python(
 
 def _sample_rois(rpn_rois, gt_classes, is_crowd, gt_boxes, im_info,
                  batch_size_per_im, fg_fraction, fg_thresh, bg_thresh_hi,
-                 bg_thresh_lo, bbox_reg_weights, class_nums, is_cls_agnostic,
-                 is_cascade_rcnn):
+                 bg_thresh_lo, bbox_reg_weights, class_nums, use_random,
+                 is_cls_agnostic, is_cascade_rcnn):
     rois_per_image = int(batch_size_per_im)
     fg_rois_per_im = int(np.round(fg_fraction * rois_per_image))
 
@@ -106,7 +106,7 @@ def _sample_rois(rpn_rois, gt_classes, is_crowd, gt_boxes, im_info,
         fg_inds = np.where(max_overlaps >= fg_thresh)[0]
         fg_rois_per_this_image = np.minimum(fg_rois_per_im, fg_inds.shape[0])
         # Sample foreground if there are too many
-        if fg_inds.shape[0] > fg_rois_per_this_image:
+        if (fg_inds.shape[0] > fg_rois_per_this_image) and use_random:
             fg_inds = np.random.choice(
                 fg_inds, size=fg_rois_per_this_image, replace=False)
         fg_inds = fg_inds[:fg_rois_per_this_image]
@@ -117,7 +117,7 @@ def _sample_rois(rpn_rois, gt_classes, is_crowd, gt_boxes, im_info,
         bg_rois_per_this_image = np.minimum(bg_rois_per_this_image,
                                             bg_inds.shape[0])
         # Sample background if there are too many
-        if bg_inds.shape[0] > bg_rois_per_this_image:
+        if (bg_inds.shape[0] > bg_rois_per_this_image) and use_random:
             bg_inds = np.random.choice(
                 bg_inds, size=bg_rois_per_this_image, replace=False)
         bg_inds = bg_inds[:bg_rois_per_this_image]
@@ -225,6 +225,7 @@ def _expand_bbox_targets(bbox_targets_input, class_nums, is_cls_agnostic):
 
 class TestGenerateProposalLabelsOp(OpTest):
     def set_data(self):
+        self.use_random = False
         self.init_test_cascade()
         self.init_test_params()
         self.init_test_input()
@@ -245,7 +246,7 @@ class TestGenerateProposalLabelsOp(OpTest):
             'bg_thresh_lo': self.bg_thresh_lo,
             'bbox_reg_weights': self.bbox_reg_weights,
             'class_nums': self.class_nums,
-            'use_random': False,
+            'use_random': self.use_random,
             'is_cls_agnostic': self.is_cls_agnostic,
             'is_cascade_rcnn': self.is_cascade_rcnn
         }
@@ -265,7 +266,7 @@ class TestGenerateProposalLabelsOp(OpTest):
         self.set_data()
 
     def init_test_cascade(self, ):
-        self.is_cascade_rcnn = True
+        self.is_cascade_rcnn = False
 
     def init_test_params(self):
         self.batch_size_per_im = 512
@@ -303,7 +304,7 @@ class TestGenerateProposalLabelsOp(OpTest):
                 self.rpn_rois, self.gt_classes, self.is_crowd, self.gt_boxes, self.im_info,
                 self.batch_size_per_im, self.fg_fraction,
                 self.fg_thresh, self.bg_thresh_hi, self.bg_thresh_lo,
-                self.bbox_reg_weights, self.class_nums,
+                self.bbox_reg_weights, self.class_nums, self.use_random,
                 self.is_cls_agnostic, self.is_cascade_rcnn
             )
         self.rois = np.vstack(self.rois)
