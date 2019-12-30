@@ -33,7 +33,8 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable
 from testsuite import create_op, set_input, append_input_output, append_loss_ops
 from paddle.fluid import unique_name
-from white_list import op_accuracy_white_list, op_check_grad_white_list, op_threshold_white_list, check_shape_white_list
+from white_list import op_accuracy_white_list, op_check_grad_white_list, check_shape_white_list
+from white_list import op_threshold_white_list
 
 
 def _set_use_system_allocator(value=None):
@@ -1111,7 +1112,9 @@ class OpTest(unittest.TestCase):
             abs_a = np.abs(a)
             if self.dtype == np.float64 and \
                 self.op_type not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST:
-                abs_a[abs_a < 1e-7] = 1
+                abs_a[abs_a < 1e-10] = 1e-3
+                abs_a[np.logical_and(abs_a > 1e-10, abs_a <= 1e-8)] *= 1e4
+                abs_a[np.logical_and(abs_a > 1e-8, abs_a <= 1e-6)] *= 1e2
             else:
                 abs_a[abs_a < 1e-3] = 1
 
@@ -1121,7 +1124,7 @@ class OpTest(unittest.TestCase):
             def err_msg():
                 offset = np.argmax(diff_mat > max_relative_error)
                 return (
-                    "%s op error, %s Variable %s max gradient diff %f over limit %f, "
+                    "%s Variable %s max gradient diff %f over limit %f, "
                     "the first error element is %d, expected %f, but got %f.") \
                     % (self.op_type, msg_prefix, name, max_diff, max_relative_error,
                     offset, a.flatten()[offset], b.flatten()[offset])
