@@ -158,7 +158,7 @@ class FTRLOpKernel : public framework::OpKernel<T> {
         }
       }
     } else {
-      PADDLE_THROW("Unsupported Variable Type of Grad");
+      PADDLE_THROW("Unsupported Variable Type of Grad.");
     }
   }
 };
