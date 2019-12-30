@@ -30,12 +30,22 @@ namespace imperative {
 
 static std::map<int64_t, pid_t> load_process_pids;
 
-void SetLoadProcessPID(int64_t key, pid_t pid) { load_process_pids[key] = pid; }
+void SetLoadProcessPID(int64_t key, pid_t pid) {
+  VLOG(3) << "Dygraph Data Loader: set loader child process PID (" << key
+          << ", " << pid << ")";
+  load_process_pids[key] = pid;
+}
 
 void EraseLoadProcessPID(int64_t key) {
   auto it = load_process_pids.find(key);
+  // Note: Can not find key also possible
   if (it != load_process_pids.end()) {
+    VLOG(3) << "Dygraph Data Loader: erase loader child process PID (" << key
+            << ")";
     load_process_pids.erase(it);
+  } else {
+    VLOG(3) << "Dygraph Data Loader: The dygrph loader (id: " << key
+            << ") you want erase does not exist.";
   }
 }
 
@@ -104,6 +114,8 @@ void ThrowErrorIfLoadProcessFailed() {
     // Use waitid rather than waitpid so that we can set NOWAIT, and that Python
     // and other handlers can get whatever info they want about the child.
     infop.si_pid = 0;
+    VLOG(3) << "Dygraph Data Loader: monitor loader child process "
+            << process_pid;
     error = waitid(P_PID, process_pid, &infop, WEXITED | WNOHANG | WNOWAIT);
     // ignore errors and case with no waitable child
     if (error < 0 || infop.si_pid == 0) continue;
