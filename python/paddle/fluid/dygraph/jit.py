@@ -279,7 +279,14 @@ class TracedLayer(object):
                 model. Default None.
 
         Returns:
-            list(str): The fetch variables' name list
+            A tuple of two lists. The first list is the feed variable's
+            names of the saved inference model, and the second list is the
+            fetch variable's names of the saved inference model. These two
+            lists can be used when users want to load inference model in 
+            Python and run the program in static graph mode.    
+
+        Return Type:
+            tuple
 
         Examples:
             .. code-block:: python:
@@ -301,8 +308,9 @@ class TracedLayer(object):
                     in_np = np.random.random([2, 3]).astype('float32')
                     in_var = to_variable(in_np)
                     out_dygraph, static_layer = TracedLayer.trace(layer, inputs=[in_var])
-                    fetch_var_names = static_layer.save_inference_model(
+                    feed_var_names, fetch_var_names = static_layer.save_inference_model(
                                 './saved_infer_model', feed=[0], fetch=[0])
+                    print(feed_var_names) # [u'feed_0']
                     print(fetch_var_names) # [u'save_infer_model/scale_0']
         """
         from paddle.fluid.io import save_inference_model
@@ -322,9 +330,11 @@ class TracedLayer(object):
                 assert target_var is not None, "{} cannot be found".format(name)
                 target_vars.append(target_var)
 
-            return save_inference_model(
+            fetched_var_names = save_inference_model(
                 dirname=dirname,
                 feeded_var_names=feeded_var_names,
                 target_vars=target_vars,
                 executor=self._exe,
                 main_program=self._program.clone())
+
+            return feeded_var_names, fetched_var_names
