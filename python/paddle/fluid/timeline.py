@@ -21,17 +21,6 @@ import unittest
 import google.protobuf.text_format as text_format
 import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
 
-parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument(
-    '--profile_path',
-    type=str,
-    default='',
-    help='Input profile file name. If there are multiple file, the format '
-    'should be trainer1=file1,trainer2=file2,ps=file3')
-parser.add_argument(
-    '--timeline_path', type=str, default='', help='Output timeline file name.')
-args = parser.parse_args()
-
 
 class _ChromeTraceFormatter(object):
     def __init__(self):
@@ -277,30 +266,38 @@ class Timeline(object):
         return self._chrome_trace.format_to_string()
 
 
-profile_path = '/tmp/profile'
-if args.profile_path:
-    profile_path = args.profile_path
-timeline_path = '/tmp/timeline'
-if args.timeline_path:
-    timeline_path = args.timeline_path
+def generate_timeline(profile_path='/tmp/profile',
+                      timeline_path='/tmp/timeline'):
+    """
+    Generate  timeline from the profile result.
 
-profile_paths = profile_path.split(',')
-profile_dict = dict()
-if len(profile_paths) == 1:
-    with open(profile_path, 'rb') as f:
-        profile_s = f.read()
-        profile_pb = profiler_pb2.Profile()
-        profile_pb.ParseFromString(profile_s)
-    profile_dict['trainer'] = profile_pb
-else:
-    for profile_path in profile_paths:
-        k, v = profile_path.split('=')
-        with open(v, 'rb') as f:
+    Args:
+        profile_path (str): Input profile file name. If there are multiple file, the format 
+        should be trainer1=file1,trainer2=file2,ps=file3')
+        timeline_path (str): The outpout timeline file 
+    """
+    if args.profile_path:
+        profile_path = args.profile_path
+    if args.timeline_path:
+        timeline_path = args.timeline_path
+
+    profile_paths = profile_path.split(',')
+    profile_dict = dict()
+    if len(profile_paths) == 1:
+        with open(profile_path, 'rb') as f:
             profile_s = f.read()
             profile_pb = profiler_pb2.Profile()
             profile_pb.ParseFromString(profile_s)
-        profile_dict[k] = profile_pb
+        profile_dict['trainer'] = profile_pb
+    else:
+        for profile_path in profile_paths:
+            k, v = profile_path.split('=')
+            with open(v, 'rb') as f:
+                profile_s = f.read()
+                profile_pb = profiler_pb2.Profile()
+                profile_pb.ParseFromString(profile_s)
+            profile_dict[k] = profile_pb
 
-tl = Timeline(profile_dict)
-with open(timeline_path, 'w') as f:
-    f.write(tl.generate_chrome_trace())
+    tl = Timeline(profile_dict)
+    with open(timeline_path, 'w') as f:
+        f.write(tl.generate_chrome_trace())
