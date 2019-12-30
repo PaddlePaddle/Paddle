@@ -31,8 +31,8 @@ limitations under the License. */
 #include <gloo/rendezvous/store.h>
 #include <gloo/transport/tcp/device.h>
 #endif
-#include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/framework/io/fs.h"
+#include "paddle/fluid/framework/variable_helper.h"
 
 namespace gloo {
 namespace rendezvous {
@@ -42,7 +42,7 @@ class HdfsStore : public gloo::rendezvous::Store {
 #else
 class HdfsStore {
 #endif
-public:
+ public:
   explicit HdfsStore(const std::string& path);
 
   virtual ~HdfsStore() {}
@@ -56,7 +56,7 @@ public:
   virtual void wait(const std::vector<std::string>& keys,
                     const std::chrono::milliseconds& timeout);
 
-protected:
+ protected:
 
   std::string EncodeName(const std::string& name);
 
@@ -78,8 +78,7 @@ namespace paddle {
 namespace framework {
 
 class GlooWrapper {
-public:
-
+ public:
   GlooWrapper() {}
   virtual ~GlooWrapper() {}
   
@@ -132,7 +131,7 @@ public:
     return std::move(ret);
   }
 
-protected:
+ protected:
   bool is_initialized_ = false;
   #ifdef PADDLE_WITH_GLOO
   std::shared_ptr<gloo::Context> context_ = nullptr;
