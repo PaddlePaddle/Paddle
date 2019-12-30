@@ -22,10 +22,14 @@ import six
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.optimizer import SGDOptimizer, Adam
+from paddle.fluid.optimizer import SGDOptimizer, Adam, MomentumOptimizer, LarsMomentumOptimizer, AdagradOptimizer, AdamaxOptimizer, DpsgdOptimizer, DecayedAdagradOptimizer, AdadeltaOptimizer, RMSPropOptimizer, FtrlOptimizer, LambOptimizer
 from paddle.fluid.dygraph import Linear
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
+
+# Note(wangzhongpu)
+# In dygraph, don't suppot DGCMomentumOptimizer.
+# For AdagradOptimizer and DpsgdOptimizer, the result in static graph and dygraph are different.
 
 
 class MLP(fluid.Layer):
@@ -309,6 +313,159 @@ class TestImperativeOptimizerNoamDecay(TestImperativeOptimizerBase):
         return optimizer
 
     def test_sgd(self):
+        self._check_mlp()
+
+
+class TestImperativeMomentumOptimizer(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = MomentumOptimizer(
+            learning_rate=0.001, momentum=0.9, parameter_list=parameter_list)
+        return optimizer
+
+    def get_optimizer(self):
+        optimizer = MomentumOptimizer(learning_rate=0.001, momentum=0.9)
+        return optimizer
+
+    def test_momentum(self):
+        self._check_mlp()
+
+
+class TestImperativeLarsMomentumOptimizer(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = LarsMomentumOptimizer(
+            learning_rate=0.001, momentum=0.9, parameter_list=parameter_list)
+        return optimizer
+
+    def get_optimizer(self):
+        optimizer = LarsMomentumOptimizer(learning_rate=0.001, momentum=0.9)
+        return optimizer
+
+    def test_larsmomentum(self):
+        self._check_mlp()
+
+
+'''
+class TestImperativeAdagradOptimizer(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = AdagradOptimizer(learning_rate=0.2, parameter_list=parameter_list)
+        return optimizer
+
+    def get_optimizer(self):
+        optimizer = AdagradOptimizer(learning_rate=0.2)
+        return optimizer
+
+    def test_adagrad(self):
+        self._check_mlp()
+'''
+
+
+class TestImperativeAdamaxOptimizer(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = AdamaxOptimizer(
+            learning_rate=0.2, parameter_list=parameter_list)
+        return optimizer
+
+    def get_optimizer(self):
+        optimizer = AdamaxOptimizer(learning_rate=0.2)
+        return optimizer
+
+    def test_adamax(self):
+        self._check_mlp()
+
+
+'''
+class TestImperativeDpsgdOptimizer(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = DpsgdOptimizer(learning_rate=0.01, clip=10.0, batch_size=16.0, sigma=1.0, parameter_list=parameter_list)
+        return optimizer
+
+    def get_optimizer(self):
+        optimizer = DpsgdOptimizer(learning_rate=0.01, clip=10.0, batch_size=16.0, sigma=1.0)
+        return optimizer
+
+    def test_dpsgd(self):
+        self._check_mlp()
+'''
+
+
+class TestImperativeDecayedAdagradOptimizer(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = DecayedAdagradOptimizer(
+            learning_rate=0.2, parameter_list=parameter_list)
+        return optimizer
+
+    def get_optimizer(self):
+        optimizer = DecayedAdagradOptimizer(learning_rate=0.2)
+        return optimizer
+
+    def test_decayadagrad(self):
+        self._check_mlp()
+
+
+class TestImperativeAdadeltaOptimizer(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = AdadeltaOptimizer(
+            learning_rate=0.0003,
+            epsilon=1.0e-6,
+            rho=0.95,
+            parameter_list=parameter_list)
+        return optimizer
+
+    def get_optimizer(self):
+        optimizer = AdadeltaOptimizer(
+            learning_rate=0.0003, epsilon=1.0e-6, rho=0.95)
+        return optimizer
+
+    def test_adadelta(self):
+        self._check_mlp()
+
+
+class TestImperativeRMSPropOptimizer(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = RMSPropOptimizer(
+            learning_rate=0.1, parameter_list=parameter_list)
+        return optimizer
+
+    def get_optimizer(self):
+        optimizer = RMSPropOptimizer(learning_rate=0.1)
+        return optimizer
+
+    def test_rmsprop(self):
+        self._check_mlp()
+
+
+class TestImperativeFtrlOptimizer(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = FtrlOptimizer(
+            learning_rate=0.1, parameter_list=parameter_list)
+        return optimizer
+
+    def get_optimizer(self):
+        optimizer = FtrlOptimizer(learning_rate=0.1)
+        return optimizer
+
+    def test_ftrl(self):
+        self._check_mlp()
+
+
+def exclude_fn(param):
+    return param.name.endswith('.b_0')
+
+
+class TestImperativeLambOptimizer(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = LambOptimizer(
+            learning_rate=0.002,
+            exclude_from_weight_decay_fn=exclude_fn,
+            parameter_list=parameter_list)
+        return optimizer
+
+    def get_optimizer(self):
+        optimizer = LambOptimizer(
+            learning_rate=0.002, exclude_from_weight_decay_fn=exclude_fn)
+        return optimizer
+
+    def test_lamb(self):
         self._check_mlp()
 
 
