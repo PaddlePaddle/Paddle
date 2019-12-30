@@ -1,10 +1,26 @@
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
+#pragma once
+
 #include <sys/types.h>
 #include <unistd.h>
-
 #include <iostream>
 #include <memory>
 #include <string>
-
+#include <utility>
+#include <vector>
 #include <gloo/allreduce.h>
 #include <gloo/barrier.h>
 #include <gloo/rendezvous/context.h>
@@ -14,25 +30,25 @@
 #include <gloo/transport/tcp/device.h>
 #include <gloo/allgather.h>
 #include "paddle/fluid/framework/variable_helper.h"
+#include "paddle/fluid/framework/io/fs.h"
 
 namespace gloo {
 namespace rendezvous {
 
 class HdfsStore : public gloo::rendezvous::Store{
 public:
-  explicit HdfsStore(const std::string& path, const std::string& hdfs_name,
-                     const std::string& hdfs_ugi);
+  explicit HdfsStore(const std::string& path);
 
   virtual ~HdfsStore() {}
 
-  virtual void Set(const std::string& key, const std::vector<char>& data) override;
+  void set(const std::string& key, const std::vector<char>& data) override;
 
-  virtual std::vector<char> Get(const std::string& key) override;
+  std::vector<char> get(const std::string& key) override;
 
-  virtual void Wait(const std::vector<std::string>& keys) override;
+  void wait(const std::vector<std::string>& keys) override;
 
-  virtual void Wait(const std::vector<std::string>& keys,
-                    const std::chrono::milliseconds& timeout) override;
+  void wait(const std::vector<std::string>& keys,
+            const std::chrono::milliseconds& timeout) override;
 
 protected:
 
@@ -44,13 +60,12 @@ protected:
 
   bool Check(const std::vector<std::string>& keys);
 
-  std::string hdfs_name_;
-  std::string hdfs_ugi_;
   std::string path_;
+  int wait_sleep_ms;
 };
 
-}
-}
+}  // namespace rendezvous
+}  // namespace gloo
 
 
 namespace paddle {
@@ -70,14 +85,22 @@ public:
     }
     this->rank = rank;
     this->size = size;
+    std::string cmd = std::string("hadoop fs");
+    cmd += " -D fs.default.name=" + fs_name;
+    cmd += " -D hadoop.job.ugi=" + fs_ugi;
+    paddle::framework::hdfs_set_command(cmd);
     gloo::transport::tcp::attr attr;
     attr.iface = iface;
-    auto fileStore = gloo::rendezvous::HdfsStore(path, fs_name, fs_ugi);
+    auto fileStore = gloo::rendezvous::HdfsStore(path);//, fs_name, fs_ugi);
     auto prefixStore = gloo::rendezvous::PrefixStore(prefix, fileStore);
     auto dev = gloo::transport::tcp::CreateDevice(attr);
     auto context = std::make_shared<gloo::rendezvous::Context>(rank, size);
     context->connectFullMesh(prefixStore, dev);
     this->kContext = std::move(context);
+//    std::string cmd = std::string("hadoop fs");//
+//    cmd += " -D fs.default.name=" + fs_name;
+//    cmd += " -D hadoop.job.ugi=" + fs_ugi;
+//    paddle::framework::hdfs_set_command(cmd);
     is_initialized_ = true;
   }
 
@@ -98,7 +121,7 @@ public:
   }
 
   template<typename T>
-  void AllReduce(const std::vector<T>& sendbuf, std::vector<T>& recvbuf) {
+  void AllReduce(const std::vector<T>& sendbuf, std::vector<T>& recvbuf) {  // NOLINT
     CHECK_EQ(is_initialized_, true);
     CHECK_EQ(sendbuf.size() == recvbuf.size(), true);
     gloo::AllreduceOptions opts(kContext);
@@ -129,5 +152,5 @@ protected:
 
 };
 
-}
-}
+}  // namespace framework
+}  // namespace paddle

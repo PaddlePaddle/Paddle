@@ -197,7 +197,7 @@ void localfs_mkdir(const std::string& path) {
 }
 
 void localfs_mv(const std::string& src, const std::string& dest) {
-  if (path == "") {
+  if (src == "" || dest == "") {
     return;
   }
 
@@ -305,7 +305,6 @@ std::string hdfs_tail(const std::string& path) {
 bool hdfs_exists(const std::string& path) {
   std::string test = shell_get_command_output(string::format_string(
       "%s -test -e %s ; echo $?", hdfs_command().c_str(), path.c_str()));
-
   if (string::trim_spaces(test) == "0") {
     return true;
   }
@@ -323,10 +322,9 @@ void hdfs_mkdir(const std::string& path) {
 }
 
 void hdfs_mv(const std::string& src, const std::string& dest) {
-  if (path == "") {
+  if (src == "" || dest == "") {
     return;
   }
-
   shell_execute(string::format_string("%s -mv %s %s; true",
                                       hdfs_command().c_str(), src.c_str(), dest.c_str()));
 }
@@ -473,7 +471,7 @@ void fs_mkdir(const std::string& path) {
 void fs_mv(const std::string& src, const std::string& dest) {
   int s = fs_select_internal(src);
   int d = fs_select_internal(dest);
-  CHECK(s, d);
+  CHECK_EQ(s, d);
   switch (s) {
     case 0:
       return localfs_mv(src, dest);

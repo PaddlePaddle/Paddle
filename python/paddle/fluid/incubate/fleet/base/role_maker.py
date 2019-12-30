@@ -22,6 +22,7 @@ __all__ = [
 ]
 
 import os
+import time
 
 
 class Role:
@@ -422,11 +423,26 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 
 
 class PaddleCloudGlooRoleMaker(RoleMakerBase):
-    def __init__(self):
+    """
+    This role maker is for paddlecloud and gloo
+    """
+    def __init__(self,
+                 hdfs_name,
+                 hdfs_ugi,
+                 hdfs_path,
+                 iface="eth0"):
         super(RoleMakerBase, self).__init__()
         self._role_is_generated = False
+        self._hdfs_name = hdfs_name
+        self._hdfs_ugi = hdfs_ugi
+        self._hdfs_path = hdfs_path
+        self._iface = iface
+        self._prefix = "gloo_tmp_%s" % int(time.time())
 
     def generate_role(self):
+        """
+        generate role for paddlecloud gloo
+        """
         if not self._role_is_generated:
             eplist = os.environ["PADDLE_PSERVERS_IP_PORT_LIST"].split(",")
             trainers_num = int(os.environ["PADDLE_TRAINERS_NUM"])
@@ -440,7 +456,10 @@ class PaddleCloudGlooRoleMaker(RoleMakerBase):
                 self._node_type = 1
                 self._cur_endpoint = worker_endpoints[current_id]
                 gloo = fluid.core.Gloo()
-                gloo.init(current_id, len(worker_endpoints), "/home/xujiaqi/disk1/test_pslib_split/trainer_gloo_path")
+                gloo.init(current_id, len(worker_endpoints),
+                          self._hdfs_path.rstrip("/") + "/trainer",
+                          self._hdfs_name, self._hdfs_ugi, self._iface,
+                          self._prefix)
                 self._node_type_comm = gloo
             elif training_role == "PSERVER":
                 role = Role.SERVER
@@ -451,12 +470,17 @@ class PaddleCloudGlooRoleMaker(RoleMakerBase):
                 self._node_type = 0
                 self._cur_endpoint = cur_endpoint
                 gloo = fluid.core.Gloo()
-                gloo.init(current_id, len(eplist), "/home/xujiaqi/disk1/test_pslib_split/server_gloo_path")
+                gloo.init(current_id, len(eplist),
+                          self._hdfs_path.rstrip("/") + "/trainer",
+                          self._hdfs_name, self._hdfs_ugi, self._iface,
+                          self._prefix)
                 self._node_type_comm = gloo
 
             gloo = fluid.core.Gloo()
             all_list = worker_endpoints + eplist
-            gloo.init(all_list.index(self._cur_endpoint), len(all_list), "/home/xujiaqi/disk1/test_pslib_split/allnodes_gloo_path")
+            gloo.init(all_list.index(self._cur_endpoint), len(all_list),
+                      self._hdfs_path.rstrip("/") + "/all", self._hdfs_name,
+                      self._hdfs_ugi, self._iface, self._prefix)
             self._all_comm = gloo
             self._trainers_num = trainers_num
             self._server_endpoints = eplist
@@ -468,15 +492,24 @@ class PaddleCloudGlooRoleMaker(RoleMakerBase):
             self._role_is_generated = True
 
     def _finalize(self):
+        """
+        default do nothing
+        """
         pass
 
     def _all_gather(self, obj):
+        """
+        gather between all workers and pservers
+        """
         if not self._role_is_generated:
             self.generate_role()
         self._barrier_all()
         return self._all_comm.all_gather(obj)
 
     def _worker_gather(self, obj):
+        """
+        gather between all workers
+        """
         if not self._role_is_generated:
             self.generate_role()
         if not self.is_worker():
@@ -485,58 +518,95 @@ class PaddleCloudGlooRoleMaker(RoleMakerBase):
         return self._node_type_comm.all_gather(obj)
 
     def _get_rank(self):
+        """
+        get current rank in all workers and pservers
+        """
         return self._rank
 
     def _get_size(self):
+        """
+        get total num of all workers and pservers
+        """
         return self._size
 
     def get_local_endpoint(self):
+        """
+        get local endpoint of current process
+        """
         if not self._role_is_generated:
             self.generate_role()
         return self._cur_endpoint
 
     def get_trainer_endpoints(self):
+        """
+        get endpoint of all trainers
+        """
         if not self._role_is_generated:
             self.generate_role()
         return self._worker_endpoints
 
     def get_pserver_endpoints(self):
+        """
+        get endpoint of all pservers
+        """
         if not self._role_is_generated:
             self.generate_role()
         return self._server_endpoints
 
     def is_worker(self):
+        """
+        whether current process is worker
+        """
         if not self._role_is_generated:
             self.generate_role()
         return self._role == Role.WORKER
 
     def is_server(self):
+        """
+        whether current process is server
+        """
         if not self._role_is_generated:
             self.generate_role()
         return self._role == Role.SERVER
 
     def is_first_worker(self):
+        """
+        whether current process is worker of rank 0
+        """
         if not self._role_is_generated:
             self.generate_role()
         return self._role == Role.WORKER and self._current_id == 0
 
     def worker_index(self):
+        """
+        get index of current worker
+        """
         if not self._role_is_generated:
             self.generate_role()
         return self._current_id
 
     def server_index(self):
+        """
+        get index of current server
+        """
         if not self._role_is_generated:
             self.generate_role()
         return self._current_id
 
     def worker_num(self):
+        """
+        retrun the current number of worker
+        """
+        if not self._role_is_generated:
+            self.generate_role()
         return self._worker_num()
 
     def server_num(self):
         """
         return the current number of server
         """
+        if not self._role_is_generated:
+            self.generate_role()
         return self._server_num()
 
     def _barrier_worker(self):
@@ -549,6 +619,9 @@ class PaddleCloudGlooRoleMaker(RoleMakerBase):
             self._node_type_comm.barrier()
 
     def _barrier_all(self):
+        """
+        barrier all workers and servers in current distributed job
+        """
         if not self._role_is_generated:
             self.generate_role()
         self._all_comm.barrier()
@@ -557,11 +630,10 @@ class PaddleCloudGlooRoleMaker(RoleMakerBase):
         """
         barrier all servers in current distributed job
         """
-        if self._check_role_generation():
-            if self.is_server():
-                self._node_type_comm.barrier()
-        else:
-            raise Exception("You should check role generation first")
+        if not self._role_is_generated:
+            self.generate_role()
+        if self.is_server():
+            self._node_type_comm.barrier()
 
     def _worker_num(self):
         """
