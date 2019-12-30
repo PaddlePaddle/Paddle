@@ -16,6 +16,11 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/io/fs.h"
 
+#if defined _WIN32 || defined __APPLE__
+#else
+#define _LINUX
+#endif
+
 namespace gloo {
 namespace rendezvous {
 
@@ -25,6 +30,7 @@ HdfsStore::HdfsStore(const std::string& path) {
 }
 
 void HdfsStore::set(const std::string& key, const std::vector<char>& data) {
+#ifdef _LINUX
   auto tmp = TmpPath(key);
   auto path = ObjectPath(key);
   bool is_exists = paddle::framework::hdfs_exists(path);
@@ -35,11 +41,13 @@ void HdfsStore::set(const std::string& key, const std::vector<char>& data) {
   VLOG(3) << "HdfsStore::set write_count=" << write_count;
   fp.reset();
   paddle::framework::fs_mv(tmp, path);
+#endif
 }
 
 std::vector<char> HdfsStore::get(const std::string& key) {
   auto path = ObjectPath(key);
   std::vector<char> result;
+#ifdef _LINUX
   // block until key is set
   wait({key});
   bool is_exists = paddle::framework::hdfs_exists(path);
@@ -54,6 +62,7 @@ std::vector<char> HdfsStore::get(const std::string& key) {
   }
   VLOG(3) << "HdfsStore::get read_count " << read_count;
   return result;
+#endif
 }
 
 void HdfsStore::wait(const std::vector<std::string>& keys) {
@@ -62,6 +71,7 @@ void HdfsStore::wait(const std::vector<std::string>& keys) {
 
 void HdfsStore::wait(const std::vector<std::string>& keys,
                      const std::chrono::milliseconds& timeout) {
+#ifdef _LINUX
   auto start = std::chrono::steady_clock::now();
   while (!Check(keys)) {
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
@@ -72,6 +82,7 @@ void HdfsStore::wait(const std::vector<std::string>& keys,
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(wait_sleep_ms));
   }
+#endif
 }
 
 std::string HdfsStore::EncodeName(const std::string& name) {
@@ -88,6 +99,7 @@ std::string HdfsStore::ObjectPath(const std::string& name) {
 }
 
 bool HdfsStore::Check(const std::vector<std::string>& keys) {
+#ifdef _LINUX
   std::vector<std::string> paths;
   for (const auto& key : keys) {
     paths.push_back(ObjectPath(key));
@@ -98,6 +110,7 @@ bool HdfsStore::Check(const std::vector<std::string>& keys) {
       return false;
     }
   }
+#endif
   return true;
 }
 
