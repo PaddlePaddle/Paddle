@@ -51,6 +51,8 @@ from . import collective
 
 LOOKUP_TABLE_TYPE = "lookup_table"
 LOOKUP_TABLE_GRAD_TYPE = "lookup_table_grad"
+OP_NAME_SCOPE = "op_namescope"
+CLIP_OP_NAME_SCOPE = "append_graident_clip"
 OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
 RPC_OP_ROLE_ATTR_NAME = op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(
 )
@@ -2582,6 +2584,9 @@ class DistributeTranspiler(object):
         origin_var_dict = self.origin_program.global_block().vars
         for op in block.ops:
             if self._is_opt_role_op(op):
+                if OP_NAME_SCOPE in op.all_attrs(
+                ) and CLIP_OP_NAME_SCOPE in op.attr(OP_NAME_SCOPE):
+                    continue
                 opt_ops.append(op)
                 if op.attr(OP_ROLE_VAR_ATTR_NAME):
                     param_name = op.attr(OP_ROLE_VAR_ATTR_NAME)[0]

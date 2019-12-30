@@ -535,13 +535,7 @@ def append_gradient_clip_ops(param_grads):
         if 'op_namescope' in op.all_attrs() and clip_flag in op.attr(
                 "op_namescope"):
             if op.attr('op_role_var'):
-                param_name = op.attr('op_role_var')[0]
-                index = 0
-                for i in range(len(res)):
-                    if res[i][0].name == param_name:
-                        index = i
-                correct_p_g = [param_name, res[index][1].name]
-                op._set_attr('op_role_var', correct_p_g)
+                op._set_attr('op_role_var', [])
     return res
 
 
