@@ -48,12 +48,9 @@ bool MemoryBlock::Split(size_t size, MemoryBlockPool* pool) {
 
   this->size_ = size;
 
-  this->UpdateGuards();
-
   // Write metadata for the new block's right buddy
   if (original_rb != nullptr) {
     original_rb->left_buddy_ = this->right_buddy_;
-    original_rb->UpdateGuards();
   }
   return true;
 }
@@ -69,12 +66,9 @@ void MemoryBlock::Merge(MemoryBlock* block, MemoryBlockPool* pool) {
   // link buddy's buddy -> this
   if (this->right_buddy_ != nullptr) {
     this->right_buddy_->left_buddy_ = this;
-    this->right_buddy_->UpdateGuards();
   }
 
   this->size_ += block->size_;
-  this->UpdateGuards();
-
   pool->Push(block);
 }
 

@@ -68,16 +68,10 @@ class MemoryBlock {
   void Merge(MemoryBlock* right_buddy, MemoryBlockPool* pool);
 
   // Mark the allocation as free.
-  inline void MarkAsFree() {
-    this->type_ = FREE_CHUNK;
-    this->UpdateGuards();
-  }
+  inline void MarkAsFree() { this->type_ = FREE_CHUNK; }
 
   // mutator for type
-  inline void set_type(const MemoryBlock::Type& type) {
-    this->type_ = type;
-    this->UpdateGuards();
-  }
+  inline void set_type(const MemoryBlock::Type& type) { this->type_ = type; }
 
   // accessor for data_
   void* get_data() const { return this->data_; }
@@ -97,21 +91,13 @@ class MemoryBlock {
   // accessor for right_buddy_
   inline MemoryBlock* get_right_buddy() const { return this->right_buddy_; }
 
-  // Updates guard_begin and guard_end by hashes of the Metadata object.
-  void UpdateGuards();
-
-  // Checks that guard_begin and guard_end are hashes of the Metadata object.
-  bool CheckGuards() const;
-
  private:
-  size_t guard_begin = 0;
   void* data_ = nullptr;
   MemoryBlock::Type type_ = MemoryBlock::INVALID_CHUNK;
   size_t index_ = 0;
   size_t size_ = 0;
   MemoryBlock* left_buddy_ = nullptr;
   MemoryBlock* right_buddy_ = nullptr;
-  size_t guard_end = 0;
 };
 
 class MemoryBlockPool {
