@@ -119,6 +119,7 @@ void GlooWrapper::Init(int rank, int size, const std::string& path,
   cmd += " -D fs.default.name=" + fs_name;
   cmd += " -D hadoop.job.ugi=" + fs_ugi;
   paddle::framework::hdfs_set_command(cmd);
+  #ifdef PADDLE_WITH_GLOO 
   gloo::transport::tcp::attr attr;
   attr.iface = iface;
   auto file_store = gloo::rendezvous::HdfsStore(path);
@@ -127,13 +128,16 @@ void GlooWrapper::Init(int rank, int size, const std::string& path,
   auto context = std::make_shared<gloo::rendezvous::Context>(rank, size);
   context->connectFullMesh(prefix_store, dev);
   context_ = std::move(context);
+  #endif
   is_initialized_ = true;
 }
 
-template void GlooWrapper::AllReduce<int64_t>(                            // NOLINT
-    const std::vector<int64_t>& sendbuf, std::vector<int64_t>& recvbuf);  // NOLINT
-template void GlooWrapper::AllReduce<double>(                             // NOLINT
-    const std::vector<double>& sendbuf, std::vector<double>& recvbuf);    // NOLINT
+template void GlooWrapper::AllReduce<int64_t>(
+    const std::vector<int64_t>& sendbuf,  // NOLINT
+    std::vector<int64_t>& recvbuf);       // NOLINT
+template void GlooWrapper::AllReduce<double>(
+    const std::vector<double>& sendbuf,  // NOLINT
+    std::vector<double>& recvbuf);       // NOLINT
 template std::vector<int64_t> GlooWrapper::AllGather<int64_t>(
     const int64_t& input);
 template std::vector<double> GlooWrapper::AllGather<double>(

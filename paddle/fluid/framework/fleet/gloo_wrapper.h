@@ -22,6 +22,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 #ifdef PADDLE_WITH_GLOO
+#include <gloo/allgather.h>
 #include <gloo/allreduce.h>
 #include <gloo/barrier.h>
 #include <gloo/rendezvous/context.h>
@@ -29,7 +30,6 @@ limitations under the License. */
 #include <gloo/rendezvous/prefix_store.h>
 #include <gloo/rendezvous/store.h>
 #include <gloo/transport/tcp/device.h>
-#include <gloo/allgather.h>
 #endif
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/framework/io/fs.h"
@@ -37,7 +37,11 @@ limitations under the License. */
 namespace gloo {
 namespace rendezvous {
 
-class HdfsStore : public gloo::rendezvous::Store{
+#ifdef PADDLE_WITH_GLOO
+class HdfsStore : public gloo::rendezvous::Store {
+#else
+class HdfsStore {
+#endif
 public:
   explicit HdfsStore(const std::string& path);
 
@@ -95,36 +99,44 @@ public:
 
   void Barrier() {
     CHECK_EQ(is_initialized_, true);
+    #ifdef PADDLE_WITH_GLOO
     gloo::BarrierOptions opts(context_);
     gloo::barrier(opts);
+    #endif
   }
 
   template<typename T>
   void AllReduce(const std::vector<T>& sendbuf, std::vector<T>& recvbuf) {  // NOLINT
     CHECK_EQ(is_initialized_, true);
     CHECK_EQ(sendbuf.size() == recvbuf.size(), true);
+    #ifdef PADDLE_WITH_GLOO
     gloo::AllreduceOptions opts(context_);
     opts.setInput(const_cast<T*>((const T*) sendbuf.data()), sendbuf.size());
     opts.setOutput(recvbuf.data(), recvbuf.size());
     opts.setReduceFunction(
         static_cast<void(*)(void*, const void*, const void*, size_t)>(&gloo::sum<T>));
     gloo::allreduce(opts);
+    #endif
   }
 
   template<typename T>
   std::vector<T> AllGather(const T& input) {
     CHECK_EQ(is_initialized_, true);
     std::vector<T> ret(size_, T());
+    #ifdef PADDLE_WITH_GLOO
     gloo::AllgatherOptions opts(context_);
     opts.setInput(const_cast<T*>(&input), 1);
     opts.setOutput(ret.data(), size_);
     gloo::allgather(opts);
+    #endif
     return std::move(ret);
   }
 
 protected:
   bool is_initialized_ = false;
+  #ifdef PADDLE_WITH_GLOO
   std::shared_ptr<gloo::Context> context_ = nullptr;
+  #endif
   int rank_ = 0;
   int size_ = 0;
 
