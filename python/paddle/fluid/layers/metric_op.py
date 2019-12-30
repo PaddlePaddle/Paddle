@@ -39,7 +39,8 @@ def accuracy(input, label, k=1, correct=None, total=None):
 
     Args:
         input(Variable): The input of accuracy layer, which is the predictions of network. A LoDTensor or Tensor with type float32,float64.
-        label(Variable): The label of dataset.  LoDTensor or Tensor with type int32,int64.
+            Shape is ``[sample_number, class_dim]`` .
+        label(Variable): The label of dataset.  LoDTensor or Tensor with type int32,int64. Shape is ``[sample_number, 1]`` .
         k(int): The top k predictions for each class will be checked. Data type is int64 or int32.
         correct(Variable): The correct predictions count. A Tensor with type int64 or int32.
         total(Variable): The total entries count. A tensor with type int64 or int32.
@@ -184,9 +185,9 @@ def auc(input,
     # for global auc
     # Needn't maintain the batch id
     stat_pos = helper.create_global_variable(
-        persistable=True, dtype='int64', shape=[1, num_thresholds + 1])
+        persistable=True, dtype='int64', shape=[num_thresholds + 1])
     stat_neg = helper.create_global_variable(
-        persistable=True, dtype='int64', shape=[1, num_thresholds + 1])
+        persistable=True, dtype='int64', shape=[num_thresholds + 1])
 
     for var in [batch_stat_pos, batch_stat_neg, stat_pos, stat_neg]:
         helper.set_variable_initializer(
