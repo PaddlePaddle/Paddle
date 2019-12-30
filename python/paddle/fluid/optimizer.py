@@ -60,7 +60,12 @@ class Optimizer(object):
     """
 
     @imperative_base.no_grad
-    def __init__(self, learning_rate, regularization=None, name=None):
+    def __init__(self,
+                 learning_rate,
+                 parameter_list=None,
+                 regularization=None,
+                 name=None):
+        self._parameter_list = None
         if framework.in_dygraph_mode():
             if not isinstance(learning_rate, float) and \
                     not isinstance(learning_rate, LearningRateDecay):
@@ -71,6 +76,12 @@ class Optimizer(object):
                 self._name = unique_name.generate(name)
             else:
                 self._name = unique_name.generate(self.__class__.__name__)
+            if parameter_list is not None:
+                self._parameter_list = parameter_list
+            else:
+                raise AttributeError(
+                    "parameter_list argument given to the Optimizer should not be None in dygraph mode."
+                )
         else:
             if not isinstance(learning_rate, float) and \
                     not isinstance(learning_rate, framework.Variable):
@@ -154,7 +165,8 @@ class Optimizer(object):
                     state_dict = emb.state_dict()
                     fluid.save_dygraph( state_dict, "paddle_dy")
 
-                    adam = fluid.optimizer.Adam( learning_rate = fluid.layers.noam_decay( 100, 10000) )
+                    adam = fluid.optimizer.Adam( learning_rate = fluid.layers.noam_decay( 100, 10000), 
+                                                 parameter_list = emb.parameters() )
                     state_dict = adam.state_dict()
                     fluid.save_dygraph( state_dict, "padle_dy")
 
@@ -530,13 +542,8 @@ class Optimizer(object):
 
         self._dtype = loss.dtype
         if framework.in_dygraph_mode():
-            if parameter_list is not None:
-                parameters = parameter_list
-            else:
-                parameters = framework._dygraph_tracer().all_parameters()
-
             params_grads = []
-            for param in parameters:
+            for param in self._parameter_list:
                 if not param.trainable:
                     continue
                 if param._grad_ivar() is not None:
@@ -714,6 +721,9 @@ class SGDOptimizer(Optimizer):
     Parameters:
         learning_rate (float|Variable): The learning rate used to update parameters. \
             Can be a float value or a Variable with one float value as data element.
+        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+            This parameter is required in dygraph mode. \
+            The default value is None in static mode, at this time all parameters will be updated.
         regularization: A Regularizer, such as :ref:`api_fluid_regularizer_L2DecayRegularizer`. \
             Optional, default is None.
         name (str, optional): This parameter is used by developers to print debugging information. \
@@ -749,10 +759,15 @@ class SGDOptimizer(Optimizer):
 
     """
 
-    def __init__(self, learning_rate, regularization=None, name=None):
+    def __init__(self,
+                 learning_rate,
+                 parameter_list=None,
+                 regularization=None,
+                 name=None):
         assert learning_rate is not None
         super(SGDOptimizer, self).__init__(
             learning_rate=learning_rate,
+            parameter_list=parameter_list,
             regularization=regularization,
             name=name)
         self.type = "sgd"
@@ -810,6 +825,9 @@ class MomentumOptimizer(Optimizer):
         learning_rate (float|Variable): The learning rate used to update parameters. \
             Can be a float value or a Variable with one float value as data element.
         momentum (float): Momentum factor
+        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+            This parameter is required in dygraph mode. \
+            The default value is None in static mode, at this time all parameters will be updated.
         use_nesterov (bool, optional): Enables Nesterov momentum, default is false.
         regularization: A Regularizer, such as :ref:`api_fluid_regularizer_L2DecayRegularizer`. \
             Optional, default is None.
@@ -850,6 +868,7 @@ class MomentumOptimizer(Optimizer):
     def __init__(self,
                  learning_rate,
                  momentum,
+                 parameter_list=None,
                  use_nesterov=False,
                  regularization=None,
                  name=None):
@@ -857,6 +876,7 @@ class MomentumOptimizer(Optimizer):
         assert momentum is not None
         super(MomentumOptimizer, self).__init__(
             learning_rate=learning_rate,
+            parameter_list=parameter_list,
             regularization=regularization,
             name=name)
         self.type = "momentum"
@@ -930,6 +950,9 @@ class DGCMomentumOptimizer(Optimizer):
         sparsity (list[float]): Get top important element from gradient tensor, the ratio is (1 - current sparsity). \
             Default is [0.999]. For example, if the sparsity is [0.99, 0.999], \
                 the top [1%, 0.1%] important element will be transmitted.
+        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+            This parameter is required in dygraph mode. \
+            The default value is None in static mode, at this time all parameters will be updated.
         use_nesterov (bool): Enables Nesterov momentum. True means use Nesterov. Default is False.
         local_grad_clip_norm (float, optional): Local gradient clip norm value. Optional, default is None, represent no need clip.
         num_trainers (int, optional): The number of training nodes. Optional, default is None.
@@ -959,6 +982,7 @@ class DGCMomentumOptimizer(Optimizer):
                  rampup_begin_step,
                  rampup_step=1,
                  sparsity=[0.999],
+                 parameter_list=None,
                  use_nesterov=False,
                  local_grad_clip_norm=None,
                  num_trainers=None,
@@ -968,6 +992,7 @@ class DGCMomentumOptimizer(Optimizer):
         assert momentum is not None
         super(DGCMomentumOptimizer, self).__init__(
             learning_rate=learning_rate,
+            parameter_list=parameter_list,
             regularization=regularization,
             name=name)
         self.type = "dgc_momentum"
@@ -1295,6 +1320,9 @@ class LarsMomentumOptimizer(Optimizer):
             momentum (float): momentum factor
         lars_coeff (float): Defines how much we trust the layer to change its weights.
         lars_weight_decay (float): Weight decay coefficient for decaying using LARS.
+        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+            This parameter is required in dygraph mode. \
+            The default value is None in static mode, at this time all parameters will be updated.
         regularization: A Regularizer, such as :ref:`api_fluid_regularizer_L2DecayRegularizer`.
             Optional, default is None.
         name (str, optional): This parameter is used by developers to print debugging information. \
@@ -1327,12 +1355,14 @@ class LarsMomentumOptimizer(Optimizer):
                  momentum,
                  lars_coeff=0.001,
                  lars_weight_decay=0.0005,
+                 parameter_list=None,
                  regularization=None,
                  name=None):
         assert learning_rate is not None
         assert momentum is not None
         super(LarsMomentumOptimizer, self).__init__(
             learning_rate=learning_rate,
+            parameter_list=parameter_list,
             regularization=regularization,
             name=name)
         self.type = "lars_momentum"
@@ -1400,6 +1430,9 @@ class AdagradOptimizer(Optimizer):
             It can be a float value or a ``Variable`` with a float type.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-06.
+        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+            This parameter is required in dygraph mode. \
+            The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): A ``Regularizer``, such as
              :ref:`api_fluid_regularizer_L2DecayRegularizer`. The default value is None.
         name (str, optional): Normally there is no need for user to set this property.
@@ -1432,6 +1465,7 @@ class AdagradOptimizer(Optimizer):
     def __init__(self,
                  learning_rate,
                  epsilon=1.0e-6,
+                 parameter_list=None,
                  regularization=None,
                  name=None,
                  initial_accumulator_value=0.0):
@@ -1439,6 +1473,7 @@ class AdagradOptimizer(Optimizer):
         assert epsilon is not None
         super(AdagradOptimizer, self).__init__(
             learning_rate=learning_rate,
+            parameter_list=parameter_list,
             regularization=regularization,
             name=name)
         self.type = "adagrad"
@@ -1519,6 +1554,9 @@ class AdamOptimizer(Optimizer):
             The default value is 0.999.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
+        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+            This parameter is required in dygraph mode. \
+            The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): A ``Regularizer``, such as
              :ref:`api_fluid_regularizer_L2DecayRegularizer`. The default value is None.
         name (str, optional): Normally there is no need for user to set this property.
@@ -1628,6 +1666,7 @@ class AdamOptimizer(Optimizer):
                  beta1=0.9,
                  beta2=0.999,
                  epsilon=1e-8,
+                 parameter_list=None,
                  regularization=None,
                  name=None,
                  lazy_mode=False):
@@ -1637,6 +1676,7 @@ class AdamOptimizer(Optimizer):
         assert epsilon is not None
         super(AdamOptimizer, self).__init__(
             learning_rate=learning_rate,
+            parameter_list=parameter_list,
             regularization=regularization,
             name=name)
         self.type = "adam"
@@ -1756,6 +1796,9 @@ class AdamaxOptimizer(Optimizer):
             The default value is 0.999.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
+        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+            This parameter is required in dygraph mode. \
+            The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): A ``Regularizer``, such as
              :ref:`api_fluid_regularizer_L2DecayRegularizer`. The default value is None.
         name (str, optional): Normally there is no need for user to set this property.
@@ -1801,6 +1844,7 @@ class AdamaxOptimizer(Optimizer):
                  beta1=0.9,
                  beta2=0.999,
                  epsilon=1e-8,
+                 parameter_list=None,
                  regularization=None,
                  name=None):
         assert learning_rate is not None
@@ -1809,6 +1853,7 @@ class AdamaxOptimizer(Optimizer):
         assert epsilon is not None
         super(AdamaxOptimizer, self).__init__(
             learning_rate=learning_rate,
+            parameter_list=parameter_list,
             regularization=regularization,
             name=name)
         self.type = "adamax"
@@ -1918,6 +1963,9 @@ class DpsgdOptimizer(Optimizer):
         clip (float): clipping threshold
         batch_size (float): batch size.
         sigma (float): for gaussian noise.
+        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+            This parameter is required in dygraph mode. \
+            The default value is None in static mode, at this time all parameters will be updated.
     Notes:
        Currently, DpsgdOptimizer doesn't support sparse parameter optimization.
     """
@@ -1926,12 +1974,14 @@ class DpsgdOptimizer(Optimizer):
                  learning_rate=0.001,
                  clip=0.9,
                  batch_size=0.999,
-                 sigma=1e-8):
+                 sigma=1e-8,
+                 parameter_list=None):
         assert learning_rate is not None
         assert clip is not None
         assert batch_size is not None
         assert sigma is not None
-        super(DpsgdOptimizer, self).__init__(learning_rate=learning_rate)
+        super(DpsgdOptimizer, self).__init__(
+            learning_rate=learning_rate, parameter_list=parameter_list)
         self.type = "dpsgd"
         self._clip = clip
         self._batch_size = batch_size
@@ -1985,6 +2035,9 @@ class DecayedAdagradOptimizer(Optimizer):
         decay (float, optional): The decay rate. The default value is 0.95.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-06.
+        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+            This parameter is required in dygraph mode. \
+            The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): A ``Regularizer``, such as
              :ref:`api_fluid_regularizer_L2DecayRegularizer`. The default value is None.
         name (str, optional): Normally there is no need for user to set this property.
@@ -2011,6 +2064,7 @@ class DecayedAdagradOptimizer(Optimizer):
                  learning_rate,
                  decay=0.95,
                  epsilon=1.0e-6,
+                 parameter_list=None,
                  regularization=None,
                  name=None):
         assert learning_rate is not None
@@ -2019,6 +2073,7 @@ class DecayedAdagradOptimizer(Optimizer):
 
         super(DecayedAdagradOptimizer, self).__init__(
             learning_rate=learning_rate,
+            parameter_list=parameter_list,
             regularization=regularization,
             name=name)
         self.type = "decayed_adagrad"
@@ -2075,6 +2130,9 @@ class AdadeltaOptimizer(Optimizer):
         learning_rate (float|Variable): global learning rate.
         epsilon (float): a small float number for numeric stability. Default 1.0e-6.
         rho (float): a floating point value indicating the decay rate. Default 0.95.
+        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+            This parameter is required in dygraph mode. \
+            The default value is None in static mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): A Regularizer, such as
                 fluid.regularizer.L2DecayRegularizer. Default None, meaning that there is no
                 regularization.
@@ -2106,6 +2164,7 @@ class AdadeltaOptimizer(Optimizer):
                  learning_rate,
                  epsilon=1.0e-6,
                  rho=0.95,
+                 parameter_list=None,
                  regularization=None,
                  name=None):
         if learning_rate is None:
@@ -2116,6 +2175,7 @@ class AdadeltaOptimizer(Optimizer):
             raise ValueError("rho is not set.")
         super(AdadeltaOptimizer, self).__init__(
             learning_rate=learning_rate,
+            parameter_list=parameter_list,
             regularization=regularization,
             name=name)
         self.type = "adadelta"
@@ -2219,6 +2279,9 @@ class RMSPropOptimizer(Optimizer):
             the gradient; if False, by the uncentered second moment. Setting this to
             True may help with training, but is slightly more expensive in terms of
             computation and memory. Defaults to False.
+        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+            This parameter is required in dygraph mode. \
+            The default value is None in static mode, at this time all parameters will be updated.
         regularization: A Regularizer, such as :ref:`api_fluid_regularizer_L2DecayRegularizer`. \
             Optional, default is None.
         name (str, optional): This parameter is used by developers to print debugging information. \
@@ -2267,10 +2330,12 @@ class RMSPropOptimizer(Optimizer):
                  epsilon=1.0e-6,
                  momentum=0.0,
                  centered=False,
+                 parameter_list=None,
                  regularization=None,
                  name=None):
         super(RMSPropOptimizer, self).__init__(
             learning_rate=learning_rate,
+            parameter_list=parameter_list,
             regularization=regularization,
             name=name)
         if learning_rate is None:
@@ -2379,6 +2444,9 @@ class FtrlOptimizer(Optimizer):
         l1 (float): L1 regularization strength, default is 0.0.
         l2 (float): L2 regularization strength, default is 0.0.
         lr_power (float): Learning Rate Power, default is -0.5.
+        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+            This parameter is required in dygraph mode. \
+            The default value is None in static mode, at this time all parameters will be updated.
         regularization: A Regularizer, such as :ref:`api_fluid_regularizer_L2DecayRegularizer`. \
             Optional, default is None.
         name (str, optional): This parameter is used by developers to print debugging information. \
@@ -2427,10 +2495,12 @@ class FtrlOptimizer(Optimizer):
                  l1=0.0,
                  l2=0.0,
                  lr_power=-0.5,
+                 parameter_list=None,
                  regularization=None,
                  name=None):
         super(FtrlOptimizer, self).__init__(
             learning_rate=learning_rate,
+            parameter_list=parameter_list,
             regularization=regularization,
             name=name)
         if learning_rate is None:
@@ -2513,6 +2583,9 @@ class LambOptimizer(AdamOptimizer):
         beta2 (float, optional): The exponential decay rate for the 2nd moment estimates.
             Default 0.999.
         epsilon (float, optional): A small float value for numerical stability. Default 1e-6.
+        parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
+            This parameter is required in dygraph mode. \
+            The default value is None in static mode, at this time all parameters will be updated.
         regularization (Regularizer|None): A Regularizer, such as
            fluid.regularizer.L1DecayRegularizer. Default None.
         exclude_from_weight_decay_fn (function|None): Exclude a parameter from weight 
@@ -2549,6 +2622,7 @@ class LambOptimizer(AdamOptimizer):
                  beta1=0.9,
                  beta2=0.999,
                  epsilon=1e-6,
+                 parameter_list=None,
                  regularization=None,
                  exclude_from_weight_decay_fn=None,
                  name=None):
@@ -2559,6 +2633,7 @@ class LambOptimizer(AdamOptimizer):
         assert epsilon is not None
         super(LambOptimizer, self).__init__(
             learning_rate=learning_rate,
+            parameter_list=parameter_list,
             regularization=regularization,
             beta1=beta1,
             beta2=beta2,

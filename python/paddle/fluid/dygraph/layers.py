@@ -145,9 +145,13 @@ class Layer(core.Layer):
             list of :ref:`api_guide_Variable_en` : a list of Parameters.
         """
         ret = [p for p in self._parameters.values()]
+        parameters_set = set(ret)
         if include_sublayers:
             for l in self._sub_layers.values():
                 for p in l.parameters(include_sublayers):
+                    if p in parameters_set:
+                        continue
+                    parameters_set.add(p)
                     ret.append(p)
         return ret
 
@@ -264,11 +268,6 @@ class Layer(core.Layer):
 
                 value.set_value(self._loaddict_holder[value.name])
 
-            if name in params:
-                # remove unused param in tracer
-                if framework._dygraph_tracer_ is not None:
-                    framework._dygraph_tracer_._vars.pop(params[name].name,
-                                                         None)
             params[name] = value
         elif isinstance(value, core.Layer):
             layers = self.__dict__.get('_sub_layers', None)
