@@ -86,7 +86,8 @@ class TestImperativeMnist(unittest.TestCase):
             loss_probs = fluid.layers.elementwise_mul(dy_reward, loss_probs)
             loss = fluid.layers.reduce_sum(loss_probs)
 
-            sgd = SGDOptimizer(learning_rate=1e-3)
+            sgd = SGDOptimizer(
+                learning_rate=1e-3, parameter_list=policy.parameters())
 
             dy_param_init_value = {}
 

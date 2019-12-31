@@ -14,6 +14,13 @@
 
 # no_check_set of check_output must be None
 no_check_set_white_list = [
-    'fake_quantize_range_abs_max', 'coalesce_tensor', 'flatten2', 'squeeze2',
-    'reshape2', 'transpose2', 'unsqueeze2', 'cross_entropy2'
+    'fake_quantize_range_abs_max',
+    'coalesce_tensor',
+    'flatten2',
+    'squeeze2',
+    'reshape2',
+    'transpose2',
+    'unsqueeze2',
+    'cross_entropy2',
+    'seed',
 ]
