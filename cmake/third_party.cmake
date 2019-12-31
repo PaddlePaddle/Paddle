@@ -179,7 +179,6 @@ endif()
 ########################### include third_party accoring to flags ###############################
 include(external/zlib)      # download, build, install zlib
 include(external/gflags)    # download, build, install gflags
-include(external/abseil)    # download, build, install abseil
 include(external/glog)      # download, build, install glog
 include(external/boost)     # download boost
 include(external/eigen)     # download eigen3
