@@ -284,7 +284,7 @@ class TestDygraphResnet(unittest.TestCase):
                 if traced_layer is not None:
                     resnet.eval()
                     traced_layer._switch(is_test=True)
-                    out_dygraph = resnet([img])
+                    out_dygraph = resnet(img)
                     out_static = traced_layer([img])
                     traced_layer._switch(is_test=False)
                     helper.assertEachVar(out_dygraph, out_static)
