@@ -339,9 +339,9 @@ int CUDADeviceContext::GetMaxPhysicalThreadCount() const {
   return multi_process_ * max_threads_per_mp_;
 }
 
-int CUDADeviceContext::GetGpuSMCount() const { return multi_process_; }
+int CUDADeviceContext::GetSMCount() const { return multi_process_; }
 
-int CUDADeviceContext::GetMaxGpuThreadsPerBlock() const {
+int CUDADeviceContext::GetMaxThreadsPerBlock() const {
   return max_threads_per_block_;
 }
 

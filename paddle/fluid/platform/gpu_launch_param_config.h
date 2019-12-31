@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <algorithm>
-
 // Used for compute gpu launch parameter
 
 #pragma once
@@ -22,6 +20,7 @@
 
 #include <cuda_runtime.h>
 #include <stddef.h>
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -59,15 +58,14 @@ inline Gpu1DLaunchParamConfig Get1DGpuLaunchConfig(
   const int theory_thread_count = element_count;
   // Get Max threads in all SM
   int max_pyhsical_threads = context.GetMaxPhysicalThreadCount();
-  int sm = context.GetGpuSMCount();
+  int sm = context.GetSMCount();
 
   // Compute pyhsical threads we need, should small than max sm threads
   const int physical_thread_count =
       std::min(max_pyhsical_threads, theory_thread_count);
 
   // Need get from device
-  const int thread_per_block =
-      std::min(1024, context.GetMaxGpuThreadsPerBlock());
+  const int thread_per_block = std::min(1024, context.GetMaxThreadsPerBlock());
   // Suppose block count small than factor * sm, factor is a experiments value.
   int factor = 4;
   const int block_count =

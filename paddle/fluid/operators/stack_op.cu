@@ -25,8 +25,8 @@ namespace paddle {
 namespace operators {
 
 template <typename T, typename IntType>
-__global__ void stack_kernel(T** input_ptrs, int split_size, int rows, int cols,
-                             T* __restrict__ output) {
+__global__ void StackCUDAKernel(T** input_ptrs, int split_size, int rows,
+                                int cols, T* __restrict__ output) {
   IntType grid_x = blockIdx.x * blockDim.x + threadIdx.x;
 
   for (; grid_x < cols; grid_x += blockDim.x * gridDim.x) {
@@ -80,12 +80,14 @@ class StackGPUKernel : public framework::OpKernel<T> {
     auto config = Get2DGpuLaunchConfig(dev_ctx, out_col, x_row);
 
     if (y->numel() < std::numeric_limits<int32_t>::max()) {
-      stack_kernel<T, int32_t><<<config.block_per_grid, config.thread_per_block,
+      StackCUDAKernel<T,
+                      int32_t><<<config.block_per_grid, config.thread_per_block,
                                  0, dev_ctx.stream()>>>(
           reinterpret_cast<T**>(tmp_x_data->ptr()), x_col, x_row, out_col,
           y_data);
     } else {
-      stack_kernel<T, int64_t><<<config.block_per_grid, config.thread_per_block,
+      StackCUDAKernel<T,
+                      int64_t><<<config.block_per_grid, config.thread_per_block,
                                  0, dev_ctx.stream()>>>(
           reinterpret_cast<T**>(tmp_x_data->ptr()), x_col, x_row, out_col,
           y_data);
@@ -93,26 +95,27 @@ class StackGPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
-__global__ void unstack_kernel(const T* __restrict__ input, int pre_dim_size,
-                               int split_dim_size, int suf_dim_size,
-                               int num_split, T** output_ptrs) {
+template <typename T, typename IntType>
+__global__ void UnStackCUDAKernel(const T* __restrict__ input, int pre_dim_size,
+                                  int split_dim_size, int suf_dim_size,
+                                  int num_split, T** output_ptrs) {
   assert(blockDim.y == 1);
   assert(blockDim.z == 1);
   // In this case they are equal
   assert(split_dim_size % num_split == 0);
 
-  int size = pre_dim_size * split_dim_size * suf_dim_size;
-  int each_dim_size = split_dim_size / num_split;
+  IntType size = pre_dim_size * split_dim_size * suf_dim_size;
+  IntType each_dim_size = split_dim_size / num_split;
 
-  CUDA_1D_KERNEL_LOOP(offset, size) {
-    int i = offset / (split_dim_size * suf_dim_size);
-    int j = (offset % (split_dim_size * suf_dim_size)) / suf_dim_size;
-    int k = offset % suf_dim_size;
+  for (IntType offset = blockIdx.x * blockDim.x + threadIdx.x; offset < size;
+       offset += blockDim.x * gridDim.x) {
+    IntType i = offset / (split_dim_size * suf_dim_size);
+    IntType j = (offset % (split_dim_size * suf_dim_size)) / suf_dim_size;
+    IntType k = offset % suf_dim_size;
 
     T* output = output_ptrs[j / each_dim_size];
-    int output_ind = i * each_dim_size * suf_dim_size +
-                     (j % each_dim_size) * suf_dim_size + k;
+    IntType output_ind = i * each_dim_size * suf_dim_size +
+                         (j % each_dim_size) * suf_dim_size + k;
     *(output + output_ind) = input[offset];
   }
 }
@@ -166,10 +169,19 @@ class StackGradGPUKernel : public framework::OpKernel<T> {
 
     auto config = Get1DGpuLaunchConfig(dev_ctx, dy_pre * split_dim * dy_suf);
 
-    unstack_kernel<T><<<config.block_per_grid, config.thread_per_block, 0,
+    if (dy->numel() < std::numeric_limits<int32_t>::max()) {
+      UnStackCUDAKernel<
+          T, int32_t><<<config.block_per_grid, config.thread_per_block, 0,
                         dev_ctx.stream()>>>(
-        dy_data, dy_pre, split_dim, dy_suf, split_dim,
-        reinterpret_cast<T**>(tmp_out_data->ptr()));
+          dy_data, dy_pre, split_dim, dy_suf, split_dim,
+          reinterpret_cast<T**>(tmp_out_data->ptr()));
+    } else {
+      UnStackCUDAKernel<
+          T, int64_t><<<config.block_per_grid, config.thread_per_block, 0,
+                        dev_ctx.stream()>>>(
+          dy_data, dy_pre, split_dim, dy_suf, split_dim,
+          reinterpret_cast<T**>(tmp_out_data->ptr()));
+    }
   }
 };
 
