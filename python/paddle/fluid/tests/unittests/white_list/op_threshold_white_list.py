@@ -13,9 +13,11 @@
 # limitations under the License.
 
 NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST = [
-    'affine_channel', 'bilinear_interp', 'cross_entropy', 'grid_sampler',
-    'group_norm', 'gru', 'gru_unit', 'lstm', 'lstmp', 'norm', 'pool3d',
-    'reduce_prod', 'selu', 'sigmoid_cross_entropy_with_logits', 'soft_relu',
+    'affine_channel', 'bilinear_interp', 'conv2d', 'conv3d', 'cross_entropy',
+    'depthwise_conv2d_transpose', 'grid_sampler', 'group_norm', 'gru',
+    'gru_unit', 'kldiv_loss', 'lstm', 'lstmp', 'max_pool2d_with_index',
+    'max_pool3d_with_index', 'norm', 'pool3d', 'reduce_prod', 'selu',
+    'sigmoid_cross_entropy_with_logits', 'soft_relu',
     'softmax_with_cross_entropy', 'teacher_student_sigmoid_loss', 'unpool',
     'yolov3_loss'
 ]
