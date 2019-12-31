@@ -683,7 +683,7 @@ class OpTest(unittest.TestCase):
             op_desc (OpDesc): The op_desc of current op. 
             fwd_op_desc (OpDesc): The op_desc of current op's forward op, None if current op has no forward op. 
                 Eg. relu's fwd_op is None, relu_grad's fwd_op is relu, relu_grad_grad's fwd_op is relu_grad, etc.
-        
+            
         Returns:
             need_run_ops (list[(op_desc, fwd_op_desc)]): The ops that need to run during inplace test.
         """
