@@ -1872,8 +1872,8 @@ class ConditionalBlock(object):
                     intermediate.add(out_var_name)
 
         param_list = []
-        for inner_out_name in params:
-            inner_var = parent_block._find_var_recursive(inner_out_name)
+        for inner_input_name in params:
+            inner_var = parent_block._find_var_recursive(inner_input_name)
             if inner_var:
                 param_list.append(cpt.to_text(inner_var.name))
 

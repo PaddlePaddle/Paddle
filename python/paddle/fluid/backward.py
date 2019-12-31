@@ -1156,21 +1156,17 @@ def append_backward(loss,
     op_desc = _create_loss_op_desc_(loss)
     target_grad_block.desc.append_op().copy_from(op_desc)
 
-    op_path_dict = {}  # block idx : op_path
-    no_grad_vars_dict = {}
-
     for block_idx in son_parent_block_idx_dict:
         block = program.block(block_idx)
 
         block_no_grad_set = set(
             map(_strip_grad_suffix_, no_grad_dict[block_idx]))
-        op_path_dict[block_idx] = _find_op_path_(block, [loss], [],
-                                                 block_no_grad_set)
+        op_path = _find_op_path_(block, [loss], [], block_no_grad_set)
 
-        no_grad_vars_dict[block_idx] = _find_no_grad_vars(
-            block, op_path_dict[block_idx], [loss], block_no_grad_set)
+        no_grad_vars = _find_no_grad_vars(block, op_path, [loss],
+                                          block_no_grad_set)
 
-        block_no_grad_set.update(no_grad_vars_dict[block_idx])
+        block_no_grad_set.update(no_grad_vars)
         no_grad_dict[block_idx].update(
             list(map(_append_grad_suffix_, block_no_grad_set)))
 
@@ -1194,7 +1190,7 @@ def append_backward(loss,
             recompute_segments = \
                 _append_backward_ops_with_checkpoints_(
                     root_block,
-                    op_path_dict[block_idx],
+                    op_path,
                     root_block,
                     no_grad_dict,
                     grad_to_var,
@@ -1202,7 +1198,7 @@ def append_backward(loss,
         else:
             _append_backward_ops_(
                 block,  # the block where forward ops are in
-                op_path_dict[block_idx],
+                op_path,
                 target_grad_block,
                 no_grad_dict,
                 grad_to_var,
@@ -1210,6 +1206,9 @@ def append_backward(loss,
                 input_grad_names_set=input_grad_names_set)
 
     grad_info_map = dict()
+
+    # if in control flow, target_grad_block is a created new block which only contains grad ops,
+    # so fwd_op_num is set to 0.
     fwd_op_num = block_fwd_op_num_dict[
         current_block_idx] if not is_in_control_flow else 0
 
@@ -1232,36 +1231,6 @@ def append_backward(loss,
 
     params_and_grads = []
     op_role_var_attr_name = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
-    if is_in_control_flow:
-        # control flow: grad_var not in current block but in corresponding grad block
-        for param in parameters:
-            if cpt.to_text(param) not in grad_info_map:
-                continue
-            grad_info = grad_info_map[param]
-            grad_block = grad_info[1]
-            if not grad_block.has_var(grad_info[0]):
-                raise ValueError("grad block[{0}] did not have grad var {1}".
-                                 format(grad_info[1], grad_info[0]))
-            # Get the param var from the global block
-            param_var = program.global_block().var(param)
-            grad_var = grad_block.var(grad_info[0])
-
-            for op in reversed(grad_block.ops):
-                assert isinstance(op, framework.Operator)
-                if grad_var.name in op.output_arg_names:
-                    grad_var.op = op
-                    break
-            if grad_var.op is None:
-                raise ValueError("Unexpected branch")
-            attr_val = [param_var.name, grad_var.name]
-            if grad_var.op.has_attr(op_role_var_attr_name):
-                attr_val.extend(grad_var.op.attr(op_role_var_attr_name))
-            grad_var.op._set_attr(op_role_var_attr_name, attr_val)
-
-            params_and_grads.append((param_var, grad_var))
-
-        return params_and_grads
-
     for param in parameters:
         if cpt.to_text(param) not in grad_info_map:
             continue
@@ -1273,15 +1242,20 @@ def append_backward(loss,
         # Get the param var from the global block
         param_var = program.global_block().var(param)
         grad_var = grad_block.var(grad_info[0])
-        if loss.block.has_var(grad_info[0]):
-            params_and_grads.append((param_var, grad_var))
+        if not is_in_control_flow:
+            if loss.block.has_var(grad_info[0]):
+                params_and_grads.append((param_var, grad_var))
+            else:
+                params_and_grads.append((param_var, None))
         else:
-            params_and_grads.append((param_var, None))
+            params_and_grads.append((param_var, grad_var))
 
     for p, g in params_and_grads:
         if g is None:
             continue
-        for op in reversed(program.global_block().ops):
+        ops = grad_block.ops if is_in_control_flow else program.global_block(
+        ).ops
+        for op in reversed(ops):
             assert isinstance(op, framework.Operator)
             if g.name in op.output_arg_names:
                 g.op = op
@@ -1303,20 +1277,40 @@ def _as_list(x):
     return list(x) if isinstance(x, collections.Sequence) else [x]
 
 
+def _is_ancestor_block(ancestor_block, block):
+    prog = block.program
+    ancestor_idx = ancestor_block.idx
+    parent_idx = block.parent_idx
+
+    while parent_idx != -1:
+        if parent_idx == ancestor_idx:
+            return True
+        parent_idx = prog.block(parent_idx).parent_idx
+
+    return False
+
+
 def _get_output_names(cur_block, targets):
     """
     In `cur_block`, get output names those linked to targets.
-    Note: `targets` can be in `cur_block` or not. Usually, `targets` is in `cur_block`.
-    However, considering control flow, `targets` may be in sub-block but `cur_block` is an ancestor of "targets[0].block".
+    NOTE:
+    1. `targets` can be in `cur_block`;
+    Usually, `targets` is in `cur_block`. However, considering control flow,
+    2. `targets` may be in sub-block but `cur_block` is an ancestor of `targets[0].block`;
+    3. `targets` may be in the block which is ancestor of `cur_block`.
     """
-    current_output_names = set([out.name for out in targets])
 
     block = targets[0].block if targets else cur_block
     prog = cur_block.program
+    if _is_ancestor_block(block, cur_block):
+        return set()
 
+    current_output_names = set([out.name for out in targets])
+
+    # if `cur_block` is an ancestor of `targets[0].block`, run while loop
     while block.idx != cur_block.idx:
+        assert block.parent_idx != -1
         parent_block = prog.block(block.parent_idx)
-        assert parent_block.idx != -1
 
         parent_block_output_names = set()
         for op in reversed(block.ops):

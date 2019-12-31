@@ -21,117 +21,111 @@ import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
 from paddle.fluid.framework import Program, program_guard
+import paddle.fluid.core as core
 
 BATCH_SIZE = 1
 INPUT_SIZE = 784
-
 CLASS_NUM = 10
 FC_SIZE = 40
 EPOCH_NUM = 5
-SWITCH_ID = 3
-SEED = 123
 LR = 0.001
+SEED = 2020
 
 
-def random_input(seed,
-                 image_shape=[BATCH_SIZE, INPUT_SIZE],
-                 label_shape=[BATCH_SIZE, 1]):
-    np.random.seed(seed)
-    image_np = np.random.random(size=image_shape).astype('float32')
-    np.random.seed(seed)
-    label_np = np.random.random_integers(
-        low=0, high=CLASS_NUM - 1, size=label_shape).astype('int64')
-    return image_np, label_np
-
-
-def random_param(size, seed=100):
-    np.random.seed(seed)
-    np_param = np.random.random(size=size).astype('float32')
-    return np_param
-
-
-def static():
-    def simple_fc_net(image):
-        hidden = layers.fc(
-            image,
-            size=FC_SIZE,
-            act='relu',
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.99)),
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.5)),
-            name="hidden")
-
-        prediction = layers.fc(
-            hidden,
-            size=CLASS_NUM,
-            act='softmax',
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.2)),
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.8)),
-            name="prediction")
-        return hidden, prediction
-
-    main_program = Program()
-    main_program.random_seed = SEED
+def static(train_data,
+           loss_in_switch=True,
+           use_cuda=False,
+           use_parallel_exe=False):
     startup_program = Program()
+    main_program = Program()
     startup_program.random_seed = SEED
-    with program_guard(main_program, startup_program):
-        image = fluid.data(
-            name='image', shape=[BATCH_SIZE, INPUT_SIZE], dtype='float32')
-        label = fluid.data(name='label', shape=[BATCH_SIZE, 1], dtype='int64')
-        id = fluid.data(name='id', shape=[1], dtype='int32')
+    main_program.random_seed = SEED
 
-        two = layers.fill_constant(shape=[1], dtype='int32', value=2)
-        hidden, prediction = simple_fc_net(image)
+    with program_guard(main_program, startup_program):
+
+        def double_fc_net(image):
+            hidden = layers.fc(
+                image,
+                size=FC_SIZE,
+                act='relu',
+                param_attr=fluid.ParamAttr(
+                    initializer=fluid.initializer.Constant(value=0.99)),
+                bias_attr=fluid.ParamAttr(
+                    initializer=fluid.initializer.Constant(value=0.5)),
+                name="hidden")
+
+            prediction = layers.fc(
+                hidden,
+                size=CLASS_NUM,
+                act='softmax',
+                param_attr=fluid.ParamAttr(
+                    initializer=fluid.initializer.Constant(value=1.2)),
+                bias_attr=fluid.ParamAttr(
+                    initializer=fluid.initializer.Constant(value=0.8)),
+                name="prediction")
+            return hidden, prediction
+
+        def fn_1(opt, avg_loss=None, pred=None, label=None):
+            if avg_loss is None:
+                loss = layers.cross_entropy(input=pred, label=label)
+                avg_loss = layers.mean(loss, name='mean_cross_entropy_loss')
+            opt.minimize(avg_loss)
+            return avg_loss
+
+        def fn_2(opt, avg_loss=None, pred=None, label=None):
+            if avg_loss is None:
+                loss = layers.softmax_with_cross_entropy(
+                    logits=pred, label=label)
+                avg_loss = layers.mean(loss, name='mean_softmax_loss')
+            opt.minimize(avg_loss)
+            return avg_loss
+
+        image = fluid.data('image', [BATCH_SIZE, INPUT_SIZE], 'float32')
+        label = fluid.data('label', [BATCH_SIZE, 1], 'int64')
+        hidden, prediction = double_fc_net(image)
 
         adam = optimizer.Adam(learning_rate=LR)
-        adagrad = optimizer.SGD(learning_rate=LR)
+        sgd = optimizer.SGD(learning_rate=LR)
 
-        def fn_1():
-            cross_entropy_loss = layers.cross_entropy(
-                input=prediction, label=label)
-            mean_cross_entropy_loss = layers.mean(
-                cross_entropy_loss, name="mean_cross_entropy_loss")
-            adam.minimize(mean_cross_entropy_loss)
-            return mean_cross_entropy_loss
+        id = fluid.data('id', [1], 'int32')
+        two = layers.fill_constant([1], 'int32', 2)
+        mod_two = layers.elementwise_mod(id, two) == 0
 
-        def fn_2():
-            softmax_loss = layers.softmax_with_cross_entropy(
+        if loss_in_switch:
+            avg_loss = layers.case([(
+                mod_two, lambda: fn_1(adam, None, prediction, label))],
+                                   lambda: fn_2(sgd, None, prediction, label))
+        else:
+            loss_1 = layers.cross_entropy(input=prediction, label=label)
+            avg_loss_1 = layers.mean(loss_1)
+            loss_2 = layers.softmax_with_cross_entropy(
                 logits=prediction, label=label)
-            mean_softmax_loss = layers.mean(
-                softmax_loss, name='mean_softmax_loss')
-            adagrad.minimize(mean_softmax_loss)
-            return mean_softmax_loss
+            avg_loss_2 = layers.mean(loss_2)
+            avg_loss = layers.case([(mod_two, lambda: fn_1(adam, avg_loss_1))],
+                                   lambda: fn_2(sgd, avg_loss_2))
 
-        cond = layers.elementwise_mod(id, two) == 0
-        avg_loss = layers.case([(cond, fn_2)], fn_1)
-
-        exe = fluid.Executor(fluid.CPUPlace())
+        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+        exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
 
         for epoch in range(EPOCH_NUM):
-            feed_image, feed_label = random_input(epoch)
-            out = exe.run(main_program,
-                          feed={
-                              'image': feed_image,
-                              'label': feed_label,
-                              'id': np.array([epoch]).astype('int32')
-                          },
-                          fetch_list=[
-                              hidden,
-                              prediction,
-                              avg_loss,
-                          ])
-            out_hidden, out_prediction, loss = out
-    return out_hidden, out_prediction, loss
+            feed_image, feed_label = train_data[epoch]
+            fetch_list = [hidden, prediction, avg_loss]
+            feed = {
+                'image': feed_image,
+                'label': feed_label,
+                'id': np.array([epoch]).astype('int32')
+            }
+            out = exe.run(main_program, feed=feed, fetch_list=fetch_list)
+            out_hidden, out_pred, loss = out
+
+    return out_hidden, out_pred, loss
 
 
 class DygraphLayer(fluid.dygraph.Layer):
     def __init__(self):
         super(DygraphLayer, self).__init__()
-        self.fc0 = fluid.dygraph.nn.Linear(
+        self.fc_1 = fluid.dygraph.nn.Linear(
             INPUT_SIZE,
             FC_SIZE,
             act='relu',
@@ -140,7 +134,7 @@ class DygraphLayer(fluid.dygraph.Layer):
             bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
                 value=0.5)), )
 
-        self.pre = fluid.dygraph.nn.Linear(
+        self.fc_2 = fluid.dygraph.nn.Linear(
             FC_SIZE,
             CLASS_NUM,
             act='softmax',
@@ -150,28 +144,29 @@ class DygraphLayer(fluid.dygraph.Layer):
                 value=0.8)))
 
     def forward(self, inputs):
-        h_0 = self.fc0(inputs)
-        prediction = self.pre(h_0)
-        return h_0, prediction
+        hidden = self.fc_1(inputs)
+        prediction = self.fc_2(hidden)
+        return hidden, prediction
 
 
-def dynamic():
-    with fluid.dygraph.guard():
+def dynamic(train_data, use_cuda=False, use_parallel_exe=False):
+    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+    with fluid.dygraph.guard(place):
         fluid.default_startup_program().random_seed = SEED
         fluid.default_main_program().random_seed = SEED
-        my_layer = DygraphLayer()
+        dy_layer = DygraphLayer()
         adam = fluid.optimizer.Adam(
-            learning_rate=LR, parameter_list=my_layer.parameters())
-        adagrad = fluid.optimizer.SGD(learning_rate=LR,
-                                      parameter_list=my_layer.parameters())
+            learning_rate=LR, parameter_list=dy_layer.parameters())
+        sgd = fluid.optimizer.SGD(learning_rate=LR,
+                                  parameter_list=dy_layer.parameters())
 
         for epoch in range(EPOCH_NUM):
-            image_data, label = random_input(epoch)
+            image_data, label = train_data[epoch]
             var_input = fluid.dygraph.to_variable(image_data)
             var_label = fluid.dygraph.to_variable(label)
-            hidden, prediction = my_layer(var_input)
+            hidden, prediction = dy_layer(var_input)
 
-            if epoch % 2 != 0:
+            if epoch % 2 == 0:
                 cross_entropy_loss = layers.cross_entropy(prediction, var_label)
                 loss = layers.mean(cross_entropy_loss)
                 loss.backward()
@@ -181,30 +176,53 @@ def dynamic():
                                                                  var_label)
                 loss = layers.mean(softmax_loss)
                 loss.backward()
-                adagrad.minimize(loss)
+                sgd.minimize(loss)
 
-            my_layer.clear_gradients()
+            dy_layer.clear_gradients()
         return hidden.numpy(), prediction.numpy(), loss.numpy()
 
 
 class TestMultiTask(unittest.TestCase):
-    def test_1(self):
-        hidden_1, pre_1, loss_1 = static()
+    '''
+    Compare results of static graph and dynamic graph.
+    Todo(liym27): add parallel GPU train.
+    '''
 
-        hidden_2, pre_2, loss_2 = dynamic()
+    def random_input(self,
+                     seed,
+                     image_shape=[BATCH_SIZE, INPUT_SIZE],
+                     label_shape=[BATCH_SIZE, 1]):
+        np.random.seed(seed)
+        image_np = np.random.random(size=image_shape).astype('float32')
+        np.random.seed(seed)
+        label_np = np.random.randint(
+            low=0, high=CLASS_NUM - 1, size=label_shape).astype('int64')
+        return image_np, label_np
 
-        self.assertTrue(
-            np.allclose(hidden_1, hidden_2),
-            msg='static hidden is {} \n dynamic hidden is {}'.format(hidden_1,
-                                                                     hidden_2))
-        self.assertTrue(
-            np.allclose(pre_1, pre_2),
-            msg='static prediction is {} \n dynamic prediction is {}'.format(
-                pre_1, pre_2))
-        self.assertTrue(
-            np.allclose(loss_1, loss_2),
-            msg='static loss is {} \n dynamic loss is {}'.format(loss_1,
-                                                                 loss_2))
+    def init_train_data(self):
+        self.train_data = []
+        for epoch in range(EPOCH_NUM):
+            self.train_data.append(self.random_input(epoch))
+
+    def test_optimzier_in_switch(self):
+        self.init_train_data()
+        use_cuda = core.is_compiled_with_cuda()
+        hidden_2, pre_2, loss_2 = dynamic(self.train_data, use_cuda)
+        for loss_in_switch in [True, False]:
+            hidden_1, pre_1, loss_1 = static(self.train_data, loss_in_switch,
+                                             use_cuda)
+            self.assertTrue(
+                np.allclose(hidden_1, hidden_2),
+                msg='static hidden is {}\ndynamic hidden is {}'.format(
+                    hidden_1, hidden_2))
+            self.assertTrue(
+                np.allclose(pre_1, pre_2),
+                msg='static prediction is {}\ndynamic prediction is {}'.format(
+                    pre_1, pre_2))
+            self.assertTrue(
+                np.allclose(loss_1, loss_2),
+                msg='static loss is {}\ndynamic loss is {}'.format(loss_1,
+                                                                   loss_2))
 
 
 if __name__ == '__main__':
