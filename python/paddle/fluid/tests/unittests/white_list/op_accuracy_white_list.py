@@ -43,7 +43,7 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'sequence_unpad', 'shuffle_channel', 'sigmoid',
     'sigmoid_cross_entropy_with_logits', 'sigmoid_focal_loss', 'sign', 'sin',
     'slice', 'smooth_l1_loss', 'soft_relu', 'softmax', 'softshrink', 'softsign',
-    'space_to_depth', 'spectral_norm', 'split', 'spp', 'sqrt', 'square',
+    'space_to_depth', 'spectral_norm', 'split', 'sqrt', 'square',
     'squared_l2_distance', 'squared_l2_norm', 'squeeze', 'squeeze2', 'stack',
     'stanh', 'strided_slice', 'swish', 'tanh', 'tanh_shrink',
     'teacher_student_sigmoid_loss', 'temporal_shift', 'thresholded_relu',
