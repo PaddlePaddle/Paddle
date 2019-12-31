@@ -40,25 +40,6 @@ class TestCommunicatorHalfAsync(unittest.TestCase):
         return avg_cost, x, y
 
     def test_communicator_init_and_start(self):
-        role = role_maker.UserDefinedRoleMaker(
-            current_id=0,
-            role=role_maker.Role.WORKER,
-            worker_num=2,
-            server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"])
-
-        fleet.init(role)
-        avg_cost, x, y = self.net()
-
-        optimizer = fluid.optimizer.SGD(0.01)
-
-        strategy = DistributeTranspilerConfig()
-        strategy.sync_mode = False
-        strategy.runtime_split_send_recv = True
-        strategy.half_async = True
-        strategy.wait_port = False
-        optimizer = fleet.distributed_optimizer(optimizer, strategy)
-        optimizer.minimize(avg_cost)
-
         def reader():
             for i in range(1000):
                 x = numpy.random.random((1, 13)).astype('float32')
@@ -85,8 +66,26 @@ class TestCommunicatorHalfAsync(unittest.TestCase):
 
             exe.run(main, feed=feeder.feed([data]), fetch_list=[])
 
-        comm = Communicator(fleet.main_program, AsyncMode.HALF_ASYNC)
-        comm.start()
+        role = role_maker.UserDefinedRoleMaker(
+            current_id=0,
+            role=role_maker.Role.WORKER,
+            worker_num=2,
+            server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"])
+
+        fleet.init(role)
+        avg_cost, x, y = self.net()
+
+        optimizer = fluid.optimizer.SGD(0.01)
+
+        strategy = DistributeTranspilerConfig()
+        strategy.sync_mode = False
+        strategy.runtime_split_send_recv = True
+        strategy.half_async = True
+        strategy.wait_port = False
+        optimizer = fleet.distributed_optimizer(optimizer, strategy)
+        optimizer.minimize(avg_cost)
+
+        fleet.init_worker()
 
         t = threading.Thread(
             target=run_trainer,
@@ -95,7 +94,7 @@ class TestCommunicatorHalfAsync(unittest.TestCase):
         t.start()
 
         time.sleep(10)
-        comm.stop()
+        fleet.stop_worker()
 
 
 class TestCommunicatorHalfAsync2(unittest.TestCase):

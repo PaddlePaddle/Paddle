@@ -57,10 +57,9 @@ class TestCommunicator(unittest.TestCase):
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
 
-        comm = Communicator(fleet.main_program, AsyncMode.ASYNC)
-        comm.start()
+        fleet.init_worker()
         time.sleep(10)
-        comm.stop()
+        fleet.stop_worker()
 
 
 class TestCommunicator2(unittest.TestCase):
