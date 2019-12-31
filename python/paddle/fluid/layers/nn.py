@@ -7664,7 +7664,7 @@ def scatter_nd_add(ref, index, updates, name=None):
             output = [[67, 19], [-16, -27]]
 
     Args:
-        ref (Variable): The ref input. Its dtype should be int32, int64, float32, float64.
+        ref (Variable): The ref input. Its dtype should be float32, float64.
         index (Variable): The index input with rank > 1 and index.shape[-1] <= ref.rank.
                           Its dtype should be int32 or int64 as it is used as indexes.
         updates (Variable): The updated value of scatter_nd_add op, and it must have the same dtype
@@ -7721,7 +7721,7 @@ def scatter_nd(index, updates, shape, name=None):
     Args:
         index (Variable): The index input with rank > 1 and index.shape[-1] <= len(shape).
                           Its dtype should be int32 or int64 as it is used as indexes.
-        updates (Variable): The updated value of scatter_nd op. Its dtype should be int32, int64, float32, float64.
+        updates (Variable): The updated value of scatter_nd op. Its dtype should be float32, float64.
                             It must have the shape index.shape[:-1] + shape[index.shape[-1]:]
         shape(tuple|list): Shape of output tensor.
         name (str|None): The output variable name. If set None, the layer will be named automatically.
