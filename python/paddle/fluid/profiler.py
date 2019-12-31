@@ -347,8 +347,8 @@ def profiler(
             thread0::elementwise_add    8           1.96555     0.191884    0.518004    0.245693    0.196998
     """
     if (iter_range is not None):
-        if (not isinstance(iter_range, list) and (len(iter_range) != 2) and
-            (iter_range[0] < iter_range[1])):
+        if (not isinstance(iter_range, list) or (len(iter_range) != 2) or
+            (iter_range[0] >= iter_range[1])):
             raise ValueError(
                 "The iter len must to be list and the list len is 2 and start must to be less than end"
             )

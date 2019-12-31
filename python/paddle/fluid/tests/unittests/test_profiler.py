@@ -117,6 +117,14 @@ class TestProfiler(unittest.TestCase):
                         event.name.startswith("Runtime API")):
                     print("Warning: unregister", event.name)
 
+    def test_error(self):
+        def test_cpu_profiler_iter_no_profile():
+            self.net_profiler('CPU', "Whole")
+            self.net_profiler(
+                'CPU', "Whole", [7, 5], use_parallel_executor=True)
+
+        self.assertRaises(ValueError, test_cpu_profiler_iter_no_profile)
+
     def test_cpu_profiler_iter(self):
         self.net_profiler('CPU', "Whole")
         self.net_profiler('CPU', "Whole", use_parallel_executor=True)
@@ -124,10 +132,6 @@ class TestProfiler(unittest.TestCase):
     def test_cpu_profiler_iter_range(self):
         self.net_profiler('CPU', "Whole")
         self.net_profiler('CPU', "Whole", [5, 7], use_parallel_executor=True)
-
-    def test_cpu_profiler_iter_no_profile(self):
-        self.net_profiler('CPU', "Whole")
-        self.net_profiler('CPU', "Whole", [7, 5], use_parallel_executor=True)
 
     def test_cpu_profiler(self):
         self.net_profiler('CPU', "Whole")
