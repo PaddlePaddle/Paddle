@@ -75,6 +75,10 @@ class FcOpConverter : public OpConverter {
             : (op_desc.HasAttr("in_num_col_dims")
                    ? boost::get<int>(op_desc.GetAttr("in_num_col_dims"))
                    : 1);
+    const std::string activation_type =
+        op_desc.HasAttr("activation_type")
+            ? boost::get<std::string>(op_desc.GetAttr("activation_type"))
+            : "";
     // This may trigger a GPU->CPU copy, because TRT's weight can only be
     // assigned from CPU memory, which can't be avoided.
     float* weight_data = nullptr;
@@ -194,17 +198,17 @@ class FcOpConverter : public OpConverter {
         TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *reshape_itensor,
                              n_output, tmp_weight.get(), bias.get());
 
-    // // reshape FC output to remove the redundant "1" dims
-    // auto* reshape_layer2 =
-    //     TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *(fc_layer->getOutput(0)));
-    // if (x_num_col_dims == 2) {
-    //   nvinfer1::Dims2 reshape_dim2(input_d[0], n_output);
-    //   reshape_layer2->setReshapeDimensions(reshape_dim2);
-    // }
     engine_->SetWeights(op_desc.Input(w_name).front(), std::move(tmp));
     auto output_name = op_desc.Output("Out").front();
 
-    RreplenishLayerAndOutput(fc_layer, "fc", {output_name}, test_mode);
+    if (activation_type == "relu") {
+      nvinfer1::IActivationLayer* relu_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Activation, *(fc_layer->getOutput(0)),
+                               nvinfer1::ActivationType::kRELU);
+      RreplenishLayerAndOutput(relu_layer, "fc", {output_name}, test_mode);
+    } else {
+      RreplenishLayerAndOutput(fc_layer, "fc", {output_name}, test_mode);
+    }
   }
 };
 
