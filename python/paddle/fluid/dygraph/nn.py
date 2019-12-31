@@ -236,8 +236,8 @@ class Conv2D(layers.Layer):
             outs = core.ops.conv2d(inputs, attrs)
             pre_bias = outs['Output'][0]
 
-            pre_act = dygraph_utils._append_bias_in_dygraph(pre_bias,
-                                                            self._bias_param, 1)
+            pre_act = dygraph_utils._append_bias_in_dygraph(pre_bias, self.bias,
+                                                            1)
 
             return dygraph_utils._append_activation_in_dygraph(pre_act,
                                                                self._act)
