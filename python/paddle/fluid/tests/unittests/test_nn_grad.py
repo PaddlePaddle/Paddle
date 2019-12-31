@@ -43,6 +43,28 @@ class TestMulGradCheck(unittest.TestCase):
             self.func(p)
 
 
+class TestSliceOpDoubleGradCheck(unittest.TestCase):
+    def func(self, place):
+        self.op_type = "slice"
+
+        x_arr = np.random.random([3, 4, 5, 6]).astype("float64")
+        inputs = layers.create_parameter(
+            dtype="float64", shape=[3, 4, 5, 6], name='x')
+        starts = [1, 0, 2]
+        ends = [3, 3, 4]
+        axes = [0, 1, 2]
+        out = fluid.layers.slice(inputs, axes=axes, starts=starts, ends=ends)
+
+        gradient_checker.grad_check([inputs], out, x_init=x_arr, place=place)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for place in places:
+            self.func(place)
+
+
 class TestReduceMeanWithDimDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):

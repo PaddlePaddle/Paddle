@@ -157,3 +157,12 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SliceGradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::SliceGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::SliceGradKernel<paddle::platform::CUDADeviceContext, plat::float16>);
+// slice double grad GPU
+REGISTER_OP_CUDA_KERNEL(
+    slice_grad_grad,
+    ops::SliceDoubleGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::SliceDoubleGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::SliceDoubleGradKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::SliceDoubleGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::SliceDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                               plat::float16>);

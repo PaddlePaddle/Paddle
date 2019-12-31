@@ -291,6 +291,63 @@ class SliceOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+// slice op double grad
+class SliceOpDoubleGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true, "Input should not be null");
+  }
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "DDInput"),
+        ctx.device_context());
+  }
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (var_name == "StartsTensor" || var_name == "EndsTensor") {
+      return expected_kernel_type;
+    }
+    if (var_name == "StartsTensorList" || var_name == "EndsTensorList") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
+  }
+};
+
+template <typename T>
+class SliceOpDoubleGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  std::unique_ptr<T> Apply() const override {
+    auto *bind = new T();
+    bind->SetInput("Input", this->Input("Input"));
+    if (this->HasInput("StartsTensor")) {
+      bind->SetInput("StartsTensor", this->Input("StartsTensor"));
+    }
+    if (this->HasInput("EndsTensor")) {
+      bind->SetInput("EndsTensor", this->Input("EndsTensor"));
+    }
+    if (this->HasInput("StartsTensorList")) {
+      bind->SetInput("StartsTensorList", this->Input("StartsTensorList"));
+    }
+    if (this->HasInput("EndsTensorList")) {
+      bind->SetInput("EndsTensorList", this->Input("EndsTensorList"));
+    }
+    bind->SetInput("DDInput", this->OutputGrad("DInput"));
+    bind->SetOutput("DDOut", this->InputGrad("DOut"));
+    bind->SetAttrMap(this->Attrs());
+    bind->SetType("slice_grad_grad");
+    return std::unique_ptr<T>(bind);
+  }
+};
+
 DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(SliceOpGradNoNeedBufferVarsInference,
                                       "Input");
 
@@ -301,7 +358,12 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(slice, ops::SliceOp, ops::SliceOpMaker,
                   ops::SliceOpGradMaker<paddle::framework::OpDesc>,
                   ops::SliceOpGradMaker<paddle::imperative::OpBase>);
+
 REGISTER_OPERATOR(slice_grad, ops::SliceOpGrad,
+                  ops::SliceOpDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::SliceOpDoubleGradMaker<paddle::imperative::OpBase>,
+                  ops::SliceOpGradNoNeedBufferVarsInference);
+REGISTER_OPERATOR(slice_grad_grad, ops::SliceOpDoubleGrad,
                   ops::SliceOpGradNoNeedBufferVarsInference);
 
 REGISTER_OP_CPU_KERNEL(
@@ -315,3 +377,10 @@ REGISTER_OP_CPU_KERNEL(
     ops::SliceGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::SliceGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SliceGradKernel<paddle::platform::CPUDeviceContext, double>);
+
+REGISTER_OP_CPU_KERNEL(
+    slice_grad_grad,
+    ops::SliceDoubleGradKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::SliceDoubleGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::SliceDoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SliceDoubleGradKernel<paddle::platform::CPUDeviceContext, double>);
