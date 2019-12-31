@@ -202,7 +202,6 @@ class OpTest(unittest.TestCase):
                 grad_op_kernels = all_op_kernels[grad_op]
                 for grad_op_kernel in grad_op_kernels:
                     if 'MKLDNN' in grad_op_kernel:
-                        print("not empty grad")
                         return False
             return True
 
