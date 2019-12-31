@@ -131,6 +131,7 @@ static LoD GetLoDDebug(const Scope& scope, const std::string& name) {
 }
 static std::string GetTypeName(const VariableNameMap& name_map,
                                const std::string& type_name) {
+  if (platform::GetTracerOption() != platform::TracerOption::kDetail) return "";
   std::string ret = type_name + "%";
   for (auto it = name_map.begin(); it != name_map.end(); it++) {
     auto name_outputs = it->second;

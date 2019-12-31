@@ -140,7 +140,7 @@ void PopEvent(const std::string &name) {
 
 RecordEvent::RecordEvent(const std::string &name)
     : is_enabled_(false), start_ns_(PosixInNsec()) {
-  if (g_state == ProfilerState::kDisabled) return;
+  if (g_state == ProfilerState::kDisabled || name.emtpy()) return;
   // lock is not needed, the code below is thread-safe
 
   is_enabled_ = true;
@@ -517,8 +517,6 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
             event_time = gpu_time + cpu_time;
           }
 
-          total += event_time;
-
           std::string event_name;
           if (merge_thread) {
             event_name = rit->name();
@@ -560,12 +558,6 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
       }
     }
 
-    // average time
-    for (auto &item : event_items) {
-      item.ave_time = item.total_time / item.calls;
-      item.ratio = item.total_time / total;
-    }
-
     auto table_size = event_items.size();
     std::vector<int> child_index(table_size, 0);
     for (size_t j = 0; j < table_size; ++j) {
@@ -587,7 +579,18 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
     for (size_t j = 0; j < table_size; ++j) {
       if (child_index[j] == 0) {
         main_event_items.push_back(event_items[j]);
+        total += event_items[j].total_time;
       }
+    }
+
+    // average time
+    for (auto &item : main_event_items) {
+      item.ave_time = item.total_time / item.calls;
+      item.ratio = item.total_time / total;
+    }
+    for (auto it = child_map.begin(); it != child_map.end(); it++) {
+      it->second.ratio = it->second.total_time / total;
+      it->second.ave_time = it->second.ave_time / it->second.calls;
     }
 
     // sort
