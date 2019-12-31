@@ -22,8 +22,8 @@ class TestElementwiseOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float32"),
-            'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float32")
+            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float64")
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
@@ -31,7 +31,7 @@ class TestElementwiseOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.005)
+        self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
@@ -46,8 +46,8 @@ class TestElementwiseSubOp_scalar(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
-            'X': np.random.rand(2, 3, 4).astype(np.float32),
-            'Y': np.random.rand(1).astype(np.float32)
+            'X': np.random.rand(10, 3, 4).astype(np.float64),
+            'Y': np.random.rand(1).astype(np.float64)
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
@@ -56,8 +56,8 @@ class TestElementwiseSubOp_Vector(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
-            'X': np.random.random((32, )).astype("float32"),
-            'Y': np.random.random((32, )).astype("float32")
+            'X': np.random.random((100, )).astype("float64"),
+            'Y': np.random.random((100, )).astype("float64")
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
@@ -66,8 +66,8 @@ class TestElementwiseSubOp_broadcast_0(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
-            'X': np.random.rand(2, 3, 4).astype(np.float32),
-            'Y': np.random.rand(2).astype(np.float32)
+            'X': np.random.rand(2, 13, 4).astype(np.float64),
+            'Y': np.random.rand(2).astype(np.float64)
         }
 
         self.attrs = {'axis': 0}
@@ -80,8 +80,8 @@ class TestElementwiseSubOp_broadcast_1(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
-            'X': np.random.rand(2, 3, 4).astype(np.float32),
-            'Y': np.random.rand(3).astype(np.float32)
+            'X': np.random.rand(2, 3, 4).astype(np.float64),
+            'Y': np.random.rand(3).astype(np.float64)
         }
 
         self.attrs = {'axis': 1}
@@ -94,8 +94,8 @@ class TestElementwiseSubOp_broadcast_2(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
-            'X': np.random.rand(2, 3, 4).astype(np.float32),
-            'Y': np.random.rand(4).astype(np.float32)
+            'X': np.random.rand(2, 3, 4).astype(np.float64),
+            'Y': np.random.rand(4).astype(np.float64)
         }
 
         self.outputs = {
@@ -107,8 +107,8 @@ class TestElementwiseSubOp_broadcast_3(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
-            'X': np.random.rand(2, 3, 4, 5).astype(np.float32),
-            'Y': np.random.rand(3, 4).astype(np.float32)
+            'X': np.random.rand(2, 3, 4, 5).astype(np.float64),
+            'Y': np.random.rand(3, 4).astype(np.float64)
         }
 
         self.attrs = {'axis': 1}
@@ -121,8 +121,8 @@ class TestElementwiseSubOp_broadcast_4(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
-            'X': np.random.rand(2, 3, 4, 5).astype(np.float32),
-            'Y': np.random.rand(2, 3, 1, 5).astype(np.float32)
+            'X': np.random.rand(2, 3, 4, 5).astype(np.float64),
+            'Y': np.random.rand(2, 3, 1, 5).astype(np.float64)
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
@@ -131,8 +131,8 @@ class TestElementwiseSubOp_commonuse_1(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
-            'X': np.random.rand(2, 3, 4).astype(np.float32),
-            'Y': np.random.rand(1, 1, 4).astype(np.float32)
+            'X': np.random.rand(2, 3, 4).astype(np.float64),
+            'Y': np.random.rand(1, 1, 4).astype(np.float64)
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
@@ -141,8 +141,8 @@ class TestElementwiseSubOp_commonuse_2(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
-            'X': np.random.rand(2, 3, 1, 5).astype(np.float32),
-            'Y': np.random.rand(2, 1, 4, 1).astype(np.float32)
+            'X': np.random.rand(2, 3, 1, 5).astype(np.float64),
+            'Y': np.random.rand(2, 1, 4, 1).astype(np.float64)
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
@@ -151,8 +151,8 @@ class TestElementwiseSubOp_xsize_lessthan_ysize(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
-            'X': np.random.rand(4, 5).astype(np.float32),
-            'Y': np.random.rand(2, 3, 4, 5).astype(np.float32)
+            'X': np.random.rand(4, 5).astype(np.float64),
+            'Y': np.random.rand(2, 3, 4, 5).astype(np.float64)
         }
 
         self.attrs = {'axis': 2}

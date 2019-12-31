@@ -188,7 +188,25 @@ class VarBase {
     }
   }
 
-  framework::proto::VarType::Type DataType() const { return data_type_; }
+  framework::proto::VarType::Type DataType() const {
+    const framework::Tensor* tensor = nullptr;
+    if (var_.IsInitialized()) {
+      if (type_ == framework::proto::VarType::LOD_TENSOR) {
+        tensor = &(var_.Get<framework::LoDTensor>());
+      } else if (type_ == framework::proto::VarType::SELECTED_ROWS) {
+        tensor = &(var_.Get<framework::SelectedRows>().value());
+      } else {
+        VLOG(6) << "Variable " << name_ << " is not initialized";
+        return data_type_;
+      }
+    }
+    if (tensor && tensor->IsInitialized()) {
+      return tensor->type();
+    } else {
+      VLOG(6) << "The tensor of variable " << name_ << " is not initialized";
+      return data_type_;
+    }
+  }
 
   void ClearGradient();
 
