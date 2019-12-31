@@ -51,6 +51,14 @@ __global__ void ScaleKernel(int count, const T* in_data, const T scale,
   }
 }
 
+__global__ void INT32ToFP32Kernel(int count, const int32_t* in_data,
+                                  float scale, float* out_data) {
+  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  if (tid < count) {
+    out_data[tid] = scale * __int2float_rn(in_data[tid]);
+  }
+}
+
 template <>
 struct QuantFp32ToInt8Functor<platform::CUDADeviceContext> {
   void operator()(const platform::CUDADeviceContext& context,
@@ -64,14 +72,79 @@ struct QuantFp32ToInt8Functor<platform::CUDADeviceContext> {
     Fp32ToInt8Kernel<<<blocks, threads, 0, context.stream()>>>(numel, scale,
                                                                input, output);
   }
-  /*
-  void operator()(const platform::CUDADeviceContext &context, const
-  framework::Tensor& in,
-                  const std::vector<float>& scale, framework::Tensor* out);
-  void operator()(const platform::CUDADeviceContext &context, const
-  framework::Tensor& in,
-                  const framework::Tensor& scale, framework::Tensor* out);
-  */
+};
+
+template <>
+struct GEMMINT8Functor<platform::CUDADeviceContext> {
+  void operator()(const platform::CUDADeviceContext& context, bool transA,
+                  bool transB, int M, int N, int K, float alpha,
+                  const int8_t* A, int lda, const int8_t* B, int ldb,
+                  float beta, float* C, int ldc) {
+    cublasOperation_t cuTransA = transA ? CUBLAS_OP_T : CUBLAS_OP_N;
+    cublasOperation_t cuTransB = transB ? CUBLAS_OP_T : CUBLAS_OP_N;
+
+#if CUDA_VERSION >= 8000
+    cublasGemmAlgo_t algo = CUBLAS_GEMM_DEFAULT;
+#if CUDA_VERSION >= 9000
+    bool use_tensor_op_math = context.tensor_core_available();
+    if (use_tensor_op_math) {
+      algo = CUBLAS_GEMM_DEFAULT_TENSOR_OP;
+    }
+    VLOG(5) << "use_tensor_op_math: "
+            << (use_tensor_op_math ? "True" : "False");
+#endif  // CUDA_VERSION >= 9000
+
+    context.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasGemmEx(
+          handle, cuTransA, cuTransB, N, M, K, &alpha, B, CUDA_R_8I, ldb, A,
+          CUDA_R_8I, lda, &beta, C, CUDA_R_32F, ldc, CUDA_R_32F, algo));
+    });
+#else
+    PADDLE_THROW("cublasGemmEx is supported on cuda >= 8.0");
+#endif
+  }
+  void operator()(const platform::CUDADeviceContext& context, bool transA,
+                  bool transB, int M, int N, int K, int32_t alpha,
+                  const int8_t* A, int lda, const int8_t* B, int ldb,
+                  int32_t beta, int32_t* C, int ldc) {
+    cublasOperation_t cuTransA = transA ? CUBLAS_OP_T : CUBLAS_OP_N;
+    cublasOperation_t cuTransB = transB ? CUBLAS_OP_T : CUBLAS_OP_N;
+
+#if CUDA_VERSION >= 8000
+    cublasGemmAlgo_t algo = CUBLAS_GEMM_ALGO3;
+#if CUDA_VERSION >= 9000
+    bool use_tensor_op_math = context.tensor_core_available();
+    if (use_tensor_op_math) {
+      algo = CUBLAS_GEMM_DEFAULT_TENSOR_OP;
+    }
+    VLOG(5) << "use_tensor_op_math: "
+            << (use_tensor_op_math ? "True" : "False");
+#endif  // CUDA_VERSION >= 9000
+
+    context.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasGemmEx(
+          handle, cuTransA, cuTransB, N, M, K, &alpha, B, CUDA_R_8I, ldb, A,
+          CUDA_R_8I, lda, &beta, C, CUDA_R_32I, ldc, CUDA_R_32I, algo));
+    });
+#else
+    PADDLE_THROW("cublasGemmEx is supported on cuda >= 8.0");
+#endif
+  }
+};
+
+template <>
+struct INT32ToFP32Functor<platform::CUDADeviceContext> {
+  void operator()(const platform::CUDADeviceContext& ctx,
+                  const framework::Tensor& in, framework::Tensor* out,
+                  float scale) {
+    const int32_t* input = in.data<int32_t>();
+    int numel = in.numel();
+    int threads = 1024;
+    int blocks = (numel + threads - 1) / threads;
+    float* output = out->mutable_data<float>(ctx.GetPlace());
+    INT32ToFP32Kernel<<<blocks, threads, 0, ctx.stream()>>>(numel, input, scale,
+                                                            output);
+  }
 };
 
 }  // namespace operators

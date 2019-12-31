@@ -462,17 +462,6 @@ void Blas<platform::CPUDeviceContext>::VCOPY(int n, const T *x, T *y) const {
 
 template <>
 template <typename T>
-void Blas<platform::CPUDeviceContext>::GEMM(bool transA, bool transB, int M,
-                                            int N, int K, T alpha,
-                                            const int8_t *A, int lda,
-                                            const int8_t *B, int ldb, T beta,
-                                            T *C, int ldc) const {
-  CBlas<int8_t>::GEMM(transA, transB, M, N, K, alpha, A, lda, B, ldb, beta, C,
-                      ldc);
-}
-
-template <>
-template <typename T>
 void Blas<platform::CPUDeviceContext>::VADD(int n, const T *x, const T *y,
                                             T *z) const {
 #ifdef PADDLE_WITH_MKLML

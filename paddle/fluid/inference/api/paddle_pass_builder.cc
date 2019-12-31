@@ -113,8 +113,8 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_bn_fuse_pass",                         //
         "conv_eltwiseadd_bn_fuse_pass",              //
         "multihead_matmul_fuse_pass",
-// "fc_fuse_pass",                        //
-// "fc_elementwise_layernorm_fuse_pass",  //
+        "fc_fuse_pass",                        //
+        "fc_elementwise_layernorm_fuse_pass",  //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7
         "conv_elementwise_add_act_fuse_pass",   //
