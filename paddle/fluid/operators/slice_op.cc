@@ -297,7 +297,9 @@ class SliceOpDoubleGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true, "Input should not be null");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Input"), true,
+        platform::errors::InvalidArgument("Input of slice should not be null"));
   }
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
