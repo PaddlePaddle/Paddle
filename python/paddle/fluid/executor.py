@@ -221,7 +221,7 @@ def check_feed_shape_type(var, feed, num_places=1):
         if not dimension_is_compatible_with(feed_shape, var.shape):
             raise ValueError(
                 'The feeded Variable %r should have dimensions = %d, shape = '
-                '%r, but received feeded shape %r' %
+                '%r, but received feeded shape %r on each device' %
                 (var.name, len(var.shape), var.shape, feed_shape))
         if not dtype_is_compatible_with(feed._dtype(), var.dtype):
             var_dtype_format = convert_dtype(var.dtype) if isinstance(
