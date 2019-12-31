@@ -1176,10 +1176,16 @@ def range(start, end, step, dtype):
 
     if not isinstance(start, Variable):
         start = fill_constant([1], dtype, start)
+    elif convert_dtype(start.dtype) != dtype:
+        start = cast(x=start, dtype=dtype)
     if not isinstance(end, Variable):
         end = fill_constant([1], dtype, end)
+    elif convert_dtype(end.dtype) != dtype:
+        end = cast(x=end, dtype=dtype)
     if not isinstance(step, Variable):
         step = fill_constant([1], dtype, step)
+    elif convert_dtype(step.dtype) != dtype:
+        step = cast(x=step, dtype=dtype)
 
     out = helper.create_variable_for_type_inference(dtype=start.dtype)
 
