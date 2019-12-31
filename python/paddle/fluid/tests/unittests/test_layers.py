@@ -1627,6 +1627,34 @@ class TestLayer(LayerTest):
             self.assertIsNotNone(out2)
             self.assertIsNotNone(out3)
 
+    def test_accuracy(self):
+        x = np.random.rand(3, 32, 32).astype("float32")
+        y = np.array([[1], [0], [1]])
+        with self.static_graph():
+            data = fluid.data(name="input", shape=[-1, 32, 32], dtype="float32")
+            label = fluid.data(name="label", shape=[-1, 1], dtype="int")
+            fc_out = fluid.layers.fc(input=data, size=10)
+            predict = fluid.layers.softmax(input=fc_out)
+            result = fluid.layers.accuracy(input=predict, label=label, k=5)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+
+            exe.run(fluid.default_startup_program())
+            x = np.random.rand(3, 32, 32).astype("float32")
+            y = np.array([[1], [0], [1]])
+            static_out = exe.run(feed={"input": x,
+                                       "label": y},
+                                 fetch_list=result[0])
+
+        with self.dynamic_graph():
+            data = base.to_variable(x)
+            label = base.to_variable(y)
+            fc_out = fluid.layers.fc(data, size=10)
+            predict = fluid.layers.softmax(fc_out)
+            dynamic_out = fluid.layers.accuracy(input=predict, label=label, k=5)
+
+        self.assertTrue(np.array_equal(static_out[0], dynamic_out.numpy()))
+
 
 class TestBook(LayerTest):
     def test_all_layers(self):
