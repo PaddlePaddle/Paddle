@@ -145,7 +145,6 @@ RecordEvent::RecordEvent(const std::string &name)
 
   is_enabled_ = true;
   name_ = name;
-  // std::lock_guard<std::mutex> guard(g_record_annotation_mu);
   Event *e = PushEvent(name_);
   // Maybe need the same push/pop behavior.
   SetCurAnnotation(e);

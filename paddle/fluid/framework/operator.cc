@@ -178,16 +178,13 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     }
 
     std::string type_name = Type();
-    if (platform::IsProfileEnabled() &&
-        platform::GetTracerOption() == platform::TracerOption::kDetail) {
+    {
       type_name = GetTypeName(outputs_, type_name);
       platform::RecordEvent record_fevent(Type());
       platform::RecordEvent record_event(type_name);
       RunImpl(scope, place);
-    } else {
-      platform::RecordEvent record_event(Type());
-      RunImpl(scope, place);
     }
+
     VLOG(3) << place << " " << DebugStringEx(&scope);
   } catch (platform::EnforceNotMet& exception) {
     framework::InsertCallStackInfo(Type(), Attrs(), &exception);
