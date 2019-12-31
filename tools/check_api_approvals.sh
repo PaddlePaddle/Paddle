@@ -28,7 +28,6 @@ API_FILES=("CMakeLists.txt"
            "paddle/fluid/operators/distributed/send_recv.proto.in"
            "paddle/fluid/framework/unused_var_check.cc"
            "python/paddle/fluid/tests/unittests/white_list/check_shape_white_list.py"
-           "python/paddle/fluid/tests/unittests/white_list/op_check_grad_white_list.py"
            "python/paddle/fluid/tests/unittests/white_list/op_accuracy_white_list.py"
            )
 
@@ -112,9 +111,6 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/check_shape_white_list.py" ];then
           echo_line="You must have one RD (hong19860320 (Recommend), luotao1, phlrain) approval for the changes of check_shape_white_list.py, which manages the white list of operators with limited input size. The op test must have at least one test case with input size greater than or equal to 100. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/OP-Test-Input-Shape-Requirements. \n"
           check_approval 1 9973393 6836917 43953930
-      elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/op_check_grad_white_list.py" ];then
-          echo_line="You must have one RD (zhangting2020 (Recommend), luotao1 or phlrain) approval for the python/paddle/fluid/tests/unittests/white_list/op_check_grad_white_list.py, which manages the white list of operators without gradient. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Gradient-Check-Is-Required-for-Op-Test. \n"
-          check_approval 1 26615455 6836917 43953930
       elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/op_accuracy_white_list.py" ];then
           echo_line="You must have one RD (juncaipeng (Recommend), zhangting2020 (Recommend) or luotao1) approval for the python/paddle/fluid/tests/unittests/white_list/op_accuracy_white_list.py, which manages the white list of upgrading the precision of op test to float64. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Upgrade-OP-Precision-to-Float64. \n"
           check_approval 1 52520497 26615455 6836917
