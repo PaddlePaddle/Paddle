@@ -33,7 +33,7 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable
 from testsuite import create_op, set_input, append_input_output, append_loss_ops
 from paddle.fluid import unique_name
-from white_list import op_accuracy_white_list, op_check_grad_white_list, check_shape_white_list, compile_vs_runtime_white_list
+from white_list import op_accuracy_white_list, check_shape_white_list, compile_vs_runtime_white_list
 
 
 def _set_use_system_allocator(value=None):
@@ -196,13 +196,14 @@ class OpTest(unittest.TestCase):
         def is_empty_grad_op(op_type):
             all_op_kernels = core._get_all_register_op_kernels()
             grad_op = op_type + '_grad'
-            if grad_op in all_op_kernels.keys() \
-                and hasattr(cls, "use_mkldnn") \
-                and cls.use_mkldnn == True:
-                grad_op_kernels = all_op_kernels[grad_op]
-                for grad_op_kernel in grad_op_kernels:
-                    if 'MKLDNN' in grad_op_kernel:
-                        return False
+            if grad_op in all_op_kernels.keys():
+                if hasattr(cls, "use_mkldnn") and cls.use_mkldnn == True:
+                    grad_op_kernels = all_op_kernels[grad_op]
+                    for grad_op_kernel in grad_op_kernels:
+                        if 'MKLDNN' in grad_op_kernel:
+                            return False
+                else:
+                    return False
             return True
 
         if not hasattr(cls, "op_type"):
@@ -311,7 +312,6 @@ class OpTest(unittest.TestCase):
 
     def _append_ops(self, block):
         self.__class__.op_type = self.op_type  # for ci check, please not delete it for now
-
         if hasattr(self, "use_mkldnn"):
             self.__class__.use_mkldnn = self.use_mkldnn
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
@@ -1117,7 +1117,6 @@ class OpTest(unittest.TestCase):
                      inplace_atol=None,
                      check_compile_vs_runtime=True):
         self.__class__.op_type = self.op_type
-
         if hasattr(self, "use_mkldnn"):
             self.__class__.use_mkldnn = self.use_mkldnn
         places = self._get_places()
