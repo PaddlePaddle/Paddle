@@ -424,10 +424,12 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<Tensor>("Scale");
     const bool is_test = ctx.Attr<bool>("is_test");
-    PADDLE_ENFORCE_EQ(is_test, false,
-                      "`is_test = True` CANNOT be used in train program. If "
-                      "you want to use global status in pre_train model, "
-                      "please set `use_global_stats = True`");
+    PADDLE_ENFORCE_EQ(
+        is_test, false,
+        platform::errors::InvalidArgument(
+            "`is_test = True` CANNOT be used in train program. If "
+            "you want to use global status in pre_train model, "
+            "please set `use_global_stats = True`"));
 
     const auto &x_dims = x->dims();
 
