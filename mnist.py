@@ -118,8 +118,6 @@ if __name__ == '__main__':
         guard = null_guard()
 
     with guard:
-        # sgd = SGDOptimizer(learning_rate=1e-3)
-        sgd = MomentumOptimizer(learning_rate=1e-3, momentum=0.9)
         train_loader = fluid.io.xmap_readers(
             lambda b: [np.array([x[0] for x in b]).reshape(-1, 1, 28, 28),
                        np.array([x[1] for x in b]).reshape(-1, 1)],
@@ -131,6 +129,9 @@ if __name__ == '__main__':
             paddle.batch(paddle.dataset.mnist.test(),
                          batch_size=4, drop_last=True), 1, 1)
         model = MNIST()
+        sgd = MomentumOptimizer(learning_rate=1e-3, momentum=0.9,
+                                parameter_list=model.parameters())
+        # sgd = SGDOptimizer(learning_rate=1e-3)
         model.prepare(sgd, 'cross_entropy')
 
         for e in range(2):

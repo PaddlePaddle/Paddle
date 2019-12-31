@@ -110,6 +110,9 @@ class StaticGraphAdapter(object):
         self.mode = 'test'
         return self._run(inputs, None, device, device_ids)
 
+    def parameters(self, *args, **kwargs):
+        return None
+
     def save(self, path):
         prog = self._progs.get('train', None)
         if prog is None or self.model._optimizer is None:
@@ -287,6 +290,9 @@ class DynamicGraphAdapter(object):
         inputs = to_list(inputs)
         return self.model.forward(*[to_variable(x) for x in inputs])
 
+    def parameters(self, *args, **kwargs):
+        return super(Model, self.model).parameters(*args, **kwargs)
+
     def save(self, path):
         params = self.model.state_dict()
         fluid.save_dygraph(params, path)
@@ -346,3 +352,6 @@ class Model(fluid.dygraph.Layer):
     def prepare(self, optimizer, loss_functions):
         self._optimizer = optimizer
         self._loss_functions = to_list(loss_functions)
+
+    def parameters(self, *args, **kwargs):
+        return self._adapter.parameters(*args, **kwargs)
