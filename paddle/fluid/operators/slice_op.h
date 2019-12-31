@@ -416,15 +416,18 @@ class SliceDoubleGradKernel : public framework::OpKernel<T> {
       }
       PADDLE_ENFORCE_EQ(
           starts.size(), axes.size(),
-          "The size of starts must be equal to the size of axes.");
+          platform::errors::InvalidArgument(
+              "The size of starts must be equal to the size of axes."));
       if (context.HasInput("EndsTensor")) {
         auto* ends_tensor = context.Input<framework::Tensor>("EndsTensor");
         ends = get_new_data_from_tensor(ends_tensor);
       } else if (list_new_ends_tensor.size() > 0) {
         ends = get_new_data_from_tensorlist(list_new_ends_tensor);
       }
-      PADDLE_ENFORCE_EQ(ends.size(), axes.size(),
-                        "The size of ends must be equal to the size of axes.");
+      PADDLE_ENFORCE_EQ(
+          ends.size(), axes.size(),
+          platform::errors::InvalidArgument(
+              "The size of ends must be equal to the size of axes."));
       out_dims = in_dims;
       int dim_value, start, end;
       for (size_t i = 0; i < axes.size(); ++i) {
@@ -444,7 +447,8 @@ class SliceDoubleGradKernel : public framework::OpKernel<T> {
           start = std::max(start, 0);
           end = std::max(end, 0);
           end = std::min(end, dim_value);
-          PADDLE_ENFORCE_GT(end, start, "end should greater than start");
+          PADDLE_ENFORCE_GT(end, start, platform::errors::InvalidArgument(
+                                            "end should greater than start"));
           out_dims[axes[i]] = end - start;
         }
       }
@@ -453,8 +457,9 @@ class SliceDoubleGradKernel : public framework::OpKernel<T> {
       if (decrease_axis.size() > 0) {
         std::vector<int> new_out_shape;
         for (size_t i = 0; i < decrease_axis.size(); ++i) {
-          PADDLE_ENFORCE_EQ(out_dims[decrease_axis[i]], 1,
-                            "decrease dim should be 1");
+          PADDLE_ENFORCE_EQ(
+              out_dims[decrease_axis[i]], 1,
+              platform::errors::InvalidArgument("decrease dim should be 1"));
           out_dims[decrease_axis[i]] = 0;
         }
 
