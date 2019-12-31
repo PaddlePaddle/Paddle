@@ -1178,10 +1178,12 @@ def range(start, end, step, dtype):
         start = fill_constant([1], dtype, start)
     elif convert_dtype(start.dtype) != dtype:
         start = cast(x=start, dtype=dtype)
+
     if not isinstance(end, Variable):
         end = fill_constant([1], dtype, end)
     elif convert_dtype(end.dtype) != dtype:
         end = cast(x=end, dtype=dtype)
+
     if not isinstance(step, Variable):
         step = fill_constant([1], dtype, step)
     elif convert_dtype(step.dtype) != dtype:
