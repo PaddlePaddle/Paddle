@@ -1115,9 +1115,9 @@ function main() {
         build_mac
         ;;
       cicheck_py35)
-        cmake_gen ${PYTHON_ABI:-""}
-        build ${parallel_number}
-        parallel_test
+        #cmake_gen ${PYTHON_ABI:-""}
+        #build ${parallel_number}
+        #parallel_test
         ;;
       cmake_gen)
         cmake_gen ${PYTHON_ABI:-""}
