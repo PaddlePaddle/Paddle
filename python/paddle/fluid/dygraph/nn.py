@@ -221,7 +221,7 @@ class Conv2D(layers.Layer):
     def forward(self, input):
         inputs = {
             'Input': [input],
-            'Filter': [self._filter_param],
+            'Filter': [self.weight],
         }
         attrs = {
             'strides': self._stride,
