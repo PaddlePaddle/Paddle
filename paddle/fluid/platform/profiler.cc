@@ -140,7 +140,7 @@ void PopEvent(const std::string &name) {
 
 RecordEvent::RecordEvent(const std::string &name)
     : is_enabled_(false), start_ns_(PosixInNsec()) {
-  if (g_state == ProfilerState::kDisabled || name.emtpy()) return;
+  if (g_state == ProfilerState::kDisabled || name.empty()) return;
   // lock is not needed, the code below is thread-safe
 
   is_enabled_ = true;
