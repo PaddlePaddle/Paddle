@@ -678,7 +678,7 @@ class OpTest(unittest.TestCase):
         An op needs to run druing inplace check if,
         (1) it has infer_inplace,
         (2) it has infer_inplace in its grad descendants. (since we need its outputs as to construct its grad's inputs)
-
+        
         Args:
             op_desc (OpDesc): The op_desc of current op. 
             fwd_op_desc (OpDesc): The op_desc of current op's forward op, None if current op has no forward op. 
