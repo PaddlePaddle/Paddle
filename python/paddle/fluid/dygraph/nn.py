@@ -1270,16 +1270,14 @@ class BatchNorm(layers.Layer):
             shape=param_shape,
             dtype=self._dtype,
             default_initializer=Constant(1.0))
-        if use_global_stats and self._param_attr.learning_rate == 0.:
-            self.weight.stop_gradient = True
+        self.weight.stop_gradient = use_global_stats and self._param_attr.learning_rate == 0.
 
         self.bias = self.create_parameter(
             attr=self._bias_attr,
             shape=param_shape,
             dtype=self._dtype,
             is_bias=True)
-        if use_global_stats and self._param_attr.learning_rate == 0.:
-            self.bias.stop_gradient = True
+        self.bias.stop_gradient = use_global_stats and self._param_attr.learning_rate == 0.
 
         self._mean = self.create_parameter(
             attr=ParamAttr(
@@ -2696,25 +2694,24 @@ class GroupNorm(layers.Layer):
             raise ValueError("unsupported data layout:" + data_layout)
 
         param_shape = [self._channels]
-        if self._bias_attr:
-            self.bias = self.create_parameter(
-                attr=self._bias_attr,
-                shape=param_shape,
-                dtype=self._dtype,
-                is_bias=True)
 
-        if self._param_attr:
-            self.weight = self.create_parameter(
-                attr=self._param_attr,
-                shape=param_shape,
-                dtype=self._dtype,
-                default_initializer=Constant(1.0))
+        self.weight = self.create_parameter(
+            attr=self._param_attr or False,
+            shape=param_shape,
+            dtype=self._dtype,
+            default_initializer=Constant(1.0))
+
+        self.bias = self.create_parameter(
+            attr=self._bias_attr or False,
+            shape=param_shape,
+            dtype=self._dtype,
+            is_bias=True)
 
     def forward(self, input):
         inputs = {'X': input}
-        if self._bias_attr:
+        if self.bias:
             inputs['Bias'] = self.bias
-        if self._param_attr:
+        if self.weight:
             inputs['Scale'] = self.weight
 
         # create output
