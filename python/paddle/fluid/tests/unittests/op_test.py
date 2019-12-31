@@ -683,7 +683,7 @@ class OpTest(unittest.TestCase):
             op_desc (OpDesc): The op_desc of current op. 
             fwd_op_desc (OpDesc): The op_desc of current op's forward op, None if current op has no forward op. 
                 Eg. relu's fwd_op is None, relu_grad's fwd_op is relu, relu_grad_grad's fwd_op is relu_grad, etc.
-        
+
         Returns:
             need_run_ops (list[(op_desc, fwd_op_desc)]): The ops that need to run during inplace test.
         """
@@ -724,7 +724,7 @@ class OpTest(unittest.TestCase):
                                inplace_atol=None):
         """Chech the inplace correctness of given op (self.op_type).
         Run the op twice with same inputs, one enable inplace and another disable, compare their outputs.
-
+        
         Args:
             place (CPUPlace | CUDAPlace): The place where the op runs. 
             no_check_set (list): The names of outputs that needn't check, like XShape of reshape op.
