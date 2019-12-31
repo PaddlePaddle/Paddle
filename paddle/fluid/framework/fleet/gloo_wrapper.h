@@ -14,8 +14,15 @@ limitations under the License. */
 
 #pragma once
 
+#if defined _WIN32 || defined __APPLE__
+#else
+#define _LINUX
+#endif
+
+#ifdef _LINUX
 #include <sys/types.h>
 #include <unistd.h>
+#endif
 #include <iostream>
 #include <memory>
 #include <string>
@@ -57,7 +64,6 @@ class HdfsStore {
                     const std::chrono::milliseconds& timeout);
 
  protected:
-
   std::string EncodeName(const std::string& name);
 
   std::string TmpPath(const std::string& name);
@@ -73,13 +79,13 @@ class HdfsStore {
 }  // namespace rendezvous
 }  // namespace gloo
 
-
 namespace paddle {
 namespace framework {
 
 class GlooWrapper {
  public:
   GlooWrapper() {}
+
   virtual ~GlooWrapper() {}
   
   void Init(int rank, int size, const std::string& path, 
@@ -110,7 +116,7 @@ class GlooWrapper {
     CHECK_EQ(sendbuf.size() == recvbuf.size(), true);
     #ifdef PADDLE_WITH_GLOO
     gloo::AllreduceOptions opts(context_);
-    opts.setInput(const_cast<T*>((const T*) sendbuf.data()), sendbuf.size());
+    opts.setInput(reinterpret_cast<T*>(sendbuf.data()), sendbuf.size());
     opts.setOutput(recvbuf.data(), recvbuf.size());
     opts.setReduceFunction(
         static_cast<void(*)(void*, const void*, const void*, size_t)>(&gloo::sum<T>));
@@ -119,12 +125,12 @@ class GlooWrapper {
   }
 
   template<typename T>
-  std::vector<T> AllGather(const T& input) {
+  std::vector<T> AllGather(T& input) {  // NOLINT
     CHECK_EQ(is_initialized_, true);
     std::vector<T> ret(size_, T());
     #ifdef PADDLE_WITH_GLOO
     gloo::AllgatherOptions opts(context_);
-    opts.setInput(const_cast<T*>(&input), 1);
+    opts.setInput(&input, 1);
     opts.setOutput(ret.data(), size_);
     gloo::allgather(opts);
     #endif

@@ -16,11 +16,6 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/io/fs.h"
 
-#if defined _WIN32 || defined __APPLE__
-#else
-#define _LINUX
-#endif
-
 namespace gloo {
 namespace rendezvous {
 
@@ -34,7 +29,7 @@ void HdfsStore::set(const std::string& key, const std::vector<char>& data) {
   auto tmp = TmpPath(key);
   auto path = ObjectPath(key);
   bool is_exists = paddle::framework::hdfs_exists(path);
-  PADDLE_ENFORCE_EQ(is_exists, false, "path exists: " + path);
+  PADDLE_ENFORCE_EQ(is_exists, false, "HdfsStore::set, path exists: " + path);
   int err_no = 0;
   std::shared_ptr<FILE> fp = paddle::framework::fs_open_write(tmp, &err_no, "");
   size_t write_count = fwrite_unlocked(data.data(), 1, data.size(), fp.get());
@@ -51,7 +46,8 @@ std::vector<char> HdfsStore::get(const std::string& key) {
   // block until key is set
   wait({key});
   bool is_exists = paddle::framework::hdfs_exists(path);
-  PADDLE_ENFORCE_EQ(is_exists, true, "path not exists: " + path);
+  PADDLE_ENFORCE_EQ(is_exists, true,
+                    "HdfsStore::get, path not exists: " + path);
   int err_no = 0;
   std::shared_ptr<FILE> fp = paddle::framework::fs_open_read(path, &err_no, "");
   char buffer = '\0';
@@ -79,8 +75,8 @@ void HdfsStore::wait(const std::vector<std::string>& keys,
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::steady_clock::now() - start);
     if (timeout != kNoTimeout && elapsed > timeout) {
-      PADDLE_ENFORCE_EQ(0, 1,
-                        "Wait timeout for key(s): " + ::gloo::MakeString(keys));
+      PADDLE_ENFORCE_EQ(0, 1, "HdfsStore::wait, Wait timeout for key(s): " +
+                        ::gloo::MakeString(keys));
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(wait_sleep_ms));
   }
@@ -134,7 +130,7 @@ void GlooWrapper::Init(int rank, int size, const std::string& path,
   cmd += " -D fs.default.name=" + fs_name;
   cmd += " -D hadoop.job.ugi=" + fs_ugi;
   paddle::framework::hdfs_set_command(cmd);
-#ifdef PADDLE_WITH_GLOO 
+#ifdef PADDLE_WITH_GLOO
   gloo::transport::tcp::attr attr;
   attr.iface = iface;
   auto file_store = gloo::rendezvous::HdfsStore(path);
@@ -153,10 +149,8 @@ template void GlooWrapper::AllReduce<int64_t>(
 template void GlooWrapper::AllReduce<double>(
     const std::vector<double>& sendbuf,  // NOLINT
     std::vector<double>& recvbuf);       // NOLINT
-template std::vector<int64_t> GlooWrapper::AllGather<int64_t>(
-    const int64_t& input);
-template std::vector<double> GlooWrapper::AllGather<double>(
-    const double& input);
+template std::vector<int64_t> GlooWrapper::AllGather<int64_t>(int64_t& input);  // NOLINT
+template std::vector<double> GlooWrapper::AllGather<double>(double& input);     // NOLINT
 
 }  // namespace framework
 }  // namespace paddle
