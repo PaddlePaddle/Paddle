@@ -159,8 +159,7 @@ class LayerNormDirectCUDAFunctor {
  public:
   void operator()(cudaStream_t stream, const T* input,
                   std::vector<int> input_shape, const T* bias, const T* scale,
-                  T* output, std::vector<int64_t> mean_shape,
-                  std::vector<int64_t> variance_shape, int begin_norm_axis,
+                  T* output, T* mean, T* variance, int begin_norm_axis,
                   float eps);
 };
 #endif

@@ -50,7 +50,6 @@ class LayerHelperBase(object):
 
         Parameters:
             value(ndarray): The numpy\.ndarray object that needs to be converted, it can be multi-dimension, and the data type is one of numpy\.{float16, float32, float64, int16, int32, int64, uint8, uint16}.
-            block(fluid.Block, optional): Which block this variable will be in. Default: None.
             name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
         Returns:

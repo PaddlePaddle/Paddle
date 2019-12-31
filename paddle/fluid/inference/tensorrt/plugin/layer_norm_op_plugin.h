@@ -33,6 +33,8 @@ class LayerNormPlugin : public PluginTensorRT {
   std::vector<float> scale_;
   framework::Tensor scale_t;
   framework::Tensor bias_t;
+  framework::Tensor mean_t;
+  framework::Tensor variance_t;
   // float *p_gpu_bias_;
   // float *p_gpu_scale_;
   int begin_norm_axis_;
