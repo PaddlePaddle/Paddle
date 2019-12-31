@@ -102,7 +102,11 @@ class TestFTRLOp(OpTest):
 
 
 class TestSparseFTRLOp(unittest.TestCase):
+    def setUp(self):
+        self.lr_power = -0.5
+
     def check_with_place(self, place):
+        self.init_kernel()
         scope = core.Scope()
 
         height = 10
@@ -110,7 +114,7 @@ class TestSparseFTRLOp(unittest.TestCase):
         row_numel = 12
         l1 = 0.1
         l2 = 0.2
-        lr_power = -0.5
+        lr_power = self.lr_power
 
         # create and initialize Param Variable
         param = scope.var('Param').get_tensor()
@@ -171,11 +175,14 @@ class TestSparseFTRLOp(unittest.TestCase):
         for i in range(height):
             for j in range(row_numel):
                 self.assertAlmostEqual(
-                    param_out[i][j], param_array[i][j], places=5)
+                    param_out[i][j], param_array[i][j], places=4)
                 self.assertAlmostEqual(
-                    sq_accum_out[i][j], sq_accum_array[i][j], places=5)
+                    sq_accum_out[i][j], sq_accum_array[i][j], places=4)
                 self.assertAlmostEqual(
-                    lin_accum_out[i][j], lin_accum_array[i][j], places=5)
+                    lin_accum_out[i][j], lin_accum_array[i][j], places=4)
+
+    def init_kernel(self):
+        pass
 
     def test_sparse_ftrl(self):
         places = [core.CPUPlace()]
@@ -183,6 +190,11 @@ class TestSparseFTRLOp(unittest.TestCase):
             places.append(core.CUDAPlace(0))
         for place in places:
             self.check_with_place(place)
+
+
+class TestSparseFTRLOp2(TestSparseFTRLOp):
+    def init_kernel(self):
+        self.lr_power = -0.6
 
 
 if __name__ == "__main__":
