@@ -1035,7 +1035,7 @@ class OpTest(unittest.TestCase):
                 "inplace_atol should only be set when op doesn't ensure computational consistency, please check it!"
             )
         # Check inplace for given op, its grad op, its grad_grad op, etc.
-        # No effect on original OpTest
+        # No effect on original OpTest 
         self.check_inplace_output_with_place(
             place, no_check_set=no_check_set, inplace_atol=inplace_atol)
 
