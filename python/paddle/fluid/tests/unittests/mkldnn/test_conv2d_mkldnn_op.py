@@ -44,6 +44,7 @@ class TestConv2dMKLDNNOp(TestConv2dOp):
         self.data_format = "NCHW"
         self.use_mkldnn = True
         self._cpu_only = True
+        self.dtype = np.float32
 
     def init_test_case(self):
         self.pad = [0, 0]
@@ -62,6 +63,7 @@ class TestConv2dMKLDNNOp(TestConv2dOp):
         self.fuse_brelu_threshold = 6.0
         self.fuse_residual_connection = False
         self.input_residual_size = None
+
         TestConv2dOp.setUp(self)
 
         output = self.outputs['Output']
@@ -179,6 +181,7 @@ class TestWithInput1x1Filter1x1(TestConv2dMKLDNNOp):
 class TestConv2dOp_AsyPadding_MKLDNN(TestConv2dOp_v2):
     def init_kernel_type(self):
         self.use_mkldnn = True
+        self.dtype = np.float32
 
     def init_paddings(self):
         self.pad = [0, 0, 1, 2]

@@ -23,6 +23,7 @@ import os
 import inspect
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import utils
+from ... import unique_name
 
 __all__ = [
     'fused_elemwise_activation',
@@ -33,6 +34,7 @@ __all__ = [
     'fused_embedding_seq_pool',
     'multiclass_nms2',
     'search_pyramid_hash',
+    'shuffle_batch',
 ]
 
 
@@ -722,3 +724,67 @@ def search_pyramid_hash(input,
         })
 
     return res
+
+
+def shuffle_batch(x, seed=None):
+    """
+    This layer shuffle input tensor :attr:`x` . Normally, :attr:`x` is 2-D LoDTensor.
+
+    :attr:`x` is a LoDTensor to be shuffled with shape :math:`[N_1, N_2, ..., N_k, D]` . Note that the last dim of input will not be shuffled.
+    :math:`N_1 * N_2 * ... * N_k` numbers of elements with length :math:`D` will be shuffled randomly.
+
+    For Example:
+
+    .. code-block:: text
+
+      Input:
+        x.data = [[1, 2], [3, 4], [5, 6], [7, 8]]
+        x.dims = [4, 2]
+
+      Attrs:
+        seed = 2019
+
+      Output:
+        Out.data =[[7, 8], [1, 2], [3, 4], [5, 6]]
+        Out.dims = [4, 2]
+
+    Args:
+        x (Variable): The input variable. The input variable is a N-D LoDTensor with type int, float32 or float64.
+        seed (None|int|Variable): The start up seed. If set, seed will be set as the start up seed of shuffle engine.
+                If not set(Default), start up seed of shuffle engine will be generated randomly.
+
+    Returns:
+        Variables: The shuffled LoDTensor with the same shape and lod as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name="x", shape=[-1, 4])
+            out = fluid.contrib.layers.shuffle_batch(x)
+    """
+    helper = LayerHelper('shuffle_batch', **locals())
+
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    shuffle_idx = helper.create_variable_for_type_inference(dtype=np.int64)
+    if seed is None and helper.main_program.random_seed != 0:
+        seed = helper.main_program.random_seed
+    if seed is None:
+        seed = np.random.randint(-65536, 65535)
+    op_attrs = {}
+    if isinstance(seed, int):
+        op_attrs["startup_seed"] = seed
+        seed = helper.create_variable(
+            name=unique_name.generate("shuffle_batch_seed"),
+            dtype="int64",
+            persistable=True)
+    helper.append_op(
+        type='shuffle_batch',
+        inputs={'X': x,
+                'Seed': seed},
+        outputs={'Out': out,
+                 'ShuffleIdx': shuffle_idx,
+                 'SeedOut': seed},
+        attrs=op_attrs)
+    return out

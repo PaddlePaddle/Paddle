@@ -53,7 +53,6 @@ endif()
 list(REMOVE_ITEM TEST_OPS test_seq_concat_op) # FIXME(helin): https://github.com/PaddlePaddle/Paddle/issues/8290
 list(REMOVE_ITEM TEST_OPS test_lstm_unit_op) # # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5185
 list(REMOVE_ITEM TEST_OPS test_cond_op) # FIXME(qijun): https://github.com/PaddlePaddle/Paddle/issues/5101#issuecomment-339814957
-list(REMOVE_ITEM TEST_OPS test_kldiv_loss_op) # FIXME(dengkaipeng): https://github.com/PaddlePaddle/Paddle/issues/21750
 
 list(REMOVE_ITEM TEST_OPS op_test) # op_test is a helper python file, not a test
 list(REMOVE_ITEM TEST_OPS decorator_helper) # decorator_helper is a helper python file, not a test
@@ -278,7 +277,7 @@ if(WITH_DISTRIBUTE)
         set(dist_ut_port 1000)
         foreach(TEST_OP ${DIST_TEST_OPS})
             message(STATUS "set dist_ut_port=${dist_ut_port} on ${TEST_OP}")
-            bash_test_modules(${TEST_OP} MODULES dist_test.sh LABELS "RUN_TYPE=EXCLUSIVE" ENVS "PADDLE_DIST_UT_PORT=${dist_ut_port}")
+            bash_test_modules(${TEST_OP} MODULES dist_test.sh SERIAL LABELS "RUN_TYPE=EXCLUSIVE" ENVS "PADDLE_DIST_UT_PORT=${dist_ut_port}")
             MATH(EXPR dist_ut_port "${dist_ut_port}+50")
         endforeach(TEST_OP)
     endif(NOT APPLE)
@@ -304,6 +303,8 @@ endif()
 set_tests_properties(test_parallel_executor_seresnext_base_cpu PROPERTIES TIMEOUT 900)
 set_tests_properties(test_parallel_executor_seresnext_with_reduce_cpu PROPERTIES TIMEOUT 750)
 set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu PROPERTIES TIMEOUT 750)
+
+add_subdirectory(sequence)
 
 if (WITH_NGRAPH)
     add_subdirectory(ngraph)
