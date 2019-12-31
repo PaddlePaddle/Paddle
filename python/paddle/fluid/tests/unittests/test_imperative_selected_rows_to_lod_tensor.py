@@ -24,8 +24,6 @@ from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 import numpy as np
 import six
-from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
-from paddle.fluid.dygraph.jit import TracedLayer
 
 
 class SimpleNet(fluid.Layer):
@@ -114,13 +112,13 @@ class TestDygraphSimpleNet(unittest.TestCase):
                         is_sparse=is_sparse,
                         dtype=dtype)
 
-                    sgd = SGDOptimizer(learning_rate=1e-3)
+                    sgd = SGDOptimizer(
+                        learning_rate=1e-3,
+                        parameter_list=simple_net.parameters())
                     dy_param_updated = dict()
                     dy_param_init = dict()
                     dy_loss = None
 
-                    helper = DyGraphProgramDescTracerTestHelper(self)
-                    program = None
                     backward_strategy = fluid.dygraph.BackwardStrategy()
                     backward_strategy.sort_sum_gradient = is_sort_sum_gradient
 

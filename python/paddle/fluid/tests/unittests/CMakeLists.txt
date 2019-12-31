@@ -53,7 +53,6 @@ endif()
 list(REMOVE_ITEM TEST_OPS test_seq_concat_op) # FIXME(helin): https://github.com/PaddlePaddle/Paddle/issues/8290
 list(REMOVE_ITEM TEST_OPS test_lstm_unit_op) # # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5185
 list(REMOVE_ITEM TEST_OPS test_cond_op) # FIXME(qijun): https://github.com/PaddlePaddle/Paddle/issues/5101#issuecomment-339814957
-list(REMOVE_ITEM TEST_OPS test_kldiv_loss_op) # FIXME(dengkaipeng): https://github.com/PaddlePaddle/Paddle/issues/21750
 
 list(REMOVE_ITEM TEST_OPS op_test) # op_test is a helper python file, not a test
 list(REMOVE_ITEM TEST_OPS decorator_helper) # decorator_helper is a helper python file, not a test
@@ -129,11 +128,20 @@ function(bash_test_modules TARGET_NAME)
         set(timeout ${bash_test_modules_TIMEOUT})
     endif()
 
-    add_test(NAME ${TARGET_NAME}
-        COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python 
-        TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${bash_test_modules_ENVS}
-        bash ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_MODULES}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    if(WITH_COVERAGE)
+        add_test(NAME ${TARGET_NAME}
+            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python 
+            TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${bash_test_modules_ENVS}
+            WITH_COVERAGE=ON COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
+            bash ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_MODULES}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    else()
+        add_test(NAME ${TARGET_NAME}
+            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python 
+            TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${bash_test_modules_ENVS}
+            bash ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_MODULES}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    endif()
 
     if (bash_test_modules_SERIAL)
         set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
