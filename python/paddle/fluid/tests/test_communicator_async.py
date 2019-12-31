@@ -52,7 +52,8 @@ class TestCommunicator(unittest.TestCase):
         optimizer = fluid.optimizer.SGD(0.01)
 
         strategy = DistributeTranspilerConfig()
-        strategy.sync_mode = True
+        strategy.sync_mode = False
+        strategy.runtime_split_send_recv = True
         strategy.wait_port = False
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
