@@ -112,7 +112,7 @@ class GlooWrapper {
 
   template <typename T>
   void AllReduce(std::vector<T>& sendbuf, std::vector<T>& recvbuf,  // NOLINT
-                 const std::string& mode="sum") {
+                 const std::string& mode = "sum") {
     CHECK_EQ(is_initialized_, true);
     CHECK_EQ(sendbuf.size() == recvbuf.size(), true);
 #ifdef PADDLE_WITH_GLOO
@@ -133,7 +133,7 @@ class GlooWrapper {
               &gloo::min<T>));
     } else {
       PADDLE_ENFORCE_EQ(0, 1, paddle::platform::errors::InvalidArgument(
-          "AllReduce mode not known: " + mode));
+                                  "AllReduce mode not known: " + mode));
     }
     gloo::allreduce(opts);
 #endif
