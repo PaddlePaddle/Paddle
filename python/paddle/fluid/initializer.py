@@ -132,8 +132,11 @@ class ConstantInitializer(Initializer):
     """Implements the constant initializer
 
     Args:
-        value (float32): constant value to initialize the variable 
-
+        value (float32): constant value to initialize the variable
+        force_cpu (bool, default False): whether to force initialization on cpu.
+            If True, initialization is performed on CPU even if the executor
+            place is set as CUDA.
+    
     Examples:
         .. code-block:: python
 
