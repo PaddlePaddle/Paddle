@@ -87,7 +87,7 @@ class GlooWrapper {
   GlooWrapper() {}
 
   virtual ~GlooWrapper() {}
-  
+
   void Init(int rank, int size, const std::string& path, 
             const std::string& fs_name, const std::string& fs_ugi,
             const std::string& iface, const std::string& prefix);

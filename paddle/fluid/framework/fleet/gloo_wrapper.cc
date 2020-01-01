@@ -29,7 +29,9 @@ void HdfsStore::set(const std::string& key, const std::vector<char>& data) {
   auto tmp = TmpPath(key);
   auto path = ObjectPath(key);
   bool is_exists = paddle::framework::hdfs_exists(path);
-  PADDLE_ENFORCE_EQ(is_exists, false, "HdfsStore::set, path exists: " + path);
+  PADDLE_ENFORCE_EQ(is_exists, false,
+                    platform::errors::FATAL("HdfsStore::set, path exists: " +
+                        path));
   int err_no = 0;
   std::shared_ptr<FILE> fp = paddle::framework::fs_open_write(tmp, &err_no, "");
   size_t write_count = fwrite_unlocked(data.data(), 1, data.size(), fp.get());
@@ -47,7 +49,8 @@ std::vector<char> HdfsStore::get(const std::string& key) {
   wait({key});
   bool is_exists = paddle::framework::hdfs_exists(path);
   PADDLE_ENFORCE_EQ(is_exists, true,
-                    "HdfsStore::get, path not exists: " + path);
+                    platform::errors::FATAL(
+                        "HdfsStore::get, path not exists: " + path));
   int err_no = 0;
   std::shared_ptr<FILE> fp = paddle::framework::fs_open_read(path, &err_no, "");
   char buffer = '\0';
@@ -75,8 +78,9 @@ void HdfsStore::wait(const std::vector<std::string>& keys,
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::steady_clock::now() - start);
     if (timeout != kNoTimeout && elapsed > timeout) {
-      PADDLE_ENFORCE_EQ(0, 1, "HdfsStore::wait, Wait timeout for key(s): " +
-                        ::gloo::MakeString(keys));
+      PADDLE_ENFORCE_EQ(0, 1, platform::errors::Fatal(
+                        "HdfsStore::wait, Wait timeout for key(s): " +
+                        ::gloo::MakeString(keys)));
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(wait_sleep_ms));
   }
@@ -149,8 +153,10 @@ template void GlooWrapper::AllReduce<int64_t>(
 template void GlooWrapper::AllReduce<double>(
     const std::vector<double>& sendbuf,  // NOLINT
     std::vector<double>& recvbuf);       // NOLINT
-template std::vector<int64_t> GlooWrapper::AllGather<int64_t>(int64_t& input);  // NOLINT
-template std::vector<double> GlooWrapper::AllGather<double>(double& input);     // NOLINT
+template std::vector<int64_t> GlooWrapper::AllGather<int64_t>(
+    int64_t& input);  // NOLINT
+template std::vector<double> GlooWrapper::AllGather<double>(
+    double& input);  // NOLINT
 
 }  // namespace framework
 }  // namespace paddle
