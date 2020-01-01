@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Defination of Role Makers."""
 
 from __future__ import print_function
 import paddle.fluid as fluid
@@ -118,6 +119,7 @@ class MPIRoleMaker(RoleMakerBase):
     """
 
     def __init__(self):
+        """Init."""
         super(MPIRoleMaker, self).__init__()
         from mpi4py import MPI
         self.MPI = MPI
@@ -127,16 +129,12 @@ class MPIRoleMaker(RoleMakerBase):
         self._ip = None
 
     def _get_rank(self):
-        """
-        return rank
-        """
+        """Return rank."""
         self._rank = self._comm.Get_rank()
         return self._rank
 
     def _get_size(self):
-        """
-        return size
-        """
+        """Return size."""
         self._size = self._comm.Get_size()
         return self._size
 
@@ -177,9 +175,7 @@ class MPIRoleMaker(RoleMakerBase):
         return self._ips
 
     def get_local_ip(self):
-        """
-        return get local ip
-        """
+        """Return get local ip."""
         import socket
         self._ip = socket.gethostbyname(socket.gethostname())
         return self._ip
@@ -199,12 +195,14 @@ class MPISymetricRoleMaker(MPIRoleMaker):
     """
 
     def __init__(self):
+        """Init."""
         super(MPISymetricRoleMaker, self).__init__()
         self._node_type = None
         self._proc_per_node = 2
         self._pserver_rand_port = 0
 
     def _check_role_generation(self):
+        """Check whether role has been generated."""
         if not self._role_is_generated:
             raise NameError("generate_role() should be called first")
         return True
@@ -328,12 +326,18 @@ class MPISymetricRoleMaker(MPIRoleMaker):
 
 
 class PaddleCloudRoleMaker(RoleMakerBase):
+    """
+    role maker for paddle cloud,
+    base class is RoleMakerBase
+    """
+
     def __init__(self, is_collective=False):
         super(PaddleCloudRoleMaker, self).__init__()
         self._role_is_generated = False
         self._is_collective = is_collective
 
     def generate_role(self):
+        """Generate role."""
         if not self._role_is_generated:
             if not self._is_collective:
                 try:
@@ -471,7 +475,7 @@ class PaddleCloudGlooRoleMaker(RoleMakerBase):
                 self._cur_endpoint = cur_endpoint
                 gloo = fluid.core.Gloo()
                 gloo.init(current_id, len(eplist),
-                          self._hdfs_path.rstrip("/") + "/trainer",
+                          self._hdfs_path.rstrip("/") + "/pserver",
                           self._hdfs_name, self._hdfs_ugi, self._iface,
                           self._prefix)
                 self._node_type_comm = gloo
@@ -492,9 +496,7 @@ class PaddleCloudGlooRoleMaker(RoleMakerBase):
             self._role_is_generated = True
 
     def _finalize(self):
-        """
-        default do nothing
-        """
+        """Default do nothing."""
         pass
 
     def _all_gather(self, obj):
@@ -653,16 +655,17 @@ class PaddleCloudGlooRoleMaker(RoleMakerBase):
 
 
 class UserDefinedRoleMaker(RoleMakerBase):
+    """
+    UserDefinedRoleMaker is designed for worker and server assignment
+    under manual. Typically, a worker and a server node will be appointed
+    on each physical node, It can be assign by user.
+    """
+
     def __init__(self,
                  current_id=0,
                  role=Role.WORKER,
                  worker_num=0,
                  server_endpoints=None):
-        """
-        UserDefinedRoleMaker is designed for worker and server assignment
-        under manual. Typically, a worker and a server node will be appointed
-        on each physical node, It can be assign by user.
-        """
         super(UserDefinedRoleMaker, self).__init__()
 
         if not isinstance(server_endpoints, list):
@@ -728,11 +731,12 @@ class UserDefinedRoleMaker(RoleMakerBase):
 
 
 class UserDefinedCollectiveRoleMaker(RoleMakerBase):
+    """
+    UserDefinedCollectiveRoleMaker is designed for worker assignment
+    under manual for collective mode.
+    """
+
     def __init__(self, current_id=0, worker_endpoints=None):
-        """
-        UserDefinedCollectiveRoleMaker is designed for worker assignment
-        under manual for collective mode.
-        """
         super(UserDefinedCollectiveRoleMaker, self).__init__()
 
         if not isinstance(worker_endpoints, list):

@@ -80,8 +80,8 @@ void HdfsStore::wait(const std::vector<std::string>& keys,
         std::chrono::steady_clock::now() - start);
     if (timeout != kNoTimeout && elapsed > timeout) {
       PADDLE_ENFORCE_EQ(0, 1, paddle::platform::errors::ExecutionTimeout(
-                                "HdfsStore::wait, Wait timeout for key(s): " +
-                                ::gloo::MakeString(keys)));
+                                  "HdfsStore::wait, Wait timeout for key(s): " +
+                                  ::gloo::MakeString(keys)));
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(wait_sleep_ms));
   }
