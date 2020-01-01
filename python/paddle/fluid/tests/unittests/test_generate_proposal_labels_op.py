@@ -61,12 +61,11 @@ def _sample_rois(rpn_rois, gt_classes, is_crowd, gt_boxes, im_info,
     # Roidb
     im_scale = im_info[2]
     inv_im_scale = 1. / im_scale
+    if is_cascade_rcnn:
+        rpn_rois = rpn_rois[len(gt_boxes):, :]
     rpn_rois = rpn_rois * inv_im_scale
-    if not is_cascade_rcnn:
-        #rpn_rois = rpn_rois[gt_boxes.shape[0]:, :]
-        boxes = np.vstack([gt_boxes, rpn_rois])
-    else:
-        boxes = rpn_rois
+    boxes = np.vstack([gt_boxes, rpn_rois])
+
     gt_overlaps = np.zeros((boxes.shape[0], class_nums))
     box_to_gt_ind_map = np.zeros((boxes.shape[0]), dtype=np.int32)
     if len(gt_boxes) > 0:
@@ -85,13 +84,12 @@ def _sample_rois(rpn_rois, gt_classes, is_crowd, gt_boxes, im_info,
             overlapped_boxes_ind]
 
     crowd_ind = np.where(is_crowd)[0]
-    gt_overlaps[crowd_ind] = -1
-
+    gt_overlaps[crowd_ind] = -1.0
     max_overlaps = gt_overlaps.max(axis=1)
     max_classes = gt_overlaps.argmax(axis=1)
 
-    # Cascade RCNN Decode Filter
     if is_cascade_rcnn:
+        # Cascade RCNN Decode Filter
         ws = boxes[:, 2] - boxes[:, 0] + 1
         hs = boxes[:, 3] - boxes[:, 1] + 1
         keep = np.where((ws > 0) & (hs > 0))[0]
@@ -293,9 +291,19 @@ class TestGenerateProposalLabelsOp(OpTest):
                                                                proposal_nums)
         ground_truth, self.gts_lod = _generate_groundtruth(
             images_shape, self.class_nums, gt_nums)
+
         self.gt_classes = [gt['gt_classes'] for gt in ground_truth]
         self.gt_boxes = [gt['boxes'] for gt in ground_truth]
         self.is_crowd = [gt['is_crowd'] for gt in ground_truth]
+
+        if self.is_cascade_rcnn:
+            rpn_rois_new = []
+            for im_i in range(len(self.im_info)):
+                gt_boxes = self.gt_boxes[im_i]
+                rpn_rois = np.vstack(
+                    [gt_boxes, self.rpn_rois[im_i][len(gt_boxes):, :]])
+                rpn_rois_new.append(rpn_rois)
+            self.rpn_rois = rpn_rois_new
 
     def init_test_output(self):
         self.rois, self.labels_int32, self.bbox_targets, \
@@ -320,10 +328,7 @@ class TestCascade(TestGenerateProposalLabelsOp):
         self.is_cascade_rcnn = True
 
 
-class TestClsAgnostic(TestGenerateProposalLabelsOp):
-    def init_test_cascade(self):
-        self.is_cascade_rcnn = True
-
+class TestClsAgnostic(TestCascade):
     def init_test_params(self):
         self.batch_size_per_im = 512
         self.fg_fraction = 0.25

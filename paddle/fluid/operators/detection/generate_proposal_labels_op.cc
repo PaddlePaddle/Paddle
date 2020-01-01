@@ -124,6 +124,7 @@ std::vector<std::vector<int>> SampleFgBgGt(
   // Follow the Faster RCNN's implementation
   for (int64_t i = 0; i < row; ++i) {
     const T* v = proposal_to_gt_overlaps + i * col;
+
     T max_overlap = *std::max_element(v, v + col);
     if ((i < gt_num) && (crowd_data[i])) {
       max_overlap = -1.0;
@@ -259,8 +260,13 @@ std::vector<Tensor> SampleRoisForOneImage(
   rpn_rois.mutable_data<T>(rpn_rois_in.dims(), context.GetPlace());
   const T* rpn_rois_in_dt = rpn_rois_in.data<T>();
   T* rpn_rois_dt = rpn_rois.data<T>();
+  int gt_num = gt_boxes.dims()[0] * 4;
   for (int i = 0; i < rpn_rois.numel(); ++i) {
-    rpn_rois_dt[i] = rpn_rois_in_dt[i] / im_scale;
+    if (i < gt_num && is_cascade_rcnn) {
+      rpn_rois_dt[i] = rpn_rois_in_dt[i];
+    } else {
+      rpn_rois_dt[i] = rpn_rois_in_dt[i] / im_scale;
+    }
   }
 
   // 1.2 compute overlaps
@@ -268,7 +274,6 @@ std::vector<Tensor> SampleRoisForOneImage(
   if (!is_cascade_rcnn) {
     proposals_num += gt_boxes.dims()[0];
   }
-
   Tensor proposal_to_gt_overlaps;
   proposal_to_gt_overlaps.mutable_data<T>({proposals_num, gt_boxes.dims()[0]},
                                           context.GetPlace());
