@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #include <vector>
 #include "paddle/fluid/framework/io/fs.h"
+#include "paddle/fluid/platform/errors.h"
 
 namespace gloo {
 namespace rendezvous {
