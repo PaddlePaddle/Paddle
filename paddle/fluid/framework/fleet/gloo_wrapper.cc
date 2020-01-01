@@ -31,7 +31,7 @@ void HdfsStore::set(const std::string& key, const std::vector<char>& data) {
   auto path = ObjectPath(key);
   bool is_exists = paddle::framework::hdfs_exists(path);
   PADDLE_ENFORCE_EQ(is_exists, false,
-                    paddle::platform::errors::FATAL(
+                    paddle::platform::errors::AlreadyExists(
                         "HdfsStore::set, path exists: " + path));
   int err_no = 0;
   std::shared_ptr<FILE> fp = paddle::framework::fs_open_write(tmp, &err_no, "");
@@ -50,7 +50,7 @@ std::vector<char> HdfsStore::get(const std::string& key) {
   wait({key});
   bool is_exists = paddle::framework::hdfs_exists(path);
   PADDLE_ENFORCE_EQ(is_exists, true,
-                    paddle::platform::errors::FATAL(
+                    paddle::platform::errors::NotFound(
                         "HdfsStore::get, path not exists: " + path));
   int err_no = 0;
   std::shared_ptr<FILE> fp = paddle::framework::fs_open_read(path, &err_no, "");
@@ -79,7 +79,7 @@ void HdfsStore::wait(const std::vector<std::string>& keys,
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::steady_clock::now() - start);
     if (timeout != kNoTimeout && elapsed > timeout) {
-      PADDLE_ENFORCE_EQ(0, 1, paddle::platform::errors::Fatal(
+      PADDLE_ENFORCE_EQ(0, 1, paddle::platform::errors::ExecutionTimeout(
                             "HdfsStore::wait, Wait timeout for key(s): " +
                             ::gloo::MakeString(keys)));
     }
@@ -149,11 +149,11 @@ void GlooWrapper::Init(int rank, int size, const std::string& path,
 }
 
 template void GlooWrapper::AllReduce<int64_t>(
-    const std::vector<int64_t>& sendbuf,  // NOLINT
-    std::vector<int64_t>& recvbuf);       // NOLINT
+    std::vector<int64_t>& sendbuf,   // NOLINT
+    std::vector<int64_t>& recvbuf);  // NOLINT
 template void GlooWrapper::AllReduce<double>(
-    const std::vector<double>& sendbuf,  // NOLINT
-    std::vector<double>& recvbuf);       // NOLINT
+    std::vector<double>& sendbuf,   // NOLINT
+    std::vector<double>& recvbuf);  // NOLINT
 template std::vector<int64_t> GlooWrapper::AllGather<int64_t>(
     int64_t& input);  // NOLINT
 template std::vector<double> GlooWrapper::AllGather<double>(

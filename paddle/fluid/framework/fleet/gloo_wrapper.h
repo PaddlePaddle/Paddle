@@ -111,12 +111,12 @@ class GlooWrapper {
   }
 
   template<typename T>
-  void AllReduce(const std::vector<T>& sendbuf, std::vector<T>& recvbuf) {  // NOLINT
+  void AllReduce(std::vector<T>& sendbuf, std::vector<T>& recvbuf) {  // NOLINT
     CHECK_EQ(is_initialized_, true);
     CHECK_EQ(sendbuf.size() == recvbuf.size(), true);
     #ifdef PADDLE_WITH_GLOO
     gloo::AllreduceOptions opts(context_);
-    opts.setInput(reinterpret_cast<T*>(sendbuf.data()), sendbuf.size());
+    opts.setInput(sendbuf.data(), sendbuf.size());
     opts.setOutput(recvbuf.data(), recvbuf.size());
     opts.setReduceFunction(
         static_cast<void(*)(void*, const void*, const void*, size_t)>(&gloo::sum<T>));
