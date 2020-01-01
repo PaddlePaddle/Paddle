@@ -352,24 +352,12 @@ class TestOnlyGT(TestCascade):
             self.im_info[i, 1] = images_shape[i][1]
             self.im_info[i, 2] = 0.8  #scale
 
-        #self.rpn_rois, self.rpn_rois_lod = _generate_proposals(images_shape,
-        #                                                       proposal_nums)
         ground_truth, self.gts_lod = _generate_groundtruth(
             images_shape, self.class_nums, gt_nums)
 
         self.gt_classes = [gt['gt_classes'] for gt in ground_truth]
         self.gt_boxes = [gt['boxes'] for gt in ground_truth]
         self.is_crowd = [gt['is_crowd'] for gt in ground_truth]
-        '''
-        if self.is_cascade_rcnn:
-            rpn_rois_new = []
-            for im_i in range(len(self.im_info)):
-                gt_boxes = self.gt_boxes[im_i]
-                rpn_rois = np.vstack(
-                    [gt_boxes, self.rpn_rois[im_i][len(gt_boxes):, :]])
-                rpn_rois_new.append(rpn_rois)
-            self.rpn_rois = rpn_rois_new
-        '''
         self.rpn_rois = self.gt_boxes
         self.rpn_rois_lod = self.gts_lod
 
