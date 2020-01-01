@@ -46,10 +46,13 @@ namespace rendezvous {
 
 #ifdef PADDLE_WITH_GLOO
 class HdfsStore : public gloo::rendezvous::Store {
+
+ public:
 #else
 class HdfsStore {
-#endif
+
  public:
+#endif
   explicit HdfsStore(const std::string& path);
 
   virtual ~HdfsStore() {}
@@ -111,16 +114,30 @@ class GlooWrapper {
   }
 
   template <typename T>
-  void AllReduce(std::vector<T>& sendbuf, std::vector<T>& recvbuf) {  // NOLINT
+  void AllReduce(std::vector<T>& sendbuf, std::vector<T>& recvbuf,  // NOLINT
+                 const std::string& mode="sum") {
     CHECK_EQ(is_initialized_, true);
     CHECK_EQ(sendbuf.size() == recvbuf.size(), true);
 #ifdef PADDLE_WITH_GLOO
     gloo::AllreduceOptions opts(context_);
     opts.setInput(sendbuf.data(), sendbuf.size());
     opts.setOutput(recvbuf.data(), recvbuf.size());
-    opts.setReduceFunction(
-        static_cast<void (*)(void*, const void*, const void*, size_t)>(
-            &gloo::sum<T>));
+    if (mode == "sum") {
+      opts.setReduceFunction(
+          static_cast<void (*)(void*, const void*, const void*, size_t)>(
+              &gloo::sum<T>));
+    } else if (mode == "max") {
+      opts.setReduceFunction(
+          static_cast<void (*)(void*, const void*, const void*, size_t)>(
+              &gloo::max<T>));
+    } else if (mode == "min") {
+      opts.setReduceFunction(
+          static_cast<void (*)(void*, const void*, const void*, size_t)>(
+              &gloo::min<T>));
+    } else {
+      PADDLE_ENFORCE_EQ(0, 1, paddle::platform::errors::InvalidArgument(
+          "AllReduce mode not known: " + mode));
+    }
     gloo::allreduce(opts);
 #endif
   }
