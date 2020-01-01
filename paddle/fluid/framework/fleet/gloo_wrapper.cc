@@ -149,12 +149,12 @@ void GlooWrapper::Init(int rank, int size, const std::string& path,
 }
 
 template void GlooWrapper::AllReduce<int64_t>(
-    std::vector<int64_t>& sendbuf,   // NOLINT
-    std::vector<int64_t>& recvbuf,   // NOLINT
+    std::vector<int64_t>& sendbuf,  // NOLINT
+    std::vector<int64_t>& recvbuf,  // NOLINT
     const std::string& mode);
 template void GlooWrapper::AllReduce<double>(
-    std::vector<double>& sendbuf,   // NOLINT
-    std::vector<double>& recvbuf,   // NOLINT
+    std::vector<double>& sendbuf,  // NOLINT
+    std::vector<double>& recvbuf,  // NOLINT
     const std::string& mode);
 template std::vector<int64_t> GlooWrapper::AllGather<int64_t>(
     int64_t& input);  // NOLINT

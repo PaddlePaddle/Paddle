@@ -46,13 +46,10 @@ namespace rendezvous {
 
 #ifdef PADDLE_WITH_GLOO
 class HdfsStore : public gloo::rendezvous::Store {
-
- public:
 #else
 class HdfsStore {
-
- public:
 #endif
+ public:  // NOLINT
   explicit HdfsStore(const std::string& path);
 
   virtual ~HdfsStore() {}
