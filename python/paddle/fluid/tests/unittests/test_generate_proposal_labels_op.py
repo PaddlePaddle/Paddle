@@ -340,6 +340,40 @@ class TestClsAgnostic(TestCascade):
         self.class_nums = 2 if self.is_cls_agnostic else 81
 
 
+class TestOnlyGT(TestCascade):
+    def init_test_input(self):
+        np.random.seed(0)
+        gt_nums = 6  # Keep same with batch_size_per_im for unittest
+        proposal_nums = 6
+        images_shape = [[64, 64]]
+        self.im_info = np.ones((len(images_shape), 3)).astype(np.float32)
+        for i in range(len(images_shape)):
+            self.im_info[i, 0] = images_shape[i][0]
+            self.im_info[i, 1] = images_shape[i][1]
+            self.im_info[i, 2] = 0.8  #scale
+
+        #self.rpn_rois, self.rpn_rois_lod = _generate_proposals(images_shape,
+        #                                                       proposal_nums)
+        ground_truth, self.gts_lod = _generate_groundtruth(
+            images_shape, self.class_nums, gt_nums)
+
+        self.gt_classes = [gt['gt_classes'] for gt in ground_truth]
+        self.gt_boxes = [gt['boxes'] for gt in ground_truth]
+        self.is_crowd = [gt['is_crowd'] for gt in ground_truth]
+        '''
+        if self.is_cascade_rcnn:
+            rpn_rois_new = []
+            for im_i in range(len(self.im_info)):
+                gt_boxes = self.gt_boxes[im_i]
+                rpn_rois = np.vstack(
+                    [gt_boxes, self.rpn_rois[im_i][len(gt_boxes):, :]])
+                rpn_rois_new.append(rpn_rois)
+            self.rpn_rois = rpn_rois_new
+        '''
+        self.rpn_rois = self.gt_boxes
+        self.rpn_rois_lod = self.gts_lod
+
+
 def _generate_proposals(images_shape, proposal_nums):
     rpn_rois = []
     rpn_rois_lod = []
