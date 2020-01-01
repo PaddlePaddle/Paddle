@@ -38,7 +38,6 @@ limitations under the License. */
 #include <gloo/rendezvous/store.h>
 #include <gloo/transport/tcp/device.h>
 #endif
-#include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/framework/variable_helper.h"
 
 namespace gloo {
