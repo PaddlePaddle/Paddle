@@ -88,7 +88,7 @@ class GlooWrapper {
 
   virtual ~GlooWrapper() {}
 
-  void Init(int rank, int size, const std::string& path, 
+  void Init(int rank, int size, const std::string& path,
             const std::string& fs_name, const std::string& fs_ugi,
             const std::string& iface, const std::string& prefix);
 
@@ -97,7 +97,7 @@ class GlooWrapper {
     return rank_;
   }
 
-  int Size () {
+  int Size() {
     CHECK_EQ(is_initialized_, true);
     return size_;
   }
@@ -119,7 +119,8 @@ class GlooWrapper {
     opts.setInput(sendbuf.data(), sendbuf.size());
     opts.setOutput(recvbuf.data(), recvbuf.size());
     opts.setReduceFunction(
-        static_cast<void(*)(void*, const void*, const void*, size_t)>(&gloo::sum<T>));
+        static_cast<void(*)(void*, const void*, const void*, size_t)>(
+            &gloo::sum<T>));
     gloo::allreduce(opts);
     #endif
   }
