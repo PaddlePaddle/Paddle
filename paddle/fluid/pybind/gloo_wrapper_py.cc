@@ -26,10 +26,10 @@ limitations under the License. */
 
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/text_format.h"
+#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/pybind/gloo_wrapper_py.h"
-#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 
 namespace py = pybind11;
 

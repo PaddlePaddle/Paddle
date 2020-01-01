@@ -436,11 +436,8 @@ class PaddleCloudGlooRoleMaker(RoleMakerBase):
     """
     This role maker is for paddlecloud and gloo
     """
-    def __init__(self,
-                 hdfs_name,
-                 hdfs_ugi,
-                 hdfs_path,
-                 iface="eth0"):
+
+    def __init__(self, hdfs_name, hdfs_ugi, hdfs_path, iface="eth0"):
         super(RoleMakerBase, self).__init__()
         self._role_is_generated = False
         self._hdfs_name = hdfs_name
