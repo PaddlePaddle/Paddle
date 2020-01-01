@@ -200,7 +200,6 @@ void localfs_mv(const std::string& src, const std::string& dest) {
   if (src == "" || dest == "") {
     return;
   }
-
   shell_execute(string::format_string("mv %s %s", src.c_str(), dest.c_str()));
 }
 
@@ -326,7 +325,7 @@ void hdfs_mv(const std::string& src, const std::string& dest) {
     return;
   }
   shell_execute(string::format_string("%s -mv %s %s; true",
-                                      hdfs_command().c_str(), src.c_str(), dest.c_str()));
+                    hdfs_command().c_str(), src.c_str(), dest.c_str()));
 }
 
 int fs_select_internal(const std::string& path) {

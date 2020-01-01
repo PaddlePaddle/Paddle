@@ -216,6 +216,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         return False
 
     def get_pserver_endpoints(self):
+        """Get pserver endpoints."""
         if self._pserver_rand_port <= 0:
             import random
             random.seed(self._server_num())

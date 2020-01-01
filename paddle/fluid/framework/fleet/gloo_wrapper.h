@@ -49,7 +49,6 @@ class HdfsStore : public gloo::rendezvous::Store {
 #else
 class HdfsStore {
 #endif
- 
  public:
   explicit HdfsStore(const std::string& path);
 
@@ -120,7 +119,7 @@ class GlooWrapper {
     opts.setInput(sendbuf.data(), sendbuf.size());
     opts.setOutput(recvbuf.data(), recvbuf.size());
     opts.setReduceFunction(
-        static_cast<void(*)(void*, const void*, const void*, size_t)>(
+        static_cast<void (*)(void*, const void*, const void*, size_t)>(
             &gloo::sum<T>));
     gloo::allreduce(opts);
 #endif
@@ -146,7 +145,6 @@ class GlooWrapper {
 #endif
   int rank_ = 0;
   int size_ = 0;
-
 };
 
 }  // namespace framework
