@@ -463,7 +463,8 @@ class PaddleCloudGlooRoleMaker(RoleMakerBase):
                 self._node_type = 1
                 self._cur_endpoint = worker_endpoints[current_id]
                 gloo = fluid.core.Gloo()
-                gloo.init(current_id, len(worker_endpoints),
+                gloo.init(current_id,
+                          len(worker_endpoints),
                           self._hdfs_path.rstrip("/") + "/trainer",
                           self._hdfs_name, self._hdfs_ugi, self._iface,
                           self._prefix)
@@ -477,7 +478,8 @@ class PaddleCloudGlooRoleMaker(RoleMakerBase):
                 self._node_type = 0
                 self._cur_endpoint = cur_endpoint
                 gloo = fluid.core.Gloo()
-                gloo.init(current_id, len(eplist),
+                gloo.init(current_id,
+                          len(eplist),
                           self._hdfs_path.rstrip("/") + "/pserver",
                           self._hdfs_name, self._hdfs_ugi, self._iface,
                           self._prefix)
@@ -485,9 +487,11 @@ class PaddleCloudGlooRoleMaker(RoleMakerBase):
 
             gloo = fluid.core.Gloo()
             all_list = worker_endpoints + eplist
-            gloo.init(all_list.index(self._cur_endpoint), len(all_list),
-                      self._hdfs_path.rstrip("/") + "/all", self._hdfs_name,
-                      self._hdfs_ugi, self._iface, self._prefix)
+            gloo.init(
+                all_list.index(self._cur_endpoint),
+                len(all_list),
+                self._hdfs_path.rstrip("/") + "/all", self._hdfs_name,
+                self._hdfs_ugi, self._iface, self._prefix)
             self._all_comm = gloo
             self._trainers_num = trainers_num
             self._server_endpoints = eplist
