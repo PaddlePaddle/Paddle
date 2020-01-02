@@ -1548,11 +1548,18 @@ def load(program, model_path, executor=None, var_list=None):
     This function get parameters and optimizer information from program, and then get corresponding value from file.
     An exception will throw if shape or dtype of the parameters is not match.
 
+    This function can also load model file saved with [ save_params, save_persistables, save_vars ]. 
+    var_list can not be None  when load single model file 
+    ( filename is not None When save_params, save_persistables or save_vars is called ).
+
     Args: 
         program(Program): The program will be loaded
         model_path(str): The file prefix store the program
         executor(Executor, optional): The executor used for initialize the parameter 
                                       When startup program is not run.
+        var_list(list, optional): The variable list to load single model file saved with 
+                                  [ save_params, save_persistables, save_vars ]. 
+                                  Default: None
 
     Returns:
         None
@@ -1614,16 +1621,16 @@ def load(program, model_path, executor=None, var_list=None):
         elif os.path.isfile(model_path):
             if var_list == None:
                 raise ValueError(
-                    "executor is required when loading model file saved with [ save_params, save_persistables, save_vars ]"
+                    "var_list is required when loading model file saved with [ save_params, save_persistables, save_vars ]"
                 )
-            program_var_list = list(program.list_vars())
+            program_var_list = program.list_vars()
             program_var_name_set = set([var.name for var in program_var_list])
 
             # check all the variable inlcuded in program
             for var in var_list:
                 if var.name not in program_var_name_set:
                     raise LookupError(
-                        "loaded var [{}] not included in program var list")
+                        "loaded var [{}] not included in program variable list")
 
             dir_name, file_name = os.path.split(model_path)
             try:
@@ -1716,8 +1723,6 @@ def load_program_state(model_path):
             fluid.save( prog, "./temp")
             program_state = fluid.load_program_state( "./temp")
             
-            fluid.set_program_state( prog, program_state)
-
     """
     parameter_file_name = model_path + ".pdparams"
     assert os.path.exists(parameter_file_name), \
@@ -1765,6 +1770,8 @@ def set_program_state(program, state_dict):
 
             fluid.save( prog, "./temp")
             program_state = fluid.load_program_state( "./temp")
+
+            fluid.set_program_state( prog, program_state)
 
     """
     parameter_list = list(filter(is_persistable, program.list_vars()))

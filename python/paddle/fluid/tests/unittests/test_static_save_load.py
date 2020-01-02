@@ -757,6 +757,8 @@ class TestLoadFromOldInterface(unittest.TestCase):
 
             static_loss, static_last_hidden, static_last_cell = ptb_model(
                 x, y, init_hidden, init_cell)
+
+            test_clone_program = fluid.default_main_program().clone()
             sgd.minimize(static_loss)
             static_param_updated = dict()
             static_param_init = dict()
@@ -831,6 +833,10 @@ class TestLoadFromOldInterface(unittest.TestCase):
                     var.desc.set_shape(new_shape)
             with self.assertRaises(RuntimeError):
                 fluid.load(main_program, "./test_path", exe)
+
+            # check unused paramter
+
+            fluid.load(test_clone_program, "./test_path", exe)
 
 
 class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
@@ -955,6 +961,25 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 fluid.load(main_program, "./test_path/model_single", exe,
                            fluid.io.get_program_persistable_vars(main_program))
+
+            # check when executor is None
+            with self.assertRaises(ValueError):
+                fluid.load(main_program, "./test_path/model_single", None,
+                           fluid.io.get_program_persistable_vars(main_program))
+
+            # check when var list is None
+            with self.assertRaises(ValueError):
+                fluid.load(main_program, "./test_path/model_single", exe, None)
+
+            # check save params, load var_list = get_program_persistable_vars
+            with self.assertRaises(RuntimeError):
+                temp_var = framework.Variable(
+                    main_program.global_block(),
+                    shape=[1],
+                    name="test_temp_var")
+                all_var_list = list(main_program.list_vars())
+                fluid.load(main_program, "./test_path/model_single", exe,
+                           all_var_list + [temp_var])
 
 
 if __name__ == '__main__':
