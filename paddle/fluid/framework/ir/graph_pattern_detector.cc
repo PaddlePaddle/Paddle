@@ -383,6 +383,13 @@ PDNode *PDNode::assert_is_var() {
   return this;
 }
 
+PDNode *PDNode::assert_var_dtype(proto::VarType::Type dtype) {
+  assert_is_var();
+  asserts_.emplace_back(
+      [dtype](Node *x) { return x->Var()->GetDataType() == dtype; });
+  return this;
+}
+
 PDNode *PDNode::assert_is_not_ctrl_var() {
   asserts_.emplace_back([](Node *x) { return x && !x->IsCtrlVar(); });
   return this;
@@ -1073,7 +1080,10 @@ PDNode *patterns::BatchNormAct::operator()(
 
   auto *bn = pattern->NewNode(batch_norm_repr())
                  ->assert_is_op("batch_norm")
-                 ->assert_is_not_op_input("MomentumTensor");
+                 ->assert_is_not_op_input("MomentumTensor")
+                 ->assert_op_attr<bool>("is_test", false)
+                 ->assert_op_attr<bool>("use_global_stats", false)
+                 ->assert_op_attr<std::string>("data_layout", "NHWC");
 
   auto *bn_mean_out_var = pattern->NewNode(bn_mean_out_repr())
                               ->assert_is_op_output("batch_norm", "MeanOut");
@@ -1114,8 +1124,10 @@ PDNode *patterns::BatchNormActGrad::operator()(
     std::unordered_set<std::string> act_grad_types) {
   auto *act_grad =
       pattern->NewNode(act_grad_repr())->assert_is_ops(act_grad_types);
-  auto *bn_grad =
-      pattern->NewNode(batch_norm_grad_repr())->assert_is_op("batch_norm_grad");
+  auto *bn_grad = pattern->NewNode(batch_norm_grad_repr())
+                      ->assert_is_op("batch_norm_grad")
+                      ->assert_op_attr<bool>("use_global_stats", false)
+                      ->assert_op_attr<std::string>("data_layout", "NHWC");
 
   auto *act_out_var = pattern->NewNode(act_out_repr())
                           ->assert_is_ops_input(act_grad_types, "Out");
@@ -1124,7 +1136,8 @@ PDNode *patterns::BatchNormActGrad::operator()(
           ->assert_is_ops_output(act_grad_types, GradVarName("X"))
           ->assert_has_n_outputs(1);
   auto *bn_x_var = pattern->NewNode(bn_scale_repr())
-                       ->assert_is_op_input("batch_norm_grad", "X");
+                       ->assert_is_op_input("batch_norm_grad", "X")
+                       ->assert_var_dtype(proto::VarType::FP16);
   auto *bn_scale_var = pattern->NewNode(bn_scale_repr())
                            ->assert_is_op_input("batch_norm_grad", "Scale");
   auto *bn_bias_var = pattern->NewNode(bn_bias_repr())

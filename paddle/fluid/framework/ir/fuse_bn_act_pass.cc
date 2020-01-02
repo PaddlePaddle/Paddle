@@ -18,19 +18,27 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cudnn_helper.h"
+#endif
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
 void FuseBatchNormActPass::ApplyImpl(ir::Graph *graph) const {
+#ifdef PADDLE_WITH_CUDA
+#if CUDNN_VERSION_MIN(7, 4, 1)
   std::unordered_set<std::string> act_types = {"relu"};
   graph = FuseBatchNormAct(graph, act_types);
   // backward
   std::unordered_set<std::string> act_grad_types = {"relu_grad"};
   graph = FuseBatchNormActGrad(graph, act_grad_types);
+#endif
+#endif
 }
 
 // act(bn(x))
@@ -43,7 +51,8 @@ ir::Graph *FuseBatchNormActPass::FuseBatchNormAct(
   auto *x = gpd.mutable_pattern()
                 ->NewNode("bn_act/x")
                 ->AsInput()
-                ->assert_is_op_input("batch_norm", "X");
+                ->assert_is_op_input("batch_norm", "X")
+                ->assert_var_dtype(proto::VarType::FP16);
   patterns::BatchNormAct bn_act_pattern(gpd.mutable_pattern(), "bn_act");
 
   bn_act_pattern(x, act_types);

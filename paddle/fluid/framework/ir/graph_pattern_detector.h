@@ -27,6 +27,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/inference/analysis/dot.h"
@@ -100,6 +101,7 @@ struct PDNode {
   PDNode* assert_is_op();
   PDNode* assert_is_op(const std::string& op_type);
   PDNode* assert_is_var();
+  PDNode* assert_var_dtype(proto::VarType::Type dtype);
   PDNode* assert_is_not_ctrl_var();
   PDNode* assert_var_not_persistable();
   PDNode* assert_is_persistable_var();
