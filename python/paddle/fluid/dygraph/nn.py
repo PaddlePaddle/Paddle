@@ -1670,11 +1670,23 @@ class LayerNorm(layers.Layer):
                 ', expected input with shape [*, ' + str_normalized_shape[
                     1:] + ', but got input shape ' + str(input_shape))
         inputs = dict()
-        inputs['X'] = input
+        inputs['X'] = [input]
         if self._scale:
-            inputs['Scale'] = self.weight
+            inputs['Scale'] = [self.weight]
         if self._shift:
-            inputs['Bias'] = self.bias
+            inputs['Bias'] = [self.bias]
+
+        attrs = {
+            "epsilon": self._epsilon,
+            "begin_norm_axis": self._begin_norm_axis
+        }
+
+        if in_dygraph_mode():
+            outs = core.ops.layer_norm(inputs, attrs)
+            pre_act = outs['Y'][0]
+            return dygraph_utils._append_activation_in_dygraph(
+                pre_act, act=self._act)
+
         # create output
         mean_out = self._helper.create_variable_for_type_inference(
             dtype=self._dtype, stop_gradient=True)

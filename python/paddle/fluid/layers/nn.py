@@ -1118,6 +1118,13 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
                              fetch_list=[result[0]])
             print(output)
     """
+    inputs = {"X": [input]}
+    attrs = {"axis": axis, "use_cudnn": use_cudnn}
+
+    if in_dygraph_mode():
+        outs = core.ops.softmax(inputs, attrs)
+        return outs['Out'][0]
+
     helper = LayerHelper('softmax', **locals())
     check_type_and_dtype(input, 'input', Variable,
                          ['float16', 'float32', 'float64'], 'softmax')
@@ -1128,8 +1135,7 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
         type="softmax",
         inputs={"X": input},
         outputs={"Out": softmax_out},
-        attrs={"axis": axis,
-               "use_cudnn": use_cudnn})
+        attrs=attrs)
     return softmax_out
 
 
@@ -5398,22 +5404,24 @@ def one_hot(input, depth, allow_out_of_range=False):
             label = fluid.data(name="label", shape=[4, 1], dtype="int64")
             one_hot_label = fluid.layers.one_hot(input=label, depth=4)
     """
-    helper = LayerHelper("one_hot", **locals())
+    if in_dygraph_mode():
+        inputs = {'X': [input]}
+        attrs = {'depth': depth, 'allow_out_of_range': allow_out_of_range}
+        outs = core.ops.one_hot(inputs, attrs)
+        outs['Out'][0].stop_gradient = True
+        return outs['Out'][0]
 
+    helper = LayerHelper("one_hot", **locals())
     one_hot_out = helper.create_variable_for_type_inference(dtype='float32')
 
-    if in_dygraph_mode():
+    if not isinstance(depth, Variable):
+        # user attribute
         inputs = {'X': input}
         attrs = {'depth': depth, 'allow_out_of_range': allow_out_of_range}
     else:
-        if not isinstance(depth, Variable):
-            # user attribute
-            inputs = {'X': input}
-            attrs = {'depth': depth, 'allow_out_of_range': allow_out_of_range}
-        else:
-            depth.stop_gradient = True
-            inputs = {'X': input, 'depth_tensor': depth}
-            attrs = {'allow_out_of_range': allow_out_of_range}
+        depth.stop_gradient = True
+        inputs = {'X': input, 'depth_tensor': depth}
+        attrs = {'allow_out_of_range': allow_out_of_range}
     helper.append_op(
         type="one_hot",
         inputs=inputs,
@@ -6260,6 +6268,15 @@ def label_smooth(label,
     """
     if epsilon > 1. or epsilon < 0.:
         raise ValueError("The value of epsilon must be between 0 and 1.")
+
+    if in_dygraph_mode():
+        inputs = {"X": [label]}
+        if prior_dist:
+            inputs["PriorDist"] = [prior_dist]
+        attrs = {"epsilon": float(epsilon)}
+        outs = core.ops.label_smooth(inputs, attrs)
+        return outs['Out'][0]
+
     helper = LayerHelper("label_smooth", **locals())
     label.stop_gradient = True
     smooth_label = helper.create_variable_for_type_inference(dtype)
@@ -10357,6 +10374,19 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
             print(res) # [array([[ 3.,  5.,  7.], [ 9., 11., 13.]], dtype=float32)]
 
     """
+    inputs = {'X': [x]}
+    attrs = {
+        'bias': float(bias),
+        'bias_after_scale': bias_after_scale,
+    }
+    if isinstance(scale, Variable):
+        inputs['ScaleTensor'] = [scale]
+    else:
+        attrs['scale'] = float(scale)
+
+    if in_dygraph_mode():
+        outs = core.ops.scale(inputs, attrs)
+        return dygraph_utils._append_activation_in_dygraph(outs['Out'][0])
 
     helper = LayerHelper('scale', **locals())
     if name is None:
@@ -10364,16 +10394,6 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     else:
         out = helper.create_variable(
             name=name, dtype=x.dtype, persistable=False)
-
-    inputs = {'X': x}
-    attrs = {
-        'bias': float(bias),
-        'bias_after_scale': bias_after_scale,
-    }
-    if isinstance(scale, Variable):
-        inputs['ScaleTensor'] = scale
-    else:
-        attrs['scale'] = float(scale)
 
     helper.append_op(
         type='scale', inputs=inputs, outputs={'Out': out}, attrs=attrs)
@@ -10811,6 +10831,9 @@ Examples:
 
         print(z_value)#[[[[0., 0., 0., 0., 0.] .... [0., 0., 0., 0., 0.]]]]
     """
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name='elementwise_min')
 
     return _elementwise_op(LayerHelper('elementwise_min', **locals()))
 
@@ -11401,6 +11424,11 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
             
 
     """
+    inputs = {"X": [x], "Y": [y]}
+    attrs = {"x_num_col_dims": x_num_col_dims, "y_num_col_dims": y_num_col_dims}
+    if in_dygraph_mode():
+        outs = core.ops.mul(inputs, attrs)
+        return outs['Out'][0]
 
     helper = LayerHelper("mul", **locals())
     check_type_and_dtype(x, 'x', Variable, ['float16', 'float32', 'float64'],
@@ -11414,14 +11442,8 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
             name=name, dtype=x.dtype, persistable=False)
 
     helper.append_op(
-        type="mul",
-        inputs={"X": x,
-                "Y": y},
-        attrs={
-            "x_num_col_dims": x_num_col_dims,
-            "y_num_col_dims": y_num_col_dims
-        },
-        outputs={"Out": out})
+        type="mul", inputs={"X": x,
+                            "Y": y}, attrs=attrs, outputs={"Out": out})
     return out
 
 
