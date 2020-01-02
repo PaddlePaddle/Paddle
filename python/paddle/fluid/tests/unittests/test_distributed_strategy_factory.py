@@ -15,14 +15,14 @@
 import unittest
 import paddle.fluid as fluid
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig, ServerRuntimeConfig
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy_factory import TrainerRuntimeConfig, DistributedStrategyFactory
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import TrainerRuntimeConfig, StrategyFactory
 import os
 
 
 class TestStrategyFactor(unittest.TestCase):
     def test_sync_strategy(self):
         os.environ['CPU_NUM'] = "2"
-        strategy = DistributedStrategyFactory.create_sync_strategy()
+        strategy = StrategyFactory.create_sync_strategy()
         self.assertEqual(strategy._program_config.sync_mode, True)
         self.assertEqual(strategy._program_config.runtime_split_send_recv,
                          False)
@@ -52,7 +52,7 @@ class TestStrategyFactor(unittest.TestCase):
                           program_config_illegal)
 
     def test_geo_strategy(self):
-        strategy = DistributedStrategyFactory.create_geo_strategy(5)
+        strategy = StrategyFactory.create_geo_strategy(5)
         self.assertEqual(strategy._program_config.sync_mode, False)
         self.assertEqual(strategy._program_config.runtime_split_send_recv, True)
         self.assertEqual(strategy._program_config.geo_sgd_mode, True)
@@ -82,7 +82,7 @@ class TestStrategyFactor(unittest.TestCase):
                           build_strategy_illegal)
 
     def test_async_strategy(self):
-        strategy = DistributedStrategyFactory.create_async_strategy()
+        strategy = StrategyFactory.create_async_strategy()
         self.assertEqual(strategy._program_config.sync_mode, False)
         self.assertEqual(strategy._program_config.runtime_split_send_recv, True)
         self.assertEqual(strategy._build_strategy.async_mode, True)
@@ -135,7 +135,7 @@ class TestStrategyFactor(unittest.TestCase):
                           exec_strategy_illegal)
 
     def test_half_async_strategy(self):
-        strategy = DistributedStrategyFactory.create_half_async_strategy()
+        strategy = StrategyFactory.create_half_async_strategy()
         self.assertEqual(strategy._program_config.sync_mode, False)
         self.assertEqual(strategy._program_config.runtime_split_send_recv,
                          False)

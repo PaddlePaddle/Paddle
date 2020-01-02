@@ -17,7 +17,7 @@ import warnings
 """
 Convert the fluid program to distributed data-parallelism programs.
 """
-from .distributed_strategy_factory import *
+from .distributed_strategy import *
 import paddle.fluid.io as io
 from paddle.fluid.communicator import Communicator
 from paddle.fluid.framework import default_main_program

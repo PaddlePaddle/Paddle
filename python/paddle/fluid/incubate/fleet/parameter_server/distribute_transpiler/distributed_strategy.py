@@ -14,8 +14,7 @@
 
 __all__ = [
     "TrainerRuntimeConfig", "DistributedStrategy", "SyncStrategy",
-    "AsyncStrategy", "HalfAsyncStrategy", "GeoStrategy",
-    "DistributedStrategyFactory"
+    "AsyncStrategy", "HalfAsyncStrategy", "GeoStrategy", "StrategyFactory"
 ]
 
 import os
@@ -200,7 +199,7 @@ class GeoStrategy(DistributedStrategy):
         self._build_strategy.async_mode = True
 
 
-class DistributedStrategyFactory(object):
+class StrategyFactory(object):
     def __init_(self):
         pass
 

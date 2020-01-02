@@ -37,7 +37,7 @@ import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy_factory import DistributedStrategyFactory
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 
 RUN_STEP = 5
 LEARNING_RATE = 0.01
@@ -54,14 +54,13 @@ class FleetDistRunnerBase(object):
     def generate_strategy(self, args):
         self.strategy = None
         if args.mode == "async":
-            self.strategy = DistributedStrategyFactory.create_async_strategy()
+            self.strategy = StrategyFactory.create_async_strategy()
         elif args.mode == "sync":
-            self.strategy = DistributedStrategyFactory.create_sync_strategy()
+            self.strategy = StrategyFactory.create_sync_strategy()
         elif args.mode == "half_async":
-            self.strategy = DistributedStrategyFactory.create_half_async_strategy(
-            )
+            self.strategy = StrategyFactory.create_half_async_strategy()
         elif args.mode == "geo":
-            self.strategy = DistributedStrategyFactory.create_geo_strategy(
+            self.strategy = StrategyFactory.create_geo_strategy(
                 args.geo_sgd_need_push_nums)
         return self.strategy
 
