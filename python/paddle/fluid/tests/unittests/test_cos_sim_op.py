@@ -23,8 +23,8 @@ class TestCosSimOp(OpTest):
     def setUp(self):
         self.op_type = "cos_sim"
         self.inputs = {
-            'X': np.random.random((6, 5)).astype("float32"),
-            'Y': np.random.random((6, 5)).astype("float32")
+            'X': np.random.random((6, 20)).astype("float32"),
+            'Y': np.random.random((6, 20)).astype("float32")
         }
         expect_x_norm = np.linalg.norm(self.inputs['X'], axis=1)
         expect_y_norm = np.linalg.norm(self.inputs['Y'], axis=1)

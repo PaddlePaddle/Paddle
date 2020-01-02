@@ -563,7 +563,7 @@ class TestCUDNNWithGroups_NHWC(TestWithGroups):
         self.op_type = "conv3d_transpose"
 
 
-class TestConv3dTransposeAPI(OpTest):
+class TestConv3dTransposeAPI(unittest.TestCase):
     def test_case1(self):
         data1 = fluid.layers.data(
             name='data1', shape=[3, 5, 5, 5], dtype='float32')
@@ -642,7 +642,7 @@ class TestConv3dTransposeAPI(OpTest):
         self.assertIsNotNone(results[6])
 
 
-class TestConv3dTransposeOpException(OpTest):
+class TestConv3dTransposeOpException(unittest.TestCase):
     def test_exception(self):
         data = fluid.layers.data(
             name='data', shape=[3, 5, 5, 5], dtype="float32")
