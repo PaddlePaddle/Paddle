@@ -88,12 +88,17 @@ class MaxPoolWithIndexOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Mask"), "Input(Mask) must not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Input(X@GRAD) should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Mask"), true,
+        platform::errors::NotFound("Input(Mask) must not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::NotFound("Input(X) must not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput(framework::GradVarName("Out")), true,
+        platform::errors::NotFound("Input(Out@GRAD) should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput(framework::GradVarName("X")), true,
+        platform::errors::NotFound("Output(X@GRAD) should not be null."));
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 
