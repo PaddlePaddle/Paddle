@@ -1058,7 +1058,7 @@ void HalfAsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
   recv_scope_ = std::move(recv_scope);
 
   // get all send information from graph, build vars_to_send
-  VLOG(0) << "use half_async communicator";
+  VLOG(0) << "use half async communicator";
   VLOG(0) << "communicator_send_queue_size: "
           << FLAGS_communicator_send_queue_size;
   VLOG(0) << "communicator_thread_pool_size: "
