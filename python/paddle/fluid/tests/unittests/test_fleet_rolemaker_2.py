@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Test cases for role makers."""
 
 from __future__ import print_function
 import os
@@ -20,10 +21,16 @@ import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 
 
 class TestCloudRoleMaker2(unittest.TestCase):
+    """
+    Test cases for paddle cloud role makers.
+    """
+
     def setUp(self):
+        """Set up, set envs."""
         pass
 
     def test_pslib_2(self):
+        """Test cases for pslib."""
         import paddle.fluid as fluid
         from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
         from paddle.fluid.incubate.fleet.parameter_server.pslib import PSLib

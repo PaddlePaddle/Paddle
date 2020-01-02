@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include <gtest/gtest.h>
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/framework/io/shell.h"
 

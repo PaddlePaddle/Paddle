@@ -46,8 +46,8 @@ void BindFleetWrapper(py::module* m) {
       .def("push_dense", &framework::FleetWrapper::PushDenseVarsSync)
       .def("pull_dense", &framework::FleetWrapper::PullDenseVarsSync)
       .def("init_server", &framework::FleetWrapper::InitServer)
-      .def("run_server", (uint64_t (framework::FleetWrapper::*)(void))
-                             &framework::FleetWrapper::RunServer)
+      .def("run_server", (uint64_t (framework::FleetWrapper::*)(void)) &
+                             framework::FleetWrapper::RunServer)
       .def("init_worker", &framework::FleetWrapper::InitWorker)
       .def("init_model", &framework::FleetWrapper::PushDenseParamSync)
       .def("save_model", &framework::FleetWrapper::SaveModel)
@@ -75,8 +75,8 @@ void BindFleetWrapper(py::module* m) {
       .def("copy_table", &framework::FleetWrapper::CopyTable)
       .def("copy_table_by_feasign",
            &framework::FleetWrapper::CopyTableByFeasign)
-      .def("run_server", (uint64_t (framework::FleetWrapper::*)(const std::string&, uint32_t))
-           &framework::FleetWrapper::RunServer);
+      .def("run_server", (uint64_t (framework::FleetWrapper::*)(
+           const std::string&, uint32_t)) &framework::FleetWrapper::RunServer);
 }  // end FleetWrapper
 }  // end namespace pybind
 }  // end namespace paddle
