@@ -64,35 +64,26 @@ inline void VSUB(int n, const T *x, const T *y, T *z) {
 }
 
 void Communicator::SetEnvFlagsDefault() {
-  if (env_flags_dict.find("independent_recv_thread") == env_flags_dict.end())
-    env_flags_dict.insert(std::pair<std::string, int>(
-        "independent_recv_thread", FLAGS_communicator_independent_recv_thread));
-  if (env_flags_dict.find("send_queue_size") == env_flags_dict.end())
-    env_flags_dict.insert(std::pair<std::string, int>(
-        "send_queue_size", FLAGS_communicator_send_queue_size));
-  if (env_flags_dict.find("min_send_grad_num_before_recv") ==
-      env_flags_dict.end())
-    env_flags_dict.insert(std::pair<std::string, int>(
-        "min_send_grad_num_before_recv",
-        FLAGS_communicator_min_send_grad_num_before_recv));
-  if (env_flags_dict.find("thread_pool_size") == env_flags_dict.end())
-    env_flags_dict.insert(std::pair<std::string, int>(
-        "thread_pool_size", FLAGS_communicator_thread_pool_size));
-  if (env_flags_dict.find("send_wait_times") == env_flags_dict.end())
-    env_flags_dict.insert(std::pair<std::string, int>(
-        "send_wait_times", FLAGS_communicator_send_wait_times));
-  if (env_flags_dict.find("max_merge_var_num") == env_flags_dict.end())
-    env_flags_dict.insert(std::pair<std::string, int>(
-        "max_merge_var_num", FLAGS_communicator_max_merge_var_num));
-  if (env_flags_dict.find("fake_rpc") == env_flags_dict.end())
-    env_flags_dict.insert(
-        std::pair<std::string, int>("fake_rpc", FLAGS_communicator_fake_rpc));
-  if (env_flags_dict.find("merge_sparse_grad") == env_flags_dict.end())
-    env_flags_dict.insert(std::pair<std::string, int>(
-        "merge_sparse_grad", FLAGS_communicator_merge_sparse_grad));
-  if (env_flags_dict.find("is_sgd_optimizer") == env_flags_dict.end())
-    env_flags_dict.insert(std::pair<std::string, int>(
-        "is_sgd_optimizer", FLAGS_communicator_is_sgd_optimizer));
+  env_flags_dict.clear();
+  env_flags_dict.insert(std::pair<std::string, int>(
+      "independent_recv_thread", FLAGS_communicator_independent_recv_thread));
+  env_flags_dict.insert(std::pair<std::string, int>(
+      "send_queue_size", FLAGS_communicator_send_queue_size));
+  env_flags_dict.insert(std::pair<std::string, int>(
+      "min_send_grad_num_before_recv",
+      FLAGS_communicator_min_send_grad_num_before_recv));
+  env_flags_dict.insert(std::pair<std::string, int>(
+      "thread_pool_size", FLAGS_communicator_thread_pool_size));
+  env_flags_dict.insert(std::pair<std::string, int>(
+      "send_wait_times", FLAGS_communicator_send_wait_times));
+  env_flags_dict.insert(std::pair<std::string, int>(
+      "max_merge_var_num", FLAGS_communicator_max_merge_var_num));
+  env_flags_dict.insert(
+      std::pair<std::string, int>("fake_rpc", FLAGS_communicator_fake_rpc));
+  env_flags_dict.insert(std::pair<std::string, int>(
+      "merge_sparse_grad", FLAGS_communicator_merge_sparse_grad));
+  env_flags_dict.insert(std::pair<std::string, int>(
+      "is_sgd_optimizer", FLAGS_communicator_is_sgd_optimizer));
 
   return;
 }
@@ -442,25 +433,8 @@ void GeoSgdCommunicator::InitImpl(
   geo_need_push_nums_ = std::move(geo_need_push_nums);
 
   // get all send information from graph, build vars_to_send
-  VLOG(0) << "communicator_independent_recv_thread: "
-          << env_flags_dict["independent_recv_thread"];
-  VLOG(0) << "communicator_send_queue_size: "
-          << env_flags_dict["send_queue_size"];
-  VLOG(0) << "communicator_min_send_grad_num_before_recv: "
-          << env_flags_dict["min_send_grad_num_before_recv"];
-  VLOG(0) << "communicator_thread_pool_size: "
-          << env_flags_dict["thread_pool_size"];
-  VLOG(0) << "communicator_send_wait_times: "
-          << env_flags_dict["send_wait_times"];
-  VLOG(0) << "communicator_max_merge_var_num: "
-          << env_flags_dict["max_merge_var_num"];
-  VLOG(0) << "communicator_fake_rpc: " << env_flags_dict["fake_rpc"];
-  VLOG(0) << "communicator_merge_sparse_grad: "
-          << env_flags_dict["merge_sparse_grad"];
   VLOG(0) << "Trainer nums: " << trainer_nums_;
   VLOG(0) << "geo_sgd_push_before_local_train_nums: " << geo_need_push_nums_;
-  VLOG(0) << "communicator_merge_sparse_bucket "
-          << env_flags_dict["merge_sparse_bucket"];
 
   // process var info from transpiler
   for (auto &iter : vars_info) {

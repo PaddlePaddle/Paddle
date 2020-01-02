@@ -71,6 +71,7 @@ class DistributedTranspiler(Fleet):
         program_config = self._transpile_config.get_program_config()
         trainer_communicator_config = self._transpile_config.get_trainer_runtime_config(
         )
+        print(trainer_communicator_config)
 
         need_communicator_flag = False
         if isinstance(self._transpile_config, GeoStrategy):

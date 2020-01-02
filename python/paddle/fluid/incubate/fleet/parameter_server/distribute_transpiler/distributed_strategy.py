@@ -40,7 +40,7 @@ class TrainerRuntimeConfig(object):
         self.merge_sparse_grad = int(
             os.getenv("FLAGS_communicator_merge_sparse_grad", "1"))
         self.is_sgd_optimizer = int(
-            os.getenv("communicator_is_sgd_optimizer", "1"))
+            os.getenv("FLAGS_communicator_is_sgd_optimizer", "1"))
 
         # not used 
         self._rpc_deadline = int(os.getenv("FLAGS_rpc_deadline", "180000"))
@@ -60,6 +60,14 @@ class TrainerRuntimeConfig(object):
         _communicator_flags["merge_sparse_grad"] = self.merge_sparse_grad
         _communicator_flags["is_sgd_optimizer"] = self.is_sgd_optimizer
         return _communicator_flags
+
+    def __repr_(self):
+        _str = "please check that TrainerRuntimeConfig is as expected:\n"
+        _communicator_flags = self.get_communicator_flags()
+        for key in _communicator_flags:
+            _str += "communicator_{}: {}\n".format(key,
+                                                   _communicator_flags[key])
+        return _str
 
 
 class DistributedStrategy(object):
