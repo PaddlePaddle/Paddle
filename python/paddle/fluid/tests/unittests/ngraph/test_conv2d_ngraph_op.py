@@ -23,30 +23,35 @@ class TestNGRAPHDepthwiseConv(TestDepthwiseConv):
     def init_test_case(self):
         super(TestNGRAPHDepthwiseConv, self).init_test_case()
         self.use_cuda = False
+        self.dtype = np.float32
 
 
 class TestNGRAPHDepthwiseConv2(TestDepthwiseConv2):
     def init_test_case(self):
         super(TestNGRAPHDepthwiseConv2, self).init_test_case()
         self.use_cuda = False
+        self.dtype = np.float32
 
 
 class TestNGRAPHDepthwiseConv3(TestDepthwiseConv3):
     def init_test_case(self):
         super(TestNGRAPHDepthwiseConv3, self).init_test_case()
         self.use_cuda = False
+        self.dtype = np.float32
 
 
 class TestNGRAPHDepthwiseConvWithDilation(TestDepthwiseConvWithDilation):
     def init_test_case(self):
         super(TestNGRAPHDepthwiseConvWithDilation, self).init_test_case()
         self.use_cuda = False
+        self.dtype = np.float32
 
 
 class TestNGRAPHDepthwiseConvWithDilation2(TestDepthwiseConvWithDilation2):
     def init_test_case(self):
         super(TestNGRAPHDepthwiseConvWithDilation2, self).init_test_case()
         self.use_cuda = False
+        self.dtype = np.float32
 
 
 del TestDepthwiseConv, TestDepthwiseConv2, TestDepthwiseConv3, TestDepthwiseConvWithDilation, TestDepthwiseConvWithDilation2
