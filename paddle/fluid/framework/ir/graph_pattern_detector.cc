@@ -476,6 +476,7 @@ PDNode *PDNode::assert_is_op_output(const std::string &op_type,
   assert_is_op_nth_output(op_type, argument, 0);
   return this;
 }
+
 PDNode *PDNode::assert_is_op_input(const std::string &op_type) {
   assert_is_var();
   asserts_.emplace_back([=](Node *x) {
@@ -485,6 +486,16 @@ PDNode *PDNode::assert_is_op_input(const std::string &op_type) {
       }
     }
     return false;
+  });
+  return this;
+}
+
+PDNode *PDNode::assert_is_not_op_input(const std::string &argument) {
+  assert_is_op();
+  asserts_.emplace_back([=](Node *x) {
+    auto &ins = x->Op()->Inputs();
+    auto iter = ins.find(argument);
+    return iter == ins.end() || iter->second.empty();
   });
   return this;
 }
@@ -1046,6 +1057,109 @@ PDNode *patterns::ActElewiseAdd::operator()(
       .LinksTo({elewise_add_out});
 
   return elewise_add_out;
+}
+
+PDNode *patterns::BatchNormAct::operator()(
+    paddle::framework::ir::PDNode *bn_x_var,
+    std::unordered_set<std::string> act_types) {
+  auto *bn_scale_var = pattern->NewNode(bn_scale_repr())
+                           ->assert_is_op_input("batch_norm", "Scale");
+  auto *bn_bias_var = pattern->NewNode(bn_bias_repr())
+                          ->assert_is_op_input("batch_norm", "Bias");
+  auto *bn_variance_var = pattern->NewNode(bn_variance_repr())
+                              ->assert_is_op_input("batch_norm", "Variance");
+  auto *bn_mean_var = pattern->NewNode(bn_mean_repr())
+                          ->assert_is_op_input("batch_norm", "Mean");
+
+  auto *bn = pattern->NewNode(batch_norm_repr())
+                 ->assert_is_op("batch_norm")
+                 ->assert_is_not_op_input("MomentumTensor");
+
+  auto *bn_mean_out_var = pattern->NewNode(bn_mean_out_repr())
+                              ->assert_is_op_output("batch_norm", "MeanOut");
+  auto *bn_variance_out_var =
+      pattern->NewNode(bn_variance_out_repr())
+          ->assert_is_op_output("batch_norm", "VarianceOut");
+  auto *bn_saved_variance_var =
+      pattern->NewNode(bn_saved_variance_repr())
+          ->assert_is_op_output("batch_norm", "SavedVariance");
+  auto *bn_saved_mean_var =
+      pattern->NewNode(bn_saved_mean_repr())
+          ->assert_is_op_output("batch_norm", "SavedMean");
+  auto *bn_reserve_space =
+      pattern->NewNode(bn_reserve_space_repr())
+          ->assert_is_op_output("batch_norm", "ReserveSpace");
+  auto *bn_out_var = pattern->NewNode(bn_out_repr())
+                         ->assert_is_op_output("batch_norm", "Y")
+                         ->assert_has_n_outputs(1);
+
+  bn_out_var->AsIntermediate()->assert_is_ops_input(act_types);
+
+  auto *act = pattern->NewNode(act_repr())->assert_is_ops(act_types);
+
+  auto *act_out_var =
+      pattern->NewNode(act_out_repr())->assert_is_ops_output(act_types, "Out");
+
+  bn->LinksFrom(
+        {bn_x_var, bn_scale_var, bn_bias_var, bn_variance_var, bn_mean_var})
+      .LinksTo({bn_mean_out_var, bn_variance_out_var, bn_saved_variance_var,
+                bn_saved_mean_var, bn_reserve_space, bn_out_var});
+  act->LinksFrom({bn_out_var}).LinksTo({act_out_var});
+
+  return act_out_var;
+}
+
+PDNode *patterns::BatchNormActGrad::operator()(
+    paddle::framework::ir::PDNode *d_act_out_var,
+    std::unordered_set<std::string> act_grad_types) {
+  auto *act_grad =
+      pattern->NewNode(act_grad_repr())->assert_is_ops(act_grad_types);
+  auto *bn_grad =
+      pattern->NewNode(batch_norm_grad_repr())->assert_is_op("batch_norm_grad");
+
+  auto *act_out_var = pattern->NewNode(act_out_repr())
+                          ->assert_is_ops_input(act_grad_types, "Out");
+  auto *d_intermediate_var =
+      pattern->NewNode(d_itermediate_out_repr())
+          ->assert_is_ops_output(act_grad_types, GradVarName("X"))
+          ->assert_has_n_outputs(1);
+  auto *bn_x_var = pattern->NewNode(bn_scale_repr())
+                       ->assert_is_op_input("batch_norm_grad", "X");
+  auto *bn_scale_var = pattern->NewNode(bn_scale_repr())
+                           ->assert_is_op_input("batch_norm_grad", "Scale");
+  auto *bn_bias_var = pattern->NewNode(bn_bias_repr())
+                          ->assert_is_op_input("batch_norm_grad", "Bias");
+  auto *bn_saved_mean_var =
+      pattern->NewNode(bn_saved_mean_repr())
+          ->assert_is_op_output("batch_norm_grad", "SavedMean");
+  auto *bn_saved_variance_var =
+      pattern->NewNode(bn_saved_variance_repr())
+          ->assert_is_op_output("batch_norm_grad", "SavedVariance");
+  auto *bn_reserve_space =
+      pattern->NewNode(bn_reserve_space_repr())
+          ->assert_is_op_output("batch_norm_grad", "ReserveSpace");
+  auto *d_bn_x_var =
+      pattern->NewNode(d_bn_x_repr())
+          ->assert_is_not_ctrl_var()
+          ->assert_is_op_output("batch_norm_grad", GradVarName("X"));
+  auto *d_bn_scale_var =
+      pattern->NewNode(d_bn_scale_repr())
+          ->assert_is_not_ctrl_var()
+          ->assert_is_op_output("batch_norm_grad", GradVarName("Scale"));
+  auto *d_bn_bias_var =
+      pattern->NewNode(d_bn_bias_repr())
+          ->assert_is_not_ctrl_var()
+          ->assert_is_op_output("batch_norm_grad", GradVarName("Bias"));
+
+  act_grad->LinksFrom({d_act_out_var, act_out_var})
+      .LinksTo({d_intermediate_var});
+
+  bn_grad
+      ->LinksFrom({bn_x_var, d_intermediate_var, bn_scale_var, bn_bias_var,
+                   bn_saved_mean_var, bn_saved_variance_var, bn_reserve_space})
+      .LinksTo({d_bn_x_var, d_bn_scale_var, d_bn_bias_var});
+
+  return bn_grad;
 }
 
 PDNode *patterns::ElewiseAddAct::operator()(
