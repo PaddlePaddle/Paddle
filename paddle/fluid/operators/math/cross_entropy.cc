@@ -53,7 +53,14 @@ class CrossEntropyFunctor<platform::CPUDeviceContext, T> {
       for (int i = 0; i < batch_size; ++i) {
         for (int j = 0; j < num_remain; j++) {
           int lbl = label_data[i * num_remain + j];
-          PADDLE_ENFORCE((lbl >= 0 && lbl < axis_dim) || lbl == ignore_index);
+          if (lbl != ignore_index) {
+            PADDLE_ENFORCE_GE(lbl, 0, platform::errors::OutOfRange(
+                                          "label value should >= 0"));
+            PADDLE_ENFORCE_LT(
+                lbl, axis_dim,
+                platform::errors::OutOfRange("label value should less than the "
+                                             "shape of axis dimension"));
+          }
           int index = i * num_classes + lbl * num_remain + j;
           int loss_idx = i * num_remain + j;
           loss_data[loss_idx] =
