@@ -133,7 +133,7 @@ class ConstantInitializer(Initializer):
 
     Args:
         value (float32): constant value to initialize the variable
-        force_cpu (bool, default False): whether to force initialization on cpu.
+        force_cpu (bool, default False): whether to force initialization on CPU.
             If True, initialization is performed on CPU even if the executor
             place is set as CUDA.
     
