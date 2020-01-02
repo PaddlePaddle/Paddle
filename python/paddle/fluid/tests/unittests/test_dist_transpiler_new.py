@@ -16,7 +16,6 @@ from __future__ import print_function
 
 import unittest
 import paddle.fluid as fluid
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig, ServerRuntimeConfig, DistributeTranspiler
 from paddle.fluid.transpiler.geo_sgd_transpiler import GeoSgdTranspiler
 

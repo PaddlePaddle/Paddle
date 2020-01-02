@@ -39,7 +39,6 @@ from .details import wait_server_ready, VarsDistributed
 from .details import delete_ops
 from ..distribute_lookup_table import find_distributed_lookup_table
 from .distribute_transpiler import DistributeTranspiler, DistributeTranspilerConfig, slice_variable, same_or_split_var, ServerRuntimeConfig
-from ..incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import DistributedStrategy, ServerRuntimeConfig
 
 RPC_OP_ROLE_ATTR_NAME = op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(
 )
