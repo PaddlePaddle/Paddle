@@ -15,9 +15,9 @@
 from __future__ import print_function
 
 from six.moves import reduce
-
 from .. import core
 from ..layers import utils
+from ..dygraph import dygraph_utils
 from . import layers
 from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer_
 from ..param_attr import ParamAttr
@@ -235,6 +235,29 @@ class Conv2D(layers.Layer):
         self._bias_param = value
 
     def forward(self, input):
+        inputs = {
+            'Input': [input],
+            'Filter': [self._filter_param],
+        }
+        attrs = {
+            'strides': self._stride,
+            'paddings': self._padding,
+            'dilations': self._dilation,
+            'groups': self._groups if self._groups else 1,
+            'use_cudnn': self._use_cudnn,
+            'use_mkldnn': False,
+        }
+
+        if in_dygraph_mode():
+            outs = core.ops.conv2d(inputs, attrs)
+            pre_bias = outs['Output'][0]
+
+            pre_act = dygraph_utils._append_bias_in_dygraph(pre_bias,
+                                                            self._bias_param, 1)
+
+            return dygraph_utils._append_activation_in_dygraph(pre_act,
+                                                               self._act)
+
         pre_bias = self._helper.create_variable_for_type_inference(
             dtype=self._dtype)
 
@@ -245,14 +268,7 @@ class Conv2D(layers.Layer):
                 'Filter': self._filter_param,
             },
             outputs={"Output": pre_bias},
-            attrs={
-                'strides': self._stride,
-                'paddings': self._padding,
-                'dilations': self._dilation,
-                'groups': self._groups if self._groups else 1,
-                'use_cudnn': self._use_cudnn,
-                'use_mkldnn': False,
-            })
+            attrs=attrs)
 
         if self._bias_param is not None:
             pre_act = self._helper.create_variable_for_type_inference(
@@ -858,23 +874,30 @@ class Pool2D(layers.Layer):
         self._l_type = 'pool2d'
 
     def forward(self, input):
+        attrs = {
+            "pooling_type": self._pool_type,
+            "ksize": self._pool_size,
+            "global_pooling": self._global_pooling,
+            "strides": self._pool_stride,
+            "paddings": self._pool_padding,
+            "use_cudnn": self._use_cudnn,
+            "ceil_mode": self._ceil_mode,
+            "use_mkldnn": False,
+            "exclusive": self._exclusive,
+        }
+        inputs = {"X": [input]}
+
+        if in_dygraph_mode():
+            outs = core.ops.pool2d(inputs, attrs)
+            return outs['Out'][0]
+
         pool_out = self._helper.create_variable_for_type_inference(self._dtype)
 
         self._helper.append_op(
             type=self._l_type,
             inputs={"X": input},
             outputs={"Out": pool_out},
-            attrs={
-                "pooling_type": self._pool_type,
-                "ksize": self._pool_size,
-                "global_pooling": self._global_pooling,
-                "strides": self._pool_stride,
-                "paddings": self._pool_padding,
-                "use_cudnn": self._use_cudnn,
-                "ceil_mode": self._ceil_mode,
-                "use_mkldnn": False,
-                "exclusive": self._exclusive,
-            })
+            attrs=attrs)
         return pool_out
 
 
@@ -948,17 +971,26 @@ class Linear(layers.Layer):
             shape=[output_dim], attr=bias_attr, dtype=dtype, is_bias=True)
 
     def forward(self, input):
+        attrs = {
+            "transpose_X": False,
+            "transpose_Y": False,
+            "alpha": 1,
+        }
+        inputs = {"X": [input], "Y": [self.weight]}
+
+        if in_dygraph_mode():
+            outs = core.ops.matmul(inputs, attrs)
+            pre_bias = outs['Out'][0]
+
+            pre_act = dygraph_utils._append_bias_in_dygraph(
+                pre_bias, self.bias, axis=len(input.shape) - 1)
+
+            return dygraph_utils._append_activation_in_dygraph(pre_act,
+                                                               self._act)
+
         tmp = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(
-            type="matmul",
-            inputs={"X": input,
-                    "Y": self.weight},
-            outputs={"Out": tmp},
-            attrs={
-                "transpose_X": False,
-                "transpose_Y": False,
-                "alpha": 1,
-            })
+            type="matmul", inputs=inputs, outputs={"Out": tmp}, attrs=attrs)
         if self.bias:
             pre_activation = self._helper.create_variable_for_type_inference(
                 dtype=self._dtype)
@@ -1548,6 +1580,7 @@ class Embedding(layers.Layer):
             'remote_prefetch': self._remote_prefetch,
             'padding_idx': self._padding_idx
         }
+
         if in_dygraph_mode():
             inputs = {'Ids': [input], 'W': [self._w]}
             outs = core.ops.lookup_table_v2(inputs, attrs)

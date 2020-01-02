@@ -519,7 +519,7 @@ class Optimizer(object):
             startup_program (Program, optional): :ref:`api_fluid_Program` for
                 initializing parameters in ``parameter_list``. The default value
                 is None, at this time :ref:`api_fluid_default_startup_program` will be used.
-            parameter_list (list, optional): List of ``Variable`` names to update
+            parameter_list (list, optional): List of ``Variable`` or ``Variable.name`` to update
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.
             no_grad_set (set, optional): Set of ``Variable`` objects that don't need
@@ -666,7 +666,7 @@ class Optimizer(object):
             startup_program (Program, optional): :ref:`api_fluid_Program` for
                 initializing parameters in ``parameter_list``. The default value
                 is None, at this time :ref:`api_fluid_default_startup_program` will be used.
-            parameter_list (list, optional): List of ``Variable`` names to update
+            parameter_list (list, optional): List of ``Variable`` or ``Variable.name`` to update
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.
             no_grad_set (set, optional): Set of ``Variable`` objects that don't need
@@ -1712,20 +1712,20 @@ class AdamOptimizer(Optimizer):
 
         # create the adam optimize op
         inputs = {
-            "Param": param_and_grad[0],
-            "Grad": param_and_grad[1],
-            "LearningRate": self._create_param_lr(param_and_grad),
-            "Moment1": moment1,
-            "Moment2": moment2,
-            "Beta1Pow": beta1_pow_acc,
-            "Beta2Pow": beta2_pow_acc
+            "Param": [param_and_grad[0]],
+            "Grad": [param_and_grad[1]],
+            "LearningRate": [self._create_param_lr(param_and_grad)],
+            "Moment1": [moment1],
+            "Moment2": [moment2],
+            "Beta1Pow": [beta1_pow_acc],
+            "Beta2Pow": [beta2_pow_acc]
         }
         outputs = {
-            "ParamOut": param_and_grad[0],
-            "Moment1Out": moment1,
-            "Moment2Out": moment2,
-            "Beta1PowOut": beta1_pow_acc,
-            "Beta2PowOut": beta2_pow_acc,
+            "ParamOut": [param_and_grad[0]],
+            "Moment1Out": [moment1],
+            "Moment2Out": [moment2],
+            "Beta1PowOut": [beta1_pow_acc],
+            "Beta2PowOut": [beta2_pow_acc],
         }
         attrs = {
             "epsilon": self._epsilon,
@@ -1741,6 +1741,10 @@ class AdamOptimizer(Optimizer):
             inputs['Beta2Tensor'] = self._beta2
         else:
             attrs['beta2'] = self._beta2
+
+        if framework.in_dygraph_mode():
+            core.ops.adam(inputs, attrs, outputs)
+            return None
 
         adam_op = block.append_op(
             type=self.type,
@@ -2094,7 +2098,8 @@ class DecayedAdagradOptimizer(Optimizer):
             },
             outputs={"ParamOut": param_and_grad[0],
                      "MomentOut": moment_acc},
-            attrs={"epsilon": self._epsilon},
+            attrs={"epsilon": self._epsilon,
+                   "decay": self._decay},
             stop_gradient=True)
 
         return decayed_adagrad_op
