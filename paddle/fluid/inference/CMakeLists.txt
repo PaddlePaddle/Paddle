@@ -23,10 +23,6 @@ endif()
 
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 get_property(cuda_modules GLOBAL PROPERTY CUDA_MODULES)
-get_property(fluid_third_partys GLOBAL PROPERTY FLUID_THRID_PARTYS)
-if (WIN32)
-list(APPEND fluid_third_partys gflags glog protobuf cblas)
-endif(WIN32)
 
 # paddle_fluid_origin exclude inference api interface
 if(WIN32)
