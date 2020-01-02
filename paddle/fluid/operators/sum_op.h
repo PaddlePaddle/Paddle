@@ -16,7 +16,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
-#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -126,24 +125,20 @@ class SumKernel : public framework::OpKernel<T> {
     size_t in_num = in_vars.size();
     auto out_var = context.OutputVar("Out");
 
-    bool in_place = out_var == in_vars[0];
-
-    auto item_size = 0;
+    size_t item_size = 0;
     if (out_var->IsType<framework::LoDTensor>()) {
       auto *out = out_var->GetMutable<framework::LoDTensor>();
       auto *out_ptr = out->mutable_data<T>(context.GetPlace());
       if (in_num >= 1 && in_vars[0]->IsType<framework::LoDTensor>()) {
         auto &in_0_tensor = in_vars[0]->Get<framework::LoDTensor>();
         item_size = in_0_tensor.numel();
-        if (in_0_tensor.numel() > 0) {
-          in_place = (in_0_tensor.data<T>() == out_ptr);
-        }
       }
-      size_t start = in_place ? 1 : 0;
 
       std::vector<T *> tensor;
-      math::SelectedRowsAddToTensor<DeviceContext, T> functor;
-      for (size_t i = start; i < in_num; ++i) {
+      std::vector<size_t> select_row;
+      tensor.clear();
+      select_row.clear();
+      for (size_t i = 0; i < in_num; i++) {
         if (in_vars[i]->IsType<framework::LoDTensor>()) {
           auto in_tensor = in_vars[i]->Get<framework::LoDTensor>();
           if (in_tensor.numel()) {
@@ -151,18 +146,13 @@ class SumKernel : public framework::OpKernel<T> {
             tensor.push_back(in_data);
           }
         } else if (in_vars[i]->IsType<framework::SelectedRows>()) {
-          auto &in_t = in_vars[i]->Get<framework::SelectedRows>();
-          functor(context.template device_context<DeviceContext>(), in_t, out);
+          select_row.push_back(i);
         } else {
           PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
         }
       }
 
-      if (tensor.size() == 0) {
-        math::SetConstant<DeviceContext, T> constant_functor;
-        constant_functor(context.template device_context<DeviceContext>(), out,
-                         static_cast<T>(0));
-      } else {
+      if (tensor.size()) {
         for (size_t i = 0; i < item_size; ++i) {
           T result_temp = 0;
           for (size_t j = 0; j < tensor.size(); ++j) {
@@ -171,6 +161,16 @@ class SumKernel : public framework::OpKernel<T> {
           }
           out_ptr[i] = result_temp;
         }
+      } else if (!tensor.size()) {
+        math::SetConstant<DeviceContext, T> constant_functor;
+        constant_functor(context.template device_context<DeviceContext>(), out,
+                         static_cast<T>(0));
+      }
+
+      math::SelectedRowsAddToTensor<DeviceContext, T> functor;
+      for (size_t i = 0; i < select_row.size(); i++) {
+        auto &in_t = in_vars[select_row[i]]->Get<framework::SelectedRows>();
+        functor(context.template device_context<DeviceContext>(), in_t, out);
       }
     } else if (out_var->IsType<framework::SelectedRows>()) {
       SelectedRowsCompute<DeviceContext, T>(context);
