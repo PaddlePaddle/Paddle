@@ -15,7 +15,8 @@
 INCLUDE(ExternalProject)
 
 SET(MKLDNN_PROJECT        "extern_mkldnn")
-SET(MKLDNN_PREFIX_DIR    ${THIRD_PARTY_PATH}/mkldnn)
+SET(MKLDNN_PREFIX_DIR     ${THIRD_PARTY_PATH}/mkldnn)
+SET(MKLDNN_SOURCE_DIR     ${THIRD_PARTY_PATH}/mkldnn/src/extern_mkldnn)
 SET(MKLDNN_INSTALL_DIR    ${THIRD_PARTY_PATH}/install/mkldnn)
 SET(MKLDNN_INC_DIR        "${MKLDNN_INSTALL_DIR}/include" CACHE PATH "mkldnn include directory." FORCE)
 SET(MKLDNN_REPOSITORY     https://github.com/intel/mkl-dnn.git)
@@ -46,7 +47,8 @@ ENDIF(NOT WIN32)
 
 cache_third_party(${MKLDNN_PROJECT}
     REPOSITORY    ${MKLDNN_REPOSITORY}
-    TAG           ${MKLDNN_TAG})
+    TAG           ${MKLDNN_TAG}
+    DIR           MKLDNN_SOURCE_DIR)
 
 ExternalProject_Add(
     ${MKLDNN_PROJECT}
