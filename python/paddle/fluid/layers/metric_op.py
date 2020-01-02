@@ -39,8 +39,8 @@ def accuracy(input, label, k=1, correct=None, total=None):
 
     Args:
         input(Variable): The input of accuracy layer, which is the predictions of network. A LoDTensor or Tensor with type float32,float64.
-            Shape is ``[sample_number, class_dim]`` .
-        label(Variable): The label of dataset.  LoDTensor or Tensor with type int32,int64. Shape is ``[sample_number, 1]`` .
+            The shape is ``[sample_number, class_dim]`` .
+        label(Variable): The label of dataset.  LoDTensor or Tensor with type int32,int64. The shape is ``[sample_number, 1]`` .
         k(int): The top k predictions for each class will be checked. Data type is int64 or int32.
         correct(Variable): The correct predictions count. A Tensor with type int64 or int32.
         total(Variable): The total entries count. A tensor with type int64 or int32.
