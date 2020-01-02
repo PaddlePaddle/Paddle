@@ -69,10 +69,14 @@ class DistributedTranspiler(Fleet):
 
         if not self._transpile_config.sync_mode:
             if self._transpile_config.geo_sgd_mode:
-                self._communicator = Communicator(
-                    self.main_program, AsyncMode.GEO_SGD, self.vars_info,
-                    fleet.worker_num(),
-                    self._transpile_config.geo_sgd_need_push_nums)
+                kwargs = {}
+                kwargs["push_vars"] = self.vars_info
+                kwargs["trainers"] = fleet.worker_num()
+                kwargs[
+                    "push_nums"] = self._transpile_config.geo_sgd_need_push_nums
+
+                self._communicator = Communicator(self.main_program,
+                                                  AsyncMode.GEO_SGD, kwargs)
 
             elif self._transpile_config.half_async:
                 self._communicator = Communicator(self.main_program,
