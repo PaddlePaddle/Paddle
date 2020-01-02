@@ -342,6 +342,8 @@ class Layer(core.Layer):
         Parameters:
             state_dict(dict) : Dict contains all the parameters
             include_sublayers(bool, optional) : If true, also include the parameters from sublayers. Default: True
+            use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter name as key. 
+                                                  Default: True
         Returns:
             None
 
@@ -377,6 +379,8 @@ class Layer(core.Layer):
         Parameters:
             state_dict(dict) : Dict contains all the parameters
             include_sublayers(bool, optional) : If true, also include the parameters from sublayers. Default: True
+            use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter name as key.
+                                                  Default: True
         Returns:
             None
 
@@ -396,9 +400,9 @@ class Layer(core.Layer):
 
         '''
 
-        state_dict = self.state_dict()
+        inner_state_dict = self.state_dict()
 
-        for name, para in state_dict.items():
+        for name, para in inner_state_dict.items():
             key_name = name if use_structured_name else para.name
             if key_name in stat_dict:
                 para.set_value(stat_dict[key_name])
@@ -407,3 +411,11 @@ class Layer(core.Layer):
                     "Parameter not found, Can't not find [ {} ] in stat_dict"
                     "use_structured_name is set to [{}]".format(
                         key_name, use_structured_name))
+        unused_para_list = {}
+        for k, v in stat_dict.items():
+            if k not in inner_state_dict:
+                unused_para_list.append(k)
+        if len(unused_para_list) > 0:
+            warnings.warn(
+                "Varibale [ {} ] are not used, because not included in layers state_dict".
+                format(" ".join(unused_para_list)))

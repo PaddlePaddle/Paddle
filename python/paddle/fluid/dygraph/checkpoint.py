@@ -93,6 +93,8 @@ def load_dygraph(model_path, keep_name_table=False):
 
     Args:
         model_path(str) : The file prefix store the state_dict. (The path should Not contain suffix '.pdparams') 
+        keep_name_table(bool, optional) : Whether keep structed name to parameter name conversion table in output dict. 
+                                          Default : False
 
     Returns:
         state_dict(dict) : the dict store the state_dict
@@ -134,37 +136,3 @@ def load_dygraph(model_path, keep_name_table=False):
             opti_dict = pickle.load(f)
 
     return para_dict, opti_dict
-
-
-@dygraph_only
-def load_optimizer(model_path):
-    '''
-    Load optimizer state_dict from disk.
-
-    Args:
-        model_path(str) : The file prefix store the state_dict. (The path should Not contain shuffix '.pdparams')
-
-    Returns:
-        state_dict(dict) : the dict store the state_dict
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-
-            with fluid.dygraph.guard():
-                adam = fluid.optimizer.Adam(0.001)
-
-                state_dict = adam.state_dict()
-                fluid.save_optimizer( state_dict, "opt_adam")
-
-                fluid.load_optimizer( "opt_adam")
-
-    '''
-
-    assert in_dygraph_mode(), "save_optimizer only work in dygraph mode"
-    opt_file_path = model_path + ".pdopt"
-    if not os.path.exists(opt_file_path):
-        raise RuntimeError("Optimizer file [ {} ] not exists".format(
-            opt_file_path))
-    return core._load_dygraph_dict(opt_file_path)
