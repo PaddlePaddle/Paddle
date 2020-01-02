@@ -63,13 +63,5 @@ class TestCommunicator(unittest.TestCase):
         fleet.stop_worker()
 
 
-class TestCommunicator2(unittest.TestCase):
-    def test_communicator_init_and_start(self):
-        prog = fluid.Program()
-        comm = Communicator(prog, AsyncMode.ASYNC)
-        comm.start()
-        comm.stop()
-
-
 if __name__ == '__main__':
     unittest.main()
