@@ -206,7 +206,7 @@ class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
     for (size_t b = 0; b < x->lod()[0].size() - 1; b++) {
       for (int t = 0; t < dim_t; t++) {
         size_t len_l = offset_l[b + 1] - offset_l[b];
-        sizt_t len_r = offset_r[b + 1] - offset_r[b];
+        size_t len_r = offset_r[b + 1] - offset_r[b];
         auto* top_data = out_data + top_offset[b] + t * len_l * len_r;
         const auto* l_t_data =
             bottom_l_trans_data + offset_l[b] * dim_t * dim_in + t * dim_in;
