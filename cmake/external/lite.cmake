@@ -38,7 +38,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
       ${LITE_PROJECT}
       ${EXTERNAL_PROJECT_LOG_ARGS}
       GIT_REPOSITORY      "https://github.com/PaddlePaddle/Paddle-Lite.git"
-      GIT_TAG             f1cedb8f3ef887414e89bfde7517aedc6aab3917
+      GIT_TAG             0176d4bff8f31a4e75a3becd69899edf7fdc1826
       PREFIX              ${LITE_SOURCES_DIR}
       UPDATE_COMMAND      ""
       BUILD_COMMAND       ${LITE_BUILD_COMMAND}
