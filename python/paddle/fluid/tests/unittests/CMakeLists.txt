@@ -258,6 +258,7 @@ if(WITH_DISTRIBUTE)
     py_test_modules(test_nce_remote_table_op MODULES test_nce_remote_table_op ENVS ${dist_ENVS})
     py_test_modules(test_recv_save_op MODULES test_recv_save_op ENVS ${dist_ENVS})
     py_test_modules(test_transpiler_ops MODULES test_transpiler_ops ENVS ${dist_ENVS})
+    py_test_modules(test_communicator_async MODULES test_communicator_async ENVS ${dist_ENVS})
     py_test_modules(test_communicator_half_async MODULES test_communicator_half_async ENVS ${dist_ENVS} FLAGS_communicator_send_queue_size=1 FLAGS_communicator_max_merge_var_num=1)
     if(WITH_DGC)
         # if with dgc, test all dgc tests.
