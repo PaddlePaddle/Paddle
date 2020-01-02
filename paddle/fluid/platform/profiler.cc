@@ -159,7 +159,6 @@ RecordEvent::~RecordEvent() {
     tracer->AddCPURecords(CurAnnotationName(), start_ns_, PosixInNsec(),
                           BlockDepth(), g_thread_id);
   }
-  // std::lock_guard<std::mutex> guard(g_record_annotation_mu);
   ClearCurAnnotation();
   PopEvent(name_);
 }
