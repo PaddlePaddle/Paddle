@@ -25,7 +25,7 @@ from paddle.fluid import Conv2D, Pool2D, BatchNorm, Linear
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
-from paddle.fluid.dygraph.jit import TracedLayer
+from paddle.fluid.dygraph import TracedLayer
 
 batch_size = 8
 train_parameters = {
@@ -284,7 +284,7 @@ class TestDygraphResnet(unittest.TestCase):
                 if traced_layer is not None:
                     resnet.eval()
                     traced_layer._switch(is_test=True)
-                    out_dygraph = resnet([img])
+                    out_dygraph = resnet(img)
                     out_static = traced_layer([img])
                     traced_layer._switch(is_test=False)
                     helper.assertEachVar(out_dygraph, out_static)
