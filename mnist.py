@@ -136,9 +136,12 @@ if __name__ == '__main__':
 
         for e in range(2):
             for idx, batch in enumerate(train_loader()):
-                out = model.train(batch[0], batch[1], device='gpu',
-                                  device_ids=[0, 1, 2, 3])
+                out, loss = model.train(batch[0], batch[1], device='gpu',
+                                        device_ids=[0, 1, 2, 3])
+                print("=============== output =========")
                 print(out)
+                print("=============== loss ===========")
+                print(loss)
                 if idx > 10:
                     model.save("test.{}".format(e))
                     break
