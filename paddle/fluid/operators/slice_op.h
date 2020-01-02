@@ -381,11 +381,12 @@ class SliceDoubleGradKernel : public framework::OpKernel<T> {
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
     auto in = context.Input<framework::Tensor>("Input");
-    auto out = context.Input<framework::Tensor>("Out");
+
+    // auto out = context.Input<framework::Tensor>("Out");
     auto ddinput = context.Input<framework::Tensor>("DDInput");
     auto ddout = context.Output<framework::Tensor>("DDOut");
 
-    auto out_dims = out->dims();
+    auto out_dims = ddout->dims();
     auto in_dims = in->dims();
 
     auto axes = context.Attr<std::vector<int>>("axes");
