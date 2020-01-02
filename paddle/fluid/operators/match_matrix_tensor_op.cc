@@ -174,7 +174,7 @@ class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
     auto* tmp = ctx.Output<LoDTensor>("Tmp");
 
     int dim_t = ctx.Attr<int>("dim_t");
-    auto dim_in = x->dims()[1];
+    int64_t dim_in = x->dims()[1];
 
     const auto& offset_l = x->lod()[0];
     const auto& offset_r = y->lod()[0];
@@ -183,8 +183,8 @@ class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
     size_t top_size = 0;
     top_offset.push_back(top_size);
     for (size_t b = 0; b < x->lod()[0].size() - 1; b++) {
-      auto len_l = offset_l[b + 1] - offset_l[b];
-      auto len_r = offset_r[b + 1] - offset_r[b];
+      size_t len_l = offset_l[b + 1] - offset_l[b];
+      size_t len_r = offset_r[b + 1] - offset_r[b];
       top_size += dim_t * len_l * len_r;
       top_offset.push_back(top_size);
     }
@@ -205,8 +205,8 @@ class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
 
     for (size_t b = 0; b < x->lod()[0].size() - 1; b++) {
       for (int t = 0; t < dim_t; t++) {
-        auto len_l = offset_l[b + 1] - offset_l[b];
-        auto len_r = offset_r[b + 1] - offset_r[b];
+        size_t len_l = offset_l[b + 1] - offset_l[b];
+        sizt_t len_r = offset_r[b + 1] - offset_r[b];
         auto* top_data = out_data + top_offset[b] + t * len_l * len_r;
         const auto* l_t_data =
             bottom_l_trans_data + offset_l[b] * dim_t * dim_in + t * dim_in;
@@ -235,7 +235,7 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
     auto* tmp = ctx.Input<LoDTensor>("Tmp");
 
     int dim_t = ctx.Attr<int>("dim_t");
-    auto dim_in = x->dims()[1];
+    int64_t dim_in = x->dims()[1];
 
     const auto& offset_l = x->lod()[0];
     const auto& offset_r = y->lod()[0];
@@ -243,8 +243,8 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
     size_t top_size = 0;
     top_offset.push_back(top_size);
     for (size_t b = 0; b < x->lod()[0].size() - 1; b++) {
-      auto len_l = offset_l[b + 1] - offset_l[b];
-      auto len_r = offset_r[b + 1] - offset_r[b];
+      size_t len_l = offset_l[b + 1] - offset_l[b];
+      size_t len_r = offset_r[b + 1] - offset_r[b];
       top_size += dim_t * len_l * len_r;
       top_offset.push_back(top_size);
     }
@@ -271,8 +271,8 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
 
     for (size_t b = 0; b < x->lod()[0].size() - 1; b++) {
       for (int t = 0; t < dim_t; t++) {
-        auto len_l = offset_l[b + 1] - offset_l[b];
-        auto len_r = offset_r[b + 1] - offset_r[b];
+        size_t len_l = offset_l[b + 1] - offset_l[b];
+        size_t len_r = offset_r[b + 1] - offset_r[b];
 
         for (size_t i = 0; i < len_l; i++) {
           for (size_t j = 0; j < len_r; j++) {
