@@ -144,6 +144,7 @@ void FleetWrapper::CreateClient2ClientConnection() {
 }
 
 void FleetWrapper::PullSparseToLocalV2(const uint64_t table_id, int fea_value_dim) {
+#ifdef PADDLE_WITH_PSLIB
     //std::cout << "FleetWrapper Start pull sparse to local" << std::endl;
     size_t fea_keys_size = local_tables_.size();
     if (fea_keys_size == 0) {
@@ -197,6 +198,7 @@ void FleetWrapper::PullSparseToLocalV2(const uint64_t table_id, int fea_value_di
     // std::cout  << shell_get_command_output(std::string("cat /proc/") + std::to_string(pid) + "/status | grep VmRSS");
     std::cout << "Pull sparse to local done, set local table time: " <<
     set_local_table_time << std::endl;
+#endif
 }
 
 void FleetWrapper::PullSparseVarsFromLocal(
@@ -257,11 +259,13 @@ void FleetWrapper::PullSparseVarsFromLocal(
 }
 
 void FleetWrapper::ClearLocalTable() {
+#ifdef PADDLE_WITH_PSLIB
   for (auto& t : local_tables_) {
     t.clear();
     // std::unordered_map<uint64_t, std::vector<float>>().swap(t);
   }
   // std::vector<std::unordered_map<uint64_t, std::vector<float>>>().swap(local_tables_);
+#endif
 }
 
 std::future<int32_t> FleetWrapper::PullSparseVarsAsync(
@@ -299,6 +303,7 @@ std::future<int32_t> FleetWrapper::PullSparseVarsAsync(
   return pslib_ptr_->_worker_ptr->pull_sparse(
       pull_result_ptr.data(), table_id, fea_keys->data(), fea_keys->size());
 #endif
+  return std::future<int32_t>();
 }
 
 void FleetWrapper::PullSparseVarsSync(
