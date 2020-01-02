@@ -474,7 +474,8 @@ function generate_upstream_develop_api_spec() {
     generate_api_spec "$1" "DEV"
     git checkout $cur_branch
     git branch -D develop_base_pr
-    ENABLE_MAKE_CLEAN="OFF"
+    ENABLE_MAKE_CLEAN="ON"
+    rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
 }
 
 function generate_api_spec() {
