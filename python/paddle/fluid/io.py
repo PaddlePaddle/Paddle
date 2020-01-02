@@ -1594,12 +1594,12 @@ def load(program, model_path, executor=None, var_list=None):
             binary_file_set = set()
             for root, dirs, files in os.walk(model_path, topdown=False):
                 for f in files:
-                    binary_file_set.add(os.path.join(root, f))
+                    binary_file_set.add(
+                        os.path.join(root, f).replace("\\", "/"))
             program_var_list = list(program.list_vars())
-            print("set list", binary_file_set)
             loaded_var_list = []
             for var in program_var_list:
-                var_path = os.path.join(model_path, var.name)
+                var_path = os.path.join(model_path, var.name).replace("\\", "/")
                 if var_path in binary_file_set:
                     loaded_var_list.append(var)
                     binary_file_set.remove(var_path)

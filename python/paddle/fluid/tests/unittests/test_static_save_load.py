@@ -38,7 +38,7 @@ class SimpleLSTMRNN(fluid.Layer):
                  num_layers=2,
                  init_scale=0.1,
                  dropout=None):
-        super(SimpleLSTMRNN, self).__init__(name_scope)
+        super(SimpleLSTMRNN, self).__init__()
         self._hidden_size = hidden_size
         self._num_layers = num_layers
         self._init_scale = init_scale
@@ -48,7 +48,6 @@ class SimpleLSTMRNN(fluid.Layer):
         self.cell_array = []
         self.hidden_array = []
 
-    def _build_once(self, input_embedding, init_hidden=None, init_cell=None):
         self.weight_1_arr = []
         self.weight_2_arr = []
         self.bias_arr = []
@@ -144,7 +143,7 @@ class PtbModel(fluid.Layer):
                  num_steps=20,
                  init_scale=0.1,
                  dropout=None):
-        super(PtbModel, self).__init__(name_scope)
+        super(PtbModel, self).__init__()
         self.hidden_size = hidden_size
         self.vocab_size = vocab_size
         self.init_scale = init_scale
@@ -212,7 +211,6 @@ class PtbModel(fluid.Layer):
         return loss, last_hidden, last_cell
 
 
-'''
 class TestSaveLoadBase(unittest.TestCase):
     def test_ptb_rnn_cpu_float32(self):
         seed = 90
@@ -717,8 +715,6 @@ class TestVariableInit(unittest.TestCase):
 
                 self.assertTrue(np.array_equal(new_t, base_t))
 
-'''
-
 
 class TestLoadFromOldInterface(unittest.TestCase):
     def setUp(self):
@@ -826,7 +822,7 @@ class TestLoadFromOldInterface(unittest.TestCase):
                                      .get_tensor())
                     base_t = base_map[var.name]
                     self.assertTrue(np.array_equal(new_t, base_t))
-            '''
+
             for var in main_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
                     ten = fluid.global_scope().find_var(var.name).get_tensor()
@@ -840,10 +836,8 @@ class TestLoadFromOldInterface(unittest.TestCase):
             # check unused paramter
 
             fluid.load(test_clone_program, "test_path", exe)
-            '''
 
 
-'''
 class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
     def test_load_from_old_interface(self):
         seed = 90
@@ -986,7 +980,7 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
                 all_var_list = list(main_program.list_vars())
                 fluid.load(main_program, file_model_path, exe,
                            all_var_list + [temp_var])
-'''
+
 
 if __name__ == '__main__':
     unittest.main()
