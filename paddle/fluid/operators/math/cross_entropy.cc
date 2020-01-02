@@ -55,11 +55,16 @@ class CrossEntropyFunctor<platform::CPUDeviceContext, T> {
           int lbl = label_data[i * num_remain + j];
           if (lbl != ignore_index) {
             PADDLE_ENFORCE_GE(lbl, 0, platform::errors::OutOfRange(
-                                          "label value should >= 0"));
+                                          "label value should >= 0 when label "
+                                          "value not equal to ignore_index"));
             PADDLE_ENFORCE_LT(
                 lbl, axis_dim,
-                platform::errors::OutOfRange("label value should less than the "
-                                             "shape of axis dimension"));
+                platform::errors::OutOfRange(
+                    "ShapeError: label value should less than the "
+                    "shape of axis dimension when label value not equal to "
+                    "ignore_index, But received label value as %ld and shape "
+                    "of axis dimension is %d",
+                    lbl, axis_dim));
           }
           int index = i * num_classes + lbl * num_remain + j;
           int loss_idx = i * num_remain + j;
