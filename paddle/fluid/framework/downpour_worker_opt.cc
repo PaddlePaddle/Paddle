@@ -313,9 +313,11 @@ void DownpourWorker::TrainFiles() {
         continue;
       }
       PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor), false,
-                        "Tensor %s contains Inf, check some layers output", var_name);
+                        platform::errors::InvalidArgument("The target tensor %s contains Inf "
+                        "should check some layers output.", var_name));
       PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor), false,
-                        "Tensor %s contains NAN, check some layers output", var_name);
+                        platform::errors::InvalidArgument("The target tensor %s contains Nan "
+                        "should check some layers output.", var_name));
     }
 
     if (need_to_push_sparse_) {
