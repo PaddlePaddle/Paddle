@@ -230,7 +230,7 @@ class DatasetImpl : public Dataset {
   int preload_thread_num_;
   std::mutex global_index_mutex_;
   int64_t global_index_ = 0;
-  std::vector<std::shared_ptr<::ThreadPool>> consume_task_pool_;
+  std::vector<std::shared_ptr<ThreadPool>> consume_task_pool_;
 };
 
 // use std::vector<MultiSlotType> or Record as data type
