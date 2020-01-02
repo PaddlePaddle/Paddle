@@ -110,25 +110,6 @@ void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
   recv_varname_to_ctx_ = std::move(recv_varname_to_ctx);
   recv_scope_ = std::move(recv_scope);
 
-  // get all send information from graph, build vars_to_send
-  VLOG(0) << "communicator_independent_recv_thread: "
-          << env_flags_dict["independent_recv_thread"];
-  VLOG(0) << "communicator_send_queue_size: "
-          << env_flags_dict["send_queue_size"];
-  VLOG(0) << "communicator_min_send_grad_num_before_recv: "
-          << env_flags_dict["min_send_grad_num_before_recv"];
-  VLOG(0) << "communicator_thread_pool_size: "
-          << env_flags_dict["thread_pool_size"];
-  VLOG(0) << "communicator_send_wait_times: "
-          << env_flags_dict["send_wait_times"];
-  VLOG(0) << "communicator_max_merge_var_num: "
-          << env_flags_dict["max_merge_var_num"];
-  VLOG(0) << "communicator_fake_rpc: " << env_flags_dict["fake_rpc"];
-  VLOG(0) << "communicator_merge_sparse_grad: "
-          << env_flags_dict["merge_sparse_grad"];
-  VLOG(0) << "communicator_is_sgd_optimizer: "
-          << env_flags_dict["is_sgd_optimizer"];
-
   if (send_varname_to_ctx.size() == 0) {
     VLOG(0) << "nothing need to be send, will not start send_thread";
   } else {
