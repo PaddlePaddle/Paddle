@@ -448,7 +448,9 @@ void LayerNormDirectCUDAFunctor<T>::operator()(cudaStream_t stream,
         LayerNormForward<T, kBlockDim><<<batch_size, kBlockDim, 0, stream>>>(
             input, scale, bias, output, mean, variance, eps, feature_size));
     default:
-      PADDLE_THROW("Product from begin_norm_axis to end must be larger than 1");
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Product from begin_norm_axis to end in layer_norm must be larger "
+          "than 1"));
       break;
   }
 }

@@ -43,7 +43,8 @@ TRT_DT FluidDataType2TRT(FluidDT type) {
     default:
       return TRT_DT::kINT32;
   }
-  PADDLE_THROW("unknown type");
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "unknown fluid datatype in TRT op converter"));
   return TRT_DT::kINT32;
 }
 

@@ -31,15 +31,7 @@ LayerNormPlugin *CreateLayerNormPluginDeserialize(const void *buffer,
 }
 REGISTER_TRT_PLUGIN("layer_norm_plugin", CreateLayerNormPluginDeserialize);
 
-int LayerNormPlugin::initialize() {
-  // cudaMalloc(&p_gpu_bias_, sizeof(float) * bias_.size());
-  // cudaMemcpy(p_gpu_bias_, bias_.data(), bias_.size() * sizeof(float),
-  //            cudaMemcpyHostToDevice);
-  // cudaMalloc(&p_gpu_scale_, sizeof(float) * scale_.size());
-  // cudaMemcpy(p_gpu_scale_, scale_.data(), scale_.size() * sizeof(float),
-  //            cudaMemcpyHostToDevice);
-  return 0;
-}
+int LayerNormPlugin::initialize() { return 0; }
 
 nvinfer1::Dims LayerNormPlugin::getOutputDimensions(
     int index, const nvinfer1::Dims *inputDims, int nbInputs) {
@@ -59,11 +51,10 @@ int LayerNormPlugin::enqueue(int batch_size, const void *const *inputs,
   int begin_norm_axis = begin_norm_axis_;
   float eps = eps_;
 
-  int n = batch_size;
   int c = input_dims.d[begin_norm_axis - 1];
 
-  scale_t.Resize(framework::make_ddim({n, c}));
-  bias_t.Resize(framework::make_ddim({n, c}));
+  scale_t.Resize(framework::make_ddim({c}));
+  bias_t.Resize(framework::make_ddim({c}));
   mean_t.Resize(framework::make_ddim(mean_shape_));
   variance_t.Resize(framework::make_ddim(variance_shape_));
   int device_id;
@@ -74,15 +65,10 @@ int LayerNormPlugin::enqueue(int batch_size, const void *const *inputs,
   float *variance_d =
       variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
 
-  for (int i = 0; i < n; i++) {
-    cudaMemcpyAsync(scale_d + i * c, scale_.data(), sizeof(float) * c,
-                    cudaMemcpyHostToDevice, stream);
-    cudaMemcpyAsync(bias_d + i * c, bias_.data(), sizeof(float) * c,
-                    cudaMemcpyHostToDevice, stream);
-  }
-
-  // const float *bias = p_gpu_bias_;
-  // const float *scale = p_gpu_scale_;
+  cudaMemcpyAsync(scale_d, scale_.data(), sizeof(float) * c,
+                  cudaMemcpyHostToDevice, stream);
+  cudaMemcpyAsync(bias_d, bias_.data(), sizeof(float) * c,
+                  cudaMemcpyHostToDevice, stream);
 
   std::vector<int> input_shape;
   input_shape.push_back(batch_size);
