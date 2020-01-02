@@ -61,7 +61,7 @@ class TrainerRuntimeConfig(object):
         _communicator_flags["is_sgd_optimizer"] = self.is_sgd_optimizer
         return _communicator_flags
 
-    def __repr_(self):
+    def __repr__(self):
         _str = "please check that TrainerRuntimeConfig is as expected:\n"
         _communicator_flags = self.get_communicator_flags()
         for key in _communicator_flags:
