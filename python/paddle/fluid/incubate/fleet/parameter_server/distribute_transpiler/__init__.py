@@ -33,6 +33,7 @@ from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
 from paddle.fluid.incubate.fleet.base.fleet_base import Mode
 from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
+from paddle.fluid.incubate.fleet.utils.hdfs import AutoUpload2HDFS
 
 
 class DistributedTranspiler(Fleet):
@@ -44,10 +45,12 @@ class DistributedTranspiler(Fleet):
         super(DistributedTranspiler, self).__init__(Mode.TRANSPILER)
         self._transpile_config = None
         self._transpiler = None
+        self._communicator = None
         self._origin_program = None
+
         self.startup_program = None
         self.main_program = None
-        self._communicator = None
+        self.auto_upload = None
 
     def init_worker(self):
         """
@@ -79,6 +82,9 @@ class DistributedTranspiler(Fleet):
                 self._communicator.start()
             else:
                 warnings.warn("communicator has been initialized, skip")
+
+        if self.auto_upload is not None:
+            self.auto_upload.run()
 
     def init_server(self, model_dir=None):
         """

@@ -16,16 +16,18 @@
 import os
 import sys
 import subprocess
+import threading
 import multiprocessing
 from datetime import datetime
 
 import re
 import copy
 import errno
+import random
 
 import logging
 
-__all__ = ["HDFSClient"]
+__all__ = ["HDFSClient", "AutoUpload2HDFS"]
 
 
 def get_logger(name, level, fmt):
@@ -93,7 +95,7 @@ class HDFSClient(object):
             (output, errors) = proc.communicate()
             ret_code, ret_out, ret_err = proc.returncode, output, errors
 
-            _logger.info(
+            _logger.debug(
                 'Times: %d, Running command: %s. Return code: %d, Msg: %s' %
                 (x, whole_commands, proc.returncode, errors))
 
@@ -418,6 +420,41 @@ class HDFSClient(object):
 
         return trainer_files[trainer_id]
 
+    def download_for_training(self,
+                              hdfs_path,
+                              local_path,
+                              shuffle=True,
+                              multi_processes=5,
+                              excludes=[],
+                              trainer_id=0,
+                              trainers=1):
+        files = self.lsr(hdfs_path, excludes)
+
+        if shuffle:
+            random.seed(42)
+            random.shuffle(files)
+
+        files = self.split_files(files, trainer_id, trainers)
+
+        local_paths = []
+
+        for f in files:
+            rel_path = os.path.relpath(f, hdfs_path)
+            local_paths.append(os.path.join(local_path, rel_path))
+
+        self.download(files, local_paths, 10)
+
+        local_downloads = []
+        for dirname, folder, files in os.walk(local_path):
+            for i in files:
+                t = os.path.join(dirname, i)
+                local_downloads.append(t)
+
+        if shuffle:
+            random.shuffle(local_downloads)
+
+        return local_downloads
+
     def download(self,
                  hdfs_path,
                  local_path,
@@ -439,7 +476,7 @@ class HDFSClient(object):
             Download files in local folder.
         """
 
-        def __subprocess_download(local_path, datas):
+        def __subprocess_download(slice_local, slice_hdfs):
             """
             download file from HDFS
 
@@ -452,8 +489,14 @@ class HDFSClient(object):
             Returns:
                 True or False
             """
-            for data in datas:
-                download_commands = ["-get", data, local_path]
+            for i in range(len(slice_hdfs)):
+                local = slice_local[i]
+                hdfs = slice_hdfs[i]
+
+                base_dir = os.path.dirname(local)
+                self.make_local_dirs(base_dir)
+
+                download_commands = ["-get", hdfs, local]
 
                 returncode, output, errors = self.__run_hdfs_cmd(
                     download_commands, retry_times=retry_times)
@@ -465,19 +508,24 @@ class HDFSClient(object):
                     return False
             return True
 
-        self.make_local_dirs(local_path)
+        hdfs_files = []
+        local_files = []
 
-        all_files = self.ls(hdfs_path)
-
+        if isinstance(hdfs_path, list):
+            hdfs_files = hdfs_path
+            local_files = local_path
+        else:
+            hdfs_files = self.ls(hdfs_path)
+            local_files = [local_path] * len(hdfs_files)
         procs = []
         for i in range(multi_processes):
-            process_datas = HDFSClient.split_files(all_files, i,
-                                                   multi_processes)
+            slice_hdfs = HDFSClient.split_files(hdfs_files, i, multi_processes)
+            slice_local = HDFSClient.split_files(local_files, i,
+                                                 multi_processes)
             p = multiprocessing.Process(
-                target=__subprocess_download,
-                args=(
-                    local_path,
-                    process_datas, ))
+                target=__subprocess_download, args=(
+                    slice_local,
+                    slice_hdfs, ))
             procs.append(p)
             p.start()
 
@@ -487,13 +535,6 @@ class HDFSClient(object):
 
         _logger.info("Finish {} multi process to download datas".format(
             multi_processes))
-
-        local_downloads = []
-        for dirname, folder, files in os.walk(local_path):
-            for i in files:
-                t = os.path.join(dirname, i)
-                local_downloads.append(t)
-        return local_downloads
 
     def upload(self,
                hdfs_path,
@@ -557,7 +598,8 @@ class HDFSClient(object):
 
         if self.is_exist(hdfs_path) and overwrite:
             self.delete(hdfs_path)
-            self.makedirs(hdfs_path)
+
+        self.makedirs(hdfs_path)
 
         procs = []
         for i in range(multi_processes):
@@ -601,6 +643,85 @@ class HDFSClient(object):
                 local_dir, dest_dir))
             return False
         return True
+
+
+class AutoUpload2HDFS(object):
+    def __init__(self,
+                 trainer_id,
+                 hdfs_client,
+                 local_dir,
+                 hdfs_dir,
+                 model_regex,
+                 interval=60):
+        if isinstance(hdfs_client, HDFSClient):
+            raise TypeError("hdfs_client should be as HDFSClient type")
+
+        self.trainer_id = trainer_id
+        self.hdfs_client = hdfs_client
+        self.local_dir = local_dir
+        self.model_regex = model_regex
+        self.hdfs_dir = hdfs_dir
+        self.interval = interval
+
+    @staticmethod
+    def get_need_upload_files(base_dir, reg, trainer_id, already_uploads):
+        dataset = []
+
+        if not os.path.isdir(base_dir):
+            return dataset
+
+        for raw in os.listdir(base_dir):
+            full_raw = os.path.join(base_dir, raw)
+            if os.path.isfile(full_raw):
+                continue
+
+            matchs = re.match(reg, raw, re.M | re.I)
+            if matchs:
+                f = os.path.join(base_dir, raw)
+                f_tgz = os.path.join(base_dir, "{}.{}.tgz".format(trainer_id,
+                                                                  raw))
+
+                if f_tgz not in already_uploads:
+                    make_tarfile(f_tgz, f)
+                    dataset.append((f_tgz, raw))
+        return dataset
+
+    @staticmethod
+    def upload_threads(trainer_id, hdfs_client, local_dir, hdfs_dir,
+                       model_regex, interval):
+        already_uploads = []
+
+        if local_dir is None or hdfs_dir is None:
+            _logger.error("local dir: {} or hdfs dir: {} is None".format(
+                local_dir, hdfs_dir))
+            return
+
+        _logger.info(
+            "auto upload local dir to hdfs dir thread is running,\nlocal directory: {}\nlocal files regex: {}\n hdfs directory: {}\n".
+            format(local_dir, hdfs_dir, model_regex))
+
+        while True:
+            need_to_uploads = AutoUpload2HDFS.get_need_upload_files(
+                base_dir, upload_files_reg)
+
+            for need in need_to_uploads:
+                local_tar, dirname = need
+                hdfs_dir_for_upload = os.path.join(hdfs_dir, dirname)
+                hdfs_client.upload(hdfs_dir_for_upload, local_tar)
+                already_uploads.append(local_tar)
+
+            _logger.info("alreadey upload to hdfs {} are: {}".format(
+                hdfs_dir, already_uploads))
+
+            time.sleep(upload_interval)
+
+    def run(self):
+        upload_thread = threading.Thread(
+            target=AutoUpload2HDFS.upload_threads,
+            args=(self.trainer_id, self.hdfs_client, self.local_dir,
+                  self.hdfs_dir, self.model_regex, self.interval))
+        upload_thread.setDaemon(True)
+        upload_thread.start()
 
 
 if __name__ == "__main__":
