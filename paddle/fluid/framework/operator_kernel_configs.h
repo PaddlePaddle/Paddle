@@ -92,21 +92,23 @@ TAlgorithm framework::AlgorithmsCache<TAlgorithm>::GetAlgorithm(
   
   TAlgorithm ret;
   auto it = hash_.end();
-
+  bool have_found = false;
   {
     std::lock_guard<std::mutex> lock( cache_mutex);
     it = hash_.find( seed );
+
+    if ( it != hash_.end() )
+    {
+        ret = it->second;
+        have_found = true;
+    }
   }
 
-  if ( it == hash_.end() )
+  if ( ! have_found )
   {
     ret = gen_func();
     std::lock_guard<std::mutex> lock( cache_mutex);
     hash_[seed] = ret;
-  }
-  else
-  {
-    ret = it->second;
   }
 
   return ret;
@@ -116,22 +118,43 @@ template <typename TAlgorithm>
 TAlgorithm AlgorithmsCache<TAlgorithm>::GetAlgorithm(
     int64_t area, int search_times, int algorithmFlags,
     std::function<TAlgorithm()> gen_func) {
-  if (hash_.find(area) != hash_.end()) {
-    return hash_[area];
-  }
-  if (search_times_ < search_times) {
-    auto algo = gen_func();
-    hash_[area] = algo;
-    ++search_times_;
-    return algo;
-  }
-  TAlgorithm algo{};
-  int64_t min = static_cast<uint64_t>(INT_MAX);
-  for (const auto& m : hash_) {
-    if (m.first < min) {
-      min = m.first;
-      algo = m.second;
+  auto it = hash_.end();
+  {
+    std::lock_guard<std::mutex> lock( cache_mutex);
+    it = hash_.find( area );
+
+    if ( it != hash_.end()) {
+        return it->second;
     }
+  }
+    
+  bool gene_flag = false;
+
+  {
+      std::lock_guard<std::mutex> lock( cache_mutex);
+      gene_flag = (search_times_ < search_times);
+    
+  }
+
+  TAlgorithm algo{};
+  if (gene_flag)
+  {
+     algo = gen_func();
+     std::lock_guard<std::mutex> lock( cache_mutex);
+     hash_[area] = algo;
+     ++search_times_;
+     return algo;
+  }
+
+  int64_t min = static_cast<uint64_t>(INT_MAX);
+  {
+      std::lock_guard<std::mutex> lock( cache_mutex);
+    for (const auto& m : hash_) {
+        if (m.first < min) {
+          min = m.first;
+          algo = m.second;
+        }
+      }
   }
   return algo;
 }

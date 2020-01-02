@@ -92,9 +92,32 @@ std::ostream& operator<<(std::ostream& out, const std::vector<T>& v) {
 
 using framework::AlgorithmsCache;
 
-static framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t> global_forward_cache;
-static framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t> global_bwddata_cache;
-static framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t> global_bwdfilter_cache;
+class ConvSearchCache
+{
+    public:
+        static ConvSearchCache& Instance(){
+            static ConvSearchCache instance;
+            return instance;
+        }
+
+        framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t>* GetForward() { return &forward_cache_; }
+        framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>* GetBackwardData() { return &backward_data_cache_; }
+        framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>* GetBackwardFilter() { return &backward_filter_cache_; }
+        framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t>* GetConvFusion() { return &fusion_forward_cache_; }
+    private:
+        ConvSearchCache() {     }
+        ~ConvSearchCache() {}
+        ConvSearchCache( const ConvSearchCache& ){}
+        ConvSearchCache& operator=( const ConvSearchCache& ) {}
+        framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t> forward_cache_;
+        framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t> backward_data_cache_;
+        framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t> backward_filter_cache_;
+        framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t> fusion_forward_cache_;
+};
+
+//static framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t> global_forward_cache;
+//static framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t> global_bwddata_cache;
+//static framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t> global_bwdfilter_cache;
 
 struct ConvArgs {
   cudnnHandle_t handle;
@@ -193,7 +216,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
       auto& temp = ctx.cuda_device_context();
       //AlgorithmsCache<algo_t>& algo_cache = temp.GetKernelList<AlgorithmsCache<algo_t>>( ctx.Type(), 
       //        framework::DataLayout::kNCHW, algo_cache_id);
-      AlgorithmsCache<algo_t>& algo_cache = global_forward_cache;
+      AlgorithmsCache<algo_t>& algo_cache = *(ConvSearchCache::Instance().GetForward());
 
       auto x_dims = framework::vectorize(args.x->dims());
       auto w_dims = framework::vectorize(args.w->dims());
@@ -328,7 +351,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
           ctx.template device_context<platform::CUDADeviceContext>();
       auto workspace_handle = dev_ctx.cudnn_workspace_handle();
         
-      AlgorithmsCache<algo_t>& algo_cache = global_bwddata_cache;
+      AlgorithmsCache<algo_t>& algo_cache = *(ConvSearchCache::Instance().GetBackwardData());
       /*
       AlgorithmsCache<algo_t>& algo_cache =
           dev_ctx.GetKernelList<AlgorithmsCache<algo_t>>( ctx.Type(),
@@ -467,7 +490,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
                   framework::DataLayout::kNCHW,
                               algo_cache_id);
      */
-      AlgorithmsCache<algo_t>& algo_cache = global_bwdfilter_cache;
+      AlgorithmsCache<algo_t>& algo_cache = *(ConvSearchCache::Instance().GetBackwardFilter());
 
       auto x_dims = framework::vectorize(args.x->dims());
       auto w_dims = framework::vectorize(args.w->dims());

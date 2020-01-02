@@ -229,9 +229,9 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
         }
         return fwd_perf_stat[0].algo;
       };
-      /*
+      
       AlgorithmsCache<cudnnConvolutionFwdAlgo_t>& algo_cache =
-          ctx.GetKernelConfig<AlgorithmsCache<cudnnConvolutionFwdAlgo_t>>(0);
+          *(ConvSearchCache::Instance().GetConvFusion());
       int search_times = ctx.Attr<int>("search_times");
       search_times = std::max(
           static_cast<int>(FLAGS_cudnn_exhaustive_search_times), search_times);
@@ -243,10 +243,10 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
         algo = algo_cache.GetAlgorithm(x_dims[2] * x_dims[3], search_times, 0,
                                        search_func);
       } else {
+        auto dtype = platform::CudnnDataType<T>::type;
         algo = algo_cache.GetAlgorithm(x_dims, f_dims, strides, paddings,
-                                       dilations, 0, search_func);
+                                       dilations, 0, dtype, search_func);
       }
-      */
       VLOG(3) << "choose algo " << algo;
     }
 
