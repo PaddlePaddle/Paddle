@@ -259,7 +259,7 @@ class PostTrainingQuantization(object):
                     self._quantized_act_var_name.add(op.input("Input")[0])
                     self._quantized_weight_var_name.add(op.input("Filter")[0])
                     self._quantized_act_var_name.add(op.output("Output")[0])
-                elif op_type == "mul":
+                elif op_type in ["mul", "matmul"]:
                     x_var_name = op.input("X")[0]
                     if x_var_name in persistable_var_names:
                         self._quantized_weight_var_name.add(x_var_name)
