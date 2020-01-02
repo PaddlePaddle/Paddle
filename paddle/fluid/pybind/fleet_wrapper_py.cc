@@ -75,8 +75,8 @@ void BindFleetWrapper(py::module* m) {
       .def("copy_table", &framework::FleetWrapper::CopyTable)
       .def("copy_table_by_feasign",
            &framework::FleetWrapper::CopyTableByFeasign)
-      .def("run_server", (uint64_t (framework::FleetWrapper::*)(
-                             const std::string&, uint32_t)) &
+      .def("run_server", (uint64_t (framework::FleetWrapper::*)(  // NOLINT
+                             const std::string&, uint32_t)) &     // NOLINT
                              framework::FleetWrapper::RunServer);
 }  // end FleetWrapper
 }  // end namespace pybind
