@@ -152,7 +152,7 @@ class FleetWrapper {
   // run server
   uint64_t RunServer();
   // run server with ip port
-  uint64_t RunServerWithIPPort(std::string ip, uint32_t port);
+  uint64_t RunServer(const std::string& ip, uint32_t port);
   // gather server ip
   void GatherServers(const std::vector<uint64_t>& host_sign_list, int node_num);
   // gather client ip

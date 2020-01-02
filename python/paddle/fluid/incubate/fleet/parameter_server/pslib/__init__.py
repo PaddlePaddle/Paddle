@@ -169,7 +169,7 @@ class PSLib(Fleet):
             else:
                 local_endpoint = self._role_maker.get_local_endpoint()
                 local_endpoint = local_endpoint.split(":")
-                self._local_ip = self._fleet_ptr.run_server_with_ip_port(
+                self._local_ip = self._fleet_ptr.run_server(
                     str(local_endpoint[0]), int(local_endpoint[1]))
 
             # barrier_all for init_server

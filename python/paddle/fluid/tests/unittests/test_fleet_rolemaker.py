@@ -52,6 +52,40 @@ class TestCloudRoleMaker(unittest.TestCase):
         ro = role_maker.PaddleCloudRoleMaker(is_collective=False)
         self.assertRaises(ValueError, ro.generate_role)
 
+    def test_pslib_1(self):
+        import paddle.fluid as fluid
+        from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+        from paddle.fluid.incubate.fleet.parameter_server.pslib import PSLib
+        from paddle.fluid.incubate.fleet.base.role_maker import \
+            PaddleCloudGlooRoleMaker
+        os.environ["POD_IP"] = "127.0.0.1"
+        os.environ["PADDLE_PORT"] = "36001"
+        os.environ["TRAINING_ROLE"] = "TRAINER"
+        os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
+        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36002"
+        os.environ["PADDLE_TRAINER_ID"] = "0"
+        role_maker = PaddleCloudGlooRoleMaker("", "", "./test_gloo_1", "lo")
+        role_maker.generate_role()
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        fleet.init(exe, role_maker)
+
+        train_program = fluid.Program()
+        startup_program = fluid.Program()
+        scope = fluid.Scope()
+        with fluid.program_guard(train_program, startup_program):
+            show = fluid.layers.data(name="show", shape=[-1, 1], \
+                dtype="float32", lod_level=1, append_batch_size=False)
+            fc = fluid.layers.fc(input=show, size=1, act=None)
+            label = fluid.layers.data(name="click", shape=[-1, 1], \
+                dtype="int64", lod_level=1, append_batch_size=False)
+            label_cast = fluid.layers.cast(label, dtype='float32')
+            cost = fluid.layers.log_loss(fc, label_cast)
+        adam = fluid.optimizer.Adam(learning_rate=0.000005)
+        adam = fleet.distributed_optimizer(adam)
+        adam.minimize([cost], [scope])
+        fleet.run_server()
 
 if __name__ == "__main__":
     unittest.main()

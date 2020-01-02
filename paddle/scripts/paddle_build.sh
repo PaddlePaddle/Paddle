@@ -174,6 +174,10 @@ function cmake_base() {
     distibuted_flag=${WITH_DISTRIBUTE:-OFF}
     grpc_flag=${WITH_GRPC:-${distibuted_flag}}
 
+    if [ ${WITH_PSLIB:-OFF} == "ON" ] ; then
+        WITH_PSLIB_BRPC=ON
+    fi
+
     cat <<EOF
     ========================================
     Configuring cmake in /paddle/build ...
@@ -203,6 +207,9 @@ function cmake_base() {
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
         -DWITH_GRPC=${grpc_flag}
+        -DWITH_GLOO=${WITH_GLOO:-OFF}
+        -DWITH_PSLIB=${WITH_PSLIB:-OFF}
+        -DWITH_PSLIB_BRPC=${WITH_PSLIB_BRPC:-OFF}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -234,7 +241,10 @@ EOF
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
-        -DWITH_GRPC=${grpc_flag}
+        -DWITH_GRPC=${grpc_flag} \
+        -DWITH_GLOO=${WITH_GLOO:-OFF} \
+        -DWITH_PSLIB=${WITH_PSLIB:-OFF} \
+        -DWITH_PSLIB_BRPC=${WITH_PSLIB_BRPC:-OFF}
 
 }
 

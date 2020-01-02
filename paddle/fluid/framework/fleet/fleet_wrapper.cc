@@ -107,10 +107,10 @@ uint64_t FleetWrapper::RunServer() {
 #endif
 }
 
-uint64_t FleetWrapper::RunServerWithIPPort(std::string ip, uint32_t port) {
+uint64_t FleetWrapper::RunServer(const std::string& ip, uint32_t port) {
 #ifdef PADDLE_WITH_PSLIB
   VLOG(3) << "Going to run server with ip " << ip << " port " << port;
-  auto ret = pslib_ptr_->run_server_with_ip_port(ip, port);
+  auto ret = pslib_ptr_->run_server(ip, port);
   return ret;
 #else
   return 0;
