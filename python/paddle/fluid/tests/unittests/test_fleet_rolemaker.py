@@ -97,5 +97,6 @@ class TestCloudRoleMaker(unittest.TestCase):
         adam.minimize([cost], [scope])
         fleet.run_server()
 
+
 if __name__ == "__main__":
     unittest.main()

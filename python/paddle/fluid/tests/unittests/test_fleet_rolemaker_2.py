@@ -147,5 +147,6 @@ class TestCloudRoleMaker2(unittest.TestCase):
         role19._server_num()
         role19._server_num()
 
+
 if __name__ == "__main__":
     unittest.main()
