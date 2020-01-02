@@ -19,6 +19,7 @@ limitations under the License. */
 #include <map>
 #include <mutex>  // NOLINT
 #include <random>
+#include <stack>
 #include <string>
 #include <vector>
 
@@ -138,7 +139,7 @@ void PopEvent(const std::string &name) {
 
 RecordEvent::RecordEvent(const std::string &name)
     : is_enabled_(false), start_ns_(PosixInNsec()) {
-  if (g_state == ProfilerState::kDisabled) return;
+  if (g_state == ProfilerState::kDisabled || name.empty()) return;
   // lock is not needed, the code below is thread-safe
 
   is_enabled_ = true;
@@ -146,6 +147,7 @@ RecordEvent::RecordEvent(const std::string &name)
   Event *e = PushEvent(name_);
   // Maybe need the same push/pop behavior.
   SetCurAnnotation(e);
+  name_ = e->name();
 }
 
 RecordEvent::~RecordEvent() {
@@ -320,48 +322,72 @@ struct EventItem {
 
 // Print results
 void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
+                   const std::multimap<std::string, EventItem> &child_map,
                    const std::string &sorted_domain, const size_t name_width,
-                   const size_t data_width, bool merge_thread) {
-  // Output header information
-  std::cout << "\n------------------------->"
-            << "     Profiling Report     "
-            << "<-------------------------\n\n";
-  std::string place;
-  if (g_state == ProfilerState::kCPU) {
-    place = "CPU";
-  } else if (g_state == ProfilerState::kCUDA) {
-    place = "CUDA";
-  } else if (g_state == ProfilerState::kAll) {
-    place = "All";
-  } else {
-    PADDLE_THROW("Invalid profiler state", g_state);
+                   const size_t data_width, bool merge_thread, int print_depth,
+                   int remove_len) {
+  if (print_depth == 0) {
+    // Output header information
+    std::cout << "\n------------------------->"
+              << "     Profiling Report     "
+              << "<-------------------------\n\n";
+    std::string place;
+    if (g_state == ProfilerState::kCPU) {
+      place = "CPU";
+    } else if (g_state == ProfilerState::kCUDA) {
+      place = "CUDA";
+    } else if (g_state == ProfilerState::kAll) {
+      place = "All";
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Except profiler state must to be one of ['CPU', 'GPU' 'ALL'], but "
+          "received Invalid profiler state %s",
+          g_state));
+    }
+
+    if (merge_thread) {
+      std::cout << "Note! This Report merge all thread info into one."
+                << std::endl;
+    }
+    std::cout << "Place: " << place << std::endl;
+    std::cout << "Time unit: ms" << std::endl;
+    std::cout << "Sorted by " << sorted_domain
+              << " in descending order in the same thread\n\n";
+    // Output events table
+    std::cout.setf(std::ios::left);
+    std::cout << std::setw(name_width) << "Event" << std::setw(data_width)
+              << "Calls" << std::setw(data_width) << "Total";
+    if (g_state == ProfilerState::kAll) {
+      std::cout << std::setw(data_width * 2) << "CPU Time (Ratio)"
+                << std::setw(data_width * 2) << "GPU Time (Ratio)";
+    }
+    std::cout << std::setw(data_width) << "Min." << std::setw(data_width)
+              << "Max." << std::setw(data_width) << "Ave."
+              << std::setw(data_width) << "Ratio." << std::endl;
   }
 
-  if (merge_thread) {
-    std::cout << "Note! This Report merge all thread info into one."
-              << std::endl;
-  }
-  std::cout << "Place: " << place << std::endl;
-  std::cout << "Time unit: ms" << std::endl;
-  std::cout << "Sorted by " << sorted_domain
-            << " in descending order in the same thread\n\n";
-  // Output events table
-  std::cout.setf(std::ios::left);
-  std::cout << std::setw(name_width) << "Event" << std::setw(data_width)
-            << "Calls" << std::setw(data_width) << "Total";
-  if (g_state == ProfilerState::kAll) {
-    std::cout << std::setw(data_width * 2) << "CPU Time (Ratio)"
-              << std::setw(data_width * 2) << "GPU Time (Ratio)";
-  }
-  std::cout << std::setw(data_width) << "Min." << std::setw(data_width)
-            << "Max." << std::setw(data_width) << "Ave."
-            << std::setw(data_width) << "Ratio." << std::endl;
   for (size_t i = 0; i < events_table.size(); ++i) {
     for (size_t j = 0; j < events_table[i].size(); ++j) {
-      const EventItem &event_item = events_table[i][j];
-      std::cout << std::setw(name_width) << event_item.name
-                << std::setw(data_width) << event_item.calls
-                << std::setw(data_width) << event_item.total_time;
+      auto event_item = events_table[i][j];
+      std::vector<std::vector<EventItem>> child_table;
+      std::vector<EventItem> table;
+      for (auto it = child_map.begin(); it != child_map.end(); it++) {
+        if (it->first == event_item.name) {
+          table.push_back(it->second);
+        }
+      }
+      child_table.push_back(table);
+
+      auto name_len = event_item.name.length();
+      std::string print_name = event_item.name.substr(remove_len, name_len);
+      std::string delimiter;
+      for (int i = 0; i < print_depth; i++) {
+        delimiter = "  " + delimiter;
+      }
+      print_name = delimiter + print_name;
+      std::cout << std::setw(name_width) << print_name << std::setw(data_width)
+                << event_item.calls << std::setw(data_width)
+                << event_item.total_time;
       if (g_state == ProfilerState::kAll) {
         std::cout << std::setw(data_width * 2)
                   << string::Sprintf(
@@ -376,9 +402,10 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
                 << std::setw(data_width) << event_item.max_time
                 << std::setw(data_width) << event_item.ave_time
                 << std::setw(data_width) << event_item.ratio << std::endl;
+      PrintProfiler(child_table, child_map, sorted_domain, name_width,
+                    data_width, merge_thread, print_depth + 1, 0);
     }
   }
-  std::cout << std::endl;
 }
 
 // Parse the event list and output the profiling report
@@ -453,11 +480,14 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
   }
 
   std::vector<std::vector<EventItem>> events_table;
+  std::multimap<std::string, EventItem> child_map;
   size_t max_name_width = 0;
+
   for (size_t i = 0; i < (*analyze_events).size(); i++) {
     double total = 0.;  // the total time in one thread
     std::list<Event> pushed_events;
     std::vector<EventItem> event_items;
+    std::vector<EventItem> main_event_items;
     std::unordered_map<std::string, int> event_idx;
 
     for (size_t j = 0; j < (*analyze_events)[i].size(); j++) {
@@ -469,6 +499,7 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
                rit->name() != (*analyze_events)[i][j].name()) {
           ++rit;
         }
+        // to find the father name event name
 
         if (rit != pushed_events.rend()) {
           double event_time = 0;
@@ -481,8 +512,6 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
           } else {
             event_time = gpu_time + cpu_time;
           }
-
-          total += event_time;
 
           std::string event_name;
           if (merge_thread) {
@@ -524,17 +553,48 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
         }
       }
     }
+
+    auto table_size = event_items.size();
+    std::vector<int> child_index(table_size, 0);
+    for (size_t j = 0; j < table_size; ++j) {
+      std::string fname = event_items[j].name;
+      std::string grad_name = event_items[j].name + "_grad";
+      for (size_t k = 0; k < table_size; ++k) {
+        std::string cname = event_items[k].name;
+        if (cname.length() > fname.length() && cname.rfind(fname, 0) == 0 &&
+            !cname.rfind(grad_name, 0) == 0 &&
+            (cname[fname.length()] == '/' &&
+             cname.rfind('/') == fname.length())) {
+          child_map.insert(
+              std::pair<std::string, EventItem>(fname, event_items[k]));
+          child_index[k] = 1;
+        }
+      }
+    }
+
+    for (size_t j = 0; j < table_size; ++j) {
+      if (child_index[j] == 0) {
+        main_event_items.push_back(event_items[j]);
+        total += event_items[j].total_time;
+      }
+    }
+
     // average time
-    for (auto &item : event_items) {
+    for (auto &item : main_event_items) {
       item.ave_time = item.total_time / item.calls;
       item.ratio = item.total_time / total;
     }
-    // sort
-    if (sorted_by != EventSortingKey::kDefault) {
-      std::sort(event_items.begin(), event_items.end(), sorted_func);
+    for (auto it = child_map.begin(); it != child_map.end(); it++) {
+      it->second.ratio = it->second.total_time / total;
+      it->second.ave_time = it->second.ave_time / it->second.calls;
     }
 
-    events_table.push_back(event_items);
+    // sort
+    if (sorted_by != EventSortingKey::kDefault) {
+      std::sort(main_event_items.begin(), main_event_items.end(), sorted_func);
+    }
+
+    events_table.push_back(main_event_items);
     // log warning if there are events with `push` but without `pop`
     std::list<Event>::reverse_iterator rit = pushed_events.rbegin();
     while (rit != pushed_events.rend()) {
@@ -545,8 +605,8 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
   }
 
   // Print report
-  PrintProfiler(events_table, sorted_domain, max_name_width + 4, 12,
-                merge_thread);
+  PrintProfiler(events_table, child_map, sorted_domain, max_name_width + 8, 12,
+                merge_thread, 0, 0);
 }
 
 struct MemoryProfierReport {
@@ -627,6 +687,28 @@ void DisableProfiler(EventSortingKey sorted_key,
   }
 
   std::vector<std::vector<Event>> all_events = GetAllEvents();
+
+  std::vector<std::string> op_name;
+  for (size_t i = 0; i < (all_events).size(); i++) {
+    for (size_t j = 0; j < (all_events)[i].size(); j++) {
+      std::string event_name = (all_events)[i][j].name();
+      size_t start = event_name.find('%', 0);
+      size_t end = event_name.rfind('%', event_name.length() - 1);
+      if (start == std::string::npos || end == std::string::npos) continue;
+      std::string search_str = event_name.substr(start, end - start + 1);
+      auto it = find(op_name.begin(), op_name.end(), search_str);
+      std::string replace_str;
+      if (it != op_name.end()) {
+        replace_str = std::to_string(std::distance(op_name.begin(), it));
+      } else {
+        replace_str = std::to_string(op_name.size());
+        op_name.push_back(search_str);
+      }
+      event_name.replace(start, end - start + 1, replace_str);
+      (all_events)[i][j].set_name(event_name);
+    }
+  }
+
   ParseEvents(all_events, true, sorted_key);
   ParseEvents(all_events, false, sorted_key);
   if (VLOG_IS_ON(5)) {
