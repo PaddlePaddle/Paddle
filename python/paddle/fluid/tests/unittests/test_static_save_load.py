@@ -802,7 +802,7 @@ class TestLoadFromOldInterface(unittest.TestCase):
                     base_map[var.name] = t
 
             #fluid.save(main_program, "./test_1")
-            fluid.io.save_persistables(exe, "./test_path", main_program)
+            fluid.io.save_persistables(exe, "test_path", main_program)
 
             # set var to zero
             for var in main_program.list_vars():
@@ -815,7 +815,7 @@ class TestLoadFromOldInterface(unittest.TestCase):
                     # make sure all the paramerter or optimzier var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            fluid.load(main_program, "./test_path", exe)
+            fluid.load(main_program, "test_path", exe)
 
             for var in main_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
@@ -832,11 +832,11 @@ class TestLoadFromOldInterface(unittest.TestCase):
 
                     var.desc.set_shape(new_shape)
             with self.assertRaises(RuntimeError):
-                fluid.load(main_program, "./test_path", exe)
+                fluid.load(main_program, "test_path", exe)
 
             # check unused paramter
 
-            fluid.load(test_clone_program, "./test_path", exe)
+            fluid.load(test_clone_program, "test_path", exe)
 
 
 class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
@@ -919,7 +919,7 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
 
             #fluid.save(main_program, "./test_1")
             fluid.io.save_persistables(
-                exe, "./test_path", main_program, filename="model_single")
+                exe, "test_path", main_program, filename="model_single")
 
             # set var to zero
             for var in main_program.list_vars():
@@ -932,7 +932,8 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
                     # make sure all the paramerter or optimzier var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            fluid.load(main_program, "./test_path/model_single", exe,
+            file_model_path = os.path.join("test_path", "model_single")
+            fluid.load(main_program, file_model_path, exe,
                        fluid.io.get_program_persistable_vars(main_program))
 
             for var in main_program.list_vars():
@@ -953,23 +954,23 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
                     var.desc.set_shape(new_shape)
 
             with self.assertRaises(RuntimeError):
-                fluid.load(main_program, "./test_path/model_single", exe,
+                fluid.load(main_program, file_model_path, exe,
                            fluid.io.get_program_persistable_vars(main_program))
 
             fluid.io.save_params(
-                exe, "./test_path", main_program, filename="model_single")
+                exe, "test_path", main_program, filename="model_single")
             with self.assertRaises(RuntimeError):
-                fluid.load(main_program, "./test_path/model_single", exe,
+                fluid.load(main_program, file_model_path, exe,
                            fluid.io.get_program_persistable_vars(main_program))
 
             # check when executor is None
             with self.assertRaises(ValueError):
-                fluid.load(main_program, "./test_path/model_single", None,
+                fluid.load(main_program, file_model_path, None,
                            fluid.io.get_program_persistable_vars(main_program))
 
             # check when var list is None
             with self.assertRaises(ValueError):
-                fluid.load(main_program, "./test_path/model_single", exe, None)
+                fluid.load(main_program, file_model_path, exe, None)
 
             # check save params, load var_list = get_program_persistable_vars
             with self.assertRaises(RuntimeError):
@@ -978,7 +979,7 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
                     shape=[1],
                     name="test_temp_var")
                 all_var_list = list(main_program.list_vars())
-                fluid.load(main_program, "./test_path/model_single", exe,
+                fluid.load(main_program, file_model_path, exe,
                            all_var_list + [temp_var])
 
 
