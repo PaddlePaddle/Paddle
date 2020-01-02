@@ -1596,6 +1596,7 @@ def load(program, model_path, executor=None, var_list=None):
                 for f in files:
                     binary_file_set.add(os.path.join(root, f))
             program_var_list = list(program.list_vars())
+            print("set list", binary_file_set)
             loaded_var_list = []
             for var in program_var_list:
                 var_path = os.path.join(model_path, var.name)
