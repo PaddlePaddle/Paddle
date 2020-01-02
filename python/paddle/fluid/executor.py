@@ -217,7 +217,10 @@ def check_feed_shape_type(var, feed, num_places=1):
     """
     if var.desc.need_check_feed():
         feed_shape = feed.shape()
-        feed_shape[0] = feed_shape[0] / num_places
+        if six.PY2:
+            feed_shape[0] = long(feed_shape[0] / num_places)
+        else:
+            feed_shape[0] = int(feed_shape[0] / num_places)
         if not dimension_is_compatible_with(feed_shape, var.shape):
             raise ValueError(
                 'The feeded Variable %r should have dimensions = %d, shape = '
