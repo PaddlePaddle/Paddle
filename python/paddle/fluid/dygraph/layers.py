@@ -26,6 +26,7 @@ from .base import program_desc_tracing_guard
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
 import copy
+import warnings
 
 __all__ = ['Layer']
 
@@ -411,7 +412,7 @@ class Layer(core.Layer):
                     "Parameter not found, Can't not find [ {} ] in stat_dict"
                     "use_structured_name is set to [{}]".format(
                         key_name, use_structured_name))
-        unused_para_list = {}
+        unused_para_list = []
         for k, v in stat_dict.items():
             if k not in inner_state_dict:
                 unused_para_list.append(k)
