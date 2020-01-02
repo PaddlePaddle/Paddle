@@ -39,7 +39,7 @@ class TestCommunicator(unittest.TestCase):
         avg_cost = fluid.layers.mean(cost)
         return avg_cost
 
-    def test_communicator_init_and_start(self):
+    def test_communicator_async(self):
         role = role_maker.UserDefinedRoleMaker(
             current_id=0,
             role=role_maker.Role.WORKER,
@@ -54,6 +54,30 @@ class TestCommunicator(unittest.TestCase):
         strategy = DistributeTranspilerConfig()
         strategy.sync_mode = False
         strategy.runtime_split_send_recv = True
+        strategy.wait_port = False
+        optimizer = fleet.distributed_optimizer(optimizer, strategy)
+        optimizer.minimize(avg_cost)
+
+        fleet.init_worker()
+        time.sleep(10)
+        fleet.stop_worker()
+
+    def test_communicator_geo(self):
+        role = role_maker.UserDefinedRoleMaker(
+            current_id=0,
+            role=role_maker.Role.WORKER,
+            worker_num=2,
+            server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"])
+
+        fleet.init(role)
+        avg_cost = self.net()
+
+        optimizer = fluid.optimizer.SGD(0.01)
+
+        strategy = DistributeTranspilerConfig()
+        strategy.sync_mode = False
+        strategy.runtime_split_send_recv = True
+        strategy.geo_sgd_mode = True
         strategy.wait_port = False
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
