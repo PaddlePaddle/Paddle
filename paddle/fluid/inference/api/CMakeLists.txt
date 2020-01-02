@@ -18,8 +18,7 @@ if(APPLE)
 endif(APPLE)
 
 set(inference_deps ${analysis_deps}
-  paddle_inference_api paddle_fluid_api
-  analysis pass naive_executor
+  paddle_inference_api analysis naive_executor
   ${GLOB_PASS_LIB})
 
 if(WITH_GPU AND TENSORRT_FOUND)
@@ -40,6 +39,7 @@ if(WITH_MKLDNN)
   set(mkldnn_quantizer_src mkldnn_quantizer.cc)
   set(mkldnn_quantizer_cfg mkldnn_quantizer_config)
   cc_library(${mkldnn_quantizer_cfg} SRCS mkldnn_quantizer_config.cc DEPS lod_tensor paddle_pass_builder)
+  set(mkldnn_quantizer_cfg ${mkldnn_quantizer_cfg} PARENT_SCOPE)
 endif()
 
 cc_library(analysis_config SRCS analysis_config.cc DEPS ${mkldnn_quantizer_cfg} lod_tensor paddle_pass_builder)
@@ -48,12 +48,13 @@ if(WITH_NGRAPH)
 else(WITH_NGRAPH)
   cc_library(paddle_pass_builder SRCS paddle_pass_builder.cc)
 endif(WITH_NGRAPH)
-cc_library(analysis_predictor SRCS analysis_predictor.cc ${mkldnn_quantizer_src} DEPS paddle_inference_api zero_copy_tensor
-  reset_tensor_array analysis_config paddle_pass_builder ir_pass_manager op_compatible_info ${inference_deps})
+
 cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS
-           lod_tensor scope paddle_pass_builder reset_tensor_array analysis_config
-           paddle_pass_builder zero_copy_tensor
-           reset_tensor_array)
+           lod_tensor scope reset_tensor_array analysis_config 
+           zero_copy_tensor trainer_desc_proto)
+
+cc_library(analysis_predictor SRCS analysis_predictor.cc ${mkldnn_quantizer_src} DEPS ${inference_deps} 
+          zero_copy_tensor ir_pass_manager op_compatible_info)
 
 cc_test(test_paddle_inference_api SRCS api_tester.cc DEPS paddle_inference_api)
 

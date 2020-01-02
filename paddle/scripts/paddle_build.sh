@@ -181,6 +181,7 @@ function cmake_base() {
         ${PYTHON_FLAGS}
         -DWITH_DSO=ON
         -DWITH_GPU=${WITH_GPU:-OFF}
+        -DWITH_STATIC_LIB=${WITH_STATIC_LIB:OFF}
         -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF}
         -DWITH_DISTRIBUTE=${distibuted_flag}
         -DWITH_MKL=${WITH_MKL:-ON}
@@ -213,6 +214,7 @@ EOF
         ${PYTHON_FLAGS} \
         -DWITH_DSO=ON \
         -DWITH_GPU=${WITH_GPU:-OFF} \
+        -DWITH_STATIC_LIB=${WITH_STATIC_LIB:OFF} \
         -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF} \
         -DWITH_DISTRIBUTE=${distibuted_flag} \
         -DWITH_MKL=${WITH_MKL:-ON} \
@@ -1041,7 +1043,7 @@ EOF
     if [[ "$1" != "" ]]; then
       parallel_number=$1
     fi
-    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto} -DCUDA_ARCH_BIN=${CUDA_ARCH_BIN}
+    cmake .. -DWITH_DISTRIBUTE=OFF -DON_INFER=ON -DWITH_STATIC_LIB=${WITH_STATIC_LIB} -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto} -DCUDA_ARCH_BIN=${CUDA_ARCH_BIN}
 
     make -j ${parallel_number} fluid_lib_dist
     make -j ${parallel_number} inference_lib_dist
