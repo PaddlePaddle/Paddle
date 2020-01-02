@@ -221,12 +221,12 @@ class GPUPRROIPoolOpKernel : public framework::OpKernel<T> {
         rois_batch_id_list.mutable_data<int>(platform::CPUPlace());
 
     if (ctx.HasInput("BatchRoINums") || rois->lod().empty()) {
-      auto* BatchIndex = ctx.Input<Tensor>("BatchRoINums");
+      auto* batchroinum = ctx.Input<Tensor>("BatchRoINums");
       framework::Tensor batch_index_cpu;
-      framework::TensorCopy(*BatchIndex, platform::CPUPlace(),
-                            &batch_index_cpu);
+      framework::TensorCopySync(*batchroinum, platform::CPUPlace(),
+                                &batch_index_cpu);
 
-      int rois_batch_size = BatchIndex->dims()[0];
+      int rois_batch_size = batchroinum->dims()[0];
       auto* batch_index = batch_index_cpu.data<int64_t>();
       size_t c = 0;
       for (int n = 0; n < rois_batch_size; ++n) {
@@ -308,12 +308,12 @@ class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
           rois_batch_id_list.mutable_data<int>(platform::CPUPlace());
 
       if (ctx.HasInput("BatchRoINums") || rois->lod().empty()) {
-        auto* BatchIndex = ctx.Input<Tensor>("BatchRoINums");
+        auto* batchroinum = ctx.Input<Tensor>("BatchRoINums");
         framework::Tensor batch_index_cpu;
-        framework::TensorCopy(*BatchIndex, platform::CPUPlace(),
+        framework::TensorCopy(*batchroinum, platform::CPUPlace(),
                               &batch_index_cpu);
 
-        int rois_batch_size = BatchIndex->dims()[0];
+        int rois_batch_size = batchroinum->dims()[0];
         auto* batch_index = batch_index_cpu.data<int64_t>();
         size_t c = 0;
         for (int n = 0; n < rois_batch_size; ++n) {

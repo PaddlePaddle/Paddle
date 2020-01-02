@@ -280,9 +280,9 @@ class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
     int* rois_batch_id_data =
         rois_batch_id_list.mutable_data<int>(ctx.GetPlace());
     if (ctx.HasInput("BatchRoINums") || rois->lod().empty()) {
-      auto* BatchIndex = ctx.Input<framework::Tensor>("BatchRoINums");
-      auto* batch_index = BatchIndex->data<int64_t>();
-      int rois_batch_size = BatchIndex->dims()[0];
+      auto* batchroinum = ctx.Input<framework::Tensor>("BatchRoINums");
+      auto* batch_index = batchroinum->data<int64_t>();
+      int rois_batch_size = batchroinum->dims()[0];
       size_t c = 0;
       for (int n = 0; n < rois_batch_size; ++n) {
         for (int64_t k = 0; k < batch_index[n]; ++k) {
@@ -420,9 +420,9 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
       int* rois_batch_id_data =
           rois_batch_id_list.mutable_data<int>(ctx.GetPlace());
       if (ctx.HasInput("BatchRoINums") || rois->lod().empty()) {
-        auto* BatchIndex = ctx.Input<framework::Tensor>("BatchRoINums");
-        auto* batch_index = BatchIndex->data<int64_t>();
-        int rois_batch_size = BatchIndex->dims()[0];
+        auto* batchroinum = ctx.Input<framework::Tensor>("BatchRoINums");
+        auto* batch_index = batchroinum->data<int64_t>();
+        int rois_batch_size = batchroinum->dims()[0];
         size_t c = 0;
         for (int n = 0; n < rois_batch_size; ++n) {
           for (int64_t k = 0; k < batch_index[n]; ++k) {
@@ -447,9 +447,9 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
       T* input_roi_grad_data = input_roi_grad->mutable_data<T>(ctx.GetPlace());
 
       // set gradient of X to be 0. before backpropagate.
-      math::SetConstant<DeviceContext, T> set_zero;
-      set_zero(ctx.template device_context<DeviceContext>(), input_grad,
-               static_cast<T>(0));
+      // math::SetConstant<DeviceContext, T> set_zero;
+      // set_zero(ctx.template device_context<DeviceContext>(), input_grad,
+      //         static_cast<T>(0));
 
       // backpropagate gradient per output pixel
       int output_grad_size = output_grad->numel();
