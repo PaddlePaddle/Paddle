@@ -67,9 +67,19 @@ class FleetDistRunnerBase(object):
 
     def build_strategy(self, args):
         strategy = DistributeTranspilerConfig()
-        strategy.sync_mode = args.sync_mode
-        strategy.geo_sgd_mode = args.geo_sgd_mode
-        strategy.geo_sgd_need_push_nums = args.geo_sgd_need_push_nums
+
+        if args.sync_mode == AsyncMode.SYNC:
+            strategy.sync_mode = args.sync_mode
+        elif args.sync_mode == AsyncMode.HALF_ASYNC:
+            strategy.sync_mode = False
+            strategy.runtime_split_send_recv = True
+        elif args.sync_mode == AsyncMode.GEO_SGD:
+            strategy.sync_mode = False
+            strategy.runtime_split_send_recv = True
+            strategy.geo_sgd_mode = True
+            strategy.geo_sgd_need_push_nums = args.geo_sgd_need_push_nums
+        else:
+            strategy = None
         return strategy
 
     def build_optimizer(self, loss, strategy):
