@@ -26,6 +26,7 @@ from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program
 from ..dygraph import base
+from ..dygraph import dygraph_utils
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
 from .tensor import concat, assign, fill_constant, zeros
@@ -187,28 +188,6 @@ __all__ = [
 
 
 @dygraph_only
-def _append_activation_in_dygraph(input,
-                                  act=None,
-                                  use_cudnn=False,
-                                  use_mkldnn=False):
-    """Append activation in dygraph mode.
-
-        Args:
-            input: the input variable. 
-            act: activation type
-            use_mkldnn: if use mkldnn
-            use_cudnn: if use cudnn
-
-    Return the Variable after append activation
-    """
-    attrs = {'use_cudnn': use_cudnn, 'use_mkldnn': use_mkldnn}
-    inputs = {"X": [input]}
-    act_op = getattr(core.ops, act)
-    res = act_op(inputs, attrs)
-    return res['Out'][0]
-
-
-@dygraph_only
 def _elementwise_op_in_dygraph(x,
                                y,
                                axis=-1,
@@ -219,13 +198,10 @@ def _elementwise_op_in_dygraph(x,
     inputs = {'X': [x], 'Y': [y]}
     op = getattr(core.ops, op_name)
     outs = op(inputs, attrs)
-    pre_act = outs['Out'][0]
+    out = outs['Out'][0]
 
-    if not act:
-        return pre_act
-    else:
-        return _append_activation_in_dygraph(
-            pre_act, act, use_mkldnn=use_mkldnn)
+    return dygraph_utils._append_activation_in_dygraph(
+        out, act, use_mkldnn=use_mkldnn)
 
 
 def fc(input,
@@ -2485,6 +2461,7 @@ def batch_norm(input,
     Note:
         if build_strategy.sync_batch_norm=True, the batch_norm in network will use 
         sync_batch_norm automatically.
+        `is_test = True` can only be used in test program and inference program, `is_test` CANNOT be set to True in train program, if you want to use global status from pre_train model in train program, please set `use_global_stats = True`.
 
     Args:
         input(Variable): The rank of input variable can be 2, 3, 4, 5. The data type 
@@ -4736,15 +4713,23 @@ def topk(input, k, name=None):
             vk_values, vk_indices = layers.topk(input2, k=vk) #vk_values.shape=[None, 13, k], vk_indices.shape=[None, 13, k]
 
     """
+    inputs = {"X": [input]}
+    attrs = {}
+    if isinstance(k, Variable):
+        inputs['K'] = [k]
+    else:
+        attrs = {'k': k}
+
+    if in_dygraph_mode():
+        outs = core.ops.top_k(inputs, attrs)
+        outs['Out'][0].stop_gradient = True
+        outs['Indices'][0].stop_gradient = True
+        return outs['Out'][0], outs['Indices'][0]
+
     helper = LayerHelper("top_k", **locals())
     values = helper.create_variable_for_type_inference(dtype=input.dtype)
     indices = helper.create_variable_for_type_inference(dtype="int64")
-    inputs = {"X": [input]}
-    attrs = None
-    if isinstance(k, Variable):
-        inputs['K'] = k
-    else:
-        attrs = {'k': k}
+
     helper.append_op(
         type="top_k",
         inputs=inputs,
@@ -5594,11 +5579,8 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
 
         inputs = {'X': [x]}
         outs = core.ops.reshape2(inputs, attrs)
-        pre_act = outs['Out'][0]
-        if act is None:
-            return pre_act
-        else:
-            return _append_activation_in_dygraph(pre_act, act)
+        out = outs['Out'][0]
+        return dygraph_utils._append_activation_in_dygraph(out, act)
 
     check_type_and_dtype(x, 'x', Variable,
                          ['float16', 'float32', 'float64', 'int32', 'int64'],
@@ -7683,7 +7665,7 @@ def scatter_nd_add(ref, index, updates, name=None):
             output = [[67, 19], [-16, -27]]
 
     Args:
-        ref (Variable): The ref input. Its dtype should be int32, int64, float32, float64.
+        ref (Variable): The ref input. Its dtype should be float32, float64.
         index (Variable): The index input with rank > 1 and index.shape[-1] <= ref.rank.
                           Its dtype should be int32 or int64 as it is used as indexes.
         updates (Variable): The updated value of scatter_nd_add op, and it must have the same dtype
@@ -7740,7 +7722,7 @@ def scatter_nd(index, updates, shape, name=None):
     Args:
         index (Variable): The index input with rank > 1 and index.shape[-1] <= len(shape).
                           Its dtype should be int32 or int64 as it is used as indexes.
-        updates (Variable): The updated value of scatter_nd op. Its dtype should be int32, int64, float32, float64.
+        updates (Variable): The updated value of scatter_nd op. Its dtype should be float32, float64.
                             It must have the shape index.shape[:-1] + shape[index.shape[-1]:]
         shape(tuple|list): Shape of output tensor.
         name (str|None): The output variable name. If set None, the layer will be named automatically.
@@ -11333,6 +11315,10 @@ def mean(x, name=None):
                 name='data', shape=[2, 3], dtype='float32')
             mean = fluid.layers.mean(input)
     """
+    if in_dygraph_mode():
+        inputs = {"X": [x]}
+        outs = core.ops.mean(inputs)
+        return outs['Out'][0]
 
     helper = LayerHelper("mean", **locals())
     check_type_and_dtype(x, 'x', Variable, ['float16', 'float32', 'float64'],
