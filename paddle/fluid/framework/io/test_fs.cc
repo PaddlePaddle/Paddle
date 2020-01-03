@@ -12,22 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gtest/gtest.h>
 #include <fstream>
-#include <iostream>
 #include "paddle/fluid/framework/io/fs.h"
-#include "paddle/fluid/framework/io/shell.h"
 
-namespace framework = paddle::framework;
-
-TEST(FS, mv) {
-  std::ofstream out("src.txt");
+int main() {
+  ofstream out("src.txt");
   out.close();
-  framework::fs_mv("src.txt", "dest.txt");
-  framework::hdfs_mv("", "");
+  paddle::framwork::fs_mv("src.txt", "dest.txt");
+  paddle::framwork::hdfs_mv("", "");
+  paddle::framwork::local_mv("", "");
   try {
-    framework::hdfs_mv("afs:/none", "afs:/none");
-  } catch (...) {
-    VLOG(3) << "test hdfs_mv, catch errors";
+    paddle::framwork::hdfs_mv("afs:/none", "afs:/none");
+  } catch {
+    VLOG(3) << "test hdfs_mv, catch expected errors of unknown path";
   }
+  try {
+    paddle::framwork::hdfs_mv("unknown:/none", "unknown:/none");
+  } catch {
+    VLOG(3) << "test hdfs_mv, catch expected errors of unknown prefix";
+  }
+  return 0;
 }
