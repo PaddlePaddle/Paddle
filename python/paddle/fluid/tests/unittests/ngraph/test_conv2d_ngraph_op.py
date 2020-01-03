@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest, sys
 sys.path.append("../")
 from test_conv2d_op import TestConv2dOp, TestWithPad, TestWithStride, TestWithGroup, TestWith1x1, TestWithInput1x1Filter1x1, TestDepthwiseConv, TestDepthwiseConv2, TestDepthwiseConv3, TestDepthwiseConvWithDilation, TestDepthwiseConvWithDilation2
+import numpy as np
 
 
 class TestNGRAPHDepthwiseConv(TestDepthwiseConv):
