@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <fstream>
 #include <gtest/gtest.h>
+#include <fstream>
 #include "paddle/fluid/framework/io/fs.h"
 
 #if defined _WIN32 || defined __APPLE__
