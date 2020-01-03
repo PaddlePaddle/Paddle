@@ -301,6 +301,16 @@ class SliceOpDoubleGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Input"), true,
         platform::errors::InvalidArgument("Input of slice should not be null"));
+    auto x_dims = ctx->GetInputDim("Input");
+    auto x_grad_name = "DInput";
+    if (ctx->HasOutput(x_grad_name)) {
+      ctx->SetOutputDim(x_grad_name, x_dims);
+    }
+    auto out_dims = ctx->GetInputDim("Out");
+    auto out_grad_grad_name = "DDOut";
+    if (ctx->HasOutput(out_grad_grad_name)) {
+      ctx->SetOutputDim(out_grad_grad_name, out_dims);
+    }
   }
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
@@ -345,12 +355,14 @@ class SliceOpDoubleGradMaker : public framework::SingleGradOpMaker<T> {
     }
 
     bind->SetInput("Out", this->Input("Out"));
+    bind->SetInput("DOut", this->Input(framework::GradVarName("Out")));
 
     bind->SetInput("DDInput",
                    this->OutputGrad(framework::GradVarName("Input")));
     bind->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
 
     bind->SetAttrMap(this->Attrs());
+    bind->SetOutput("DInput", this->InputGrad("Input"));
     bind->SetType("slice_grad_grad");
     return std::unique_ptr<T>(bind);
   }

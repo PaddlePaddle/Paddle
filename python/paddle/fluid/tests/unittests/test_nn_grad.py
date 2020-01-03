@@ -48,9 +48,9 @@ class TestSliceOpDoubleGradCheck(unittest.TestCase):
         self.op_type = "slice"
         self.config()
 
-        x_arr = np.random.random([3, 4, 5, 6]).astype("float64")
+        x_arr = np.random.random([3, 4]).astype("float64")
         inputs = layers.create_parameter(
-            dtype="float64", shape=[3, 4, 5, 6], name='x')
+            dtype="float64", shape=[3, 4], name='x')
 
         out = fluid.layers.slice(
             inputs, axes=self.axes, starts=self.starts, ends=self.ends)
@@ -59,9 +59,9 @@ class TestSliceOpDoubleGradCheck(unittest.TestCase):
             [inputs], out, x_init=x_arr, place=place)
 
     def config(self):
-        self.starts = [1, 0, 2]
-        self.ends = [3, 3, 4]
-        self.axes = [0, 1, 2]
+        self.starts = [1, 0]
+        self.ends = [3, 3]
+        self.axes = [0, 1]
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
