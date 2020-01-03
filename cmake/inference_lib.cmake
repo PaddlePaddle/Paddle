@@ -85,12 +85,6 @@ function(copy_part_of_thrid_party TARGET DST)
     if(WITH_MKLDNN)
         set(dst_dir "${DST}/third_party/install/mkldnn")
         if(WIN32)
-            execute_process(COMMAND dumpbin "/exports ${MKLDNN_INSTALL_DIR}/bin/mkldnn.dll > ${MKLDNN_INSTALL_DIR}/bin/exports.txt")
-            execute_process(COMMAND echo "LIBRARY MKLDNN > ${MKLDNN_INSTALL_DIR}/bin/mkldnn.def")
-            execute_process(COMMAND echo "EXPORTS >> ${MKLDNN_INSTALL_DIR}/bin/mkldnn.def")
-            execute_process(COMMAND "for /f "skip=19 tokens=4" %A in (${MKLDNN_INSTALL_DIR}/bin/exports.txt) do echo %A >> ${MKLDNN_INSTALL_DIR}/bin/mkldnn.def")
-            execute_process(COMMAND lib "/def:${MKLDNN_INSTALL_DIR}/bin/mkldnn.def /out:${MKLDNN_INSTALL_DIR}/bin/mkldnn.lib /machine:x86")
-            set(MKLDNN_LIB_OLD "${MKLDNN_INSTALL_DIR}/bin/mkldnn.lib")
             copy(${TARGET}
                     SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB} ${MKLDNN_SHARED_LIB_1} ${MKLDNN_LIB} ${MKLDNN_LIB_OLD}
                     DSTS ${dst_dir} ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}/lib)
