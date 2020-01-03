@@ -28,8 +28,8 @@ class TestMulOp(OpTest):
         self.dtype = np.float64
         self.init_dtype_type()
         self.inputs = {
-            'X': np.random.random((2, 5)).astype(self.dtype),
-            'Y': np.random.random((5, 3)).astype(self.dtype)
+            'X': np.random.random((2, 100)).astype(self.dtype),
+            'Y': np.random.random((100, 3)).astype(self.dtype)
         }
         self.outputs = {'Out': np.dot(self.inputs['X'], self.inputs['Y'])}
 
@@ -117,7 +117,7 @@ class TestFP16MulOp1(TestMulOp):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
             self.check_grad_with_place(
-                place, ['X', 'Y'], 'Out', max_relative_error=0.5)
+                place, ['X', 'Y'], 'Out', max_relative_error=1.0)
 
     def test_check_grad_ingore_x(self):
         place = core.CUDAPlace(0)
@@ -125,7 +125,7 @@ class TestFP16MulOp1(TestMulOp):
             self.check_grad_with_place(
                 place, ['Y'],
                 'Out',
-                max_relative_error=0.5,
+                max_relative_error=1.0,
                 no_grad_set=set("X"))
 
     def test_check_grad_ingore_y(self):
@@ -134,7 +134,7 @@ class TestFP16MulOp1(TestMulOp):
             self.check_grad_with_place(
                 place, ['X'],
                 'Out',
-                max_relative_error=0.5,
+                max_relative_error=1.0,
                 no_grad_set=set('Y'))
 
 
