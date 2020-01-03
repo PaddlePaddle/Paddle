@@ -20,7 +20,7 @@ int main() {
   out.close();
   paddle::framework::fs_mv("src.txt", "dest.txt");
   paddle::framework::hdfs_mv("", "");
-  paddle::framework::local_mv("", "");
+  paddle::framework::localfs_mv("", "");
   try {
     paddle::framework::hdfs_mv("afs:/none", "afs:/none");
   } catch {
