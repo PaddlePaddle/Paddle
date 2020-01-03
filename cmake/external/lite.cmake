@@ -22,21 +22,23 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   # No quotes, so cmake can resolve it as a command with arguments.
   set(LITE_BUILD_COMMAND $(MAKE) -j)
   set(LITE_OPTIONAL_ARGS -DWITH_MKL=ON
-                         -DWITH_GPU=OFF
-                         -DWITH_MKLDNN=ON
+                         -DLITE_WITH_CUDA=${WITH_GPU}
+                         -DWITH_MKLDNN=OFF
                          -DLITE_WITH_X86=ON
                          -DLITE_WITH_PROFILE=OFF
-                         -DWITH_LITE=ON
+                         -DWITH_LITE=OFF
                          -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=OFF
                          -DWITH_PYTHON=OFF
                          -DWITH_TESTING=ON
+                         -DLITE_BUILD_EXTRA=ON
+                         -DCUDNN_ROOT=${CUDNN_ROOT}
                          -DLITE_WITH_ARM=OFF)
 
   ExternalProject_Add(
       ${LITE_PROJECT}
       ${EXTERNAL_PROJECT_LOG_ARGS}
       GIT_REPOSITORY      "https://github.com/PaddlePaddle/Paddle-Lite.git"
-      GIT_TAG             "v2.0.0"
+      GIT_TAG             a1527e8088694c4edae1d4a2014535d21fb0b4bb
       PREFIX              ${LITE_SOURCES_DIR}
       UPDATE_COMMAND      ""
       BUILD_COMMAND       ${LITE_BUILD_COMMAND}
