@@ -90,6 +90,7 @@ class TestStrategyFactor(unittest.TestCase):
         # test set_trainer_runtime_config using TrainerRuntimeConfig
         trainer_runtime_config_class = TrainerRuntimeConfig()
         trainer_runtime_config_class.send_queue_size = 50
+        print(trainer_runtime_config_class)
         strategy.set_trainer_runtime_config(trainer_runtime_config_class)
         trainer_runtime_config = strategy.get_trainer_runtime_config()
         self.assertEqual(trainer_runtime_config.send_queue_size, 50)
