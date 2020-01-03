@@ -280,6 +280,42 @@ class Optimizer(object):
                 value=float(self._learning_rate),
                 dtype='float32' if self._dtype is None else self._dtype,
                 persistable=True)
+    
+    @framework.dygraph_only
+    def current_step_lr(self):
+        """
+        Get current step learning rate. The return value is all the same When LearningRateDecay is not used,
+        otherwise return the step learning rate.
+
+        Args: None
+        Return:
+            learing_rate(float) : The learning rate of the current step.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                with fluid.dygraph.guard():
+                    adam = fluid.optimizer.Adam(0.001)
+                    lr = adam.current_step_lr
+
+        """
+        current_lr = self._global_learning_rate()
+        if current_lr:
+            return self._global_learning_rate().numpy()[0]
+        
+        if isinstance(self._learning_rate,(float, int)):
+            return self._learning_rate
+        elif isinstance(self._learning_rate, LearningRateDecay):
+            step_lr = self._learning_rate.step()
+            if isinstance( step_lr, (float, int)):
+                return step_lr
+            else:
+                return step_lr.numpy()[0]
+        else:
+            raise TypeError( "Learning rate type not support, should be one of [ int, float, LearningRateDecay]")
+
+
 
     def _global_learning_rate(self, program=None):
         """

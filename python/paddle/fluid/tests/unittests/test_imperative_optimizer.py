@@ -312,5 +312,77 @@ class TestImperativeOptimizerNoamDecay(TestImperativeOptimizerBase):
         self._check_mlp()
 
 
+class TestOptimizerLearningRate(unittest.TestCase):
+    def test_constant_lr(self):
+        with fluid.dygraph.guard():
+            a = np.random.uniform( -0.1, 0.1, [10, 10]).astype("float32")
+
+            linear = fluid.dygraph.nn.Linear( 10, 10)
+
+            a = fluid.dygraph.to_variable( a )
+            
+            b = linear(a )
+
+            loss = fluid.layers.reduce_mean( b )
+            
+            adam = fluid.optimizer.Adam(0.001, parameter_list=linear.parameters() )
+            
+            for i in range(10):
+                adam.minimize( loss )
+                lr = adam.current_step_lr()
+                
+                self.assertTrue( np.allclose( lr, 0.001, rtol=1e-06, atol=0.0) )
+                #self.assertTrue( lr == 0.001 )
+
+    def test_lr_decay(self):
+        with fluid.dygraph.guard():
+            a = np.random.uniform( -0.1, 0.1, [10, 10]).astype("float32")
+
+            linear = fluid.dygraph.nn.Linear( 10, 10)
+
+            a = fluid.dygraph.to_variable( a )
+            
+            b = linear(a )
+
+            loss = fluid.layers.reduce_mean( b )
+            
+            bd = [ 2, 4, 6, 8 ]
+            value = [ 0.2, 0.4, 0.6, 0.8, 1.0]
+
+            adam = fluid.optimizer.Adam(fluid.dygraph.PiecewiseDecay( bd, value, 0), parameter_list=linear.parameters() )
+    
+            ret = [ 0.2, 0.2, 0.4, 0.4, 0.6, 0.6, 0.8, 0.8, 1.0, 1.0, 1.0, 1.0]
+            for i in range(12):
+                adam.minimize( loss )
+                lr = adam.current_step_lr()
+                
+                self.assertTrue( np.allclose( lr, ret[i], rtol=1e-06, atol=0.0) )
+                #self.assertTrue( lr == ret[i] )
+
+    def test_lr_decay_natural_exp(self):
+        with fluid.dygraph.guard():
+            a = np.random.uniform( -0.1, 0.1, [10, 10]).astype("float32")
+
+            linear = fluid.dygraph.nn.Linear( 10, 10)
+
+            a = fluid.dygraph.to_variable( a )
+            
+            b = linear(a )
+
+            loss = fluid.layers.reduce_mean( b )
+            base_lr = 1.0
+
+            adam = fluid.optimizer.Adam( fluid.dygraph.NaturalExpDecay( learning_rate=base_lr, decay_steps=3, decay_rate=0.5, staircase=True),  parameter_list=linear.parameters() )
+            
+            self.assertTrue( np.allclose( adam.current_step_lr(), 1.0, rtol=1e-06, atol=0.0))
+
+            ret = [ 1.0, 1.0, 1.0, np.exp(-0.5), np.exp(-0.5)]
+            for i in range(5):
+                adam.minimize( loss )
+                lr = adam.current_step_lr()
+                
+                self.assertTrue( np.allclose( lr, ret[i], rtol=1e-06, atol=0.0) )
+                #self.assertTrue( lr == ret[i] )
+
 if __name__ == '__main__':
     unittest.main()
