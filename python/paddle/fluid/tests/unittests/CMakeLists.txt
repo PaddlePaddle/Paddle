@@ -77,9 +77,6 @@ if(NOT WITH_MKL OR NOT WITH_AVX)
 endif()
 if(WITH_COVERAGE OR NOT WITH_AVX OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_pyramid_hash_op)
-endif()
-
-if(NOT WITH_AVX OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_dist_fleet_pyramid_hash)
 endif()
 
