@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.contrib.utils import HDFSClient
+from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
 import os
 
 
