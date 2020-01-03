@@ -241,5 +241,22 @@ for dim in [4]:
                 'transpose_Y': transpose_Y,
             })
 
+
+class BigShapeTestCase(Generator):
+    def setUp(self):
+        self.op_type = "matmul"
+        self.transpose_X = False
+        self.transpose_Y = False
+        X = np.random.random([100, 103]).astype("float32")
+        Y = np.random.random([103, 102]).astype("float32")
+        Out = reference_matmul(X, Y, self.transpose_X, self.transpose_Y)
+        self.inputs = {'X': X, 'Y': Y}
+        self.attrs = {
+            'transpose_X': self.transpose_X,
+            'transpose_Y': self.transpose_Y
+        }
+        self.outputs = {'Out': Out}
+
+
 if __name__ == "__main__":
     unittest.main()
