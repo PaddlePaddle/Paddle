@@ -20,7 +20,6 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 #include <vector>
-#include "boost/optional.hpp"
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/executor.h"
@@ -914,7 +913,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   // To reduce the elapsed time of HasAttr, we use bool variable to record the
   // result of HasAttr.
-  boost::optional<platform::RecordEvent> event(Type());
   if (!enable_cache_runtime_context_ && HasAttr(kEnableCacheRuntimeContext))
     enable_cache_runtime_context_ = true;
   if (!all_kernels_must_compute_runtime_shape_ &&
@@ -922,7 +920,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     all_kernels_must_compute_runtime_shape_ = true;
   if (!enable_cache_runtime_context_) {
     RuntimeContext ctx(Inputs(), Outputs(), scope);
-    event = boost::none;
     RunImpl(scope, place, &ctx);
   } else {
     const Scope* cur_scope = &scope;
@@ -933,7 +930,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         pre_scope_ = cur_scope;
       }
     }
-    event = boost::none;
     RunImpl(scope, place, runtime_ctx_.get());
   }
 }
@@ -941,7 +937,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place,
                                  RuntimeContext* runtime_ctx) const {
-  boost::optional<platform::RecordEvent> event_before(Type());
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
@@ -977,7 +972,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     GetThreadLocalUsedVarNameSet()->clear();
   }
 
-  event_before = boost::none;
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
   {

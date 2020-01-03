@@ -32,6 +32,7 @@ namespace ir {
 void FuseBatchNormActPass::ApplyImpl(ir::Graph *graph) const {
 #ifdef PADDLE_WITH_CUDA
 #if CUDNN_VERSION_MIN(7, 4, 1)
+  // forward
   std::unordered_set<std::string> act_types = {"relu"};
   graph = FuseBatchNormAct(graph, act_types);
   // backward
@@ -217,7 +218,7 @@ ir::Graph *FuseBatchNormActPass::FuseBatchNormActGrad(
     desc.SetType("fused_batch_norm_act_grad");
     desc.SetInput("X", {bn_x_n});
     desc.SetInput("Y", std::vector<std::string>({act_out_n}));
-    desc.SetOutput(GradVarName("Y"), std::vector<std::string>({d_act_out_n}));
+    desc.SetInput(GradVarName("Y"), std::vector<std::string>({d_act_out_n}));
     desc.SetInput("Scale", std::vector<std::string>({bn_scale_n}));
     desc.SetInput("Bias", std::vector<std::string>({bn_bias_n}));
     desc.SetInput("SavedMean", std::vector<std::string>({bn_saved_mean_n}));

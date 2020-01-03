@@ -1135,7 +1135,7 @@ PDNode *patterns::BatchNormActGrad::operator()(
       pattern->NewNode(d_itermediate_out_repr())
           ->assert_is_ops_output(act_grad_types, GradVarName("X"))
           ->assert_has_n_outputs(1);
-  auto *bn_x_var = pattern->NewNode(bn_scale_repr())
+  auto *bn_x_var = pattern->NewNode(bn_x_repr())
                        ->assert_is_op_input("batch_norm_grad", "X")
                        ->assert_var_dtype(proto::VarType::FP16);
   auto *bn_scale_var = pattern->NewNode(bn_scale_repr())
@@ -1144,13 +1144,15 @@ PDNode *patterns::BatchNormActGrad::operator()(
                           ->assert_is_op_input("batch_norm_grad", "Bias");
   auto *bn_saved_mean_var =
       pattern->NewNode(bn_saved_mean_repr())
-          ->assert_is_op_output("batch_norm_grad", "SavedMean");
+          ->assert_is_op_input("batch_norm_grad", "SavedMean");
   auto *bn_saved_variance_var =
       pattern->NewNode(bn_saved_variance_repr())
-          ->assert_is_op_output("batch_norm_grad", "SavedVariance");
+          ->assert_is_op_input("batch_norm_grad", "SavedVariance");
+  // ReserveSpace as the output is equal to:
+  // data_layout == 'NHWC' && FLAGS_cudnn_batchnorm_spatial_persistent == true
   auto *bn_reserve_space =
       pattern->NewNode(bn_reserve_space_repr())
-          ->assert_is_op_output("batch_norm_grad", "ReserveSpace");
+          ->assert_is_op_input("batch_norm_grad", "ReserveSpace");
   auto *d_bn_x_var =
       pattern->NewNode(d_bn_x_repr())
           ->assert_is_not_ctrl_var()
