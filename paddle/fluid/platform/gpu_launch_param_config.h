@@ -27,28 +27,15 @@
 namespace paddle {
 namespace platform {
 
-#define CUDA_1D_KERNEL_LOOP(i, n)                              \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
-
 inline int DivUp(int a, int b) { return (a + b - 1) / b; }
 
-struct Gpu1DLaunchParamConfig {
-  // Theory number of thread that works on each element.
-  int theory_thread_count = -1;
-  // Number of threads per block.
-  int thread_per_block = -1;
-  // Number of blocks for GPU kernel launch.
-  int block_per_grid = -1;
-};
-
-struct Gpu2DLaunchParamConfig {
+struct GpuLaunchParamConfig {
   dim3 theory_thread_count = dim3(0, 0, 0);
   dim3 thread_per_block = dim3(0, 0, 0);
   dim3 block_per_grid = dim3(0, 0, 0);
 };
 
-inline Gpu1DLaunchParamConfig Get1DGpuLaunchConfig(
+inline GpuLaunchParamConfig GetGpuLaunchConfig1D(
     const platform::CUDADeviceContext& context, int element_count) {
   PADDLE_ENFORCE_GT(element_count, 0, platform::errors::InvalidArgument(
                                           "element count should greater than 0,"
@@ -71,14 +58,14 @@ inline Gpu1DLaunchParamConfig Get1DGpuLaunchConfig(
   const int block_count =
       std::min(DivUp(physical_thread_count, thread_per_block), factor * sm);
 
-  Gpu1DLaunchParamConfig config;
-  config.theory_thread_count = theory_thread_count;
-  config.thread_per_block = thread_per_block;
-  config.block_per_grid = block_count;
+  GpuLaunchParamConfig config;
+  config.theory_thread_count.x = theory_thread_count;
+  config.thread_per_block.x = thread_per_block;
+  config.block_per_grid.x = block_count;
   return config;
 }
 
-inline Gpu2DLaunchParamConfig Get2DGpuLaunchConfig(
+inline GpuLaunchParamConfig GetGpuLaunchConfig2D(
     const platform::CUDADeviceContext& context, int xdim, int ydim) {
   PADDLE_ENFORCE_GT(xdim, 0, platform::errors::InvalidArgument(
                                  "x dim number should greater than 0,"
@@ -96,7 +83,7 @@ inline Gpu2DLaunchParamConfig Get2DGpuLaunchConfig(
   int max_physical_threads = context.GetMaxPhysicalThreadCount();
   const int max_blocks = std::max(max_physical_threads / kThreadsPerBlock, 1);
 
-  Gpu2DLaunchParamConfig config;
+  GpuLaunchParamConfig config;
   // Noticed, block size is not align to 32, if needed do it yourself.
   config.theory_thread_count = dim3(xdim, ydim, 1);
   config.thread_per_block = dim3(block_cols, block_rows, 1);

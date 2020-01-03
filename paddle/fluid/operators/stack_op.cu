@@ -77,7 +77,7 @@ class StackGPUKernel : public framework::OpKernel<T> {
     x_col = x[0]->numel() / x_row;
     int out_col = x_col * n;
 
-    auto config = Get2DGpuLaunchConfig(dev_ctx, out_col, x_row);
+    auto config = GetGpuLaunchConfig2D(dev_ctx, out_col, x_row);
 
     if (y->numel() < std::numeric_limits<int32_t>::max()) {
       StackCUDAKernel<T,
@@ -167,17 +167,17 @@ class StackGradGPUKernel : public framework::OpKernel<T> {
                  reinterpret_cast<void*>(outputs.data()),
                  outputs.size() * sizeof(T*), dev_ctx.stream());
 
-    auto config = Get1DGpuLaunchConfig(dev_ctx, dy_pre * split_dim * dy_suf);
+    auto config = GetGpuLaunchConfig1D(dev_ctx, dy_pre * split_dim * dy_suf);
 
     if (dy->numel() < std::numeric_limits<int32_t>::max()) {
       UnStackCUDAKernel<
-          T, int32_t><<<config.block_per_grid, config.thread_per_block, 0,
+          T, int32_t><<<config.block_per_grid.x, config.thread_per_block.x, 0,
                         dev_ctx.stream()>>>(
           dy_data, dy_pre, split_dim, dy_suf, split_dim,
           reinterpret_cast<T**>(tmp_out_data->ptr()));
     } else {
       UnStackCUDAKernel<
-          T, int64_t><<<config.block_per_grid, config.thread_per_block, 0,
+          T, int64_t><<<config.block_per_grid.x, config.thread_per_block.x, 0,
                         dev_ctx.stream()>>>(
           dy_data, dy_pre, split_dim, dy_suf, split_dim,
           reinterpret_cast<T**>(tmp_out_data->ptr()));
