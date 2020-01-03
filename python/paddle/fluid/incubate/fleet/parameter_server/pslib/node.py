@@ -421,9 +421,11 @@ class DownpourWorker(Worker):
                 keys = table.slot_key
                 key_names = [var.name for var in sorted_slot_key_vars]
                 for key_name in key_names:
+                    print("expected keys: ", keys)
+                    print("actual keys: ", key_names)
                     if key_name not in keys:
-                        raise ValueError("sparse table %s slot_key error" %
-                                         table_id)
+                        raise ValueError("sparse table %s slot_key %s error" %
+                                         table_id, key_name)
                 target_table = table
                 break
 
