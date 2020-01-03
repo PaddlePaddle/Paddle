@@ -58,6 +58,9 @@ class Tracer {
                const NameVarBaseMap& outs, framework::AttributeMap attrs,
                const platform::Place& place, bool trace_bacward);
 
+  void TraceOp(const std::string& type, const NameVarBaseMap& ins,
+               const NameVarBaseMap& outs, framework::AttributeMap attrs);
+
   bool ComputeRequiredGrad(const NameVarBaseMap& ins,
                            const NameVarBaseMap& outs, bool trace_backward);
 

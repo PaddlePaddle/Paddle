@@ -156,7 +156,6 @@ class PtbModel(fluid.Layer):
             init_scale=init_scale,
             dropout=dropout)
         self.embedding = Embedding(
-            self.full_name(),
             size=[vocab_size, hidden_size],
             dtype='float32',
             is_sparse=False,
@@ -234,8 +233,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
-            adam = Adam(learning_rate=fluid.layers.piecewise_decay(
-                boundaries=bd, values=lr_arr))
+            adam = Adam(
+                learning_rate=fluid.layers.piecewise_decay(
+                    boundaries=bd, values=lr_arr),
+                parameter_list=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -315,8 +316,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
-            adam = Adam(learning_rate=fluid.layers.piecewise_decay(
-                boundaries=bd, values=lr_arr))
+            adam = Adam(
+                learning_rate=fluid.layers.piecewise_decay(
+                    boundaries=bd, values=lr_arr),
+                parameter_list=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -419,8 +422,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
-            adam = Adam(learning_rate=fluid.layers.piecewise_decay(
-                boundaries=bd, values=lr_arr))
+            adam = Adam(
+                learning_rate=fluid.layers.piecewise_decay(
+                    boundaries=bd, values=lr_arr),
+                parameter_list=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -522,8 +527,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
-            adam = Adam(learning_rate=fluid.layers.piecewise_decay(
-                boundaries=bd, values=lr_arr))
+            adam = Adam(
+                learning_rate=fluid.layers.piecewise_decay(
+                    boundaries=bd, values=lr_arr),
+                parameter_list=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -634,7 +641,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 learning_rate=fluid.layers.piecewise_decay(
                     boundaries=bd, values=lr_arr),
                 beta1=0.8,
-                beta2=0.6)
+                beta2=0.6,
+                parameter_list=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -725,7 +733,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 learning_rate=fluid.layers.piecewise_decay(
                     boundaries=bd, values=lr_arr),
                 beta1=0.8,
-                beta2=0.6)
+                beta2=0.6,
+                parameter_list=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -817,7 +826,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 learning_rate=fluid.layers.piecewise_decay(
                     boundaries=bd, values=lr_arr),
                 beta1=0.8,
-                beta2=0.6)
+                beta2=0.6,
+                parameter_list=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -882,7 +892,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
     def testOnlyLoadParams(self):
         with fluid.dygraph.guard():
-            emb = fluid.dygraph.Embedding("emb", [10, 10])
+            emb = fluid.dygraph.Embedding([10, 10])
             state_dict = emb.state_dict()
             fluid.save_dygraph(state_dict, "emb_dy")
 

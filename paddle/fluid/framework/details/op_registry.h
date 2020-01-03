@@ -170,8 +170,8 @@ struct OpInfoFiller<T, kOperator> {
           platform::errors::AlreadyExists(
               "Duplicate InferShapeFN of %s has been registered", op_type));
 
-      auto* op =
-          dynamic_cast<OperatorWithKernel*>(info->creator_("", {}, {}, {}));
+      OperatorWithKernel* op = dynamic_cast<OperatorWithKernel*>(info->creator_(
+          std::string{}, VariableNameMap{}, VariableNameMap{}, AttributeMap{}));
       PADDLE_ENFORCE_NOT_NULL(op, platform::errors::InvalidArgument(
                                       "%s should have kernels", op_type));
       info->infer_shape_ = [op](InferShapeContext* ctx) {
@@ -221,7 +221,15 @@ struct OpInfoFiller<T, kGradOpDescMaker> {
 
     info->use_default_grad_op_desc_maker_ =
         std::is_base_of<DefaultGradOpMaker<OpDesc, true>, T>::value ||
-        std::is_base_of<DefaultGradOpMaker<OpDesc, false>, T>::value;
+        std::is_base_of<DefaultGradOpMaker<OpDesc, false>, T>::value ||
+        std::is_base_of<DefaultGradOpMaker<imperative::OpBase, true>,
+                        T>::value ||
+        std::is_base_of<DefaultGradOpMaker<imperative::OpBase, false>,
+                        T>::value;
+
+    info->use_empty_grad_op_desc_maker_ =
+        std::is_base_of<EmptyGradOpMaker<OpDesc>, T>::value ||
+        std::is_base_of<EmptyGradOpMaker<imperative::OpBase>, T>::value;
   }
 };
 

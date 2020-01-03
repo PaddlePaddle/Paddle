@@ -58,7 +58,7 @@ framework::OpDesc* CreateFusionGroupOp(
     const std::vector<std::vector<int64_t>>& input_shapes,
     const std::vector<std::string>& output_names, int type,
     std::string func_name) {
-  PADDLE_ENFORCE_EQ(input_names.size(), input_shapes.size());
+  EXPECT_EQ(input_names.size(), input_shapes.size());
 
   for (size_t i = 0; i < input_names.size(); ++i) {
     auto* var = program->MutableBlock(0)->Var(input_names[i]);
@@ -122,7 +122,7 @@ void CheckOutputs(framework::Scope* scope,
     int64_t length = cpu_outputs[j].numel();
     LOG(INFO) << "Check the " << j << "th output...";
     for (int64_t i = 0; i < length; ++i) {
-      PADDLE_ENFORCE_LT(fabs(dev_ptr[i] - cpu_ptr[i]), 1.E-05);
+      EXPECT_NEAR(dev_ptr[i], cpu_ptr[i], 1.E-05);
     }
   }
 }

@@ -25,7 +25,7 @@ class TestUnsqueezeOp(OpTest):
     def setUp(self):
         self.init_test_case()
         self.op_type = "unsqueeze"
-        self.inputs = {"X": np.random.random(self.ori_shape).astype("float32")}
+        self.inputs = {"X": np.random.random(self.ori_shape).astype("float64")}
         self.init_attrs()
         self.outputs = {"Out": self.inputs["X"].reshape(self.new_shape)}
 
@@ -36,9 +36,9 @@ class TestUnsqueezeOp(OpTest):
         self.check_grad(["X"], "Out")
 
     def init_test_case(self):
-        self.ori_shape = (3, 5)
+        self.ori_shape = (3, 40)
         self.axes = (1, 2)
-        self.new_shape = (3, 1, 1, 5)
+        self.new_shape = (3, 1, 1, 40)
 
     def init_attrs(self):
         self.attrs = {"axes": self.axes}

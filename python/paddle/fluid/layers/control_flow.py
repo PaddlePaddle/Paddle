@@ -829,7 +829,7 @@ class While(object):
 
     Args:
         cond(Variable): A Tensor whose data type is bool controlling whether to continue looping.
-        is_test(bool, optional): A flag indicating whether execution is in test phase. Default value is None.
+        is_test(bool, optional): A flag indicating whether execution is in test phase. Default value is False.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
     Examples:
@@ -919,7 +919,7 @@ class While(object):
                    "is_test": self.is_test})
 
 
-def while_loop(cond, body, loop_vars, name=None):
+def while_loop(cond, body, loop_vars, is_test=False, name=None):
     """
     while_loop is one of the control flows. Repeats while_loop `body` until `cond` returns False.
 
@@ -928,6 +928,7 @@ def while_loop(cond, body, loop_vars, name=None):
         body(Callable): A callable returning a tuple or list of tensors of the same arity (length and structure)
             and types as ``loops_vars`` .
         loop_vars(list|tuple): A list or tuple of tensors that is passed to both ``cond`` and ``body`` .
+        is_test(bool, optional): A flag indicating whether execution is in test phase. Default value is False.
         name(str, optional): Normally there is no need for users to set this property. For more information, please
             refer to :ref:`api_guide_Name`. Default is None.
     
@@ -991,7 +992,7 @@ def while_loop(cond, body, loop_vars, name=None):
             "the shape of the variable returned by cond should be [],"
             "but given shape as {0}.".format(list(pre_cond.shape)))
 
-    while_loop_block = While(pre_cond)
+    while_loop_block = While(pre_cond, is_test, name)
     with while_loop_block.block():
         output_vars = body(*loop_vars)
         if len(loop_vars) == 1:
@@ -1851,24 +1852,45 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
     list of tensors.
     
     Note: 
-        The tuples or lists in ``true_fn`` and ``false_fn`` must have same
-        shape because of dataflow model of PaddlePaddle while the tensors in the
-        tuples or the lists can have different shapes.
+        1. The tuples or lists returned by ``true_fn`` and ``false_fn`` must have
+        the same shape because of dataflow model of PaddlePaddle while the
+        tensors in the tuples or the lists can have different shapes.
+
+        2. Any tensors or operations created outside of ``true_fn`` and
+        ``false_fn`` will be executed regardless of which branch is selected at
+        runtime. This has frequently surprised users who expected a lazy
+        semantics. For example:
+
+        .. code-block:: python
+        
+            import paddle.fluid as fluid
+            a = fluid.data(name='a', shape=[-1, 1], dtype='float32')
+            b = fluid.data(name='b', shape=[-1, 1], dtype='float32')
+            c = a * b
+            out = fluid.layers.cond(a < b, lambda: a + c, lambda: b * b)
+
+        No matter whether ``a < b`` , ``c = a * b`` will run.
 
     Args:
         pred(Variable): A boolean tensor whose numel should be 1. The boolean
             value determines whether to return the result of ``true_fn`` or
-            ``false_fn``
-        true_fn(callable): A callable to be performed if ``pred`` is true
-        false_fn(callable): A callable to be performed if ``pred`` is false
-        name(str, optional): The default value is ``None``. Normally users
+            ``false_fn`` .
+        true_fn(callable, optional): A callable to be performed if ``pred`` is
+            true. The default value is ``None`` .
+        false_fn(callable, optional): A callable to be performed if ``pred`` is
+            false. The default value is ``None`` .
+        name(str, optional): The default value is ``None`` . Normally users
              don't have to set this parameter. For more information, please
-             refer to :ref:`api_guide_Name`.
+             refer to :ref:`api_guide_Name` .
+
+    Returns:
+        Variable|list(Variable)|tuple(Variable): returns ``true_fn()`` if the
+        predicate ``pred`` is true else ``false_fn()`` .
 
     Raises:
         TypeError: if ``true_fn`` or ``false_fn`` is not callable.
-        ValueError: if ``true_fn`` and ``false_fn`` doesn't return the same
-            nest structure of tensors.
+        ValueError: if ``true_fn`` and ``false_fn`` don't return the same nest
+            structure of tensors.
 
     Examples:
         .. code-block:: python

@@ -29,7 +29,8 @@ void DeviceCodePool::Set(std::unique_ptr<DeviceCode>&& code) {
 
   auto iter = device_codes_.find(place);
   if (iter == device_codes_.end()) {
-    PADDLE_THROW("Place %s is not supported.", place);
+    PADDLE_THROW(platform::errors::NotFound(
+        "Place %s is not supported for runtime compiling.", place));
   }
 
   auto& codes_map = iter->second;
@@ -40,21 +41,26 @@ platform::DeviceCode* DeviceCodePool::Get(const platform::Place& place,
                                           const std::string& name) {
   auto iter = device_codes_.find(place);
   if (iter == device_codes_.end()) {
-    PADDLE_THROW("Place %s is not supported.", place);
+    PADDLE_THROW(platform::errors::NotFound(
+        "Place %s is not supported for runtime compiling.", place));
   }
 
   auto& codes_map = iter->second;
   auto code_iter = codes_map.find(name);
   if (code_iter == codes_map.end()) {
-    PADDLE_THROW("There is not a device code named %s for place %s.",
-                 name.c_str(), place);
+    PADDLE_THROW(platform::errors::NotFound(
+        "Device code named %s for place %s does not exist.", name.c_str(),
+        place));
   }
 
   return code_iter->second.get();
 }
 
 DeviceCodePool::DeviceCodePool(const std::vector<platform::Place>& places) {
-  PADDLE_ENFORCE_GT(places.size(), 0);
+  PADDLE_ENFORCE_GT(
+      places.size(), 0,
+      errors::InvalidArgument(
+          "Expected the number of places >= 1. Expected %d.", places.size()));
   // Remove the duplicated places
   std::set<Place> set;
   for (auto& p : places) {
@@ -65,9 +71,8 @@ DeviceCodePool::DeviceCodePool(const std::vector<platform::Place>& places) {
 #ifdef PADDLE_WITH_CUDA
       device_codes_.emplace(p, DeviceCodeMap());
 #else
-      PADDLE_THROW(
-          "'CUDAPlace' is not supported, Please re-compile with WITH_GPU "
-          "option");
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "CUDAPlace is not supported, please re-compile with WITH_GPU=ON."));
 #endif
     }
   }
@@ -77,7 +82,8 @@ DeviceCodePool::DeviceCodePool(const std::vector<platform::Place>& places) {
 CUDADeviceCode::CUDADeviceCode(const Place& place, const std::string& name,
                                const std::string& kernel) {
   if (!is_gpu_place(place)) {
-    PADDLE_THROW("CUDADeviceCode can only launch on GPU place.");
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "CUDADeviceCode can only launch on GPU place."));
   }
 
   place_ = place;
@@ -170,7 +176,10 @@ bool CUDADeviceCode::Compile() {
 }
 
 void CUDADeviceCode::Launch(const size_t n, std::vector<void*>* args) const {
-  PADDLE_ENFORCE_EQ(is_compiled_, true, "Please compile the code first.");
+  PADDLE_ENFORCE_EQ(
+      is_compiled_, true,
+      errors::PreconditionNotMet(
+          "Please compile the code before launching the kernel."));
 
   int max_blocks = std::max(max_threads_ / num_threads_, 1);
   int workload_per_block = workload_per_thread_ * num_threads_;
@@ -187,8 +196,9 @@ void CUDADeviceCode::Launch(const size_t n, std::vector<void*>* args) const {
                               dev_ctx->stream(),            // stream
                               args->data(),                 // arguments
                               nullptr),
-      CUDA_SUCCESS, "Fail to launch kernel %s (in cuLaunchKernel.)",
-      name_.c_str());
+      CUDA_SUCCESS,
+      errors::External("Fail to launch kernel %s (in cuLaunchKernel.)",
+                       name_.c_str()));
 }
 
 bool CUDADeviceCode::CheckNVRTCResult(nvrtcResult result,

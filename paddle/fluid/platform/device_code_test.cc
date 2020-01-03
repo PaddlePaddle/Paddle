@@ -68,7 +68,7 @@ TEST(DeviceCode, cuda) {
   TensorCopySync(cpu_x, place, &x);
   TensorCopySync(cpu_y, place, &y);
 
-  PADDLE_ENFORCE_EQ(code.Compile(), true, "Compiling of device code failed.");
+  EXPECT_EQ(code.Compile(), true);
 
   std::vector<void*> args = {&scale, &x_data, &y_data, &z_data, &n};
   code.SetNumThreads(1024);
@@ -80,8 +80,7 @@ TEST(DeviceCode, cuda) {
 
   TensorCopySync(z, paddle::platform::CPUPlace(), &cpu_z);
   for (size_t i = 0; i < n; i++) {
-    PADDLE_ENFORCE_EQ(cpu_z.data<float>()[i],
-                      static_cast<float>(i) * scale + 0.5);
+    EXPECT_EQ(cpu_z.data<float>()[i], static_cast<float>(i) * scale + 0.5);
   }
 }
 
@@ -96,14 +95,14 @@ TEST(DeviceCodePool, cuda) {
   paddle::platform::DeviceCodePool& pool =
       paddle::platform::DeviceCodePool::Init({place});
   size_t num_device_codes_before = pool.size(place);
-  PADDLE_ENFORCE_EQ(num_device_codes_before, 0UL);
+  EXPECT_EQ(num_device_codes_before, 0UL);
 
   std::unique_ptr<paddle::platform::DeviceCode> code(
       new paddle::platform::CUDADeviceCode(place, "saxpy_kernel", saxpy_code));
   LOG(INFO) << "origin ptr: " << code.get();
   pool.Set(std::move(code));
   size_t num_device_codes_after = pool.size(place);
-  PADDLE_ENFORCE_EQ(num_device_codes_after, 1UL);
+  EXPECT_EQ(num_device_codes_after, 1UL);
 
   paddle::platform::DeviceCode* code_get = pool.Get(place, "saxpy_kernel");
   LOG(INFO) << "get ptr: " << code_get;
