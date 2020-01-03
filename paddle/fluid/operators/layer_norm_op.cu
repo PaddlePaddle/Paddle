@@ -438,11 +438,9 @@ void LayerNormDirectCUDAFunctor<T>::operator()(cudaStream_t stream,
                                                T *output, T *mean, T *variance,
                                                int begin_norm_axis, float eps) {
   const auto x_dims = framework::make_ddim(input_shape);
-
   auto matrix_dim = framework::flatten_to_2d(x_dims, begin_norm_axis);
   int batch_size = static_cast<int>(matrix_dim[0]);
   int feature_size = static_cast<int>(matrix_dim[1]);
-
   switch (GetDesiredBlockDim(feature_size)) {
     FIXED_BLOCK_DIM_CASE(
         LayerNormForward<T, kBlockDim><<<batch_size, kBlockDim, 0, stream>>>(

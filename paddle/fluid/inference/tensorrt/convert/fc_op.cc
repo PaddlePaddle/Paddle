@@ -192,15 +192,12 @@ class FcOpConverter : public OpConverter {
       reshape_layer->setReshapeDimensions(reshape_dim);
       reshape_itensor = reshape_layer->getOutput(0);
     }
-
-    // execute FC
     auto* fc_layer =
         TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *reshape_itensor,
                              n_output, tmp_weight.get(), bias.get());
 
     engine_->SetWeights(op_desc.Input(w_name).front(), std::move(tmp));
     auto output_name = op_desc.Output("Out").front();
-
     if (activation_type == "relu") {
       nvinfer1::IActivationLayer* relu_layer =
           TRT_ENGINE_ADD_LAYER(engine_, Activation, *(fc_layer->getOutput(0)),

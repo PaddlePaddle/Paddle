@@ -44,7 +44,6 @@ nvinfer1::Dims GeluPlugin::getOutputDimensions(int index,
 template <typename T, unsigned TPB>
 __global__ void geluKernel(const T a, int n, const T* input, T* output) {
   const int idx = blockIdx.x * TPB + threadIdx.x;
-
   if (idx < n) {
     const T in = input[idx];
     const T cdf = 0.5 * (1.0 + erf(in * 0.5 * a));
@@ -57,7 +56,6 @@ int computeGelu(cudaStream_t stream, int n, const float* input, float* output) {
   const int gridSize = (n + blockSize - 1) / blockSize;
   geluKernel<float, blockSize><<<gridSize, blockSize, 0, stream>>>(A, n, input,
                                                                    output);
-
   cudaError_t error = cudaGetLastError();
   if (error != cudaSuccess) LOG(ERROR) << cudaGetErrorString(error);
   return 0;
@@ -66,11 +64,9 @@ int computeGelu(cudaStream_t stream, int n, const float* input, float* output) {
 int GeluPlugin::enqueue(int batchSize, const void* const* inputs,
                         void** outputs, void*, cudaStream_t stream) {
   int status = -1;
-
   const float* input = static_cast<const float*>(inputs[0]);
   float* output = static_cast<float*>(outputs[0]);
   status = computeGelu(stream, input_volume_ * batchSize, input, output);
-
   return status;
 }
 

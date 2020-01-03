@@ -50,7 +50,6 @@ int LayerNormPlugin::enqueue(int batch_size, const void *const *inputs,
   float *output = reinterpret_cast<float **>(outputs)[0];
   int begin_norm_axis = begin_norm_axis_;
   float eps = eps_;
-
   int c = input_dims.d[begin_norm_axis - 1];
 
   scale_t.Resize(framework::make_ddim({c}));
@@ -64,22 +63,18 @@ int LayerNormPlugin::enqueue(int batch_size, const void *const *inputs,
   float *mean_d = mean_t.mutable_data<float>(platform::CUDAPlace(device_id));
   float *variance_d =
       variance_t.mutable_data<float>(platform::CUDAPlace(device_id));
-
   cudaMemcpyAsync(scale_d, scale_.data(), sizeof(float) * c,
                   cudaMemcpyHostToDevice, stream);
   cudaMemcpyAsync(bias_d, bias_.data(), sizeof(float) * c,
                   cudaMemcpyHostToDevice, stream);
-
   std::vector<int> input_shape;
   input_shape.push_back(batch_size);
   for (int i = 0; i < input_dims.nbDims; i++) {
     input_shape.push_back(input_dims.d[i]);
   }
-
   paddle::operators::LayerNormDirectCUDAFunctor<float> layer_norm;
   layer_norm(stream, input, input_shape, bias_d, scale_d, output, mean_d,
              variance_d, begin_norm_axis, eps);
-
   return cudaGetLastError() != cudaSuccess;
 }
 

@@ -24,7 +24,6 @@ class LayerNormOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
     VLOG(4) << "convert a fluid layer_norm op to tensorrt layer_norm plugin";
-
     framework::OpDesc op_desc(op, nullptr);
     PADDLE_ENFORCE_EQ(
         op_desc.Input("X").size(), 1,
@@ -40,7 +39,6 @@ class LayerNormOpConverter : public OpConverter {
         platform::errors::InvalidArgument(
             "Scale of layer_norm op converter should be 1, got %d",
             op_desc.Input("Scale").size()));  // Scale is a weight
-
     PADDLE_ENFORCE_EQ(
         op_desc.Output("Y").size(), 1,
         platform::errors::InvalidArgument(
@@ -48,7 +46,6 @@ class LayerNormOpConverter : public OpConverter {
             op_desc.Input("Y").size()));
 
     auto* X = engine_->GetITensor(op_desc.Input("X").front());
-    // Declare weights
     auto* Bias_v = scope.FindVar(op_desc.Input("Bias").front());
     auto* Scale_v = scope.FindVar(op_desc.Input("Scale").front());
     const int begin_norm_axis =
@@ -58,7 +55,6 @@ class LayerNormOpConverter : public OpConverter {
     const float eps = op_desc.HasAttr("epsilon")
                           ? boost::get<float>(op_desc.GetAttr("epsilon"))
                           : 1e-5f;
-
     PADDLE_ENFORCE_NOT_NULL(
         Bias_v, platform::errors::InvalidArgument(
                     "Input(Bias) of layer_norm should not be null."));
@@ -66,7 +62,6 @@ class LayerNormOpConverter : public OpConverter {
         Scale_v, platform::errors::InvalidArgument(
                      "Input(Scale) of layer_norm should not be null."));
 
-    // get tensor
     auto* Bias_t = Bias_v->GetMutable<framework::LoDTensor>();
     auto* Scale_t = Scale_v->GetMutable<framework::LoDTensor>();
 
@@ -77,7 +72,6 @@ class LayerNormOpConverter : public OpConverter {
     std::vector<int64_t> mean_shape{input_num};
     std::vector<int64_t> variance_shape{input_num};
 
-    // create temp tensor for weights
     std::unique_ptr<framework::LoDTensor> bias_tensor(
         new framework::LoDTensor());
     std::unique_ptr<framework::LoDTensor> scale_tensor(
@@ -87,7 +81,6 @@ class LayerNormOpConverter : public OpConverter {
     scale_tensor->Resize(Scale_t->dims());
 
     platform::CPUPlace cpu_place;
-    // copy data from gpu to cpu
     TensorCopySync((*Bias_t), cpu_place, &(*bias_tensor));
     TensorCopySync((*Scale_t), cpu_place, &(*scale_tensor));
 

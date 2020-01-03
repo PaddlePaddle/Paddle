@@ -25,7 +25,6 @@ class MultiheadMatMulOpConverter : public OpConverter {
     VLOG(3) << "convert a fluid multihead_mamul op to a corresponding tensorrt "
                "network structure";
     framework::OpDesc op_desc(op, nullptr);
-
     // Declare inputs
     auto* Q = engine_->GetITensor(op_desc.Input("Q").front());
     auto* K = engine_->GetITensor(op_desc.Input("K").front());
@@ -34,7 +33,6 @@ class MultiheadMatMulOpConverter : public OpConverter {
     auto* BiasK = scope.FindVar(op_desc.Input("BiasK").front());
     auto* BiasV = scope.FindVar(op_desc.Input("BiasV").front());
     auto* BiasQK = engine_->GetITensor(op_desc.Input("BiasQK").front());
-
     PADDLE_ENFORCE_EQ(op_desc.Input("Q").size(), 1,
                       platform::errors::InvalidArgument(
                           "size of input Q of multihead_matmul should be 1"));
@@ -92,9 +90,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
     nvinfer1::Dims q_shape = Q->getDimensions();
     int seq_len = q_shape.d[0];
     int size_per_head = q_shape.d[1] / head_number;
-
     std::string alpha_name = op_desc.Output("Out")[0] + "_alpha";
-
     framework::DDim alpha_dim = framework::make_ddim({1});
     std::unique_ptr<framework::LoDTensor> alpha_t(new framework::LoDTensor());
     alpha_t->Resize(alpha_dim);
@@ -109,14 +105,12 @@ class MultiheadMatMulOpConverter : public OpConverter {
     auto* bias_q_t = BiasQ->GetMutable<framework::LoDTensor>();
     auto* bias_k_t = BiasK->GetMutable<framework::LoDTensor>();
     auto* bias_v_t = BiasV->GetMutable<framework::LoDTensor>();
-
     float* bias_q_cpu_data = engine_->GetWeightCPUData(
         op_desc.Input("BiasQ").front(), bias_q_t, false);
     float* bias_k_cpu_data = engine_->GetWeightCPUData(
         op_desc.Input("BiasK").front(), bias_k_t, false);
     float* bias_v_cpu_data = engine_->GetWeightCPUData(
         op_desc.Input("BiasV").front(), bias_v_t, false);
-
     std::unique_ptr<framework::LoDTensor> bias_q_tensor(
         new framework::LoDTensor());
     std::unique_ptr<framework::LoDTensor> bias_k_tensor(
@@ -138,7 +132,6 @@ class MultiheadMatMulOpConverter : public OpConverter {
         bias_q_tensor->memory_size() / sizeof(float)};
     TensorRTEngine::Weight power_weights_q{nvinfer1::DataType::kFLOAT, nullptr,
                                            0};
-
     TensorRTEngine::Weight scale_weights_k{nvinfer1::DataType::kFLOAT, nullptr,
                                            0};
     TensorRTEngine::Weight shift_weights_k{
@@ -146,7 +139,6 @@ class MultiheadMatMulOpConverter : public OpConverter {
         bias_k_tensor->memory_size() / sizeof(float)};
     TensorRTEngine::Weight power_weights_k{nvinfer1::DataType::kFLOAT, nullptr,
                                            0};
-
     TensorRTEngine::Weight scale_weights_v{nvinfer1::DataType::kFLOAT, nullptr,
                                            0};
     TensorRTEngine::Weight shift_weights_v{
@@ -172,7 +164,6 @@ class MultiheadMatMulOpConverter : public OpConverter {
         TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *(k_eltadd_layer->getOutput(0)));
 
     nvinfer1::Dims3 head_reshape_dim(seq_len, head_number, size_per_head);
-
     v_transpose_reshape_layer->setReshapeDimensions(head_reshape_dim);
     v_transpose_reshape_layer->setSecondTranspose({1, 0, 2});
     q_transpose_reshape_layer->setReshapeDimensions(head_reshape_dim);
@@ -201,7 +192,6 @@ class MultiheadMatMulOpConverter : public OpConverter {
     qkv_transpose_reshape_layer->setFirstTranspose({1, 0, 2});
     qkv_transpose_reshape_layer->setReshapeDimensions(qkv_reshape_dim);
 
-    // store weights in cpu
     engine_->SetWeights(alpha_name, std::move(alpha_t));
     engine_->SetWeights(op_desc.Input("BiasQ").front(),
                         std::move(bias_q_tensor));

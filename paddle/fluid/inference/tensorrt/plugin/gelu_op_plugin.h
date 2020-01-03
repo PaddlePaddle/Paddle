@@ -31,8 +31,7 @@ class GeluPlugin : public PluginTensorRT {
            SerializedSize(input_volume_);
   }
 
-  // TRT will call this func when we need to serialize the configuration of
-  // tensorrt.
+  // TRT will call this func  to serialize the configuration of TRT
   // It should not be called by users.
   void serialize(void *buffer) override {
     SerializeValue(&buffer, getPluginType());
