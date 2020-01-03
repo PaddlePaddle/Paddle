@@ -129,8 +129,8 @@ Node *FuseBatchNormActPass::CreateFusedBatchNormActNode(
     const std::string &bn_reserve_space_n, const std::string &act_out_n) const {
   OpDesc desc;
   desc.SetInput("X", std::vector<std::string>({bn_x_n}));
-  desc.SetInput("Scale", std::vector<std::string>({bn_bias_n}));
-  desc.SetInput("Bias", std::vector<std::string>({bn_scale_n}));
+  desc.SetInput("Scale", std::vector<std::string>({bn_scale_n}));
+  desc.SetInput("Bias", std::vector<std::string>({bn_bias_n}));
   desc.SetInput("Mean", std::vector<std::string>({bn_mean_n}));
   desc.SetInput("Variance", std::vector<std::string>({bn_variance_n}));
 
