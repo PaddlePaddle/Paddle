@@ -16,18 +16,18 @@
 #include "paddle/fluid/framework/io/fs.h"
 
 int main() {
-  ofstream out("src.txt");
+  std::ofstream out("src.txt");
   out.close();
-  paddle::framwork::fs_mv("src.txt", "dest.txt");
-  paddle::framwork::hdfs_mv("", "");
-  paddle::framwork::local_mv("", "");
+  paddle::framework::fs_mv("src.txt", "dest.txt");
+  paddle::framework::hdfs_mv("", "");
+  paddle::framework::local_mv("", "");
   try {
-    paddle::framwork::hdfs_mv("afs:/none", "afs:/none");
+    paddle::framework::hdfs_mv("afs:/none", "afs:/none");
   } catch {
     VLOG(3) << "test hdfs_mv, catch expected errors of unknown path";
   }
   try {
-    paddle::framwork::hdfs_mv("unknown:/none", "unknown:/none");
+    paddle::framework::hdfs_mv("unknown:/none", "unknown:/none");
   } catch {
     VLOG(3) << "test hdfs_mv, catch expected errors of unknown prefix";
   }
