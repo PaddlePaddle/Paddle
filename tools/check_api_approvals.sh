@@ -29,6 +29,8 @@ API_FILES=("CMakeLists.txt"
            "paddle/fluid/framework/unused_var_check.cc"
            "python/paddle/fluid/tests/unittests/white_list/check_shape_white_list.py"
            "python/paddle/fluid/tests/unittests/white_list/op_accuracy_white_list.py"
+           "python/paddle/fluid/tests/unittests/white_list/compile_vs_runtime_white_list.py"
+           "python/paddle/fluid/tests/unittests/white_list/no_check_set_white_list.py"
            )
 
 approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
@@ -114,6 +116,12 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/op_accuracy_white_list.py" ];then
           echo_line="You must have one RD (juncaipeng (Recommend), zhangting2020 (Recommend) or luotao1) approval for the python/paddle/fluid/tests/unittests/white_list/op_accuracy_white_list.py, which manages the white list of upgrading the precision of op test to float64. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Upgrade-OP-Precision-to-Float64. \n"
           check_approval 1 52520497 26615455 6836917
+      elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/compile_vs_runtime_white_list.py" ];then
+           echo_line="You must have one RD (DannyIsFunny (Recommend), luotao1, phlrain) approval for the python/paddle/fluid/tests/unittests/white_list/compile_vs_runtime_white_list.py, which manages the white list of compile&runtime lod-level check. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Compile_vs_Runtime-Check-Specification. \n"
+          check_approval 1 45189361 6836917 43953930
+      elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/no_check_set_white_list.py" ];then
+          echo_line="You must have one RD (cryoco (Recommend), luotao1 or phlrain) approval for the python/paddle/fluid/tests/unittests/white_list/no_check_set_white_list.py, which manages the white list of setting no_check_set of check_output. \n"
+          check_approval 1 12407750 26615455 6836917
       else
           echo_line="You must have one RD (XiaoguangHu01,Xreki,luotao1,sneaxiy) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
           check_approval 1 3048612 46782768 12538138 6836917 32832641
@@ -173,13 +181,6 @@ HAS_INPLACE_TESTS=`git diff -U0 upstream/$BRANCH |grep "+" |grep -E "inplace_ato
 if [ "${HAS_INPLACE_TESTS}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="The calculation results of setting inplace enabled and disabled must be equal, that is, it's not recommended to set inplace_atol.\n If you do need to use inplace_atol, you must have one RD (XiaoguangHu01, lanxianghit, phlrain, luotao1) approval for the usage of inplace_atol.\nThe corresponding lines are as follows:\n${HAS_INPLACE_TESTS}\n"
     check_approval 1 46782768 47554610 43953930 6836917
-fi
-
-HAS_COMPILERUNTIME_NOT_TEST=`git diff -U0 --diff-filter=A upstream/$BRANCH |grep "+" |grep -E "check_output[(]*check_compile_vs_runtime=False" || true`
-if [ "${HAS_COMPILERUNTIME_NOT_TEST}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="If the operator's output after infershape() is a LodTensor, the output's Lod-Level during compile-time and runtime must be equal. Please set check_compile_vs_runtime=True in op_test.check_output function to enable compile&runtime lod-level check.\n
-If you do not need check_compile_vs_runtime, you must have one RD (lanxianghit, phlrain, luotao1) approval.\nThe corresponding lines are as follows:\n${HAS_COMPILERUNTIME_NOT_TEST}\n"
-    check_approval 1 47554610 43953930 6836917
 fi
 
 OP_FILE_CHANGED=`git diff --name-only --diff-filter=AMR upstream/$BRANCH |grep -oE ".+_op..*" || true`
