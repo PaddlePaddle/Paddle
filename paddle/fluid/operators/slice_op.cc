@@ -283,6 +283,7 @@ class SliceOpGradMaker : public framework::SingleGradOpMaker<T> {
     if (this->HasInput("EndsTensorList")) {
       bind->SetInput("EndsTensorList", this->Input("EndsTensorList"));
     }
+    bind->SetInput("Out", this->Output("Out"));
     bind->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     bind->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
     bind->SetAttrMap(this->Attrs());
@@ -342,9 +343,13 @@ class SliceOpDoubleGradMaker : public framework::SingleGradOpMaker<T> {
     if (this->HasInput("EndsTensorList")) {
       bind->SetInput("EndsTensorList", this->Input("EndsTensorList"));
     }
+
+    bind->SetInput("Out", this->Input("Out"));
+
     bind->SetInput("DDInput",
                    this->OutputGrad(framework::GradVarName("Input")));
     bind->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
+
     bind->SetAttrMap(this->Attrs());
     bind->SetType("slice_grad_grad");
     return std::unique_ptr<T>(bind);

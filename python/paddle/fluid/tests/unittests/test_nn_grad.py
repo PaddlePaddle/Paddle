@@ -55,7 +55,8 @@ class TestSliceOpDoubleGradCheck(unittest.TestCase):
         out = fluid.layers.slice(
             inputs, axes=self.axes, starts=self.starts, ends=self.ends)
 
-        gradient_checker.grad_check([inputs], out, x_init=x_arr, place=place)
+        gradient_checker.double_grad_check(
+            [inputs], out, x_init=x_arr, place=place)
 
     def config(self):
         self.starts = [1, 0, 2]

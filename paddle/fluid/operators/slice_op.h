@@ -382,12 +382,14 @@ class SliceDoubleGradKernel : public framework::OpKernel<T> {
         *context.template device_context<DeviceContext>().eigen_device();
     auto in = context.Input<framework::Tensor>("Input");
 
+    auto* out = context.Input<framework::Tensor>("Out");
+    auto out_dims = out->dims();
+    auto in_dims = in->dims();
+    LOG(ERROR) << out_dims;
+    LOG(ERROR) << in_dims;
     // auto out = context.Input<framework::Tensor>("Out");
     auto ddinput = context.Input<framework::Tensor>("DDInput");
     auto ddout = context.Output<framework::Tensor>("DDOut");
-
-    auto out_dims = ddout->dims();
-    auto in_dims = in->dims();
 
     auto axes = context.Attr<std::vector<int>>("axes");
     auto starts = context.Attr<std::vector<int>>("starts");
@@ -407,7 +409,7 @@ class SliceDoubleGradKernel : public framework::OpKernel<T> {
     if (list_new_starts_tensor.size() > 0 || list_new_ends_tensor.size() > 0) {
       need_infer = true;
     }
-
+    LOG(ERROR) << need_infer;
     if (need_infer) {
       if (context.HasInput("StartsTensor")) {
         auto* starts_tensor = context.Input<framework::Tensor>("StartsTensor");
@@ -504,7 +506,8 @@ class SliceDoubleGradKernel : public framework::OpKernel<T> {
 
     ddout->mutable_data<T>(context.GetPlace());
 
-    auto new_out_dims = ddout->dims();
+    auto new_out_dims = out->dims();
+    LOG(ERROR) << new_out_dims;
     auto offsets = Eigen::array<int, D>();
     auto extents = Eigen::array<int, D>();
     for (size_t i = 0; i < D; ++i) {
@@ -520,12 +523,18 @@ class SliceDoubleGradKernel : public framework::OpKernel<T> {
       start = std::max(start, 0);
       offsets[axes[i]] = start;
     }
+    LOG(ERROR) << offsets[0];
+    LOG(ERROR) << offsets[1];
+    LOG(ERROR) << extents[0];
+    LOG(ERROR) << extents[1];
     auto dd_in_t =
         framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
             *ddinput);
     auto dd_out_t =
         framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
             *ddout, new_out_dims);
+    LOG(ERROR) << "before slice";
+    LOG(ERROR) << dd_in_t;
     dd_out_t.device(place) = dd_in_t.slice(offsets, extents);
 
     ddout->Resize(out_dims);
