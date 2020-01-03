@@ -349,6 +349,7 @@ class DynamicGraphAdapter(object):
     def mode(self, value):
         self.model.mode = value
 
+    # TODO multi device in dygraph mode not implemented at present time
     def train(self, inputs, labels, device='CPU', device_ids=None):
         assert self.model._optimizer and self.model._loss_functions, \
             "model not ready, please call `model.prepare()` first"
