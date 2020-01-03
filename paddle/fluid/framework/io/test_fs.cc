@@ -13,9 +13,16 @@
 // limitations under the License.
 
 #include <fstream>
+#include <gtest/gtest.h>
 #include "paddle/fluid/framework/io/fs.h"
 
-int main() {
+#if defined _WIN32 || defined __APPLE__
+#else
+#define _LINUX
+#endif
+
+TEST(FS, mv) {
+#ifdef _LINUX
   std::ofstream out("src.txt");
   out.close();
   paddle::framework::fs_mv("src.txt", "dest.txt");
@@ -23,13 +30,13 @@ int main() {
   paddle::framework::localfs_mv("", "");
   try {
     paddle::framework::hdfs_mv("afs:/none", "afs:/none");
-  } catch {
+  } catch (...) {
     VLOG(3) << "test hdfs_mv, catch expected errors of unknown path";
   }
   try {
     paddle::framework::hdfs_mv("unknown:/none", "unknown:/none");
-  } catch {
+  } catch (...) {
     VLOG(3) << "test hdfs_mv, catch expected errors of unknown prefix";
   }
-  return 0;
+#endif
 }
