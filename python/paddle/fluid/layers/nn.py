@@ -3884,7 +3884,7 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
     attrs = {
         'dim': dim if dim != None and dim != [] else [0],
         'keep_dim': keep_dim,
-        'reduce_all': True if dim == None and dim != [] else False
+        'reduce_all': True if dim == None and dim == [] else False
     }
 
     if in_dygraph_mode():
@@ -3959,7 +3959,7 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
     attrs = {
         'dim': dim if dim != None and dim != [] else [0],
         'keep_dim': keep_dim,
-        'reduce_all': True if dim == None and dim != [] else False
+        'reduce_all': True if dim == None and dim == [] else False
     }
 
     if in_dygraph_mode():
@@ -4036,7 +4036,7 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
         attrs={
             'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None and dim != [] else False
+            'reduce_all': True if dim == None and dim == [] else False
         })
     return out
 
@@ -4097,7 +4097,7 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
         attrs={
             'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None and dim != [] else False
+            'reduce_all': True if dim == None and dim == [] else False
         })
     return out
 
@@ -4159,7 +4159,7 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
         attrs={
             'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None and dim != [] else False
+            'reduce_all': True if dim == None and dim == [] else False
         })
     return out
 
@@ -4217,7 +4217,7 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
         attrs={
             'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None and dim != [] else False
+            'reduce_all': True if dim == None and dim == [] else False
         })
     return out
 
@@ -4275,7 +4275,7 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
         attrs={
             'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None and dim != [] else False
+            'reduce_all': True if dim == None and dim == [] else False
         })
     return out
 
