@@ -19,7 +19,7 @@ from .. import core
 from ..layers import utils
 from ..dygraph import dygraph_utils
 from . import layers
-from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter
+from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer_, _varbase_creator
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 from .. import unique_name
@@ -1350,41 +1350,56 @@ class BatchNorm(layers.Layer):
         # mean and mean_out share the same memory
         mean_out = self._mean
         # variance and variance out share the same memory
-        variance_out = self._variance
 
-        saved_mean = self._helper.create_variable_for_type_inference(
-            dtype=self._dtype, stop_gradient=True)
-        saved_variance = self._helper.create_variable_for_type_inference(
-            dtype=self._dtype, stop_gradient=True)
-        batch_norm_out = input if self._in_place else self._helper.create_variable_for_type_inference(
-            self._dtype)
+        variance_out = self._variance
+        attrs = {
+            "momentum": self._momentum,
+            "epsilon": self._epsilon,
+            "is_test": self._is_test,
+            "data_layout": self._data_layout,
+            "use_mkldnn": False,
+            "fuse_with_relu": self._fuse_with_relu,
+            "use_global_stats": self._use_global_stats,
+            "trainable_statistics": self._trainable_statistics
+        }
+
+        inputs = {
+            "X": [input],
+            "Scale": [self.weight],
+            "Bias": [self.bias],
+            "Mean": [self._mean],
+            "Variance": [self._variance]
+        }
+
+        if in_dygraph_mode():
+            saved_mean = _varbase_creator(dtype=self._dtype, stop_gradient=True)
+            saved_variance = _varbase_creator(
+                dtype=self._dtype, stop_gradient=True)
+            batch_norm_out = _varbase_creator(dtype=self._dtype)
+            # inplace is not supported currently
+        else:
+            saved_mean = self._helper.create_variable_for_type_inference(
+                dtype=self._dtype, stop_gradient=True)
+            saved_variance = self._helper.create_variable_for_type_inference(
+                dtype=self._dtype, stop_gradient=True)
+            batch_norm_out = input if self._in_place else self._helper.create_variable_for_type_inference(
+                self._dtype)
+
+        outputs = {
+            "Y": [batch_norm_out],
+            "MeanOut": [mean_out],
+            "VarianceOut": [variance_out],
+            "SavedMean": [saved_mean],
+            "SavedVariance": [saved_variance]
+        }
+
+        if in_dygraph_mode():
+            outs = core.ops.batch_norm(inputs, attrs, outputs)
+            return dygraph_utils._append_activation_in_dygraph(
+                batch_norm_out, act=self._act)
 
         self._helper.append_op(
-            type="batch_norm",
-            inputs={
-                "X": input,
-                "Scale": self.weight,
-                "Bias": self.bias,
-                "Mean": self._mean,
-                "Variance": self._variance
-            },
-            outputs={
-                "Y": batch_norm_out,
-                "MeanOut": mean_out,
-                "VarianceOut": variance_out,
-                "SavedMean": saved_mean,
-                "SavedVariance": saved_variance
-            },
-            attrs={
-                "momentum": self._momentum,
-                "epsilon": self._epsilon,
-                "is_test": self._is_test,
-                "data_layout": self._data_layout,
-                "use_mkldnn": False,
-                "fuse_with_relu": self._fuse_with_relu,
-                "use_global_stats": self._use_global_stats,
-                "trainable_statistics": self._trainable_statistics
-            })
+            type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs)
 
         # Currently, we don't support inplace in dygraph mode
         return self._helper.append_activation(batch_norm_out, self._act)
