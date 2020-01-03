@@ -20,13 +20,6 @@ from test_conv2d_op import TestConv2dOp, TestWithPad, TestWithStride, TestWithGr
 import numpy as np
 
 
-class TestNGRAPHConv2d(TestConv2dOp):
-    def init_test_case(self):
-        super(TestNGRAPHConv2d, self).init_test_case()
-        self.use_cuda = False
-        self.dtype = np.float32
-
-
 class TestNGRAPHWithStride(TestWithStride):
     def init_test_case(self):
         super(TestNGRAPHWithStride, self).init_test_case()
@@ -69,7 +62,7 @@ class TestNGRAPHDepthwiseConvWithDilation2(TestDepthwiseConvWithDilation2):
         self.dtype = np.float32
 
 
-del TestConv2dOp, TestWithStride, TestDepthwiseConv, TestDepthwiseConv2, TestDepthwiseConv3, TestDepthwiseConvWithDilation, TestDepthwiseConvWithDilation2
+del TestWithStride, TestDepthwiseConv, TestDepthwiseConv2, TestDepthwiseConv3, TestDepthwiseConvWithDilation, TestDepthwiseConvWithDilation2
 
 if __name__ == '__main__':
     unittest.main()
