@@ -83,6 +83,7 @@ class TestFeedData(unittest.TestCase):
                                                       use_parallel_executor)
                 self._test_feed_data_contains_neg_one(use_cuda,
                                                       use_parallel_executor)
+                self._test_feed_lod_tensor(use_cuda, use_parallel_executor)
 
                 # Test exception message when feeding with error 
                 if six.PY2:
@@ -159,6 +160,31 @@ class TestFeedData(unittest.TestCase):
             size=[feed_batch_size, 1]).astype(np.int64)
         self._feed_data_in_executor(in_size, label_size, feed_in_data,
                                     feed_label, use_cuda, use_parallel_executor)
+
+    def _test_feed_lod_tensor(self, use_cuda, use_parallel_executor):
+        device_count = self._get_device_count(use_cuda)
+
+        in_size = [device_count, 3, 4, 5]
+        sequence_lengths = [range(1, device_count + 1)]
+        # sum from 1 to device_count
+        sum_length = int((device_count + 1) * device_count / 2)
+
+        feed_in_data = np.random.uniform(
+            size=[sum_length, 3, 4, 5]).astype(np.float32)
+        feed_data_tensor = fluid.LoDTensor()
+        feed_data_tensor.set(feed_in_data, fluid.CPUPlace())
+        feed_data_tensor.set_recursive_sequence_lengths(sequence_lengths)
+
+        label_size = [device_count, 1]
+        feed_label_tensor = fluid.LoDTensor()
+        feed_label = np.random.randint(
+            low=0, high=self.class_num, size=[sum_length, 1]).astype(np.int64)
+        feed_label_tensor.set(feed_label, fluid.CPUPlace())
+        feed_label_tensor.set_recursive_sequence_lengths(sequence_lengths)
+
+        self._feed_data_in_executor(in_size, label_size, feed_data_tensor,
+                                    feed_label_tensor, use_cuda,
+                                    use_parallel_executor)
 
     def _feed_data_in_executor(self, in_size, label_size, feed_in_data,
                                feed_label, use_cuda, use_parallel_executor):
