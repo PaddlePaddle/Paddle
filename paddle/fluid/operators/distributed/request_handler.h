@@ -68,7 +68,7 @@ constexpr char kCheckPointNotifyRPC[] = "CheckPointNotifyRPC";
 #define CHECKPOINT_SAVE_MESSAGE "SAVE@CHECKPOINTNOTIFY"
 #define CHECKPOINT_LOAD_MESSAGE "LOAD@CHECKPOINTNOTIFY"
 
-enum TrainingMode { kSync = 0, kHalfAsync = 1, kAsync = 2, kGeo = 3 };
+enum TrainingMode { kSync = 0, kAsync = 1, kHalfAsync = 2, kGeo = 3 };
 
 class RPCServer;
 

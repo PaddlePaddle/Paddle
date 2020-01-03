@@ -64,8 +64,8 @@ PRINT_LOG = False
 
 class TrainingMode:
     SYNC = 0
-    HALF_ASYNC = 1
-    ASYNC = 2
+    ASYNC = 1
+    HALF_ASYNC = 2
     GEO = 3
 
 

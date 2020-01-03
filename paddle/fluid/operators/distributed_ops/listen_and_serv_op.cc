@@ -533,7 +533,7 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({});
     AddAttr<int>("training_mode",
                  "indicate distriubte training mode, 0 is sync, 1 is "
-                 "half-async, 2 is fully-async, 3 is geo")
+                 "fully-async, 2 is half-async, 3 is geo")
         .SetDefault(0);
     AddAttr<bool>("dc_asgd", "set to true will enable DC-ASGD training.")
         .SetDefault(false);
