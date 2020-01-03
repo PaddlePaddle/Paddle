@@ -35,8 +35,8 @@ import tempfile
 
 import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+from paddle.fluid.communicator import AsyncMode
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
 
 RUN_STEP = 5
 LEARNING_RATE = 0.01
@@ -50,55 +50,47 @@ class FleetDistRunnerBase(object):
         do training : exe run program
     """
 
-    def run_pserver(self, args):
-        if args.role.upper() != "PSERVER":
-            raise ValueError("args role must be PSERVER")
+    def build_role(self, args):
+        if args.role.upper() == "PSERVER":
+            role = role_maker.UserDefinedRoleMaker(
+                current_id=args.current_id,
+                role=role_maker.Role.SERVER,
+                worker_num=args.trainers,
+                server_endpoints=args.endpoints.split(","))
+        else:
+            role = role_maker.UserDefinedRoleMaker(
+                current_id=args.current_id,
+                role=role_maker.Role.WORKER,
+                worker_num=args.trainers,
+                server_endpoints=args.endpoints.split(","))
+        return role
 
-        role = role_maker.UserDefinedRoleMaker(
-            current_id=args.current_id,
-            role=role_maker.Role.SERVER,
-            worker_num=args.trainers,
-            server_endpoints=args.endpoints.split(","))
-
-        fleet.init(role)
-
+    def build_strategy(self, args):
         strategy = DistributeTranspilerConfig()
         strategy.sync_mode = args.sync_mode
         strategy.geo_sgd_mode = args.geo_sgd_mode
         strategy.geo_sgd_need_push_nums = args.geo_sgd_need_push_nums
+        return strategy
 
-        avg_cost = self.net()
-
+    def build_optimizer(self, loss, strategy):
         optimizer = fluid.optimizer.SGD(LEARNING_RATE)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
-        optimizer.minimize(avg_cost)
+        optimizer.minimize(loss)
+
+    def run_pserver(self, args):
+        fleet.init(self.build_role())
+        strategy = self.build_strategy()
+        avg_cost = self.net()
+        self.build_optimizer(avg_cost, strategy)
 
         fleet.init_server()
         fleet.run_server()
 
     def run_trainer(self, args):
-        if args.role.upper() != "TRAINER":
-            raise ValueError("args role must be TRAINER")
-
-        role = role_maker.UserDefinedRoleMaker(
-            current_id=args.current_id,
-            role=role_maker.Role.WORKER,
-            worker_num=args.trainers,
-            server_endpoints=args.endpoints.split(","))
-
-        fleet.init(role)
-
-        strategy = DistributeTranspilerConfig()
-        strategy.sync_mode = args.sync_mode
-        strategy.geo_sgd_mode = args.geo_sgd_mode
-        strategy.geo_sgd_need_push_nums = args.geo_sgd_need_push_nums
-
+        fleet.init(self.build_role())
+        strategy = self.build_strategy()
         avg_cost = self.net()
-
-        optimizer = fluid.optimizer.SGD(LEARNING_RATE)
-        optimizer = fleet.distributed_optimizer(optimizer, strategy)
-        optimizer.minimize(avg_cost)
-
+        self.build_optimizer(avg_cost, strategy)
         out = self.do_training(fleet)
 
     def net(self, batch_size=4, lr=0.01):
@@ -120,7 +112,7 @@ class TestFleetBase(unittest.TestCase):
         raise NotImplementedError("tests should have _setup_config implemented")
 
     def setUp(self):
-        self._sync_mode = True
+        self._sync_mode = 0
         self._trainers = 2
         self._pservers = 2
         self._port_set = set()
@@ -139,7 +131,6 @@ class TestFleetBase(unittest.TestCase):
                 self._find_free_port(), self._find_free_port())
 
         self._python_interp = sys.executable
-        self._geo_sgd = False
         self._geo_sgd_need_push_nums = 5
         self._setup_config()
 
@@ -194,7 +185,7 @@ class TestFleetBase(unittest.TestCase):
         return tr0_proc, tr1_proc, tr0_pipe, tr1_pipe
 
     def _run_cluster(self, model, envs):
-        env = {'CPU_NUM': '1'}
+        env = {}
         env.update(envs)
 
         python_path = self._python_interp
@@ -209,15 +200,13 @@ class TestFleetBase(unittest.TestCase):
         ps_cmd = "{0} {1} --role pserver --endpoints {2} --current_id {{}} --trainers {3}".format(
             python_path, model, self._ps_endpoints, self._trainers)
 
-        if self._sync_mode:
-            tr_cmd += " --sync_mode"
-            ps_cmd += " --sync_mode"
+        tr_cmd += " --training_mode {0}".format(self._sync_mode)
+        ps_cmd += " --training_mode {0}".format(self._sync_mode)
 
-        if self._geo_sgd:
-            tr_cmd += " --geo_sgd_mode {0} --geo_sgd_need_push_nums {1}".format(
-                self._geo_sgd, self._geo_sgd_need_push_nums)
-            ps_cmd += " --geo_sgd_mode {0} --geo_sgd_need_push_nums {1}".format(
-                self._geo_sgd, self._geo_sgd_need_push_nums)
+        tr_cmd += " --geo_sgd_need_push_nums {1}".format(
+            self._geo_sgd_need_push_nums)
+        ps_cmd += " --geo_sgd_need_push_nums {1}".format(
+            self._geo_sgd_need_push_nums)
 
         # Run dist train to compare with local results
         ps0, ps1, ps0_pipe, ps1_pipe = self._start_pserver(ps_cmd, env)
@@ -301,11 +290,9 @@ def runtime_main(test_class):
     parser.add_argument('--endpoints', type=str, required=False, default="")
     parser.add_argument('--current_id', type=int, required=False, default=0)
     parser.add_argument('--trainers', type=int, required=False, default=1)
-    parser.add_argument('--sync_mode', action='store_true')
+    parser.add_argument('--training_mode', type=int, required=False, default=0)
     parser.add_argument(
-        '--geo_sgd_mode', type=bool, required=False, default=False)
-    parser.add_argument(
-        '--geo_sgd_need_push_nums', type=int, required=False, default=2)
+        '--geo_sgd_push_nums', type=int, required=False, default=2)
     args = parser.parse_args()
 
     model = test_class()

@@ -17,11 +17,12 @@ from __future__ import print_function
 import os
 import unittest
 from test_dist_fleet_base import TestFleetBase
+from paddle.fluid.communicator import AsyncMode
 
 
 class TestDistMnist2x2(TestFleetBase):
     def _setup_config(self):
-        self._sync_mode = False
+        self._sync_mode = AsyncMode.ASYNC
 
     def check_with_place(self,
                          model_file,
@@ -33,7 +34,42 @@ class TestDistMnist2x2(TestFleetBase):
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
-            "http_proxy": ""
+            "http_proxy": "",
+            "SAVE_MODEL": "0"
+        }
+
+        required_envs.update(need_envs)
+
+        if check_error_log:
+            required_envs["GLOG_v"] = "3"
+            required_envs["GLOG_logtostderr"] = "1"
+
+        tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
+
+    def test_dist_train(self):
+        self.check_with_place(
+            "dist_fleet_ctr.py", delta=1e-5, check_error_log=True)
+
+
+class TestDistMnist2x2(TestFleetBase):
+    def _setup_config(self):
+        self._sync_mode = AsyncMode.HALF_ASYNC
+
+    def check_with_place(self,
+                         model_file,
+                         delta=1e-3,
+                         check_error_log=False,
+                         need_envs={}):
+        required_envs = {
+            "PATH": os.getenv("PATH", ""),
+            "PYTHONPATH": os.getenv("PYTHONPATH", ""),
+            "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
+            "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
+            "http_proxy": "",
+            "FLAGS_communicator_send_queue_size": "1",
+            "FLAGS_communicator_max_merge_var_num": "1",
+            "CPU_NUM": "1",
+            "SAVE_MODEL": "0"
         }
 
         required_envs.update(need_envs)

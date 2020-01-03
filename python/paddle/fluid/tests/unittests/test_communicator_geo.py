@@ -39,7 +39,7 @@ class TestCommunicator(unittest.TestCase):
         avg_cost = fluid.layers.mean(cost)
         return avg_cost
 
-    def test_communicator_async(self):
+    def test_communicator_geo(self):
         role = role_maker.UserDefinedRoleMaker(
             current_id=0,
             role=role_maker.Role.WORKER,
@@ -54,6 +54,7 @@ class TestCommunicator(unittest.TestCase):
         strategy = DistributeTranspilerConfig()
         strategy.sync_mode = False
         strategy.runtime_split_send_recv = True
+        strategy.geo_sgd_mode = True
         strategy.wait_port = False
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
@@ -61,6 +62,29 @@ class TestCommunicator(unittest.TestCase):
         fleet.init_worker()
         time.sleep(10)
         fleet.stop_worker()
+
+
+class TestCommunicatorGEO(unittest.TestCase):
+    def test_communicator_init_and_start(self):
+        prog = fluid.Program()
+
+        kwargs = {}
+        kwargs["push_vars"] = None
+        kwargs["trainers"] = 0
+        kwargs["push_nums"] = 0
+
+        def build_comm():
+            comm = Communicator(prog, AsyncMode.GEO_SGD, kwargs)
+
+        self.assertRaises(ValueError, build_comm)
+
+        kwargs["trainers"] = 10
+        self.assertRaises(ValueError, build_comm)
+
+        def build_sync_comm():
+            comm = Communicator(prog, AsyncMode.SYNC, kwargs)
+
+        self.assertRaises(ValueError, build_sync_comm)
 
 
 if __name__ == '__main__':
