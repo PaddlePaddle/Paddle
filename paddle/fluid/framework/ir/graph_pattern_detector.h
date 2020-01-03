@@ -1011,7 +1011,6 @@ struct MultipleQuantize : public PatternBase {
       : PatternBase(pattern, name_scope, "multiple_quantize") {}
   PDNode* operator()();
 
-  PATTERN_DECL_NODE(prev_op);
   PATTERN_DECL_NODE(prev_out);
 };
 
