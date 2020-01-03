@@ -50,7 +50,6 @@ class LayerHelperBase(object):
 
         Parameters:
             value(ndarray): The numpy\.ndarray object that needs to be converted, it can be multi-dimension, and the data type is one of numpy\.{float16, float32, float64, int16, int32, int64, uint8, uint16}.
-            block(fluid.Block, optional): Which block this variable will be in. Default: None.
             name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
         Returns:
@@ -280,7 +279,8 @@ class LayerHelperBase(object):
                          dtype,
                          is_bias=False,
                          default_initializer=None,
-                         stop_gradient=False):
+                         stop_gradient=False,
+                         type=core.VarDesc.VarType.LOD_TENSOR):
         """Create parameters for this layers.
 
            Args:
@@ -334,15 +334,17 @@ class LayerHelperBase(object):
             return self.main_program.global_block().create_parameter(
                 dtype=dtype,
                 shape=shape,
+                type=type,
                 stop_gradient=stop_gradient,
                 **attr._to_kwargs(with_initializer=True))
         else:
             self.startup_program.global_block().create_parameter(
                 dtype=dtype,
                 shape=shape,
+                type=type,
                 **attr._to_kwargs(with_initializer=True))
             return self.main_program.global_block().create_parameter(
-                dtype=dtype, shape=shape, **attr._to_kwargs())
+                dtype=dtype, shape=shape, type=type, **attr._to_kwargs())
 
     def create_variable_for_type_inference(self, dtype, stop_gradient=False):
         """Create a temporary variable that should be type inferred layer.

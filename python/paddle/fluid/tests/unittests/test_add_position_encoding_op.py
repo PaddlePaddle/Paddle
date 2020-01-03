@@ -28,7 +28,7 @@ class TestAddPositionEncodingTensorOp(OpTest):
         the prepared section for add position encoding op
         """
         self.op_type = "add_position_encoding"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_input_output()
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(self.x), }
@@ -45,8 +45,7 @@ class TestAddPositionEncodingTensorOp(OpTest):
         """
         check the correctness of grad
         """
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=0.005, check_dygraph=False)
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
     def init_input_output(self):
         """
@@ -54,7 +53,7 @@ class TestAddPositionEncodingTensorOp(OpTest):
         """
         self.alpha = 0.6
         self.beta = 0.5
-        self.x = np.random.uniform(0.1, 1, [2, 4, 4]).astype(self.dtype)
+        self.x = np.random.uniform(0.1, 1, [2, 15, 4]).astype(self.dtype)
         self.out = np.copy(self.x)
 
         batch_size = self.x.shape[0]
@@ -65,7 +64,7 @@ class TestAddPositionEncodingTensorOp(OpTest):
         for i in range(batch_size):
             for j in range(max_length):
                 for k in range(half_shape):
-                    val = j / pow(10000.0, k / (
+                    val = j / pow(10000.0, k * 1.0 / (
                         half_shape - 1)) if half_shape > 1 else j / 10000.0
                     self.out[i, j, k] = \
                         self.x[i, j, k] * self.alpha + math.sin(val) * self.beta
@@ -83,7 +82,7 @@ class TestAddPositionEncodingLoDTensorOp(OpTest):
         the prepared section for add position encoding LoDTensor op
         """
         self.op_type = "add_position_encoding"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_input_output()
 
         self.inputs = {'X': (self.x, self.lod), }
@@ -100,8 +99,7 @@ class TestAddPositionEncodingLoDTensorOp(OpTest):
         """
         check the correctness of grad
         """
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=0.005, check_dygraph=False)
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
     def init_input_output(self):
         """
@@ -109,8 +107,8 @@ class TestAddPositionEncodingLoDTensorOp(OpTest):
         """
         self.alpha = 0.6
         self.beta = 0.5
-        self.x = np.random.uniform(0.1, 1, [10, 4]).astype(self.dtype)
-        self.lod = [[3, 7]]
+        self.x = np.random.uniform(0.1, 1, [20, 6]).astype(self.dtype)
+        self.lod = [[13, 7]]
         self.out = np.copy(self.x)
 
         batch_size = len(self.lod[0])
@@ -122,7 +120,7 @@ class TestAddPositionEncodingLoDTensorOp(OpTest):
             max_length = self.lod[0][i]
             for j in range(max_length):
                 for k in range(half_shape):
-                    val = j / pow(10000.0, k / (
+                    val = j / pow(10000.0, k * 1.0 / (
                         half_shape - 1)) if half_shape > 1 else j / 10000.0
                     pos = start + j
                     self.out[pos, k] = \
