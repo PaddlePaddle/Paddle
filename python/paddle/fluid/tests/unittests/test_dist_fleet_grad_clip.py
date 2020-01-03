@@ -53,35 +53,6 @@ class TestDistGeoClipByGlobalNormTranspiler(unittest.TestCase):
         pserver_startup_program = fleet.startup_program
         pserver_mian_program = fleet.main_program
 
-    def test_trainer(self):
-        role = role_maker.UserDefinedRoleMaker(
-            current_id=0,
-            role=role_maker.Role.WORKER,
-            worker_num=2,
-            server_endpoints=["127.0.0.1:36011", "127.0.0.1:36012"])
-
-        fleet.init(role)
-
-        batch_size = 128
-        is_sparse = True
-        is_distribute = False
-
-        strategy = DistributeTranspilerConfig()
-        strategy.sync_mode = False
-        strategy.geo_sgd_mode = True
-        strategy.geo_sgd_need_push_nums = 5
-
-        avg_cost, _, _ = train_network(batch_size, is_distribute, is_sparse)
-        fluid.clip.set_gradient_clip(
-            clip=fluid.clip.GradientClipByGlobalNorm(2.0))
-
-        optimizer = fluid.optimizer.SGD(0.1)
-        optimizer = fleet.distributed_optimizer(optimizer, strategy)
-        optimizer.minimize(avg_cost)
-
-        trainer_startup_program = fleet.startup_program
-        trainer_mian_program = fleet.main_program
-
 
 class TestDistGeoClipByValue(TestFleetBase):
     def _setup_config(self):
