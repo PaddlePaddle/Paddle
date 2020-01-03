@@ -403,7 +403,7 @@ class ExecutionContext {
     temp_tensor.ResetHolder(std::move(shared_allocation));
     return temp_tensor;
   }
-  
+
   const RuntimeContext Context() const { return ctx_; }
 
   std::string DebugString() const { return op_.DebugString(); }
