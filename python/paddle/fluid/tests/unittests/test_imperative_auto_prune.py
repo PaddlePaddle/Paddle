@@ -18,15 +18,15 @@ import numpy as np
 
 
 class AutoPruneLayer0(fluid.Layer):
-    def __init__(self, name_scope):
-        super(AutoPruneLayer0, self).__init__(name_scope)
-        self.fc1 = fluid.dygraph.FC(
-            "FC_1",
+    def __init__(self, input_size):
+        super(AutoPruneLayer0, self).__init__()
+        self.fc1 = fluid.dygraph.Linear(
+            input_size,
             5,
             param_attr=fluid.initializer.ConstantInitializer(value=2),
             bias_attr=False)
-        self.fc2 = fluid.dygraph.FC(
-            "FC_2",
+        self.fc2 = fluid.dygraph.Linear(
+            5,
             5,
             param_attr=fluid.initializer.ConstantInitializer(value=2),
             bias_attr=False)
@@ -40,15 +40,15 @@ class AutoPruneLayer0(fluid.Layer):
 
 
 class AutoPruneLayer1(fluid.Layer):
-    def __init__(self, name_scope):
-        super(AutoPruneLayer1, self).__init__(name_scope)
-        self.fc1 = fluid.dygraph.FC(
-            "FC_1",
+    def __init__(self, input_size):
+        super(AutoPruneLayer1, self).__init__()
+        self.fc1 = fluid.dygraph.Linear(
+            input_size,
             5,
             param_attr=fluid.initializer.ConstantInitializer(value=2),
             bias_attr=False)
-        self.fc2 = fluid.dygraph.FC(
-            "FC_2",
+        self.fc2 = fluid.dygraph.Linear(
+            5,
             5,
             param_attr=fluid.initializer.ConstantInitializer(value=2),
             bias_attr=False)
@@ -63,10 +63,10 @@ class AutoPruneLayer1(fluid.Layer):
 
 
 class AutoPruneLayer2(fluid.Layer):
-    def __init__(self, name_scope):
-        super(AutoPruneLayer2, self).__init__(name_scope)
-        self.fc = fluid.dygraph.FC("FC1", size=10, act=None)
-        self.fc2 = fluid.dygraph.FC("FC2", size=1, act=None)
+    def __init__(self, input_size):
+        super(AutoPruneLayer2, self).__init__()
+        self.fc = fluid.dygraph.Linear(input_size, 10, act=None)
+        self.fc2 = fluid.dygraph.Linear(1, 1, act=None)
 
     def forward(self, x, label):
         feature = self.fc(x)
@@ -80,9 +80,9 @@ class AutoPruneLayer2(fluid.Layer):
 
 
 class AutoPruneLayer3(fluid.Layer):
-    def __init__(self, name_scope):
-        super(AutoPruneLayer3, self).__init__(name_scope)
-        self.fc = fluid.dygraph.FC("FC1", size=20, act=None)
+    def __init__(self, input_size):
+        super(AutoPruneLayer3, self).__init__()
+        self.fc = fluid.dygraph.Linear(input_size, 20, act=None)
 
     def forward(self, x, label, test_num):
         feature = self.fc(x)
@@ -98,12 +98,12 @@ class AutoPruneLayer3(fluid.Layer):
 
 
 class MyLayer(fluid.Layer):
-    def __init__(self, name_scope, vocab_size, size, dtype="float32"):
-        super(MyLayer, self).__init__(name_scope, dtype)
+    def __init__(self, input_size, vocab_size, size, dtype="float32"):
+        super(MyLayer, self).__init__(dtype=dtype)
         self.embed0 = fluid.Embedding(size=(vocab_size, size))
         self.embed1 = fluid.Embedding(size=(vocab_size, size))
-        self.fc0 = fluid.FC(self.full_name(), size=size, dtype=dtype)
-        self.fc1 = fluid.FC(self.full_name(), size=size, dtype=dtype)
+        self.fc0 = fluid.Linear(input_size, size, dtype=dtype)
+        self.fc1 = fluid.Linear(input_size, size, dtype=dtype)
 
     def forward(self, x):
         # this method involves only the fc layers
@@ -120,12 +120,12 @@ class MyLayer(fluid.Layer):
 
 
 class MyLayer2(fluid.Layer):
-    def __init__(self, name_scope, vocab_size, size, dtype="float32"):
-        super(MyLayer2, self).__init__(name_scope, dtype)
+    def __init__(self, input_size, vocab_size, size, dtype="float32"):
+        super(MyLayer2, self).__init__(dtype=dtype)
         self.embed0 = fluid.Embedding(size=(vocab_size, size))
         self.embed1 = fluid.Embedding(size=(vocab_size, size))
-        self.fc0 = fluid.FC(self.full_name(), size=size, dtype=dtype)
-        self.fc1 = fluid.FC(self.full_name(), size=size, dtype=dtype)
+        self.fc0 = fluid.Linear(input_size, size, dtype=dtype)
+        self.fc1 = fluid.Linear(input_size, size, dtype=dtype)
 
     def forward(self, indices):
         # mind the difference with MyLayer
@@ -146,7 +146,7 @@ class MyLayer2(fluid.Layer):
 class TestImperativeAutoPrune(unittest.TestCase):
     def test_auto_prune(self):
         with fluid.dygraph.guard():
-            case1 = AutoPruneLayer0("l1")
+            case1 = AutoPruneLayer0(input_size=5)
             value1 = np.arange(25).reshape(5, 5).astype("float32")
             value2 = np.arange(25).reshape(5, 5).astype("float32")
             v1 = fluid.dygraph.to_variable(value1)
@@ -158,7 +158,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
 
     def test_auto_prune2(self):
         with fluid.dygraph.guard():
-            case2 = AutoPruneLayer1("l1")
+            case2 = AutoPruneLayer1(input_size=5)
             value1 = np.arange(25).reshape(5, 5).astype("float32")
             value2 = np.arange(25).reshape(5, 5).astype("float32")
             v1 = fluid.dygraph.to_variable(value1)
@@ -171,7 +171,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
 
     def test_auto_prune3(self):
         with fluid.dygraph.guard():
-            case3 = AutoPruneLayer3("l3")
+            case3 = AutoPruneLayer3(input_size=784)
             value1 = np.arange(784).reshape(1, 784).astype("float32")
             value2 = np.arange(1).reshape(1, 1).astype("int64")
             v1 = fluid.dygraph.to_variable(value1)
@@ -183,7 +183,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
 
     def test_auto_prune4(self):
         with fluid.dygraph.guard():
-            case4 = AutoPruneLayer3("l3")
+            case4 = AutoPruneLayer3(input_size=784)
             value1 = np.arange(784).reshape(1, 784).astype("float32")
             value2 = np.arange(1).reshape(1, 1).astype("int64")
             v1 = fluid.dygraph.to_variable(value1)
@@ -195,7 +195,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
 
     def test_auto_prune5(self):
         with fluid.dygraph.guard():
-            case4 = AutoPruneLayer3("l3")
+            case4 = AutoPruneLayer3(input_size=784)
             value1 = np.arange(784).reshape(1, 784).astype("float32")
             value2 = np.arange(1).reshape(1, 1).astype("int64")
             v1 = fluid.dygraph.to_variable(value1)
@@ -210,8 +210,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
             value0 = np.arange(26).reshape(2, 13).astype("float32")
             value1 = np.arange(6).reshape(2, 3).astype("float32")
             value2 = np.arange(10).reshape(2, 5).astype("float32")
-            fc = fluid.FC("fc1", size=5, dtype="float32")
-            fc2 = fluid.FC("fc2", size=3, dtype="float32")
+            fc = fluid.Linear(13, 5, dtype="float32")
+            fc2 = fluid.Linear(3, 3, dtype="float32")
             a = fluid.dygraph.to_variable(value0)
             b = fluid.dygraph.to_variable(value1)
             c = fluid.dygraph.to_variable(value2)
@@ -228,8 +228,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
             value0 = np.arange(26).reshape(2, 13).astype("float32")
             value1 = np.arange(6).reshape(2, 3).astype("float32")
             value2 = np.arange(10).reshape(2, 5).astype("float32")
-            fc = fluid.FC("fc1", size=5, dtype="float32")
-            fc2 = fluid.FC("fc2", size=3, dtype="float32")
+            fc = fluid.Linear(13, 5, dtype="float32")
+            fc2 = fluid.Linear(3, 3, dtype="float32")
             a = fluid.dygraph.to_variable(value0)
             b = fluid.dygraph.to_variable(value1)
             c = fluid.dygraph.to_variable(value2)
@@ -247,8 +247,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
             value0 = np.arange(26).reshape(2, 13).astype("float32")
             value1 = np.arange(6).reshape(2, 3).astype("float32")
             value2 = np.arange(10).reshape(2, 5).astype("float32")
-            fc = fluid.FC("fc1", size=5, dtype="float32")
-            fc2 = fluid.FC("fc2", size=3, dtype="float32")
+            fc = fluid.Linear(13, 5, dtype="float32")
+            fc2 = fluid.Linear(5, 3, dtype="float32")
             a = fluid.dygraph.to_variable(value0)
             b = fluid.dygraph.to_variable(value1)
             c = fluid.dygraph.to_variable(value2)
@@ -270,8 +270,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
             value0 = np.arange(26).reshape(2, 13).astype("float32")
             value1 = np.arange(6).reshape(2, 3).astype("float32")
             value2 = np.arange(10).reshape(2, 5).astype("float32")
-            fc = fluid.FC("fc1", size=5, dtype="float32")
-            fc2 = fluid.FC("fc2", size=3, dtype="float32")
+            fc = fluid.Linear(13, 5, dtype="float32")
+            fc2 = fluid.Linear(5, 3, dtype="float32")
             a = fluid.dygraph.to_variable(value0)
             b = fluid.dygraph.to_variable(value1)
             c = fluid.dygraph.to_variable(value2)
@@ -297,8 +297,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
             value0 = np.arange(26).reshape(2, 13).astype("float32")
             value1 = np.arange(6).reshape(2, 3).astype("float32")
             value2 = np.arange(10).reshape(2, 5).astype("float32")
-            fc = fluid.FC("fc1", size=5, dtype="float32")
-            fc2 = fluid.FC("fc2", size=3, dtype="float32")
+            fc = fluid.Linear(13, 5, dtype="float32")
+            fc2 = fluid.Linear(3, 3, dtype="float32")
             a = fluid.dygraph.to_variable(value0)
             b = fluid.dygraph.to_variable(value1)
             c = fluid.dygraph.to_variable(value2)
@@ -323,13 +323,13 @@ class TestImperativeAutoPrune(unittest.TestCase):
 
         place = fluid.CPUPlace()
         with fluid.dygraph.guard(place):
-            model = MyLayer("mylayer", vocab_size, size)
+            model = MyLayer(size, vocab_size, size)
             optimizer = fluid.optimizer.AdamOptimizer(
                 0.001, parameter_list=model.parameters())
             grad_clip = fluid.dygraph_grad_clip.GradClipByGlobalNorm(0.001)
 
             indices = fluid.dygraph.to_variable(indices)
-            emebd = fluid.dygraph.to_variable(embed)
+            embed = fluid.dygraph.to_variable(embed)
             dummy_loss = model(embed)
 
             loss = model.embed_linear0(indices)
@@ -342,7 +342,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             assert model.fc1.weight._grad_ivar() is None
 
         with fluid.dygraph.guard(place):
-            model = MyLayer2("mylayer", vocab_size, size)
+            model = MyLayer2(size, vocab_size, size)
             optimizer = fluid.optimizer.AdamOptimizer(
                 0.001, parameter_list=model.parameters())
             grad_clip = fluid.dygraph_grad_clip.GradClipByGlobalNorm(0.001)
@@ -366,7 +366,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             value2 = np.arange(1).reshape(1, 1)
             v1 = fluid.dygraph.to_variable(value1).astype("float32")
             v2 = fluid.dygraph.to_variable(value2).astype("float32")
-            case3 = AutoPruneLayer2("l2")
+            case3 = AutoPruneLayer2(input_size=784)
             loss = case3(v1, v2)
             loss.backward()
             self.assertTrue(case3.fc2.weight._grad_ivar() is None)
@@ -378,7 +378,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             value2 = np.arange(1).reshape(1, 1)
             v1 = fluid.dygraph.to_variable(value1).astype("float32")
             v2 = fluid.dygraph.to_variable(value2).astype("float32")
-            case3 = AutoPruneLayer2("l2")
+            case3 = AutoPruneLayer2(input_size=784)
             loss = case3(v1, v2)
             loss.backward()
             self.assertTrue(case3.fc2.weight._grad_ivar() is None)
@@ -387,7 +387,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
     def test_case3_prune_no_grad_branch2(self):
         with fluid.dygraph.guard():
             value1 = np.arange(1).reshape(1, 1)
-            fc = fluid.dygraph.FC("FC1", size=1, act=None)
+            fc = fluid.dygraph.Linear(1, 1, act=None)
             label = fluid.dygraph.to_variable(value1).astype("float32")
             label = fc(label)
             label = fluid.layers.cast(label, dtype="float32")

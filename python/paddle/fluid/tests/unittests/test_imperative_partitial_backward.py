@@ -24,8 +24,8 @@ class TestImperativePartitialBackward(unittest.TestCase):
         with fluid.dygraph.guard():
             x = np.random.randn(2, 4, 5).astype("float32")
             x = fluid.dygraph.to_variable(x)
-            fc1 = fluid.dygraph.FC("fc1", 10, num_flatten_dims=2)
-            fc2 = fluid.dygraph.FC("fc2", 10, num_flatten_dims=2)
+            fc1 = fluid.dygraph.Linear(5, 10)
+            fc2 = fluid.dygraph.Linear(5, 10)
 
             y = fc1(x[:, :2])
             z = fc2(x[:, 2:])

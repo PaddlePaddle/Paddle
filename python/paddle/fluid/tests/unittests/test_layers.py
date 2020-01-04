@@ -85,16 +85,10 @@ class LayerTest(unittest.TestCase):
 class TestLayer(LayerTest):
     def test_custom_layer_with_kwargs(self):
         class CustomLayer(fluid.Layer):
-            def __init__(self, name_scope, fc1_size=4):
-                super(CustomLayer, self).__init__(name_scope)
-                self.fc1 = nn.FC('fc1',
-                                 size=fc1_size,
-                                 bias_attr=False,
-                                 num_flatten_dims=1)
-                self.fc2 = nn.FC('fc2',
-                                 size=1,
-                                 bias_attr=False,
-                                 num_flatten_dims=1)
+            def __init__(self, input_size, fc1_size=4):
+                super(CustomLayer, self).__init__()
+                self.fc1 = nn.Linear(input_size, fc1_size, bias_attr=False)
+                self.fc2 = nn.Linear(fc1_size, 1, bias_attr=False)
 
             def forward(self, x, do_fc2=False):
                 ret = self.fc1(x)
@@ -105,7 +99,7 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             inp = np.ones([3, 3], dtype='float32')
             x = base.to_variable(inp)
-            custom = CustomLayer('custom', fc1_size=2)
+            custom = CustomLayer(input_size=3, fc1_size=2)
             ret = custom(x, do_fc2=False)
             self.assertTrue(np.array_equal(ret.numpy().shape, [3, 2]))
             ret = custom(x, do_fc2=True)

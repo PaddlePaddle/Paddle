@@ -25,6 +25,7 @@ from ..initializer import Normal, Constant, NumpyArrayInitializer
 import numpy as np
 import numbers
 import logging
+import warnings
 
 __all__ = [
     'Conv2D', 'Conv3D', 'Pool2D', 'FC', 'Linear', 'BatchNorm', 'Embedding',
@@ -1073,6 +1074,9 @@ class FC(layers.Layer):
         self._bias_attr = bias_attr
         self._act = act
         self.__w = list()
+        warnings.warn(
+            "Now FC interface can't be used in dygraph, please use Linear interface!",
+            Warning)
 
     def _build_once(self, input):
         i = 0
