@@ -34,7 +34,6 @@ if (WITH_DISTRIBUTE)
 endif()
 
 if(WITH_PYTHON)
-
   # generate op pybind functions automatically for dygraph.
   set(OP_FUNCTION_GENERETOR_DEPS pybind proto_desc executor layer tracer engine imperative_profiler imperative_flag)
   list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OP_LIB})
@@ -45,27 +44,31 @@ if(WITH_PYTHON)
   endif(NOT WIN32)
 
   add_executable(op_function_generator op_function_generator.cc)
-  target_link_libraries(op_function_generator ${OP_FUNCTION_GENERETOR_DEPS} )
+  target_link_libraries(op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})
   get_property (os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(op_function_generator ${os_dependency_modules})
 
-  if (WIN32)
+  if(WIN32)
     add_custom_target(op_function_cmd 
       COMMAND "${CMAKE_BINARY_DIR}/paddle/fluid/pybind/${CMAKE_BUILD_TYPE}/op_function_generator" 
-      "${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function_impl.h") 
-      add_dependencies(op_function_cmd op_function_generator)
-    if(WITH_MKL)
-    add_custom_target(copy_mkl 
-          COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
-          COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_LIB_DEPS} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
-          COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_IOMP_LIB} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+              "${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function_impl.h") 
+    add_dependencies(op_function_cmd op_function_generator)
+    if(${CBLAS_PROVIDER} STREQUAL MKLML)
+      add_custom_command(TARGET op_function_generator POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+            COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_LIB_DEPS} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+            COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_IOMP_LIB} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
           )
-    endif(WITH_MKL)
+    else(${CBLAS_PROVIDER} STREQUAL EXTERN_OPENBLAS)
+      add_custom_command(TARGET op_function_generator POST_BUILD 
+            COMMAND ${CMAKE_COMMAND} -E copy ${OPENBLAS_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+          )
+    endif()
     if(WITH_MKLDNN)
-      add_custom_target(copy_mkldnn
+      add_custom_command(TARGET op_function_generator POST_BUILD 
           COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
           )
-    endif(WITH_MKLDNN)
+    endif()
   else(WIN32)
     # If there are no *.so in /usr/lib or LD_LIBRARY_PATH, 
     # copy these *.so to current directory and append current directory to
@@ -73,32 +76,21 @@ if(WITH_PYTHON)
     # *.dll in current directory automatically.
     add_custom_target(op_function_cmd 
       COMMAND ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:."
-      "${CMAKE_CURRENT_BINARY_DIR}/op_function_generator"
-      "${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function_impl.h") 
-      add_dependencies(op_function_cmd op_function_generator)
+              "${CMAKE_CURRENT_BINARY_DIR}/op_function_generator"
+              "${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function_impl.h") 
+    add_dependencies(op_function_cmd op_function_generator)
     if(WITH_MKL)
-    add_custom_target(copy_mkl
-          COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}
-          COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_IOMP_LIB} ${CMAKE_CURRENT_BINARY_DIR}
-          )
+      add_custom_command(TARGET op_function_generator POST_BUILD 
+            COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}
+            COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_IOMP_LIB} ${CMAKE_CURRENT_BINARY_DIR}
+            )
     endif(WITH_MKL)
     if(WITH_MKLDNN)
-      add_custom_target(copy_mkldnn
+      add_custom_command(TARGET op_function_generator POST_BUILD 
           COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}
           )
     endif(WITH_MKLDNN)
   endif(WIN32)
-
-  if(WITH_MKL)
-  add_dependencies(copy_mkl op_function_generator)
-  add_dependencies(op_function_cmd copy_mkl)
-  endif(WITH_MKL)
-
-  if(WITH_MKLDNN)
-  add_dependencies(copy_mkldnn op_function_generator)
-  add_dependencies(op_function_cmd copy_mkldnn)  
-  endif(WITH_MKLDNN)
-
 
   if(WITH_AMD_GPU)
     hip_library(paddle_pybind SHARED
@@ -117,6 +109,5 @@ if(WITH_PYTHON)
 
   get_property (os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(paddle_pybind ${os_dependency_modules})
-  add_dependencies(paddle_pybind op_function_cmd) 
-
+  add_dependencies(paddle_pybind op_function_cmd)
 endif(WITH_PYTHON)

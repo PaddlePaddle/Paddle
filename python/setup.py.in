@@ -190,7 +190,7 @@ if '${WITH_MKL}' == 'ON':
 else:
     if os.name == 'nt':
         # copy the openblas.dll
-        shutil.copy(os.path.dirname('${CBLAS_LIBRARIES}') + '/openblas' + ext_name, libs_path)
+        shutil.copy('${OPENBLAS_SHARED_LIB}', libs_path)
         package_data['paddle.libs'] += ['openblas' + ext_name]
 
 if '${WITH_PSLIB}' == 'ON':

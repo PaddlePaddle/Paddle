@@ -146,7 +146,7 @@ class TestModulatedDeformableConvOp(OpTest):
         self.outputs = {'Output': output}
 
     def test_check_output(self):
-        self.check_output(atol=1e-5)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(
