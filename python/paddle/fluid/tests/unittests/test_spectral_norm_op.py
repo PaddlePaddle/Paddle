@@ -117,8 +117,8 @@ class TestSpectralNormOp(TestSpectralNormOpNoGrad):
 
 class TestSpectralNormOp2(TestSpectralNormOp):
     def initTestCase(self):
-        self.weight_shape = (2, 3, 3, 3)
-        self.u_shape = (3, )
+        self.weight_shape = (2, 6, 3, 3)
+        self.u_shape = (6, )
         self.v_shape = (18, )
         self.dim = 1
         self.power_iters = 0
