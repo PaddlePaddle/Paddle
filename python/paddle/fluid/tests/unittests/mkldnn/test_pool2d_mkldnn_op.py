@@ -157,11 +157,6 @@ class TestAsymPadValidNHWC(TestAsymPadValid):
     def init_shape(self):
         self.shape = [2, 7, 7, 3]
 
-    #TODO(jczaja): Add Grad NHWC support
-    def test_check_grad(self):
-        with self.assertRaises(fluid.core_avx.EnforceNotMet):
-            super(TestAsymPadValidNHWC, self).test_check_grad()
-
 
 if __name__ == '__main__':
     unittest.main()
