@@ -447,9 +447,11 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
       T* input_roi_grad_data = input_roi_grad->mutable_data<T>(ctx.GetPlace());
 
       // set gradient of X to be 0. before backpropagate.
-      // math::SetConstant<DeviceContext, T> set_zero;
-      // set_zero(ctx.template device_context<DeviceContext>(), input_grad,
-      //         static_cast<T>(0));
+      math::SetConstant<DeviceContext, T> set_zero;
+      set_zero(ctx.template device_context<DeviceContext>(), input_grad,
+               static_cast<T>(0));
+      set_zero(ctx.template device_context<DeviceContext>(), input_roi_grad,
+               static_cast<T>(0));
 
       // backpropagate gradient per output pixel
       int output_grad_size = output_grad->numel();

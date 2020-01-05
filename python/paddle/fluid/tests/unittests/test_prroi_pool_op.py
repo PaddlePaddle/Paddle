@@ -83,23 +83,16 @@ class TestPRROIPoolOp(OpTest):
         self.check_output()
 
     def test_backward(self):
-        grad_diff = [0.007]
-        places = []
+        grad_diff = [1.0, 0.007]
+        places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for place, error in zip(places, grad_diff):
             self.check_grad_with_place(
-                place, ['X'],
+                place, ['X', 'ROIs'],
                 'Out',
                 max_relative_error=error,
                 numeric_grad_delta=0.005)
-        # prroi_pool_op cannot pass the test_backward in CPU because of the
-        # unnormal grad diff. However, the gradient diff between paddle
-        # prroi_pool_op and pytorch precise_roi_op is small than 1e-4.
-        # pytorch implementation : https://github.com/vacancy/PreciseRoIPooling
-        # Here we deprecate the test_backward in CPU for now.
-        # if user has any question, please contact liuweiwei06
-        self._get_gradient(['X'], fluid.CPUPlace(), ["Out"], None)
 
     def run_net(self, place):
         with program_guard(Program(), Program()):
@@ -212,23 +205,16 @@ class TestPRROIPoolOpTensorRoIs(OpTest):
         self.check_output()
 
     def test_backward(self):
-        places = []
-        grad_diff = [0.007]
+        places = [fluid.CPUPlace()]
+        grad_diff = [1.0, 0.007]
         if fluid.core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for place, error in zip(places, grad_diff):
             self.check_grad_with_place(
-                place, ['X'],
+                place, ['X', 'ROIs'],
                 'Out',
                 max_relative_error=error,
                 numeric_grad_delta=0.005)
-        # prroi_pool_op cannot pass the test_backward in CPU because of the
-        # unnormal grad diff. However, the gradient diff between paddle
-        # prroi_pool_op and pytorch precise_roi_op is small than 1e-4.
-        # pytorch implementation : https://github.com/vacancy/PreciseRoIPooling
-        # Here we deprecate the test_backward in CPU for now.
-        # if user has any question, please contact liuweiwei06
-        self._get_gradient(['X'], fluid.CPUPlace(), ["Out"], None)
 
     def run_net(self, place):
         with program_guard(Program(), Program()):

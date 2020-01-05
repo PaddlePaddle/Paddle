@@ -310,8 +310,8 @@ class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
       if (ctx.HasInput("BatchRoINums") || rois->lod().empty()) {
         auto* batchroinum = ctx.Input<Tensor>("BatchRoINums");
         framework::Tensor batch_index_cpu;
-        framework::TensorCopy(*batchroinum, platform::CPUPlace(),
-                              &batch_index_cpu);
+        framework::TensorCopySync(*batchroinum, platform::CPUPlace(),
+                                  &batch_index_cpu);
 
         int rois_batch_size = batchroinum->dims()[0];
         auto* batch_index = batch_index_cpu.data<int64_t>();
