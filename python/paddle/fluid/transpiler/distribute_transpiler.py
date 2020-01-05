@@ -2531,12 +2531,12 @@ class DistributeTranspiler(object):
     def _get_distribute_update_vars(self):
         #TODO(chengmo): find more powerful and simple way to deal with these special situation
         """
-        This Function is used for special model, like PyramidDnn which has pyramid hash op.
-        Some Parameters don't use optimize op to update its value, but updated in its BP process.
-        In these cases, Transpilse can't find these special vars by optimize op information.
+        This Function is used for a special model, like PyramidDnn which has pyramid hash op.
+        Some Parameters don't use optimizing op to update its value, but updated in its BP process.
+        In these cases, Transpilse can't find these special vars by optimizing op information.
         So we add this function and add attr "distribute_update_vars" to tell transpiler these Parameter
-        need to be update in distribute training.
-        We assume these special var send and recv the same var_name.
+        need to be updated in distribute training.
+        We assume these special var send and receive the same var_name.
         """
         block = self.origin_program.global_block()
         origin_var_dict = self.origin_program.global_block().vars
