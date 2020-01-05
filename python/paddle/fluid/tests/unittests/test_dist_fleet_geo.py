@@ -58,18 +58,6 @@ class TestDistGeoCtr_2x2(TestFleetBase):
 
 
 class TestGeoSgdTranspiler(unittest.TestCase):
-    def test_init(self):
-        config = DistributeTranspilerConfig()
-        server_config = ServerRuntimeConfig()
-
-        # test geo_transpiler exception
-        self.assertRaises(Exception, GeoSgdTranspiler, dict())
-        self.assertRaises(Exception, GeoSgdTranspiler, config, dict())
-
-        transpiler = GeoSgdTranspiler(config, server_config)
-        transpiler = GeoSgdTranspiler(config)
-        transpiler = GeoSgdTranspiler(None, server_config)
-
     def test_pserver(self):
         role = role_maker.UserDefinedRoleMaker(
             current_id=0,

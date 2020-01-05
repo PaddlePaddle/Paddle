@@ -267,13 +267,11 @@ class DistributedTranspiler(Fleet):
 
         if program_config.geo_sgd_mode:
             from paddle.fluid.transpiler.geo_sgd_transpiler import GeoSgdTranspiler
-            self._transpiler = GeoSgdTranspiler(
-                program_config,
-                self._transpile_config.get_server_runtime_config())
+            self._transpiler = GeoSgdTranspiler(program_config)
         else:
-            self._transpiler = OriginTranspiler(
-                program_config,
-                self._transpile_config.get_server_runtime_config())
+            self._transpiler = OriginTranspiler(program_config)
+        self._transpiler._set_server_config(
+            self._transpile_config.get_server_runtime_config())
 
         if self.is_worker():
             self._transpiler.transpile(

@@ -301,23 +301,11 @@ class DistributeTranspiler(object):
             )
     """
 
-    def __init__(self, config=None, server_config=None):
-        if config is None:
-            self.config = DistributeTranspilerConfig()
-        elif isinstance(config, DistributeTranspilerConfig):
+    def __init__(self, config=None):
+        if config is not None:
             self.config = config
         else:
-            raise TypeError(
-                "In DistributeTranspiler, config must be an instance of DistributeTranspilerConfig"
-            )
-        if server_config is None:
-            self.server_config = ServerRuntimeConfig()
-        elif isinstance(server_config, ServerRuntimeConfig):
-            self.server_config = server_config
-        else:
-            raise TypeError(
-                "In DistributeTranspiler, server_config must be an instance of ServerRuntimeConfig"
-            )
+            self.config = DistributeTranspilerConfig()
 
         if self.config.split_method is None:
             self.config.split_method = RoundRobin
@@ -328,6 +316,16 @@ class DistributeTranspiler(object):
         assert (self.config.min_block_size >= 8192)
         assert (self.config.split_method.__bases__[0] == PSDispatcher)
         self.counter_var = None
+
+    def _set_server_config(self, server_config=None):
+        if server_config is None:
+            self.server_config = ServerRuntimeConfig()
+        elif isinstance(server_config, ServerRuntimeConfig):
+            self.server_config = server_config
+        else:
+            raise TypeError(
+                "In DistributeTranspiler, server_config must be an instance of ServerRuntimeConfig"
+            )
 
     def _transpile_nccl2(self,
                          trainer_id,
