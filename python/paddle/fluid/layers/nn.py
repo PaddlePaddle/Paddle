@@ -2461,6 +2461,7 @@ def batch_norm(input,
     Note:
         if build_strategy.sync_batch_norm=True, the batch_norm in network will use 
         sync_batch_norm automatically.
+        `is_test = True` can only be used in test program and inference program, `is_test` CANNOT be set to True in train program, if you want to use global status from pre_train model in train program, please set `use_global_stats = True`.
 
     Args:
         input(Variable): The rank of input variable can be 2, 3, 4, 5. The data type 
@@ -11963,8 +11964,8 @@ def log_loss(input, label, epsilon=1e-4, name=None):
         .. code-block:: python
 
           import paddle.fluid as fluid
-          label = fluid.data(name='label', shape=[-1, 1], dtype='int64')
-          prob = fluid.data(name='prob', shape=[-1, 10], dtype='float32')
+          label = fluid.data(name='label', shape=[None, 1], dtype='float32')
+          prob = fluid.data(name='prob', shape=[None, 1], dtype='float32')
           cost = fluid.layers.log_loss(input=prob, label=label)
     """
     helper = LayerHelper('log_loss', **locals())
