@@ -147,22 +147,22 @@ REGISTER_OP_CUDA_KERNEL(
     slice, ops::SliceKernel<paddle::platform::CUDADeviceContext, float>,
     ops::SliceKernel<paddle::platform::CUDADeviceContext, double>,
     ops::SliceKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::SliceKernel<paddle::platform::CUDADeviceContext, int64_t>);
-// ops::SliceKernel<paddle::platform::CUDADeviceContext, plat::float16>);
+    ops::SliceKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::SliceKernel<paddle::platform::CUDADeviceContext, plat::float16>);
 
 REGISTER_OP_CUDA_KERNEL(
     slice_grad,
     ops::SliceGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::SliceGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::SliceGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::SliceGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
-// ops::SliceGradKernel<paddle::platform::CUDADeviceContext, plat::float16>);
+    ops::SliceGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::SliceGradKernel<paddle::platform::CUDADeviceContext, plat::float16>);
 // slice double grad GPU
 REGISTER_OP_CUDA_KERNEL(
     slice_grad_grad,
     ops::SliceDoubleGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::SliceDoubleGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::SliceDoubleGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::SliceDoubleGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
-// ops::SliceDoubleGradKernel<paddle::platform::CUDADeviceContext,
-//                           plat::float16>);
+    ops::SliceDoubleGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::SliceDoubleGradKernel<paddle::platform::CUDADeviceContext,
+                               plat::float16>);
