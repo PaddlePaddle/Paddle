@@ -22,6 +22,9 @@ from op_test import OpTest
 
 
 def ftrl_step(param, grad, rows, sq_accum, lin_accum, lr, l1, l2, lr_power):
+    l1 += 1e-10
+    l2 += 1e-10
+
     param_hit = param[rows]
     sq_accum_hit = sq_accum[rows]
     lin_accum_hit = lin_accum[rows]
@@ -35,7 +38,7 @@ def ftrl_step(param, grad, rows, sq_accum, lin_accum, lr, l1, l2, lr_power):
             (np.power(new_accum, -lr_power) - np.power(sq_accum_hit, -lr_power)
              ) / lr) * param_hit
 
-    x = (l1 * np.sign(lin_accum_updated) - lin_accum_updated)
+    x = l1 * np.sign(lin_accum_updated) - lin_accum_updated
     if lr_power == -0.5:
         y = (np.sqrt(new_accum) / lr) + (2 * l2)
         pre_shrink = x / y

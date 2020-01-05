@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/fluid/platform/for_range.h"
 
 namespace paddle {
 namespace operators {
@@ -25,19 +26,105 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
+template <typename T>
+class SparseFTRLFunctor {
+ private:
+  const T* g_;
+  const T* p_;
+  const T* s_acc_;
+  const T* l_acc_;
+  const T* lr_;
+  const T l1_;
+  const T l2_;
+  const T lr_power_;
+  const int64_t* rows_;
+  const int64_t row_numel_;
+  T* p_out_;
+  T* s_acc_out_;
+  T* l_acc_out_;
+
+ public:
+  SparseFTRLFunctor(const T* g, const T* p, const T* s_acc, const T* lr,
+                    const T l1, const T l2, const T lr_power,
+                    const int64_t* rows, int64_t row_numel, T* p_out,
+                    T* s_acc_out, T* l_acc_out)
+      : g_(g),
+        p_(p),
+        s_acc_(s_acc),
+        lr_(lr),
+        l1_(l1),
+        l2_(l2),
+        lr_power_(lr_power),
+        rows_(rows),
+        row_numel_(row_numel),
+        p_out_(p_out),
+        s_acc_out_(s_acc_out),
+        l_acc_out_(l_acc_out) {}
+
+  inline HOSTDEVICE void operator()(size_t i) {
+    auto j = rows_[i / row_numel_] * row_numel_ + i % row_numel_;
+    const T g = g_[i];
+    const T p = p_[j];
+    const T s_acc = s_acc_[j];
+    const T lr = lr_[0];
+
+    auto new_acc = s_acc + g * g;
+
+    if (lr_power_ == static_cast<T>(-0.5)) {
+      l_acc_out_[j] += g - (std::sqrt(new_acc) - std::sqrt(s_acc)) / lr * p;
+    } else {
+      l_acc_out_[j] +=
+          g -
+          (std::pow(new_acc, -lr_power_) - std::pow(s_acc, -lr_power_)) / lr *
+              p;
+    }
+
+    auto l_acc = l_acc_out_[j];
+
+    if (std::fabs(l_acc) > l1_) {
+      auto x = -l_acc;
+      if (l_acc >= static_cast<T>(0)) {
+        x += l1_;
+      } else {
+        x -= l1_;
+      }
+
+      auto y = static_cast<T>(2) * l2_;
+      if (lr_power_ == static_cast<T>(-0.5)) {
+        y += std::sqrt(new_acc) / lr;
+      } else {
+        y += std::pow(new_acc, -lr_power_) / lr;
+      }
+
+      auto pre_shrink = x / y;
+      p_out_[j] = pre_shrink;
+    } else {
+      p_out_[j] = static_cast<T>(0);
+    }
+
+    s_acc_out_[j] += g * g;
+  }
+};
+
 template <typename DeviceContext, typename T>
 class FTRLOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* grad_var = ctx.InputVar("Grad");
 
+    auto* lr_in = ctx.Input<Tensor>("LearningRate");
+
+    auto* param_in = ctx.Input<Tensor>("Param");
+    auto* sq_accum_in = ctx.Input<Tensor>("SquaredAccumulator");
+    auto* lin_accum_in = ctx.Input<Tensor>("LinearAccumulator");
+
     auto* param_out = ctx.Output<Tensor>("ParamOut");
     auto* sq_accum_out = ctx.Output<Tensor>("SquaredAccumOut");
     auto* lin_accum_out = ctx.Output<Tensor>("LinearAccumOut");
 
-    auto param_data = param_out->mutable_data<T>(ctx.GetPlace());
-    auto sq_accum_data = sq_accum_out->mutable_data<T>(ctx.GetPlace());
-    auto lin_accum_data = lin_accum_out->mutable_data<T>(ctx.GetPlace());
+    param_out->mutable_data<T>(ctx.GetPlace());
+    sq_accum_out->mutable_data<T>(ctx.GetPlace());
+    lin_accum_out->mutable_data<T>(ctx.GetPlace());
 
     auto l1 = static_cast<T>(ctx.Attr<float>("l1")) + static_cast<T>(1e-10);
     auto l2 = static_cast<T>(ctx.Attr<float>("l2")) + static_cast<T>(1e-10);
@@ -45,14 +132,12 @@ class FTRLOpKernel : public framework::OpKernel<T> {
 
     if (grad_var->IsType<framework::LoDTensor>()) {
       auto grad = ctx.Input<Tensor>("Grad");
-
-      auto p = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Param"));
-      auto sq_accum =
-          EigenVector<T>::Flatten(*ctx.Input<Tensor>("SquaredAccumulator"));
-      auto lin_accum =
-          EigenVector<T>::Flatten(*ctx.Input<Tensor>("LinearAccumulator"));
       auto g = EigenVector<T>::Flatten(*grad);
-      auto lr = EigenVector<T>::Flatten(*ctx.Input<Tensor>("LearningRate"));
+
+      auto p = EigenVector<T>::Flatten(*param_in);
+      auto sq_accum = EigenVector<T>::Flatten(*sq_accum_in);
+      auto lin_accum = EigenVector<T>::Flatten(*lin_accum_in);
+      auto lr = EigenVector<T>::Flatten(*lr_in);
 
       auto p_out = EigenVector<T>::Flatten(*param_out);
       auto s_acc_out = EigenVector<T>::Flatten(*sq_accum_out);
@@ -72,8 +157,9 @@ class FTRLOpKernel : public framework::OpKernel<T> {
       } else {
         l_acc_out.device(place) =
             lin_accum + g -
-            (new_accum.pow(-lr_power) - sq_accum.pow(-lr_power)) /
-                lr.broadcast(grad_dsize) * p;
+            ((new_accum.pow(-lr_power) - sq_accum.pow(-lr_power)) /
+             lr.broadcast(grad_dsize)) *
+                p;
       }
 
       auto x = (l_acc_out.constant(l1) * l_acc_out.sign() - l_acc_out);
@@ -95,67 +181,29 @@ class FTRLOpKernel : public framework::OpKernel<T> {
 
       s_acc_out.device(place) = sq_accum + g * g;
     } else if (grad_var->IsType<framework::SelectedRows>()) {
-      auto lr = *ctx.Input<framework::Tensor>("LearningRate")->data<T>();
-
       auto grad = ctx.Input<framework::SelectedRows>("Grad");
-      auto grad_row_width = grad->value().dims()[1];
 
+      framework::SelectedRows tmp_merged_grad;
+      framework::SelectedRows* merged_grad = &tmp_merged_grad;
       math::scatter::MergeAdd<DeviceContext, T> merge_func;
-      auto grad_merge =
-          merge_func(ctx.template device_context<DeviceContext>(), *grad);
-      auto* grad_merge_data = grad_merge.mutable_value()->template data<T>();
+      merge_func(ctx.template device_context<DeviceContext>(), *grad,
+                 merged_grad);
 
-      for (size_t i = 0; i < grad_merge.rows().size(); i++) {
-        auto tensor_row_idx = grad_merge.rows()[i];
+      const int64_t* rows = merged_grad->rows().Data(ctx.GetPlace());
+      auto row_numel = static_cast<int64_t>(merged_grad->value().dims()[1]);
+      auto row_height = static_cast<int64_t>(merged_grad->rows().size());
 
-        for (int64_t j = 0; j < grad_row_width; j++) {
-          auto grad_ele_idx = i * grad_row_width + j;
-          auto tensor_ele_idx = tensor_row_idx * grad_row_width + j;
+      platform::ForRange<DeviceContext> for_range(
+          static_cast<const DeviceContext&>(ctx.device_context()),
+          row_numel * row_height);
 
-          auto grad_ele = grad_merge_data[grad_ele_idx];
-          auto sq_accum_ele = sq_accum_data[tensor_ele_idx];
-
-          auto new_accum = sq_accum_ele + grad_ele * grad_ele;
-
-          if (lr_power == static_cast<T>(-0.5)) {
-            lin_accum_data[tensor_ele_idx] +=
-                grad_ele -
-                (std::sqrt(new_accum) - std::sqrt(sq_accum_ele)) / lr *
-                    param_data[tensor_ele_idx];
-          } else {
-            lin_accum_data[tensor_ele_idx] +=
-                grad_ele -
-                (std::pow(new_accum, -lr_power) -
-                 std::pow(sq_accum_ele, -lr_power)) /
-                    lr * param_data[tensor_ele_idx];
-          }
-
-          auto lin_accum_ele = lin_accum_data[tensor_ele_idx];
-
-          if (std::fabs(lin_accum_ele) > l1) {
-            auto x = -lin_accum_ele;
-            if (lin_accum_ele >= static_cast<T>(0)) {
-              x += l1;
-            } else {
-              x -= l1;
-            }
-
-            auto y = static_cast<T>(2) * l2;
-            if (lr_power == static_cast<T>(-0.5)) {
-              y += std::sqrt(new_accum) / lr;
-            } else {
-              y += std::pow(new_accum, -lr_power) / lr;
-            }
-
-            auto pre_shrink = x / y;
-            param_data[tensor_ele_idx] = pre_shrink;
-          } else {
-            param_data[tensor_ele_idx] = static_cast<T>(0);
-          }
-
-          sq_accum_data[tensor_ele_idx] += grad_ele * grad_ele;
-        }
-      }
+      SparseFTRLFunctor<T> functor(
+          merged_grad->value().data<T>(), param_in->data<T>(),
+          sq_accum_in->data<T>(), lr_in->data<T>(), l1, l2, lr_power, rows,
+          row_numel, param_out->mutable_data<T>(ctx.GetPlace()),
+          sq_accum_out->mutable_data<T>(ctx.GetPlace()),
+          lin_accum_out->mutable_data<T>(ctx.GetPlace()));
+      for_range(functor);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Unsupported Variable Type of Grad"));
