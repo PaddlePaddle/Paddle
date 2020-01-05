@@ -62,8 +62,9 @@ class PyramidHashOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::string>(
         "distribute_update_vars",
         "['PyramidHash_emb_0','Filter']"
-        "Decided which params should be update in distribute training. Used in "
-        "Distribute Transpiler to create trainer/pserver program.")
+        "Decided which params should be updated in distribute training. Used "
+        "in "
+        "Distribute Transpiler to create a trainer/server program.")
         .SetDefault("");
     AddOutput("Out", "Out (Tensor, default Tensor<float>) Output variable");
     AddOutput("DropPos", "Out (Tensor, Tensor<int>) Output variable");
