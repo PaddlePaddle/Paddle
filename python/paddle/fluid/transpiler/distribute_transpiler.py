@@ -30,6 +30,7 @@ Steps to transpile pserver:
 5. add listen_and_serv op
 """
 
+import os
 import sys
 import math
 from functools import reduce
@@ -177,8 +178,8 @@ class DistributeTranspilerConfig(object):
     print_log = False
     wait_port = True
     # split the send recv var in runtime
-    _runtime_split_send_recv = False
-    _sync_mode = True
+    __runtime_split_send_recv = False
+    __sync_mode = True
 
     # Geo-sgd algorithm
     geo_sgd_mode = False
@@ -200,31 +201,41 @@ class DistributeTranspilerConfig(object):
 
     @property
     def runtime_split_send_recv(self):
-        return self._runtime_split_send_recv
+        return self.__runtime_split_send_recv
 
     @runtime_split_send_recv.setter
     def runtime_split_send_recv(self, value):
         if value is None:
             raise ValueError("runtime_split_send_recv can't be None")
-        if value and self._sync_mode:
+        if value and self.__sync_mode:
             raise ValueError(
                 "if you want to set runtime_split_send_recv to be true, make ensure config.sync_mode is false at first"
             )
-        self._runtime_split_send_recv = value
+        self.__runtime_split_send_recv = value
 
     @property
     def sync_mode(self):
-        return self._sync_mode
+        return self.__sync_mode
 
     @sync_mode.setter
     def sync_mode(self, value):
         if value is None:
             raise ValueError("sync_mode can't be None")
-        if value and self._runtime_split_send_recv:
+        if value and self.__runtime_split_send_recv:
             raise ValueError(
                 "if you want to set sync_mode to be true, make ensure config.runtime_split_send_recv is false at first"
             )
-        self._sync_mode = value
+        self.__sync_mode = value
+
+
+class ServerRuntimeConfig(object):
+    def __init__(self):
+        self._rpc_send_thread_num = int(
+            os.getenv("FLAGS_rpc_send_thread_num", "12"))
+        self._rpc_get_thread_num = int(
+            os.getenv("FLAGS_rpc_get_thread_num", "12"))
+        self._rpc_prefetch_thread_num = int(
+            os.getenv("FLAGS_rpc_prefetch_thread_num", "12"))
 
 
 class DistributeTranspiler(object):
@@ -295,6 +306,7 @@ class DistributeTranspiler(object):
             self.config = config
         else:
             self.config = DistributeTranspilerConfig()
+        self._set_server_config()
 
         if self.config.split_method is None:
             self.config.split_method = RoundRobin
@@ -305,6 +317,16 @@ class DistributeTranspiler(object):
         assert (self.config.min_block_size >= 8192)
         assert (self.config.split_method.__bases__[0] == PSDispatcher)
         self.counter_var = None
+
+    def _set_server_config(self, server_config=None):
+        if server_config is None:
+            self.server_config = ServerRuntimeConfig()
+        elif isinstance(server_config, ServerRuntimeConfig):
+            self.server_config = server_config
+        else:
+            raise TypeError(
+                "In DistributeTranspiler, server_config must be an instance of ServerRuntimeConfig"
+            )
 
     def _transpile_nccl2(self,
                          trainer_id,
@@ -1313,6 +1335,10 @@ class DistributeTranspiler(object):
             "grad_to_block_id": grad_to_block_id,
             "sparse_grad_to_param": sparse_grad_to_param,
             "lr_decay_block_id": lr_decay_block_id,
+            "rpc_get_thread_num": self.server_config._rpc_get_thread_num,
+            "rpc_send_thread_num": self.server_config._rpc_send_thread_num,
+            "rpc_prefetch_thread_num":
+            self.server_config._rpc_prefetch_thread_num
         }
 
         if self.has_distributed_lookup_table:
