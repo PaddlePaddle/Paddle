@@ -66,14 +66,18 @@ class FleetDistRunnerBase(object):
         return role
 
     def build_strategy(self, args):
-        strategy = DistributeTranspilerConfig()
+        strategy = fluid.DistributeTranspilerConfig()
 
-        if args.sync_mode == AsyncMode.SYNC:
+        if args.training_mode == AsyncMode.SYNC:
             strategy.sync_mode = args.sync_mode
-        elif args.sync_mode == AsyncMode.HALF_ASYNC:
+        elif args.training_mode == AsyncMode.ASYNC:
             strategy.sync_mode = False
             strategy.runtime_split_send_recv = True
-        elif args.sync_mode == AsyncMode.GEO_SGD:
+        elif args.training_mode == AsyncMode.HALF_ASYNC:
+            strategy.sync_mode = False
+            strategy.half_async = True
+            strategy.runtime_split_send_recv = True
+        elif args.training_mode == AsyncMode.GEO_SGD:
             strategy.sync_mode = False
             strategy.runtime_split_send_recv = True
             strategy.geo_sgd_mode = True
@@ -88,8 +92,8 @@ class FleetDistRunnerBase(object):
         optimizer.minimize(loss)
 
     def run_pserver(self, args):
-        fleet.init(self.build_role())
-        strategy = self.build_strategy()
+        fleet.init(self.build_role(args))
+        strategy = self.build_strategy(args)
         avg_cost = self.net()
         self.build_optimizer(avg_cost, strategy)
 
@@ -97,8 +101,8 @@ class FleetDistRunnerBase(object):
         fleet.run_server()
 
     def run_trainer(self, args):
-        fleet.init(self.build_role())
-        strategy = self.build_strategy()
+        fleet.init(self.build_role(args))
+        strategy = self.build_strategy(args)
         avg_cost = self.net()
         self.build_optimizer(avg_cost, strategy)
         out = self.do_training(fleet)
@@ -213,9 +217,9 @@ class TestFleetBase(unittest.TestCase):
         tr_cmd += " --training_mode {0}".format(self._sync_mode)
         ps_cmd += " --training_mode {0}".format(self._sync_mode)
 
-        tr_cmd += " --geo_sgd_need_push_nums {1}".format(
+        tr_cmd += " --geo_sgd_push_nums {0}".format(
             self._geo_sgd_need_push_nums)
-        ps_cmd += " --geo_sgd_need_push_nums {1}".format(
+        ps_cmd += " --geo_sgd_push_nums {0}".format(
             self._geo_sgd_need_push_nums)
 
         # Run dist train to compare with local results

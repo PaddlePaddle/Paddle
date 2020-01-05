@@ -20,7 +20,7 @@ from test_dist_fleet_base import TestFleetBase
 from paddle.fluid.communicator import AsyncMode
 
 
-class TestDistMnist2x2(TestFleetBase):
+class TestDistCtrAsync2x2(TestFleetBase):
     def _setup_config(self):
         self._sync_mode = AsyncMode.ASYNC
 
@@ -35,7 +35,7 @@ class TestDistMnist2x2(TestFleetBase):
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
             "http_proxy": "",
-            "SAVE_MODEL": "0"
+            "SAVE_MODEL": "1"
         }
 
         required_envs.update(need_envs)
@@ -51,7 +51,7 @@ class TestDistMnist2x2(TestFleetBase):
             "dist_fleet_ctr.py", delta=1e-5, check_error_log=True)
 
 
-class TestDistMnist2x2(TestFleetBase):
+class TestDistCtrHalfAsync2x2(TestFleetBase):
     def _setup_config(self):
         self._sync_mode = AsyncMode.HALF_ASYNC
 
@@ -64,7 +64,7 @@ class TestDistMnist2x2(TestFleetBase):
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
-            "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
+            "FLAGS_rpc_deadline": "30000",  # 5sec to fail fast
             "http_proxy": "",
             "FLAGS_communicator_send_queue_size": "1",
             "FLAGS_communicator_max_merge_var_num": "1",
