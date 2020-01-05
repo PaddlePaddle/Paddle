@@ -28,7 +28,7 @@ import paddle.fluid as fluid
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
 
-from model import Model
+from model import Model, CrossEntropy
 
 
 def center_crop_resize(img):
@@ -358,7 +358,7 @@ def main():
     with guard:
         model = ResNet()
         sgd = make_optimizer(parameter_list=model.parameters())
-        model.prepare(sgd, 'cross_entropy')
+        model.prepare(sgd, CrossEntropy())
 
         for e in range(epoch):
             print("======== train epoch {} ========".format(e))

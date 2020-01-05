@@ -21,7 +21,7 @@ from paddle import fluid
 from paddle.fluid.optimizer import MomentumOptimizer
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
 
-from model import Model, shape_hints
+from model import Model, shape_hints, CrossEntropy
 
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
@@ -132,7 +132,7 @@ if __name__ == '__main__':
         sgd = MomentumOptimizer(learning_rate=1e-3, momentum=0.9,
                                 parameter_list=model.parameters())
         # sgd = SGDOptimizer(learning_rate=1e-3)
-        model.prepare(sgd, 'cross_entropy')
+        model.prepare(sgd, CrossEntropy())
 
         for e in range(2):
             for idx, batch in enumerate(train_loader()):
