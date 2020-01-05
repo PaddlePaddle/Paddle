@@ -79,7 +79,7 @@ class DpsgdOpKernel : public framework::OpKernel<T> {
     float X;
     float mu = 0.0;
     float U1, U2;
-    unsigned seed = (unsigned int)(time(NULL));
+    unsigned seed = ctx.Attr<int>("seed");
     std::minstd_rand engine;
     engine.seed(seed);
     std::uniform_real_distribution<T> dist(0.0, 1.0);

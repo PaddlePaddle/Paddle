@@ -83,6 +83,10 @@ class DpsgdOpMaker : public framework::OpProtoAndCheckerMaker {
                    "(float, default 1.0e-8) "
                    "Constant for numerical stability")
         .SetDefault(1.0f);
+    AddAttr<int>("seed",
+                 "(int, default 100) "
+                 "Seed for Dpsgd Optimizer")
+        .SetDefault(100);
     AddComment(R"DOC(
 Dpsgd Optimizer.
 

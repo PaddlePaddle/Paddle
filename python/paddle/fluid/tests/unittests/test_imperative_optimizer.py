@@ -28,8 +28,7 @@ from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 
 # Note(wangzhongpu)
-# In dygraph, don't suppot DGCMomentumOptimizer.
-# For AdagradOptimizer and DpsgdOptimizer, the result in static graph and dygraph are different.
+# In dygraph, don't suppot ModelAverage, DGCMomentumOptimizer, ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, RecomputeOptimizer.
 
 
 class MLP(fluid.Layer):
@@ -372,19 +371,23 @@ class TestImperativeAdamaxOptimizer(TestImperativeOptimizerBase):
         self._check_mlp()
 
 
-'''
 class TestImperativeDpsgdOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = DpsgdOptimizer(learning_rate=0.01, clip=10.0, batch_size=16.0, sigma=1.0, parameter_list=parameter_list)
+        optimizer = DpsgdOptimizer(
+            learning_rate=0.01,
+            clip=10.0,
+            batch_size=16.0,
+            sigma=1.0,
+            parameter_list=parameter_list)
         return optimizer
 
     def get_optimizer(self):
-        optimizer = DpsgdOptimizer(learning_rate=0.01, clip=10.0, batch_size=16.0, sigma=1.0)
+        optimizer = DpsgdOptimizer(
+            learning_rate=0.01, clip=10.0, batch_size=16.0, sigma=1.0)
         return optimizer
 
     def test_dpsgd(self):
         self._check_mlp()
-'''
 
 
 class TestImperativeDecayedAdagradOptimizer(TestImperativeOptimizerBase):
