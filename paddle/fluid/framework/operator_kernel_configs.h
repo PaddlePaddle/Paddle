@@ -17,7 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <unordered_map>
 #include <vector>
-#include "paddle/fluid/platform/cudnn_helper.h"
+#include "paddle/fluid/platform/dynload/cudnn.h"
 
 namespace paddle {
 namespace framework {
