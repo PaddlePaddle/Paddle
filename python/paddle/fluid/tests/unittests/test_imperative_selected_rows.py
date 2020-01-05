@@ -61,7 +61,7 @@ class TestSimpleNet(unittest.TestCase):
                         input_emb, emb = simplenet(input)
 
                         try:
-                            emb._w.gradient()
+                            emb.weight.gradient()
                         except ValueError as e:
                             assert "has no grad, Please set Variable.stop_gradient=False, or check if this is the first and only variable need grad, if so, please set its pre-Variable's stop_gradient=False, to make sure it has gradient" in str(
                                 e)
@@ -73,11 +73,11 @@ class TestSimpleNet(unittest.TestCase):
 
                         input_emb.backward(backward_strategy)
                         adam.minimize(input_emb)  # grad_clip=grad_clip
-                        emb._w.gradient()
+                        emb.weight.gradient()
 
                         emb.clear_gradients()
                         try:
-                            emb._w.gradient()
+                            emb.weight.gradient()
                         except ValueError as e:
                             assert "has no grad, Please set Variable.stop_gradient=False, or check if this is the first and only variable need grad, if so, please set its pre-Variable's stop_gradient=False, to make sure it has gradient" in str(
                                 e)
@@ -108,7 +108,7 @@ class TestSimpleNet(unittest.TestCase):
                     input_emb, emb = simplenet(input)
 
                     try:
-                        emb._w.gradient()
+                        emb.weight.gradient()
                     except ValueError as e:
                         assert "has no grad, Please set Variable.stop_gradient=False, or check if this is the first and only variable need grad, if so, please set its pre-Variable's stop_gradient=False, to make sure it has gradient" in str(
                             e)
@@ -120,11 +120,11 @@ class TestSimpleNet(unittest.TestCase):
 
                     input_emb.backward(backward_strategy)
                     adam.minimize(input_emb, grad_clip=grad_clip)
-                    emb._w.gradient()
+                    emb.weight.gradient()
 
                     emb.clear_gradients()
                     try:
-                        emb._w.gradient()
+                        emb.weight.gradient()
                     except ValueError as e:
                         assert "has no grad, Please set Variable.stop_gradient=False, or check if this is the first and only variable need grad, if so, please set its pre-Variable's stop_gradient=False, to make sure it has gradient" in str(
                             e)
