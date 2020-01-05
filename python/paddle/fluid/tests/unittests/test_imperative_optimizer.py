@@ -344,10 +344,10 @@ class TestImperativeLarsMomentumOptimizer(TestImperativeOptimizerBase):
         self._check_mlp()
 
 
-'''
 class TestImperativeAdagradOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = AdagradOptimizer(learning_rate=0.2, parameter_list=parameter_list)
+        optimizer = AdagradOptimizer(
+            learning_rate=0.2, parameter_list=parameter_list)
         return optimizer
 
     def get_optimizer(self):
@@ -356,7 +356,6 @@ class TestImperativeAdagradOptimizer(TestImperativeOptimizerBase):
 
     def test_adagrad(self):
         self._check_mlp()
-'''
 
 
 class TestImperativeAdamaxOptimizer(TestImperativeOptimizerBase):
