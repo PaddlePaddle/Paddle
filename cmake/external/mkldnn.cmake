@@ -97,10 +97,9 @@ ADD_DEPENDENCIES(mkldnn ${MKLDNN_PROJECT})
 # copy the real so.0 lib to install dir
 # it can be directly contained in wheel or capi
 if(WIN32)
-    SET(MKLDNN_SHARED_LIB ${MKLDNN_INSTALL_DIR}/bin/dnnl.dll)
-    SET(MKLDNN_SHARED_LIB_1 ${MKLDNN_INSTALL_DIR}/bin/mkldnn.dll)
+    SET(MKLDNN_SHARED_LIB ${MKLDNN_INSTALL_DIR}/bin/mkldnn.dll)
     ADD_CUSTOM_COMMAND(TARGET ${MKLDNN_PROJECT} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_SHARED_LIB} ${MKLDNN_SHARED_LIB_1})
+        COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_INSTALL_DIR}/bin/dnnl.dll ${MKLDNN_SHARED_LIB})
     add_custom_command(TARGET ${MKLDNN_PROJECT} POST_BUILD VERBATIM
         COMMAND dumpbin /exports ${MKLDNN_INSTALL_DIR}/bin/mkldnn.dll > ${MKLDNN_INSTALL_DIR}/bin/exports.txt)
     add_custom_command(TARGET ${MKLDNN_PROJECT} POST_BUILD VERBATIM
