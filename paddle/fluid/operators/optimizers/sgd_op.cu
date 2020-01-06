@@ -73,6 +73,8 @@ class SGDOpKernel<platform::CUDADeviceContext, T>
     if (grad_var->IsType<framework::LoDTensor>()) {
       param_out->mutable_data<T>(ctx.GetPlace());
       auto* grad = ctx.Input<framework::Tensor>("Grad");
+      VLOG(4) << "grad Tensor is initialized: " << grad->IsInitialized();
+      if (!grad->IsInitialized()) return;
       // LOG(ERROR) << "grad";
       // LOG(ERROR) << ctx.op().Input("Grad");
       auto* grad_data = grad->data<T>();
@@ -94,6 +96,9 @@ class SGDOpKernel<platform::CUDADeviceContext, T>
       // It's better to find a more elegant solution.
       PADDLE_ENFORCE_EQ(param, param_out);
       auto* grad = ctx.Input<framework::SelectedRows>("Grad");
+      VLOG(4) << "grad SelectedRows is initialized: "
+              << grad.value().IsInitialized();
+      if (!grad.value().IsInitialized()) return;
 
       auto in_height = grad->height();
       auto out_dims = param_out->dims();
