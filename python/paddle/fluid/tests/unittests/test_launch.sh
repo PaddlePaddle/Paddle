@@ -67,8 +67,8 @@ fi
 
 # test select_gpus
 distributed_args="--use_paddlecloud --cluster_node_ips=${cluster_node_ips} --node_ip=${node_ip}
---selected_gpus=4,5"
-CUDA_VISIBLE_DEVICES=4,5,6,7 python -m paddle.distributed.launch ${distributed_args} multi_process.py
+--selected_gpus=1"
+CUDA_VISIBLE_DEVICES=1 python -m paddle.distributed.launch ${distributed_args} multi_process.py
 echo "select_gpus params test"
 if grep -q "$str1" "$file_0"; then
     echo "find trainer 0"
