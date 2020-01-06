@@ -286,28 +286,6 @@ void AsyncCommunicator::RecvThread() {
   VLOG(0) << "communicator stopped, recv thread exit";
 }
 
-void AsyncCommunicator::Send(const std::string &var_name,
-                             const framework::Scope &scope) {
-  VLOG(3) << "communicator send " << var_name;
-  // push var into send queue by var_name
-  auto *grad_var = scope.FindVar(var_name);
-  PADDLE_ENFORCE(grad_var->IsInitialized(), "grad var should be inited");
-  if (grad_var->IsType<framework::SelectedRows>() &&
-      !env_flags_dict["merge_sparse_grad"]) {
-    auto send_functor = distributed::ParameterSend<float>();
-    auto &ctx = send_varname_to_ctx_.at(var_name);
-    if (!env_flags_dict["fake_rpc"]) {
-      send_functor(ctx, scope, true, 1);
-    }
-  } else {
-    auto tmp_grad_var = std::make_shared<Variable>();
-    framework::CopyVariable(*grad_var, tmp_grad_var.get());
-    auto &queue = send_varname_to_queue_.at(var_name);
-    VLOG(3) << "send " << var_name << " queue size " << queue->Size();
-    queue->Push(tmp_grad_var);
-  }
-}
-
 void AsyncCommunicator::Recv() {
   if (env_flags_dict["independent_recv_thread"]) {
     return;
@@ -383,9 +361,34 @@ void AsyncCommunicator::Stop() {
   VLOG(0) << "Communicator stop done";
 }
 
-void AsyncCommunicator::Send(const std::vector<std::string> &sparse_var_names,
-                             const std::vector<std::string> &sparse_var_tables,
-                             const framework::Scope &scope) {}
+void AsyncCommunicator::Send(const std::vector<std::string> &var_names,
+                             const std::vector<std::string> &var_tables,
+                             const framework::Scope &scope) {
+  PADDLE_ENFORCE_EQ(
+      var_names.size(), 1,
+      platform::errors::InvalidArgument("var_names.size() == 1 is permitted"));
+  auto var_name = var_names[0];
+  // push var into send queue by var_name
+  auto *grad_var = scope.FindVar(var_name);
+  PADDLE_ENFORCE_EQ(
+      grad_var->IsInitialized(), true,
+      platform::errors::InvalidArgument("grad var should be inited"));
+
+  if (grad_var->IsType<framework::SelectedRows>() &&
+      !env_flags_dict["merge_sparse_grad"]) {
+    auto send_functor = distributed::ParameterSend<float>();
+    auto &ctx = send_varname_to_ctx_.at(var_name);
+    if (!env_flags_dict["fake_rpc"]) {
+      send_functor(ctx, scope, true, 1);
+    }
+  } else {
+    auto tmp_grad_var = std::make_shared<Variable>();
+    framework::CopyVariable(*grad_var, tmp_grad_var.get());
+    auto &queue = send_varname_to_queue_.at(var_name);
+    VLOG(3) << "send " << var_name << " queue size " << queue->Size();
+    queue->Push(tmp_grad_var);
+  }
+}
 
 void AsyncCommunicator::InitImpl(
     const paddle::framework::ProgramDesc &program, Scope *param_scope,
@@ -501,11 +504,10 @@ void GeoSgdCommunicator::Stop() {
   VLOG(0) << "Geo Sgd Communicator stop done";
 }
 
-void GeoSgdCommunicator::Send(const std::string &var_name,
+void GeoSgdCommunicator::Send(const std::vector<std::string> &sparse_var_names,
+                              const std::vector<std::string> &sparse_var_tables,
                               const framework::Scope &scope) {
-  // when execute trainer startup program, recv parameter from pserver
-  // training_scope & pserver_scope param will copy it
-  if (var_name == "param_init") {
+  if (sparse_var_names.size() == 1 && sparse_var_names[0] == "param_init") {
     for (auto &iter : var_list_) {
       // For sparse param, old_scope store LoDTensor,
       // pserver_scope store SelectedRows.
@@ -520,12 +522,7 @@ void GeoSgdCommunicator::Send(const std::string &var_name,
       GeoSgdDenseParamInit(training_scope_, old_scope_.get(), local_var_name);
     }
   }
-}
 
-void GeoSgdCommunicator::Send(const std::vector<std::string> &sparse_var_names,
-                              const std::vector<std::string> &sparse_var_tables,
-                              const framework::Scope &scope) {
-  // SparseIdsMap = std::unordered_map<std::string,std::unordered_set<int64_t>>
   std::shared_ptr<SparseIdsMap> ids_table = std::make_shared<SparseIdsMap>();
   auto before_run_send = GetCurrentUS();
   for (size_t i = 0; i < sparse_var_tables.size(); i++) {
@@ -1216,10 +1213,13 @@ void HalfAsyncCommunicator::ConsumeThread() {
   VLOG(0) << "communicator stopped, send thread exit";
 }
 
-void HalfAsyncCommunicator::Send(const std::vector<std::string> &var_ins_names,
-                                 const std::vector<std::string> &var_names,
+void HalfAsyncCommunicator::Send(const std::vector<std::string> &var_names,
+                                 const std::vector<std::string> &var_tables,
                                  const framework::Scope &scope) {
-  auto var_name = var_ins_names[0];
+  PADDLE_ENFORCE_EQ(
+      var_names.size(), 1,
+      platform::errors::InvalidArgument("var_names.size() == 1 is permitted"));
+  auto var_name = var_names[0];
   VLOG(3) << "communicator send " << var_name;
   // push var into send queue by var_name
   auto *grad_var = scope.FindVar(var_name);

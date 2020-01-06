@@ -68,7 +68,7 @@ void BindCommunicator(py::module* m) {
       }))
       .def("stop", &Communicator::Stop)
       .def("start", &Communicator::Start)
-      .def("is_running", &Communicator::IsRunning)
+      .def("is_running", &Communicator::IsRunning);
 }
 }  // namespace pybind
 }  // namespace paddle
