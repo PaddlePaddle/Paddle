@@ -230,10 +230,8 @@ void FusedBatchNormActGradOp::InferShape(
 
   ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
   // has_scale_grad == has_bias_grad, judge has_scale_grad is enough
-  if (has_scale_grad) {
-    ctx->SetOutputDim(framework::GradVarName("Scale"), {C});
-    ctx->SetOutputDim(framework::GradVarName("Bias"), {C});
-  }
+  ctx->SetOutputDim(framework::GradVarName("Scale"), {C});
+  ctx->SetOutputDim(framework::GradVarName("Bias"), {C});
 }
 
 framework::OpKernelType FusedBatchNormActGradOp::GetExpectedKernelType(

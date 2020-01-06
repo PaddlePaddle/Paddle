@@ -106,11 +106,14 @@ class TestFuseBatchNormActPass(unittest.TestCase):
         for i in range(iters):
             self.assertAlmostEqual(loss_vals[i], loss_vals_fused[i], delta=1e-5)
 
-    def test_fuse_bn_act_pass(self):
+    def test_fuse_bn_act_pass_cpu(self):
         place = fluid.CPUPlace()
+        self.check(place)
+
+    def test_fuse_bn_act_pass_cuda(self):
         if fluid.core.is_compiled_with_cuda():
             place = fluid.CUDAPlace(0)
-        self.check(place)
+            self.check(place)
 
 
 if __name__ == '__main__':
