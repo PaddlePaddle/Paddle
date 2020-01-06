@@ -2461,6 +2461,7 @@ def batch_norm(input,
     Note:
         if build_strategy.sync_batch_norm=True, the batch_norm in network will use 
         sync_batch_norm automatically.
+        `is_test = True` can only be used in test program and inference program, `is_test` CANNOT be set to True in train program, if you want to use global status from pre_train model in train program, please set `use_global_stats = True`.
 
     Args:
         input(Variable): The rank of input variable can be 2, 3, 4, 5. The data type 
@@ -3881,9 +3882,9 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
     attrs = {
-        'dim': dim if dim != None else [0],
+        'dim': dim if dim != None and dim != [] else [0],
         'keep_dim': keep_dim,
-        'reduce_all': True if dim == None else False
+        'reduce_all': True if dim == None or dim == [] else False
     }
 
     if in_dygraph_mode():
@@ -3956,9 +3957,9 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
     attrs = {
-        'dim': dim if dim != None else [0],
+        'dim': dim if dim != None and dim != [] else [0],
         'keep_dim': keep_dim,
-        'reduce_all': True if dim == None else False
+        'reduce_all': True if dim == None or dim == [] else False
     }
 
     if in_dygraph_mode():
@@ -4033,9 +4034,9 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else [0],
+            'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None else False
+            'reduce_all': True if dim == None or dim == [] else False
         })
     return out
 
@@ -4094,9 +4095,9 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else [0],
+            'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None else False
+            'reduce_all': True if dim == None or dim == [] else False
         })
     return out
 
@@ -4156,9 +4157,9 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else [0],
+            'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None else False
+            'reduce_all': True if dim == None or dim == [] else False
         })
     return out
 
@@ -4214,9 +4215,9 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else [0],
+            'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None else False
+            'reduce_all': True if dim == None or dim == [] else False
         })
     return out
 
@@ -4272,9 +4273,9 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else [0],
+            'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None else False
+            'reduce_all': True if dim == None or dim == [] else False
         })
     return out
 
@@ -7664,7 +7665,7 @@ def scatter_nd_add(ref, index, updates, name=None):
             output = [[67, 19], [-16, -27]]
 
     Args:
-        ref (Variable): The ref input. Its dtype should be int32, int64, float32, float64.
+        ref (Variable): The ref input. Its dtype should be float32, float64.
         index (Variable): The index input with rank > 1 and index.shape[-1] <= ref.rank.
                           Its dtype should be int32 or int64 as it is used as indexes.
         updates (Variable): The updated value of scatter_nd_add op, and it must have the same dtype
@@ -7721,7 +7722,7 @@ def scatter_nd(index, updates, shape, name=None):
     Args:
         index (Variable): The index input with rank > 1 and index.shape[-1] <= len(shape).
                           Its dtype should be int32 or int64 as it is used as indexes.
-        updates (Variable): The updated value of scatter_nd op. Its dtype should be int32, int64, float32, float64.
+        updates (Variable): The updated value of scatter_nd op. Its dtype should be float32, float64.
                             It must have the shape index.shape[:-1] + shape[index.shape[-1]:]
         shape(tuple|list): Shape of output tensor.
         name (str|None): The output variable name. If set None, the layer will be named automatically.
@@ -11963,8 +11964,8 @@ def log_loss(input, label, epsilon=1e-4, name=None):
         .. code-block:: python
 
           import paddle.fluid as fluid
-          label = fluid.data(name='label', shape=[-1, 1], dtype='int64')
-          prob = fluid.data(name='prob', shape=[-1, 10], dtype='float32')
+          label = fluid.data(name='label', shape=[None, 1], dtype='float32')
+          prob = fluid.data(name='prob', shape=[None, 1], dtype='float32')
           cost = fluid.layers.log_loss(input=prob, label=label)
     """
     helper = LayerHelper('log_loss', **locals())

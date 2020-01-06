@@ -45,7 +45,7 @@ def relu(x):
 
 class TestGRUUnitOp(OpTest):
     batch_size = 5
-    frame_size = 10
+    frame_size = 40
     activate = {
         GRUActivationType.identity: identity,
         GRUActivationType.sigmoid: sigmoid,
