@@ -302,7 +302,7 @@ class TestSaveLoadBase(unittest.TestCase):
                     # make sure all the paramerter or optimzier var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            fluid.load(main_program, "./test_1", exe)
+            fluid.load(main_program, "./test_1.pdparams", exe)
 
             for var in main_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
@@ -411,7 +411,7 @@ class TestSaveLoadPartial(unittest.TestCase):
                     # make sure all the paramerter or optimzier var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
-            fluid.load(test_program, "./test_1", None)
+            fluid.load(test_program, "./test_1.pdopt", None)
 
             for var in test_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
@@ -419,6 +419,7 @@ class TestSaveLoadPartial(unittest.TestCase):
                                      .get_tensor())
                     base_t = base_map[var.name]
                     self.assertTrue(np.array_equal(new_t, base_t))
+            fluid.load(test_program, "./test_1.pdmodel", None)
 
 
 class TestSaveLoadSetStateDict(unittest.TestCase):

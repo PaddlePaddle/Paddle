@@ -1578,7 +1578,15 @@ def load(program, model_path, executor=None, var_list=None):
 
     assert executor is None or isinstance(executor, Executor)
 
-    parameter_file_name = model_path + ".pdparams"
+    model_prefix = model_path
+    if model_prefix.endswith(".pdparams"):
+        model_prefix = model_prefix[:-9]
+    elif model_prefix.endswith(".pdopt"):
+        model_prefix = model_prefix[:-6]
+    elif model_prefix.endswith(".pdmodel"):
+        model_prefix = model_prefix[:-8]
+
+    parameter_file_name = model_prefix + ".pdparams"
 
     if not os.path.exists(parameter_file_name):
         # model file save by fluid.save not found, try to load model file saved with
@@ -1682,7 +1690,7 @@ def load(program, model_path, executor=None, var_list=None):
         filter(is_belong_to_optimizer, program.list_vars()))
 
     if len(optimizer_var_list) > 0:
-        opt_file_name = model_path + ".pdopt"
+        opt_file_name = model_prefix + ".pdopt"
         assert os.path.exists(opt_file_name), \
             "Optimizer file [{}] not exits".format(opt_file_name)
 
