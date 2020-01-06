@@ -468,6 +468,8 @@ class AdamOpKernel : public framework::OpKernel<T> {
 
     if (grad_var->IsType<framework::LoDTensor>()) {
       auto& grad = Ref(ctx.Input<LoDTensor>("Grad"), "Must set Grad");
+      VLOG(4) << "grad Tensor is initialized: " << grad.IsInitialized();
+      if (!grad.IsInitialized()) return;
 
       if (platform::is_cpu_place(ctx.GetPlace())) {
         AdamFunctor<T, CPUAdam> functor(
@@ -505,6 +507,9 @@ class AdamOpKernel : public framework::OpKernel<T> {
     } else if (grad_var->IsType<framework::SelectedRows>()) {
       auto& grad =
           Ref(ctx.Input<framework::SelectedRows>("Grad"), "Must set Grad");
+      VLOG(4) << "grad SelectedRows is initialized: "
+              << grad.value().IsInitialized();
+      if (!grad.value().IsInitialized()) return;
       if (grad.rows().size() == 0) {
         VLOG(3) << "grad row size is 0!!";
         return;

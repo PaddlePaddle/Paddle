@@ -97,7 +97,8 @@ void AdamOp::InferShape(framework::InferShapeContext* ctx) const {
 
   auto param_dims = ctx->GetInputDim("Param");
   if (ctx->GetInputsVarType("Grad")[0] ==
-      framework::proto::VarType::LOD_TENSOR) {
+          framework::proto::VarType::LOD_TENSOR &&
+      framework::product(ctx->GetInputDim("Grad")) > 0) {
     PADDLE_ENFORCE_EQ(
         param_dims, ctx->GetInputDim("Grad"),
         platform::errors::InvalidArgument(
