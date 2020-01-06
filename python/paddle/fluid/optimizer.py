@@ -1965,6 +1965,7 @@ class DpsgdOptimizer(Optimizer):
         parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
+        seed (int, optional): Seed for Dpsgd Optimizer. The default value is None.
     Notes:
        Currently, DpsgdOptimizer doesn't support sparse parameter optimization.
     """
