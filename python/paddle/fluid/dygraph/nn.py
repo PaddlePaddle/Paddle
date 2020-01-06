@@ -19,7 +19,7 @@ from .. import core
 from ..layers import utils
 from ..dygraph import dygraph_utils
 from . import layers
-from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer_, _varbase_creator
+from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer, _varbase_creator
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 from .. import unique_name
@@ -1372,10 +1372,11 @@ class BatchNorm(layers.Layer):
         }
 
         if in_dygraph_mode():
-            saved_mean = _varbase_creator(dtype=self._dtype, stop_gradient=True)
-            saved_variance = _varbase_creator(
-                dtype=self._dtype, stop_gradient=True)
+            attrs['is_test'] = not _dygraph_tracer()._train_mode
+            saved_mean = _varbase_creator(dtype=self._dtype)
+            saved_variance = _varbase_creator(dtype=self._dtype)
             batch_norm_out = _varbase_creator(dtype=self._dtype)
+            batch_norm_out.stop_gradient = False
             # inplace is not supported currently
         else:
             saved_mean = self._helper.create_variable_for_type_inference(

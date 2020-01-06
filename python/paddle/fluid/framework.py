@@ -567,19 +567,15 @@ def _varbase_creator(type=core.VarDesc.VarType.LOD_TENSOR,
                      shape=None,
                      dtype=None,
                      persistable=None,
-                     stop_gradient=None,
                      **kwargs):
     if dtype is not None:
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
-    var = core.VarBase(dtype if dtype else core.VarDesc.VarType.FP32,
-                       list(shape) if shape else [], name, type
-                       if type else core.VarDesc.VarType.LOD_TENSOR, True
-                       if persistable else False)
-    if stop_gradient is not None:
-        var.stop_gradient = stop_gradient
-    return var
+    return core.VarBase(dtype if dtype else core.VarDesc.VarType.FP32,
+                        list(shape) if shape else [], name, type
+                        if type else core.VarDesc.VarType.LOD_TENSOR, True
+                        if persistable else False)
 
 
 class VariableMetaClass(type):
