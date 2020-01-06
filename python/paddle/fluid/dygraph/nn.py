@@ -2501,21 +2501,32 @@ class Conv2DTranspose(layers.Layer):
             is_bias=True)
 
     def forward(self, input):
+        inputs = {'Input': [input], 'Filter': [self.weight]}
+        attrs = {
+            'output_size': self._output_size,
+            'strides': self._stride,
+            'paddings': self._padding,
+            'dilations': self._dilation,
+            'groups': self._groups,
+            'use_cudnn': self._use_cudnn
+        }
+
+        if in_dygraph_mode():
+            op = getattr(core.ops, self._op_type)
+            outs = op(inputs, attrs)
+            pre_bias = outs['Output'][0]
+            pre_act = dygraph_utils._append_bias_in_dygraph(pre_bias, self.bias,
+                                                            1)
+            return dygraph_utils._append_activation_in_dygraph(
+                pre_act, act=self._act)
+
         pre_bias = self._helper.create_variable_for_type_inference(
             dtype=input.dtype)
         self._helper.append_op(
             type=self._op_type,
-            inputs={'Input': [input],
-                    'Filter': [self.weight]},
+            inputs=attrs,
             outputs={'Output': pre_bias},
-            attrs={
-                'output_size': self._output_size,
-                'strides': self._stride,
-                'paddings': self._padding,
-                'dilations': self._dilation,
-                'groups': self._groups,
-                'use_cudnn': self._use_cudnn
-            })
+            attrs=attrs)
 
         if self.bias is not None:
             pre_act = self._helper.create_variable_for_type_inference(

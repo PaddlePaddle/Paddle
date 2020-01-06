@@ -27,6 +27,8 @@ from test_imperative_base import new_program_scope
 from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
 from paddle.fluid.dygraph import TracedLayer
 
+#NOTE(zhiqiu): run with FLAGS_cudnn_deterministic=1
+
 batch_size = 8
 train_parameters = {
     "input_size": [3, 224, 224],
