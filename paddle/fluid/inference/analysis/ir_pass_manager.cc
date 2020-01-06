@@ -150,6 +150,7 @@ void IRPassManager::CreatePasses(Argument *argument,
     disable_logs_ = argument->disable_logs();
     if (pass_name == "fc_fuse_pass") {
       pass->Set("use_gpu", new bool(argument->use_gpu()));
+      pass->Set("use_padding", new bool(argument->use_padding()));
     }
 
     pre_pass = pass_name;
