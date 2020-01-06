@@ -236,15 +236,16 @@ class AsyncCommunicator : public Communicator {
   AsyncCommunicator() : Communicator() {}
   explicit AsyncCommunicator(const std::map<std::string, std::string>& envs)
       : Communicator(envs) {
-    independent_recv_thread_ = std::stoi(envs.at("independent_recv_thread"));
+    independent_recv_thread_ = static_cast<bool>(
+        std::stoi(envs.at("communicator_independent_recv_thread")));
     min_send_grad_num_before_recv_ =
-        std::stoi(envs.at("min_send_grad_num_before_recv"));
-    thread_pool_size_ = std::stoi(envs.at("thread_pool_size"));
-    max_merge_var_num_ = std::stoi(envs.at("max_merge_var_num"));
-    send_wait_times_ = std::stoi(envs.at("send_wait_times"));
-    send_queue_size_ = std::stoi(envs.at("send_queue_size"));
+        std::stoi(envs.at("communicator_min_send_grad_num_before_recv"));
+    thread_pool_size_ = std::stoi(envs.at("communicator_thread_pool_size"));
+    max_merge_var_num_ = std::stoi(envs.at("communicator_max_merge_var_num"));
+    send_wait_times_ = std::stoi(envs.at("communicator_send_wait_times"));
+    send_queue_size_ = std::stoi(envs.at("communicator_send_queue_size"));
     is_sgd_optimizer_ =
-        static_cast<bool>(std::stoi(envs.at("is_sgd_optimizer")));
+        static_cast<bool>(std::stoi(envs.at("communicator_is_sgd_optimizer")));
   }
   ~AsyncCommunicator();
   void Start() override;
@@ -296,10 +297,10 @@ class HalfAsyncCommunicator : public Communicator {
   HalfAsyncCommunicator() {}
   explicit HalfAsyncCommunicator(const std::map<std::string, std::string>& envs)
       : Communicator(envs) {
-    max_merge_var_num_ = std::stoi(envs.at("max_merge_var_num"));
-    send_wait_times_ = std::stoi(envs.at("send_wait_times"));
-    thread_pool_size_ = std::stoi(envs.at("thread_pool_size"));
-    send_queue_size_ = std::stoi(envs.at("send_queue_size"));
+    max_merge_var_num_ = std::stoi(envs.at("communicator_max_merge_var_num"));
+    send_wait_times_ = std::stoi(envs.at("communicator_send_wait_times"));
+    thread_pool_size_ = std::stoi(envs.at("communicator_thread_pool_size"));
+    send_queue_size_ = std::stoi(envs.at("communicator_send_queue_size"));
   }
   ~HalfAsyncCommunicator();
   void Start() override;
@@ -357,9 +358,9 @@ class GeoSgdCommunicator : public Communicator {
   explicit GeoSgdCommunicator(const std::map<std::string, std::string>& envs)
       : Communicator(envs) {
     geo_need_push_nums_ = std::stoi(envs.at("geo_need_push_nums"));
-    trainer_nums_ = std::stoi(envs.at("trainer_nums"));
-    thread_pool_size_ = std::stoi(envs.at("thread_pool_size"));
-    send_wait_times_ = std::stoi(envs.at("send_wait_times"));
+    trainer_nums_ = std::stoi(envs.at("geo_trainer_nums"));
+    thread_pool_size_ = std::stoi(envs.at("communicator_thread_pool_size"));
+    send_wait_times_ = std::stoi(envs.at("communicator_send_wait_times"));
   }
 
   ~GeoSgdCommunicator();

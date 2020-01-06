@@ -66,8 +66,8 @@ class Communicator(object):
                 push_var_names.append(k)
                 envs[k] = "#".join([varnames, sections, endpoints, is_sparse])
 
-            envs["trainers"] = str(kwargs["trainers"])
-            envs["push_nums"] = str(kwargs["push_nums"])
+            envs["geo_trainer_nums"] = str(kwargs["trainers"])
+            envs["geo_need_push_nums"] = str(kwargs["push_nums"])
             envs["geo_send_varnames"] = '#'.join(push_var_names)
 
         self.communicator_ = core.DistCommunicator(mode, program.desc,
