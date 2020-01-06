@@ -25,7 +25,6 @@ from ..initializer import Normal, Constant, NumpyArrayInitializer
 import numpy as np
 import numbers
 import logging
-import warnings
 
 __all__ = [
     'Conv2D', 'Conv3D', 'Pool2D', 'Linear', 'BatchNorm', 'Embedding', 'GRUUnit',
