@@ -33,6 +33,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/profiler.h"
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+
 DECLARE_bool(benchmark);
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
@@ -1102,11 +1106,8 @@ Scope* OperatorWithKernel::PrepareData(
   }
 
   for (auto& var_name_item : Inputs()) {
-    if (no_buffer_ins && no_buffer_ins->count(var_name_item.first) > 0) {
-      VLOG(7) << "Skip scanning input " << var_name_item.first
-              << " in Operator " << type_;
-      continue;
-    }
+    bool should_skip_input =
+        no_buffer_ins && no_buffer_ins->count(var_name_item.first) > 0;
 
     std::vector<Variable*>& input_vars = ctx->inputs[var_name_item.first];
 
@@ -1120,6 +1121,44 @@ Scope* OperatorWithKernel::PrepareData(
       }
 
       auto* tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
+
+      // When no_buffer_ins then checking of Tensor::holder_ is
+      // not a thread safe. And for infershape scenario checks
+      // to be omitted are not really needed
+      if (should_skip_input == true) {
+#ifdef PADDLE_WITH_MKLDNN
+        // Var without buffer may be needed
+        // for some situation like InferShape().
+        // In this situation We cannot skip Var analysis, as
+        // MKL-DNN shape of Var may differ from kNHWC Var
+        // In such situation corressponding resized Var
+        // has to be created and registered
+        if ((tensor_in->layout() == DataLayout::kMKLDNN) &&
+            (var->IsType<LoDTensor>() == true) &&
+            (expected_kernel_key.data_layout_ != DataLayout::kMKLDNN) &&
+            (paddle::platform::get_cur_paddle_data_layout() ==
+             DataLayout::kNHWC)) {
+          // Mixed execution : MKL-DNN and GPU is not supported!
+          if (!new_scope) {
+            new_scope = &scope.NewScope();
+          }
+          auto* trans_var = new_scope->Var(var_name);
+          input_vars[i] = trans_var;
+          auto out = trans_var->GetMutable<LoDTensor>();
+          out->Resize(tensor_in->dims());
+          platform::MatchShapeToLayout(out, tensor_in->layout(),
+                                       DataLayout::kNHWC);
+          VLOG(7) << "Created reshaped dummy input based on MKL-DNN Tensor , "
+                     "but kNHWC layout"
+                  << var_name_item.first << " in Operator " << type_;
+        } else {
+          VLOG(7) << "Skip scanning input " << var_name_item.first
+                  << " in Operator " << type_;
+        }
+#endif
+        continue;
+      }
+
       if (!tensor_in->IsInitialized()) {
         continue;
       }
@@ -1143,14 +1182,17 @@ Scope* OperatorWithKernel::PrepareData(
       // In the inference scenerio, the scopes will be reused across the
       // batches, so the `new_scope` here will result in GPU memroy explosion
       // over the  running of operators.
-      // We use a thread_local cache to fix that issue, the key in the cache is
+      // We use a thread_local cache to fix that issue, the key in the cache
+      // is
       // the combination of the `scope` argument, from_kernel_type,
       // target_kernel_type.
       // Have a discussion with @Superjomn or the inference developers if some
       // changes on this logic for this macro might not tested on the other
       // scenerios.
-      // If this op is not called by an Executor or ParallelExecutor, it should
-      // called by a NaiveExecutor, the NaiveExecutor will cache the scopes and
+      // If this op is not called by an Executor or ParallelExecutor, it
+      // should
+      // called by a NaiveExecutor, the NaiveExecutor will cache the scopes
+      // and
       // variables, that behavior a lot different.
       //
       // To solve issue #15032, have a discussion with @Luotao for cpu
@@ -1174,15 +1216,14 @@ Scope* OperatorWithKernel::PrepareData(
       // we will create a new cpu tensor in new scope.
       // However, if enable_cache_runtime_context_, we get the cpu tensor each
       // time, not the gpu tensor.
-      // Thus, we set pre_scope_ = nullptr to trigger `new RuntimeContext()` in
+      // Thus, we set pre_scope_ = nullptr to trigger `new RuntimeContext()`
+      // in
       // RunImpl().
       if (enable_cache_runtime_context_) {
         pre_scope_ = nullptr;
       }
-
       auto* trans_var = new_scope->Var(var_name);
       input_vars[i] = trans_var;
-
       Tensor out;
       TransformData(expected_kernel_key, kernel_type_for_var, *tensor_in, &out);
       SetTensorToVariable(*var, out, trans_var);
