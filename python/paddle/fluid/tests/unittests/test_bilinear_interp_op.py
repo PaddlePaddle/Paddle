@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 
@@ -144,7 +144,7 @@ class TestBilinearInterpOp(OpTest):
 
     def init_test_case(self):
         self.interp_method = 'bilinear'
-        self.input_shape = [2, 3, 4, 4]
+        self.input_shape = [2, 3, 5, 5]
         self.out_h = 2
         self.out_w = 2
         self.scale = 0.
@@ -248,7 +248,7 @@ class TestBilinearInterpActualShape(TestBilinearInterpOp):
 class TestBilinearInterpDataLayout(TestBilinearInterpOp):
     def init_test_case(self):
         self.interp_method = 'bilinear'
-        self.input_shape = [2, 4, 4, 3]
+        self.input_shape = [2, 5, 5, 3]
         self.out_h = 2
         self.out_w = 2
         self.scale = 0.
@@ -315,7 +315,6 @@ class TestBilinearInterpCase1Uint8(TestBilinearInterpOpUint8):
         self.align_mode = 1
 
 
-@skip_check_grad_ci(reason="uint8 type only be used in test and inference.")
 class TestBilinearInterpCase2Uint8(TestBilinearInterpOpUint8):
     def init_test_case(self):
         self.interp_method = 'bilinear'
@@ -439,7 +438,7 @@ class TestBilinearInterpOp_attr_tensor(OpTest):
 
     def init_test_case(self):
         self.interp_method = 'bilinear'
-        self.input_shape = [2, 3, 4, 4]
+        self.input_shape = [2, 3, 5, 5]
         self.out_h = 3
         self.out_w = 3
         self.scale = 0.

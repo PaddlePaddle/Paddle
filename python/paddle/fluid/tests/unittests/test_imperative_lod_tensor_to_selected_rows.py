@@ -59,7 +59,7 @@ class SimpleNet(fluid.Layer):
         x_emb = self.embedding(input)
         projection = fluid.layers.matmul(
             x_emb, fluid.layers.transpose(
-                self.embedding._w, perm=[1, 0]))
+                self.embedding.weight, perm=[1, 0]))
         projection = fluid.layers.elementwise_add(projection, self.softmax_bias)
         projection = fluid.layers.reshape(
             projection, shape=[-1, self.vocab_size])
@@ -105,7 +105,9 @@ class TestDygraphSimpleNet(unittest.TestCase):
                         is_sparse=is_sparse,
                         dtype=dtype)
 
-                    sgd = SGDOptimizer(learning_rate=1e-3)
+                    sgd = SGDOptimizer(
+                        learning_rate=1e-3,
+                        parameter_list=simple_net.parameters())
                     dy_param_updated = dict()
                     dy_param_init = dict()
                     dy_loss = None
