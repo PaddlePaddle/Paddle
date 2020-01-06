@@ -42,29 +42,19 @@ void BindCommunicator(py::module* m) {
                                                           "DistCommunicator")
       .def(py::init([](const std::string& mode, const ProgramDesc& program,
                        Scope* param_scope,
-                       std::map<std::string, int>& env_flags) {
+                       std::map<std::string, std::string>& env_flags) {
         if (mode == "HALF_ASYNC") {
           Communicator::InitInstance<HalfAsyncCommunicator>(
               program, param_scope, env_flags);
         } else if (mode == "ASYNC") {
           Communicator::InitInstance<AsyncCommunicator>(program, param_scope,
                                                         env_flags);
+        } else if (mode == "GEO") {
+          Communicator::InitInstance<GeoSgdCommunicator>(program, param_scope,
+                                                         env_flags);
         } else {
           VLOG(0) << "unknown MODE for communicator";
         }
-      }))
-
-      .def(py::init([](
-          const ProgramDesc& program, Scope* training_scope,
-          std::map<std::string,
-                   std::map<std::string, std::vector<std::string>>>& vars_info,
-          int& trainers, int& geo_need_push_nums,
-          std::map<std::string, int>& env_flags) {
-        VLOG(0) << "using geo sgd communicator";
-        Communicator::InitInstance<GeoSgdCommunicator>(
-            program, training_scope, vars_info, trainers, geo_need_push_nums,
-            env_flags);
-        return Communicator::GetInstantcePtr();
       }))
       .def("stop", &Communicator::Stop)
       .def("start", &Communicator::Start)

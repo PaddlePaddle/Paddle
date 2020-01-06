@@ -175,7 +175,7 @@ using RpcCtxMap = std::unordered_map<std::string, RpcContext>;
 class Communicator {
  public:
   Communicator();
-  explicit Communicator(const std::map<std::string, int>& env_flags);
+  explicit Communicator(const std::map<std::string, std::string>& env_flags);
   virtual ~Communicator() {}
 
   virtual void SetEnvFlagsDefault();
@@ -198,52 +198,25 @@ class Communicator {
                         const RpcCtxMap& recv_varname_to_ctx,
                         Scope* recv_scope) {}
 
-  virtual void InitImpl(const paddle::framework::ProgramDesc& program,
-                        Scope* recv_scope) {}
-
   static Communicator* GetInstance() { return communicator_.get(); }
-
-  static std::shared_ptr<Communicator> GetInstantcePtr() {
-    return communicator_;
-  }
-
-  template <typename T>
-  static Communicator* InitInstance(const RpcCtxMap& send_varname_to_ctx,
-                                    const RpcCtxMap& recv_varname_to_ctx,
-                                    Scope* recv_scope) {
-    std::call_once(init_flag_, &Communicator::InitWithRpcCtx<T>,
-                   send_varname_to_ctx, recv_varname_to_ctx, recv_scope);
-    return communicator_.get();
-  }
 
   template <typename T>
   static Communicator* InitInstance(
       const paddle::framework::ProgramDesc& program, Scope* recv_scope,
-      const std::map<std::string, int>& env_flags) {
+      const std::map<std::string, int>& env_flags, const Tree& send_recv_ctx) {
     std::call_once(init_flag_, &Communicator::InitWithProgram<T>, program,
-                   recv_scope, std::ref(env_flags));
+                   recv_scope, std::ref(env_flags), std::ref(send_recv_ctx));
     return communicator_.get();
-  }
-
-  // Init is called by InitInstance.
-  template <typename T>
-  static void InitWithRpcCtx(const RpcCtxMap& send_varname_to_ctx,
-                             const RpcCtxMap& recv_varname_to_ctx,
-                             Scope* recv_scope) {
-    if (communicator_.get() == nullptr) {
-      communicator_.reset(new T());
-      communicator_->InitImpl(send_varname_to_ctx, recv_varname_to_ctx,
-                              recv_scope);
-    }
   }
 
   template <typename T>
   static void InitWithProgram(const paddle::framework::ProgramDesc& program,
                               Scope* recv_scope,
-                              const std::map<std::string, int>& env_flags) {
+                              const std::map<std::string, int>& env_flags,
+                              const Tree& send_recv_ctx) {
     if (communicator_.get() == nullptr) {
       communicator_.reset(new T(std::ref(env_flags)));
-      communicator_->InitImpl(program, recv_scope);
+      communicator_->InitImpl(program, recv_scope, send_recv_ctx);
     }
   }
 
@@ -251,7 +224,7 @@ class Communicator {
   bool running_ = false;
   static std::shared_ptr<Communicator> communicator_;
   static std::once_flag init_flag_;
-  std::unordered_map<std::string, int> env_flags_dict;
+  std::unordered_map<std::string, std::string> env_flags_dict;
 };
 
 using SparseIdsMap =

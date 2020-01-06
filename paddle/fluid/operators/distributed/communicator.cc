@@ -50,6 +50,10 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
+using Tree =
+    std::map<std::string, std::map<std::string, std::vector<std::string>>>;
+using RpcCtxMap = operators::distributed::RpcCtxMap;
+
 inline double GetCurrentUS() {
   struct timeval time;
   gettimeofday(&time, NULL);
@@ -84,8 +88,6 @@ void Communicator::SetEnvFlagsDefault() {
       "merge_sparse_grad", FLAGS_communicator_merge_sparse_grad));
   env_flags_dict.insert(std::pair<std::string, int>(
       "is_sgd_optimizer", FLAGS_communicator_is_sgd_optimizer));
-
-  return;
 }
 
 Communicator::Communicator() { SetEnvFlagsDefault(); }
@@ -133,7 +135,6 @@ void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
 
 void AsyncCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
                                  Scope *param_scope) {
-  using RpcCtxMap = operators::distributed::RpcCtxMap;
   VLOG(3) << "ProcessGraph";
   RpcCtxMap send_varname_to_ctx;
   RpcCtxMap recv_varname_to_ctx;
@@ -390,12 +391,6 @@ void AsyncCommunicator::Send(const std::vector<std::string> &var_names,
   }
 }
 
-void AsyncCommunicator::InitImpl(
-    const paddle::framework::ProgramDesc &program, Scope *param_scope,
-    std::map<std::string, std::map<std::string, std::vector<std::string>>>
-        &vars_info,
-    const int &trainers, const int &geo_need_push_nums) {}
-
 GeoSgdCommunicator::~GeoSgdCommunicator() {
   if (FLAGS_v >= 3) {
     std::string msg("~Geo Sgd Communicator");
@@ -409,21 +404,22 @@ GeoSgdCommunicator::~GeoSgdCommunicator() {
   }
 }
 
-void GeoSgdCommunicator::InitImpl(
-    const paddle::framework::ProgramDesc &program, Scope *training_scope,
-    std::map<std::string, std::map<std::string, std::vector<std::string>>>
-        &vars_info,
-    const int &trainers, const int &geo_need_push_nums) {
-  training_scope_ = std::move(training_scope);
-  trainer_nums_ = std::move(trainers);
-  geo_need_push_nums_ = std::move(geo_need_push_nums);
+void GeoSgdCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
+                                  const RpcCtxMap &recv_varname_to_ctx,
+                                  Scope *recv_scope) {}
+
+void GeoSgdCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
+                                  Scope *recv_scope, Tree &send_vars_ctx) {
+  training_scope_ = std::move(recv_scope);
+  geo_need_push_nums_ = env_flags_dict["geo_need_push_nums"];
+  trainer_nums_ = env_flags_dict["trainer_nums"];
 
   // get all send information from graph, build vars_to_send
   VLOG(0) << "Trainer nums: " << trainer_nums_;
   VLOG(0) << "geo_sgd_push_before_local_train_nums: " << geo_need_push_nums_;
 
   // process var info from transpiler
-  for (auto &iter : vars_info) {
+  for (auto &iter : send_vars_ctx) {
     // change var name in delta scope: "var" -> "var.delta"
     std::string var_name = iter.first;
     std::string send_var_name = VarToDeltaVar(var_name);
@@ -1038,13 +1034,6 @@ void GeoSgdCommunicator::RpcRecv(const std::string &var_name,
 
 void GeoSgdCommunicator::Recv() {}
 
-void GeoSgdCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
-                                  const RpcCtxMap &recv_varname_to_ctx,
-                                  Scope *recv_scope) {}
-
-void GeoSgdCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
-                                  Scope *recv_scope) {}
-
 void HalfAsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
                                      const RpcCtxMap &recv_varname_to_ctx,
                                      Scope *recv_scope) {
@@ -1087,7 +1076,6 @@ void HalfAsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
 
 void HalfAsyncCommunicator::InitImpl(
     const paddle::framework::ProgramDesc &program, Scope *param_scope) {
-  using RpcCtxMap = operators::distributed::RpcCtxMap;
   VLOG(3) << "ProcessGraph";
   RpcCtxMap send_varname_to_ctx;
   RpcCtxMap recv_varname_to_ctx;
