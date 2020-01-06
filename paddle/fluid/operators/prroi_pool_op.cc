@@ -197,9 +197,11 @@ REGISTER_OP_CPU_KERNEL(
     prroi_pool,
     ops::CPUPRROIPoolOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::CPUPRROIPoolOpKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::CPUPRROIPoolOpKernel<paddle::platform::CPUDeviceContext, int>,
     ops::CPUPRROIPoolOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     prroi_pool_grad,
     ops::CPUPRROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::CPUPRROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::CPUPRROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, int>,
     ops::CPUPRROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, int64_t>);

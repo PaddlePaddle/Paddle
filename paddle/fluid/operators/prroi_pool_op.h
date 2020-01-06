@@ -81,7 +81,7 @@ inline HOSTDEVICE void PrRoIPoolingDistributeDiff(T* diff, const T top_diff,
                                                   const T coeff) {
   bool overflow = (h < 0) || (w < 0) || (h >= height) || (w >= width);
   if (!overflow) {
-    *(diff + h * width + w) = top_diff * coeff;
+    *(diff + h * width + w) += top_diff * coeff;
   }
 }
 
@@ -291,6 +291,10 @@ class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
         }
       }
     } else {
+      PADDLE_ENFORCE_EQ(rois->lod().empty(), false,
+                        platform::errors::InvalidArgument(
+                            "the lod of Input ROIs shoule not be empty when "
+                            "BatchRoINums is None!"));
       auto rois_lod = rois->lod().back();
       int rois_batch_size = rois_lod.size() - 1;
       PADDLE_ENFORCE_EQ(
@@ -443,15 +447,18 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
 
       const T* input_rois = rois->data<T>();
       const T* output_grad_data = output_grad->data<T>();
-      T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
-      T* input_roi_grad_data = input_roi_grad->mutable_data<T>(ctx.GetPlace());
 
+      input_grad->mutable_data<T>(ctx.GetPlace());
+      input_roi_grad->mutable_data<T>(ctx.GetPlace());
       // set gradient of X to be 0. before backpropagate.
       math::SetConstant<DeviceContext, T> set_zero;
       set_zero(ctx.template device_context<DeviceContext>(), input_grad,
                static_cast<T>(0));
       set_zero(ctx.template device_context<DeviceContext>(), input_roi_grad,
                static_cast<T>(0));
+
+      T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
+      T* input_roi_grad_data = input_roi_grad->mutable_data<T>(ctx.GetPlace());
 
       // backpropagate gradient per output pixel
       int output_grad_size = output_grad->numel();
@@ -521,7 +528,7 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
             s_w, e_w, s_h, e_h, width, height, win_start_w, win_start_h,
             win_end_w, win_end_h, pw, ph, pooled_width, pooled_height, win_size,
             spatial_scale, offset_in_data, offset_out_data,
-            offset_input_grad_data, offset_input_roi_grad_data,
+            offset_input_roi_grad_data, offset_output_grad_data,
             CPUAccumulateRois<T>,
             [](const T x, const T y) { return std::max(x, y); },
             [](const T x, const T y) { return std::min(x, y); });
