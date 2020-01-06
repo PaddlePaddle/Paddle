@@ -33,7 +33,8 @@ bool MemoryBlock::Split(size_t size, MemoryBlockPool* pool) {
   if (this->size_ == size) return false;
 
   // make sure the split fits
-  PADDLE_ENFORCE_GT(this->size_, size);
+  PADDLE_ENFORCE_GT(this->size_, size,
+                    "Internal Error: a wrong memory block is used");
 
   // find the position of the split
   void* right_partition = reinterpret_cast<uint8_t*>(this->data_) + size;
@@ -57,8 +58,11 @@ bool MemoryBlock::Split(size_t size, MemoryBlockPool* pool) {
 
 void MemoryBlock::Merge(MemoryBlock* block, MemoryBlockPool* pool) {
   // only free blocks can be merged
-  PADDLE_ENFORCE_EQ(this->type_, FREE_CHUNK);
-  PADDLE_ENFORCE_EQ(block->type_, FREE_CHUNK);
+  PADDLE_ENFORCE_EQ(this->type_, FREE_CHUNK,
+                    "Internal Error: trying to merge target block with a "
+                    "non-free source block");
+  PADDLE_ENFORCE_EQ(block->type_, FREE_CHUNK)
+  , "Internal Error: trying to merge source block with a non-free target block";
 
   // link this->buddy's buddy
   this->right_buddy_ = block->right_buddy_;
