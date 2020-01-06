@@ -83,8 +83,8 @@ class TestDistGeoClipByGlobalNormTranspiler(unittest.TestCase):
 
 class TestDistGeoClipByGlobalNorm(TestFleetBase):
     def _setup_config(self):
-        self._sync_mode = False
-        self._geo_sgd = True
+        self._mode = "geo"
+        self._reader = "dataset"
         self._geo_sgd_need_push_nums = 5
         self._grad_clip_mode = 3
 
@@ -135,7 +135,8 @@ class TestDistGeoClipByGlobalNorm(TestFleetBase):
 
 class TestDistASyncClipByGlobalNorm(TestFleetBase):
     def _setup_config(self):
-        self._sync_mode = False
+        self._mode = "async"
+        self._reader = "dataset"
         self._grad_clip_mode = 3
 
     def check_with_place(self,

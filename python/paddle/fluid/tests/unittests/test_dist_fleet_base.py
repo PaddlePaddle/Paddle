@@ -39,6 +39,8 @@ from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import f
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 
+__all__ = ['FleetDistRunnerBase', 'TestFleetBase', 'runtime_main']
+
 RUN_STEP = 5
 LEARNING_RATE = 0.01
 DIST_UT_PORT = 0
