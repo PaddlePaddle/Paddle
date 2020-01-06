@@ -41,7 +41,8 @@ class SGDOp : public framework::OperatorWithKernel {
                       "Learning rate should have 1 element");
     auto param_dim = ctx->GetInputDim("Param");
     if (ctx->GetInputsVarType("Grad")[0] ==
-        framework::proto::VarType::LOD_TENSOR) {
+            framework::proto::VarType::LOD_TENSOR &&
+        framework::product(ctx->GetInputDim("Grad")) > 0) {
       PADDLE_ENFORCE_EQ(
           param_dim, ctx->GetInputDim("Grad"),
           platform::errors::InvalidArgument(
