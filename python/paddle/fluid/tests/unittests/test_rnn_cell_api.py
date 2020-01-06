@@ -47,11 +47,11 @@ class TestLSTMCell(unittest.TestCase):
         pre_cell = fluid.data(
             name='pre_cell', shape=[None, self.hidden_size], dtype='float32')
 
-        cell = LSTMCell(self.hidden_size, name='lstm_cell')
+        cell = LSTMCell(self.hidden_size)
         lstm_hidden_new, lstm_states_new = cell(inputs, [pre_hidden, pre_cell])
 
         lstm_unit = contrib.layers.rnn_impl.BasicLSTMUnit(
-            "basic_lstm", self.hidden_size, None, None, None, None, 1.0,
+            "basicLSTM", self.hidden_size, None, None, None, None, 1.0,
             "float32")
         lstm_hidden, lstm_cell = lstm_unit(inputs, pre_hidden, pre_cell)
 
@@ -69,8 +69,9 @@ class TestLSTMCell(unittest.TestCase):
         pre_cell_np = np.random.uniform(
             -0.1, 0.1, (self.batch_size, self.hidden_size)).astype('float32')
 
-        param_names = [["lstm_cell_0.w_0", "basic_lstm_0.w_0"],
-                       ["lstm_cell_0.b_0", "basic_lstm_0.b_0"]]
+        param_names = [[
+            "LSTMCell/BasicLSTMUnit_0.w_0", "basicLSTM/BasicLSTMUnit_0.w_0"
+        ], ["LSTMCell/BasicLSTMUnit_0.b_0", "basicLSTM/BasicLSTMUnit_0.b_0"]]
 
         for names in param_names:
             param = np.array(fluid.global_scope().find_var(names[0]).get_tensor(
@@ -107,11 +108,11 @@ class TestGRUCell(unittest.TestCase):
             append_batch_size=False,
             dtype='float32')
 
-        cell = GRUCell(self.hidden_size, name='gru_cell')
+        cell = GRUCell(self.hidden_size)
         gru_hidden_new, _ = cell(inputs, pre_hidden)
 
         gru_unit = contrib.layers.rnn_impl.BasicGRUUnit(
-            "basic_gru", self.hidden_size, None, None, None, None, "float32")
+            "basicGRU", self.hidden_size, None, None, None, None, "float32")
         gru_hidden = gru_unit(inputs, pre_hidden)
 
         if core.is_compiled_with_cuda():
@@ -126,10 +127,12 @@ class TestGRUCell(unittest.TestCase):
         pre_hidden_np = np.random.uniform(
             -0.1, 0.1, (self.batch_size, self.hidden_size)).astype('float32')
 
-        param_names = [["gru_cell_0.w_0", "basic_gru_0.w_0"],
-                       ["gru_cell_0.w_1", "basic_gru_0.w_1"],
-                       ["gru_cell_0.b_0", "basic_gru_0.b_0"],
-                       ["gru_cell_0.b_1", "basic_gru_0.b_1"]]
+        param_names = [
+            ["GRUCell/BasicGRUUnit_0.w_0", "basicGRU/BasicGRUUnit_0.w_0"],
+            ["GRUCell/BasicGRUUnit_0.w_1", "basicGRU/BasicGRUUnit_0.w_1"],
+            ["GRUCell/BasicGRUUnit_0.b_0", "basicGRU/BasicGRUUnit_0.b_0"],
+            ["GRUCell/BasicGRUUnit_0.b_1", "basicGRU/BasicGRUUnit_0.b_1"]
+        ]
 
         for names in param_names:
             param = np.array(fluid.global_scope().find_var(names[0]).get_tensor(
@@ -164,7 +167,7 @@ class TestRnn(unittest.TestCase):
             name="sequence_length", shape=[None], dtype='int64')
 
         inputs_dynamic_rnn = layers.transpose(inputs_basic_lstm, perm=[1, 0, 2])
-        cell = LSTMCell(self.hidden_size, name="lstm_cell_for_rnn")
+        cell = LSTMCell(self.hidden_size, name="LSTMCell_for_rnn")
         output, final_state = dynamic_rnn(
             cell=cell,
             inputs=inputs_dynamic_rnn,
@@ -195,10 +198,13 @@ class TestRnn(unittest.TestCase):
         pre_cell_np = np.random.uniform(
             -0.1, 0.1, (self.batch_size, self.hidden_size)).astype('float32')
 
-        param_names = [
-            ["lstm_cell_for_rnn_0.w_0", "basic_lstm_layers_0_0.w_0"],
-            ["lstm_cell_for_rnn_0.b_0", "basic_lstm_layers_0_0.b_0"]
-        ]
+        param_names = [[
+            "LSTMCell_for_rnn/BasicLSTMUnit_0.w_0",
+            "basic_lstm_layers_0/BasicLSTMUnit_0.w_0"
+        ], [
+            "LSTMCell_for_rnn/BasicLSTMUnit_0.b_0",
+            "basic_lstm_layers_0/BasicLSTMUnit_0.b_0"
+        ]]
 
         for names in param_names:
             param = np.array(fluid.global_scope().find_var(names[0]).get_tensor(
