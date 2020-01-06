@@ -7850,6 +7850,11 @@ def log(x, name=None):
             res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i}, fetch_list=[res])
             print(res_val) # [[0.], [0.6931472]]
     """
+    inputs = {'X': [x]}
+    if in_dygraph_mode():
+        outs = core.ops.log(inputs)
+        return outs['Out'][0]
+
     helper = LayerHelper('log', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
@@ -7885,6 +7890,11 @@ def relu(x, name=None):
                 # [[0.  0. ]
                 #  [1.  2.6]]
 """
+    inputs = {'X': [x]}
+    if in_dygraph_mode():
+        outs = core.ops.relu(inputs)
+        return outs['Out'][0]
+
     helper = LayerHelper('relu', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
