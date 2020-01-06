@@ -23,6 +23,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.optimizer import SGDOptimizer, Adam, MomentumOptimizer, LarsMomentumOptimizer, AdagradOptimizer, AdamaxOptimizer, DpsgdOptimizer, DecayedAdagradOptimizer, AdadeltaOptimizer, RMSPropOptimizer, FtrlOptimizer, LambOptimizer
+from paddle.fluid.optimizer import ModelAverage, DGCMomentumOptimizer, ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, RecomputeOptimizer
 from paddle.fluid.dygraph import Linear
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
@@ -63,11 +64,15 @@ class TestImperativeOptimizerBase(unittest.TestCase):
 
         return _reader_imple
 
-    def _check_mlp(self):
+    def _check_mlp(self, place=None):
         seed = 90
         batch_size = 128
 
-        with fluid.dygraph.guard():
+        if place == None:
+            place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
+            ) else fluid.CUDAPlace(0)
+
+        with fluid.dygraph.guard(place):
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
@@ -112,8 +117,11 @@ class TestImperativeOptimizerBase(unittest.TestCase):
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
-            exe = fluid.Executor(fluid.CPUPlace(
-            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
+            if place == None:
+                place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
+                ) else fluid.CUDAPlace(0)
+
+            exe = fluid.Executor(place)
 
             mlp = MLP()
             optimizer = self.get_optimizer()
@@ -387,7 +395,7 @@ class TestImperativeDpsgdOptimizer(TestImperativeOptimizerBase):
         return optimizer
 
     def test_dpsgd(self):
-        self._check_mlp()
+        self._check_mlp(place=fluid.CPUPlace())
 
 
 class TestImperativeDecayedAdagradOptimizer(TestImperativeOptimizerBase):
