@@ -79,7 +79,6 @@ Event* PushEvent(const std::string& name);
 void PopEvent(const std::string& name);
 
 struct RecordEvent {
-  explicit RecordEvent(const std::string& name, int record_level);
   explicit RecordEvent(const std::string& name);
 
   ~RecordEvent();

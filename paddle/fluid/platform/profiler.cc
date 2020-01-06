@@ -143,8 +143,7 @@ RecordEvent::RecordEvent(const std::string &name)
   // lock is not needed, the code below is thread-safe
 
   is_enabled_ = true;
-  name_ = name;
-  Event *e = PushEvent(name_);
+  Event *e = PushEvent(name);
   // Maybe need the same push/pop behavior.
   SetCurAnnotation(e);
   name_ = e->name();
@@ -365,6 +364,7 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
               << "Max." << std::setw(data_width) << "Ave."
               << std::setw(data_width) << "Ratio." << std::endl;
   }
+  if (print_depth > 0) return;
 
   for (size_t i = 0; i < events_table.size(); ++i) {
     for (size_t j = 0; j < events_table[i].size(); ++j) {
@@ -408,14 +408,9 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
   }
 }
 
-// Parse the event list and output the profiling report
-void ParseEvents(const std::vector<std::vector<Event>> &events,
-                 bool merge_thread,
-                 EventSortingKey sorted_by = EventSortingKey::kDefault) {
-  if (g_state == ProfilerState::kDisabled) return;
-  if (merge_thread && events.size() < 2) return;
-
-  std::string sorted_domain;
+std::function<bool(const EventItem &, const EventItem &)> SetSortedFunc(
+    EventSortingKey sorted_by, std::string *domain) {
+  auto sorted_domain = *domain;
   std::function<bool(const EventItem &, const EventItem &)> sorted_func;
   switch (sorted_by) {
     case EventSortingKey::kCalls:
@@ -463,6 +458,19 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
     default:
       sorted_domain = "event first end time";
   }
+  return sorted_func;
+}
+
+// Parse the event list and output the profiling report
+void ParseEvents(const std::vector<std::vector<Event>> &events,
+                 bool merge_thread,
+                 EventSortingKey sorted_by = EventSortingKey::kDefault) {
+  if (g_state == ProfilerState::kDisabled) return;
+  if (merge_thread && events.size() < 2) return;
+
+  std::string sorted_domain;
+  std::function<bool(const EventItem &, const EventItem &)> sorted_func;
+  sorted_func = SetSortedFunc(sorted_by, &sorted_domain);
 
   const std::vector<std::vector<Event>> *analyze_events;
   std::vector<std::vector<Event>> merged_events_list;

@@ -162,7 +162,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     }
 
     {
-      platform::RecordEvent record_fevent(Type());
+      platform::RecordEvent record_event(Type());
       RunImpl(scope, place);
     }
 
@@ -946,7 +946,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   std::vector<std::string> transfered_inplace_vars;
   Scope* transfer_scope = nullptr;
   {
-    platform::RecordEvent record_event("data_transform");
+    platform::RecordEvent record_event("prepare_data");
     transfer_scope = PrepareData(scope, *kernel_type_, &transfered_inplace_vars,
                                  runtime_ctx);
   }
@@ -960,7 +960,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
   if (!all_kernels_must_compute_runtime_shape_) {
     {
-      platform::RecordEvent record_event("runtime_infer_shape");
+      platform::RecordEvent record_event("infer_shape");
       RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, *runtime_ctx);
       this->InferShape(&infer_shape_ctx);
     }

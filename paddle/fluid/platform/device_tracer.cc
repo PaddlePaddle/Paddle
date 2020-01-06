@@ -446,10 +446,10 @@ class DeviceTracerImpl : public DeviceTracer {
       auto c = correlations_.find(r.correlation_id);
       if (c != correlations_.end() && c->second != nullptr) {
         Event *e = c->second;
-        Event *fe = e->fevent();
-        while (fe) {
-          fe->AddCudaElapsedTime(r.start_ns, r.end_ns);
-          fe = fe->fevent();
+        Event *parent = e->parent();
+        while (parent) {
+          parent->AddCudaElapsedTime(r.start_ns, r.end_ns);
+          parent = parent->parent();
         }
         e->AddCudaElapsedTime(r.start_ns, r.end_ns);
       }
@@ -458,10 +458,10 @@ class DeviceTracerImpl : public DeviceTracer {
       auto c = correlations_.find(r.correlation_id);
       if (c != correlations_.end() && c->second != nullptr) {
         Event *e = c->second;
-        Event *fe = e->fevent();
-        while (fe) {
-          fe->AddCudaElapsedTime(r.start_ns, r.end_ns);
-          fe = fe->fevent();
+        Event *parent = e->parent();
+        while (parent) {
+          parent->AddCudaElapsedTime(r.start_ns, r.end_ns);
+          parent = parent->parent();
         }
         e->AddCudaElapsedTime(r.start_ns, r.end_ns);
       }
@@ -634,7 +634,7 @@ DeviceTracer *GetDeviceTracer() {
 
 void SetCurAnnotation(Event *event) {
   if (!annotation_stack.empty()) {
-    event->set_fevent(annotation_stack.back());
+    event->set_parent(annotation_stack.back());
     event->set_name(annotation_stack.back()->name() + "/" + event->name());
   }
   annotation_stack.push_back(event);
