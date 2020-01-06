@@ -71,20 +71,6 @@ class TestSliceOpDoubleGradCheck(unittest.TestCase):
             self.func(place)
 
 
-class TestSliceCase1(TestSliceOpDoubleGradCheck):
-    def config(self):
-        self.starts = [-3, 0, 0]
-        self.ends = [3, 100, -1]
-        self.axes = [0, 1, 2]
-
-
-class TestSliceCase2(TestSliceOpDoubleGradCheck):
-    def config(self):
-        self.starts = [-3, 0, 0]
-        self.ends = [3, 100, -1]
-        self.axes = [0, 1, 3]
-
-
 class TestSliceCase3(TestSliceOpDoubleGradCheck):
     def config(self):
         self.starts = [0]
