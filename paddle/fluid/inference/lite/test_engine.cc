@@ -14,12 +14,6 @@
 
 #include <gtest/gtest.h>
 
-/*
-#include "lite/api/paddle_use_kernels.h"
-#include "lite/api/paddle_use_ops.h"
-#include "lite/api/paddle_use_passes.h"
-*/
-
 #include "paddle/fluid/inference/lite/engine.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/operators/lite/ut_helper.h"

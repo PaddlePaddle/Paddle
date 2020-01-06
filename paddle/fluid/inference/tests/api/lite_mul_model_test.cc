@@ -15,16 +15,7 @@ limitations under the License. */
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-
 #include <cmath>
-
-/*
-#ifdef PADDLE_WITH_LITE
-#include "lite/api/paddle_use_kernels.h"
-#include "lite/api/paddle_use_ops.h"
-#include "lite/api/paddle_use_passes.h"
-#endif
-*/
 
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
@@ -55,7 +46,8 @@ TEST(AnalysisPredictor, use_gpu) {
       -0.00621776, -0.00620937, 0.00990623,  -0.0039817, -0.00074315,
       0.61229795,  -0.00491806, -0.00068755, 0.18409646, 0.30090684};
 
-  EXPECT_EQ(outputs.size(), 1);
+  const size_t expected_size = 1;
+  EXPECT_EQ(outputs.size(), expected_size);
   float* data_o = static_cast<float*>(outputs[0].data.data());
   for (size_t j = 0; j < outputs[0].data.length() / sizeof(float); ++j) {
     EXPECT_LT(std::abs(data_o[j] - truth_values[j]), 10e-6);

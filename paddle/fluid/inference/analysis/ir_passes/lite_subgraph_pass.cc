@@ -175,7 +175,10 @@ void OrganizeProgram(Node* merged_node, framework::ProgramDesc* host_program,
                      framework::ProgramDesc* engine_program,
                      std::vector<std::string>* repetitive_params) {
   std::vector<framework::ir::Node*>& subgraph = *Agent(merged_node).subgraph();
-  PADDLE_ENFORCE(!subgraph.empty());
+  PADDLE_ENFORCE_EQ(subgraph.empty(), false,
+                    platform::errors::NotFound(
+                        "No subgraph found in lite subgraph pass. Please use "
+                        "the full model call from Analysis Predictor."));
 
   const framework::BlockDesc& host_global_block =
       host_program->Block(framework::kRootBlockIndex);
@@ -224,9 +227,10 @@ void LiteSubgraphPass::SetUpEngine(
     platform::CPUDeviceContext ctx;
     for (const auto& param : params) {
       VLOG(3) << "Serialize param: " << param;
-      PADDLE_ENFORCE_NOT_NULL(scope->FindVar(param),
-                              "Block should already have a '%s' variable",
-                              param);
+      PADDLE_ENFORCE_NOT_NULL(
+          scope->FindVar(param),
+          platform::errors::NotFound(
+              "Block should already have a '%s' variable", param));
       auto* tensor = scope->FindVar(param)->GetMutable<framework::LoDTensor>();
       framework::SerializeToStream(os, *tensor, ctx);
     }
@@ -238,10 +242,6 @@ void LiteSubgraphPass::SetUpEngine(
   lite_api::TargetType target_type = use_gpu ? TARGET(kCUDA) : TARGET(kX86);
   paddle::lite_api::PrecisionType precision_type =
       enable_int8 ? PRECISION(kInt8) : PRECISION(kInt64);
-  std::set<std::string> param_names_set(repetitive_params.begin(),
-                                        repetitive_params.end());
-  const_cast<std::vector<std::string>&>(repetitive_params)
-      .assign(param_names_set.begin(), param_names_set.end());
   serialize_params(&config.param, scope, repetitive_params);
   config.model = program->Proto()->SerializeAsString();
   config.valid_places = {

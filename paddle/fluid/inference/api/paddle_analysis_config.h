@@ -46,7 +46,6 @@ struct AnalysisConfig {
   enum class Precision {
     kFloat32 = 0,
     kInt8,
-    kInt64,
     kHalf,
   };
 

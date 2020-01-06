@@ -51,8 +51,10 @@ void serialize_params(std::string* str, framework::Scope* scope,
   platform::CPUDeviceContext ctx;
 #endif
   for (const auto& param : params) {
-    PADDLE_ENFORCE_NOT_NULL(scope->FindVar(param),
-                            "Block should already have a '%s' variable", param);
+    PADDLE_ENFORCE_NOT_NULL(
+        scope->FindVar(param),
+        platform::errors::NotFound("Block should already have a '%s' variable",
+                                   param));
     auto* tensor = scope->FindVar(param)->GetMutable<framework::LoDTensor>();
     framework::SerializeToStream(os, *tensor, ctx);
   }
@@ -71,14 +73,16 @@ void RandomizeTensor(framework::LoDTensor* tensor,
                      const platform::Place& place) {
   auto dims = tensor->dims();
   size_t num_elements = analysis::AccuDims(dims, dims.size());
-  PADDLE_ENFORCE_GT(num_elements, 0);
+  PADDLE_ENFORCE_GT(num_elements, 0,
+                    platform::errors::InvalidArgument(
+                        "The input tensor dimension of the randomized tensor "
+                        "function should be greater than zero."));
   platform::CPUPlace cpu_place;
   framework::LoDTensor temp_tensor;
   temp_tensor.Resize(dims);
   auto* temp_data = temp_tensor.mutable_data<float>(cpu_place);
   for (size_t i = 0; i < num_elements; i++) {
     *(temp_data + i) = random(0., 1.);
-    // LOG(INFO) << "weights: " << *(temp_data + i);
   }
   TensorCopySync(temp_tensor, place, tensor);
 }

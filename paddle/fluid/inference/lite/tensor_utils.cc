@@ -152,7 +152,6 @@ void TensorCopyAsync(paddle::lite::Tensor* dst, const framework::LoDTensor& src,
   InitDstTensor(dst, src);
   const platform::Place& src_place = src.place();
   const platform::Place& dst_place = GetNativePlace(dst->target());
-  PADDLE_ENFORCE_EQ(src.type(), GetNativePrecisionType(dst->precision()));
   const size_t bytes =
       static_cast<size_t>(src.numel()) * framework::SizeOfType(src.type());
   dst->Resize(framework::vectorize(src.dims()));
