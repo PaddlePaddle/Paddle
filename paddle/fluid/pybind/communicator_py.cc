@@ -42,18 +42,18 @@ void BindCommunicator(py::module* m) {
                                                           "DistCommunicator")
       .def(py::init([](const std::string& mode, const ProgramDesc& program,
                        Scope* param_scope,
-                       std::map<std::string, std::string>& env_flags) {
+                       std::map<std::string, std::string>& envs) {
         if (mode == "HALF_ASYNC") {
-          Communicator::InitInstance<HalfAsyncCommunicator>(
-              program, param_scope, env_flags);
+          Communicator::InitInstance<HalfAsyncCommunicator>(program,
+                                                            param_scope, envs);
         } else if (mode == "ASYNC") {
           Communicator::InitInstance<AsyncCommunicator>(program, param_scope,
-                                                        env_flags);
+                                                        envs);
         } else if (mode == "GEO") {
           Communicator::InitInstance<GeoSgdCommunicator>(program, param_scope,
-                                                         env_flags);
+                                                         envs);
         } else {
-          VLOG(0) << "unknown MODE for communicator";
+          VLOG(0) << "unsuported communicator MODE";
         }
       }))
       .def("stop", &Communicator::Stop)

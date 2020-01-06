@@ -175,7 +175,7 @@ using RpcCtxMap = std::unordered_map<std::string, RpcContext>;
 class Communicator {
  public:
   Communicator();
-  explicit Communicator(const std::map<std::string, std::string>& env_flags);
+  explicit Communicator(const std::map<std::string, std::string>& envs);
   virtual ~Communicator() {}
 
   virtual void SetEnvFlagsDefault();
@@ -203,20 +203,19 @@ class Communicator {
   template <typename T>
   static Communicator* InitInstance(
       const paddle::framework::ProgramDesc& program, Scope* recv_scope,
-      const std::map<std::string, int>& env_flags, const Tree& send_recv_ctx) {
+      const std::map<std::string, std::string>& envs) {
     std::call_once(init_flag_, &Communicator::InitWithProgram<T>, program,
-                   recv_scope, std::ref(env_flags), std::ref(send_recv_ctx));
+                   recv_scope, std::ref(envs));
     return communicator_.get();
   }
 
   template <typename T>
   static void InitWithProgram(const paddle::framework::ProgramDesc& program,
                               Scope* recv_scope,
-                              const std::map<std::string, int>& env_flags,
-                              const Tree& send_recv_ctx) {
+                              const std::map<std::string, std::string>& envs) {
     if (communicator_.get() == nullptr) {
-      communicator_.reset(new T(std::ref(env_flags)));
-      communicator_->InitImpl(program, recv_scope, send_recv_ctx);
+      communicator_.reset(new T(std::ref(envs)));
+      communicator_->InitImpl(program, recv_scope);
     }
   }
 
@@ -224,7 +223,7 @@ class Communicator {
   bool running_ = false;
   static std::shared_ptr<Communicator> communicator_;
   static std::once_flag init_flag_;
-  std::unordered_map<std::string, std::string> env_flags_dict;
+  std::unordered_map<std::string, std::string> envs;
 };
 
 using SparseIdsMap =
@@ -233,8 +232,8 @@ using SparseIdsMap =
 class AsyncCommunicator : public Communicator {
  public:
   AsyncCommunicator() : Communicator() {}
-  explicit AsyncCommunicator(const std::map<std::string, int>& env_flags)
-      : Communicator(env_flags) {}
+  explicit AsyncCommunicator(const std::map<std::string, std::string>& envs)
+      : Communicator(envs) {}
   ~AsyncCommunicator();
   void Start() override;
   void Stop() override;
@@ -274,8 +273,8 @@ class AsyncCommunicator : public Communicator {
 class HalfAsyncCommunicator : public Communicator {
  public:
   HalfAsyncCommunicator() {}
-  explicit HalfAsyncCommunicator(const std::map<std::string, int>& env_flags)
-      : Communicator(env_flags) {}
+  explicit HalfAsyncCommunicator(const std::map<std::string, std::string>& envs)
+      : Communicator(envs) {}
   ~HalfAsyncCommunicator();
   void Start() override;
   void Stop() override;
@@ -323,8 +322,8 @@ class HalfAsyncCommunicator : public Communicator {
 class GeoSgdCommunicator : public Communicator {
  public:
   GeoSgdCommunicator() : Communicator() {}
-  explicit GeoSgdCommunicator(const std::map<std::string, int>& env_flags)
-      : Communicator(env_flags) {}
+  explicit GeoSgdCommunicator(const std::map<std::string, std::string>& envs)
+      : Communicator(envs) {}
   ~GeoSgdCommunicator();
 
   void Start() override;

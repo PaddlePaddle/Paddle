@@ -19,21 +19,13 @@ It's a wrapper of a cpp class Communicator and should be used inside fleet API.
 """
 from . import core
 from .framework import Program
+from .incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import TrainingMode
 
 __all__ = ['Communicator']
 
-__all__ = ['Communicator', 'AsyncMode']
-
-
-class AsyncMode:
-    SYNC = 1
-    ASYNC = 2
-    HALF_ASYNC = 3
-    GEO_SGD = 4
-
 
 class Communicator(object):
-    def __init__(self, program, mode, kwargs=None, env_flags={}):
+    def __init__(self, program, mode, kwargs=None, envs={}):
         """
         Communicator is used for async distribute training in distribute_transpiler mode.
         It's a wrapper of a cpp class Communicator and should be used inside fleet API.
@@ -61,28 +53,21 @@ class Communicator(object):
             if op.type == "recv":
                 op._set_attr('do_not_run', True)
 
-        if mode == AsyncMode.ASYNC:
-            self.communicator_ = core.DistCommunicator("ASYNC", program.desc,
-                                                       global_scope(),
-                                                       env_flags)
-        elif mode == AsyncMode.HALF_ASYNC:
-            self.communicator_ = core.DistCommunicator(
-                "HALF_ASYNC", program.desc, global_scope(), env_flags)
-        elif mode == AsyncMode.GEO_SGD:
+        if mode == TrainingMode.GEO:
             push_vars = kwargs["push_vars"]
-            trainers = int(kwargs["trainers"])
-            push_nums = int(kwargs["push_nums"])
+            push_var_names = []
 
-            if trainers <= 0:
-                raise ValueError("trainers must gather than 0")
-            if push_nums <= 0:
-                raise ValueError("geo push delta must gather than 0")
+            for k, vs in push_vars.iterms():
+                push_var_names.append(k)
+                envs[k] = "#".join([str(v) for v in vs])
 
-            self.communicator_ = core.DistCommunicator(
-                program.desc,
-                global_scope(), push_vars, trainers, push_nums, env_flags)
-        else:
-            raise ValueError("unknown MODE for communicator")
+            envs["trainers"] = str(kwargs["trainers"])
+            envs["push_nums"] = str(kwargs["push_nums"])
+            envs["geo_send_varnames"] = '#'.join(push_var_names)
+
+        self.communicator_ = core.DistCommunicator(TrainingMode.GEO,
+                                                   program.desc,
+                                                   global_scope(), envs)
 
     def start(self):
         """
