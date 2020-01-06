@@ -235,7 +235,16 @@ class AsyncCommunicator : public Communicator {
  public:
   AsyncCommunicator() : Communicator() {}
   explicit AsyncCommunicator(const std::map<std::string, std::string>& envs)
-      : Communicator(envs) {}
+      : Communicator(envs) {
+    independent_recv_thread_ = envs.at("independent_recv_thread");
+    min_send_grad_num_before_recv_ = envs.at("min_send_grad_num_before_recv");
+    thread_pool_size_ = envs.at("thread_pool_size");
+    max_merge_var_num_ = envs.at("max_merge_var_num");
+    merge_sparse_grad_ = envs.at("merge_sparse_grad");
+    send_wait_times_ = envs.at("send_wait_times");
+    send_queue_size_ = envs.at("send_queue_size");
+    is_sgd_optimizer_ = envs.at("is_sgd_optimizer")
+  }
   ~AsyncCommunicator();
   void Start() override;
   void Stop() override;
@@ -256,6 +265,16 @@ class AsyncCommunicator : public Communicator {
   void Send(const std::vector<std::string>& var_names,
             const std::vector<std::string>& var_tables,
             const framework::Scope& scope) override;
+
+ private:
+  const int min_send_grad_num_before_recv_;
+  const int thread_pool_size_;
+  const int max_merge_var_num_;
+  const int send_wait_times_;
+  const int send_queue_size_;
+  const bool independent_recv_thread_;
+  const bool merge_sparse_grad_;
+  const bool is_sgd_optimizer_;
 
  private:
   std::unordered_map<std::string,
@@ -303,6 +322,10 @@ class HalfAsyncCommunicator : public Communicator {
   void ConsumeThread();
 
  private:
+  const int max_merge_var_num_;
+  const int send_wait_times_;
+
+ private:
   std::unordered_map<std::string,
                      std::shared_ptr<BlockingQueue<std::shared_ptr<Variable>>>>
       send_varname_to_queue_;
@@ -325,7 +348,13 @@ class GeoSgdCommunicator : public Communicator {
  public:
   GeoSgdCommunicator() : Communicator() {}
   explicit GeoSgdCommunicator(const std::map<std::string, std::string>& envs)
-      : Communicator(envs) {}
+      : Communicator(envs) {
+    geo_need_push_nums_ = static_cast<int>(envs.at("geo_need_push_nums"));
+    trainer_nums_ = static_cast<int>(envs.at("trainer_nums"));
+    thread_pool_size_ = static_cast<int>(envs.at("thread_pool_size"));
+    send_wait_times_ = static_cast<int>(envs.at("send_wait_times"));
+  }
+
   ~GeoSgdCommunicator();
 
   void Start() override;
@@ -402,8 +431,12 @@ class GeoSgdCommunicator : public Communicator {
   }
 
  private:
-  int trainer_nums_ = 1;
-  size_t geo_need_push_nums_ = 100;
+  const int trainer_nums_ = 1;
+  const int geo_need_push_nums_ = 100;
+  const int thread_pool_size_;
+  const int send_wait_times_;
+
+ private:
   int send_var_nums_ = 0;
 
   RpcCtxMap send_varname_to_ctx_;

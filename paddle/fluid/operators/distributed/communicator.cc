@@ -75,15 +75,15 @@ void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
     for (auto &iter : send_varname_to_ctx_) {
       send_varname_to_queue_[iter.first] =
           std::make_shared<BlockingQueue<std::shared_ptr<Variable>>>(
-              envs["send_queue_size"]);
+              send_queue_size_);
     }
-    send_threadpool_.reset(new ::ThreadPool(envs["thread_pool_size"]));
+    send_threadpool_.reset(new ::ThreadPool(thread_pool_size_));
   }
 
   if (recv_varname_to_ctx.size() == 0) {
     VLOG(0) << "nothing need to be received, will not start recv_thread";
   } else {
-    recv_threadpool_.reset(new ::ThreadPool(envs["thread_pool_size"]));
+    recv_threadpool_.reset(new ::ThreadPool(thread_pool_size_));
   }
 }
 
@@ -105,7 +105,7 @@ void AsyncCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
       auto trainer_id = boost::get<int>(op->GetNullableAttr("trainer_id"));
       auto merge_add = boost::get<bool>(op->GetNullableAttr("merge_add"));
       if (!merge_add) {
-        merge_add = static_cast<bool>(envs["is_sgd_optimizer"]);
+        merge_add = is_sgd_optimizer_;
       }
       auto use_send_handler =
           boost::get<bool>(op->GetNullableAttr("use_send_handler"));
@@ -161,10 +161,10 @@ void AsyncCommunicator::SendThread() {
           std::vector<std::shared_ptr<Variable>> vars;
           int merged_var_num = 0;
           int wait_times = 0;
-          while (merged_var_num < envs["max_merge_var_num"]) {
+          while (merged_var_num < max_merge_var_num_) {
             if (var_queue->Size() == 0) {
               VLOG(4) << "wait_times -> " << wait_times;
-              if (wait_times >= envs["send_wait_times"]) {
+              if (wait_times >= send_wait_times_) {
                 break;
               }
               std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -193,9 +193,7 @@ void AsyncCommunicator::SendThread() {
           VLOG(4) << "merge " << merged_var_num << " " << var_name
                   << " use time " << after_merge - before_merge;
           auto send_functor = distributed::ParameterSend<float>();
-          if (!envs["fake_rpc"]) {
-            send_functor(ctx, *send_scope_, true, 1);
-          }
+          send_functor(ctx, *send_scope_, true, 1);
           auto after_send = GetCurrentUS();
           VLOG(4) << "send " << var_name << " use time "
                   << after_send - after_merge;
@@ -222,7 +220,7 @@ void AsyncCommunicator::RecvThread() {
   VLOG(3) << "RecvThread start!";
   while (running_) {
     int grad_num = grad_num_.load();
-    if (grad_num > envs["min_send_grad_num_before_recv"]) {
+    if (grad_num > min_send_grad_num_before_recv_) {
       VLOG(1) << "current grad num " << grad_num;
       RecvAll();
       grad_num_.store(0);
@@ -234,7 +232,7 @@ void AsyncCommunicator::RecvThread() {
 }
 
 void AsyncCommunicator::Recv() {
-  if (envs["independent_recv_thread"]) {
+  if (independent_recv_thread_) {
     return;
   }
 
@@ -258,9 +256,7 @@ void AsyncCommunicator::RecvAll() {
       auto &var_name = iter.first;
       VLOG(4) << "recv var " << var_name;
       auto recv_functor = distributed::ParameterRecv<float>();
-      if (!envs["fake_rpc"]) {
-        recv_functor(iter.second, *recv_scope_);
-      }
+      recv_functor(iter.second, *recv_scope_);
     };
     task_futures.emplace_back(recv_threadpool_->enqueue(std::move(recv_task)));
   }
@@ -281,7 +277,7 @@ void AsyncCommunicator::Start() {
     // start send and recv thread
     send_thread_.reset(
         new std::thread(std::bind(&AsyncCommunicator::SendThread, this)));
-    if (envs["independent_recv_thread"]) {
+    if (independent_recv_thread_) {
       recv_thread_.reset(
           new std::thread(std::bind(&AsyncCommunicator::RecvThread, this)));
     }
@@ -321,18 +317,11 @@ void AsyncCommunicator::Send(const std::vector<std::string> &var_names,
       grad_var->IsInitialized(), true,
       platform::errors::InvalidArgument("grad var should be inited"));
 
-  if (grad_var->IsType<framework::SelectedRows>() &&
-      !envs["merge_sparse_grad"]) {
-    auto send_functor = distributed::ParameterSend<float>();
-    auto &ctx = send_varname_to_ctx_.at(var_name);
-    send_functor(ctx, scope, true, 1);
-  } else {
-    auto tmp_grad_var = std::make_shared<Variable>();
-    framework::CopyVariable(*grad_var, tmp_grad_var.get());
-    auto &queue = send_varname_to_queue_.at(var_name);
-    VLOG(3) << "send " << var_name << " queue size " << queue->Size();
-    queue->Push(tmp_grad_var);
-  }
+  auto tmp_grad_var = std::make_shared<Variable>();
+  framework::CopyVariable(*grad_var, tmp_grad_var.get());
+  auto &queue = send_varname_to_queue_.at(var_name);
+  VLOG(3) << "send " << var_name << " queue size " << queue->Size();
+  queue->Push(tmp_grad_var);
 }
 
 GeoSgdCommunicator::~GeoSgdCommunicator() {
@@ -343,8 +332,6 @@ GeoSgdCommunicator::~GeoSgdCommunicator() {
 void GeoSgdCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
                                   Scope *recv_scope) {
   training_scope_ = std::move(recv_scope);
-  geo_need_push_nums_ = static_cast<int>(envs["geo_need_push_nums"]);
-  trainer_nums_ = static_cast<int>(envs["trainer_nums"]);
 
   auto geo_send_varnames = envs["geo_send_varnames"];
   auto varnames = paddle::string::Split(geo_send_varnames, '#');
@@ -389,7 +376,7 @@ void GeoSgdCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
     LOG(WARNING) << "no var need to send and recv!!";
   }
 
-  send_threadpool_.reset(new ::ThreadPool(envs["thread_pool_size"]));
+  send_threadpool_.reset(new ::ThreadPool(thread_pool_size_));
   need_push_queue_ =
       std::make_shared<BlockingQueue<std::shared_ptr<SparseIdsMap>>>(
           geo_need_push_nums);
@@ -492,7 +479,7 @@ void GeoSgdCommunicator::SendThread() {
         VLOG(4) << "ids_send_vec_ pushed";
       } else if (need_push_queue_->Size() == 0) {
         VLOG(4) << "wait_times -> " << wait_times;
-        if (wait_times >= envs["send_wait_times"]) {
+        if (wait_times >= send_wait_times_) {
           break;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -966,17 +953,6 @@ void HalfAsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
   send_varname_to_ctx_ = std::move(send_varname_to_ctx);
   recv_varname_to_ctx_ = std::move(recv_varname_to_ctx);
   recv_scope_ = std::move(recv_scope);
-
-  // get all send information from graph, build vars_to_send
-  VLOG(0) << "use half async communicator";
-  VLOG(0) << "communicator_send_queue_size: "
-          << FLAGS_communicator_send_queue_size;
-  VLOG(0) << "communicator_thread_pool_size: "
-          << FLAGS_communicator_thread_pool_size;
-  VLOG(0) << "communicator_send_wait_times: "
-          << FLAGS_communicator_send_wait_times;
-  VLOG(0) << "communicator_max_merge_var_num: "
-          << FLAGS_communicator_max_merge_var_num;
 
   if (send_varname_to_ctx.size() == 0) {
     VLOG(0) << "nothing need to be send, will not start send_thread";
