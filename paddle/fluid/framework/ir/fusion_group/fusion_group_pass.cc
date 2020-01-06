@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/fusion_group/elementwise_group_detector.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
+#include "paddle/fluid/framework/ir/subgraph_detector.h"
 #include "paddle/fluid/platform/device_code.h"
 
 namespace paddle {
@@ -27,7 +28,7 @@ namespace framework {
 namespace ir {
 
 void FusionGroupPass::ApplyImpl(ir::Graph* graph) const {
-  PADDLE_ENFORCE_NOT_NULL(graph);
+  FusePassBase::Init("fusion_group_pass", graph);
   if (Get<bool>("use_gpu")) {
     fusion_group::OperationMap::Init();
     int num_elementwise_groups = DetectFusionGroup(graph, 0);
@@ -37,58 +38,30 @@ void FusionGroupPass::ApplyImpl(ir::Graph* graph) const {
 }
 
 int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
-  std::vector<fusion_group::SubGraph> subgraphs;
-  std::vector<Node*> begin_of_forward_subgraph;
-
-  // Detect subgraph of forward ops.
-  fusion_group::ElementwiseGroupDetector forward_detector(graph, false);
-  std::unordered_set<Node*> all_nodes = graph->Nodes();
   // TODO(liuyiqun): supported different places
   platform::CUDAPlace place = platform::CUDAPlace(0);
   int index = platform::DeviceCodePool::Init({place}).size(place);
-  for (Node* n : all_nodes) {
-    bool is_found = false;
-    for (auto& subgraph : subgraphs) {
-      if (subgraph.Has(n)) {
-        is_found = true;
-        break;
-      }
-    }
-    if (is_found) {
-      continue;
-    }
 
-    if (type == 0) {
-      fusion_group::SubGraph subgraph = forward_detector(n);
-      if (subgraph.GetNumOperations() >= 2) {
-        std::string func_name = "fused_elementwise_" + std::to_string(index++);
-        subgraph.SetFuncName(func_name);
-        subgraphs.push_back(subgraph);
-        LOG(INFO) << "subgraph: {\n" << DebugString(subgraph.Nodes()) << "}\n";
-        begin_of_forward_subgraph.push_back(n);
-      }
-    }
-  }
-  // Detect subgraph of backward ops.
-  fusion_group::ElementwiseGroupDetector backward_detector(graph, true);
-  for (auto* begin : begin_of_forward_subgraph) {
-    if (type == 0) {
-      fusion_group::SubGraph subgraph = backward_detector(begin);
-      if (subgraph.GetNumOperations() >= 2) {
-        std::string func_name =
-            "fused_elementwise_grad_" + std::to_string(index++);
-        subgraph.SetFuncName(func_name);
-        subgraphs.push_back(subgraph);
-      }
-    }
-  }
+  std::vector<std::vector<Node*>> subgraphs =
+      fusion_group::ElementwiseGroupDetector()(graph);
 
-  // TODO(liuyiqun): check whether there are intersection between subgraphs
-  for (size_t i = 0; i < subgraphs.size(); ++i) {
-    // GenerateCode(&subgraphs[i]);
-    // InsertFusionGroupOp(graph, &subgraphs[i]);
+  int num_subgraphs = 0;
+  size_t min_subgraph_size = 2;
+  bool save_intermediate_out = true;
+  for (auto& vec : subgraphs) {
+    if (vec.size() >= min_subgraph_size) {
+      std::string func_name = "fused_elementwise_" + std::to_string(index++);
+      fusion_group::SubGraph subgraph(type, func_name, save_intermediate_out,
+                                      vec);
+      LOG(INFO) << "subgraph: {\n"
+                << DebugString(subgraph.SortedNodes()) << "}\n";
+
+      GenerateCode(&subgraph);
+      InsertFusionGroupOp(graph, &subgraph);
+      num_subgraphs++;
+    }
   }
-  return subgraphs.size();
+  return num_subgraphs;
 }
 
 void FusionGroupPass::GenerateCode(fusion_group::SubGraph* subgraph) const {
@@ -133,7 +106,7 @@ void FusionGroupPass::InsertFusionGroupOp(
   op_desc.SetAttr("type", subgraph->GetType());
   op_desc.SetAttr("func_name", subgraph->GetFuncName());
 
-  auto fusion_group_node = graph->CreateOpNode(&op_desc);
+  Node* fusion_group_node = graph->CreateOpNode(&op_desc);
   for (auto* in : input_vars_of_subgraph) {
     IR_NODE_LINK_TO(in, fusion_group_node);
   }

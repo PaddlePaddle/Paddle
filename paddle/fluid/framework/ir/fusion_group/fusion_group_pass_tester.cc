@@ -55,7 +55,7 @@ std::unique_ptr<Graph> BuildElementwiseListGraph(bool backward = false) {
   }
 
   if (backward) {
-    layers.backward();
+    layers.backward({tmp_3});
   }
 
   std::unique_ptr<Graph> graph(new Graph(layers.main_program()));
@@ -103,7 +103,7 @@ std::unique_ptr<Graph> BuildElementwiseTreeGraph(bool backward = false) {
   auto* x5 = layers.data("x5", shape);
   auto* tmp_8 = layers.sigmoid(x5);
   auto* tmp_9 = layers.elementwise_mul(tmp_7, tmp_8);
-  layers.mul(tmp_6, tmp_9);
+  auto* tmp_10 = layers.mul(tmp_6, tmp_9);
 
   std::vector<VarDesc*> elementwise_vars = {tmp_0, tmp_1, tmp_2, tmp_3, tmp_4,
                                             tmp_5, tmp_6, tmp_7, tmp_8, tmp_9};
@@ -112,7 +112,7 @@ std::unique_ptr<Graph> BuildElementwiseTreeGraph(bool backward = false) {
   }
 
   if (backward) {
-    layers.backward();
+    layers.backward({tmp_10});
   }
 
   std::unique_ptr<Graph> graph(new Graph(layers.main_program()));

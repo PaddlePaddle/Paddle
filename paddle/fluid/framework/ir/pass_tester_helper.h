@@ -270,9 +270,19 @@ struct Layers {
     return outs;
   }
 
-  void backward() {
+  void backward(std::vector<VarDesc*> targets) {
+    // This function is designed to simulate the structure of training program,
+    //  but is constructed differently as the actual program.
     BlockDesc* block = program_.MutableBlock(0);
     std::vector<OpDesc*> forward_ops = block->AllOps();
+    for (auto* var : targets) {
+      OpDesc* none_op = block->AppendOp();
+      none_op->SetType("none");
+      none_op->SetInput("X", {var->Name()});
+      VarDesc* grad_var =
+          lod_tensor(GradVarName(var->Name()), var->GetShape(), false);
+      none_op->SetOutput("Out", {grad_var->Name()});
+    }
     for (int i = forward_ops.size() - 1; i >= 0; --i) {
       OpDesc* op = forward_ops[i];
       OpDesc* grad_op = block->AppendOp();

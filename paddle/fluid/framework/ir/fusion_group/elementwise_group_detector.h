@@ -14,10 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include <string>
-#include <unordered_set>
 #include <vector>
-#include "paddle/fluid/framework/ir/fusion_group/subgraph.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
 
@@ -28,25 +25,10 @@ namespace fusion_group {
 
 class ElementwiseGroupDetector {
  public:
-  explicit ElementwiseGroupDetector(Graph* graph, bool backward) {
-    Init(graph, backward);
-  }
-
-  SubGraph operator()(Node* n);
+  std::vector<std::vector<Node*>> operator()(Graph* graph);
 
  private:
-  void Init(Graph* graph, bool backward);
-
-  bool IsElementwiseOp(Node* n);
-  bool IsInputOfElementwiseOp(Node* n, std::string name = "");
-  bool IsOutputOfElementwiseOp(Node* n);
-
-  int Search(Node* n, std::vector<Node*> except_nodes, SubGraph* subgraph);
-
- private:
-  Graph* graph_{nullptr};  // Not owned
-  bool backward_{false};
-  std::unordered_set<Node*> elementwise_ops_;
+  bool IsElementwiseOp(const Node* n);
 };
 
 }  // namespace fusion_group
