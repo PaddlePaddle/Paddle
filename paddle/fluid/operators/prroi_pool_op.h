@@ -232,7 +232,6 @@ inline HOSTDEVICE void PrRoIPoolingCoorBackward(
   partial_y1 = partial_y1 / win_size * spatial_scale;
   partial_y2 = partial_y2 / win_size * spatial_scale;
 
-  // this_data_grad[0] = 0;
   functor(this_data_grad + 0,
           (partial_x1 * (1.0 - static_cast<T>(pw) / pooled_width) +
            partial_x2 * (1.0 - static_cast<T>(pw + 1) / pooled_width)) *
@@ -269,6 +268,7 @@ class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
     int height = in_dims[2];
     int width = in_dims[3];
     int rois_num = rois->dims()[0];
+    if (rois_num == 0) return;
 
     auto in_stride = framework::stride(in_dims);
     auto out_stride = framework::stride(out->dims());

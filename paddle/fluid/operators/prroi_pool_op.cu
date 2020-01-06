@@ -300,7 +300,7 @@ class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
     int height = in->dims()[2];
     int width = in->dims()[3];
 
-    if (input_grad) {
+    if (input_grad || input_roi_grad) {
       // set roi batch id
       framework::Tensor rois_batch_id_list;
       rois_batch_id_list.Resize({rois_num});
@@ -323,6 +323,10 @@ class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
           }
         }
       } else {
+        PADDLE_ENFORCE_EQ(rois->lod().empty(), false,
+                          platform::errors::InvalidArgument(
+                              "the lod of Input ROIs shoule not be empty when "
+                              "BatchRoINums is None!"));
         auto rois_lod = rois->lod().back();
         int rois_batch_size = rois_lod.size() - 1;
         for (int n = 0; n < rois_batch_size; ++n) {
