@@ -3002,7 +3002,7 @@ def layer_norm(input,
             print(output)
     """
     assert in_dygraph_mode(
-    ) is not True, "please use FC instead of fc in dygraph mode!"
+    ) is not True, "please use Linear instead of fc in dygraph mode!"
     helper = LayerHelper('layer_norm', **locals())
     dtype = helper.input_dtype()
 

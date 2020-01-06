@@ -28,10 +28,9 @@ import logging
 import warnings
 
 __all__ = [
-    'Conv2D', 'Conv3D', 'Pool2D', 'FC', 'Linear', 'BatchNorm', 'Embedding',
-    'GRUUnit', 'LayerNorm', 'NCE', 'PRelu', 'BilinearTensorProduct',
-    'Conv2DTranspose', 'Conv3DTranspose', 'GroupNorm', 'SpectralNorm',
-    'TreeConv'
+    'Conv2D', 'Conv3D', 'Pool2D', 'Linear', 'BatchNorm', 'Embedding', 'GRUUnit',
+    'LayerNorm', 'NCE', 'PRelu', 'BilinearTensorProduct', 'Conv2DTranspose',
+    'Conv3DTranspose', 'GroupNorm', 'SpectralNorm', 'TreeConv'
 ]
 
 
@@ -864,7 +863,7 @@ class Linear(layers.Layer):
 
     where :math:`X` is the input Tensor, :math:`W` and :math:`b` are weight and bias respectively.
 
-    Different from FC layer, Linear layer takes only one ``Tensor`` input.
+    Linear layer takes only one ``Tensor`` input.
     The Linear layer multiplies input tensor with weight matrix and
     produces an output Tensor of shape [N, *, `output_dim`],
     where N is batch size and `*` means any number of additional dimensions.
@@ -955,224 +954,6 @@ class Linear(layers.Layer):
                 attrs={'axis': len(input.shape) - 1})
         else:
             pre_activation = tmp
-        return self._helper.append_activation(pre_activation, act=self._act)
-
-
-class FC(layers.Layer):
-    """
-    This interface is used to construct a callable object of the ``FC`` class.
-    For more details, refer to code examples.
-    It creates a fully connected layer in the network. It can take
-    one or multiple ``Tensor`` as its inputs. It creates a Variable called weights for each input tensor,
-    which represents a fully connected weight matrix from each input unit to
-    each output unit. The fully connected layer multiplies each input tensor
-    with its corresponding weight to produce an output Tensor with shape [N, `size`],
-    where N is batch size. If multiple input tensors are given, the results of
-    multiple output tensors with shape [N, `size`] will be summed up. If ``bias_attr``
-    is not None, a bias variable will be created and added to the output.
-    Finally, if ``act`` is not None, it will be applied to the output as well.
-
-    When the input is single ``Tensor`` :
-
-    .. math::
-
-        Out = Act({XW + b})
-
-    When the input are multiple ``Tensor`` :
-
-    .. math::
-
-        Out = Act({\sum_{i=0}^{N-1}X_iW_i + b})
-
-    In the above equation:
-
-    * :math:`N`: Number of the input. N equals to len(input) if input is list of ``Tensor`` .
-    * :math:`X_i`: The i-th input ``Tensor`` .
-    * :math:`W_i`: The i-th weights matrix corresponding i-th input tensor.
-    * :math:`b`: The bias parameter created by this layer (if needed).
-    * :math:`Act`: The activation function.
-    * :math:`Out`: The output ``Tensor`` .
-
-    See below for an example.
-
-    .. code-block:: text
-
-        Given:
-            data_1.data = [[[0.1, 0.2]]]
-            data_1.shape = (1, 1, 2) # 1 is batch_size
-
-            data_2.data = [[[0.1, 0.2, 0.3]]]
-            data_2.shape = (1, 1, 3) # 1 is batch_size
-
-            fc = FC("fc", 2, num_flatten_dims=2)
-            out = fc(input=[data_1, data_2])
-
-        Then:
-            out.data = [[[0.182996 -0.474117]]]
-            out.shape = (1, 1, 2)
-
-    Parameters:
-        name_scope(str): The name of this class.
-        size(int): The number of output units in this layer.
-        num_flatten_dims (int, optional): The fc layer can accept an input tensor with more than
-            two dimensions. If this happens, the multi-dimension tensor will first be flattened
-            into a 2-dimensional matrix. The parameter `num_flatten_dims` determines how the input
-            tensor is flattened: the first `num_flatten_dims` (inclusive, index starts from 1)
-            dimensions will be flatten to form the first dimension of the final matrix (height of
-            the matrix), and the rest `rank(X) - num_flatten_dims` dimensions are flattened to
-            form the second dimension of the final matrix (width of the matrix). For example, suppose
-            `X` is a 5-dimensional tensor with a shape [2, 3, 4, 5, 6], and `num_flatten_dims` = 3.
-            Then, the flattened matrix will have a shape [2 x 3 x 4, 5 x 6] = [24, 30]. Default: 1
-        param_attr (ParamAttr or list of ParamAttr, optional): The parameter attribute for learnable
-            weights(Parameter) of this layer. Default: None.
-        bias_attr (ParamAttr or list of ParamAttr, optional): The attribute for the bias
-            of this layer. If it is set to False, no bias will be added to the output units.
-            If it is set to None, the bias is initialized zero. Default: None.
-        act (str, optional): Activation to be applied to the output of this layer. Default: None.
-        is_test(bool, optional): A flag indicating whether execution is in test phase. Default: False.
-        dtype(str, optional): Dtype used for weight, it can be "float32" or "float64". Default: "float32".
-
-    Attribute:
-        **weight** (list of Parameter): the learnable weights of this layer.
-
-        **bias** (Parameter or None): the learnable bias of this layer.
-
-    Returns:
-        None
-    
-    Examples:
-        .. code-block:: python
-
-          from paddle.fluid.dygraph.base import to_variable
-          import paddle.fluid as fluid
-          from paddle.fluid.dygraph import FC
-          import numpy as np
-
-          data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
-          with fluid.dygraph.guard():
-              fc = FC("fc", 64, num_flatten_dims=2)
-              data = to_variable(data)
-              conv = fc(data)
-
-    """
-
-    def __init__(self,
-                 name_scope,
-                 size,
-                 num_flatten_dims=1,
-                 param_attr=None,
-                 bias_attr=None,
-                 act=None,
-                 is_test=False,
-                 dtype="float32"):
-        super(FC, self).__init__(name_scope, dtype)
-
-        self._size = size
-        self._num_flatten_dims = num_flatten_dims
-        self._dtype = dtype
-        self._param_attr = param_attr
-        self._bias_attr = bias_attr
-        self._act = act
-        self.__w = list()
-        warnings.warn(
-            "Now FC interface can't be used in dygraph, please use Linear interface!",
-            Warning)
-
-    def _build_once(self, input):
-        i = 0
-        for inp, param in self._helper.iter_inputs_and_params(input,
-                                                              self._param_attr):
-            input_shape = inp.shape
-
-            param_shape = [
-                reduce(lambda a, b: a * b, input_shape[self._num_flatten_dims:],
-                       1)
-            ] + [self._size]
-            self.__w.append(
-                self.add_parameter(
-                    '_w%d' % i,
-                    self.create_parameter(
-                        attr=param,
-                        shape=param_shape,
-                        dtype=self._dtype,
-                        is_bias=False)))
-            i += 1
-
-        size = list([self._size])
-        self._b = self.create_parameter(
-            attr=self._bias_attr, shape=size, dtype=self._dtype, is_bias=True)
-
-    # TODO(songyouwei): We should remove _w property
-    @property
-    def _w(self, i=0):
-        return self.__w[i]
-
-    @_w.setter
-    def _w(self, value, i=0):
-        assert isinstance(self.__w[i], Variable)
-        self.__w[i].set_value(value)
-
-    @property
-    def weight(self):
-        if len(self.__w) > 1:
-            return self.__w
-        else:
-            return self.__w[0]
-
-    @weight.setter
-    def weight(self, value):
-        if len(self.__w) == 1:
-            self.__w[0] = value
-
-    @property
-    def bias(self):
-        return self._b
-
-    @bias.setter
-    def bias(self, value):
-        self._b = value
-
-    def forward(self, input):
-        mul_results = list()
-        i = 0
-        for inp, param in self._helper.iter_inputs_and_params(input,
-                                                              self._param_attr):
-            tmp = self._helper.create_variable_for_type_inference(self._dtype)
-            self._helper.append_op(
-                type="mul",
-                inputs={"X": inp,
-                        "Y": self.__w[i]},
-                outputs={"Out": tmp},
-                attrs={
-                    "x_num_col_dims": self._num_flatten_dims,
-                    "y_num_col_dims": 1
-                })
-            i += 1
-            mul_results.append(tmp)
-
-        if len(mul_results) == 1:
-            pre_bias = mul_results[0]
-        else:
-            pre_bias = self._helper.create_variable_for_type_inference(
-                self._dtype)
-            self._helper.append_op(
-                type="sum",
-                inputs={"X": mul_results},
-                outputs={"Out": pre_bias},
-                attrs={"use_mkldnn": False})
-
-        if self._b:
-            pre_activation = self._helper.create_variable_for_type_inference(
-                dtype=self._dtype)
-            self._helper.append_op(
-                type='elementwise_add',
-                inputs={'X': [pre_bias],
-                        'Y': [self._b]},
-                outputs={'Out': [pre_activation]},
-                attrs={'axis': self._num_flatten_dims})
-        else:
-            pre_activation = pre_bias
-        # Currently, we don't support inplace in dygraph mode
         return self._helper.append_activation(pre_activation, act=self._act)
 
 

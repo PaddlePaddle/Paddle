@@ -17,8 +17,7 @@ from __future__ import print_function
 import numpy as np
 import paddle.fluid as fluid
 
-from paddle.fluid import FC
-from paddle.fluid.dygraph import FC
+from paddle.fluid.dygraph import Linear
 from paddle.fluid.dygraph.base import to_variable
 
 import unittest
@@ -37,29 +36,26 @@ class Test_Detach(unittest.TestCase):
                 initializer=fluid.initializer.Constant(5.0))
             fc_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(6.0))
-            fc = FC("fc",
-                    10,
-                    num_flatten_dims=1,
-                    param_attr=fc_w_param_attrs,
-                    bias_attr=fc_b_param_attrs)
+            fc = Linear(
+                4, 10, param_attr=fc_w_param_attrs, bias_attr=fc_b_param_attrs)
             fc1_w_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(7.0))
             fc1_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(8.0))
-            fc1 = FC("fc",
-                     1,
-                     num_flatten_dims=1,
-                     param_attr=fc1_w_param_attrs,
-                     bias_attr=fc1_b_param_attrs)
+            fc1 = Linear(
+                10,
+                1,
+                param_attr=fc1_w_param_attrs,
+                bias_attr=fc1_b_param_attrs)
             fc2_w_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(9.0))
             fc2_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(10.0))
-            fc2 = FC("fc",
-                     1,
-                     num_flatten_dims=1,
-                     param_attr=fc2_w_param_attrs,
-                     bias_attr=fc2_b_param_attrs)
+            fc2 = Linear(
+                10,
+                1,
+                param_attr=fc2_w_param_attrs,
+                bias_attr=fc2_b_param_attrs)
             data = to_variable(data)
             x = fc(data)
             x1 = fc1(x)
@@ -76,20 +72,17 @@ class Test_Detach(unittest.TestCase):
                 initializer=fluid.initializer.Constant(5.0))
             fc_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(6.0))
-            fc = FC("fc",
-                    10,
-                    num_flatten_dims=1,
-                    param_attr=fc_w_param_attrs,
-                    bias_attr=fc_b_param_attrs)
+            fc = Linear(
+                4, 10, param_attr=fc_w_param_attrs, bias_attr=fc_b_param_attrs)
             fc1_w_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(7.0))
             fc1_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(8.0))
-            fc1 = FC("fc",
-                     1,
-                     num_flatten_dims=1,
-                     param_attr=fc1_w_param_attrs,
-                     bias_attr=fc1_b_param_attrs)
+            fc1 = Linear(
+                10,
+                1,
+                param_attr=fc1_w_param_attrs,
+                bias_attr=fc1_b_param_attrs)
             data = to_variable(data)
             x = fc(data)
             x1 = fc1(x)
@@ -105,29 +98,26 @@ class Test_Detach(unittest.TestCase):
                 initializer=fluid.initializer.Constant(5.0))
             fc_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(6.0))
-            fc = FC("fc",
-                    10,
-                    num_flatten_dims=1,
-                    param_attr=fc_w_param_attrs,
-                    bias_attr=fc_b_param_attrs)
+            fc = Linear(
+                4, 10, param_attr=fc_w_param_attrs, bias_attr=fc_b_param_attrs)
             fc1_w_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(7.0))
             fc1_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(8.0))
-            fc1 = FC("fc",
-                     1,
-                     num_flatten_dims=1,
-                     param_attr=fc1_w_param_attrs,
-                     bias_attr=fc1_b_param_attrs)
+            fc1 = Linear(
+                10,
+                1,
+                param_attr=fc1_w_param_attrs,
+                bias_attr=fc1_b_param_attrs)
             fc2_w_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(9.0))
             fc2_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(10.0))
-            fc2 = FC("fc",
-                     1,
-                     num_flatten_dims=1,
-                     param_attr=fc2_w_param_attrs,
-                     bias_attr=fc2_b_param_attrs)
+            fc2 = Linear(
+                10,
+                1,
+                param_attr=fc2_w_param_attrs,
+                bias_attr=fc2_b_param_attrs)
             data = to_variable(data)
             x = fc(data)
             x_detach = x.detach()

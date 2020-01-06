@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, FC
+from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
 
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
@@ -71,8 +71,8 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
 
 
 class MNIST(fluid.dygraph.Layer):
-    def __init__(self, name_scope, dtype="float32"):
-        super(MNIST, self).__init__(name_scope)
+    def __init__(self, dtype="float32"):
+        super(MNIST, self).__init__()
 
         self._simple_img_conv_pool_1 = SimpleImgConvPool(
             num_channels=3,
@@ -94,20 +94,22 @@ class MNIST(fluid.dygraph.Layer):
             dtype=dtype,
             use_cudnn=True)
 
-        pool_2_shape = 50 * 4 * 4
+        self.pool_2_shape = 50 * 53 * 53
         SIZE = 10
-        scale = (2.0 / (pool_2_shape**2 * SIZE))**0.5
-        self._fc = FC(self.full_name(),
-                      10,
-                      param_attr=fluid.param_attr.ParamAttr(
-                          initializer=fluid.initializer.NormalInitializer(
-                              loc=0.0, scale=scale)),
-                      act="softmax",
-                      dtype=dtype)
+        scale = (2.0 / (self.pool_2_shape**2 * SIZE))**0.5
+        self._fc = Linear(
+            self.pool_2_shape,
+            10,
+            param_attr=fluid.param_attr.ParamAttr(
+                initializer=fluid.initializer.NormalInitializer(
+                    loc=0.0, scale=scale)),
+            act="softmax",
+            dtype=dtype)
 
     def forward(self, inputs, label):
         x = self._simple_img_conv_pool_1(inputs)
         x = self._simple_img_conv_pool_2(x)
+        x = fluid.layers.reshape(x, shape=[-1, self.pool_2_shape])
         cost = self._fc(x)
         loss = fluid.layers.cross_entropy(cost, label)
         avg_loss = fluid.layers.mean(loss)
@@ -123,7 +125,7 @@ class TestMnist(unittest.TestCase):
         x = np.random.randn(1, 3, 224, 224).astype("float16")
         y = np.random.randn(1, 1).astype("int64")
         with fluid.dygraph.guard(fluid.CUDAPlace(0)):
-            model = MNIST("mnist", dtype="float16")
+            model = MNIST(dtype="float16")
             x = fluid.dygraph.to_variable(x)
             y = fluid.dygraph.to_variable(y)
             loss = model(x, y)

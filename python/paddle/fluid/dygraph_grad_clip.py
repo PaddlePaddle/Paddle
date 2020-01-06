@@ -65,7 +65,7 @@ class GradClipByValue(GradClipBase):
             import paddle.fluid as fluid
 
             from paddle.fluid.dygraph.base import to_variable
-            from paddle.fluid.dygraph.nn import FC
+            from paddle.fluid.dygraph.nn import Linear
 
             from paddle.fluid.clip import GradClipByValue, GradClipByNorm, GradClipByGlobalNorm
 
@@ -77,7 +77,7 @@ class GradClipByValue(GradClipBase):
                 
                 init_value = np.random.uniform( -1, 1, (10, 10)).astype('float32')
 
-                fc = FC( "fc", 10)
+                fc = Linear( 10, 10)
 
                 out = fc( to_variable(init_value) )
 
@@ -144,7 +144,7 @@ class GradClipByNorm(GradClipBase):
             import paddle.fluid as fluid
 
             from paddle.fluid.dygraph.base import to_variable
-            from paddle.fluid.dygraph.nn import FC
+            from paddle.fluid.dygraph.nn import Linear
 
             from paddle.fluid.clip import GradClipByValue, GradClipByNorm, GradClipByGlobalNorm
 
@@ -156,7 +156,7 @@ class GradClipByNorm(GradClipBase):
                 
                 init_value = np.random.uniform( -1, 1, (10, 10)).astype('float32')
 
-                fc = FC( "fc", 10)
+                fc = Linear( 10, 10)
 
                 out = fc( to_variable(init_value) )
 
@@ -222,7 +222,7 @@ class GradClipByGlobalNorm(GradClipBase):
             import paddle.fluid as fluid
 
             from paddle.fluid.dygraph.base import to_variable
-            from paddle.fluid.dygraph.nn import FC
+            from paddle.fluid.dygraph.nn import Linear
 
             from paddle.fluid.dygraph_grad_clip import GradClipByValue, GradClipByNorm, GradClipByGlobalNorm
 
@@ -234,7 +234,7 @@ class GradClipByGlobalNorm(GradClipBase):
                 
                 init_value = np.random.uniform( -1, 1, (10, 10)).astype('float32')
 
-                fc = FC( "fc", 10)
+                fc = Linear( 10, 10)
 
                 out = fc( to_variable(init_value) )
 

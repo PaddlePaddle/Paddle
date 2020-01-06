@@ -97,7 +97,7 @@ class DataParallel(layers.Layer):
            import paddle.fluid as fluid
            import paddle.fluid.dygraph as dygraph
            from paddle.fluid.optimizer import AdamOptimizer
-           from paddle.fluid.dygraph.nn import FC
+           from paddle.fluid.dygraph.nn import Linear
            from paddle.fluid.dygraph.base import to_variable
 
            place = fluid.CUDAPlace(0)
@@ -106,7 +106,7 @@ class DataParallel(layers.Layer):
                # prepare the data parallel context
                strategy=dygraph.parallel.prepare_context()
 
-               fc_layer = FC("FC", 10, act="softmax")
+               fc_layer = Linear(1, 10, act="softmax")
                adam = fluid.optimizer.AdamOptimizer()
 
                # make the module become the data parallelism module
