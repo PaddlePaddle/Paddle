@@ -28,14 +28,11 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'reduce_min', 'relu', 'reshape2', 'roi_perspective_transform', 'row_conv',
     'scale', 'scatter', 'sequence_conv', 'sequence_pool', 'sequence_reverse',
     'sequence_slice', 'sequence_topk_avg_pooling', 'shuffle_channel', 'sigmoid',
-    'smooth_l1_loss', 'softmax', 'spectral_norm', 'spp', 'sqrt',
-    'squared_l2_distance', 'squared_l2_norm', 'tanh', 'transpose2',
-    'trilinear_interp', 'var_conv_2d', 'warpctc'
+    'smooth_l1_loss', 'softmax', 'spectral_norm', 'sqrt', 'squared_l2_distance',
+    'squared_l2_norm', 'tanh', 'transpose2', 'trilinear_interp', 'var_conv_2d',
+    'warpctc'
 ]
 
-NO_CHECK_GRAD_OP_LIST = [
-    'cudnn_lstm', 'elementwise_div', 'elementwise_mul', 'elementwise_pow',
-    'expand', 'fused_elemwise_activation', 'increment', 'match_matrix_tensor',
-    'mul', 'pool2d', 'pool3d', 'relu', 'sigmoid', 'softmax', 'sqrt', 'tanh',
-    'transpose2', 'var_conv_2d'
+NO_FP16_CHECK_GRAD_OP_LIST = [
+    'fused_elemwise_activation', 'pool2d', 'pool3d', 'softmax'
 ]
