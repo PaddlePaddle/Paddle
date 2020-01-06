@@ -38,7 +38,7 @@ class PoolOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const;
+      const framework::OpKernelType& expected_kernel_type) const override;
 };
 
 class PoolOpGrad : public framework::OperatorWithKernel {
@@ -50,6 +50,10 @@ class PoolOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override;
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override;
 };
 
 class Pool2dOpMaker : public framework::OpProtoAndCheckerMaker {
