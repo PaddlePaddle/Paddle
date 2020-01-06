@@ -128,7 +128,7 @@ class PiecewiseDecay(LearningRateDecay):
         for i in range(len(self.boundaries)):
             if self.step_num < self.boundaries[i]:
                 return self.vars[i]
-        return self.create_lr_var(self.vars[len(self.values) - 1])
+        return self.vars[len(self.values) - 1]
 
 
 class NaturalExpDecay(LearningRateDecay):
