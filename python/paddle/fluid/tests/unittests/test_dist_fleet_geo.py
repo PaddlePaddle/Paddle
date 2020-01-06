@@ -19,15 +19,16 @@ import unittest
 import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
+from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig, ServerRuntimeConfig
+from paddle.fluid.transpiler.geo_sgd_transpiler import GeoSgdTranspiler
 from test_dist_fleet_base import TestFleetBase
 from dist_simnet_bow import train_network
 
 
 class TestDistGeoCtr_2x2(TestFleetBase):
     def _setup_config(self):
-        self._sync_mode = False
-        self._geo_sgd = True
+        self._mode = "geo"
+        self._reader = "dataset"
         self._geo_sgd_need_push_nums = 5
 
     def check_with_place(self,

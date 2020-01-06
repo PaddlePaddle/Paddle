@@ -22,6 +22,7 @@ import paddle.fluid.core as core
 import paddle.fluid.layers as layers
 from paddle.fluid.framework import Program, program_guard
 from functools import partial
+import paddle.fluid.optimizer as optimizer
 
 
 class TestAPICase(unittest.TestCase):
@@ -221,6 +222,53 @@ class TestAPICase_Error(unittest.TestCase):
                 layers.case(pred_fn_pairs=[(pred_1, fn_1)], default=fn_1())
 
             self.assertRaises(TypeError, type_error_default)
+
+
+# when optimizer in case
+class TestMutiTask(unittest.TestCase):
+    def test_optimizer_in_case(self):
+        BATCH_SIZE = 1
+        INPUT_SIZE = 784
+        EPOCH_NUM = 2
+
+        x = fluid.data(
+            name='x', shape=[BATCH_SIZE, INPUT_SIZE], dtype='float32')
+        y = fluid.data(
+            name='y', shape=[BATCH_SIZE, INPUT_SIZE], dtype='float32')
+
+        switch_id = fluid.data(name='switch_id', shape=[1], dtype='int32')
+
+        one = layers.fill_constant(shape=[1], dtype='int32', value=1)
+        adam = optimizer.Adam(learning_rate=0.001)
+        adagrad = optimizer.Adagrad(learning_rate=0.001)
+
+        def fn_1():
+            sum = layers.elementwise_mul(x, y)
+            loss = layers.mean(sum, name="f_1_loss")
+            adam.minimize(loss)
+
+        def fn_2():
+            sum = layers.elementwise_mul(x, y)
+            loss = layers.mean(sum, name="f_2_loss")
+            adagrad.minimize(loss)
+
+        layers.case(pred_fn_pairs=[(switch_id == one, fn_1)], default=fn_2)
+
+        exe = fluid.Executor(fluid.CPUPlace())
+        exe.run(fluid.default_startup_program())
+
+        for epoch in range(EPOCH_NUM):
+            np.random.seed(epoch)
+            feed_image = np.random.random(
+                size=[BATCH_SIZE, INPUT_SIZE]).astype('float32')
+            main_program = fluid.default_main_program()
+            out = exe.run(main_program,
+                          feed={
+                              'x': feed_image,
+                              'y': feed_image,
+                              'switch_id': np.array([epoch]).astype('int32')
+                          },
+                          fetch_list=[])
 
 
 if __name__ == '__main__':

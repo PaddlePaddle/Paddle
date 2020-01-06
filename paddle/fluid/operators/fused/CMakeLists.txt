@@ -4,7 +4,8 @@ register_operators(EXCLUDES
     fusion_transpose_flatten_concat_op
     fusion_conv_inception_op
     fused_fc_elementwise_layernorm_op
-    multihead_matmul_op)
+    multihead_matmul_op
+    fusion_group_op)
 
 if (WITH_GPU)
     # conv_fusion_op needs cudnn 7 above
@@ -26,4 +27,10 @@ if (WITH_GPU)
     # multihead_matmul_op
     op_library(multihead_matmul_op)
     file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(multihead_matmul);\n")
+    # fusion_group
+    if(NOT APPLE AND NOT WIN32)
+        op_library(fusion_group_op DEPS device_code)
+        file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(fusion_group);\n")
+        cc_test(test_fusion_group_op SRCS fusion_group_op_test.cc DEPS fusion_group_op)
+    endif()
 endif()
