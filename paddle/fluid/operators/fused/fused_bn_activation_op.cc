@@ -157,8 +157,8 @@ void FusedBatchNormActOpMaker::Make() {
   AddAttr<float>("epsilon", "")
       .SetDefault(1e-5)
       .AddCustomChecker([](const float &epsilon) {
-        PADDLE_ENFORCE(epsilon >= 0.0f && epsilon <= 0.001f,
-                       "'epsilon' should be between 0.0 and 0.001.");
+        PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 0.001f, true,
+                          "'epsilon' should be between 0.0 and 0.001.");
       });
   AddAttr<std::string>("act_type", "The activation type to be fused.")
       .SetDefault("relu");
@@ -207,27 +207,23 @@ Now, the required data format for FusedBatchNormActOp is NHWC `[batch, in_height
 void FusedBatchNormActGradOp::InferShape(
     framework::InferShapeContext *ctx) const {
   // check input
-  PADDLE_ENFORCE(ctx->HasInput("X"));
-  PADDLE_ENFORCE(ctx->HasInput("Scale"), "Input(scale) should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Y")),
-                 "Input(Y@GRAD) should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("SavedMean"),
-                 "Input(SavedMean) should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("SavedVariance"),
-                 "Input(SavedVariance) should not be null");
+  PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) should not be null.");
+  PADDLE_ENFORCE_EQ(ctx->HasInput("Scale"), true,
+                    "Input(Scale) should not be null.");
+  PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Y")), true,
+                    "Input(Y@GRAD) should not be null.");
+  PADDLE_ENFORCE_EQ(ctx->HasInput("SavedMean"), true,
+                    "Input(SavedMean) should not be null.");
+  PADDLE_ENFORCE_EQ(ctx->HasInput("SavedVariance"), true,
+                    "Input(SavedVariance) should not be null");
 
   // check output
-  PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")), "");
-
-  const bool has_scale_grad = ctx->HasOutput(framework::GradVarName("Scale"));
-  const bool has_bias_grad = ctx->HasOutput(framework::GradVarName("Bias"));
-
-  PADDLE_ENFORCE_EQ((has_scale_grad == has_bias_grad), true,
-                    platform::errors::InvalidArgument(
-                        "Output(Scale@GRAD) and Output(Bias@GRAD) must be null "
-                        "or not be null at same time. But now, "
-                        "has Scale@Grad=[%d], has Bias@GRAD=[%d]",
-                        has_scale_grad, has_bias_grad));
+  PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
+                    "Output(X@GRAD) should not be null.");
+  PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("Scale")), true,
+                    "Output(Scale@GRAD) should not be null.");
+  PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("Bias")), true,
+                    "Output(Bias@GRAD) should not be null.");
 
   const auto x_dims = ctx->GetInputDim("X");
   const int C = x_dims[x_dims.size() - 1];

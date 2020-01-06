@@ -45,7 +45,10 @@ void FuseBatchNormActPass::ApplyImpl(ir::Graph *graph) const {
 // act(bn(x))
 ir::Graph *FuseBatchNormActPass::FuseBatchNormAct(
     ir::Graph *graph, const std::unordered_set<std::string> &act_types) const {
-  PADDLE_ENFORCE(graph);
+  PADDLE_ENFORCE_NOT_NULL(graph,
+                          "The input graph of "
+                          "FuseBatchNormActPass::FuseBatchNormAct should not "
+                          "be nullptr.");
   FusePassBase::Init("bn_act", graph);
 
   GraphPatternDetector gpd;
@@ -164,7 +167,10 @@ Node *FuseBatchNormActPass::CreateFusedBatchNormActNode(
 ir::Graph *FuseBatchNormActPass::FuseBatchNormActGrad(
     ir::Graph *graph,
     const std::unordered_set<std::string> &act_grad_types) const {
-  PADDLE_ENFORCE(graph);
+  PADDLE_ENFORCE_NOT_NULL(graph,
+                          "The input graph of "
+                          "FuseBatchNormActPass::FuseBatchNormActGrad should "
+                          "not be nullptr.");
   FusePassBase::Init("bn_act_grad", graph);
 
   GraphPatternDetector gpd;
@@ -314,8 +320,8 @@ std::vector<Node *> FuseBatchNormActPass::ReplaceNode(
                    }
                    return node;
                  });
-  PADDLE_ENFORCE(has_replaced, "Not find %s in the node list.",
-                 cur_node->Name());
+  PADDLE_ENFORCE_EQ(has_replaced, true, "Not find %s in the node list.",
+                    cur_node->Name());
   return new_list;
 }
 

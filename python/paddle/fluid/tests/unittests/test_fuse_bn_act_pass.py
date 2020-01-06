@@ -57,9 +57,8 @@ class TestFuseBatchNormActPass(unittest.TestCase):
         sgd.minimize(loss)
         return x, y, loss
 
-    def check(self):
+    def check(self, place):
         x, y, loss = self.build_program()
-        place = fluid.CUDAPlace(0)
         exe = fluid.Executor(place)
         iters = 20
         batch_size = 16
@@ -108,8 +107,10 @@ class TestFuseBatchNormActPass(unittest.TestCase):
             self.assertAlmostEqual(loss_vals[i], loss_vals_fused[i], delta=1e-5)
 
     def test_fuse_bn_act_pass(self):
+        place = fluid.CPUPlace()
         if fluid.core.is_compiled_with_cuda():
-            self.check()
+            place = fluid.CUDAPlace(0)
+        self.check(place)
 
 
 if __name__ == '__main__':
