@@ -2105,9 +2105,11 @@ class PRelu(layers.Layer):
           and element. all: all elements share same weight
           channel:elements in a channel share same weight
           element:each element has a weight
-        channel_or_input_shape (int or list or tuple, optional): The number of channels, or the shape of input.
-          This parameter only works when mode is "channel" or "element".
-          It should be int when mode is "channel", and it should be list or tuple when mode is "element".
+        channel (int, optional): The number of channels.
+          This argument is required when mode is "channel".
+          Default: None.
+        input_shape (list or tuple, optional): The shape of input.
+          This argument is required when mode is "element".
           Default: None.
         param_attr(ParamAttr, optional): The parameter attribute for the learnable
           weight (alpha). Default: None.
@@ -2136,12 +2138,12 @@ class PRelu(layers.Layer):
               dy_rlt0 = prelu0(inp_np)
               prelu1 = fluid.PRelu(
                  mode='channel',
-                 channel_or_input_shape=200,
+                 channel=200,
                  param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(1.0)))
               dy_rlt1 = prelu1(inp_np)
               prelu2 = fluid.PRelu(
                  mode='element',
-                 channel_or_input_shape=inp_np.shape,
+                 input_shape=inp_np.shape,
                  param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(1.0)))
               dy_rlt2 = prelu2(inp_np)
 
@@ -2149,7 +2151,8 @@ class PRelu(layers.Layer):
 
     def __init__(self,
                  mode,
-                 channel_or_input_shape=None,
+                 channel=None,
+                 input_shape=None,
                  param_attr=None,
                  dtype='float32'):
         super(PRelu, self).__init__()
@@ -2159,11 +2162,15 @@ class PRelu(layers.Layer):
         if mode == 'all':
             self._alpha_shape = [1]
         elif mode == 'channel':
-            assert isinstance(channel_or_input_shape, int)
-            self._alpha_shape = [1, channel_or_input_shape, 1, 1]
+            assert isinstance(
+                channel,
+                int), "channel argument is required when mode is 'channel'."
+            self._alpha_shape = [1, channel, 1, 1]
         elif mode == 'element':
-            assert isinstance(channel_or_input_shape, (list, tuple))
-            self._alpha_shape = [1] + list(channel_or_input_shape)[1:]
+            assert isinstance(input_shape, (
+                list, tuple
+            )), "input_shape argument is required when mode is 'element'."
+            self._alpha_shape = [1] + list(input_shape)[1:]
         else:
             raise ValueError('mode should be one of all, channel, element.')
         self.weight = self.create_parameter(
