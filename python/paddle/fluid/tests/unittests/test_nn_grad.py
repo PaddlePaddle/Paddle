@@ -48,9 +48,9 @@ class TestSliceOpDoubleGradCheck(unittest.TestCase):
         self.op_type = "slice"
         self.config()
 
-        x_arr = np.random.random([3, 4, 5, 6]).astype("float64")
+        x_arr = np.random.random([3, 4, 5, 2, 2, 2]).astype("float64")
         inputs = layers.create_parameter(
-            dtype="float64", shape=[3, 4, 5, 6], name='x')
+            dtype="float64", shape=[3, 4, 5, 2, 2, 2], name='x')
 
         out = fluid.layers.slice(
             inputs, axes=self.axes, starts=self.starts, ends=self.ends)
@@ -71,18 +71,53 @@ class TestSliceOpDoubleGradCheck(unittest.TestCase):
             self.func(place)
 
 
-class TestCase1(TestSliceOpDoubleGradCheck):
+class TestSliceCase1(TestSliceOpDoubleGradCheck):
     def config(self):
-        self.starts = [-3, 0, 2]
+        self.starts = [-3, 0, 0]
         self.ends = [3, 100, -1]
         self.axes = [0, 1, 2]
 
 
-class TestCase2(TestSliceOpDoubleGradCheck):
+class TestSliceCase2(TestSliceOpDoubleGradCheck):
     def config(self):
-        self.starts = [-3, 0, 2]
+        self.starts = [-3, 0, 0]
         self.ends = [3, 100, -1]
         self.axes = [0, 1, 3]
+
+
+class TestSliceCase3(TestSliceOpDoubleGradCheck):
+    def config(self):
+        self.starts = [0]
+        self.ends = [2]
+        self.axes = [1]
+
+
+class TestSliceCase4(TestSliceOpDoubleGradCheck):
+    def config(self):
+        self.starts = [0, 1]
+        self.ends = [2, 2]
+        self.axes = [0, 1]
+
+
+class TestSliceCase5(TestSliceOpDoubleGradCheck):
+    def config(self):
+        self.starts = [0, 1, 1, 1]
+        self.ends = [2, 2, 2, 2]
+        self.axes = [0, 1, 2, 3]
+
+
+class TestSliceCase6(TestSliceOpDoubleGradCheck):
+    def config(self):
+        self.starts = [0, 1, 1, 1, 1]
+        self.ends = [2, 2, 2, 2, 2]
+        self.axes = [0, 1, 2, 3, 4]
+
+
+class TestSliceCase7(TestSliceOpDoubleGradCheck):
+    def config(self):
+        self.starts = [0, 0, 0, 0, 0, 0]
+        self.ends = [2, 2, 2, 2, 2, 2]
+        self.axes = [0, 1, 2, 3, 4, 5]
 
 
 class TestReduceMeanWithDimDoubleGradCheck(unittest.TestCase):

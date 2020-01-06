@@ -399,107 +399,18 @@ class SliceDoubleGradKernel : public framework::OpKernel<T> {
     auto list_new_starts_tensor =
         context.MultiInput<framework::Tensor>("StartsTensorList");
 
-    bool need_infer = false;
-    if (context.HasInput("StartsTensor") || context.HasInput("EndsTensor")) {
-      need_infer = true;
-    }
-    if (list_new_starts_tensor.size() > 0 || list_new_ends_tensor.size() > 0) {
-      need_infer = true;
-    }
-
-    if (need_infer) {
-      if (context.HasInput("StartsTensor")) {
-        auto* starts_tensor = context.Input<framework::Tensor>("StartsTensor");
-        starts = get_new_data_from_tensor(starts_tensor);
-      } else if (list_new_starts_tensor.size() > 0) {
-        starts = get_new_data_from_tensorlist(list_new_starts_tensor);
-      }
-      PADDLE_ENFORCE_EQ(
-          starts.size(), axes.size(),
-          platform::errors::InvalidArgument(
-              "The size of starts must be equal to the size of axes."));
-      if (context.HasInput("EndsTensor")) {
-        auto* ends_tensor = context.Input<framework::Tensor>("EndsTensor");
-        ends = get_new_data_from_tensor(ends_tensor);
-      } else if (list_new_ends_tensor.size() > 0) {
-        ends = get_new_data_from_tensorlist(list_new_ends_tensor);
-      }
-      PADDLE_ENFORCE_EQ(
-          ends.size(), axes.size(),
-          platform::errors::InvalidArgument(
-              "The size of ends must be equal to the size of axes."));
-      out_dims = in_dims;
-      int dim_value, start, end;
-      for (size_t i = 0; i < axes.size(); ++i) {
-        dim_value = out_dims[axes[i]];
-        if (dim_value > 0) {
-          // when end = start+1 and start == -1
-          if (starts[i] == -1 && ends[i] == 0 && infer_flags[i] == -1) {
-            auto ret =
-                std::find(decrease_axis.begin(), decrease_axis.end(), axes[i]);
-            if (ret != decrease_axis.end()) {
-              ends[i] = 10000000;
-            }
-          }
-
-          start = starts[i] < 0 ? (starts[i] + dim_value) : starts[i];
-          end = ends[i] < 0 ? (ends[i] + dim_value) : ends[i];
-          start = std::max(start, 0);
-          end = std::max(end, 0);
-          end = std::min(end, dim_value);
-          PADDLE_ENFORCE_GT(end, start, platform::errors::InvalidArgument(
-                                            "end should greater than start"));
-          out_dims[axes[i]] = end - start;
-        }
-      }
-      ddout->Resize(out_dims);
-      // generate new shape
-      if (decrease_axis.size() > 0) {
-        std::vector<int> new_out_shape;
-        for (size_t i = 0; i < decrease_axis.size(); ++i) {
-          PADDLE_ENFORCE_EQ(
-              out_dims[decrease_axis[i]], 1,
-              platform::errors::InvalidArgument("decrease dim should be 1"));
-          out_dims[decrease_axis[i]] = 0;
-        }
-
-        for (int i = 0; i < out_dims.size(); ++i) {
-          if (out_dims[i] != 0) {
-            new_out_shape.push_back(out_dims[i]);
-          }
-        }
-        if (new_out_shape.size() == 0) {
-          new_out_shape.push_back(1);
-        }
-
-        out_dims = framework::make_ddim(new_out_shape);
-      }
+    if (list_new_starts_tensor.size() > 0) {
+      starts = get_new_data_from_tensorlist(list_new_starts_tensor);
+    } else if (context.HasInput("StartsTensor")) {
+      auto* starts_tensor = context.Input<framework::Tensor>("StartsTensor");
+      starts = get_new_data_from_tensor(starts_tensor);
     }
 
-    // resize out_dims
-
-    if (decrease_axis.size() > 0) {
-      if (decrease_axis.size() == (size_t)in_dims.size()) {
-        std::vector<int> vec_origin_out_shape(decrease_axis.size(), 1);
-        ddout->Resize(framework::make_ddim(vec_origin_out_shape));
-      } else {
-        std::vector<int> vec_origin_out_shape(
-            out_dims.size() + decrease_axis.size(), -1);
-
-        for (size_t i = 0; i < decrease_axis.size(); ++i) {
-          vec_origin_out_shape[decrease_axis[i]] = 1;
-        }
-
-        int index = 0;
-        for (size_t i = 0; i < vec_origin_out_shape.size(); ++i) {
-          if (vec_origin_out_shape[i] == -1) {
-            vec_origin_out_shape[i] = out_dims[index];
-            ++index;
-          }
-        }
-
-        ddout->Resize(framework::make_ddim(vec_origin_out_shape));
-      }
+    if (list_new_ends_tensor.size() > 0) {
+      ends = get_new_data_from_tensorlist(list_new_ends_tensor);
+    } else if (context.HasInput("EndsTensor")) {
+      auto* ends_tensor = context.Input<framework::Tensor>("EndsTensor");
+      ends = get_new_data_from_tensor(ends_tensor);
     }
 
     auto new_out_dims = ddout->dims();
@@ -533,7 +444,6 @@ class SliceDoubleGradKernel : public framework::OpKernel<T> {
       dd_out_t.device(place) = dd_in_t.slice(offsets, extents);
       ddout->Resize(out_dims);
     }
-    // ddout->Resize(out_dims);
   }
 };
 }  // namespace operators
