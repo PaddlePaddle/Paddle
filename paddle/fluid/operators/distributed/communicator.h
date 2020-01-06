@@ -197,6 +197,8 @@ class Communicator {
   virtual void InitImpl(const RpcCtxMap& send_varname_to_ctx,
                         const RpcCtxMap& recv_varname_to_ctx,
                         Scope* recv_scope) {}
+  virtual void InitImpl(const paddle::framework::ProgramDesc& program,
+                        Scope* recv_scope) = 0;
 
   static Communicator* GetInstance() { return communicator_.get(); }
 
@@ -334,10 +336,6 @@ class GeoSgdCommunicator : public Communicator {
             const framework::Scope& scope) override;
 
   void Recv() override;
-
-  void InitImpl(const RpcCtxMap& send_varname_to_ctx,
-                const RpcCtxMap& recv_varname_to_ctx,
-                Scope* recv_scope) override;
 
   void InitImpl(const paddle::framework::ProgramDesc& program,
                 Scope* recv_scope) override;

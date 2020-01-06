@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/parameter_recv.h"
 #include "paddle/fluid/operators/distributed/parameter_send.h"
+#include "paddle/fluid/string/split.h"
 
 namespace paddle {
 namespace operators {
@@ -339,45 +340,36 @@ GeoSgdCommunicator::~GeoSgdCommunicator() {
   if (send_thread_) send_thread_->join();
 }
 
-void GeoSgdCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
-                                  const RpcCtxMap &recv_varname_to_ctx,
-                                  Scope *recv_scope) {}
-
 void GeoSgdCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
-                                  Scope *recv_scope, Tree &send_vars_ctx) {
+                                  Scope *recv_scope) {
   training_scope_ = std::move(recv_scope);
-  geo_need_push_nums_ = envs["geo_need_push_nums"];
-  trainer_nums_ = envs["trainer_nums"];
+  geo_need_push_nums_ = static_cast<int>(envs["geo_need_push_nums"]);
+  trainer_nums_ = static_cast<int>(envs["trainer_nums"]);
 
-  // get all send information from graph, build vars_to_send
-  VLOG(0) << "Trainer nums: " << trainer_nums_;
-  VLOG(0) << "geo_sgd_push_before_local_train_nums: " << geo_need_push_nums_;
+  auto geo_send_varnames = envs["geo_send_varnames"];
+  auto varnames = paddle::string::Split(geo_send_varnames, '#');
 
-  // process var info from transpiler
-  for (auto &iter : send_vars_ctx) {
-    // change var name in delta scope: "var" -> "var.delta"
-    std::string var_name = iter.first;
+  for (auto &varname : varnames) {
+    auto var_attr_str = envs.at(varname) auto var_attrs =
+        paddle::string::Split(var_attr_str, '#');
+    auto split_varnames = paddle::string::Split(var_attrs[0], '&');
+    auto sections = paddle::string::Split(var_attrs[1], '&');
+    auto endpoints = paddle::string::Split(var_attrs[2], '&');
+    bool is_sparse = static<bool>(var_attrs[3]);
+
     std::string send_var_name = VarToDeltaVar(var_name);
-    std::vector<std::string> vars_names = iter.second["var_names"];
     std::vector<std::string> send_var_names;
-    for (auto origin_var_name : vars_names) {
+    for (auto origin_var_name : split_varnames) {
       send_var_names.push_back(VarToDeltaVar(origin_var_name));
     }
 
-    // get vars section for split
-    std::vector<std::string> vars_sections_str = iter.second["sections"];
     std::vector<int64_t> vars_sections_int = {};
-    for (std::string str : vars_sections_str) {
+    for (std::string str : sections) {
       int64_t str2i = std::stol(str.c_str());
       vars_sections_int.push_back(str2i);
     }
 
-    std::vector<std::string> vars_epmap = iter.second["epmap"];
-
-    // record var is sparse or not
-    bool is_sparse = iter.second["is_sparse"].front() == std::string("True");
     var_list_[var_name] = is_sparse;
-
     send_varname_to_ctx_[send_var_name] = operators::distributed::RpcContext(
         send_var_name, send_var_names, vars_epmap, vars_sections_int, 0);
     recv_varname_to_ctx_[var_name] = operators::distributed::RpcContext(
@@ -390,7 +382,6 @@ void GeoSgdCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
     for (int64_t section : vars_sections_int) {
       vars_first_dimension_[var_name] += section;
     }
-
     send_var_nums_ += vars_names.size();
   }
 
