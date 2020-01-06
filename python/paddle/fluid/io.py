@@ -118,19 +118,19 @@ def is_belong_to_optimizer(var):
 
 def get_program_parameter(program):
     """
-    Get all the parametr from Program.
+    Get all the parameters from Program.
 
     Args:
-        var(Program): The Program to get parameter
+        var(Program): The Program to get parameters
 
     Returns:
-        list: The list contains all parameter in the program
+        list: The list contains all parameters in the program
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            data = fluid.layers.data(name="img", shape=[64, 784], append_batch_size=False)
+            data = fluid.data(name="img", shape=[64, 784], append_batch_size=False)
             w = fluid.layers.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
             b = fluid.layers.create_parameter(shape=[200], dtype='float32', name='fc_b')
             list_para  = fluid.io.get_program_parameter(  fluid.default_main_program() )
@@ -152,7 +152,7 @@ def get_program_persistable_vars(program):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            data = fluid.layers.data(name="img", shape=[64, 784], append_batch_size=False)
+            data = fluid.data(name="img", shape=[64, 784], append_batch_size=False)
             w = fluid.layers.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
             b = fluid.layers.create_parameter(shape=[200], dtype='float32', name='fc_b')
             list_para  = fluid.io.get_program_persistable_vars(  fluid.default_main_program() )
