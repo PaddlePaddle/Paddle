@@ -53,8 +53,10 @@ void BindCommunicator(py::module* m) {
           Communicator::InitInstance<GeoSgdCommunicator>(program, param_scope,
                                                          envs);
         } else {
-          VLOG(0) << "unsuported communicator MODE";
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "unsuported communicator MODE"));
         }
+        return Communicator::GetInstantcePtr();
       }))
       .def("stop", &Communicator::Stop)
       .def("start", &Communicator::Start)

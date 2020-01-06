@@ -199,7 +199,9 @@ class Communicator {
                         Scope* recv_scope) = 0;
 
   static Communicator* GetInstance() { return communicator_.get(); }
-
+  static std::shared_ptr<Communicator> GetInstantcePtr() {
+    return communicator_;
+  }
   template <typename T>
   static Communicator* InitInstance(
       const paddle::framework::ProgramDesc& program, Scope* recv_scope,
