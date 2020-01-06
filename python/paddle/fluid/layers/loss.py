@@ -23,7 +23,8 @@ from ..framework import Variable, in_dygraph_mode
 from .. import core
 from ..data_feeder import check_type_and_dtype
 from ..param_attr import ParamAttr
-from ..initializer import NumpyArrayInitializer
+from ..initializer import NumpyArrayInitializer, Constant
+from .. import core
 
 __all__ = [
     'center_loss',
