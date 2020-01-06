@@ -12667,7 +12667,7 @@ def prroi_pool(input,
         rois (Variable): ROIs (Regions of Interest) to pool over.It should be
                         a 2-D LoDTensor or Tensor of shape (num_rois, 4), the lod level
                         is 1 when it is LoDTensor. The LoD include the rois's batch index
-                        information. If rois is Tensor, its batch index information shoule
+                        information. If rois is Tensor, its batch index information should
                         be provided by batch_index.
                         Given as [[x1, y1, x2, y2], ...], (x1, y1) is
                         the top left coordinates, and (x2, y2) is the bottom
