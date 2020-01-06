@@ -58,8 +58,13 @@ class Communicator(object):
             push_var_names = []
 
             for k, vs in push_vars.iterms():
+                varnames = "&".join(vs["var_names"])
+                sections = "&".join([str(v) for v in vs["sections"]])
+                endpoints = "&".join(vs["epmap"])
+                is_sparse = "&".join(["1" if vs["is_sparse"] else "0"])
+
                 push_var_names.append(k)
-                envs[k] = "#".join([str(v) for v in vs])
+                envs[k] = "#".join([varnames, sections, endpoints, is_sparse])
 
             envs["trainers"] = str(kwargs["trainers"])
             envs["push_nums"] = str(kwargs["push_nums"])
