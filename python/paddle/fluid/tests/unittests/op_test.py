@@ -1151,7 +1151,7 @@ class OpTest(unittest.TestCase):
 
         for a, b, name in six.moves.zip(numeric_grads, analytic_grads, names):
             # It asserts np.abs(a - b) / np.abs(a) < max_relative_error, in which
-            # max_relative_error is 1e-7. According to the value of abs_a, we
+            # max_relative_error is 1e-7. According to the value of np.abs(a), we
             # change np.abs(a) to achieve dynamic threshold. For example, if
             # the value of np.abs(a) is between 1e-10 and 1e-8, we set np.abs(a)*=1e4.
             # Therefore, it asserts np.abs(a - b) / (np.abs(a)*1e4) < max_relative_error,
