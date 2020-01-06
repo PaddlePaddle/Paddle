@@ -45,6 +45,7 @@ class TRTInt8Calibrator;
  */
 class TensorRTEngine {
   using DescType = ::paddle::framework::proto::BlockDesc;
+  using ShapeMapType = std::map<std::string, std::vector<int>>;
 
  public:
   // Weight is model parameter.
@@ -68,13 +69,30 @@ class TensorRTEngine {
       int max_batch, int max_workspace,
       AnalysisConfig::Precision precision = AnalysisConfig::Precision::kFloat32,
       TRTInt8Calibrator* calibrator = nullptr, int device_id = 0,
+      const ShapeMapType min_input_shape = {},
+      const ShapeMapType max_input_shape = {},
+      const ShapeMapType optim_input_shape = {},
       nvinfer1::ILogger& logger = NaiveLogger::Global())
       : max_batch_(max_batch),
         max_workspace_(max_workspace),
         precision_(precision),
         calibrator_(calibrator),
         device_id_(device_id),
-        logger_(logger) {}
+        min_input_shape_(min_input_shape),
+        max_input_shape_(max_input_shape),
+        optim_input_shape_(optim_input_shape),
+        logger_(logger) {
+    if (min_input_shape_.size() != 0 && max_input_shape_.size() != 0 &&
+        optim_input_shape.size() != 0) {
+      PADDLE_ENFORCE_EQ(min_input_shape_.size(), max_input_shape_.size(),
+                        "The min_input_shape_'s size should be equal to the "
+                        "size of max_input_shape_");
+      PADDLE_ENFORCE_EQ(min_input_shape_.size(), optim_input_shape_.size(),
+                        "The min_input_shape_'s size should be equal to the "
+                        "size of optim_input_shape_");
+      with_dynamic_shape_ = true;
+    }
+  }
 
   ~TensorRTEngine() {}
 
@@ -89,7 +107,14 @@ class TensorRTEngine {
   void InitNetwork() {
     freshDeviceId();
     infer_builder_.reset(createInferBuilder(&logger_));
-    infer_network_.reset(infer_builder_->createNetwork());
+
+    if (with_dynamic_shape_) {
+      infer_networkv2_.reset(infer_builder_->createNetworkV2(
+          1U << static_cast<int>(
+              nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH)));
+    } else {
+      infer_network_.reset(infer_builder_->createNetwork());
+    }
   }
   // After finishing adding ops, freeze this network and creates the execution
   // environment.
@@ -105,15 +130,25 @@ class TensorRTEngine {
                      const std::string& name);
   // Set the itensor_map_[name] as the network's output, and set its name.
   void DeclareOutput(const std::string& name);
-  // Check if the ITensor has been declared
-  bool HasDeclared(const std::string& name);
 
   void SetITensor(const std::string& name, nvinfer1::ITensor* tensor);
   // Get an ITensor called name.
   nvinfer1::ITensor* GetITensor(const std::string& name);
 
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
-  nvinfer1::INetworkDefinition* network() { return infer_network_.get(); }
+  nvinfer1::INetworkDefinition* network() {
+    if (with_dynamic_shape_) {
+      return infer_networkv2_.get();
+    } else {
+      return infer_network_.get();
+    }
+  }
+
+  ShapeMapType min_input_shape() { return min_input_shape_; }
+  ShapeMapType max_input_shape() { return max_input_shape_; }
+  ShapeMapType optim_input_shape() { return optim_input_shape_; }
+
+  bool with_dynamic_shape() { return with_dynamic_shape_; }
 
   nvinfer1::IHostMemory* Serialize() {
     PADDLE_ENFORCE(infer_engine_ != nullptr,
@@ -189,10 +224,12 @@ class TensorRTEngine {
   int batch_size_{-1};
 
   int device_id_;
+  ShapeMapType min_input_shape_;
+  ShapeMapType max_input_shape_;
+  ShapeMapType optim_input_shape_;
   nvinfer1::ILogger& logger_;
 
   // max data size for the buffers.
-  std::unordered_map<std::string /*name*/, size_t /*max size*/> buffer_sizes_;
   std::unordered_map<std::string /*name*/, nvinfer1::ITensor* /*ITensor*/>
       itensor_map_;
 
@@ -216,6 +253,10 @@ class TensorRTEngine {
       infer_context_;
   infer_ptr<nvinfer1::IHostMemory> ihost_memory_;
   std::unordered_map<nvinfer1::ITensor*, float> quant_dynamic_range_;
+
+  // For dynamic shape
+  bool with_dynamic_shape_{false};
+  infer_ptr<nvinfer1::INetworkDefinition> infer_networkv2_;
 };  // class TensorRTEngine
 
 #define IS_TRT_VERSION_GE(version)                       \
@@ -251,9 +292,13 @@ class TRTEngineManager {
       std::string name, int max_batch, int max_workspace,
       AnalysisConfig::Precision precision = AnalysisConfig::Precision::kFloat32,
       TRTInt8Calibrator* calibrator = nullptr, int device_id = 0,
+      const std::map<std::string, std::vector<int>> min_input_shape = {},
+      const std::map<std::string, std::vector<int>> max_input_shape = {},
+      const std::map<std::string, std::vector<int>> optim_input_shape = {},
       nvinfer1::ILogger& logger = NaiveLogger::Global()) {
     auto* p = new TensorRTEngine(max_batch, max_workspace, precision,
-                                 calibrator, device_id, logger);
+                                 calibrator, device_id, min_input_shape,
+                                 max_input_shape, optim_input_shape, logger);
     engines_[name].reset(p);
     return p;
   }

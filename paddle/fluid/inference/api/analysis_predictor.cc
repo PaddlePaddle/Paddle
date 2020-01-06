@@ -415,11 +415,14 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
     argument_.SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);
     argument_.SetTensorRtUseCalibMode(config_.trt_use_calib_mode_);
+    argument_.SetMinInputShape(config_.min_input_shape_);
+    argument_.SetMaxInputShape(config_.max_input_shape_);
+    argument_.SetOptimInputShape(config_.optim_input_shape_);
   }
 
   if (config_.anakin_engine_enabled()) {
     argument_.SetAnakinMaxBatchSize(config_.anakin_max_batchsize_);
-    argument_.SetAnakinMaxInputShape(config_.anakin_max_input_shape_);
+    argument_.SetMaxInputShape(config_.max_input_shape_);
     argument_.SetAnakinMinSubgraphSize(config_.anakin_min_subgraph_size_);
     argument_.SetAnakinPrecisionMode(config_.anakin_precision_mode_);
     argument_.SetAnakinAutoConfigLayout(config_.anakin_auto_config_layout_);

@@ -53,7 +53,7 @@ void TensorRTEngine::FreezeNetwork() {
   VLOG(3) << "TRT to freeze network";
   PADDLE_ENFORCE(infer_builder_ != nullptr,
                  "Call InitNetwork first to initialize network.");
-  PADDLE_ENFORCE(infer_network_ != nullptr,
+  PADDLE_ENFORCE(network() != nullptr,
                  "Call InitNetwork first to initialize network.");
   // build engine.
   infer_builder_->setMaxBatchSize(max_batch_);
@@ -66,6 +66,8 @@ void TensorRTEngine::FreezeNetwork() {
     if (!support_fp16) {
       LOG(INFO) << "You specify FP16 mode, but the hardware do not support "
                    "FP16 speed up, use FP32 instead.";
+    } else {
+      LOG(INFO) << "Run Paddle-TRT FP16 mode";
     }
   }
 #else
@@ -92,14 +94,14 @@ void TensorRTEngine::FreezeNetwork() {
       }
 
       std::unordered_set<nvinfer1::ITensor *> all_t;
-      for (int i = 0; i < infer_network_->getNbLayers(); i++) {
-        auto layer = infer_network_->getLayer(i);
+      for (int i = 0; i < network()->getNbLayers(); i++) {
+        auto layer = network()->getLayer(i);
         for (int j = 0; j < layer->getNbOutputs(); j++) {
           all_t.insert(layer->getOutput(j));
         }
       }
-      for (int i = 0; i < infer_network_->getNbInputs(); i++) {
-        all_t.insert(infer_network_->getInput(i));
+      for (int i = 0; i < network()->getNbInputs(); i++) {
+        all_t.insert(network()->getInput(i));
       }
 
       for (auto &t : all_t) {
@@ -111,14 +113,14 @@ void TensorRTEngine::FreezeNetwork() {
         }
       }
       std::unordered_set<std::string> all_out_t_name;
-      for (int i = 0; i < infer_network_->getNbOutputs(); i++) {
-        auto *temp = infer_network_->getOutput(i);
+      for (int i = 0; i < network()->getNbOutputs(); i++) {
+        auto *temp = network()->getOutput(i);
         temp->setDynamicRange(-1, 1);
         all_out_t_name.insert(temp->getName());
       }
 
-      for (int i = 0; i < infer_network_->getNbLayers(); i++) {
-        auto layer = infer_network_->getLayer(i);
+      for (int i = 0; i < network()->getNbLayers(); i++) {
+        auto layer = network()->getLayer(i);
         for (int j = 0; j < layer->getNbOutputs(); j++) {
           auto *temp_out = layer->getOutput(j);
           if (std::find(all_out_t_name.begin(), all_out_t_name.end(),
@@ -133,21 +135,16 @@ void TensorRTEngine::FreezeNetwork() {
     }
   }
 
-  infer_engine_.reset(infer_builder_->buildCudaEngine(*infer_network_));
+  infer_engine_.reset(infer_builder_->buildCudaEngine(*network()));
   PADDLE_ENFORCE(infer_engine_ != nullptr, "build cuda engine failed!");
 }
 
 nvinfer1::ITensor *TensorRTEngine::DeclareInput(const std::string &name,
                                                 nvinfer1::DataType dtype,
                                                 const nvinfer1::Dims &dims) {
-  PADDLE_ENFORCE_EQ(0, buffer_sizes_.count(name), "duplicate input name %s",
-                    name);
-
-  PADDLE_ENFORCE(infer_network_ != nullptr, "should initnetwork first");
-  auto *input = infer_network_->addInput(name.c_str(), dtype, dims);
+  PADDLE_ENFORCE(network() != nullptr, "should initnetwork first");
+  auto *input = network()->addInput(name.c_str(), dtype, dims);
   PADDLE_ENFORCE(input, "infer network add input %s failed", name);
-  buffer_sizes_[name] = kDataTypeSize[static_cast<int>(dtype)] *
-                        analysis::AccuDims(dims.d, dims.nbDims) * max_batch_;
   PADDLE_ENFORCE(input->isNetworkInput());
   TensorRTEngine::SetITensor(name, input);
   return input;
@@ -155,37 +152,21 @@ nvinfer1::ITensor *TensorRTEngine::DeclareInput(const std::string &name,
 
 void TensorRTEngine::DeclareOutput(const nvinfer1::ILayer *layer, int offset,
                                    const std::string &name) {
-  PADDLE_ENFORCE_EQ(0, buffer_sizes_.count(name), "duplicate output name %s",
-                    name);
-
   auto *output = layer->getOutput(offset);
   SetITensor(name, output);
   PADDLE_ENFORCE(output != nullptr);
   output->setName(name.c_str());
   PADDLE_ENFORCE(!output->isNetworkInput());
-  infer_network_->markOutput(*output);
+  network()->markOutput(*output);
   PADDLE_ENFORCE(output->isNetworkOutput());
-  // output buffers' size can only be decided later, set zero here to mark this
-  // and will reset later.
-  buffer_sizes_[name] = 0;
-}
-
-bool TensorRTEngine::HasDeclared(const std::string &name) {
-  return buffer_sizes_.count(name) > 0;
 }
 
 void TensorRTEngine::DeclareOutput(const std::string &name) {
-  PADDLE_ENFORCE_EQ(0, buffer_sizes_.count(name), "duplicate output name %s",
-                    name);
-
   auto *output = TensorRTEngine::GetITensor(name);
   PADDLE_ENFORCE(output != nullptr);
   output->setName(name.c_str());
   PADDLE_ENFORCE(!output->isNetworkInput());
-  infer_network_->markOutput(*output);
-  // output buffers' size can only be decided later, set zero here to mark this
-  // and will reset later.
-  buffer_sizes_[name] = 0;
+  network()->markOutput(*output);
 }
 
 void TensorRTEngine::SetITensor(const std::string &name,
@@ -254,7 +235,7 @@ nvinfer1::IPluginLayer *TensorRTEngine::AddPlugin(
     nvinfer1::ITensor *const *inputs, int num_inputs,
     plugin::PluginTensorRT *plugin) {
   owned_plugin_.emplace_back(plugin);
-  return infer_network_.get()->addPluginExt(inputs, num_inputs, *plugin);
+  return network()->addPluginExt(inputs, num_inputs, *plugin);
 }
 
 void TensorRTEngine::freshDeviceId() {
