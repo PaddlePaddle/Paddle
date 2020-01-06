@@ -36,6 +36,8 @@ class SGDOpKernel<platform::CPUDeviceContext, T>
 
     const auto *param_var = ctx.InputVar("Param");
     const auto *grad_var = ctx.InputVar("Grad");
+    VLOG(4) << "grad_var is initialized: " << grad_var->IsInitialized();
+    VLOG(4) << "param_var is initialized: " << param_var->IsInitialized();
 
     if (param_var->IsType<framework::LoDTensor>()) {
       const auto *param = ctx.Input<framework::Tensor>("Param");
@@ -43,6 +45,8 @@ class SGDOpKernel<platform::CPUDeviceContext, T>
       // Actually, all tensors are LoDTensor except SelectedRows.
       if (grad_var->IsType<framework::LoDTensor>()) {
         const auto *grad = ctx.Input<framework::Tensor>("Grad");
+        VLOG(4) << "grad Tensor is initialized: " << grad->IsInitialized();
+        if (!grad->IsInitialized()) return;
         auto sz = param_out->numel();
         PADDLE_ENFORCE_EQ(param->numel(), sz);
         PADDLE_ENFORCE_EQ(grad->numel(), sz);
@@ -64,6 +68,9 @@ class SGDOpKernel<platform::CPUDeviceContext, T>
         // It's better to find a more elegant solution.
         PADDLE_ENFORCE_EQ(param, param_out);
         const auto *grad = ctx.Input<framework::SelectedRows>("Grad");
+        VLOG(4) << "grad SelectedRows is initialized: "
+                << grad->value().IsInitialized();
+        if (!grad->value().IsInitialized()) return;
         auto &grad_rows = grad->rows();
 
         // for distributed training, a sparse var may be empty,
@@ -103,6 +110,9 @@ class SGDOpKernel<platform::CPUDeviceContext, T>
       const auto &param = param_var->Get<framework::SelectedRows>();
       auto *param_out = ctx.Output<framework::SelectedRows>("ParamOut");
       const auto &grad = grad_var->Get<framework::SelectedRows>();
+      VLOG(4) << "grad SelectedRows is initialized: "
+              << grad.value().IsInitialized();
+      if (!grad.value().IsInitialized()) return;
 
       // for distributed training, a sparse var may be empty,
       // just skip updating.

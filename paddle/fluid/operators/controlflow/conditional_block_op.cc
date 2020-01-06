@@ -139,7 +139,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
       return;
     }
 
-    AssignZeroToParentScope(dev_place, scope, inputs, outside_grads);
+    //    AssignZeroToParentScope(dev_place, scope, inputs, outside_grads);
   }
 
  private:
