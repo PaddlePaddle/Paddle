@@ -33,7 +33,7 @@ class AsyncMode:
 
 
 class Communicator(object):
-    def __init__(self, program, mode, kwargs=None):
+    def __init__(self, program, mode, kwargs=None, env_flags={}):
         """
         Communicator is used for async distribute training in distribute_transpiler mode.
         It's a wrapper of a cpp class Communicator and should be used inside fleet API.
@@ -63,11 +63,11 @@ class Communicator(object):
 
         if mode == AsyncMode.ASYNC:
             self.communicator_ = core.DistCommunicator("ASYNC", program.desc,
-                                                       global_scope())
+                                                       global_scope(),
+                                                       env_flags)
         elif mode == AsyncMode.HALF_ASYNC:
-            self.communicator_ = core.DistCommunicator("HALF_ASYNC",
-                                                       program.desc,
-                                                       global_scope())
+            self.communicator_ = core.DistCommunicator(
+                "HALF_ASYNC", program.desc, global_scope(), env_flags)
         elif mode == AsyncMode.GEO_SGD:
             push_vars = kwargs["push_vars"]
             trainers = int(kwargs["trainers"])
@@ -79,7 +79,8 @@ class Communicator(object):
                 raise ValueError("geo push delta must gather than 0")
 
             self.communicator_ = core.DistCommunicator(
-                program.desc, global_scope(), push_vars, trainers, push_nums)
+                program.desc,
+                global_scope(), push_vars, trainers, push_nums, env_flags)
         else:
             raise ValueError("unknown MODE for communicator")
 

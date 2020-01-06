@@ -21,8 +21,10 @@ import shutil
 import tempfile
 import time
 
+import paddle
 import paddle.fluid as fluid
 import os
+import numpy as np
 
 import ctr_dataset_reader
 from test_dist_fleet_base import runtime_main, FleetDistRunnerBase
@@ -133,7 +135,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         with open(os.path.join(dirname, "__model__.proto"), "w") as wn:
             wn.write(str(program))
 
-    def do_training(self, fleet):
+    def do_pyreader_training(self, fleet):
         """
         do training using dataset, using fetch handler to catch variable
         Args:
@@ -148,13 +150,63 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         exe.run(fleet.startup_program)
 
         thread_num = 2
+        batch_size = 128
+        filelist = []
+        for _ in range(thread_num):
+            filelist.append(train_file_path)
+
+        train_reader = paddle.batch(
+            paddle.reader.shuffle(
+                ctr_dataset_reader.CtrReader()._reader_creator(filelist),
+                buf_size=batch_size * 100),
+            batch_size=batch_size)
+        self.reader.decorate_sample_list_generator(train_reader)
+
+        compiled_prog = fluid.compiler.CompiledProgram(
+            fleet.main_program).with_data_parallel(
+                loss_name=self.avg_cost.name,
+                build_strategy=self.strategy.get_build_strategy(),
+                exec_strategy=self.strategy.get_execute_strategy())
+
+        for epoch_id in range(1):
+            self.reader.start()
+            try:
+                pass_start = time.time()
+                while True:
+                    loss_val = exe.run(program=compiled_prog,
+                                       fetch_list=[self.avg_cost.name])
+                    loss_val = np.mean(loss_val)
+                    print("TRAIN ---> pass: {} loss: {}\n".format(epoch_id,
+                                                                  loss_val))
+                pass_time = time.time() - pass_start
+            except fluid.core.EOFException:
+                self.reader.reset()
+
+        model_dir = tempfile.mkdtemp()
+        fleet.save_inference_model(
+            exe, model_dir, [feed.name for feed in self.feeds], self.avg_cost)
+        self.check_model_right(model_dir)
+        shutil.rmtree(model_dir)
+        fleet.stop_worker()
+
+    def do_dataset_training(self, fleet):
+        dnn_input_dim, lr_input_dim, train_file_path = ctr_dataset_reader.prepare_data(
+        )
+
+        exe = fluid.Executor(fluid.CPUPlace())
+
+        fleet.init_worker()
+        exe.run(fleet.startup_program)
+
+        thread_num = 2
+        batch_size = 128
         filelist = []
         for _ in range(thread_num):
             filelist.append(train_file_path)
 
         # config dataset
         dataset = fluid.DatasetFactory().create_dataset()
-        dataset.set_batch_size(128)
+        dataset.set_batch_size(batch_size)
         dataset.set_use_var(self.feeds)
         pipe_command = 'python ctr_dataset_reader.py'
         dataset.set_pipe_command(pipe_command)
@@ -174,11 +226,14 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                 debug=False)
             pass_time = time.time() - pass_start
 
+        res_dict = dict()
+        res_dict['loss'] = self.avg_cost
+
         class FH(fluid.executor.FetchHandler):
-            def handler(self, fetch_target_vars):
-                for i in range(len(fetch_target_vars)):
-                    print("{}: \n {}\n".format(self.fetch_target_names[0],
-                                               fetch_target_vars[0]))
+            def handle(self, res_dict):
+                for key in res_dict:
+                    v = res_dict[key]
+                    print("{}: \n {}\n".format(key, v))
 
         for epoch_id in range(1):
             pass_start = time.time()
@@ -186,7 +241,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             exe.train_from_dataset(
                 program=fleet.main_program,
                 dataset=dataset,
-                fetch_handler=FH([self.avg_cost.name], period_secs=2),
+                fetch_handler=FH(var_dict=res_dict, period_secs=2),
                 debug=False)
             pass_time = time.time() - pass_start
 

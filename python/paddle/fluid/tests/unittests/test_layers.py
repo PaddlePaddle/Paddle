@@ -33,6 +33,7 @@ import paddle.fluid.layers as layers
 from test_imperative_base import new_program_scope
 from paddle.fluid.dygraph import nn
 from paddle.fluid.dygraph import base
+from paddle.fluid.dygraph import to_variable
 
 
 class LayerTest(unittest.TestCase):
@@ -196,7 +197,8 @@ class TestLayer(LayerTest):
             fc1_bias_init = fc1.bias.detach()
 
             loss1.backward()
-            optimizer1 = fluid.optimizer.SGD(learning_rate=0.1)
+            optimizer1 = fluid.optimizer.SGD(learning_rate=0.1,
+                                             parameter_list=fc1.parameters())
             optimizer1.minimize(loss1)
 
             fc1_weight_updated = fc1.weight.detach()
@@ -223,7 +225,8 @@ class TestLayer(LayerTest):
             out2 = fc2(base.to_variable(inp))
             loss2 = fluid.layers.reduce_mean(out2)
             loss2.backward()
-            optimizer2 = fluid.optimizer.SGD(learning_rate=0.1)
+            optimizer2 = fluid.optimizer.SGD(learning_rate=0.1,
+                                             parameter_list=fc2.parameters())
             optimizer2.minimize(loss2)
 
             self.assertTrue(
@@ -365,7 +368,7 @@ class TestLayer(LayerTest):
                 filter_size=[2, 2],
                 bias_attr=False)
             dy_ret = conv2d(base.to_variable(images))
-            self.assertTrue(conv2d._bias_param is None)
+            self.assertTrue(conv2d.bias is None)
 
         self.assertTrue(np.allclose(static_ret, dy_ret_value))
         self.assertTrue(np.allclose(static_ret, static_ret2))
@@ -515,11 +518,11 @@ class TestLayer(LayerTest):
                 fetch_list=[ret])[0]
 
         with self.dynamic_graph():
-            ret = layers.elementwise_add(n, n2)
-            ret = layers.elementwise_pow(ret, n3)
-            ret = layers.elementwise_div(ret, n4)
-            ret = layers.elementwise_sub(ret, n5)
-            dy_ret = layers.elementwise_mul(ret, n6)
+            ret = layers.elementwise_add(to_variable(n), to_variable(n2))
+            ret = layers.elementwise_pow(ret, to_variable(n3))
+            ret = layers.elementwise_div(ret, to_variable(n4))
+            ret = layers.elementwise_sub(ret, to_variable(n5))
+            dy_ret = layers.elementwise_mul(ret, to_variable(n6))
             dy_ret_value = dy_ret.numpy()
         self.assertTrue(np.allclose(static_ret, dy_ret_value))
 
@@ -528,8 +531,8 @@ class TestLayer(LayerTest):
         n2 = np.ones([3, 3], dtype='float32') * 2
 
         with self.dynamic_graph():
-            min_ret = layers.elementwise_min(n, n2)
-            max_ret = layers.elementwise_max(n, n2)
+            min_ret = layers.elementwise_min(to_variable(n), to_variable(n2))
+            max_ret = layers.elementwise_max(to_variable(n), to_variable(n2))
             min_ret_value = min_ret.numpy()
             max_ret_value = max_ret.numpy()
 
@@ -1624,6 +1627,34 @@ class TestLayer(LayerTest):
             self.assertIsNotNone(out2)
             self.assertIsNotNone(out3)
 
+    def test_accuracy(self):
+        x = np.random.rand(3, 32, 32).astype("float32")
+        y = np.array([[1], [0], [1]])
+        with self.static_graph():
+            data = fluid.data(name="input", shape=[-1, 32, 32], dtype="float32")
+            label = fluid.data(name="label", shape=[-1, 1], dtype="int")
+            fc_out = fluid.layers.fc(input=data, size=10)
+            predict = fluid.layers.softmax(input=fc_out)
+            result = fluid.layers.accuracy(input=predict, label=label, k=5)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+
+            exe.run(fluid.default_startup_program())
+            x = np.random.rand(3, 32, 32).astype("float32")
+            y = np.array([[1], [0], [1]])
+            static_out = exe.run(feed={"input": x,
+                                       "label": y},
+                                 fetch_list=result[0])
+
+        with self.dynamic_graph():
+            data = base.to_variable(x)
+            label = base.to_variable(y)
+            fc_out = fluid.layers.fc(data, size=10)
+            predict = fluid.layers.softmax(fc_out)
+            dynamic_out = fluid.layers.accuracy(input=predict, label=label, k=5)
+
+        self.assertTrue(np.array_equal(static_out[0], dynamic_out.numpy()))
+
 
 class TestBook(LayerTest):
     def test_all_layers(self):
@@ -2530,7 +2561,12 @@ class TestBook(LayerTest):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
             layers.range(0, 10, 2, 'int32')
-            y = layers.range(0.1, 10.0, 0.2, 'float32')
+            layers.range(0.1, 10.0, 0.2, 'float32')
+            layers.range(0.1, 10.0, 0.2, 'float64')
+            start = layers.fill_constant(shape=[1], value=0.1, dtype="float32")
+            end = layers.fill_constant(shape=[1], value=10.0, dtype="float32")
+            step = layers.fill_constant(shape=[1], value=0.2, dtype="float32")
+            y = layers.range(start, end, step, 'float64')
             return y
 
     def make_spectral_norm(self):
@@ -2824,6 +2860,18 @@ class TestBook(LayerTest):
                 force_cpu=True,
                 name='Filter_tag')
             out1, out2 = layers.filter_by_instag(x1, x2, x3, is_lod=True)
+
+    def test_shuffle_batch(self):
+        # TODO(minqiyang): dygraph do not support lod now
+        with self.static_graph():
+            x = layers.data(
+                name='X', shape=[4, 50], dtype='float32', lod_level=0)
+            out1 = fluid.contrib.layers.shuffle_batch(x)
+            default_main_program().random_seed = 1000
+            out2 = fluid.contrib.layers.shuffle_batch(x)
+            self.assertIsNotNone(out1)
+            self.assertIsNotNone(out2)
+            return (out1)
 
     def test_roi_pool(self):
         # TODO(minqiyang): dygraph do not support lod now

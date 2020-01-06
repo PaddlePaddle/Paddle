@@ -35,8 +35,9 @@ import tempfile
 
 import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.communicator import AsyncMode
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
+from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 
 RUN_STEP = 5
 LEARNING_RATE = 0.01
@@ -66,25 +67,17 @@ class FleetDistRunnerBase(object):
         return role
 
     def build_strategy(self, args):
-        strategy = fluid.DistributeTranspilerConfig()
-
-        if args.training_mode == AsyncMode.SYNC:
-            strategy.sync_mode = args.sync_mode
-        elif args.training_mode == AsyncMode.ASYNC:
-            strategy.sync_mode = False
-            strategy.runtime_split_send_recv = True
-        elif args.training_mode == AsyncMode.HALF_ASYNC:
-            strategy.sync_mode = False
-            strategy.half_async = True
-            strategy.runtime_split_send_recv = True
-        elif args.training_mode == AsyncMode.GEO_SGD:
-            strategy.sync_mode = False
-            strategy.runtime_split_send_recv = True
-            strategy.geo_sgd_mode = True
-            strategy.geo_sgd_need_push_nums = args.geo_sgd_need_push_nums
-        else:
-            strategy = None
-        return strategy
+        self.strategy = None
+        if args.mode == "async":
+            self.strategy = StrategyFactory.create_async_strategy()
+        elif args.mode == "sync":
+            self.strategy = StrategyFactory.create_sync_strategy()
+        elif args.mode == "half_async":
+            self.strategy = StrategyFactory.create_half_async_strategy()
+        elif args.mode == "geo":
+            self.strategy = StrategyFactory.create_geo_strategy(
+                args.geo_sgd_need_push_nums)
+        return self.strategy
 
     def build_optimizer(self, loss, strategy):
         optimizer = fluid.optimizer.SGD(LEARNING_RATE)
@@ -100,20 +93,37 @@ class FleetDistRunnerBase(object):
         fleet.init_server()
         fleet.run_server()
 
-    def run_trainer(self, args):
+    def run_dataset_trainer(self, args):
         fleet.init(self.build_role(args))
         strategy = self.build_strategy(args)
         avg_cost = self.net()
         self.build_optimizer(avg_cost, strategy)
-        out = self.do_training(fleet)
+        out = self.do_dataset_training(fleet)
+
+    def run_pyreader_trainer(self, args):
+        fleet.init(self.build_role(args))
+        strategy = self.build_strategy(args)
+        avg_cost = self.net()
+        self.reader = fluid.io.PyReader(
+            feed_list=self.feeds,
+            capacity=64,
+            iterable=False,
+            use_double_buffer=False)
+
+        self.build_optimizer(avg_cost, strategy)
+        out = self.do_pyreader_training(fleet)
 
     def net(self, batch_size=4, lr=0.01):
         raise NotImplementedError(
             "get_model should be implemented by child classes.")
 
-    def do_training(self, fleet):
+    def do_dataset_training(self, fleet):
         raise NotImplementedError(
-            "do_training should be implemented by child classes.")
+            "do_dataset_training should be implemented by child classes.")
+
+    def do_pyreader_training(self, fleet):
+        raise NotImplementedError(
+            "do_pyreader_training should be implemented by child classes.")
 
 
 class TestFleetBase(unittest.TestCase):
@@ -126,7 +136,8 @@ class TestFleetBase(unittest.TestCase):
         raise NotImplementedError("tests should have _setup_config implemented")
 
     def setUp(self):
-        self._sync_mode = 0
+        self._mode = "sync"
+        self._reader = "pyreader"
         self._trainers = 2
         self._pservers = 2
         self._port_set = set()
@@ -208,19 +219,13 @@ class TestFleetBase(unittest.TestCase):
             envs['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
             python_path += " -m coverage run --branch -p"
 
-        tr_cmd = "{0} {1} --role trainer --endpoints {2} --current_id {{}} --trainers {3}".format(
-            python_path, model, self._ps_endpoints, self._trainers)
+        tr_cmd = "{0} {1} --role trainer --endpoints {2} --current_id {{}} --trainers {3} --mode {4} --geo_sgd_need_push_nums {5} --reader {6}".format(
+            python_path, model, self._ps_endpoints, self._trainers, self._mode,
+            self._geo_sgd_need_push_nums, self._reader)
 
-        ps_cmd = "{0} {1} --role pserver --endpoints {2} --current_id {{}} --trainers {3}".format(
-            python_path, model, self._ps_endpoints, self._trainers)
-
-        tr_cmd += " --training_mode {0}".format(self._sync_mode)
-        ps_cmd += " --training_mode {0}".format(self._sync_mode)
-
-        tr_cmd += " --geo_sgd_push_nums {0}".format(
-            self._geo_sgd_need_push_nums)
-        ps_cmd += " --geo_sgd_push_nums {0}".format(
-            self._geo_sgd_need_push_nums)
+        ps_cmd = "{0} {1} --role pserver --endpoints {2} --current_id {{}} --trainers {3} --mode {4} --geo_sgd_need_push_nums {5} --reader {6}".format(
+            python_path, model, self._ps_endpoints, self._trainers, self._mode,
+            self._geo_sgd_need_push_nums, self._reader)
 
         # Run dist train to compare with local results
         ps0, ps1, ps0_pipe, ps1_pipe = self._start_pserver(ps_cmd, env)
@@ -249,29 +254,6 @@ class TestFleetBase(unittest.TestCase):
 
         ps0.terminate()
         ps1.terminate()
-        '''
-        with open("/tmp/tr0_out.log", "wb+") as wn:
-            wn.write(tr0_out)
-        with open("/tmp/tr1_out.log", "wb+") as wn:
-            wn.write(tr1_out)
-        # print server log
-        '''
-
-        # print server log
-        '''
-        with open("/tmp/ps0_err.log", "r") as fn:
-            sys.stderr.write("ps0 stderr: %s\n" % fn.read())
-        with open("/tmp/ps1_err.log", "r") as fn:
-            sys.stderr.write("ps1 stderr: %s\n" % fn.read())
-        '''
-
-        # print log
-        '''
-        with open("/tmp/tr0_err.log", "r") as fn:
-            sys.stderr.write('trainer 0 stderr: %s\n' % fn.read())
-        with open("/tmp/tr1_err.log", "r") as fn:
-            sys.stderr.write('trainer 1 stderr: %s\n' % fn.read())
-        '''
 
         return 0, 0
 
@@ -304,13 +286,17 @@ def runtime_main(test_class):
     parser.add_argument('--endpoints', type=str, required=False, default="")
     parser.add_argument('--current_id', type=int, required=False, default=0)
     parser.add_argument('--trainers', type=int, required=False, default=1)
-    parser.add_argument('--training_mode', type=int, required=False, default=0)
+    parser.add_argument('--mode', type=str, required=False, default='geo')
     parser.add_argument(
-        '--geo_sgd_push_nums', type=int, required=False, default=2)
+        '--geo_sgd_need_push_nums', type=int, required=False, default=2)
+    parser.add_argument('--reader', type=str, required=False, default='dataset')
     args = parser.parse_args()
 
     model = test_class()
     if args.role == "pserver":
         model.run_pserver(args)
     else:
-        model.run_trainer(args)
+        if args.reader == "dataset":
+            model.run_dataset_trainer(args)
+        else:
+            model.run_pyreader_trainer(args)

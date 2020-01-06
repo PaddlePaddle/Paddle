@@ -33,7 +33,7 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable
 from testsuite import create_op, set_input, append_input_output, append_loss_ops
 from paddle.fluid import unique_name
-from white_list import op_accuracy_white_list, op_check_grad_white_list
+from white_list import op_accuracy_white_list, check_shape_white_list, compile_vs_runtime_white_list, no_check_set_white_list
 
 
 def _set_use_system_allocator(value=None):
@@ -69,6 +69,10 @@ def get_numeric_gradient(place,
 
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.shape())
+    if not hasattr(get_numeric_gradient, 'check_shape_time'):
+        get_numeric_gradient.check_shape_time = 0
+    if tensor_size >= 100:
+        get_numeric_gradient.check_shape_time += 1
     tensor_to_check_dtype = tensor_to_check._dtype()
     if tensor_to_check_dtype == core.VarDesc.VarType.FP32:
         tensor_to_check_dtype = np.float32
@@ -142,6 +146,30 @@ def get_numeric_gradient(place,
     return gradient_flat.reshape(tensor_to_check.shape())
 
 
+def skip_check_grad_ci(reason=None):
+    """Decorator to skip check_grad CI.
+       
+       Check_grad is required for Op test cases. However, there are some special
+       cases that do not need to do check_grad. This decorator is used to skip the 
+       check_grad of the above cases.
+       
+       Note: the execution of unit test will not be skipped. It just avoids check_grad 
+       checking in tearDownClass method by setting a `no_need_check_grad` flag.
+
+       Example:
+           @skip_check_grad_ci(reason="For inference, check_grad is not required.")
+           class TestInference(OpTest):
+    """
+    if not isinstance(reason, str):
+        raise AssertionError("The reason for skipping check_grad is required.")
+
+    def wrapper(cls):
+        cls.no_need_check_grad = True
+        return cls
+
+    return wrapper
+
+
 class OpTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -165,30 +193,48 @@ class OpTest(unittest.TestCase):
 
         _set_use_system_allocator(cls._use_system_allocator)
 
+        def is_empty_grad_op(op_type):
+            all_op_kernels = core._get_all_register_op_kernels()
+            grad_op = op_type + '_grad'
+            if grad_op in all_op_kernels.keys():
+                if hasattr(cls, "use_mkldnn") and cls.use_mkldnn == True:
+                    grad_op_kernels = all_op_kernels[grad_op]
+                    for grad_op_kernel in grad_op_kernels:
+                        if 'MKLDNN' in grad_op_kernel:
+                            return False
+                else:
+                    return False
+            return True
+
         if not hasattr(cls, "op_type"):
             raise AssertionError(
                 "This test do not have op_type in class attrs,"
                 " please set self.__class__.op_type=the_real_op_type manually.")
 
-        # cases and ops do no need check_grad
-        if cls.__name__ in op_check_grad_white_list.NO_NEED_CHECK_GRAD_CASES \
-            or cls.op_type in op_check_grad_white_list.EMPTY_GRAD_OP_LIST:
-            return
+        # case in NO_FP64_CHECK_GRAD_CASES and op in NO_FP64_CHECK_GRAD_OP_LIST should be fixed
+        if not hasattr(cls, "no_need_check_grad") \
+            and not is_empty_grad_op(cls.op_type):
+            if cls.dtype is None or \
+                (cls.dtype == np.float16 \
+                    and cls.op_type not in op_accuracy_white_list.NO_FP16_CHECK_GRAD_OP_LIST \
+                    and not hasattr(cls, "exist_check_grad")):
+                raise AssertionError("This test of %s op needs check_grad." %
+                                     cls.op_type)
 
-        # In order to pass ci, and case in NO_FP64_CHECK_GRAD_CASES and op in
-        # NO_FP64_CHECK_GRAD_OP_LIST should be fixed
-        if cls.op_type in op_accuracy_white_list.NO_FP64_CHECK_GRAD_OP_LIST:
-            return
+            if cls.dtype in [np.float32, np.float64] \
+                and cls.op_type not in op_accuracy_white_list.NO_FP64_CHECK_GRAD_OP_LIST \
+                and not hasattr(cls, 'exist_fp64_check_grad'):
+                raise AssertionError(
+                    "This test of %s op needs check_grad with fp64 precision." %
+                    cls.op_type)
 
-        if cls.dtype is None or (cls.dtype in [np.float16, np.int64, np.int32, np.int16] \
-            and not hasattr(cls, "exist_check_grad")):
-            raise AssertionError("This test of %s op needs check_grad." %
-                                 cls.op_type)
-
-        if cls.dtype in [np.float32, np.float64] and \
-            not hasattr(cls, 'exist_fp64_check_grad'):
-            raise AssertionError("This test of %s op needs fp64 check_grad." %
-                                 cls.op_type)
+        if hasattr(get_numeric_gradient, 'check_shape_time') \
+            and get_numeric_gradient.check_shape_time == 0 \
+            and OpTest.op_type not in check_shape_white_list.NOT_CHECK_OP_LIST \
+            and OpTest.op_type not in check_shape_white_list.NEED_TO_FIX_OP_LIST:
+            raise AssertionError(
+                "At least one input's shape should be large than or equal to 100 for "
+                + OpTest.op_type + " Op.")
 
     def try_call_once(self, data_type):
         if not self.call_once:
@@ -266,6 +312,8 @@ class OpTest(unittest.TestCase):
 
     def _append_ops(self, block):
         self.__class__.op_type = self.op_type  # for ci check, please not delete it for now
+        if hasattr(self, "use_mkldnn"):
+            self.__class__.use_mkldnn = self.use_mkldnn
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
         "infer datatype from inputs and outputs for this test case"
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
@@ -855,6 +903,10 @@ class OpTest(unittest.TestCase):
                                 equal_nan=False,
                                 check_dygraph=True,
                                 inplace_atol=None):
+        if no_check_set is not None:
+            if self.op_type not in no_check_set_white_list.no_check_set_white_list:
+                raise AssertionError(
+                    "no_check_set of op %s must be set to None." % self.op_type)
         if check_dygraph:
             dygraph_outs = self._calc_dygraph_output(
                 place, no_check_set=no_check_set)
@@ -1066,9 +1118,10 @@ class OpTest(unittest.TestCase):
                      no_check_set=None,
                      equal_nan=False,
                      check_dygraph=True,
-                     inplace_atol=None,
-                     check_compile_vs_runtime=False):
+                     inplace_atol=None):
         self.__class__.op_type = self.op_type
+        if hasattr(self, "use_mkldnn"):
+            self.__class__.use_mkldnn = self.use_mkldnn
         places = self._get_places()
         for place in places:
             res = self.check_output_with_place(place, atol, no_check_set,
@@ -1077,7 +1130,7 @@ class OpTest(unittest.TestCase):
                 outs, dygraph_outs, fetch_list = res
             else:
                 outs, fetch_list = res
-            if check_compile_vs_runtime:
+            if self.op_type not in compile_vs_runtime_white_list.COMPILE_RUN_OP_WHITE_LIST:
                 self.check_compile_vs_runtime(fetch_list, outs)
 
     def check_output_customized(self, checker):
@@ -1141,6 +1194,7 @@ class OpTest(unittest.TestCase):
                               max_relative_error=0.005,
                               user_defined_grads=None,
                               check_dygraph=True):
+        OpTest.op_type = self.op_type
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()

@@ -206,6 +206,21 @@ class TestVariable(unittest.TestCase):
             self.assertIsNone(var.dtype)
             self.assertIsNone(var.type)
 
+    def test_create_selected_rows(self):
+        b = default_main_program().current_block()
+
+        var = b.create_var(
+            name="var",
+            shape=[1, 1],
+            dtype="float32",
+            type=fluid.core.VarDesc.VarType.SELECTED_ROWS,
+            persistable=True)
+
+        def _test():
+            var.lod_level()
+
+        self.assertRaises(Exception, _test)
+
 
 if __name__ == '__main__':
     unittest.main()
