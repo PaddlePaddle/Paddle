@@ -101,12 +101,6 @@ class Layer(core.Layer):
         Returns:
             :ref:`api_guide_Variable_en` : created parameter.
         """
-        '''
-        if isinstance(attr, ParamAttr) and (attr.name is not None):
-            attr.name = ".".join([self._full_name, attr.name])
-        elif isinstance(attr, six.string_types):
-            attr = ".".join([self._full_name, attr])
-        '''
         temp_attr = copy.deepcopy(attr)
         if isinstance(temp_attr, six.string_types) and temp_attr == "":
             temp_attr = None
