@@ -511,7 +511,7 @@ def append_gradient_clip_ops(param_grads):
         if g is None:
             continue
         with p.block.program._optimized_guard(
-            [p, g]), framework.name_scope('append_clip'):
+            [p, g]), framework.name_scope('append_clip_@CLIP'):
             clip_attr = getattr(p, 'gradient_clip_attr', NullGradientClipAttr())
             if clip_attr is None:
                 clip_attr = NullGradientClipAttr()
@@ -527,11 +527,11 @@ def append_gradient_clip_ops(param_grads):
         if g is None:
             continue
         with p.block.program._optimized_guard(
-            [p, g]), framework.name_scope('append_graident_clip'):
+            [p, g]), framework.name_scope('append_graident_clip_@CLIP'):
             res.append(clip_attr._create_operators(param=p, grad=g))
 
     # change wrong mapping relation between param & grad in clip op
-    clip_flag = '_clip'
+    clip_flag = '@CLIP'
     for p, g in param_grads:
         if g is None:
             continue

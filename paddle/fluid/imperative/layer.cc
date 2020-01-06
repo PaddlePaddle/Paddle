@@ -323,7 +323,6 @@ void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
 
   VLOG(3) << "Running Op " << Type();
   VLOG(5) << LayerDebugString(Type(), ins, outs);
-  framework::RuntimeContext runtime_ctx({}, {});
   auto prepared_op =
       PreparedOp::Prepare(ins, outs, *op_kernel, place(), &attrs_);
 

@@ -54,36 +54,6 @@ class TestDistGeoClipByGlobalNormTranspiler(unittest.TestCase):
         pserver_startup_program = fleet.startup_program
         pserver_mian_program = fleet.main_program
 
-
-class TestDistGeoClipByValue(TestFleetBase):
-    def _setup_config(self):
-        self._sync_mode = False
-        self._geo_sgd = True
-        self._geo_sgd_need_push_nums = 5
-        self._grad_clip_mode = 1
-
-    def check_with_place(self,
-                         model_file,
-                         delta=1e-3,
-                         check_error_log=False,
-                         need_envs={}):
-        required_envs = {
-            "PATH": os.getenv("PATH", ""),
-            "PYTHONPATH": os.getenv("PYTHONPATH", ""),
-            "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
-            "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
-            "http_proxy": ""
-        }
-        required_envs.update(need_envs)
-
-        tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
-
-    def test_dist_train(self):
-        self.check_with_place(
-            "dist_fleet_ctr.py", delta=1e-5, check_error_log=True)
-
-
-class TestDistGeoClipByNorm(TestFleetBase):
     def _setup_config(self):
         self._sync_mode = False
         self._geo_sgd = True
@@ -138,34 +108,6 @@ class TestDistGeoClipByGlobalNorm(TestFleetBase):
         self.check_with_place(
             "dist_fleet_ctr.py", delta=1e-5, check_error_log=True)
 
-
-class TestDistASyncClipByValue(TestFleetBase):
-    def _setup_config(self):
-        self._sync_mode = False
-        self._grad_clip_mode = 1
-
-    def check_with_place(self,
-                         model_file,
-                         delta=1e-3,
-                         check_error_log=False,
-                         need_envs={}):
-        required_envs = {
-            "PATH": os.getenv("PATH", ""),
-            "PYTHONPATH": os.getenv("PYTHONPATH", ""),
-            "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
-            "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
-            "http_proxy": ""
-        }
-        required_envs.update(need_envs)
-
-        tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
-
-    def test_dist_train(self):
-        self.check_with_place(
-            "dist_fleet_ctr.py", delta=1e-5, check_error_log=True)
-
-
-class TestDistASyncClipByNorm(TestFleetBase):
     def _setup_config(self):
         self._sync_mode = False
         self._grad_clip_mode = 2
