@@ -9344,6 +9344,32 @@ def expand(x, expand_times, name=None):
             expanded_2 = fluid.layers.expand(data_2, expand_times=expand_times)
             # the shape of expanded_2 is [48, 56].
     """
+
+    def contain_var(expand_times):
+        for ele in expand_times:
+            if isinstance(ele, Variable):
+                return True
+        return False
+
+    inputs = {"X": [x]}
+    attrs = {}
+
+    if in_dygraph_mode():
+        if isinstance(expand_times, (list, tuple)):
+            contain_var = contain_var(expand_times)
+            if contain_var:
+                raise TypeError(
+                    "The type of 'expand_times' in expand must be list[int] or tuple(int) in Dygraph mode, but "
+                    "received %s, which contains Variable." % type(shape))
+            attrs['expand_times'] = expand_times
+        else:
+            raise TypeError(
+                "The type of 'expand_times' in expand must be list[int] or tuple(int) in Dygraph mode, but "
+                "received %s." % type(shape))
+
+        outs = core.ops.expand(inputs, attrs)
+        return outs['Out'][0]
+
     check_type_and_dtype(x, 'x', Variable,
                          ['bool', 'float32', 'float64', 'int32', 'int64'],
                          'expand')
@@ -9353,14 +9379,6 @@ def expand(x, expand_times, name=None):
             "expand op bool date type must set the stop_gradient to be False")
 
     helper = LayerHelper('expand', input=x, **locals())
-    inputs = {"X": x}
-    attrs = {}
-
-    def contain_var(expand_times):
-        for ele in expand_times:
-            if isinstance(ele, Variable):
-                return True
-        return False
 
     def get_attr_expand_times(list_expand_times):
         attrs_expand_times = []

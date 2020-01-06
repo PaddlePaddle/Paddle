@@ -16,7 +16,7 @@ from __future__ import print_function
 from six.moves import reduce
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
-from ..framework import convert_np_dtype_to_dtype_, in_dygraph_mode
+from ..framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator
 from ..framework import Variable
 from ..initializer import Constant, force_init_on_cpu
 from ..core import VarDesc
@@ -552,6 +552,42 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
           shape = fluid.layers.fill_constant([1,2], "int32", 2) # shape=[2,2]
           data4 = fluid.layers.fill_constant(shape=shape, dtype='bool', value=True) # data4=[[True,True],[True,True]]
     """
+
+    def _contain_var(one_list):
+        for ele in one_list:
+            if isinstance(ele, Variable):
+                return True
+        return False
+
+    attrs = {
+        'value': float(value),
+        'force_cpu': force_cpu or force_init_on_cpu()
+    }
+
+    if convert_dtype(dtype) in ['int64', 'int32']:
+        attrs['str_value'] = str(int(value))
+    else:
+        attrs['str_value'] = str(float(value))
+
+    if False and in_dygraph_mode():
+        if isinstance(shape, (list, tuple)):
+            contain_var = _contain_var(shape)
+            if contain_var:
+                raise TypeError(
+                    "The type of 'shape' in fill_constant must be list[int] or tuple(int) in Dygraph mode, but "
+                    "received %s, which contains Variable." % type(shape))
+            attrs['shape'] = shape
+        else:
+            raise TypeError(
+                "The type of 'shape' in fill_constant must be list[int] or tuple(int) in Dygraph mode, but "
+                "received %s." % type(shape))
+        if out is None:
+            _varbase_creator(dtype=dtype)
+        outputs = {'Out': [out]}
+        outs = core.ops.fill_constant({}, attrs, outputs)
+        out.stop_gradient = True
+        return out
+
     helper = LayerHelper("fill_constant", **locals())
     check_dtype(dtype, 'create data type',
                 ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
@@ -567,12 +603,6 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
         attrs['str_value'] = str(int(value))
     else:
         attrs['str_value'] = str(float(value))
-
-    def _contain_var(one_list):
-        for ele in one_list:
-            if isinstance(ele, Variable):
-                return True
-        return False
 
     def _get_attr_shape(list_shape):
         attr_shape = []

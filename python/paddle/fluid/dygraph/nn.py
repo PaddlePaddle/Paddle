@@ -1867,9 +1867,22 @@ class GRUUnit(layers.Layer):
             attr=bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
 
     def forward(self, input, hidden):
-        inputs = {'Input': input, 'HiddenPrev': hidden, 'Weight': self.weight}
+        inputs = {
+            'Input': [input],
+            'HiddenPrev': [hidden],
+            'Weight': [self.weight]
+        }
         if self.bias:
-            inputs['Bias'] = self.bias
+            inputs['Bias'] = [self.bias]
+        attrs = {
+            'activation': self.activation,
+            'gate_activation': self.gate_activation,
+        }
+
+        if in_dygraph_mode():
+            outs = core.ops.gru_unit(inputs, attrs)
+            return outs['Hidden'][0], outs['ResetHiddenPrev'][0], outs['Gate'][
+                0]
 
         gate = self._helper.create_variable_for_type_inference(self._dtype)
         reset_hidden_pre = self._helper.create_variable_for_type_inference(
