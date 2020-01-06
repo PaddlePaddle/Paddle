@@ -53,11 +53,7 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                    "It must use CPUPlace.");
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
-    auto in_vars = ctx.MultiInputVar("X");
-
-    const int N = in_vars.size();
     auto out_var = ctx.OutputVar("Out");
-    bool in_place = out_var == in_vars[0];
 
     if (out_var->IsType<framework::LoDTensor>()) {
       LoDTensor* output = ctx.Output<LoDTensor>("Out");
@@ -69,7 +65,10 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       std::vector<float> scales;
       std::vector<memory::desc> srcs_md;
       std::vector<mkldnn::memory> srcs_mem;
+      auto in_vars = ctx.MultiInputVar("X");
 
+      PADDLE_ENFORCE_GT(in_vars.size(), 1,
+                        "Input variables size must be bigger than 1");
       PADDLE_ENFORCE_EQ(in_vars[0]->IsType<LoDTensor>(), true,
                         "Input[0] must be LoDTensors");
       auto& input0 = in_vars[0]->Get<LoDTensor>();
@@ -78,9 +77,11 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       PADDLE_ENFORCE_NE(input0.format(), MKLDNNMemoryFormat::undef,
                         "Wrong format set for inputs[0] tensor");
 
+      bool in_place = (input0.numel()) > 0 && (input0.data<T>() == output_data);
+
       MKLDNNMemoryFormat input_format = input0.format();
 
-      for (int i = 0; i < N; i++) {
+      for (size_t i = 0; i < in_vars.size(); i++) {
         PADDLE_ENFORCE_EQ(in_vars[i]->IsType<LoDTensor>(), true,
                           "all inputs must be all LoDTensors");
         auto& input = in_vars[i]->Get<LoDTensor>();
