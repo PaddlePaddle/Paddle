@@ -97,7 +97,9 @@ void BuddyAllocator::Free(void* p) {
   // Acquire the allocator lock
   std::lock_guard<std::mutex> lock(mutex_);
 
-  // PADDLE_ENFORCE_EQ(ptr_to_block_.count(p), 1, "unexpected behaviour");
+  // PADDLE_ENFORCE_EQ(ptr_to_block_.count(p), 1,
+  // platform::errors::PreconditionNotMet("unexpeced reference count : %u",
+  // ptr_to_block_.count(p)));
   auto block = ptr_to_block_.at(p);
   ptr_to_block_.erase(p);
 
@@ -235,8 +237,8 @@ MemoryBlock* BuddyAllocator::FindExistChunk(size_t size) {
 }
 
 MemoryBlock* BuddyAllocator::SplitToAlloc(MemoryBlock* block, size_t size) {
-  // PADDLE_ENFORCE_EQ(ptr_to_block_.count(block->get_data()), 0, "pointer
-  // should not exist in map now");
+  // PADDLE_ENFORCE_EQ(ptr_to_block_.count(block->get_data()), 0,
+  // platform::errors::PreconditionNotMet("unexpected reference count"));
   ptr_to_block_.insert({block->get_data(), block});
 
   VLOG(10) << "Split block (" << block->get_data() << ", " << block->get_size()
