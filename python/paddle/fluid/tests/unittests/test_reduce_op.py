@@ -347,6 +347,23 @@ class TestReduceSumWithDimOne(OpTest):
         self.check_grad(['X'], 'Out')
 
 
+class TestReduceMeanWithDimOne(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_mean"
+        self.inputs = {'X': np.random.random((100, 1, 1)).astype("float64")}
+        self.attrs = {'dim': [1], 'keep_dim': False}
+        self.outputs = {
+            'Out': self.inputs['X'].mean(
+                axis=tuple(self.attrs['dim']), keepdims=False)
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
 class TestReduceSumWithNumelOne(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
