@@ -193,7 +193,7 @@ def dimension_is_compatible_with(first, second):
     return True
 
 
-def check_feed_shape_type(var, feed):
+def check_feed_shape_type(var, feed, num_places=1):
     """
     Returns True if the variable doesn't require feed check or it is compatible
     with the shape and have same dtype as the feeded value.
@@ -207,6 +207,8 @@ def check_feed_shape_type(var, feed):
     Args:
         var (Variable): the Variable object
         feed (LoDTensor): the feeded value, which must be a LoDTensor
+        num_places: an integer value indicating the number of places.
+            ParallelExecutor will divide data into devices (CPU/GPU) evenly.
     Returns:
         True if the shape and dtype of variable is compatible with the feed value
     Raises:
@@ -214,11 +216,18 @@ def check_feed_shape_type(var, feed):
             the feed value
     """
     if var.desc.need_check_feed():
-        if not dimension_is_compatible_with(feed.shape(), var.shape):
+        feed_shape = feed.shape()
+        if six.PY2:
+            feed_shape[0] = long(feed_shape[0] /
+                                 num_places) if len(feed.lod()) == 0 else -1
+        else:
+            feed_shape[0] = int(feed_shape[0] /
+                                num_places) if len(feed.lod()) == 0 else -1
+        if not dimension_is_compatible_with(feed_shape, var.shape):
             raise ValueError(
                 'The feeded Variable %r should have dimensions = %d, shape = '
-                '%r, but received feeded shape %r' %
-                (var.name, len(var.shape), var.shape, feed.shape()))
+                '%r, but received feeded shape %r on each device' %
+                (var.name, len(var.shape), var.shape, feed_shape))
         if not dtype_is_compatible_with(feed._dtype(), var.dtype):
             var_dtype_format = convert_dtype(var.dtype) if isinstance(
                 var.dtype, core.VarDesc.VarType) else var.dtype
@@ -632,7 +641,7 @@ class Executor(object):
                     feed_tensor.set(feed[feed_name], core.CPUPlace())
                 if need_check_feed:
                     var = global_block.var(feed_name)
-                    check_feed_shape_type(var, feed_tensor)
+                    check_feed_shape_type(var, feed_tensor, exe.device_count())
                 feed_tensor_dict[feed_name] = feed_tensor
 
             exe.feed_and_split_tensor_into_local_scopes(feed_tensor_dict)
