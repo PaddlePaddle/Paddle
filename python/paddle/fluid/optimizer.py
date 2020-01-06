@@ -280,7 +280,7 @@ class Optimizer(object):
                 value=float(self._learning_rate),
                 dtype='float32' if self._dtype is None else self._dtype,
                 persistable=True)
-    
+
     @framework.dygraph_only
     def current_step_lr(self):
         """
@@ -303,19 +303,15 @@ class Optimizer(object):
         current_lr = self._global_learning_rate()
         if current_lr:
             return self._global_learning_rate().numpy()[0]
-        
-        if isinstance(self._learning_rate,(float, int)):
+
+        if isinstance(self._learning_rate, (float, int)):
             return self._learning_rate
         elif isinstance(self._learning_rate, LearningRateDecay):
             step_lr = self._learning_rate.step()
-            if isinstance( step_lr, (float, int)):
+            if isinstance(step_lr, (float, int)):
                 return step_lr
             else:
                 return step_lr.numpy()[0]
-        else:
-            raise TypeError( "Learning rate type not support, should be one of [ int, float, LearningRateDecay]")
-
-
 
     def _global_learning_rate(self, program=None):
         """
