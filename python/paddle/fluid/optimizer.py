@@ -990,6 +990,8 @@ class DGCMomentumOptimizer(Optimizer):
                  num_trainers=None,
                  regularization=None,
                  name=None):
+        if framework.in_dygraph_mode():
+            raise Exception("In dygraph, don't suppot DGCMomentumOptimizer.")
         assert learning_rate is not None
         assert momentum is not None
         super(DGCMomentumOptimizer, self).__init__(
@@ -1972,7 +1974,8 @@ class DpsgdOptimizer(Optimizer):
                  clip=0.9,
                  batch_size=0.999,
                  sigma=1e-8,
-                 parameter_list=None):
+                 parameter_list=None,
+                 seed=None):
         assert learning_rate is not None
         assert clip is not None
         assert batch_size is not None
@@ -1983,25 +1986,43 @@ class DpsgdOptimizer(Optimizer):
         self._clip = clip
         self._batch_size = batch_size
         self._sigma = sigma
+        self._seed = seed
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
 
         # create the dpsgd optimize op
-        dpsgd_op = block.append_op(
-            type=self.type,
-            inputs={
-                "Param": param_and_grad[0],
-                "Grad": param_and_grad[1],
-                "LearningRate": self._create_param_lr(param_and_grad)
-            },
-            outputs={"ParamOut": param_and_grad[0]},
-            attrs={
-                "clip": self._clip,
-                "batch_size": self._batch_size,
-                "sigma": self._sigma
-            },
-            stop_gradient=True)
+        if self._seed == None:
+            dpsgd_op = block.append_op(
+                type=self.type,
+                inputs={
+                    "Param": param_and_grad[0],
+                    "Grad": param_and_grad[1],
+                    "LearningRate": self._create_param_lr(param_and_grad)
+                },
+                outputs={"ParamOut": param_and_grad[0]},
+                attrs={
+                    "clip": self._clip,
+                    "batch_size": self._batch_size,
+                    "sigma": self._sigma
+                },
+                stop_gradient=True)
+        else:
+            dpsgd_op = block.append_op(
+                type=self.type,
+                inputs={
+                    "Param": param_and_grad[0],
+                    "Grad": param_and_grad[1],
+                    "LearningRate": self._create_param_lr(param_and_grad)
+                },
+                outputs={"ParamOut": param_and_grad[0]},
+                attrs={
+                    "clip": self._clip,
+                    "batch_size": self._batch_size,
+                    "sigma": self._sigma,
+                    "seed": self._seed
+                },
+                stop_gradient=True)
 
         return dpsgd_op
 
@@ -2798,6 +2819,8 @@ class ModelAverage(Optimizer):
                  max_average_window=10000,
                  regularization=None,
                  name=None):
+        if framework.in_dygraph_mode():
+            raise Exception("In dygraph, don't suppot ModelAverage.")
         super(ModelAverage, self).__init__(
             0.0, regularization=regularization, name=name)
         self.average_window = average_window_rate
@@ -3111,6 +3134,9 @@ class ExponentialMovingAverage(object):
     """
 
     def __init__(self, decay=0.999, thres_steps=None, name=None):
+        if framework.in_dygraph_mode():
+            raise Exception(
+                "In dygraph, don't suppot ExponentialMovingAverage.")
         self._decay = decay
         self._thres_steps = thres_steps
         self._name = name if name is not None else ''
@@ -3321,6 +3347,8 @@ class PipelineOptimizer(object):
                  queue_size=30,
                  sync_steps=1,
                  start_cpu_core_id=0):
+        if framework.in_dygraph_mode():
+            raise Exception("In dygraph, don't suppot PipelineOptimizer.")
         # TODO: check properties
         self._optimizer = optimizer
         self._cut_list = cut_list
@@ -3606,6 +3634,8 @@ class RecomputeOptimizer(Optimizer):
     """
 
     def __init__(self, optimizer):
+        if framework.in_dygraph_mode():
+            raise Exception("In dygraph, don't suppot RecomputeOptimizer.")
         self._optimizer = optimizer
         self._checkpoints = None
 
@@ -3892,6 +3922,8 @@ class LookaheadOptimizer(object):
 
     def __init__(self, inner_optimizer, alpha=0.5, k=5):
 
+        if framework.in_dygraph_mode():
+            raise Exception("In dygraph, don't suppot LookaheadOptimizer.")
         assert (inner_optimizer is not None), "inner optimizer can not be None"
         assert (
             0.0 <= alpha <= 1.0

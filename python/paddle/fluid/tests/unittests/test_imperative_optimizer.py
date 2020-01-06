@@ -64,6 +64,23 @@ class TestImperativeOptimizerBase(unittest.TestCase):
 
         return _reader_imple
 
+    def _check_exception(self, exception_message, place=None):
+        seed = 90
+        batch_size = 128
+        if place == None:
+            place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
+            ) else fluid.CUDAPlace(0)
+
+        with fluid.dygraph.guard(place):
+            try:
+                fluid.default_startup_program().random_seed = seed
+                fluid.default_main_program().random_seed = seed
+                mlp = MLP()
+                optimizer = self.get_optimizer_dygraph(
+                    parameter_list=mlp.parameters())
+            except Exception as e:
+                assert str(e) == exception_message
+
     def _check_mlp(self, place=None):
         seed = 90
         batch_size = 128
@@ -386,12 +403,13 @@ class TestImperativeDpsgdOptimizer(TestImperativeOptimizerBase):
             clip=10.0,
             batch_size=16.0,
             sigma=1.0,
-            parameter_list=parameter_list)
+            parameter_list=parameter_list,
+            seed=100)
         return optimizer
 
     def get_optimizer(self):
         optimizer = DpsgdOptimizer(
-            learning_rate=0.01, clip=10.0, batch_size=16.0, sigma=1.0)
+            learning_rate=0.01, clip=10.0, batch_size=16.0, sigma=1.0, seed=100)
         return optimizer
 
     def test_dpsgd(self):
@@ -477,6 +495,78 @@ class TestImperativeLambOptimizer(TestImperativeOptimizerBase):
 
     def test_lamb(self):
         self._check_mlp()
+
+
+class TestImperativeModelAverage(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = ModelAverage(
+            0.15, min_average_window=10000, max_average_window=12500)
+        return optimizer
+
+    def test_modelaverage(self):
+        exception_message = "In dygraph, don't suppot ModelAverage."
+        self._check_exception(exception_message)
+
+
+class TestImperativeDGCMomentumOptimizer(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = DGCMomentumOptimizer(
+            learning_rate=0.0001,
+            momentum=0.9,
+            rampup_step=1000,
+            rampup_begin_step=1252,
+            sparsity=[0.999, 0.999])
+        return optimizer
+
+    def test_dgcmomentum(self):
+        exception_message = "In dygraph, don't suppot DGCMomentumOptimizer."
+        self._check_exception(exception_message)
+
+
+class TestImperativeExponentialMovingAverage(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = ExponentialMovingAverage(0.999)
+        return optimizer
+
+    def test_exponentialmoving(self):
+        exception_message = "In dygraph, don't suppot ExponentialMovingAverage."
+        self._check_exception(exception_message)
+
+
+class TestImperativePipelineOptimizer(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = fluid.optimizer.SGD(learning_rate=0.5,
+                                        parameter_list=parameter_list)
+        optimizer = PipelineOptimizer(optimizer)
+        return optimizer
+
+    def test_pipline(self):
+        exception_message = "In dygraph, don't suppot PipelineOptimizer."
+        self._check_exception(exception_message)
+
+
+class TestImperativeLookaheadOptimizer(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = fluid.optimizer.SGD(learning_rate=0.5,
+                                        parameter_list=parameter_list)
+        optimizer = LookaheadOptimizer(optimizer, alpha=0.5, k=5)
+        return optimizer
+
+    def test_lookahead(self):
+        exception_message = "In dygraph, don't suppot LookaheadOptimizer."
+        self._check_exception(exception_message)
+
+
+class TestImperativeRecomputeOptimizer(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = fluid.optimizer.SGD(learning_rate=0.5,
+                                        parameter_list=parameter_list)
+        optimizer = RecomputeOptimizer(optimizer)
+        return optimizer
+
+    def test_recompute(self):
+        exception_message = "In dygraph, don't suppot RecomputeOptimizer."
+        self._check_exception(exception_message)
 
 
 if __name__ == '__main__':
