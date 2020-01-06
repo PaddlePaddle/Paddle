@@ -596,7 +596,7 @@ void FleetWrapper::CacheShuffle(int table_id, const std::string& path,
                                 const int mode, const double cache_threshold) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->cache_shuffle(
-      0, path, std::to_string(mode), std::to_string(cache_threshold));
+      table_id, path, std::to_string(mode), std::to_string(cache_threshold));
   ret.wait();
   int32_t feasign_cnt = ret.get();
   if (feasign_cnt == -1) {

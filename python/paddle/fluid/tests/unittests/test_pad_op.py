@@ -43,7 +43,7 @@ class TestPadOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', max_relative_error=0.006)
+        self.check_grad(['X'], 'Out')
 
     def initTestCase(self):
         self.shape = (16, 16)
@@ -60,14 +60,14 @@ class TestCase1(TestPadOp):
 
 class TestCase2(TestPadOp):
     def initTestCase(self):
-        self.shape = (2, 2, 2)
+        self.shape = (5, 5, 5)
         self.paddings = [(0, 0), (0, 0), (1, 2)]
         self.pad_value = 1.0
 
 
 class TestCase3(TestPadOp):
     def initTestCase(self):
-        self.shape = (8)
+        self.shape = (100)
         self.paddings = [(0, 1)]
         self.pad_value = 0.9
 

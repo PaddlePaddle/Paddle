@@ -100,7 +100,7 @@ class TestBilinearInterpOp(OpTest):
         self.data_layout = 'NCHW'
         self.init_test_case()
         self.op_type = "bilinear_interp"
-        input_np = np.random.random(self.input_shape).astype("float32")
+        input_np = np.random.random(self.input_shape).astype("float64")
 
         if self.data_layout == "NCHW":
             in_h = self.input_shape[2]
@@ -144,7 +144,7 @@ class TestBilinearInterpOp(OpTest):
 
     def init_test_case(self):
         self.interp_method = 'bilinear'
-        self.input_shape = [2, 3, 4, 4]
+        self.input_shape = [2, 3, 5, 5]
         self.out_h = 2
         self.out_w = 2
         self.scale = 0.
@@ -248,7 +248,7 @@ class TestBilinearInterpActualShape(TestBilinearInterpOp):
 class TestBilinearInterpDataLayout(TestBilinearInterpOp):
     def init_test_case(self):
         self.interp_method = 'bilinear'
-        self.input_shape = [2, 4, 4, 3]
+        self.input_shape = [2, 5, 5, 3]
         self.out_h = 2
         self.out_w = 2
         self.scale = 0.
@@ -402,7 +402,7 @@ class TestBilinearInterpOp_attr_tensor(OpTest):
             'align_corners': self.align_corners,
         }
 
-        input_np = np.random.random(self.input_shape).astype("float32")
+        input_np = np.random.random(self.input_shape).astype("float64")
         self.inputs = {'X': input_np}
 
         if self.scale_by_1Dtensor:
@@ -438,7 +438,7 @@ class TestBilinearInterpOp_attr_tensor(OpTest):
 
     def init_test_case(self):
         self.interp_method = 'bilinear'
-        self.input_shape = [2, 3, 4, 4]
+        self.input_shape = [2, 3, 5, 5]
         self.out_h = 3
         self.out_w = 3
         self.scale = 0.

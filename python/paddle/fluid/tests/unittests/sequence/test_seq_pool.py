@@ -16,7 +16,9 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+import sys
+sys.path.append("../")
+from op_test import OpTest, skip_check_grad_ci
 from test_reorder_lod_tensor import convert_to_offset
 
 
@@ -355,6 +357,8 @@ class TestSeqMaxPool2DLen0LoDLevel2(TestSeqMaxPool2D):
         return [[1, 0, 2, 2], [0, 3, 0, 10, 0]]
 
 
+@skip_check_grad_ci(reason="Grad computation does not apply to Sequence MAX "
+                    "Pool executed when is_test is true.")
 class TestSeqMaxPool2DInference(TestSeqMaxPool2D):
     def compute(self, x, offset, out):
         self.attrs = {"pad_value": 1.0, 'pooltype': "MAX", 'is_test': True}
@@ -368,7 +372,7 @@ class TestSeqMaxPool2DInference(TestSeqMaxPool2D):
                 out[i] = np.reshape(np.amax(sub_x, axis=0), (3, 11))
 
     def test_check_grad(self):
-        """Grad computation does not apply to Sequence MAX 
+        """Grad computation does not apply to Sequence MAX
             Pool executed when is_test is true """
         return
 

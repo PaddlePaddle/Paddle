@@ -233,8 +233,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
-            adam = Adam(learning_rate=fluid.layers.piecewise_decay(
-                boundaries=bd, values=lr_arr))
+            adam = Adam(
+                learning_rate=fluid.layers.piecewise_decay(
+                    boundaries=bd, values=lr_arr),
+                parameter_list=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -314,8 +316,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
-            adam = Adam(learning_rate=fluid.layers.piecewise_decay(
-                boundaries=bd, values=lr_arr))
+            adam = Adam(
+                learning_rate=fluid.layers.piecewise_decay(
+                    boundaries=bd, values=lr_arr),
+                parameter_list=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -418,8 +422,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
-            adam = Adam(learning_rate=fluid.layers.piecewise_decay(
-                boundaries=bd, values=lr_arr))
+            adam = Adam(
+                learning_rate=fluid.layers.piecewise_decay(
+                    boundaries=bd, values=lr_arr),
+                parameter_list=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -521,8 +527,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
-            adam = Adam(learning_rate=fluid.layers.piecewise_decay(
-                boundaries=bd, values=lr_arr))
+            adam = Adam(
+                learning_rate=fluid.layers.piecewise_decay(
+                    boundaries=bd, values=lr_arr),
+                parameter_list=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -633,7 +641,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 learning_rate=fluid.layers.piecewise_decay(
                     boundaries=bd, values=lr_arr),
                 beta1=0.8,
-                beta2=0.6)
+                beta2=0.6,
+                parameter_list=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -724,7 +733,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 learning_rate=fluid.layers.piecewise_decay(
                     boundaries=bd, values=lr_arr),
                 beta1=0.8,
-                beta2=0.6)
+                beta2=0.6,
+                parameter_list=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -816,7 +826,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 learning_rate=fluid.layers.piecewise_decay(
                     boundaries=bd, values=lr_arr),
                 beta1=0.8,
-                beta2=0.6)
+                beta2=0.6,
+                parameter_list=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None

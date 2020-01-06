@@ -16,9 +16,11 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle.fluid.core as core
+import sys
+sys.path.append("../")
 from op_test import OpTest
 from test_softmax_op import stable_softmax
-import paddle.fluid.core as core
 
 
 class TestSequenceSoftmaxOp(OpTest):
@@ -27,9 +29,9 @@ class TestSequenceSoftmaxOp(OpTest):
         self.use_cudnn = False
         self.init_op_type()
 
-        x = np.random.uniform(0.1, 1, (110, 1)).astype("float32")
+        x = np.random.uniform(0.1, 1, (110, 1)).astype("float64")
         self.init_lod()
-        out = np.zeros((110, 1)).astype("float32")
+        out = np.zeros((110, 1)).astype("float64")
         offset = 0
         for i in range(len(self.lod[0])):
             if (self.lod[0][i] == 0):

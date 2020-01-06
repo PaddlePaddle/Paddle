@@ -19,10 +19,12 @@ from functools import partial, reduce
 from . import nn
 from .layer_function_generator import templatedoc
 from ..layer_helper import LayerHelper
-from ..framework import Variable
+from ..framework import Variable, in_dygraph_mode
+from .. import core
 from ..data_feeder import check_type_and_dtype
 from ..param_attr import ParamAttr
-from ..initializer import NumpyArrayInitializer
+from ..initializer import NumpyArrayInitializer, Constant
+from .. import core
 
 __all__ = [
     'center_loss',
@@ -233,36 +235,46 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
             predict = fluid.layers.fc(input=x, size=class_num, act='softmax')
             cost = fluid.layers.cross_entropy(input=predict, label=label)
     """
+    if not soft_label:
+        return cross_entropy2(input, label, ignore_index)
+
+    inputs = {'X': [input], 'Label': [label]}
+    attrs = {"soft_label": soft_label, "ignore_index": ignore_index}
+
+    if in_dygraph_mode():
+        outs = core.ops.cross_entropy(inputs, attrs)
+        return outs['Y'][0]
 
     check_type_and_dtype(input, 'input', Variable,
                          ['float16', 'float32', 'float64'], 'cross_entropy')
-    if not soft_label:
-        return cross_entropy2(input, label, ignore_index)
     helper = LayerHelper('cross_entropy', **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
-        type='cross_entropy',
-        inputs={'X': [input],
-                'Label': [label]},
-        outputs={'Y': [out]},
-        attrs={"soft_label": soft_label,
-               "ignore_index": ignore_index})
+        type='cross_entropy', inputs=inputs, outputs={'Y': [out]}, attrs=attrs)
     return out
 
 
 def cross_entropy2(input, label, ignore_index=kIgnoreIndex):
+    inputs = {'X': [input], 'Label': [label]}
+    attrs = {'ignore_index': ignore_index}
+
+    if in_dygraph_mode():
+        outs = core.ops.cross_entropy2(inputs, attrs)
+        return outs['Y'][0]
+
+    check_type_and_dtype(input, 'input', Variable,
+                         ['float16', 'float32', 'float64'], 'cross_entropy2')
     helper = LayerHelper('cross_entropy2', **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     xshape = helper.create_variable_for_type_inference(dtype=input.dtype)
     match_x = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
         type='cross_entropy2',
-        inputs={'X': [input],
-                'Label': [label]},
+        inputs=inputs,
         outputs={'Y': [out],
                  'MatchX': [match_x],
                  'XShape': [xshape]},
-        attrs={'ignore_index': ignore_index})
+        attrs=attrs)
     return out
 
 
@@ -1213,6 +1225,21 @@ def softmax_with_cross_entropy(logits,
             out = fluid.layers.softmax_with_cross_entropy(
                 logits=fc, label=label)
     """
+    attrs = {
+        'soft_label': soft_label,
+        'ignore_index': ignore_index,
+        'numeric_stable_mode': numeric_stable_mode,
+        'axis': axis
+    }
+
+    if in_dygraph_mode():
+        inputs = {'Logits': [logits], 'Label': [label]}
+        outs = core.ops.softmax_with_cross_entropy(inputs, attrs)
+        if not return_softmax:
+            return outs['Loss'][0]
+        else:
+            return outs['Loss'][0], outs['Softmax'][0]
+
     helper = LayerHelper('softmax_with_cross_entropy', **locals())
     softmax = helper.create_variable_for_type_inference(dtype=logits.dtype)
     loss = helper.create_variable_for_type_inference(dtype=logits.dtype)
@@ -1222,12 +1249,7 @@ def softmax_with_cross_entropy(logits,
                 'Label': label},
         outputs={'Softmax': softmax,
                  'Loss': loss},
-        attrs={
-            'soft_label': soft_label,
-            'ignore_index': ignore_index,
-            'numeric_stable_mode': numeric_stable_mode,
-            'axis': axis
-        })
+        attrs=attrs)
 
     if return_softmax:
         return loss, softmax
