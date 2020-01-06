@@ -178,8 +178,6 @@ class Communicator {
   explicit Communicator(const std::map<std::string, std::string>& envs);
   virtual ~Communicator() {}
 
-  virtual void SetEnvFlagsDefault();
-
   virtual void Start() = 0;
   virtual void Stop() = 0;
   virtual bool IsRunning() { return running_; }
@@ -236,14 +234,15 @@ class AsyncCommunicator : public Communicator {
   AsyncCommunicator() : Communicator() {}
   explicit AsyncCommunicator(const std::map<std::string, std::string>& envs)
       : Communicator(envs) {
-    independent_recv_thread_ = envs.at("independent_recv_thread");
-    min_send_grad_num_before_recv_ = envs.at("min_send_grad_num_before_recv");
-    thread_pool_size_ = envs.at("thread_pool_size");
-    max_merge_var_num_ = envs.at("max_merge_var_num");
-    merge_sparse_grad_ = envs.at("merge_sparse_grad");
-    send_wait_times_ = envs.at("send_wait_times");
-    send_queue_size_ = envs.at("send_queue_size");
-    is_sgd_optimizer_ = envs.at("is_sgd_optimizer")
+    independent_recv_thread_ = std::stoi(envs.at("independent_recv_thread"));
+    min_send_grad_num_before_recv_ =
+        std::stoi(envs.at("min_send_grad_num_before_recv"));
+    thread_pool_size_ = std::stoi(envs.at("thread_pool_size"));
+    max_merge_var_num_ = std::stoi(envs.at("max_merge_var_num"));
+    send_wait_times_ = std::stoi(envs.at("send_wait_times"));
+    send_queue_size_ = std::stoi(envs.at("send_queue_size"));
+    is_sgd_optimizer_ =
+        static_cast<bool>(std::stoi(envs.at("is_sgd_optimizer")));
   }
   ~AsyncCommunicator();
   void Start() override;
@@ -267,14 +266,13 @@ class AsyncCommunicator : public Communicator {
             const framework::Scope& scope) override;
 
  private:
-  const int min_send_grad_num_before_recv_;
-  const int thread_pool_size_;
-  const int max_merge_var_num_;
-  const int send_wait_times_;
-  const int send_queue_size_;
-  const bool independent_recv_thread_;
-  const bool merge_sparse_grad_;
-  const bool is_sgd_optimizer_;
+  int min_send_grad_num_before_recv_;
+  int thread_pool_size_;
+  int max_merge_var_num_;
+  int send_wait_times_;
+  int send_queue_size_;
+  bool independent_recv_thread_;
+  bool is_sgd_optimizer_;
 
  private:
   std::unordered_map<std::string,
@@ -295,7 +293,12 @@ class HalfAsyncCommunicator : public Communicator {
  public:
   HalfAsyncCommunicator() {}
   explicit HalfAsyncCommunicator(const std::map<std::string, std::string>& envs)
-      : Communicator(envs) {}
+      : Communicator(envs) {
+    max_merge_var_num_ = std::stoi(envs.at("max_merge_var_num"));
+    send_wait_times_ = std::stoi(envs.at("send_wait_times"));
+    thread_pool_size_ = std::stoi(envs.at("thread_pool_size"));
+    send_queue_size_ = std::stoi(envs.at("send_queue_size"));
+  }
   ~HalfAsyncCommunicator();
   void Start() override;
   void Stop() override;
@@ -322,8 +325,10 @@ class HalfAsyncCommunicator : public Communicator {
   void ConsumeThread();
 
  private:
-  const int max_merge_var_num_;
-  const int send_wait_times_;
+  int max_merge_var_num_;
+  int send_wait_times_;
+  int thread_pool_size_;
+  int send_queue_size_;
 
  private:
   std::unordered_map<std::string,
@@ -349,10 +354,10 @@ class GeoSgdCommunicator : public Communicator {
   GeoSgdCommunicator() : Communicator() {}
   explicit GeoSgdCommunicator(const std::map<std::string, std::string>& envs)
       : Communicator(envs) {
-    geo_need_push_nums_ = static_cast<int>(envs.at("geo_need_push_nums"));
-    trainer_nums_ = static_cast<int>(envs.at("trainer_nums"));
-    thread_pool_size_ = static_cast<int>(envs.at("thread_pool_size"));
-    send_wait_times_ = static_cast<int>(envs.at("send_wait_times"));
+    geo_need_push_nums_ = std::stoi(envs.at("geo_need_push_nums"));
+    trainer_nums_ = std::stoi(envs.at("trainer_nums"));
+    thread_pool_size_ = std::stoi(envs.at("thread_pool_size"));
+    send_wait_times_ = std::stoi(envs.at("send_wait_times"));
   }
 
   ~GeoSgdCommunicator();
@@ -431,10 +436,10 @@ class GeoSgdCommunicator : public Communicator {
   }
 
  private:
-  const int trainer_nums_ = 1;
-  const int geo_need_push_nums_ = 100;
-  const int thread_pool_size_;
-  const int send_wait_times_;
+  int trainer_nums_ = 1;
+  int geo_need_push_nums_ = 100;
+  int thread_pool_size_;
+  int send_wait_times_;
 
  private:
   int send_var_nums_ = 0;

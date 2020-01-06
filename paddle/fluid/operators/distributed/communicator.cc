@@ -336,13 +336,13 @@ void GeoSgdCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
   auto geo_send_varnames = envs["geo_send_varnames"];
   auto varnames = paddle::string::Split(geo_send_varnames, '#');
 
-  for (auto &varname : varnames) {
-    auto var_attr_str = envs.at(varname) auto var_attrs =
-        paddle::string::Split(var_attr_str, '#');
+  for (auto &var_name : varnames) {
+    auto var_attr_str = envs.at(var_name);
+    auto var_attrs = paddle::string::Split(var_attr_str, '#');
     auto split_varnames = paddle::string::Split(var_attrs[0], '&');
     auto sections = paddle::string::Split(var_attrs[1], '&');
     auto endpoints = paddle::string::Split(var_attrs[2], '&');
-    bool is_sparse = static<bool>(var_attrs[3]);
+    bool is_sparse = static_cast<bool>(std::stoi(var_attrs[3]));
 
     std::string send_var_name = VarToDeltaVar(var_name);
     std::vector<std::string> send_var_names;
@@ -358,9 +358,9 @@ void GeoSgdCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
 
     var_list_[var_name] = is_sparse;
     send_varname_to_ctx_[send_var_name] = operators::distributed::RpcContext(
-        send_var_name, send_var_names, vars_epmap, vars_sections_int, 0);
+        send_var_name, send_var_names, endpoints, vars_sections_int, 0);
     recv_varname_to_ctx_[var_name] = operators::distributed::RpcContext(
-        var_name, vars_names, vars_epmap, vars_sections_int, 0);
+        var_name, split_varnames, endpoints, vars_sections_int, 0);
 
     absolute_section_[var_name] = operators::ToAbsoluteSection(
         send_varname_to_ctx_[send_var_name].height_sections);
@@ -369,7 +369,7 @@ void GeoSgdCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
     for (int64_t section : vars_sections_int) {
       vars_first_dimension_[var_name] += section;
     }
-    send_var_nums_ += vars_names.size();
+    send_var_nums_ += split_varnames.size();
   }
 
   if (send_varname_to_ctx_.size() == 0 && recv_varname_to_ctx_.size() == 0) {
@@ -379,7 +379,7 @@ void GeoSgdCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
   send_threadpool_.reset(new ::ThreadPool(thread_pool_size_));
   need_push_queue_ =
       std::make_shared<BlockingQueue<std::shared_ptr<SparseIdsMap>>>(
-          geo_need_push_nums);
+          geo_need_push_nums_);
   delta_scope_.reset(new Scope());
   old_scope_.reset(new Scope());
   pserver_scope_.reset(new Scope());
@@ -471,7 +471,7 @@ void GeoSgdCommunicator::SendThread() {
     task_futures.reserve(send_var_nums_);
 
     int wait_times = 0;
-    while (ids_send_vec_.size() < geo_need_push_nums_) {
+    while (ids_send_vec_.size() < static_cast<size_t>(geo_need_push_nums_)) {
       VLOG(4) << "ids_send_vec_ Size: " << ids_send_vec_.size();
       if (need_push_queue_->Size() > 0) {
         wait_times = 0;
@@ -488,7 +488,7 @@ void GeoSgdCommunicator::SendThread() {
       }
     }
 
-    if (ids_send_vec_.size() >= geo_need_push_nums_) {
+    if (ids_send_vec_.size() >= static_cast<size_t>(geo_need_push_nums_)) {
       auto after_run_training = GetCurrentUS();
       VLOG(4) << "run Training use time "
               << after_run_training - before_run_training;
@@ -961,18 +961,16 @@ void HalfAsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
     for (auto &iter : send_varname_to_ctx_) {
       send_varname_to_queue_[iter.first] =
           std::make_shared<BlockingQueue<std::shared_ptr<Variable>>>(
-              FLAGS_communicator_send_queue_size);
+              send_queue_size_);
     }
 
-    consume_threadpool_.reset(
-        new ::ThreadPool(FLAGS_communicator_thread_pool_size));
+    consume_threadpool_.reset(new ::ThreadPool(thread_pool_size_));
   }
 
   if (recv_varname_to_ctx.size() == 0) {
     VLOG(0) << "nothing need to be received, will not start recv_thread";
   } else {
-    recv_threadpool_.reset(
-        new ::ThreadPool(FLAGS_communicator_thread_pool_size));
+    recv_threadpool_.reset(new ::ThreadPool(thread_pool_size_));
   }
 }
 
@@ -1050,12 +1048,10 @@ void HalfAsyncCommunicator::ConsumeThread() {
           std::vector<std::shared_ptr<Variable>> vars;
           size_t merged_var_num = 0;
           size_t wait_times = 0;
-          while (merged_var_num < static_cast<unsigned int>(
-                                      FLAGS_communicator_max_merge_var_num)) {
+          while (merged_var_num < static_cast<size_t>(max_merge_var_num_)) {
             if (var_queue->Size() == 0) {
               VLOG(3) << "wait_times -> " << wait_times;
-              if (wait_times >= static_cast<unsigned int>(
-                                    FLAGS_communicator_send_wait_times)) {
+              if (wait_times >= static_cast<size_t>(send_wait_times_)) {
                 break;
               }
               std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -1178,7 +1174,7 @@ void HalfAsyncCommunicator::Start() {
   } else {
     VLOG(1) << "start send thread and recv thread";
 
-    BarrierTriggerReset(FLAGS_communicator_max_merge_var_num);
+    BarrierTriggerReset(max_merge_var_num_);
     running_ = true;
     consume_thread_.reset(new std::thread(
         std::bind(&HalfAsyncCommunicator::ConsumeThread, this)));
