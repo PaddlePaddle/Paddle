@@ -88,7 +88,7 @@ class TestNCE(OpTest):
         }
 
     def set_data(self):
-        self.generate_data(5, 25, 4, 1, 2, False)
+        self.generate_data(5, 25, 100, 1, 2, False)
 
     def compute(self):
         out = nce(self.inputs['Input'], self.inputs['Weight'],
@@ -116,7 +116,7 @@ class TestNCE(OpTest):
 
 class TestNCECase1Tensor(TestNCE):
     def set_data(self):
-        self.generate_data(10, 20, 10, 2, 5, False)
+        self.generate_data(10, 20, 100, 2, 5, False)
 
 
 class TestNCECase1SelectedRows(unittest.TestCase):
