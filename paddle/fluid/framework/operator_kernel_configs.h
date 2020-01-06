@@ -17,7 +17,6 @@ limitations under the License. */
 #include <algorithm>
 #include <unordered_map>
 #include <vector>
-#include "paddle/fluid/platform/dynload/cudnn.h"
 
 namespace paddle {
 namespace framework {
@@ -34,7 +33,7 @@ class AlgorithmsCache {
       const std::vector<int>& strides, const std::vector<int>& paddings,
       const std::vector<int>& dilations,
       int algorithmFlags,  // can set for different data type
-      cudnnDataType_t cudnn_dtype, std::function<TAlgorithm()> gen_func);
+      size_t cudnn_dtype, std::function<TAlgorithm()> gen_func);
 
   TAlgorithm GetAlgorithm(int64_t area, int search_times, int algorithmFlags,
                           std::function<TAlgorithm()> gen_func);
@@ -49,8 +48,8 @@ template <typename TAlgorithm>
 TAlgorithm framework::AlgorithmsCache<TAlgorithm>::GetAlgorithm(
     const std::vector<int64_t>& dims1, const std::vector<int64_t>& dims2,
     const std::vector<int>& strides, const std::vector<int>& paddings,
-    const std::vector<int>& dilations, int algorithmFlags,
-    cudnnDataType_t cudnn_dtype, std::function<TAlgorithm()> gen_func) {
+    const std::vector<int>& dilations, int algorithmFlags, int64_t cudnn_dtype,
+    std::function<TAlgorithm()> gen_func) {
   int64_t seed = 0;
   // Hash all of the inputs, use to try and look up a previously
   // discovered algorithm, or fall back to generating a new one.
