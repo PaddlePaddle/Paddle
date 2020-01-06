@@ -33,7 +33,7 @@ class AlgorithmsCache {
       const std::vector<int>& strides, const std::vector<int>& paddings,
       const std::vector<int>& dilations,
       int algorithmFlags,  // can set for different data type
-      size_t cudnn_dtype, std::function<TAlgorithm()> gen_func);
+      int64_t cudnn_dtype, std::function<TAlgorithm()> gen_func);
 
   TAlgorithm GetAlgorithm(int64_t area, int search_times, int algorithmFlags,
                           std::function<TAlgorithm()> gen_func);
