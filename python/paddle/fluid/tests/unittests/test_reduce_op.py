@@ -347,14 +347,14 @@ class TestReduceSumWithDimOne(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-class TestReduceMeanWithDimOne(OpTest):
+class TestReduceSumWithNumelOne(OpTest):
     def setUp(self):
-        self.op_type = "reduce_mean"
-        self.inputs = {'X': np.random.random((100, 1, 1)).astype("float64")}
+        self.op_type = "reduce_sum"
+        self.inputs = {'X': np.random.random((100, 1)).astype("float64")}
         self.attrs = {'dim': [1], 'keep_dim': False}
         self.outputs = {
-            'Out': self.inputs['X'].mean(
-                axis=tuple(self.attrs['dim']), keepdims=False)
+            'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']),
+                                        keepdims=False)
         }
 
     def test_check_output(self):
@@ -364,14 +364,14 @@ class TestReduceMeanWithDimOne(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-class TestReduceSumWithNumelOne(OpTest):
+class TestReduceMeanWithDimOne(OpTest):
     def setUp(self):
-        self.op_type = "reduce_sum"
-        self.inputs = {'X': np.random.random((100, 1)).astype("float64")}
+        self.op_type = "reduce_mean"
+        self.inputs = {'X': np.random.random((100, 1, 1)).astype("float64")}
         self.attrs = {'dim': [1], 'keep_dim': False}
         self.outputs = {
-            'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']),
-                                        keepdims=False)
+            'Out': self.inputs['X'].mean(
+                axis=tuple(self.attrs['dim']), keepdims=False)
         }
 
     def test_check_output(self):
