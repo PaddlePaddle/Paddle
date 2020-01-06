@@ -451,6 +451,9 @@ def assign(input, output=None, force_cpu=False):
             float32, float64, int32 and int64.
         output (Variable, optional): A tensor. If :attr:`output` is None, a new tensor will
             be created as :attr:`output`. Default: None.
+        force_cpu (bool, optional): Whether force to store the output tensor in CPU memory.
+            If :attr:`force_cpu` is False, the output tensor will be stored in running device
+            memory. Default: False.
 
     Returns:
         Variable: A tensor with the same shape, data type and value as :attr:`input`.
