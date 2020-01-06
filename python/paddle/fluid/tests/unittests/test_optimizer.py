@@ -21,6 +21,7 @@ import paddle.fluid.optimizer as optimizer
 import paddle.compat as cpt
 from paddle.fluid.backward import append_backward
 
+
 class TestOptimizer(unittest.TestCase):
     def test_sgd_optimizer(self):
         def check_sgd_optimizer(optimizer_attr):
@@ -840,6 +841,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
             "dropout", "elementwise_add_grad", "dropout_grad", "mul_grad",
             "sgd", "sgd", "sgd"
         ])
+
 
 if __name__ == '__main__':
     unittest.main()
