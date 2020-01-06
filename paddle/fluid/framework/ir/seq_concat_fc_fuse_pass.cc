@@ -214,7 +214,9 @@ void SeqConcatFcFusePass::ApplyImpl(ir::Graph* graph) const {
     op_desc.SetInput("FCWeight", {fc_w->Name()});
     op_desc.SetInput("FCBias", {fc_bias->Name()});
     const std::string fc_out_tmp = fc_out->Name() + ".tmp";
-    param_scope()->Var(fc_out_tmp)->GetMutable<framework::LoDTensor>();
+    VarDesc fc_out_key(fc_out_tmp);
+    fc_out_key.SetPersistable(false);
+    auto* fc_out_node = graph->CreateVarNode(&fc_out_key);
     op_desc.SetOutput("FCOut", {fc_out_tmp});
     op_desc.SetOutput("Out", {fc_out->Name()});
     op_desc.SetAttr("fc_activation", act->Op()->Type());
@@ -227,6 +229,7 @@ void SeqConcatFcFusePass::ApplyImpl(ir::Graph* graph) const {
     IR_NODE_LINK_TO(sequence_expand0_in, op_node);
     IR_NODE_LINK_TO(sequence_expand1_in, op_node);
     IR_NODE_LINK_TO(op_node, fc_out);
+    IR_NODE_LINK_TO(op_node, fc_out_node);
 
     // Clean nodes.
     std::unordered_set<const Node*> marked_nodes;

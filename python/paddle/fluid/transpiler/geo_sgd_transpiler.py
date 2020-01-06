@@ -38,7 +38,7 @@ from ..framework import Program, default_main_program, \
 from .details import wait_server_ready, VarsDistributed
 from .details import delete_ops
 from ..distribute_lookup_table import find_distributed_lookup_table
-from .distribute_transpiler import DistributeTranspiler, DistributeTranspilerConfig, slice_variable, same_or_split_var, TrainingMode
+from .distribute_transpiler import DistributeTranspiler, DistributeTranspilerConfig, slice_variable, same_or_split_var, ServerRuntimeConfig, TrainingMode
 
 RPC_OP_ROLE_ATTR_NAME = op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(
 )
@@ -51,6 +51,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
             self.config = config
         else:
             self.config = DistributeTranspilerConfig()
+        self._set_server_config()
 
         if self.config.split_method is None:
             self.config.split_method = RoundRobin
@@ -241,7 +242,11 @@ class GeoSgdTranspiler(DistributeTranspiler):
             "Fanin": self.trainer_num,
             "training_mode": TrainingMode.GEO,
             "grad_to_block_id": param_to_block_id,
-            "sparse_grad_to_param": sparse_grad_to_param
+            "sparse_grad_to_param": sparse_grad_to_param,
+            "rpc_get_thread_num": self.server_config._rpc_get_thread_num,
+            "rpc_send_thread_num": self.server_config._rpc_send_thread_num,
+            "rpc_prefetch_thread_num":
+            self.server_config._rpc_prefetch_thread_num
         }
 
         # step5 append the listen_and_serv op

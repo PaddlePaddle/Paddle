@@ -25,7 +25,9 @@ void default_elementwise_add(const framework::ExecutionContext &ctx,
                              const framework::Tensor *x,
                              const framework::Tensor *y, framework::Tensor *z) {
   int axis = ctx.Attr<int>("axis");
-  if (x->numel() >= y->numel()) {
+  auto x_dims = x->dims();
+  auto y_dims = y->dims();
+  if (x_dims.size() >= y_dims.size()) {
     ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
                                                           AddFunctor<T>(), z);
   } else {

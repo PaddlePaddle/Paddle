@@ -2232,6 +2232,14 @@ class Block(object):
         self.desc._set_forward_block_idx(idx)
 
     @property
+    def backward_block_idx(self):
+        cur_block_idx = self.idx
+        for block in self.program.blocks:
+            if block.forward_block_idx == cur_block_idx:
+                return block.idx
+        return -1
+
+    @property
     def idx(self):
         return self.desc.id
 
@@ -4675,8 +4683,6 @@ class ParamBase(core.VarBase):
         self.is_distributed = False
 
         # self.block = default_main_program().global_block()
-
-        _dygraph_tracer().trace_var(name, self)
 
     def __str__(self):
         return self.to_string(True)
