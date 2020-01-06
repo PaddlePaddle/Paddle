@@ -61,8 +61,9 @@ void MemoryBlock::Merge(MemoryBlock* block, MemoryBlockPool* pool) {
   PADDLE_ENFORCE_EQ(this->type_, FREE_CHUNK,
                     "Internal Error: trying to merge target block with a "
                     "non-free source block");
-  PADDLE_ENFORCE_EQ(block->type_, FREE_CHUNK)
-  , "Internal Error: trying to merge source block with a non-free target block";
+  PADDLE_ENFORCE_EQ(block->type_, FREE_CHUNK,
+                    "Internal Error: trying to merge source block with a "
+                    "non-free target block");
 
   // link this->buddy's buddy
   this->right_buddy_ = block->right_buddy_;
