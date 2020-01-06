@@ -74,14 +74,9 @@ void StrToBinaryFile(const std::string& path, const std::string& str) {
   file.close();
 }
 
-void ModifyHostProgram(framework::ProgramDesc* host_program,
-                       framework::BlockDesc* host_sub_block,
-                       const std::unordered_set<Node*>& io_var_nodes,
-                       const std::vector<framework::OpDesc*>& subgraph_ops) {
-  for (auto* var_node : io_var_nodes) {
-    auto* sub_block_var = host_sub_block->Var(var_node->Name());
-    sub_block_var->Proto()->CopyFrom(*var_node->Var()->Proto());
-  }
+void ModifyHostSubgraphOps(
+    framework::ProgramDesc* host_program, framework::BlockDesc* host_sub_block,
+    const std::vector<framework::OpDesc*>& subgraph_ops) {
   for (auto* op_desc : subgraph_ops) {
     auto* sub_block_op = host_sub_block->AppendOp();
     sub_block_op->CopyFrom(*op_desc);
@@ -94,35 +89,24 @@ void ModifyHostProgram(framework::ProgramDesc* host_program,
   }
 }
 
-// The modification of pass should be a process of framework::desc
-// (initial) -> proto::desc (flush) -> framework::desc (final).
-// Ir::Graph is limited to changing the main block, so the sub block
-// needs to be processed here.
-void ModifyEngineProgram(Node* merged_node,
-                         framework::ProgramDesc* host_program,
-                         framework::ProgramDesc* engine_program,
-                         framework::BlockDesc* host_sub_block,
-                         const std::unordered_set<Node*>& io_var_nodes,
-                         const std::vector<framework::OpDesc*>& subgraph_ops) {
-  // 1. Fill the main block of lite program.
-  framework::BlockDesc* engine_global_block =
-      engine_program->MutableBlock(framework::kRootBlockIndex);
-  PrependFeedOps(engine_global_block, IOVarsFilter(merged_node->inputs));
+void ModifyHostProgram(framework::ProgramDesc* host_program,
+                       framework::BlockDesc* host_sub_block,
+                       const std::unordered_set<Node*>& io_var_nodes,
+                       const std::vector<framework::OpDesc*>& subgraph_ops) {
   for (auto* var_node : io_var_nodes) {
-    framework::VarDesc* sub_block_var =
-        engine_global_block->Var(var_node->Name());
+    auto* sub_block_var = host_sub_block->Var(var_node->Name());
     sub_block_var->Proto()->CopyFrom(*var_node->Var()->Proto());
   }
-  for (auto* op_desc : subgraph_ops) {
-    auto* sub_block_op = engine_global_block->AppendOp();
-    sub_block_op->CopyFrom(*op_desc);
-  }
-  PrependFetchOps(engine_global_block, IOVarsFilter(merged_node->outputs));
+  ModifyHostSubgraphOps(host_program, host_sub_block, subgraph_ops);
+}
 
-  // 2. Append sub blocks in the lite program.
+void AppendLiteSubBlocks(const std::vector<framework::OpDesc*>& subgraph_ops,
+                         framework::ProgramDesc* engine_program,
+                         framework::ProgramDesc* host_program,
+                         const int32_t host_sub_id) {
   std::unordered_map<int32_t, int32_t> sub_blocks_map;
   std::unordered_set<int32_t> copied_host_ids;
-  sub_blocks_map[host_sub_block->ID()] = framework::kRootBlockIndex;
+  sub_blocks_map[host_sub_id] = framework::kRootBlockIndex;
   std::function<void(const std::vector<framework::OpDesc*>&)> append_sub_blocks;
   append_sub_blocks = [&](const std::vector<framework::OpDesc*>& ops) {
     for (auto* op_desc : ops) {
@@ -157,6 +141,36 @@ void ModifyEngineProgram(Node* merged_node,
   }
 }
 
+// The modification of pass should be a process of framework::desc
+// (initial) -> proto::desc (flush) -> framework::desc (final).
+// Ir::Graph is limited to changing the main block, so the sub block
+// needs to be processed here.
+void ModifyEngineProgram(Node* merged_node,
+                         framework::ProgramDesc* host_program,
+                         framework::ProgramDesc* engine_program,
+                         const int32_t host_sub_block_id,
+                         const std::unordered_set<Node*>& io_var_nodes,
+                         const std::vector<framework::OpDesc*>& subgraph_ops) {
+  // 1. Fill the main block of lite program.
+  framework::BlockDesc* engine_global_block =
+      engine_program->MutableBlock(framework::kRootBlockIndex);
+  PrependFeedOps(engine_global_block, IOVarsFilter(merged_node->inputs));
+  for (auto* var_node : io_var_nodes) {
+    framework::VarDesc* sub_block_var =
+        engine_global_block->Var(var_node->Name());
+    sub_block_var->Proto()->CopyFrom(*var_node->Var()->Proto());
+  }
+  for (auto* op_desc : subgraph_ops) {
+    auto* sub_block_op = engine_global_block->AppendOp();
+    sub_block_op->CopyFrom(*op_desc);
+  }
+  PrependFetchOps(engine_global_block, IOVarsFilter(merged_node->outputs));
+
+  // 2. Append sub blocks in the lite program.
+  AppendLiteSubBlocks(subgraph_ops, engine_program, host_program,
+                      host_sub_block_id);
+}
+
 void OrganizeProgram(Node* merged_node, framework::ProgramDesc* host_program,
                      framework::ProgramDesc* engine_program,
                      std::vector<std::string>* repetitive_params) {
@@ -182,8 +196,8 @@ void OrganizeProgram(Node* merged_node, framework::ProgramDesc* host_program,
   }
 
   ModifyHostProgram(host_program, host_sub_block, io_var_nodes, subgraph_ops);
-  ModifyEngineProgram(merged_node, host_program, engine_program, host_sub_block,
-                      io_var_nodes, subgraph_ops);
+  ModifyEngineProgram(merged_node, host_program, engine_program,
+                      host_sub_block->ID(), io_var_nodes, subgraph_ops);
   *repetitive_params = ExtractParameters(io_var_nodes, true);
   for (const auto& param : *repetitive_params) {
     VLOG(3) << "Repetitive param: " << param;
