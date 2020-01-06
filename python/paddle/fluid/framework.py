@@ -1092,7 +1092,6 @@ class Variable(object):
                 # example2: return tuple of ndarray
                 with fluid.dygraph.guard():
                     embedding = fluid.dygraph.Embedding(
-                        name_scope='embedding',
                         size=[20, 32],
                         param_attr='emb.w',
                         is_sparse=True)
@@ -1101,7 +1100,7 @@ class Variable(object):
                     x = fluid.dygraph.base.to_variable(x_data)
                     out = embedding(x)
                     out.backward()
-                    print(embedding._w.gradient())
+                    print(embedding.weight.gradient())
 
         """
         pass
