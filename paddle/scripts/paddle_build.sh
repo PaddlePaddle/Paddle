@@ -167,6 +167,7 @@ function cmake_base() {
         WITH_DISTRIBUTE=${WITH_DISTRIBUTE:-ON}
         WITH_AVX=${WITH_AVX:-ON}
         INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-~/.cache/inference_demo}
+        WITH_LITE=OFF
     else
         INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo}
     fi
@@ -203,6 +204,7 @@ function cmake_base() {
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
         -DWITH_GRPC=${grpc_flag}
+        -DWITH_LITE=${WITH_LITE:-ON}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -234,9 +236,8 @@ EOF
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
-        -DON_INFER=ON \
-        -DWITH_LITE=ON \
-        -DWITH_GRPC=${grpc_flag}
+        -DWITH_GRPC=${grpc_flag} \
+        -DWITH_LITE=${WITH_LITE:-ON}
 
 }
 
