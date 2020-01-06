@@ -1539,12 +1539,7 @@ class Embedding(layers.Layer):
             inputs={'Ids': input,
                     'W': self.weight},
             outputs={'Out': out},
-            attrs={
-                'is_sparse': self._is_sparse,
-                'is_distributed': self._is_distributed,
-                'remote_prefetch': self._remote_prefetch,
-                'padding_idx': self._padding_idx
-            })
+            attrs=attrs)
 
         return out
 

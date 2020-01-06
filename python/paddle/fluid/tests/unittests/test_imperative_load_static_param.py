@@ -24,7 +24,6 @@ print("11")
 class TestDygraphLoadStatic(unittest.TestCase):
     def testLoadStaticModel(self):
         # static mode
-        print("111")
         a = fluid.data(name="a", shape=[10, 10])
         conv_in = fluid.data(name="conv_in", shape=[None, 10, 10, 10])
 
@@ -183,20 +182,8 @@ class TestDygraphLoadStatic(unittest.TestCase):
                     self.prelu1 = PRelu("channel", [-1, 5, 10, 10])
                     self.prelu2 = PRelu("channel", [-1, 5, 10, 10])
 
-                    #self.bi_tensor_pro1 = BilinearTensorProduct( 5, 4, 1000)
-                    #self.bi_tensor_pro2 = BilinearTensorProduct( 5, 4, 1000)
-
-                    #self.conv2d_trans1 = Conv2DTranspose( num_channels = 10, num_filters=10, filter_size=5, act="relu" )
-                    #self.conv2d_trans2 = Conv2DTranspose( num_channels = 10, num_filters=10, filter_size=5, act="relu" )
-
-                    #self.conv3d_trans1 = Conv3DTranspose( num_channels = 3, num_filters=2, filter_size=3, act="relu" )
-                    #self.conv3d_trans2 = Conv3DTranspose( num_channels = 3, num_filters=2, filter_size=3, act="relu" ) 
-
                     self.group_norm1 = GroupNorm(8, 4)
                     self.gourp_norm2 = GroupNorm(8, 4)
-
-                    #self.tree_conv1 = TreeConv(  feature_size=5, output_size=6, num_filters=1, max_depth=2)
-                    #self.tree_conv2 = TreeConv(  feature_size=5, output_size=6, num_filters=1, max_depth=2)
 
                     self.w_1 = self.create_parameter(
                         [100, 100], dtype='float32', attr="weight_test_1")
@@ -204,7 +191,6 @@ class TestDygraphLoadStatic(unittest.TestCase):
                         [20, 200], dtype='float32', attr="weight_test_2")
 
             my_test = MyTest()
-            print("111")
             my_test.set_dict(new_dict, use_structured_name=False)
             for k, v in my_test.state_dict().items():
                 self.assertTrue(np.array_equal(v.numpy(), new_dict[v.name]))
