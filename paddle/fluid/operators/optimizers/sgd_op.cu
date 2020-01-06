@@ -97,8 +97,8 @@ class SGDOpKernel<platform::CUDADeviceContext, T>
       PADDLE_ENFORCE_EQ(param, param_out);
       auto* grad = ctx.Input<framework::SelectedRows>("Grad");
       VLOG(4) << "grad SelectedRows is initialized: "
-              << grad.value().IsInitialized();
-      if (!grad.value().IsInitialized()) return;
+              << grad->value().IsInitialized();
+      if (!grad->value().IsInitialized()) return;
 
       auto in_height = grad->height();
       auto out_dims = param_out->dims();
