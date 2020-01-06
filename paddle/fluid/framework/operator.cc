@@ -532,8 +532,7 @@ bool OpSupportGPU(const std::string& op_type) {
 
 class RuntimeInferShapeContext : public InferShapeContext {
  public:
-  RuntimeInferShapeContext(const OperatorBase& op, const Scope& scope,
-                           const RuntimeContext& ctx)
+  RuntimeInferShapeContext(const OperatorBase& op, const RuntimeContext& ctx)
       : op_(op), ctx_(ctx) {}
 
   bool HasInput(const std::string& name) const override {
@@ -901,7 +900,7 @@ static void CheckTensorNANOrInf(const std::string& op_type,
 void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
                                            const platform::Place& place,
                                            const RuntimeContext& ctx) const {
-  RuntimeInferShapeContext infer_shape_ctx(*this, scope, ctx);
+  RuntimeInferShapeContext infer_shape_ctx(*this, ctx);
   this->InferShape(&infer_shape_ctx);
 }
 
@@ -966,7 +965,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 
   if (!all_kernels_must_compute_runtime_shape_) {
-    RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, *runtime_ctx);
+    RuntimeInferShapeContext infer_shape_ctx(*this, *runtime_ctx);
     this->InferShape(&infer_shape_ctx);
   }
 
@@ -1215,10 +1214,8 @@ Scope* OperatorWithKernel::PrepareData(
       // The reason is that if a gpu tensor is the input of a cpu kernel,
       // we will create a new cpu tensor in new scope.
       // However, if enable_cache_runtime_context_, we get the cpu tensor each
-      // time, not the gpu tensor.
-      // Thus, we set pre_scope_ = nullptr to trigger `new RuntimeContext()`
-      // in
-      // RunImpl().
+      // time, not the gpu tensor. Thus, we set pre_scope_ = nullptr
+      // to trigger `new RuntimeContext()` in RunImpl().
       if (enable_cache_runtime_context_) {
         pre_scope_ = nullptr;
       }

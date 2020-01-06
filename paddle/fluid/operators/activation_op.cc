@@ -764,6 +764,31 @@ class LeakyReluDoubleGradMaker
   }
 };
 
+// elu grad: dx=dy if y>0 else alpha*dy*x.exp()
+// elu gradgrad: ddx=ddy if y>0 else alpha*ddy*x.exp()
+template <typename T>
+class ELUDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
+ public:
+  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  std::unique_ptr<T> Apply() const override {
+    auto* op = new T();
+    op->SetType("elu_grad_grad");
+
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
+    // X@GRAD@GRAD: ddx
+    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
+    op->SetAttrMap(this->Attrs());
+
+    // Out@GRAD@GRAD: ddy
+    op->SetOutput("DX", this->InputGrad("X"));
+    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
+    return std::unique_ptr<T>(op);
+  }
+};
+
 // sqrt Grad: dx = 0.5 * dy / y
 // sqrt GradGrad: ddy = 0.5 * ddx / y, dy = -1 * dx * ddx
 template <typename T>
@@ -982,6 +1007,34 @@ REGISTER_OP_CPU_KERNEL(
                                     ops::LeakyReluGradGradFunctor<double>>,
     ops::ActivationDoubleGradKernel<
         plat::CPUDeviceContext, ops::LeakyReluGradGradFunctor<plat::float16>>);
+/* ========================================================================== */
+
+/* ========================    elu  register     ============================ */
+REGISTER_OPERATOR(
+    elu, ops::ActivationOp, ops::ELUOpMaker, ops::ActivationOpInferVarType,
+    ops::ActivationGradOpMaker<ops::ELUGradFunctor<float>::FwdDeps(),
+                               paddle::framework::OpDesc>,
+    ops::ActivationGradOpMaker<ops::ELUGradFunctor<float>::FwdDeps(),
+                               paddle::imperative::OpBase>,
+    ops::ActFwdInplaceInferer);
+REGISTER_OPERATOR(elu_grad, ops::ActivationOpGrad,
+                  ops::ActivationGradOpInplaceInference,
+                  ops::ELUDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::ELUDoubleGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(
+    elu_grad_grad,
+    ops::ActivationOpDoubleGrad<ops::ELUGradFunctor<float>::FwdDeps()>,
+    ops::ActivationDoubleGradOpInplaceInference);
+
+REGISTER_ACTIVATION_CPU_KERNEL(elu, ELU, ELUFunctor, ELUGradFunctor);
+REGISTER_OP_CPU_KERNEL(
+    elu_grad_grad, ops::ELUDoubleGradKernel<plat::CPUDeviceContext,
+                                            ops::ELUGradGradFunctor<float>>,
+    ops::ELUDoubleGradKernel<plat::CPUDeviceContext,
+                             ops::ELUGradGradFunctor<double>>,
+    ops::ELUDoubleGradKernel<plat::CPUDeviceContext,
+                             ops::ELUGradGradFunctor<plat::float16>>);
+
 /* ========================================================================== */
 
 /* ===========================   sqrt register  ============================= */
