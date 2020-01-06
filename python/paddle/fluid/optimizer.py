@@ -3145,14 +3145,16 @@ class ExponentialMovingAverage(object):
         self.apply_program = Program()
         block = self.apply_program.global_block()
         with program_guard(main_program=self.apply_program):
-            decay_pow = self._get_decay_pow(block)
+            decay_pow, global_step = self._get_decay_pow(block)
             for param, tmp in self._params_tmps:
                 param = block._clone_variable(param)
                 tmp = block._clone_variable(tmp)
                 ema = block._clone_variable(self._ema_vars[param.name])
                 layers.assign(input=param, output=tmp)
                 # bias correction
-                ema = ema / (1.0 - decay_pow)
+                with layers.control_flow.Switch() as switch:
+                    with switch.case(global_step > 0):
+                        layers.assign(output=ema, input=ema / (1.0 - decay_pow))
                 layers.assign(input=ema, output=param)
 
         self.restore_program = Program()
@@ -3193,8 +3195,8 @@ class ExponentialMovingAverage(object):
             persistable=True)
         global_step = layers.cast(global_step, "float32")
         decay_var = block._clone_variable(self._decay_var)
-        decay_pow_acc = layers.elementwise_pow(decay_var, global_step + 1)
-        return decay_pow_acc
+        decay_pow_acc = layers.elementwise_pow(decay_var, global_step)
+        return decay_pow_acc, global_step
 
     def _create_ema_vars(self, param):
         param_ema = layers.create_global_var(
@@ -3212,7 +3214,7 @@ class ExponentialMovingAverage(object):
         train program.
         """
         global_step = layers.autoincreased_step_counter(
-            counter_name=self._step_counter_name, begin=0)
+            counter_name=self._step_counter_name)
         param_master_emas = []
         for param, tmp in self._params_tmps:
             with param.block.program._optimized_guard(
