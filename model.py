@@ -114,6 +114,7 @@ class StaticGraphAdapter(object):
         # so we need to keep track of the parameters already created
         self._startup_prog = fluid.default_startup_program()
         self._orig_prog = fluid.default_main_program()
+        self._lazy_load_path = None
 
         self._label_vars = {}  # label variables
         self._endpoints = {}
@@ -182,6 +183,12 @@ class StaticGraphAdapter(object):
         _save(optim, optim_path)
 
     def load(self, path):
+        if self._executor is None:
+            self._lazy_load_path = path
+        else:
+            self._do_load(path)
+
+    def _do_load(self, path):
         def _load(path):
             if not os.path.exists(path):
                 return
@@ -322,21 +329,15 @@ class StaticGraphAdapter(object):
         places = [device.lower() == 'gpu' and fluid.CUDAPlace(i)
                   or fluid.CPUPlace() for i in device_ids]
 
-        # XXX only run startup once as *ALL WEIGHTS* should have been
-        # initialized upon construction of the model even if `forward()`
-        # may run different code path for different mode
+        # XXX *ALL WEIGHTS* should be initialized upon model construction
+        # even if `forward()` may run different code path for different mode
+        # therefore startup program only needs to run once
         if self._executor is None:
             self._executor = fluid.Executor(places[0])
-            # XXX incremental initialization
-            uninitialized = []
-            for var_py in self._startup_prog.list_vars():
-                var = fluid.global_scope().find_var(var_py.name)
-                if var and var.get_tensor()._is_initialized():
-                    continue
-                uninitialized.append(var_py)
-            if uninitialized:
-                startup_prog = self._startup_prog._prune(uninitialized)
-                self._executor.run(startup_prog)
+            self._executor.run(self._startup_prog)
+            if self._lazy_load_path is not None:
+                self._do_load(self._lazy_load_path)
+                self._lazy_load_path = None
 
         if len(device_ids) < 2:
             return prog
