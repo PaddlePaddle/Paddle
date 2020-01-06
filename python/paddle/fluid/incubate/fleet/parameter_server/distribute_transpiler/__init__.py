@@ -86,15 +86,15 @@ class DistributedTranspiler(Fleet):
 
         elif isinstance(self._transpile_config, AsyncStrategy):
             self._communicator = Communicator(
-                self.main_program, TrainingMode.ASYNC,
+                self.main_program, TrainingMode.ASYNC, None,
                 trainer_communicator_config.get_communicator_flags())
 
         elif isinstance(self._transpile_config, HalfAsyncStrategy):
             self._communicator = Communicator(
-                self.main_program, TrainingMode.HALF_ASYNC,
+                self.main_program, TrainingMode.HALF_ASYNC, None,
                 trainer_communicator_config.get_communicator_flags())
         else:
-            raise TypeError("Async mode do not supported")
+            raise TypeError("Training MODE do not supported")
 
         if not self._communicator.is_running():
             self._communicator.start()

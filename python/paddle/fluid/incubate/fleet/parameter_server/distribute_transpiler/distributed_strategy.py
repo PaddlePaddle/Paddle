@@ -23,11 +23,14 @@ import paddle.fluid as fluid
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig, ServerRuntimeConfig
 
 
-class TrainingMode(object):
-    SYNC = 0
-    HALF_ASYNC = 1
-    ASYNC = 2
-    GEO = 3
+class Enum(set):
+    def __getattr__(self, name):
+        if name in self:
+            return name
+        raise AttributeError
+
+
+TrainingMode = Enum(["SYNC", "HALF_ASYNC", "ASYNC", "GEO"])
 
 
 class TrainerRuntimeConfig(object):

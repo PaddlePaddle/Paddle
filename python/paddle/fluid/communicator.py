@@ -70,8 +70,7 @@ class Communicator(object):
             envs["push_nums"] = str(kwargs["push_nums"])
             envs["geo_send_varnames"] = '#'.join(push_var_names)
 
-        self.communicator_ = core.DistCommunicator(TrainingMode.GEO,
-                                                   program.desc,
+        self.communicator_ = core.DistCommunicator(mode, program.desc,
                                                    global_scope(), envs)
 
     def start(self):
