@@ -21,12 +21,12 @@ from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerCo
 
 
 class TestPyramidHashOpApi(unittest.TestCase):
-    def test_api(self):
+    def test_dist_geo_server_transpiler(self):
         num_voc = 128
         embed_dim = 64
         x_shape, x_lod = [16, 10], [[3, 5, 2, 6]]
         x = fluid.data(name='x', shape=x_shape, dtype='int32', lod_level=1)
-        hash_embd = fluid.contrib.search_pyramid_hash(
+        hash_embd = fluid.contrib.layers.search_pyramid_hash(
             input=x,
             num_emb=embed_dim,
             space_len=num_voc * embed_dim,
@@ -47,18 +47,29 @@ class TestPyramidHashOpApi(unittest.TestCase):
                 learning_rate=0, ),
             param_attr_bl=None,
             distribute_update_vars=["PyramidHash_emb_0"],
-            name=None, )
+            name=None)
 
-        place = fluid.CPUPlace()
-        x_tensor = fluid.create_lod_tensor(
-            np.random.randint(0, num_voc, x_shape).astype('int32'), x_lod,
-            place)
+        cost = fluid.layers.reduce_sum(hash_embd)
 
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        ret = exe.run(feed={'x': x_tensor},
-                      fetch_list=[hash_embd],
-                      return_numpy=False)
+        role = role_maker.UserDefinedRoleMaker(
+            current_id=0,
+            role=role_maker.Role.SERVER,
+            worker_num=2,
+            server_endpoints=["127.0.0.1:36011", "127.0.0.1:36012"])
+
+        fleet.init(role)
+
+        strategy = DistributeTranspilerConfig()
+        strategy.sync_mode = False
+        strategy.geo_sgd_mode = True
+        strategy.geo_sgd_need_push_nums = 5
+
+        optimizer = fluid.optimizer.SGD(0.1)
+        optimizer = fleet.distributed_optimizer(optimizer, strategy)
+        optimizer.minimize(cost)
+
+        pserver_startup_program = fleet.startup_program
+        pserver_mian_program = fleet.main_program
 
 
 if __name__ == "__main__":
