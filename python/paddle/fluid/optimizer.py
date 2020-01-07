@@ -96,10 +96,12 @@ class Optimizer(object):
         self._dtype = None
         # each program should have a independent learning rate
         # program -> Variable(learning_rate)
-        self._learning_rate_map = dict()
+        # self._learning_rate_map = dict()
+        self._global_learning_rate = learning_rate
         if isinstance(self._learning_rate, framework.Variable):
-            self._learning_rate_map[framework.default_main_program(
-            )] = self._learning_rate
+            # self._learning_rate_map[framework.default_main_program(
+            # )] = self._learning_rate
+            self._global_learning_rate = self._learning_rate
         # Dictionary of accumulators. Some optimizer subclasses need to
         # allocate and manage extra variables associated with the parameters
         # to train. These variables are called accumulators.
@@ -168,7 +170,7 @@ class Optimizer(object):
                     adam = fluid.optimizer.Adam( learning_rate = fluid.layers.noam_decay( 100, 10000), 
                                                  parameter_list = emb.parameters() )
                     state_dict = adam.state_dict()
-                    fluid.save_dygraph( state_dict, "padle_dy")
+                    fluid.save_dygraph( state_dict, "paddle_dy")
 
                     para_state_dict, opti_state_dict = fluid.load_dygraph( "paddle_dy")
 
@@ -237,16 +239,17 @@ class Optimizer(object):
         return self._opti_name_list
 
     def _create_global_learning_rate(self):
-        if imperative_base.enabled():
+        if framework.in_dygraph_mode():
             # create learning rate Variable
             if isinstance(self._learning_rate, float):
-                lr = self._global_learning_rate()
+                lr = self._global_learning_rate
 
                 if isinstance(lr, framework.Variable):
                     return
                 else:
-                    self._learning_rate_map[framework.default_main_program(
-                    )] = layers.create_global_var(
+                    # self._learning_rate_map[framework.default_main_program(
+                    # )]
+                    self._global_learning_rate = layers.create_global_var(
                         name=unique_name.generate("learning_rate"),
                         shape=[1],
                         value=float(self._learning_rate),
@@ -254,14 +257,15 @@ class Optimizer(object):
                         persistable=True)
             # get learning rate Variable from LearningRateDecay
             elif isinstance(self._learning_rate, LearningRateDecay):
-                self._learning_rate_map[framework.default_main_program(
-                )] = self._learning_rate()
+                # self._learning_rate_map[framework.default_main_program(
+                # )] \
+                self._global_learning_rate = self._learning_rate()
             else:
                 raise TypeError(
                     "optimizer's learning rate must be float or LearningRateDecay"
                 )
         else:
-            lr = self._global_learning_rate()
+            lr = self._global_learning_rate
 
             if isinstance(lr, framework.Variable):
                 return
@@ -273,22 +277,23 @@ class Optimizer(object):
                     )
 
             # create learning rate in the current main program
-            self._learning_rate_map[framework.default_main_program(
-            )] = layers.create_global_var(
+            # self._learning_rate_map[framework.default_main_program(
+            # )] \
+            self._global_learning_rate = layers.create_global_var(
                 name=unique_name.generate("learning_rate"),
                 shape=[1],
                 value=float(self._learning_rate),
                 dtype='float32' if self._dtype is None else self._dtype,
                 persistable=True)
 
-    def _global_learning_rate(self, program=None):
-        """
-        get global decayed learning rate
-        :return:
-        """
-        if program is None:
-            program = framework.default_main_program()
-        return self._learning_rate_map.get(program, None)
+    # def _global_learning_rate(self, program=None):
+    #     """
+    #     get global decayed learning rate
+    #     :return:
+    #     """
+    #     if program is None:
+    #         program = framework.default_main_program()
+    #     return self._learning_rate_map.get(program, None)
 
     def _append_optimize_op(self, block, param_and_grad):
         """ append optimize operator to block and return all the added optimize_op
@@ -303,12 +308,12 @@ class Optimizer(object):
             return param_lr
         else:
             if param_lr == 1.0:
-                return self._global_learning_rate()
+                return self._global_learning_rate
             else:
                 with default_main_program()._lr_schedule_guard(
                         is_with_opt=True), framework.name_scope(
                             'scale_with_param_lr'):
-                    return self._global_learning_rate() * param_lr
+                    return self._global_learning_rate * param_lr
 
     def _create_accumulators(self, block, parameters):
         """Create all accumulators needed by the parameters
