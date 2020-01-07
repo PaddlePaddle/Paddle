@@ -19,9 +19,11 @@ from .. import core
 from ..layers import utils
 from ..dygraph import dygraph_utils
 from . import layers
-from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer_
+from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
+from .. import unique_name
+from .layer_object_helper import LayerObjectHelper
 import numpy as np
 import numbers
 import logging
@@ -1071,6 +1073,9 @@ class BatchNorm(layers.Layer):
         self._bias_attr = bias_attr
         self._act = act
 
+        self._full_name = unique_name.generate("batch_norm")
+        self._helper = LayerObjectHelper(self._full_name)
+
         assert bias_attr is not False, "bias_attr should not be False in batch_norm."
 
         if dtype == "float16":
@@ -1402,6 +1407,10 @@ class LayerNorm(layers.Layer):
         super(LayerNorm, self).__init__()
         if isinstance(normalized_shape, numbers.Integral):
             normalized_shape = [normalized_shape]
+
+        self._full_name = unique_name.generate("layer_norm")
+        self._helper = LayerObjectHelper(self._full_name)
+
         self._normalized_shape = list(normalized_shape)
         self._scale = scale
         self._shift = shift

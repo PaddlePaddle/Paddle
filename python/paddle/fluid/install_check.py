@@ -79,7 +79,6 @@ def run_check():
                 with unique_name.guard():
                     build_strategy = compiler.BuildStrategy()
                     build_strategy.enable_inplace = True
-                    build_strategy.memory_optimize = True
                     inp = layers.data(name="inp", shape=[2, 2])
                     simple_layer = SimpleLayer(input_size=2)
                     out = simple_layer(inp)

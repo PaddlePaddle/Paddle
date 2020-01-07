@@ -83,19 +83,21 @@ class ActivationDescriptor {
   struct Deleter {
     void operator()(T* t) {
       if (t != nullptr) {
-        CUDNN_ENFORCE(dynload::cudnnDestroyActivationDescriptor(t));
+        PADDLE_ENFORCE_CUDA_SUCCESS(
+            dynload::cudnnDestroyActivationDescriptor(t));
         t = nullptr;
       }
     }
   };
   ActivationDescriptor() {
     T* raw_ptr;
-    CUDNN_ENFORCE(dynload::cudnnCreateActivationDescriptor(&raw_ptr));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        dynload::cudnnCreateActivationDescriptor(&raw_ptr));
     desc_.reset(raw_ptr);
   }
   template <typename T>
   void set(cudnnActivationMode_t mode, const T& coef) {
-    CUDNN_ENFORCE(dynload::cudnnSetActivationDescriptor(
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetActivationDescriptor(
         desc_.get(), mode, CUDNN_NOT_PROPAGATE_NAN, static_cast<double>(coef)));
   }
 
@@ -112,14 +114,14 @@ class TensorDescriptor {
   struct Deleter {
     void operator()(T* t) {
       if (t != nullptr) {
-        CUDNN_ENFORCE(dynload::cudnnDestroyTensorDescriptor(t));
+        PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroyTensorDescriptor(t));
         t = nullptr;
       }
     }
   };
   TensorDescriptor() {
     T* raw_ptr;
-    CUDNN_ENFORCE(dynload::cudnnCreateTensorDescriptor(&raw_ptr));
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreateTensorDescriptor(&raw_ptr));
     desc_.reset(raw_ptr);
   }
   T* desc() { return desc_.get(); }
@@ -135,7 +137,7 @@ class TensorDescriptor {
     if (groups > 1) {
       dims_with_group[1] = dims_with_group[1] / groups;
     }
-    CUDNN_ENFORCE(dynload::cudnnSetTensorNdDescriptor(
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetTensorNdDescriptor(
         desc_.get(), ToCudnnDataType(tensor.type()), dims_with_group.size(),
         dims_with_group.data(), strides.data()));
   }
@@ -148,7 +150,7 @@ class TensorDescriptor {
     } else {
       transformed_dims = dims;
     }
-    CUDNN_ENFORCE(dynload::cudnnSetTensorNdDescriptorEx(
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetTensorNdDescriptorEx(
         desc_.get(), format, ToCudnnDataType(tensor.type()),
         transformed_dims.size(), transformed_dims.data()));
   }
@@ -163,14 +165,14 @@ class FilterDescriptor {
   struct Deleter {
     void operator()(T* t) {
       if (t != nullptr) {
-        CUDNN_ENFORCE(dynload::cudnnDestroyFilterDescriptor(t));
+        PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroyFilterDescriptor(t));
         t = nullptr;
       }
     }
   };
   FilterDescriptor() {
     T* raw_ptr;
-    CUDNN_ENFORCE(dynload::cudnnCreateFilterDescriptor(&raw_ptr));
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreateFilterDescriptor(&raw_ptr));
     desc_.reset(raw_ptr);
   }
   T* desc() { return desc_.get(); }
@@ -188,7 +190,7 @@ class FilterDescriptor {
     if (groups > 1) {
       transformed_dims[1] = transformed_dims[1] / groups;
     }
-    CUDNN_ENFORCE(dynload::cudnnSetFilterNdDescriptor(
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetFilterNdDescriptor(
         desc_.get(), ToCudnnDataType(tensor.type()), format,
         transformed_dims.size(), transformed_dims.data()));
   }
@@ -203,14 +205,16 @@ class ConvolutionDescriptor {
   struct Deleter {
     void operator()(T* t) {
       if (t != nullptr) {
-        CUDNN_ENFORCE(dynload::cudnnDestroyConvolutionDescriptor(t));
+        PADDLE_ENFORCE_CUDA_SUCCESS(
+            dynload::cudnnDestroyConvolutionDescriptor(t));
         t = nullptr;
       }
     }
   };
   ConvolutionDescriptor() {
     T* raw_ptr;
-    CUDNN_ENFORCE(dynload::cudnnCreateConvolutionDescriptor(&raw_ptr));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        dynload::cudnnCreateConvolutionDescriptor(&raw_ptr));
     desc_.reset(raw_ptr);
   }
   T* desc() { return desc_.get(); }
@@ -222,18 +226,19 @@ class ConvolutionDescriptor {
     cudnnDataType_t compute_type =
         (dtype == CUDNN_DATA_DOUBLE) ? CUDNN_DATA_DOUBLE : CUDNN_DATA_FLOAT;
     T* desc = desc_.get();
-    CUDNN_ENFORCE(dynload::cudnnSetConvolutionNdDescriptor(
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetConvolutionNdDescriptor(
         desc, pads.size(), pads.data(), strides.data(), dilations.data(),
         CUDNN_CROSS_CORRELATION, compute_type));
 #if CUDNN_VERSION_MIN(7, 0, 1)
-    CUDNN_ENFORCE(
+    PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnSetConvolutionGroupCount(desc, groups));
 #if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
-    CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetConvolutionMathType(
         desc, CUDNN_DEFAULT_MATH));
     if (dtype == CUDNN_DATA_HALF) {
-      CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
-          desc, CUDNN_TENSOR_OP_MATH));
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          platform::dynload::cudnnSetConvolutionMathType(desc,
+                                                         CUDNN_TENSOR_OP_MATH));
     }
 #endif
 #endif

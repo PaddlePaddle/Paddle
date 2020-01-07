@@ -208,18 +208,6 @@ class TestConv2dOp_Valid_NHWC_MKLDNN(TestConv2dOp_Valid_MKLDNN):
         N, C, H, W = self.input_size
         self.input_size = [N, H, W, C]
 
-    #TODO(jczaja): Enable once GRAD op is adjusted
-    def test_check_grad(self):
-        pass
-
-    #TODO(jczaja): Enable once GRAD op is adjusted
-    def test_check_grad_no_filter(self):
-        pass
-
-    #TODO(jczaja): Enable once GRAD op is adjusted
-    def test_check_grad_no_input(self):
-        pass
-
 
 class TestConv2dOp_Same_NHWC_MKLDNN(TestConv2dOp_Valid_NHWC_MKLDNN):
     def init_paddings(self):
