@@ -1994,36 +1994,23 @@ class DpsgdOptimizer(Optimizer):
 
         # create the dpsgd optimize op
         if self._seed == None:
-            dpsgd_op = block.append_op(
-                type=self.type,
-                inputs={
-                    "Param": param_and_grad[0],
-                    "Grad": param_and_grad[1],
-                    "LearningRate": self._create_param_lr(param_and_grad)
-                },
-                outputs={"ParamOut": param_and_grad[0]},
-                attrs={
-                    "clip": self._clip,
-                    "batch_size": self._batch_size,
-                    "sigma": self._sigma
-                },
-                stop_gradient=True)
-        else:
-            dpsgd_op = block.append_op(
-                type=self.type,
-                inputs={
-                    "Param": param_and_grad[0],
-                    "Grad": param_and_grad[1],
-                    "LearningRate": self._create_param_lr(param_and_grad)
-                },
-                outputs={"ParamOut": param_and_grad[0]},
-                attrs={
-                    "clip": self._clip,
-                    "batch_size": self._batch_size,
-                    "sigma": self._sigma,
-                    "seed": self._seed
-                },
-                stop_gradient=True)
+            self._seed = 0
+
+        dpsgd_op = block.append_op(
+            type=self.type,
+            inputs={
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "LearningRate": self._create_param_lr(param_and_grad)
+            },
+            outputs={"ParamOut": param_and_grad[0]},
+            attrs={
+                "clip": self._clip,
+                "batch_size": self._batch_size,
+                "sigma": self._sigma,
+                "seed": self._seed
+            },
+            stop_gradient=True)
 
         return dpsgd_op
 
