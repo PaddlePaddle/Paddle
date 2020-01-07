@@ -446,12 +446,12 @@ class Optimizer(object):
             for param_and_grad in parameters_and_grads:
                 if param_and_grad[1] is None:
                     continue
-                with param_and_grad[0].block.program._optimized_guard(
-                        param_and_grad):
-                    if param_and_grad[0].trainable is True:
-                        optimize_op = self._append_optimize_op(target_block,
-                                                               param_and_grad)
-                        optimize_ops.append(optimize_op)
+                # with param_and_grad[0].block.program._optimized_guard(
+                #         param_and_grad):
+                if param_and_grad[0].trainable is True:
+                    optimize_op = self._append_optimize_op(target_block,
+                                                           param_and_grad)
+                    optimize_ops.append(optimize_op)
         else:
             for param_and_grad in parameters_and_grads:
                 if param_and_grad[1] is None:
