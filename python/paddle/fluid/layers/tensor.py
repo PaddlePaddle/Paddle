@@ -1158,7 +1158,7 @@ def range(start, end, step, dtype):
                                  it is a 1-D Tensor with shape [1].
         step(float32 | float64 | int32 | int64 | Variable): Spacing between values. For any output out, this is the
                                   distance between two adjacent values, out[i+1] - out[i].
-        dtype(str): the data type of the output tensor, can be float32, float64, int32, int64.
+        dtype(str|core.VarDesc.VarType): the data type of the output tensor, can be float32, float64, int32, int64.
 
     Returns: a 1-D Tensor which is evenly spaced values within a given interval. Its data type is set by dtype.
     
@@ -1174,12 +1174,26 @@ def range(start, end, step, dtype):
     """
     helper = LayerHelper("range", **locals())
 
+    check_dtype(dtype, 'create data type',
+                ['float32', 'float64', 'int32', 'int64'], 'range')
+
+    dtype = convert_dtype(dtype)
     if not isinstance(start, Variable):
         start = fill_constant([1], dtype, start)
+    elif convert_dtype(start.dtype) != dtype:
+        # make sure that start, end, step has the same dtype as
+        # `dtype`
+        start = cast(x=start, dtype=dtype)
+
     if not isinstance(end, Variable):
         end = fill_constant([1], dtype, end)
+    elif convert_dtype(end.dtype) != dtype:
+        end = cast(x=end, dtype=dtype)
+
     if not isinstance(step, Variable):
         step = fill_constant([1], dtype, step)
+    elif convert_dtype(step.dtype) != dtype:
+        step = cast(x=step, dtype=dtype)
 
     out = helper.create_variable_for_type_inference(dtype=start.dtype)
 

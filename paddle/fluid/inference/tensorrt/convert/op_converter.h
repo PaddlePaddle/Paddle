@@ -43,18 +43,27 @@ TRT_DT FluidDataType2TRT(FluidDT type) {
     default:
       return TRT_DT::kINT32;
   }
-  PADDLE_THROW("unkown type");
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "unknown fluid datatype in TRT op converter"));
   return TRT_DT::kINT32;
 }
 
-nvinfer1::Dims Vec2TRT_Dims(const std::vector<int64_t>& shape) {
+nvinfer1::Dims Vec2TRT_Dims(const std::vector<int64_t>& shape,
+                            std::string input) {
   PADDLE_ENFORCE_GT(shape.size(), 1UL,
-                    "TensorRT' tensor input requires at least 2 dimensions");
+                    platform::errors::InvalidArgument(
+                        "TensorRT's tensor input requires at least 2 "
+                        "dimensions, but input %s has %d dims.",
+                        input, shape.size()));
   PADDLE_ENFORCE_LE(shape.size(), 4UL,
-                    "TensorRT' tensor input requires at most 4 dimensions");
-  PADDLE_ENFORCE(shape.size() == 4UL || shape.size() == 2UL);
+                    platform::errors::InvalidArgument(
+                        "TensorRT's tensor input requires at most 4 "
+                        "dimensions, but input %s has %d dims.",
+                        input, shape.size()));
   if (shape.size() == 4UL)
     return nvinfer1::DimsCHW(shape[1], shape[2], shape[3]);
+  else if (shape.size() == 3UL)
+    return nvinfer1::Dims2(shape[1], shape[2]);
   return nvinfer1::DimsCHW(shape[1], 1, 1);
 }
 
@@ -162,7 +171,7 @@ class OpConverter {
       engine->DeclareInput(
           input, FluidDataType2TRT(
                      var->Proto()->type().lod_tensor().tensor().data_type()),
-          Vec2TRT_Dims(var_shape));
+          Vec2TRT_Dims(var_shape, input));
     }
     framework::proto::BlockDesc* block_proto = block_desc->Proto();
     ConvertBlock(*block_proto, parameters, scope, engine);

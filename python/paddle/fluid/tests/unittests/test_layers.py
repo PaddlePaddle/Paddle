@@ -368,7 +368,7 @@ class TestLayer(LayerTest):
                 filter_size=[2, 2],
                 bias_attr=False)
             dy_ret = conv2d(base.to_variable(images))
-            self.assertTrue(conv2d._bias_param is None)
+            self.assertTrue(conv2d.bias is None)
 
         self.assertTrue(np.allclose(static_ret, dy_ret_value))
         self.assertTrue(np.allclose(static_ret, static_ret2))
@@ -1627,6 +1627,34 @@ class TestLayer(LayerTest):
             self.assertIsNotNone(out2)
             self.assertIsNotNone(out3)
 
+    def test_accuracy(self):
+        x = np.random.rand(3, 32, 32).astype("float32")
+        y = np.array([[1], [0], [1]])
+        with self.static_graph():
+            data = fluid.data(name="input", shape=[-1, 32, 32], dtype="float32")
+            label = fluid.data(name="label", shape=[-1, 1], dtype="int")
+            fc_out = fluid.layers.fc(input=data, size=10)
+            predict = fluid.layers.softmax(input=fc_out)
+            result = fluid.layers.accuracy(input=predict, label=label, k=5)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+
+            exe.run(fluid.default_startup_program())
+            x = np.random.rand(3, 32, 32).astype("float32")
+            y = np.array([[1], [0], [1]])
+            static_out = exe.run(feed={"input": x,
+                                       "label": y},
+                                 fetch_list=result[0])
+
+        with self.dynamic_graph():
+            data = base.to_variable(x)
+            label = base.to_variable(y)
+            fc_out = fluid.layers.fc(data, size=10)
+            predict = fluid.layers.softmax(fc_out)
+            dynamic_out = fluid.layers.accuracy(input=predict, label=label, k=5)
+
+        self.assertTrue(np.array_equal(static_out[0], dynamic_out.numpy()))
+
 
 class TestBook(LayerTest):
     def test_all_layers(self):
@@ -2533,7 +2561,12 @@ class TestBook(LayerTest):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
             layers.range(0, 10, 2, 'int32')
-            y = layers.range(0.1, 10.0, 0.2, 'float32')
+            layers.range(0.1, 10.0, 0.2, 'float32')
+            layers.range(0.1, 10.0, 0.2, 'float64')
+            start = layers.fill_constant(shape=[1], value=0.1, dtype="float32")
+            end = layers.fill_constant(shape=[1], value=10.0, dtype="float32")
+            step = layers.fill_constant(shape=[1], value=0.2, dtype="float32")
+            y = layers.range(start, end, step, 'float64')
             return y
 
     def make_spectral_norm(self):
