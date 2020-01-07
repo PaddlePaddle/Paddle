@@ -262,7 +262,8 @@ framework::OpKernelType FusedBatchNormActGradOp::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
   const auto *var = ctx.InputVar(framework::GradVarName("Y"));
   if (var == nullptr) {
-    PADDLE_THROW("can't find Y@GRAD");
+    PADDLE_THROW(platform::errors::NotFound(
+        "Can not find Y@GRAD in the execution context."));
   }
   const Tensor *t = nullptr;
   if (var->IsType<Tensor>()) {
@@ -271,7 +272,8 @@ framework::OpKernelType FusedBatchNormActGradOp::GetExpectedKernelType(
     t = &var->Get<LoDTensor>();
   }
   if (t == nullptr) {
-    PADDLE_THROW("can't find Y@GRAD");
+    PADDLE_THROW(
+        platform::errors::NotFound("Can not get the tensor value of Y@GRAD."));
   }
 
   framework::LibraryType library = framework::LibraryType::kPlain;
