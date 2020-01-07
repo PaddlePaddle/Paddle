@@ -172,18 +172,18 @@ with fluid.imperative.guard():
 class MLP(fluid.Layer):
     def __init__(self, input_size):
         super(MLP, self).__init__()
-        self._fc1 = Linear(input_size,
+        self._linear1 = Linear(input_size,
                        3,
                        fluid.ParamAttr(
                            initializer=fluid.initializer.Constant(value=0.1)))
-        self._fc2 = Linear(3,
+        self._linear2 = Linear(3,
                        4,
                        fluid.ParamAttr(
                            initializer=fluid.initializer.Constant(value=0.1)))
 
     def forward(self, inputs):
-        x = self._fc1(inputs)
-        x = self._fc2(x)
+        x = self._linear1(inputs)
+        x = self._linear2(x)
         x = fluid.layers.reduce_sum(x)
         return x
 
