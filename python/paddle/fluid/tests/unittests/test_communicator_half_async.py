@@ -25,7 +25,7 @@ import numpy
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.communicator import Communicator
-from paddle.fluid.communicator import AsyncMode
+from paddle.fluid.communicator import TrainingMode
 
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
@@ -118,7 +118,7 @@ import numpy
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.communicator import Communicator
-from paddle.fluid.communicator import AsyncMode
+from paddle.fluid.communicator import TrainingMode
 
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from test_communicator_half_async import TestCommunicatorHalfAsyncEnd2End
@@ -164,7 +164,7 @@ class TestCommunicatorHalfAsync2(unittest.TestCase):
         envs["communicator_thread_pool_size"] = "5"
         envs["communicator_send_wait_times"] = "5"
 
-        comm = Communicator(prog, AsyncMode.HALF_ASYNC, None, envs)
+        comm = Communicator(prog, TrainingMode.HALF_ASYNC, None, envs)
         comm.start()
         time.sleep(10)
         comm.stop()
