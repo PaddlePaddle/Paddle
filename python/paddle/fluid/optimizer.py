@@ -655,6 +655,30 @@ class Optimizer(object):
     def clear_gradients(self):
         """
         Clear the gradients of all optimized parameters for model.
+        
+        Args:
+            None 
+        Return:
+            None
+        
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                import numpy as np
+
+                with fluid.dygraph.guard():
+                    value = np.arange(26).reshape(2, 13).astype("float32")
+                    a = fluid.dygraph.to_variable(value)
+                    fc = fluid.Linear(13, 5, dtype="float32")
+                    # This can be any optimizer supported by dygraph.
+                    adam = fluid.optimizer.Adam( learning_rate = 0.01, 
+                                                 parameter_list = fc.parameters() )
+                    out = fc(a)
+                    out.backward()
+                    adam.minimize(out)
+                    adam.clear_gradients()
+
         """
         for p in self._parameter_list:
             if p.trainable:
