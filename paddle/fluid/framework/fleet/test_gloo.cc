@@ -14,6 +14,7 @@
 
 #include <gtest/gtest.h>
 #include <fstream>
+#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #include "paddle/fluid/framework/io/fs.h"
 
 #if defined _WIN32 || defined __APPLE__
@@ -21,27 +22,29 @@
 #define _LINUX
 #endif
 
-TEST(FS, mv) {
+TEST(TEST_GLOO, store) {
 #ifdef _LINUX
-  std::ofstream out("src.txt");
-  out.close();
-  paddle::framework::fs_mv("src.txt", "dest.txt");
-  paddle::framework::hdfs_mv("", "");
-  paddle::framework::localfs_mv("", "");
+  auto store = gloo::rendezvous::HdfsStore("./test_gllo_store");
+  store.set("1", std::vector<char>{'t', 'e', 's', 't'});
+  store.get("1");
   try {
-    paddle::framework::hdfs_mv("afs:/none", "afs:/none");
+    store.get("2");
   } catch (...) {
-    VLOG(3) << "test hdfs_mv, catch expected errors of unknown path";
+    VLOG(3) << "catch expected error of not found";
   }
-  try {
-    paddle::framework::fs_mv("afs:/none", "afs:/none");
-  } catch (...) {
-    VLOG(3) << "test hdfs_mv, catch expected errors of unknown path";
-  }
-  try {
-    paddle::framework::hdfs_mv("unknown:/none", "unknown:/none");
-  } catch (...) {
-    VLOG(3) << "test hdfs_mv, catch expected errors of unknown prefix";
-  }
+  store.wait(std::vector<std::string>{"test"});
+  store.wait(std::vector<std::string>{"test"}, std::chrono::milliseconds(0));
+  store.EncodeName("1");
+  store.TmpPath("1");
+  store.ObjectPath("1");
+  store.Check(std::vector<std::string>{"test"});
+
+  auto gw = paddle::framework::GlooWrapper();
+  gw.Init(0, 1, "", "", "", "", "");
+  gw.Rank();
+  gw.Size();
+  std::vector<double> input;
+  std::vector<double> output;
+  gw.AllReduce(input, output);
 #endif
 }

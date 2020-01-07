@@ -477,9 +477,6 @@ void fs_mv(const std::string& src, const std::string& dest) {
 
     case 1:
       return hdfs_mv(src, dest);
-
-    default:
-      LOG(FATAL) << "Not supported";
   }
 }
 

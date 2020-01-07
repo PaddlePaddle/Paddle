@@ -62,7 +62,6 @@ class HdfsStore {
   virtual void wait(const std::vector<std::string>& keys,
                     const std::chrono::milliseconds& timeout);
 
- protected:
   std::string EncodeName(const std::string& name);
 
   std::string TmpPath(const std::string& name);
@@ -72,7 +71,8 @@ class HdfsStore {
   bool Check(const std::vector<std::string>& keys);
 
   std::string path_;
-  int wait_sleep_ms;
+  int wait_sleep_ms_;
+  std::chrono::seconds wait_timeout_;
 };
 
 }  // namespace rendezvous

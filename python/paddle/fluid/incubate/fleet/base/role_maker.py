@@ -312,6 +312,20 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         else:
             raise Exception("You should check role generation first")
 
+    def Allreduce(self, input, output, mode="sum"):
+        """
+        all reduce between all nodes in _node_type_comm
+        """
+        if mode == "sum":
+            mode = self.MPI.SUM
+        elif mode == "max":
+            mode = self.MPI.MAX
+        elif mode == "min":
+            mode = self.MPI.MIN
+        else:
+            raise ValueError("unknown mode: %s" % mode)
+        self._node_type_comm.Allreduce(input, output, op=mode)
+
     def generate_role(self):
         """
         generate currently process's role
@@ -444,7 +458,7 @@ class PaddleCloudGlooRoleMaker(RoleMakerBase):
         self._hdfs_ugi = hdfs_ugi
         self._hdfs_path = hdfs_path
         self._iface = iface
-        self._prefix = "gloo_tmp_%s" % int(time.time())
+        self._prefix = os.getenv("SYS_JOB_ID", "")
 
     def generate_role(self):
         """
@@ -505,6 +519,18 @@ class PaddleCloudGlooRoleMaker(RoleMakerBase):
     def _finalize(self):
         """Default do nothing."""
         pass
+
+    def Allreduce(self, input, output, mode="sum"):
+        """
+        all reduce between all workers
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        input_list = [i for i in input]
+        output_list = [i for i in output]
+        self._node_type_comm.all_reduce(input_list, output_list, mode)
+        for i in range(len(output_list)):
+            output[i] = output_list[i]
 
     def _all_gather(self, obj):
         """

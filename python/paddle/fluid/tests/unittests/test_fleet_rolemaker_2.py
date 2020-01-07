@@ -94,6 +94,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
         role4._worker_gather(1)
         role4._get_rank()
         role4._get_size()
+        role4._all_comm.init(0, 0, "", "", "", "", "")
 
         role5 = PaddleCloudGlooRoleMaker("", "", "./test_gloo_5", "lo")
         role5.get_local_endpoint()

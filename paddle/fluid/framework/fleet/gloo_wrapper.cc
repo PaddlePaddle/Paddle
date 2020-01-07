@@ -22,21 +22,23 @@ namespace rendezvous {
 
 HdfsStore::HdfsStore(const std::string& path) {
   path_ = path;
-  wait_sleep_ms = 100;
+  wait_sleep_ms_ = 3000;
+  wait_timeout_ = std::chrono::seconds(999999999);
 }
 
 void HdfsStore::set(const std::string& key, const std::vector<char>& data) {
-#ifdef _LINUX
+#ifdef PADDLE_WITH_GLOO
   auto tmp = TmpPath(key);
   auto path = ObjectPath(key);
-  bool is_exists = paddle::framework::hdfs_exists(path);
-  PADDLE_ENFORCE_EQ(is_exists, false,
-                    paddle::platform::errors::AlreadyExists(
-                        "HdfsStore::set, path exists: " + path));
+  bool is_exists = paddle::framework::fs_exists(path);
+  if (is_exists) {
+    LOG(WARNING) << "path exists, will be removed: " << path;
+    paddle::framework::fs_remove(path);
+  }
   int err_no = 0;
   std::shared_ptr<FILE> fp = paddle::framework::fs_open_write(tmp, &err_no, "");
   size_t write_count = fwrite_unlocked(data.data(), 1, data.size(), fp.get());
-  VLOG(3) << "HdfsStore::set write_count=" << write_count;
+  VLOG(3) << "HdfsStore::set write_count=" << write_count << " key " << key;
   fp.reset();
   paddle::framework::fs_mv(tmp, path);
 #endif
@@ -45,10 +47,10 @@ void HdfsStore::set(const std::string& key, const std::vector<char>& data) {
 std::vector<char> HdfsStore::get(const std::string& key) {
   auto path = ObjectPath(key);
   std::vector<char> result;
-#ifdef _LINUX
+#ifdef PADDLE_WITH_GLOO
   // block until key is set
   wait({key});
-  bool is_exists = paddle::framework::hdfs_exists(path);
+  bool is_exists = paddle::framework::fs_exists(path);
   PADDLE_ENFORCE_EQ(is_exists, true,
                     paddle::platform::errors::NotFound(
                         "HdfsStore::get, path not exists: " + path));
@@ -67,23 +69,23 @@ std::vector<char> HdfsStore::get(const std::string& key) {
 
 void HdfsStore::wait(const std::vector<std::string>& keys) {
 #ifdef PADDLE_WITH_GLOO
-  wait(keys, gloo::rendezvous::Store::kDefaultTimeout);
+  wait(keys, wait_timeout_);  // NOLINT
 #endif
 }
 
 void HdfsStore::wait(const std::vector<std::string>& keys,
-                     const std::chrono::milliseconds& timeout) {
+                     const std::chrono::milliseconds&) {  // NOLINT
 #ifdef PADDLE_WITH_GLOO
   auto start = std::chrono::steady_clock::now();
   while (!Check(keys)) {
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::steady_clock::now() - start);
-    if (timeout != kNoTimeout && elapsed > timeout) {
+    if (wait_timeout_ != gloo::kNoTimeout && elapsed > wait_timeout_) {
       PADDLE_ENFORCE_EQ(0, 1, paddle::platform::errors::ExecutionTimeout(
                                   "HdfsStore::wait, Wait timeout for key(s): " +
                                   ::gloo::MakeString(keys)));
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(wait_sleep_ms));
+    std::this_thread::sleep_for(std::chrono::milliseconds(wait_sleep_ms_));
   }
 #endif
 }
@@ -102,13 +104,14 @@ std::string HdfsStore::ObjectPath(const std::string& name) {
 }
 
 bool HdfsStore::Check(const std::vector<std::string>& keys) {
-#ifdef _LINUX
+#ifdef PADDLE_WITH_GLOO
   std::vector<std::string> paths;
   for (const auto& key : keys) {
     paths.push_back(ObjectPath(key));
   }
   for (const auto& path : paths) {
-    bool is_exists = paddle::framework::hdfs_exists(path);
+    bool is_exists = paddle::framework::fs_exists(path);
+    VLOG(3) << "HdfsStore::Check " << is_exists << " path " << path;
     if (!is_exists) {
       return false;
     }
@@ -142,6 +145,7 @@ void GlooWrapper::Init(int rank, int size, const std::string& path,
   auto prefix_store = gloo::rendezvous::PrefixStore(prefix, file_store);
   auto dev = gloo::transport::tcp::CreateDevice(attr);
   auto context = std::make_shared<gloo::rendezvous::Context>(rank, size);
+  context->setTimeout(file_store.wait_timeout_);
   context->connectFullMesh(prefix_store, dev);
   context_ = std::move(context);
 #endif
