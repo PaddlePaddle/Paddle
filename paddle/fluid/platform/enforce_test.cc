@@ -301,14 +301,13 @@ TEST(enforce, cuda_success) {
 #endif
 
 TEST(enforce, cuda_success_check) {
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaSuccess);               // no msg
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaSuccess, "cuda test");  // no error type
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaSuccess);
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaSuccess, "cuda test");
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaSuccess,
+                              paddle::platform::errors::External("cuda test"));
   PADDLE_ENFORCE_CUDA_SUCCESS(
       cudaSuccess,
-      paddle::platform::errors::External("cuda test"));  // msg is too short
-  PADDLE_ENFORCE_CUDA_SUCCESS(
-      cudaSuccess, paddle::platform::errors::External(
-                       "paddle enforce cuda success test"));  // correct
+      paddle::platform::errors::External("paddle enforce cuda success test"));
 }
 
 struct CannotToStringType {
