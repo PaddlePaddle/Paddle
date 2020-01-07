@@ -79,7 +79,7 @@ class TestELUDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 7, 9]
-        eps = 0.0001
+        eps = 1e-6
         alpha = 1.1
         dtype = np.float64
 
