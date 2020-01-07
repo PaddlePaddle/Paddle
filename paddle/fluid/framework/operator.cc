@@ -963,11 +963,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 
   if (!all_kernels_must_compute_runtime_shape_) {
-    {
-      platform::RecordEvent record_event("infer_shape");
-      RuntimeInferShapeContext infer_shape_ctx(*this, *runtime_ctx);
-      this->InferShape(&infer_shape_ctx);
-    }
+    platform::RecordEvent record_event("infer_shape");
+    RuntimeInferShapeContext infer_shape_ctx(*this, *runtime_ctx);
+    this->InferShape(&infer_shape_ctx);
   }
 
   if (FLAGS_enable_unused_var_check) {

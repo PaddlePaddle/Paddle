@@ -461,6 +461,75 @@ std::function<bool(const EventItem &, const EventItem &)> SetSortedFunc(
   return sorted_func;
 }
 
+void SetEvent(bool merge_thread, Event analyze_event, size_t *max_name_width,
+              std::list<Event> *pushed_events,
+              std::vector<EventItem> *event_items,
+              std::unordered_map<std::string, int> *event_idx) {
+  if (analyze_event.type() == EventType::kPushRange) {
+    pushed_events->push_back(analyze_event);
+  } else if (analyze_event.type() == EventType::kPopRange) {
+    std::list<Event>::reverse_iterator rit = pushed_events->rbegin();
+    while (rit != pushed_events->rend() &&
+           rit->name() != analyze_event.name()) {
+      ++rit;
+    }
+    // to find the father name event name
+
+    if (rit != pushed_events->rend()) {
+      double event_time = 0;
+      double gpu_time = 0.0f;
+#ifdef PADDLE_WITH_CUDA
+      gpu_time = rit->CudaElapsedMs(analyze_event);
+#endif
+      double cpu_time = rit->CpuElapsedMs(analyze_event);
+      if (g_state == ProfilerState::kCUDA) {
+        event_time = gpu_time;
+      } else if (g_state == ProfilerState::kCPU) {
+        event_time = cpu_time;
+      } else {
+        event_time = gpu_time + cpu_time;
+      }
+
+      std::string event_name;
+      if (merge_thread) {
+        event_name = rit->name();
+        *max_name_width = std::max(*max_name_width, event_name.size());
+      } else {
+        event_name =
+            "thread" + std::to_string(rit->thread_id()) + "::" + rit->name();
+        *max_name_width = std::max(*max_name_width, event_name.size());
+      }
+
+      if (event_idx->find(event_name) == event_idx->end()) {
+        event_idx->insert({event_name, event_items->size()});
+        EventItem event_item = {event_name, 1,          event_time,
+                                event_time, event_time, event_time,
+                                cpu_time,   gpu_time,   0.};
+        event_items->push_back(event_item);
+      } else {
+        int index = event_idx->at(event_name);
+        event_items->at(index).calls += 1;
+        // total time
+        event_items->at(index).total_time += event_time;
+        // min time
+        event_items->at(index).min_time =
+            std::min(event_time, event_items->at(index).min_time);
+        // max time
+        event_items->at(index).max_time =
+            std::max(event_time, event_items->at(index).max_time);
+        event_items->at(index).gpu_time += gpu_time;
+        event_items->at(index).cpu_time += cpu_time;
+      }
+
+      // remove the push marker from the list
+      pushed_events->erase((++rit).base());
+    } else {
+      LOG(WARNING) << "Cannot find the push marker of event \'"
+                   << analyze_event.name()
+                   << "\', which will be ignored in profiling report.";
+    }
+  }
+}
 // Parse the event list and output the profiling report
 void ParseEvents(const std::vector<std::vector<Event>> &events,
                  bool merge_thread,
@@ -499,70 +568,9 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
     std::unordered_map<std::string, int> event_idx;
 
     for (size_t j = 0; j < (*analyze_events)[i].size(); j++) {
-      if ((*analyze_events)[i][j].type() == EventType::kPushRange) {
-        pushed_events.push_back((*analyze_events)[i][j]);
-      } else if ((*analyze_events)[i][j].type() == EventType::kPopRange) {
-        std::list<Event>::reverse_iterator rit = pushed_events.rbegin();
-        while (rit != pushed_events.rend() &&
-               rit->name() != (*analyze_events)[i][j].name()) {
-          ++rit;
-        }
-        // to find the father name event name
-
-        if (rit != pushed_events.rend()) {
-          double event_time = 0;
-          double gpu_time = 0.0f;
-#ifdef PADDLE_WITH_CUDA
-          gpu_time = rit->CudaElapsedMs((*analyze_events)[i][j]);
-#endif
-          double cpu_time = rit->CpuElapsedMs((*analyze_events)[i][j]);
-          if (g_state == ProfilerState::kCUDA) {
-            event_time = gpu_time;
-          } else if (g_state == ProfilerState::kCPU) {
-            event_time = cpu_time;
-          } else {
-            event_time = gpu_time + cpu_time;
-          }
-
-          std::string event_name;
-          if (merge_thread) {
-            event_name = rit->name();
-            max_name_width = std::max(max_name_width, event_name.size());
-          } else {
-            event_name = "thread" + std::to_string(rit->thread_id()) + "::" +
-                         rit->name();
-            max_name_width = std::max(max_name_width, event_name.size());
-          }
-
-          if (event_idx.find(event_name) == event_idx.end()) {
-            event_idx[event_name] = event_items.size();
-            EventItem event_item = {event_name, 1,          event_time,
-                                    event_time, event_time, event_time,
-                                    cpu_time,   gpu_time,   0.};
-            event_items.push_back(event_item);
-          } else {
-            int index = event_idx[event_name];
-            event_items[index].calls += 1;
-            // total time
-            event_items[index].total_time += event_time;
-            // min time
-            event_items[index].min_time =
-                std::min(event_time, event_items[index].min_time);
-            // max time
-            event_items[index].max_time =
-                std::max(event_time, event_items[index].max_time);
-            event_items[index].gpu_time += gpu_time;
-            event_items[index].cpu_time += cpu_time;
-          }
-
-          // remove the push marker from the list
-          pushed_events.erase((++rit).base());
-        } else {
-          LOG(WARNING) << "Cannot find the push marker of event \'"
-                       << (*analyze_events)[i][j].name()
-                       << "\', which will be ignored in profiling report.";
-        }
-      }
+      Event analyze_event = (*analyze_events)[i][j];
+      SetEvent(merge_thread, analyze_event, &max_name_width, &pushed_events,
+               &event_items, &event_idx);
     }
 
     auto table_size = event_items.size();
