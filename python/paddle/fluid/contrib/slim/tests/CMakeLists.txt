@@ -32,6 +32,18 @@ function(inference_qat_int8_test target model_dir data_dir test_script use_mkldn
                  --acc_diff_threshold 0.1)
 endfunction()
 
+function(debug_inference_qat_int8_test target model_dir data_dir test_script use_mkldnn)
+    py_test(${target} SRCS ${test_script}
+            ENVS MKLDNN_VERBOSE=2
+                 FLAGS_OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
+                 OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
+                 FLAGS_use_mkldnn=${use_mkldnn}
+            ARGS --qat_model ${model_dir}/model
+                 --infer_data ${data_dir}/data.bin
+                 --batch_size 25
+                 --batch_num 2
+                 --acc_diff_threshold 0.1)
+endfunction()
 
 # set batch_size 10 for UT only (avoid OOM). For whole dataset, use batch_size 25 
 function(inference_qat2_int8_test target model_dir data_dir test_script use_mkldnn)
