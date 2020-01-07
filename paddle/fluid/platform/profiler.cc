@@ -364,7 +364,7 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
               << "Max." << std::setw(data_width) << "Ave."
               << std::setw(data_width) << "Ratio." << std::endl;
   }
-  if (print_depth > 0) return;
+  if (print_depth > 0 || events_table.size() == 0) return;
 
   for (size_t i = 0; i < events_table.size(); ++i) {
     for (size_t j = 0; j < events_table[i].size(); ++j) {
@@ -511,7 +511,10 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
 
         if (rit != pushed_events.rend()) {
           double event_time = 0;
-          double gpu_time = rit->CudaElapsedMs((*analyze_events)[i][j]);
+          double gpu_time = 0.0f;
+#ifdef PADDLE_WITH_CUDA
+          gpu_time = rit->CudaElapsedMs((*analyze_events)[i][j]);
+#endif
           double cpu_time = rit->CpuElapsedMs((*analyze_events)[i][j]);
           if (g_state == ProfilerState::kCUDA) {
             event_time = gpu_time;

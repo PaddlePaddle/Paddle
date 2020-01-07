@@ -140,15 +140,15 @@ TEST(test_layer, test_clear_backward_info) {
   op->InsertGradPendingOps(preceding_op.get());
   *(op->GetMutableInsMap()) = ins;
   *(op->GetMutableOutsMap()) = outs;
-  ASSERT_GT(op->GetInsMap().size(), 0);
-  ASSERT_GT(op->GetOutsMap().size(), 0);
-  ASSERT_GT(op->GradPendingOps().size(), 0);
+  ASSERT_GT(op->GetInsMap().size(), 0UL);
+  ASSERT_GT(op->GetOutsMap().size(), 0UL);
+  ASSERT_GT(op->GradPendingOps().size(), 0UL);
 
   op->ClearBackwardTrace();
 
-  ASSERT_EQ(op->GetInsMap().size(), 0);
-  ASSERT_EQ(op->GetOutsMap().size(), 0);
-  ASSERT_EQ(op->GradPendingOps().size(), 0);
+  ASSERT_EQ(op->GetInsMap().size(), 0UL);
+  ASSERT_EQ(op->GetOutsMap().size(), 0UL);
+  ASSERT_EQ(op->GradPendingOps().size(), 0UL);
 }
 
 TEST(test_layer, test_varbase_basic) {
@@ -158,7 +158,7 @@ TEST(test_layer, test_varbase_basic) {
   vin->MutableVar()->GetMutable<framework::LoDTensor>()->mutable_data<float>(
       place);
   std::shared_ptr<imperative::VarBase> vout(vin->NewVarBase(place, false));
-  ASSERT_EQ(vout->Name(), "Itmp0");
+  ASSERT_EQ(vout->Name(), "vin0");
 
   std::shared_ptr<imperative::VarBase> vin_with_grad(
       new imperative::VarBase(true, "vin"));

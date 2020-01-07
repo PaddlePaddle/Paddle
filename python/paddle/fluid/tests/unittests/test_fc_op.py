@@ -131,7 +131,7 @@ class TestFCOpWithPadding(TestFCOp):
         self.matrix = MatrixGenerate(1, 4, 3, 128, 128, 2)
 
 
-class TestFCOpError(OpTest):
+class TestFCOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             input_data = np.random.random((2, 4)).astype("float32")

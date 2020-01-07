@@ -31,7 +31,7 @@ DEFINE_string(
     "'<space splitted floats as data>\t<space splitted ints as shape'");
 DEFINE_bool(use_gpu, false, "Whether use gpu.");
 #ifdef PADDLE_WITH_SHARED_LIB
-DEFINE_bool(profile, false, "Whether use profile.");
+DECLARE_bool(profile);
 #endif
 
 namespace paddle {

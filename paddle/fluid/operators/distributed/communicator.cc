@@ -63,6 +63,43 @@ inline void VSUB(int n, const T *x, const T *y, T *z) {
   }
 }
 
+void Communicator::SetEnvFlagsDefault() {
+  env_flags_dict.clear();
+  env_flags_dict.insert(std::pair<std::string, int>(
+      "independent_recv_thread", FLAGS_communicator_independent_recv_thread));
+  env_flags_dict.insert(std::pair<std::string, int>(
+      "send_queue_size", FLAGS_communicator_send_queue_size));
+  env_flags_dict.insert(std::pair<std::string, int>(
+      "min_send_grad_num_before_recv",
+      FLAGS_communicator_min_send_grad_num_before_recv));
+  env_flags_dict.insert(std::pair<std::string, int>(
+      "thread_pool_size", FLAGS_communicator_thread_pool_size));
+  env_flags_dict.insert(std::pair<std::string, int>(
+      "send_wait_times", FLAGS_communicator_send_wait_times));
+  env_flags_dict.insert(std::pair<std::string, int>(
+      "max_merge_var_num", FLAGS_communicator_max_merge_var_num));
+  env_flags_dict.insert(
+      std::pair<std::string, int>("fake_rpc", FLAGS_communicator_fake_rpc));
+  env_flags_dict.insert(std::pair<std::string, int>(
+      "merge_sparse_grad", FLAGS_communicator_merge_sparse_grad));
+  env_flags_dict.insert(std::pair<std::string, int>(
+      "is_sgd_optimizer", FLAGS_communicator_is_sgd_optimizer));
+
+  return;
+}
+
+Communicator::Communicator() { SetEnvFlagsDefault(); }
+
+Communicator::Communicator(const std::map<std::string, int> &env_flags) {
+  SetEnvFlagsDefault();
+  for (auto &iter : env_flags) {
+    std::string flag_name = iter.first;
+    int val_ = iter.second;
+    env_flags_dict.at(flag_name) = val_;
+  }
+  return;
+}
+
 std::once_flag Communicator::init_flag_;
 std::shared_ptr<Communicator> Communicator::communicator_(nullptr);
 
@@ -73,25 +110,6 @@ void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
   recv_varname_to_ctx_ = std::move(recv_varname_to_ctx);
   recv_scope_ = std::move(recv_scope);
 
-  // get all send information from graph, build vars_to_send
-  VLOG(0) << "communicator_independent_recv_thread: "
-          << FLAGS_communicator_independent_recv_thread;
-  VLOG(0) << "communicator_send_queue_size: "
-          << FLAGS_communicator_send_queue_size;
-  VLOG(0) << "communicator_min_send_grad_num_before_recv: "
-          << FLAGS_communicator_min_send_grad_num_before_recv;
-  VLOG(0) << "communicator_thread_pool_size: "
-          << FLAGS_communicator_thread_pool_size;
-  VLOG(0) << "communicator_send_wait_times: "
-          << FLAGS_communicator_send_wait_times;
-  VLOG(0) << "communicator_max_merge_var_num: "
-          << FLAGS_communicator_max_merge_var_num;
-  VLOG(0) << "communicator_fake_rpc: " << FLAGS_communicator_fake_rpc;
-  VLOG(0) << "communicator_merge_sparse_grad: "
-          << FLAGS_communicator_merge_sparse_grad;
-  VLOG(0) << "communicator_is_sgd_optimizer: "
-          << FLAGS_communicator_is_sgd_optimizer;
-
   if (send_varname_to_ctx.size() == 0) {
     VLOG(0) << "nothing need to be send, will not start send_thread";
   } else {
@@ -99,17 +117,17 @@ void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
     for (auto &iter : send_varname_to_ctx_) {
       send_varname_to_queue_[iter.first] =
           std::make_shared<BlockingQueue<std::shared_ptr<Variable>>>(
-              FLAGS_communicator_send_queue_size);
+              env_flags_dict["send_queue_size"]);
     }
     send_threadpool_.reset(
-        new ::ThreadPool(FLAGS_communicator_thread_pool_size));
+        new ::ThreadPool(env_flags_dict["thread_pool_size"]));
   }
 
   if (recv_varname_to_ctx.size() == 0) {
     VLOG(0) << "nothing need to be received, will not start recv_thread";
   } else {
     recv_threadpool_.reset(
-        new ::ThreadPool(FLAGS_communicator_thread_pool_size));
+        new ::ThreadPool(env_flags_dict["thread_pool_size"]));
   }
 }
 
@@ -132,7 +150,7 @@ void AsyncCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
       auto trainer_id = boost::get<int>(op->GetNullableAttr("trainer_id"));
       auto merge_add = boost::get<bool>(op->GetNullableAttr("merge_add"));
       if (!merge_add) {
-        merge_add = FLAGS_communicator_is_sgd_optimizer;
+        merge_add = static_cast<bool>(env_flags_dict["is_sgd_optimizer"]);
       }
       auto use_send_handler =
           boost::get<bool>(op->GetNullableAttr("use_send_handler"));
@@ -183,21 +201,21 @@ void AsyncCommunicator::SendThread() {
   while (running_) {
     std::vector<std::future<void>> task_futures;
     task_futures.reserve(send_varname_to_ctx_.size());
-    VLOG(3) << "run send graph";
+    VLOG(4) << "run send graph";
     auto before_run_send_graph = GetCurrentUS();
     for (auto &iter : send_varname_to_queue_) {
       auto &var_name = iter.first;
       auto &var_queue = iter.second;
       if (var_queue->Size() > 0) {
         auto send_task = [this, &var_name, &var_queue] {
-          VLOG(3) << var_name << " merge and send";
+          VLOG(4) << var_name << " merge and send";
           std::vector<std::shared_ptr<Variable>> vars;
           int merged_var_num = 0;
           int wait_times = 0;
-          while (merged_var_num < FLAGS_communicator_max_merge_var_num) {
+          while (merged_var_num < env_flags_dict["max_merge_var_num"]) {
             if (var_queue->Size() == 0) {
-              VLOG(3) << "wait_times -> " << wait_times;
-              if (wait_times >= FLAGS_communicator_send_wait_times) {
+              VLOG(4) << "wait_times -> " << wait_times;
+              if (wait_times >= env_flags_dict["send_wait_times"]) {
                 break;
               }
               std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -223,14 +241,14 @@ void AsyncCommunicator::SendThread() {
                                ctx.merge_add);
           }
           auto after_merge = GetCurrentUS();
-          VLOG(3) << "merge " << merged_var_num << " " << var_name
+          VLOG(4) << "merge " << merged_var_num << " " << var_name
                   << " use time " << after_merge - before_merge;
           auto send_functor = distributed::ParameterSend<float>();
-          if (!FLAGS_communicator_fake_rpc) {
+          if (!env_flags_dict["fake_rpc"]) {
             send_functor(ctx, *send_scope_, true, 1);
           }
           auto after_send = GetCurrentUS();
-          VLOG(3) << "send " << var_name << " use time "
+          VLOG(4) << "send " << var_name << " use time "
                   << after_send - after_merge;
         };
         task_futures.emplace_back(
@@ -244,7 +262,7 @@ void AsyncCommunicator::SendThread() {
     }
     auto after_run_send_graph = GetCurrentUS();
 
-    VLOG(3) << "run send graph use time "
+    VLOG(4) << "run send graph use time "
             << after_run_send_graph - before_run_send_graph;
     Recv();
   }
@@ -255,7 +273,7 @@ void AsyncCommunicator::RecvThread() {
   VLOG(3) << "RecvThread start!";
   while (running_) {
     int grad_num = grad_num_.load();
-    if (grad_num > FLAGS_communicator_min_send_grad_num_before_recv) {
+    if (grad_num > env_flags_dict["min_send_grad_num_before_recv"]) {
       VLOG(1) << "current grad num " << grad_num;
       RecvAll();
       grad_num_.store(0);
@@ -273,10 +291,10 @@ void AsyncCommunicator::Send(const std::string &var_name,
   auto *grad_var = scope.FindVar(var_name);
   PADDLE_ENFORCE(grad_var->IsInitialized(), "grad var should be inited");
   if (grad_var->IsType<framework::SelectedRows>() &&
-      !FLAGS_communicator_merge_sparse_grad) {
+      !env_flags_dict["merge_sparse_grad"]) {
     auto send_functor = distributed::ParameterSend<float>();
     auto &ctx = send_varname_to_ctx_.at(var_name);
-    if (!FLAGS_communicator_fake_rpc) {
+    if (!env_flags_dict["fake_rpc"]) {
       send_functor(ctx, scope, true, 1);
     }
   } else {
@@ -289,7 +307,7 @@ void AsyncCommunicator::Send(const std::string &var_name,
 }
 
 void AsyncCommunicator::Recv() {
-  if (FLAGS_communicator_independent_recv_thread) {
+  if (env_flags_dict["independent_recv_thread"]) {
     return;
   }
 
@@ -313,7 +331,7 @@ void AsyncCommunicator::RecvAll() {
       auto &var_name = iter.first;
       VLOG(4) << "recv var " << var_name;
       auto recv_functor = distributed::ParameterRecv<float>();
-      if (!FLAGS_communicator_fake_rpc) {
+      if (!env_flags_dict["fake_rpc"]) {
         recv_functor(iter.second, *recv_scope_);
       }
     };
@@ -323,7 +341,7 @@ void AsyncCommunicator::RecvAll() {
     task.wait();
   }
   auto after_recv = GetCurrentUS();
-  VLOG(1) << "run recv graph use time " << after_recv - before_send;
+  VLOG(3) << "run recv graph use time " << after_recv - before_send;
 }
 
 void AsyncCommunicator::Start() {
@@ -336,7 +354,7 @@ void AsyncCommunicator::Start() {
     // start send and recv thread
     send_thread_.reset(
         new std::thread(std::bind(&AsyncCommunicator::SendThread, this)));
-    if (FLAGS_communicator_independent_recv_thread) {
+    if (env_flags_dict["independent_recv_thread"]) {
       recv_thread_.reset(
           new std::thread(std::bind(&AsyncCommunicator::RecvThread, this)));
     }
@@ -396,25 +414,8 @@ void GeoSgdCommunicator::InitImpl(
   geo_need_push_nums_ = std::move(geo_need_push_nums);
 
   // get all send information from graph, build vars_to_send
-  VLOG(0) << "communicator_independent_recv_thread: "
-          << FLAGS_communicator_independent_recv_thread;
-  VLOG(0) << "communicator_send_queue_size: "
-          << FLAGS_communicator_send_queue_size;
-  VLOG(0) << "communicator_min_send_grad_num_before_recv: "
-          << FLAGS_communicator_min_send_grad_num_before_recv;
-  VLOG(0) << "communicator_thread_pool_size: "
-          << FLAGS_communicator_thread_pool_size;
-  VLOG(0) << "communicator_send_wait_times: "
-          << FLAGS_communicator_send_wait_times;
-  VLOG(0) << "communicator_max_merge_var_num: "
-          << FLAGS_communicator_max_merge_var_num;
-  VLOG(0) << "communicator_fake_rpc: " << FLAGS_communicator_fake_rpc;
-  VLOG(0) << "communicator_merge_sparse_grad: "
-          << FLAGS_communicator_merge_sparse_grad;
   VLOG(0) << "Trainer nums: " << trainer_nums_;
   VLOG(0) << "geo_sgd_push_before_local_train_nums: " << geo_need_push_nums_;
-  VLOG(0) << "communicator_merge_sparse_bucket "
-          << FLAGS_communicator_merge_sparse_bucket;
 
   // process var info from transpiler
   for (auto &iter : vars_info) {
@@ -446,20 +447,22 @@ void GeoSgdCommunicator::InitImpl(
     recv_varname_to_ctx_[var_name] = operators::distributed::RpcContext(
         var_name, vars_names, vars_epmap, vars_sections_int, 0);
 
-    // record sparse section
-    if (is_sparse) {
-      need_thread_nums_ +=
-          send_varname_to_ctx_[send_var_name].height_sections.size();
-      absolute_section_[var_name] = operators::ToAbsoluteSection(
-          send_varname_to_ctx_[send_var_name].height_sections);
+    absolute_section_[var_name] = operators::ToAbsoluteSection(
+        send_varname_to_ctx_[send_var_name].height_sections);
+
+    vars_first_dimension_[var_name] = 0;
+    for (int64_t section : vars_sections_int) {
+      vars_first_dimension_[var_name] += section;
     }
+
+    send_var_nums_ += vars_names.size();
   }
 
   if (send_varname_to_ctx_.size() == 0 && recv_varname_to_ctx_.size() == 0) {
     LOG(WARNING) << "no var need to send and recv!!";
   }
 
-  send_threadpool_.reset(new ::ThreadPool(FLAGS_communicator_thread_pool_size));
+  send_threadpool_.reset(new ::ThreadPool(env_flags_dict["thread_pool_size"]));
   need_push_queue_ =
       std::make_shared<BlockingQueue<std::shared_ptr<SparseIdsMap>>>(
           geo_need_push_nums);
@@ -548,7 +551,7 @@ void GeoSgdCommunicator::Send(const std::vector<std::string> &sparse_var_names,
   }
   need_push_queue_->Push(ids_table);
   auto after_run_send = GetCurrentUS();
-  VLOG(3) << "run send_op use time " << after_run_send - before_run_send;
+  VLOG(4) << "run send_op use time " << after_run_send - before_run_send;
 }
 
 void GeoSgdCommunicator::SendThread() {
@@ -557,7 +560,7 @@ void GeoSgdCommunicator::SendThread() {
 
   while (running_) {
     std::vector<std::future<void>> task_futures;
-    task_futures.reserve(send_varname_to_ctx_.size());
+    task_futures.reserve(send_var_nums_);
 
     int wait_times = 0;
     while (ids_send_vec_.size() < geo_need_push_nums_) {
@@ -567,8 +570,8 @@ void GeoSgdCommunicator::SendThread() {
         ids_send_vec_.push_back(*(need_push_queue_->Pop()));
         VLOG(4) << "ids_send_vec_ pushed";
       } else if (need_push_queue_->Size() == 0) {
-        VLOG(3) << "wait_times -> " << wait_times;
-        if (wait_times >= FLAGS_communicator_send_wait_times) {
+        VLOG(4) << "wait_times -> " << wait_times;
+        if (wait_times >= env_flags_dict["send_wait_times"]) {
           break;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -579,10 +582,10 @@ void GeoSgdCommunicator::SendThread() {
 
     if (ids_send_vec_.size() >= geo_need_push_nums_) {
       auto after_run_training = GetCurrentUS();
-      VLOG(3) << "run Training use time "
+      VLOG(4) << "run Training use time "
               << after_run_training - before_run_training;
       before_run_training = GetCurrentUS();
-      VLOG(3) << "Start send after get need_push_num";
+      VLOG(4) << "Start send after get need_push_num";
 
       for (auto &iter : send_varname_to_ctx_) {
         auto &var_name = iter.first;
@@ -591,28 +594,31 @@ void GeoSgdCommunicator::SendThread() {
           for (auto &splited_var_name : iter.second.splited_var_names) {
             auto send_task = [this, &var_name, &splited_var_name] {
               auto before_run_geo = GetCurrentUS();
+              VLOG(4) << "ids_send_vec_ size: " << ids_send_vec_.size();
               auto ids_set =
                   SparseIdsMerge(ids_send_vec_, var_name, splited_var_name);
               SendUpdateSparseVars(var_name, splited_var_name, ids_set);
               RecvUpdateSparseVars(var_name, splited_var_name);
               auto after_run_geo = GetCurrentUS();
-              VLOG(1) << "run GEO-SGD var " << splited_var_name << " use time "
+              VLOG(3) << "run GEO-SGD var " << splited_var_name << " use time "
                       << after_run_geo - before_run_geo;
             };
             task_futures.emplace_back(
                 send_threadpool_->enqueue(std::move(send_task)));
           }
         } else {
-          auto send_task = [this, &var_name] {
-            auto before_run_geo = GetCurrentUS();
-            SendUpdateDenseVars(var_name);
-            RecvUpdateDenseVars(var_name);
-            auto after_run_geo = GetCurrentUS();
-            VLOG(3) << "run GEO-SGD var " << var_name << " use time "
-                    << after_run_geo - before_run_geo;
-          };
-          task_futures.emplace_back(
-              send_threadpool_->enqueue(std::move(send_task)));
+          for (auto &splited_var_name : iter.second.splited_var_names) {
+            auto send_task = [this, &var_name, &splited_var_name] {
+              auto before_run_geo = GetCurrentUS();
+              SendUpdateDenseVars(var_name, splited_var_name);
+              RecvUpdateDenseVars(var_name, splited_var_name);
+              auto after_run_geo = GetCurrentUS();
+              VLOG(3) << "run GEO-SGD var " << splited_var_name << " use time "
+                      << after_run_geo - before_run_geo;
+            };
+            task_futures.emplace_back(
+                send_threadpool_->enqueue(std::move(send_task)));
+          }
         }
       }
       for (auto &task_f : task_futures) {
@@ -627,31 +633,36 @@ std::unordered_set<int64_t> GeoSgdCommunicator::SparseIdsMerge(
     const std::vector<SparseIdsMap> &ids_send_vec, const std::string &var_name,
     const std::string &splited_var_name) {
   // every batch has some sparse id, merge them into one unoredered_set
-  VLOG(3) << "Sparse Ids merge var: " << var_name
+  VLOG(4) << "Sparse Ids merge var: " << var_name
           << " splited var: " << splited_var_name;
   auto before_run_ids_merge_ = GetCurrentUS();
   auto origin_var_name = DeltaVarToVar(var_name);
   auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
   std::unordered_set<int64_t> ids_set;
-
   for (auto ids_map : ids_send_vec) {
     for (auto id : ids_map[origin_var_name][splited_var_index]) {
       ids_set.insert(id);
     }
   }
   auto after_run_ids_merge_ = GetCurrentUS();
-  VLOG(3) << "run SparseIdsMerge " << splited_var_name << " has nums "
+  VLOG(4) << "run SparseIdsMerge " << splited_var_name << " has nums "
           << ids_set.size() << " use time "
           << after_run_ids_merge_ - before_run_ids_merge_;
   return ids_set;
 }
 
-void GeoSgdCommunicator::SendUpdateDenseVars(const std::string &var_name) {
+void GeoSgdCommunicator::SendUpdateDenseVars(
+    const std::string &var_name, const std::string &splited_var_name) {
   // calc var_delata = (var_training - var_old)/trainer_nums
   // calc var_old += var_delta
   // var_name: param.delta
   auto origin_var_name = DeltaVarToVar(var_name);
+  auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
+  VLOG(4) << "Dense var: " << var_name
+          << " 's splited var: " << splited_var_name
+          << " splited var index: " << splited_var_index;
   auto before_run_send_dense = GetCurrentUS();
+  auto cpu_ctx = paddle::platform::CPUDeviceContext();
 
   auto *var_x = training_scope_->FindVar(origin_var_name);
   auto var_x_tensor = var_x->Get<framework::LoDTensor>();
@@ -659,55 +670,73 @@ void GeoSgdCommunicator::SendUpdateDenseVars(const std::string &var_name) {
   auto *var_y = old_scope_->FindVar(origin_var_name);
   auto var_y_tensor = var_y->Get<framework::LoDTensor>();
 
-  auto cpu_ctx = paddle::platform::CPUDeviceContext();
   auto dims = var_x_tensor.dims();
+  auto total_element = var_x_tensor.numel();
+  int64_t section = 0;
+  int64_t begin_loc = 0;
+  int64_t dimension = 0;
 
-  // create temp var for sub
-  auto *var_y_sub = old_scope_->Var(var_name);
-  framework::CopyVariable(*var_y, var_y_sub);
-  auto var_y_sub_tensor = var_y_sub->Get<framework::LoDTensor>();
+  size_t out_num = send_varname_to_ctx_[var_name].height_sections.size();
+  if (out_num > 1) {
+    section = send_varname_to_ctx_[var_name].height_sections[splited_var_index];
+    dims[0] = section;
+    begin_loc = absolute_section_[origin_var_name][splited_var_index];
+    dimension = total_element / vars_first_dimension_[origin_var_name];
+    total_element = section * dimension;
+    VLOG(4) << "Dense splited var: " << splited_var_name
+            << " section: " << section << " dimension: " << dimension
+            << " begin loc: " << begin_loc << " total_element "
+            << total_element;
+  }
+
+  auto *var_x_data = var_x_tensor.mutable_data<float>(var_x_tensor.place()) +
+                     begin_loc * dimension;
+  VLOG(4) << "Dense splited var: " << splited_var_name << " var_x_data[0] "
+          << var_x_data[0] << " var_x_data[end] "
+          << var_x_data[total_element - 1];
+  auto *var_y_data = var_y_tensor.mutable_data<float>(var_y_tensor.place()) +
+                     begin_loc * dimension;
+  VLOG(4) << "Dense splited var: " << splited_var_name << " var_y_data[0] "
+          << var_y_data[0] << " var_y_data[end] "
+          << var_y_data[total_element - 1];
 
   // create delta var in delta scope
-  auto *var_z = delta_scope_->Var(var_name);
-  auto *var_z_tensor = var_z->GetMutable<framework::LoDTensor>();
-  var_z_tensor->mutable_data<float>(dims, var_x_tensor.place());
-  var_z_tensor->set_lod(var_x_tensor.lod());
+  auto *var_z_tensor =
+      delta_scope_->Var(splited_var_name)->GetMutable<framework::LoDTensor>();
+  var_z_tensor->Resize(dims);
+  var_z_tensor->mutable_data<float>(dims, cpu_ctx.GetPlace());
+  auto *var_z_data = var_z_tensor->mutable_data<float>(cpu_ctx.GetPlace());
 
-  math::SetConstant<paddle::platform::CPUDeviceContext, float> constant_functor;
-  constant_functor(cpu_ctx, var_z_tensor, static_cast<float>(0));
+  VLOG(4) << "Dense splited var: " << splited_var_name << "var_z_data[0] "
+          << var_z_data[0] << " var_z_data[end] "
+          << var_z_data[total_element - 1];
 
   // calc sub = var_training - var_old
   auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, float>(cpu_ctx);
-  blas.SCAL(var_y_sub_tensor.numel(), -1,
-            var_y_sub_tensor.mutable_data<float>(var_y_sub_tensor.place()));
-  blas.VADD(var_x_tensor.numel(),
-            var_x_tensor.mutable_data<float>(var_x_tensor.place()),
-            var_y_sub_tensor.mutable_data<float>(var_y_sub_tensor.place()),
-            var_z_tensor->mutable_data<float>(var_z_tensor->place()));
+  blas.VSUB(total_element, var_x_data, var_y_data, var_z_data);
+  VLOG(4) << "Dense splited var: " << splited_var_name << " var_z_data[0] "
+          << var_z_data[0] << " var_z_data[end] "
+          << var_z_data[total_element - 1];
 
   // calc var_delta = sub / trainer_nums
   float trainer_param = 1.0 / static_cast<float>(trainer_nums_);
-  blas.SCAL(var_z_tensor->numel(), trainer_param,
-            var_z_tensor->mutable_data<float>(var_z_tensor->place()));
+  blas.SCAL(total_element, trainer_param, var_z_data);
 
   // calc var_old += var_delta
-  blas.VADD(var_y_tensor.numel(),
-            var_y_tensor.mutable_data<float>(var_y_tensor.place()),
-            var_z_tensor->mutable_data<float>(var_z_tensor->place()),
-            var_y_tensor.mutable_data<float>(var_y_tensor.place()));
+  blas.VADD(total_element, var_y_data, var_z_data, var_y_data);
+  VLOG(4) << "Dense splited var: " << splited_var_name << " var_y_data[0] "
+          << var_y_data[0] << " var_y_data[end] "
+          << var_y_data[total_element - 1];
 
   auto after_run_send_dense = GetCurrentUS();
-  VLOG(3) << "run send update dense var " << var_name << " use time "
+  VLOG(4) << "run send update dense var " << var_name << " use time "
           << after_run_send_dense - before_run_send_dense;
 
-  auto send_functor = distributed::ParameterSend<float>();
-  auto &ctx = send_varname_to_ctx_.at(var_name);
-
   auto before_send_dense = GetCurrentUS();
-  send_functor(ctx, *delta_scope_.get(), true, 1);
-  auto after_send_denxe = GetCurrentUS();
-  VLOG(3) << "send " << var_name << " use time "
-          << after_send_denxe - before_send_dense;
+  RpcSend(var_name, splited_var_name, splited_var_index);
+  auto after_send_dense = GetCurrentUS();
+  VLOG(4) << "send " << splited_var_name << " use time "
+          << after_send_dense - before_send_dense;
 }
 
 void GeoSgdCommunicator::SendUpdateSparseVars(
@@ -755,14 +784,14 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
     float *z_val = z_value + y * row_numel;
 
     std::vector<float> row_delta(row_numel, 0);
-    VSUB<float>(row_numel, x_val, y_val, row_delta.data());
+    blas.VSUB(row_numel, x_val, y_val, row_delta.data());
     blas.SCAL(row_numel, avg, row_delta.data());
     blas.VADD(row_numel, row_delta.data(), y_val, y_val);
     blas.VCOPY(row_numel, row_delta.data(), z_val);
   }
 
   auto after_run_send_sparse = GetCurrentUS();
-  VLOG(3) << "run send update sparse var " << splited_var_name << " use time "
+  VLOG(4) << "run send update sparse var " << splited_var_name << " use time "
           << after_run_send_sparse - before_run_send_sparse;
 
   auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
@@ -779,23 +808,29 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
   auto before_send_sparse = GetCurrentUS();
   RpcSend(var_name, splited_var_name, splited_var_index);
   auto after_send_sparse = GetCurrentUS();
-  VLOG(3) << "send " << splited_var_name << " has nums " << new_rows.size()
+  VLOG(4) << "send " << splited_var_name << " has nums " << new_rows.size()
           << " use time " << after_send_sparse - before_send_sparse;
 }
 
-void GeoSgdCommunicator::RecvUpdateDenseVars(const std::string &var_name) {
+void GeoSgdCommunicator::RecvUpdateDenseVars(
+    const std::string &var_name, const std::string &splited_var_name) {
   // calc var_training += var_pserver - var_old
   // calc var_old = var_pserver
   // var_name: param.delta
 
   // step1: recv dense var from pserver
   auto origin_var_name = DeltaVarToVar(var_name);
+  auto origin_splited_var_name = DeltaVarToVar(splited_var_name);
+  auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
+  auto cpu_ctx = paddle::platform::CPUDeviceContext();
 
   auto before_run_recv = GetCurrentUS();
-  auto recv_functor = distributed::ParameterRecv<float>();
-  recv_functor(recv_varname_to_ctx_[origin_var_name], *pserver_scope_.get());
+  VLOG(4) << "Dense recv origin_var_name: " << origin_var_name
+          << " origin_splited_var_name: " << origin_splited_var_name
+          << " splited_var_index: " << splited_var_index;
+  RpcRecv(origin_var_name, origin_splited_var_name, splited_var_index);
   auto after_run_recv = GetCurrentUS();
-  VLOG(3) << "recv var " << origin_var_name << " use time "
+  VLOG(4) << "recv var " << origin_splited_var_name << " use time "
           << after_run_recv - before_run_recv;
 
   // step2: update dense var
@@ -806,31 +841,75 @@ void GeoSgdCommunicator::RecvUpdateDenseVars(const std::string &var_name) {
   auto *var_y = old_scope_->FindVar(origin_var_name);
   auto var_y_tensor = var_y->Get<framework::LoDTensor>();
 
-  auto *var_y_sub = old_scope_->Var(origin_var_name);
-  framework::CopyVariable(*var_y, var_y_sub);
-  auto var_y_sub_tensor = var_y_sub->Get<framework::LoDTensor>();
-
-  auto *var_z = pserver_scope_.get()->FindVar(origin_var_name);
+  auto *var_z = pserver_scope_.get()->FindVar(origin_splited_var_name);
   auto var_z_tensor = var_z->Get<framework::LoDTensor>();
+  auto dims = var_z_tensor.dims();
+  auto total_element = var_z_tensor.numel();
 
-  auto cpu_ctx = paddle::platform::CPUDeviceContext();
+  int64_t section = 0;
+  int64_t begin_loc = 0;
+  int64_t dimension = 0;
+  size_t out_num = recv_varname_to_ctx_[origin_var_name].height_sections.size();
+  if (out_num > 1) {
+    section = dims[0];
+    begin_loc = absolute_section_[origin_var_name][splited_var_index];
+    dimension = total_element / section;
+    VLOG(4) << "Dense splited var: " << splited_var_name
+            << " section: " << section << " dimension: " << dimension
+            << " begin loc: " << begin_loc << " total_element "
+            << total_element;
+  }
+
+  auto *var_x_data = var_x_tensor.mutable_data<float>(var_x_tensor.place()) +
+                     begin_loc * dimension;
+  VLOG(4) << "Dense splited var: " << splited_var_name << " var_x_data[0] "
+          << var_x_data[0] << " var_x_data[end] "
+          << var_x_data[total_element - 1];
+
+  auto *var_y_data = var_y_tensor.mutable_data<float>(var_y_tensor.place()) +
+                     begin_loc * dimension;
+  VLOG(4) << "Dense splited var: " << splited_var_name << " var_y_data[0] "
+          << var_y_data[0] << " var_y_data[end] "
+          << var_y_data[total_element - 1];
+
+  auto *var_z_data = var_z_tensor.mutable_data<float>(cpu_ctx.GetPlace());
+  VLOG(4) << "Dense splited var: " << splited_var_name << " var_z_data[0] "
+          << var_z_data[0] << " var_z_data[end] "
+          << var_z_data[total_element - 1];
+
+  auto *var_y_sub_tensor = old_scope_->Var(origin_splited_var_name)
+                               ->GetMutable<framework::LoDTensor>();
+  var_y_sub_tensor->Resize(dims);
+  var_y_sub_tensor->mutable_data<float>(dims, cpu_ctx.GetPlace());
+  auto *var_y_sub_data =
+      var_y_sub_tensor->mutable_data<float>(cpu_ctx.GetPlace());
+
+  VLOG(4) << "Dense splited var: " << splited_var_name << " var_y_sub_data[0] "
+          << var_y_sub_data[0] << " var_y_sub_data[end] "
+          << var_y_sub_data[total_element - 1];
+
   auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, float>(cpu_ctx);
+
   // calc sub = pserver - old
-  blas.SCAL(var_y_sub_tensor.numel(), -1,
-            var_y_sub_tensor.mutable_data<float>(var_y_sub_tensor.place()));
-  blas.VADD(var_y_tensor.numel(),
-            var_y_sub_tensor.mutable_data<float>(var_y_sub_tensor.place()),
-            var_z_tensor.mutable_data<float>(var_z_tensor.place()),
-            var_y_sub_tensor.mutable_data<float>(var_y_sub_tensor.place()));
-  // calc recv += sub
-  blas.VADD(var_x_tensor.numel(),
-            var_x_tensor.mutable_data<float>(var_x_tensor.place()),
-            var_y_sub_tensor.mutable_data<float>(var_y_sub_tensor.place()),
-            var_x_tensor.mutable_data<float>(var_x_tensor.place()));
+  blas.VSUB(total_element, var_z_data, var_y_data, var_y_sub_data);
+  VLOG(4) << "Dense splited var: " << splited_var_name << " var_y_sub_data[0] "
+          << var_y_sub_data[0] << " var_y_sub_data[end] "
+          << var_y_sub_data[total_element - 1];
+
+  // calc train += sub
+  blas.VADD(total_element, var_x_data, var_y_sub_data, var_x_data);
+  VLOG(4) << "Dense splited var: " << splited_var_name << " var_x_data[0] "
+          << var_x_data[0] << " var_x_data[end] "
+          << var_x_data[total_element - 1];
+
   // calc old = pserver
-  framework::CopyVariable(*var_z, var_y);
+  blas.VCOPY(total_element, var_z_data, var_y_data);
+  VLOG(4) << "Dense splited var: " << splited_var_name << " var_y_data[0] "
+          << var_y_data[0] << " var_y_data[end] "
+          << var_y_data[total_element - 1];
+
   auto after_run_update = GetCurrentUS();
-  VLOG(3) << "dese var update " << origin_var_name << " use time "
+  VLOG(4) << "dense var update " << origin_splited_var_name << " use time "
           << after_run_update - before_run_update;
 }
 
@@ -844,7 +923,7 @@ void GeoSgdCommunicator::RecvUpdateSparseVars(
   auto before_run_recv = GetCurrentUS();
   RpcRecv(origin_var_name, origin_splited_var_name, splited_var_index);
   auto after_run_recv = GetCurrentUS();
-  VLOG(3) << "recv var " << origin_splited_var_name << " use time "
+  VLOG(4) << "recv var " << origin_splited_var_name << " use time "
           << after_run_recv - before_run_recv;
 
   // step 2: update sparse var
@@ -885,13 +964,13 @@ void GeoSgdCommunicator::RecvUpdateSparseVars(
     float *y_val = y_value + ids * row_numel;
     float *z_val = z_value + y * row_numel;
 
-    VSUB(row_numel, z_val, y_val, row_delta.data());
+    blas.VSUB(row_numel, z_val, y_val, row_delta.data());
     blas.VADD(row_numel, row_delta.data(), x_val, x_val);
     blas.VCOPY(row_numel, z_val, y_val);
   }
 
   auto after_run_update = GetCurrentUS();
-  VLOG(3) << "sparse var recv update " << origin_splited_var_name << " has num "
+  VLOG(4) << "sparse var recv update " << origin_splited_var_name << " has num "
           << new_rows.size() << " use time "
           << after_run_update - before_run_update;
 }

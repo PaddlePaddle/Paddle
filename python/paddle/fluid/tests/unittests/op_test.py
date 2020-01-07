@@ -33,6 +33,7 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable
 from testsuite import create_op, set_input, append_input_output, append_loss_ops
 from paddle.fluid import unique_name
+from white_list import op_accuracy_white_list, check_shape_white_list, compile_vs_runtime_white_list, no_check_set_white_list
 
 
 def _set_use_system_allocator(value=None):
@@ -68,6 +69,10 @@ def get_numeric_gradient(place,
 
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.shape())
+    if not hasattr(get_numeric_gradient, 'check_shape_time'):
+        get_numeric_gradient.check_shape_time = 0
+    if tensor_size >= 100:
+        get_numeric_gradient.check_shape_time += 1
     tensor_to_check_dtype = tensor_to_check._dtype()
     if tensor_to_check_dtype == core.VarDesc.VarType.FP32:
         tensor_to_check_dtype = np.float32
@@ -141,6 +146,30 @@ def get_numeric_gradient(place,
     return gradient_flat.reshape(tensor_to_check.shape())
 
 
+def skip_check_grad_ci(reason=None):
+    """Decorator to skip check_grad CI.
+       
+       Check_grad is required for Op test cases. However, there are some special
+       cases that do not need to do check_grad. This decorator is used to skip the 
+       check_grad of the above cases.
+       
+       Note: the execution of unit test will not be skipped. It just avoids check_grad 
+       checking in tearDownClass method by setting a `no_need_check_grad` flag.
+
+       Example:
+           @skip_check_grad_ci(reason="For inference, check_grad is not required.")
+           class TestInference(OpTest):
+    """
+    if not isinstance(reason, str):
+        raise AssertionError("The reason for skipping check_grad is required.")
+
+    def wrapper(cls):
+        cls.no_need_check_grad = True
+        return cls
+
+    return wrapper
+
+
 class OpTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -148,7 +177,7 @@ class OpTest(unittest.TestCase):
         cls._np_rand_state = np.random.get_state()
         cls._py_rand_state = random.getstate()
         cls.call_once = False
-        cls.dtype = "float32"
+        cls.dtype = None
         cls.outputs = {}
 
         np.random.seed(123)
@@ -164,30 +193,98 @@ class OpTest(unittest.TestCase):
 
         _set_use_system_allocator(cls._use_system_allocator)
 
+        def is_empty_grad_op(op_type):
+            all_op_kernels = core._get_all_register_op_kernels()
+            grad_op = op_type + '_grad'
+            if grad_op in all_op_kernels.keys():
+                if hasattr(cls, "use_mkldnn") and cls.use_mkldnn == True:
+                    grad_op_kernels = all_op_kernels[grad_op]
+                    for grad_op_kernel in grad_op_kernels:
+                        if 'MKLDNN' in grad_op_kernel:
+                            return False
+                else:
+                    return False
+            return True
+
+        if not hasattr(cls, "op_type"):
+            raise AssertionError(
+                "This test do not have op_type in class attrs,"
+                " please set self.__class__.op_type=the_real_op_type manually.")
+
+        # case in NO_FP64_CHECK_GRAD_CASES and op in NO_FP64_CHECK_GRAD_OP_LIST should be fixed
+        if not hasattr(cls, "no_need_check_grad") \
+            and not is_empty_grad_op(cls.op_type):
+            if cls.dtype is None or \
+                (cls.dtype == np.float16 \
+                    and cls.op_type not in op_accuracy_white_list.NO_FP16_CHECK_GRAD_OP_LIST \
+                    and not hasattr(cls, "exist_check_grad")):
+                raise AssertionError("This test of %s op needs check_grad." %
+                                     cls.op_type)
+
+            if cls.dtype in [np.float32, np.float64] \
+                and cls.op_type not in op_accuracy_white_list.NO_FP64_CHECK_GRAD_OP_LIST \
+                and not hasattr(cls, 'exist_fp64_check_grad'):
+                raise AssertionError(
+                    "This test of %s op needs check_grad with fp64 precision." %
+                    cls.op_type)
+
+        if hasattr(get_numeric_gradient, 'check_shape_time') \
+            and get_numeric_gradient.check_shape_time == 0 \
+            and OpTest.op_type not in check_shape_white_list.NOT_CHECK_OP_LIST \
+            and OpTest.op_type not in check_shape_white_list.NEED_TO_FIX_OP_LIST:
+            raise AssertionError(
+                "At least one input's shape should be large than or equal to 100 for "
+                + OpTest.op_type + " Op.")
+
     def try_call_once(self, data_type):
         if not self.call_once:
             self.call_once = True
             self.dtype = data_type
 
     def infer_dtype_from_inputs_outputs(self, inputs, outputs):
-        def infer_dtype(numpy_dict):
+        def is_np_data(input):
+            return isinstance(input, (np.ndarray, np.generic))
+
+        def infer_dtype(numpy_dict, dtype_set):
             assert isinstance(
                 numpy_dict,
                 dict), "self.inputs, self.outputs must be numpy_dict"
-            for var_name, var_value in six.iteritems(numpy_dict):
-                if isinstance(var_value, (np.ndarray, np.generic)):
-                    self.try_call_once(var_value.dtype)
-                elif isinstance(var_value, (list, tuple)):
-                    # the case of self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
-                    if len(var_value) > 1 and isinstance(var_value[1], (
-                            np.ndarray, np.generic)):
-                        instance = var_value[1]
-                        self.try_call_once(instance[1].dtype)
-                else:
-                    self.try_call_once("float32")
+            # the inputs are as follows:
+            # case 1: inputs = {'X': x}
+            # case 2: inputs = {'X': (x, x_lod)}
+            # case 3: inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
+            # case 4: inputs = {'X': [("x1", (x1, [x1_lod1])), ("x2", (x2, [x2_.lod2]))]}
+            # TODO(juncaipeng) infer dtype from inputs maybe obtain wrong type.
+            for _, var_value in six.iteritems(numpy_dict):
+                if is_np_data(var_value):  # case 1
+                    dtype_set.add(var_value.dtype)
+                elif isinstance(var_value, (list, tuple)):  # case 2, 3, 4
+                    for sub_val_value in var_value:
+                        if is_np_data(sub_val_value):  # case 2
+                            dtype_set.add(sub_val_value.dtype)
+                        elif len(sub_val_value) > 1 and is_np_data(
+                                sub_val_value[1]):  # case 3
+                            dtype_set.add(sub_val_value[1].dtype)
+                        elif len(sub_val_value) > 1 and isinstance(sub_val_value[1], (list, tuple)) \
+                            and is_np_data(sub_val_value[1][0]): # case 4
+                            dtype_set.add(sub_val_value[1][0].dtype)
 
-        infer_dtype(inputs)
-        infer_dtype(outputs)
+        # infer dtype from inputs, and dtype means the precision of the test
+        # collect dtype of all inputs
+        dtype_set = set()
+        infer_dtype(inputs, dtype_set)
+        dtype_list = [
+            np.dtype(np.float64), np.dtype(np.float32), np.dtype(np.float16),
+            np.dtype(np.int64), np.dtype(np.int32), np.dtype(np.int16),
+            np.dtype(np.int8), np.dtype(np.uint8), np.dtype(np.bool)
+        ]
+        # check the dtype in dtype_list in order, select the first dtype that in dtype_set
+        for dtype in dtype_list:
+            if dtype in dtype_set:
+                self.dtype = dtype
+                break
+        # save dtype in class attr
+        self.__class__.dtype = self.dtype
 
     def feed_var(self, input_vars, place):
         feed_map = {}
@@ -214,6 +311,9 @@ class OpTest(unittest.TestCase):
         return feed_map
 
     def _append_ops(self, block):
+        self.__class__.op_type = self.op_type  # for ci check, please not delete it for now
+        if hasattr(self, "use_mkldnn"):
+            self.__class__.use_mkldnn = self.use_mkldnn
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
         "infer datatype from inputs and outputs for this test case"
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
@@ -268,7 +368,7 @@ class OpTest(unittest.TestCase):
             data = value[0]
             lod = value[1]
             v = fluid.dygraph.base.to_variable(value=data)
-            v._ivar.value().get_tensor().set_recursive_sequence_lengths(lod)
+            v.value().get_tensor().set_recursive_sequence_lengths(lod)
             return v
         else:
             return fluid.dygraph.base.to_variable(value)
@@ -289,7 +389,7 @@ class OpTest(unittest.TestCase):
                 if if_return_inputs_grad_dict:
                     v.stop_gradient = False
                 if has_lod:
-                    v._ivar.value().get_tensor().set_recursive_sequence_lengths(
+                    v.value().get_tensor().set_recursive_sequence_lengths(
                         lod_temp)
             else:
                 v = block.create_var(
@@ -352,6 +452,7 @@ class OpTest(unittest.TestCase):
             return var_dict
 
     def _calc_dygraph_output(self, place, parallel=False, no_check_set=None):
+        self.__class__.op_type = self.op_type  # for ci check, please not delete it for now
         with fluid.dygraph.base.guard(place=place):
             block = fluid.default_main_program().global_block()
 
@@ -467,6 +568,10 @@ class OpTest(unittest.TestCase):
         """
         # compare expect_outs and actual_outs
         for i, name in enumerate(fetch_list):
+            # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure 
+            # computational consistency.
+            # When inplace_atol is not None, the inplace check uses numpy.allclose
+            # to check inplace result instead of numpy.array_equal.
             if inplace_atol is not None:
                 self.assertTrue(
                     np.allclose(
@@ -798,6 +903,10 @@ class OpTest(unittest.TestCase):
                                 equal_nan=False,
                                 check_dygraph=True,
                                 inplace_atol=None):
+        if no_check_set is not None:
+            if self.op_type not in no_check_set_white_list.no_check_set_white_list:
+                raise AssertionError(
+                    "no_check_set of op %s must be set to None." % self.op_type)
         if check_dygraph:
             dygraph_outs = self._calc_dygraph_output(
                 place, no_check_set=no_check_set)
@@ -840,8 +949,8 @@ class OpTest(unittest.TestCase):
                     if check_dygraph:
                         imperative_actual = find_imperative_actual(
                             sub_out_name, dygraph_outs, place)
-                        imperative_actual_t = np.array(
-                            imperative_actual._ivar.value().get_tensor())
+                        imperative_actual_t = np.array(imperative_actual.value()
+                                                       .get_tensor())
                     idx = find_actual(sub_out_name, fetch_list)
                     actual = outs[idx]
                     actual_t = np.array(actual)
@@ -868,7 +977,7 @@ class OpTest(unittest.TestCase):
                             ") has different lod at " + str(place))
                         if check_dygraph:
                             self.assertListEqual(
-                                imperative_actual._ivar.value().get_tensor()
+                                imperative_actual.value().get_tensor()
                                 .recursive_sequence_lengths(), expect[1],
                                 "Output (" + out_name +
                                 ") has different lod at " + str(place) +
@@ -877,8 +986,8 @@ class OpTest(unittest.TestCase):
                 if check_dygraph:
                     imperative_actual = find_imperative_actual(
                         out_name, dygraph_outs, place)
-                    imperative_actual_t = np.array(
-                        imperative_actual._ivar.value().get_tensor())
+                    imperative_actual_t = np.array(imperative_actual.value()
+                                                   .get_tensor())
                 idx = find_actual(out_name, fetch_list)
                 actual = outs[idx]
                 actual_t = np.array(actual)
@@ -913,15 +1022,22 @@ class OpTest(unittest.TestCase):
                                          ") has different lod at " + str(place))
                     if check_dygraph:
                         self.assertListEqual(
-                            imperative_actual._ivar.value().get_tensor()
+                            imperative_actual.value().get_tensor()
                             .recursive_sequence_lengths(), expect[1],
                             "Output (" + out_name + ") has different lod at " +
                             str(place) + " in dygraph mode")
 
-        # inplace_atol only used when op doesn't ensure computational consistency
+        # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure 
+        # computational consistency.
+        # For example, group_norm uses AtomicAdd on CUDAPlace, which do not ensure
+        # computation order when multiple threads write the same address. So the 
+        # result of group_norm is non-deterministic when datatype is float.
+        # When inplace_atol is not None, the inplace check uses numpy.allclose
+        # to check inplace result instead of numpy.array_equal.
         if inplace_atol is not None:
             warnings.warn(
-                "By default, inplace_atol should not be set, please check it")
+                "inplace_atol should only be set when op doesn't ensure computational consistency, please check it!"
+            )
         # Check inplace for given op, its grad op, its grad_grad op, etc.
         # No effect on original OpTest 
         self.check_inplace_output_with_place(
@@ -1002,8 +1118,10 @@ class OpTest(unittest.TestCase):
                      no_check_set=None,
                      equal_nan=False,
                      check_dygraph=True,
-                     inplace_atol=None,
-                     check_compile_vs_runtime=False):
+                     inplace_atol=None):
+        self.__class__.op_type = self.op_type
+        if hasattr(self, "use_mkldnn"):
+            self.__class__.use_mkldnn = self.use_mkldnn
         places = self._get_places()
         for place in places:
             res = self.check_output_with_place(place, atol, no_check_set,
@@ -1012,7 +1130,7 @@ class OpTest(unittest.TestCase):
                 outs, dygraph_outs, fetch_list = res
             else:
                 outs, fetch_list = res
-            if check_compile_vs_runtime:
+            if self.op_type not in compile_vs_runtime_white_list.COMPILE_RUN_OP_WHITE_LIST:
                 self.check_compile_vs_runtime(fetch_list, outs)
 
     def check_output_customized(self, checker):
@@ -1042,6 +1160,13 @@ class OpTest(unittest.TestCase):
 
             self.assertLessEqual(max_diff, max_relative_error, err_msg())
 
+    def _check_grad_helper(self):
+        self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
+        self.__class__.op_type = self.op_type
+        self.__class__.exist_check_grad = True
+        if self.dtype == np.float64:
+            self.__class__.exist_fp64_check_grad = True
+
     def check_grad(self,
                    inputs_to_check,
                    output_names,
@@ -1051,6 +1176,7 @@ class OpTest(unittest.TestCase):
                    max_relative_error=0.005,
                    user_defined_grads=None,
                    check_dygraph=True):
+        self._check_grad_helper()
         places = self._get_places()
         for place in places:
             self.check_grad_with_place(place, inputs_to_check, output_names,
@@ -1068,10 +1194,13 @@ class OpTest(unittest.TestCase):
                               max_relative_error=0.005,
                               user_defined_grads=None,
                               check_dygraph=True):
+        OpTest.op_type = self.op_type
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
         op_attrs = self.attrs if hasattr(self, "attrs") else dict()
+
+        self._check_grad_helper()
 
         cache_list = None
         if hasattr(self, "cache_name_list"):

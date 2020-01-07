@@ -98,7 +98,7 @@ TEST(communicator, merge_selected_rows) {
     out_values.push_back(static_cast<float>(i * (10 - i)));
   }
   for (size_t i = 0; i < out_slr.rows().size(); ++i) {
-    ASSERT_EQ(out_slr.rows()[i], i);
+    ASSERT_EQ(out_slr.rows()[i], static_cast<int>(i));
     for (auto j = 0; j < width; ++j) {
       ASSERT_EQ(out_data[i * width + j], out_values[i]);
     }

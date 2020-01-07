@@ -156,7 +156,6 @@ class PtbModel(fluid.Layer):
             init_scale=init_scale,
             dropout=dropout)
         self.embedding = Embedding(
-            self.full_name(),
             size=[vocab_size, hidden_size],
             dtype='float32',
             is_sparse=False,
@@ -197,7 +196,6 @@ class PtbModel(fluid.Layer):
         loss = fluid.layers.reshape(loss, shape=[-1, self.num_steps])
         loss = fluid.layers.reduce_mean(loss, dim=[0])
         loss = fluid.layers.reduce_sum(loss)
-        loss.permissions = True
 
         return loss, last_hidden, last_cell
 
@@ -235,8 +233,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
-            adam = Adam(learning_rate=fluid.layers.piecewise_decay(
-                boundaries=bd, values=lr_arr))
+            adam = Adam(
+                learning_rate=fluid.layers.piecewise_decay(
+                    boundaries=bd, values=lr_arr),
+                parameter_list=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -246,7 +246,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
             for i in range(batch_num):
                 x_data = np.arange(12).reshape(4, 3).astype('int64')
                 y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
-                x_data = x_data.reshape((-1, num_steps, 1))
                 y_data = y_data.reshape((-1, 1))
                 init_hidden_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32')
@@ -317,8 +316,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
-            adam = Adam(learning_rate=fluid.layers.piecewise_decay(
-                boundaries=bd, values=lr_arr))
+            adam = Adam(
+                learning_rate=fluid.layers.piecewise_decay(
+                    boundaries=bd, values=lr_arr),
+                parameter_list=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -328,7 +329,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
             for i in range(batch_num):
                 x_data = np.arange(12).reshape(4, 3).astype('int64')
                 y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
-                x_data = x_data.reshape((-1, num_steps, 1))
                 y_data = y_data.reshape((-1, 1))
                 init_hidden_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32')
@@ -355,7 +355,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             # set to zero
             for k, v in opti_dict.items():
                 np_t = v.numpy()
-                var = v._ivar.value().get_tensor()
+                var = v.value().get_tensor()
                 var.set(np.zeros_like(np_t), place)
 
                 self.assertTrue(np.sum(np.abs(v.numpy())) == 0)
@@ -375,7 +375,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             state_dict = ptb_model.state_dict()
             for k, v in state_dict.items():
                 np_t = v.numpy()
-                var = v._ivar.value().get_tensor()
+                var = v.value().get_tensor()
 
                 var.set(np.zeros_like(np_t), place)
 
@@ -422,8 +422,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
-            adam = Adam(learning_rate=fluid.layers.piecewise_decay(
-                boundaries=bd, values=lr_arr))
+            adam = Adam(
+                learning_rate=fluid.layers.piecewise_decay(
+                    boundaries=bd, values=lr_arr),
+                parameter_list=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -433,7 +435,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
             for i in range(batch_num):
                 x_data = np.arange(12).reshape(4, 3).astype('int64')
                 y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
-                x_data = x_data.reshape((-1, num_steps, 1))
                 y_data = y_data.reshape((-1, 1))
                 init_hidden_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32')
@@ -460,7 +461,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             # set to zero
             for k, v in opti_dict.items():
                 np_t = v.numpy()
-                var = v._ivar.value().get_tensor()
+                var = v.value().get_tensor()
                 var.set(np.zeros_like(np_t), place)
 
                 self.assertTrue(np.sum(np.abs(v.numpy())) == 0)
@@ -479,7 +480,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             state_dict = ptb_model.state_dict()
             for k, v in state_dict.items():
                 np_t = v.numpy()
-                var = v._ivar.value().get_tensor()
+                var = v.value().get_tensor()
 
                 var.set(np.zeros_like(np_t), place)
 
@@ -526,8 +527,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
             ) else fluid.CUDAPlace(0)
-            adam = Adam(learning_rate=fluid.layers.piecewise_decay(
-                boundaries=bd, values=lr_arr))
+            adam = Adam(
+                learning_rate=fluid.layers.piecewise_decay(
+                    boundaries=bd, values=lr_arr),
+                parameter_list=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -537,7 +540,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
             for i in range(batch_num):
                 x_data = np.arange(12).reshape(4, 3).astype('int64')
                 y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
-                x_data = x_data.reshape((-1, num_steps, 1))
                 y_data = y_data.reshape((-1, 1))
                 init_hidden_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32')
@@ -566,7 +568,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             for k, v in opti_dict.items():
                 np_t = v.numpy()
                 np_opti_dict[v.name] = np_t
-                var = v._ivar.value().get_tensor()
+                var = v.value().get_tensor()
                 var.set(np.zeros_like(np_t), place)
 
                 self.assertTrue(np.sum(np.abs(v.numpy())) == 0)
@@ -587,7 +589,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             for k, v in state_dict.items():
                 np_t = v.numpy()
                 np_state_dict[v.name] = np_t
-                var = v._ivar.value().get_tensor()
+                var = v.value().get_tensor()
 
                 var.set(np.zeros_like(np_t), place)
 
@@ -639,7 +641,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 learning_rate=fluid.layers.piecewise_decay(
                     boundaries=bd, values=lr_arr),
                 beta1=0.8,
-                beta2=0.6)
+                beta2=0.6,
+                parameter_list=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -652,7 +655,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
             for i in range(1):
                 x_data = np.arange(12).reshape(4, 3).astype('int64')
                 y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
-                x_data = x_data.reshape((-1, num_steps, 1))
                 y_data = y_data.reshape((-1, 1))
                 init_hidden_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32')
@@ -731,7 +733,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 learning_rate=fluid.layers.piecewise_decay(
                     boundaries=bd, values=lr_arr),
                 beta1=0.8,
-                beta2=0.6)
+                beta2=0.6,
+                parameter_list=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -745,7 +748,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
             for i in range(1):
                 x_data = np.arange(12).reshape(4, 3).astype('int64')
                 y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
-                x_data = x_data.reshape((-1, num_steps, 1))
                 y_data = y_data.reshape((-1, 1))
                 init_hidden_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32')
@@ -824,7 +826,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 learning_rate=fluid.layers.piecewise_decay(
                     boundaries=bd, values=lr_arr),
                 beta1=0.8,
-                beta2=0.6)
+                beta2=0.6,
+                parameter_list=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -846,7 +849,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
             for i in range(1):
                 x_data = np.arange(12).reshape(4, 3).astype('int64')
                 y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
-                x_data = x_data.reshape((-1, num_steps, 1))
                 y_data = y_data.reshape((-1, 1))
                 init_hidden_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32')
@@ -890,7 +892,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
     def testOnlyLoadParams(self):
         with fluid.dygraph.guard():
-            emb = fluid.dygraph.Embedding("emb", [10, 10])
+            emb = fluid.dygraph.Embedding([10, 10])
             state_dict = emb.state_dict()
             fluid.save_dygraph(state_dict, "emb_dy")
 

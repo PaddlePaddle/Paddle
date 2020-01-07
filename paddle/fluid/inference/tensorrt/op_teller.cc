@@ -52,7 +52,10 @@ struct SimpleOpTypeSetTeller : public Teller {
                                               "fc",
                                               "shuffle_channel",
                                               "swish",
-                                              "split"}};
+                                              "split",
+                                              "gelu",
+                                              "layer_norm",
+                                              "multihead_matmul"}};
 };
 
 bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc) {
@@ -61,6 +64,12 @@ bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc) {
       boost::get<std::string>(desc.GetAttr("op_namescope")) == "/skip_quant_2/")
     return false;
   for (auto& teller : tellers_) {
+    if (op_type == "pool2d" || op_type == "conv2d" ||
+        op_type == "depthwise_conv2d" || op_type == "conv2d_transpose") {
+      std::vector<int> paddings =
+          boost::get<std::vector<int>>(desc.GetAttr("paddings"));
+      if (paddings.size() > 2) return false;
+    }
     if ((*teller)(op_type, desc)) return true;
   }
   return false;

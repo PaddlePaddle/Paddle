@@ -24,7 +24,7 @@ import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 
 
-class TestZerosOpError(OpTest):
+class TestZerosOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input dtype of zeros_op must be bool, float16, float32, float64, int32, int64.

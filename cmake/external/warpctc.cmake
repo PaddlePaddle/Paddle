@@ -14,11 +14,11 @@
 
 INCLUDE(ExternalProject)
 
-SET(WARPCTC_PREFIX_DIR ${THIRD_PARTY_PATH}/warpctc)
+SET(WARPCTC_PREFIX_DIR  ${THIRD_PARTY_PATH}/warpctc)
+SET(WARPCTC_SOURCE_DIR  ${THIRD_PARTY_PATH}/warpctc/src/extern_warpctc)
 SET(WARPCTC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/warpctc)
-
-# TODO: Use the official github address instead of private branch
-set(WARPCTC_REPOSITORY https://github.com/wopeizl/warp-ctc.git)
+set(WARPCTC_REPOSITORY  https://github.com/baidu-research/warp-ctc)
+set(WARPCTC_TAG         bc29dcfff07ced1c7a19a4ecee48e5ad583cef8e)
 
 SET(WARPCTC_INCLUDE_DIR "${WARPCTC_INSTALL_DIR}/include"
     CACHE PATH "Warp-ctc Directory" FORCE)
@@ -33,7 +33,8 @@ ELSE()
 ENDIF()
 
 cache_third_party(extern_warpctc
-    REPOSITORY   ${WARPCTC_REPOSITORY})
+    REPOSITORY   ${WARPCTC_REPOSITORY}
+    TAG          ${WARPCTC_TAG})
 
 ExternalProject_Add(
     extern_warpctc
@@ -43,6 +44,7 @@ ExternalProject_Add(
     PREFIX          ${WARPCTC_PREFIX_DIR}
     SOURCE_DIR      ${WARPCTC_SOURCE_DIR}
     UPDATE_COMMAND  ""
+    PATCH_COMMAND   ""
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                     -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
@@ -76,7 +78,6 @@ ENDIF(WIN32)
 MESSAGE(STATUS "warp-ctc library: ${WARPCTC_LIBRARIES}")
 get_filename_component(WARPCTC_LIBRARY_PATH ${WARPCTC_LIBRARIES} DIRECTORY)
 INCLUDE_DIRECTORIES(${WARPCTC_INCLUDE_DIR}) # For warpctc code to include its headers.
-INCLUDE_DIRECTORIES(${THIRD_PARTY_PATH}/install) # For Paddle code to include warpctc headers.
 
 ADD_LIBRARY(warpctc SHARED IMPORTED GLOBAL)
 SET_PROPERTY(TARGET warpctc PROPERTY IMPORTED_LOCATION ${WARPCTC_LIBRARIES})

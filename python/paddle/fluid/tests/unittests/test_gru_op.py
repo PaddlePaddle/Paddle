@@ -107,7 +107,7 @@ class TestGRUOp(OpTest):
     def setUp(self):
         self.op_type = "gru"
         self.lod = [[2, 4, 3]]
-        self.D = 5
+        self.D = 40
         self.is_reverse = False
         self.with_h0 = True
         self.with_bias = True
@@ -169,37 +169,32 @@ class TestGRUOriginMode(TestGRUOp):
 
 class TestGRUOp2(TestGRUOp):
     def set_confs(self):
-        self.D = 19
-        self.dtype = 'float32'
+        self.dtype = 'float64'
 
 
 class TestGRUOp2Len0(TestGRUOp):
     def set_confs(self):
-        self.D = 19
         self.lod = [[2, 0, 4]]
-        self.dtype = 'float32'
+        self.dtype = 'float64'
 
 
 class TestGRUOp2OriginMode(TestGRUOp):
     def set_confs(self):
-        self.D = 19
-        self.dtype = 'float32'
+        self.dtype = 'float64'
         self.origin_mode = True
 
 
 class TestGRUOp2OriginModeLen0(TestGRUOp):
     def set_confs(self):
-        self.D = 19
         self.lod = [[0, 3, 4]]
-        self.dtype = 'float32'
+        self.dtype = 'float64'
         self.origin_mode = True
 
 
 class TestGRUOp2OriginModeLastLen0(TestGRUOp):
     def set_confs(self):
-        self.D = 19
         self.lod = [[0, 3, 0]]
-        self.dtype = 'float32'
+        self.dtype = 'float64'
         self.origin_mode = True
 
 

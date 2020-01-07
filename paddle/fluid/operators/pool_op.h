@@ -38,7 +38,7 @@ class PoolOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const;
+      const framework::OpKernelType& expected_kernel_type) const override;
 };
 
 class PoolOpGrad : public framework::OperatorWithKernel {
@@ -50,6 +50,10 @@ class PoolOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override;
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override;
 };
 
 class Pool2dOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -148,8 +152,8 @@ class PoolKernel : public framework::OpKernel<T> {
 
     UpdatePadding(&paddings, global_pooling, adaptive, padding_algorithm,
                   data_dims, strides, ksize);
-    if (data_dims.size() * 2 == paddings.size()) {
-      for (size_t i = 0; i < data_dims.size(); ++i) {
+    if (data_dims.size() * 2 == static_cast<int>(paddings.size())) {
+      for (int i = 0; i < data_dims.size(); ++i) {
         paddings.erase(paddings.begin() + i + 1);
       }
     }
@@ -234,8 +238,8 @@ class PoolGradKernel : public framework::OpKernel<T> {
     }
     UpdatePadding(&paddings, global_pooling, adaptive, padding_algorithm,
                   data_dims, strides, ksize);
-    if (data_dims.size() * 2 == paddings.size()) {
-      for (size_t i = 0; i < data_dims.size(); ++i) {
+    if (data_dims.size() * 2 == static_cast<int>(paddings.size())) {
+      for (int i = 0; i < data_dims.size(); ++i) {
         paddings.erase(paddings.begin() + i + 1);
       }
     }
