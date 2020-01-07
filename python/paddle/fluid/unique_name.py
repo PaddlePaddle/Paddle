@@ -51,6 +51,33 @@ class UniqueNameGenerator(object):
         return self.prefix + "_".join([key, str(tmp)])
 
 
+class DygraphParameterNameChecker(object):
+    """
+    Check whether the name of parameter is used.
+    """
+
+    def __init__(self):
+        self._name_set = set()
+
+    def __call__(self, name):
+        '''
+        Check whether the name is used. If not used, insert into the _name_set.
+
+        Args:
+            name(str): The name of paramete to check.
+
+        Returns(bool): If name is in name_set,  return True; Otherwise, return False.
+
+        '''
+        if name in self._name_set:
+            return True
+        else:
+            self._name_set.add(name)
+            return False
+
+
+dygraph_parameter_name_checker = DygraphParameterNameChecker()
+
 generator = UniqueNameGenerator()
 
 
@@ -101,7 +128,7 @@ def generate_with_ignorable_key(key):
     return generator(key)
 
 
-def switch(new_generator=None):
+def switch(new_generator=None, new_para_name_checker=None):
     """
     Switch the namespace of in current context to a new namespace. Though
     :code:`switch()` and :code:`guard()` can both change namespace, 
@@ -112,9 +139,13 @@ def switch(new_generator=None):
         new_generator(UniqueNameGenerator, optional): A new UniqueNameGenerator, not
             required normally. Default is None, which means switch to a new anonymous
             namespace.
+        new_para_name_checker(DygraphParameterNameChecker, optional): A new DygraphParameterNameChecker,
+            not required normally. Default is None, which means  switch to a new parameter name 
+            checker.
 
     Returns: 
         UniqueNameGenerator: The previous UniqueNameGenerator.
+        DygraphParameterNameChecker: The previous DygraphParameterNameChecker
 
     Examples: 
 
@@ -135,12 +166,19 @@ def switch(new_generator=None):
 
     """
     global generator
-    old = generator
+    old_generator = generator
+    global dygraph_parameter_name_checker
+    old_para_name_checker = dygraph_parameter_name_checker
     if new_generator is None:
         generator = UniqueNameGenerator()
     else:
         generator = new_generator
-    return old
+
+    if new_para_name_checker is None:
+        dygraph_parameter_name_checker = DygraphParameterNameChecker()
+    else:
+        dygraph_parameter_name_checker = new_para_name_checker
+    return old_generator, old_para_name_checker
 
 
 @signature_safe_contextmanager
@@ -180,34 +218,7 @@ def guard(new_generator=None):
         new_generator = UniqueNameGenerator(new_generator)
     elif isinstance(new_generator, six.binary_type):
         new_generator = UniqueNameGenerator(new_generator.decode())
-    old = switch(new_generator)
+
+    old_generator, old_para_name_checker = switch(new_generator)
     yield
-    switch(old)
-
-
-class DygraphParameterNameChecker(object):
-    """
-    Check whether the name of parameter is used.
-    """
-
-    def __init__(self):
-        self._name_set = set()
-
-    def __call__(self, name):
-        '''
-        Check whether the name is used. If not used, insert into the _name_set.
-
-        Args:
-            name(str): The name of paramete to check.
-
-        Returns(bool): If name is in name_set,  return True; Otherwise, return False.
-
-        '''
-        if name in self._name_set:
-            return True
-        else:
-            self._name_set.add(name)
-            return False
-
-
-dygraph_parameter_name_checker = DygraphParameterNameChecker()
+    switch(old_generator, old_para_name_checker)
