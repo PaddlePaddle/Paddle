@@ -56,7 +56,8 @@ static bool IsSpecifiedOp(const std::unordered_set<std::string>& op_types,
 
 static bool IsGradOp(const Node* n) {
   PADDLE_ENFORCE_EQ(n && n->IsOp() && n->Op(), true,
-                    "Node %p should be a op node.", n);
+                    platform::errors::InvalidArgument(
+                        "Expected node %p to be an operator node.", n));
   std::string suffix = "_grad";
   std::string op_type = n->Op()->Type();
   size_t pos = op_type.rfind(suffix);

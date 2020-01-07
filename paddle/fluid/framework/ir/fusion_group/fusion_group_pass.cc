@@ -51,8 +51,9 @@ int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
   for (auto& vec : subgraphs) {
     if (vec.size() >= min_subgraph_size) {
       std::string func_name = "fused_elementwise_" + std::to_string(index++);
-      fusion_group::SubGraph subgraph(type, func_name, save_intermediate_out,
-                                      vec);
+      fusion_group::SubGraph subgraph(
+          type, func_name, save_intermediate_out,
+          std::unordered_set<Node*>(vec.begin(), vec.end()));
       LOG(INFO) << "subgraph: {\n"
                 << DebugString(subgraph.SortedNodes()) << "}\n";
 

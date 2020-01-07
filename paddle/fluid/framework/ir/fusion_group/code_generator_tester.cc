@@ -138,8 +138,7 @@ void CheckOutput(const std::vector<OperationExpression>& expressions,
   for (auto id : output_ids_of_subgraph) {
     float actual = cpu_tensors[id].data<float>()[i];
     float expect = var[id];
-    PADDLE_ENFORCE_LT(fabs(actual - expect), 1.E-05,
-                      "Get %f vs %f (actual vs expect).", actual, expect);
+    EXPECT_LT(fabs(actual - expect), 1.E-05);
   }
 }
 
@@ -150,8 +149,7 @@ void SetupRandomCPUTensor(LoDTensor* tensor) {
   std::uniform_real_distribution<double> uniform_dist(0, 1);
 
   T* ptr = tensor->data<T>();
-  PADDLE_ENFORCE_NOT_NULL(
-      ptr, "Call mutable_data to alloc memory for Tensor first.");
+  EXPECT_NE(ptr, nullptr);
   for (int64_t i = 0; i < tensor->numel(); ++i) {
     ptr[i] = static_cast<T>(uniform_dist(rng)) - static_cast<T>(0.5);
   }
@@ -344,10 +342,10 @@ std::unique_ptr<paddle::framework::ir::Graph> BuildGraph(
   auto* x3 = layers.data("x3", {16, 32});
   auto* tmp_3 = layers.elementwise_mul(x3, tmp_2);
   tmp_3->SetShape({16, 32});
-  layers.elementwise_add(tmp_1, tmp_3);
+  auto* tmp_4 = layers.elementwise_add(tmp_1, tmp_3);
 
   if (backward) {
-    layers.backward();
+    layers.backward({tmp_4});
   }
 
   std::unique_ptr<paddle::framework::ir::Graph> graph(

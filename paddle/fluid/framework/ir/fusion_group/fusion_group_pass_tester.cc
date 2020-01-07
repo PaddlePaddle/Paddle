@@ -140,13 +140,13 @@ int TestMain(std::unique_ptr<Graph> graph, std::string prefix) {
 TEST(FusionGroupPass, elementwise_list) {
   std::unique_ptr<Graph> graph = BuildElementwiseListGraph(true);
   int num_fusion_group_ops = TestMain(std::move(graph), "elementwise_list");
-  PADDLE_ENFORCE_EQ(num_fusion_group_ops, 2);
+  EXPECT_EQ(num_fusion_group_ops, 2);
 }
 
 TEST(FusionGroupPass, elementwise_tree) {
   std::unique_ptr<Graph> graph = BuildElementwiseTreeGraph(true);
   int num_fusion_group_ops = TestMain(std::move(graph), "elementwise_tree");
-  PADDLE_ENFORCE_EQ(num_fusion_group_ops, 4);
+  EXPECT_EQ(num_fusion_group_ops, 4);
 }
 
 }  // namespace ir

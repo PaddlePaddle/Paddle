@@ -55,9 +55,10 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
         if (op->Input(name).size() >= 1U) {
           // Some input vars are not used in grad ops, such as
           // "elementwise_add_grad", where "X", "Y" and "Out" are not used.
-          PADDLE_ENFORCE_NE(var_ids.find(op->Input(name)[0]), var_ids.end(),
-                            "Input(%s) of operation %s should be set.", name,
-                            op->Type());
+          PADDLE_ENFORCE_NE(
+              var_ids.find(op->Input(name)[0]), var_ids.end(),
+              platform::errors::InvalidArgument(
+                  "Input(%s) of operation %s is not set.", name, op->Type()));
           input_ids.push_back(var_ids[op->Input(name)[0]]);
         } else {
           input_ids.push_back(-1);
@@ -69,12 +70,14 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
       std::vector<std::string> output_names =
           OperationMap::Instance().Get(op->Type()).output_names;
       for (auto& name : output_names) {
-        PADDLE_ENFORCE_EQ(op->Output(name).size(), 1U,
-                          "Output(%s) of operation %s should be set.", name,
-                          op->Type());
-        PADDLE_ENFORCE_NE(var_ids.find(op->Output(name)[0]), var_ids.end(),
-                          "Output(%s) of operation %s should be set.", name,
-                          op->Type());
+        PADDLE_ENFORCE_EQ(
+            op->Output(name).size(), 1U,
+            platform::errors::InvalidArgument(
+                "Output(%s) of operation %s is not set.", name, op->Type()));
+        PADDLE_ENFORCE_NE(
+            var_ids.find(op->Output(name)[0]), var_ids.end(),
+            platform::errors::InvalidArgument(
+                "Output(%s) of operation %s is not set.", name, op->Type()));
         output_ids.push_back(var_ids[op->Output(name)[0]]);
       }
       expressions.push_back(
@@ -218,8 +221,9 @@ std::unordered_map<std::string, int> CodeGenerator::EncodeVarNodes(
       }
       PADDLE_ENFORCE_EQ(
           is_found, true,
-          "Subgraph with internal var nodes (%s) is not supported yet.",
-          node->Name());
+          platform::errors::Unimplemented(
+              "Subgraph with internal var nodes (%s) is not supported yet.",
+              node->Name()));
     }
   }
   // Encoding output vars.
