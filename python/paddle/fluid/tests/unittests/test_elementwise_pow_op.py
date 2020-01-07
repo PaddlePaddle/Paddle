@@ -39,8 +39,8 @@ class TestElementwisePowOp_big_shape_1(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [100, 100]).astype("float64"),
-            'Y': np.random.uniform(0.1, 1, [100, 100]).astype("float64")
+            'X': np.random.uniform(0.1, 1, [10, 10]).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, [10, 10]).astype("float64")
         }
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
@@ -49,8 +49,8 @@ class TestElementwisePowOp_big_shape_2(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [100, 100]).astype("float64"),
-            'Y': np.random.uniform(0.1, 1, [100, 100]).astype("float64") * 20
+            'X': np.random.uniform(0.1, 1, [10, 10]).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, [10, 10]).astype("float64") * 20
         }
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
