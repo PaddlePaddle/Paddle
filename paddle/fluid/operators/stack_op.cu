@@ -43,7 +43,7 @@ __global__ void StackCUDAKernel(T** input_ptrs, int split_size, int rows,
   }
 }
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class StackGPUKernel : public framework::OpKernel<T> {
   using Tensor = framework::LoDTensor;
 
@@ -62,7 +62,7 @@ class StackGPUKernel : public framework::OpKernel<T> {
       x_datas[i] = x[i]->data<T>();
     }
 
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    auto& dev_ctx = ctx.template device_context<plat::CUDADeviceContext>();
     auto tmp_x_data = memory::Alloc(dev_ctx, x_datas.size() * sizeof(T*));
     memory::Copy(boost::get<platform::CUDAPlace>(dev_ctx.GetPlace()),
                  tmp_x_data->ptr(), platform::CPUPlace(),
@@ -120,7 +120,7 @@ __global__ void UnStackCUDAKernel(const T* __restrict__ input, int pre_dim_size,
   }
 }
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class StackGradGPUKernel : public framework::OpKernel<T> {
   using Tensor = framework::LoDTensor;
 
@@ -160,7 +160,7 @@ class StackGradGPUKernel : public framework::OpKernel<T> {
     }
     dy_suf = dy->numel() / (split_dim * dy_pre);
 
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    auto& dev_ctx = ctx.template device_context<plat::CUDADeviceContext>();
     auto tmp_out_data = memory::Alloc(dev_ctx, outputs.size() * sizeof(T*));
     memory::Copy(boost::get<platform::CUDAPlace>(dev_ctx.GetPlace()),
                  tmp_out_data->ptr(), platform::CPUPlace(),
@@ -188,16 +188,13 @@ class StackGradGPUKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(
-    stack, ops::StackGPUKernel<plat::CUDADeviceContext, float>,
-    ops::StackGPUKernel<plat::CUDADeviceContext, double>,
-    ops::StackGPUKernel<plat::CUDADeviceContext, int>,
-    ops::StackGPUKernel<plat::CUDADeviceContext, int64_t>,
-    ops::StackGPUKernel<plat::CUDADeviceContext, plat::float16>);
+REGISTER_OP_CUDA_KERNEL(stack, ops::StackGPUKernel<float>,
+                        ops::StackGPUKernel<double>, ops::StackGPUKernel<int>,
+                        ops::StackGPUKernel<int64_t>,
+                        ops::StackGPUKernel<plat::float16>);
 
-REGISTER_OP_CUDA_KERNEL(
-    stack_grad, ops::StackGradGPUKernel<plat::CUDADeviceContext, float>,
-    ops::StackGradGPUKernel<plat::CUDADeviceContext, double>,
-    ops::StackGradGPUKernel<plat::CUDADeviceContext, int>,
-    ops::StackGradGPUKernel<plat::CUDADeviceContext, int64_t>,
-    ops::StackGradGPUKernel<plat::CUDADeviceContext, plat::float16>);
+REGISTER_OP_CUDA_KERNEL(stack_grad, ops::StackGradGPUKernel<float>,
+                        ops::StackGradGPUKernel<double>,
+                        ops::StackGradGPUKernel<int>,
+                        ops::StackGradGPUKernel<int64_t>,
+                        ops::StackGradGPUKernel<plat::float16>);

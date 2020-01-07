@@ -14,9 +14,8 @@
 
 // Used for compute gpu launch parameter
 
-#pragma once
-
 #ifdef PADDLE_WITH_CUDA
+#pragma once
 
 #include <cuda_runtime.h>
 #include <stddef.h>

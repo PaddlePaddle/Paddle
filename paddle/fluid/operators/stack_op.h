@@ -18,11 +18,6 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/for_range.h"
 
-#ifdef __NVCC__
-#include <thrust/device_vector.h>
-#include "paddle/fluid/framework/array.h"
-#endif
-
 namespace paddle {
 namespace operators {
 
