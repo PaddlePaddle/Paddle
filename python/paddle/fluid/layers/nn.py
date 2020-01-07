@@ -16441,16 +16441,18 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
         x = []
     elif isinstance(x, Variable):
         x = [x]
-    elif not isinstance(x, (list, tuple)):
+    elif isinstance(x, tuple):
+        x = list(x)
+    elif not isinstance(x, (list, tuple, Variable)):
         raise TypeError('Input must be Variable/list(Variable)/tuple(Variable)')
 
     if out is None:
         out_list = []
     elif isinstance(out, Variable):
         out_list = [out]
-    elif isinstance(out, (list, tuple)):
-        out_list = out
-    else:
+    elif isinstance(out, tuple):
+        out_list = list(out)
+    elif not isinstance(x, (list, tuple, Variable)):
         raise TypeError(
             'Output must be Variable/list(Variable)/tuple(Variable)')
 
