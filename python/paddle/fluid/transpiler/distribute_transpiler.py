@@ -535,8 +535,6 @@ class DistributeTranspiler(object):
                 n workers, the id may range from 0 ~ n-1
             program (Program|None): program to transpile,
                 default is fluid.default_main_program().
-            startup_program (Program|None): startup_program to transpile,
-                default is fluid.default_startup_program().
             pservers (str): comma separated ip:port string for the pserver
                 list.
             trainers (int|str): in pserver mode this is the number of
