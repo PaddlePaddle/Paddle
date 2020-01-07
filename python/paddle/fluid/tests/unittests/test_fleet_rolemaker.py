@@ -100,6 +100,28 @@ class TestCloudRoleMaker(unittest.TestCase):
         except:
             print("do not support pslib test, skip")
             return
+        from paddle.fluid.incubate.fleet.base.role_maker import \
+            MPISymetricRoleMaker
+        try:
+            role = MPISymetricRoleMaker()
+            role.Allreduce([1], [2])
+        except:
+            print("catch expected error of not inited")
+        try:
+            role = MPISymetricRoleMaker()
+            role.Allreduce([1], [2], "min")
+        except:
+            print("catch expected error of not inited")
+        try:
+            role = MPISymetricRoleMaker()
+            role.Allreduce([1], [2], "max")
+        except:
+            print("catch expected error of not inited")
+        try:
+            role = MPISymetricRoleMaker()
+            role.Allreduce([1], [2], "unknown")
+        except:
+            print("catch expected error of unknown type")
 
 
 if __name__ == "__main__":

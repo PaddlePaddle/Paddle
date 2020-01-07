@@ -75,6 +75,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
         os.environ["TRAINING_ROLE"] = "wrong"
         try:
             role1 = PaddleCloudGlooRoleMaker("", "", "./test_gloo_1", "lo")
+            role1.generate_role()
         except:
             pass
         os.environ["TRAINING_ROLE"] = "PSERVER"
@@ -83,6 +84,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
         role2._finalize()
         role2._all_gather(1)
         role2._all_gather(1)
+        role2._barrier_server()
 
         role3 = PaddleCloudGlooRoleMaker("", "", "./test_gloo_3", "lo")
         role3._worker_gather(1)
@@ -156,6 +158,22 @@ class TestCloudRoleMaker2(unittest.TestCase):
         role19._server_num()
         role19._server_num()
 
+        role20 = PaddleCloudGlooRoleMaker("", "", "./test_gloo_20", "lo")
+        a = [1]
+        b = [0]
+        role20.Allreduce(a, b)
+
+        with open("test_fleet_gloo_role_maker_1.txt", "w") as f:
+            data = "1 1 1 1\n"
+            f.write(data)
+
+        dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+        dataset.set_filelist(["test_fleet_gloo_role_maker_1.txt"])
+        dataset.set_use_var([show, label])
+        dataset.load_into_memory()
+        dataset.get_memory_data_size(fleet)
+        dataset.get_shuffle_data_size(fleet)
+        os.remove("./test_fleet_gloo_role_maker_1.txt")
 
 if __name__ == "__main__":
     unittest.main()
