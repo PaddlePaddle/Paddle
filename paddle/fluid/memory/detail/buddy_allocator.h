@@ -27,6 +27,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
+#include "absl/container/btree_set.h"
+#include "absl/container/flat_hash_map.h"
+
 namespace paddle {
 namespace memory {
 namespace detail {
@@ -54,7 +57,8 @@ class BuddyAllocator {
 
  private:
   // Each element in PoolSet is a free allocation
-  using Pool = std::set<MemoryBlock*, MemoryBlockComparator>;
+  // using Pool = std::set<MemoryBlock*, MemoryBlockComparator>;
+  using Pool = absl::btree_set<MemoryBlock*, MemoryBlockComparator>;
 
   /*! \brief Allocate fixed-size memory from system */
   void* SystemAlloc(size_t size);
@@ -95,7 +99,8 @@ class BuddyAllocator {
   std::array<Pool, 2> pools_;
 
  private:
-  std::unordered_map<void*, MemoryBlock*> ptr_to_block_;
+  // std::unordered_map<void*, MemoryBlock*> ptr_to_block_;
+  absl::flat_hash_map<void*, MemoryBlock*> ptr_to_block_;
   MemoryBlockPool mb_pool_;
 
  private:
