@@ -36,6 +36,16 @@ std::string CodeGenerator::Generate(SubGraph* subgraph) {
   return Generate(subgraph->GetFuncName(), expressions);
 }
 
+static bool HasInput(Node* n, std::string name) {
+  PADDLE_ENFORCE_EQ(n && n->IsOp() && n->Op(), true,
+                    platform::errors::InvalidArgument(
+                        "Expected node %p to be an operator node.", n));
+  std::vector<std::string> input_names = n->Op()->InputNames();
+  std::unordered_set<std::string> input_names_set(input_names.begin(),
+                                                  input_names.end());
+  return input_names_set.find(name) != input_names_set.end();
+}
+
 std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
     SubGraph* subgraph) {
   std::unordered_map<std::string, int> var_ids = EncodeVarNodes(subgraph);
@@ -45,16 +55,16 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
       auto* op = node->Op();
 
       // Input ids should be set in fixed order, like:
-      //  - x, y in forward operations
-      //  - x, y, out, out@GRAD in backward operations
+      //  - X, Y in forward operations
+      //  - X, Y, Out, out@GRAD in backward operations
       std::vector<int> input_ids;
       std::vector<std::string> input_names =
           OperationMap::Instance().Get(op->Type()).input_names;
       for (auto& name : input_names) {
-        // TODO(liuyiqun): support duplicated input.
-        if (op->Input(name).size() >= 1U) {
-          // Some input vars are not used in grad ops, such as
-          // "elementwise_add_grad", where "X", "Y" and "Out" are not used.
+        // Some input vars are not used in grad ops, such as
+        // "elementwise_add_grad", where "X", "Y" and "Out" are not used.
+        if (HasInput(node, name) && op->Input(name).size() >= 1U) {
+          // TODO(liuyiqun): support duplicated input.
           PADDLE_ENFORCE_NE(
               var_ids.find(op->Input(name)[0]), var_ids.end(),
               platform::errors::InvalidArgument(

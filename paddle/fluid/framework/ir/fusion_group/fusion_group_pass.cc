@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/platform/device_code.h"
 
 namespace paddle {
@@ -80,6 +81,23 @@ void FusionGroupPass::GenerateCode(fusion_group::SubGraph* subgraph) const {
   pool.Set(std::move(device_code));
 }
 
+static int ExtractOpRole(fusion_group::SubGraph* subgraph) {
+  std::unordered_set<int> op_roles;
+  std::string attr_name = OpProtoAndCheckerMaker::OpRoleAttrName();
+  for (auto* n : subgraph->Nodes()) {
+    if (n && n->IsOp() && n->Op()) {
+      if (n->Op()->HasAttr(attr_name)) {
+        op_roles.insert(boost::get<int>(n->Op()->GetAttr(attr_name)));
+      }
+    }
+  }
+  if (op_roles.size() == 1U) {
+    return *(op_roles.begin());
+  } else {
+    return static_cast<int>(OpRole::kNotSpecified);
+  }
+}
+
 void FusionGroupPass::InsertFusionGroupOp(
     Graph* graph, fusion_group::SubGraph* subgraph) const {
   const std::vector<Node*>& input_vars_of_subgraph =
@@ -106,6 +124,8 @@ void FusionGroupPass::InsertFusionGroupOp(
   op_desc.SetOutput("Outs", output_names);
   op_desc.SetAttr("type", subgraph->GetType());
   op_desc.SetAttr("func_name", subgraph->GetFuncName());
+  op_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                  ExtractOpRole(subgraph));
 
   Node* fusion_group_node = graph->CreateOpNode(&op_desc);
   for (auto* in : input_vars_of_subgraph) {

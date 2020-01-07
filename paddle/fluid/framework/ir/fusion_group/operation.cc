@@ -90,8 +90,8 @@ void OperationMap::InsertUnaryElementwiseOperations() {
 
   // relu:
   //  out = f(x) = x > 0 ? x : 0
-  //  dx = dout * (out > 0 ? 1 : 0) = dout * (x > 0 ? 1 : 0)
-  insert_handler("relu", "real_max(${0}, 0)", {"${0} > 0 ? ${2} : 0"});
+  //  dx = dout * (out > 0 ? 1 : 0)
+  insert_handler("relu", "real_max(${0}, 0)", {"${1} > 0 ? ${2} : 0"});
   // sigmoid:
   //  out = f(x) = 1.0 / (1.0 + exp(-x))
   //  dx = dout * out * (1 - out)

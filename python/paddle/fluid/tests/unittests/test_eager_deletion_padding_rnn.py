@@ -267,9 +267,7 @@ def lm_model(hidden_size,
             input = layers.reshape(input, shape=[-1, hidden_size], inplace=True)
             for k in range(num_layers):
                 pre_hidden = hidden_array[k]
-                # pre_cell = cell_array[k]
-                # copy previous cell to a new variable, to enable fusion_group
-                pre_cell = layers.assign(cell_array[k])
+                pre_cell = cell_array[k]
                 weight_1 = weight_1_arr[k]
                 bias = bias_arr[k]
 
