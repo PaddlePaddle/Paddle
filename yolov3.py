@@ -13,12 +13,15 @@
 # limitations under the License.
 
 from __future__ import division
+from __future__ import print_function
 
 import argparse
 import contextlib
 import os
 import random
 import time
+
+from functools import partial
 
 import cv2
 import numpy as np
@@ -143,7 +146,7 @@ class YOLOv3(Model):
                                 act='leaky_relu'))
                 self.route_blocks.append(route)
 
-    @shape_hints(inputs=[None, 3, None, None])
+    @shape_hints(inputs=[None, 3, None, None], im_shape=[None, 2])
     def forward(self, inputs, im_shape):
         outputs = []
         boxes = []
@@ -239,25 +242,22 @@ class YoloLoss(Loss):
 
 
 def make_optimizer(parameter_list=None):
-    base_lr = 0.001
-    boundaries = [400000, 450000]
+    base_lr = FLAGS.lr
     warm_up_iter = 4000
     momentum = 0.9
     weight_decay = 5e-4
+    boundaries = [400000, 450000]
     values = [base_lr * (0.1 ** i) for i in range(len(boundaries) + 1)]
-
-    lr = fluid.layers.piecewise_decay(
+    learning_rate = fluid.layers.piecewise_decay(
         boundaries=boundaries,
         values=values)
-
-    lr = fluid.layers.linear_lr_warmup(
-        learning_rate=lr,
+    learning_rate = fluid.layers.linear_lr_warmup(
+        learning_rate=learning_rate,
         warmup_steps=warm_up_iter,
         start_lr=0.0,
         end_lr=base_lr)
-
     optimizer = fluid.optimizer.Momentum(
-        learning_rate=lr,
+        learning_rate=learning_rate,
         regularization=fluid.regularizer.L2Decay(weight_decay),
         momentum=momentum,
         parameter_list=parameter_list)
@@ -392,7 +392,7 @@ def batch_transform(batch, mode='train'):
     im_shapes = np.full([len(imgs), 2], d, dtype=np.int32)
     gt_boxes = np.array(gt_boxes)
     gt_labels = np.array(gt_labels)
-    # XXX since mix up is not used, scores are all 1s
+    # XXX since mix up is not used, scores are all ones
     gt_scores = np.ones_like(gt_labels, dtype=np.float32)
     return [imgs, im_shapes], [gt_boxes, gt_labels, gt_scores]
 
@@ -451,20 +451,21 @@ def coco2017(root_dir, mode='train'):
 
 # XXX coco metrics not included for simplicity
 def run(model, loader, mode='train'):
-    total_loss = 0.0
+    total_loss = 0.
     total_time = 0.
     device_ids = list(range(FLAGS.num_devices))
     start = time.time()
+
     for idx, batch in enumerate(loader()):
         outputs, losses = getattr(model, mode)(
             batch[0], batch[1], device='gpu', device_ids=device_ids)
 
         total_loss += np.sum(losses)
-        if idx > 1:  # skip first two step
+        if idx > 1:  # skip first two steps
             total_time += time.time() - start
         if idx % 10 == 0:
             print("{:04d}: loss {:0.3f} time: {:0.3f}".format(
-                idx, total_loss / (idx + 1), total_time / (idx - 1)))
+                idx, total_loss / (idx + 1), total_time / max(1, (idx - 1))))
         start = time.time()
 
 
@@ -475,16 +476,13 @@ def main():
 
     epoch = FLAGS.epoch
     batch_size = FLAGS.batch_size
-    if FLAGS.dynamic:
-        guard = fluid.dygraph.guard()
-    else:
-        guard = null_guard()
+    guard = fluid.dygraph.guard() if FLAGS.dynamic else null_guard()
 
     train_loader = fluid.io.xmap_readers(
-        lambda batch: batch_transform(batch, 'train'),
+        batch_transform,
         paddle.batch(
             fluid.io.xmap_readers(
-                lambda inputs: sample_transform(inputs, 'train'),
+                sample_transform,
                 coco2017(FLAGS.data, 'train'),
                 process_num=8,
                 buffer_size=4 * batch_size),
@@ -492,11 +490,14 @@ def main():
             drop_last=True),
         process_num=2, buffer_size=4)
 
+    val_sample_transform = partial(sample_transform, mode='val')
+    val_batch_transform = partial(batch_transform, mode='val')
+
     val_loader = fluid.io.xmap_readers(
-        lambda batch: batch_transform(batch, 'train'),
+        val_batch_transform,
         paddle.batch(
             fluid.io.xmap_readers(
-                lambda inputs: sample_transform(inputs, 'val'),
+                val_sample_transform,
                 coco2017(FLAGS.data, 'val'),
                 process_num=8,
                 buffer_size=4 * batch_size),
@@ -517,7 +518,7 @@ def main():
         for e in range(epoch):
             print("======== train epoch {} ========".format(e))
             run(model, train_loader)
-            model.save('checkpoints/{:02d}'.format(e))
+            model.save('yolo_checkpoints/{:02d}'.format(e))
             print("======== eval epoch {} ========".format(e))
             run(model, val_loader, mode='eval')
 
@@ -526,15 +527,19 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser("Yolov3 Training on COCO")
     parser.add_argument('data', metavar='DIR', help='path to COCO dataset')
     parser.add_argument(
+        "-d", "--dynamic", action='store_true', help="enable dygraph mode")
+    parser.add_argument(
         "-e", "--epoch", default=300, type=int, help="number of epoch")
     parser.add_argument(
-        "-b", "--batch_size", default=32, type=int, help="batch size")
+        '--lr', '--learning-rate', default=0.001, type=float, metavar='LR',
+        help='initial learning rate')
+    parser.add_argument(
+        "-b", "--batch_size", default=64, type=int, help="batch size")
     parser.add_argument(
         "-n", "--num_devices", default=8, type=int, help="number of devices")
-    parser.add_argument(
-        "-d", "--dynamic", action='store_true', help="enable dygraph mode")
     parser.add_argument(
         "-w", "--weights", default=None, type=str,
         help="path to pretrained weights")
     FLAGS = parser.parse_args()
+    assert FLAGS.data, "error: must provide data path"
     main()

@@ -13,12 +13,14 @@
 # limitations under the License.
 
 from __future__ import division
+from __future__ import print_function
 
 import argparse
 import contextlib
 import math
 import os
 import random
+import time
 
 import cv2
 import numpy as np
@@ -184,19 +186,23 @@ class ResNet(Model):
 
 def make_optimizer(parameter_list=None):
     total_images = 1281167
-    base_lr = 0.1
+    base_lr = FLAGS.lr
     momentum = 0.9
-    l2_decay = 1e-4
-
+    weight_decay = 1e-4
     step_per_epoch = int(math.floor(float(total_images) / FLAGS.batch_size))
     boundaries = [step_per_epoch * e for e in [30, 60, 80]]
-
-    lr = [base_lr * (0.1**i) for i in range(len(boundaries) + 1)]
+    values = [base_lr * (0.1**i) for i in range(len(boundaries) + 1)]
+    learning_rate = fluid.layers.piecewise_decay(
+        boundaries=boundaries, values=values)
+    learning_rate = fluid.layers.linear_lr_warmup(
+        learning_rate=learning_rate,
+        warmup_steps=5 * step_per_epoch,
+        start_lr=0.,
+        end_lr=base_lr)
     optimizer = fluid.optimizer.Momentum(
-        learning_rate=fluid.layers.piecewise_decay(
-            boundaries=boundaries, values=lr),
+        learning_rate=learning_rate,
         momentum=momentum,
-        regularization=fluid.regularizer.L2Decay(l2_decay),
+        regularization=fluid.regularizer.L2Decay(weight_decay),
         parameter_list=parameter_list)
     return optimizer
 
@@ -293,10 +299,14 @@ def image_folder(path, shuffle=False):
 
 
 def run(model, loader, mode='train'):
-    total_loss = 0.0
-    total_acc1 = 0.0
-    total_acc5 = 0.0
+    total_loss = 0.
+    total_acc1 = 0.
+    total_acc5 = 0.
+    total_time = 0.
+    start = time.time()
     device_ids = list(range(FLAGS.num_devices))
+    start = time.time()
+
     for idx, batch in enumerate(loader()):
         outputs, losses = getattr(model, mode)(
             batch[0], batch[1], device='gpu', device_ids=device_ids)
@@ -305,10 +315,14 @@ def run(model, loader, mode='train'):
         total_loss += np.sum(losses)
         total_acc1 += top1
         total_acc5 += top5
+        if idx > 1:  # skip first two steps
+            total_time += time.time() - start
         if idx % 10 == 0:
-            print("{:04d}: loss {:0.3f} top1: {:0.3f}% top5: {:0.3f}%".format(
-                idx, total_loss / (idx + 1), total_acc1 / (idx + 1),
-                total_acc5 / (idx + 1)))
+            print(("{:04d} loss: {:0.3f} top1: {:0.3f}% top5: {:0.3f}% "
+                   "time: {:0.3f}").format(
+                       idx, total_loss / (idx + 1), total_acc1 / (idx + 1),
+                       total_acc5 / (idx + 1), total_time / max(1, (idx - 1))))
+        start = time.time()
 
 
 def main():
@@ -318,10 +332,7 @@ def main():
 
     epoch = FLAGS.epoch
     batch_size = FLAGS.batch_size
-    if FLAGS.dynamic:
-        guard = fluid.dygraph.guard()
-    else:
-        guard = null_guard()
+    guard = fluid.dygraph.guard() if FLAGS.dynamic else null_guard()
 
     train_dir = os.path.join(FLAGS.data, 'train')
     val_dir = os.path.join(FLAGS.data, 'val')
@@ -352,18 +363,20 @@ def main():
             batch_size=batch_size),
         process_num=2, buffer_size=4)
 
-    if not os.path.exists('checkpoints'):
-        os.mkdir('checkpoints')
+    if not os.path.exists('resnet_checkpoints'):
+        os.mkdir('resnet_checkpoints')
 
     with guard:
         model = ResNet()
         optim = make_optimizer(parameter_list=model.parameters())
         model.prepare(optim, CrossEntropy())
+        if FLAGS.resume is not None:
+            model.load(FLAGS.resume)
 
         for e in range(epoch):
             print("======== train epoch {} ========".format(e))
             run(model, train_loader)
-            model.save('checkpoints/{:02d}'.format(e))
+            model.save('resnet_checkpoints/{:02d}'.format(e))
             print("======== eval epoch {} ========".format(e))
             run(model, val_loader, mode='eval')
 
@@ -373,12 +386,19 @@ if __name__ == '__main__':
     parser.add_argument('data', metavar='DIR', help='path to dataset '
                         '(should have subdirectories named "train" and "val"')
     parser.add_argument(
+        "-d", "--dynamic", action='store_true', help="enable dygraph mode")
+    parser.add_argument(
         "-e", "--epoch", default=90, type=int, help="number of epoch")
     parser.add_argument(
-        "-b", "--batch_size", default=512, type=int, help="batch size")
+        '--lr', '--learning-rate', default=0.1, type=float, metavar='LR',
+        help='initial learning rate')
+    parser.add_argument(
+        "-b", "--batch_size", default=256, type=int, help="batch size")
     parser.add_argument(
         "-n", "--num_devices", default=4, type=int, help="number of devices")
     parser.add_argument(
-        "-d", "--dynamic", action='store_true', help="enable dygraph mode")
+        "-r", "--resume", default=None, type=str,
+        help="checkpoint path to resume")
     FLAGS = parser.parse_args()
+    assert FLAGS.data, "error: must provide data path"
     main()

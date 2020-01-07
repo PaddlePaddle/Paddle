@@ -12,16 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import division
+from __future__ import print_function
+
+import argparse
 import contextlib
+import os
 
 import numpy as np
 
 import paddle
 from paddle import fluid
-from paddle.fluid.optimizer import MomentumOptimizer
+from paddle.fluid.optimizer import Momentum
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
 
-from model import Model, shape_hints, CrossEntropy
+from model import Model, CrossEntropy
 
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
@@ -90,67 +95,104 @@ class MNIST(Model):
                                   loc=0.0, scale=scale)),
                           act="softmax")
 
-    @shape_hints(inputs=[None, 1, 28, 28])
     def forward(self, inputs):
-        if self.mode == 'test':  # XXX demo purpose
-            x = self._simple_img_conv_pool_1(inputs)
-            x = self._simple_img_conv_pool_2(x)
-            x = fluid.layers.flatten(x, axis=1)
-            x = self._fc(x)
-        else:
-            x = self._simple_img_conv_pool_1(inputs)
-            x = self._simple_img_conv_pool_2(x)
-            x = fluid.layers.flatten(x, axis=1)
-            x = self._fc(x)
+        x = self._simple_img_conv_pool_1(inputs)
+        x = self._simple_img_conv_pool_2(x)
+        x = fluid.layers.flatten(x, axis=1)
+        x = self._fc(x)
         return x
 
 
-@contextlib.contextmanager
-def null_guard():
-    yield
+def accuracy(pred, label, topk=(1, )):
+    maxk = max(topk)
+    pred = np.argsort(pred)[:, ::-1][:, :maxk]
+    correct = (pred == np.repeat(label, maxk, 1))
+
+    batch_size = label.shape[0]
+    res = []
+    for k in topk:
+        correct_k = correct[:, :k].sum()
+        res.append(100.0 * correct_k / batch_size)
+    return res
+
+
+def main():
+    @contextlib.contextmanager
+    def null_guard():
+        yield
+
+    guard = fluid.dygraph.guard() if FLAGS.dynamic else null_guard()
+
+    if not os.path.exists('mnist_checkpoints'):
+        os.mkdir('mnist_checkpoints')
+
+    train_loader = fluid.io.xmap_readers(
+        lambda b: [np.array([x[0] for x in b]).reshape(-1, 1, 28, 28),
+                   np.array([x[1] for x in b]).reshape(-1, 1)],
+        paddle.batch(fluid.io.shuffle(paddle.dataset.mnist.train(), 6e4),
+                     batch_size=FLAGS.batch_size, drop_last=True), 1, 1)
+    val_loader = fluid.io.xmap_readers(
+        lambda b: [np.array([x[0] for x in b]).reshape(-1, 1, 28, 28),
+                   np.array([x[1] for x in b]).reshape(-1, 1)],
+        paddle.batch(paddle.dataset.mnist.test(),
+                     batch_size=FLAGS.batch_size, drop_last=True), 1, 1)
+
+    device_ids = list(range(FLAGS.num_devices))
+
+    with guard:
+        model = MNIST()
+        optim = Momentum(learning_rate=FLAGS.lr, momentum=.9,
+                         parameter_list=model.parameters())
+        model.prepare(optim, CrossEntropy())
+        if FLAGS.resume is not None:
+            model.load(FLAGS.resume)
+
+        for e in range(FLAGS.epoch):
+            train_loss = 0.0
+            train_acc = 0.0
+            val_loss = 0.0
+            val_acc = 0.0
+            print("======== train epoch {} ========".format(e))
+            for idx, batch in enumerate(train_loader()):
+                outputs, losses = model.train(batch[0], batch[1], device='gpu',
+                                              device_ids=device_ids)
+
+                acc = accuracy(outputs[0], batch[1])[0]
+                train_loss += np.sum(losses)
+                train_acc += acc
+                if idx % 10 == 0:
+                    print("{:04d}: loss {:0.3f} top1: {:0.3f}%".format(
+                        idx, train_loss / (idx + 1), train_acc / (idx + 1)))
+
+            print("======== eval epoch {} ========".format(e))
+            for idx, batch in enumerate(val_loader()):
+                outputs, losses = model.eval(batch[0], batch[1], device='gpu',
+                                             device_ids=device_ids)
+
+                acc = accuracy(outputs[0], batch[1])[0]
+                val_loss += np.sum(losses)
+                val_acc += acc
+                if idx % 10 == 0:
+                    print("{:04d}: loss {:0.3f} top1: {:0.3f}%".format(
+                        idx, val_loss / (idx + 1), val_acc / (idx + 1)))
+            model.save('mnist_checkpoints/{:02d}'.format(e))
 
 
 if __name__ == '__main__':
-    import sys
-    if len(sys.argv) > 1 and sys.argv[1] == '--dynamic':
-        guard = fluid.dygraph.guard()
-    else:
-        guard = null_guard()
-
-    with guard:
-        train_loader = fluid.io.xmap_readers(
-            lambda b: [np.array([x[0] for x in b]).reshape(-1, 1, 28, 28),
-                       np.array([x[1] for x in b]).reshape(-1, 1)],
-            paddle.batch(paddle.dataset.mnist.train(),
-                         batch_size=4, drop_last=True), 1, 1)
-        test_loader = fluid.io.xmap_readers(
-            lambda b: [np.array([x[0] for x in b]).reshape(-1, 1, 28, 28),
-                       np.array([x[1] for x in b]).reshape(-1, 1)],
-            paddle.batch(paddle.dataset.mnist.test(),
-                         batch_size=4, drop_last=True), 1, 1)
-        model = MNIST()
-        sgd = MomentumOptimizer(learning_rate=1e-3, momentum=0.9,
-                                parameter_list=model.parameters())
-        # sgd = SGDOptimizer(learning_rate=1e-3)
-        model.prepare(sgd, CrossEntropy())
-
-        for e in range(2):
-            for idx, batch in enumerate(train_loader()):
-                out, loss = model.train(batch[0], batch[1], device='gpu',
-                                        device_ids=[0, 1, 2, 3])
-                print("=============== output =========")
-                print(out)
-                print("=============== loss ===========")
-                print(loss)
-                if idx > 10:
-                    model.save("test.{}".format(e))
-                    break
-            print("==== switch to test mode =====")
-            for idx, batch in enumerate(test_loader()):
-                out = model.test(batch[0], device='gpu',
-                                 device_ids=[0, 1, 2, 3])
-                print(out)
-                if idx > 10:
-                    break
-
-        model.load("test.1")
+    parser = argparse.ArgumentParser("CNN training on MNIST")
+    parser.add_argument(
+        "-d", "--dynamic", action='store_true', help="enable dygraph mode")
+    parser.add_argument(
+        "-e", "--epoch", default=100, type=int, help="number of epoch")
+    parser.add_argument(
+        '--lr', '--learning-rate', default=1e-3, type=float, metavar='LR',
+        help='initial learning rate')
+    parser.add_argument(
+        "-b", "--batch_size", default=128, type=int, help="batch size")
+    parser.add_argument(
+        "-n", "--num_devices", default=4, type=int, help="number of devices")
+    parser.add_argument(
+        "-r", "--resume", default=None, type=str,
+        help="checkpoint path to resume")
+    FLAGS = parser.parse_args()
+    main()
