@@ -175,5 +175,6 @@ class TestCloudRoleMaker2(unittest.TestCase):
         dataset.get_shuffle_data_size(fleet)
         os.remove("./test_fleet_gloo_role_maker_1.txt")
 
+
 if __name__ == "__main__":
     unittest.main()
