@@ -1168,13 +1168,10 @@ function main() {
         check_style
         ;;
       cicheck)
-        #cmake_gen ${PYTHON_ABI:-""}
-        #build ${parallel_number}
-        #enable_unused_var_check
-        #parallel_test
-        #single_test test_qat2_int8_resnet50_mkldnn
-        nvidia-docker stats --no-stream
-        dmesg
+        cmake_gen ${PYTHON_ABI:-""}
+        build ${parallel_number}
+        enable_unused_var_check
+        parallel_test
         ;;
       cicheck_coverage)
         check_approvals_of_unittest 1
