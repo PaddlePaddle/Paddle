@@ -169,13 +169,15 @@ with fluid.imperative.guard():
     dy_grad = var_inp._gradient()
 
 
-class MLP(fluid.imperative.Layer):
-    def __init__(self):
+class MLP(fluid.Layer):
+    def __init__(self, input_size):
         super(MLP, self).__init__()
-        self._fc1 = FC(3,
+        self._fc1 = Linear(input_size,
+                       3,
                        fluid.ParamAttr(
                            initializer=fluid.initializer.Constant(value=0.1)))
-        self._fc2 = FC(4,
+        self._fc2 = Linear(3,
+                       4,
                        fluid.ParamAttr(
                            initializer=fluid.initializer.Constant(value=0.1)))
 
@@ -187,12 +189,12 @@ class MLP(fluid.imperative.Layer):
 
 
  np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
- with fluid.imperative.guard():
-     var_inp = fluid.imperative.base.to_variable(np_inp)
-     mlp = MLP()
+ with fluid.dygraph.guard():
+     var_inp = fluid.dygraph.base.to_variable(np_inp)
+     mlp = MLP(input_size=2)
      out = mlp(var_inp)
-     dy_out = out._numpy()
-     out._backward()
+     dy_out = out.numpy()
+     out.backward()
 ```
 
 # Plan
