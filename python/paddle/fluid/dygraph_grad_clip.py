@@ -77,9 +77,9 @@ class GradClipByValue(GradClipBase):
                 
                 init_value = np.random.uniform( -1, 1, (10, 10)).astype('float32')
 
-                fc = Linear( 10, 10)
+                linear = Linear( 10, 10)
 
-                out = fc( to_variable(init_value) )
+                out = linear( to_variable(init_value) )
 
                 loss = fluid.layers.reduce_mean( out )
 
@@ -156,9 +156,9 @@ class GradClipByNorm(GradClipBase):
                 
                 init_value = np.random.uniform( -1, 1, (10, 10)).astype('float32')
 
-                fc = Linear( 10, 10)
+                linear = Linear( 10, 10)
 
-                out = fc( to_variable(init_value) )
+                out = linear( to_variable(init_value) )
 
                 loss = fluid.layers.reduce_mean( out )
 
@@ -234,9 +234,9 @@ class GradClipByGlobalNorm(GradClipBase):
                 
                 init_value = np.random.uniform( -1, 1, (10, 10)).astype('float32')
 
-                fc = Linear( 10, 10)
+                linear = Linear( 10, 10)
 
-                out = fc( to_variable(init_value) )
+                out = linear( to_variable(init_value) )
 
                 loss = fluid.layers.reduce_mean( out )
 

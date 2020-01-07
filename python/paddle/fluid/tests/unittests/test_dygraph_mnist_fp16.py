@@ -97,7 +97,7 @@ class MNIST(fluid.dygraph.Layer):
         self.pool_2_shape = 50 * 53 * 53
         SIZE = 10
         scale = (2.0 / (self.pool_2_shape**2 * SIZE))**0.5
-        self._fc = Linear(
+        self._linear = Linear(
             self.pool_2_shape,
             10,
             param_attr=fluid.param_attr.ParamAttr(
@@ -110,7 +110,7 @@ class MNIST(fluid.dygraph.Layer):
         x = self._simple_img_conv_pool_1(inputs)
         x = self._simple_img_conv_pool_2(x)
         x = fluid.layers.reshape(x, shape=[-1, self.pool_2_shape])
-        cost = self._fc(x)
+        cost = self._linear(x)
         loss = fluid.layers.cross_entropy(cost, label)
         avg_loss = fluid.layers.mean(loss)
         return avg_loss

@@ -22,14 +22,14 @@ import numpy as np
 class MLP(fluid.Layer):
     def __init__(self, input_size):
         super(MLP, self).__init__()
-        self._fc1 = fluid.dygraph.Linear(
+        self._linear1 = fluid.dygraph.Linear(
             input_size,
             3,
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.1)),
             bias_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.1)))
-        self._fc2 = fluid.dygraph.Linear(
+        self._linear2 = fluid.dygraph.Linear(
             3,
             4,
             param_attr=fluid.ParamAttr(
@@ -38,8 +38,8 @@ class MLP(fluid.Layer):
                 initializer=fluid.initializer.Constant(value=0.1)))
 
     def forward(self, inputs):
-        x = self._fc1(inputs)
-        x = self._fc2(x)
+        x = self._linear1(inputs)
+        x = self._linear2(x)
         x = fluid.layers.reduce_sum(x)
         return x
 

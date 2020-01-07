@@ -32,13 +32,13 @@ __all__ = ['run_check']
 class SimpleLayer(Layer):
     def __init__(self, input_size):
         super(SimpleLayer, self).__init__()
-        self._fc1 = nn.Linear(
+        self._linear1 = nn.Linear(
             input_size,
             3,
             param_attr=ParamAttr(initializer=Constant(value=0.1)))
 
     def forward(self, inputs):
-        x = self._fc1(inputs)
+        x = self._linear1(inputs)
         x = layers.reduce_sum(x)
         return x
 
@@ -113,7 +113,7 @@ def run_check():
                     out0 = simple_layer0(inp0)
                     param_grads = backward.append_backward(
                         out0,
-                        parameter_list=[simple_layer0._fc1.weight.name])[0]
+                        parameter_list=[simple_layer0._linear1.weight.name])[0]
                     exe0 = executor.Executor(
                         core.CUDAPlace(0) if core.is_compiled_with_cuda() and
                         (core.get_cuda_device_count() > 0) else core.CPUPlace())

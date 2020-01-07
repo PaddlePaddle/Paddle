@@ -85,24 +85,25 @@ class LayerTest(unittest.TestCase):
 class TestLayer(LayerTest):
     def test_custom_layer_with_kwargs(self):
         class CustomLayer(fluid.Layer):
-            def __init__(self, input_size, fc1_size=4):
+            def __init__(self, input_size, linear1_size=4):
                 super(CustomLayer, self).__init__()
-                self.fc1 = nn.Linear(input_size, fc1_size, bias_attr=False)
-                self.fc2 = nn.Linear(fc1_size, 1, bias_attr=False)
+                self.linear1 = nn.Linear(
+                    input_size, linear1_size, bias_attr=False)
+                self.linear2 = nn.Linear(linear1_size, 1, bias_attr=False)
 
-            def forward(self, x, do_fc2=False):
-                ret = self.fc1(x)
-                if do_fc2:
-                    ret = self.fc2(ret)
+            def forward(self, x, do_linear2=False):
+                ret = self.linear1(x)
+                if do_linear2:
+                    ret = self.linear2(ret)
                 return ret
 
         with self.dynamic_graph():
             inp = np.ones([3, 3], dtype='float32')
             x = base.to_variable(inp)
-            custom = CustomLayer(input_size=3, fc1_size=2)
-            ret = custom(x, do_fc2=False)
+            custom = CustomLayer(input_size=3, linear1_size=2)
+            ret = custom(x, do_linear2=False)
             self.assertTrue(np.array_equal(ret.numpy().shape, [3, 2]))
-            ret = custom(x, do_fc2=True)
+            ret = custom(x, do_linear2=True)
             self.assertTrue(np.array_equal(ret.numpy().shape, [3, 1]))
 
     def test_linear(self):

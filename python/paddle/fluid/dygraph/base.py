@@ -86,10 +86,10 @@ def _no_grad_(func):
             with fluid.dygraph.guard():
                 inp = np.ones([3, 1024], dtype='float32')
                 t = fluid.dygraph.base.to_variable(inp)
-                fc1 = fluid.Linear(1024, 4, bias_attr=False)
-                fc2 = fluid.Linear(4, 4)
-                ret = fc1(t)
-                dy_ret = fc2(ret)
+                linear1 = fluid.Linear(1024, 4, bias_attr=False)
+                linear2 = fluid.Linear(4, 4)
+                ret = linear1(t)
+                dy_ret = linear2(ret)
 
         test_layer()
 
@@ -129,10 +129,10 @@ def guard(place=None):
         with fluid.dygraph.guard():
             inp = np.ones([3, 1024], dtype='float32')
             t = fluid.dygraph.base.to_variable(inp)
-            fc1 = fluid.Linear(1024, 4, bias_attr=False)
-            fc2 = fluid.Linear(4, 4)
-            ret = fc1(t)
-            dy_ret = fc2(ret)
+            linear1 = fluid.Linear(1024, 4, bias_attr=False)
+            linear2 = fluid.Linear(4, 4)
+            ret = linear1(t)
+            dy_ret = linear2(ret)
 
     """
     train = framework.Program()

@@ -32,34 +32,37 @@ class Test_Detach(unittest.TestCase):
     def no_detach_multi(self):
         data = self.generate_Data()
         with fluid.dygraph.guard():
-            fc_w_param_attrs = fluid.ParamAttr(
+            linear_w_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(5.0))
-            fc_b_param_attrs = fluid.ParamAttr(
+            linear_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(6.0))
-            fc = Linear(
-                4, 10, param_attr=fc_w_param_attrs, bias_attr=fc_b_param_attrs)
-            fc1_w_param_attrs = fluid.ParamAttr(
+            linear = Linear(
+                4,
+                10,
+                param_attr=linear_w_param_attrs,
+                bias_attr=linear_b_param_attrs)
+            linear1_w_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(7.0))
-            fc1_b_param_attrs = fluid.ParamAttr(
+            linear1_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(8.0))
-            fc1 = Linear(
+            linear1 = Linear(
                 10,
                 1,
-                param_attr=fc1_w_param_attrs,
-                bias_attr=fc1_b_param_attrs)
-            fc2_w_param_attrs = fluid.ParamAttr(
+                param_attr=linear1_w_param_attrs,
+                bias_attr=linear1_b_param_attrs)
+            linear2_w_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(9.0))
-            fc2_b_param_attrs = fluid.ParamAttr(
+            linear2_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(10.0))
-            fc2 = Linear(
+            linear2 = Linear(
                 10,
                 1,
-                param_attr=fc2_w_param_attrs,
-                bias_attr=fc2_b_param_attrs)
+                param_attr=linear2_w_param_attrs,
+                bias_attr=linear2_b_param_attrs)
             data = to_variable(data)
-            x = fc(data)
-            x1 = fc1(x)
-            x2 = fc2(x)
+            x = linear(data)
+            x1 = linear1(x)
+            x2 = linear2(x)
             loss = x1 + x2
             # print(loss, loss.shape)
             loss.backward()
@@ -68,24 +71,27 @@ class Test_Detach(unittest.TestCase):
     def no_detach_single(self):
         data = self.generate_Data()
         with fluid.dygraph.guard():
-            fc_w_param_attrs = fluid.ParamAttr(
+            linear_w_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(5.0))
-            fc_b_param_attrs = fluid.ParamAttr(
+            linear_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(6.0))
-            fc = Linear(
-                4, 10, param_attr=fc_w_param_attrs, bias_attr=fc_b_param_attrs)
-            fc1_w_param_attrs = fluid.ParamAttr(
+            linear = Linear(
+                4,
+                10,
+                param_attr=linear_w_param_attrs,
+                bias_attr=linear_b_param_attrs)
+            linear1_w_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(7.0))
-            fc1_b_param_attrs = fluid.ParamAttr(
+            linear1_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(8.0))
-            fc1 = Linear(
+            linear1 = Linear(
                 10,
                 1,
-                param_attr=fc1_w_param_attrs,
-                bias_attr=fc1_b_param_attrs)
+                param_attr=linear1_w_param_attrs,
+                bias_attr=linear1_b_param_attrs)
             data = to_variable(data)
-            x = fc(data)
-            x1 = fc1(x)
+            x = linear(data)
+            x1 = linear1(x)
             loss = x1
             # print(loss, loss.shape)
             loss.backward()
@@ -94,35 +100,38 @@ class Test_Detach(unittest.TestCase):
     def detach_multi(self):
         data = self.generate_Data()
         with fluid.dygraph.guard():
-            fc_w_param_attrs = fluid.ParamAttr(
+            linear_w_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(5.0))
-            fc_b_param_attrs = fluid.ParamAttr(
+            linear_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(6.0))
-            fc = Linear(
-                4, 10, param_attr=fc_w_param_attrs, bias_attr=fc_b_param_attrs)
-            fc1_w_param_attrs = fluid.ParamAttr(
+            linear = Linear(
+                4,
+                10,
+                param_attr=linear_w_param_attrs,
+                bias_attr=linear_b_param_attrs)
+            linear1_w_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(7.0))
-            fc1_b_param_attrs = fluid.ParamAttr(
+            linear1_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(8.0))
-            fc1 = Linear(
+            linear1 = Linear(
                 10,
                 1,
-                param_attr=fc1_w_param_attrs,
-                bias_attr=fc1_b_param_attrs)
-            fc2_w_param_attrs = fluid.ParamAttr(
+                param_attr=linear1_w_param_attrs,
+                bias_attr=linear1_b_param_attrs)
+            linear2_w_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(9.0))
-            fc2_b_param_attrs = fluid.ParamAttr(
+            linear2_b_param_attrs = fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(10.0))
-            fc2 = Linear(
+            linear2 = Linear(
                 10,
                 1,
-                param_attr=fc2_w_param_attrs,
-                bias_attr=fc2_b_param_attrs)
+                param_attr=linear2_w_param_attrs,
+                bias_attr=linear2_b_param_attrs)
             data = to_variable(data)
-            x = fc(data)
+            x = linear(data)
             x_detach = x.detach()
-            x1 = fc1(x)
-            x2 = fc2(x_detach)
+            x1 = linear1(x)
+            x2 = linear2(x_detach)
             loss = x1 + x2
             # print(loss, loss.shape)
             loss.backward()
