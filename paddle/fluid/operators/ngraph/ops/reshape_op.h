@@ -61,7 +61,9 @@ static void BuildReshapeNode(
 
   std::shared_ptr<ngraph::Node> shape =
       platform::GetInputNode(op, "Shape", ngb_node_map);
-  PADDLE_ENFORCE_EQ(shape, nullptr, "Support Shape as null only");
+  PADDLE_ENFORCE_EQ(shape, nullptr,
+                    platform::errors::Unimplemented(
+                        "Support for Shape input is not implemented"));
 
   auto op_attrs = framework::AttrReader(op->Attrs());
   std::vector<int> v_shape = op_attrs.Get<std::vector<int>>("shape");
