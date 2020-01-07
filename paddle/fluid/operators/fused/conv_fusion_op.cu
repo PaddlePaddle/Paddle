@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <array>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/conv_cudnn_helper.h"
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/operators/math/padding.h"
@@ -210,7 +210,8 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
               workspace_size_limit, &algo));
       VLOG(3) << "cuDNN forward algo " << algo;
     } else {
-      auto search_func = [&]() {
+      std::function<cudnnConvolutionFwdAlgo_t()> search_func =
+          [&]() -> cudnnConvolutionFwdAlgo_t {
         int returned_algo_count;
         std::array<cudnnConvolutionFwdAlgoPerf_t, kNUM_CUDNN_FWD_ALGS>
             fwd_perf_stat;
