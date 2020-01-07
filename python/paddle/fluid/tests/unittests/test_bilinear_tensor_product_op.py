@@ -23,9 +23,9 @@ class TestBilinearTensorProductOp(OpTest):
     def setUp(self):
         self.op_type = "bilinear_tensor_product"
         batch_size = 6
-        size0 = 30
-        size1 = 20
-        size2 = 100
+        size0 = 5
+        size1 = 4
+        size2 = 5
         a = np.random.random((batch_size, size0)).astype("float64")
         b = np.random.random((batch_size, size1)).astype("float64")
         w = np.random.random((size2, size0, size1)).astype("float64")
