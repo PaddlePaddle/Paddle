@@ -42,7 +42,7 @@ class PRROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("BatchRoINums",
              "(Tensor), "
              "1-D tensor with shape [N], the number of"
-             " rois for each img in batch, where N is the batch size")
+             " rois for each image in batch, where N is the batch size")
         .AsDispensable();
     AddOutput("Out",
               "(Tensor), "
