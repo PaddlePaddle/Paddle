@@ -183,3 +183,31 @@ def guard(new_generator=None):
     old = switch(new_generator)
     yield
     switch(old)
+
+
+class DygraphParameterNameChecker(object):
+    """
+    Check whether the name of parameter is used.
+    """
+
+    def __init__(self):
+        self._name_set = set()
+
+    def __call__(self, name):
+        '''
+        Check whether the name is used. If not used, insert into the _name_set.
+
+        Args:
+            name(str): The name of paramete to check.
+
+        Returns(bool): If name is in name_set,  return True; Otherwise, return False.
+
+        '''
+        if name in self._name_set:
+            return True
+        else:
+            self._name_set.add(name)
+            return False
+
+
+dygraph_parameter_name_checker = DygraphParameterNameChecker()
