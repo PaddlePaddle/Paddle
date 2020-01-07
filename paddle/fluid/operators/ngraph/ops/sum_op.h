@@ -36,10 +36,9 @@ void BuildSumNode(
   for (auto& var_name_item : op->Inputs()) {
     for (auto& var_name : var_name_item.second) {
       op_inputs.push_back(var_name);
-      if (ngb_node_map->find(var_name) == ngb_node_map->end()) {
-        PADDLE_THROW("op % input varname %s is not found in var_node_map",
-                     op->Type(), var_name);
-      }
+      PADDLE_ENFORCE_GT(ngb_node_map->count(var_name), 0,
+                        "op % input varname %s is not found in var_node_map",
+                        op->Type(), var_name);
     }
   }
   std::shared_ptr<ngraph::Node>& sum = ngb_node_map->at(op_inputs[0]);
