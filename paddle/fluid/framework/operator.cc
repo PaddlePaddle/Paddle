@@ -1181,17 +1181,14 @@ Scope* OperatorWithKernel::PrepareData(
       // In the inference scenerio, the scopes will be reused across the
       // batches, so the `new_scope` here will result in GPU memroy explosion
       // over the  running of operators.
-      // We use a thread_local cache to fix that issue, the key in the cache
-      // is
+      // We use a thread_local cache to fix that issue, the key in the cache is
       // the combination of the `scope` argument, from_kernel_type,
       // target_kernel_type.
       // Have a discussion with @Superjomn or the inference developers if some
       // changes on this logic for this macro might not tested on the other
       // scenerios.
-      // If this op is not called by an Executor or ParallelExecutor, it
-      // should
-      // called by a NaiveExecutor, the NaiveExecutor will cache the scopes
-      // and
+      // If this op is not called by an Executor or ParallelExecutor, it should
+      // called by a NaiveExecutor, the NaiveExecutor will cache the scopes and
       // variables, that behavior a lot different.
       //
       // To solve issue #15032, have a discussion with @Luotao for cpu
