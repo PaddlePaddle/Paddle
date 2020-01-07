@@ -68,6 +68,15 @@ class TestCommunicatorGEO(unittest.TestCase):
     def test_communicator_init_and_start(self):
         prog = fluid.Program()
 
+        envs = {}
+        envs["communicator_independent_recv_thread"] = "1"
+        envs["communicator_min_send_grad_num_before_recv"] = "12"
+        envs["communicator_thread_pool_size"] = "5"
+        envs["communicator_max_merge_var_num"] = "12"
+        envs["communicator_send_wait_times"] = "5"
+        envs["communicator_send_queue_size"] = "12"
+        envs["communicator_is_sgd_optimizer"] = "1"
+
         kwargs = {}
         kwargs["push_vars"] = None
         kwargs["trainers"] = 0

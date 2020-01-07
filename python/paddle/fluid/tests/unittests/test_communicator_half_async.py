@@ -157,7 +157,14 @@ half_run_server.run_ut()
 class TestCommunicatorHalfAsync2(unittest.TestCase):
     def test_communicator_init_and_start(self):
         prog = fluid.Program()
-        comm = Communicator(prog, AsyncMode.HALF_ASYNC)
+
+        envs = {}
+        envs["communicator_independent_recv_thread"] = "1"
+        envs["communicator_min_send_grad_num_before_recv"] = "12"
+        envs["communicator_thread_pool_size"] = "5"
+        envs["communicator_send_wait_times"] = "5"
+
+        comm = Communicator(prog, AsyncMode.HALF_ASYNC, None, envs)
         comm.start()
         time.sleep(10)
         comm.stop()

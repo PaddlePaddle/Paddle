@@ -48,25 +48,27 @@ class TrainerRuntimeConfig(object):
 
     def get_communicator_flags(self):
         _communicator_flags = dict()
-        _communicator_flags["max_merge_var_num"] = self.max_merge_var_num
-        _communicator_flags["send_queue_size"] = self.send_queue_size
         _communicator_flags[
-            "independent_recv_thread"] = self.independent_recv_thread
+            "communicator_max_merge_var_num"] = self.max_merge_var_num
         _communicator_flags[
-            "min_send_grad_num_before_recv"] = self.min_send_grad_num_before_recv
-        _communicator_flags["thread_pool_size"] = self.thread_pool_size
-        _communicator_flags["send_wait_times"] = self.send_wait_times
-        _communicator_flags["fake_rpc"] = self.fake_rpc
-        _communicator_flags["merge_sparse_grad"] = self.merge_sparse_grad
-        _communicator_flags["is_sgd_optimizer"] = self.is_sgd_optimizer
+            "communicator_send_queue_size"] = self.send_queue_size
+        _communicator_flags[
+            "communicator_independent_recv_thread"] = self.independent_recv_thread
+        _communicator_flags[
+            "communicator_min_send_grad_num_before_recv"] = self.min_send_grad_num_before_recv
+        _communicator_flags[
+            "communicator_thread_pool_size"] = self.thread_pool_size
+        _communicator_flags[
+            "communicator_send_wait_times"] = self.send_wait_times
+        _communicator_flags[
+            "communicator_is_sgd_optimizer"] = self.is_sgd_optimizer
         return _communicator_flags
 
     def __repr__(self):
         _str = "please check that TrainerRuntimeConfig is as expected:\n"
         _communicator_flags = self.get_communicator_flags()
         for key in _communicator_flags:
-            _str += "communicator_{}: {}\n".format(key,
-                                                   _communicator_flags[key])
+            _str += "{}: {}\n".format(key, _communicator_flags[key])
         return _str
 
 

@@ -17,7 +17,6 @@ from __future__ import print_function
 import os
 import unittest
 from test_dist_fleet_base import TestFleetBase
-from paddle.fluid.communicator import AsyncMode
 
 
 class TestDistMnistSync2x2(TestFleetBase):
