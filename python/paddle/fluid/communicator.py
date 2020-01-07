@@ -19,9 +19,18 @@ It's a wrapper of a cpp class Communicator and should be used inside fleet API.
 """
 from . import core
 from .framework import Program
-from .incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import TrainingMode
 
-__all__ = ['Communicator']
+__all__ = ['Communicator', 'TrainingMode']
+
+
+class Enum(set):
+    def __getattr__(self, name):
+        if name in self:
+            return name
+        raise AttributeError
+
+
+TrainingMode = Enum(["SYNC", "HALF_ASYNC", "ASYNC", "GEO"])
 
 
 class Communicator(object):

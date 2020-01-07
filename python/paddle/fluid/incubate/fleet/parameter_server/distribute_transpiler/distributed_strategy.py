@@ -14,23 +14,12 @@
 
 __all__ = [
     "TrainerRuntimeConfig", "DistributedStrategy", "SyncStrategy",
-    "AsyncStrategy", "HalfAsyncStrategy", "GeoStrategy", "StrategyFactory",
-    "TrainingMode"
+    "AsyncStrategy", "HalfAsyncStrategy", "GeoStrategy", "StrategyFactory"
 ]
 
 import os
 import paddle.fluid as fluid
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig, ServerRuntimeConfig
-
-
-class Enum(set):
-    def __getattr__(self, name):
-        if name in self:
-            return name
-        raise AttributeError
-
-
-TrainingMode = Enum(["SYNC", "HALF_ASYNC", "ASYNC", "GEO"])
 
 
 class TrainerRuntimeConfig(object):

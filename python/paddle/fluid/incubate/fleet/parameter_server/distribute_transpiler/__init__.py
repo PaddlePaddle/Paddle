@@ -18,7 +18,7 @@ import warnings
 Convert the fluid program to distributed data-parallelism programs.
 """
 import paddle.fluid.io as io
-from paddle.fluid.communicator import Communicator
+from paddle.fluid.communicator import Communicator, TrainingMode
 from paddle.fluid.framework import default_main_program
 from paddle.fluid.framework import default_startup_program
 from paddle.fluid.framework import Program
@@ -27,7 +27,7 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.parallel_executor import ParallelExecutor
 from paddle.fluid.optimizer import Optimizer
 
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import TrainerRuntimeConfig, DistributedStrategy, SyncStrategy, AsyncStrategy, HalfAsyncStrategy, GeoStrategy, StrategyFactory, TrainingMode
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import TrainerRuntimeConfig, DistributedStrategy, SyncStrategy, AsyncStrategy, HalfAsyncStrategy, GeoStrategy, StrategyFactory
 
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspiler as OriginTranspiler
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig, ServerRuntimeConfig
