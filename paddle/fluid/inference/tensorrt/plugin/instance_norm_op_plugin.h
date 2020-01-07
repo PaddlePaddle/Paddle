@@ -41,7 +41,8 @@ class InstanceNormPlugin : public PluginTensorRT {
  protected:
   size_t getSerializationSize() override {
     return getBaseSerializationSize() + SerializedSize(eps_) +
-           SerializedSize(scale_) + SerializedSize(bias_);
+           SerializedSize(scale_) + SerializedSize(bias_) +
+           SerializedSize(getPluginType());
   }
 
   // TRT will call this func when we need to serialize the configuration of
