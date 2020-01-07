@@ -65,6 +65,7 @@ else
     exit -1
 fi
 
+'
 # test select_gpus
 distributed_args="--use_paddlecloud --cluster_node_ips=${cluster_node_ips} --node_ip=${node_ip}
 --selected_gpus=0"
@@ -76,3 +77,4 @@ else
     echo "not find trainer 0"
     exit -1
 fi
+'
