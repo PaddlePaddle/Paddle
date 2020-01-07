@@ -130,7 +130,8 @@ if(LINUX AND WITH_MKLDNN)
 	if (NOT EXISTS ${QAT_RESNET101_MODEL_DIR})
 		inference_download_and_uncompress(${QAT_RESNET101_MODEL_DIR} "${QAT_MODELS_BASE_URL}" "ResNet101_qat_model.tar.gz" )
 	endif()
-	# inference_qat_int8_test(test_qat_int8_resnet101_mkldnn ${QAT_RESNET101_MODEL_DIR} ${DATASET_DIR} ${MKLDNN_QAT_TEST_FILE_PATH} true)
+	inference_qat_int8_test(test_qat_int8_resnet101_mkldnn ${QAT_RESNET101_MODEL_DIR} ${DATASET_DIR} ${MKLDNN_QAT_TEST_FILE_PATH} true)
+        set_property(TEST test_qat_int8_resnet101_mkldnn PROPERTY ENVIRONMENT MKLDNN_VERBOSE=2)
 
 	# QAT GoogleNet
 	set(QAT_GOOGLENET_MODEL_DIR "${QAT_DATA_DIR}/GoogleNet_QAT")
@@ -158,14 +159,16 @@ if(LINUX AND WITH_MKLDNN)
 	if (NOT EXISTS ${QAT_VGG16_MODEL_DIR})
 		inference_download_and_uncompress(${QAT_VGG16_MODEL_DIR} "${QAT_MODELS_BASE_URL}" "VGG16_qat_model.tar.gz" )
 	endif()
-	# inference_qat_int8_test(test_qat_int8_vgg16_mkldnn ${QAT_VGG16_MODEL_DIR} ${DATASET_DIR} ${MKLDNN_QAT_TEST_FILE_PATH} true)
+	inference_qat_int8_test(test_qat_int8_vgg16_mkldnn ${QAT_VGG16_MODEL_DIR} ${DATASET_DIR} ${MKLDNN_QAT_TEST_FILE_PATH} true)
+        set_property(TEST test_qat_int8_vgg16_mkldnn PROPERTY ENVIRONMENT MKLDNN_VERBOSE=2)
 
 	# QAT VGG19
 	set(QAT_VGG19_MODEL_DIR "${QAT_DATA_DIR}/VGG19_QAT")
 	if (NOT EXISTS ${QAT_VGG19_MODEL_DIR})
 		inference_download_and_uncompress(${QAT_VGG19_MODEL_DIR} "${QAT_MODELS_BASE_URL}" "VGG19_qat_model.tar.gz" )
 	endif()
-	# inference_qat_int8_test(test_qat_int8_vgg19_mkldnn ${QAT_VGG19_MODEL_DIR} ${DATASET_DIR} ${MKLDNN_QAT_TEST_FILE_PATH} true)
+	inference_qat_int8_test(test_qat_int8_vgg19_mkldnn ${QAT_VGG19_MODEL_DIR} ${DATASET_DIR} ${MKLDNN_QAT_TEST_FILE_PATH} true)
+        set_property(TEST test_qat_int8_vgg19_mkldnn PROPERTY ENVIRONMENT MKLDNN_VERBOSE=2)
   
         set(QAT2_RESNET50_MODEL_DIR "${QAT_DATA_DIR}/ResNet50_qat_perf")
         if (NOT EXISTS ${QAT2_RESNET50_MODEL_DIR})
