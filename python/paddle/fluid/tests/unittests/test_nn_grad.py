@@ -45,23 +45,20 @@ class TestMulGradCheck(unittest.TestCase):
 
 class TestSliceOpDoubleGradCheck(unittest.TestCase):
     def func(self, place):
-        self.op_type = "slice"
         self.config()
 
-        x_arr = np.random.random([3, 4, 5, 2, 2, 2]).astype("float64")
-        inputs = layers.create_parameter(
-            dtype="float64", shape=[3, 4, 5, 2, 2, 2], name='x')
-
         out = fluid.layers.slice(
-            inputs, axes=self.axes, starts=self.starts, ends=self.ends)
-
+            self.inputs, axes=self.axes, starts=self.starts, ends=self.ends)
         gradient_checker.double_grad_check(
-            [inputs], out, x_init=x_arr, place=place)
+            [self.inputs], out, x_init=self.x_arr, place=place)
 
     def config(self):
-        self.starts = [1, 0, 1]
-        self.ends = [3, 3, 4]
+        self.starts = [1, 0, -1]
+        self.ends = [3, 3, 6]
         self.axes = [0, 1, 2]
+        self.x_arr = np.random.random([3, 4, 5, 2]).astype("float64")
+        self.inputs = layers.create_parameter(
+            dtype="float64", shape=[3, 4, 5, 2], name='x')
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -71,39 +68,54 @@ class TestSliceOpDoubleGradCheck(unittest.TestCase):
             self.func(place)
 
 
-class TestSliceCase3(TestSliceOpDoubleGradCheck):
+class TestSliceOpDoubleGradCheckCase1(TestSliceOpDoubleGradCheck):
     def config(self):
-        self.starts = [0]
-        self.ends = [2]
-        self.axes = [1]
+        self.starts = [1]
+        self.ends = [3]
+        self.axes = [0]
+        self.x_arr = np.random.random([3]).astype("float64")
+        self.inputs = layers.create_parameter(
+            dtype="float64", shape=[3], name='x1')
 
 
-class TestSliceCase4(TestSliceOpDoubleGradCheck):
+class TestSliceOpDoubleGradCheckCase2(TestSliceOpDoubleGradCheck):
     def config(self):
-        self.starts = [0, 1]
-        self.ends = [2, 2]
+        self.starts = [1, -1]
+        self.ends = [3, 3]
         self.axes = [0, 1]
+        self.x_arr = np.random.random([3, 3]).astype("float64")
+        self.inputs = layers.create_parameter(
+            dtype="float64", shape=[3, 3], name='x2')
 
 
-class TestSliceCase5(TestSliceOpDoubleGradCheck):
+class TestSliceOpDoubleGradCheckCase3(TestSliceOpDoubleGradCheck):
     def config(self):
-        self.starts = [0, 1, 1, 1]
-        self.ends = [2, 2, 2, 2]
-        self.axes = [0, 1, 2, 3]
+        self.starts = [1, -1, 1]
+        self.ends = [3, 3, 3]
+        self.axes = [0, 1, 2]
+        self.x_arr = np.random.random([3, 3, 3]).astype("float64")
+        self.inputs = layers.create_parameter(
+            dtype="float64", shape=[3, 3, 3], name='x3')
 
 
-class TestSliceCase6(TestSliceOpDoubleGradCheck):
+class TestSliceOpDoubleGradCheckCase4(TestSliceOpDoubleGradCheck):
     def config(self):
-        self.starts = [0, 1, 1, 1, 1]
-        self.ends = [2, 2, 2, 2, 2]
+        self.starts = [1, -1, 1, 1, 1]
+        self.ends = [3] * 5
         self.axes = [0, 1, 2, 3, 4]
+        self.x_arr = np.random.random([3, 3, 3, 3, 3]).astype("float64")
+        self.inputs = layers.create_parameter(
+            dtype="float64", shape=[3, 3, 3, 3, 3], name='x4')
 
 
-class TestSliceCase7(TestSliceOpDoubleGradCheck):
+class TestSliceOpDoubleGradCheckCase5(TestSliceOpDoubleGradCheck):
     def config(self):
-        self.starts = [0, 0, 0, 0, 0, 0]
-        self.ends = [2, 2, 2, 2, 2, 2]
+        self.starts = [1, -1, 1, 1, 1, 0]
+        self.ends = [3] * 6
         self.axes = [0, 1, 2, 3, 4, 5]
+        self.x_arr = np.random.random([3, 3, 3, 3, 3, 3]).astype("float64")
+        self.inputs = layers.create_parameter(
+            dtype="float64", shape=[3, 3, 3, 3, 3, 3], name='x5')
 
 
 class TestReduceMeanWithDimDoubleGradCheck(unittest.TestCase):
