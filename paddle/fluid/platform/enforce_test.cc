@@ -300,6 +300,17 @@ TEST(enforce, cuda_success) {
 }
 #endif
 
+TEST(enforce, cuda_success_check) {
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaSuccess);               // no msg
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaSuccess, "cuda test");  // no error type
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      cudaSuccess,
+      paddle::platform::errors::External("cuda test"));  // msg is too short
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      cudaSuccess, paddle::platform::errors::External(
+                       "paddle enforce cuda success test"));  // correct
+}
+
 struct CannotToStringType {
   explicit CannotToStringType(int num) : num_(num) {}
 
