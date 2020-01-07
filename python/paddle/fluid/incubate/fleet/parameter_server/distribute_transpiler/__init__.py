@@ -17,7 +17,7 @@ import warnings
 """
 Convert the fluid program to distributed data-parallelism programs.
 """
-from .distributed_strategy import *
+from .distributed_strategy import DistributedStrategy, SyncStrategy, AsyncStrategy, HalfAsyncStrategy, GeoStrategy
 import paddle.fluid.io as io
 from paddle.fluid.communicator import Communicator
 from paddle.fluid.framework import default_main_program
@@ -250,14 +250,24 @@ class DistributedTranspiler(Fleet):
         io.save_persistables(executor, dirname, main_program, None)
 
     def _transpile(self, config):
-        if isinstance(config, DistributeTranspilerConfig):
-            self._transpile_config = DistributedStrategy()
-            self._transpile_config.set_program_config(config)
-        elif isinstance(config, DistributedStrategy):
+        if isinstance(config, SyncStrategy) or isinstance(
+                config, HalfAsyncStrategy) or isinstance(
+                    config, AsyncStrategy) or isinstance(config, GeoStrategy):
             self._transpile_config = config
+        elif isinstance(config, DistributeTranspilerConfig):
+            if config.sync_mode:
+                self._transpile_config = SyncStrategy()
+            elif config.geo_sgd_mode:
+                self._transpile_config = GeoStrategy(
+                    config.geo_sgd_need_push_nums)
+            elif config.runtime_split_send_recv:
+                self._transpile_config = AsyncStrategy()
+            else:
+                self._transpile_config = HalfAsyncStrategy()
+            self._transpile_config.set_program_config(config)
         else:
             raise TypeError(
-                "config must be an instance of DistributeTranspilerConfig or DistributedStrategy"
+                "config must be an instance of DistributeTranspilerConfig, SyncStrategy, HalfAsyncStrategy, AsyncStrategy or GeoStratey."
             )
 
         program_config = self._transpile_config.get_program_config()
@@ -327,14 +337,15 @@ class TranspilerOptimizer(DistributedOptimizer):
         super(TranspilerOptimizer, self).__init__(optimizer, strategy)
 
         if strategy:
-            if isinstance(strategy, DistributedStrategy):
+            if isinstance(strategy, DistributeTranspilerConfig) or isinstance(
+                    strategy, SyncStrategy) or isinstance(
+                        strategy, HalfAsyncStrategy) or isinstance(
+                            strategy, AsyncStrategy) or isinstance(config,
+                                                                   GeoStrategy):
                 self._strategy = strategy
-            elif isinstance(strategy, DistributeTranspilerConfig):
-                self._strategy = DistributedStrategy()
-                self._strategy.set_program_config(strategy)
             else:
                 raise TypeError(
-                    "In {} mode, strategy must be an instance of DistributeTranspilerConfig or DistributedStrategy".
+                    "In {} mode, strategy must be an instance of DistributeTranspilerConfig, SyncStrategy, HalfAsyncStrategy, AsyncStrategy, or GeoStrategy".
                     format(fleet._mode))
         else:
             self._strategy = DistributedStrategy()
