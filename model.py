@@ -178,6 +178,8 @@ class StaticGraphAdapter(object):
         optim_path = path + ".pdopt"
         optim = {p.name: p for p in filter(
             is_belong_to_optimizer, prog.list_vars())}
+        if not optim:
+            return
         # HACK this is contrived, optimizer state is not the same for
         # static/dynamic graph mode
         optim['__static_graph_only__'] = True
