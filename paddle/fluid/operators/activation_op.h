@@ -1727,13 +1727,11 @@ class PowGradKernel
 #define FOR_EACH_ACTIVATION_OP(__macro)                                       \
   __macro(sigmoid, Sigmoid, SigmoidFunctor, SigmoidGradFunctor);              \
   __macro(logsigmoid, LogSigmoid, LogSigmoidFunctor, LogSigmoidGradFunctor);  \
-  __macro(exp, Exp, ExpFunctor, ExpGradFunctor);                              \
   __macro(gelu, Gelu, GeluFunctor, GeluGradFunctor);                          \
   __macro(tanh, Tanh, TanhFunctor, TanhGradFunctor);                          \
   __macro(atan, Atan, AtanFunctor, AtanGradFunctor);                          \
   __macro(softshrink, SoftShrink, SoftShrinkFunctor, SoftShrinkGradFunctor);  \
   __macro(rsqrt, Rsqrt, RsqrtFunctor, RsqrtGradFunctor);                      \
-  __macro(abs, Abs, AbsFunctor, AbsGradFunctor);                              \
   __macro(ceil, Ceil, CeilFunctor, ZeroGradFunctor);                          \
   __macro(floor, Floor, FloorFunctor, ZeroGradFunctor);                       \
   __macro(cos, Cos, CosFunctor, CosGradFunctor);                              \

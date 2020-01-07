@@ -342,7 +342,7 @@ class TestImperative(unittest.TestCase):
             out = mlp(var_inp)
             dy_out = out.numpy()
             out.backward()
-            dy_grad = mlp._fc1._w.gradient()
+            dy_grad = mlp._fc1.weight.gradient()
 
         with fluid.dygraph.guard():
             var_inp2 = fluid.dygraph.base.to_variable(np_inp)
@@ -352,7 +352,7 @@ class TestImperative(unittest.TestCase):
             backward_strategy = fluid.dygraph.BackwardStrategy()
             backward_strategy.sort_sum_gradient = True
             out2.backward(backward_strategy)
-            dy_grad2 = mlp2._fc1._w.gradient()
+            dy_grad2 = mlp2._fc1.weight.gradient()
 
         with new_program_scope():
             inp = fluid.layers.data(
@@ -360,7 +360,7 @@ class TestImperative(unittest.TestCase):
             mlp = MLP("mlp")
             out = mlp(inp)
             param_grads = fluid.backward.append_backward(
-                out, parameter_list=[mlp._fc1._w.name])[0]
+                out, parameter_list=[mlp._fc1.weight.name])[0]
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
             exe.run(fluid.default_startup_program())
