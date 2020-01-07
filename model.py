@@ -279,7 +279,7 @@ class StaticGraphAdapter(object):
             return out[:num_output], out[num_output:]
 
     def _make_program(self, inputs):
-        prog = self._orig_prog.clone(for_test=self.mode != 'train')
+        prog = self._orig_prog.clone()
         if self.mode == 'train' and self.model._optimizer._learning_rate_map:
             # HACK workaround learning rate map issue
             lr_var = self.model._optimizer._learning_rate_map[self._orig_prog]
@@ -294,6 +294,8 @@ class StaticGraphAdapter(object):
                 if self.mode == 'train':
                     self._loss_endpoint = fluid.layers.sum(losses)
                     self.model._optimizer.minimize(self._loss_endpoint)
+        if self.mode != 'train':  # clone again to put it in test mode
+            prog = prog.clone(for_test=True)
         self._progs[self.mode] = prog
         self._endpoints[self.mode] = {
             "output": outputs,
