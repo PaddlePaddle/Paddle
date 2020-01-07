@@ -280,7 +280,7 @@ class StaticGraphAdapter(object):
 
     def _make_program(self, inputs):
         prog = self._orig_prog.clone(for_test=self.mode != 'train')
-        if self.mode == 'train':
+        if self.mode == 'train' and self.model._optimizer._learning_rate_map:
             # HACK workaround learning rate map issue
             lr_var = self.model._optimizer._learning_rate_map[self._orig_prog]
             self.model._optimizer._learning_rate_map[prog] = lr_var
