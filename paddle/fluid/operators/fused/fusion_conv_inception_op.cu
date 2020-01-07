@@ -95,15 +95,15 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
     cudnnConvolutionDescriptor_t* conv_desc =
         new cudnnConvolutionDescriptor_t[4];
     for (int i = 0; i < 4; ++i) {
-      CUDNN_ENFORCE(
+      PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnCreateFilterDescriptor(&filter_desc[i]));
-      CUDNN_ENFORCE(
+      PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnCreateTensorDescriptor(&bias_desc[i]));
-      CUDNN_ENFORCE(
+      PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnCreateTensorDescriptor(&in_desc[i]));
-      CUDNN_ENFORCE(
+      PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnCreateTensorDescriptor(&out_desc[i]));
-      CUDNN_ENFORCE(
+      PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnCreateConvolutionDescriptor(&conv_desc[i]));
     }
 
@@ -127,11 +127,11 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
 
     for (int i = 0; i < 4; ++i) {
       filter_dims.push_back(framework::vectorize<int>(filters[i]->dims()));
-      CUDNN_ENFORCE(platform::dynload::cudnnSetFilterNdDescriptor(
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetFilterNdDescriptor(
           filter_desc[i], cudnn_dtype, format, 4, filter_dims[i].data()));
       bias_dims.push_back({1, filter_dims[i][0], 1, 1});
       bias_strides.push_back({filter_dims[i][0], 1, 1, 1});
-      CUDNN_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
           bias_desc[i], cudnn_dtype, 4, bias_dims[i].data(),
           bias_strides[i].data()));
       in_dims.push_back({n, filter_dims[i][1], h, w});
@@ -140,22 +140,25 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
       out_strides.push_back({oc * h * w, h * w, w, 1});
 
       if (i < 2) {
-        CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionNdDescriptor(
-            conv_desc[i], 2, k0x0.data(), k1x1.data(), k1x1.data(),
-            CUDNN_CROSS_CORRELATION, compute_type));
+        PADDLE_ENFORCE_CUDA_SUCCESS(
+            platform::dynload::cudnnSetConvolutionNdDescriptor(
+                conv_desc[i], 2, k0x0.data(), k1x1.data(), k1x1.data(),
+                CUDNN_CROSS_CORRELATION, compute_type));
       } else {
-        CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionNdDescriptor(
-            conv_desc[i], 2, k1x1.data(), k1x1.data(), k1x1.data(),
-            CUDNN_CROSS_CORRELATION, compute_type));
+        PADDLE_ENFORCE_CUDA_SUCCESS(
+            platform::dynload::cudnnSetConvolutionNdDescriptor(
+                conv_desc[i], 2, k1x1.data(), k1x1.data(), k1x1.data(),
+                CUDNN_CROSS_CORRELATION, compute_type));
       }
-      CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
-          conv_desc[i], CUDNN_DEFAULT_MATH));
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          platform::dynload::cudnnSetConvolutionMathType(conv_desc[i],
+                                                         CUDNN_DEFAULT_MATH));
     }
     in_dims[2][1] *= 2;
     in_strides[2][0] = oc * h * w;
     out_strides[2][0] = filter_dims[2][0] * h * w;  // this out is continuous.
     in_strides[3][0] = filter_dims[2][0] * h * w;
-    CUDNN_ENFORCE(
+    PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnSetConvolutionGroupCount(conv_desc[2], 2));
 
     cudnnConvolutionFwdAlgo_t algo[4];
@@ -171,19 +174,21 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
     }
 
     for (int i = 0; i < 4; ++i) {
-      CUDNN_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
           in_desc[i], cudnn_dtype, 4, in_dims[i].data(), in_strides[i].data()));
-      CUDNN_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
           out_desc[i], cudnn_dtype, 4, out_dims[i].data(),
           out_strides[i].data()));
-      CUDNN_ENFORCE(platform::dynload::cudnnGetConvolutionForwardAlgorithm(
-          handle, in_desc[i], filter_desc[i], conv_desc[i], out_desc[i],
-          CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT, workspace_size_limit,
-          &algo[i]));
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          platform::dynload::cudnnGetConvolutionForwardAlgorithm(
+              handle, in_desc[i], filter_desc[i], conv_desc[i], out_desc[i],
+              CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
+              workspace_size_limit, &algo[i]));
       size_t tmp_size = 0;
-      CUDNN_ENFORCE(platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
-          handle, in_desc[i], filter_desc[i], conv_desc[i], out_desc[i],
-          algo[i], &tmp_size));
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
+              handle, in_desc[i], filter_desc[i], conv_desc[i], out_desc[i],
+              algo[i], &tmp_size));
       workspace_size_in_bytes = std::max(workspace_size_in_bytes, tmp_size);
     }
     cudnnActivationDescriptor_t cudnn_act_desc =
@@ -196,7 +201,7 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
 
     // branch1: pool + 1x1 conv
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
-    CUDNN_ENFORCE(platform::dynload::cudnnPoolingForward(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnPoolingForward(
         handle, cudnn_pool_desc, &alpha, cudnn_input_desc, input_data, &beta,
         pool_out_desc, temp_data));
 
@@ -218,13 +223,14 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
 
     for (int i = 0; i < 4; ++i) {
       auto func = [&](void* cudnn_workspace) {
-        CUDNN_ENFORCE(platform::dynload::cudnnConvolutionBiasActivationForward(
-            handle, &alpha, in_desc[i], in_datas[i], filter_desc[i],
-            static_cast<const void*>(filters[i]->data<T>()), conv_desc[i],
-            algo[i], cudnn_workspace, workspace_size_in_bytes, &beta,
-            out_desc[i], out_datas[i], bias_desc[i],
-            static_cast<const void*>(bias[i]->data<T>()), cudnn_act_desc,
-            out_desc[i], out_datas[i]));
+        PADDLE_ENFORCE_CUDA_SUCCESS(
+            platform::dynload::cudnnConvolutionBiasActivationForward(
+                handle, &alpha, in_desc[i], in_datas[i], filter_desc[i],
+                static_cast<const void*>(filters[i]->data<T>()), conv_desc[i],
+                algo[i], cudnn_workspace, workspace_size_in_bytes, &beta,
+                out_desc[i], out_datas[i], bias_desc[i],
+                static_cast<const void*>(bias[i]->data<T>()), cudnn_act_desc,
+                out_desc[i], out_datas[i]));
       };
       auto workspace_handle = dev_ctx.cudnn_workspace_handle();
       workspace_handle.RunFunc(func, workspace_size_in_bytes);
@@ -232,31 +238,35 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
 
     cudnnTensorDescriptor_t x_desc;
     cudnnTensorDescriptor_t y_desc;
-    CUDNN_ENFORCE(platform::dynload::cudnnCreateTensorDescriptor(&x_desc));
-    CUDNN_ENFORCE(platform::dynload::cudnnCreateTensorDescriptor(&y_desc));
-    CUDNN_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnCreateTensorDescriptor(&x_desc));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnCreateTensorDescriptor(&y_desc));
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
         x_desc, cudnn_dtype, 4, out_dims[3].data(), out_strides[2].data()));
-    CUDNN_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
         y_desc, cudnn_dtype, 4, out_dims[3].data(), out_strides[3].data()));
-    CUDNN_ENFORCE(platform::dynload::cudnnTransformTensor(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnTransformTensor(
         handle, CudnnDataType<T>::kOne(), x_desc,
         static_cast<const void*>(out_datas[2]), CudnnDataType<T>::kZero(),
         y_desc, static_cast<void*>(output_data + (oc0 + oc1) * h * w)));
 
     for (int i = 0; i < 4; ++i) {
-      CUDNN_ENFORCE(
+      PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnDestroyTensorDescriptor(in_desc[i]));
-      CUDNN_ENFORCE(
+      PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnDestroyTensorDescriptor(out_desc[i]));
-      CUDNN_ENFORCE(
+      PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnDestroyFilterDescriptor(filter_desc[i]));
-      CUDNN_ENFORCE(
+      PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnDestroyTensorDescriptor(bias_desc[i]));
-      CUDNN_ENFORCE(
+      PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnDestroyConvolutionDescriptor(conv_desc[i]));
     }
-    CUDNN_ENFORCE(platform::dynload::cudnnDestroyTensorDescriptor(x_desc));
-    CUDNN_ENFORCE(platform::dynload::cudnnDestroyTensorDescriptor(y_desc));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnDestroyTensorDescriptor(x_desc));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnDestroyTensorDescriptor(y_desc));
   }
 };
 #endif
