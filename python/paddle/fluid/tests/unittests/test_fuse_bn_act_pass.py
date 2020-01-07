@@ -18,64 +18,66 @@ import unittest
 
 
 class TestFuseBatchNormActPass(unittest.TestCase):
-    def build_program(self):
-        fluid.default_startup_program().random_seed = 1
-        fluid.default_main_program().random_seed = 1
-
-        x = fluid.layers.data(name='x', shape=[1, 28, 28], dtype='float32')
-        y = fluid.layers.data(name="y", shape=[1], dtype='int64')
-        hidden1 = fluid.layers.conv2d(
-            input=x,
-            filter_size=3,
-            num_filters=32,
-            stride=1,
-            padding=1,
-            act=None,
-            bias_attr=False,
-            data_format='NHWC')
-        param_attr = fluid.ParamAttr(
-            name='batch_norm_w',
-            initializer=fluid.initializer.Constant(value=1.0))
-        bias_attr = fluid.ParamAttr(
-            name='batch_norm_b',
-            initializer=fluid.initializer.Constant(value=0.0))
-        hidden2 = fluid.layers.batch_norm(
-            input=hidden1,
-            param_attr=param_attr,
-            bias_attr=bias_attr,
-            act='relu',
-            data_layout='NHWC')
-        hidden3 = fluid.layers.fc(input=hidden2, size=128, act='relu')
-        hidden4 = fluid.layers.batch_norm(
-            input=hidden3, act='relu', data_layout='NHWC')
-        prediction = fluid.layers.fc(input=hidden4, size=10, act='softmax')
-        loss = fluid.layers.cross_entropy(input=prediction, label=y)
-        loss = fluid.layers.mean(loss)
-        sgd = fluid.optimizer.SGD(learning_rate=0.001)
-        sgd = fluid.contrib.mixed_precision.decorate(
-            sgd, use_dynamic_loss_scaling=True, init_loss_scaling=128.0)
-        sgd.minimize(loss)
+    def build_program(self, main_program, startup_program, use_cuda, seed=1):
+        main_program.random_seed = seed
+        startup_program.random_seed = seed
+        with fluid.program_guard(main_program, startup_program):
+            x = fluid.layers.data(name='x', shape=[1, 28, 28], dtype='float32')
+            y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+            hidden1 = fluid.layers.conv2d(
+                input=x,
+                filter_size=3,
+                num_filters=32,
+                stride=1,
+                padding=1,
+                act=None,
+                bias_attr=False,
+                data_format='NHWC')
+            param_attr = fluid.ParamAttr(
+                name='batch_norm_w',
+                initializer=fluid.initializer.Constant(value=1.0))
+            bias_attr = fluid.ParamAttr(
+                name='batch_norm_b',
+                initializer=fluid.initializer.Constant(value=0.0))
+            hidden2 = fluid.layers.batch_norm(
+                input=hidden1,
+                param_attr=param_attr,
+                bias_attr=bias_attr,
+                act='relu',
+                data_layout='NHWC')
+            hidden3 = fluid.layers.fc(input=hidden2, size=128, act='relu')
+            hidden4 = fluid.layers.batch_norm(
+                input=hidden3, act='relu', data_layout='NHWC')
+            prediction = fluid.layers.fc(input=hidden4, size=10, act='softmax')
+            loss = fluid.layers.cross_entropy(input=prediction, label=y)
+            loss = fluid.layers.mean(loss)
+            sgd = fluid.optimizer.SGD(learning_rate=0.001)
+            if use_cuda:
+                sgd = fluid.contrib.mixed_precision.decorate(
+                    sgd, use_dynamic_loss_scaling=True, init_loss_scaling=128.0)
+            sgd.minimize(loss)
         return x, y, loss
 
-    def check(self, place):
-        x, y, loss = self.build_program()
+    def check(self, place, use_cuda):
+        main_program = fluid.Program()
+        startup_program = fluid.Program()
+        x, y, loss = self.build_program(main_program, startup_program, use_cuda)
         exe = fluid.Executor(place)
-        iters = 20
+        iters = 10
         batch_size = 16
         feeder = fluid.DataFeeder(feed_list=[x, y], place=place)
 
         # close fused_bn_act_ops
         build_strategy = fluid.BuildStrategy()
         build_strategy.fuse_bn_act_ops = False
-        binary = fluid.CompiledProgram(fluid.default_main_program(
-        )).with_data_parallel(
+        binary = fluid.CompiledProgram(main_program).with_data_parallel(
             loss_name=loss.name, build_strategy=build_strategy)
         train_reader = paddle.batch(
             paddle.dataset.mnist.train(), batch_size=batch_size)
         loss_vals = []
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
-            exe.run(fluid.default_startup_program())
+            exe.run(startup_program)
             for _ in range(iters):
                 data = next(train_reader())
                 loss_v = exe.run(binary,
@@ -86,15 +88,14 @@ class TestFuseBatchNormActPass(unittest.TestCase):
         # open fused_bn_act_ops
         build_strategy_fused = fluid.BuildStrategy()
         build_strategy_fused.fuse_bn_act_ops = True
-        binary_fused = fluid.CompiledProgram(fluid.default_main_program(
-        )).with_data_parallel(
+        binary_fused = fluid.CompiledProgram(main_program).with_data_parallel(
             loss_name=loss.name, build_strategy=build_strategy_fused)
         train_reader_fused = paddle.batch(
             paddle.dataset.mnist.train(), batch_size=batch_size)
         loss_vals_fused = []
         scope_fused = fluid.Scope()
         with fluid.scope_guard(scope_fused):
-            exe.run(fluid.default_startup_program())
+            exe.run(startup_program)
             for _ in range(iters):
                 data = next(train_reader_fused())
                 loss_v = exe.run(binary_fused,
@@ -108,12 +109,12 @@ class TestFuseBatchNormActPass(unittest.TestCase):
 
     def test_fuse_bn_act_pass_cpu(self):
         place = fluid.CPUPlace()
-        self.check(place)
+        self.check(place, use_cuda=False)
 
     def test_fuse_bn_act_pass_cuda(self):
         if fluid.core.is_compiled_with_cuda():
             place = fluid.CUDAPlace(0)
-            self.check(place)
+            self.check(place, use_cuda=True)
 
 
 if __name__ == '__main__':

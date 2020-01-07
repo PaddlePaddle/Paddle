@@ -1999,7 +1999,8 @@ All parameter, weight, gradient are variables in Paddle.
           [](const BuildStrategy &self) { return self.fuse_bn_act_ops_; },
           [](BuildStrategy &self, bool b) {
             PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
-                              "BuildStrategy is finlaized.");
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy is finlaized."));
             self.fuse_bn_act_ops_ = b;
           },
           R"DOC((bool, optional): fuse_bn_act_ops indicate whether

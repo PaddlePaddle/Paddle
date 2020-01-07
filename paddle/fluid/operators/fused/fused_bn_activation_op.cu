@@ -18,6 +18,7 @@
 #include <vector>
 #include "cub/cub.cuh"
 #include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/fused/fused_bn_activation_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/norm_utils.h"
@@ -39,39 +40,12 @@ class FusedBatchNormActKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
-                      "It must use CUDAPlace.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()), true,
+        platform::errors::PreconditionNotMet("It must use CUDAPlace."));
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     float momentum = ctx.Attr<float>("momentum");
     std::string act_type = ctx.Attr<std::string>("act_type");
-
-    // Get the size for each dimension.
-    // NHWC [batch_size, in_height, in_width, in_channels]
-    const auto *x = ctx.Input<Tensor>("X");
-    const auto &x_dims = x->dims();
-    PADDLE_ENFORCE_EQ(x_dims.size() >= 2 && x_dims.size() <= 5, true,
-                      "The Input dim size should be between 2 and 5");
-
-    auto *y = ctx.Output<Tensor>("Y");
-    y->mutable_data<T>(ctx.GetPlace());
-
-    int N, C, H, W, D;
-    const DataLayout data_layout = DataLayout::kNHWC;
-    ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
-
-    // ------------------- cudnn descriptors ---------------------
-    cudnnTensorDescriptor_t data_desc_;
-    cudnnTensorDescriptor_t bn_param_desc_;
-    cudnnBatchNormMode_t mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
-
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnCreateTensorDescriptor(&data_desc_),
-        "The error has happened when calling "
-        "cudnnCreateTensorDescriptor(&data_desc_).");
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnCreateTensorDescriptor(&bn_param_desc_),
-        "The error has happened when calling "
-        "cudnnCreateTensorDescriptor(&bn_param_desc_).");
 
     if (epsilon <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
       LOG(ERROR) << "Provided epsilon is smaller than "
@@ -80,27 +54,16 @@ class FusedBatchNormActKernel<platform::CUDADeviceContext, T>
     }
     epsilon = std::max(epsilon, CUDNN_BN_MIN_EPSILON);
 
-    VLOG(3) << "Setting descriptors.";
-    std::vector<int> dims = {N, C, H, W, D};
-    std::vector<int> strides = {H * W * D * C, 1, W * D * C, D * C, C};
-
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnSetTensorNdDescriptor(
-            data_desc_, CudnnDataType<T>::type,
-            x_dims.size() > 3 ? x_dims.size() : 4, dims.data(), strides.data()),
-        "The error has happened when calling cudnnSetTensorNdDescriptor.");
-
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnDeriveBNTensorDescriptor(bn_param_desc_,
-                                                         data_desc_, mode_),
-        "The error has happened when calling cudnnDeriveBNTensorDescriptor.");
+    // Get the size for each dimension.
+    // NHWC [batch_size, in_height, in_width, in_channels]
+    const auto *x = ctx.Input<Tensor>("X");
+    const auto &x_dims = x->dims();
+    PADDLE_ENFORCE_EQ(x_dims.size() >= 2 && x_dims.size() <= 5, true,
+                      platform::errors::PreconditionNotMet(
+                          "The Input dim size should be between 2 and 5"));
 
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
-
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-
-    auto handle = dev_ctx.cudnn_handle();
 
     // Run training mode.
     // obtain running mean and running inv var, and see if we need to
@@ -114,10 +77,63 @@ class FusedBatchNormActKernel<platform::CUDADeviceContext, T>
     auto *saved_variance = ctx.Output<Tensor>("SavedVariance");
     saved_mean->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
     saved_variance->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
-    math::SetConstant<platform::CUDADeviceContext, BatchNormParamType<T>>
-        functor;
-    functor(dev_ctx, saved_mean, static_cast<BatchNormParamType<T>>(0));
-    functor(dev_ctx, saved_variance, static_cast<BatchNormParamType<T>>(0));
+
+    auto *y = ctx.Output<Tensor>("Y");
+    y->mutable_data<T>(ctx.GetPlace());
+
+    int N, C, H, W, D;
+    const DataLayout data_layout = DataLayout::kNHWC;
+    ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
+
+    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    if ((N * H * W * D) == 1) {
+      // Only 1 element in normalization dimension,
+      // skip the batch norm calculation, let y = act(x).
+      auto x_v = framework::EigenVector<T>::Flatten(*x);
+      auto y_v = framework::EigenVector<T>::Flatten(*y);
+      auto &dev = *dev_ctx.eigen_device();
+      if (act_type == "relu") {
+        ReluFunctor<T>()(dev, x_v, y_v);
+      } else {
+        PADDLE_THROW(
+            platform::errors::Unimplemented("Unsupported activation type"));
+      }
+      return;
+    }
+
+    // ------------------- cudnn descriptors ---------------------
+    auto handle = dev_ctx.cudnn_handle();
+    cudnnTensorDescriptor_t data_desc_;
+    cudnnTensorDescriptor_t bn_param_desc_;
+    cudnnBatchNormMode_t mode_ = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
+
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnCreateTensorDescriptor(&data_desc_),
+        platform::errors::External(
+            "The error has happened when calling "
+            "cudnnCreateTensorDescriptor(&data_desc_)."));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnCreateTensorDescriptor(&bn_param_desc_),
+        platform::errors::External(
+            "The error has happened when calling "
+            "cudnnCreateTensorDescriptor(&bn_param_desc_)."));
+
+    VLOG(3) << "Setting descriptors.";
+    std::vector<int> dims = {N, C, H, W, D};
+    std::vector<int> strides = {H * W * D * C, 1, W * D * C, D * C, C};
+
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnSetTensorNdDescriptor(
+            data_desc_, CudnnDataType<T>::type,
+            x_dims.size() > 3 ? x_dims.size() : 4, dims.data(), strides.data()),
+        platform::errors::External(
+            "The error has happened when calling cudnnSetTensorNdDescriptor."));
+
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnDeriveBNTensorDescriptor(bn_param_desc_,
+                                                         data_desc_, mode_),
+        platform::errors::External("The error has happened when calling "
+                                   "cudnnDeriveBNTensorDescriptor."));
 
     double this_factor = 1. - momentum;
     cudnnBatchNormOps_t bnOps_ = CUDNN_BATCHNORM_OPS_BN_ACTIVATION;
@@ -151,8 +167,9 @@ class FusedBatchNormActKernel<platform::CUDADeviceContext, T>
                 /*bnScaleBiasMeanVarDesc=*/bn_param_desc_,
                 /*activationDesc=*/activation_desc_,
                 /*sizeInBytes=*/&workspace_size),
-        "The error has happened when calling "
-        "cudnnGetBatchNormalizationForwardTrainingExWorkspaceSize.");
+        platform::errors::External(
+            "The error has happened when calling "
+            "cudnnGetBatchNormalizationForwardTrainingExWorkspaceSize."));
 
     // -------------- cudnn batchnorm reserve space --------------
     PADDLE_ENFORCE_CUDA_SUCCESS(
@@ -163,8 +180,9 @@ class FusedBatchNormActKernel<platform::CUDADeviceContext, T>
             /*activationDesc=*/activation_desc_,
             /*xDesc=*/data_desc_,
             /*sizeInBytes=*/&reserve_space_size),
-        "The error has happened when calling "
-        "cudnnGetBatchNormalizationTrainingExReserveSpaceSize.");
+        platform::errors::External(
+            "The error has happened when calling "
+            "cudnnGetBatchNormalizationTrainingExReserveSpaceSize."));
 
     reserve_space_ptr = reserve_space->mutable_data(ctx.GetPlace(), x->type(),
                                                     reserve_space_size);
@@ -187,18 +205,21 @@ class FusedBatchNormActKernel<platform::CUDADeviceContext, T>
                 ctx.GetPlace()),
             activation_desc_, workspace_ptr, workspace_size, reserve_space_ptr,
             reserve_space_size),
-        "The error has happened when calling "
-        "cudnnBatchNormalizationForwardTrainingEx.");
+        platform::errors::External(
+            "The error has happened when calling "
+            "cudnnBatchNormalizationForwardTrainingEx."));
 
     // clean when exit.
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnDestroyTensorDescriptor(data_desc_),
-        "The error has happened when calling "
-        "cudnnDestroyTensorDescriptor(data_desc_).");
+        platform::errors::External(
+            "The error has happened when calling "
+            "cudnnDestroyTensorDescriptor(data_desc_)."));
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnDestroyTensorDescriptor(bn_param_desc_),
-        "The error has happened when calling "
-        "cudnnDestroyTensorDescriptor(bn_param_desc_).");
+        platform::errors::External(
+            "The error has happened when calling "
+            "cudnnDestroyTensorDescriptor(bn_param_desc_)."));
   }
 };
 
@@ -207,8 +228,9 @@ class FusedBatchNormActGradKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
-                      "It must use CUDAPlace.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()), true,
+        platform::errors::PreconditionNotMet("It must use CUDAPlace."));
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     std::string act_type = ctx.Attr<std::string>("act_type");
 
@@ -222,7 +244,8 @@ class FusedBatchNormActGradKernel<platform::CUDADeviceContext, T>
     const auto &x_dims = x->dims();
 
     PADDLE_ENFORCE_EQ(x_dims.size() >= 2 && x_dims.size() <= 5, true,
-                      "The Input dim size should be between 2 and 5");
+                      platform::errors::PreconditionNotMet(
+                          "The Input dim size should be between 2 and 5"));
     int N, C, H, W, D;
     const DataLayout data_layout = DataLayout::kNHWC;
     ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
@@ -235,25 +258,40 @@ class FusedBatchNormActGradKernel<platform::CUDADeviceContext, T>
     d_x->mutable_data<T>(ctx.GetPlace());
     PADDLE_ENFORCE_EQ(
         d_scale && d_bias, true,
-        "Both the scale grad and the bias grad must not be null.");
+        platform::errors::PreconditionNotMet(
+            "Both the scale grad and the bias grad must not be null."));
     d_scale->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
     d_bias->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
     PADDLE_ENFORCE_EQ(scale->dims().size(), 1UL,
-                      "The scale only has one dimension.");
-    PADDLE_ENFORCE_EQ(scale->dims()[0], C,
-                      "The size of scale is equal to the channel of Input(X).");
+                      platform::errors::PreconditionNotMet(
+                          "The scale only has one dimension."));
+    PADDLE_ENFORCE_EQ(
+        scale->dims()[0], C,
+        platform::errors::PreconditionNotMet(
+            "The size of scale is equal to the channel of Input(X)."));
+
+    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    if ((N * H * W * D) == 1) {
+      if (act_type == "relu") {
+        auto x_v = framework::EigenVector<T>::Flatten(*x);
+        auto y_v = framework::EigenVector<T>::Flatten(*y);
+        auto dx_v = framework::EigenVector<T>::Flatten(*d_x);
+        auto dy_v = framework::EigenVector<T>::Flatten(*d_y);
+        auto &dev = *dev_ctx.eigen_device();
+        ReluGradFunctor<T>()(dev, x_v, y_v, dy_v, dx_v);
+      } else {
+        PADDLE_THROW(
+            platform::errors::Unimplemented("Unsupported activation type"));
+      }
+      math::SetConstant<platform::CUDADeviceContext, BatchNormParamType<T>>
+          functor;
+      functor(dev_ctx, d_scale, static_cast<BatchNormParamType<T>>(0));
+      functor(dev_ctx, d_bias, static_cast<BatchNormParamType<T>>(0));
+      return;
+    }
 
     std::vector<int> dims = {N, C, H, W, D};
     std::vector<int> strides = {H * W * C * D, 1, W * D * C, D * C, C};
-
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    const int num = x->numel();
-    const int block = 512;
-    int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
-    const int max_blocks = std::max(max_threads / block, 1);
-    int grid1 = (num + block - 1) / block;
-    int grid2 = std::min(C, max_blocks);
-
     // ------------------- cudnn descriptors ---------------------
     cudnnTensorDescriptor_t data_desc_;
     cudnnTensorDescriptor_t bn_param_desc_;
@@ -261,12 +299,14 @@ class FusedBatchNormActGradKernel<platform::CUDADeviceContext, T>
 
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnCreateTensorDescriptor(&data_desc_),
-        "The error has happened when calling "
-        "cudnnCreateTensorDescriptor(&data_desc_).");
+        platform::errors::External(
+            "The error has happened when calling "
+            "cudnnCreateTensorDescriptor(&data_desc_)."));
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnCreateTensorDescriptor(&bn_param_desc_),
-        "The error has happened when calling "
-        "cudnnCreateTensorDescriptor(&bn_param_desc_).");
+        platform::errors::External(
+            "The error has happened when calling "
+            "cudnnCreateTensorDescriptor(&bn_param_desc_)."));
     if (epsilon <= CUDNN_BN_MIN_EPSILON - FLT_EPSILON) {
       LOG(ERROR) << "Provided epsilon is smaller than "
                  << "CUDNN_BN_MIN_EPSILON. Setting it to "
@@ -278,11 +318,13 @@ class FusedBatchNormActGradKernel<platform::CUDADeviceContext, T>
         platform::dynload::cudnnSetTensorNdDescriptor(
             data_desc_, CudnnDataType<T>::type,
             x_dims.size() > 3 ? x_dims.size() : 4, dims.data(), strides.data()),
-        "The error has happened when calling cudnnSetTensorNdDescriptor.");
+        platform::errors::External(
+            "The error has happened when calling cudnnSetTensorNdDescriptor."));
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnDeriveBNTensorDescriptor(bn_param_desc_,
                                                          data_desc_, mode_),
-        "The error has happened when calling cudnnDeriveBNTensorDescriptor.");
+        platform::errors::External("The error has happened when calling "
+                                   "cudnnDeriveBNTensorDescriptor."));
 
     const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
     const auto *saved_var = ctx.Input<Tensor>("SavedVariance");
@@ -313,8 +355,9 @@ class FusedBatchNormActGradKernel<platform::CUDADeviceContext, T>
             /*bnScaleBiasMeanVarDesc=*/bn_param_desc_,
             /*activationDesc=*/activation_desc_,
             /*sizeInBytes=*/&workspace_size),
-        "The error has happened when calling "
-        "cudnnGetBatchNormalizationBackwardExWorkspaceSize.");
+        platform::errors::External(
+            "The error has happened when calling "
+            "cudnnGetBatchNormalizationBackwardExWorkspaceSize."));
 
     workspace_ptr = workspace_tensor.mutable_data(ctx.GetPlace(), x->type(),
                                                   workspace_size);
@@ -353,18 +396,20 @@ class FusedBatchNormActGradKernel<platform::CUDADeviceContext, T>
             /*workSpaceSizeInBytes=*/workspace_size,
             /*reserveSpace=*/const_cast<T *>(reserve_space->template data<T>()),
             /*reserveSpaceSizeInBytes=*/reserve_space_size),
-        "The error has happened when calling "
-        "cudnnBatchNormalizationBackwardEx.");
+        platform::errors::External("The error has happened when calling "
+                                   "cudnnBatchNormalizationBackwardEx."));
 
     // clean when exit.
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnDestroyTensorDescriptor(data_desc_),
-        "The error has happened when calling "
-        "cudnnDestroyTensorDescriptor(data_desc_).");
+        platform::errors::External(
+            "The error has happened when calling "
+            "cudnnDestroyTensorDescriptor(data_desc_)."));
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnDestroyTensorDescriptor(bn_param_desc_),
-        "The error has happened when calling "
-        "cudnnDestroyTensorDescriptor(bn_param_desc_).");
+        platform::errors::External(
+            "The error has happened when calling "
+            "cudnnDestroyTensorDescriptor(bn_param_desc_)."));
   }
 };
 
