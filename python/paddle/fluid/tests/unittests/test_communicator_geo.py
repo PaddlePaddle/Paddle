@@ -22,7 +22,7 @@ import numpy
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.communicator import Communicator
-from paddle.fluid.communicator import AsyncMode
+from paddle.fluid.communicator import TrainingMode
 
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
@@ -82,18 +82,7 @@ class TestCommunicatorGEO(unittest.TestCase):
         kwargs["trainers"] = 0
         kwargs["push_nums"] = 0
 
-        def build_comm():
-            comm = Communicator(prog, AsyncMode.GEO_SGD, kwargs)
-
-        self.assertRaises(ValueError, build_comm)
-
-        kwargs["trainers"] = 10
-        self.assertRaises(ValueError, build_comm)
-
-        def build_sync_comm():
-            comm = Communicator(prog, AsyncMode.SYNC, kwargs)
-
-        self.assertRaises(ValueError, build_sync_comm)
+        comm = Communicator(prog, TrainingMode.GEO, kwargs, envs)
 
 
 if __name__ == '__main__':
