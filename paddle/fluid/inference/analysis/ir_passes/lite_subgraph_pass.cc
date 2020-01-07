@@ -29,8 +29,8 @@
 #include "paddle/fluid/inference/utils/singleton.h"
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/ir/subgraph_detector.h"
 #include "paddle/fluid/inference/analysis/ir_passes/lite_subgraph_pass.h"
-#include "paddle/fluid/inference/analysis/ir_passes/subgraph_detector.h"
 #include "paddle/fluid/string/pretty_log.h"
 
 #include "paddle/fluid/inference/lite/engine.h"
@@ -40,6 +40,9 @@ namespace inference {
 namespace analysis {
 
 using framework::ir::Node;
+using framework::ir::Agent;
+using framework::ir::SubGraphFuser;
+using framework::ir::Graph;
 
 namespace lite {
 

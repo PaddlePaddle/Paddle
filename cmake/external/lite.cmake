@@ -12,6 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+if(NOT LINUX OR NOT WITH_MKL)
+  message("The build of Paddle-lite was cancelled because the requirements were not met.")
+  set(WITH_LITE OFF)
+  return()
+endif()
+
 if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   include(ExternalProject)
   set(LITE_PROJECT extern_lite)
