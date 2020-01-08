@@ -195,6 +195,7 @@ class HalfAsyncStrategy(DistributedStrategy):
     def __init__(self):
         super(HalfAsyncStrategy, self).__init__()
         self._program_config.sync_mode = False
+        self._program_config.half_async = True
         self._program_config.runtime_split_send_recv = False
         self._build_strategy.async_mode = False
 

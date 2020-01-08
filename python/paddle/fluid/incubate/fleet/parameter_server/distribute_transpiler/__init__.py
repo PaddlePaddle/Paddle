@@ -72,6 +72,10 @@ class DistributedTranspiler(Fleet):
         program_config = self._transpile_config.get_program_config()
         trainer_communicator_config = self._transpile_config.get_trainer_runtime_config(
         )
+
+        if isinstance(self._transpile_config, SyncStrategy):
+            return
+
         print(trainer_communicator_config)
 
         if isinstance(self._transpile_config, GeoStrategy):
@@ -150,10 +154,12 @@ class DistributedTranspiler(Fleet):
         Returns:
             None
         """
-        self._communicator.stop()
-        self._executor.close()
+
+        if not isinstance(self._transpile_config, SyncStrategy):
+            self._communicator.stop()
         if isinstance(self._role_maker, MPISymetricRoleMaker):
             self._role_maker._finalize()
+        self._executor.close()
 
     def distributed_optimizer(self, optimizer, strategy=None):
         """
