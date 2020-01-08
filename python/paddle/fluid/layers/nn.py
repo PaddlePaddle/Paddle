@@ -8485,13 +8485,13 @@ def pad2d(input,
     """
     attrs = {'mode': mode, 'pad_value': pad_value, 'data_format': data_format}
     inputs = {'X': [input]}
+    if isinstance(paddings, Variable):
+        inputs['Paddings'] = [paddings]
+        attrs['paddings'] = []
+    else:
+        attrs['paddings'] = paddings
+
     if in_dygraph_mode():
-        if isinstance(paddings, (list, tuple)):
-            attrs['paddings'] = paddings
-        else:
-            raise TypeError(
-                "The type of 'paddings' in pad2d must be list[int] in Dygraph mode, but "
-                "received %s." % type(paddings))
         outs = core.ops.pad2d(inputs, attrs)
         return outs['Out'][0]
 
@@ -8502,12 +8502,6 @@ def pad2d(input,
 
     dtype = helper.input_dtype(input_param_name='input')
     out = helper.create_variable_for_type_inference(dtype)
-
-    if isinstance(paddings, Variable):
-        inputs['Paddings'] = paddings
-        attrs['paddings'] = []
-    else:
-        attrs['paddings'] = paddings
 
     helper.append_op(
         type='pad2d', inputs=inputs, outputs={"Out": out}, attrs=attrs)

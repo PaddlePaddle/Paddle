@@ -2537,7 +2537,7 @@ class Conv2DTranspose(layers.Layer):
             dtype=input.dtype)
         self._helper.append_op(
             type=self._op_type,
-            inputs=attrs,
+            inputs=inputs,
             outputs={'Output': pre_bias},
             attrs=attrs)
 

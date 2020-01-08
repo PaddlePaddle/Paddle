@@ -569,7 +569,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
     else:
         attrs['str_value'] = str(float(value))
 
-    if False and in_dygraph_mode():
+    if in_dygraph_mode():
         if isinstance(shape, (list, tuple)):
             contain_var = _contain_var(shape)
             if contain_var:
@@ -582,7 +582,8 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
                 "The type of 'shape' in fill_constant must be list[int] or tuple(int) in Dygraph mode, but "
                 "received %s." % type(shape))
         if out is None:
-            _varbase_creator(dtype=dtype)
+            out = _varbase_creator(dtype=dtype)
+        attrs['dtype'] = out.dtype
         outputs = {'Out': [out]}
         outs = core.ops.fill_constant({}, attrs, outputs)
         out.stop_gradient = True
