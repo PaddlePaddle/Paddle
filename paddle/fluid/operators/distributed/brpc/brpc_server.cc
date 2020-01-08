@@ -102,7 +102,7 @@ class BRPCServiceImpl : public SendRecvService {
 
     distributed::BRPCVariableResponse resp(request_send_h_->scope(),
                                            request_send_h_->dev_ctx(),
-                                           request_send_h_->training_mode());
+                                           request_send_h_->distributed_mode());
     PADDLE_ENFORCE(resp.Parse(cntl->request_attachment(), *request) == 0,
                    "parse iobuf to tensor error!");
 

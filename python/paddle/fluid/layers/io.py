@@ -29,7 +29,7 @@ from ..framework import convert_np_dtype_to_dtype_, default_main_program, \
     default_startup_program, program_guard, Program, Variable
 from ..layer_helper import LayerHelper
 from ..unique_name import generate as unique_name
-from ..transpiler.distribute_transpiler import TrainingMode
+from ..transpiler.distribute_transpiler import DistributedMode
 import logging
 
 __all__ = [
@@ -231,8 +231,8 @@ class ListenAndServ(object):
                 'optimize_blocks': [
                     current_block
                 ],  # did not support multiple optimize blocks in layers
-                'training_mode':
-                TrainingMode.SYNC,  # did not support async now in layers
+                'distributed_mode':
+                DistributedMode.SYNC,  # did not support async now in layers
                 'grad_to_block_id': [""]
             })
 

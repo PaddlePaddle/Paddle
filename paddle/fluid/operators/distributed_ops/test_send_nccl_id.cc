@@ -73,7 +73,7 @@ void StartServer() {
 
 TEST(SendNcclId, RPCServer) {
   g_req_handler.reset(
-      new distributed::RequestSendHandler(distributed::TrainingMode::kSync));
+      new distributed::RequestSendHandler(distributed::DistributedMode::kSync));
   g_rpc_service.reset(new RPCSERVER_T("127.0.0.1:0", 1));
 
   std::thread server_thread(StartServer);

@@ -147,7 +147,7 @@ void StartServerNet(bool is_sparse, std::atomic<bool> *initialized) {
   attrs.insert({"optimize_blocks", optimize_blocks});
   attrs.insert({"PrefetchBlock", prefetch_block});
   attrs.insert({"grad_to_block_id", std::vector<std::string>({""})});
-  attrs.insert({"training_mode", d::TrainingMode::kSync});
+  attrs.insert({"distributed_mode", d::DistributedMode::kSync});
   VLOG(4) << "before init op";
   listen_and_serv_op =
       f::OpRegistry::CreateOp("listen_and_serv", {{"X", {"x1"}}}, {}, attrs);
