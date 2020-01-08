@@ -71,6 +71,9 @@ class ParamAttr(object):
                  gradient_clip=None,
                  do_model_average=True):
         self.name = name
+        if isinstance(self.name, six.string_types) and self.name == "":
+            raise ValueError("name of ParamAttr can not be empty str")
+
         self.initializer = initializer
         self.learning_rate = learning_rate
         self.regularizer = regularizer

@@ -333,7 +333,7 @@ class TestKeepDimReduceSumMultiAxises(OpTest):
 class TestReduceSumWithDimOne(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
-        self.inputs = {'X': np.random.random((10, 1, 1)).astype("float64")}
+        self.inputs = {'X': np.random.random((100, 1, 1)).astype("float64")}
         self.attrs = {'dim': [1, 2], 'keep_dim': True}
         self.outputs = {
             'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']),
@@ -350,7 +350,7 @@ class TestReduceSumWithDimOne(OpTest):
 class TestReduceSumWithNumelOne(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
-        self.inputs = {'X': np.random.random((1, 1)).astype("float64")}
+        self.inputs = {'X': np.random.random((100, 1)).astype("float64")}
         self.attrs = {'dim': [1], 'keep_dim': False}
         self.outputs = {
             'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']),
@@ -367,7 +367,7 @@ class TestReduceSumWithNumelOne(OpTest):
 class TestReduceMeanWithDimOne(OpTest):
     def setUp(self):
         self.op_type = "reduce_mean"
-        self.inputs = {'X': np.random.random((10, 1, 1)).astype("float64")}
+        self.inputs = {'X': np.random.random((100, 1, 1)).astype("float64")}
         self.attrs = {'dim': [1], 'keep_dim': False}
         self.outputs = {
             'Out': self.inputs['X'].mean(
@@ -384,7 +384,7 @@ class TestReduceMeanWithDimOne(OpTest):
 class TestReduceMeanWithNumelOne(OpTest):
     def setUp(self):
         self.op_type = "reduce_mean"
-        self.inputs = {'X': np.random.random((1, 1)).astype("float64")}
+        self.inputs = {'X': np.random.random((100, 1)).astype("float64")}
         self.attrs = {'dim': [1], 'keep_dim': True}
         self.outputs = {
             'Out': self.inputs['X'].mean(
@@ -401,7 +401,7 @@ class TestReduceMeanWithNumelOne(OpTest):
 class TestReduceAll(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
-        self.inputs = {'X': np.random.random((1, 1, 1)).astype("float64")}
+        self.inputs = {'X': np.random.random((100, 1, 1)).astype("float64")}
         self.attrs = {'reduce_all': True, 'keep_dim': False}
         self.outputs = {'Out': self.inputs['X'].sum()}
 
@@ -415,7 +415,7 @@ class TestReduceAll(OpTest):
 class Test1DReduceWithAxes1(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
-        self.inputs = {'X': np.random.random(1).astype("float64")}
+        self.inputs = {'X': np.random.random(100).astype("float64")}
         self.attrs = {'dim': [0], 'keep_dim': False}
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
 
