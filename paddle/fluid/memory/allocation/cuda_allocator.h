@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <mutex>  // NOLINT
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -33,6 +34,7 @@ class CUDAAllocator : public Allocator {
 
  private:
   platform::CUDAPlace place_;
+  std::once_flag once_flag_;
 };
 
 }  // namespace allocation
