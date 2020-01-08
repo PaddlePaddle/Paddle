@@ -30,6 +30,8 @@ const std::unordered_set<std::string> op_has_unsed_vars_white_list = {
     "auc",
     "batch_norm",
     "batch_norm_grad",
+    "fused_batch_norm_act",
+    "fused_batch_norm_act_grad",
     "sync_batch_norm_grad",
     "center_loss_grad",
     "crop",
