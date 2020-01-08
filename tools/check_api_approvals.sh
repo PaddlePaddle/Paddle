@@ -184,12 +184,18 @@ if [ "${HAS_INPLACE_TESTS}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
 fi
 
 INVALID_SEQUENCE_OP_UNITTEST=""
-while read -r line ; do
-    SEQUENCE_OP_UNITTEST_GET_BATCH_SIZE_1_FUNC=`git diff -U0 --diff-filter=A upstream/$BRANCH -- ../../${line} | grep "+" | grep "self.get_sequence_batch_size_1_input(" || true`
-    if [ "${SEQUENCE_OP_UNITTEST_GET_BATCH_SIZE_1_FUNC}" == "" ]; then
-        INVALID_SEQUENCE_OP_UNITTEST="${INVALID_SEQUENCE_OP_UNITTEST}${line}\n"
+while read -r op_name ; do
+    unittest_file="python/paddle/fluid/tests/unittests/sequence/test_${op_name}.py"
+    if [ ! -f "${unittest_file}" ]; then
+        INVALID_SEQUENCE_OP_UNITTEST="${INVALID_SEQUENCE_OP_UNITTEST}${unittest_file}\n"
+        continue
     fi
-done < <(git diff --name-only --diff-filter=A upstream/$BRANCH | grep -oE ".*/unittests/sequence/*[.]py")
+    batch_size_1_funtion_calls=`grep "self.get_sequence_batch_size_1_input(" ../../${unittest_file} || true`
+    if [ "${batch_size_1_funtion_calls}" == "" ]; then
+        INVALID_SEQUENCE_OP_UNITTEST="${INVALID_SEQUENCE_OP_UNITTEST}${unittest_file}\n"
+    fi
+done < <(grep '(sequence_' ../paddle/fluid/pybind/pybind.h | cut -d'(' -f 2 | cut -d')' -f 1)
+
 if [ "${INVALID_SEQUENCE_OP_UNITTEST}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="It is required that the LoDTensor in sequence related OP unittests must be obtained by self.get_sequence_batch_size_1_input() function to cover the case of batch size = 1. If it is a mismatch, please specify songyouwei (Recommend) or luotao1 review and approve.\nPlease check the following unittest files:\n${INVALID_SEQUENCE_OP_UNITTEST}"
     check_approval 1 2573291 6836917
