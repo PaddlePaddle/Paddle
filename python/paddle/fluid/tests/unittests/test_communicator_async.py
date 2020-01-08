@@ -22,7 +22,6 @@ import numpy
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.communicator import Communicator
-from paddle.fluid.communicator import AsyncMode
 
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet

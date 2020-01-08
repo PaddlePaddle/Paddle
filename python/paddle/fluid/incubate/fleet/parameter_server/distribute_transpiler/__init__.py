@@ -259,14 +259,24 @@ class DistributedTranspiler(Fleet):
         io.save_persistables(executor, dirname, main_program, None)
 
     def _transpile(self, config):
-        if isinstance(config, DistributeTranspilerConfig):
-            self._transpile_config = DistributedStrategy()
-            self._transpile_config.set_program_config(config)
-        elif isinstance(config, DistributedStrategy):
+        if isinstance(config, SyncStrategy) or isinstance(
+                config, HalfAsyncStrategy) or isinstance(
+                    config, AsyncStrategy) or isinstance(config, GeoStrategy):
             self._transpile_config = config
+        elif isinstance(config, DistributeTranspilerConfig):
+            if config.sync_mode:
+                self._transpile_config = SyncStrategy()
+            elif config.geo_sgd_mode:
+                self._transpile_config = GeoStrategy(
+                    config.geo_sgd_need_push_nums)
+            elif config.runtime_split_send_recv:
+                self._transpile_config = AsyncStrategy()
+            else:
+                self._transpile_config = HalfAsyncStrategy()
+            self._transpile_config.set_program_config(config)
         else:
             raise TypeError(
-                "config must be an instance of DistributeTranspilerConfig or DistributedStrategy"
+                "config must be an instance of DistributeTranspilerConfig, SyncStrategy, HalfAsyncStrategy, AsyncStrategy or GeoStratey."
             )
 
         program_config = self._transpile_config.get_program_config()
