@@ -35,15 +35,12 @@ void TensorRTEngine::Build(const DescType &paddle_model) {
 void TensorRTEngine::Execute(int batch_size, std::vector<void *> *buffers,
                              cudaStream_t stream) {
   freshDeviceId();
-  const std::thread::id tid = std::this_thread::get_id();
-  batch_size_ = batch_size;
-  if (infer_context_.find(tid) == infer_context_.end()) {
-    PADDLE_ENFORCE_NOT_NULL(
-        infer_engine_,
-        "You should build engine first and then set the context.");
-    infer_context_[tid].reset(infer_engine_->createExecutionContext());
+  auto infer_context = context();
+  if (!with_dynamic_shape()) {
+    infer_context->enqueue(batch_size, buffers->data(), stream, nullptr);
+  } else {
+    infer_context->enqueueV2(buffers->data(), stream, nullptr);
   }
-  infer_context_[tid]->enqueue(batch_size, buffers->data(), stream, nullptr);
   cudaStreamSynchronize(stream);
   SetRuntimeBatch(batch_size);
 }
@@ -130,12 +127,30 @@ void TensorRTEngine::FreezeNetwork() {
           }
         }
       }
-
 #endif
     }
   }
 
-  infer_engine_.reset(infer_builder_->buildCudaEngine(*network()));
+  if (with_dynamic_shape_) {
+#if IS_TRT_VERSION_GE(6000)
+    for (auto &input : min_input_shape_) {
+      optim_profile_->setDimensions(
+          input.first.c_str(), nvinfer1::OptProfileSelector::kMIN,
+          Vec2TRT_Dims(input.second, input.first, true));
+      optim_profile_->setDimensions(
+          input.first.c_str(), nvinfer1::OptProfileSelector::kMAX,
+          Vec2TRT_Dims(max_input_shape_[input.first], input.first, true));
+      optim_profile_->setDimensions(
+          input.first.c_str(), nvinfer1::OptProfileSelector::kOPT,
+          Vec2TRT_Dims(optim_input_shape_[input.first], input.first, true));
+    }
+    infer_builder_config_->addOptimizationProfile(optim_profile_.get());
+    infer_engine_.reset(infer_builder_->buildEngineWithConfig(
+        *network(), *infer_builder_config_));
+#endif
+  } else {
+    infer_engine_.reset(infer_builder_->buildCudaEngine(*network()));
+  }
   PADDLE_ENFORCE(infer_engine_ != nullptr, "build cuda engine failed!");
 }
 

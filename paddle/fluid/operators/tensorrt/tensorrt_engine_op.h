@@ -29,6 +29,7 @@
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
+#include "paddle/fluid/inference/tensorrt/helper.h"
 
 namespace paddle {
 
@@ -39,6 +40,29 @@ using inference::tensorrt::TensorRTEngine;
 using inference::tensorrt::TRTInt8Calibrator;
 using inference::tensorrt::TRTCalibratorEngine;
 using inference::tensorrt::TRTCalibratorEngineManager;
+
+static void RuntimeStaticShapeCheck(std::vector<int64_t> runtime_input_shape,
+                                    std::vector<int64_t> model_input_shape) {
+  auto comma_fold = [](std::string a, int b) {
+    return std::move(a) + ", " + std::to_string(b);
+  };
+  std::string model_input_shape_str = std::accumulate(
+      std::next(model_input_shape.begin()), model_input_shape.end(),
+      std::to_string(model_input_shape[0]), comma_fold);
+  std::string runtime_input_shape_str = std::accumulate(
+      std::next(runtime_input_shape.begin()), runtime_input_shape.end(),
+      std::to_string(runtime_input_shape[0]), comma_fold);
+  PADDLE_ENFORCE_EQ(
+      model_input_shape == runtime_input_shape, true,
+      platform::errors::InvalidArgument(
+          "Input shapes are inconsistent with the model. Expect [%s] in "
+          "model description, but got [%s] in runtime. TRT 5 "
+          "or lower version "
+          "does not support dynamic input shapes. Please check and "
+          "modify "
+          "your input shapes.",
+          model_input_shape_str, runtime_input_shape_str));
+}
 
 class TensorRTEngineOp : public framework::OperatorBase {
  private:
@@ -198,6 +222,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     }
     const int num_bindings = num_inputs + Outputs("Ys").size();
     std::vector<void *> buffers(num_bindings);
+    auto *trt_context = engine->context();
 
     // Bind input tensor to TRT.
     for (const auto &x : Inputs("Xs")) {
@@ -206,39 +231,25 @@ class TensorRTEngineOp : public framework::OperatorBase {
       auto &t =
           inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
       auto t_shape = framework::vectorize<int64_t>(t.dims());
-      // check if the input shapes are consistent with model.
-      if (HasAttr(x + "_shape")) {
-        std::vector<int64_t> i_shape = Attr<std::vector<int64_t>>(x + "_shape");
-        std::vector<int64_t> model_input_shape(i_shape.begin() + 1,
-                                               i_shape.end());
-        std::vector<int64_t> runtime_input_shape(t_shape.begin() + 1,
-                                                 t_shape.end());
-        auto comma_fold = [](std::string a, int b) {
-          return std::move(a) + ", " + std::to_string(b);
-        };
-        std::string model_input_shape_str = std::accumulate(
-            std::next(model_input_shape.begin()), model_input_shape.end(),
-            std::to_string(model_input_shape[0]), comma_fold);
-        std::string runtime_input_shape_str = std::accumulate(
-            std::next(runtime_input_shape.begin()), runtime_input_shape.end(),
-            std::to_string(runtime_input_shape[0]), comma_fold);
-        PADDLE_ENFORCE_EQ(
-            model_input_shape == runtime_input_shape, true,
-            platform::errors::InvalidArgument(
-                "Input shapes are inconsistent with the model. Expect [%s] in "
-                "model description, but got [%s] in runtime. TRT 5 "
-                "or lower version "
-                "does not support dynamic input shapes. Please check and "
-                "modify "
-                "your input shapes.",
-                model_input_shape_str, runtime_input_shape_str));
-      }
-
       runtime_batch = t_shape[0];
-
       const int bind_index = engine->engine()->getBindingIndex(x.c_str());
       PADDLE_ENFORCE(bind_index < num_bindings,
                      "The bind index should be less than num_bindings");
+      if (!engine->with_dynamic_shape()) {
+        // check if the input shapes are consistent with model.
+        if (HasAttr(x + "_shape")) {
+          std::vector<int64_t> i_shape =
+              Attr<std::vector<int64_t>>(x + "_shape");
+          std::vector<int64_t> model_input_shape(i_shape.begin() + 1,
+                                                 i_shape.end());
+          std::vector<int64_t> runtime_input_shape(t_shape.begin() + 1,
+                                                   t_shape.end());
+          RuntimeStaticShapeCheck(runtime_input_shape, model_input_shape);
+        }
+      } else {
+        trt_context->setBindingDimensions(
+            bind_index, inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
+      }
       buffers[bind_index] = static_cast<void *>(t.data<float>());
     }
 
@@ -248,13 +259,18 @@ class TensorRTEngineOp : public framework::OperatorBase {
     for (const auto &y : Outputs("Ys")) {
       const int bind_index =
           engine->engine()->getBindingIndex(output_maps[output_index].c_str());
-      auto dims = engine->engine()->getBindingDimensions(bind_index);
-      // Use the output ITensor's dims to reshape the Fluid Tensor.
-      // The ITensor doesn't contain the batch size dim.
       std::vector<int> ddim;
-      ddim.push_back(runtime_batch);
-      for (int i = 0; i < dims.nbDims; i++) {
-        ddim.push_back(dims.d[i]);
+
+      if (!engine->with_dynamic_shape()) {
+        auto dims = engine->engine()->getBindingDimensions(bind_index);
+        ddim.push_back(runtime_batch);
+        for (int i = 0; i < dims.nbDims; i++) {
+          ddim.push_back(dims.d[i]);
+        }
+      } else {
+        auto dims = trt_context->getBindingDimensions(bind_index);
+        PADDLE_ENFORCE_NE(dims.nbDims, -1, "Invalid dims.");
+        for (int i = 0; i < dims.nbDims; i++) ddim.push_back(dims.d[i]);
       }
       auto *fluid_v = scope.FindVar(y);
       PADDLE_ENFORCE_NOT_NULL(fluid_v, "no output variable called %s", y);
@@ -268,11 +284,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
       output_index += 1;
     }
-
     PADDLE_ENFORCE_LE(runtime_batch, max_batch_size_);
     // Execute the engine.
     engine->Execute(runtime_batch, &buffers, stream);
-    cudaStreamSynchronize(stream);
   }
 
   TensorRTEngine *GetEngine(const framework::Scope &scope,

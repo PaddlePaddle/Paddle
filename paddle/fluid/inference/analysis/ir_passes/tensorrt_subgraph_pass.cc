@@ -161,6 +161,13 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   if (precision_mode == AnalysisConfig::Precision::kHalf) enable_fp16 = true;
   auto enable_int8 = Get<bool>("enable_int8");
   auto use_calib_mode = Get<bool>("use_calib_mode");
+  auto min_input_shape =
+      Get<std::map<std::string, std::vector<int>>>("min_input_shape");
+  auto max_input_shape =
+      Get<std::map<std::string, std::vector<int>>>("max_input_shape");
+  auto opt_input_shape =
+      Get<std::map<std::string, std::vector<int>>>("optim_input_shape");
+
   auto &subgraph_nodes = *Agent(node).subgraph();
 
   // The following procedure is used to rename all the intermediate
@@ -263,7 +270,8 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
       inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
           .Create(engine_key + std::to_string(predictor_id),
                   Get<int>("max_batch_size"), Get<int>("workspace_size"),
-                  precision_mode, calibrator.get(), Get<int>("gpu_device_id"));
+                  precision_mode, calibrator.get(), Get<int>("gpu_device_id"),
+                  min_input_shape, max_input_shape, opt_input_shape);
 
   bool need_serialize = (use_static_engine && !load_from_memory);
   if (need_serialize) {

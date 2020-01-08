@@ -23,51 +23,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
+#include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
-
-using FluidDT = framework::proto::VarType_Type;
-using TRT_DT = nvinfer1::DataType;
-
-namespace {  // NOLINT
-
-TRT_DT FluidDataType2TRT(FluidDT type) {
-  switch (type) {
-    case FluidDT::VarType_Type_FP32:
-      return TRT_DT::kFLOAT;
-    case FluidDT::VarType_Type_INT32:
-      return TRT_DT::kINT32;
-    default:
-      return TRT_DT::kINT32;
-  }
-  PADDLE_THROW(platform::errors::InvalidArgument(
-      "unknown fluid datatype in TRT op converter"));
-  return TRT_DT::kINT32;
-}
-
-nvinfer1::Dims Vec2TRT_Dims(const std::vector<int64_t>& shape,
-                            std::string input) {
-  PADDLE_ENFORCE_GT(shape.size(), 1UL,
-                    platform::errors::InvalidArgument(
-                        "TensorRT's tensor input requires at least 2 "
-                        "dimensions, but input %s has %d dims.",
-                        input, shape.size()));
-  PADDLE_ENFORCE_LE(shape.size(), 4UL,
-                    platform::errors::InvalidArgument(
-                        "TensorRT's tensor input requires at most 4 "
-                        "dimensions, but input %s has %d dims.",
-                        input, shape.size()));
-  if (shape.size() == 4UL)
-    return nvinfer1::DimsCHW(shape[1], shape[2], shape[3]);
-  else if (shape.size() == 3UL)
-    return nvinfer1::Dims2(shape[1], shape[2]);
-  return nvinfer1::DimsCHW(shape[1], 1, 1);
-}
-
-}  // namespace // NOLINT
 
 /*
  * Convert Op from Fluid to TensorRT Engine.
@@ -168,6 +129,7 @@ class OpConverter {
                         "TensorRT engine only takes LoDTensor as input");
       auto var_shape = var->GetShape();
       if (engine->with_dynamic_shape()) {
+#if IS_TRT_VERSION_GE(6000)
         auto min_input_shape = engine->min_input_shape()[input];
         auto max_input_shape = engine->max_input_shape()[input];
         auto optim_input_shape = engine->optim_input_shape()[input];
@@ -183,6 +145,11 @@ class OpConverter {
             PADDLE_ENFORCE_EQ(min_input_shape[i], optim_input_shape[i]);
           }
         }
+        engine->DeclareInput(
+            input, FluidDataType2TRT(
+                       var->Proto()->type().lod_tensor().tensor().data_type()),
+            Vec2TRT_Dims(input_shape, input, true));
+#endif
       } else {
         engine->DeclareInput(
             input, FluidDataType2TRT(
