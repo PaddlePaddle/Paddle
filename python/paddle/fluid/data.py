@@ -31,13 +31,23 @@ def data(name, shape, dtype='float32', lod_level=0):
     input into the variable.
 
     Note: 
-       `paddle.fluid.layers.data` is deprecated. It will be removed in a future
-       version. Please use this `paddle.fluid.data`. 
+        `paddle.fluid.layers.data` is deprecated. It will be removed in a
+        future version. Please use this `paddle.fluid.data`. 
        
-       The `paddle.fluid.layers.data` set shape and dtype at compile time but
-       does NOT check the shape or the dtype of feeded data, this
-       `paddle.fluid.data` checks the shape and the dtype of data feeded by
-       Executor or ParallelExecutor during run time.
+        The `paddle.fluid.layers.data` set shape and dtype at compile time but
+        does NOT check the shape or the dtype of feeded data, this
+        `paddle.fluid.data` checks the shape and the dtype of data feeded by
+        Executor or ParallelExecutor during run time.
+
+        To feed variable size inputs, users can set -1 on the variable
+        dimension when using :code:`paddle.fluid.data`, or feed variable size
+        inputs directly to :code:`paddle.fluid.layers.data` and PaddlePaddle
+        will fit the size accordingly.
+
+        The default :code:`stop_gradient` attribute of the Variable created by
+        this API is true, which means the gradient won't be passed backward
+        through the data Varaible. Set :code:`var.stop_gradient = False` If
+        user would like to pass backward gradient.
 
     Args:
        name (str): The name/alias of the variable, see :ref:`api_guide_Name`

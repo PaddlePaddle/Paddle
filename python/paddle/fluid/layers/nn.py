@@ -26,6 +26,7 @@ from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program
 from ..dygraph import base
+from ..dygraph import dygraph_utils
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
 from .tensor import concat, assign, fill_constant, zeros
@@ -187,28 +188,6 @@ __all__ = [
 
 
 @dygraph_only
-def _append_activation_in_dygraph(input,
-                                  act=None,
-                                  use_cudnn=False,
-                                  use_mkldnn=False):
-    """Append activation in dygraph mode.
-
-        Args:
-            input: the input variable. 
-            act: activation type
-            use_mkldnn: if use mkldnn
-            use_cudnn: if use cudnn
-
-    Return the Variable after append activation
-    """
-    attrs = {'use_cudnn': use_cudnn, 'use_mkldnn': use_mkldnn}
-    inputs = {"X": [input]}
-    act_op = getattr(core.ops, act)
-    res = act_op(inputs, attrs)
-    return res['Out'][0]
-
-
-@dygraph_only
 def _elementwise_op_in_dygraph(x,
                                y,
                                axis=-1,
@@ -219,13 +198,10 @@ def _elementwise_op_in_dygraph(x,
     inputs = {'X': [x], 'Y': [y]}
     op = getattr(core.ops, op_name)
     outs = op(inputs, attrs)
-    pre_act = outs['Out'][0]
+    out = outs['Out'][0]
 
-    if not act:
-        return pre_act
-    else:
-        return _append_activation_in_dygraph(
-            pre_act, act, use_mkldnn=use_mkldnn)
+    return dygraph_utils._append_activation_in_dygraph(
+        out, act, use_mkldnn=use_mkldnn)
 
 
 def fc(input,
@@ -2485,6 +2461,7 @@ def batch_norm(input,
     Note:
         if build_strategy.sync_batch_norm=True, the batch_norm in network will use 
         sync_batch_norm automatically.
+        `is_test = True` can only be used in test program and inference program, `is_test` CANNOT be set to True in train program, if you want to use global status from pre_train model in train program, please set `use_global_stats = True`.
 
     Args:
         input(Variable): The rank of input variable can be 2, 3, 4, 5. The data type 
@@ -3025,7 +3002,7 @@ def layer_norm(input,
             print(output)
     """
     assert in_dygraph_mode(
-    ) is not True, "please use FC instead of fc in dygraph mode!"
+    ) is not True, "please use LayerNorm instead of layer_norm in dygraph mode!"
     helper = LayerHelper('layer_norm', **locals())
     dtype = helper.input_dtype()
 
@@ -3905,9 +3882,9 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
     attrs = {
-        'dim': dim if dim != None else [0],
+        'dim': dim if dim != None and dim != [] else [0],
         'keep_dim': keep_dim,
-        'reduce_all': True if dim == None else False
+        'reduce_all': True if dim == None or dim == [] else False
     }
 
     if in_dygraph_mode():
@@ -3980,9 +3957,9 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
     attrs = {
-        'dim': dim if dim != None else [0],
+        'dim': dim if dim != None and dim != [] else [0],
         'keep_dim': keep_dim,
-        'reduce_all': True if dim == None else False
+        'reduce_all': True if dim == None or dim == [] else False
     }
 
     if in_dygraph_mode():
@@ -4057,9 +4034,9 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else [0],
+            'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None else False
+            'reduce_all': True if dim == None or dim == [] else False
         })
     return out
 
@@ -4118,9 +4095,9 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else [0],
+            'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None else False
+            'reduce_all': True if dim == None or dim == [] else False
         })
     return out
 
@@ -4180,9 +4157,9 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else [0],
+            'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None else False
+            'reduce_all': True if dim == None or dim == [] else False
         })
     return out
 
@@ -4238,9 +4215,9 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else [0],
+            'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None else False
+            'reduce_all': True if dim == None or dim == [] else False
         })
     return out
 
@@ -4296,9 +4273,9 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else [0],
+            'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None else False
+            'reduce_all': True if dim == None or dim == [] else False
         })
     return out
 
@@ -4736,15 +4713,23 @@ def topk(input, k, name=None):
             vk_values, vk_indices = layers.topk(input2, k=vk) #vk_values.shape=[None, 13, k], vk_indices.shape=[None, 13, k]
 
     """
+    inputs = {"X": [input]}
+    attrs = {}
+    if isinstance(k, Variable):
+        inputs['K'] = [k]
+    else:
+        attrs = {'k': k}
+
+    if in_dygraph_mode():
+        outs = core.ops.top_k(inputs, attrs)
+        outs['Out'][0].stop_gradient = True
+        outs['Indices'][0].stop_gradient = True
+        return outs['Out'][0], outs['Indices'][0]
+
     helper = LayerHelper("top_k", **locals())
     values = helper.create_variable_for_type_inference(dtype=input.dtype)
     indices = helper.create_variable_for_type_inference(dtype="int64")
-    inputs = {"X": [input]}
-    attrs = None
-    if isinstance(k, Variable):
-        inputs['K'] = k
-    else:
-        attrs = {'k': k}
+
     helper.append_op(
         type="top_k",
         inputs=inputs,
@@ -5594,11 +5579,8 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
 
         inputs = {'X': [x]}
         outs = core.ops.reshape2(inputs, attrs)
-        pre_act = outs['Out'][0]
-        if act is None:
-            return pre_act
-        else:
-            return _append_activation_in_dygraph(pre_act, act)
+        out = outs['Out'][0]
+        return dygraph_utils._append_activation_in_dygraph(out, act)
 
     check_type_and_dtype(x, 'x', Variable,
                          ['float16', 'float32', 'float64', 'int32', 'int64'],
@@ -7683,7 +7665,7 @@ def scatter_nd_add(ref, index, updates, name=None):
             output = [[67, 19], [-16, -27]]
 
     Args:
-        ref (Variable): The ref input. Its dtype should be int32, int64, float32, float64.
+        ref (Variable): The ref input. Its dtype should be float32, float64.
         index (Variable): The index input with rank > 1 and index.shape[-1] <= ref.rank.
                           Its dtype should be int32 or int64 as it is used as indexes.
         updates (Variable): The updated value of scatter_nd_add op, and it must have the same dtype
@@ -7740,7 +7722,7 @@ def scatter_nd(index, updates, shape, name=None):
     Args:
         index (Variable): The index input with rank > 1 and index.shape[-1] <= len(shape).
                           Its dtype should be int32 or int64 as it is used as indexes.
-        updates (Variable): The updated value of scatter_nd op. Its dtype should be int32, int64, float32, float64.
+        updates (Variable): The updated value of scatter_nd op. Its dtype should be float32, float64.
                             It must have the shape index.shape[:-1] + shape[index.shape[-1]:]
         shape(tuple|list): Shape of output tensor.
         name (str|None): The output variable name. If set None, the layer will be named automatically.
@@ -11333,6 +11315,10 @@ def mean(x, name=None):
                 name='data', shape=[2, 3], dtype='float32')
             mean = fluid.layers.mean(input)
     """
+    if in_dygraph_mode():
+        inputs = {"X": [x]}
+        outs = core.ops.mean(inputs)
+        return outs['Out'][0]
 
     helper = LayerHelper("mean", **locals())
     check_type_and_dtype(x, 'x', Variable, ['float16', 'float32', 'float64'],
@@ -11978,8 +11964,8 @@ def log_loss(input, label, epsilon=1e-4, name=None):
         .. code-block:: python
 
           import paddle.fluid as fluid
-          label = fluid.data(name='label', shape=[-1, 1], dtype='int64')
-          prob = fluid.data(name='prob', shape=[-1, 10], dtype='float32')
+          label = fluid.data(name='label', shape=[None, 1], dtype='float32')
+          prob = fluid.data(name='prob', shape=[None, 1], dtype='float32')
           cost = fluid.layers.log_loss(input=prob, label=label)
     """
     helper = LayerHelper('log_loss', **locals())
@@ -12669,35 +12655,53 @@ def prroi_pool(input,
                spatial_scale=1.0,
                pooled_height=1,
                pooled_width=1,
+               batch_roi_nums=None,
                name=None):
     """
-    The precise roi pooling implementation for paddle?https://arxiv.org/pdf/1807.11590.pdf
+    The precise roi pooling implementation for paddle. Reference: https://arxiv.org/pdf/1807.11590.pdf
 
     Args:
-        input (Variable):The input of Deformable PSROIPooling.The shape of input tensor is
+        input (Variable):The input of precise roi pooliing.The shape of input tensor is
                         [N,C,H,W]. Where N is batch size,C is number of input channels,H
                         is height of the feature, and W is the width of the feature.
         rois (Variable): ROIs (Regions of Interest) to pool over.It should be
-                        a 2-D LoDTensor of shape (num_rois, 4), the lod level
-                        is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
+                        a 2-D LoDTensor or Tensor of shape (num_rois, 4), the lod level
+                        is 1 when it is LoDTensor. The LoD include the rois's batch index
+                        information. If rois is Tensor, its batch index information should
+                        be provided by batch_index.
+                        Given as [[x1, y1, x2, y2], ...], (x1, y1) is
                         the top left coordinates, and (x2, y2) is the bottom
                         right coordinates.
         spatial_scale (float): Ratio of input feature map height (or width) to raw image height (or width).
                              Equals the reciprocal of total stride in convolutional layers, Default: 1.0.
         pooled_height (integer): The pooled output height. Default: 1.
         pooled_width (integer): The pooled output width. Default: 1.
+        batch_roi_nums (Variable): The number of roi for each image in batch. It 
+                         shoule be 1-D Tensor, with shape [N] and dtype int64, 
+                         where N is the batch size. Default: None. Be note: The lod of input should be
+                         empty when batch_roi_nums has values;
         name (str, default None): The name of this operation.
 
     Returns:
-        Variable(Tensor): The shape of the returned Tensor is (num_rois, output_channels, pooled_h, pooled_w), with value type float32,float16..
+        Variable(Tensor):The shape of the returned Tensor is (N, C, pooled_height, pooled_width), with value type float32,float16. N, C denote batch_size and channels of input respectively.
 
     Examples:
         .. code-block:: python
 
+            ## prroi_pool without batch_roi_num
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[490, 28, 28], dtype='float32')
-            rois = fluid.layers.data(name='rois', shape=[4], lod_level=1, dtype='float32')
+            x = fluid.data(name='x', shape=[None, 490, 28, 28], dtype='float32')
+            rois = fluid.data(name='rois', shape=[None, 4], lod_level=1, dtype='float32')
             pool_out = fluid.layers.prroi_pool(x, rois, 1.0, 7, 7)
+            
+            ## prroi_pool with batch_roi_num
+            batchsize=4
+            x2 = fluid.data(name='x2', shape=[batchsize, 490, 28, 28], dtype='float32')
+            rois2 = fluid.data(name='rois2', shape=[batchsize, 4], dtype='float32')
+            batch_rois_num = fluid.data(name='rois_nums', shape=[batchsize], dtype='int64')
+            pool_out2 = fluid.layers.prroi_pool(x2, rois2, 1.0, 7, 7, batch_roi_nums=batch_rois_num)
+
+
     """
     helper = LayerHelper('prroi_pool', **locals())
     # check attrs
@@ -12709,10 +12713,12 @@ def prroi_pool(input,
         raise TypeError("pooled_width must be int type")
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
+    inputs_op = {'X': input, 'ROIs': rois}
+    if batch_roi_nums is not None:
+        inputs_op['BatchRoINums'] = batch_roi_nums
     helper.append_op(
         type='prroi_pool',
-        inputs={'X': input,
-                'ROIs': rois},
+        inputs=inputs_op,
         outputs={'Out': out},
         attrs={
             'spatial_scale': spatial_scale,

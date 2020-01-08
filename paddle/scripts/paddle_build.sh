@@ -596,6 +596,11 @@ function assert_api_spec_approvals() {
 }
 
 
+function check_coverage() {
+    /bin/bash ${PADDLE_ROOT}/tools/coverage/paddle_coverage.sh
+}
+
+
 function single_test() {
     TEST_NAME=$1
     if [ -z "${TEST_NAME}" ]; then
@@ -1172,6 +1177,7 @@ function main() {
         build ${parallel_number}
         enable_unused_var_check
         parallel_test
+        check_coverage
         check_change_of_unittest ${PYTHON_ABI:-""}
         ;;
       cicheck_brpc)

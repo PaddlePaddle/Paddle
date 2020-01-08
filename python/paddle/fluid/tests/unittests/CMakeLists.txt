@@ -78,6 +78,7 @@ if(NOT WITH_MKL OR NOT WITH_AVX)
 endif()
 if(WITH_COVERAGE OR NOT WITH_AVX OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_pyramid_hash_op)
+  list(REMOVE_ITEM TEST_OPS test_fleet_pyramid_hash)
 endif()
 
 if(WITH_GPU OR NOT WITH_MKLML)
@@ -128,11 +129,20 @@ function(bash_test_modules TARGET_NAME)
         set(timeout ${bash_test_modules_TIMEOUT})
     endif()
 
-    add_test(NAME ${TARGET_NAME}
-        COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python 
-        TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${bash_test_modules_ENVS}
-        bash ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_MODULES}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    if(WITH_COVERAGE)
+        add_test(NAME ${TARGET_NAME}
+            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python 
+            TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${bash_test_modules_ENVS}
+            WITH_COVERAGE=ON COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
+            bash ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_MODULES}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    else()
+        add_test(NAME ${TARGET_NAME}
+            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python 
+            TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${bash_test_modules_ENVS}
+            bash ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_MODULES}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    endif()
 
     if (bash_test_modules_SERIAL)
         set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
@@ -150,7 +160,6 @@ list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf)
 list(REMOVE_ITEM TEST_OPS test_data_norm_op)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf_auto_growth)
-list(REMOVE_ITEM TEST_OPS test_parallel_executor_fetch_feed)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer_auto_growth)
 list(REMOVE_ITEM TEST_OPS test_bilinear_interp_op)
@@ -295,11 +304,8 @@ py_test_modules(test_data_norm_op MODULES test_data_norm_op)
 
 if(NOT WIN32)
     py_test_modules(test_ir_memory_optimize_transformer MODULES test_ir_memory_optimize_transformer)
-    # FIXME(zcd): temporally disable test_parallel_executor_fetch_feed in Windows CI because of the random failure.
-    py_test_modules(test_parallel_executor_fetch_feed MODULES test_parallel_executor_fetch_feed)
-    set_tests_properties(test_parallel_executor_fetch_feed PROPERTIES TIMEOUT 450)
 endif()
-
+set_tests_properties(test_parallel_executor_fetch_feed PROPERTIES TIMEOUT 450)
 set_tests_properties(test_parallel_executor_seresnext_base_cpu PROPERTIES TIMEOUT 900)
 set_tests_properties(test_parallel_executor_seresnext_with_reduce_cpu PROPERTIES TIMEOUT 750)
 set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu PROPERTIES TIMEOUT 750)

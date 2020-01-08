@@ -72,7 +72,7 @@ class TestCropTensorOp(OpTest):
         self.outputs = {'Out': crop(self.inputs['X'], self.offsets, crop_shape)}
 
     def initTestCase(self):
-        self.x_shape = (8, 8)
+        self.x_shape = (10, 10)
         self.crop_shape = [2, 2]
         self.offsets = [1, 2]
 
@@ -169,7 +169,7 @@ class TestCropTensorOpTensorAttr(OpTest):
         self.outputs = {'Out': crop(self.inputs['X'], self.offsets, crop_shape)}
 
     def initTestCase(self):
-        self.x_shape = (8, 8)
+        self.x_shape = (10, 10)
         self.crop_shape = (2, 2)
         self.offsets = [1, 2]
         self.shape_attr = [0, 0]
