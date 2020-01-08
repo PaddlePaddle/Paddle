@@ -431,9 +431,6 @@ class InMemoryDataset(DatasetBase):
         self.dataset.set_generate_unique_feasigns(generate_uni_feasigns)
         self.gen_uni_feasigns = generate_uni_feasigns
         self.local_shard_num = shard_num;
-
-    def generate_local_tables(self, table_id, fea_dim):
-        self.dataset.generate_local_tables(table_id, fea_dim)
    
     def generate_local_tables_unlock(self, table_id, fea_dim, read_thread_num, consume_thread_num, shard_num, send_freq):
         self.dataset.generate_local_tables_unlock(table_id, fea_dim, read_thread_num, consume_thread_num, shard_num, send_freq)
