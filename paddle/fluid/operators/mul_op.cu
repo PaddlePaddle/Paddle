@@ -84,7 +84,7 @@ struct GEMMINT8Functor<platform::CUDADeviceContext> {
     cublasOperation_t cuTransB = transB ? CUBLAS_OP_T : CUBLAS_OP_N;
 
 #if CUDA_VERSION >= 8000
-    cublasGemmAlgo_t algo = CUBLAS_GEMM_DEFAULT;
+    cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
 #if CUDA_VERSION >= 9000
     bool use_tensor_op_math = context.tensor_core_available();
     if (use_tensor_op_math) {

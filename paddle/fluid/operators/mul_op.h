@@ -23,6 +23,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+constexpr int kMULMKLDNNINT8 = 1;
+
 template <typename DeviceContext>
 struct QuantFp32ToInt8Functor {
   void operator()(const DeviceContext& ctx, const framework::Tensor& in,
@@ -45,12 +48,6 @@ struct INT32ToFP32Functor {
   void operator()(const DeviceContext& ctx, const framework::Tensor& in,
                   framework::Tensor* out, float scale) {}
 };
-
-template class QuantFp32ToInt8Functor<platform::CPUDeviceContext>;
-
-using Tensor = framework::Tensor;
-
-constexpr int kMULMKLDNNINT8 = 1;
 
 template <typename DeviceContext, typename T>
 class MulKernel : public framework::OpKernel<T> {
