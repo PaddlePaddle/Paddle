@@ -120,7 +120,7 @@ class TestBasicModelAsync(TranspilerTest):
         # block0: listen_and_serv
         self.assertEqual([op.type for op in pserver.blocks[0].ops],
                          ["listen_and_serv"])
-        self.assertEqual(pserver.blocks[0].ops[0].attr("training_mode"), 1)
+        self.assertEqual(pserver.blocks[0].ops[0].attr("distributed_mode"), 1)
         # block1~2: optimize pass
         self.assertEqual([op.type for op in pserver.blocks[2].ops], ["sgd"])
 
@@ -145,7 +145,7 @@ class TestBasicModelHalfAsync(TranspilerTest):
         # block0: listen_and_serv
         self.assertEqual([op.type for op in pserver.blocks[0].ops],
                          ["listen_and_serv"])
-        self.assertEqual(pserver.blocks[0].ops[0].attr("training_mode"), 2)
+        self.assertEqual(pserver.blocks[0].ops[0].attr("distributed_mode"), 2)
         # block1~2: optimize pass
         self.assertEqual([op.type for op in pserver.blocks[2].ops], ["sgd"])
 
@@ -171,7 +171,7 @@ class TestBasicModelSync(TranspilerTest):
         # block0: listen_and_serv
         self.assertEqual([op.type for op in pserver.blocks[0].ops],
                          ["listen_and_serv"])
-        self.assertEqual(pserver.blocks[0].ops[0].attr("training_mode"), 0)
+        self.assertEqual(pserver.blocks[0].ops[0].attr("distributed_mode"), 0)
         # block1~2: optimize pass
         self.assertEqual([op.type for op in pserver.blocks[2].ops],
                          ["sum", "scale", "sgd"])
