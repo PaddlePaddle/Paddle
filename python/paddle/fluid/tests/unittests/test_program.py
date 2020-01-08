@@ -132,6 +132,16 @@ class TestProgram(unittest.TestCase):
         for i in range(len(no_read_ops)):
             self.assertEqual(no_read_ops[i].type, keep_read_ops[i + 2].type)
 
+    def test_program_all_parameters(self):
+        program = fluid.default_main_program()
+        data = fluid.data(name='x', shape=[None, 13], dtype='float32')
+        hidden = fluid.layers.fc(input=data, size=10)
+        loss = fluid.layers.mean(hidden)
+        fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+
+        for param in program.all_parameters():
+            print(param)
+
 
 if __name__ == '__main__':
     unittest.main()

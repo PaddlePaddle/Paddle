@@ -4524,6 +4524,33 @@ class Program(object):
             for each_var in list(each_block.vars.values()):
                 yield each_var
 
+    @dygraph_not_support
+    def all_parameters(self):
+        """
+        Get all :ref:`api_guide_parameter_en` from this Program. A list object is returned.
+
+        Returns:
+            list[ :ref:`api_guide_parameter_en` ]: The list contians all parameters in this program.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                program = fluid.default_main_program()
+                data = fluid.data(name='x', shape=[None, 13], dtype='float32')
+                hidden = fluid.layers.fc(input=data, size=10)
+                loss = fluid.layers.mean(hidden)
+                fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+
+                for param in program.all_parameters():
+                    print(param)
+        """
+        parameters = []
+        for each_block in self.blocks:
+            parameters.append(each_block.all_parameters())
+        return parameters
+
 
 @six.add_metaclass(ParameterMetaClass)
 class Parameter(Variable):
