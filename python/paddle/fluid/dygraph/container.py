@@ -201,8 +201,9 @@ class LayerList(Layer):
 
     def __init__(self, sublayers=None):
         super(LayerList, self).__init__()
-        for idx, layer in enumerate(sublayers):
-            self.add_sublayer(str(idx), layer)
+        if sublayers is not None:
+            for idx, layer in enumerate(sublayers):
+                self.add_sublayer(str(idx), layer)
 
     def __getitem__(self, idx):
         if isinstance(idx, slice):
