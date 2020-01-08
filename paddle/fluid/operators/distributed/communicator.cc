@@ -54,7 +54,7 @@ Communicator::Communicator() {}
 
 Communicator::Communicator(const std::map<std::string, std::string> &envs_) {
   for (auto &iter : envs_) {
-    envs.at(iter.first) = iter.second;
+    envs[iter.first] = iter.second;
   }
 }
 

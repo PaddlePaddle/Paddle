@@ -159,8 +159,8 @@ class TestCommunicatorHalfAsync2(unittest.TestCase):
         prog = fluid.Program()
 
         envs = {}
-        envs["communicator_independent_recv_thread"] = "1"
-        envs["communicator_min_send_grad_num_before_recv"] = "12"
+        envs["communicator_send_queue_size"] = "12"
+        envs["communicator_max_merge_var_num"] = "12"
         envs["communicator_thread_pool_size"] = "5"
         envs["communicator_send_wait_times"] = "5"
 
