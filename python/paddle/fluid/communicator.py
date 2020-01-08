@@ -66,7 +66,7 @@ class Communicator(object):
             push_vars = kwargs["push_vars"]
             push_var_names = []
 
-            for k, vs in push_vars.iterms():
+            for k, vs in push_vars.items():
                 varnames = "&".join(vs["var_names"])
                 sections = "&".join([str(v) for v in vs["sections"]])
                 endpoints = "&".join(vs["epmap"])
