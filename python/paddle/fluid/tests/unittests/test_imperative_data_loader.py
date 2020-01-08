@@ -139,29 +139,6 @@ class TestDygraphhDataLoader(unittest.TestCase):
             for _ in range(self.batch_num):
                 loader._data_queue.get(timeout=10)
 
-    def test_single_process_with_thread_expection(self):
-        def error_sample_genarator(batch_num):
-            def __reader__():
-                for _ in range(batch_num):
-                    yield [[[1, 2], [1]]]
-
-            return __reader__
-
-        with fluid.dygraph.guard():
-            loader = fluid.io.DataLoader.from_generator(
-                capacity=self.capacity, iterable=False, use_multiprocess=False)
-            loader.set_batch_generator(
-                error_sample_genarator(self.batch_num), places=fluid.CPUPlace())
-            exception = None
-            try:
-                for _ in loader():
-                    print("test_single_process_with_thread_expection")
-            except core.EnforceNotMet as ex:
-                self.assertIn("Blocking queue is killed",
-                              cpt.get_exception_message(ex))
-                exception = ex
-            self.assertIsNotNone(exception)
-
 
 if __name__ == '__main__':
     unittest.main()
