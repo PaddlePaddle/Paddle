@@ -74,7 +74,9 @@ tf_pd<Type> MKLDNNBwdPrimitiveDesc(const Engine& e, const Primitive& p,
 inline void MatchShapeToLayout(framework::Tensor* tensor_in,
                                framework::DataLayout from,
                                framework::DataLayout to) {
-  // Shape changing makes sense for 3+ dims Tensors
+  // In these data layouts, channel dimension is either on 2nd position: nChw or
+  // at last nhwC, so for dim==2 these layouts are the same and nothing should
+  // be done. Similarly for dim==1 when you have just one possible combination.
   if (tensor_in->dims().size() < 3) {
     return;
   }
