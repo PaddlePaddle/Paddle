@@ -394,6 +394,10 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
         delimiter = "  " + delimiter;
       }
       print_name = delimiter + print_name;
+      size_t pos = 0;
+      while ((pos = print_name.find(op_end_str)) != std::string::npos) {
+        print_name.erase(pos, op_end_str.length());
+      }
       std::cout << std::setw(name_width) << print_name << std::setw(data_width)
                 << event_item.calls << std::setw(data_width)
                 << event_item.total_time;
