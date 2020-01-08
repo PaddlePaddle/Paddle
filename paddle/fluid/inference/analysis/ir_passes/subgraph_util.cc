@@ -52,6 +52,8 @@ std::vector<std::string> ExtractParameters(
   }
   if (sorted) {
     std::sort(parameters.begin(), parameters.end());
+    parameters.erase(std::unique(parameters.begin(), parameters.end()),
+                     parameters.end());
   }
   return parameters;
 }
