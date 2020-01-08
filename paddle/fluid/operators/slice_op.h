@@ -266,6 +266,7 @@ class SliceGradKernel : public framework::OpKernel<T> {
     auto* d_input =
         context.Output<framework::Tensor>(framework::GradVarName("Input"));
     d_input->mutable_data<T>(context.GetPlace());
+
     auto out_dims = d_out->dims();
     auto in_dims = d_input->dims();
     auto axes = context.Attr<std::vector<int>>("axes");
@@ -344,6 +345,105 @@ class SliceGradKernel : public framework::OpKernel<T> {
         framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
             *d_out, out_dims);
     d_in_t.device(place) = d_out_t.pad(paddings, 0);
+  }
+};
+
+// slice double grad kernel
+template <typename DeviceContext, typename T>
+class SliceDoubleGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    int rank = ctx.Input<framework::Tensor>("Input")->dims().size();
+    switch (rank) {
+      case 1:
+        SliceCompute<1>(ctx);
+        break;
+      case 2:
+        SliceCompute<2>(ctx);
+        break;
+      case 3:
+        SliceCompute<3>(ctx);
+        break;
+      case 4:
+        SliceCompute<4>(ctx);
+        break;
+      case 5:
+        SliceCompute<5>(ctx);
+        break;
+      case 6:
+        SliceCompute<6>(ctx);
+        break;
+    }
+  }
+
+ private:
+  template <size_t D>
+  void SliceCompute(const framework::ExecutionContext& context) const {
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
+
+    auto* ddinput = context.Input<framework::Tensor>("DDInput");
+    auto* ddout = context.Output<framework::Tensor>("DDOut");
+
+    auto out_dims = ddout->dims();
+    auto in_dims = ddinput->dims();
+
+    auto axes = context.Attr<std::vector<int>>("axes");
+    auto starts = context.Attr<std::vector<int>>("starts");
+    auto ends = context.Attr<std::vector<int>>("ends");
+    auto decrease_axis = context.Attr<std::vector<int>>("decrease_axis");
+    auto infer_flags = context.Attr<std::vector<int>>("infer_flags");
+
+    auto list_new_ends_tensor =
+        context.MultiInput<framework::Tensor>("EndsTensorList");
+    auto list_new_starts_tensor =
+        context.MultiInput<framework::Tensor>("StartsTensorList");
+
+    if (list_new_starts_tensor.size() > 0) {
+      starts = get_new_data_from_tensorlist(list_new_starts_tensor);
+    } else if (context.HasInput("StartsTensor")) {
+      auto* starts_tensor = context.Input<framework::Tensor>("StartsTensor");
+      starts = get_new_data_from_tensor(starts_tensor);
+    }
+
+    if (list_new_ends_tensor.size() > 0) {
+      ends = get_new_data_from_tensorlist(list_new_ends_tensor);
+    } else if (context.HasInput("EndsTensor")) {
+      auto* ends_tensor = context.Input<framework::Tensor>("EndsTensor");
+      ends = get_new_data_from_tensor(ends_tensor);
+    }
+
+    auto new_out_dims = ddout->dims();
+
+    auto offsets = Eigen::array<int, D>();
+    auto extents = Eigen::array<int, D>();
+    for (size_t i = 0; i < D; ++i) {
+      offsets[i] = 0;
+      extents[i] = new_out_dims[i];
+    }
+    int start;
+    for (size_t i = 0; i < axes.size(); ++i) {
+      start = starts[i];
+      if (start < 0) {
+        start = (start + in_dims[axes[i]]);
+      }
+      start = std::max(start, 0);
+      offsets[axes[i]] = start;
+    }
+
+    ddout->mutable_data<T>(context.GetPlace());
+
+    if (ddout) {
+      auto dd_in_t = framework::EigenTensor<T, D, Eigen::RowMajor,
+                                            Eigen::DenseIndex>::From(*ddinput);
+      ddout->mutable_data<T>(context.GetPlace());
+      auto dd_out_t =
+          framework::EigenTensor<T, D, Eigen::RowMajor,
+                                 Eigen::DenseIndex>::From(*ddout, new_out_dims);
+
+      dd_out_t.device(place) = dd_in_t.slice(offsets, extents);
+      ddout->Resize(out_dims);
+    }
   }
 };
 }  // namespace operators
