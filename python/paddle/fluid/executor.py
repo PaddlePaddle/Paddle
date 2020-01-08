@@ -793,9 +793,14 @@ class Executor(object):
         if isinstance(program, Program) and \
                         len(program.global_block().ops) == 0:
             if use_default_main_program:
-                error_info = "Now you are using default_main_program, but there are no operators in the program to be executed. Please ensure you create model correctly or you can pass the Program or the CompiledProgram manually."
+                error_info = "Now you are using default_main_program, "\
+                    "but there are no operators in the program to be executed. "\
+                    "Please ensure you create model correctly or you can pass "\
+                    "the Program or the CompiledProgram manually."
             else:
-                error_info = "There are no operators in the program to be executed. If you pass Program manually. Please use fluid.program_guard to ensure the current Program is being used."
+                error_info = "There are no operators in the program to be executed. "\
+                    "If you pass Program manually. Please use fluid.program_guard "\
+                    "to ensure the current Program is being used."
             warnings.warn(error_info)
 
         if scope is None:
