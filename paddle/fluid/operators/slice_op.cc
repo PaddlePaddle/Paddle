@@ -291,65 +291,31 @@ class SliceOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-class SliceOpDoubleGradDescMaker : public framework::GradOpDescMakerBase {
+template <typename T>
+class SliceDoubleOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::GradOpDescMakerBase::GradOpDescMakerBase;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::vector<std::unique_ptr<framework::OpDesc>> operator()() const override {
-    std::vector<std::unique_ptr<framework::OpDesc>> ops;
-    auto *out_grad_op = new framework::OpDesc();
+ protected:
+  std::unique_ptr<T> Apply() const override {
+    auto *bind = new T();
     if (this->HasInput("StartsTensor")) {
-      out_grad_op->SetInput("StartsTensor", this->Input("StartsTensor"));
+      bind->SetInput("StartsTensor", this->Input("StartsTensor"));
     }
     if (this->HasInput("EndsTensor")) {
-      out_grad_op->SetInput("EndsTensor", this->Input("EndsTensor"));
+      bind->SetInput("EndsTensor", this->Input("EndsTensor"));
     }
     if (this->HasInput("StartsTensorList")) {
-      out_grad_op->SetInput("StartsTensorList",
-                            this->Input("StartsTensorList"));
+      bind->SetInput("StartsTensorList", this->Input("StartsTensorList"));
     }
     if (this->HasInput("EndsTensorList")) {
-      out_grad_op->SetInput("EndsTensorList", this->Input("EndsTensorList"));
+      bind->SetInput("EndsTensorList", this->Input("EndsTensorList"));
     }
-    out_grad_op->SetInput("Input",
-                          this->OutputGrad(framework::GradVarName("Input")));
-    out_grad_op->SetOutput("Out",
-                           this->InputGrad(framework::GradVarName("Out")));
-    out_grad_op->SetAttrMap(this->Attrs());
-    out_grad_op->SetType("slice");
-    ops.emplace_back(out_grad_op);
-    return ops;
-  }
-};
-
-class SliceOpDoubleGradBaseMaker : public imperative::GradOpBaseMakerBase {
- public:
-  using imperative::GradOpBaseMakerBase::GradOpBaseMakerBase;
-
-  std::vector<std::unique_ptr<imperative::OpBase>> operator()() const override {
-    std::vector<std::unique_ptr<imperative::OpBase>> ops;
-    auto *out_grad_op = new imperative::OpBase();
-    if (this->HasInput("StartsTensor")) {
-      out_grad_op->SetInput("StartsTensor", this->Input("StartsTensor"));
-    }
-    if (this->HasInput("EndsTensor")) {
-      out_grad_op->SetInput("EndsTensor", this->Input("EndsTensor"));
-    }
-    if (this->HasInput("StartsTensorList")) {
-      out_grad_op->SetInput("StartsTensorList",
-                            this->Input("StartsTensorList"));
-    }
-    if (this->HasInput("EndsTensorList")) {
-      out_grad_op->SetInput("EndsTensorList", this->Input("EndsTensorList"));
-    }
-    out_grad_op->SetInput("Input",
-                          this->OutputGrad(framework::GradVarName("Input")));
-    out_grad_op->SetOutput("Out",
-                           this->InputGrad(framework::GradVarName("Out")));
-    out_grad_op->SetAttrMap(this->Attrs());
-    out_grad_op->SetType("slice");
-    ops.emplace_back(out_grad_op);
-    return ops;
+    bind->SetInput("Input", this->OutputGrad(framework::GradVarName("Input")));
+    bind->SetOutput("Out", this->InputGrad(framework::GradVarName("Out")));
+    bind->SetAttrMap(this->Attrs());
+    bind->SetType("slice");
+    return std::unique_ptr<T>(bind);
   }
 };
 
@@ -363,8 +329,9 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(slice, ops::SliceOp, ops::SliceOpMaker,
                   ops::SliceOpGradMaker<paddle::framework::OpDesc>,
                   ops::SliceOpGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(slice_grad, ops::SliceOpGrad, ops::SliceOpDoubleGradDescMaker,
-                  ops::SliceOpDoubleGradBaseMaker,
+REGISTER_OPERATOR(slice_grad, ops::SliceOpGrad,
+                  ops::SliceDoubleOpGradMaker<paddle::framework::OpDesc>,
+                  ops::SliceDoubleOpGradMaker<paddle::imperative::OpBase>,
                   ops::SliceOpGradNoNeedBufferVarsInference);
 
 REGISTER_OP_CPU_KERNEL(
