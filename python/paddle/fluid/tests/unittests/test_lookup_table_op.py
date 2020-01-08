@@ -180,7 +180,6 @@ class TestEmbedOpError(unittest.TestCase):
             fluid.layers.embedding(input=input3, size=(10, 64), dtype='float16')
 
 
-@skip_check_grad_ci(reason="int8 type only be used in test and inference.")
 class TestLookupTableOpInt8(OpTest):
     def setUp(self):
         self.op_type = "lookup_table"
@@ -200,7 +199,6 @@ class TestLookupTableOpInt8(OpTest):
         pass
 
 
-@skip_check_grad_ci(reason="int8 type only be used in test and inference.")
 class TestLookupTableOpWithTensorIdsInt8(OpTest):
     def setUp(self):
         self.op_type = "lookup_table"
@@ -220,7 +218,6 @@ class TestLookupTableOpWithTensorIdsInt8(OpTest):
         pass
 
 
-@skip_check_grad_ci(reason="int8 type only be used in test and inference.")
 class TestLookupTableOpWithPaddingInt8(TestLookupTableOpInt8):
     def test_check_output(self):
         ids = np.squeeze(self.inputs['Ids'])
@@ -235,7 +232,6 @@ class TestLookupTableOpWithPaddingInt8(TestLookupTableOpInt8):
         pass
 
 
-@skip_check_grad_ci(reason="int8 type only be used in test and inference.")
 class TestLookupTableOpWithTensorIdsAndPaddingInt8(
         TestLookupTableOpWithTensorIdsInt8):
     def test_check_output(self):

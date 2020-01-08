@@ -154,14 +154,14 @@ def guard(place=None):
                     yield
 
 
-def _print_debug_msg(limit=5, is_test=False):
+def _print_debug_msg(parameter_list, limit=5, is_test=False):
     if not core._is_dygraph_debug_enabled():
         logging.warn(
             'Debug mode is not enabled. Please set FLAGS_dygraph_debug=1 to enable debug'
         )
         return
     unique_name_size = len(framework.unique_name.generator.ids)
-    tracer_var_size = len(framework._dygraph_tracer()._vars)
+    tracer_var_size = len(parameter_list)
     alive_cpp_var_size = len(core.VarBase._alive_vars())
     if not is_test:
         logging.warn(
@@ -172,20 +172,19 @@ def _print_debug_msg(limit=5, is_test=False):
         return unique_name_size, tracer_var_size, alive_cpp_var_size
 
 
-# TODO(zhiqiu): Param 'block' should be deprecated, since block is meaningless in dygraph 
 @framework.dygraph_only
-def to_variable(value, block=None, name=None, zero_copy=None):
+def to_variable(value, name=None, zero_copy=None):
     """
     The API will create a ``Variable`` object from numpy\.ndarray or Variable object.
 
     Parameters:
-        value(ndarray): The numpy\.ndarray object that needs to be converted, it can be multi-dimension, and the data type is one of numpy\.{float16, float32, float64, int16, int32, int64, uint8, uint16}.
-        block(fluid.Block, optional): Which block this variable will be in. Default: None.
+        value(ndarray|Variable): The numpy\.ndarray or Variable object that needs to be converted, it can be multi-dimension, and the data type is one of numpy\.{float16, float32, float64, int16, int32, int64, uint8, uint16}.
         name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
         zero_copy(bool, optional): Whether to share memory with the input numpy array. This parameter only works with CPUPlace and will be set to True when it is None. Default: None.
 
     Returns:
-        Variable: ``Tensor`` created from the specified numpy\.ndarray object, data type and shape is the same as ``value`` .
+        Variable: If ``value`` is a numpy\.ndarray object, return ``Tensor`` created from the specified numpy\.ndarray object, which has same data type and shape with ``value``. If ``value`` is a Variable object, just return ``value``.
+
 
     Examples:
 
