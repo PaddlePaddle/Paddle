@@ -79,7 +79,7 @@ class DpsgdOpKernel : public framework::OpKernel<T> {
     float X;
     float mu = 0.0;
     float U1, U2;
-    unsigned seed = ctx.Attr<int>("seed");
+    unsigned seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
     if (seed == 0) {
       seed = (unsigned)(time(NULL));
     }

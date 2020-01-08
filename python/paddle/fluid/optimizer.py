@@ -1965,7 +1965,6 @@ class DpsgdOptimizer(Optimizer):
         parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
-        seed (int, optional): Seed for Dpsgd Optimizer. The default value is None.
     Notes:
        Currently, DpsgdOptimizer doesn't support sparse parameter optimization.
     """
@@ -1975,8 +1974,7 @@ class DpsgdOptimizer(Optimizer):
                  clip=0.9,
                  batch_size=0.999,
                  sigma=1e-8,
-                 parameter_list=None,
-                 seed=None):
+                 parameter_list=None):
         assert learning_rate is not None
         assert clip is not None
         assert batch_size is not None
@@ -1987,7 +1985,13 @@ class DpsgdOptimizer(Optimizer):
         self._clip = clip
         self._batch_size = batch_size
         self._sigma = sigma
-        self._seed = seed
+        '''
+        Note(wangzhongpu):
+        This property is only used for testing, do not need to set it!
+        Dpsgd operator use time(NULL) as random seed to generate random number.
+        However, during testing, we need determinated result, so we will set self._seed to a fixed number.
+        '''
+        self._seed = None
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)

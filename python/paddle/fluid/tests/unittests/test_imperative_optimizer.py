@@ -403,13 +403,14 @@ class TestImperativeDpsgdOptimizer(TestImperativeOptimizerBase):
             clip=10.0,
             batch_size=16.0,
             sigma=1.0,
-            parameter_list=parameter_list,
-            seed=100)
+            parameter_list=parameter_list)
+        optimizer._seed = 100
         return optimizer
 
     def get_optimizer(self):
         optimizer = DpsgdOptimizer(
-            learning_rate=0.01, clip=10.0, batch_size=16.0, sigma=1.0, seed=100)
+            learning_rate=0.01, clip=10.0, batch_size=16.0, sigma=1.0)
+        optimizer._seed = 100
         return optimizer
 
     def test_dpsgd(self):
