@@ -167,7 +167,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     }
 
     {
-      platform::RecordEvent record_event(Type());
+      platform::RecordEvent record_event(Type() + "_op");
       RunImpl(scope, place);
     }
 

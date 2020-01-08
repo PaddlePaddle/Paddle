@@ -364,19 +364,28 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
               << "Max." << std::setw(data_width) << "Ave."
               << std::setw(data_width) << "Ratio." << std::endl;
   }
-  if (print_depth > 0 || events_table.size() == 0) return;
-
+  if (print_depth >= 100) return;
+  int print_depth_next = print_depth;
   for (size_t i = 0; i < events_table.size(); ++i) {
     for (size_t j = 0; j < events_table[i].size(); ++j) {
       auto event_item = events_table[i][j];
       std::vector<std::vector<EventItem>> child_table;
       std::vector<EventItem> table;
+      bool do_next = false;
+      std::string op_end_str = "_op";
       for (auto it = child_map.begin(); it != child_map.end(); it++) {
         if (it->first == event_item.name) {
           table.push_back(it->second);
+          do_next = it->second.name.rfind(op_end_str) ==
+                    (it->second.name.length() - op_end_str.length());
         }
       }
       child_table.push_back(table);
+
+      if (do_next)
+        print_depth_next = print_depth + 1;
+      else
+        print_depth_next = print_depth + 100;
 
       auto name_len = event_item.name.length();
       std::string print_name = event_item.name.substr(remove_len, name_len);
@@ -403,7 +412,7 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
                 << std::setw(data_width) << event_item.ave_time
                 << std::setw(data_width) << event_item.ratio << std::endl;
       PrintProfiler(child_table, child_map, sorted_domain, name_width,
-                    data_width, merge_thread, print_depth + 1, 0);
+                    data_width, merge_thread, print_depth_next, 0);
     }
   }
 }
@@ -580,10 +589,12 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
       std::string grad_name = event_items[j].name + "_grad";
       for (size_t k = 0; k < table_size; ++k) {
         std::string cname = event_items[k].name;
-        if (cname.length() > fname.length() && cname.rfind(fname, 0) == 0 &&
-            !cname.rfind(grad_name, 0) == 0 &&
-            (cname[fname.length()] == '/' &&
-             cname.rfind('/') == fname.length())) {
+        bool condition = cname.length() > fname.length() &&
+                         cname.rfind(fname, 0) == 0 &&
+                         !cname.rfind(grad_name, 0) == 0 &&
+                         (cname[fname.length()] == '/' &&
+                          cname.rfind('/') == fname.length());
+        if (condition) {
           child_map.insert(
               std::pair<std::string, EventItem>(fname, event_items[k]));
           child_index[k] = 1;
