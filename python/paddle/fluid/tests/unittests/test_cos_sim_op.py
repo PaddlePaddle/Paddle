@@ -55,8 +55,8 @@ class TestCosSimOp2(TestCosSimOp):
     def setUp(self):
         self.op_type = "cos_sim"
         self.inputs = {
-            'X': np.random.random((6, 5)).astype("float32"),
-            'Y': np.random.random((1, 5)).astype("float32")
+            'X': np.random.random((6, 100)).astype("float32"),
+            'Y': np.random.random((1, 100)).astype("float32")
         }
         expect_x_norm = np.linalg.norm(self.inputs['X'], axis=1)
         expect_y_norm = np.linalg.norm(self.inputs['Y'], axis=1)
@@ -73,8 +73,8 @@ class TestCosSimOp3(TestCosSimOp):
     def setUp(self):
         self.op_type = "cos_sim"
         self.inputs = {
-            'X': np.random.random((6, 5, 2)).astype("float32"),
-            'Y': np.random.random((6, 5, 2)).astype("float32")
+            'X': np.random.random((6, 5, 4)).astype("float32"),
+            'Y': np.random.random((6, 5, 4)).astype("float32")
         }
         expect_x_norm = np.linalg.norm(self.inputs['X'], axis=(1, 2))
         expect_y_norm = np.linalg.norm(self.inputs['Y'], axis=(1, 2))
@@ -91,8 +91,8 @@ class TestCosSimOp4(TestCosSimOp):
     def setUp(self):
         self.op_type = "cos_sim"
         self.inputs = {
-            'X': np.random.random((6, 5, 2)).astype("float32"),
-            'Y': np.random.random((1, 5, 2)).astype("float32")
+            'X': np.random.random((6, 5, 20)).astype("float32"),
+            'Y': np.random.random((1, 5, 20)).astype("float32")
         }
         expect_x_norm = np.linalg.norm(self.inputs['X'], axis=(1, 2))
         expect_y_norm = np.linalg.norm(self.inputs['Y'], axis=(1, 2))

@@ -33,7 +33,8 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable
 from testsuite import create_op, set_input, append_input_output, append_loss_ops
 from paddle.fluid import unique_name
-from white_list import op_accuracy_white_list, check_shape_white_list, compile_vs_runtime_white_list, no_check_set_white_list, no_grad_set_white_list
+from white_list import op_accuracy_white_list, check_shape_white_list, compile_vs_runtime_white_list, no_check_set_white_list, no_grad_set_white_
+from white_list import op_threshold_white_list
 
 
 def _set_use_system_allocator(value=None):
@@ -898,15 +899,21 @@ class OpTest(unittest.TestCase):
 
     def check_output_with_place(self,
                                 place,
-                                atol,
+                                atol=0,
                                 no_check_set=None,
                                 equal_nan=False,
                                 check_dygraph=True,
                                 inplace_atol=None):
+        self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
+        if self.dtype == np.float64 and \
+            self.op_type not in op_threshold_white_list.NEED_FIX_FP64_CHECK_OUTPUT_THRESHOLD_OP_LIST:
+            atol = 0
+
         if no_check_set is not None:
             if self.op_type not in no_check_set_white_list.no_check_set_white_list:
                 raise AssertionError(
                     "no_check_set of op %s must be set to None." % self.op_type)
+
         if check_dygraph:
             dygraph_outs = self._calc_dygraph_output(
                 place, no_check_set=no_check_set)
@@ -1145,18 +1152,30 @@ class OpTest(unittest.TestCase):
                          max_relative_error, msg_prefix):
 
         for a, b, name in six.moves.zip(numeric_grads, analytic_grads, names):
+            # It asserts np.abs(a - b) / np.abs(a) < max_relative_error, in which
+            # max_relative_error is 1e-7. According to the value of np.abs(a), we
+            # change np.abs(a) to achieve dynamic threshold. For example, if
+            # the value of np.abs(a) is between 1e-10 and 1e-8, we set np.abs(a)*=1e4.
+            # Therefore, it asserts np.abs(a - b) / (np.abs(a)*1e4) < max_relative_error,
+            # which is the same as np.abs(a - b) / np.abs(a) < max_relative_error*1e4.
             abs_a = np.abs(a)
-            abs_a[abs_a < 1e-3] = 1
+            if self.dtype == np.float64 and \
+                self.op_type not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST:
+                abs_a[abs_a < 1e-10] = 1e-3
+                abs_a[np.logical_and(abs_a > 1e-10, abs_a <= 1e-8)] *= 1e4
+                abs_a[np.logical_and(abs_a > 1e-8, abs_a <= 1e-6)] *= 1e2
+            else:
+                abs_a[abs_a < 1e-3] = 1
 
             diff_mat = np.abs(a - b) / abs_a
             max_diff = np.max(diff_mat)
 
             def err_msg():
                 offset = np.argmax(diff_mat > max_relative_error)
-                return ("%s Variable %s max gradient diff %f over limit %f, "
-                        "the first error element is %d, expected %f, but got %f"
-                        ) % (msg_prefix, name, max_diff, max_relative_error,
-                             offset, a.flatten()[offset], b.flatten()[offset])
+                return ("%s error, %s variable %s max gradient diff %f over limit %f, "
+                    "the first error element is %d, expected %f, but got %f.") \
+                    % (self.op_type, msg_prefix, name, max_diff, max_relative_error,
+                    offset, a.flatten()[offset], b.flatten()[offset])
 
             self.assertLessEqual(max_diff, max_relative_error, err_msg())
 
@@ -1201,6 +1220,10 @@ class OpTest(unittest.TestCase):
         op_attrs = self.attrs if hasattr(self, "attrs") else dict()
 
         self._check_grad_helper()
+        if self.dtype == np.float64 and \
+            self.op_type not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST:
+            numeric_grad_delta = 1e-5
+            max_relative_error = 1e-7
 
         cache_list = None
         if hasattr(self, "cache_name_list"):

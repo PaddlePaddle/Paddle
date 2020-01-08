@@ -3882,9 +3882,9 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
     attrs = {
-        'dim': dim if dim != None else [0],
+        'dim': dim if dim != None and dim != [] else [0],
         'keep_dim': keep_dim,
-        'reduce_all': True if dim == None else False
+        'reduce_all': True if dim == None or dim == [] else False
     }
 
     if in_dygraph_mode():
@@ -3957,9 +3957,9 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
     attrs = {
-        'dim': dim if dim != None else [0],
+        'dim': dim if dim != None and dim != [] else [0],
         'keep_dim': keep_dim,
-        'reduce_all': True if dim == None else False
+        'reduce_all': True if dim == None or dim == [] else False
     }
 
     if in_dygraph_mode():
@@ -4034,9 +4034,9 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else [0],
+            'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None else False
+            'reduce_all': True if dim == None or dim == [] else False
         })
     return out
 
@@ -4095,9 +4095,9 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else [0],
+            'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None else False
+            'reduce_all': True if dim == None or dim == [] else False
         })
     return out
 
@@ -4157,9 +4157,9 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else [0],
+            'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None else False
+            'reduce_all': True if dim == None or dim == [] else False
         })
     return out
 
@@ -4215,9 +4215,9 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else [0],
+            'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None else False
+            'reduce_all': True if dim == None or dim == [] else False
         })
     return out
 
@@ -4273,9 +4273,9 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else [0],
+            'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None else False
+            'reduce_all': True if dim == None or dim == [] else False
         })
     return out
 
@@ -11964,8 +11964,8 @@ def log_loss(input, label, epsilon=1e-4, name=None):
         .. code-block:: python
 
           import paddle.fluid as fluid
-          label = fluid.data(name='label', shape=[-1, 1], dtype='int64')
-          prob = fluid.data(name='prob', shape=[-1, 10], dtype='float32')
+          label = fluid.data(name='label', shape=[None, 1], dtype='float32')
+          prob = fluid.data(name='prob', shape=[None, 1], dtype='float32')
           cost = fluid.layers.log_loss(input=prob, label=label)
     """
     helper = LayerHelper('log_loss', **locals())
