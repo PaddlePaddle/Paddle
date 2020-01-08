@@ -30,7 +30,7 @@ class TestPRROIPoolOp(OpTest):
         self.prRoIPool = PyPrRoIPool()
         self.outs = self.prRoIPool.compute(
             self.x, self.rois, self.output_channels, self.spatial_scale,
-            self.pooled_height, self.pooled_width).astype('float64')
+            self.pooled_height, self.pooled_width).astype('float32')
         self.inputs = {'X': self.x, 'ROIs': (self.rois[:, 1:5], self.rois_lod)}
         self.attrs = {
             'output_channels': self.output_channels,
@@ -53,7 +53,7 @@ class TestPRROIPoolOp(OpTest):
         self.pooled_height = 4
         self.pooled_width = 4
 
-        self.x = np.random.random(self.x_dim).astype('float64')
+        self.x = np.random.random(self.x_dim).astype('float32')
 
     def make_rois(self):
         rois = []
@@ -73,7 +73,7 @@ class TestPRROIPoolOp(OpTest):
                 roi = [bno, x1, y1, x2, y2]
                 rois.append(roi)
         self.rois_num = len(rois)
-        self.rois = np.array(rois).astype('float64')
+        self.rois = np.array(rois).astype('float32')
 
     def setUp(self):
         self.op_type = 'prroi_pool'
@@ -94,9 +94,9 @@ class TestPRROIPoolOp(OpTest):
             x = fluid.layers.data(
                 name="X",
                 shape=[self.channels, self.height, self.width],
-                dtype="float64")
+                dtype="float32")
             rois = fluid.layers.data(
-                name="ROIs", shape=[4], dtype="float64", lod_level=1)
+                name="ROIs", shape=[4], dtype="float32", lod_level=1)
             output = fluid.layers.prroi_pool(x, rois, 0.25, 2, 2)
             loss = fluid.layers.mean(output)
             optimizer = fluid.optimizer.SGD(learning_rate=1e-3)
@@ -120,9 +120,9 @@ class TestPRROIPoolOp(OpTest):
     def test_errors(self):
         with program_guard(Program(), Program()):
             x = fluid.layers.data(
-                name="x", shape=[245, 30, 30], dtype="float64")
+                name="x", shape=[245, 30, 30], dtype="float32")
             rois = fluid.layers.data(
-                name="rois", shape=[4], dtype="float64", lod_level=1)
+                name="rois", shape=[4], dtype="float32", lod_level=1)
             # spatial_scale must be float type
             self.assertRaises(TypeError, fluid.layers.prroi_pool, x, rois, 2, 7,
                               7)
@@ -141,7 +141,7 @@ class TestPRROIPoolOpTensorRoIs(OpTest):
         self.prRoIPool = PyPrRoIPool()
         self.outs = self.prRoIPool.compute(
             self.x, self.rois, self.output_channels, self.spatial_scale,
-            self.pooled_height, self.pooled_width).astype('float64')
+            self.pooled_height, self.pooled_width).astype('float32')
 
         self.rois_index = np.array(self.rois_lod).reshape([-1]).astype(np.int64)
         self.inputs = {
@@ -170,7 +170,7 @@ class TestPRROIPoolOpTensorRoIs(OpTest):
         self.pooled_height = 4
         self.pooled_width = 4
 
-        self.x = np.random.random(self.x_dim).astype('float64')
+        self.x = np.random.random(self.x_dim).astype('float32')
 
     def make_rois(self):
         rois = []
@@ -190,7 +190,7 @@ class TestPRROIPoolOpTensorRoIs(OpTest):
                 roi = [bno, x1, y1, x2, y2]
                 rois.append(roi)
         self.rois_num = len(rois)
-        self.rois = np.array(rois).astype('float64')
+        self.rois = np.array(rois).astype('float32')
 
     def setUp(self):
         self.op_type = 'prroi_pool'
@@ -211,8 +211,8 @@ class TestPRROIPoolOpTensorRoIs(OpTest):
             x = fluid.layers.data(
                 name="X",
                 shape=[self.channels, self.height, self.width],
-                dtype="float64")
-            rois = fluid.layers.data(name="ROIs", shape=[4], dtype="float64")
+                dtype="float32")
+            rois = fluid.layers.data(name="ROIs", shape=[4], dtype="float32")
             rois_index = fluid.layers.data(
                 name='rois_idx', shape=[], dtype="int64")
             output = fluid.layers.prroi_pool(
@@ -238,9 +238,9 @@ class TestPRROIPoolOpTensorRoIs(OpTest):
     def test_errors(self):
         with program_guard(Program(), Program()):
             x = fluid.layers.data(
-                name="x", shape=[245, 30, 30], dtype="float64")
+                name="x", shape=[245, 30, 30], dtype="float32")
             rois = fluid.layers.data(
-                name="rois", shape=[4], dtype="float64", lod_level=1)
+                name="rois", shape=[4], dtype="float32", lod_level=1)
             # spatial_scale must be float type
             self.assertRaises(TypeError, fluid.layers.prroi_pool, x, rois, 2, 7,
                               7)
