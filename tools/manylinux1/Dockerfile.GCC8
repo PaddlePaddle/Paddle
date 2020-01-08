@@ -50,6 +50,10 @@ RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc
 RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++
 ENV PATH=/usr/local/gcc-8.2/bin:$PATH
 RUN cd .. && rm -rf /usr/bin/temp_gcc82
+RUN cp /usr/lib/x86_64-linux-gnu/libstdc++.so.6 /usr/lib/x86_64-linux-gnu/libstdc++.so.6.bak
+RUN rm /usr/lib/x86_64-linux-gnu/libstdc++.so.6
+RUN ln -s /usr/local/gcc-8.2/lib64/libstdc++.so.6 /usr/lib/x86_64-linux-gnu/libstdc++.so.6
+RUN cp /usr/local/gcc-8.2/lib64/libstdc++.so.6.0.25 /usr/lib/x86_64-linux-gnu/
 
 # Install Python3.6
 RUN mkdir -p /root/python_build/ && wget -q https://www.sqlite.org/2018/sqlite-autoconf-3250300.tar.gz && \
