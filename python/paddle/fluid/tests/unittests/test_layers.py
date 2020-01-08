@@ -75,8 +75,9 @@ class LayerTest(unittest.TestCase):
 
     @contextlib.contextmanager
     def dynamic_graph(self, force_to_use_cpu=False):
-        with fluid.dygraph.guard(
-                self._get_place(force_to_use_cpu=force_to_use_cpu)):
+        #with fluid.dygraph.guard(
+        #        self._get_place(force_to_use_cpu=force_to_use_cpu)):
+        with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = self.seed
             fluid.default_main_program().random_seed = self.seed
             yield
@@ -1657,6 +1658,15 @@ class TestLayer(LayerTest):
 
 
 class TestBook(LayerTest):
+    def setUp(self):
+        self.only_static_set = set({"make_word_embedding"})
+        self.not_compare_static_dygraph_set = set({
+            "make_gaussian_random", "make_gaussian_random_batch_size_like",
+            "make_kldiv_loss", "make_prelu",
+            "make_sampled_softmax_with_cross_entropy", "make_sampling_id",
+            "make_uniform_random_batch_size_like"
+        })
+
     def test_all_layers(self):
         attrs = (getattr(self, name) for name in dir(self))
         methods = filter(inspect.ismethod, attrs)
@@ -1679,9 +1689,12 @@ class TestBook(LayerTest):
                         feed=self._feed_dict,
                         fetch_list=fetch_list,
                         force_to_use_cpu=self._force_to_use_cpu)
+
                 else:
                     assert method.__name__ in ('make_get_places')
                     continue
+            if method.__name__ in self.only_static_set:
+                continue
 
             with self.dynamic_graph(self._force_to_use_cpu):
                 dy_result = method()
@@ -1689,7 +1702,9 @@ class TestBook(LayerTest):
                     dy_result = dy_result[0]
                 dy_result_value = dy_result.numpy()
 
-        self.assertTrue(np.array_equal(static_result[0], dy_result_value))
+            if method.__name__ not in self.not_compare_static_dygraph_set:
+                self.assertTrue(
+                    np.array_equal(static_result[0], dy_result_value))
 
     def _get_np_data(self, shape, dtype, append_batch_size=True):
         np.random.seed(self.seed)
