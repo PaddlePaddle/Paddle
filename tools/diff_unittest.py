@@ -2,23 +2,30 @@
 import difflib
 import sys
 
-with open(sys.argv[1], 'r') as f:
-    origin = f.read()
+try:
+    f1 = open(sys.argv[1], 'r')
+    origin = f1.read()
     origin = origin.splitlines()
+except:
+    sys.exit(0)
+else:
+    f1.close()
 
-with open(sys.argv[2], 'r') as f:
-    new = f.read()
+try:
+    f2 = open(sys.argv[2], 'r')
+    new = f2.read()
     new = new.splitlines()
-
-differ = difflib.Differ()
-result = differ.compare(origin, new)
+except:
+    sys.exit(0)
+else:
+    f2.close()
 
 error = False
 diffs = []
-for each_diff in result:
-    if each_diff[0] == '-':  # delete unit test is not allowed
+for i in origin:
+    if i not in new:
         error = True
-        diffs.append(each_diff)
+        diffs.append(i)
 '''
 If you delete the unit test, such as commenting it out, 
 please ask for approval of one RD below for passing CI:
@@ -27,4 +34,4 @@ please ask for approval of one RD below for passing CI:
 '''
 if error:
     for each_diff in diffs:
-        print(each_diff)
+        print("- %s" % each_diff)
