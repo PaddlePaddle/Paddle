@@ -15,6 +15,7 @@
 #include "paddle/fluid/inference/analysis/ir_passes/lite_subgraph_pass.h"
 #include <gtest/gtest.h>
 #include "paddle/fluid/inference/io.h"
+#include "paddle/fluid/inference/lite/op_teller.h"
 
 namespace paddle {
 namespace inference {
@@ -43,6 +44,9 @@ TEST(LiteSubgraphPass, basic) {
   host_while_op->SetAttr("sub_block", host_sub_block);
   framework::OpDesc* host_sub_block_op = host_sub_block->AppendOp();
   host_sub_block_op->SetType("leaky_relu");
+
+  CHECK(inference::lite::OpTeller::Global().Tell("while", *host_while_op))
+      << "Lite operator teller test failed.";
 
   lite::AppendLiteSubBlocks({host_while_op}, &engine_program, &host_program,
                             host_sub_block->ID());

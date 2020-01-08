@@ -13,7 +13,7 @@
 # limitations under the License.
 
 if(NOT LINUX OR NOT WITH_MKL)
-  message("The build of Paddle-lite was cancelled because the requirements were not met.")
+  message("Paddle-lite will not build because the required Linux and MKL do not exist.")
   set(WITH_LITE OFF)
   return()
 endif()
