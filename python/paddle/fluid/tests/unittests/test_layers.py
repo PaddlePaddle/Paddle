@@ -75,9 +75,8 @@ class LayerTest(unittest.TestCase):
 
     @contextlib.contextmanager
     def dynamic_graph(self, force_to_use_cpu=False):
-        #with fluid.dygraph.guard(
-        #        self._get_place(force_to_use_cpu=force_to_use_cpu)):
-        with fluid.dygraph.guard():
+        with fluid.dygraph.guard(
+                self._get_place(force_to_use_cpu=force_to_use_cpu)):
             fluid.default_startup_program().random_seed = self.seed
             fluid.default_main_program().random_seed = self.seed
             yield
