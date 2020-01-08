@@ -30,14 +30,15 @@ __all__ = ['run_check']
 
 
 class SimpleLayer(Layer):
-    def __init__(self, name_scope):
-        super(SimpleLayer, self).__init__(name_scope)
-        self._fc1 = nn.FC(self.full_name(),
-                          3,
-                          param_attr=ParamAttr(initializer=Constant(value=0.1)))
+    def __init__(self, input_size):
+        super(SimpleLayer, self).__init__()
+        self._linear1 = nn.Linear(
+            input_size,
+            3,
+            param_attr=ParamAttr(initializer=Constant(value=0.1)))
 
     def forward(self, inputs):
-        x = self._fc1(inputs)
+        x = self._linear1(inputs)
         x = layers.reduce_sum(x)
         return x
 
@@ -79,7 +80,7 @@ def run_check():
                     build_strategy = compiler.BuildStrategy()
                     build_strategy.enable_inplace = True
                     inp = layers.data(name="inp", shape=[2, 2])
-                    simple_layer = SimpleLayer("simple_layer")
+                    simple_layer = SimpleLayer(input_size=2)
                     out = simple_layer(inp)
                     exe = executor.Executor(
                         core.CUDAPlace(0) if core.is_compiled_with_cuda() and
@@ -108,10 +109,11 @@ def run_check():
                 with unique_name.guard():
                     inp0 = layers.data(
                         name="inp", shape=[2, 2], append_batch_size=False)
-                    simple_layer0 = SimpleLayer("simple_layer")
+                    simple_layer0 = SimpleLayer(input_size=2)
                     out0 = simple_layer0(inp0)
                     param_grads = backward.append_backward(
-                        out0, parameter_list=[simple_layer0._fc1._w.name])[0]
+                        out0,
+                        parameter_list=[simple_layer0._linear1.weight.name])[0]
                     exe0 = executor.Executor(
                         core.CUDAPlace(0) if core.is_compiled_with_cuda() and
                         (core.get_cuda_device_count() > 0) else core.CPUPlace())

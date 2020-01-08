@@ -237,8 +237,9 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     // cudnn 7 can support groups, no need to do it manually
     // FIXME(typhoonzero): find a better way to disable groups
     // rather than setting it to 1.
-    CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionGroupCount(
-        args.cdesc.desc(), groups));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnSetConvolutionGroupCount(args.cdesc.desc(),
+                                                         groups));
     groups = 1;
 #endif
     args.idesc.set(transformed_input, layout_format);
@@ -276,12 +277,13 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     for (int i = 0; i < groups; i++) {
       workspace_handle.RunFunc(
           [&](void* workspace_ptr) {
-            CUDNN_ENFORCE(platform::dynload::cudnnConvolutionForward(
-                handle, &alpha, args.idesc.desc(),
-                input_data + i * group_offset_in, args.wdesc.desc(),
-                filter_data + i * group_offset_filter, args.cdesc.desc(), algo,
-                workspace_ptr, workspace_size, &beta, args.odesc.desc(),
-                output_data + i * group_offset_out));
+            PADDLE_ENFORCE_CUDA_SUCCESS(
+                platform::dynload::cudnnConvolutionForward(
+                    handle, &alpha, args.idesc.desc(),
+                    input_data + i * group_offset_in, args.wdesc.desc(),
+                    filter_data + i * group_offset_filter, args.cdesc.desc(),
+                    algo, workspace_ptr, workspace_size, &beta,
+                    args.odesc.desc(), output_data + i * group_offset_out));
           },
           workspace_size);
     }
@@ -596,13 +598,14 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
       for (int i = 0; i < groups; i++) {
         workspace_handle.RunFunc(
             [&](void* cudnn_workspace_ptr) {
-              CUDNN_ENFORCE(platform::dynload::cudnnConvolutionBackwardData(
-                  handle, &alpha, args1.wdesc.desc(),
-                  filter_data + i * group_offset_filter, args1.odesc.desc(),
-                  output_grad_data + i * group_offset_out, args1.cdesc.desc(),
-                  data_algo, cudnn_workspace_ptr, workspace_size, &beta,
-                  args1.idesc.desc(),
-                  transformed_input_grad_data + i * group_offset_in));
+              PADDLE_ENFORCE_CUDA_SUCCESS(
+                  platform::dynload::cudnnConvolutionBackwardData(
+                      handle, &alpha, args1.wdesc.desc(),
+                      filter_data + i * group_offset_filter, args1.odesc.desc(),
+                      output_grad_data + i * group_offset_out,
+                      args1.cdesc.desc(), data_algo, cudnn_workspace_ptr,
+                      workspace_size, &beta, args1.idesc.desc(),
+                      transformed_input_grad_data + i * group_offset_in));
             },
             workspace_size);
       }
@@ -639,13 +642,14 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
       for (int i = 0; i < groups; i++) {
         workspace_handle.RunFunc(
             [&](void* cudnn_workspace_ptr) {
-              CUDNN_ENFORCE(platform::dynload::cudnnConvolutionBackwardFilter(
-                  handle, &alpha, args2.idesc.desc(),
-                  input_data + i * group_offset_in, args2.odesc.desc(),
-                  output_grad_data + i * group_offset_out, args2.cdesc.desc(),
-                  filter_algo, cudnn_workspace_ptr, workspace_size, &beta,
-                  args2.wdesc.desc(),
-                  filter_grad_data + i * group_offset_filter));
+              PADDLE_ENFORCE_CUDA_SUCCESS(
+                  platform::dynload::cudnnConvolutionBackwardFilter(
+                      handle, &alpha, args2.idesc.desc(),
+                      input_data + i * group_offset_in, args2.odesc.desc(),
+                      output_grad_data + i * group_offset_out,
+                      args2.cdesc.desc(), filter_algo, cudnn_workspace_ptr,
+                      workspace_size, &beta, args2.wdesc.desc(),
+                      filter_grad_data + i * group_offset_filter));
             },
             workspace_size);
       }
@@ -993,12 +997,14 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
         for (int i = 0; i < groups; i++) {
           wkspace_handle.RunFunc(
               [&](void* workspace_ptr) {
-                CUDNN_ENFORCE(platform::dynload::cudnnConvolutionForward(
-                    handle, &alpha, args1.idesc.desc(),
-                    ddx + i * group_offset_in, args1.wdesc.desc(),
-                    w + i * group_offset_filter, args1.cdesc.desc(), fwd_algo1,
-                    workspace_ptr, workspace_size, &beta, args1.odesc.desc(),
-                    transformed_ddy_channel + i * group_offset_out));
+                PADDLE_ENFORCE_CUDA_SUCCESS(
+                    platform::dynload::cudnnConvolutionForward(
+                        handle, &alpha, args1.idesc.desc(),
+                        ddx + i * group_offset_in, args1.wdesc.desc(),
+                        w + i * group_offset_filter, args1.cdesc.desc(),
+                        fwd_algo1, workspace_ptr, workspace_size, &beta,
+                        args1.odesc.desc(),
+                        transformed_ddy_channel + i * group_offset_out));
               },
               workspace_size);
         }
@@ -1007,12 +1013,14 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
         for (int i = 0; i < groups; i++) {
           wkspace_handle.RunFunc(
               [&](void* workspace_ptr) {
-                CUDNN_ENFORCE(platform::dynload::cudnnConvolutionForward(
-                    handle, &alpha, args2.idesc.desc(), x + i * group_offset_in,
-                    args2.wdesc.desc(), ddw + i * group_offset_filter,
-                    args2.cdesc.desc(), fwd_algo2, workspace_ptr,
-                    workspace_size, &alpha, args2.odesc.desc(),
-                    transformed_ddy_channel + i * group_offset_out));
+                PADDLE_ENFORCE_CUDA_SUCCESS(
+                    platform::dynload::cudnnConvolutionForward(
+                        handle, &alpha, args2.idesc.desc(),
+                        x + i * group_offset_in, args2.wdesc.desc(),
+                        ddw + i * group_offset_filter, args2.cdesc.desc(),
+                        fwd_algo2, workspace_ptr, workspace_size, &alpha,
+                        args2.odesc.desc(),
+                        transformed_ddy_channel + i * group_offset_out));
               },
               workspace_size);
         }
@@ -1028,13 +1036,14 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
       for (int i = 0; i < groups; i++) {
         wkspace_handle.RunFunc(
             [&](void* workspace_ptr) {
-              CUDNN_ENFORCE(platform::dynload::cudnnConvolutionBackwardFilter(
-                  handle, &alpha, args3.idesc.desc(), ddx + i * group_offset_in,
-                  args3.odesc.desc(),
-                  transformed_dy_channel + i * group_offset_out,
-                  args3.cdesc.desc(), filter_algo, workspace_ptr,
-                  workspace_size, &beta, args3.wdesc.desc(),
-                  dw + i * group_offset_filter));
+              PADDLE_ENFORCE_CUDA_SUCCESS(
+                  platform::dynload::cudnnConvolutionBackwardFilter(
+                      handle, &alpha, args3.idesc.desc(),
+                      ddx + i * group_offset_in, args3.odesc.desc(),
+                      transformed_dy_channel + i * group_offset_out,
+                      args3.cdesc.desc(), filter_algo, workspace_ptr,
+                      workspace_size, &beta, args3.wdesc.desc(),
+                      dw + i * group_offset_filter));
             },
             workspace_size);
       }
@@ -1045,13 +1054,14 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
       for (int i = 0; i < groups; i++) {
         wkspace_handle.RunFunc(
             [&](void* workspace_ptr) {
-              CUDNN_ENFORCE(platform::dynload::cudnnConvolutionBackwardData(
-                  handle, &alpha, args4.wdesc.desc(),
-                  ddw + i * group_offset_filter, args4.odesc.desc(),
-                  transformed_dy_channel + i * group_offset_out,
-                  args4.cdesc.desc(), data_algo, workspace_ptr, workspace_size,
-                  &beta, args4.idesc.desc(),
-                  transformed_dx + i * group_offset_in));
+              PADDLE_ENFORCE_CUDA_SUCCESS(
+                  platform::dynload::cudnnConvolutionBackwardData(
+                      handle, &alpha, args4.wdesc.desc(),
+                      ddw + i * group_offset_filter, args4.odesc.desc(),
+                      transformed_dy_channel + i * group_offset_out,
+                      args4.cdesc.desc(), data_algo, workspace_ptr,
+                      workspace_size, &beta, args4.idesc.desc(),
+                      transformed_dx + i * group_offset_in));
             },
             workspace_size);
       }
