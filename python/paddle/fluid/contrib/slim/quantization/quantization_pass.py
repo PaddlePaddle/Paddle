@@ -1355,19 +1355,19 @@ class AddQuantDequantPass(object):
                     continue
 
                 input_name_list = _op_real_in_out_name[op_node.name()][0]
+                arg_names = []
                 for input_name in input_name_list:
-                    for arg_name in op_node.input(input_name):
-                        in_node = graph._find_node_by_name(op_node.inputs,
-                                                           arg_name)
-                        if arg_name in dequantized_vars_map:
-                            quant_var_node = dequantized_vars_map[arg_name]
-                        else:
-                            quant_var_node, _ = \
-                                self._inser_quant_dequant_moving_average_abs_max_op(
-                                graph, in_node, self._quant_bits)
-                            dequantized_vars_map[arg_name] = quant_var_node
-                        graph.update_input_link(in_node, quant_var_node,
-                                                op_node)
+                    arg_names.extend(op_node.input(input_name))
+                for arg_name in arg_names:
+                    in_node = graph._find_node_by_name(op_node.inputs, arg_name)
+                    if arg_name in dequantized_vars_map:
+                        quant_var_node = dequantized_vars_map[arg_name]
+                    else:
+                        quant_var_node, _ = \
+                            self._inser_quant_dequant_moving_average_abs_max_op(
+                            graph, in_node, self._quant_bits)
+                        dequantized_vars_map[arg_name] = quant_var_node
+                    graph.update_input_link(in_node, quant_var_node, op_node)
 
         # Backward stage, update input link
         for op_node in all_op_nodes:
