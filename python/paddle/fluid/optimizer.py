@@ -991,7 +991,7 @@ class DGCMomentumOptimizer(Optimizer):
                  regularization=None,
                  name=None):
         if framework.in_dygraph_mode():
-            raise Exception("In dygraph, don't suppot DGCMomentumOptimizer.")
+            raise Exception("In dygraph, don't support DGCMomentumOptimizer.")
         assert learning_rate is not None
         assert momentum is not None
         super(DGCMomentumOptimizer, self).__init__(
@@ -2808,7 +2808,7 @@ class ModelAverage(Optimizer):
                  regularization=None,
                  name=None):
         if framework.in_dygraph_mode():
-            raise Exception("In dygraph, don't suppot ModelAverage.")
+            raise Exception("In dygraph, don't support ModelAverage.")
         super(ModelAverage, self).__init__(
             0.0, regularization=regularization, name=name)
         self.average_window = average_window_rate
@@ -3124,7 +3124,7 @@ class ExponentialMovingAverage(object):
     def __init__(self, decay=0.999, thres_steps=None, name=None):
         if framework.in_dygraph_mode():
             raise Exception(
-                "In dygraph, don't suppot ExponentialMovingAverage.")
+                "In dygraph, don't support ExponentialMovingAverage.")
         self._decay = decay
         self._thres_steps = thres_steps
         self._name = name if name is not None else ''
@@ -3336,7 +3336,7 @@ class PipelineOptimizer(object):
                  sync_steps=1,
                  start_cpu_core_id=0):
         if framework.in_dygraph_mode():
-            raise Exception("In dygraph, don't suppot PipelineOptimizer.")
+            raise Exception("In dygraph, don't support PipelineOptimizer.")
         # TODO: check properties
         self._optimizer = optimizer
         self._cut_list = cut_list
@@ -3623,7 +3623,7 @@ class RecomputeOptimizer(Optimizer):
 
     def __init__(self, optimizer):
         if framework.in_dygraph_mode():
-            raise Exception("In dygraph, don't suppot RecomputeOptimizer.")
+            raise Exception("In dygraph, don't support RecomputeOptimizer.")
         self._optimizer = optimizer
         self._checkpoints = None
 
@@ -3911,7 +3911,7 @@ class LookaheadOptimizer(object):
     def __init__(self, inner_optimizer, alpha=0.5, k=5):
 
         if framework.in_dygraph_mode():
-            raise Exception("In dygraph, don't suppot LookaheadOptimizer.")
+            raise Exception("In dygraph, don't support LookaheadOptimizer.")
         assert (inner_optimizer is not None), "inner optimizer can not be None"
         assert (
             0.0 <= alpha <= 1.0

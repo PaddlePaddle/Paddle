@@ -29,7 +29,7 @@ from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 
 # Note(wangzhongpu)
-# In dygraph, don't suppot ModelAverage, DGCMomentumOptimizer, ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, RecomputeOptimizer.
+# In dygraph, don't support ModelAverage, DGCMomentumOptimizer, ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, RecomputeOptimizer.
 
 
 class MLP(fluid.Layer):
@@ -68,8 +68,8 @@ class TestImperativeOptimizerBase(unittest.TestCase):
         seed = 90
         batch_size = 128
         if place == None:
-            place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-            ) else fluid.CUDAPlace(0)
+            place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+            ) else fluid.CPUPlace()
 
         with fluid.dygraph.guard(place):
             try:
@@ -504,7 +504,7 @@ class TestImperativeModelAverage(TestImperativeOptimizerBase):
         return optimizer
 
     def test_modelaverage(self):
-        exception_message = "In dygraph, don't suppot ModelAverage."
+        exception_message = "In dygraph, don't support ModelAverage."
         self._check_exception(exception_message)
 
 
@@ -519,7 +519,7 @@ class TestImperativeDGCMomentumOptimizer(TestImperativeOptimizerBase):
         return optimizer
 
     def test_dgcmomentum(self):
-        exception_message = "In dygraph, don't suppot DGCMomentumOptimizer."
+        exception_message = "In dygraph, don't support DGCMomentumOptimizer."
         self._check_exception(exception_message)
 
 
@@ -529,7 +529,7 @@ class TestImperativeExponentialMovingAverage(TestImperativeOptimizerBase):
         return optimizer
 
     def test_exponentialmoving(self):
-        exception_message = "In dygraph, don't suppot ExponentialMovingAverage."
+        exception_message = "In dygraph, don't support ExponentialMovingAverage."
         self._check_exception(exception_message)
 
 
@@ -541,7 +541,7 @@ class TestImperativePipelineOptimizer(TestImperativeOptimizerBase):
         return optimizer
 
     def test_pipline(self):
-        exception_message = "In dygraph, don't suppot PipelineOptimizer."
+        exception_message = "In dygraph, don't support PipelineOptimizer."
         self._check_exception(exception_message)
 
 
@@ -553,7 +553,7 @@ class TestImperativeLookaheadOptimizer(TestImperativeOptimizerBase):
         return optimizer
 
     def test_lookahead(self):
-        exception_message = "In dygraph, don't suppot LookaheadOptimizer."
+        exception_message = "In dygraph, don't support LookaheadOptimizer."
         self._check_exception(exception_message)
 
 
@@ -565,7 +565,7 @@ class TestImperativeRecomputeOptimizer(TestImperativeOptimizerBase):
         return optimizer
 
     def test_recompute(self):
-        exception_message = "In dygraph, don't suppot RecomputeOptimizer."
+        exception_message = "In dygraph, don't support RecomputeOptimizer."
         self._check_exception(exception_message)
 
 
