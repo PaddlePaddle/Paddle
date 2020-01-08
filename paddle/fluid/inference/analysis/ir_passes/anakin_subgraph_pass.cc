@@ -22,11 +22,11 @@
 #include <vector>
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/ir/subgraph_detector.h"
 #include "paddle/fluid/inference/anakin/convert/op_converter.h"
 #include "paddle/fluid/inference/anakin/op_teller.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/ir_passes/anakin_subgraph_pass.h"
-#include "paddle/fluid/inference/analysis/ir_passes/subgraph_detector.h"
 #include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
@@ -50,7 +50,7 @@ void analysis::AnakinSubgraphPass::ApplyImpl(
     return anakin::OpTeller::Global().Tell(node->Op()->Type(), *node->Op());
   };
 
-  SubGraphFuser fuser(graph, teller, 6 /* min_subgraph_size */);
+  framework::ir::SubGraphFuser fuser(graph, teller, 6 /* min_subgraph_size */);
   fuser();
 
   std::vector<std::string> graph_param_names =
@@ -61,17 +61,18 @@ void analysis::AnakinSubgraphPass::ApplyImpl(
   std::vector<std::string> repetitive_params;
 
   for (auto *node : graph->Nodes()) {
-    if (node->IsOp() && !Agent(node).subgraph()->empty()) {
+    if (node->IsOp() && !framework::ir::Agent(node).subgraph()->empty()) {
       CreateAnakinOp(node, graph, graph_param_names, &repetitive_params);
       std::unordered_set<const Node *> nodes2remove(
-          Agent(node).subgraph()->begin(), Agent(node).subgraph()->end());
+          framework::ir::Agent(node).subgraph()->begin(),
+          framework::ir::Agent(node).subgraph()->end());
       framework::ir::GraphSafeRemoveNodes(graph, nodes2remove);
     }
   }
 
   std::unordered_set<const Node *> nodes2remove;
   for (auto *node : graph->Nodes()) {
-    if (node->IsOp() && Agent(node).deleted()) {
+    if (node->IsOp() && framework::ir::Agent(node).deleted()) {
       nodes2remove.insert(node);
     }
   }
@@ -96,11 +97,11 @@ std::string GenerateAnakinEngineKey(const std::set<std::string> &engine_inputs,
 }
 
 void AnakinSubgraphPass::CreateAnakinOp(
-    framework::ir::Node *node, Graph *graph,
+    framework::ir::Node *node, framework::ir::Graph *graph,
     const std::vector<std::string> &graph_params,
     std::vector<std::string> *repetitive_params) const {
   auto *op_desc = node->Op();
-  auto &subgraph = *Agent(node).subgraph();
+  auto &subgraph = *framework::ir::Agent(node).subgraph();
   PADDLE_ENFORCE(!subgraph.empty());
 
   framework::ProgramDesc *program_desc =
@@ -164,7 +165,7 @@ void AnakinSubgraphPass::CreateAnakinOp(
       graph_var_map[node->Name()] = node;
     }
   }
-  auto &subgraph_nodes = *Agent(node).subgraph();
+  auto &subgraph_nodes = *framework::ir::Agent(node).subgraph();
 
   // The following procedure is used to rename all the intermediate
   // variables and the output variables of the subgraph.
