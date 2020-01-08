@@ -57,7 +57,7 @@ endfunction()
 
 function(copy_part_of_thrid_party TARGET DST) 
     if(${CBLAS_PROVIDER} STREQUAL MKLML)
-        set(dst_dir "${DST}/third_party/mklml")
+        set(dst_dir "${DST}/third_party/install/mklml")
         if(WIN32)
             copy(${TARGET}
                     SRCS ${MKLML_LIB} ${MKLML_IOMP_LIB} ${MKLML_SHARED_LIB}
@@ -70,7 +70,7 @@ function(copy_part_of_thrid_party TARGET DST)
                     DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir})
         endif()
     elseif(${CBLAS_PROVIDER} STREQUAL EXTERN_OPENBLAS)
-        set(dst_dir "${DST}/third_party/openblas")
+        set(dst_dir "${DST}/third_party/install/openblas")
 	if(WIN32)
             copy(${TARGET}
                     SRCS ${CBLAS_INSTALL_DIR}/lib ${OPENBLAS_SHARED_LIB} ${CBLAS_INSTALL_DIR}/include
@@ -83,7 +83,7 @@ function(copy_part_of_thrid_party TARGET DST)
     endif()
 
     if(WITH_MKLDNN)
-        set(dst_dir "${DST}/third_party/mkldnn")
+        set(dst_dir "${DST}/third_party/install/mkldnn")
         if(WIN32)
             copy(${TARGET}
                     SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB} ${MKLDNN_LIB}
@@ -95,44 +95,44 @@ function(copy_part_of_thrid_party TARGET DST)
         endif()
     endif()
 
-    set(dst_dir "${DST}/third_party/gflags")
+    set(dst_dir "${DST}/third_party/install/gflags")
     copy(${TARGET}
             SRCS ${GFLAGS_INCLUDE_DIR} ${GFLAGS_LIBRARIES}
             DSTS ${dst_dir} ${dst_dir}/lib)
 
-    set(dst_dir "${DST}/third_party/glog")
+    set(dst_dir "${DST}/third_party/install/glog")
     copy(${TARGET}
             SRCS ${GLOG_INCLUDE_DIR} ${GLOG_LIBRARIES}
             DSTS ${dst_dir} ${dst_dir}/lib)
 
-    set(dst_dir "${DST}/third_party/xxhash")
+    set(dst_dir "${DST}/third_party/install/xxhash")
     copy(${TARGET}
         SRCS ${XXHASH_INCLUDE_DIR} ${XXHASH_LIBRARIES}
         DSTS ${dst_dir} ${dst_dir}/lib)    
             
     if (NOT PROTOBUF_FOUND OR WIN32)
-        set(dst_dir "${DST}/third_party/protobuf")
+        set(dst_dir "${DST}/third_party/install/protobuf")
         copy(${TARGET}
                 SRCS ${PROTOBUF_INCLUDE_DIR} ${PROTOBUF_LIBRARY}
                 DSTS ${dst_dir} ${dst_dir}/lib)
     endif ()
 
     if (WITH_NGRAPH)
-        set(dst_dir "${DST}/third_party/ngraph")
+        set(dst_dir "${DST}/third_party/install/ngraph")
         copy(${TARGET}
                 SRCS ${NGRAPH_INC_DIR} ${NGRAPH_LIB_DIR}
                 DSTS ${dst_dir} ${dst_dir})
     endif ()
 
     if (TENSORRT_FOUND)
-        set(dst_dir "${DST}/third_party/tensorrt")
+        set(dst_dir "${DST}/third_party/install/tensorrt")
         copy(${TARGET}
                 SRCS ${TENSORRT_INCLUDE_DIR}/Nv*.h ${TENSORRT_LIBRARY_DIR}/*nvinfer*
                 DSTS ${dst_dir}/include ${dst_dir}/lib)
     endif ()
 
     if (ANAKIN_FOUND)
-        set(dst_dir "${DST}/third_party/anakin")
+        set(dst_dir "${DST}/third_party/install/anakin")
         copy(${TARGET}
                 SRCS ${ANAKIN_ROOT}/*
                 DSTS ${dst_dir})
@@ -241,6 +241,26 @@ copy(fluid_lib_dist
         SRCS ${CMAKE_CURRENT_BINARY_DIR}/paddle/fluid/${module}/pybind.h
         DSTS ${dst_dir}/${module}
         )
+
+set(dst_dir "${FLUID_INSTALL_DIR}/third_party/eigen3")
+copy(inference_lib_dist
+        SRCS ${EIGEN_INCLUDE_DIR}/Eigen/Core ${EIGEN_INCLUDE_DIR}/Eigen/src ${EIGEN_INCLUDE_DIR}/unsupported/Eigen
+        DSTS ${dst_dir}/Eigen ${dst_dir}/Eigen ${dst_dir}/unsupported)
+
+set(dst_dir "${FLUID_INSTALL_DIR}/third_party/boost")
+copy(inference_lib_dist
+        SRCS ${BOOST_INCLUDE_DIR}/boost
+        DSTS ${dst_dir})
+
+set(dst_dir "${FLUID_INSTALL_DIR}/third_party/dlpack")
+copy(inference_lib_dist
+        SRCS ${DLPACK_INCLUDE_DIR}/dlpack
+        DSTS ${dst_dir})
+
+set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/zlib")
+copy(inference_lib_dist
+        SRCS ${ZLIB_INCLUDE_DIR} ${ZLIB_LIBRARIES}
+        DSTS ${dst_dir} ${dst_dir}/lib)
 
 # CMakeCache Info
 copy(fluid_lib_dist
