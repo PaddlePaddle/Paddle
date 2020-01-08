@@ -16,6 +16,8 @@ import sys
 import unittest
 import numpy as np
 import paddle.fluid as fluid
+from paddle.fluid import core
+import paddle.compat as cpt
 
 if sys.version_info[0] == 2:
     import Queue as queue
@@ -66,11 +68,12 @@ class TestDygraphhDataLoader(unittest.TestCase):
         self.batch_size = 8
         self.batch_num = 4
         self.epoch_num = 2
+        self.capacity = 2
 
     def test_single_process_reader(self):
         with fluid.dygraph.guard():
             loader = fluid.io.DataLoader.from_generator(
-                capacity=2, iterable=False, use_multiprocess=False)
+                capacity=self.capacity, iterable=False, use_multiprocess=False)
             loader.set_sample_generator(
                 sample_generator_creator(self.batch_size, self.batch_num),
                 batch_size=self.batch_size,
@@ -84,7 +87,7 @@ class TestDygraphhDataLoader(unittest.TestCase):
 
     def test_sample_genarator(self):
         with fluid.dygraph.guard():
-            loader = fluid.io.DataLoader.from_generator(capacity=2)
+            loader = fluid.io.DataLoader.from_generator(capacity=self.capacity)
             loader.set_sample_generator(
                 sample_generator_creator(self.batch_size, self.batch_num),
                 batch_size=self.batch_size,
@@ -98,7 +101,7 @@ class TestDygraphhDataLoader(unittest.TestCase):
 
     def test_sample_list_generator(self):
         with fluid.dygraph.guard():
-            loader = fluid.io.DataLoader.from_generator(capacity=2)
+            loader = fluid.io.DataLoader.from_generator(capacity=self.capacity)
             loader.set_sample_list_generator(
                 sample_list_generator_creator(self.batch_size, self.batch_num),
                 places=fluid.CPUPlace())
@@ -111,7 +114,7 @@ class TestDygraphhDataLoader(unittest.TestCase):
 
     def test_batch_genarator(self):
         with fluid.dygraph.guard():
-            loader = fluid.io.DataLoader.from_generator(capacity=2)
+            loader = fluid.io.DataLoader.from_generator(capacity=self.capacity)
             loader.set_batch_generator(
                 batch_generator_creator(self.batch_size, self.batch_num),
                 places=fluid.CPUPlace())
@@ -135,6 +138,29 @@ class TestDygraphhDataLoader(unittest.TestCase):
             loader._reader_process_loop()
             for _ in range(self.batch_num):
                 loader._data_queue.get(timeout=10)
+
+    def test_single_process_with_thread_expection(self):
+        def error_sample_genarator(batch_num):
+            def __reader__():
+                for _ in range(batch_num):
+                    yield [[[1, 2], [1]]]
+
+            return __reader__
+
+        with fluid.dygraph.guard():
+            loader = fluid.io.DataLoader.from_generator(
+                capacity=self.capacity, iterable=False, use_multiprocess=False)
+            loader.set_batch_generator(
+                error_sample_genarator(self.batch_num), places=fluid.CPUPlace())
+            exception = None
+            try:
+                for _ in loader():
+                    print("test_single_process_with_thread_expection")
+            except core.EnforceNotMet as ex:
+                self.assertIn("Blocking queue is killed",
+                              cpt.get_exception_message(ex))
+                exception = ex
+            self.assertIsNotNone(exception)
 
 
 if __name__ == '__main__':

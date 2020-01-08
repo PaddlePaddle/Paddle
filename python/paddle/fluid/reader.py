@@ -516,29 +516,34 @@ class DygraphGeneratorLoader(DataLoaderBase):
                 self._thread_done_event.set()
                 logging.error("The reader has not read data for a long time.")
 
-            if not self._thread_done_event.is_set() and sample is not None:
-                try:
-                    array = core.LoDTensorArray()
-                    for item in sample:
-                        if not isinstance(item, core.LoDTensor):
-                            self._check_input_array(item)
-                            tmp = core.LoDTensor()
-                            tmp.set(item, core.CPUPlace())
-                            item = tmp
-                        array.append(item)
-                    if not self._blocking_queue.push(array):
-                        self._blocking_queue.close()
-                except:
+            if not self._thread_done_event.is_set():
+                if sample is not None:
+                    try:
+                        array = core.LoDTensorArray()
+                        for item in sample:
+                            if not isinstance(item, core.LoDTensor):
+                                self._check_input_array(item)
+                                tmp = core.LoDTensor()
+                                tmp.set(item, core.CPUPlace())
+                                item = tmp
+                            array.append(item)
+                        if not self._blocking_queue.push(array):
+                            self._blocking_queue.close()
+                    except:
+                        self._thread_done_event.set()
+                        self._blocking_queue.kill()
+                        self._data_queue.close()
+                        logging.warning(
+                            "DygraphDataLoader reader thread raised an exception."
+                        )
+                        six.reraise(*sys.exc_info())
+                else:
                     self._thread_done_event.set()
+                    self._blocking_queue.close()
                     self._data_queue.close()
-                    self._blocking_queue.kill()
-                    logging.warning(
-                        "DygraphDataLoader reader thread raised an exception.")
-                    six.reraise(*sys.exc_info())
             else:
-                self._thread_done_event.set()
+                self._blocking_queue.kill()
                 self._data_queue.close()
-                self._blocking_queue.close()
 
     def _reader_thread_loop(self):
         try:
