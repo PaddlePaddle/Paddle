@@ -73,8 +73,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         datas = [dnn_data, lr_data, label]
 
         # build dnn model
-        # add 12800 for test huge dense Variable
-        dnn_layer_dims = [128, 128000, 64, 32, 1]
+        dnn_layer_dims = [128, 128, 64, 32, 1]
         dnn_embedding = fluid.layers.embedding(
             is_distributed=False,
             input=dnn_data,

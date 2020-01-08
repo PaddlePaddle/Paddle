@@ -39,6 +39,8 @@ from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import f
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
 
+__all__ = ['FleetDistRunnerBase', 'TestFleetBase', 'runtime_main']
+
 RUN_STEP = 5
 LEARNING_RATE = 0.01
 DIST_UT_PORT = 0
@@ -80,9 +82,22 @@ class FleetDistRunnerBase(object):
         return self.strategy
 
     def build_optimizer(self, loss, strategy):
+        use_grad_clip = int(os.getenv('GRAD_CLIP', 0))
+        if use_grad_clip:
+            # 1: clip_by_value; 2: clip_by_norm; 3:clip_by_global_norm
+            if use_grad_clip == 1:
+                fluid.clip.set_gradient_clip(
+                    clip=fluid.clip.GradientClipByValue(2.0))
+            elif use_grad_clip == 2:
+                fluid.clip.set_gradient_clip(
+                    clip=fluid.clip.GradientClipByNorm(2.0))
+            elif use_grad_clip == 3:
+                fluid.clip.set_gradient_clip(
+                    clip=fluid.clip.GradientClipByGlobalNorm(2.0))
+
         optimizer = fluid.optimizer.SGD(LEARNING_RATE)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
-        optimizer.minimize(loss)
+        optimizer.minimize(avg_cost)
 
     def run_pserver(self, args):
         fleet.init(self.build_role(args))
@@ -157,6 +172,7 @@ class TestFleetBase(unittest.TestCase):
 
         self._python_interp = sys.executable
         self._geo_sgd_need_push_nums = 5
+        self._grad_clip_mode = 0
         self._setup_config()
 
     def _find_free_port(self):
@@ -210,7 +226,7 @@ class TestFleetBase(unittest.TestCase):
         return tr0_proc, tr1_proc, tr0_pipe, tr1_pipe
 
     def _run_cluster(self, model, envs):
-        env = {}
+        env = {'GRAD_CLIP': str(self._grad_clip_mode)}
         env.update(envs)
 
         python_path = self._python_interp
