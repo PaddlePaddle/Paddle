@@ -346,14 +346,15 @@ class TranspilerOptimizer(DistributedOptimizer):
         super(TranspilerOptimizer, self).__init__(optimizer, strategy)
 
         if strategy:
-            if isinstance(strategy, DistributedStrategy):
+            if isinstance(strategy, DistributeTranspilerConfig) or isinstance(
+                    strategy, SyncStrategy) or isinstance(
+                        strategy, HalfAsyncStrategy) or isinstance(
+                            strategy, AsyncStrategy) or isinstance(config,
+                                                                   GeoStrategy):
                 self._strategy = strategy
-            elif isinstance(strategy, DistributeTranspilerConfig):
-                self._strategy = DistributedStrategy()
-                self._strategy.set_program_config(strategy)
             else:
                 raise TypeError(
-                    "In {} mode, strategy must be an instance of DistributeTranspilerConfig or DistributedStrategy".
+                    "In {} mode, strategy must be an instance of DistributeTranspilerConfig, SyncStrategy, HalfAsyncStrategy, AsyncStrategy, or GeoStrategy".
                     format(fleet._mode))
         else:
             self._strategy = DistributedStrategy()
