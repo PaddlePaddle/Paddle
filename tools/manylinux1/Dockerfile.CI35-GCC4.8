@@ -20,16 +20,12 @@ RUN bash build_scripts/build.sh && \
 
 ENV SSL_CERT_FILE=/opt/_internal/certs.pem
 
-# for paddle
-RUN wget --no-check-certificate -qO- https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz | \
-    tar -xz -C /usr/local && \
-    mkdir /root/gopath && \
-    mkdir /root/gopath/bin && \
-    mkdir /root/gopath/src
-
-
-ENV GOROOT=/usr/local/go GOPATH=/root/gopath
-ENV PATH=${GOROOT}/bin:${GOPATH}/bin:${PATH}
+# git 2.17.1
+RUN wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz && \
+  tar -xvf git-2.17.1.tar.gz && \
+  cd git-2.17.1 && \
+  ./configure --prefix=/usr/local && \
+  make -j8 && make install 
 
 # protobuf 3.6.1
 RUN cd /opt && wget -q --no-check-certificate https://github.com/google/protobuf/releases/download/v3.6.1/protobuf-cpp-3.6.1.tar.gz && \
