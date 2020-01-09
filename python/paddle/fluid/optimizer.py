@@ -1987,9 +1987,9 @@ class DpsgdOptimizer(Optimizer):
         self._sigma = sigma
         '''
         Note(wangzhongpu):
-        This property is only used for testing, do not need to set it!
+        This property is only used for debugging, do not need to set it!
         Dpsgd operator use time(NULL) as random seed to generate random number.
-        However, during testing, we need determinated result, so we will set self._seed to a fixed number.
+        However, during debugging, we need determinated result, so we will set self._seed to a fixed number.
         '''
         self._seed = None
 
