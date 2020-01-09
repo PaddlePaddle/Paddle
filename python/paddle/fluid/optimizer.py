@@ -123,8 +123,10 @@ class Optimizer(object):
             .. code-block:: python
 
                 import paddle.fluid as fluid
-                adam = fluid.optimizer.Adam(0.001)
-                state_dict = adam.state_dict()
+                with fluid.dygraph.guard():
+                    emb = fluid.dygraph.Embedding([10, 10])
+                    adam = fluid.optimizer.Adam(0.001, parameter_list = emb.parameters() )
+                    state_dict = adam.state_dict()
 
         '''
         state_dict = {}
@@ -160,7 +162,7 @@ class Optimizer(object):
             .. code-block:: python
 
                 with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding( "emb", [10, 10])
+                    emb = fluid.dygraph.Embedding( [10, 10])
 
                     state_dict = emb.state_dict()
                     fluid.save_dygraph( state_dict, "paddle_dy")
@@ -296,8 +298,9 @@ class Optimizer(object):
 
                 import paddle.fluid as fluid
                 with fluid.dygraph.guard():
-                    adam = fluid.optimizer.Adam(0.001)
-                    lr = adam.current_step_lr
+                    emb = fluid.dygraph.Embedding([10, 10])
+                    adam = fluid.optimizer.Adam(0.001, parameter_list = emb.parameters() )
+                    lr = adam.current_step_lr()
 
         """
         current_lr = self._global_learning_rate()
