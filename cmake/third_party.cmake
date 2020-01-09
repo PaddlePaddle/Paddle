@@ -284,4 +284,8 @@ if(WITH_DGC)
     list(APPEND third_party_deps extern_dgc)
 endif()
 
+if (WITH_LITE)
+    include(external/lite)
+endif (WITH_LITE)
+
 add_custom_target(third_party DEPENDS ${third_party_deps})
