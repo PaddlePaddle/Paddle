@@ -210,6 +210,7 @@ function cmake_base() {
         -DWITH_GRPC=${grpc_flag}
         -DWITH_PSLIB=${WITH_PSLIB:-OFF}
         -DWITH_PSLIB_BRPC=${WITH_PSLIB_BRPC:-OFF}
+        -DWITH_LITE=${WITH_LITE:-OFF}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -242,8 +243,8 @@ EOF
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_GRPC=${grpc_flag} \
-        -DWITH_PSLIB=${WITH_PSLIB:-OFF} \
-        -DWITH_PSLIB_BRPC=${WITH_PSLIB_BRPC:-OFF}
+        -DWITH_LITE=${WITH_LITE:-OFF}
+
 }
 
 function cmake_gen() {
@@ -601,6 +602,11 @@ function assert_api_spec_approvals() {
     if [ "$?" != 0 ];then
        exit 1
     fi
+}
+
+
+function check_coverage() {
+    /bin/bash ${PADDLE_ROOT}/tools/coverage/paddle_coverage.sh
 }
 
 
@@ -1180,6 +1186,7 @@ function main() {
         build ${parallel_number}
         enable_unused_var_check
         parallel_test
+        check_coverage
         check_change_of_unittest ${PYTHON_ABI:-""}
         ;;
       cicheck_brpc)

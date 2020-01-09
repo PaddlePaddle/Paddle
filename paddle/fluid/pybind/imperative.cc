@@ -344,14 +344,14 @@ void BindImperative(py::module *m_ptr) {
 
                 import paddle.fluid as fluid
                 from paddle.fluid.dygraph.base import to_variable
-                from paddle.fluid.dygraph import FC
+                from paddle.fluid.dygraph import Linear
                 import numpy as np
 
                 data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
                 with fluid.dygraph.guard():
-                    fc = FC("fc", 64, num_flatten_dims=2)
+                    linear = Linear(32, 64)
                     data = to_variable(data)
-                    x = fc(data)
+                    x = linear(data)
                     print(x.numpy())
 
        )DOC")
@@ -378,14 +378,14 @@ void BindImperative(py::module *m_ptr) {
 
                 import paddle.fluid as fluid
                 from paddle.fluid.dygraph.base import to_variable
-                from paddle.fluid.dygraph import FC
+                from paddle.fluid.dygraph import Linear
                 import numpy as np
 
                 data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
                 with fluid.dygraph.guard():
-                    fc = FC("fc", 64, num_flatten_dims=2)
+                    linear = Linear(32, 64)
                     data = to_variable(data)
-                    x = fc(data)
+                    x = linear(data)
                     y = x.detach()
 
        )DOC")

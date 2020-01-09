@@ -74,7 +74,7 @@ class TestSequencePadOp(OpTest):
         self.compute()
 
     def test_check_output(self):
-        self.check_output(check_compile_vs_runtime=True, check_dygraph=False)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out", check_dygraph=False)
@@ -82,16 +82,16 @@ class TestSequencePadOp(OpTest):
 
 class TestSequencePadOp2(TestSequencePadOp):
     def set_attr(self):
-        self.x_shape = [12, 4]
+        self.x_shape = [12, 10]
         self.x_len_lod = [[2, 3, 4, 3]]
-        self.pad_value = [1.0, 2.0, 3.0, 4.0]
+        self.pad_value = np.random.random((10))
         self.padded_length = -1
         self.dtype = 'float64'
 
 
 class TestSequencePadOp3(TestSequencePadOp):
     def set_attr(self):
-        self.x_shape = [12, 4]
+        self.x_shape = [12, 10]
         self.x_len_lod = [[2, 3, 4, 3]]
         self.pad_value = [1.0]
         self.padded_length = 7
@@ -100,16 +100,16 @@ class TestSequencePadOp3(TestSequencePadOp):
 
 class TestSequencePadOp4(TestSequencePadOp):
     def set_attr(self):
-        self.x_shape = [12, 4]
+        self.x_shape = [12, 10]
         self.x_len_lod = [[2, 3, 4, 3]]
-        self.pad_value = [1.0, 2.0, 3.0, 4.0]
+        self.pad_value = np.random.random((10))
         self.padded_length = 7
         self.dtype = 'float64'
 
 
 class TestSequencePadOp5(TestSequencePadOp):
     def set_attr(self):
-        self.x_shape = [12, 2, 2]
+        self.x_shape = [12, 2, 5]
         self.x_len_lod = [[2, 3, 4, 3]]
         self.pad_value = [1.0]
         self.padded_length = -1
@@ -118,16 +118,16 @@ class TestSequencePadOp5(TestSequencePadOp):
 
 class TestSequencePadOp6(TestSequencePadOp):
     def set_attr(self):
-        self.x_shape = [12, 2, 2]
+        self.x_shape = [12, 2, 5]
         self.x_len_lod = [[2, 3, 4, 3]]
-        self.pad_value = [[1.0, 2.0], [3.0, 4.0]]
+        self.pad_value = np.random.random((2, 5))
         self.padded_length = -1
         self.dtype = 'float64'
 
 
 class TestSequencePadOp7(TestSequencePadOp):
     def set_attr(self):
-        self.x_shape = [12, 2, 2]
+        self.x_shape = [12, 2, 5]
         self.x_len_lod = [[2, 3, 4, 3]]
         self.pad_value = [1.0]
         self.padded_length = 7
@@ -136,7 +136,7 @@ class TestSequencePadOp7(TestSequencePadOp):
 
 class TestSequencePadOp8(TestSequencePadOp):
     def set_attr(self):
-        self.x_shape = [12, 2, 2]
+        self.x_shape = [12, 2, 5]
         self.x_len_lod = [[0, 8, 0, 4, 0]]
         self.pad_value = [1.0]
         self.padded_length = 10
