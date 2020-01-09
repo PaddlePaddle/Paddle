@@ -195,9 +195,9 @@ class HalfAsyncStrategy(DistributedStrategy):
     def __init__(self):
         super(HalfAsyncStrategy, self).__init__()
         self._program_config.sync_mode = False
+        self._program_config.runtime_split_send_recv = True
+        self._build_strategy.async_mode = True
         self._program_config.half_async = True
-        self._program_config.runtime_split_send_recv = False
-        self._build_strategy.async_mode = False
 
 
 class GeoStrategy(DistributedStrategy):
@@ -205,9 +205,9 @@ class GeoStrategy(DistributedStrategy):
         super(GeoStrategy, self).__init__()
         self._program_config.sync_mode = False
         self._program_config.runtime_split_send_recv = True
+        self._build_strategy.async_mode = True
         self._program_config.geo_sgd_mode = True
         self._program_config.geo_sgd_need_push_nums = update_frequency
-        self._build_strategy.async_mode = True
 
 
 class StrategyFactory(object):
