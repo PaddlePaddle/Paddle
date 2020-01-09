@@ -676,6 +676,7 @@ class TestLayer(LayerTest):
                 append_batch_size=False)
             prelu = nn.PRelu(
                 mode=mode,
+                channel=inp_np.shape[1],
                 input_shape=data_t.shape,
                 param_attr=ParamAttr(initializer=Constant(1.0)))
             out = prelu(data_t)
@@ -685,6 +686,7 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             prelu = nn.PRelu(
                 mode=mode,
+                channel=inp_np.shape[1],
                 input_shape=inp_np.shape,
                 param_attr=ParamAttr(initializer=Constant(1.0)))
             dy_rlt = prelu(base.to_variable(inp_np))
@@ -698,10 +700,12 @@ class TestLayer(LayerTest):
             inp = base.to_variable(inp_np)
             prelu1 = nn.PRelu(
                 mode=mode,
+                channel=inp_np.shape[1],
                 input_shape=inp_np.shape,
                 param_attr=ParamAttr(initializer=Constant(2.0)))
             prelu2 = nn.PRelu(
                 mode=mode,
+                channel=inp_np.shape[1],
                 input_shape=inp_np.shape,
                 param_attr=ParamAttr(initializer=Constant(1.0)))
             dy_rlt1 = prelu1(inp)
