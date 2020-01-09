@@ -272,6 +272,10 @@ class ConvOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override;
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override;
 };
 
 class ConvOpDoubleGrad : public framework::OperatorWithKernel {

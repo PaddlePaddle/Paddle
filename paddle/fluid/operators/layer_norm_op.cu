@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <cub/cub.cuh>
+#include <memory>
+#include <vector>
+#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/operators/layer_norm_op.h"
 
 namespace paddle {
@@ -428,6 +431,29 @@ static void LayerNormBackward(const T *x, const T *d_y, const T *scale,
 }
 
 template <typename T>
+void LayerNormDirectCUDAFunctor<T>::operator()(cudaStream_t stream,
+                                               const T *input,
+                                               std::vector<int> input_shape,
+                                               const T *bias, const T *scale,
+                                               T *output, T *mean, T *variance,
+                                               int begin_norm_axis, float eps) {
+  const auto x_dims = framework::make_ddim(input_shape);
+  auto matrix_dim = framework::flatten_to_2d(x_dims, begin_norm_axis);
+  int batch_size = static_cast<int>(matrix_dim[0]);
+  int feature_size = static_cast<int>(matrix_dim[1]);
+  switch (GetDesiredBlockDim(feature_size)) {
+    FIXED_BLOCK_DIM_CASE(
+        LayerNormForward<T, kBlockDim><<<batch_size, kBlockDim, 0, stream>>>(
+            input, scale, bias, output, mean, variance, eps, feature_size));
+    default:
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Product from begin_norm_axis to end in layer_norm must be larger "
+          "than 1"));
+      break;
+  }
+}
+
+template <typename T>
 class LayerNormKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
@@ -512,7 +538,7 @@ class LayerNormGradKernel<platform::CUDADeviceContext, T>
                          batch_size, feature_size, stream);
   }
 };
-
+template class LayerNormDirectCUDAFunctor<float>;
 #undef FIXED_BLOCK_DIM_CASE_BASE
 #undef FIXED_BLOCK_DIM_CASE
 }  // namespace operators

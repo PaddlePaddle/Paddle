@@ -22,6 +22,7 @@ INCLUDE(GNUInstallDirs)
 INCLUDE(ExternalProject)
 
 SET(GTEST_PREFIX_DIR    ${THIRD_PARTY_PATH}/gtest)
+SET(GTEST_SOURCE_DIR    ${THIRD_PARTY_PATH}/gtest/src/extern_gtest)
 SET(GTEST_INSTALL_DIR   ${THIRD_PARTY_PATH}/install/gtest)
 SET(GTEST_INCLUDE_DIR   "${GTEST_INSTALL_DIR}/include" CACHE PATH "gtest include directory." FORCE)
 set(GTEST_REPOSITORY     https://github.com/google/googletest.git)
@@ -48,7 +49,8 @@ ENDIF()
 
 cache_third_party(extern_gtest
     REPOSITORY       ${GTEST_REPOSITORY}
-    TAG              ${GTEST_TAG})
+    TAG              ${GTEST_TAG}
+    DIR              GTEST_SOURCE_DIR)
 
 ExternalProject_Add(
     extern_gtest

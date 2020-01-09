@@ -41,7 +41,7 @@ class RNNConfig(object):
             self.num_layers = 1
             self.batch_size = 2
             self.hidden_size = 10
-            self.num_steps = 2  #3
+            self.num_steps = 3
             self.init_scale = 0.1
             self.max_grad_norm = 5.0
             self.epoch_start_decay = 1

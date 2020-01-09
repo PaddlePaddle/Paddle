@@ -321,6 +321,10 @@ if(WITH_GPU AND TENSORRT_FOUND)
     if (NOT EXISTS ${TEST_SPLIT_CONVERTER_MODEL})
         inference_download_and_uncompress(${TEST_SPLIT_CONVERTER_MODEL} ${INFERENCE_URL}/tensorrt_test "split_converter.tgz")
     endif()
+    set(TEST_INSTANCE_NORM_MODEL "${TRT_MODEL_INSTALL_DIR}/trt_instance_norm_test")
+    if (NOT EXISTS ${TEST_INSTANCE_NORM_MODEL})
+        inference_download_and_uncompress(${TEST_INSTANCE_NORM_MODEL} ${INFERENCE_URL}/tensorrt_test "instance_norm.tgz")
+    endif()
     inference_analysis_test(trt_mobilenet_test SRCS trt_mobilenet_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
@@ -330,6 +334,9 @@ if(WITH_GPU AND TENSORRT_FOUND)
     inference_analysis_test(trt_resnext_test SRCS trt_resnext_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
+    inference_analysis_test(trt_bert_test SRCS trt_bert_test.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+            ARGS --infer_model=${BERT_INSTALL_DIR}/model)
     inference_analysis_test(trt_fc_prelu_test SRCS trt_fc_prelu_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
@@ -339,10 +346,12 @@ if(WITH_GPU AND TENSORRT_FOUND)
     inference_analysis_test(trt_split_converter_test SRCS trt_split_converter_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
             ARGS --infer_model=${TEST_SPLIT_CONVERTER_MODEL}/)
+    inference_analysis_test(trt_instance_norm_test SRCS trt_instance_norm_converter_test.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
+            ARGS --infer_model=${TEST_INSTANCE_NORM_MODEL}/)
     inference_analysis_test(test_analyzer_capi_gpu SRCS analyzer_capi_gpu_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
-
     set(TRT_MODEL_QUANT_RESNET_DIR "${INFERENCE_DEMO_INSTALL_DIR}/quant_small_model")
     if (NOT EXISTS ${TRT_MODEL_QUANT_RESNET_DIR})
         inference_download_and_uncompress(${INFERENCE_DEMO_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "quant_small_model.tar.gz")
@@ -352,6 +361,12 @@ if(WITH_GPU AND TENSORRT_FOUND)
             ARGS --infer_model=${TRT_MODEL_QUANT_RESNET_DIR})
 endif()
 
+set(LITE_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/lite")
+download_data(${LITE_MODEL_INSTALL_DIR} "mul_model_fp32.tgz")
+
+inference_analysis_test(lite_mul_model_test SRCS lite_mul_model_test.cc
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+        ARGS --infer_model=${LITE_MODEL_INSTALL_DIR})
 inference_analysis_test(test_analyzer_capi SRCS analyzer_capi_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
             ARGS --infer_model=${RESNET50_MODEL_DIR}/model)

@@ -170,7 +170,7 @@ class TestBlockExpandOpCase2(TestBlockExpandOp):
 
 class TestBlockExpandOpCase3(TestBlockExpandOp):
     def config(self):
-        self.batch_size = 2
+        self.batch_size = 6
         self.img_channels = 1
         self.img_height = 4
         self.img_width = 5
@@ -183,7 +183,7 @@ class TestBlockExpandOpCase3(TestBlockExpandOp):
 
 class TestBlockExpandOpCase4(TestBlockExpandOp):
     def config(self):
-        self.batch_size = 2
+        self.batch_size = 6
         self.img_channels = 2
         self.img_height = 3
         self.img_width = 3

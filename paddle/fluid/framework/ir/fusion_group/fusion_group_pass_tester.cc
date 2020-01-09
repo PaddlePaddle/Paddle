@@ -124,13 +124,13 @@ std::unique_ptr<Graph> BuildElementwiseTreeGraph(bool backward = false) {
 }
 
 int TestMain(std::unique_ptr<Graph> graph, std::string prefix) {
-  VisualizeGraph(&graph, prefix + ".dot");
+  // VisualizeGraph(&graph, prefix + ".dot");
   auto pass = PassRegistry::Instance().Get("fusion_group_pass");
   pass->Set("use_gpu", new bool(true));
   VLOG(3) << DebugString(graph);
 
   graph.reset(pass->Apply(graph.release()));
-  VisualizeGraph(&graph, prefix + ".fusion_group.dot");
+  // VisualizeGraph(&graph, prefix + ".fusion_group.dot");
   int num_fusion_group_ops = GetNumOpNodes(graph, "fusion_group");
   VLOG(3) << DebugString(graph);
 

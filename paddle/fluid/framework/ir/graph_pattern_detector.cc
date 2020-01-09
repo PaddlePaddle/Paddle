@@ -1525,6 +1525,7 @@ PDNode *patterns::ConvElementwiseadd::operator()(PDNode *conv_in) {
   auto elementwise_add_op = pattern->NewNode(elementwise_add_op_repr())
                                 ->assert_is_op("elementwise_add");
   auto elementwise_add_in_y = pattern->NewNode(elementwise_add_in_y_repr())
+                                  ->assert_is_persistable_var()
                                   ->assert_is_op_input("elementwise_add", "Y")
                                   ->AsInput();
   auto elementwise_add_out = pattern->NewNode(elementwise_add_out_repr())
@@ -1656,6 +1657,21 @@ PDNode *patterns::DequantAny::operator()() {
   next_op->LinksFrom({dequant_out});
 
   return dequant_out;
+}
+
+PDNode *patterns::MultipleQuantize::operator()() {
+  auto *prev_out = pattern->NewNode(prev_out_repr())->AsOutput();
+
+  // find nodes that are inputs to quantize operators
+  prev_out->assert_more([&](Node *node) {
+    int counter = std::count_if(
+        node->outputs.begin(), node->outputs.end(), [&](Node const *iter) {
+          return iter && iter->IsOp() && iter->Op()->Type() == "quantize";
+        });
+    return (counter > 1);
+  });
+
+  return prev_out;
 }
 
 // a -> transpose_op(1) -> transpose_out_a -> flatten_op(1) -> flatten_out_a

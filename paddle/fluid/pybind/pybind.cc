@@ -2193,11 +2193,13 @@ All parameter, weight, gradient are variables in Paddle.
            &ParallelExecutor::FeedTensorsIntoLocalScopes)
       .def("feed_and_split_tensor_into_local_scopes",
            &ParallelExecutor::FeedAndSplitTensorIntoLocalScopes)
-      .def("run", [](ParallelExecutor &self,
-                     const std::vector<std::string> &fetch_tensors) {
-        pybind11::gil_scoped_release release;
-        return self.Run(fetch_tensors);
-      });
+      .def("run",
+           [](ParallelExecutor &self,
+              const std::vector<std::string> &fetch_tensors) {
+             pybind11::gil_scoped_release release;
+             return self.Run(fetch_tensors);
+           })
+      .def("device_count", &ParallelExecutor::DeviceCount);
 
   BindFleetWrapper(&m);
   BindBoxHelper(&m);

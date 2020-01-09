@@ -15,7 +15,6 @@
 from __future__ import print_function
 
 import unittest
-
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from test_eager_deletion_padding_rnn import RNNConfig, PaddingRNNTestBase

@@ -20,7 +20,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/fusion_group/elementwise_group_detector.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
-#include "paddle/fluid/framework/ir/subgraph_detector.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/platform/device_code.h"
 
@@ -33,8 +32,8 @@ void FusionGroupPass::ApplyImpl(ir::Graph* graph) const {
   if (Get<bool>("use_gpu")) {
     fusion_group::OperationMap::Init();
     int num_elementwise_groups = DetectFusionGroup(graph, 0);
-    LOG(INFO) << "Detect " << num_elementwise_groups
-              << " elementwise fusion groups.";
+    VLOG(3) << "Detect " << num_elementwise_groups
+            << " elementwise fusion groups.";
   }
 }
 
@@ -55,8 +54,8 @@ int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
       fusion_group::SubGraph subgraph(
           type, func_name, save_intermediate_out,
           std::unordered_set<Node*>(vec.begin(), vec.end()));
-      LOG(INFO) << "subgraph: {\n"
-                << DebugString(subgraph.SortedNodes()) << "}\n";
+      VLOG(3) << "subgraph: {\n"
+              << DebugString(subgraph.SortedNodes()) << "}\n";
 
       GenerateCode(&subgraph);
       InsertFusionGroupOp(graph, &subgraph);

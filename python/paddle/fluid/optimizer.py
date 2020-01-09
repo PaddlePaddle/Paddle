@@ -662,6 +662,37 @@ class Optimizer(object):
 
         return no_grad_set
 
+    @framework.dygraph_only
+    def clear_gradients(self):
+        """
+        Clear the gradients of all optimized parameters for model.
+        
+        Returns:
+            None
+        
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                import numpy as np
+
+                with fluid.dygraph.guard():
+                    value = np.arange(26).reshape(2, 13).astype("float32")
+                    a = fluid.dygraph.to_variable(value)
+                    linear = fluid.Linear(13, 5, dtype="float32")
+                    # This can be any optimizer supported by dygraph.
+                    adam = fluid.optimizer.Adam(learning_rate = 0.01, 
+                                                parameter_list = linear.parameters())
+                    out = linear(a)
+                    out.backward()
+                    adam.minimize(out)
+                    adam.clear_gradients()
+
+        """
+        for p in self._parameter_list:
+            if p.trainable:
+                p.clear_gradient()
+
     @imperative_base.no_grad
     def minimize(self,
                  loss,
@@ -896,21 +927,30 @@ class MomentumOptimizer(Optimizer):
 
         velocity_acc = self._get_accumulator(self._velocity_acc_str,
                                              param_and_grad[0])
+        attrs = {"mu": self._momentum, "use_nesterov": self._use_nesterov}
+
+        inputs = {
+            "Param": [param_and_grad[0]],
+            "Grad": [param_and_grad[1]],
+            "Velocity": [velocity_acc],
+            "LearningRate": [self._create_param_lr(param_and_grad)]
+        }
+
+        outputs = {
+            "ParamOut": [param_and_grad[0]],
+            "VelocityOut": [velocity_acc]
+        }
+
+        if framework.in_dygraph_mode():
+            core.ops.momentum(inputs, attrs, outputs)
+            return None
+
         # create the momentum optimize op
         momentum_op = block.append_op(
             type=self.type,
-            inputs={
-                "Param": param_and_grad[0],
-                "Grad": param_and_grad[1],
-                "Velocity": velocity_acc,
-                "LearningRate": self._create_param_lr(param_and_grad)
-            },
-            outputs={
-                "ParamOut": param_and_grad[0],
-                "VelocityOut": velocity_acc
-            },
-            attrs={"mu": self._momentum,
-                   "use_nesterov": self._use_nesterov},
+            inputs=inputs,
+            outputs=outputs,
+            attrs=attrs,
             stop_gradient=True)
 
         return momentum_op
@@ -3086,7 +3126,7 @@ class ExponentialMovingAverage(object):
 	    optimizer = fluid.optimizer.Adam(learning_rate=0.001)
 	    optimizer.minimize(cost)
 
-	    global_steps = fluid.layers.learning_rate_scheduler._decay_step_counter()
+	    global_steps = fluid.layers.autoincreased_step_counter()
 	    ema = fluid.optimizer.ExponentialMovingAverage(0.999, thres_steps=global_steps)
 	    ema.update()
 
@@ -3124,6 +3164,7 @@ class ExponentialMovingAverage(object):
         self._name = name if name is not None else ''
         self._decay_var = self._get_ema_decay()
 
+        self._step_counter_name = "@EMA_STEP_COUNTER@"
         self._params_tmps = []
         for param in default_main_program().global_block().all_parameters():
             if param.do_model_average != False:
@@ -3144,14 +3185,16 @@ class ExponentialMovingAverage(object):
         self.apply_program = Program()
         block = self.apply_program.global_block()
         with program_guard(main_program=self.apply_program):
-            decay_pow = self._get_decay_pow(block)
+            decay_pow, global_step = self._get_decay_pow(block)
             for param, tmp in self._params_tmps:
                 param = block._clone_variable(param)
                 tmp = block._clone_variable(tmp)
                 ema = block._clone_variable(self._ema_vars[param.name])
                 layers.assign(input=param, output=tmp)
                 # bias correction
-                ema = ema / (1.0 - decay_pow)
+                with layers.control_flow.Switch() as switch:
+                    with switch.case(global_step > 0):
+                        layers.assign(output=ema, input=ema / (1.0 - decay_pow))
                 layers.assign(input=ema, output=param)
 
         self.restore_program = Program()
@@ -3184,10 +3227,16 @@ class ExponentialMovingAverage(object):
         return decay_var
 
     def _get_decay_pow(self, block):
-        global_steps = layers.learning_rate_scheduler._decay_step_counter()
+        global_step = layers.create_global_var(
+            name=self._step_counter_name,
+            shape=[1],
+            value=0,
+            dtype='int64',
+            persistable=True)
+        global_step = layers.cast(global_step, "float32")
         decay_var = block._clone_variable(self._decay_var)
-        decay_pow_acc = layers.elementwise_pow(decay_var, global_steps + 1)
-        return decay_pow_acc
+        decay_pow_acc = layers.elementwise_pow(decay_var, global_step)
+        return decay_pow_acc, global_step
 
     def _create_ema_vars(self, param):
         param_ema = layers.create_global_var(
@@ -3204,6 +3253,8 @@ class ExponentialMovingAverage(object):
         Update Exponential Moving Average. Should only call this method in 
         train program.
         """
+        global_step = layers.autoincreased_step_counter(
+            counter_name=self._step_counter_name)
         param_master_emas = []
         for param, tmp in self._params_tmps:
             with param.block.program._optimized_guard(

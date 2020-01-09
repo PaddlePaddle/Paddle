@@ -78,6 +78,7 @@ if(NOT WITH_MKL OR NOT WITH_AVX)
 endif()
 if(WITH_COVERAGE OR NOT WITH_AVX OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_pyramid_hash_op)
+  list(REMOVE_ITEM TEST_OPS test_fleet_pyramid_hash)
 endif()
 
 if(WITH_GPU OR NOT WITH_MKLML)
@@ -185,6 +186,10 @@ list(REMOVE_ITEM TEST_OPS test_imperative_debug_string)
 if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_dataset)
   list(REMOVE_ITEM TEST_OPS test_dataset_dataloader)
+endif()
+
+if(NOT WITH_GPU OR WIN32 OR APPLE)
+  list(REMOVE_ITEM TEST_OPS test_build_strategy_fusion_group_pass)
 endif()
 
 # Some ops need to check results when gc is enabled
@@ -329,5 +334,5 @@ set_tests_properties(test_parallel_executor_test_while_train test_parallel_execu
         test_parallel_executor_crf test_sync_batch_norm_op
         test_parallel_executor_feed_persistable_var
         test_parallel_executor_crf_auto_growth test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
-        test_data_norm_op
+        test_data_norm_op test_imperative_using_non_zero_gpu
         test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
