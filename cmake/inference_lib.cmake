@@ -148,6 +148,11 @@ copy(inference_lib_dist
         SRCS ${BOOST_INCLUDE_DIR}/boost
         DSTS ${dst_dir})
 
+set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/threadpool")
+copy(inference_lib_dist
+        SRCS ${THREADPOOL_INCLUDE_DIR}/ThreadPool.h
+        DSTS ${dst_dir})
+
 set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/dlpack")
 copy(inference_lib_dist
         SRCS ${DLPACK_INCLUDE_DIR}/dlpack
