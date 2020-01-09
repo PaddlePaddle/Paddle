@@ -207,8 +207,8 @@ set(TEST_OPS_WITH_GC
   test_pad2d_op
   test_scatter_op
   test_sequence_concat
-  test_seq_conv
-  test_seq_pool
+  test_sequence_conv
+  test_sequence_pool
   test_sequence_expand_as
   test_sequence_expand
   test_sequence_pad_op
