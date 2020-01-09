@@ -662,6 +662,10 @@ class Optimizer(object):
 
         return no_grad_set
 
+    @framework.dygraph_only
+    def clear_gradients_1(self):
+        pass
+
     @imperative_base.no_grad
     def minimize(self,
                  loss,
