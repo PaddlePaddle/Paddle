@@ -173,6 +173,30 @@ class Layer(core.Layer):
         return ret
 
     def clear_gradients(self):
+        """
+        Clear the gradients of all parameters for this layer.
+        
+        Returns:
+            None
+        
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                import numpy as np
+
+                with fluid.dygraph.guard():
+                    value = np.arange(26).reshape(2, 13).astype("float32")
+                    a = fluid.dygraph.to_variable(value)
+                    linear = fluid.Linear(13, 5, dtype="float32")
+                    adam = fluid.optimizer.Adam(learning_rate=0.01, 
+                                                parameter_list=linear.parameters())
+                    out = linear(a)
+                    out.backward()
+                    adam.minimize(out)
+                    linear.clear_gradients()
+
+        """
         for p in self.parameters():
             if p.trainable:
                 p.clear_gradient()

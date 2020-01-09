@@ -19,7 +19,7 @@ from .. import core
 from ..layers import utils
 from ..dygraph import dygraph_utils
 from . import layers
-from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter
+from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer, _varbase_creator
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 from .. import unique_name
@@ -1134,41 +1134,57 @@ class BatchNorm(layers.Layer):
         # mean and mean_out share the same memory
         mean_out = self._mean
         # variance and variance out share the same memory
-        variance_out = self._variance
 
-        saved_mean = self._helper.create_variable_for_type_inference(
-            dtype=self._dtype, stop_gradient=True)
-        saved_variance = self._helper.create_variable_for_type_inference(
-            dtype=self._dtype, stop_gradient=True)
-        batch_norm_out = input if self._in_place else self._helper.create_variable_for_type_inference(
-            self._dtype)
+        variance_out = self._variance
+        attrs = {
+            "momentum": self._momentum,
+            "epsilon": self._epsilon,
+            "is_test": self._is_test,
+            "data_layout": self._data_layout,
+            "use_mkldnn": False,
+            "fuse_with_relu": self._fuse_with_relu,
+            "use_global_stats": self._use_global_stats,
+            "trainable_statistics": self._trainable_statistics
+        }
+
+        inputs = {
+            "X": [input],
+            "Scale": [self.weight],
+            "Bias": [self.bias],
+            "Mean": [self._mean],
+            "Variance": [self._variance]
+        }
+
+        if in_dygraph_mode():
+            attrs['is_test'] = not _dygraph_tracer()._train_mode
+            saved_mean = _varbase_creator(dtype=self._dtype)
+            saved_variance = _varbase_creator(dtype=self._dtype)
+            batch_norm_out = _varbase_creator(dtype=self._dtype)
+            batch_norm_out.stop_gradient = False
+            # inplace is not supported currently
+        else:
+            saved_mean = self._helper.create_variable_for_type_inference(
+                dtype=self._dtype, stop_gradient=True)
+            saved_variance = self._helper.create_variable_for_type_inference(
+                dtype=self._dtype, stop_gradient=True)
+            batch_norm_out = input if self._in_place else self._helper.create_variable_for_type_inference(
+                self._dtype)
+
+        outputs = {
+            "Y": [batch_norm_out],
+            "MeanOut": [mean_out],
+            "VarianceOut": [variance_out],
+            "SavedMean": [saved_mean],
+            "SavedVariance": [saved_variance]
+        }
+
+        if in_dygraph_mode():
+            outs = core.ops.batch_norm(inputs, attrs, outputs)
+            return dygraph_utils._append_activation_in_dygraph(
+                batch_norm_out, act=self._act)
 
         self._helper.append_op(
-            type="batch_norm",
-            inputs={
-                "X": input,
-                "Scale": self.weight,
-                "Bias": self.bias,
-                "Mean": self._mean,
-                "Variance": self._variance
-            },
-            outputs={
-                "Y": batch_norm_out,
-                "MeanOut": mean_out,
-                "VarianceOut": variance_out,
-                "SavedMean": saved_mean,
-                "SavedVariance": saved_variance
-            },
-            attrs={
-                "momentum": self._momentum,
-                "epsilon": self._epsilon,
-                "is_test": self._is_test,
-                "data_layout": self._data_layout,
-                "use_mkldnn": False,
-                "fuse_with_relu": self._fuse_with_relu,
-                "use_global_stats": self._use_global_stats,
-                "trainable_statistics": self._trainable_statistics
-            })
+            type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs)
 
         # Currently, we don't support inplace in dygraph mode
         return self._helper.append_activation(batch_norm_out, self._act)
@@ -1454,11 +1470,23 @@ class LayerNorm(layers.Layer):
                 ', expected input with shape [*, ' + str_normalized_shape[
                     1:] + ', but got input shape ' + str(input_shape))
         inputs = dict()
-        inputs['X'] = input
+        inputs['X'] = [input]
         if self._scale:
-            inputs['Scale'] = self.weight
+            inputs['Scale'] = [self.weight]
         if self._shift:
-            inputs['Bias'] = self.bias
+            inputs['Bias'] = [self.bias]
+
+        attrs = {
+            "epsilon": self._epsilon,
+            "begin_norm_axis": self._begin_norm_axis
+        }
+
+        if in_dygraph_mode():
+            outs = core.ops.layer_norm(inputs, attrs)
+            pre_act = outs['Y'][0]
+            return dygraph_utils._append_activation_in_dygraph(
+                pre_act, act=self._act)
+
         # create output
         mean_out = self._helper.create_variable_for_type_inference(
             dtype=self._dtype, stop_gradient=True)
@@ -1623,9 +1651,22 @@ class GRUUnit(layers.Layer):
             attr=bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
 
     def forward(self, input, hidden):
-        inputs = {'Input': input, 'HiddenPrev': hidden, 'Weight': self.weight}
+        inputs = {
+            'Input': [input],
+            'HiddenPrev': [hidden],
+            'Weight': [self.weight]
+        }
         if self.bias:
-            inputs['Bias'] = self.bias
+            inputs['Bias'] = [self.bias]
+        attrs = {
+            'activation': self.activation,
+            'gate_activation': self.gate_activation,
+        }
+
+        if in_dygraph_mode():
+            outs = core.ops.gru_unit(inputs, attrs)
+            return outs['Hidden'][0], outs['ResetHiddenPrev'][0], outs['Gate'][
+                0]
 
         gate = self._helper.create_variable_for_type_inference(self._dtype)
         reset_hidden_pre = self._helper.create_variable_for_type_inference(
@@ -1898,8 +1939,12 @@ class PRelu(layers.Layer):
           and element. all: all elements share same weight
           channel:elements in a channel share same weight
           element:each element has a weight
+        channel (int, optional): The number of channels.
+          This argument is required when mode is "channel".
+          Default: None.
         input_shape (list or tuple, optional): The shape of input.
-          This parameter is required when mode is not "all". Default: None.
+          This argument is required when mode is "element".
+          Default: None.
         param_attr(ParamAttr, optional): The parameter attribute for the learnable
           weight (alpha). Default: None.
         dtype (str, optional): Data type, it can be "float32" or "float64". Default: "float32".
@@ -1921,31 +1966,47 @@ class PRelu(layers.Layer):
           inp_np = np.ones([5, 200, 100, 100]).astype('float32')
           with fluid.dygraph.guard():
               inp_np = to_variable(inp_np)
-              mode = 'channel'
-              prelu = fluid.PRelu(
-                 mode=mode,
+              prelu0 = fluid.PRelu(
+                 mode='all',
+                 param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(1.0)))
+              dy_rlt0 = prelu0(inp_np)
+              prelu1 = fluid.PRelu(
+                 mode='channel',
+                 channel=200,
+                 param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(1.0)))
+              dy_rlt1 = prelu1(inp_np)
+              prelu2 = fluid.PRelu(
+                 mode='element',
                  input_shape=inp_np.shape,
                  param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(1.0)))
-              dy_rlt = prelu(inp_np)
+              dy_rlt2 = prelu2(inp_np)
 
     """
 
-    def __init__(self, mode, input_shape=None, param_attr=None,
+    def __init__(self,
+                 mode,
+                 channel=None,
+                 input_shape=None,
+                 param_attr=None,
                  dtype='float32'):
         super(PRelu, self).__init__()
         self._mode = mode
         self._param_attr = param_attr
-        if self._mode not in ['all', 'channel', 'element']:
-            raise ValueError('mode should be one of all, channel, element.')
         self._dtype = dtype
-        self._alpha_shape = [1]
-        if mode is not 'all':
-            assert input_shape is not None
-            input_shape = list(input_shape)
-            if self._mode == 'channel':
-                self._alpha_shape = [1, input_shape[1], 1, 1]
-            elif self._mode == 'element':
-                self._alpha_shape = input_shape
+        if mode == 'all':
+            self._alpha_shape = [1]
+        elif mode == 'channel':
+            assert isinstance(
+                channel,
+                int), "channel argument is required when mode is 'channel'."
+            self._alpha_shape = [1, channel, 1, 1]
+        elif mode == 'element':
+            assert isinstance(input_shape, (
+                list, tuple
+            )), "input_shape argument is required when mode is 'element'."
+            self._alpha_shape = [1] + list(input_shape)[1:]
+        else:
+            raise ValueError('mode should be one of all, channel, element.')
         self.weight = self.create_parameter(
             attr=self._param_attr,
             shape=self._alpha_shape,
@@ -2257,21 +2318,32 @@ class Conv2DTranspose(layers.Layer):
             is_bias=True)
 
     def forward(self, input):
+        inputs = {'Input': [input], 'Filter': [self.weight]}
+        attrs = {
+            'output_size': self._output_size,
+            'strides': self._stride,
+            'paddings': self._padding,
+            'dilations': self._dilation,
+            'groups': self._groups,
+            'use_cudnn': self._use_cudnn
+        }
+
+        if in_dygraph_mode():
+            op = getattr(core.ops, self._op_type)
+            outs = op(inputs, attrs)
+            pre_bias = outs['Output'][0]
+            pre_act = dygraph_utils._append_bias_in_dygraph(pre_bias, self.bias,
+                                                            1)
+            return dygraph_utils._append_activation_in_dygraph(
+                pre_act, act=self._act)
+
         pre_bias = self._helper.create_variable_for_type_inference(
             dtype=input.dtype)
         self._helper.append_op(
             type=self._op_type,
-            inputs={'Input': [input],
-                    'Filter': [self.weight]},
+            inputs=inputs,
             outputs={'Output': pre_bias},
-            attrs={
-                'output_size': self._output_size,
-                'strides': self._stride,
-                'paddings': self._padding,
-                'dilations': self._dilation,
-                'groups': self._groups,
-                'use_cudnn': self._use_cudnn
-            })
+            attrs=attrs)
 
         if self.bias is not None:
             pre_act = self._helper.create_variable_for_type_inference(

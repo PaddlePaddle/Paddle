@@ -1118,6 +1118,13 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
                              fetch_list=[result[0]])
             print(output)
     """
+    inputs = {"X": [input]}
+    attrs = {"axis": axis, "use_cudnn": use_cudnn}
+
+    if in_dygraph_mode():
+        outs = core.ops.softmax(inputs, attrs)
+        return outs['Out'][0]
+
     helper = LayerHelper('softmax', **locals())
     check_type_and_dtype(input, 'input', Variable,
                          ['float16', 'float32', 'float64'], 'softmax')
@@ -1128,8 +1135,7 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
         type="softmax",
         inputs={"X": input},
         outputs={"Out": softmax_out},
-        attrs={"axis": axis,
-               "use_cudnn": use_cudnn})
+        attrs=attrs)
     return softmax_out
 
 
@@ -5398,22 +5404,24 @@ def one_hot(input, depth, allow_out_of_range=False):
             label = fluid.data(name="label", shape=[4, 1], dtype="int64")
             one_hot_label = fluid.layers.one_hot(input=label, depth=4)
     """
-    helper = LayerHelper("one_hot", **locals())
+    if in_dygraph_mode():
+        inputs = {'X': [input]}
+        attrs = {'depth': depth, 'allow_out_of_range': allow_out_of_range}
+        outs = core.ops.one_hot(inputs, attrs)
+        outs['Out'][0].stop_gradient = True
+        return outs['Out'][0]
 
+    helper = LayerHelper("one_hot", **locals())
     one_hot_out = helper.create_variable_for_type_inference(dtype='float32')
 
-    if in_dygraph_mode():
+    if not isinstance(depth, Variable):
+        # user attribute
         inputs = {'X': input}
         attrs = {'depth': depth, 'allow_out_of_range': allow_out_of_range}
     else:
-        if not isinstance(depth, Variable):
-            # user attribute
-            inputs = {'X': input}
-            attrs = {'depth': depth, 'allow_out_of_range': allow_out_of_range}
-        else:
-            depth.stop_gradient = True
-            inputs = {'X': input, 'depth_tensor': depth}
-            attrs = {'allow_out_of_range': allow_out_of_range}
+        depth.stop_gradient = True
+        inputs = {'X': input, 'depth_tensor': depth}
+        attrs = {'allow_out_of_range': allow_out_of_range}
     helper.append_op(
         type="one_hot",
         inputs=inputs,
@@ -6266,6 +6274,15 @@ def label_smooth(label,
     """
     if epsilon > 1. or epsilon < 0.:
         raise ValueError("The value of epsilon must be between 0 and 1.")
+
+    if in_dygraph_mode():
+        inputs = {"X": [label]}
+        if prior_dist:
+            inputs["PriorDist"] = [prior_dist]
+        attrs = {"epsilon": float(epsilon)}
+        outs = core.ops.label_smooth(inputs, attrs)
+        return outs['Out'][0]
+
     helper = LayerHelper("label_smooth", **locals())
     label.stop_gradient = True
     smooth_label = helper.create_variable_for_type_inference(dtype)
@@ -7839,6 +7856,11 @@ def log(x, name=None):
             res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i}, fetch_list=[res])
             print(res_val) # [[0.], [0.6931472]]
     """
+    inputs = {'X': [x]}
+    if in_dygraph_mode():
+        outs = core.ops.log(inputs)
+        return outs['Out'][0]
+
     helper = LayerHelper('log', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
@@ -7874,6 +7896,11 @@ def relu(x, name=None):
                 # [[0.  0. ]
                 #  [1.  2.6]]
 """
+    inputs = {'X': [x]}
+    if in_dygraph_mode():
+        outs = core.ops.relu(inputs)
+        return outs['Out'][0]
+
     helper = LayerHelper('relu', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
@@ -8462,6 +8489,17 @@ def pad2d(input,
           result = fluid.layers.pad2d(input=data, paddings=[1, 2, 3, 4],
                                       mode='reflect')
     """
+    attrs = {'mode': mode, 'pad_value': pad_value, 'data_format': data_format}
+    inputs = {'X': [input]}
+    if isinstance(paddings, Variable):
+        inputs['Paddings'] = [paddings]
+        attrs['paddings'] = []
+    else:
+        attrs['paddings'] = paddings
+
+    if in_dygraph_mode():
+        outs = core.ops.pad2d(inputs, attrs)
+        return outs['Out'][0]
 
     helper = LayerHelper('pad2d', **locals())
 
@@ -8470,14 +8508,6 @@ def pad2d(input,
 
     dtype = helper.input_dtype(input_param_name='input')
     out = helper.create_variable_for_type_inference(dtype)
-    inputs = {'X': input}
-    attrs = {'mode': mode, 'pad_value': pad_value, 'data_format': data_format}
-
-    if isinstance(paddings, Variable):
-        inputs['Paddings'] = paddings
-        attrs['paddings'] = []
-    else:
-        attrs['paddings'] = paddings
 
     helper.append_op(
         type='pad2d', inputs=inputs, outputs={"Out": out}, attrs=attrs)
@@ -8907,13 +8937,16 @@ def leaky_relu(x, alpha=0.02, name=None):
             res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i}, fetch_list=[res])
             print(res_val) # [[-0.1, 2], [3, -0.4]]
     """
+    inputs = {'X': [x]}
+    attrs = {'alpha': alpha}
+    if in_dygraph_mode():
+        outs = core.ops.leaky_relu(inputs, attrs)
+        return outs['Out'][0]
+
     helper = LayerHelper('leaky_relu', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
-        type='leaky_relu',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'alpha': alpha})
+        type='leaky_relu', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return out
 
 
@@ -9311,6 +9344,32 @@ def expand(x, expand_times, name=None):
             expanded_2 = fluid.layers.expand(data_2, expand_times=expand_times)
             # the shape of expanded_2 is [48, 56].
     """
+
+    def contain_var(expand_times):
+        for ele in expand_times:
+            if isinstance(ele, Variable):
+                return True
+        return False
+
+    inputs = {"X": [x]}
+    attrs = {}
+
+    if in_dygraph_mode():
+        if isinstance(expand_times, (list, tuple)):
+            contain_var = contain_var(expand_times)
+            if contain_var:
+                raise TypeError(
+                    "The type of 'expand_times' in expand must be list[int] or tuple(int) in Dygraph mode, but "
+                    "received %s, which contains Variable." % type(shape))
+            attrs['expand_times'] = expand_times
+        else:
+            raise TypeError(
+                "The type of 'expand_times' in expand must be list[int] or tuple(int) in Dygraph mode, but "
+                "received %s." % type(shape))
+
+        outs = core.ops.expand(inputs, attrs)
+        return outs['Out'][0]
+
     check_type_and_dtype(x, 'x', Variable,
                          ['bool', 'float32', 'float64', 'int32', 'int64'],
                          'expand')
@@ -9320,14 +9379,6 @@ def expand(x, expand_times, name=None):
             "expand op bool date type must set the stop_gradient to be False")
 
     helper = LayerHelper('expand', input=x, **locals())
-    inputs = {"X": x}
-    attrs = {}
-
-    def contain_var(expand_times):
-        for ele in expand_times:
-            if isinstance(ele, Variable):
-                return True
-        return False
 
     def get_attr_expand_times(list_expand_times):
         attrs_expand_times = []
@@ -10363,6 +10414,19 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
             print(res) # [array([[ 3.,  5.,  7.], [ 9., 11., 13.]], dtype=float32)]
 
     """
+    inputs = {'X': [x]}
+    attrs = {
+        'bias': float(bias),
+        'bias_after_scale': bias_after_scale,
+    }
+    if isinstance(scale, Variable):
+        inputs['ScaleTensor'] = [scale]
+    else:
+        attrs['scale'] = float(scale)
+
+    if in_dygraph_mode():
+        outs = core.ops.scale(inputs, attrs)
+        return dygraph_utils._append_activation_in_dygraph(outs['Out'][0])
 
     helper = LayerHelper('scale', **locals())
     if name is None:
@@ -10370,16 +10434,6 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     else:
         out = helper.create_variable(
             name=name, dtype=x.dtype, persistable=False)
-
-    inputs = {'X': x}
-    attrs = {
-        'bias': float(bias),
-        'bias_after_scale': bias_after_scale,
-    }
-    if isinstance(scale, Variable):
-        inputs['ScaleTensor'] = scale
-    else:
-        attrs['scale'] = float(scale)
 
     helper.append_op(
         type='scale', inputs=inputs, outputs={'Out': out}, attrs=attrs)
@@ -10817,6 +10871,9 @@ Examples:
 
         print(z_value)#[[[[0., 0., 0., 0., 0.] .... [0., 0., 0., 0., 0.]]]]
     """
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name='elementwise_min')
 
     return _elementwise_op(LayerHelper('elementwise_min', **locals()))
 
@@ -11407,6 +11464,11 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
             
 
     """
+    inputs = {"X": [x], "Y": [y]}
+    attrs = {"x_num_col_dims": x_num_col_dims, "y_num_col_dims": y_num_col_dims}
+    if in_dygraph_mode():
+        outs = core.ops.mul(inputs, attrs)
+        return outs['Out'][0]
 
     helper = LayerHelper("mul", **locals())
     check_type_and_dtype(x, 'x', Variable, ['float16', 'float32', 'float64'],
@@ -11420,14 +11482,8 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
             name=name, dtype=x.dtype, persistable=False)
 
     helper.append_op(
-        type="mul",
-        inputs={"X": x,
-                "Y": y},
-        attrs={
-            "x_num_col_dims": x_num_col_dims,
-            "y_num_col_dims": y_num_col_dims
-        },
-        outputs={"Out": out})
+        type="mul", inputs={"X": x,
+                            "Y": y}, attrs=attrs, outputs={"Out": out})
     return out
 
 
