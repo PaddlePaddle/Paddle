@@ -275,10 +275,10 @@ class DistributedTranspiler(Fleet):
             elif config.geo_sgd_mode:
                 self._transpile_config = GeoStrategy(
                     config.geo_sgd_need_push_nums)
-            elif config.runtime_split_send_recv:
-                self._transpile_config = AsyncStrategy()
-            else:
+            elif config.runtime_split_send_recv and config.half_async:
                 self._transpile_config = HalfAsyncStrategy()
+            else:
+                self._transpile_config = AsyncStrategy()
             self._transpile_config.set_program_config(config)
         else:
             raise TypeError(

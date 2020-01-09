@@ -89,7 +89,7 @@ void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
 
 void AsyncCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
                                  Scope *param_scope) {
-  VLOG(3) << "ProcessGraph";
+  VLOG(0) << "AsyncCommunicator Initializing";
   RpcCtxMap send_varname_to_ctx;
   RpcCtxMap recv_varname_to_ctx;
   for (auto *op : program.Block(0).AllOps()) {
@@ -331,6 +331,8 @@ GeoSgdCommunicator::~GeoSgdCommunicator() {
 
 void GeoSgdCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
                                   Scope *recv_scope) {
+  VLOG(0) << "GeoCommunicator Initializing";
+
   training_scope_ = std::move(recv_scope);
 
   auto geo_send_varnames = envs["geo_send_varnames"];
@@ -976,7 +978,7 @@ void HalfAsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
 
 void HalfAsyncCommunicator::InitImpl(
     const paddle::framework::ProgramDesc &program, Scope *param_scope) {
-  VLOG(3) << "ProcessGraph";
+  VLOG(0) << "HalfAsyncCommunicator Initializing";
   RpcCtxMap send_varname_to_ctx;
   RpcCtxMap recv_varname_to_ctx;
   for (auto *op : program.Block(0).AllOps()) {
