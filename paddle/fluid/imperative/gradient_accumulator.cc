@@ -268,6 +268,8 @@ void EagerGradientAccumulator::Add(std::shared_ptr<VarBase> var,
   ++cur_cnt_;
 }
 
+// Add GPU strategy for sparse updates
+
 void SortedGradientAccumulator::Add(std::shared_ptr<VarBase> var,
                                     size_t trace_id) {
   auto* dst_var = var_->MutableVar();
