@@ -75,7 +75,7 @@ class ClipByNormKernel : public framework::OpKernel<T> {
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
 
-    auto temp = (x_norm <= max_norm).template cast<T>().eval();
+    auto temp = (x_norm <= max_norm).template cast<T>();
     auto scaling = temp + (static_cast<T>(1) - temp) * max_norm / x_norm;
     Eigen::array<int, 1> one_dim{{1}};
     Eigen::DSizes<int, 1> m_dsize(input->numel());

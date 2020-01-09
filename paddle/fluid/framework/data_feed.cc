@@ -105,8 +105,9 @@ bool DataFeed::SetFileList(const std::vector<std::string>& files) {
 }
 
 void DataFeed::SetBatchSize(int batch_size) {
-  PADDLE_ENFORCE_GT(batch_size, 0, platform::errors::InvalidArgument(
-                                       "Batch size is illegal.", batch_size));
+  PADDLE_ENFORCE_GT(batch_size, 0,
+                    platform::errors::InvalidArgument(
+                        "Batch size %d is illegal.", batch_size));
   default_batch_size_ = batch_size;
 }
 
@@ -390,7 +391,7 @@ void MultiSlotDataFeed::Init(
       use_slots_is_dense_.push_back(slot.is_dense());
       std::vector<int> local_shape;
       if (slot.is_dense()) {
-        for (size_t j = 0; j < slot.shape_size(); ++j) {
+        for (int j = 0; j < slot.shape_size(); ++j) {
           if (slot.shape(j) > 0) {
             total_dims_without_inductive_[i] *= slot.shape(j);
           }
@@ -399,7 +400,7 @@ void MultiSlotDataFeed::Init(
           }
         }
       }
-      for (size_t j = 0; j < slot.shape_size(); ++j) {
+      for (int j = 0; j < slot.shape_size(); ++j) {
         local_shape.push_back(slot.shape(j));
       }
       use_slots_shape_.push_back(local_shape);
@@ -735,7 +736,7 @@ void MultiSlotInMemoryDataFeed::Init(
       use_slots_is_dense_.push_back(slot.is_dense());
       std::vector<int> local_shape;
       if (slot.is_dense()) {
-        for (size_t j = 0; j < slot.shape_size(); ++j) {
+        for (int j = 0; j < slot.shape_size(); ++j) {
           if (slot.shape(j) > 0) {
             total_dims_without_inductive_[i] *= slot.shape(j);
           }
@@ -744,7 +745,7 @@ void MultiSlotInMemoryDataFeed::Init(
           }
         }
       }
-      for (size_t j = 0; j < slot.shape_size(); ++j) {
+      for (int j = 0; j < slot.shape_size(); ++j) {
         local_shape.push_back(slot.shape(j));
       }
       use_slots_shape_.push_back(local_shape);
@@ -1071,13 +1072,13 @@ void PrivateInstantDataFeed<T>::Init(const DataFeedDesc& data_feed_desc) {
       use_slots_is_dense_.push_back(slot.is_dense());
       std::vector<int> local_shape;
       if (slot.is_dense()) {
-        for (size_t j = 0; j < slot.shape_size(); ++j) {
+        for (int j = 0; j < slot.shape_size(); ++j) {
           if (slot.shape(j) == -1) {
             multi_inductive_shape_index_[i].push_back(j);
           }
         }
       }
-      for (size_t j = 0; j < slot.shape_size(); ++j) {
+      for (int j = 0; j < slot.shape_size(); ++j) {
         local_shape.push_back(slot.shape(j));
       }
       use_slots_shape_.push_back(local_shape);

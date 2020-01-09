@@ -31,7 +31,7 @@ from google.protobuf import text_format
 import paddle.fluid.incubate.fleet.parameter_server.pslib.ps_pb2 as pslib
 
 
-class TestListenAndServOp(OpTest):
+class TestListenAndServOp(unittest.TestCase):
     """TestListenAndServOp."""
 
     def setUp(self):

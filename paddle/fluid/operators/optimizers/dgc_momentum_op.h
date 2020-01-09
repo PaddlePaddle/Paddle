@@ -38,6 +38,26 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
     auto current_step_tensor = context.Input<framework::Tensor>("current_step");
     auto* current_step = current_step_tensor->data<T>();
 
+    // nranks
+    auto nranks_tensor = context.Input<framework::Tensor>("nranks");
+    const int nranks = static_cast<const int>(*nranks_tensor->data<float>());
+    PADDLE_ENFORCE_GT(
+        nranks, 1,
+        platform::errors::InvalidArgument(
+            "DGC is not useful when num_trainers <= 1, but now nranks=%d",
+            nranks));
+
+    const framework::Tensor* g = context.Input<framework::Tensor>("Grad");
+    framework::Tensor* g_out = context.Output<framework::Tensor>("Grad_out");
+    auto g_e = framework::EigenVector<T>::Flatten(*g);
+    auto g_out_e = framework::EigenVector<T>::Flatten(*g_out);
+
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    auto& eigen_ctx = *dev_ctx.eigen_device();
+
+    // NOTE. In dgc_op we multi grad with nranks, so we need /nranks here.
+    g_out_e.device(eigen_ctx) = (1.0 / nranks) * g_e;
+
     VLOG(10) << "current_step:" << *current_step
              << ", rampup_begin_step:" << rampup_begin_step;
 

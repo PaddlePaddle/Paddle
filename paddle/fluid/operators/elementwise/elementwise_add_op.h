@@ -25,8 +25,15 @@ void default_elementwise_add(const framework::ExecutionContext &ctx,
                              const framework::Tensor *x,
                              const framework::Tensor *y, framework::Tensor *z) {
   int axis = ctx.Attr<int>("axis");
-  ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
-                                                        AddFunctor<T>(), z);
+  auto x_dims = x->dims();
+  auto y_dims = y->dims();
+  if (x_dims.size() >= y_dims.size()) {
+    ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
+                                                          AddFunctor<T>(), z);
+  } else {
+    ElementwiseComputeEx<InverseAddFunctor<T>, DeviceContext, T>(
+        ctx, x, y, axis, InverseAddFunctor<T>(), z);
+  }
 }
 
 template <typename DeviceContext, typename T, class Enable = void>
@@ -128,12 +135,13 @@ class ElementwiseAddGradKernel : public ElemwiseGradKernel<T> {
 
     using Tensor = framework::Tensor;
 
+    auto *x = ctx.Input<Tensor>("X");
+    auto *y = ctx.Input<Tensor>("Y");
     auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto *dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
-    // skip out, x, y
+    // skip out
     auto *out = dout;
-    auto *x = dout, *y = dout;
 
     if (dx != nullptr && dy != nullptr && (dx->dims() == dy->dims())) {
       elementwise_add_grad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);

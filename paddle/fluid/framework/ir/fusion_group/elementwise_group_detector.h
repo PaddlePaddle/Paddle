@@ -36,7 +36,6 @@ class ElementwiseGroupDetector {
   bool IsInputOfElementwiseOp(Node* n, std::string name = "");
   bool IsOutputOfElementwiseOp(Node* n);
 
-  void Insert(Node* n);
   int Search(Node* n, std::vector<Node*> except_nodes = {});
 
  private:

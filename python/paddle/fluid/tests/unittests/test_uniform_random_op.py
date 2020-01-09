@@ -164,7 +164,7 @@ class TestUniformRandomOp(OpTest):
                 hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
 
 
-class TestUniformRandomOpError(OpTest):
+class TestUniformRandomOpError(unittest.TestCase):
     def test_errors(self):
         main_prog = Program()
         start_prog = Program()

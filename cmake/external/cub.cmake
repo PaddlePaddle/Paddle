@@ -14,18 +14,25 @@
 
 include(ExternalProject)
 
-set(CUB_SOURCE_DIR ${THIRD_PARTY_PATH}/cub)
-set(CUB_INCLUDE_DIR ${CUB_SOURCE_DIR}/src/extern_cub)
+set(CUB_PREFIX_DIR ${THIRD_PARTY_PATH}/cub)
+set(CUB_REPOSITORY https://github.com/NVlabs/cub.git)
+set(CUB_TAG        v1.8.0)
 
+cache_third_party(extern_cub
+    REPOSITORY    ${CUB_REPOSITORY}
+    TAG           ${CUB_TAG}
+    DIR           ${CUB_PREFIX_DIR})
+
+SET(CUB_INCLUDE_DIR ${CUB_SOURCE_DIR})
 include_directories(${CUB_INCLUDE_DIR})
 
 ExternalProject_Add(
   extern_cub
   ${EXTERNAL_PROJECT_LOG_ARGS}
   ${SHALLOW_CLONE}
-  GIT_REPOSITORY "https://github.com/NVlabs/cub.git"
-  GIT_TAG        "v1.8.0"
-  PREFIX         ${CUB_SOURCE_DIR}
+  "${CUB_DOWNLOAD_CMD}"
+  PREFIX          ${CUB_PREFIX_DIR}
+  SOURCE_DIR      ${CUB_SOURCE_DIR}
   UPDATE_COMMAND ""
   CONFIGURE_COMMAND ""
   BUILD_COMMAND     ""

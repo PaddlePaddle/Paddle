@@ -32,6 +32,7 @@ TEST(op_debug_str, test_unknown_dtype) {
   framework::Scope scope;
 
   desc.SetType("elementwise_add_grad");
+  desc.SetInput("X", {"X"});
   desc.SetInput("Y", {"Y"});
   desc.SetInput(framework::GradVarName("Out"), {framework::GradVarName("Out")});
   desc.SetOutput(framework::GradVarName("X"), {framework::GradVarName("X")});
@@ -40,6 +41,10 @@ TEST(op_debug_str, test_unknown_dtype) {
   desc.SetAttr("use_mkldnn", false);
   desc.SetAttr("x_data_format", "");
   desc.SetAttr("y_data_format", "");
+
+  auto x_tensor = scope.Var("X")->GetMutable<framework::LoDTensor>();
+  x_tensor->Resize(dim);
+  x_tensor->mutable_data<float>(place);
 
   auto y_tensor = scope.Var("Y")->GetMutable<framework::LoDTensor>();
   y_tensor->Resize(dim);

@@ -29,6 +29,7 @@ class CAllGatherOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(nranks, 2, "nranks should be >=2");
     framework::DDim dim = ctx->GetInputDim("X");
     dim[0] = dim[0] * nranks;
+    if (dim[0] < 0) dim[0] = -1;
     ctx->SetOutputDim("Out", dim);
   }
 };

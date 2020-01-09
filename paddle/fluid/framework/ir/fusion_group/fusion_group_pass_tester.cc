@@ -22,6 +22,14 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+void VisualizeGraph(std::unique_ptr<Graph> graph, std::string graph_viz_path) {
+  // Insert a graph_viz_pass to transform the graph to a .dot file.
+  // It can be used for debug.
+  auto graph_viz_pass = PassRegistry::Instance().Get("graph_viz_pass");
+  graph_viz_pass->Set("graph_viz_path", new std::string(graph_viz_path));
+  graph.reset(graph_viz_pass->Apply(graph.release()));
+}
+
 TEST(FusionGroupPass, elementwise_list) {
   fusion_group::OperationMap::Init();
 
@@ -46,29 +54,17 @@ TEST(FusionGroupPass, elementwise_list) {
   layers.elementwise_add(tmp_2, w);
 
   std::unique_ptr<Graph> graph(new Graph(layers.main_program()));
-
-  // The following codes is to insert a graph_viz_pass to transform the graph to
-  // a .dot file. It is used for debug.
-  // auto graph_viz_pass = PassRegistry::Instance().Get("graph_viz_pass");
-  // graph_viz_pass->Set("graph_viz_path", new
-  // std::string("00_elementwise_list.dot"));
-  // graph.reset(graph_viz_pass->Apply(graph.release()));
+  // VisualizeGraph(graph, "00_elementwise_list.dot");
 
   auto fusion_group_pass = PassRegistry::Instance().Get("fusion_group_pass");
   VLOG(3) << DebugString(graph);
 
   graph.reset(fusion_group_pass->Apply(graph.release()));
+  // VisualizeGraph(graph, "01_elementwise_list.fusion_group.dot");
   int num_fusion_group_ops = GetNumOpNodes(graph, "fusion_group");
   VLOG(3) << DebugString(graph);
 
   PADDLE_ENFORCE_EQ(num_fusion_group_ops, 1);
-
-  // The following codes is to insert a graph_viz_pass to transform the graph to
-  // a .dot file. It is used for debug.
-  // auto graph_viz_pass = PassRegistry::Instance().Get("graph_viz_pass");
-  // graph_viz_pass->Set("graph_viz_path", new
-  // std::string("01_elementwise_list.fusion_group.dot"));
-  // graph.reset(graph_viz_pass->Apply(graph.release()));
 }
 
 TEST(FusionGroupPass, elementwise_tree) {
@@ -128,29 +124,17 @@ TEST(FusionGroupPass, elementwise_tree) {
   layers.mul(tmp_6, tmp_9);
 
   std::unique_ptr<Graph> graph(new Graph(layers.main_program()));
-
-  // The following codes is to insert a graph_viz_pass to transform the graph to
-  // a .dot file. It is used for debug.
-  // auto graph_viz_pass = PassRegistry::Instance().Get("graph_viz_pass");
-  // graph_viz_pass->Set("graph_viz_path", new
-  // std::string("00_elementwise_tree.dot"));
-  // graph.reset(graph_viz_pass->Apply(graph.release()));
+  // VisualizeGraph(graph, "00_elementwise_tree.dot");
 
   auto fusion_group_pass = PassRegistry::Instance().Get("fusion_group_pass");
-  LOG(INFO) << DebugString(graph);
+  VLOG(3) << DebugString(graph);
 
   graph.reset(fusion_group_pass->Apply(graph.release()));
+  // VisualizeGraph(graph, "01_elementwise_tree.fusion_group.dot");
   int num_fusion_group_ops = GetNumOpNodes(graph, "fusion_group");
-  LOG(INFO) << DebugString(graph);
+  VLOG(3) << DebugString(graph);
 
   PADDLE_ENFORCE_EQ(num_fusion_group_ops, 2);
-
-  // The following codes is to insert a graph_viz_pass to transform the graph to
-  // a .dot file. It is used for debug.
-  // auto graph_viz_pass = PassRegistry::Instance().Get("graph_viz_pass");
-  // graph_viz_pass->Set("graph_viz_path", new
-  // std::string("01_elementwise_tree.fusion_group.dot"));
-  // graph.reset(graph_viz_pass->Apply(graph.release()));
 }
 
 }  // namespace ir

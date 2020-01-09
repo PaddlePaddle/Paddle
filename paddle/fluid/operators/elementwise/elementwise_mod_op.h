@@ -29,7 +29,9 @@ struct ModFunctor {
 
 template <typename T>
 struct ModFunctorFP {
-  inline HOSTDEVICE T operator()(T a, T b) const { return std::fmod(a, b); }
+  inline HOSTDEVICE T operator()(T a, T b) const {
+    return fmod(b + fmod(a, b), b);
+  }
 };
 
 template <typename DeviceContext, typename T>

@@ -206,43 +206,35 @@ void MultiDevSSAGraphBuilderBase::ApplyImpl(ir::Graph *graph) const {
 
       // Insert collective ops if nranks > 1
       if (!is_forwarding && Get<size_t>(details::kNRanks) > 1) {
-        try {
-          bool is_bk_op =
-              static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
-                                    OpProtoAndCheckerMaker::OpRoleAttrName())) &
-                                static_cast<int>(OpRole::kBackward));
-          // optimize op is already processed in DealWithSpecialOp,
-          // here we only consider backward op
-          if (!is_bk_op) continue;
+        auto &op_desc = *(node->Op());
+        bool is_bk_op = details::IsOpRole(op_desc, OpRole::kBackward);
+        // optimize op is already processed in DealWithSpecialOp,
+        // here we only consider backward op
+        if (!is_bk_op) continue;
 
-          /*
-           * the op that will generate the gradient of on parameter will have
-           one attr op_role_var
-           * to record the parameter and gradient, like:
-            attrs {
-              name: "op_role_var"
-              type: STRINGS
-              strings: "fc_1.b_0"
-              strings: "fc_1.b_0@GRAD"
-            }
-           */
-
-          // Currently, we assume that once gradient is generated, it can be
-          // broadcast, and each gradient is only broadcast once.
-          auto backward_vars =
-              boost::get<std::vector<std::string>>(node->Op()->GetNullableAttr(
-                  OpProtoAndCheckerMaker::OpRoleVarAttrName()));
-          PADDLE_ENFORCE_EQ(backward_vars.size() % 2, 0);
-          for (size_t i = 0; i < backward_vars.size(); i += 2) {
-            auto &p_name = backward_vars[i];
-            auto &g_name = backward_vars[i + 1];
-            VLOG(10) << "Bcast " << g_name << " for parameter " << p_name
-                     << " op_type " << node->Op()->Type();
-            if (NeedCollectiveForGrad(g_name, sorted_ops)) {
-              InsertCollectiveOp(&result, p_name, g_name);
-            }
+        /*
+         * the op that will generate the gradient of on parameter will have
+         one attr op_role_var
+         * to record the parameter and gradient, like:
+          attrs {
+            name: "op_role_var"
+            type: STRINGS
+            strings: "fc_1.b_0"
+            strings: "fc_1.b_0@GRAD"
           }
-        } catch (boost::bad_get &e) {
+         */
+
+        // Currently, we assume that once gradient is generated, it can be
+        // broadcast, and each gradient is only broadcast once.
+        auto backward_vars = details::GetOpRoleVarsOrEmpty(op_desc);
+        for (size_t i = 0; i < backward_vars.size(); i += 2) {
+          auto &p_name = backward_vars[i];
+          auto &g_name = backward_vars[i + 1];
+          VLOG(10) << "Bcast " << g_name << " for parameter " << p_name
+                   << " op_type " << node->Op()->Type();
+          if (NeedCollectiveForGrad(g_name, sorted_ops)) {
+            InsertCollectiveOp(&result, p_name, g_name);
+          }
         }
       }
     }
@@ -772,15 +764,7 @@ std::vector<ir::Node *> ReduceSSAGraphBuilder::SortForReduceMode(
       if (!is_bk_op) continue;
       // Currently, we assume that once gradient is generated, it can be
       // broadcast, and each gradient is only broadcast once.
-      std::vector<std::string> backward_vars;
-      try {
-        backward_vars =
-            boost::get<std::vector<std::string>>(node->Op()->GetNullableAttr(
-                OpProtoAndCheckerMaker::OpRoleVarAttrName()));
-      } catch (boost::bad_get &e) {
-      }
-      PADDLE_ENFORCE_EQ(backward_vars.size() % 2, 0);
-
+      auto backward_vars = details::GetOpRoleVarsOrEmpty(*(node->Op()));
       for (size_t i = 0; i < backward_vars.size(); i += 2) {
         auto &g_name = backward_vars[i + 1];
         size_t cur_device_id = GetAppropriateDeviceID({g_name});

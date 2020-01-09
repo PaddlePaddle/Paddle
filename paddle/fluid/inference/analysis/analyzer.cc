@@ -29,8 +29,11 @@ void Analyzer::Run(Argument *argument) { RunAnalysis(argument); }
 void Analyzer::RunAnalysis(Argument *argument) {
   PADDLE_ENFORCE(argument->analysis_passes_valid(),
                  "analsis_passes is not valid in the argument.");
+  const bool disable_logs = argument->disable_logs();
   for (auto &pass : argument->analysis_passes()) {
-    string::PrettyLogH1("--- Running analysis [%s]", pass);
+    if (!disable_logs) {
+      string::PrettyLogH1("--- Running analysis [%s]", pass);
+    }
     if (!argument->enable_analysis_optim() && pass == "ir_analysis_pass")
       continue;
 

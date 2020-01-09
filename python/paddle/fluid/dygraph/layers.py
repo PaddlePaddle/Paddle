@@ -25,7 +25,8 @@ from .layer_object_helper import LayerObjectHelper
 from .base import program_desc_tracing_guard
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
-from paddle.fluid.framework import Variable
+import copy
+import warnings
 
 __all__ = ['Layer']
 
@@ -34,10 +35,11 @@ class Layer(core.Layer):
     """Dynamic graph Layer based on OOD, includes the parameters of the layer, the structure of the forward graph and so on.
 
     Parameters:
-        name_scope (str): prefix name used by the layer to name parameters.
-            If prefix is "my_model/layer_1", parameter name in MyLayer
-            can be "my_model/layer_1/MyLayer/w_n", where w is the parameter
+        name_scope (str, optional): prefix name used by the layer to name parameters.
+            If prefix is "my_layer", parameter name in MyLayer
+            can be "mylayer_0.w_n", where w is the parameter
             base name and n is an unique suffix auto-generated.
+            If None, prefix name will be lower cased class name. Default: None.
         dtype(str or core.VarDesc.VarType, optional): data type of this parameter.
                 If set str, it can be "bool",  "float16", "float32", "float64",
                 "int8", "int16", "int32", "int64", "uint8" or "uint16".
@@ -47,16 +49,21 @@ class Layer(core.Layer):
         None
     """
 
-    def __init__(self, name_scope, dtype=core.VarDesc.VarType.FP32):
-        self._full_name = unique_name.generate(name_scope + "/" +
-                                               self.__class__.__name__)
+    def __init__(self, name_scope=None, dtype=core.VarDesc.VarType.FP32):
+        if name_scope is None:
+            name_scope = self.__class__.__name__.lower()
+            self._full_name = unique_name.generate(name_scope)
+        else:
+            # TODO: remove name_scope parameter and all hard-coded usages
+            self._full_name = unique_name.generate(name_scope + "/" +
+                                                   self.__class__.__name__)
+        self._helper = LayerObjectHelper(self._full_name)
         self._built = False
         self._dtype = dtype
+
         self._parameters = collections.OrderedDict()
         self._sub_layers = collections.OrderedDict()
         self._loaddict_holder = collections.OrderedDict()
-
-        self._helper = LayerObjectHelper(self._full_name)
 
     def train(self):
         framework._dygraph_tracer().train_mode()
@@ -73,32 +80,31 @@ class Layer(core.Layer):
         return self._full_name
 
     def create_parameter(self,
-                         attr,
                          shape,
-                         dtype,
+                         attr=None,
+                         dtype='float32',
                          is_bias=False,
                          default_initializer=None):
         """Create parameters for this layer.
         
         Parameters:
-            attr(ParamAttr): Parameter attribute of weight. Please refer to :ref:`api_fluid_ParamAttr`
-            shape(list): shape of the parameter
-            dtype(str or core.VarDesc.VarType): data type of this parameter.
+            shape(list): Shape of the parameter.
+            attr(ParamAttr, optional): Parameter attribute of weight. Please refer to :ref:`api_fluid_ParamAttr`. Default: None.
+            dtype(str or core.VarDesc.VarType or str, optional): Data type of this parameter.
                 If set str, it can be "bool",  "float16", "float32", "float64",
-                "int8", "int16", "int32", "int64", "uint8" or "uint16".
-            is_bias(bool, optional): if this is a bias parameter. Default: False
+                "int8", "int16", "int32", "int64", "uint8" or "uint16". Default: "float32".
+            is_bias(bool, optional): if this is a bias parameter. Default: False.
             default_initializer(Initializer, optional): the default initializer for this parameter.
                 If set None, default initializer will be set to :ref:`api_fluid_initializer_XavierInitializer` and :ref:`api_fluid_initializer_ConstantInitializer`
-                for non-bias and bias parameter, respectively. Default: None
+                for non-bias and bias parameter, respectively. Default: None.
 
         Returns:
             :ref:`api_guide_Variable_en` : created parameter.
         """
-        if isinstance(attr, ParamAttr) and (attr.name is not None):
-            attr.name = ".".join([self._full_name, attr.name])
-        elif isinstance(attr, six.string_types):
-            attr = ".".join([self._full_name, attr])
-        return self._helper.create_parameter(attr, shape, dtype, is_bias,
+        temp_attr = copy.deepcopy(attr)
+        if isinstance(temp_attr, six.string_types) and temp_attr == "":
+            temp_attr = None
+        return self._helper.create_parameter(temp_attr, shape, dtype, is_bias,
                                              default_initializer)
 
     # TODO: Add more parameter list when we need them
@@ -140,9 +146,13 @@ class Layer(core.Layer):
             list of :ref:`api_guide_Variable_en` : a list of Parameters.
         """
         ret = [p for p in self._parameters.values()]
+        parameters_set = set(ret)
         if include_sublayers:
             for l in self._sub_layers.values():
                 for p in l.parameters(include_sublayers):
+                    if p in parameters_set:
+                        continue
+                    parameters_set.add(p)
                     ret.append(p)
         return ret
 
@@ -177,9 +187,9 @@ class Layer(core.Layer):
                 if parallel_helper._is_data_parallel_mode():
                     parallel_helper._broadcast_parameters(
                         self._parameters.values())
+            self._built = True
 
         outputs = self.forward(*inputs, **kwargs)
-        self._built = True
         return outputs
 
     def forward(self, *inputs, **kwargs):
@@ -256,11 +266,6 @@ class Layer(core.Layer):
 
                 value.set_value(self._loaddict_holder[value.name])
 
-            if name in params:
-                # remove unused param in tracer
-                if framework._dygraph_tracer_ is not None:
-                    framework._dygraph_tracer_._vars.pop(params[name].name,
-                                                         None)
             params[name] = value
         elif isinstance(value, core.Layer):
             layers = self.__dict__.get('_sub_layers', None)
@@ -279,7 +284,10 @@ class Layer(core.Layer):
         else:
             object.__delattr__(self, name)
 
-    def state_dict(self, destination=None, include_sublayers=True):
+    def state_dict(self,
+                   destination=None,
+                   include_sublayers=True,
+                   structured_name_prefix=""):
         '''
         Get all parameters of current layer and its sub-layers. And set all the parameters into a dict
 
@@ -295,7 +303,7 @@ class Layer(core.Layer):
 
                 import paddle.fluid as fluid
                 with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding( "emb", [10, 10])
+                    emb = fluid.dygraph.Embedding([10, 10])
 
                     state_dict = emb.state_dict()
                     fluid.save_dygraph( state_dict, "paddle_dy")
@@ -306,25 +314,31 @@ class Layer(core.Layer):
             destination = collections.OrderedDict()
         for name, data in self._parameters.items():
             if data is not None:
-                destination[data.name] = data
+                destination[structured_name_prefix + name] = data
 
         if include_sublayers:
             for layer_name, layer_item in self._sub_layers.items():
                 if layer_item is not None:
                     destination_temp = destination.copy()
                     destination_temp.update(
-                        layer_item.state_dict(destination_temp,
-                                              include_sublayers))
+                        layer_item.state_dict(
+                            destination_temp, include_sublayers,
+                            structured_name_prefix + layer_name + "."))
                     destination = destination_temp
         return destination
 
-    def set_dict(self, stat_dict, include_sublayers=True):
+    def set_dict(self,
+                 stat_dict,
+                 include_sublayers=True,
+                 use_structured_name=True):
         '''
         Set parameters from stat_dict. All the parameters will be reset by the tensor in the stat_dict
 
         Parameters:
             state_dict(dict) : Dict contains all the parameters
             include_sublayers(bool, optional) : If true, also include the parameters from sublayers. Default: True
+            use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter name as key. 
+                                                  Default: True
         Returns:
             None
 
@@ -333,7 +347,7 @@ class Layer(core.Layer):
 
                 import paddle.fluid as fluid
                 with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding( "emb", [10, 10])
+                    emb = fluid.dygraph.Embedding([10, 10])
 
                     state_dict = emb.state_dict()
                     fluid.save_dygraph( state_dict, "paddle_dy")
@@ -343,9 +357,15 @@ class Layer(core.Layer):
                     emb.set_dict( para_state_dict )
 
         '''
-        self.load_dict(stat_dict, include_sublayers=include_sublayers)
+        self.load_dict(
+            stat_dict,
+            include_sublayers=include_sublayers,
+            use_structured_name=use_structured_name)
 
-    def load_dict(self, stat_dict, include_sublayers=True):
+    def load_dict(self,
+                  stat_dict,
+                  include_sublayers=True,
+                  use_structured_name=True):
         '''
         Set parameters from stat_dict. All the parameters will be reset by the tensor in the stat_dict
 
@@ -354,6 +374,8 @@ class Layer(core.Layer):
         Parameters:
             state_dict(dict) : Dict contains all the parameters
             include_sublayers(bool, optional) : If true, also include the parameters from sublayers. Default: True
+            use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter name as key.
+                                                  Default: True
         Returns:
             None
 
@@ -362,7 +384,7 @@ class Layer(core.Layer):
 
                 import paddle.fluid as fluid
                 with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding( "emb", [10, 10])
+                    emb = fluid.dygraph.Embedding([10, 10])
 
                     state_dict = emb.state_dict()
                     fluid.save_dygraph( state_dict, "paddle_dy")
@@ -373,16 +395,22 @@ class Layer(core.Layer):
 
         '''
 
-        self._loaddict_holder = stat_dict
-        for name, item in self.__dict__.get('_parameters', None).items():
-            if item.name in stat_dict:
-                item.set_value(stat_dict[item.name])
+        inner_state_dict = self.state_dict()
+
+        for name, para in inner_state_dict.items():
+            key_name = name if use_structured_name else para.name
+            if key_name in stat_dict:
+                para.set_value(stat_dict[key_name])
             else:
                 raise RuntimeError(
-                    "Parameter not found, Can't not find [ {} ] in stat_dict".
-                    format(item.name))
-
-        if include_sublayers:
-            for layer_name, layer_item in self._sub_layers.items():
-                if layer_item is not None:
-                    layer_item.load_dict(stat_dict)
+                    "Parameter not found, Can't not find [ {} ] in stat_dict"
+                    "use_structured_name is set to [{}]".format(
+                        key_name, use_structured_name))
+        unused_para_list = []
+        for k, v in stat_dict.items():
+            if k not in inner_state_dict:
+                unused_para_list.append(k)
+        if len(unused_para_list) > 0:
+            warnings.warn(
+                "Varibale [ {} ] are not used, because not included in layers state_dict".
+                format(" ".join(unused_para_list)))

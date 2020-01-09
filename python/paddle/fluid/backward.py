@@ -56,7 +56,7 @@ class ProgramStats(object):
     def get_reserved_vars(self):
         var_name = []
         for op in self.ops:
-            if op.desc.type() == "dropout":
+            if op.desc.type() == "seed":
                 var_name.extend(op.desc.output_arg_names())
         return var_name
 
@@ -135,6 +135,42 @@ class ProgramStats(object):
                     (name, max(self.var_op_deps[name]["var_as_output_ops"])))
         sorted_checkpoints = sorted(sorted_checkpoints, key=lambda x: x[1])
         return [x[0] for x in sorted_checkpoints]
+
+    def modify_forward_desc_for_recompute(self):
+        op_types = [op.desc.type() for op in self.ops]
+        if "dropout" not in op_types:
+            return
+
+        op_idx = 0
+        while (op_idx < len(self.ops)):
+            op = self.ops[op_idx]
+            if op.desc.type() != "dropout":
+                op_idx += 1
+                continue
+            # add a seed op so that the two dropout op can generate same output
+            op_unique_name = unique_name.generate("seed")
+            var_unique_name = unique_name.generate_with_ignorable_key(".".join(
+                [op_unique_name, 'tmp']))
+            added_var = self.block.create_var(
+                name=var_unique_name,
+                dtype='int32',
+                type=core.VarDesc.VarType.LOD_TENSOR,
+                persistable=False,
+                stop_gradient=False)
+            seed = 0 if op.attr("fix_seed") is False else int(op.attr("seed"))
+            added_op = self.block._insert_op(
+                index=op.idx,
+                type='seed',
+                inputs={},
+                outputs={'Out': [added_var]},
+                attrs={'seed': seed})
+            self.ops.insert(op_idx, added_op)
+            # modify dropout op desc so that it accept a seed var as input
+            op.desc.set_input("Seed", [var_unique_name])
+            op.desc.remove_attr("fix_seed")
+            op.desc.remove_attr("seed")
+            self.block._sync_with_cpp()
+            op_idx += 2
 
 
 def _pretty_op_desc_(op_desc, prefix):
@@ -263,15 +299,16 @@ def _create_loss_op_desc_(loss):
     return op_desc
 
 
-def _infer_var_data_type_(grad_var_name, block):
+def _infer_var_data_type_shape_(grad_var_name, block):
     """
-    Infer the data type of given grad variable
+    Infer the data type and shape of given grad variable
     """
     grad_var = block.desc.find_var(cpt.to_bytes(grad_var_name))
     fwd_name = _strip_grad_suffix_(grad_var_name)
     if block.desc.has_var_recursive(cpt.to_bytes(fwd_name)):
         fwd_var = block.desc.find_var_recursive(cpt.to_bytes(fwd_name))
         grad_var.set_dtype(fwd_var.dtype())
+        grad_var.set_shape(fwd_var.shape())
     else:
         grad_var.set_dtype(core.VarDesc.VarType.FP32)
 
@@ -321,7 +358,7 @@ def _append_grad_suffix_(name):
     return cpt.to_text(name) + core.grad_var_suffix()
 
 
-def _addup_repetitive_outputs_(op_descs):
+def _addup_repetitive_outputs_(op_descs, block_idx):
     """
     In backward part, an variable may be the output of more than one ops.
     And one op may yield its multiple outputs to the same variable.
@@ -358,7 +395,7 @@ def _addup_repetitive_outputs_(op_descs):
                     renamed_var_start_idx[var_name] = idx
                 else:
                     if len(renamed_vars[var_name]) == 1:
-                        new_name = var_name + "@RENAME@" + \
+                        new_name = var_name + "@RENAME@block" + str(block_idx) + "@" + \
                             str(var_rename_count[var_name])
                         var_rename_count[var_name] += 1
                         # rename original var_name
@@ -384,7 +421,7 @@ def _addup_repetitive_outputs_(op_descs):
                             for x in arg_names[:arg_idx]
                         ] + arg_names[arg_idx:]
 
-                    new_name = var_name + "@RENAME@" + \
+                    new_name = var_name + "@RENAME@block" + str(block_idx) + "@" + \
                         str(var_rename_count[var_name])
                     var_rename_count[var_name] += 1
                     arg_names[arg_idx] = new_name
@@ -460,7 +497,7 @@ def _find_not_need_ops(grad_op_descs, forward_ops, input_grad_names_set):
             to prune the unnecessary backward ops.
 
     Return:
-        (list[core.OpDesc]): A list of OpDescs which should be pruned.
+        (set[core.OpDesc]): A set of OpDescs which should be pruned.
     """
 
     class Var(object):
@@ -560,8 +597,13 @@ def _find_not_need_ops(grad_op_descs, forward_ops, input_grad_names_set):
                 break
         if remove_ops:
             not_need_op_descs.extend([node.op_desc for node in op_list])
-
-    return set(not_need_op_descs)
+    not_need_op_descs_set = set(not_need_op_descs)
+    grad_op_descs_set = set(grad_op_descs)
+    # If a backward computational graph is simply one sub-graph header, the
+    # not_need_op_descs will be whole graph, this IF clause avoids it. 
+    if grad_op_descs_set == not_need_op_descs_set:
+        return set()
+    return not_need_op_descs_set
 
 
 from .proto import framework_pb2
@@ -588,6 +630,7 @@ def _append_backward_ops_with_checkpoints_(
         checkpoints: variables that a user defined as checkpoint for forward recomputation
 
     Algorithms:
+        0) deal with forward recomputing program descs
         1) find ops between checkpoints, i.e. recompute_segments
         2) go through all forward ops and induct all variables that will be hold in memory
             a. variables that are used across segments will be held in memory
@@ -608,10 +651,12 @@ def _append_backward_ops_with_checkpoints_(
     checkpoints_name = list(set(checkpoints_name))
     local_block = block.program._create_block()
     buffer_block = block.program._create_block()
+    # 0) deal with forward recomputing program descs  
+    program_stat = ProgramStats(block, ops)
+    program_stat.modify_forward_desc_for_recompute()
+    program_stat.build_stats()
 
     # 1) find ops between checkpoints, i.e. recompute_segments
-    program_stat = ProgramStats(block, ops)
-    program_stat.build_stats()
     checkpoints_name = program_stat.sort_checkpoints(checkpoints_name)
     segments = []
 
@@ -733,12 +778,42 @@ def _append_backward_ops_with_checkpoints_(
             grad_to_var.update(op_grad_to_var)
 
     # 3.d. add sum op for repetitive_outputs
-    grad_op_descs = _addup_repetitive_outputs_(grad_op_descs)
+    grad_op_descs = _addup_repetitive_outputs_(grad_op_descs, block.idx)
     # 4) remove no grad branch as it is in _remove_no_grad_branch_
     grad_op_descs = _remove_no_grad_branch_(grad_op_descs,
                                             no_grad_dict[block.idx])
     added_descs = _add_descs_to_block(grad_op_descs, target_block)
     return program_stat, checkpoints_name, vars_should_be_hold, recompute_segments
+
+
+def _get_sub_block_path(sub_block, sub_block_op_desc, no_grad_set):
+    """
+    Get output vars in subblock which will be assigned to parent block.
+    It is used to find the grad path in subblock
+    """
+    assert sub_block_op_desc.has_attr(
+        "sub_block") and sub_block.idx == sub_block_op_desc._block_attr_id(
+            "sub_block")
+    # TODO(huihuangzheng): add support for recurrent op and while op
+    if sub_block_op_desc.type == "conditional_block":
+        sub_outputs = []
+        sub_assign_to_out_ops = []
+        for var in sub_block_op_desc.output_arg_names:
+            for op_desc in sub_block.ops:
+                if op_desc.type == "assign" and var in op_desc.output_arg_names:
+                    sub_assign_to_out_ops.append(op_desc)
+                    for name in op_desc.input_arg_names:
+                        if sub_block.has_var(name):
+                            sub_outputs.append(sub_block.var(name))
+
+        sub_block_op_path = _find_op_path_(sub_block, sub_outputs, [],
+                                           no_grad_set)
+        # TODO better way than finding in list
+        for op_desc in sub_assign_to_out_ops:
+            if op_desc not in sub_block_op_path:
+                sub_block_op_path.append(op_desc)
+        return sub_block_op_path
+    return sub_block.ops
 
 
 def _append_backward_ops_(block,
@@ -775,6 +850,8 @@ def _append_backward_ops_(block,
     # grad_op_descs holds created grad_op, and will be appended to target_block
     grad_op_descs = []
     program = block.program
+
+    # add grad_op_desc by reversed ops
     for op in reversed(ops):
         grad_sub_block_list = []
         # If the op has its own sub-block, deal with the sub-block first
@@ -785,7 +862,9 @@ def _append_backward_ops_(block,
             # see follwing comments for why set None here.
             pre_input_grad_names_set = copy.copy(input_grad_names_set)
             input_grad_names_set = None
-            _append_backward_ops_(sub_block, sub_block.ops, grad_sub_block,
+            sub_block_path = _get_sub_block_path(sub_block, op,
+                                                 no_grad_dict[sub_block.idx])
+            _append_backward_ops_(sub_block, sub_block_path, grad_sub_block,
                                   no_grad_dict, grad_to_var, callbacks,
                                   input_grad_names_set)
             input_grad_names_set = pre_input_grad_names_set
@@ -825,10 +904,8 @@ def _append_backward_ops_(block,
             grad_op_descs.extend(grad_op_desc)
             grad_to_var.update(op_grad_to_var)
 
-    # add grad_op_desc by reversed ops
-
     # sum parameter's gradients' var given multiple var gradient
-    grad_op_descs = _addup_repetitive_outputs_(grad_op_descs)
+    grad_op_descs = _addup_repetitive_outputs_(grad_op_descs, block.idx)
 
     # if all outputs of the grad op are in no_grad_set, then just remove and fill zero
     # if all inputs of the grad op are in no_grad_set, just remove this op
@@ -841,6 +918,7 @@ def _append_backward_ops_(block,
     grad_op_descs = [
         op_desc for op_desc in grad_op_descs if op_desc not in not_need_ops
     ]
+
     # append op_desc in grad_op_descs to target_block
     op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
     backward = core.op_proto_and_checker_maker.OpRole.Backward
@@ -889,9 +967,10 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
         # infer_shape and infer_type
         op_desc.infer_var_type(block.desc)
         op_desc.infer_shape(block.desc)
+
         for arg in op_desc.output_arg_names():
             if arg in new_vars:
-                _infer_var_data_type_(arg, block)
+                _infer_var_data_type_shape_(arg, block)
 
 
 def _rename_grad_(block, start_op_idx, grad_to_var, target_grad_map):
@@ -930,6 +1009,17 @@ def _get_stop_gradients_(program):
     return no_grad_dict
 
 
+def _get_son_parent_block_idx_dict(program, current_block_idx):
+
+    son_parent_block_idx_dict = collections.OrderedDict()
+    while current_block_idx >= 0:
+        parent_block_idx = program.block(current_block_idx).parent_idx
+        son_parent_block_idx_dict[current_block_idx] = parent_block_idx
+        current_block_idx = parent_block_idx
+
+    return son_parent_block_idx_dict
+
+
 def append_backward(loss,
                     parameter_list=None,
                     no_grad_set=None,
@@ -948,18 +1038,18 @@ def append_backward(loss,
 
     Parameters:
         loss( :ref:`api_guide_Variable_en` ): The loss variable of the network.
-        parameter_list(list of str, optional): Names of parameters that need
-                                           to be updated by optimizers.
+        parameter_list(list[Variable|str], optional): List of Parameters or Parameter.names
+                                           that need to be updated by optimizers.
                                            If it is None, all parameters
                                            will be updated.
                                            Default: None.
-        no_grad_set(set of str, optional): Variable names in the :ref:`api_guide_Block_en` 0 whose gradients
+        no_grad_set(set[str], optional): Variable names in the :ref:`api_guide_Block_en` 0 whose gradients
                                should be ignored. All variables with
                                `stop_gradient=True` from all blocks will
                                be automatically added into this set.
                                If this parameter is not None, the names in this set will be added to the default set.
                                Default: None.
-        callbacks(list of callable object, optional): List of callback functions.
+        callbacks(list[callable object], optional): List of callback functions.
                                                The callbacks are used for
                                                doing some custom jobs during
                                                backward part building. All
@@ -1022,78 +1112,138 @@ def append_backward(loss,
         isinstance(callbacks, list)
 
     program = loss.block.program
-    program._appending_grad_times += 1
+    root_block = program.block(0)
+    current_block_idx = program.current_block_idx
+    current_block = program.block(current_block_idx)
+
+    is_in_control_flow = current_block_idx != 0
+
+    # Double grad is not supported in sub-block (control flow)
+    if not is_in_control_flow:
+        # _appending_grad_times used for double grad
+        program._appending_grad_times += 1
 
     if no_grad_set is None:
         no_grad_set = set()
     no_grad_set = copy.copy(no_grad_set)
     no_grad_dict = _get_stop_gradients_(program)
+    # no_grad_set only contains vars in block 0
+    # Todo(liym27): support vars in sub block
     no_grad_dict[0].update(list(map(_append_grad_suffix_, no_grad_set)))
 
-    grad_info_map = dict()
-    root_block = program.block(0)
+    # Currently it is only to support the optimizer.minimize
+    # in a switch branch, which can append_backward in a sub_block.
+    # Note: while_loop is in control flow, but it makes no sense to call optimizer in while.
+    # Todo: report error when it is in while_loop
+    if is_in_control_flow:
+        # create grad block if in switch control flow.
+        target_grad_block = program._create_block(
+            parent_idx=current_block.parent_idx)
+        target_grad_block._set_forward_block_idx(current_block_idx)
+        # after _create_block, program.current_block changes
+    else:
+        target_grad_block = root_block
 
-    fwd_op_num = root_block.desc.op_size()
-    current_block_idx = program.current_block_idx
+    son_parent_block_idx_dict = _get_son_parent_block_idx_dict(
+        program, current_block_idx)
+
+    block_fwd_op_num_dict = {}  # block_id: fwd_op_num
+    for idx in son_parent_block_idx_dict:
+        block_fwd_op_num_dict[idx] = program.block(idx).desc.op_size()
+
     grad_to_var = dict()
 
     op_desc = _create_loss_op_desc_(loss)
-    root_block.desc.append_op().copy_from(op_desc)
+    target_grad_block.desc.append_op().copy_from(op_desc)
 
-    block_no_grad_set = set(map(_strip_grad_suffix_, no_grad_dict[0]))
-    op_path = _find_op_path_(root_block, [loss], [], block_no_grad_set)
-    no_grad_vars = _find_no_grad_vars(root_block, op_path, [loss],
-                                      block_no_grad_set)
-    block_no_grad_set.update(no_grad_vars)
-    no_grad_dict[0].update(list(map(_append_grad_suffix_, block_no_grad_set)))
+    for block_idx in son_parent_block_idx_dict:
+        block = program.block(block_idx)
 
-    input_grad_names_set = None
-    # For double backward, input_grad_names is used for filter
-    # some non-used gradients op.
-    if program._appending_grad_times > 1:
-        input_grad_names_set = set([_append_grad_suffix_(loss.name)])
+        block_no_grad_set = set(
+            map(_strip_grad_suffix_, no_grad_dict[block_idx]))
+        op_path = _find_op_path_(block, [loss], [], block_no_grad_set)
 
+        no_grad_vars = _find_no_grad_vars(block, op_path, [loss],
+                                          block_no_grad_set)
 
-    if checkpoints != None and \
-       isinstance(checkpoints, list) and \
-       len(checkpoints) > 0:
-        program_stat, checkpoint_names, \
-        vars_should_be_hold, \
-        recompute_segments = \
-                        _append_backward_ops_with_checkpoints_(
-                            root_block,
-                            op_path,
-                            root_block,
-                            no_grad_dict,
-                            grad_to_var,
-                            checkpoints)
-    else:
-        _append_backward_ops_(
-            root_block,
-            op_path,
-            root_block,
-            no_grad_dict,
-            grad_to_var,
-            callbacks,
-            input_grad_names_set=input_grad_names_set)
+        block_no_grad_set.update(no_grad_vars)
+        no_grad_dict[block_idx].update(
+            list(map(_append_grad_suffix_, block_no_grad_set)))
 
-    # Because calc_gradient may be called multiple times,
+        input_grad_names_set = None
+        # For double backward, input_grad_names is used for filtering
+        # some non-used gradients op(s).
+
+        # Todo(liym27): need a better design.
+        # not support double grad in control flow sub-block now.
+        if not is_in_control_flow:
+            if program._appending_grad_times > 1:
+                input_grad_names_set = set([_append_grad_suffix_(loss.name)])
+
+        # Todo: support _append_backward_ops_with_checkpoints_ in
+        #  sub-block (control flow)
+        if checkpoints != None and \
+                isinstance(checkpoints, list) and \
+                len(checkpoints) > 0:
+            program_stat, checkpoint_names, \
+            vars_should_be_hold, \
+            recompute_segments = \
+                _append_backward_ops_with_checkpoints_(
+                    root_block,
+                    op_path,
+                    root_block,
+                    no_grad_dict,
+                    grad_to_var,
+                    checkpoints)
+        else:
+            _append_backward_ops_(
+                block,  # the block where forward ops are in
+                op_path,
+                target_grad_block,
+                no_grad_dict,
+                grad_to_var,
+                callbacks,
+                input_grad_names_set=input_grad_names_set)
+
+    grad_info_map = dict()
+
+    # if in control flow, target_grad_block is a created new block which only contains grad ops,
+    # so fwd_op_num is set to 0.
+    fwd_op_num = block_fwd_op_num_dict[
+        current_block_idx] if not is_in_control_flow else 0
+
+    # Because append_backward may be called multiple times,
     # we need rename the internal gradient variables so that they have
     # different names.
-    _rename_grad_(root_block, fwd_op_num, grad_to_var, {})
+    _rename_grad_(target_grad_block, fwd_op_num, grad_to_var, {})
 
-    _append_backward_vars_(root_block, fwd_op_num, grad_to_var, grad_info_map)
+    _append_backward_vars_(target_grad_block, fwd_op_num, grad_to_var,
+                           grad_info_map)
 
     program.current_block_idx = current_block_idx
     program._sync_with_cpp()
 
     if parameter_list is not None:
-        parameters = parameter_list
+        if not isinstance(parameter_list, (list, tuple, set)):
+            raise TypeError(
+                "The type of parameter_list argument must be list or tuple or set, but received %s."
+                % (type(parameter_list)))
+        parameters = []
+        for i, param in enumerate(parameter_list):
+            if isinstance(param, framework.Variable):
+                parameters.append(param.name)
+            elif isinstance(param, six.string_types):
+                parameters.append(param)
+            else:
+                raise TypeError(
+                    "The type of parameter_list's member must be paddle.fluid.Variable or str, but received %s."
+                    % (type(param)))
     else:
         params = program.global_block().all_parameters()
         parameters = [param.name for param in params if param.trainable]
 
     params_and_grads = []
+    op_role_var_attr_name = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
     for param in parameters:
         if cpt.to_text(param) not in grad_info_map:
             continue
@@ -1105,16 +1255,20 @@ def append_backward(loss,
         # Get the param var from the global block
         param_var = program.global_block().var(param)
         grad_var = grad_block.var(grad_info[0])
-        if loss.block.has_var(grad_info[0]):
-            params_and_grads.append((param_var, grad_var))
+        if not is_in_control_flow:
+            if loss.block.has_var(grad_info[0]):
+                params_and_grads.append((param_var, grad_var))
+            else:
+                params_and_grads.append((param_var, None))
         else:
-            params_and_grads.append((param_var, None))
+            params_and_grads.append((param_var, grad_var))
 
-    op_role_var_attr_name = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
     for p, g in params_and_grads:
         if g is None:
             continue
-        for op in reversed(program.global_block().ops):
+        ops = grad_block.ops if is_in_control_flow else program.global_block(
+        ).ops
+        for op in reversed(ops):
             assert isinstance(op, framework.Operator)
             if g.name in op.output_arg_names:
                 g.op = op
@@ -1136,12 +1290,62 @@ def _as_list(x):
     return list(x) if isinstance(x, collections.Sequence) else [x]
 
 
+def _is_ancestor_block(ancestor_block, block):
+    prog = block.program
+    ancestor_idx = ancestor_block.idx
+    parent_idx = block.parent_idx
+
+    while parent_idx != -1:
+        if parent_idx == ancestor_idx:
+            return True
+        parent_idx = prog.block(parent_idx).parent_idx
+
+    return False
+
+
+def _get_output_names(cur_block, targets):
+    """
+    In `cur_block`, get output names those linked to targets.
+    NOTE:
+    1. `targets` can be in `cur_block`;
+    Usually, `targets` is in `cur_block`. However, considering control flow,
+    2. `targets` may be in sub-block but `cur_block` is an ancestor of `targets[0].block`;
+    3. `targets` may be in the block which is ancestor of `cur_block`.
+    """
+
+    block = targets[0].block if targets else cur_block
+    prog = cur_block.program
+    if _is_ancestor_block(block, cur_block):
+        return set()
+
+    current_output_names = set([out.name for out in targets])
+
+    # if `cur_block` is an ancestor of `targets[0].block`, run while loop
+    while block.idx != cur_block.idx:
+        assert block.parent_idx != -1
+        parent_block = prog.block(block.parent_idx)
+
+        parent_block_output_names = set()
+        for op in reversed(block.ops):
+            if _some_in_set_(op.desc.output_arg_names(), current_output_names):
+                for name in op.desc.input_arg_names():
+                    current_output_names.add(name)
+                    if not block.desc.find_var(cpt.to_bytes(name)) \
+                            and parent_block.desc.find_var(cpt.to_bytes(name)):
+                        parent_block_output_names.add(name)
+
+        block = parent_block
+        current_output_names = parent_block_output_names
+
+    return current_output_names
+
+
 def _find_no_grad_vars(block, op_path, targets, no_grad_set):
     """
     Find the vars which is not used in the program, and
-    those var belong to no_grad_var.
+    those vars belong to no_grad_var.
     """
-    output_names = set([out.name for out in targets])
+    output_names = _get_output_names(block, targets)
     no_grad_var = []
     for i, op in reversed(list(enumerate(op_path))):
         # If the op has sub_block, it is too complicated to find the correct no_grad_var.
@@ -1161,14 +1365,16 @@ def _find_op_path_(block, outputs, inputs, no_grad_set):
     no_grad_set will also be changed
     """
     input_names = set([inp.name for inp in inputs])
-    output_names = set([out.name for out in outputs])
+    output_names = _get_output_names(block, outputs)
 
     relevant_op_flags = [True] * len(block.ops)
 
     # All the inputs of the block are used if inputs is empty,
     if inputs:
         for i, op in enumerate(block.ops):
-            if _some_in_set_(op.desc.input_arg_names(), input_names):
+            if _some_in_set_(
+                    op.desc.input_arg_names(),
+                    input_names) and core.has_non_empty_grad_op_maker(op.type):
                 for name in op.desc.output_arg_names():
                     if name not in no_grad_set:
                         input_names.add(name)
@@ -1176,7 +1382,9 @@ def _find_op_path_(block, outputs, inputs, no_grad_set):
                 relevant_op_flags[i] = False
 
     for i, op in reversed(list(enumerate(block.ops))):
-        if _some_in_set_(op.desc.output_arg_names(), output_names):
+        if _some_in_set_(
+                op.desc.output_arg_names(),
+                output_names) and core.has_non_empty_grad_op_maker(op.type):
             for name in op.desc.input_arg_names():
                 if name not in no_grad_set:
                     output_names.add(name)

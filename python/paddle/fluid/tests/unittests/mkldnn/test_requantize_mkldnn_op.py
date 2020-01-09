@@ -52,7 +52,8 @@ class TestReQuantizeOp(OpTest):
         self.attrs = {'Scale_in': self.scale_in, 'Scale_out': self.scale_out}
 
     def test_check_output(self):
-        self.check_output()
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_output(check_dygraph=False)
 
     def set_scale(self):
         pass

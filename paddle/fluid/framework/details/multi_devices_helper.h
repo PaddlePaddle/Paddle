@@ -23,6 +23,8 @@
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/details/var_handle.h"
 
+#include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -76,6 +78,27 @@ constexpr char kPinnedVars[] = "pinned_vars";
 typedef std::vector<std::vector<std::pair<std::string, std::string>>>
     GroupParamsAndGrads;
 constexpr char kGroupParamsAndDenseGrads[] = "group_params_dense_grads";
+
+inline bool IsOpRole(const OpDesc &op, OpRole role) {
+  const auto &attrs = op.GetAttrMap();
+  auto iter = attrs.find(OpProtoAndCheckerMaker::OpRoleAttrName());
+  if (iter == attrs.end()) return false;
+  return static_cast<bool>(boost::get<int>(iter->second) &
+                           static_cast<int>(role));
+}
+
+inline std::vector<std::string> GetOpRoleVarsOrEmpty(const OpDesc &op) {
+  const auto &attrs = op.GetAttrMap();
+  auto iter = attrs.find(OpProtoAndCheckerMaker::OpRoleVarAttrName());
+  if (iter == attrs.end()) return {};
+  auto &ret = boost::get<std::vector<std::string>>(iter->second);
+  PADDLE_ENFORCE_EQ(
+      ret.size() % 2, 0,
+      platform::errors::InvalidArgument(
+          "The size of attribute %s must be an even number, but got %d",
+          OpProtoAndCheckerMaker::OpRoleVarAttrName(), ret.size()));
+  return boost::get<std::vector<std::string>>(iter->second);
+}
 
 }  // namespace details
 }  // namespace framework

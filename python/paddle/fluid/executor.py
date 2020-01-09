@@ -193,7 +193,7 @@ def dimension_is_compatible_with(first, second):
     return True
 
 
-def check_feed_shape_type(var, feed):
+def check_feed_shape_type(var, feed, num_places=1):
     """
     Returns True if the variable doesn't require feed check or it is compatible
     with the shape and have same dtype as the feeded value.
@@ -207,6 +207,8 @@ def check_feed_shape_type(var, feed):
     Args:
         var (Variable): the Variable object
         feed (LoDTensor): the feeded value, which must be a LoDTensor
+        num_places: an integer value indicating the number of places.
+            ParallelExecutor will divide data into devices (CPU/GPU) evenly.
     Returns:
         True if the shape and dtype of variable is compatible with the feed value
     Raises:
@@ -214,11 +216,18 @@ def check_feed_shape_type(var, feed):
             the feed value
     """
     if var.desc.need_check_feed():
-        if not dimension_is_compatible_with(feed.shape(), var.shape):
+        feed_shape = feed.shape()
+        if six.PY2:
+            feed_shape[0] = long(feed_shape[0] /
+                                 num_places) if len(feed.lod()) == 0 else -1
+        else:
+            feed_shape[0] = int(feed_shape[0] /
+                                num_places) if len(feed.lod()) == 0 else -1
+        if not dimension_is_compatible_with(feed_shape, var.shape):
             raise ValueError(
                 'The feeded Variable %r should have dimensions = %d, shape = '
-                '%r, but received feeded shape %r' %
-                (var.name, len(var.shape), var.shape, feed.shape()))
+                '%r, but received feeded shape %r on each device' %
+                (var.name, len(var.shape), var.shape, feed_shape))
         if not dtype_is_compatible_with(feed._dtype(), var.dtype):
             var_dtype_format = convert_dtype(var.dtype) if isinstance(
                 var.dtype, core.VarDesc.VarType) else var.dtype
@@ -395,23 +404,28 @@ def _as_lodtensor(data, place):
 
 
 class FetchHandler(object):
-    def __init__(self, fetch_target_names, period_secs=60, return_np=True):
-        self.fetch_target_names = fetch_target_names
+    def __init__(self, var_dict=None, period_secs=60):
+        assert var_dict != None
+        self.var_dict = var_dict
         self.period_secs = period_secs
-        self.return_np = return_np
 
-    def handler(self, fetch_target_vars):
-        return
+    def handler(self, res_dict):
+        for key in res_dict:
+            if type(res_dict[key]) is np.ndarray:
+                sys.stdout.write("{}[0]: {} ".format(key, res_dict[key][0]))
+        sys.stdout.write("\n")
 
     @staticmethod
     def help():
         print("""
-class FetchHandlerExamlpe(FetchHandler):
-    def handler(self, fetch_target_vars):
-        b_auc = fetch_target_vars[0]
-        g_auc = fetch_target_vars[1]
-                        
-        print("b_auc: {}, g_auc: {} at time: {}".format(b_auc, g_auc, time.ctime()))
+class FetchHandlerExample(FetchHandler):
+    def handler(self, res_dict):
+        print(res_dict["auc"])
+        print("auc: {}, {}".format(res_dict["auc"], time.ctime()))
+
+auc = Variable()
+var_dict = {"auc": auc}
+handler = FetchHandlerExample(var_dict=var_dict)
 """)
 
 
@@ -627,7 +641,7 @@ class Executor(object):
                     feed_tensor.set(feed[feed_name], core.CPUPlace())
                 if need_check_feed:
                     var = global_block.var(feed_name)
-                    check_feed_shape_type(var, feed_tensor)
+                    check_feed_shape_type(var, feed_tensor, exe.device_count())
                 feed_tensor_dict[feed_name] = feed_tensor
 
             exe.feed_and_split_tensor_into_local_scopes(feed_tensor_dict)
@@ -981,7 +995,9 @@ class Executor(object):
         if dataset is None:
             raise RuntimeError("dataset is need and should be initialized")
 
-        if program._pipeline_opt:
+        if program._pipeline_opt is not None and program._pipeline_opt[
+                "sync_steps"] != -1:
+            # hack for paddlebox: sync_steps(-1) denotes paddlebox
             thread = self._adjust_pipeline_resource(program._pipeline_opt,
                                                     dataset, thread)
 
@@ -1010,13 +1026,13 @@ class Executor(object):
             scope0 = trainer_instance.get_worker_scope(0)
             fetch_monitor = FetchHandlerMonitor(scope0, fetch_handler)
             fetch_monitor.start()
-
             self._default_executor.run_from_dataset(trainer_instance)
-
             fetch_monitor.stop()
+            self._default_executor.release_trainer(trainer_instance)
         else:
 
             self._default_executor.run_from_dataset(trainer_instance)
+            self._default_executor.release_trainer(trainer_instance)
 
         dataset._dynamic_adjust_after_train()
         dataset._finish_to_run()

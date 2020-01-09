@@ -64,7 +64,7 @@ class TestMaxOutOpAxis(TestMaxOutOp):
         self.axis = 3
 
 
-class TestMaxOutOpAxisAPI(OpTest):
+class TestMaxOutOpAxisAPI(unittest.TestCase):
     def test_axis(self):
         data1 = fluid.data(name='data1', shape=[3, 6, 2, 2], dtype='float32')
         data2 = fluid.data(name='data2', shape=[3, 2, 2, 6], dtype='float32')

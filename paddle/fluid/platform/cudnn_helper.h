@@ -60,14 +60,6 @@ inline const char* cudnnGetErrorString(cudnnStatus_t status) {
 #define CUDNN_VERSION_MIN(major, minor, patch) \
   (CUDNN_VERSION >= ((major)*1000 + (minor)*100 + (patch)))
 
-#define CUDNN_ENFORCE(condition)                                     \
-  do {                                                               \
-    auto status = condition;                                         \
-    if (UNLIKELY(status != CUDNN_STATUS_SUCCESS)) {                  \
-      PADDLE_THROW(::paddle::platform::cudnnGetErrorString(status)); \
-    }                                                                \
-  } while (false)
-
 enum class DataLayout {  // Not use
   kNHWC,
   kNCHW,
@@ -226,7 +218,7 @@ class ScopedTensorDescriptor {
   ScopedTensorDescriptor() {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreateTensorDescriptor(&desc_));
   }
-  ~ScopedTensorDescriptor() {
+  ~ScopedTensorDescriptor() PADDLE_MAY_THROW {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroyTensorDescriptor(desc_));
   }
 
@@ -287,7 +279,7 @@ class ScopedFilterDescriptor {
   ScopedFilterDescriptor() {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreateFilterDescriptor(&desc_));
   }
-  ~ScopedFilterDescriptor() {
+  ~ScopedFilterDescriptor() PADDLE_MAY_THROW {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroyFilterDescriptor(desc_));
   }
 
@@ -329,7 +321,7 @@ class ScopedConvolutionDescriptor {
     PADDLE_ENFORCE_CUDA_SUCCESS(
         dynload::cudnnCreateConvolutionDescriptor(&desc_));
   }
-  ~ScopedConvolutionDescriptor() {
+  ~ScopedConvolutionDescriptor() PADDLE_MAY_THROW {
     PADDLE_ENFORCE_CUDA_SUCCESS(
         dynload::cudnnDestroyConvolutionDescriptor(desc_));
   }
@@ -377,7 +369,7 @@ class ScopedPoolingDescriptor {
   ScopedPoolingDescriptor() {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreatePoolingDescriptor(&desc_));
   }
-  ~ScopedPoolingDescriptor() {
+  ~ScopedPoolingDescriptor() PADDLE_MAY_THROW {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroyPoolingDescriptor(desc_));
   }
 
@@ -405,7 +397,7 @@ class ScopedSpatialTransformerDescriptor {
     PADDLE_ENFORCE_CUDA_SUCCESS(
         dynload::cudnnCreateSpatialTransformerDescriptor(&desc_));
   }
-  ~ScopedSpatialTransformerDescriptor() {
+  ~ScopedSpatialTransformerDescriptor() PADDLE_MAY_THROW {
     PADDLE_ENFORCE_CUDA_SUCCESS(
         dynload::cudnnDestroySpatialTransformerDescriptor(desc_));
   }
@@ -429,7 +421,7 @@ class ScopedActivationDescriptor {
     PADDLE_ENFORCE_CUDA_SUCCESS(
         dynload::cudnnCreateActivationDescriptor(&desc_));
   }
-  ~ScopedActivationDescriptor() {
+  ~ScopedActivationDescriptor() PADDLE_MAY_THROW {
     PADDLE_ENFORCE_CUDA_SUCCESS(
         dynload::cudnnDestroyActivationDescriptor(desc_));
   }
@@ -467,7 +459,7 @@ class ScopedActivationDescriptor {
         PADDLE_THROW("unrecognized activation mode: %d .",
                      static_cast<int>(activation_mode));
     }
-    CUDNN_ENFORCE(dynload::cudnnSetActivationDescriptor(
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetActivationDescriptor(
         desc_, mode, CUDNN_NOT_PROPAGATE_NAN, relu_ceiling));
     return desc_;
   }
@@ -495,7 +487,7 @@ class ScopedCTCLossDescriptor {
   ScopedCTCLossDescriptor() {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreateCTCLossDescriptor(&desc_));
   }
-  ~ScopedCTCLossDescriptor() {
+  ~ScopedCTCLossDescriptor() PADDLE_MAY_THROW {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroyCTCLossDescriptor(desc_));
   }
 

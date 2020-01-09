@@ -45,6 +45,9 @@ int GetCUDAMultiProcessors(int i);
 //! Get the MaxThreads of each MultiProcessor of the ith GPU.
 int GetCUDAMaxThreadsPerMultiProcessor(int i);
 
+//! Get the MaxThreads of each block of the ith GPU.
+int GetCUDAMaxThreadsPerBlock(int i);
+
 //! Get the current GPU device id in system.
 int GetCurrentDeviceId();
 

@@ -20,7 +20,8 @@ from __future__ import print_function
 import warnings
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
-from ..framework import Variable
+from ..framework import Variable, in_dygraph_mode, _varbase_creator
+from .. import core
 from ..param_attr import ParamAttr
 from . import nn
 from ..data_feeder import check_type_and_dtype
@@ -39,7 +40,8 @@ def accuracy(input, label, k=1, correct=None, total=None):
 
     Args:
         input(Variable): The input of accuracy layer, which is the predictions of network. A LoDTensor or Tensor with type float32,float64.
-        label(Variable): The label of dataset.  LoDTensor or Tensor with type int32,int64.
+            The shape is ``[sample_number, class_dim]`` .
+        label(Variable): The label of dataset.  LoDTensor or Tensor with type int32,int64. The shape is ``[sample_number, 1]`` .
         k(int): The top k predictions for each class will be checked. Data type is int64 or int32.
         correct(Variable): The correct predictions count. A Tensor with type int64 or int32.
         total(Variable): The total entries count. A tensor with type int64 or int32.
@@ -71,6 +73,26 @@ def accuracy(input, label, k=1, correct=None, total=None):
 
             #[array([0.6666667], dtype=float32)]
     """
+    if in_dygraph_mode():
+        topk_out, topk_indices = nn.topk(input, k=k)
+        inputs = {
+            "Out": [topk_out],
+            "Indices": [topk_indices],
+            "Label": [label]
+        }
+        acc_out = _varbase_creator(dtype="float32")
+        if correct is None:
+            correct = _varbase_creator(dtype="int64")
+        if total is None:
+            total = _varbase_creator(dtype="int64")
+        outputs = {
+            "Accuracy": [acc_out],
+            "Correct": [correct],
+            "Total": [total]
+        }
+        outs = core.ops.accuracy(inputs, {}, outputs)
+        return outs['Accuracy'][0]
+
     helper = LayerHelper("accuracy", **locals())
     check_type_and_dtype(input, 'input', Variable,
                          ['float16', 'float32', 'float64'], 'accuracy')
@@ -167,16 +189,22 @@ def auc(input,
     # make tp, tn, fp, fn persistable, so that can accumulate all batches.
 
     # for batch auc
+    # we create slide_step+1 buckets, the first slide_steps buckets store 
+    # historical batch-level values, and the last bucket stores the sum values of 
+    # previous slide_step buckets.
+    # The index of bucket that the newest batch will use is determined by batch_id mod slide_steps,
+    # and batch_id is store in the last posision of following variable
     batch_stat_pos = helper.create_global_variable(
         persistable=True,
         dtype='int64',
-        shape=[slide_steps, num_thresholds + 1])
+        shape=[(1 + slide_steps) * (num_thresholds + 1) + 1])
     batch_stat_neg = helper.create_global_variable(
         persistable=True,
         dtype='int64',
-        shape=[slide_steps, num_thresholds + 1])
+        shape=[(1 + slide_steps) * (num_thresholds + 1) + 1])
 
     # for global auc
+    # Needn't maintain the batch id
     stat_pos = helper.create_global_variable(
         persistable=True, dtype='int64', shape=[1, num_thresholds + 1])
     stat_neg = helper.create_global_variable(
@@ -185,7 +213,7 @@ def auc(input,
     for var in [batch_stat_pos, batch_stat_neg, stat_pos, stat_neg]:
         helper.set_variable_initializer(
             var, Constant(
-                value=0.0, force_cpu=True))
+                value=0.0, force_cpu=False))
 
     # Batch AUC
     helper.append_op(

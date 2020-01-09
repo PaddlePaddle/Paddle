@@ -19,14 +19,8 @@ import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest
 
 
-def fully_connected_naive(input, weights, bias_data=None):
-    result = None
-
-    if not bias_data:
-        result = np.dot(input, weights)
-    else:
-        result = np.dot(input, weights) + bias_data
-
+def fully_connected_naive(input, weights, bias_data):
+    result = np.dot(input, weights) + bias_data
     return result
 
 
@@ -39,21 +33,29 @@ class MatrixGenerate:
 class TestFCMKLDNNOp(OpTest):
     def create_data(self):
         self.matrix = MatrixGenerate(1, 10, 15, 3, 3)
+        self.bias = np.random.random(15).astype("float32")
 
     def setUp(self):
         self.op_type = "fc"
+        self._cpu_only = True
         self.use_mkldnn = True
         self.create_data()
-        self.inputs = {'Input': self.matrix.input, 'W': self.matrix.weights}
+        self.inputs = {
+            'Input': self.matrix.input,
+            'W': self.matrix.weights,
+            'Bias': self.bias
+        }
 
-        self.attrs = {'use_mkldnn': self.use_mkldnn, }
+        self.attrs = {'use_mkldnn': self.use_mkldnn}
 
         self.outputs = {
-            'Out': fully_connected_naive(self.matrix.input, self.matrix.weights)
+            'Out': fully_connected_naive(self.matrix.input, self.matrix.weights,
+                                         self.bias)
         }
 
     def test_check_output(self):
-        self.check_output()
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_output(check_dygraph=False)
 
     def test_check_grad_normal(self):
         pass
@@ -65,6 +67,7 @@ class TestFCMKLDNNOp(OpTest):
 class TestFCMKLDNNOp1(TestFCMKLDNNOp):
     def create_data(self):
         self.matrix = MatrixGenerate(2, 15, 48, 2, 2)
+        self.bias = np.random.random(48).astype("float32")
 
 
 if __name__ == "__main__":

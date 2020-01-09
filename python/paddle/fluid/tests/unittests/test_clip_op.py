@@ -40,11 +40,10 @@ class TestClipOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=self.max_relative_error)
+        self.check_grad(['X'], 'Out')
 
     def initTestCase(self):
-        self.shape = (4, 4)
+        self.shape = (10, 10)
         self.max = 0.7
         self.min = 0.1
 

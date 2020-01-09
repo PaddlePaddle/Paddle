@@ -51,7 +51,7 @@ inline T* Tensor::data() {
 }
 
 template <typename T>
-inline T* Tensor::mutable_data(DDim dims, platform::Place place,
+inline T* Tensor::mutable_data(const DDim& dims, const platform::Place& place,
                                size_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
   Resize(dims);
@@ -59,7 +59,8 @@ inline T* Tensor::mutable_data(DDim dims, platform::Place place,
 }
 
 template <typename T>
-inline T* Tensor::mutable_data(platform::Place place, size_t requested_size) {
+inline T* Tensor::mutable_data(const platform::Place& place,
+                               size_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
   return reinterpret_cast<T*>(
       mutable_data(place, DataTypeTrait<T>::DataType(), requested_size));

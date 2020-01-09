@@ -20,19 +20,22 @@ from .tensor import assign, cast, fill_constant
 from .. import core
 from ..framework import Program, Variable, Operator
 from ..layer_helper import LayerHelper, unique_name
-from ..initializer import force_init_on_cpu
 from .nn import logical_and, logical_not, logical_or
-from .utils import assert_same_structure, flatten, map_structure
+from .utils import assert_same_structure, map_structure
 import numpy
 import warnings
 import six
-from functools import reduce
+from functools import reduce, partial
+from ..data_feeder import convert_dtype, check_type_and_dtype
+from ... import compat as cpt
+from ..backward import _infer_var_data_type_shape_
 
 __all__ = [
     'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
     'less_equal', 'greater_than', 'greater_equal', 'equal', 'not_equal',
     'array_read', 'array_length', 'cond', 'IfElse', 'DynamicRNN', 'StaticRNN',
-    'reorder_lod_tensor_by_rank', 'Print', 'is_empty'
+    'reorder_lod_tensor_by_rank', 'Print', 'is_empty', 'case', 'switch_case',
+    'while_loop'
 ]
 
 
@@ -79,9 +82,11 @@ def select_input(inputs, mask):
     helper = LayerHelper('select_input', **locals())
     if isinstance(inputs, list) or isinstance(inputs, tuple):
         input_dtype = inputs[0].dtype
+        input_shape = inputs[0].shape
     else:
         input_dtype = inputs.dtype
-    out = helper.create_variable(dtype=input_dtype)
+        input_shape = inputs.shape
+    out = helper.create_variable(dtype=input_dtype, shape=input_shape)
     helper.append_op(
         type='select_input',
         inputs={'X': inputs,
@@ -252,6 +257,10 @@ def Print(input,
                data: 3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3, 
                
     '''
+    check_type_and_dtype(input, 'input', Variable,
+                         ['float32', 'float64', 'int32', 'int64', 'bool'],
+                         'fluid.layers.Print')
+
     helper = LayerHelper('print' + "_" + input.name, **locals())
     output = helper.create_variable_for_type_inference(input.dtype)
     helper.append_op(
@@ -819,9 +828,13 @@ class While(object):
     """
     while loop control flow. Repeat while body until cond is False.
 
+    Note:
+        A new OP :ref:`api_fluid_layers_while_loop` is highly recommended instead of ``While`` if the shape of parameter ``cond`` is [1].
+        OP :ref:`api_fluid_layers_while_loop` is easier to use and is called with less code but does the same thing as ``While`` .
+
     Args:
         cond(Variable): A Tensor whose data type is bool controlling whether to continue looping.
-        is_test(bool, optional): A flag indicating whether execution is in test phase. Default value is None.
+        is_test(bool, optional): A flag indicating whether execution is in test phase. Default value is False.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
     Examples:
@@ -909,6 +922,94 @@ class While(object):
                      'StepScopes': [step_scope]},
             attrs={'sub_block': while_block,
                    "is_test": self.is_test})
+
+
+def while_loop(cond, body, loop_vars, is_test=False, name=None):
+    """
+    while_loop is one of the control flows. Repeats while_loop `body` until `cond` returns False.
+
+    Args:
+        cond(Callable): A callable returning a boolean tensor controlling whether to continue looping.
+        body(Callable): A callable returning a tuple or list of tensors of the same arity (length and structure)
+            and types as ``loops_vars`` .
+        loop_vars(list|tuple): A list or tuple of tensors that is passed to both ``cond`` and ``body`` .
+        is_test(bool, optional): A flag indicating whether execution is in test phase. Default value is False.
+        name(str, optional): Normally there is no need for users to set this property. For more information, please
+            refer to :ref:`api_guide_Name`. Default is None.
+    
+    Returns:
+        A list or tuple of tensors which returned by ``body`` .
+    
+    Returen type:
+        list(Variable)|tuple(Variable).
+
+    Raises:
+        TypeError: If the type of ``cond`` is not callable.
+        TypeError: If the type of ``body`` is not callable.
+        TypeError: If the type of ``loop_vars`` is not list or tuple.
+        TypeError: If the type of ``cond`` returns is not Variable.
+        TypeError: If the type of ``cond`` returns is not a boolean variable.
+        TypeError: If the shape of ``cond`` returns is not equals 1.
+        ValueError: If the ``var_loops`` is empty.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+
+            def cond(i):
+                return layers.less_than(i, ten)
+
+            def body(i):
+                return layers.increment(x=i, value=1, in_place=True)
+
+            main_program = fluid.default_main_program()
+            startup_program = fluid.default_startup_program()
+
+            with fluid.program_guard(main_program, startup_program):
+                i = layers.fill_constant(shape=[1], dtype='int64', value=0)     # loop counter
+                ten = layers.fill_constant(shape=[1], dtype='int64', value=10)  # loop length
+                out = layers.while_loop(cond, body, [i])
+                
+                exe = fluid.Executor(fluid.CPUPlace())
+                res = exe.run(main_program, feed={}, fetch_list=out)
+                print(res) # [array([10])]
+    """
+    helper = LayerHelper('while_loop', **locals())
+
+    if not callable(cond):
+        raise TypeError("cond in while_loop should be callable")
+    if not callable(body):
+        raise TypeError("body in while_loop should be callable")
+    if not isinstance(loop_vars, (list, tuple)):
+        raise TypeError("loop_vars in while_loop should be a list or tuple")
+    if len(loop_vars) == 0:
+        raise ValueError("loop_vars in while_loop should not be empty")
+
+    pre_cond = cond(*loop_vars)
+    if not isinstance(pre_cond, Variable):
+        raise TypeError("cond in while_loop should return a variable")
+    if pre_cond.dtype != core.VarDesc.VarType.BOOL:
+        raise TypeError("cond in while_loop should return a boolean variable")
+    if reduce(lambda a, b: a * b, pre_cond.shape, 1) != 1:
+        raise TypeError(
+            "the shape of the variable returned by cond should be [],"
+            "but given shape as {0}.".format(list(pre_cond.shape)))
+
+    while_loop_block = While(pre_cond, is_test, name)
+    with while_loop_block.block():
+        output_vars = body(*loop_vars)
+        if len(loop_vars) == 1:
+            assign(output_vars, loop_vars[0])
+            now_cond = cond(output_vars)
+        else:
+            for i in range(len(output_vars)):
+                assign(output_vars[i], loop_vars[i])
+            now_cond = cond(*output_vars)
+        assign(now_cond, pre_cond)
+
+    return loop_vars
 
 
 def lod_rank_table(x, level=0):
@@ -1242,8 +1343,6 @@ def less_than(x, y, force_cpu=None, cond=None):
     attrs = dict()
     if force_cpu is not None:
         attrs['force_cpu'] = force_cpu
-    elif force_init_on_cpu():
-        attrs['force_cpu'] = force_init_on_cpu()
 
     helper.append_op(
         type='less_than',
@@ -1286,8 +1385,6 @@ def less_equal(x, y, cond=None):
         cond.stop_gradient = True
 
     attrs = dict()
-    if force_init_on_cpu():
-        attrs['force_cpu'] = force_init_on_cpu()
 
     helper.append_op(
         type='less_equal',
@@ -1329,8 +1426,6 @@ def greater_than(x, y, cond=None):
         cond.stop_gradient = True
 
     attrs = dict()
-    if force_init_on_cpu():
-        attrs['force_cpu'] = force_init_on_cpu()
 
     helper.append_op(
         type='greater_than',
@@ -1374,8 +1469,6 @@ def greater_equal(x, y, cond=None):
         cond.stop_gradient = True
 
     attrs = dict()
-    if force_init_on_cpu():
-        attrs['force_cpu'] = force_init_on_cpu()
 
     helper.append_op(
         type='greater_equal',
@@ -1703,9 +1796,11 @@ class ConditionalBlock(object):
                     intermediate.add(out_var_name)
         input_set = set([ipt.name for ipt in self.inputs])
 
+        # Todo(liym27) Here assume that all params are in recursive parent block
+        # but when minimize() called in control flow, some params may be in
+        # conditional grad block
         param_list = [
             parent_block._var_recursive(each_name) for each_name in params
-            if each_name not in input_set
         ]
 
         out_list = []
@@ -1716,7 +1811,7 @@ class ConditionalBlock(object):
 
         step_scope = parent_block.create_var(
             type=core.VarDesc.VarType.STEP_SCOPES)
-        parent_block.append_op(
+        conditional_block_op = parent_block.append_op(
             type='conditional_block',
             inputs={
                 'Cond': self.inputs,
@@ -1729,6 +1824,90 @@ class ConditionalBlock(object):
                 'is_scalar_condition': self.is_scalar_condition
             })
 
+        if self.need_append_conditional_block_grad(inside_block):
+            self.append_conditional_block_grad(parent_block, inside_block,
+                                               conditional_block_op)
+
+    def need_append_conditional_block_grad(self, inside_block):
+        grad_sub_block_idx = inside_block.backward_block_idx
+
+        return grad_sub_block_idx != -1
+
+    def append_conditional_block_grad(self, parent_block, inside_block,
+                                      conditional_block_op):
+        '''
+        Append op `conditional_block_grad` manually.
+        When `optimizer.minimize/append_backward` is called in Paddle control flow,
+        grad ops will be appended before appending op `conditional_block` so that
+        op `conditional_block_grad` can't be appended when calling
+        `optimizer.minimize/append_backward`. After appending op `conditional_block`,
+        `conditional_block_grad` is appended manually.
+
+        Args:
+            parent_block (Block): The block that `conditional_block_op` blongs to.
+            inside_block (Block): The sub block of `conditional_block_op`.
+            conditional_block_op (Operator): The forward op conditional_block.
+        '''
+
+        grad_sub_block_idx = inside_block.backward_block_idx
+        grad_sub_block = self.helper.main_program.block(grad_sub_block_idx)
+
+        intermediate = set()
+        params = set()
+
+        for each_op in grad_sub_block.ops:
+            assert isinstance(each_op, Operator)
+            for iname in each_op.input_names:
+                for in_var_name in each_op.input(iname):
+                    if in_var_name not in intermediate:
+                        params.add(in_var_name)
+
+            for oname in each_op.output_names:
+                for out_var_name in each_op.output(oname):
+                    intermediate.add(out_var_name)
+
+        param_list = []
+        for inner_input_name in params:
+            inner_var = parent_block._find_var_recursive(inner_input_name)
+            if inner_var:
+                param_list.append(cpt.to_text(inner_var.name))
+
+        grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
+            conditional_block_op.desc,
+            cpt.to_text(set()), [grad_sub_block.desc])
+
+        # append op_desc in grad_op_descs to target_block
+        op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
+        backward = core.op_proto_and_checker_maker.OpRole.Backward
+        new_op_desc = parent_block.desc.append_op()
+        new_op_desc.copy_from(grad_op_desc[0])
+        new_op_desc._set_attr(op_role_attr_name, backward)
+        # set input and output manually
+        new_op_desc.set_input('Input', param_list)
+        new_op_desc.set_output('Input@GRAD',
+                               [param + "@GRAD" for param in param_list])
+
+        new_vars = set()
+        for grad_var_name in new_op_desc.output_arg_names():
+            if grad_sub_block.desc.has_var_recursive(
+                    cpt.to_bytes(grad_var_name)
+            ) or grad_var_name == core.empty_var_name():
+                continue
+            grad_sub_block.desc.var(cpt.to_bytes(grad_var_name))
+            new_vars.add(grad_var_name)
+            if grad_var_name not in op_grad_to_var:
+                continue
+
+        # infer_shape and infer_type
+        new_op_desc.infer_var_type(grad_sub_block.desc)
+        new_op_desc.infer_shape(grad_sub_block.desc)
+
+        for arg in new_op_desc.output_arg_names():
+            if arg in new_vars:
+                _infer_var_data_type_shape_(arg, grad_sub_block)
+
+        self.helper.main_program._sync_with_cpp()
+
 
 def copy_var_to_parent_block(var, layer_helper):
     if var is None:
@@ -1738,19 +1917,113 @@ def copy_var_to_parent_block(var, layer_helper):
     assert parent_idx >= 0, "Got wrong parent block index when assigning var to parent scope in control_flow"
     parent_block = prog.block(parent_idx)
 
-    parent_block_var = parent_block.create_var(dtype=var.dtype, type=var.type)
+    parent_block_var = parent_block.create_var(
+        dtype=var.dtype, shape=var.shape, type=var.type)
     assign(var, parent_block_var)
     return parent_block_var
 
 
 def cond(pred, true_fn=None, false_fn=None, name=None):
     """
-    TODO:(huihuangzheng) developing
+    This API returns ``true_fn()`` if the predicate ``pred`` is true else
+    ``false_fn()`` . Users could also set ``true_fn`` or ``false_fn`` to
+    ``None`` if do nothing and this API will treat the callable simply returns
+    ``None`` in this case.
+
+    ``true_fn`` and ``false_fn`` should return same nest structure of tensors
+    or both return ``None`` if user doens't like to return anything. A nest
+    structure of tensors in PaddlePaddle is tensor(s), or tuple of tensors, or
+    list of tensors.
+    
+    Note: 
+        1. The tuples or lists returned by ``true_fn`` and ``false_fn`` must have
+        the same shape because of dataflow model of PaddlePaddle while the
+        tensors in the tuples or the lists can have different shapes.
+
+        2. Any tensors or operations created outside of ``true_fn`` and
+        ``false_fn`` will be executed regardless of which branch is selected at
+        runtime. This has frequently surprised users who expected a lazy
+        semantics. For example:
+
+        .. code-block:: python
+        
+            import paddle.fluid as fluid
+            a = fluid.data(name='a', shape=[-1, 1], dtype='float32')
+            b = fluid.data(name='b', shape=[-1, 1], dtype='float32')
+            c = a * b
+            out = fluid.layers.cond(a < b, lambda: a + c, lambda: b * b)
+
+        No matter whether ``a < b`` , ``c = a * b`` will run.
+
+    Args:
+        pred(Variable): A boolean tensor whose numel should be 1. The boolean
+            value determines whether to return the result of ``true_fn`` or
+            ``false_fn`` .
+        true_fn(callable, optional): A callable to be performed if ``pred`` is
+            true. The default value is ``None`` .
+        false_fn(callable, optional): A callable to be performed if ``pred`` is
+            false. The default value is ``None`` .
+        name(str, optional): The default value is ``None`` . Normally users
+             don't have to set this parameter. For more information, please
+             refer to :ref:`api_guide_Name` .
+
+    Returns:
+        Variable|list(Variable)|tuple(Variable): returns ``true_fn()`` if the
+        predicate ``pred`` is true else ``false_fn()`` .
+
+    Raises:
+        TypeError: if ``true_fn`` or ``false_fn`` is not callable.
+        ValueError: if ``true_fn`` and ``false_fn`` don't return the same nest
+            structure of tensors.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+            from paddle.fluid.executor import Executor
+            from paddle.fluid.framework import Program, program_guard
+
+            #
+            # pseudocode:
+            # if 0.1 < 0.23:
+            #     return 1, True
+            # else:
+            #     return 3, 2
+            #
+
+            def true_func():
+                return layers.fill_constant(
+                    shape=[1, 2], dtype='int32', value=1), layers.fill_constant(
+                        shape=[2, 3], dtype='bool', value=True)
+
+            def false_func():
+                return layers.fill_constant(
+                    shape=[3, 4], dtype='float32', value=3), layers.fill_constant(
+                        shape=[4, 5], dtype='int64', value=2)
+
+            main_program = Program()
+            startup_program = Program()
+            with program_guard(main_program, startup_program):
+                x = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
+                y = layers.fill_constant(shape=[1], dtype='float32', value=0.23)
+                pred = layers.less_than(x, y)            
+                out = layers.cond(pred, true_func, false_func)
+                # out is a tuple containing 2 tensors
+
+            place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
+            ) else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            ret = exe.run(main_program, fetch_list=out)
+            # ret[0] = [[1 1]]
+            # ret[1] = [[ True  True  True]
+            #           [ True  True  True]]
+
     """
     helper = LayerHelper('cond', **locals())
     true_output = None
     false_output = None
-    copy_to_global_func = lambda var: copy_var_to_parent_block(var, helper)
+    copy_to_parent_func = lambda var: copy_var_to_parent_block(var, helper)
     if true_fn is not None:
         if not callable(true_fn):
             raise TypeError("The true_fn in cond must be callable")
@@ -1758,7 +2031,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
         with true_cond_block.block():
             origin_true_output = true_fn()
             if origin_true_output is not None:
-                true_output = map_structure(copy_to_global_func,
+                true_output = map_structure(copy_to_parent_func,
                                             origin_true_output)
     if false_fn is not None:
         if not callable(false_fn):
@@ -1768,7 +2041,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
         with false_cond_block.block():
             origin_false_output = false_fn()
             if origin_false_output is not None:
-                false_output = map_structure(copy_to_global_func,
+                false_output = map_structure(copy_to_parent_func,
                                              origin_false_output)
 
     if true_output is None and false_output is None:
@@ -1797,6 +2070,131 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
     return merged_output
 
 
+def _error_message(what, arg_name, op_name, right_value, error_value):
+    error_message = "{what} of '{arg_name}' in Op({op_name}) must be " \
+        "{right_value}, but received: {error_value}.".format(
+        what=what,
+        arg_name=arg_name,
+        op_name=op_name,
+        right_value=right_value,
+        error_value=error_value)
+
+    return error_message
+
+
+def case(pred_fn_pairs, default=None, name=None):
+    '''
+    This operator works like an if-elif-elif-else chain.
+
+    Args:
+        pred_fn_pairs(list|tuple): A list or tuple of (pred, fn) pairs. ``pred`` is a boolean Tensor with shape [1], ``fn`` is a callable. All callables return the same structure of Tensors.
+        default(callable, optional): Callable that returns a structure of Tensors.
+        name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Variable|list(Variable): Tensors returned by the callable from the first pair whose pred is True,
+        or Tensors returned by ``default`` if no pred in ``pred_fn_pairs`` is True and ``default`` is not None,
+        or Tensors returned by the last callable in ``pred_fn_pairs``  if no pred in ``pred_fn_pairs`` is True and ``default`` is None.
+
+    Raises:
+        TypeError: If the type of ``pred_fn_pairs`` is not list or tuple.
+        TypeError: If the type of elements in ``pred_fn_pairs`` is not tuple.
+        TypeError: If the size of tuples in ``pred_fn_pairs`` is not 2.
+        TypeError: If the first element of 2-tuple in ``pred_fn_pairs`` is not Variable.
+        TypeError: If the second element of 2-tuple in ``pred_fn_pairs`` is not callable.
+        TypeError: If ``default`` is not None but it is not callable.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+
+            def fn_1():
+                return layers.fill_constant(shape=[1, 2], dtype='float32', value=1)
+
+            def fn_2():
+                return layers.fill_constant(shape=[2, 2], dtype='int32', value=2)
+
+            def fn_3():
+                return layers.fill_constant(shape=[3], dtype='int32', value=3)
+
+            main_program = fluid.default_startup_program()
+            startup_program = fluid.default_main_program()
+            with fluid.program_guard(main_program, startup_program):
+                x = layers.fill_constant(shape=[1], dtype='float32', value=0.3)
+                y = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
+                z = layers.fill_constant(shape=[1], dtype='float32', value=0.2)
+
+                pred_1 = layers.less_than(z, x)  # true: 0.2 < 0.3
+                pred_2 = layers.less_than(x, y)  # false: 0.3 < 0.1
+                pred_3 = layers.equal(x, y)      # false: 0.3 == 0.1
+
+                # Call fn_1 because pred_1 is True
+                out_1 = layers.case(
+                    pred_fn_pairs=[(pred_1, fn_1), (pred_2, fn_2)], default=fn_3)
+
+                # Argument default is None and no pred in pred_fn_pairs is True. fn_3 will be called.
+                # because fn_3 is the last callable in pred_fn_pairs.
+                out_2 = layers.case(pred_fn_pairs=[(pred_2, fn_2), (pred_3, fn_3)])
+
+                exe = fluid.Executor(fluid.CPUPlace())
+                res_1, res_2 = exe.run(main_program, fetch_list=[out_1, out_2])
+                print(res_1)  # [[1. 1.]]
+                print(res_2)  # [3 3 3]
+    '''
+    helper = LayerHelper('case', **locals())
+
+    def _case_check_args(pred_fn_pairs, default):
+        '''
+        Check arguments pred_fn_pairs and default. Return canonical pre_fn_pairs and default.
+        '''
+        if not isinstance(pred_fn_pairs, (list, tuple)):
+            raise TypeError(
+                _error_message("The type", "pred_fn_pairs", "case",
+                               "list or tuple", type(pred_fn_pairs)))
+
+        for pred_fn in pred_fn_pairs:
+            if not isinstance(pred_fn, tuple):
+                raise TypeError(
+                    _error_message("The elements' type", "pred_fn_pairs",
+                                   "case", "tuple", type(pred_fn)))
+            if len(pred_fn) != 2:
+                raise TypeError(
+                    _error_message("The tuple's size", "pred_fn_pairs", "case",
+                                   "2", str(len(pred_fn)) + "-tuple"))
+            pred, fn = pred_fn
+
+            if not isinstance(pred, Variable):
+                raise TypeError(
+                    _error_message("The pred's type", "pred_fn_pairs", "case",
+                                   "boolean Variable", type(pred)))
+
+            if not callable(fn):
+                raise TypeError(
+                    "The fn for {} of pred_fn_pairs in Op(case) must"
+                    " be callable.".format(pred.name))
+
+        if default is None:
+            default_index = len(pred_fn_pairs) - 1  # pick the last one
+            default = pred_fn_pairs[default_index][1]
+            pred_fn_pairs = pred_fn_pairs[:default_index]
+        elif not callable(default):
+            raise TypeError("The default in Op(case) must be callable.")
+
+        return pred_fn_pairs, default
+
+    pred_fn_pairs, default = _case_check_args(pred_fn_pairs, default)
+
+    false_fn = default
+    for pred, true_fn in reversed(pred_fn_pairs):
+        false_fn = partial(cond, pred=pred, true_fn=true_fn, false_fn=false_fn)
+
+    final_fn = false_fn
+
+    return final_fn()
+
+
 class Switch(object):
     """
 
@@ -1806,6 +2204,10 @@ class Switch(object):
     and only executes the statement after the first case branch that satisfies the conditions. 
     If there is no case branch that satisfies the condition, 
     only the statement following the default branch is executed.
+
+    Note:
+        A new OP :ref:`api_fluid_layers_case` is highly recommended instead of ``Switch`` if the shape of parameter ``cond`` is [1].
+        OP :ref:`api_fluid_layers_case` is easier to use and is called with less code but does the same thing as ``Switch`` .
 
     Member Functions:
         case(cond): The case branch of Switch whose parameter cond is a scalar Variable of bool type. Only if the cond of the current case branch is True and the cond of the previous case branch is False, the statement after the case branch will be executed, and the statement after the case branch will not be executed.
@@ -1951,6 +2353,10 @@ class IfElse(object):
     This class is used to implement IfElse branch control function. IfElse contains two blocks, true_block and false_block. IfElse will put data satisfying True or False conditions into different blocks to run.
 
     Cond is a 2-D Tensor with shape [N, 1] and data type bool, representing the execution conditions of the corresponding part of the input data.
+
+    Note:
+        A new OP :ref:`api_fluid_layers_cond` is highly recommended instead of ``IfElse``. if the shape of parameter ``cond`` is [1].
+        OP :ref:`api_fluid_layers_cond` is easier to use and is called with less code but does the same thing as ``IfElse`` .
 
     IfElse OP is different from other OPs in usage, which may cause some users confusion. Here is a simple example to illustrate this OP.
 
@@ -2783,6 +3189,158 @@ class DynamicRNN(object):
         if self.status != DynamicRNN.IN_RNN:
             raise ValueError("{0} can only be invoked inside rnn block.".format(
                 method))
+
+
+def switch_case(branch_index, branch_fns, default=None, name=None):
+    '''
+    This operator is like a C++ switch/case statement.
+
+    Args:
+        branch_index(Variable): A Tensor with shape [1] to specify which branch to execute. The data type is ``int32``, ``int64`` or ``uint8``.
+        branch_fns(dict|list|tuple): If it's a list or tuple, the elements in it could be pairs of (int, callable) or simple callables whose actual index will be used as the index of callable. If it's a dict, its key is a python integer and the value is a callable. All callables return the same structure of Tensors.
+        default(callable, optional): Callable that returns a structure of Tensors.
+        name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Variable|list(Variable): Tensors returned by the callable specified by ``branch_index`` in ``branch_fns``,
+        or Tensors returned by ``default`` if ``default`` is not None and no index matches in ``branch_fns``,
+        or Tensors returned by the callable with the max index in ``branch_fns`` if ``default`` is None and no index matches in ``branch_fns``.
+
+    Raises:
+        TypeError: If the type of ``branch_index`` is not Variable.
+        TypeError: If the data type of ``branch_index`` is not ``int32``, ``int64`` or ``uint8``.
+        TypeError: If the type of ``branch_fns`` is not dict, list or tuple.
+        TypeError: If the elements of ``branch_fns`` is not 2-tuple.
+        TypeError: If the first element of 2-tuple in ``branch_fns`` is not integer.
+        ValueError: If the first element of 2-tuple in ``branch_fns`` is not unique.
+        TypeError: If the second element of 2-tuple in ``branch_fns`` is not callable.
+        TypeError: If ``default`` is not None but it is not callable.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+
+            def fn_1():
+                return layers.fill_constant(shape=[1, 2], dtype='float32', value=1)
+
+            def fn_2():
+                return layers.fill_constant(shape=[2, 2], dtype='int32', value=2)
+
+            def fn_3():
+                return layers.fill_constant(shape=[3], dtype='int32', value=3)
+
+            main_program = fluid.default_startup_program()
+            startup_program = fluid.default_main_program()
+            with fluid.program_guard(main_program, startup_program):
+                index_1 = layers.fill_constant(shape=[1], dtype='int32', value=1)
+                index_2 = layers.fill_constant(shape=[1], dtype='int32', value=2)
+
+                out_1 = layers.switch_case(
+                    branch_index=index_1,
+                    branch_fns={1: fn_1, 2: fn_2},
+                    default=fn_3)
+
+                out_2 = layers.switch_case(
+                    branch_index=index_2,
+                    branch_fns=[(1, fn_1), (2, fn_2)],
+                    default=fn_3)
+
+                # Argument default is None and no index matches. fn_3 will be called because of the max index 7.
+                out_3 = layers.switch_case(
+                    branch_index=index_2,
+                    branch_fns=[(0, fn_1), (4, fn_2), (7, fn_3)])
+
+                exe = fluid.Executor(fluid.CPUPlace())
+                res_1, res_2, res_3 = exe.run(main_program,
+                                              fetch_list=[out_1, out_2, out_3])
+                print(res_1)  # [[1. 1.]]
+                print(res_2)  # [[2 2] [2 2]]
+                print(res_3)  # [3 3 3]
+    '''
+    helper = LayerHelper('switch_case', **locals())
+
+    def _check_args(branch_index, branch_fns, default):
+        if not isinstance(branch_index, Variable):
+            raise TypeError(
+                _error_message("The type", "branch_index", "switch_case",
+                               "Variable", type(branch_index)))
+
+        if convert_dtype(branch_index.dtype) not in ["uint8", "int32", "int64"]:
+            raise TypeError(
+                _error_message("The data type", "branch_index", "switch_case",
+                               "uint8, int32 or int64",
+                               convert_dtype(branch_index.dtype)))
+
+        if convert_dtype(branch_index.dtype) != "int64":
+            branch_index = cast(branch_index, "int64")
+
+        if not isinstance(branch_fns, (list, tuple, dict)):
+            raise TypeError(
+                _error_message("The type", "branch_fns", "switch_case",
+                               "dict, tuple or list", type(branch_fns)))
+
+        branch_fns = branch_fns.items() if isinstance(branch_fns,
+                                                      dict) else branch_fns
+
+        branch_fns = list(enumerate(branch_fns)) if all(
+            callable(fn) for fn in branch_fns) else branch_fns
+
+        keys_of_fns = []
+        for index_fn_pair in branch_fns:
+            if not isinstance(index_fn_pair, tuple):
+                raise TypeError(
+                    _error_message("The elements' type", "branch_fns",
+                                   "switch_case", "tuple", type(branch_fns)))
+
+            if len(index_fn_pair) != 2:
+                raise TypeError(
+                    _error_message("The tuple's size", "branch_fns",
+                                   "switch_case", "2",
+                                   str(len(index_fn_pair)) + "-tuple"))
+
+            key, fn = index_fn_pair
+
+            if not isinstance(key, int):
+                raise TypeError(
+                    _error_message("The key's type", "branch_fns",
+                                   "switch_case", "int", type(key)))
+
+            if key in keys_of_fns:
+                raise ValueError(
+                    "The key in 'branch_fns' must be unique, but '{}' appears more than once.".
+                    format(key))
+            else:
+                keys_of_fns.append(key)
+
+            if not callable(fn):
+                raise TypeError(
+                    _error_message("The type of function for key {}".format(
+                        key), "branch_fns", "switch_case", "callable", type(
+                            fn)))
+
+        if default is None:
+            default = sorted(branch_fns)[-1][1]
+            branch_fns = sorted(branch_fns)[:-1]
+        elif not callable(default):
+            raise TypeError("The default in Op(case) must be callable.")
+
+        pred_fn_pairs = []
+        for index, fn in branch_fns:
+            new_index = fill_constant(shape=[1], dtype="int64", value=index)
+            pred = equal(branch_index, new_index)
+            pred_fn_pairs.append((pred, fn))
+
+        return pred_fn_pairs, default
+
+    pred_fn_pairs, default = _check_args(branch_index, branch_fns, default)
+    false_fn = default
+    for pred, true_fn in pred_fn_pairs:
+        false_fn = partial(cond, pred=pred, true_fn=true_fn, false_fn=false_fn)
+
+    final_fn = false_fn
+    return final_fn()
 
 
 @templatedoc()
