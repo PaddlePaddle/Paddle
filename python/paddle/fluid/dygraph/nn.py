@@ -1073,9 +1073,6 @@ class BatchNorm(layers.Layer):
         self._bias_attr = bias_attr
         self._act = act
 
-        self._full_name = unique_name.generate("batch_norm")
-        self._helper = LayerObjectHelper(self._full_name)
-
         assert bias_attr is not False, "bias_attr should not be False in batch_norm."
 
         if dtype == "float16":
@@ -1423,9 +1420,6 @@ class LayerNorm(layers.Layer):
         super(LayerNorm, self).__init__()
         if isinstance(normalized_shape, numbers.Integral):
             normalized_shape = [normalized_shape]
-
-        self._full_name = unique_name.generate("layer_norm")
-        self._helper = LayerObjectHelper(self._full_name)
 
         self._normalized_shape = list(normalized_shape)
         self._scale = scale
@@ -1989,7 +1983,8 @@ class PRelu(layers.Layer):
                  input_shape=None,
                  param_attr=None,
                  dtype='float32'):
-        super(PRelu, self).__init__()
+        # need specify name_scope since snake-cased 'PRelu' is 'p_relu'
+        super(PRelu, self).__init__(name_scope='prelu')
         self._mode = mode
         self._param_attr = param_attr
         self._dtype = dtype
