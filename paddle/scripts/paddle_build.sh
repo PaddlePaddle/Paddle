@@ -210,6 +210,7 @@ function cmake_base() {
         -DWITH_GLOO=${WITH_GLOO:-OFF}
         -DWITH_PSLIB=${WITH_PSLIB:-OFF}
         -DWITH_PSLIB_BRPC=${WITH_PSLIB_BRPC:-OFF}
+        -DWITH_LITE=${WITH_LITE:-OFF}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -244,7 +245,8 @@ EOF
         -DWITH_GRPC=${grpc_flag} \
         -DWITH_GLOO=${WITH_GLOO:-OFF} \
         -DWITH_PSLIB=${WITH_PSLIB:-OFF} \
-        -DWITH_PSLIB_BRPC=${WITH_PSLIB_BRPC:-OFF}
+        -DWITH_PSLIB_BRPC=${WITH_PSLIB_BRPC:-OFF} \
+        -DWITH_LITE=${WITH_LITE:-OFF}
 
 }
 
@@ -603,6 +605,11 @@ function assert_api_spec_approvals() {
     if [ "$?" != 0 ];then
        exit 1
     fi
+}
+
+
+function check_coverage() {
+    /bin/bash ${PADDLE_ROOT}/tools/coverage/paddle_coverage.sh
 }
 
 
@@ -1182,6 +1189,7 @@ function main() {
         build ${parallel_number}
         enable_unused_var_check
         parallel_test
+        check_coverage
         check_change_of_unittest ${PYTHON_ABI:-""}
         ;;
       cicheck_brpc)

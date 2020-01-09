@@ -179,8 +179,8 @@ class TestDygraphLoadStatic(unittest.TestCase):
                     self.nce1 = NCE(10000, 100)
                     self.nce2 = NCE(10000, 100)
 
-                    self.prelu1 = PRelu("channel", [-1, 5, 10, 10])
-                    self.prelu2 = PRelu("channel", [-1, 5, 10, 10])
+                    self.prelu1 = PRelu("channel", channel=5)
+                    self.prelu2 = PRelu("channel", channel=5)
 
                     self.group_norm1 = GroupNorm(8, 4)
                     self.gourp_norm2 = GroupNorm(8, 4)

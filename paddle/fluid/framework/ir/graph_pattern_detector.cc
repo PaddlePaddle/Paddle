@@ -1659,6 +1659,21 @@ PDNode *patterns::DequantAny::operator()() {
   return dequant_out;
 }
 
+PDNode *patterns::MultipleQuantize::operator()() {
+  auto *prev_out = pattern->NewNode(prev_out_repr())->AsOutput();
+
+  // find nodes that are inputs to quantize operators
+  prev_out->assert_more([&](Node *node) {
+    int counter = std::count_if(
+        node->outputs.begin(), node->outputs.end(), [&](Node const *iter) {
+          return iter && iter->IsOp() && iter->Op()->Type() == "quantize";
+        });
+    return (counter > 1);
+  });
+
+  return prev_out;
+}
+
 // a -> transpose_op(1) -> transpose_out_a -> flatten_op(1) -> flatten_out_a
 // b -> transpose_op(2) -> transpose_out_b -> flatten_op(2) -> flatten_out_b
 // ...
