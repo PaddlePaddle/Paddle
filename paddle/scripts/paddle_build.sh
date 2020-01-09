@@ -243,8 +243,9 @@ EOF
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_GRPC=${grpc_flag} \
+        -DWITH_PSLIB=${WITH_PSLIB:-OFF} \
+        -DWITH_PSLIB_BRPC=${WITH_PSLIB_BRPC:-OFF} \
         -DWITH_LITE=${WITH_LITE:-OFF}
-
 }
 
 function cmake_gen() {
