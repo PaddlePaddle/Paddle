@@ -45,11 +45,16 @@ std::string OperationExpression::GetRHS(std::unordered_set<int>* used,
       }
       std::string index_str = rhs.substr(pos + 2, length);
       int index = StringTo<int>(index_str);
-      PADDLE_ENFORCE_LT(index, input_ids_.size(),
-                        "Only %d inputs are provided, but need %d.",
-                        input_ids_.size(), index + 1);
-      PADDLE_ENFORCE_GE(input_ids_[index], 0,
-                        "Input id should be no less than 0.");
+      PADDLE_ENFORCE_LT(
+          index, input_ids_.size(),
+          platform::errors::InvalidArgument(
+              "Only %d inputs are provided, but need %d for operation < %s >.",
+              input_ids_.size(), index + 1, op_type_));
+      PADDLE_ENFORCE_GE(
+          input_ids_[index], 0,
+          platform::errors::InvalidArgument(
+              "Expected %d-th input id > 0 for operation < %s >. Received %d.",
+              index, op_type_, input_ids_[index]));
       rhs.replace(pos, length + 3, TmpName(input_ids_[index]));
       used->insert(input_ids_[index]);
     }
