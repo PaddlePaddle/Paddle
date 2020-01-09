@@ -149,10 +149,5 @@ class TestArgsortOpDescendingAxisNeg2(TestArgsortOpAxisNeg2):
         self.descending = True
 
 
-class TestArgsortOpDescendingAxisNeg3(TestArgsortOpAxisNeg2):
-    def init_direction(self):
-        self.descending = True
-
-
 if __name__ == "__main__":
     unittest.main()
