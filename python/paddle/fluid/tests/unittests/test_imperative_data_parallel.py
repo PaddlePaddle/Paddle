@@ -75,6 +75,8 @@ class TestDataParallelStateDict(unittest.TestCase):
             for k, v in parallel_state.items():
                 self.assertTrue(np.array_equal(v.numpy(), base_para[k]))
 
+            parallel_mlp.load_dict(base_para)
+
 
 if __name__ == '__main__':
     unittest.main()
