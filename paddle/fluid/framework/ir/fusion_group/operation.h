@@ -70,7 +70,10 @@ class OperationMap {
   OperationMap();
 
   static OperationMap& Instance() {
-    PADDLE_ENFORCE_NOT_NULL(map, "Need to initialize OperationMap first!");
+    PADDLE_ENFORCE_NOT_NULL(
+        map, platform::errors::PreconditionNotMet(
+                 "Please initialize OperationMap first, by calling "
+                 "framework::fusion_group::OperationMap::Init()!"));
     return *map;
   }
 
