@@ -320,6 +320,8 @@ if (WITH_MKLDNN)
     add_subdirectory(mkldnn)
 endif()
 
+add_subdirectory(ir)
+
 if (WITH_TESTING)
     set_property(TEST test_parallel_executor_mnist PROPERTY ENVIRONMENT GLOG_vmodule=all_reduce_deps_pass=10)
 endif()
