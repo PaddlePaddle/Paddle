@@ -15,9 +15,8 @@
 from __future__ import print_function
 
 import numpy as np
-from paddle import fluid
 from .layers import Layer
-from .. import layers as F
+from ..layers import nn as F
 from ..framework import dygraph_only
 
 __all__ = ['WeightNormWrapper']
