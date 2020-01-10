@@ -31,6 +31,7 @@ API_FILES=("CMakeLists.txt"
            "python/paddle/fluid/tests/unittests/white_list/op_accuracy_white_list.py"
            "python/paddle/fluid/tests/unittests/white_list/compile_vs_runtime_white_list.py"
            "python/paddle/fluid/tests/unittests/white_list/no_check_set_white_list.py"
+           "python/paddle/fluid/tests/unittests/white_list/check_op_sequence_instance_0_input_white_list.py"
            "python/paddle/fluid/tests/unittests/white_list/op_threshold_white_list.py"
            )
 
@@ -123,6 +124,9 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/no_check_set_white_list.py" ];then
           echo_line="You must have one RD (cryoco (Recommend), luotao1 or phlrain) approval for the python/paddle/fluid/tests/unittests/white_list/no_check_set_white_list.py, which manages the white list of setting no_check_set of check_output. \n"
           check_approval 1 12407750 26615455 6836917
+      elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/check_op_sequence_instance_0_input_white_list.py" ]; then
+          echo_line="You must have one RD (JepsonWong (Recommend), luotao1, phlrain) approval for the python/paddle/fluid/tests/unittests/white_list/check_op_sequence_instance_0_input_white_list.py, which manages the white list of instance size 0 input for sequence op test. \n"
+          check_approval 1 16509038 6836917 43953930
       elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/op_threshold_white_list.py" ];then
           echo_line="It is an Op accuracy problem, please take care of it. You must have one RD (juncaipeng (Recommend), zhangting2020 or luotao1) approval for the python/paddle/fluid/tests/unittests/white_list/op_threshold_white_list.py, which manages the white list of error threshold for op test with float64 precision. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Upgrade-OP-Precision-to-Float64. \n"
           check_approval 1 52520497 26615455 6836917
@@ -173,6 +177,28 @@ if [ "${NEW_OP_ADDED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
         echo_line="If you override GetExpectedKernelType method of OperatorWithKernel, please use OperatorWithKernel::IndicateVarDataType() method to get specific input variable's dtype, which checked whether the input variable is initialized (The details in https://github.com/PaddlePaddle/FluidDoc/pull/1527). If you don't use this method to check, you must have one RD (chenwhql (Recommend) , luotao1 or lanxianghit) approval for the usage of other methods.\n"
         check_approval 1 6836917 47554610 22561442
     fi
+fi
+
+ALL_SEQUENCE_OP=`grep '(sequence_' ${PADDLE_ROOT}/build/paddle/fluid/pybind/pybind.h | grep -Ev '^$' | cut -d'(' -f 2 | cut -d')' -f 1`
+INVALID_SEQUENCE_OP_UNITTEST_INSTANCE_0_INPUT=""
+for OP_NAME in ${ALL_SEQUENCE_OP}; do
+    SEQUENCE_INSTANCE_0_INPUT_WHITE_LIST=`python ${PADDLE_ROOT}/python/paddle/fluid/tests/unittests/white_list/check_op_sequence_instance_0_input_white_list.py ${OP_NAME}`
+    if [ "${SEQUENCE_INSTANCE_0_INPUT_WHITE_LIST}" == "True" ]; then
+        continue
+    fi
+    sequence_op_unittest_file="python/paddle/fluid/tests/unittests/sequence/test_${OP_NAME}.py"
+    if [ ! -f "${PADDLE_ROOT}/${sequence_op_unittest_file}" ]; then
+        INVALID_SEQUENCE_OP_UNITTEST_INSTANCE_0_INPUT="${INVALID_SEQUENCE_OP_UNITTEST_INSTANCE_0_INPUT}${sequence_op_unittest_file} (unittest file does not exists)\n"
+        continue
+    fi
+    instance_size_0_funtion_calls=`grep "self.get_sequence_instance_size_0_input(" ${PADDLE_ROOT}/${sequence_op_unittest_file} || true`
+    if [ "${instance_size_0_funtion_calls}" == "" ]; then
+        INVALID_SEQUENCE_OP_UNITTEST_INSTANCE_0_INPUT="${INVALID_SEQUENCE_OP_UNITTEST_INSTANCE_0_INPUT}${sequence_op_unittest_file} (missing required function call)\n"
+    fi
+done
+if [ "${INVALID_SEQUENCE_OP_UNITTEST_INSTANCE_0_INPUT}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="It is required that the LoDTensor in sequence related OP unittests must be obtained by self.get_sequence_instance_size_0_input() function to cover the case of instance size is 0. If it is a mismatch, please specify JepsonWong (Recommend), luotao1, phlrain review and approve.\nPlease check the following unittest files:\n${INVALID_SEQUENCE_OP_UNITTEST_INSTANCE_0_INPUT}"
+    check_approval 1 16509038 6836917 43953930
 fi
 
 HAS_OPERATORBASE_FLAG=`git diff -U0 --diff-filter=A upstream/$BRANCH | grep -E "public[[:space:]]+.*OperatorBase" || true`
