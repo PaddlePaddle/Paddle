@@ -261,6 +261,42 @@ class TestImperativeOptimizerExponentialDecay(TestImperativeOptimizerBase):
         self._check_mlp()
 
 
+class TestImperativeOptimizerL1Decay(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = SGDOptimizer(
+            learning_rate=0.1,
+            regularization=fluid.regularizer.L1Decay(regularization_coeff=0.1),
+            parameter_list=parameter_list)
+        return optimizer
+
+    def get_optimizer(self):
+        optimizer = SGDOptimizer(
+            learning_rate=0.1,
+            regularization=fluid.regularizer.L1Decay(regularization_coeff=0.1))
+        return optimizer
+
+    def test_sgd(self):
+        self._check_mlp()
+
+
+class TestImperativeOptimizerL2Decay(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = SGDOptimizer(
+            learning_rate=0.1,
+            regularization=fluid.regularizer.L2Decay(regularization_coeff=0.1),
+            parameter_list=parameter_list)
+        return optimizer
+
+    def get_optimizer(self):
+        optimizer = SGDOptimizer(
+            learning_rate=0.1,
+            regularization=fluid.regularizer.L2Decay(regularization_coeff=0.1))
+        return optimizer
+
+    def test_sgd(self):
+        self._check_mlp()
+
+
 class TestImperativeOptimizerInverseTimeDecay(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
         optimizer = Adam(
@@ -269,15 +305,46 @@ class TestImperativeOptimizerInverseTimeDecay(TestImperativeOptimizerBase):
                 decay_steps=10000,
                 decay_rate=0.5,
                 staircase=True),
+            regularization=fluid.regularizer.L2Decay(regularization_coeff=0.1),
             parameter_list=parameter_list)
         return optimizer
 
     def get_optimizer(self):
-        optimizer = Adam(learning_rate=fluid.layers.inverse_time_decay(
-            learning_rate=0.1,
-            decay_steps=10000,
-            decay_rate=0.5,
-            staircase=True))
+        optimizer = Adam(
+            learning_rate=fluid.layers.inverse_time_decay(
+                learning_rate=0.1,
+                decay_steps=10000,
+                decay_rate=0.5,
+                staircase=True),
+            regularization=fluid.regularizer.L2Decay(regularization_coeff=0.1))
+        return optimizer
+
+    def test_adam(self):
+        self._check_mlp()
+
+
+class TestImperativeAdamOptimizerLazyMode(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = Adam(
+            learning_rate=fluid.layers.inverse_time_decay(
+                learning_rate=0.1,
+                decay_steps=10000,
+                decay_rate=0.5,
+                staircase=True),
+            regularization=fluid.regularizer.L2Decay(regularization_coeff=0.1),
+            lazy_mode=True,
+            parameter_list=parameter_list)
+        return optimizer
+
+    def get_optimizer(self):
+        optimizer = Adam(
+            learning_rate=fluid.layers.inverse_time_decay(
+                learning_rate=0.1,
+                decay_steps=10000,
+                decay_rate=0.5,
+                staircase=True),
+            regularization=fluid.regularizer.L2Decay(regularization_coeff=0.1),
+            lazy_mode=True)
         return optimizer
 
     def test_adam(self):
@@ -354,14 +421,42 @@ class TestImperativeMomentumOptimizer(TestImperativeOptimizerBase):
         self._check_mlp()
 
 
-class TestImperativeLarsMomentumOptimizer(TestImperativeOptimizerBase):
+class TestImperativeMomentumOptimizerUseNesterov(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = LarsMomentumOptimizer(
-            learning_rate=0.001, momentum=0.9, parameter_list=parameter_list)
+        optimizer = MomentumOptimizer(
+            learning_rate=0.001,
+            momentum=0.9,
+            use_nesterov=True,
+            regularization=fluid.regularizer.L2Decay(regularization_coeff=0.1),
+            parameter_list=parameter_list)
         return optimizer
 
     def get_optimizer(self):
-        optimizer = LarsMomentumOptimizer(learning_rate=0.001, momentum=0.9)
+        optimizer = MomentumOptimizer(
+            learning_rate=0.001,
+            momentum=0.9,
+            use_nesterov=True,
+            regularization=fluid.regularizer.L2Decay(regularization_coeff=0.1))
+        return optimizer
+
+    def test_momentum(self):
+        self._check_mlp()
+
+
+class TestImperativeLarsMomentumOptimizer(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = LarsMomentumOptimizer(
+            learning_rate=0.001,
+            momentum=0.9,
+            regularization=fluid.regularizer.L2Decay(regularization_coeff=0.1),
+            parameter_list=parameter_list)
+        return optimizer
+
+    def get_optimizer(self):
+        optimizer = LarsMomentumOptimizer(
+            learning_rate=0.001,
+            momentum=0.9,
+            regularization=fluid.regularizer.L2Decay(regularization_coeff=0.1))
         return optimizer
 
     def test_larsmomentum(self):
@@ -371,11 +466,15 @@ class TestImperativeLarsMomentumOptimizer(TestImperativeOptimizerBase):
 class TestImperativeAdagradOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
         optimizer = AdagradOptimizer(
-            learning_rate=0.2, parameter_list=parameter_list)
+            learning_rate=0.2,
+            regularization=fluid.regularizer.L2Decay(regularization_coeff=0.1),
+            parameter_list=parameter_list)
         return optimizer
 
     def get_optimizer(self):
-        optimizer = AdagradOptimizer(learning_rate=0.2)
+        optimizer = AdagradOptimizer(
+            learning_rate=0.2,
+            regularization=fluid.regularizer.L2Decay(regularization_coeff=0.1))
         return optimizer
 
     def test_adagrad(self):
@@ -385,11 +484,15 @@ class TestImperativeAdagradOptimizer(TestImperativeOptimizerBase):
 class TestImperativeAdamaxOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
         optimizer = AdamaxOptimizer(
-            learning_rate=0.2, parameter_list=parameter_list)
+            learning_rate=0.2,
+            regularization=fluid.regularizer.L2Decay(regularization_coeff=0.1),
+            parameter_list=parameter_list)
         return optimizer
 
     def get_optimizer(self):
-        optimizer = AdamaxOptimizer(learning_rate=0.2)
+        optimizer = AdamaxOptimizer(
+            learning_rate=0.2,
+            regularization=fluid.regularizer.L2Decay(regularization_coeff=0.1))
         return optimizer
 
     def test_adamax(self):
@@ -420,11 +523,15 @@ class TestImperativeDpsgdOptimizer(TestImperativeOptimizerBase):
 class TestImperativeDecayedAdagradOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
         optimizer = DecayedAdagradOptimizer(
-            learning_rate=0.2, parameter_list=parameter_list)
+            learning_rate=0.2,
+            regularization=fluid.regularizer.L2Decay(regularization_coeff=0.1),
+            parameter_list=parameter_list)
         return optimizer
 
     def get_optimizer(self):
-        optimizer = DecayedAdagradOptimizer(learning_rate=0.2)
+        optimizer = DecayedAdagradOptimizer(
+            learning_rate=0.2,
+            regularization=fluid.regularizer.L2Decay(regularization_coeff=0.1))
         return optimizer
 
     def test_decayadagrad(self):
@@ -437,12 +544,16 @@ class TestImperativeAdadeltaOptimizer(TestImperativeOptimizerBase):
             learning_rate=0.0003,
             epsilon=1.0e-6,
             rho=0.95,
+            regularization=fluid.regularizer.L2Decay(regularization_coeff=0.1),
             parameter_list=parameter_list)
         return optimizer
 
     def get_optimizer(self):
         optimizer = AdadeltaOptimizer(
-            learning_rate=0.0003, epsilon=1.0e-6, rho=0.95)
+            learning_rate=0.0003,
+            epsilon=1.0e-6,
+            rho=0.95,
+            regularization=fluid.regularizer.L2Decay(regularization_coeff=0.1))
         return optimizer
 
     def test_adadelta(self):
@@ -452,11 +563,35 @@ class TestImperativeAdadeltaOptimizer(TestImperativeOptimizerBase):
 class TestImperativeRMSPropOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
         optimizer = RMSPropOptimizer(
-            learning_rate=0.1, parameter_list=parameter_list)
+            learning_rate=0.1,
+            regularization=fluid.regularizer.L2Decay(regularization_coeff=0.1),
+            parameter_list=parameter_list)
         return optimizer
 
     def get_optimizer(self):
-        optimizer = RMSPropOptimizer(learning_rate=0.1)
+        optimizer = RMSPropOptimizer(
+            learning_rate=0.1,
+            regularization=fluid.regularizer.L2Decay(regularization_coeff=0.1))
+        return optimizer
+
+    def test_rmsprop(self):
+        self._check_mlp()
+
+
+class TestImperativeRMSPropOptimizerCentered(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = RMSPropOptimizer(
+            learning_rate=0.1,
+            regularization=fluid.regularizer.L2Decay(regularization_coeff=0.1),
+            centered=True,
+            parameter_list=parameter_list)
+        return optimizer
+
+    def get_optimizer(self):
+        optimizer = RMSPropOptimizer(
+            learning_rate=0.1,
+            regularization=fluid.regularizer.L2Decay(regularization_coeff=0.1),
+            centered=True)
         return optimizer
 
     def test_rmsprop(self):
@@ -466,11 +601,15 @@ class TestImperativeRMSPropOptimizer(TestImperativeOptimizerBase):
 class TestImperativeFtrlOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
         optimizer = FtrlOptimizer(
-            learning_rate=0.1, parameter_list=parameter_list)
+            learning_rate=0.1,
+            regularization=fluid.regularizer.L2Decay(regularization_coeff=0.1),
+            parameter_list=parameter_list)
         return optimizer
 
     def get_optimizer(self):
-        optimizer = FtrlOptimizer(learning_rate=0.1)
+        optimizer = FtrlOptimizer(
+            learning_rate=0.1,
+            regularization=fluid.regularizer.L2Decay(regularization_coeff=0.1))
         return optimizer
 
     def test_ftrl(self):
@@ -486,12 +625,15 @@ class TestImperativeLambOptimizer(TestImperativeOptimizerBase):
         optimizer = LambOptimizer(
             learning_rate=0.002,
             exclude_from_weight_decay_fn=exclude_fn,
+            regularization=fluid.regularizer.L2Decay(regularization_coeff=0.1),
             parameter_list=parameter_list)
         return optimizer
 
     def get_optimizer(self):
         optimizer = LambOptimizer(
-            learning_rate=0.002, exclude_from_weight_decay_fn=exclude_fn)
+            learning_rate=0.002,
+            exclude_from_weight_decay_fn=exclude_fn,
+            regularization=fluid.regularizer.L2Decay(regularization_coeff=0.1))
         return optimizer
 
     def test_lamb(self):
