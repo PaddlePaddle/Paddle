@@ -70,7 +70,7 @@ class Communicator(object):
                 varnames = "&".join(vs["var_names"])
                 sections = "&".join([str(v) for v in vs["sections"]])
                 endpoints = "&".join(vs["epmap"])
-                is_sparse = ["1" if vs["is_sparse"] else "0"]
+                is_sparse = "1" if vs["is_sparse"] else "0"
 
                 push_var_names.append(k)
                 envs[k] = "#".join([varnames, sections, endpoints, is_sparse])
