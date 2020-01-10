@@ -372,12 +372,13 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
       std::vector<std::vector<EventItem>> child_table;
       std::vector<EventItem> table;
       bool do_next = false;
-      std::string op_end_str = "_op";
+      std::string op_end_str = "inner_op";
       for (auto it = child_map.begin(); it != child_map.end(); it++) {
         if (it->first == event_item.name) {
           table.push_back(it->second);
-          do_next = it->second.name.rfind(op_end_str) ==
-                    (it->second.name.length() - op_end_str.length());
+          if (!do_next)
+            do_next = !(it->second.name.rfind(op_end_str) ==
+                        (it->second.name.length() - op_end_str.length()));
         }
       }
       child_table.push_back(table);
