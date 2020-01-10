@@ -27,7 +27,8 @@ namespace inference {
 namespace tensorrt {
 
 int TensorRTEngine::runtime_batch_ = 1;
-
+std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>>
+    inference::tensorrt::TRTEngineManager::engines_;
 void TensorRTEngine::Build(const DescType &paddle_model) {
   PADDLE_ENFORCE(false, "not implemented");
 }

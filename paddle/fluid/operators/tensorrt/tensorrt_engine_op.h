@@ -88,14 +88,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
     if (enable_int8_ && calibration_data_.size()) {
       calibrator_.reset(new TRTInt8Calibrator(calibration_data_));
     }
-    bool has_engine =
-        inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
-            .Has(engine_key_ + std::to_string(predictor_id_));
+    bool has_engine = inference::tensorrt::TRTEngineManager::Has(
+        engine_key_ + std::to_string(predictor_id_));
 
     if (!calibration_mode_ && has_engine) {
-      trt_engine_ =
-          inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
-              .Get(engine_key_ + std::to_string(predictor_id_));
+      trt_engine_ = inference::tensorrt::TRTEngineManager::Get(
+          engine_key_ + std::to_string(predictor_id_));
     }
     precision_mode_ = AnalysisConfig::Precision::kFloat32;
     if (enable_int8_) {
@@ -278,11 +276,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
   TensorRTEngine *GetEngine(const framework::Scope &scope,
                             const platform::Place &dev_place) const {
     if (!trt_engine_) {
-      trt_engine_ =
-          inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
-              .Create(engine_key_ + std::to_string(predictor_id_),
-                      max_batch_size_, workspace_size_, precision_mode_,
-                      calibrator_.get(), device_id_);
+      trt_engine_ = inference::tensorrt::TRTEngineManager::Create(
+          engine_key_ + std::to_string(predictor_id_), max_batch_size_,
+          workspace_size_, precision_mode_, calibrator_.get(), device_id_);
       PrepareTRTEngine(scope, trt_engine_);
     }
     return trt_engine_;

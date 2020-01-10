@@ -261,10 +261,10 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
             std::back_inserter(*repetitive_params));
 
   tensorrt::TensorRTEngine *trt_engine =
-      inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
-          .Create(engine_key + std::to_string(predictor_id),
-                  Get<int>("max_batch_size"), Get<int>("workspace_size"),
-                  precision_mode, calibrator.get(), Get<int>("gpu_device_id"));
+      inference::tensorrt::TRTEngineManager::Create(
+          engine_key + std::to_string(predictor_id), Get<int>("max_batch_size"),
+          Get<int>("workspace_size"), precision_mode, calibrator.get(),
+          Get<int>("gpu_device_id"));
 
   bool need_serialize = (use_static_engine && !load_from_memory);
   if (need_serialize) {

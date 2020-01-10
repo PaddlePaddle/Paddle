@@ -237,17 +237,17 @@ class TensorRTEngine {
 
 class TRTEngineManager {
  public:
-  bool Empty() const { return engines_.size() == 0; }
-  bool Has(const std::string& name) const {
+  static bool Empty() { return engines_.size() == 0; }
+  static bool Has(const std::string& name) {
     if (engines_.count(name) == 0) return false;
     return engines_.at(name).get() != nullptr;
   }
 
-  TensorRTEngine* Get(const std::string& name) const {
+  static TensorRTEngine* Get(const std::string& name) {
     return engines_.at(name).get();
   }
 
-  TensorRTEngine* Create(
+  static TensorRTEngine* Create(
       std::string name, int max_batch, int max_workspace,
       AnalysisConfig::Precision precision = AnalysisConfig::Precision::kFloat32,
       TRTInt8Calibrator* calibrator = nullptr, int device_id = 0,
@@ -258,14 +258,15 @@ class TRTEngineManager {
     return p;
   }
 
-  void DeleteAll() {
+  static void DeleteAll() {
     for (auto& item : engines_) {
       item.second.reset(nullptr);
     }
   }
 
  private:
-  std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>> engines_;
+  static std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>>
+      engines_;
 };
 
 }  // namespace tensorrt
