@@ -66,7 +66,7 @@ class DygraphParameterNameChecker(object):
         Args:
             name(str): The name of parameter to check.
 
-        Returns(bool): If name is in name_set,  return True; Otherwise, return False.
+        Returns(bool): If the name is in name_set,  return True; Otherwise, return False.
 
         '''
         if name in self._name_set:
