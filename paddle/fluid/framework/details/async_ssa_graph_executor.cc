@@ -48,9 +48,6 @@ void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
   using RpcCtxMap = operators::distributed::RpcCtxMap;
   VLOG(3) << "ProcessGraph";
   RpcCtxMap send_varname_to_ctx;
-  RpcCtxMap recv_varname_to_ctx;
-
-  auto is_half_async = false;
 
   for (auto &node : graphs[0]->Nodes()) {
     VLOG(3) << "node name " << node->Name();
@@ -77,42 +74,16 @@ void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
             merge_add, use_send_handler);
         VLOG(3) << "find and init an send op: "
                 << send_varname_to_ctx[send_var_name];
-      } else if (node->Name() == "recv") {
-        auto recv_var_name = node->Op()->Output("Out")[0];
-        auto recv_varnames = boost::get<std::vector<std::string>>(
-            node->Op()->GetNullableAttr("recv_varnames"));
-        auto epmap = boost::get<std::vector<std::string>>(
-            node->Op()->GetNullableAttr("epmap"));
-        auto trainer_id =
-            boost::get<int>(node->Op()->GetNullableAttr("trainer_id"));
-        recv_varname_to_ctx[recv_var_name] = operators::distributed::RpcContext(
-            recv_var_name, recv_varnames, epmap, {}, trainer_id);
-        VLOG(3) << "find and remove an recv op: "
-                << recv_varname_to_ctx[recv_var_name];
-      } else if (node->Name() == "send_barrier") {
-        is_half_async =
-            boost::get<bool>(node->Op()->GetNullableAttr("half_async"));
-        VLOG(3) << "find send_barrier in async mode, set half_async="
-                << is_half_async;
       }
     }
   }
 
   // init communicator here
   if (send_varname_to_ctx.size() > 0) {
-    if (is_half_async) {
-      VLOG(3) << "this is distribute mode, will use HalfAsyncCommunicator";
-      auto *instance = operators::distributed::Communicator::InitInstance<
-          operators::distributed::HalfAsyncCommunicator>(
-          send_varname_to_ctx, recv_varname_to_ctx, scope);
-      if (!instance->IsRunning()) instance->Start();
-    } else {
-      VLOG(3) << "this is distribute mode, will use AsyncCommunicator";
-
-      auto *instance = operators::distributed::Communicator::InitInstance<
-          operators::distributed::AsyncCommunicator>(
-          send_varname_to_ctx, recv_varname_to_ctx, scope);
-      if (!instance->IsRunning()) instance->Start();
+    auto *instance = operators::distributed::Communicator::GetInstance();
+    if (instance == nullptr) {
+      platform::errors::InvalidArgument(
+          "Communicator is not Initialized, you may use FleetAPI");
     }
   }
 #endif
