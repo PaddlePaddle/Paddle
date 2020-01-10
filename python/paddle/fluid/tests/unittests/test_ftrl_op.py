@@ -21,6 +21,14 @@ from paddle.fluid.op import Operator
 from op_test import OpTest
 
 
+def safe_repr(obj):
+    try:
+        result = repr(obj)
+    except Exception:
+        result = object.__repr__(obj)
+    return result
+
+
 def ftrl_step(param, grad, rows, sq_accum, lin_accum, lr, l1, l2, lr_power):
     l1 += 1e-10
     l2 += 1e-10
@@ -70,8 +78,8 @@ def ftrl_step(param, grad, rows, sq_accum, lin_accum, lr, l1, l2, lr_power):
 class TestFTRLOp(OpTest):
     def setUp(self):
         self.op_type = "ftrl"
-        row_height = 102
-        row_numel = 105
+        row_height = 4
+        row_numel = 3
         w = np.random.random((row_height, row_numel)).astype("float32")
         g = np.random.random((row_height, row_numel)).astype("float32")
         sq_accum = np.full((row_height, row_numel), 0.1).astype("float32")
@@ -117,9 +125,9 @@ class TestSparseFTRLOp(unittest.TestCase):
         self.init_kernel()
         scope = core.Scope()
 
-        height = 100
-        rows = [i * 10 + 3 for i in range(10)]
-        row_numel = 64
+        height = 4
+        rows = [0, 2]
+        row_numel = 3
         l1 = 0.1
         l2 = 0.2
         lr_power = self.lr_power

@@ -21,6 +21,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+using SelectedRows = framework::SelectedRows;
 
 template <typename T>
 static inline HOSTDEVICE void UpdateStep(
@@ -107,7 +108,7 @@ class DenseUpdateWrapper {
   const T* p_;
   const T* s_acc_;
   const T* l_acc_;
-  const T lr_;
+  const T* lr_;
   const T l1_;
   const T l2_;
   const T lr_power_;
@@ -119,12 +120,13 @@ class DenseUpdateWrapper {
  public:
   DenseUpdateWrapper(const T* g, const T* p, const T* s_acc, const T* l_acc,
                      const T* lr, const T l1, const T l2, const T lr_power,
-                     int64_t row_numel, T* p_out, T* s_acc_out, T* l_acc_out)
+                     const int64_t row_numel, T* p_out, T* s_acc_out,
+                     T* l_acc_out)
       : g_(g),
         p_(p),
         s_acc_(s_acc),
         l_acc_(l_acc),
-        lr_(lr[0]),
+        lr_(lr),
         l1_(l1),
         l2_(l2),
         lr_power_(lr_power),
@@ -137,7 +139,7 @@ class DenseUpdateWrapper {
     auto m_base = i * row_numel_;
     auto n_base = m_base;
 
-    UpdateStep(g_, p_, s_acc_, l_acc_, lr_, l1_, l2_, lr_power_, row_numel_,
+    UpdateStep(g_, p_, s_acc_, l_acc_, *lr_, l1_, l2_, lr_power_, row_numel_,
                p_out_, s_acc_out_, l_acc_out_, m_base, n_base);
   }
 };
@@ -149,7 +151,7 @@ class SparseUpdateWrapper {
   const T* p_;
   const T* s_acc_;
   const T* l_acc_;
-  const T lr_;
+  const T* lr_;
   const T l1_;
   const T l2_;
   const T lr_power_;
@@ -162,13 +164,13 @@ class SparseUpdateWrapper {
  public:
   SparseUpdateWrapper(const T* g, const T* p, const T* s_acc, const T* l_acc,
                       const T* lr, const T l1, const T l2, const T lr_power,
-                      const int64_t* rows, int64_t row_numel, T* p_out,
+                      const int64_t* rows, const int64_t row_numel, T* p_out,
                       T* s_acc_out, T* l_acc_out)
       : g_(g),
         p_(p),
         s_acc_(s_acc),
         l_acc_(l_acc),
-        lr_(lr[0]),
+        lr_(lr),
         l1_(l1),
         l2_(l2),
         lr_power_(lr_power),
@@ -183,7 +185,7 @@ class SparseUpdateWrapper {
     auto m_base = i * row_numel_;
     auto n_base = j * row_numel_;
 
-    UpdateStep(g_, p_, s_acc_, l_acc_, lr_, l1_, l2_, lr_power_, row_numel_,
+    UpdateStep(g_, p_, s_acc_, l_acc_, *lr_, l1_, l2_, lr_power_, row_numel_,
                p_out_, s_acc_out_, l_acc_out_, m_base, n_base);
   }
 };
@@ -210,10 +212,6 @@ class FTRLOpKernel : public framework::OpKernel<T> {
     auto* sq_accum_out = ctx.Output<Tensor>("SquaredAccumOut");
     auto* lin_accum_out = ctx.Output<Tensor>("LinearAccumOut");
 
-    param_out->mutable_data<T>(ctx.GetPlace());
-    sq_accum_out->mutable_data<T>(ctx.GetPlace());
-    lin_accum_out->mutable_data<T>(ctx.GetPlace());
-
     auto l1 = static_cast<T>(ctx.Attr<float>("l1")) + static_cast<T>(1e-10);
     auto l2 = static_cast<T>(ctx.Attr<float>("l2")) + static_cast<T>(1e-10);
     auto lr_power = static_cast<T>(ctx.Attr<float>("lr_power"));
@@ -234,16 +232,16 @@ class FTRLOpKernel : public framework::OpKernel<T> {
           sq_accum_out->mutable_data<T>(ctx.GetPlace()),
           lin_accum_out->mutable_data<T>(ctx.GetPlace()));
       for_range(functor);
-    } else if (grad_var->IsType<framework::SelectedRows>()) {
-      auto grad = ctx.Input<framework::SelectedRows>("Grad");
+    } else if (grad_var->IsType<SelectedRows>()) {
+      auto grad = ctx.Input<SelectedRows>("Grad");
 
-      framework::SelectedRows tmp_merged_grad;
-      framework::SelectedRows* merged_grad = &tmp_merged_grad;
+      SelectedRows tmp_merged_grad;
+      SelectedRows* merged_grad = &tmp_merged_grad;
       math::scatter::MergeAdd<DeviceContext, T> merge_func;
       merge_func(ctx.template device_context<DeviceContext>(), *grad,
                  merged_grad);
 
-      const int64_t* rows = merged_grad->rows().Data(ctx.GetPlace());
+      const auto* rows = merged_grad->rows().Data(ctx.GetPlace());
       auto row_height = static_cast<int64_t>(merged_grad->value().dims()[0]);
       auto row_numel =
           static_cast<int64_t>(merged_grad->value().numel() / row_height);
