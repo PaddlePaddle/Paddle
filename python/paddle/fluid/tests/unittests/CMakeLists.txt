@@ -333,4 +333,5 @@ set_tests_properties(test_parallel_executor_test_while_train test_parallel_execu
         test_parallel_executor_feed_persistable_var
         test_parallel_executor_crf_auto_growth test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
         test_data_norm_op test_imperative_using_non_zero_gpu test_fuse_bn_act_pass
+        test_optimizer_in_control_flow
         test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
