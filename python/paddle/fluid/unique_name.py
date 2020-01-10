@@ -64,7 +64,7 @@ class DygraphParameterNameChecker(object):
         Check whether the name is used. If not used, insert into the _name_set.
 
         Args:
-            name(str): The name of paramete to check.
+            name(str): The name of parameter to check.
 
         Returns(bool): If name is in name_set,  return True; Otherwise, return False.
 
