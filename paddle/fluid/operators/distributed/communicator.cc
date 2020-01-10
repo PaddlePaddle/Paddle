@@ -64,6 +64,7 @@ std::shared_ptr<Communicator> Communicator::communicator_(nullptr);
 void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
                                  const RpcCtxMap &recv_varname_to_ctx,
                                  Scope *recv_scope) {
+  VLOG(0) << "AsyncCommunicator Initializing";
   send_varname_to_ctx_ = std::move(send_varname_to_ctx);
   recv_varname_to_ctx_ = std::move(recv_varname_to_ctx);
   recv_scope_ = std::move(recv_scope);
@@ -952,6 +953,7 @@ void GeoSgdCommunicator::Recv() {}
 void HalfAsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
                                      const RpcCtxMap &recv_varname_to_ctx,
                                      Scope *recv_scope) {
+  VLOG(0) << "HalfAsyncCommunicator Initializing";
   send_varname_to_ctx_ = std::move(send_varname_to_ctx);
   recv_varname_to_ctx_ = std::move(recv_varname_to_ctx);
   recv_scope_ = std::move(recv_scope);
@@ -978,7 +980,6 @@ void HalfAsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
 
 void HalfAsyncCommunicator::InitImpl(
     const paddle::framework::ProgramDesc &program, Scope *param_scope) {
-  VLOG(0) << "HalfAsyncCommunicator Initializing";
   RpcCtxMap send_varname_to_ctx;
   RpcCtxMap recv_varname_to_ctx;
   for (auto *op : program.Block(0).AllOps()) {

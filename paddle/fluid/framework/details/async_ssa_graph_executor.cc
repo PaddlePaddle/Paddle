@@ -42,6 +42,82 @@ inline void InitVarsInScope(const std::vector<VarInfo> &var_infos, Scope *scope,
   }
 }
 
+// get RpcContext and remote send and recv op
+void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+  using RpcCtxMap = operators::distributed::RpcCtxMap;
+  VLOG(3) << "ProcessGraph";
+  RpcCtxMap send_varname_to_ctx;
+  RpcCtxMap recv_varname_to_ctx;
+
+  auto is_half_async = false;
+
+  for (auto &node : graphs[0]->Nodes()) {
+    VLOG(3) << "node name " << node->Name();
+    if (node && node->IsOp()) {
+      if (node->Name() == "send") {
+        auto send_var_name = node->Op()->Input("X")[0];
+        auto send_varnames = boost::get<std::vector<std::string>>(
+            node->Op()->GetNullableAttr("send_varnames"));
+        auto epmap = boost::get<std::vector<std::string>>(
+            node->Op()->GetNullableAttr("epmap"));
+        auto height_section = boost::get<std::vector<int64_t>>(
+            node->Op()->GetNullableAttr("sections"));
+        auto trainer_id =
+            boost::get<int>(node->Op()->GetNullableAttr("trainer_id"));
+        auto merge_add =
+            boost::get<bool>(node->Op()->GetNullableAttr("merge_add"));
+        if (!merge_add) {
+          merge_add = FLAGS_communicator_is_sgd_optimizer;
+        }
+        auto use_send_handler =
+            boost::get<bool>(node->Op()->GetNullableAttr("use_send_handler"));
+        send_varname_to_ctx[send_var_name] = operators::distributed::RpcContext(
+            send_var_name, send_varnames, epmap, height_section, trainer_id,
+            merge_add, use_send_handler);
+        VLOG(3) << "find and init an send op: "
+                << send_varname_to_ctx[send_var_name];
+      } else if (node->Name() == "recv") {
+        auto recv_var_name = node->Op()->Output("Out")[0];
+        auto recv_varnames = boost::get<std::vector<std::string>>(
+            node->Op()->GetNullableAttr("recv_varnames"));
+        auto epmap = boost::get<std::vector<std::string>>(
+            node->Op()->GetNullableAttr("epmap"));
+        auto trainer_id =
+            boost::get<int>(node->Op()->GetNullableAttr("trainer_id"));
+        recv_varname_to_ctx[recv_var_name] = operators::distributed::RpcContext(
+            recv_var_name, recv_varnames, epmap, {}, trainer_id);
+        VLOG(3) << "find and remove an recv op: "
+                << recv_varname_to_ctx[recv_var_name];
+      } else if (node->Name() == "send_barrier") {
+        is_half_async =
+            boost::get<bool>(node->Op()->GetNullableAttr("half_async"));
+        VLOG(3) << "find send_barrier in async mode, set half_async="
+                << is_half_async;
+      }
+    }
+  }
+
+  // init communicator here
+  if (send_varname_to_ctx.size() > 0) {
+    if (is_half_async) {
+      VLOG(3) << "this is distribute mode, will use HalfAsyncCommunicator";
+      auto *instance = operators::distributed::Communicator::InitInstance<
+          operators::distributed::HalfAsyncCommunicator>(
+          send_varname_to_ctx, recv_varname_to_ctx, scope);
+      if (!instance->IsRunning()) instance->Start();
+    } else {
+      VLOG(3) << "this is distribute mode, will use AsyncCommunicator";
+
+      auto *instance = operators::distributed::Communicator::InitInstance<
+          operators::distributed::AsyncCommunicator>(
+          send_varname_to_ctx, recv_varname_to_ctx, scope);
+      if (!instance->IsRunning()) instance->Start();
+    }
+  }
+#endif
+}
+
 AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
     const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
     const std::vector<Scope *> &local_exec_scopes,
@@ -80,6 +156,7 @@ AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
   for (size_t i = 0; i < local_scopes_.size(); ++i) {
     InitVarsInScope(var_infos_, local_scopes_[i], local_exec_scopes_[i]);
   }
+  ProcessGraph(graphs_, local_scopes_[0]);
 }
 
 void AsyncSSAGraphExecutor::StartOffPythonTrainLoop() {
