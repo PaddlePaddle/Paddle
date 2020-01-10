@@ -14,6 +14,7 @@
 
 #include <gtest/gtest.h>
 #include <fstream>
+#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #include "paddle/fluid/framework/io/fs.h"
 
@@ -57,7 +58,7 @@ TEST(TEST_GLOO, store_1) {
 }
 
 TEST(TEST_FLEET, fleet_1) {
-  auto fleet = FleetWrapper();
+  auto fleet = paddle::framework::FleetWrapper();
 #ifdef PADDLE_WITH_PSLIB
 #else
   fleet.RunServer("", 0);
