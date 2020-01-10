@@ -187,23 +187,23 @@ if [ "${HAS_INPLACE_TESTS}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 46782768 47554610 43953930 6836917
 fi
 
+all_sequence_ops=`grep '(sequence_' ${PADDLE_ROOT}/build/paddle/fluid/pybind/pybind.h | grep -Ev '^$' | cut -d'(' -f 2 | cut -d')' -f 1`
 INVALID_SEQUENCE_OP_UNITTEST=""
-while read -r op_name ; do
+for op_name in ${all_sequence_ops}; do
     in_white_list=`python ${PADDLE_ROOT}/python/paddle/fluid/tests/unittests/white_list/check_op_sequence_batch_1_input_white_list.py ${op_name}`
     if [ "${in_white_list}" == "True" ]; then
         continue
     fi
     unittest_file="python/paddle/fluid/tests/unittests/sequence/test_${op_name}.py"
-    if [ ! -f "${unittest_file}" ]; then
+    if [ ! -f "${PADDLE_ROOT}/${unittest_file}" ]; then
         INVALID_SEQUENCE_OP_UNITTEST="${INVALID_SEQUENCE_OP_UNITTEST}${unittest_file} (unittest file does not exists)\n"
         continue
     fi
     batch_size_1_funtion_calls=`grep "self.get_sequence_batch_size_1_input(" ${PADDLE_ROOT}/${unittest_file} || true`
     if [ "${batch_size_1_funtion_calls}" == "" ]; then
-        INVALID_SEQUENCE_OP_UNITTEST="${INVALID_SEQUENCE_OP_UNITTEST}${unittest_file} (function call does not exists)\n"
+        INVALID_SEQUENCE_OP_UNITTEST="${INVALID_SEQUENCE_OP_UNITTEST}${unittest_file} (missing required function call)\n"
     fi
-done < <(grep '(sequence_' ${PADDLE_ROOT}/build/paddle/fluid/pybind/pybind.h | grep -Ev '^$' | cut -d'(' -f 2 | cut -d')' -f 1)
-
+done
 if [ "${INVALID_SEQUENCE_OP_UNITTEST}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="It is required that the LoDTensor in sequence related OP unittests must be obtained by self.get_sequence_batch_size_1_input() function to cover the case of batch size = 1. If it is a mismatch, please specify songyouwei (Recommend) or luotao1 review and approve.\nPlease check the following unittest files:\n${INVALID_SEQUENCE_OP_UNITTEST}"
     check_approval 1 2573291 6836917
