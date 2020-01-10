@@ -203,7 +203,6 @@ void localfs_mv(const std::string& src, const std::string& dest) {
   shell_execute(string::format_string("mv %s %s", src.c_str(), dest.c_str()));
 }
 
-
 static size_t& hdfs_buffer_size_internal() {
   static size_t x = 0;
   return x;

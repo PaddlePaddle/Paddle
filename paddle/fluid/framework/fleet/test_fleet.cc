@@ -56,7 +56,7 @@ TEST(TEST_GLOO, store_1) {
 #endif
 }
 
-TEST(TEST_FLEET fleet_1) {
+TEST(TEST_FLEET, fleet_1) {
   auto fleet = FleetWrapper();
 #ifdef PADDLE_WITH_PSLIB
 #else
