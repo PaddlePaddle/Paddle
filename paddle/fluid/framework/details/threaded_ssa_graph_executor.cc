@@ -170,8 +170,8 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
   for (size_t i = 0; i < fetch_tensors.size(); ++i) {
     auto &var_name = fetch_tensors[i];
     auto fetched_var_it = fetched_vars.find(var_name);
-    PADDLE_ENFORCE(
-        fetched_var_it != fetched_vars.end(),
+    PADDLE_ENFORCE_NE(
+        fetched_var_it, fetched_vars.end(),
         platform::errors::PreconditionNotMet(
             "Cannot find fetched variable(%s) in current computation graph. "
             "Possible reasons are:\n"
