@@ -17,6 +17,7 @@ from __future__ import print_function
 import os
 import random
 import unittest
+import warnings
 import numpy as np
 
 import paddle.fluid as fluid
@@ -55,7 +56,12 @@ class PassTest(unittest.TestCase):
                             feed=self.feeds,
                             fetch_list=self.fetch_list,
                             return_numpy=False)
-        return outs
+        outs_np = []
+        outs_lod = []
+        for out in outs:
+            outs_np.append(np.array(out))
+            outs_lod.append(out.lod())
+        return outs_np, outs_lod
 
     def _apply_ir_passes(self):
         graph = core.Graph(self.main_program.desc)
@@ -86,10 +92,10 @@ class PassTest(unittest.TestCase):
             # Initialize parameters on CPU
             cpu_executor = fluid.Executor(fluid.CPUPlace())
             cpu_executor.run(self.startup_program)
-            outs = self._run_program(cpu_executor, self.main_program)
+            outs, lods = self._run_program(cpu_executor, self.main_program)
         else:
             executor.run(self.startup_program)
-            outs = self._run_program(executor, self.main_program)
+            outs, lods = self._run_program(executor, self.main_program)
         self.assertTrue(
             len(self.fetch_list) == len(outs),
             "Checking the number of fetchs failed. Expected: {}, Received: {}".
@@ -100,12 +106,12 @@ class PassTest(unittest.TestCase):
         if self.fused_op_type is not None and self.num_fused_ops >= 0:
             self.check_fused_ops(opt_program)
 
-        if startup_on_cpu and not isinstance(place, fluid.CPUPlace()):
-            raise RuntimeError(
-                "Need to copy parameters from CPU to {} before run".format(
-                    place))
+        if startup_on_cpu and not isinstance(place, fluid.CPUPlace):
+            warnings.warn(
+                "Parameters are on CPU, and will be transfered to GPU automatically by data transform."
+            )
 
-        outs_opt = self._run_program(executor, opt_program)
+        outs_opt, lods_opt = self._run_program(executor, opt_program)
         self.assertTrue(
             len(self.fetch_list) == len(outs_opt),
             "Checking the number of fetchs failed. Expected: {}, Received: {}".
@@ -113,7 +119,7 @@ class PassTest(unittest.TestCase):
         for i in xrange(len(self.fetch_list)):
             self.assertTrue(
                 np.allclose(
-                    np.array(outs_opt[i]), np.array(outs[i]), atol=atol),
+                    outs_opt[i], outs[i], atol=atol),
                 "Output < {} > has diff at {}".format(self.fetch_list[i].name,
                                                       str(place)))
 

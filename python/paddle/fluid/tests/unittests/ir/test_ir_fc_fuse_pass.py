@@ -37,10 +37,13 @@ class FCFusePassTest(PassTest):
         self.num_fused_ops = 2
 
     def test_check_output(self):
-        for use_gpu in [False, True]:
+        use_gpu_set = [False]
+        if core.is_compiled_with_cuda():
+            use_gpu_set.append(True)
+        for use_gpu in use_gpu_set:
             self.pass_attrs = {"fc_fuse_pass": {"use_gpu": use_gpu}}
             place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
-            self.check_output_with_place(place)
+            self.check_output_with_place(place, startup_on_cpu=True)
 
 
 if __name__ == "__main__":
