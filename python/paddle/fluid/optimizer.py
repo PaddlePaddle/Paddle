@@ -243,7 +243,7 @@ class Optimizer(object):
             # create learning rate Variable
             # There is only one program in dygraph mode.
             if isinstance(self._learning_rate, float):
-                lr = self._global_learning_rate
+                lr = self._global_learning_rate()
                 if isinstance(lr, framework.Variable):
                     return
                 else:
@@ -264,7 +264,7 @@ class Optimizer(object):
                     "optimizer's learning rate must be float or LearningRateDecay"
                 )
         else:
-            lr = self._global_learning_rate
+            lr = self._global_learning_rate()
             if isinstance(lr, framework.Variable):
                 return
             else:
