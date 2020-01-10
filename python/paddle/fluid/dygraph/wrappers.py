@@ -72,7 +72,7 @@ def norm_except(param, dim, power=2):
         return norm_except(transposed_param, dim=0, power=power)
 
 
-def compute_weight(v, g, dim, power, epsilon=1e-12):
+def compute_weight(v, g, dim, power, epsilon=1e-30):
     assert len(g.shape) == 1, "magnitude should be a vector"
     v_normalized = F.elementwise_div(
         v, (norm_except(v, dim, power) + epsilon), axis=dim)
@@ -81,10 +81,25 @@ def compute_weight(v, g, dim, power, epsilon=1e-12):
 
 
 class WeightNormWrapper(Layer):
-    """A wrapper to apply weight norm to a layer's **weight**.
+    """A wrapper to apply weight normalization to a layer's **weight**. 
+
     Weight Norm is a reparameterization of the weight vectors
-    in a neural network that decouples the magnitude of those weight vectors from
-    their direction. Weight Norm has been implemented as discussed in this
+    in a neural network that decouples the magnitude of those weight 
+    vectors from their direction. It replaces the parameter specified 
+    by param_name (eg. "weight") with two parameters, one for the 
+    direction (eg. "weight_v") and the other for the magnitude 
+    (eg. "weight_g").
+
+    For weight :math:`w`, the equation is:
+
+    .. math::
+
+        w = g\\frac{v}{\\norm{v}}
+
+    where :math:`v` specifies the direction and :math:`g` specifies the magnitude.
+    It recomputes the weight before each call to the layer's `forward`.
+    
+    Weight Norm has been implemented as discussed in this
     paper: `Weight Normalization: A Simple Reparameterization to Accelerate
     Training of Deep Neural Networks <https://arxiv.org/pdf/1602.07868.pdf>`_.
     
@@ -93,11 +108,11 @@ class WeightNormWrapper(Layer):
         that does not contain other sublayers, and it has a weight parameter with 
         name `param_name`.
         param_name (str, optional): Defaults to "weight". The name of the parameter
-        in *layer* to which weight normalization is applied.
-        dim (int, optional): Defaults to -1. The dimension to exclude when computing
+        in **layer** to which weight normalization is applied.
+        dim (int, optional): Defaults to 0. The dimension to exclude when computing
         norm. Typically, the dim to except is the dim representing the output features,
         for Linear, the output dim is 1, for Convolutions the output dim is 0, and 
-        for ConvTransposes, the output dim is 1.
+        for ConvTransposes, the output dim is 0.
         power (int, optional): Defaults to 2. The order of the norm.
 
     Attributes:
@@ -107,10 +122,12 @@ class WeightNormWrapper(Layer):
         **weight_g** (Parameter): The Parameter g, which represents the magnitudes
         of the weight vectors.
         **weigth_norm_applied** (bool): A flag indicating whether to compute parameter
-        from **weight_v** and **weight_g**. If True, parameter is computed from 
-        **weight_v** and **weight_g** before layer's forward. If False, it indicates 
-        that weight normalization is removed, the parameter is computed and set back 
-        to layer, the forward of this Wrapper is just calling the layer's forward method.
+        from **weight_v** and **weight_g**. If True, when calling the `forward` method 
+        of this layer, the weight is computed from **weight_v** and **weight_g** and 
+        set  back to layer before calling `layer`'s forward. If False, it indicates 
+        that weight normalization is removed, the weight is computed and set back to
+        `layer`, the forward of this Wrapper is just calling the layer's forward 
+        method, which would accererate inference.
     
     Returns:
         None
@@ -118,10 +135,32 @@ class WeightNormWrapper(Layer):
     Raises:
         ValueError: if dim is out of range [-R, R), where R is the rank of the 
         parameter to which weight normalization is applied.
+
+    Examples:
+    .. code-block:: python
+
+        import numpy as np
+        from paddle import fluid
+        import paddle.fluid.dygraph as dg
+        
+        batch_size = 8
+        in_channels = 16
+        out_channels = 24
+        spatial_shape = (32, 32)
+        filter_size = (3, 3)
+        x = np.random.uniform(-1, 1, (batch_size, in_channels, *spatial_shape)).astype('float32')
+        place = fluid.CPUPlace()
+        with dg.guard(place):
+            conv2d = dg.Conv2D(in_channels, out_channels, filter_size)
+            conv2d_wn = dg.WeightNormWrapper(conv2d)
+            x_var = dg.to_variable(x)
+            y_var = conv2d_wn(x_var)
+            y_np = y_var.numpy()
+
     """
 
     @dygraph_only
-    def __init__(self, layer, param_name="weight", dim=-1, power=2):
+    def __init__(self, layer, param_name="weight", dim=0, power=2):
         super(WeightNormWrapper, self).__init__()
 
         self.param_name = param_name
