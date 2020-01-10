@@ -195,12 +195,12 @@ while read -r op_name ; do
     fi
     unittest_file="python/paddle/fluid/tests/unittests/sequence/test_${op_name}.py"
     if [ ! -f "${unittest_file}" ]; then
-        INVALID_SEQUENCE_OP_UNITTEST="${INVALID_SEQUENCE_OP_UNITTEST}${unittest_file}\n"
+        INVALID_SEQUENCE_OP_UNITTEST="${INVALID_SEQUENCE_OP_UNITTEST}${unittest_file} (unittest file does not exists)\n"
         continue
     fi
     batch_size_1_funtion_calls=`grep "self.get_sequence_batch_size_1_input(" ${PADDLE_ROOT}/${unittest_file} || true`
     if [ "${batch_size_1_funtion_calls}" == "" ]; then
-        INVALID_SEQUENCE_OP_UNITTEST="${INVALID_SEQUENCE_OP_UNITTEST}${unittest_file}\n"
+        INVALID_SEQUENCE_OP_UNITTEST="${INVALID_SEQUENCE_OP_UNITTEST}${unittest_file} (function call does not exists)\n"
     fi
 done < <(grep '(sequence_' ${PADDLE_ROOT}/build/paddle/fluid/pybind/pybind.h | grep -Ev '^$' | cut -d'(' -f 2 | cut -d')' -f 1)
 
