@@ -57,7 +57,8 @@ const std::unordered_set<std::string> op_has_unsed_vars_white_list = {
     "warpctc_grad",
     "sync_batch_norm",
     "match_matrix_tensor_grad",
-    "ngraph_engine"};
+    "ngraph_engine",
+    "rmsprop"};
 
 namespace paddle {
 namespace framework {
