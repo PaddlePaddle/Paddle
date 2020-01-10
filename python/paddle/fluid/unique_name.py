@@ -156,11 +156,11 @@ def switch(new_generator=None, new_para_name_checker=None):
             name2 = fluid.unique_name.generate('fc')
             print(name1, name2) # fc_0, fc_1
 
-            pre_generator = fluid.unique_name.switch() # switch to a new anonymous namespace.
+            pre_generator, pre_dygraph_name_checker = fluid.unique_name.switch() # switch to a new anonymous namespace.
             name2 = fluid.unique_name.generate('fc')
             print(name2) # fc_0
 
-            fluid.unique_name.switch(pre_generator) # switch back to pre_generator.
+            fluid.unique_name.switch(pre_generator, pre_dygraph_name_checker) # switch back to pre_generator.
             name3 = fluid.unique_name.generate('fc')
             print(name3) # fc_2, since pre_generator has generated fc_0, fc_1.
 
