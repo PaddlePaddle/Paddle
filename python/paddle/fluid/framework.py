@@ -4548,7 +4548,7 @@ class Program(object):
         """
         parameters = []
         for each_block in self.blocks:
-            parameters.append(each_block.all_parameters())
+            parameters.extend(each_block.all_parameters())
         return parameters
 
 

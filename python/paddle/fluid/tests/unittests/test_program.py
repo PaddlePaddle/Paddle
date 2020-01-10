@@ -139,8 +139,11 @@ class TestProgram(unittest.TestCase):
         loss = fluid.layers.mean(hidden)
         fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
-        for param in program.all_parameters():
-            print(param)
+        # NOTE: here the parameters are fc_0.w_0 and fc_0.b_0
+        param_list = program.all_parameters()
+        self.assertEqual(len(param_list), 2)
+        self.assertEqual(param_list[0].name, "fc_0.w_0")
+        self.assertEqual(param_list[1].name, "fc_0.b_0")
 
 
 if __name__ == '__main__':
