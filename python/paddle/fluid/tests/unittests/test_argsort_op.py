@@ -153,6 +153,7 @@ class TestArgsortOpFP32Axis(TestArgsortOp):
     def init_datatype(self):
         self.dtype = "float32"
 
+
 class TestArgsortOpFP32DescendingAxis(TestArgsortOp):
     def init_datatype(self):
         self.dtype = "float32"
