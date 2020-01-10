@@ -1,5 +1,6 @@
 include(operators)
 register_operators(EXCLUDES
+    fused_bn_activation_op
     conv_fusion_op
     fusion_transpose_flatten_concat_op
     fusion_conv_inception_op
@@ -8,6 +9,11 @@ register_operators(EXCLUDES
     fusion_group_op)
 
 if (WITH_GPU)
+    # fused_bn_activation_op needs cudnn 7.4.1 above
+    if (NOT ${CUDNN_VERSION} VERSION_LESS 7401)
+        op_library(fused_bn_activation_op)
+        file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(fused_batch_norm_act);\n")
+    endif()
     # conv_fusion_op needs cudnn 7 above
     if (NOT ${CUDNN_VERSION} VERSION_LESS 7100)
         op_library(conv_fusion_op)
