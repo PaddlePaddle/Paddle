@@ -3,7 +3,7 @@ from __future__ import print_function
 import sys
 
 NEED_TO_FIX_OP_LIST = [
-    # 'sequence_concat',  # comment this op for ci test
+    'sequence_concat',
     'sequence_conv',
     'sequence_enumerate',
     'sequence_erase',
