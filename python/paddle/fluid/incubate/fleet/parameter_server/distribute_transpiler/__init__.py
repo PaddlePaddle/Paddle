@@ -82,7 +82,8 @@ class DistributedTranspiler(Fleet):
             kwargs = {}
             kwargs["push_vars"] = self.vars_info
             kwargs["trainers"] = fleet.worker_num()
-            kwargs["push_nums"] = self._transpile_config.geo_sgd_need_push_nums
+            kwargs["push_nums"] = self._transpile_config.get_program_config(
+            ).geo_sgd_need_push_nums
 
             self._communicator = Communicator(
                 self.main_program, TrainingMode.GEO, kwargs,
