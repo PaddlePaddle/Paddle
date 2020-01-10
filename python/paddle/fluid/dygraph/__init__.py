@@ -44,6 +44,9 @@ from .backward_strategy import *
 from . import jit
 from .jit import *
 
+from . import wrappers
+from .wrappers import *
+
 __all__ = []
 __all__ += layers.__all__
 __all__ += base.__all__
@@ -55,3 +58,4 @@ __all__ += checkpoint.__all__
 __all__ += learning_rate_scheduler.__all__
 __all__ += backward_strategy.__all__
 __all__ += jit.__all__
+__all__ += wrappers.__all__
