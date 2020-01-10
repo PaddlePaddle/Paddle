@@ -41,7 +41,12 @@ class FCFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context, const int M,
                   const int N, const int K, const T* X, const T* W, T* Y,
-                  const T* B = nullptr, bool relu = false) {
+                  const T* B = nullptr, bool relu = false,
+                  bool padding_weights = false) {
+    PADDLE_ENFORCE_EQ(
+        padding_weights, false,
+        platform::errors::PermissionDenied(
+            "Weight padding in fc can not be used in GPU scope."));
     auto blas = math::GetBlas<platform::CUDADeviceContext, T>(context);
     blas.GEMM(false, false, M, N, K, static_cast<T>(1.0), X, K, W, N,
               static_cast<T>(0.0), Y, N);

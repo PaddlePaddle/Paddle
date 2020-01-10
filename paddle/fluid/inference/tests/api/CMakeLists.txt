@@ -27,10 +27,14 @@ function(download_model_and_data install_dir model_name data_name)
     download_data(${install_dir} ${data_name})
 endfunction()
 
+function(download_result install_dir result_name)
+    download_data(${install_dir} ${result_name})
+endfunction()
+
 function(inference_analysis_api_test target install_dir filename)
     inference_analysis_test(${target} SRCS ${filename}
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} benchmark
-        ARGS --infer_model=${install_dir}/model --infer_data=${install_dir}/data.txt)
+        ARGS --infer_model=${install_dir}/model --infer_data=${install_dir}/data.txt --refer_result=${install_dir}/result.txt)
 endfunction()
 
 function(inference_analysis_api_test_build TARGET_NAME filename)
@@ -70,13 +74,6 @@ function(inference_analysis_api_test_with_fake_data_run TARGET_NAME test_binary 
 	COMMAND ${test_binary}
         ARGS --infer_model=${model_dir}/model
              --disable_mkldnn_fc=${disable_fc}) 
-endfunction()
-
-function(inference_analysis_api_test_with_refer_result target install_dir filename)
-    inference_analysis_test(${target} SRCS ${filename}
-        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
-        ARGS --infer_model=${install_dir}/model --infer_data=${install_dir}/data.txt
-             --refer_result=${install_dir}/result.txt)
 endfunction()
 
 function(inference_analysis_api_qat_test_run TARGET_NAME test_binary fp32_model_dir int8_model_dir data_path)
@@ -147,6 +144,20 @@ set(PYRAMID_DNN_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/pyramid_dnn")
 download_model_and_data(${PYRAMID_DNN_INSTALL_DIR} "PyramidDNN_model.tar.gz" "PyramidDNN_data.txt.tar.gz")
 inference_analysis_api_test(test_analyzer_pyramid_dnn ${PYRAMID_DNN_INSTALL_DIR} analyzer_pyramid_dnn_tester.cc)
 
+#Ernie
+set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie")
+download_model_and_data(${ERNIE_INSTALL_DIR} "Ernie_model.tar.gz" "Ernie_data.txt.tar.gz" "Ernie_result.txt.tar.gz")
+download_result(${ERNIE_INSTALL_DIR} "Ernie_result.txt.tar.gz")
+inference_analysis_api_test(test_analyzer_ernie ${ERNIE_INSTALL_DIR} analyzer_ernie_tester.cc)
+
+#Ernie large
+set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie_Large")
+download_model_and_data(${ERNIE_INSTALL_DIR} "Ernie_large_model.tar.gz" "Ernie_large_data.txt.tar.gz" "Ernie_large_result.txt.tar.gz")
+download_result(${ERNIE_INSTALL_DIR} "Ernie_large_result.txt.tar.gz")
+inference_analysis_test(test_analyzer_ernie_large SRCS analyzer_ernie_tester.cc
+    EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} benchmark
+    ARGS --infer_model=${ERNIE_INSTALL_DIR}/model --infer_data=${ERNIE_INSTALL_DIR}/data.txt --refer_result=${ERNIE_INSTALL_DIR}/result.txt --ernie_large=true)
+
 # text_classification
 set(TEXT_CLASSIFICATION_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/text_classification")
 download_model_and_data(${TEXT_CLASSIFICATION_INSTALL_DIR} "text-classification-Senta.tar.gz" "text_classification_data.txt.tar.gz")
@@ -170,14 +181,14 @@ set(OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/ocr")
 if (NOT EXISTS ${OCR_INSTALL_DIR})
     inference_download_and_uncompress(${OCR_INSTALL_DIR} "http://paddlemodels.bj.bcebos.com/" "inference-vis-demos%2Focr.tar.gz")
 endif()
-inference_analysis_api_test_with_refer_result(test_analyzer_ocr ${OCR_INSTALL_DIR} analyzer_vis_tester.cc)
+inference_analysis_api_test(test_analyzer_ocr ${OCR_INSTALL_DIR} analyzer_vis_tester.cc)
 
 # mobilenet with transpose op
 set(MOBILENET_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet")
 if (NOT EXISTS ${MOBILENET_INSTALL_DIR})
     inference_download_and_uncompress(${MOBILENET_INSTALL_DIR} "http://paddlemodels.bj.bcebos.com/" "inference-vis-demos%2Fmobilenet.tar.gz")
 endif()
-inference_analysis_api_test_with_refer_result(test_analyzer_mobilenet_transpose ${MOBILENET_INSTALL_DIR} analyzer_vis_tester.cc)
+inference_analysis_api_test(test_analyzer_mobilenet_transpose ${MOBILENET_INSTALL_DIR} analyzer_vis_tester.cc)
 
 ### Image classification tests with fake data
 set(IMG_CLASS_TEST_APP "test_analyzer_image_classification")
@@ -334,13 +345,9 @@ inference_analysis_test(test_analyzer_capi SRCS analyzer_capi_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
             ARGS --infer_model=${RESNET50_MODEL_DIR}/model)
 
-set(CAPI_MODEL_INSTALL_PD_DIR "${INFERENCE_DEMO_INSTALL_DIR}/capi_mobilenet")
-if (NOT EXISTS ${CAPI_MODEL_INSTALL_PD_DIR})
-    inference_download_and_uncompress(${CAPI_MODEL_INSTALL_PD_DIR} "http://paddlemodels.bj.bcebos.com/" "inference-vis-demos%2Fmobilenet.tar.gz")
-endif()
 inference_analysis_test(test_analyzer_capi_pd_tensor SRCS analyzer_capi_pd_tensor_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
-            ARGS --infer_model=${CAPI_MODEL_INSTALL_PD_DIR}/model)
+            ARGS --infer_model=${MOBILENET_INSTALL_DIR}/model)
 
 if(WITH_MKLDNN)
   inference_analysis_test(test_analyzer_capi_int SRCS analyzer_capi_int_tester.cc
