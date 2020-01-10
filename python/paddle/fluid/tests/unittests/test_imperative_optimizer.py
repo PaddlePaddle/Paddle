@@ -712,7 +712,5 @@ class TestImperativeRecomputeOptimizer(TestImperativeOptimizerBase):
         self._check_exception(exception_message)
 
 
-# add optest then
-
 if __name__ == '__main__':
     unittest.main()
