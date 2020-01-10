@@ -185,16 +185,20 @@ fi
 
 INVALID_SEQUENCE_OP_UNITTEST=""
 while read -r op_name ; do
+    in_white_list=`python ${PADDLE_ROOT}/python/paddle/fluid/tests/unittests/white_list/check_op_sequence_batch_1_input_white_list.py ${op_name}`
+    if [ "${in_white_list}" == "True" ]; then
+        continue
+    fi
     unittest_file="python/paddle/fluid/tests/unittests/sequence/test_${op_name}.py"
     if [ ! -f "${unittest_file}" ]; then
         INVALID_SEQUENCE_OP_UNITTEST="${INVALID_SEQUENCE_OP_UNITTEST}${unittest_file}\n"
         continue
     fi
-    batch_size_1_funtion_calls=`grep "self.get_sequence_batch_size_1_input(" ../../${unittest_file} || true`
+    batch_size_1_funtion_calls=`grep "self.get_sequence_batch_size_1_input(" ${PADDLE_ROOT}/${unittest_file} || true`
     if [ "${batch_size_1_funtion_calls}" == "" ]; then
         INVALID_SEQUENCE_OP_UNITTEST="${INVALID_SEQUENCE_OP_UNITTEST}${unittest_file}\n"
     fi
-done < <(grep '(sequence_' ../paddle/fluid/pybind/pybind.h | cut -d'(' -f 2 | cut -d')' -f 1)
+done < <(grep '(sequence_' ${PADDLE_ROOT}/build/paddle/fluid/pybind/pybind.h | grep -Ev '^$' | cut -d'(' -f 2 | cut -d')' -f 1)
 
 if [ "${INVALID_SEQUENCE_OP_UNITTEST}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="It is required that the LoDTensor in sequence related OP unittests must be obtained by self.get_sequence_batch_size_1_input() function to cover the case of batch size = 1. If it is a mismatch, please specify songyouwei (Recommend) or luotao1 review and approve.\nPlease check the following unittest files:\n${INVALID_SEQUENCE_OP_UNITTEST}"
