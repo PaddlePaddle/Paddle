@@ -230,6 +230,28 @@ ProgramDesc BuildConvDequantConvProgramDesc(bool use_mkldnn, float scale_out,
   return prog;
 }
 
+// a->concat->b
+// b->Quant1(Scale1)->c
+// b->Quant2(Scale2)->d
+// b->concat->e
+// c->fc->f
+// d->fc->g
+ProgramDesc BuildMultipleQuantizeProgramDesc(bool use_mkldnn, float first_scale,
+                                             float second_scale) {
+  ProgramDesc prog;
+  for (auto& v : variable_names) {
+    prog.MutableBlock(0)->Var(v);
+  }
+  SetOp(&prog, "concat", "Concat1", {"a"}, {"b"}, use_mkldnn);
+  SetOp(&prog, "quantize", "Quantize1", {"b"}, {"c"}, use_mkldnn, first_scale);
+  SetOp(&prog, "quantize", "Quantize2", {"b"}, {"d"}, use_mkldnn, second_scale);
+  SetOp(&prog, "concat", "Concat2", {"b"}, {"e"}, use_mkldnn);
+  SetOp(&prog, "fc", "Fc1", {"c", "w1"}, {"f"}, use_mkldnn, first_scale);
+  SetOp(&prog, "fc", "Fc2", {"d", "w2"}, {"g"}, use_mkldnn, second_scale);
+
+  return prog;
+}
+
 void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
                       const char* var_name) {
   auto x = scope->Var(var_name);
@@ -465,6 +487,34 @@ TEST(CpuQuantizeSquashPass, fc_dequant_more_than_one_op_after_dequant) {
                 remove_nodes);
   IsForceFp32OutputTest(
       BuildFcDequantFcProgramDesc(use_mkldnn, scale_out, scale), "fc", false);
+}
+
+// a->Concat1->b
+// b->Concat2
+// b->Quatize1(Scale)->c
+// c->Fc1
+// c->Fc2
+TEST(CpuQuantizeSquashPass, quatize_with_same_scale) {
+  auto first_scale = 1.2345f;
+  auto second_scale = 1.2345f;
+  auto use_mkldnn = true;
+  // remove nodes: Quantize2 + d
+  auto remove_nodes = 1 + 1;
+  CountNodeTest(
+      BuildMultipleQuantizeProgramDesc(use_mkldnn, first_scale, second_scale),
+      remove_nodes);
+}
+
+// if scales are not the same, do not fuse
+TEST(CpuQuantizeSquashPass, quatize_with_different_scale) {
+  auto first_scale = 1.2345f;
+  auto second_scale = 1.5432f;
+  auto use_mkldnn = true;
+  // nothing change
+  auto remove_nodes = 0;
+  CountNodeTest(
+      BuildMultipleQuantizeProgramDesc(use_mkldnn, first_scale, second_scale),
+      remove_nodes);
 }
 
 }  // namespace ir

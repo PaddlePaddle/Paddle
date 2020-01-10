@@ -23,6 +23,7 @@
 namespace paddle {
 extern const std::vector<std::string> kTRTSubgraphPasses;
 extern const std::vector<std::string> kAnakinSubgraphPasses;
+extern const std::vector<std::string> kLiteSubgraphPasses;
 
 PassStrategy *AnalysisConfig::pass_builder() const {
   if (!pass_builder_.get()) {
@@ -127,6 +128,11 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(anakin_auto_config_layout_);
   CP_MEMBER(anakin_passes_filter_);
   CP_MEMBER(anakin_ops_filter_);
+
+  CP_MEMBER(use_lite_);
+  CP_MEMBER(lite_precision_mode_);
+  CP_MEMBER(lite_passes_filter_);
+  CP_MEMBER(lite_ops_filter_);
 
   // profile related.
   CP_MEMBER(with_profile_);
@@ -351,6 +357,20 @@ void AnalysisConfig::Update() {
     }
   }
 
+  if (use_lite_) {
+#ifndef PADDLE_WITH_LITE
+    LOG(WARNING) << "You tried to enable the lite subgraph "
+                    "but did not have the option -DWITH_LITE compiled.";
+#endif
+    pass_builder()->ClearPasses();
+    for (const auto &pass : kLiteSubgraphPasses) {
+      if (std::find(lite_passes_filter_.begin(), lite_passes_filter_.end(),
+                    pass) == lite_passes_filter_.end()) {
+        pass_builder()->AppendPass(pass);
+      }
+    }
+  }
+
   if (ir_debug_) {
     pass_builder()->TurnOnDebug();
   }
@@ -395,6 +415,8 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << cpu_math_library_num_threads_;
   ss << use_anakin_;
   ss << anakin_min_subgraph_size_;
+
+  ss << use_lite_;
   return ss.str();
 }
 
@@ -481,6 +503,17 @@ void AnalysisConfig::EnableAnakinEngine(
   use_anakin_ = true;
   anakin_precision_mode_ = precision_mode;
   anakin_auto_config_layout_ = auto_config_layout;
+  Update();
+}
+
+void AnalysisConfig::EnableLiteEngine(
+    AnalysisConfig::Precision precision_mode,
+    const std::vector<std::string> &passes_filter,
+    const std::vector<std::string> &ops_filter) {
+  use_lite_ = true;
+  lite_precision_mode_ = precision_mode;
+  lite_passes_filter_ = passes_filter;
+  lite_ops_filter_ = ops_filter;
   Update();
 }
 

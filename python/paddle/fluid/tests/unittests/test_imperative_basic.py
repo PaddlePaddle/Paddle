@@ -23,8 +23,8 @@ from test_imperative_base import new_program_scope
 
 
 class MyLayer(fluid.Layer):
-    def __init__(self, name_scope):
-        super(MyLayer, self).__init__(name_scope)
+    def __init__(self):
+        super(MyLayer, self).__init__()
 
     def forward(self, inputs):
         x = fluid.layers.relu(inputs)
@@ -60,16 +60,14 @@ class MLP(fluid.Layer):
 
 
 class SimpleRNNCell(fluid.Layer):
-    def __init__(self, name_scope, step_input_size, hidden_size, output_size,
-                 param_attr):
-        super(SimpleRNNCell, self).__init__(name_scope)
+    def __init__(self, step_input_size, hidden_size, output_size, param_attr):
+        super(SimpleRNNCell, self).__init__()
         self.step_input_size = step_input_size
         self.hidden_size = hidden_size
         self.output_size = output_size
         self._dtype = core.VarDesc.VarType.FP32
         self.param_attr = param_attr
 
-    def _build_once(self, inputs, pre_hidden):
         i2h_param_shape = [self.step_input_size, self.hidden_size]
         h2h_param_shape = [self.hidden_size, self.hidden_size]
         h2o_param_shape = [self.output_size, self.hidden_size]
@@ -90,7 +88,6 @@ class SimpleRNNCell(fluid.Layer):
             is_bias=False)
 
     def forward(self, input, pre_hidden):
-
         tmp_i2h = self.create_variable(dtype=self._dtype)
         tmp_h2h = self.create_variable(dtype=self._dtype)
         hidden = self.create_variable(dtype=self._dtype)
@@ -147,11 +144,10 @@ class SimpleRNNCell(fluid.Layer):
 
 
 class SimpleRNN(fluid.Layer):
-    def __init__(self, name_scope):
-        super(SimpleRNN, self).__init__(name_scope)
+    def __init__(self):
+        super(SimpleRNN, self).__init__()
         self.seq_len = 4
         self._cell = SimpleRNNCell(
-            self.full_name(),
             3,
             3,
             3,
@@ -297,7 +293,7 @@ class TestImperative(unittest.TestCase):
         with fluid.dygraph.guard():
             var_inp = fluid.dygraph.base.to_variable(np_inp)
             var_inp.stop_gradient = False
-            l = MyLayer("my_layer")
+            l = MyLayer()
             print(var_inp)
             x = l(var_inp)[0]
             self.assertIsNotNone(x)
@@ -308,7 +304,7 @@ class TestImperative(unittest.TestCase):
         with fluid.dygraph.guard():
             var_inp2 = fluid.dygraph.base.to_variable(np_inp)
             var_inp2.stop_gradient = False
-            l2 = MyLayer("my_layer")
+            l2 = MyLayer()
             x2 = l2(var_inp2)[0]
             self.assertIsNotNone(x2)
             dy_out2 = x2.numpy()
@@ -320,7 +316,7 @@ class TestImperative(unittest.TestCase):
         with new_program_scope():
             inp = fluid.layers.data(
                 name="inp", shape=[3], append_batch_size=False)
-            l = MyLayer("my_layer")
+            l = MyLayer()
             x = l(inp)[0]
             param_grads = fluid.backward.append_backward(
                 x, parameter_list=[l._x_for_debug.name])[0]
@@ -447,7 +443,7 @@ class TestImperative(unittest.TestCase):
         with fluid.dygraph.guard():
             var_inp = fluid.dygraph.base.to_variable(np_inp)
             var_inp = fluid.layers.reshape(var_inp, shape=[1, 4, 3])
-            simple_rnn = SimpleRNN("simple_rnn")
+            simple_rnn = SimpleRNN()
             outs, pre_hiddens = simple_rnn.forward(var_inp)
             dy_out = outs[3].numpy()
             outs[3].backward()
@@ -458,7 +454,7 @@ class TestImperative(unittest.TestCase):
         with fluid.dygraph.guard():
             var_inp2 = fluid.dygraph.base.to_variable(np_inp)
             var_inp2 = fluid.layers.reshape(var_inp2, shape=[1, 4, 3])
-            simple_rnn2 = SimpleRNN("simple_rnn")
+            simple_rnn2 = SimpleRNN()
             outs2, pre_hiddens2 = simple_rnn2.forward(var_inp2)
             dy_out2 = outs2[3].numpy()
             backward_strategy = fluid.dygraph.BackwardStrategy()
@@ -471,7 +467,7 @@ class TestImperative(unittest.TestCase):
         with new_program_scope():
             inp = fluid.layers.data(
                 name="inp", shape=[1, 4, 3], append_batch_size=False)
-            simple_rnn = SimpleRNN("simple_rnn")
+            simple_rnn = SimpleRNN()
             outs, pre_hiddens = simple_rnn(inp)
             param_grads = fluid.backward.append_backward(outs[3])
             exe = fluid.Executor(fluid.CPUPlace())
