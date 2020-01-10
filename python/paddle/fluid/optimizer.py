@@ -50,6 +50,8 @@ __all__ = [
     'RecomputeOptimizer'
 ]
 
+kDygraphLearningRate = "dygraph_global_lr"
+
 
 class Optimizer(object):
     """Optimizer Base class.
@@ -92,20 +94,16 @@ class Optimizer(object):
 
         self.regularization = regularization
         self._learning_rate = learning_rate
-        # the learning rate type should be inferenced from loss
+        # the learning rate type should be inferred from loss
         self._dtype = None
-        # each program should have a independent learning rate
-        # program -> Variable(learning_rate)
-        # self._learning_rate_map = dict()
-        self._global_learning_rate = learning_rate
-        if isinstance(self._learning_rate, framework.Variable):
-            # self._learning_rate_map[framework.default_main_program(
-            # )] = self._learning_rate
-            self._global_learning_rate = self._learning_rate
+        # each program should have a independent learning rate in static graph.
+        # program (or kDygraphLearningRate) -> Variable(learning_rate)
+        self._learning_rate_map = dict()
+
         # Dictionary of accumulators. Some optimizer subclasses need to
         # allocate and manage extra variables associated with the parameters
         # to train. These variables are called accumulators.
-        # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
+        # {accum_name : { parameter_name : accumulator_for_parameter, ...}, ...}
         self._accumulators = defaultdict(lambda: dict())
         self.helper = None
         self._opti_name_list = []
@@ -114,8 +112,9 @@ class Optimizer(object):
     @framework.dygraph_only
     def state_dict(self):
         '''
-        Get state dict information from optimizer. It contain all the variable used by optimizer. For Adam opimizer, contains beta1, beta2, momentum etc. If LearningRateDecay have been used, global_step will be include in state dict.
-        If the optimzier never be called(minimize function), the state_dict is empty.
+        Get state dict information from optimizer. It contain all the variable used by optimizer. For Adam optimizer,
+        it contains beta1, beta2, momentum etc. If LearningRateDecay has been used, global_step will be include in state dict.
+        If the optimizer never be called(minimize function), the state_dict is empty.
 
         Args: None
         Return:
@@ -151,7 +150,8 @@ class Optimizer(object):
     @framework.dygraph_only
     def set_dict(self, state_dict):
         '''
-        Load optimizer state dict. For Adam opimizer, contains beta1, beta2, momentum etc. If LearningRateDecay have been used, global_step will be changed.
+        Load optimizer state dict. For Adam optimizer, contains beta1, beta2, momentum etc.
+        If LearningRateDecay has been used, global_step will be changed.
 
         Args: 
             state_dict(dict) : Dict contains all the Variable needed by optimizer
@@ -162,7 +162,7 @@ class Optimizer(object):
             .. code-block:: python
 
                 with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding( "emb", [10, 10])
+                    emb = fluid.dygraph.Embedding([10, 10])
 
                     state_dict = emb.state_dict()
                     fluid.save_dygraph( state_dict, "paddle_dy")
@@ -180,7 +180,7 @@ class Optimizer(object):
 
         if isinstance(self._learning_rate, LearningRateDecay):
             assert 'global_step' in state_dict, \
-                    'Global step not in state dict, Dygraph use LearningRateDecay, global_step must in state_dict'
+                    'Global step is not in state dict. Global_step must be in state_dict if Dygraph uses LearningRateDecay.'
             global_step = state_dict['global_step']
 
             if isinstance(global_step, core.VarBase):
@@ -201,14 +201,14 @@ class Optimizer(object):
                 self._learning_rate.step_num = global_step[0]
             else:
                 raise RuntimeError(
-                    "Type not supprt, value in state dict must be [VarBase, Variable, numpy], the type is ",
+                    "Type is not supported, value in state dict must be [VarBase, Variable, numpy], the type is ",
                     type(global_step))
 
         self._accumulators_holder = state_dict
         for k, v in self._accumulators.items():
             for para_name, var_tmp in v.items():
                 assert var_tmp.name in state_dict, \
-                        "optimizer variable {} not found".format( var_tmp.name )
+                        "optimizer variable {} is not found".format( var_tmp.name )
                 var = var_tmp.value()
                 tensor = var.get_tensor()
                 model_np = np.array(tensor)
@@ -222,16 +222,16 @@ class Optimizer(object):
                 elif isinstance(load_para, np.ndarray):
                     load_para_np = load_para
                 else:
-                    raise RuntimeError("State dict type {} not supprt".format(
-                        str(type(load_para))))
+                    raise RuntimeError("State dict type {} is not supported".
+                                       format(str(type(load_para))))
 
                 assert model_np.shape == load_para_np.shape,  \
                                           "Parameter shape not match, Dygraph Parameter [ {} ] need tensor with shape {} but load tensor with shape {}".format(
-                                                 item.name, model_np.shape, load_para_np.shape)
+                                              var_tmp.name, model_np.shape, load_para_np.shape)
 
                 assert model_np.dtype == load_para_np.dtype, \
                                           "Parameter dtype not match, Dygraph Parameter [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
-                                                item.name, model_np.dtype, load_para_np.dtype)
+                                              var_tmp.name, model_np.dtype, load_para_np.dtype)
 
                 tensor.set(load_para_np, framework._current_expected_place())
 
@@ -241,32 +241,30 @@ class Optimizer(object):
     def _create_global_learning_rate(self):
         if framework.in_dygraph_mode():
             # create learning rate Variable
+            # There is only one program in dygraph mode.
             if isinstance(self._learning_rate, float):
                 lr = self._global_learning_rate
-
                 if isinstance(lr, framework.Variable):
                     return
                 else:
-                    # self._learning_rate_map[framework.default_main_program(
-                    # )]
-                    self._global_learning_rate = layers.create_global_var(
-                        name=unique_name.generate("learning_rate"),
-                        shape=[1],
-                        value=float(self._learning_rate),
-                        dtype='float32' if self._dtype is None else self._dtype,
-                        persistable=True)
+                    self._learning_rate_map[
+                        kDygraphLearningRate] = layers.create_global_var(
+                            name=unique_name.generate("learning_rate"),
+                            shape=[1],
+                            value=float(self._learning_rate),
+                            dtype='float32'
+                            if self._dtype is None else self._dtype,
+                            persistable=True)
             # get learning rate Variable from LearningRateDecay
             elif isinstance(self._learning_rate, LearningRateDecay):
-                # self._learning_rate_map[framework.default_main_program(
-                # )] \
-                self._global_learning_rate = self._learning_rate()
+                self._learning_rate_map[
+                    kDygraphLearningRate] = self._learning_rate()
             else:
                 raise TypeError(
                     "optimizer's learning rate must be float or LearningRateDecay"
                 )
         else:
             lr = self._global_learning_rate
-
             if isinstance(lr, framework.Variable):
                 return
             else:
@@ -277,23 +275,27 @@ class Optimizer(object):
                     )
 
             # create learning rate in the current main program
-            # self._learning_rate_map[framework.default_main_program(
-            # )] \
-            self._global_learning_rate = layers.create_global_var(
+            # There can be more than one program by use `with program_guard()`.
+            # In this case, optimizer may be defined outside of `program_guard`,
+            # so we should use program as hashKey to get lr easily.
+            self._learning_rate_map[framework.default_main_program(
+            )] = layers.create_global_var(
                 name=unique_name.generate("learning_rate"),
                 shape=[1],
                 value=float(self._learning_rate),
                 dtype='float32' if self._dtype is None else self._dtype,
                 persistable=True)
 
-    # def _global_learning_rate(self, program=None):
-    #     """
-    #     get global decayed learning rate
-    #     :return:
-    #     """
-    #     if program is None:
-    #         program = framework.default_main_program()
-    #     return self._learning_rate_map.get(program, None)
+    def _global_learning_rate(self, program=None):
+        """
+        get global decayed learning rate
+        :return:
+        """
+        if framework.in_dygraph_mode():
+            return self._learning_rate_map.get(kDygraphLearningRate, None)
+        if program is None:
+            program = framework.default_main_program()
+        return self._learning_rate_map.get(program, None)
 
     def _append_optimize_op(self, block, param_and_grad):
         """ append optimize operator to block and return all the added optimize_op
@@ -308,12 +310,12 @@ class Optimizer(object):
             return param_lr
         else:
             if param_lr == 1.0:
-                return self._global_learning_rate
+                return self._global_learning_rate()
             else:
                 with default_main_program()._lr_schedule_guard(
                         is_with_opt=True), framework.name_scope(
                             'scale_with_param_lr'):
-                    return self._global_learning_rate * param_lr
+                    return self._global_learning_rate() * param_lr
 
     def _create_accumulators(self, block, parameters):
         """Create all accumulators needed by the parameters
@@ -426,7 +428,7 @@ class Optimizer(object):
         # _create_accumulators method if it needs to create accumulators
         # for parameters and extend _finish_update method to add custom ops.
 
-        # Allways called under program_guard use global block as loss block
+        # Always called under program_guard use global block as loss block
         # But if current block is in control flow, append optimize op in the
         # grad block of current block
 
