@@ -252,23 +252,32 @@ class TestMultiOptimizersMultiCardsError(unittest.TestCase):
             layers.case([(cond, lambda: fn_1(adam, avg_loss))],
                         lambda: fn_2(sgd, avg_loss))
 
-        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(startup_program)
+        cpu_place = fluid.CPUPlace()
+        cuda_place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
-        os.environ['CPU_NUM'] = str(2)
-        compile_prog = compiler.CompiledProgram(
-            main_program).with_data_parallel(avg_loss.name)
+        for place in [cpu_place, cuda_place]:
 
-        np.random.seed(SEED)
+            exe = fluid.Executor(place)
+            exe.run(startup_program)
 
-        def not_implemented_error():
-            exe.run(compile_prog,
-                    feed={
-                        'X': np.random.random(size=[64, 10]).astype('float32'),
-                    })
+            np.random.seed(SEED)
+            os.environ['CPU_NUM'] = str(2)
+            pe_exe = fluid.ParallelExecutor(
+                use_cuda=use_cuda,
+                main_program=main_program,
+                loss_name=avg_loss.name)
+            num_devices = pe_exe.device_count
 
-        self.assertRaises(NotImplementedError, not_implemented_error)
+            def not_implemented_error():
+                pe_exe.run(feed={
+                    'X': np.random.random(size=[64, 10]).astype('float32'),
+                },
+                           fetch_list=[avg_loss.name])
+
+            if num_devices > 1:
+                self.assertRaises(NotImplementedError, not_implemented_error)
+            else:
+                not_implemented_error()
 
 
 if __name__ == '__main__':
