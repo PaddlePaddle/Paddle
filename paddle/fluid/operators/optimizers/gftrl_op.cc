@@ -24,41 +24,58 @@ class GFTRLOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Param"),
-                   "Input(Param) of G-FTRL should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("SquaredAccumulator"),
-                   "Input(SquaredAccumulator) of G-FTRL should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("LinearAccumulator"),
-                   "Input(LinearAccumulator) of G-FTRL should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Grad"),
-                   "Input(Grad) of G-FTRL should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("LearningRate"),
-                   "Input(LearningRate) of G-FTRL should not be null.");
-    PADDLE_ENFORCE(
-        ctx->GetInputsVarType("Param").front() ==
-            framework::proto::VarType::LOD_TENSOR,
-        "The input var's type should be LoDTensor, but the received is %s",
-        ctx->Inputs("Param").front(), ctx->GetInputsVarType("Param").front());
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Param"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(Param) of G-FTRL should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("SquaredAccumulator"), true,
+        platform::errors::InvalidArgument(
+            "Input(SquaredAccumulator) of G-FTRL should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("LinearAccumulator"), true,
+        platform::errors::InvalidArgument(
+            "Input(LinearAccumulator) of G-FTRL should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Grad"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(Grad) of G-FTRL should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("LearningRate"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(LearningRate) of G-FTRL should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->GetInputsVarType("Param").front(),
+        framework::proto::VarType::LOD_TENSOR,
+        platform::errors::InvalidArgument(
+            "The input var's type should be LoDTensor, but the received is %s",
+            ctx->Inputs("Param").front(),
+            ctx->GetInputsVarType("Param").front()));
 
-    PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
-                   "Output(ParamOut) of G-FTRL should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("SquaredAccumOut"),
-                   "Output(SquaredAccumOut) of G-FTRL should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("LinearAccumOut"),
-                   "Output(LinearAccumOut) of G-FTRL should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("ParamOut"), true,
+                      platform::errors::InvalidArgument(
+                          "Output(ParamOut) of G-FTRL should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("SquaredAccumOut"), true,
+        platform::errors::InvalidArgument(
+            "Output(SquaredAccumOut) of G-FTRL should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("LinearAccumOut"), true,
+        platform::errors::InvalidArgument(
+            "Output(LinearAccumOut) of G-FTRL should not be null."));
 
     auto param_dim = ctx->GetInputDim("Param");
     PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("Grad"),
-                      "Two input of G-FTRL Op's dimension must be same.");
+                      platform::errors::InvalidArgument(
+                          "Two input of G-FTRL Op's dimension must be same."));
 
     auto lr_dim = ctx->GetInputDim("LearningRate");
     PADDLE_ENFORCE_NE(framework::product(lr_dim), 0,
-                      "Maybe the Input variable LearningRate has not "
-                      "been initialized. You may need to confirm "
-                      "if you put exe.run(startup_program) "
-                      "after optimizer.minimize function.");
-    PADDLE_ENFORCE_EQ(framework::product(lr_dim), 1,
-                      "Learning Rate should be a scalar.");
+                      platform::errors::InvalidArgument(
+                          "Maybe the Input variable LearningRate has not "
+                          "been initialized. You may need to confirm "
+                          "if you put exe.run(startup_program) "
+                          "after optimizer.minimize function."));
+    PADDLE_ENFORCE_EQ(
+        framework::product(lr_dim), 1,
+        platform::errors::InvalidArgument("Learning Rate should be a scalar."));
 
     ctx->SetOutputDim("ParamOut", param_dim);
     ctx->SetOutputDim("SquaredAccumOut", param_dim);
@@ -113,32 +130,6 @@ class GFTRLOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(-0.5f);
     AddComment(R"DOC(
 G-FTRL (Group-Sparsity-Regularized FTRL) Operator.
-
-Optimizer that implements the G-FTRL algorithm:
-
-$$
-new\_accum = squared\_accum + grad^2 \\
-if (lr\_power == -0.5) {
-   linear\_accum += grad - (\surd(new\_accum) - \surd(squared\_accum)) /
-                   (learning\_rate * param) \\
-} else {
-   linear\_accum += grad -
-                  (new\_accum^{-lr\_power} - accum^{-lr\_power}) /
-                  (learning\_rate * param) \\
-}
-
-x = (l1 * sign(linear\_accum) - linear\_accum)
-if (lr\_power == -0.5) {
-   y = \frac{\surd(new\_accum)}{learning\_rate} + (2 * l2) \\
-   pre\_shrink = \frac{x}{y} \\
-   param = (abs(linear\_accum) > l1).select(pre\_shrink, 0.0) \\
-} else {
-   y = \frac{new\_accum^{-lr\_power}}{learning\_rate} + (2 * l2) \\
-   pre\_shrink = \frac{x}{y} \\
-   param = (abs(linear\_accum) > l1).select(pre\_shrink, 0.0) \\
-}
-squared\_accum += grad^2;
-$$
 
 The paper that proposed Group-Sparsity-Regularized FTRL (G-FTRL):
 (https://research.fb.com/wp-content/uploads/2019/09/Feature-Selection-for-Facebook-Feed-Ranking-System-via-a-Group-Sparsity-Regularized-Training-Algorithm.pdf)

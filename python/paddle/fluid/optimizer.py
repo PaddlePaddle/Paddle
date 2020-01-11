@@ -2607,39 +2607,6 @@ class GFtrlOptimizer(Optimizer):
     The paper that proposed Group-Sparsity-Regularized FTRL (G-FTRL):
     (https://research.fb.com/wp-content/uploads/2019/09/Feature-Selection-for-Facebook-Feed-Ranking-System-via-a-Group-Sparsity-Regularized-Training-Algorithm.pdf)
 
-    ..  math::
-
-        &new\_accum = squared\_accum + grad^2
-
-        &if (lr\_power == -0.5):
-
-        &\quad  linear\_accum += grad - \\frac{\\sqrt{new\_accum} - \\sqrt{squared\_accum}}{learning\_rate * param}
-
-        &else:
-
-        &\quad   linear\_accum += grad - \\frac{new\_accum^{-lr\_power} - accum^{-lr\_power}}{learning\_rate * param}
-
-
-        &x = l1 * sign(linear\_accum) - linear\_accum
-
-        &if (lr\_power == -0.5):
-
-        &\quad   y = \\frac{\\sqrt{new\_accum}}{learning\_rate} + (2 * l2)
-
-        &\quad   pre\_shrink = \\frac{x}{y}
-
-        &\quad   param = (abs(linear\_accum) > l1).select(pre\_shrink, 0.0)
-
-        &else:
-
-        &\quad   y = \\frac{new\_accum^{-lr\_power}}{learning\_rate} + (2 * l2)
-
-        &\quad   pre\_shrink = \\frac{x}{y}
-
-        &\quad   param = (abs(linear\_accum) > l1).select(pre\_shrink, 0.0)
-
-        &squared\_accum += grad^2
-
     Parameters:
         learning_rate (float|Variable): Global learning rate.
         l1 (float): L1 regularization strength, default is 0.0.
