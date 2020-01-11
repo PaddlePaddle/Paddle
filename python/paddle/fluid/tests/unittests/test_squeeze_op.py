@@ -32,10 +32,10 @@ class TestSqueezeOp(OpTest):
         self.outputs = {"Out": self.inputs["X"].reshape(self.new_shape), }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_dygraph=False)
 
     def init_test_case(self):
         self.ori_shape = (1, 3, 1, 40)

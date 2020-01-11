@@ -30,7 +30,7 @@ class TestUnsqueezeOp(OpTest):
         self.outputs = {"Out": self.inputs["X"].reshape(self.new_shape)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out")
