@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import random
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 from op_test import OpTest
@@ -78,8 +79,8 @@ def update_step(param, grad, rows, sq_accum, lin_accum, lr, l1, l2, lr_power):
 class TestGFTRLOp(OpTest):
     def setUp(self):
         self.op_type = "gftrl"
-        row_height = 4
-        row_numel = 3
+        row_height = 100
+        row_numel = 16
         w = np.random.random((row_height, row_numel)).astype("float32")
         g = np.random.random((row_height, row_numel)).astype("float32")
         sq_accum = np.full((row_height, row_numel), 0.1).astype("float32")
@@ -125,9 +126,9 @@ class TestSparseGFTRLOp(unittest.TestCase):
         self.init_kernel()
         scope = core.Scope()
 
-        height = 4
-        rows = [0, 2]
-        row_numel = 3
+        height = 100
+        rows = random.sample(range(height), 30)
+        row_numel = 16
         l1 = 0.1
         l2 = 0.2
         lr_power = self.lr_power
