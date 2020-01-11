@@ -58,9 +58,9 @@ TEST(TEST_GLOO, store_1) {
 }
 
 TEST(TEST_FLEET, fleet_1) {
-  auto fleet = paddle::framework::FleetWrapper();
+  auto fleet = paddle::framework::FleetWrapper::GetInstance();
 #ifdef PADDLE_WITH_PSLIB
 #else
-  fleet.RunServer("", 0);
+  fleet->RunServer("", 0);
 #endif
 }
