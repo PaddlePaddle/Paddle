@@ -70,8 +70,6 @@ def get_numeric_gradient(place,
 
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.shape())
-    if not hasattr(get_numeric_gradient, "is_large_shape"):
-        get_numeric_gradient.is_large_shape = True
     if tensor_size < 100:
         get_numeric_gradient.is_large_shape = False
     tensor_to_check_dtype = tensor_to_check._dtype()
@@ -186,6 +184,8 @@ class OpTest(unittest.TestCase):
 
         cls._use_system_allocator = _set_use_system_allocator(True)
 
+        get_numeric_gradient.is_large_shape = True
+
     @classmethod
     def tearDownClass(cls):
         """Restore random seeds"""
@@ -229,8 +229,7 @@ class OpTest(unittest.TestCase):
                     "This test of %s op needs check_grad with fp64 precision." %
                     cls.op_type)
 
-        if hasattr(get_numeric_gradient, "is_large_shape") \
-            and not get_numeric_gradient.is_large_shape:
+        if not get_numeric_gradient.is_large_shape:
             raise AssertionError(
                 "Input's shape should be large than or equal to 100 for " +
                 cls.op_type + " Op.")
