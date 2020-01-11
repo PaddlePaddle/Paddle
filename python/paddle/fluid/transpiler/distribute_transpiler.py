@@ -2108,6 +2108,9 @@ class DistributeTranspiler(object):
         elif op_type == "ftrl":
             if varkey in ["SquaredAccumulator", "LinearAccumulator"]:
                 return param_shape
+        elif op_type == "gftrl":
+            if varkey in ["SquaredAccumulator", "LinearAccumulator"]:
+                return param_shape
         elif op_type == "sgd":
             pass
         else:
