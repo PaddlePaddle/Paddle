@@ -35,6 +35,26 @@ class TestElementwisePowOp(OpTest):
         self.check_grad(['X', 'Y'], 'Out')
 
 
+class TestElementwisePowOp_big_shape_1(TestElementwisePowOp):
+    def setUp(self):
+        self.op_type = "elementwise_pow"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [10, 10]).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, [10, 10]).astype("float64")
+        }
+        self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
+
+
+class TestElementwisePowOp_big_shape_2(TestElementwisePowOp):
+    def setUp(self):
+        self.op_type = "elementwise_pow"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [10, 10]).astype("float64"),
+            'Y': np.random.uniform(0.1, 1, [10, 10]).astype("float64") * 20
+        }
+        self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
+
+
 class TestElementwisePowOp_scalar(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"

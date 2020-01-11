@@ -62,11 +62,10 @@ class TestSppOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        if self.pool_type != "avg":
-            self.check_grad(['X'], 'Out', max_relative_error=0.05)
+        self.check_grad(['X'], 'Out')
 
     def init_test_case(self):
-        self.shape = [4, 2, 4, 4]
+        self.shape = [3, 2, 4, 4]
         self.pyramid_height = 3
         self.pool2D_forward_naive = max_pool2D_forward_naive
         self.pool_type = "max"
@@ -74,7 +73,7 @@ class TestSppOp(OpTest):
 
 class TestCase2(TestSppOp):
     def init_test_case(self):
-        self.shape = [3, 2, 4, 4]
+        self.shape = [3, 2, 16, 16]
         self.pyramid_height = 3
         self.pool2D_forward_naive = avg_pool2D_forward_naive
         self.pool_type = "avg"

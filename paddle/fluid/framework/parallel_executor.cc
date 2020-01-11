@@ -379,6 +379,8 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
   return graph;
 }
 
+size_t ParallelExecutor::DeviceCount() const { return member_->places_.size(); }
+
 std::vector<Scope *> &ParallelExecutor::GetLocalScopes() {
   return member_->local_scopes_;
 }

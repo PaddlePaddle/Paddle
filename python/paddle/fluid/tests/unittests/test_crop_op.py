@@ -66,7 +66,7 @@ class TestCropOp(OpTest):
         }
 
     def initTestCase(self):
-        self.x_shape = (8, 8)
+        self.x_shape = (10, 10)
         self.crop_shape = (2, 2)
         self.offsets = [1, 2]
 
@@ -86,8 +86,8 @@ class TestCase1(TestCropOp):
 
 class TestCase2(TestCropOp):
     def initTestCase(self):
-        self.x_shape = (4, 8)
-        self.crop_shape = [4, 8]
+        self.x_shape = (15, 8)
+        self.crop_shape = [15, 8]
         self.offsets = [0, 0]
 
 
@@ -101,15 +101,15 @@ class TestCase3(TestCropOp):
 
 class TestCase4(TestCropOp):
     def initTestCase(self):
-        self.x_shape = (4, 4)
-        self.crop_shape = [4, 4]
+        self.x_shape = (10, 10)
+        self.crop_shape = [10, 10]
         self.offsets = [0, 0]
         self.crop_by_input = True
 
 
 class TestCase5(TestCropOp):
     def initTestCase(self):
-        self.x_shape = (3, 4, 5)
+        self.x_shape = (3, 4, 10)
         self.crop_shape = [2, 2, 3]
         self.offsets = [1, 0, 2]
         self.offset_by_input = True
