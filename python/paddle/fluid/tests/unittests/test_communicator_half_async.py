@@ -146,7 +146,11 @@ half_run_server.run_ut()
             ps_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
+
         os.environ["TRAINING_ROLE"] = "TRAINER"
+        os.environ["FLAGS_communicator_send_queue_size"] = "1"
+        os.environ["FLAGS_communicator_max_merge_var_num"] = "1"
+
         self.run_ut()
         ps_proc.kill()
 
