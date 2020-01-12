@@ -81,10 +81,12 @@ void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
   // init communicator here
   if (send_varname_to_ctx.size() > 0) {
     auto *instance = operators::distributed::Communicator::GetInstance();
-    if (instance == nullptr) {
-      platform::errors::InvalidArgument(
-          "Communicator is not Initialized, you may use FleetAPI");
-    }
+    auto initialized = instance ? true : false;
+    PADDLE_ENFORCE_EQ(initialized, true,
+                      platform::errors::InvalidArgument(
+                          "Communicator is not Initialized, you may use "
+                          "FleetAPI(https://github.com/PaddlePaddle/Fleet/tree/"
+                          "develop/markdown_doc/transpiler)"));
   }
 #endif
 }
