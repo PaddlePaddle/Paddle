@@ -147,7 +147,8 @@ class Decoder(object):
              encoder_padding_mask=encoder_padding_mask,
              impute_finished=False  # for test coverage
              if self.decoding_strategy == "beam_search" else True,
-             is_test=True if self.decoding_strategy == "beam_search" else False)
+             is_test=True if self.decoding_strategy == "beam_search" else False,
+             return_length=True)
         return decoder_output, decoder_final_state, dec_seq_lengths
 
 

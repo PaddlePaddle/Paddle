@@ -1049,6 +1049,7 @@ def dynamic_decode(decoder,
                    output_time_major=False,
                    impute_finished=False,
                    is_test=False,
+                   return_length=False,
                    **kwargs):
     """
     Dynamic decoding performs :code:`decoder.step()` repeatedly until the returned
@@ -1081,10 +1082,14 @@ def dynamic_decode(decoder,
             Default `False`.
         is_test(bool, optional): A flag indicating whether to use test mode. In
             test mode, it is more memory saving. Default `False`.
+        return_length(bool, optional):  A flag indicating whether to return an
+            extra Tensor variable in the output tuple, which stores the actual
+            lengths of all decoded sequences. Default `False`.
         **kwargs: Additional keyword arguments. Arguments passed to `decoder.step`. 
 
     Returns:
-        tuple: A tuple( :code:`(final_outputs, final_states, sequence_lengths)` ). \
+        tuple: A tuple( :code:`(final_outputs, final_states, sequence_lengths)` ) \
+            when `return_length` is True, otherwise a tuple( :code:`(final_outputs, final_states)` ). \
             The final outputs and states, both are Tensor or nested structure of Tensor. \
             `final_outputs` has the same structure and data types as the :code:`outputs` \
             returned by :code:`decoder.step()` , and each Tenser in `final_outputs` \
@@ -1253,7 +1258,9 @@ def dynamic_decode(decoder,
     if not output_time_major:
         final_outputs = map_structure(_transpose_batch_time, final_outputs)
 
-    return final_outputs, final_states, sequence_lengths
+    return (final_outputs, final_states,
+            sequence_lengths) if return_length else (final_outputs,
+                                                     final_states)
 
 
 class DecodeHelper(object):
@@ -1348,7 +1355,7 @@ class TrainingHelper(DecodeHelper):
             helper = layers.TrainingHelper(trg_emb, trg_seq_length)
             decoder_cell = layers.GRUCell(hidden_size=128)
             decoder = layers.BasicDecoder(decoder_cell, helper)
-            decoder_output, _, _ = layers.dynamic_decode(
+            outputs = layers.dynamic_decode(
                 decoder,
                 inits=decoder_cell.get_initial_states(trg_emb),
                 is_test=False)
@@ -1504,7 +1511,7 @@ class GreedyEmbeddingHelper(DecodeHelper):
             helper = layers.GreedyEmbeddingHelper(trg_embeder, start_tokens=0, end_token=1)
             decoder_cell = layers.GRUCell(hidden_size=128)
             decoder = layers.BasicDecoder(decoder_cell, helper, output_fn=output_layer)
-            decoder_outputs, _, _ = layers.dynamic_decode(
+            outputs = layers.dynamic_decode(
                 decoder=decoder, inits=decoder_cell.get_initial_states(encoder_output))
     """
 
@@ -1636,7 +1643,7 @@ class SampleEmbeddingHelper(GreedyEmbeddingHelper):
             helper = layers.SampleEmbeddingHelper(trg_embeder, start_tokens=0, end_token=1)
             decoder_cell = layers.GRUCell(hidden_size=128)
             decoder = layers.BasicDecoder(decoder_cell, helper, output_fn=output_layer)
-            decoder_outputs, _, _ = layers.dynamic_decode(
+            outputs = layers.dynamic_decode(
                 decoder=decoder, inits=decoder_cell.get_initial_states(encoder_output))
     """
 
@@ -1746,7 +1753,7 @@ class BasicDecoder(Decoder):
             helper = layers.SampleEmbeddingHelper(trg_embeder, start_tokens=0, end_token=1)
             decoder_cell = layers.GRUCell(hidden_size=128)
             decoder = layers.BasicDecoder(decoder_cell, helper, output_fn=output_layer)
-            decoder_outputs, _, _ = layers.dynamic_decode(
+            outputs = layers.dynamic_decode(
                 decoder=decoder, inits=decoder_cell.get_initial_states(encoder_output))
     """
 
