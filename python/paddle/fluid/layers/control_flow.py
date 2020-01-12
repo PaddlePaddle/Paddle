@@ -20,7 +20,6 @@ from .tensor import assign, cast, fill_constant
 from .. import core
 from ..framework import Program, Variable, Operator
 from ..layer_helper import LayerHelper, unique_name
-from ..initializer import force_init_on_cpu
 from .nn import logical_and, logical_not, logical_or
 from .utils import assert_same_structure, map_structure
 import numpy
@@ -28,6 +27,8 @@ import warnings
 import six
 from functools import reduce, partial
 from ..data_feeder import convert_dtype, check_type_and_dtype
+from ... import compat as cpt
+from ..backward import _infer_var_data_type_shape_
 
 __all__ = [
     'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
@@ -827,6 +828,10 @@ class While(object):
     """
     while loop control flow. Repeat while body until cond is False.
 
+    Note:
+        A new OP :ref:`api_fluid_layers_while_loop` is highly recommended instead of ``While`` if the shape of parameter ``cond`` is [1].
+        OP :ref:`api_fluid_layers_while_loop` is easier to use and is called with less code but does the same thing as ``While`` .
+
     Args:
         cond(Variable): A Tensor whose data type is bool controlling whether to continue looping.
         is_test(bool, optional): A flag indicating whether execution is in test phase. Default value is False.
@@ -1338,8 +1343,6 @@ def less_than(x, y, force_cpu=None, cond=None):
     attrs = dict()
     if force_cpu is not None:
         attrs['force_cpu'] = force_cpu
-    elif force_init_on_cpu():
-        attrs['force_cpu'] = force_init_on_cpu()
 
     helper.append_op(
         type='less_than',
@@ -1382,8 +1385,6 @@ def less_equal(x, y, cond=None):
         cond.stop_gradient = True
 
     attrs = dict()
-    if force_init_on_cpu():
-        attrs['force_cpu'] = force_init_on_cpu()
 
     helper.append_op(
         type='less_equal',
@@ -1425,8 +1426,6 @@ def greater_than(x, y, cond=None):
         cond.stop_gradient = True
 
     attrs = dict()
-    if force_init_on_cpu():
-        attrs['force_cpu'] = force_init_on_cpu()
 
     helper.append_op(
         type='greater_than',
@@ -1470,8 +1469,6 @@ def greater_equal(x, y, cond=None):
         cond.stop_gradient = True
 
     attrs = dict()
-    if force_init_on_cpu():
-        attrs['force_cpu'] = force_init_on_cpu()
 
     helper.append_op(
         type='greater_equal',
@@ -1799,6 +1796,9 @@ class ConditionalBlock(object):
                     intermediate.add(out_var_name)
         input_set = set([ipt.name for ipt in self.inputs])
 
+        # Todo(liym27) Here assume that all params are in recursive parent block
+        # but when minimize() called in control flow, some params may be in
+        # conditional grad block
         param_list = [
             parent_block._var_recursive(each_name) for each_name in params
         ]
@@ -1811,7 +1811,7 @@ class ConditionalBlock(object):
 
         step_scope = parent_block.create_var(
             type=core.VarDesc.VarType.STEP_SCOPES)
-        parent_block.append_op(
+        conditional_block_op = parent_block.append_op(
             type='conditional_block',
             inputs={
                 'Cond': self.inputs,
@@ -1823,6 +1823,90 @@ class ConditionalBlock(object):
                 'sub_block': inside_block,
                 'is_scalar_condition': self.is_scalar_condition
             })
+
+        if self.need_append_conditional_block_grad(inside_block):
+            self.append_conditional_block_grad(parent_block, inside_block,
+                                               conditional_block_op)
+
+    def need_append_conditional_block_grad(self, inside_block):
+        grad_sub_block_idx = inside_block.backward_block_idx
+
+        return grad_sub_block_idx != -1
+
+    def append_conditional_block_grad(self, parent_block, inside_block,
+                                      conditional_block_op):
+        '''
+        Append op `conditional_block_grad` manually.
+        When `optimizer.minimize/append_backward` is called in Paddle control flow,
+        grad ops will be appended before appending op `conditional_block` so that
+        op `conditional_block_grad` can't be appended when calling
+        `optimizer.minimize/append_backward`. After appending op `conditional_block`,
+        `conditional_block_grad` is appended manually.
+
+        Args:
+            parent_block (Block): The block that `conditional_block_op` blongs to.
+            inside_block (Block): The sub block of `conditional_block_op`.
+            conditional_block_op (Operator): The forward op conditional_block.
+        '''
+
+        grad_sub_block_idx = inside_block.backward_block_idx
+        grad_sub_block = self.helper.main_program.block(grad_sub_block_idx)
+
+        intermediate = set()
+        params = set()
+
+        for each_op in grad_sub_block.ops:
+            assert isinstance(each_op, Operator)
+            for iname in each_op.input_names:
+                for in_var_name in each_op.input(iname):
+                    if in_var_name not in intermediate:
+                        params.add(in_var_name)
+
+            for oname in each_op.output_names:
+                for out_var_name in each_op.output(oname):
+                    intermediate.add(out_var_name)
+
+        param_list = []
+        for inner_input_name in params:
+            inner_var = parent_block._find_var_recursive(inner_input_name)
+            if inner_var:
+                param_list.append(cpt.to_text(inner_var.name))
+
+        grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
+            conditional_block_op.desc,
+            cpt.to_text(set()), [grad_sub_block.desc])
+
+        # append op_desc in grad_op_descs to target_block
+        op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
+        backward = core.op_proto_and_checker_maker.OpRole.Backward
+        new_op_desc = parent_block.desc.append_op()
+        new_op_desc.copy_from(grad_op_desc[0])
+        new_op_desc._set_attr(op_role_attr_name, backward)
+        # set input and output manually
+        new_op_desc.set_input('Input', param_list)
+        new_op_desc.set_output('Input@GRAD',
+                               [param + "@GRAD" for param in param_list])
+
+        new_vars = set()
+        for grad_var_name in new_op_desc.output_arg_names():
+            if grad_sub_block.desc.has_var_recursive(
+                    cpt.to_bytes(grad_var_name)
+            ) or grad_var_name == core.empty_var_name():
+                continue
+            grad_sub_block.desc.var(cpt.to_bytes(grad_var_name))
+            new_vars.add(grad_var_name)
+            if grad_var_name not in op_grad_to_var:
+                continue
+
+        # infer_shape and infer_type
+        new_op_desc.infer_var_type(grad_sub_block.desc)
+        new_op_desc.infer_shape(grad_sub_block.desc)
+
+        for arg in new_op_desc.output_arg_names():
+            if arg in new_vars:
+                _infer_var_data_type_shape_(arg, grad_sub_block)
+
+        self.helper.main_program._sync_with_cpp()
 
 
 def copy_var_to_parent_block(var, layer_helper):
@@ -2121,6 +2205,10 @@ class Switch(object):
     If there is no case branch that satisfies the condition, 
     only the statement following the default branch is executed.
 
+    Note:
+        A new OP :ref:`api_fluid_layers_case` is highly recommended instead of ``Switch`` if the shape of parameter ``cond`` is [1].
+        OP :ref:`api_fluid_layers_case` is easier to use and is called with less code but does the same thing as ``Switch`` .
+
     Member Functions:
         case(cond): The case branch of Switch whose parameter cond is a scalar Variable of bool type. Only if the cond of the current case branch is True and the cond of the previous case branch is False, the statement after the case branch will be executed, and the statement after the case branch will not be executed.
         
@@ -2265,6 +2353,10 @@ class IfElse(object):
     This class is used to implement IfElse branch control function. IfElse contains two blocks, true_block and false_block. IfElse will put data satisfying True or False conditions into different blocks to run.
 
     Cond is a 2-D Tensor with shape [N, 1] and data type bool, representing the execution conditions of the corresponding part of the input data.
+
+    Note:
+        A new OP :ref:`api_fluid_layers_cond` is highly recommended instead of ``IfElse``. if the shape of parameter ``cond`` is [1].
+        OP :ref:`api_fluid_layers_cond` is easier to use and is called with less code but does the same thing as ``IfElse`` .
 
     IfElse OP is different from other OPs in usage, which may cause some users confusion. Here is a simple example to illustrate this OP.
 

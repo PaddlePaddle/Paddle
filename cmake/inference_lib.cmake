@@ -86,7 +86,7 @@ function(copy_part_of_thrid_party TARGET DST)
         set(dst_dir "${DST}/third_party/install/mkldnn")
         if(WIN32)
             copy(${TARGET}
-                    SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB} ${MKLDNN_LIB}
+                    SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB}  ${MKLDNN_LIB}
                     DSTS ${dst_dir} ${dst_dir}/lib ${dst_dir}/lib)
         else()
             copy(${TARGET}

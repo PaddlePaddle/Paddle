@@ -337,6 +337,17 @@ class CollectiveOptimizer(DistributedOptimizer):
                     "with multi nccl comm, please export FLAGS_sync_nccl_allreduce = 0"
                 )
 
+        # NOTE. open sync_batch_norm will hang when use multi num_threads
+        sync_batch_norm = self._strategy.sync_batch_norm
+        if sync_batch_norm is not None and sync_batch_norm is True:
+            self._strategy.nccl_comm_num = 1
+            self._strategy.use_hierarchical_allreduce = False
+            exec_strategy.num_threads = 1
+            logging.warn(
+                "use sync_batch_norm will hang when set num_threads > 1, so "
+                "set num_threads=1, nccl_comm_num=1, use_hierarchical_allreduce=False."
+            )
+
         if self.print_config:
             print("node_num:", node_num, "num_threads:",
                   exec_strategy.num_threads, "use_hierarchical_allreduce:",
