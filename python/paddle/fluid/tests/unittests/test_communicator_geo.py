@@ -28,40 +28,39 @@ import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
 
-
-class TestCommunicator(unittest.TestCase):
-    def net(self):
-        x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-        y_predict = fluid.layers.fc(input=x, size=1, act=None)
-        y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-
-        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-        avg_cost = fluid.layers.mean(cost)
-        return avg_cost
-
-    def test_communicator_geo(self):
-        role = role_maker.UserDefinedRoleMaker(
-            current_id=0,
-            role=role_maker.Role.WORKER,
-            worker_num=2,
-            server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"])
-
-        fleet.init(role)
-        avg_cost = self.net()
-
-        optimizer = fluid.optimizer.SGD(0.01)
-
-        strategy = DistributeTranspilerConfig()
-        strategy.sync_mode = False
-        strategy.runtime_split_send_recv = True
-        strategy.geo_sgd_mode = True
-        strategy.wait_port = False
-        optimizer = fleet.distributed_optimizer(optimizer, strategy)
-        optimizer.minimize(avg_cost)
-
-        fleet.init_worker()
-        time.sleep(10)
-        fleet.stop_worker()
+#class TestCommunicator(unittest.TestCase):
+#    def net(self):
+#        x = fluid.layers.data(name='x', shape=[13], dtype='float32')
+#        y_predict = fluid.layers.fc(input=x, size=1, act=None)
+#        y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+#
+#        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+#        avg_cost = fluid.layers.mean(cost)
+#        return avg_cost
+#
+#    def test_communicator_geo(self):
+#        role = role_maker.UserDefinedRoleMaker(
+#            current_id=0,
+#            role=role_maker.Role.WORKER,
+#            worker_num=2,
+#            server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"])
+#
+#        fleet.init(role)
+#        avg_cost = self.net()
+#
+#        optimizer = fluid.optimizer.SGD(0.01)
+#
+#        strategy = DistributeTranspilerConfig()
+#        strategy.sync_mode = False
+#        strategy.runtime_split_send_recv = True
+#        strategy.geo_sgd_mode = True
+#        strategy.wait_port = False
+#        optimizer = fleet.distributed_optimizer(optimizer, strategy)
+#        optimizer.minimize(avg_cost)
+#
+#        fleet.init_worker()
+#        time.sleep(10)
+#        fleet.stop_worker()
 
 
 class TestCommunicatorGEO(unittest.TestCase):
