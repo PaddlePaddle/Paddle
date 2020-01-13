@@ -77,7 +77,7 @@ function check_sequnece_op_unitests(){
             INVALID_SEQUENCE_OP_UNITTEST="${INVALID_SEQUENCE_OP_UNITTEST}${unittest_file} (missing required function call)\n"
         fi
     done
-    return ${INVALID_SEQUENCE_OP_UNITTEST}
+    echo ${INVALID_SEQUENCE_OP_UNITTEST}
 }
 
 
