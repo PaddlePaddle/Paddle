@@ -167,6 +167,12 @@ class OperatorBase {
     return *info_;
   }
 
+  const std::string& DeviceType() const { return device_type_; }
+
+  void SetDeviceType(const std::string& device_type) {
+    device_type_ = device_type;
+  }
+
   bool HasInputs(const std::string& name) const;
   //! Get a input with argument's name described in `op_proto`
   std::string Input(const std::string& name) const;
@@ -207,6 +213,9 @@ class OperatorBase {
 
   // Whether this operator executes in an Executor.
   bool run_by_executor_{true};
+
+  // Specify the device type on which the operator will be assigned.
+  std::string device_type_;
 
  private:
   void GenerateTemporaryNames();

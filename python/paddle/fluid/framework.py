@@ -51,6 +51,7 @@ __all__ = [
     'Variable',
     'load_op_library',
     'require_version',
+    'device_guard',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -61,6 +62,7 @@ CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 
 _dygraph_tracer_ = None
 _dygraph_current_expected_place_ = None
+_current_device = None
 
 
 def require_version(min_version, max_version=None):
@@ -1694,7 +1696,8 @@ class OpProtoHolder(object):
             core.op_proto_and_checker_maker.kOpRoleAttrName(),
             core.op_proto_and_checker_maker.kOpRoleVarAttrName(),
             core.op_proto_and_checker_maker.kOpNameScopeAttrName(),
-            core.op_proto_and_checker_maker.kOpCreationCallstackAttrName()
+            core.op_proto_and_checker_maker.kOpCreationCallstackAttrName(),
+            core.op_proto_and_checker_maker.kOpDeviceAttrName()
         }
 
 
@@ -1801,6 +1804,10 @@ class Operator(object):
 
             namescope_var_name = op_maker.kOpNameScopeAttrName()
             op_attrs[namescope_var_name] = _full_name_scope()
+
+            if _current_device is not None:
+                op_device = op_maker.kOpDeviceAttrName()
+                op_attrs[op_device] = _current_device
 
             def find_name(var_list, name):
                 for var_name in var_list:
@@ -2148,6 +2155,15 @@ class Operator(object):
             attr_map[n] = self.attr(n)
 
         return attr_map
+
+    @property
+    def op_device(self):
+        """
+        The device on which operator will be assigned.
+        """
+        device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
+        op_device = self.attr(device_attr_name)
+        return op_device
 
 
 class Block(object):
@@ -5039,3 +5055,42 @@ def load_op_library(lib_filename):
     """
     core.load_op_library(lib_filename)
     OpProtoHolder.instance().update_op_proto()
+
+
+def switch_device(device):
+    global _current_device
+    pre_device = _current_device
+    _current_device = device
+    return pre_device
+
+
+@signature_safe_contextmanager
+def device_guard(device):
+    """
+    Returns a context manager that specifies the device type to use.
+    Args:
+        device(str): Specify the device to use inside `"with"` statement.
+            Wnen it is set to "cpu" or "gpu", all operations constructed
+            inside `"with"` statement will be placed on CPUPlace or CUDAPlace to execute.
+
+    Examples:
+        .. code-block:: python
+            import paddle.fluid as fluid
+            data1 = fluid.layers.fill_constant(shape=[1, 3, 8, 8], value=0.5, dtype='float32')
+            data2 = fluid.layers.fill_constant(shape=[1, 3, 5, 5], value=0.5, dtype='float32')
+            shape = fluid.layers.shape(data2) # GPU执行
+            with fluid.device_guard("cpu"):
+                shape = fluid.layers.slice(shape, axes=[0], starts=[0], ends=[4])
+            out = fluid.layers.crop_tensor(data1, shape=shape)
+            place = fluid.CUDAPlace(0)
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            result = exe.run(fetch_list=[out])
+    """
+    if device not in ['cpu', 'gpu']:
+        raise ValueError(
+            "The Attr(device_type) should be 'cpu' or 'gpu', but received %s" %
+            device_type)
+    pre_device = switch_device(device)
+    yield
+    switch_device(pre_device)
