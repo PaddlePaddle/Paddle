@@ -73,5 +73,5 @@ target_link_libraries(demo_trainer
         ${ARCHIVE_END}
         ${MATH_LIB}
         ${MKLDNN_LIB}
-        glog gflags protobuf z xxhash threadpool
+        glog gflags protobuf z xxhash
         ${EXTERNAL_LIB})
