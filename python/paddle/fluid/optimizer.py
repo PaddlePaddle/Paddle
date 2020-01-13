@@ -268,7 +268,8 @@ class Optimizer(object):
             if isinstance(lr, framework.Variable):
                 return
             else:
-                if not isinstance(self._learning_rate, float):
+                if not isinstance(self._learning_rate,
+                                  (float, framework.Variable)):
                     raise TypeError(
                         "learning rate variable is create outside optimizer,"
                         "can not create new learning rate variable for new program"
@@ -284,7 +285,8 @@ class Optimizer(object):
                 shape=[1],
                 value=float(self._learning_rate),
                 dtype='float32' if self._dtype is None else self._dtype,
-                persistable=True)
+                persistable=True) if isinstance(self._learning_rate,
+                                                float) else self._learning_rate
 
     def _global_learning_rate(self, program=None):
         """
