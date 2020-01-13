@@ -38,7 +38,7 @@ from ..framework import Program, default_main_program, \
 from .details import wait_server_ready, VarsDistributed
 from .details import delete_ops
 from ..distribute_lookup_table import find_distributed_lookup_table
-from .distribute_transpiler import DistributeTranspiler, DistributeTranspilerConfig, slice_variable, same_or_split_var, ServerRuntimeConfig
+from .distribute_transpiler import DistributeTranspiler, DistributeTranspilerConfig, slice_variable, same_or_split_var, ServerRuntimeConfig, DistributedMode
 
 RPC_OP_ROLE_ATTR_NAME = op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(
 )
@@ -137,15 +137,22 @@ class GeoSgdTranspiler(DistributeTranspiler):
         # send sparse id to communicator
         self.sparse_var = []
         self.sparse_tables = []
+        unique_sparse_var = {}
         for op in self.origin_program.global_block().ops:
-            if op.type == "lookup_table":
-                op._set_attr('remote_prefetch', False)
+            if "is_sparse" in op.all_attrs():
+                if op.type == "lookup_table":
+                    op._set_attr('remote_prefetch', False)
                 for input_var_name, sparse_var_name in zip(
                         op.input("Ids"), op.input("W")):
                     if sparse_var_name in self.sparse_var_list:
+                        if input_var_name in unique_sparse_var:
+                            if unique_sparse_var[
+                                    input_var_name] == sparse_var_name:
+                                continue
                         input_var = program.global_block().var(input_var_name)
                         self.sparse_var.append(input_var)
                         self.sparse_tables.append(sparse_var_name)
+                        unique_sparse_var[input_var_name] = sparse_var_name
 
         # batch training loop end flag
         dummy_output = program.global_block().create_var(
@@ -240,7 +247,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
             "optimize_blocks": optimize_block,
             "endpoint": endpoint,
             "Fanin": self.trainer_num,
-            "sync_mode": self.sync_mode,
+            "distributed_mode": DistributedMode.GEO,
             "grad_to_block_id": param_to_block_id,
             "sparse_grad_to_param": sparse_grad_to_param,
             "rpc_get_thread_num": self.server_config._rpc_get_thread_num,

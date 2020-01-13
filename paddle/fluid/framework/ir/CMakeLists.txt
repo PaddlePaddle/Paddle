@@ -39,6 +39,7 @@ cc_library(graph_helper SRCS graph_helper.cc DEPS graph)
 cc_library(pass SRCS pass.cc DEPS graph node graph_helper)
 cc_library(graph_traits SRCS graph_traits.cc DEPS graph)
 cc_library(graph_pattern_detector SRCS graph_pattern_detector.cc DEPS graph graph_helper graph_traits)
+cc_library(subgraph_detector SRCS subgraph_detector.cc DEPS graph_pattern_detector executor)
 cc_library(fuse_pass_base SRCS fuse_pass_base.cc DEPS pass)
 cc_library(placement_pass_base SRCS placement_pass_base.cc DEPS pass)
 
@@ -99,12 +100,13 @@ endif()
 
 if(WITH_NGRAPH)
     cc_library(ngraph_subgraph_pass SRCS ngraph_subgraph_pass.cc DEPS ngraph_bridge
-      analysis_helper subgraph_detector graph_pattern_detector pass fuse_pass_base ${op_library_DEPS})
+               subgraph_detector fuse_pass_base ${op_library_DEPS})
     set(pass_file ${PADDLE_BINARY_DIR}/paddle/fluid/inference/api/paddle_inference_pass.h)
     file(APPEND ${pass_file} "USE_PASS(ngraph_subgraph_pass);\n")
     set(INFER_IR_PASSES ${INFER_IR_PASSES} ngraph_subgraph_pass CACHE INTERNAL "")
 endif()
 
+cc_library(fuse_bn_act_pass SRCS fuse_bn_act_pass.cc DEPS pass graph_pattern_detector )
 cc_library(fuse_elewise_add_act_pass SRCS fuse_elewise_add_act_pass.cc DEPS pass graph_pattern_detector )
 cc_library(fuse_relu_depthwise_conv_pass SRCS fuse_relu_depthwise_conv_pass.cc DEPS pass graph_pattern_detector )
 
