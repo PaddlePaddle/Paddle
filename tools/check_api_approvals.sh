@@ -57,6 +57,30 @@ function add_failed(){
 } 
 
 
+function check_sequnece_op_unitests(){
+    check_white_list_file=$1
+    function_grep=$2
+    INVALID_SEQUENCE_OP_UNITTEST=""
+    all_sequence_ops=`grep '(sequence_' ${PADDLE_ROOT}/build/paddle/fluid/pybind/pybind.h | grep -Ev '^$' | cut -d'(' -f 2 | cut -d')' -f 1`
+    for op_name in ${all_sequence_ops}; do
+        in_white_list=`python ${PADDLE_ROOT}/${check_white_list_file} ${op_name}`
+        if [ "${in_white_list}" == "True" ]; then
+            continue
+        fi
+        unittest_file="python/paddle/fluid/tests/unittests/sequence/test_${op_name}.py"
+        if [ ! -f "${PADDLE_ROOT}/${unittest_file}" ]; then
+            INVALID_SEQUENCE_OP_UNITTEST="${INVALID_SEQUENCE_OP_UNITTEST}${unittest_file} (unittest file does not exists)\n"
+            continue
+        fi
+        batch_size_1_funtion_calls=`grep ${function_grep} ${PADDLE_ROOT}/${unittest_file} || true`
+        if [ "${batch_size_1_funtion_calls}" == "" ]; then
+            INVALID_SEQUENCE_OP_UNITTEST="${INVALID_SEQUENCE_OP_UNITTEST}${unittest_file} (missing required function call)\n"
+        fi
+    done
+    return ${INVALID_SEQUENCE_OP_UNITTEST}
+}
+
+
 if [[ $git_files -gt 19 || $git_count -gt 999 ]];then
     echo_line="You must have Dianhai approval for change 20+ files or add than 1000+ lines of content.\n"
     check_approval 1 38231817
@@ -128,7 +152,7 @@ for API_FILE in ${API_FILES[*]}; do
           echo_line="It is an Op accuracy problem, please take care of it. You must have one RD (juncaipeng (Recommend), zhangting2020 or luotao1) approval for the python/paddle/fluid/tests/unittests/white_list/op_threshold_white_list.py, which manages the white list of error threshold for op test with float64 precision. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Upgrade-OP-Precision-to-Float64. \n"
           check_approval 1 52520497 26615455 6836917
       elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/check_op_sequence_batch_1_input_white_list.py" ];then
-          echo_line="You must have one RD (songyouwei,luotao1) approval for ${API_FILE}, which manages the white list of batch size 1 input for sequence op test. \n"
+          echo_line="You must have one RD (songyouwei,luotao1) approval for ${API_FILE}, which manages the white list of batch size 1 input for sequence op test. For more information, please refer to https://github.com/PaddlePaddle/Paddle/wiki/It-is-required-to-include-batch-size-1-LoDTensor-input-in-sequence-OP-test. \n"
           check_approval 1 2573291 6836917
       else
           echo_line="It is an Op accuracy problem, please take care of it. You must have one RD (XiaoguangHu01,Xreki,luotao1,sneaxiy) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
@@ -191,26 +215,12 @@ if [ "${HAS_INPLACE_TESTS}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 46782768 47554610 43953930 6836917
 fi
 
-all_sequence_ops=`grep '(sequence_' ${PADDLE_ROOT}/build/paddle/fluid/pybind/pybind.h | grep -Ev '^$' | cut -d'(' -f 2 | cut -d')' -f 1`
-INVALID_SEQUENCE_OP_UNITTEST=""
-for op_name in ${all_sequence_ops}; do
-    in_white_list=`python ${PADDLE_ROOT}/python/paddle/fluid/tests/unittests/white_list/check_op_sequence_batch_1_input_white_list.py ${op_name}`
-    if [ "${in_white_list}" == "True" ]; then
-        continue
-    fi
-    unittest_file="python/paddle/fluid/tests/unittests/sequence/test_${op_name}.py"
-    if [ ! -f "${PADDLE_ROOT}/${unittest_file}" ]; then
-        INVALID_SEQUENCE_OP_UNITTEST="${INVALID_SEQUENCE_OP_UNITTEST}${unittest_file} (unittest file does not exists)\n"
-        continue
-    fi
-    batch_size_1_funtion_calls=`grep "self.get_sequence_batch_size_1_input(" ${PADDLE_ROOT}/${unittest_file} || true`
-    if [ "${batch_size_1_funtion_calls}" == "" ]; then
-        INVALID_SEQUENCE_OP_UNITTEST="${INVALID_SEQUENCE_OP_UNITTEST}${unittest_file} (missing required function call)\n"
-    fi
-done
+check_white_list_file="python/paddle/fluid/tests/unittests/white_list/check_op_sequence_batch_1_input_white_list.py"
+function_grep="self.get_sequence_batch_size_1_input("
+INVALID_SEQUENCE_OP_UNITTEST=$(check_sequnece_op_unitests ${check_white_list_file} ${function_grep})
 if [ "${INVALID_SEQUENCE_OP_UNITTEST}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="It is required that the LoDTensor in sequence related OP unittests must be obtained by self.get_sequence_batch_size_1_input() function to cover the case of batch size = 1. If it is a mismatch, please specify songyouwei (Recommend) or luotao1 review and approve.\nPlease check the following unittest files:\n${INVALID_SEQUENCE_OP_UNITTEST}"
-    check_approval 1 2573291 6836917
+    echo_line="In order to cover the case of batch size = 1 input in sequence op unittests, please use self.get_sequence_batch_size_1_input() method. If it is a mismatch, please specify one RD (songyouwei (Recommend), luotao1, or phlrain) review and approve. For more information, please refer to https://github.com/PaddlePaddle/Paddle/wiki/It-is-required-to-include-batch-size-1-LoDTensor-input-in-sequence-OP-test. \nPlease check the following unittest files:\n${INVALID_SEQUENCE_OP_UNITTEST}"
+    check_approval 1 2573291 6836917 43953930
 fi
 
 OP_FILE_CHANGED=`git diff --name-only --diff-filter=AMR upstream/$BRANCH |grep -oE ".+_op..*" || true`
