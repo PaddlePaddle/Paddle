@@ -933,6 +933,10 @@ def _append_backward_ops_(block,
                 cb(block=target_block, context=grad_to_var)
 
 
+def _is_grad_var_(var):
+    return core.grad_var_suffix() in var
+
+
 def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
     """
     Create new variables required by backward pass.
@@ -948,11 +952,44 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
             key(str): forward variable name
             val(tuple): a tuple of (str, Block), str is the corresponding grad name, Block is the block containing grad variable
     """
+    ops_to_remove = []
+
     for op_idx in range(start_op_idx, block.desc.op_size()):
         op_desc = block.desc.op(op_idx)
         if op_desc.has_attr("sub_block"):
             sub_block = block.program.block(op_desc._block_attr_id("sub_block"))
             _append_backward_vars_(sub_block, 0, grad_to_var, grad_info_map)
+
+        grad_var_ins = [
+            var for var in op_desc.input_arg_names() if _is_grad_var_(var)
+        ]
+        grad_var_outs = [
+            var for var in op_desc.output_arg_names() if _is_grad_var_(var)
+        ]
+
+        inputs = [
+            var for var in op_desc.input_arg_names()
+            if var != core.empty_var_name()
+        ]
+        outputs = [
+            var for var in op_desc.output_arg_names()
+            if var != core.empty_var_name()
+        ]
+
+        if not outputs:  # no outputs, remove it
+            ops_to_remove.append(op_idx)
+            continue
+        else:  # has output 
+            if grad_var_ins:
+                existing_grad_var_ins = [
+                    var for var in grad_var_ins
+                    if block.desc.has_var_recursive(cpt.to_bytes(var))
+                ]
+                if not existing_grad_var_ins:
+                    if op_desc.type() != 'rnn_memory_helper_grad':
+                        ops_to_remove.append(op_idx)
+                    continue
+
         new_vars = set()
         # create new gradient variables
         for grad_var_name in op_desc.output_arg_names():
@@ -971,6 +1008,9 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
         for arg in op_desc.output_arg_names():
             if arg in new_vars:
                 _infer_var_data_type_shape_(arg, block)
+
+    for op_idx in reversed(ops_to_remove):
+        block.desc._remove_op(op_idx, op_idx + 1)
 
 
 def _rename_grad_(block, start_op_idx, grad_to_var, target_grad_map):
