@@ -185,7 +185,7 @@ paddlecloud environment.".format(args.cluster_node_ips, node_ips))
         selected_gpus = [str(x) for x in range(0, gpus_num)]
     else:
         cuda_visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
-        if cuda_visible_devices is None:
+        if cuda_visible_devices is None or cuda_visible_devices == "":
             selected_gpus = [x.strip() for x in args.selected_gpus.split(',')]
         else:
             # change selected_gpus into relative values
