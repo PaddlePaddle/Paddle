@@ -85,7 +85,7 @@ void PaddleBuf::Resize(size_t length) {
   if (length_ >= length) return;
   if (memory_owned_) {
     Free();
-    data_ = new void *[length];
+    data_ = new char[length];
     length_ = length;
     memory_owned_ = true;
   } else {
