@@ -108,8 +108,8 @@ class TrainerDesc(object):
         for param in dump_param:
             self.proto_desc.dump_param.append(param)
 
-    def _set_is_distributed(self, use_barrier):
-        self.proto_desc.use_barrier = use_barrier
+    def _set_thread_barrier(self, thread_barrier):
+        self.proto_desc.thread_barrier = thread_barrier
 
     def _set_check_nan_var_names(self, check_nan_var_names):
         for var in check_nan_var_names:

@@ -30,7 +30,7 @@ void HogwildWorker::Initialize(const TrainerDesc &desc) {
     skip_ops_[i] = param_.skip_ops(i);
   }
   use_cvm_ = desc.use_cvm();
-  use_barrier_ = desc.use_barrier();
+  thread_barrier_ = desc.thread_barrier();
 }
 
 void HogwildWorker::CreateThreadOperators(const ProgramDesc &program) {
@@ -161,7 +161,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
     timeline.Start();
   }
 #ifdef PADDLE_WITH_DISTRIBUTE
-  if (use_barrier_) {
+  if (thread_barrier_) {
     operators::distributed::Communicator::GetInstance()
         ->BarrierTriggerDecrement();
   }
@@ -192,7 +192,7 @@ void HogwildWorker::TrainFiles() {
     thread_scope_->DropKids();
   }
 #ifdef PADDLE_WITH_DISTRIBUTE
-  if (use_barrier_) {
+  if (thread_barrier_) {
     operators::distributed::Communicator::GetInstance()
         ->BarrierTriggerDecrement();
   }

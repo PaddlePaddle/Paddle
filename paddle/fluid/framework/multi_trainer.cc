@@ -41,7 +41,7 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
   workers_.resize(thread_num_);
 
 #ifdef PADDLE_WITH_DISTRIBUTE
-  if (trainer_desc.use_barrier()) {
+  if (trainer_desc.thread_barrier()) {
     operators::distributed::Communicator::GetInstance()->BarrierTriggerReset(
         thread_num_);
   }

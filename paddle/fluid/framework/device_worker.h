@@ -179,7 +179,7 @@ class HogwildWorker : public CPUWorkerBase {
   void CreateThreadScope(const ProgramDesc& program);
   std::vector<std::string> op_names_;
   std::vector<OperatorBase*> ops_;
-  bool use_barrier_;
+  bool thread_barrier_;
   // Scope* thread_scope_;
   HogwildWorkerParameter param_;
   std::vector<std::string> skip_ops_;
