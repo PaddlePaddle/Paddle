@@ -183,6 +183,25 @@ int GetCUDAMaxThreadsPerMultiProcessor(int id) {
   return count;
 }
 
+int GetCUDAMaxThreadsPerBlock(int id) {
+  PADDLE_ENFORCE_LT(
+      id, GetCUDADeviceCount(),
+      platform::errors::InvalidArgument(
+          "Device id must less than GPU count, but received id is:%d, "
+          "GPU count is: %d.",
+          id, GetCUDADeviceCount()));
+  int count;
+  auto error_code =
+      cudaDeviceGetAttribute(&count, cudaDevAttrMaxThreadsPerBlock, id);
+  PADDLE_ENFORCE_EQ(
+      error_code, 0,
+      platform::errors::InvalidArgument(
+          "cudaDeviceGetAttribute returned error code should be 0, "
+          "but received error code is: %d, %s",
+          error_code, CudaErrorWebsite()));
+  return count;
+}
+
 int GetCurrentDeviceId() {
   int device_id;
   auto error_code = cudaGetDevice(&device_id);
@@ -330,6 +349,16 @@ void GpuMemsetAsync(void *dst, int value, size_t count, cudaStream_t stream) {
                  error_code, CudaErrorWebsite());
 }
 
+void GpuStreamSync(cudaStream_t stream) {
+  auto error_code = cudaStreamSynchronize(stream);
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      error_code,
+      platform::errors::External(
+          "cudaStreamSynchronize failed in paddle::platform::GpuStreamSync "
+          "error code : %d, %s",
+          error_code, CudaErrorWebsite()));
+}
+
 void RaiseNonOutOfMemoryError(cudaError_t *status) {
   if (*status == cudaErrorMemoryAllocation) {
     *status = cudaSuccess;
@@ -344,5 +373,6 @@ void RaiseNonOutOfMemoryError(cudaError_t *status) {
 
   PADDLE_ENFORCE_CUDA_SUCCESS(*status);
 }
+
 }  // namespace platform
 }  // namespace paddle

@@ -86,6 +86,7 @@ option(WITH_HIGH_LEVEL_API_TEST   "Test fluid python high-level api interface"  
 option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VERSION})
 option(WITH_DGC   "Use DGC(Deep Gradient Compression) or not" ${WITH_DISTRIBUTE})
 option(SANITIZER_TYPE "Choose the type of sanitizer, options are: Address, Leak, Memory, Thread, Undefined" OFF)
+option(WITH_LITE   "Compile Paddle Fluid with Lite Engine" OFF)
 
 # PY_VERSION
 if(NOT PY_VERSION)
