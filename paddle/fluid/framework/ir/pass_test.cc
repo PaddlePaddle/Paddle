@@ -63,7 +63,8 @@ TEST(PassTest, TestPassAttrCheck) {
   } catch (paddle::platform::EnforceNotMet& e) {
     exception = std::string(e.what());
   }
-  ASSERT_TRUE(exception.find("test_pass_attr not set") != exception.npos);
+  ASSERT_TRUE(exception.find("Required atrribute test_pass_attr for pass < "
+                             "test_pass > is not set") != exception.npos);
 
   int val = 1;
   graph.reset(new Graph(prog));
@@ -74,7 +75,9 @@ TEST(PassTest, TestPassAttrCheck) {
   } catch (paddle::platform::EnforceNotMet& e) {
     exception = std::string(e.what());
   }
-  ASSERT_TRUE(exception.find("test_graph_attr not set") != exception.npos);
+  ASSERT_TRUE(exception.find(
+                  "Required atrribute test_graph_attr for graph is not set") !=
+              exception.npos);
 
   graph.reset(new Graph(prog));
   graph->Set<int>("test_graph_attr", new int);

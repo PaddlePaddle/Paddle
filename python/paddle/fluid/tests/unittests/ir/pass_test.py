@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import os
+import six
 import random
 import unittest
 import warnings
@@ -116,7 +117,7 @@ class PassTest(unittest.TestCase):
             len(self.fetch_list) == len(outs_opt),
             "Checking the number of fetchs failed. Expected: {}, Received: {}".
             format(len(self.fetch_list), len(outs_opt)))
-        for i in xrange(len(self.fetch_list)):
+        for i in six.moves.xrange(len(self.fetch_list)):
             self.assertTrue(
                 np.allclose(
                     outs_opt[i], outs[i], atol=atol),
