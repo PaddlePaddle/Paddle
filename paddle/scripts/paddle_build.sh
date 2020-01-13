@@ -567,6 +567,10 @@ function check_change_of_unittest() {
     check_approvals_of_unittest 2
 }
 
+function check_sequence_op_unittest(){
+    /bin/bash ${PADDLE_ROOT}/tools/check_sequence_op.sh
+}
+
 function generate_unittest_spec() {
     spec_kind=$1
     if [ "$spec_kind" == "DEV" ]; then
@@ -1122,7 +1126,8 @@ function main() {
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number} 
         example
-        generate_api_spec ${PYTHON_ABI:-""} "PR" 
+        generate_api_spec ${PYTHON_ABI:-""} "PR"
+        check_sequence_op_unittest
         assert_api_spec_approvals
         ;;
       build)
