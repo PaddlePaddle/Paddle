@@ -152,8 +152,8 @@ for API_FILE in ${API_FILES[*]}; do
           echo_line="It is an Op accuracy problem, please take care of it. You must have one RD (juncaipeng (Recommend), zhangting2020 or luotao1) approval for the python/paddle/fluid/tests/unittests/white_list/op_threshold_white_list.py, which manages the white list of error threshold for op test with float64 precision. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Upgrade-OP-Precision-to-Float64. \n"
           check_approval 1 52520497 26615455 6836917
       elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/check_op_sequence_batch_1_input_white_list.py" ];then
-          echo_line="You must have one RD (songyouwei,luotao1) approval for ${API_FILE}, which manages the white list of batch size 1 input for sequence op test. For more information, please refer to https://github.com/PaddlePaddle/Paddle/wiki/It-is-required-to-include-batch-size-1-LoDTensor-input-in-sequence-OP-test. \n"
-          check_approval 1 2573291 6836917
+          echo_line="You must have one RD (songyouwei, luotao1 or phlrain) approval for ${API_FILE}, which manages the white list of batch size 1 input for sequence op test. For more information, please refer to https://github.com/PaddlePaddle/Paddle/wiki/It-is-required-to-include-batch-size-1-LoDTensor-input-in-sequence-OP-test. \n"
+          check_approval 1 2573291 6836917 43953930
       else
           echo_line="It is an Op accuracy problem, please take care of it. You must have one RD (XiaoguangHu01,Xreki,luotao1,sneaxiy) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
           check_approval 1 3048612 46782768 12538138 6836917 32832641
