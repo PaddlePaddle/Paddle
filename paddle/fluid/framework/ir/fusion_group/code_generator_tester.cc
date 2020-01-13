@@ -162,6 +162,7 @@ void SetupRandomCPUTensor(LoDTensor* tensor) {
 
 namespace fusion_group = paddle::framework::ir::fusion_group;
 
+template <typename T>
 void TestMainImpl(std::string func_name, std::string code_str,
                   std::vector<paddle::framework::LoDTensor> cpu_tensors, int n,
                   std::vector<int> input_ids, std::vector<int> output_ids) {
@@ -172,15 +173,15 @@ void TestMainImpl(std::string func_name, std::string code_str,
 
   std::vector<paddle::framework::LoDTensor> gpu_tensors(cpu_tensors.size());
 
-  std::vector<float*> gpu_ptrs(gpu_tensors.size());
+  std::vector<T*> gpu_ptrs(gpu_tensors.size());
   std::vector<void*> args;
   args.push_back(&n);
 
   for (auto id : input_ids) {
     if (id >= 0) {
       gpu_ptrs[id] =
-          gpu_tensors[id].mutable_data<float>(cpu_tensors[id].dims(), place);
-      fusion_group::SetupRandomCPUTensor<float>(&cpu_tensors[id]);
+          gpu_tensors[id].mutable_data<T>(cpu_tensors[id].dims(), place);
+      fusion_group::SetupRandomCPUTensor<T>(&cpu_tensors[id]);
       TensorCopySync(cpu_tensors[id], place, &gpu_tensors[id]);
       args.push_back(&gpu_ptrs[id]);
     }
@@ -188,7 +189,7 @@ void TestMainImpl(std::string func_name, std::string code_str,
 
   for (auto id : output_ids) {
     gpu_ptrs[id] =
-        gpu_tensors[id].mutable_data<float>(cpu_tensors[id].dims(), place);
+        gpu_tensors[id].mutable_data<T>(cpu_tensors[id].dims(), place);
     args.push_back(&gpu_ptrs[id]);
   }
 
@@ -200,39 +201,71 @@ void TestMainImpl(std::string func_name, std::string code_str,
       paddle::platform::DeviceContextPool::Instance().Get(place));
   dev_ctx->Wait();
 
+  // Copy the results back to CPU.
   for (auto id : output_ids) {
     TensorCopySync(gpu_tensors[id], paddle::platform::CPUPlace(),
                    &cpu_tensors[id]);
   }
 }
 
-void TestMain(std::string func_name,
-              std::vector<fusion_group::OperationExpression> expressions,
-              std::vector<paddle::framework::LoDTensor> cpu_tensors, int n,
-              std::vector<int> input_ids, std::vector<int> output_ids) {
-  fusion_group::OperationMap::Init();
-  fusion_group::CodeGenerator code_generator;
-  std::string code_str =
-      code_generator.Generate(func_name, "float", expressions);
-  VLOG(3) << code_str;
+void TestElementwiseMain(
+    std::string func_name, std::string code_str,
+    std::vector<fusion_group::OperationExpression> expressions,
+    std::vector<int> input_ids, std::vector<int> output_ids,
+    std::string dtype) {
+  std::unordered_set<int> ids;
+  for (auto id : input_ids) {
+    ids.insert(id);
+  }
+  for (auto id : output_ids) {
+    ids.insert(id);
+  }
 
-  TestMainImpl(func_name, code_str, cpu_tensors, n, input_ids, output_ids);
+  // Prepare CPU tensors
+  std::vector<paddle::framework::LoDTensor> cpu_tensors(ids.size());
+  auto dims = paddle::framework::make_ddim(
+      {static_cast<int64_t>(256), static_cast<int64_t>(1024)});
+  for (size_t i = 0; i < cpu_tensors.size(); ++i) {
+    cpu_tensors[i].mutable_data<float>(dims, paddle::platform::CPUPlace());
+  }
+
+  int n = cpu_tensors[0].numel();
+  TestMainImpl<float>(func_name, code_str, cpu_tensors, n, input_ids,
+                      output_ids);
+
+  // Check the results
+  for (int i = 0; i < n; i++) {
+    fusion_group::CheckOutput(expressions, cpu_tensors, input_ids, output_ids,
+                              i);
+  }
 }
 
-std::vector<fusion_group::OperationExpression> TestMain(
-    fusion_group::SubGraph* subgraph,
-    std::vector<paddle::framework::LoDTensor> cpu_tensors, int n,
-    std::vector<int> input_ids, std::vector<int> output_ids) {
+void TestMain(std::string func_name,
+              std::vector<fusion_group::OperationExpression> expressions,
+              std::vector<int> input_ids, std::vector<int> output_ids,
+              std::string dtype) {
+  fusion_group::OperationMap::Init();
+  fusion_group::CodeGenerator code_generator;
+  std::string code_str = code_generator.Generate(func_name, dtype, expressions);
+  VLOG(3) << code_str;
+
+  TestElementwiseMain(func_name, code_str, expressions, input_ids, output_ids,
+                      dtype);
+}
+
+void TestMain(fusion_group::SubGraph* subgraph, std::vector<int> input_ids,
+              std::vector<int> output_ids) {
   fusion_group::OperationMap::Init();
   fusion_group::CodeGenerator code_generator;
   std::string code_str = code_generator.Generate(subgraph);
   VLOG(3) << code_str;
 
-  TestMainImpl(subgraph->GetFuncName(), code_str, cpu_tensors, n, input_ids,
-               output_ids);
-
   // Need to check the accuracy according to expressions.
-  return code_generator.ConvertToExpressions(subgraph);
+  std::vector<fusion_group::OperationExpression> expressions =
+      code_generator.ConvertToExpressions(subgraph);
+
+  TestElementwiseMain(subgraph->GetFuncName(), code_str, expressions, input_ids,
+                      output_ids, subgraph->GetDataType());
 }
 
 TEST(code_generator, elementwise) {
@@ -249,33 +282,19 @@ TEST(code_generator, elementwise) {
   std::vector<fusion_group::OperationExpression> expressions = {
       exp1, exp2, exp3, exp4, exp5};
 
-  // Prepare CPU tensors
-  std::vector<paddle::framework::LoDTensor> cpu_tensors(9);
-  auto dims = paddle::framework::make_ddim(
-      {static_cast<int64_t>(256), static_cast<int64_t>(1024)});
-  for (size_t i = 0; i < cpu_tensors.size(); ++i) {
-    cpu_tensors[i].mutable_data<float>(dims, paddle::platform::CPUPlace());
-  }
-
-  // Expressions:
-  //  Op(elementwise_mul), inputs:{0,1}, outputs:{2}
-  //  Op(elementwise_add), inputs:{2,3}, outputs:{4}
-  //  Op(elementwise_sub), inputs:{4,5}, outputs:{6}
-  //  Op(relu), inputs:{6}, outputs:{7}
-  //  Op(sigmoid), inputs:{7}, outputs:{8}
-  int n = cpu_tensors[0].numel();
-  std::vector<int> input_ids = {0, 1, 3, 5};
-  std::vector<int> output_ids = {2, 4, 6, 7, 8};
-  TestMain("elementwise_kernel_0", expressions, cpu_tensors, n, input_ids,
-           output_ids);
-
-  // Check the results
-  for (int i = 0; i < n; i++) {
-    fusion_group::CheckOutput(expressions, cpu_tensors, input_ids, output_ids,
-                              i);
+  for (std::string dtype : {"float16"}) {
+    // Expressions:
+    //  Op(elementwise_mul), inputs:{0,1}, outputs:{2}
+    //  Op(elementwise_add), inputs:{2,3}, outputs:{4}
+    //  Op(elementwise_sub), inputs:{4,5}, outputs:{6}
+    //  Op(relu), inputs:{6}, outputs:{7}
+    //  Op(sigmoid), inputs:{7}, outputs:{8}
+    std::vector<int> input_ids = {0, 1, 3, 5};
+    std::vector<int> output_ids = {2, 4, 6, 7, 8};
+    TestMain("elementwise_kernel_0", expressions, input_ids, output_ids, dtype);
   }
 }
-
+#if 0
 TEST(code_generator, elementwise_grad) {
   // The var order: t0, t1, t2, t3, t0', t1', t2', t3'
   // t2 = t0 * t1
@@ -287,28 +306,13 @@ TEST(code_generator, elementwise_grad) {
                                          {4, 5});
   std::vector<fusion_group::OperationExpression> expressions = {exp1, exp2};
 
-  // Prepare CPU tensors
-  std::vector<paddle::framework::LoDTensor> cpu_tensors(8);
-  auto dims = paddle::framework::make_ddim(
-      {static_cast<int64_t>(256), static_cast<int64_t>(1024)});
-  for (size_t i = 0; i < cpu_tensors.size(); ++i) {
-    cpu_tensors[i].mutable_data<float>(dims, paddle::platform::CPUPlace());
-  }
-
   // Expressions:
   //  Op(relu_grad), inputs:{2,3,7}, outputs:{6}
   //  Op(elementwise_mul_grad), inputs:{0,1,2,6}, outputs:{4,5}
-  int n = cpu_tensors[0].numel();
   std::vector<int> input_ids = {0, 1, 2, 3, 7};
   std::vector<int> output_ids = {4, 5, 6};
-  TestMain("elementwise_grad_kernel_0", expressions, cpu_tensors, n, input_ids,
-           output_ids);
-
-  // Check the results
-  for (int i = 0; i < n; i++) {
-    fusion_group::CheckOutput(expressions, cpu_tensors, input_ids, output_ids,
-                              i);
-  }
+  TestMain("elementwise_grad_kernel_0", expressions, input_ids, output_ids,
+           "float");
 }
 
 std::unique_ptr<paddle::framework::ir::Graph> BuildGraph(
@@ -406,31 +410,15 @@ TEST(code_generator, subgraph) {
   fusion_group::SubGraph subgraph(0, "elementwise_kernel_1", true,
                                   graph->Nodes());
 
-  // Prepare CPU tensors
-  std::vector<paddle::framework::LoDTensor> cpu_tensors(9);
-  auto dims = paddle::framework::make_ddim(
-      {static_cast<int64_t>(256), static_cast<int64_t>(1024)});
-  for (size_t i = 0; i < cpu_tensors.size(); ++i) {
-    cpu_tensors[i].mutable_data<float>(dims, paddle::platform::CPUPlace());
-  }
-
   // Expressions generated by code_generator (they may be different):
   //  Op(sigmoid), inputs:{0}, outputs:{4}
   //  Op(elementwise_mul), inputs:{4,1}, outputs:{7}
   //  Op(tanh), inputs:{2}, outputs:{5}
   //  Op(elementwise_mul), inputs:{3,5}, outputs:{6}
   //  Op(elementwise_add), inputs:{7,6}, outputs:{8}
-  int n = cpu_tensors[0].numel();
   std::vector<int> input_ids = {0, 1, 2, 3};
   std::vector<int> output_ids = {4, 5, 6, 7, 8};
-  std::vector<fusion_group::OperationExpression> expressions =
-      TestMain(&subgraph, cpu_tensors, n, input_ids, output_ids);
-
-  // Check the results
-  for (int i = 0; i < n; i++) {
-    fusion_group::CheckOutput(expressions, cpu_tensors, input_ids, output_ids,
-                              i);
-  }
+  TestMain(&subgraph, input_ids, output_ids);
 }
 
 TEST(code_generator, subgraph_grad) {
@@ -438,30 +426,15 @@ TEST(code_generator, subgraph_grad) {
   fusion_group::SubGraph subgraph(0, "elementwise_grad_kernel_1", true,
                                   DistilGradNodes(graph));
 
-  // Prepare CPU tensors
-  std::vector<paddle::framework::LoDTensor> cpu_tensors(18);
-  auto dims = paddle::framework::make_ddim(
-      {static_cast<int64_t>(256), static_cast<int64_t>(1024)});
-  for (size_t i = 0; i < cpu_tensors.size(); ++i) {
-    cpu_tensors[i].mutable_data<float>(dims, paddle::platform::CPUPlace());
-  }
-
   // Expressions generated by code_generator (they may be different):
   //  Op(elementwise_add_grad), inputs:{1,2,3,0}, outputs:{11,10}
   //  Op(elementwise_mul_grad), inputs:{5,4,2,10}, outputs:{17,13}
   //  Op(elementwise_mul_grad), inputs:{7,6,1,11}, outputs:{12,15}
   //  Op(sigmoid_grad), inputs:{8,7,12}, outputs:{16}
   //  Op(tanh_grad), inputs:{9,4,13}, outputs:{14}
-  int n = cpu_tensors[0].numel();
   std::vector<int> input_ids = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
   std::vector<int> output_ids = {10, 11, 12, 13, 14, 15, 16, 17};
-  std::vector<fusion_group::OperationExpression> expressions =
-      TestMain(&subgraph, cpu_tensors, n, input_ids, output_ids);
-
-  // Check the results
-  for (int i = 0; i < n; i++) {
-    fusion_group::CheckOutput(expressions, cpu_tensors, input_ids, output_ids,
-                              i);
-  }
+  TestMain(&subgraph, input_ids, output_ids);
 }
+#endif
 #endif
