@@ -58,6 +58,8 @@ class ParallelExecutor {
 
   ~ParallelExecutor();
 
+  size_t DeviceCount() const;
+
   std::vector<Scope *> &GetLocalScopes();
 
   void DropLocalExeScopes();
