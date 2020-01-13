@@ -510,12 +510,10 @@ function generate_api_spec() {
         sed -i 's/arg0: str/arg0: unicode/g' $spec_path
         sed -i "s/\(.*Transpiler.*\).__init__ (ArgSpec(args=\['self'].*/\1.__init__ /g" $spec_path
     fi   
+    
+    python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py \
+        ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_${spec_kind}.spec
 
-    # TODO(paddle-dev): remove op_use_default_grad_op_maker.spec 
-    if [ "$spec_kind" == "PR" ]; then
-        python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py \
-            ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_op_maker.spec
-    fi
     deactivate
 }
 
