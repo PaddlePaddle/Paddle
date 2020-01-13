@@ -1126,8 +1126,8 @@ function main() {
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number} 
         example
-        generate_api_spec ${PYTHON_ABI:-""} "PR"
         check_sequence_op_unittest
+        generate_api_spec ${PYTHON_ABI:-""} "PR"
         assert_api_spec_approvals
         ;;
       build)

@@ -36,5 +36,3 @@ if [ "${INVALID_SEQUENCE_OP_UNITTEST}" != "" ]; then
     echo "************************************"
     exit 1
 fi
-
-echo "done"
