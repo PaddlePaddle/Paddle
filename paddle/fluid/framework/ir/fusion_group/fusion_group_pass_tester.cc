@@ -138,19 +138,15 @@ int TestMain(std::unique_ptr<Graph> graph, std::string prefix) {
 }
 
 TEST(FusionGroupPass, elementwise_list) {
-  fusion_group::OperationMap::Init();
-
-  std::unique_ptr<Graph> graph = BuildElementwiseListGraph(false);
+  std::unique_ptr<Graph> graph = BuildElementwiseListGraph(true);
   int num_fusion_group_ops = TestMain(std::move(graph), "elementwise_list");
-  EXPECT_EQ(num_fusion_group_ops, 1);
+  EXPECT_EQ(num_fusion_group_ops, 2);
 }
 
 TEST(FusionGroupPass, elementwise_tree) {
-  fusion_group::OperationMap::Init();
-
-  std::unique_ptr<Graph> graph = BuildElementwiseTreeGraph(false);
+  std::unique_ptr<Graph> graph = BuildElementwiseTreeGraph(true);
   int num_fusion_group_ops = TestMain(std::move(graph), "elementwise_tree");
-  EXPECT_EQ(num_fusion_group_ops, 2);
+  EXPECT_EQ(num_fusion_group_ops, 4);
 }
 
 }  // namespace ir
