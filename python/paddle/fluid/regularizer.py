@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 from . import framework
+from .framework import in_dygraph_mode, _varbase_creator
 from . import core
 
 __all__ = ['L1Decay', 'L2Decay', 'L1DecayRegularizer', 'L2DecayRegularizer']
@@ -74,10 +75,12 @@ def append_regularization_ops(parameters_and_grads, regularization=None):
                     lod_level=param.lod_level,
                     type=core.VarDesc.VarType.LOD_TENSOR)
 
-            grad.block.append_op(
-                type='sum',
-                inputs={"X": [grad, regularization_term]},
-                outputs={"Out": new_grad})
+            inputs = {"X": [grad, regularization_term]}
+            outputs = {"Out": [new_grad]}
+            if in_dygraph_mode():
+                core.ops.sum(inputs, {}, outputs)
+            else:
+                grad.block.append_op(type='sum', inputs=inputs, outputs=outputs)
 
             params_and_grads.append((param, new_grad))
 
@@ -165,20 +168,24 @@ class L2DecayRegularizer(WeightDecayRegularizer):
         assert isinstance(param, framework.Parameter)
         assert isinstance(block, framework.Block)
 
+        inputs = {"X": [param]}
+        attrs = {"scale": self._regularization_coeff}
+
         if framework.in_dygraph_mode():
-            decay = block.create_var(dtype=param.dtype, shape=param.shape)
+            outs = core.ops.scale(inputs, attrs)
+            return outs['Out'][0]
         else:
             decay = block.create_var(
                 dtype=param.dtype, shape=param.shape, lod_level=param.lod_level)
 
-        # Append Op to calculate decay
-        block.append_op(
-            type='scale',
-            inputs={"X": param},
-            outputs={"Out": decay},
-            attrs={"scale": self._regularization_coeff})
+            # Append Op to calculate decay
+            block.append_op(
+                type='scale',
+                inputs={"X": param},
+                outputs={"Out": decay},
+                attrs={"scale": self._regularization_coeff})
 
-        return decay
+            return decay
 
     def __str__(self):
         return "L2Decay, regularization_coeff=%f" % self._regularization_coeff
