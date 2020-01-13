@@ -465,16 +465,17 @@ function fetch_upstream_develop_if_not_exist() {
     if [ ! -e "$PADDLE_ROOT/.git/refs/remotes/upstream/$BRANCH" ]; then 
         git fetch upstream # develop is not fetched
     fi
-}  
+}
 
 function generate_upstream_develop_api_spec() {
     fetch_upstream_develop_if_not_exist
-    cur_branch=`git branch | grep \* | cut -d ' ' -f2` 
+    cur_branch=`git branch | grep \* | cut -d ' ' -f2`
     git checkout -b develop_base_pr upstream/$BRANCH
     cmake_gen $1
     build $2
-    generate_api_spec "$1" "DEV"
+
     git checkout $cur_branch
+    generate_api_spec "$1" "DEV"
     git branch -D develop_base_pr
     ENABLE_MAKE_CLEAN="ON"
     rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
@@ -510,12 +511,10 @@ function generate_api_spec() {
         sed -i 's/arg0: str/arg0: unicode/g' $spec_path
         sed -i "s/\(.*Transpiler.*\).__init__ (ArgSpec(args=\['self'].*/\1.__init__ /g" $spec_path
     fi   
+    
+    python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py \
+        ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_${spec_kind}.spec
 
-    # TODO(paddle-dev): remove op_use_default_grad_op_maker.spec 
-    if [ "$spec_kind" == "PR" ]; then
-        python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py \
-            ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_op_maker.spec
-    fi
     deactivate
 }
 
