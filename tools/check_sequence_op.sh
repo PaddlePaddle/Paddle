@@ -31,7 +31,7 @@ INVALID_SEQUENCE_OP_UNITTEST=$(check_sequnece_op_unitests ${check_white_list_fil
 if [ "${INVALID_SEQUENCE_OP_UNITTEST}" != "" ]; then
     echo "************************************"
     echo -e "It is required to include batch size 1 LoDTensor input in sequence OP test, please use self.get_sequence_batch_size_1_input() method."
-    echo -e "For more information, please refer to https://github.com/PaddlePaddle/Paddle/wiki/It-is-required-to-include-batch-size-1-LoDTensor-input-in-sequence-OP-test."
+    echo -e "For more information, please refer to [https://github.com/PaddlePaddle/Paddle/wiki/It-is-required-to-include-batch-size-1-LoDTensor-input-in-sequence-OP-test]."
     echo -e "Please check the following unittest files:\n${INVALID_SEQUENCE_OP_UNITTEST}"
     echo "************************************"
     exit 1
