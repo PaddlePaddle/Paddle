@@ -31,7 +31,6 @@ import sys
 import logging
 from .. import compat as cpt
 from .proto import framework_pb2
-from .layers import utils
 
 from . import core
 from . import unique_name
@@ -687,6 +686,12 @@ def _getitem_impl_(var, item):
                 slice_end.append(slice_item + 1
                                  if slice_item != -1 else 10000000)
 
+    def contain_var(one_list):
+        for ele in one_list:
+            if isinstance(ele, Variable):
+                return True
+        return False
+
     def get_new_list_tensor(old_list):
         new_list_tensor = []
         for dim in old_list:
@@ -712,7 +717,7 @@ def _getitem_impl_(var, item):
     infer_flags = list(1 for i in range(len(slice_axis)))
 
     # starts
-    if utils._contain_var(slice_start):
+    if contain_var(slice_start):
         inputs['StartsTensorList'] = get_new_list_tensor(slice_start)
         for i, dim in enumerate(slice_start):
             if isinstance(dim, Variable):
@@ -724,7 +729,7 @@ def _getitem_impl_(var, item):
         attrs['starts'] = slice_start
 
     # ends
-    if utils._contain_var(slice_end):
+    if contain_var(slice_end):
         inputs['EndsTensorList'] = get_new_list_tensor(slice_end)
         for i, dim in enumerate(slice_end):
             if isinstance(dim, Variable):
@@ -737,7 +742,7 @@ def _getitem_impl_(var, item):
 
     # strides
     if use_strided_slice == True:
-        if utils._contain_var(slice_step):
+        if contain_var(slice_step):
             inputs['StridesTensorList'] = get_new_list_tensor(slice_step)
             for i, dim in enumerate(slice_step):
                 if isinstance(dim, Variable):

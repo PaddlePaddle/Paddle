@@ -16,6 +16,7 @@ from __future__ import print_function
 import collections
 import six
 import numpy as np
+from ..framework import Variable
 
 
 def convert_to_list(value, n, name, dtype=np.int):
