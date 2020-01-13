@@ -18,6 +18,7 @@ import sys
 import numpy as np
 import collections
 import six
+import re
 from . import parallel_helper
 from .. import unique_name
 from paddle.fluid import core
@@ -30,6 +31,14 @@ import warnings
 
 __all__ = ['Layer']
 
+_first_cap_re = re.compile('(.)([A-Z][a-z]+)')
+_all_cap_re = re.compile('([a-z])([A-Z])')
+
+
+def _convert_camel_to_snake(name):
+    s1 = _first_cap_re.sub(r'\1_\2', name)
+    return _all_cap_re.sub(r'\1_\2', s1).lower()
+
 
 class Layer(core.Layer):
     """Dynamic graph Layer based on OOD, includes the parameters of the layer, the structure of the forward graph and so on.
@@ -37,9 +46,9 @@ class Layer(core.Layer):
     Parameters:
         name_scope (str, optional): prefix name used by the layer to name parameters.
             If prefix is "my_layer", parameter name in MyLayer
-            can be "mylayer_0.w_n", where w is the parameter
-            base name and n is an unique suffix auto-generated.
-            If None, prefix name will be lower cased class name. Default: None.
+            can be "my_layer_0.w_n", where "w" is the parameter
+            base name and "n" is an unique suffix auto-generated.
+            If None, prefix name will be snake cased class name. Default: None.
         dtype(str or core.VarDesc.VarType, optional): data type of this parameter.
                 If set str, it can be "bool",  "float16", "float32", "float64",
                 "int8", "int16", "int32", "int64", "uint8" or "uint16".
@@ -51,12 +60,8 @@ class Layer(core.Layer):
 
     def __init__(self, name_scope=None, dtype=core.VarDesc.VarType.FP32):
         if name_scope is None:
-            name_scope = self.__class__.__name__.lower()
-            self._full_name = unique_name.generate(name_scope)
-        else:
-            # TODO: remove name_scope parameter and all hard-coded usages
-            self._full_name = unique_name.generate(name_scope + "/" +
-                                                   self.__class__.__name__)
+            name_scope = _convert_camel_to_snake(self.__class__.__name__)
+        self._full_name = unique_name.generate(name_scope)
         self._helper = LayerObjectHelper(self._full_name)
         self._built = False
         self._dtype = dtype
@@ -171,6 +176,93 @@ class Layer(core.Layer):
                 for sub_l in l.sublayers(include_sublayers):
                     ret.append(sub_l)
         return ret
+
+    def named_parameters(self, prefix='', include_sublayers=True):
+        """
+        Returns an iterator over all parameters in the Layer, yielding tuple of name and parameter.
+
+        Parameters:
+            prefix(str, optional): Prefix to prepend to all parameter names. Default: ''.
+            include_sublayers(bool, optional): Whether include the parameters of sublayers.
+                If True, also include the named parameters from sublayers. Default: True.
+
+        Yields:
+            (string, Parameter): Tuple of name and Parameter
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                with fluid.dygraph.guard():
+                    fc1 = fluid.Linear(10, 3)
+                    fc2 = fluid.Linear(3, 10, bias_attr=False)
+                    model = fluid.dygraph.Sequential(fc1, fc2)
+                    for name, param in model.named_parameters():
+                        print(name, param)
+
+        """
+        params_set = set()
+        named_sublayers = self.named_sublayers(
+            prefix=prefix,
+            include_sublayers=include_sublayers,
+            include_self=True)
+        for layer_prefix, sublayer in named_sublayers:
+            params = sublayer._parameters.items()
+            for key, param in params:
+                if param is None or param in params_set:
+                    continue
+                params_set.add(param)
+                name = layer_prefix + ('.' if layer_prefix else '') + key
+                yield name, param
+
+    def named_sublayers(self,
+                        prefix='',
+                        include_sublayers=True,
+                        include_self=False,
+                        layers_set=None):
+        """
+        Returns an iterator over all sublayers in the Layer, yielding tuple of name and sublayer.
+        The duplicate sublayer will only be yielded once.
+
+        Parameters:
+            prefix(str, optional): Prefix to prepend to all parameter names. Default: ''.
+            include_sublayers(bool, optional): Whether include the sublayers. Default: True.
+            include_self(bool, optional): Whether include the Layer itself. Default: False.
+            layers_set(set, optioanl): The set to record duplicate sublayers. Default: None.
+
+        Yields:
+            (string, Layer): Tuple of name and Layer
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                with fluid.dygraph.guard():
+                    fc1 = fluid.Linear(10, 3)
+                    fc2 = fluid.Linear(3, 10, bias_attr=False)
+                    model = fluid.dygraph.Sequential(fc1, fc2)
+                    for prefix, layer in model.named_sublayers():
+                        print(prefix, layer)
+
+        """
+        if layers_set is None:
+            layers_set = set()
+        if include_self and self not in layers_set:
+            layers_set.add(self)
+            yield prefix, self
+        if include_sublayers:
+            for key, layer in self._sub_layers.items():
+                if layer is None:
+                    continue
+                layer_prefix = prefix + ('.' if prefix else '') + key
+                for p, l in layer.named_sublayers(
+                        prefix=layer_prefix,
+                        include_sublayers=include_sublayers,
+                        include_self=True,
+                        layers_set=layers_set):
+                    yield p, l
 
     def clear_gradients(self):
         """

@@ -1995,6 +1995,26 @@ All parameter, weight, gradient are variables in Paddle.
                         build_strategy.fuse_elewise_add_act_ops = True
                      )DOC")
       .def_property(
+          "fuse_bn_act_ops",
+          [](const BuildStrategy &self) { return self.fuse_bn_act_ops_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy is finlaized."));
+            self.fuse_bn_act_ops_ = b;
+          },
+          R"DOC((bool, optional): fuse_bn_act_ops indicate whether
+                to fuse batch_norm and activation_op,
+                it may make the execution faster. Default is False.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle.fluid as fluid
+                        build_strategy = fluid.BuildStrategy()
+                        build_strategy.fuse_bn_act_ops = True
+                     )DOC")
+      .def_property(
           "enable_auto_fusion",
           [](const BuildStrategy &self) { return self.enable_auto_fusion_; },
           [](BuildStrategy &self, bool b) {
@@ -2003,7 +2023,10 @@ All parameter, weight, gradient are variables in Paddle.
                                   "BuildStrategy is finlaized."));
             self.enable_auto_fusion_ = b;
           },
-          R"DOC((bool, optional):
+          R"DOC((bool, optional): Whether to enable fusing subgraph to a
+                fusion_group. Now we only support fusing subgraph that composed
+                of elementwise-like operators, such as elementwise_add/mul
+                without broadcast and activations.
 
                 Examples:
                     .. code-block:: python
