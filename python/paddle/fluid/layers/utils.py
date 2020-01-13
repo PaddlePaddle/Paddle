@@ -244,3 +244,13 @@ def _is_symmetric_padding(padding, data_dim):
             if padding[i * 2] != padding[i * 2 + 1]:
                 is_sys = False
     return is_sys
+
+
+def _contain_var(list_or_tuple):
+    """
+    Check whether list or tuple contains variable.
+    """
+    for item in list_or_tuple:
+        if isinstance(item, Variable):
+            return True
+    return False
