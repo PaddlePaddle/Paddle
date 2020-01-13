@@ -81,7 +81,7 @@ class FleetDistRunnerBase(object):
                 args.geo_sgd_need_push_nums)
         return self.strategy
 
-    def build_optimizer(self, loss, strategy):
+    def build_optimizer(self, avg_cost, strategy):
         use_grad_clip = int(os.getenv('GRAD_CLIP', 0))
         if use_grad_clip:
             # 1: clip_by_value; 2: clip_by_norm; 3:clip_by_global_norm
