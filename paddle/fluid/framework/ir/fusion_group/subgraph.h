@@ -49,11 +49,23 @@ class SubGraph {
         }
       }
     }
+    ExtractDataType();
   }
 
-  bool IsEmpty() { return nodes_set_.empty(); }
+  bool IsValid(int min_subgraph_size) {
+    int num_operations = GetNumOperations();
+    if (num_operations < min_subgraph_size) {
+      VLOG(2) << "There are only " << num_operations
+              << " operations in the subgraph. Expected at least "
+              << min_subgraph_size;
+      return false;
+    }
+
+    return ExtractDataType();
+  }
 
   int GetType() const { return type_; }
+  std::string GetDataType() const { return data_type_; }
 
   void SetFuncName(std::string func_name) { func_name_ = func_name; }
   std::string GetFuncName() const { return func_name_; }
@@ -150,6 +162,35 @@ class SubGraph {
   }
 
  private:
+  bool ExtractDataType() {
+    bool is_first = true;
+    proto::VarType::Type data_type = proto::VarType::FP32;
+    for (auto* n : nodes_set_) {
+      if (n && n->IsVar() && n->Var()) {
+        if (n->Var()->GetType() != proto::VarType::LOD_TENSOR) {
+          VLOG(2) << "All var node in a subgraph should hold a LoDTensor.";
+          return false;
+        }
+        if (is_first) {
+          data_type = n->Var()->GetDataType();
+          is_first = false;
+        } else if (n->Var()->GetDataType() != data_type) {
+          VLOG(2) << "DataType of VarDesc in a subgraph is not the same.";
+          return false;
+        }
+      }
+    }
+    if (data_type == proto::VarType::FP32) {
+      data_type_ = "float";
+    } else if (data_type == proto::VarType::FP64) {
+      data_type_ = "double";
+    } else {
+      VLOG(2) << "Only support fp32 and fp64 in fusion_group.";
+      return false;
+    }
+    return true;
+  }
+
   void TopologicalSort() {
     if (!is_sorted_) {
       std::unordered_map<Node*, std::vector<Node*>> inputs_map;
@@ -203,6 +244,7 @@ class SubGraph {
 
  private:
   int type_{-1};
+  std::string data_type_;
   std::string func_name_;
   bool save_intermediate_out_{true};
 

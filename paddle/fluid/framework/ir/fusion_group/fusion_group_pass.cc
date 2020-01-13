@@ -32,8 +32,8 @@ void FusionGroupPass::ApplyImpl(ir::Graph* graph) const {
   if (Get<bool>("use_gpu")) {
     fusion_group::OperationMap::Init();
     int num_elementwise_groups = DetectFusionGroup(graph, 0);
-    VLOG(3) << "Detect " << num_elementwise_groups
-            << " elementwise fusion groups.";
+    LOG(INFO) << "Detect " << num_elementwise_groups
+              << " elementwise fusion groups.";
   }
 }
 
@@ -49,14 +49,14 @@ int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
   size_t min_subgraph_size = 2;
   bool save_intermediate_out = true;
   for (auto& vec : subgraphs) {
-    if (vec.size() >= min_subgraph_size) {
-      std::string func_name = "fused_elementwise_" + std::to_string(index++);
-      fusion_group::SubGraph subgraph(
-          type, func_name, save_intermediate_out,
-          std::unordered_set<Node*>(vec.begin(), vec.end()));
-      VLOG(3) << "subgraph: {\n"
+    fusion_group::SubGraph subgraph(
+        type, "", save_intermediate_out,
+        std::unordered_set<Node*>(vec.begin(), vec.end()));
+    LOG(INFO) << "subgraph: {\n"
               << DebugString(subgraph.SortedNodes()) << "}\n";
 
+    if (subgraph.IsValid(min_subgraph_size)) {
+      subgraph.SetFuncName("fused_elementwise_" + std::to_string(index++));
       GenerateCode(&subgraph);
       InsertFusionGroupOp(graph, &subgraph);
       num_subgraphs++;

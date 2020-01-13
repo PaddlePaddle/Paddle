@@ -16,6 +16,7 @@ limitations under the License. */
 #include <sstream>
 #include <unordered_set>
 #include "paddle/fluid/framework/ir/fusion_group/code_generator_helper.h"
+#include "paddle/fluid/framework/ir/fusion_group/cuda_resources.h"
 #include "paddle/fluid/framework/ir/fusion_group/operation.h"
 
 namespace paddle {
@@ -33,7 +34,8 @@ CodeGenerator::CodeGenerator() {
 
 std::string CodeGenerator::Generate(SubGraph* subgraph) {
   std::vector<OperationExpression> expressions = ConvertToExpressions(subgraph);
-  return Generate(subgraph->GetFuncName(), expressions);
+  return Generate(subgraph->GetFuncName(), subgraph->GetDataType(),
+                  expressions);
 }
 
 static bool HasInput(Node* n, std::string name) {
@@ -100,9 +102,9 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
 // In order to get the right result of expression, we need to calculate and
 // store the expression as suffix Expressions using vector.
 std::string CodeGenerator::Generate(
-    std::string func_name, std::vector<OperationExpression> expressions) {
+    std::string func_name, std::string dtype,
+    std::vector<OperationExpression> expressions) {
   // TODO(liuyiqun): Check whether all expressions are elementwise operations.
-  std::string dtype = "float";
   std::set<int> input_ids = DistilInputIds(expressions);
   std::set<int> output_ids = DistilOutputIds(expressions);
 
@@ -111,6 +113,15 @@ std::string CodeGenerator::Generate(
   template_var.Add("parameters", EmitParameters(input_ids, output_ids, dtype));
   template_var.Add("compute_body",
                    EmitComputeBody(expressions, input_ids, output_ids, dtype));
+
+  std::string predefined_cuda_functions;
+  if (dtype == "float") {
+    predefined_cuda_functions = predefined_cuda_functions_fp32;
+  } else if (dtype == "double") {
+    predefined_cuda_functions = predefined_cuda_functions_fp64;
+  } else if (dtype == "float16") {
+    predefined_cuda_functions = predefined_cuda_functions_fp16;
+  }
   return predefined_cuda_functions + code_templates_[0].Format(template_var);
 }
 

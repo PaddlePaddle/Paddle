@@ -212,7 +212,8 @@ void TestMain(std::string func_name,
               std::vector<int> input_ids, std::vector<int> output_ids) {
   fusion_group::OperationMap::Init();
   fusion_group::CodeGenerator code_generator;
-  std::string code_str = code_generator.Generate(func_name, expressions);
+  std::string code_str =
+      code_generator.Generate(func_name, "float", expressions);
   VLOG(3) << code_str;
 
   TestMainImpl(func_name, code_str, cpu_tensors, n, input_ids, output_ids);
