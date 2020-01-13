@@ -100,23 +100,15 @@ class UpdateFunctor {
         auto m = m_base + k;
         auto n = n_base + k;
 
-        auto x = -l_acc_out[n];
-        if (l_acc_out[n] >= static_cast<T>(0)) {
-          x += l1;
-        } else {
-          x -= l1;
-        }
-
+        auto x = (l_acc_out[n] >= static_cast<T>(0)) ? (-l_acc_out[n] + l1)
+                                                     : (-l_acc_out[n] - l1);
         x_square_acc += x * x;
 
         auto new_acc = s_acc[n] + g[m] * g[m];
-
-        auto y = static_cast<T>(2) * l2;
-        if (lr_power == static_cast<T>(-0.5)) {
-          y += std::sqrt(new_acc) / lr;
-        } else {
-          y += std::pow(new_acc, -lr_power) / lr;
-        }
+        auto y =
+            (lr_power == static_cast<T>(-0.5))
+                ? (static_cast<T>(2) * l2 + std::sqrt(new_acc) / lr)
+                : (static_cast<T>(2) * l2 + std::pow(new_acc, -lr_power) / lr);
 
         p_out[n] = x / y;
       }

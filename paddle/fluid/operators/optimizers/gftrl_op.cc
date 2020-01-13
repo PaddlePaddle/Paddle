@@ -143,4 +143,5 @@ The paper that proposed Group-Sparsity-Regularized FTRL (G-FTRL):
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(gftrl, ops::GFTRLOp, ops::GFTRLOpMaker);
 REGISTER_OP_CPU_KERNEL(
-    gftrl, ops::GFTRLOpKernel<paddle::platform::CPUDeviceContext, float>);
+    gftrl, ops::GFTRLOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::GFTRLOpKernel<paddle::platform::CPUDeviceContext, double>);
