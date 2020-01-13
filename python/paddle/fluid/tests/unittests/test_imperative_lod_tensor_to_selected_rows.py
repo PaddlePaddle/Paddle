@@ -59,7 +59,7 @@ class SimpleNet(fluid.Layer):
         x_emb = self.embedding(input)
         projection = fluid.layers.matmul(
             x_emb, fluid.layers.transpose(
-                self.embedding._w, perm=[1, 0]))
+                self.embedding.weight, perm=[1, 0]))
         projection = fluid.layers.elementwise_add(projection, self.softmax_bias)
         projection = fluid.layers.reshape(
             projection, shape=[-1, self.vocab_size])
@@ -131,7 +131,7 @@ class TestDygraphSimpleNet(unittest.TestCase):
                                 dy_param_init[param.name] = param.numpy()
                         dy_loss.backward(backward_strategy)
                         sgd.minimize(dy_loss)
-                        simple_net.clear_gradients()
+                        sgd.clear_gradients()
                         if i == batch_num - 1:
                             for param in simple_net.parameters():
                                 dy_param_updated[param.name] = param.numpy()

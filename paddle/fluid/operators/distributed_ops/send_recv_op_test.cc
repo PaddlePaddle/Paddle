@@ -32,9 +32,11 @@ USE_OP(sum);
 namespace f = paddle::framework;
 namespace p = paddle::platform;
 namespace m = paddle::operators::math;
+namespace d = paddle::operators::distributed
 
-// global for simplicity.
-std::unique_ptr<f::OperatorBase> listen_and_serv_op;
+    // global for simplicity.
+    std::unique_ptr<f::OperatorBase>
+        listen_and_serv_op;
 int selected_port;
 
 void InitTensorsInScope(const p::CPUPlace &place, f::Scope *scope) {
@@ -145,7 +147,7 @@ void StartServerNet(bool is_sparse, std::atomic<bool> *initialized) {
   attrs.insert({"optimize_blocks", optimize_blocks});
   attrs.insert({"PrefetchBlock", prefetch_block});
   attrs.insert({"grad_to_block_id", std::vector<std::string>({""})});
-  attrs.insert({"sync_mode", true});
+  attrs.insert({"distributed_mode", d::DistributedMode::kSync});
   VLOG(4) << "before init op";
   listen_and_serv_op =
       f::OpRegistry::CreateOp("listen_and_serv", {{"X", {"x1"}}}, {}, attrs);

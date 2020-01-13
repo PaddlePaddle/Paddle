@@ -63,6 +63,43 @@ inline void VSUB(int n, const T *x, const T *y, T *z) {
   }
 }
 
+void Communicator::SetEnvFlagsDefault() {
+  env_flags_dict.clear();
+  env_flags_dict.insert(std::pair<std::string, int>(
+      "independent_recv_thread", FLAGS_communicator_independent_recv_thread));
+  env_flags_dict.insert(std::pair<std::string, int>(
+      "send_queue_size", FLAGS_communicator_send_queue_size));
+  env_flags_dict.insert(std::pair<std::string, int>(
+      "min_send_grad_num_before_recv",
+      FLAGS_communicator_min_send_grad_num_before_recv));
+  env_flags_dict.insert(std::pair<std::string, int>(
+      "thread_pool_size", FLAGS_communicator_thread_pool_size));
+  env_flags_dict.insert(std::pair<std::string, int>(
+      "send_wait_times", FLAGS_communicator_send_wait_times));
+  env_flags_dict.insert(std::pair<std::string, int>(
+      "max_merge_var_num", FLAGS_communicator_max_merge_var_num));
+  env_flags_dict.insert(
+      std::pair<std::string, int>("fake_rpc", FLAGS_communicator_fake_rpc));
+  env_flags_dict.insert(std::pair<std::string, int>(
+      "merge_sparse_grad", FLAGS_communicator_merge_sparse_grad));
+  env_flags_dict.insert(std::pair<std::string, int>(
+      "is_sgd_optimizer", FLAGS_communicator_is_sgd_optimizer));
+
+  return;
+}
+
+Communicator::Communicator() { SetEnvFlagsDefault(); }
+
+Communicator::Communicator(const std::map<std::string, int> &env_flags) {
+  SetEnvFlagsDefault();
+  for (auto &iter : env_flags) {
+    std::string flag_name = iter.first;
+    int val_ = iter.second;
+    env_flags_dict.at(flag_name) = val_;
+  }
+  return;
+}
+
 std::once_flag Communicator::init_flag_;
 std::shared_ptr<Communicator> Communicator::communicator_(nullptr);
 
@@ -73,25 +110,6 @@ void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
   recv_varname_to_ctx_ = std::move(recv_varname_to_ctx);
   recv_scope_ = std::move(recv_scope);
 
-  // get all send information from graph, build vars_to_send
-  VLOG(0) << "communicator_independent_recv_thread: "
-          << FLAGS_communicator_independent_recv_thread;
-  VLOG(0) << "communicator_send_queue_size: "
-          << FLAGS_communicator_send_queue_size;
-  VLOG(0) << "communicator_min_send_grad_num_before_recv: "
-          << FLAGS_communicator_min_send_grad_num_before_recv;
-  VLOG(0) << "communicator_thread_pool_size: "
-          << FLAGS_communicator_thread_pool_size;
-  VLOG(0) << "communicator_send_wait_times: "
-          << FLAGS_communicator_send_wait_times;
-  VLOG(0) << "communicator_max_merge_var_num: "
-          << FLAGS_communicator_max_merge_var_num;
-  VLOG(0) << "communicator_fake_rpc: " << FLAGS_communicator_fake_rpc;
-  VLOG(0) << "communicator_merge_sparse_grad: "
-          << FLAGS_communicator_merge_sparse_grad;
-  VLOG(0) << "communicator_is_sgd_optimizer: "
-          << FLAGS_communicator_is_sgd_optimizer;
-
   if (send_varname_to_ctx.size() == 0) {
     VLOG(0) << "nothing need to be send, will not start send_thread";
   } else {
@@ -99,17 +117,17 @@ void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
     for (auto &iter : send_varname_to_ctx_) {
       send_varname_to_queue_[iter.first] =
           std::make_shared<BlockingQueue<std::shared_ptr<Variable>>>(
-              FLAGS_communicator_send_queue_size);
+              env_flags_dict["send_queue_size"]);
     }
     send_threadpool_.reset(
-        new ::ThreadPool(FLAGS_communicator_thread_pool_size));
+        new ::ThreadPool(env_flags_dict["thread_pool_size"]));
   }
 
   if (recv_varname_to_ctx.size() == 0) {
     VLOG(0) << "nothing need to be received, will not start recv_thread";
   } else {
     recv_threadpool_.reset(
-        new ::ThreadPool(FLAGS_communicator_thread_pool_size));
+        new ::ThreadPool(env_flags_dict["thread_pool_size"]));
   }
 }
 
@@ -132,7 +150,7 @@ void AsyncCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
       auto trainer_id = boost::get<int>(op->GetNullableAttr("trainer_id"));
       auto merge_add = boost::get<bool>(op->GetNullableAttr("merge_add"));
       if (!merge_add) {
-        merge_add = FLAGS_communicator_is_sgd_optimizer;
+        merge_add = static_cast<bool>(env_flags_dict["is_sgd_optimizer"]);
       }
       auto use_send_handler =
           boost::get<bool>(op->GetNullableAttr("use_send_handler"));
@@ -194,10 +212,10 @@ void AsyncCommunicator::SendThread() {
           std::vector<std::shared_ptr<Variable>> vars;
           int merged_var_num = 0;
           int wait_times = 0;
-          while (merged_var_num < FLAGS_communicator_max_merge_var_num) {
+          while (merged_var_num < env_flags_dict["max_merge_var_num"]) {
             if (var_queue->Size() == 0) {
               VLOG(4) << "wait_times -> " << wait_times;
-              if (wait_times >= FLAGS_communicator_send_wait_times) {
+              if (wait_times >= env_flags_dict["send_wait_times"]) {
                 break;
               }
               std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -226,7 +244,7 @@ void AsyncCommunicator::SendThread() {
           VLOG(4) << "merge " << merged_var_num << " " << var_name
                   << " use time " << after_merge - before_merge;
           auto send_functor = distributed::ParameterSend<float>();
-          if (!FLAGS_communicator_fake_rpc) {
+          if (!env_flags_dict["fake_rpc"]) {
             send_functor(ctx, *send_scope_, true, 1);
           }
           auto after_send = GetCurrentUS();
@@ -255,7 +273,7 @@ void AsyncCommunicator::RecvThread() {
   VLOG(3) << "RecvThread start!";
   while (running_) {
     int grad_num = grad_num_.load();
-    if (grad_num > FLAGS_communicator_min_send_grad_num_before_recv) {
+    if (grad_num > env_flags_dict["min_send_grad_num_before_recv"]) {
       VLOG(1) << "current grad num " << grad_num;
       RecvAll();
       grad_num_.store(0);
@@ -273,10 +291,10 @@ void AsyncCommunicator::Send(const std::string &var_name,
   auto *grad_var = scope.FindVar(var_name);
   PADDLE_ENFORCE(grad_var->IsInitialized(), "grad var should be inited");
   if (grad_var->IsType<framework::SelectedRows>() &&
-      !FLAGS_communicator_merge_sparse_grad) {
+      !env_flags_dict["merge_sparse_grad"]) {
     auto send_functor = distributed::ParameterSend<float>();
     auto &ctx = send_varname_to_ctx_.at(var_name);
-    if (!FLAGS_communicator_fake_rpc) {
+    if (!env_flags_dict["fake_rpc"]) {
       send_functor(ctx, scope, true, 1);
     }
   } else {
@@ -289,7 +307,7 @@ void AsyncCommunicator::Send(const std::string &var_name,
 }
 
 void AsyncCommunicator::Recv() {
-  if (FLAGS_communicator_independent_recv_thread) {
+  if (env_flags_dict["independent_recv_thread"]) {
     return;
   }
 
@@ -313,7 +331,7 @@ void AsyncCommunicator::RecvAll() {
       auto &var_name = iter.first;
       VLOG(4) << "recv var " << var_name;
       auto recv_functor = distributed::ParameterRecv<float>();
-      if (!FLAGS_communicator_fake_rpc) {
+      if (!env_flags_dict["fake_rpc"]) {
         recv_functor(iter.second, *recv_scope_);
       }
     };
@@ -336,7 +354,7 @@ void AsyncCommunicator::Start() {
     // start send and recv thread
     send_thread_.reset(
         new std::thread(std::bind(&AsyncCommunicator::SendThread, this)));
-    if (FLAGS_communicator_independent_recv_thread) {
+    if (env_flags_dict["independent_recv_thread"]) {
       recv_thread_.reset(
           new std::thread(std::bind(&AsyncCommunicator::RecvThread, this)));
     }
@@ -396,25 +414,8 @@ void GeoSgdCommunicator::InitImpl(
   geo_need_push_nums_ = std::move(geo_need_push_nums);
 
   // get all send information from graph, build vars_to_send
-  VLOG(0) << "communicator_independent_recv_thread: "
-          << FLAGS_communicator_independent_recv_thread;
-  VLOG(0) << "communicator_send_queue_size: "
-          << FLAGS_communicator_send_queue_size;
-  VLOG(0) << "communicator_min_send_grad_num_before_recv: "
-          << FLAGS_communicator_min_send_grad_num_before_recv;
-  VLOG(0) << "communicator_thread_pool_size: "
-          << FLAGS_communicator_thread_pool_size;
-  VLOG(0) << "communicator_send_wait_times: "
-          << FLAGS_communicator_send_wait_times;
-  VLOG(0) << "communicator_max_merge_var_num: "
-          << FLAGS_communicator_max_merge_var_num;
-  VLOG(0) << "communicator_fake_rpc: " << FLAGS_communicator_fake_rpc;
-  VLOG(0) << "communicator_merge_sparse_grad: "
-          << FLAGS_communicator_merge_sparse_grad;
   VLOG(0) << "Trainer nums: " << trainer_nums_;
   VLOG(0) << "geo_sgd_push_before_local_train_nums: " << geo_need_push_nums_;
-  VLOG(0) << "communicator_merge_sparse_bucket "
-          << FLAGS_communicator_merge_sparse_bucket;
 
   // process var info from transpiler
   for (auto &iter : vars_info) {
@@ -461,7 +462,7 @@ void GeoSgdCommunicator::InitImpl(
     LOG(WARNING) << "no var need to send and recv!!";
   }
 
-  send_threadpool_.reset(new ::ThreadPool(FLAGS_communicator_thread_pool_size));
+  send_threadpool_.reset(new ::ThreadPool(env_flags_dict["thread_pool_size"]));
   need_push_queue_ =
       std::make_shared<BlockingQueue<std::shared_ptr<SparseIdsMap>>>(
           geo_need_push_nums);
@@ -570,7 +571,7 @@ void GeoSgdCommunicator::SendThread() {
         VLOG(4) << "ids_send_vec_ pushed";
       } else if (need_push_queue_->Size() == 0) {
         VLOG(4) << "wait_times -> " << wait_times;
-        if (wait_times >= FLAGS_communicator_send_wait_times) {
+        if (wait_times >= env_flags_dict["send_wait_times"]) {
           break;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(10));

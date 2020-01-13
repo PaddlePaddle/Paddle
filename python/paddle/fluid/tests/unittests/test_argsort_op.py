@@ -48,13 +48,16 @@ class TestArgsortOp(OpTest):
         self.axis = -1
 
     def init_datatype(self):
-        self.dtype = "float32"
+        self.dtype = "float64"
 
     def init_direction(self):
         self.descending = False
 
     def test_check_output(self):
         self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
 
 
 class TestArgsortOpAxis0(TestArgsortOp):
@@ -142,6 +145,19 @@ class TestArgsortOpDescendingAxisNeg1(TestArgsortOpAxisNeg1):
 
 
 class TestArgsortOpDescendingAxisNeg2(TestArgsortOpAxisNeg2):
+    def init_direction(self):
+        self.descending = True
+
+
+class TestArgsortOpFP32Axis(TestArgsortOp):
+    def init_datatype(self):
+        self.dtype = "float32"
+
+
+class TestArgsortOpFP32DescendingAxis(TestArgsortOp):
+    def init_datatype(self):
+        self.dtype = "float32"
+
     def init_direction(self):
         self.descending = True
 

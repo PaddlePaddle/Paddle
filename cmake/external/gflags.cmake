@@ -14,7 +14,8 @@
 
 INCLUDE(ExternalProject)
 
-SET(GFLAGS_PREFIX_DIR ${THIRD_PARTY_PATH}/gflags)
+SET(GFLAGS_PREFIX_DIR  ${THIRD_PARTY_PATH}/gflags)
+SET(GFLAGS_SOURCE_DIR  ${THIRD_PARTY_PATH}/gflags/src/extern_gflags)
 SET(GFLAGS_INSTALL_DIR ${THIRD_PARTY_PATH}/install/gflags)
 SET(GFLAGS_INCLUDE_DIR "${GFLAGS_INSTALL_DIR}/include" CACHE PATH "gflags include directory." FORCE)
 set(GFLAGS_REPOSITORY https://github.com/gflags/gflags.git)
@@ -31,7 +32,8 @@ INCLUDE_DIRECTORIES(${GFLAGS_INCLUDE_DIR})
 
 cache_third_party(extern_gflags
     REPOSITORY   ${GFLAGS_REPOSITORY}
-    TAG          ${GFLAGS_TAG})
+    TAG          ${GFLAGS_TAG}
+    DIR          GFLAGS_SOURCE_DIR)
 
 ExternalProject_Add(
     extern_gflags

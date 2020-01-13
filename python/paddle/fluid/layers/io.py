@@ -29,6 +29,7 @@ from ..framework import convert_np_dtype_to_dtype_, default_main_program, \
     default_startup_program, program_guard, Program, Variable
 from ..layer_helper import LayerHelper
 from ..unique_name import generate as unique_name
+from ..transpiler.distribute_transpiler import DistributedMode
 import logging
 
 __all__ = [
@@ -54,10 +55,20 @@ def data(name,
         :code:`paddle.fluid.layers.data` is deprecated as it will be removed in 
         a later version. Please use :code:`paddle.fluid.data` .
 
-        The :code:`paddle.fluid.layers.data` set shape and dtype at compile time
-        but does NOT check the shape or the dtype of feeded data, this
+        This :code:`paddle.fluid.layers.data` set shape and dtype at compile
+        time but does NOT check the shape or the dtype of feeded data, the
         :code:`paddle.fluid.data` checks the shape and the dtype of data feeded 
         by Executor or ParallelExecutor during run time.
+
+        To feed variable size inputs, users can feed variable size inputs
+        directly to this :code:`paddle.fluid.layers.data` and PaddlePaddle will
+        fit the size accordingly. Or set -1 on the variable dimension when using
+        :code:`paddle.fluid.data` .
+
+        The default :code:`stop_gradient` attribute of the Variable created by
+        this API is true, which means the gradient won't be passed backward
+        through the data Varaible. Set :code:`var.stop_gradient = False` If
+        user would like to pass backward gradient.
 
     Args:
        name(str): The name/alias of the variable, see :ref:`api_guide_Name`
@@ -230,7 +241,8 @@ class ListenAndServ(object):
                 'optimize_blocks': [
                     current_block
                 ],  # did not support multiple optimize blocks in layers
-                'sync_mode': True,  # did not support async now in layers
+                'distributed_mode':
+                DistributedMode.SYNC,  # did not support async now in layers
                 'grad_to_block_id': [""]
             })
 

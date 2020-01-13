@@ -26,6 +26,7 @@ from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program
 from ..dygraph import base
+from ..dygraph import dygraph_utils
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
 from .tensor import concat, assign, fill_constant, zeros
@@ -187,28 +188,6 @@ __all__ = [
 
 
 @dygraph_only
-def _append_activation_in_dygraph(input,
-                                  act=None,
-                                  use_cudnn=False,
-                                  use_mkldnn=False):
-    """Append activation in dygraph mode.
-
-        Args:
-            input: the input variable. 
-            act: activation type
-            use_mkldnn: if use mkldnn
-            use_cudnn: if use cudnn
-
-    Return the Variable after append activation
-    """
-    attrs = {'use_cudnn': use_cudnn, 'use_mkldnn': use_mkldnn}
-    inputs = {"X": [input]}
-    act_op = getattr(core.ops, act)
-    res = act_op(inputs, attrs)
-    return res['Out'][0]
-
-
-@dygraph_only
 def _elementwise_op_in_dygraph(x,
                                y,
                                axis=-1,
@@ -219,13 +198,10 @@ def _elementwise_op_in_dygraph(x,
     inputs = {'X': [x], 'Y': [y]}
     op = getattr(core.ops, op_name)
     outs = op(inputs, attrs)
-    pre_act = outs['Out'][0]
+    out = outs['Out'][0]
 
-    if not act:
-        return pre_act
-    else:
-        return _append_activation_in_dygraph(
-            pre_act, act, use_mkldnn=use_mkldnn)
+    return dygraph_utils._append_activation_in_dygraph(
+        out, act, use_mkldnn=use_mkldnn)
 
 
 def fc(input,
@@ -1142,6 +1118,13 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
                              fetch_list=[result[0]])
             print(output)
     """
+    inputs = {"X": [input]}
+    attrs = {"axis": axis, "use_cudnn": use_cudnn}
+
+    if in_dygraph_mode():
+        outs = core.ops.softmax(inputs, attrs)
+        return outs['Out'][0]
+
     helper = LayerHelper('softmax', **locals())
     check_type_and_dtype(input, 'input', Variable,
                          ['float16', 'float32', 'float64'], 'softmax')
@@ -1152,8 +1135,7 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
         type="softmax",
         inputs={"X": input},
         outputs={"Out": softmax_out},
-        attrs={"axis": axis,
-               "use_cudnn": use_cudnn})
+        attrs=attrs)
     return softmax_out
 
 
@@ -2485,6 +2467,7 @@ def batch_norm(input,
     Note:
         if build_strategy.sync_batch_norm=True, the batch_norm in network will use 
         sync_batch_norm automatically.
+        `is_test = True` can only be used in test program and inference program, `is_test` CANNOT be set to True in train program, if you want to use global status from pre_train model in train program, please set `use_global_stats = True`.
 
     Args:
         input(Variable): The rank of input variable can be 2, 3, 4, 5. The data type 
@@ -3025,7 +3008,7 @@ def layer_norm(input,
             print(output)
     """
     assert in_dygraph_mode(
-    ) is not True, "please use FC instead of fc in dygraph mode!"
+    ) is not True, "please use LayerNorm instead of layer_norm in dygraph mode!"
     helper = LayerHelper('layer_norm', **locals())
     dtype = helper.input_dtype()
 
@@ -3905,9 +3888,9 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
     attrs = {
-        'dim': dim if dim != None else [0],
+        'dim': dim if dim != None and dim != [] else [0],
         'keep_dim': keep_dim,
-        'reduce_all': True if dim == None else False
+        'reduce_all': True if dim == None or dim == [] else False
     }
 
     if in_dygraph_mode():
@@ -3980,9 +3963,9 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
     attrs = {
-        'dim': dim if dim != None else [0],
+        'dim': dim if dim != None and dim != [] else [0],
         'keep_dim': keep_dim,
-        'reduce_all': True if dim == None else False
+        'reduce_all': True if dim == None or dim == [] else False
     }
 
     if in_dygraph_mode():
@@ -4057,9 +4040,9 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else [0],
+            'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None else False
+            'reduce_all': True if dim == None or dim == [] else False
         })
     return out
 
@@ -4118,9 +4101,9 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else [0],
+            'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None else False
+            'reduce_all': True if dim == None or dim == [] else False
         })
     return out
 
@@ -4180,9 +4163,9 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else [0],
+            'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None else False
+            'reduce_all': True if dim == None or dim == [] else False
         })
     return out
 
@@ -4238,9 +4221,9 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else [0],
+            'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None else False
+            'reduce_all': True if dim == None or dim == [] else False
         })
     return out
 
@@ -4296,9 +4279,9 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else [0],
+            'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None else False
+            'reduce_all': True if dim == None or dim == [] else False
         })
     return out
 
@@ -4736,15 +4719,23 @@ def topk(input, k, name=None):
             vk_values, vk_indices = layers.topk(input2, k=vk) #vk_values.shape=[None, 13, k], vk_indices.shape=[None, 13, k]
 
     """
+    inputs = {"X": [input]}
+    attrs = {}
+    if isinstance(k, Variable):
+        inputs['K'] = [k]
+    else:
+        attrs = {'k': k}
+
+    if in_dygraph_mode():
+        outs = core.ops.top_k(inputs, attrs)
+        outs['Out'][0].stop_gradient = True
+        outs['Indices'][0].stop_gradient = True
+        return outs['Out'][0], outs['Indices'][0]
+
     helper = LayerHelper("top_k", **locals())
     values = helper.create_variable_for_type_inference(dtype=input.dtype)
     indices = helper.create_variable_for_type_inference(dtype="int64")
-    inputs = {"X": [input]}
-    attrs = None
-    if isinstance(k, Variable):
-        inputs['K'] = k
-    else:
-        attrs = {'k': k}
+
     helper.append_op(
         type="top_k",
         inputs=inputs,
@@ -5413,22 +5404,24 @@ def one_hot(input, depth, allow_out_of_range=False):
             label = fluid.data(name="label", shape=[4, 1], dtype="int64")
             one_hot_label = fluid.layers.one_hot(input=label, depth=4)
     """
-    helper = LayerHelper("one_hot", **locals())
+    if in_dygraph_mode():
+        inputs = {'X': [input]}
+        attrs = {'depth': depth, 'allow_out_of_range': allow_out_of_range}
+        outs = core.ops.one_hot(inputs, attrs)
+        outs['Out'][0].stop_gradient = True
+        return outs['Out'][0]
 
+    helper = LayerHelper("one_hot", **locals())
     one_hot_out = helper.create_variable_for_type_inference(dtype='float32')
 
-    if in_dygraph_mode():
+    if not isinstance(depth, Variable):
+        # user attribute
         inputs = {'X': input}
         attrs = {'depth': depth, 'allow_out_of_range': allow_out_of_range}
     else:
-        if not isinstance(depth, Variable):
-            # user attribute
-            inputs = {'X': input}
-            attrs = {'depth': depth, 'allow_out_of_range': allow_out_of_range}
-        else:
-            depth.stop_gradient = True
-            inputs = {'X': input, 'depth_tensor': depth}
-            attrs = {'allow_out_of_range': allow_out_of_range}
+        depth.stop_gradient = True
+        inputs = {'X': input, 'depth_tensor': depth}
+        attrs = {'allow_out_of_range': allow_out_of_range}
     helper.append_op(
         type="one_hot",
         inputs=inputs,
@@ -5571,6 +5564,12 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
             dim = fluid.layers.fill_constant([1], "int32", 5)
             reshaped_2 = fluid.layers.reshape(data_2, shape=[dim, 10])
             # the shape of reshaped_2 is [5,10].
+
+            # example 3:
+            data_3 = fluid.data(
+              name="data_3", shape=[2,4,6], dtype='float32')
+            reshaped_3 = fluid.layers.reshape(x=data_3, shape=[6,8])
+            # the shape of reshaped_3 is [6,8].
     """
     if in_dygraph_mode():
         #TODO(zhiqiu): open inplace if we can.
@@ -5594,11 +5593,8 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
 
         inputs = {'X': [x]}
         outs = core.ops.reshape2(inputs, attrs)
-        pre_act = outs['Out'][0]
-        if act is None:
-            return pre_act
-        else:
-            return _append_activation_in_dygraph(pre_act, act)
+        out = outs['Out'][0]
+        return dygraph_utils._append_activation_in_dygraph(out, act)
 
     check_type_and_dtype(x, 'x', Variable,
                          ['float16', 'float32', 'float64', 'int32', 'int64'],
@@ -6278,6 +6274,15 @@ def label_smooth(label,
     """
     if epsilon > 1. or epsilon < 0.:
         raise ValueError("The value of epsilon must be between 0 and 1.")
+
+    if in_dygraph_mode():
+        inputs = {"X": [label]}
+        if prior_dist:
+            inputs["PriorDist"] = [prior_dist]
+        attrs = {"epsilon": float(epsilon)}
+        outs = core.ops.label_smooth(inputs, attrs)
+        return outs['Out'][0]
+
     helper = LayerHelper("label_smooth", **locals())
     label.stop_gradient = True
     smooth_label = helper.create_variable_for_type_inference(dtype)
@@ -7683,7 +7688,7 @@ def scatter_nd_add(ref, index, updates, name=None):
             output = [[67, 19], [-16, -27]]
 
     Args:
-        ref (Variable): The ref input. Its dtype should be int32, int64, float32, float64.
+        ref (Variable): The ref input. Its dtype should be float32, float64.
         index (Variable): The index input with rank > 1 and index.shape[-1] <= ref.rank.
                           Its dtype should be int32 or int64 as it is used as indexes.
         updates (Variable): The updated value of scatter_nd_add op, and it must have the same dtype
@@ -7740,7 +7745,7 @@ def scatter_nd(index, updates, shape, name=None):
     Args:
         index (Variable): The index input with rank > 1 and index.shape[-1] <= len(shape).
                           Its dtype should be int32 or int64 as it is used as indexes.
-        updates (Variable): The updated value of scatter_nd op. Its dtype should be int32, int64, float32, float64.
+        updates (Variable): The updated value of scatter_nd op. Its dtype should be float32, float64.
                             It must have the shape index.shape[:-1] + shape[index.shape[-1]:]
         shape(tuple|list): Shape of output tensor.
         name (str|None): The output variable name. If set None, the layer will be named automatically.
@@ -7851,6 +7856,11 @@ def log(x, name=None):
             res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i}, fetch_list=[res])
             print(res_val) # [[0.], [0.6931472]]
     """
+    inputs = {'X': [x]}
+    if in_dygraph_mode():
+        outs = core.ops.log(inputs)
+        return outs['Out'][0]
+
     helper = LayerHelper('log', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
@@ -7886,6 +7896,11 @@ def relu(x, name=None):
                 # [[0.  0. ]
                 #  [1.  2.6]]
 """
+    inputs = {'X': [x]}
+    if in_dygraph_mode():
+        outs = core.ops.relu(inputs)
+        return outs['Out'][0]
+
     helper = LayerHelper('relu', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
@@ -8474,6 +8489,17 @@ def pad2d(input,
           result = fluid.layers.pad2d(input=data, paddings=[1, 2, 3, 4],
                                       mode='reflect')
     """
+    attrs = {'mode': mode, 'pad_value': pad_value, 'data_format': data_format}
+    inputs = {'X': [input]}
+    if isinstance(paddings, Variable):
+        inputs['Paddings'] = [paddings]
+        attrs['paddings'] = []
+    else:
+        attrs['paddings'] = paddings
+
+    if in_dygraph_mode():
+        outs = core.ops.pad2d(inputs, attrs)
+        return outs['Out'][0]
 
     helper = LayerHelper('pad2d', **locals())
 
@@ -8482,14 +8508,6 @@ def pad2d(input,
 
     dtype = helper.input_dtype(input_param_name='input')
     out = helper.create_variable_for_type_inference(dtype)
-    inputs = {'X': input}
-    attrs = {'mode': mode, 'pad_value': pad_value, 'data_format': data_format}
-
-    if isinstance(paddings, Variable):
-        inputs['Paddings'] = paddings
-        attrs['paddings'] = []
-    else:
-        attrs['paddings'] = paddings
 
     helper.append_op(
         type='pad2d', inputs=inputs, outputs={"Out": out}, attrs=attrs)
@@ -8919,13 +8937,16 @@ def leaky_relu(x, alpha=0.02, name=None):
             res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i}, fetch_list=[res])
             print(res_val) # [[-0.1, 2], [3, -0.4]]
     """
+    inputs = {'X': [x]}
+    attrs = {'alpha': alpha}
+    if in_dygraph_mode():
+        outs = core.ops.leaky_relu(inputs, attrs)
+        return outs['Out'][0]
+
     helper = LayerHelper('leaky_relu', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
-        type='leaky_relu',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'alpha': alpha})
+        type='leaky_relu', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return out
 
 
@@ -9326,6 +9347,32 @@ def expand(x, expand_times, name=None):
             expanded_2 = fluid.layers.expand(data_2, expand_times=expand_times)
             # the shape of expanded_2 is [48, 56].
     """
+
+    def contain_var(expand_times):
+        for ele in expand_times:
+            if isinstance(ele, Variable):
+                return True
+        return False
+
+    inputs = {"X": [x]}
+    attrs = {}
+
+    if in_dygraph_mode():
+        if isinstance(expand_times, (list, tuple)):
+            contain_var = contain_var(expand_times)
+            if contain_var:
+                raise TypeError(
+                    "The type of 'expand_times' in expand must be list[int] or tuple(int) in Dygraph mode, but "
+                    "received %s, which contains Variable." % type(shape))
+            attrs['expand_times'] = expand_times
+        else:
+            raise TypeError(
+                "The type of 'expand_times' in expand must be list[int] or tuple(int) in Dygraph mode, but "
+                "received %s." % type(shape))
+
+        outs = core.ops.expand(inputs, attrs)
+        return outs['Out'][0]
+
     check_type_and_dtype(x, 'x', Variable,
                          ['bool', 'float32', 'float64', 'int32', 'int64'],
                          'expand')
@@ -9335,14 +9382,6 @@ def expand(x, expand_times, name=None):
             "expand op bool date type must set the stop_gradient to be False")
 
     helper = LayerHelper('expand', input=x, **locals())
-    inputs = {"X": x}
-    attrs = {}
-
-    def contain_var(expand_times):
-        for ele in expand_times:
-            if isinstance(ele, Variable):
-                return True
-        return False
 
     def get_attr_expand_times(list_expand_times):
         attrs_expand_times = []
@@ -10378,6 +10417,19 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
             print(res) # [array([[ 3.,  5.,  7.], [ 9., 11., 13.]], dtype=float32)]
 
     """
+    inputs = {'X': [x]}
+    attrs = {
+        'bias': float(bias),
+        'bias_after_scale': bias_after_scale,
+    }
+    if isinstance(scale, Variable):
+        inputs['ScaleTensor'] = [scale]
+    else:
+        attrs['scale'] = float(scale)
+
+    if in_dygraph_mode():
+        outs = core.ops.scale(inputs, attrs)
+        return dygraph_utils._append_activation_in_dygraph(outs['Out'][0])
 
     helper = LayerHelper('scale', **locals())
     if name is None:
@@ -10385,16 +10437,6 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     else:
         out = helper.create_variable(
             name=name, dtype=x.dtype, persistable=False)
-
-    inputs = {'X': x}
-    attrs = {
-        'bias': float(bias),
-        'bias_after_scale': bias_after_scale,
-    }
-    if isinstance(scale, Variable):
-        inputs['ScaleTensor'] = scale
-    else:
-        attrs['scale'] = float(scale)
 
     helper.append_op(
         type='scale', inputs=inputs, outputs={'Out': out}, attrs=attrs)
@@ -10832,6 +10874,9 @@ Examples:
 
         print(z_value)#[[[[0., 0., 0., 0., 0.] .... [0., 0., 0., 0., 0.]]]]
     """
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name='elementwise_min')
 
     return _elementwise_op(LayerHelper('elementwise_min', **locals()))
 
@@ -11336,6 +11381,10 @@ def mean(x, name=None):
                 name='data', shape=[2, 3], dtype='float32')
             mean = fluid.layers.mean(input)
     """
+    if in_dygraph_mode():
+        inputs = {"X": [x]}
+        outs = core.ops.mean(inputs)
+        return outs['Out'][0]
 
     helper = LayerHelper("mean", **locals())
     check_type_and_dtype(x, 'x', Variable, ['float16', 'float32', 'float64'],
@@ -11418,6 +11467,11 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
             
 
     """
+    inputs = {"X": [x], "Y": [y]}
+    attrs = {"x_num_col_dims": x_num_col_dims, "y_num_col_dims": y_num_col_dims}
+    if in_dygraph_mode():
+        outs = core.ops.mul(inputs, attrs)
+        return outs['Out'][0]
 
     helper = LayerHelper("mul", **locals())
     check_type_and_dtype(x, 'x', Variable, ['float16', 'float32', 'float64'],
@@ -11431,14 +11485,8 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
             name=name, dtype=x.dtype, persistable=False)
 
     helper.append_op(
-        type="mul",
-        inputs={"X": x,
-                "Y": y},
-        attrs={
-            "x_num_col_dims": x_num_col_dims,
-            "y_num_col_dims": y_num_col_dims
-        },
-        outputs={"Out": out})
+        type="mul", inputs={"X": x,
+                            "Y": y}, attrs=attrs, outputs={"Out": out})
     return out
 
 
@@ -11981,8 +12029,8 @@ def log_loss(input, label, epsilon=1e-4, name=None):
         .. code-block:: python
 
           import paddle.fluid as fluid
-          label = fluid.data(name='label', shape=[-1, 1], dtype='int64')
-          prob = fluid.data(name='prob', shape=[-1, 10], dtype='float32')
+          label = fluid.data(name='label', shape=[None, 1], dtype='float32')
+          prob = fluid.data(name='prob', shape=[None, 1], dtype='float32')
           cost = fluid.layers.log_loss(input=prob, label=label)
     """
     helper = LayerHelper('log_loss', **locals())
@@ -12672,35 +12720,53 @@ def prroi_pool(input,
                spatial_scale=1.0,
                pooled_height=1,
                pooled_width=1,
+               batch_roi_nums=None,
                name=None):
     """
-    The precise roi pooling implementation for paddle?https://arxiv.org/pdf/1807.11590.pdf
+    The precise roi pooling implementation for paddle. Reference: https://arxiv.org/pdf/1807.11590.pdf
 
     Args:
-        input (Variable):The input of Deformable PSROIPooling.The shape of input tensor is
+        input (Variable):The input of precise roi pooliing.The shape of input tensor is
                         [N,C,H,W]. Where N is batch size,C is number of input channels,H
                         is height of the feature, and W is the width of the feature.
         rois (Variable): ROIs (Regions of Interest) to pool over.It should be
-                        a 2-D LoDTensor of shape (num_rois, 4), the lod level
-                        is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
+                        a 2-D LoDTensor or Tensor of shape (num_rois, 4), the lod level
+                        is 1 when it is LoDTensor. The LoD include the rois's batch index
+                        information. If rois is Tensor, its batch index information should
+                        be provided by batch_index.
+                        Given as [[x1, y1, x2, y2], ...], (x1, y1) is
                         the top left coordinates, and (x2, y2) is the bottom
                         right coordinates.
         spatial_scale (float): Ratio of input feature map height (or width) to raw image height (or width).
                              Equals the reciprocal of total stride in convolutional layers, Default: 1.0.
         pooled_height (integer): The pooled output height. Default: 1.
         pooled_width (integer): The pooled output width. Default: 1.
+        batch_roi_nums (Variable): The number of roi for each image in batch. It 
+                         shoule be 1-D Tensor, with shape [N] and dtype int64, 
+                         where N is the batch size. Default: None. Be note: The lod of input should be
+                         empty when batch_roi_nums has values;
         name (str, default None): The name of this operation.
 
     Returns:
-        Variable(Tensor): The shape of the returned Tensor is (num_rois, output_channels, pooled_h, pooled_w), with value type float32,float16..
+        Variable(Tensor):The shape of the returned Tensor is (N, C, pooled_height, pooled_width), with value type float32,float16. N, C denote batch_size and channels of input respectively.
 
     Examples:
         .. code-block:: python
 
+            ## prroi_pool without batch_roi_num
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[490, 28, 28], dtype='float32')
-            rois = fluid.layers.data(name='rois', shape=[4], lod_level=1, dtype='float32')
+            x = fluid.data(name='x', shape=[None, 490, 28, 28], dtype='float32')
+            rois = fluid.data(name='rois', shape=[None, 4], lod_level=1, dtype='float32')
             pool_out = fluid.layers.prroi_pool(x, rois, 1.0, 7, 7)
+            
+            ## prroi_pool with batch_roi_num
+            batchsize=4
+            x2 = fluid.data(name='x2', shape=[batchsize, 490, 28, 28], dtype='float32')
+            rois2 = fluid.data(name='rois2', shape=[batchsize, 4], dtype='float32')
+            batch_rois_num = fluid.data(name='rois_nums', shape=[batchsize], dtype='int64')
+            pool_out2 = fluid.layers.prroi_pool(x2, rois2, 1.0, 7, 7, batch_roi_nums=batch_rois_num)
+
+
     """
     helper = LayerHelper('prroi_pool', **locals())
     # check attrs
@@ -12712,10 +12778,12 @@ def prroi_pool(input,
         raise TypeError("pooled_width must be int type")
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
+    inputs_op = {'X': input, 'ROIs': rois}
+    if batch_roi_nums is not None:
+        inputs_op['BatchRoINums'] = batch_roi_nums
     helper.append_op(
         type='prroi_pool',
-        inputs={'X': input,
-                'ROIs': rois},
+        inputs=inputs_op,
         outputs={'Out': out},
         attrs={
             'spatial_scale': spatial_scale,
