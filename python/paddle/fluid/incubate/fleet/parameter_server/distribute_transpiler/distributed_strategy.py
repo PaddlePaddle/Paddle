@@ -13,8 +13,8 @@
 # limitations under the License.
 
 __all__ = [
-    "TrainerRuntimeConfig", "DistributedStrategy", "SyncStrategy",
-    "AsyncStrategy", "HalfAsyncStrategy", "GeoStrategy", "StrategyFactory"
+    "TrainerRuntimeConfig", "SyncStrategy", "AsyncStrategy",
+    "HalfAsyncStrategy", "GeoStrategy", "StrategyFactory"
 ]
 
 import os

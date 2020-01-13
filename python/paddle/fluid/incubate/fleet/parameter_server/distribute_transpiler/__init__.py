@@ -250,9 +250,7 @@ class DistributedTranspiler(Fleet):
         io.save_persistables(executor, dirname, main_program, None)
 
     def _transpile(self, config):
-        if isinstance(config, SyncStrategy) or isinstance(
-                config, HalfAsyncStrategy) or isinstance(
-                    config, AsyncStrategy) or isinstance(config, GeoStrategy):
+        if isinstance(config, DistributedStrategy):
             self._transpile_config = config
         elif isinstance(config, DistributeTranspilerConfig):
             if config.sync_mode:
@@ -338,17 +336,14 @@ class TranspilerOptimizer(DistributedOptimizer):
 
         if strategy:
             if isinstance(strategy, DistributeTranspilerConfig) or isinstance(
-                    strategy, SyncStrategy) or isinstance(
-                        strategy, HalfAsyncStrategy) or isinstance(
-                            strategy, AsyncStrategy) or isinstance(config,
-                                                                   GeoStrategy):
+                    strategy, DistributedStrategy):
                 self._strategy = strategy
             else:
                 raise TypeError(
-                    "In {} mode, strategy must be an instance of DistributeTranspilerConfig, SyncStrategy, HalfAsyncStrategy, AsyncStrategy, or GeoStrategy".
+                    "In {} mode, strategy must be an instance of DistributeTranspilerConfig or DistributedStrategy".
                     format(fleet._mode))
         else:
-            self._strategy = DistributedStrategy()
+            self._strategy = SyncStrategy()
 
     def backward(self,
                  loss,
