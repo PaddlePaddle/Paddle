@@ -305,6 +305,13 @@ if(WITH_MKLDNN)
   download_qat_data(${QAT2_INT8_MobileNet_MODEL_DIR} "MobileNet_qat_perf_int8.tar.gz")
   inference_analysis_api_qat_test_run(test_analyzer_qat_performance_benchmark ${QAT_IMG_CLASS_TEST_APP} ${QAT2_MobileNet_MODEL_DIR}/MobileNet_qat_perf/float ${QAT2_INT8_MobileNet_MODEL_DIR}/MobileNet_qat_perf_int8 ${IMAGENET_DATA_PATH})
 
+  ### Other tests
+ 
+  # MKLDNN quantizer config
+  set(MKLDNN_QUANTIZER_CONFIG_TEST_APP "test_mkldnn_quantizer_config")
+  set(MKLDNN_QUANTIZER_CONFIG_TEST_APP_SRC "mkldnn_quantizer_config_tester.cc")
+  inference_analysis_api_test_build(${MKLDNN_QUANTIZER_CONFIG_TEST_APP} ${MKLDNN_QUANTIZER_CONFIG_TEST_APP_SRC})
+  inference_analysis_test_run(test_mkldnn_quantizer_config COMMAND ${MKLDNN_QUANTIZER_CONFIG_TEST_APP})
 endif()
 
 # bert, max_len=20, embedding_dim=128
