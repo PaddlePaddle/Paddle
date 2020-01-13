@@ -18,7 +18,7 @@ import numpy as np
 from collections import defaultdict
 
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
-from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program
+from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
 
 from . import framework
 from . import layers
@@ -401,6 +401,16 @@ class Optimizer(object):
                             format(name, param.name))
         return self._accumulators[name][param.name]
 
+    def _get_device_for_optimize_op(self, param, target_block):
+        param_name = param.name
+        ops = target_block.ops
+        op_device = None
+        for op in ops:
+            input_arg_names = op.input_arg_names
+            if param_name in input_arg_names:
+                op_device = op.op_device
+        return op_device
+
     def _create_optimization_pass(self, parameters_and_grads):
         """Add optimization operators to update gradients to variables.
 
@@ -454,7 +464,11 @@ class Optimizer(object):
                 with param_and_grad[0].block.program._optimized_guard(
                         param_and_grad), name_scope("optimizer"):
                     if param_and_grad[0].trainable is True:
-                        self._append_optimize_op(target_block, param_and_grad)
+                        op_device = self._get_device_for_optimize_op(
+                            param_and_grad[0], target_block)
+                        with device_guard(op_device):
+                            optimize_op = self._append_optimize_op(
+                                target_block, param_and_grad)
 
         # Get custom finish ops for subclasses
         # FIXME: Need to fix this once we figure out how to handle dependencies

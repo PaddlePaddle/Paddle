@@ -165,13 +165,8 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       platform::SetDeviceId(dev_id);
 #endif
     }
-
-    {
-      platform::RecordEvent record_event(Type());
-      RunImpl(scope, place);
-    }
-
-    VLOG(3) << place << " " << DebugStringEx(&scope);
+    platform::RecordEvent record_event(Type());
+    RunImpl(scope, place);
   } catch (platform::EnforceNotMet& exception) {
     framework::InsertCallStackInfo(Type(), Attrs(), &exception);
     throw std::move(exception);
@@ -978,6 +973,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     platform::RecordEvent record_event("compute_inner_op");
     (*kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx,
                                      kernel_configs));
+    VLOG(3) << kernel_type_->place_ << " " << DebugStringEx(&scope);
   }
 
   if (!transfered_inplace_vars.empty()) {
@@ -1047,6 +1043,20 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
 
   auto expected_kernel_key = this->GetExpectedKernelType(
       ExecutionContext(*this, scope, *dev_ctx, ctx, nullptr));
+  if (device_type_ == "cpu") {
+    expected_kernel_key.place_ = platform::CPUPlace();
+  } else if (device_type_ == "gpu") {
+    // when the Op that only has CPUKernel is assigned on GPU, the program will
+    // runs normally and give warning at the same time.
+    if (SupportGPU()) {
+      expected_kernel_key.place_ = dev_ctx->GetPlace();
+    } else {
+      expected_kernel_key.place_ = platform::CPUPlace();
+      LOG_FIRST_N(WARNING, 1)
+          << "Op(" << type_
+          << ") has no CUDA implementation. It will be assigned on CPUPlace.";
+    }
+  }
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
   auto kernel_iter = kernels.find(expected_kernel_key);

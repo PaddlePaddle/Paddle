@@ -117,6 +117,8 @@ class OpDesc {
 
   const VariableNameMap &Outputs() const { return outputs_; }
 
+  const std::string DeviceType() const;
+
   AttributeMap *MutableAttrMap() {
     this->need_update_ = true;
     return &this->attrs_;
