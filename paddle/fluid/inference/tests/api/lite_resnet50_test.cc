@@ -63,7 +63,7 @@ TEST(AnalysisPredictor, use_gpu) {
   EXPECT_EQ(outputs.size(), expected_size);
   float* data_o = static_cast<float*>(outputs[0].data.data());
   for (size_t j = 0; j < outputs[0].data.length() / sizeof(float); j += 10) {
-    EXPECT_NEAR(data_o[j], truth_values[j / 10], 6e-3);
+    EXPECT_NEAR(data_o[j], truth_values[j / 10], 1e-2);
   }
 }
 
