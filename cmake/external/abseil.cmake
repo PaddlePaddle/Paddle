@@ -2,6 +2,7 @@ INCLUDE(ExternalProject)
 INCLUDE(GNUInstallDirs)
 
 SET(ABSEIL_PREFIX_DIR   ${THIRD_PARTY_PATH}/absl)
+SET(ABSEIL_SOURCE_DIR   ${THIRD_PARTY_PATH}/absl/src/extern_abseil)
 SET(ABSEIL_INSTALL_DIR  ${THIRD_PARTY_PATH}/install/absl)
 SET(ABSEIL_LIB_DIR  ${THIRD_PARTY_PATH}/install/absl/${CMAKE_INSTALL_LIBDIR})
 SET(ABSEIL_INCLUDE_DIR  "${ABSEIL_INSTALL_DIR}/include" CACHE PATH "abseil include directory." FORCE)
@@ -13,7 +14,8 @@ INCLUDE_DIRECTORIES(${ABSEIL_INCLUDE_DIR})
 
 cache_third_party(extern_abseil
     REPOSITORY   ${ABSEIL_REPOSITORY}
-    TAG          ${ABSEIL_TAG})
+    TAG          ${ABSEIL_TAG}
+    DIR          ${ABSEIL_SOURCE_DIR})
 
 
 ExternalProject_Add(

@@ -43,6 +43,8 @@ link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}gflags/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}xxhash/lib")
 link_directories("${PADDLE_LIB}/paddle/lib")
 
+find_package(absl PATHS ${PADDLE_LIB_THIRD_PARTY_PATH}absl  NO_DEFAULT_PATH)
+
 if (WIN32)
   add_definitions("/DGOOGLE_GLOG_DLL_DECL=")
   option(MSVC_STATIC_CRT "use static C Runtime library by default" ON)
@@ -132,6 +134,8 @@ else()
     set(DEPS ${PADDLE_LIB}/paddle/lib/libpaddle_fluid${CMAKE_SHARED_LIBRARY_SUFFIX})
   endif()
 endif()
+
+set(DEPS ${DEPS} absl::flat_hash_map)
 
 if (NOT WIN32)
   set(EXTERNAL_LIB "-lrt -ldl -lpthread")
