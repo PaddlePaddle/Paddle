@@ -377,6 +377,7 @@ inference_analysis_test(lite_mul_model_test SRCS lite_mul_model_test.cc
 inference_analysis_test(lite_resnet50_test SRCS lite_resnet50_test.cc
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
         ARGS --infer_model=${RESNET50_MODEL_DIR})
+
 inference_analysis_test(test_analyzer_capi SRCS analyzer_capi_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
             ARGS --infer_model=${RESNET50_MODEL_DIR}/model)
