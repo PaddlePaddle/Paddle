@@ -265,7 +265,7 @@ class DistributedTranspiler(Fleet):
             self._transpile_config.set_program_config(config)
         else:
             raise TypeError(
-                "config must be an instance of DistributeTranspilerConfig, SyncStrategy, HalfAsyncStrategy, AsyncStrategy or GeoStratey."
+                "config must be an instance of DistributeTranspilerConfig or DistributedStrategy"
             )
 
         program_config = self._transpile_config.get_program_config()
