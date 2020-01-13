@@ -167,7 +167,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     }
 
     {
-      platform::RecordEvent record_event(Type() + "_op");
+      platform::RecordEvent record_event(Type());
       RunImpl(scope, place);
     }
 
@@ -950,7 +950,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   std::vector<std::string> transfered_inplace_vars;
   Scope* transfer_scope = nullptr;
   {
-    platform::RecordEvent record_event("prepare_data");
+    platform::RecordEvent record_event("prepare_data_inner_op");
     transfer_scope = PrepareData(scope, *kernel_type_, &transfered_inplace_vars,
                                  runtime_ctx);
   }
@@ -963,7 +963,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 
   if (!all_kernels_must_compute_runtime_shape_) {
-    platform::RecordEvent record_event("infer_shape");
+    platform::RecordEvent record_event("infer_shape_inner_op");
     RuntimeInferShapeContext infer_shape_ctx(*this, *runtime_ctx);
     this->InferShape(&infer_shape_ctx);
   }
@@ -975,7 +975,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
   {
-    platform::RecordEvent record_event("compute");
+    platform::RecordEvent record_event("compute_inner_op");
     (*kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx,
                                      kernel_configs));
   }
