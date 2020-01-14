@@ -18,6 +18,7 @@
 #include <fstream>
 #include <set>
 #include <string>
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/sampler.h"
@@ -35,6 +36,7 @@ class NCESamplerKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     bool init_flag = context.Attr<bool>("init_flag");
     if (init_flag) {
+      // init customprobs, customalias, customaliasprobs
       auto *dist_probs_var = context.OutputVar("CustomDistProbsInit");
       auto *dist_alias_var = context.OutputVar("CustomDistAliasInit");
       auto *dist_alias_probs_var =
@@ -49,6 +51,7 @@ class NCESamplerKernel : public framework::OpKernel<T> {
 
       auto filename = context.Attr<std::string>("filename");
       auto factor = context.Attr<std::float>("factor");
+
       std::ifstream fin(filename);
       int64_t f_count, f_count_pow, total_count;
       total_count = 0;
@@ -68,12 +71,14 @@ class NCESamplerKernel : public framework::OpKernel<T> {
       for (int i = 0; i < k; ++i) {
         _prob[i] = static_cast<float>(_word_count[i]) / total_count;
       }
+
       std::set<int> S;
       std::set<int>::iterator s_it;
       std::set<int> L;
       std::set<int>::iterator l_it;
       for (int i = 0; i < k; ++i) {
         _q[i] = k * _prob[i];
+        _j[i] = -1;
         if (_q[i] < 1.0) {
           S.insert(i);
         } else {
@@ -116,6 +121,7 @@ class NCESamplerKernel : public framework::OpKernel<T> {
 
       int seed = context.Attr<int>("seed");
       int num_total_classes = context.Attr<int>("num_total_classes");
+      int num_neg_samples = context.Attr<int>("num_neg_samples");
 
       PADDLE_ENFORCE_EQ(
           dist_probs.numel(), num_total_classes,
@@ -143,21 +149,31 @@ class NCESamplerKernel : public framework::OpKernel<T> {
       const int *alias_data = dist_alias.data<int>();
       const float *alias_probs_data = dist_alias_probs.data<float>();
 
+      std::unordered_set<int64_t> pos_samples;
+      if (context.HasInput("PositiveSamples")) {
+        auto *pos_var = context.InputVar("PositiveSamples");
+        auto &pos_tensor = pos_var->Get<framework::LoDTensor>();
+        const int64_t *pos_samples_data = pos_tensor.data<int64_t>();
+        auto total_nums = pos_tensor.numel();
+        for (auto i = 0; i < total_nums; i++) {
+          pos_samples.insert(pos_samples_data[i]);
+        }
+      }
+
       Sampler *sampler;
       sampler = new math::CustomSampler(num_total_classes - 1, probs_data,
                                         alias_data, alias_probs_data, seed);
 
       auto *output_var = context.OutputVar("Out");
       auto *output = output_var->GetMutable<framework::LoDTensor>();
-      auto sample_labels_dims = output->dims();
       int64_t *sample_labels_data =
           output->mutable_data<int64_t>(context.GetPlace());
 
-      int64_t index = 0;
-      for (int64_t i = 0; i < sample_labels_dims[0]; ++i) {
-        for (int64_t j = 0; j < sample_labels_dims[1]; j++) {
-          sample_labels_data[index++] = sampler->Sample();
-        }
+      for (int64_t index = 0; index < num_neg_samples; ++index) {
+        do {
+          auto res = sampler->Sample();
+        } while (pos_samples_data.find(res) != pos_samples_data.end());
+        pos_samples_data[index] = res;
       }
       delete sampler;
     }

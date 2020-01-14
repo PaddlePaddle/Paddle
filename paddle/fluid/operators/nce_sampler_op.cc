@@ -25,11 +25,9 @@ class NCESamplerOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext *ctx) const override {
     auto num_neg_samples = ctx->Attrs().Get<int>("num_neg_samples");
-    auto sample_batch_size = ctx->Attrs().Get<int>("sample_batch_size");
 
     if (ctx->HasOutput("Out")) {
       std::vector<int64_t> sample_out_dims;
-      sample_out_dims.push_back(sample_batch_size);
       sample_out_dims.push_back(num_neg_samples);
       ctx->SetOutputDim("Out", framework::make_ddim(sample_out_dims));
     }
@@ -48,44 +46,38 @@ class NCESamplerOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() {
     AddInput(
         "CustomDistProbs",
-        "(Tensor) It is used in 'CostumDist' sampler. "
+        "(Tensor) It is used in 'CustomSampler'."
         "It is a tensor with shape [num_total_classes]."
         "The i-th element is the probsbility of the i-th class being sampled.")
         .AsDispensable();
     AddInput(
         "CustomDistAlias",
-        "(Tensor) It is used in 'CostumDist' sampler. "
+        "(Tensor) It is used in 'CustomSampler'."
         "It is a tensor with shape [num_total_classes]."
         "The i-th element is the probsbility of the i-th class being sampled.")
         .AsDispensable();
     AddInput(
         "CustomDistAliasProbs",
-        "(Tensor) It is used in 'CostumDist' sampler. "
+        "(Tensor) It is used in 'CustomSampler'."
         "It is a tensor with shape [num_total_classes]."
         "The i-th element is the probsbility of the i-th class being sampled.")
         .AsDispensable();
+    AddInput("PositiveSamples",
+             "(Tensor) element in PositiveSamples can't be sampled.")
+        AsDispensable();
     AddOutput("Out",
-              "An intermediate tensor of shape[batch_size, num_neg_samples + "
-              "num_pos_samples]."
-              "This tensor is output of forward kernel and used in backward "
-              "kernel to compute grads.")
+              "An output tensor of shape[sample_batch_size, num_neg_samples].")
         .AsDispensable();
     AddOutput("CustomDistProbsInit", "CustomDistProbsInit").AsDispensable();
     AddOutput("CustomDistAliasInit", "CustomDistAliasInit").AsDispensable();
     AddOutput("CustomDistAliasProbsInit", "CustomDistAliasProbsInit")
         .AsDispensable();
-    AddAttr<std::string>("filename",
-                         "filepath used to save sample count. i-th line is the "
-                         "count of sample[i]")
+    AddAttr<std::string>("filename", "i-th line is the count of sample[i]")
         .SetDefault("");
     AddAttr<bool>(
         "init_flag",
         "If it is true, this op will initialize Probs, Alias and AliasProbS.")
         .SetDefault(false);
-    AddAttr<int>("sample_batch_size",
-                 "(int) the shape of output of this op is [sample_batch_size, "
-                 "num_neg_samples]")
-        .SetDefault(1);
     AddAttr<int>("seed",
                  "(int) The seed used in sampler. If it is 0, "
                  "the sampler will generate a seed randomly.")

@@ -13885,9 +13885,9 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
 
 def nce_sampler(dict_path,
                 num_total_classes,
+                positive_inputs=None,
                 num_neg_samples=10,
                 seed=0,
-                sample_batch_size=1,
                 factor=0.75):
     '''
     This Op will sample `num_neg_samples` items from all samples. Total number of samples is `num_total_classes`.
@@ -13898,11 +13898,10 @@ def nce_sampler(dict_path,
         num_total_classes(int): Total number of classes in all samples.
         num_neg_samples(int): The number of negative classes needed to sample. The default value is 10.
         seed(int): The seed used in sampler. If it is 0, the sampler will generate a seed randomly.
-        sample_batch_size(int): shape[0] of the output tensor. Every element in output is different. If you need the negative samples is same in one batch, you can set sample_batch_size 1, and then expand the output to shape [batch_size, num_neg_samples].
-        factor(float): factor used to adjuct the distribution of all samples.
+        factor(float): factor used to adjust the distribution of all samples.
 
     Returns:
-        Variable: A Tensor with the shape [sample_batch_size, num_neg_samples]
+        Variable: A Tensor with the shape [num_neg_samples]
 
     Examples:
         .. code-block:: python
@@ -13930,47 +13929,30 @@ def nce_sampler(dict_path,
     helper.set_variable_initializer(alias_tensor, Constant(0))
     helper.set_variable_initializer(alias_probs_tensor, Constant(0.0))
 
+    attrs = dict()
+    attrs['dict_path'] = dict_path
+    attrs['num_total_classes'] = int(num_total_classes)
+    attrs['num_neg_samples'] = int(num_neg_samples)
+    attrs['seed'] = seed
+
+    inputs = dict()
+    inputs['CustomDistProbs'] = probs_tensor
+    inputs['CustomDistAlias'] = alias_tensor
+    inputs['CustomDistAliasProbs'] = alias_probs_tensor
+    if positive_inputs:
+        inputs['PositiveSamples'] = positive_inputs
+
+    outputs = dict()
+    outputs['Out'] = out
+    outputs['CustomDistProbsInit'] = probs_tensor
+    outputs['CustomDistAliasInit'] = alias_tensor
+    outputs['CustomDistAliasProbsInit'] = alias_probs_tensor
+
     block = default_startup_program().global_block()
+    attrs['init_flag'] = True
     block.append_op(
-        type='nce_sampler',
-        inputs={
-            'CustomDistProbs': probs_tensor,
-            'CustomDistAlias': alias_tensor,
-            'CustomDistAliasProbs': alias_probs_tensor
-        },
-        outputs={
-            'Out': out,
-            'CustomDistProbsInit': probs_tensor,
-            'CustomDistAliasInit': alias_tensor,
-            'CustomDistAliasProbsInit': alias_probs_tensor
-        },
-        attrs={
-            'init_flag': True,
-            'filename': dict_path,
-            'num_total_classes': int(num_total_classes),
-            'num_neg_samples': int(num_neg_samples),
-            'sample_batch_size': int(sample_batch_size),
-            'seed': seed
-        })
+        type='nce_sampler', inputs=inputs, outputs=outputs, attrs=attrs)
+    attrs['init_flag'] = False
     helper.append_op(
-        type='nce_sampler',
-        inputs={
-            'CustomDistProbs': probs_tensor,
-            'CustomDistAlias': alias_tensor,
-            'CustomDistAliasProbs': alias_probs_tensor
-        },
-        outputs={
-            'Out': out,
-            'CustomDistProbsInit': probs_tensor,
-            'CustomDistAliasInit': alias_tensor,
-            'CustomDistAliasProbsInit': alias_probs_tensor
-        },
-        attrs={
-            'init_flag': False,
-            'filename': dict_path,
-            'num_total_classes': int(num_total_classes),
-            'num_neg_samples': int(num_neg_samples),
-            'sample_batch_size': int(sample_batch_size),
-            'seed': seed
-        })
+        type='nce_sampler', inputs=inputs, outputs=outputs, attrs=attrs)
     return out
