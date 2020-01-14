@@ -138,7 +138,7 @@ if (NOT WIN32)
 else()
   set(DEPS ${DEPS}
       ${MATH_LIB} ${MKLDNN_LIB}
-      glog gflags_static libprotobuf  xxhash ${EXTERNAL_LIB})
+      glog gflags libprotobuf  xxhash ${EXTERNAL_LIB})
   set(DEPS ${DEPS} libcmt shlwapi.lib)
 endif(NOT WIN32)
 
