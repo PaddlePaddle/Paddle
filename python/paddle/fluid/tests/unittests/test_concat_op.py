@@ -51,9 +51,9 @@ class TestConcatOp(OpTest):
         self.check_grad(['x2'], 'Out')
 
     def init_test_data(self):
-        self.x0 = np.random.random((2, 1, 4, 5)).astype(self.dtype)
-        self.x1 = np.random.random((2, 2, 4, 5)).astype(self.dtype)
-        self.x2 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
+        self.x0 = np.random.random((5, 1, 4, 5)).astype(self.dtype)
+        self.x1 = np.random.random((5, 2, 4, 5)).astype(self.dtype)
+        self.x2 = np.random.random((5, 3, 4, 5)).astype(self.dtype)
         self.axis = 1
 
 
@@ -94,9 +94,9 @@ class TestConcatOp4(TestConcatOp):
 
 class TestConcatOp5(TestConcatOp):
     def init_test_data(self):
-        self.x0 = np.random.random((2, 1, 4, 5)).astype(self.dtype)
-        self.x1 = np.random.random((2, 2, 4, 5)).astype(self.dtype)
-        self.x2 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
+        self.x0 = np.random.random((5, 1, 4, 5)).astype(self.dtype)
+        self.x1 = np.random.random((5, 2, 4, 5)).astype(self.dtype)
+        self.x2 = np.random.random((5, 3, 4, 5)).astype(self.dtype)
         self.axis = -3
 
 

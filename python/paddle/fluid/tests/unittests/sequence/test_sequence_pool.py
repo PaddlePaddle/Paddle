@@ -105,6 +105,17 @@ class TestSeqAvgPoolBatch1(TestSeqAvgPool):
         return x
 
 
+class TestSeqAvgPoolInstance0(TestSeqAvgPool):
+    def set_lod(self):
+        return [[0, 0, 4, 0, 3, 0, 0, 5, 0, 0]]
+
+    def set_lod_data(self):
+        lod = self.set_lod()
+        x, _ = self.get_sequence_instance_size_0_input(
+            lod=lod, shape=[sum(lod[0]), 10])
+        return x
+
+
 class TestSeqAvgPoolLen0(TestSeqAvgPool):
     def set_lod(self):
         return [[0, 4, 0, 7, 0]]
