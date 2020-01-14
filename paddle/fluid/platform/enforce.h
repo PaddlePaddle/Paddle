@@ -168,9 +168,24 @@ struct BinaryCompareMessageConverter<false> {
 };
 }  // namespace details
 
+#if !defined(_WIN32)
+inline std::string GenarateLogFilePath() {
+  std::stringstream log_path_ss;
+  log_path_ss << getenv("HOME");
+  // TODO(chenweihang): This directory may not exist, and there is
+  // currently no way to create a directory through compilation
+  log_path_ss << "/.cache/paddle/";
+  std::time_t t = std::time(nullptr);
+  std::tm* tm = std::localtime(&t);
+  char datestr[40];
+  std::strftime(datestr, sizeof(datestr), "%F", tm);
+  log_path_ss << "paddle-error-summary-" << datestr << ".log";
+  return log_path_ss.str();
+}
+#endif
+
 template <typename StrType>
-inline std::string GetTraceBackString(StrType&& what, const char* file,
-                                      int line) {
+std::string GetTraceBackString(StrType&& what, const char* file, int line) {
   static constexpr int TRACE_STACK_LIMIT = 100;
   std::ostringstream sout;
 
@@ -202,6 +217,19 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
   sout << string::Sprintf("%s at (%s:%d)", std::forward<StrType>(what), file,
                           line)
        << std::endl;
+#if !defined(_WIN32)
+  // Save error summary to disk (on Unix)
+  std::string save_path = GenarateLogFilePath();
+  std::stringstream ss;
+  ss << string::Sprintf("\nFileLine: %s:%d\n", file, line);
+  ss << string::Sprintf("Summary: %s\n", std::forward<StrType>(what));
+  std::ofstream log_file(save_path, std::ofstream::app);
+  // Only write out error summary when open file successfully.
+  if (log_file.is_open()) {
+    log_file << ss.str();
+    log_file.close();
+  }
+#endif
   return sout.str();
 }
 
