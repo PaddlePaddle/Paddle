@@ -87,7 +87,7 @@ class DataLoader(object):
                        use_double_buffer=True,
                        iterable=True,
                        return_list=False,
-                       use_multiprocess=True):
+                       use_multiprocess=False):
         """
         Create a DataLoader object for loading data from Python generator. 
         Data would be prefetched using Python thread and be pushed
@@ -130,7 +130,9 @@ class DataLoader(object):
                 use return_list=True in dygraph mode.  
             use_multiprocess (bool): whether to use multi-process to speed up
                 the data loading process in dygraph. Note: this parameter only
-                can be used in dygraph mode. The Default value is True.
+                can be used in the dygraph mode. In the static graph mode,
+                whether this parameter is set or not has no effect.
+                The Default value is False.
 
         Returns:
             loader (DataLoader): the created DataLoader object.
@@ -328,7 +330,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
                  use_double_buffer=True,
                  iterable=True,
                  return_list=True,
-                 use_multiprocess=True):
+                 use_multiprocess=False):
         self._batch_reader = None
         self._places = None
         self._feed_list = feed_list

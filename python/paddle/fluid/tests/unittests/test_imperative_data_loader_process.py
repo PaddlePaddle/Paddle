@@ -51,7 +51,7 @@ class TestDygraphhDataLoaderProcess(unittest.TestCase):
     def test_reader_process_loop(self):
         with fluid.dygraph.guard():
             loader = fluid.io.DataLoader.from_generator(
-                capacity=self.batch_num + 1)
+                capacity=self.batch_num + 1, use_multiprocess=True)
             loader.set_batch_generator(
                 batch_generator_creator(self.batch_size, self.batch_num),
                 places=fluid.CPUPlace())
@@ -70,7 +70,7 @@ class TestDygraphhDataLoaderProcess(unittest.TestCase):
 
         with fluid.dygraph.guard():
             loader = fluid.io.DataLoader.from_generator(
-                capacity=self.batch_num + 1)
+                capacity=self.batch_num + 1, use_multiprocess=True)
             loader.set_batch_generator(
                 none_sample_genarator(self.batch_num), places=fluid.CPUPlace())
             loader._data_queue = queue.Queue(self.batch_num + 1)

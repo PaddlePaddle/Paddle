@@ -82,7 +82,8 @@ class TestDygraphhDataLoader(unittest.TestCase):
 
     def test_sample_genarator(self):
         with fluid.dygraph.guard():
-            loader = fluid.io.DataLoader.from_generator(capacity=self.capacity)
+            loader = fluid.io.DataLoader.from_generator(
+                capacity=self.capacity, use_multiprocess=True)
             loader.set_sample_generator(
                 sample_generator_creator(self.batch_size, self.batch_num),
                 batch_size=self.batch_size,
@@ -96,7 +97,8 @@ class TestDygraphhDataLoader(unittest.TestCase):
 
     def test_sample_list_generator(self):
         with fluid.dygraph.guard():
-            loader = fluid.io.DataLoader.from_generator(capacity=self.capacity)
+            loader = fluid.io.DataLoader.from_generator(
+                capacity=self.capacity, use_multiprocess=True)
             loader.set_sample_list_generator(
                 sample_list_generator_creator(self.batch_size, self.batch_num),
                 places=fluid.CPUPlace())
@@ -109,7 +111,8 @@ class TestDygraphhDataLoader(unittest.TestCase):
 
     def test_batch_genarator(self):
         with fluid.dygraph.guard():
-            loader = fluid.io.DataLoader.from_generator(capacity=self.capacity)
+            loader = fluid.io.DataLoader.from_generator(
+                capacity=self.capacity, use_multiprocess=True)
             loader.set_batch_generator(
                 batch_generator_creator(self.batch_size, self.batch_num),
                 places=fluid.CPUPlace())
@@ -164,7 +167,8 @@ class TestDygraphhDataLoaderWithException(unittest.TestCase):
             return __reader__
 
         with fluid.dygraph.guard():
-            loader = fluid.io.DataLoader.from_generator(capacity=self.capacity)
+            loader = fluid.io.DataLoader.from_generator(
+                capacity=self.capacity, use_multiprocess=True)
             loader.set_batch_generator(
                 error_sample_genarator(self.batch_num), places=fluid.CPUPlace())
             exception = None
