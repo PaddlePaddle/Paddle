@@ -23,6 +23,7 @@ import numpy as np
 
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle.fluid.framework import Program, Block
 from paddle.fluid.backward import append_backward
 
 
@@ -48,6 +49,14 @@ class PassTest(unittest.TestCase):
         return places
 
     def check_output(self, startup_on_cpu=False, atol=1e-5):
+        '''
+        Check whether the fetched outputs of the origin program and the
+        optimized program are the same.
+
+        For inference model, the parameters are loaded to CPUPlace first,
+        after apply all specified passes, then copy the parameters to GPUPlace.
+        We can set startup_on_cpu to True to test inference pass.
+        '''
         places = self._get_places()
         for place in places:
             self.check_output_with_place(place, startup_on_cpu, atol)
@@ -85,9 +94,22 @@ class PassTest(unittest.TestCase):
         trans_pass.set_not_owned("program", opt_program.desc)
         for p in pass_builder.all_passes():
             p.apply(graph)
+        opt_program.blocks = [
+            Block(opt_program, i)
+            for i in six.moves.range(opt_program.desc.num_blocks())
+        ]
+        opt_program._sync_with_cpp()
         return opt_program
 
     def check_output_with_place(self, place, startup_on_cpu=False, atol=1e-5):
+        '''
+        Check whether the fetched outputs of the origin program and the
+        optimized program are the same.
+
+        For inference model, the parameters are loaded to CPUPlace first,
+        after apply all specified passes, then copy the parameters to GPUPlace.
+        We can set startup_on_cpu to True to test inference pass.
+        '''
         executor = fluid.Executor(place)
         if startup_on_cpu:
             # Initialize parameters on CPU
@@ -104,13 +126,12 @@ class PassTest(unittest.TestCase):
 
         # Parameters may be changed in ir passes.
         opt_program = self._apply_ir_passes()
-        if self.fused_op_type is not None and self.num_fused_ops >= 0:
-            self.check_fused_ops(opt_program)
+        self.check_program(opt_program)
 
         if startup_on_cpu and not isinstance(place, fluid.CPUPlace):
             warnings.warn(
-                "Parameters are on CPU, and will be transfered to GPU automatically by data transform."
-            )
+                "Parameters are on CPU, and will be transfered to GPU "
+                "automatically by data transform.")
 
         outs_opt, lods_opt = self._run_program(executor, opt_program)
         self.assertTrue(
@@ -124,7 +145,11 @@ class PassTest(unittest.TestCase):
                 "Output < {} > has diff at {}".format(self.fetch_list[i].name,
                                                       str(place)))
 
-    def check_fused_ops(self, program=None):
+    def _check_fused_ops(self, program):
+        '''
+        Check the number of specified fused op is equal to the the expected
+        number.
+        '''
         if self.fused_op_type is None or self.num_fused_ops < 0:
             return
 
@@ -132,11 +157,102 @@ class PassTest(unittest.TestCase):
             program = self._apply_ir_passes()
 
         acctual_num_fused_ops = 0
-        for op in program.desc.block(0).all_ops():
-            if op.type() == self.fused_op_type:
+        # Ir passes can only be applyed to block 0.
+        for op in program.block(0).ops:
+            if op.type == self.fused_op_type:
                 acctual_num_fused_ops += 1
         self.assertTrue(
             self.num_fused_ops == acctual_num_fused_ops,
-            "Checking of the number of fused operator < {} > failed. Expected: {}, Received: {}".
-            format(self.fused_op_type, self.num_fused_ops,
-                   acctual_num_fused_ops))
+            "Checking of the number of fused operator < {} > failed. "
+            "Expected: {}, Received: {}".format(
+                self.fused_op_type, self.num_fused_ops, acctual_num_fused_ops))
+
+    def check_program(self, program=None):
+        '''
+        Check whether the optimized program is different from the origin
+        program.
+        '''
+        if program is None or program == self.main_program:
+            program = self._apply_ir_passes()
+
+        self._check_fused_ops(program)
+
+        self.assertTrue(
+            self.main_program.desc != program.desc,
+            "The optimized program and the origin main_program hold the same "
+            "desc.")
+
+        self.assertTrue(
+            self.main_program.num_blocks == program.num_blocks,
+            "The number of blocks of the origin program and the optimized "
+            "program are different ({} vs {}).".format(
+                self.main_program.num_blocks, program.num_blocks))
+
+        is_different = False
+        for i in six.moves.xrange(program.num_blocks):
+            if len(self.main_program.block(i).ops) != len(program.block(i).ops):
+                # The number of ops in the block i of the origin program and
+                # the optimized program is different.
+                is_different = True
+                break
+
+            # If there are different ops between the origin and optimized program.
+            for op in self.main_program.block(i).ops:
+                if not self._find_op(op, program, i):
+                    is_different = True
+                    break
+
+            if len(self.main_program.block(i).vars) != len(
+                    program.block(i).vars):
+                # The number of vars in the block i of the origin program and
+                # the optimized program is different.
+                is_different = True
+                break
+
+            # If there are different vars between the origin and optimized program.
+            for name in self.main_program.block(i).vars:
+                var = self.main_program.block(i).var(name)
+                if not self._find_var(var, program, i):
+                    is_different = True
+                    break
+
+        self.assertTrue(
+            is_different,
+            "The optimized program is logically the same with the origin "
+            "program.")
+
+    def _find_op(self, specified_op, program, block_id):
+        is_find = False
+        for op in program.block(block_id).ops:
+            if specified_op.type == op.type:
+                for name in op.input_names:
+                    if op.input(name) != specified_op.input(name):
+                        break
+                for name in op.output_names:
+                    if op.output(name) != specified_op.output(name):
+                        break
+                for name in op.attr_names:
+                    if op.attr(name) != specified_op.attr(name):
+                        break
+                is_find = True
+                break
+
+        return is_find
+
+    def _find_var(self, specified_var, program, block_id):
+        if not program.block(block_id).has_var(specified_var.name):
+            return False
+
+        var = program.block(block_id).var(specified_var.name)
+        if var.type != specified_var.type:
+            return False
+        if var.dtype != specified_var.dtype:
+            return False
+        if var.lod_level != specified_var.lod_level:
+            return False
+        if var.shape != specified_var.shape:
+            return False
+        if var.persistable != specified_var.persistable:
+            return False
+
+        return True
