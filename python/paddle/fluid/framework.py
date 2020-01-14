@@ -455,14 +455,14 @@ def name_scope(prefix=None):
     """
     # TODO(panyx0718): Only [0-9a-z].
     # in dygraph we don't need namescope since it will cause mem leak
-    if not in_dygraph_mode():
+    if in_dygraph_mode():
+        yield
+    else:
         assert prefix, "namescope prefix cannot be empty."
         global _name_scope
         _name_scope = _name_scope.child(prefix)
         yield
         _name_scope = _name_scope.parent()
-    else:
-        yield
 
 
 def _full_name_scope():
@@ -715,10 +715,9 @@ def _getitem_impl_(var, item):
     if (use_strided_slice == True):
         attrs['strides'] = []
     infer_flags = list(1 for i in range(len(slice_axis)))
+
     # starts
-    if not contain_var(slice_start):
-        attrs['starts'] = slice_start
-    else:
+    if contain_var(slice_start):
         inputs['StartsTensorList'] = get_new_list_tensor(slice_start)
         for i, dim in enumerate(slice_start):
             if isinstance(dim, Variable):
@@ -726,10 +725,11 @@ def _getitem_impl_(var, item):
                 infer_flags[i] = -1
             else:
                 attrs['starts'].append(dim)
-    # ends
-    if not contain_var(slice_end):
-        attrs['ends'] = slice_end
     else:
+        attrs['starts'] = slice_start
+
+    # ends
+    if contain_var(slice_end):
         inputs['EndsTensorList'] = get_new_list_tensor(slice_end)
         for i, dim in enumerate(slice_end):
             if isinstance(dim, Variable):
@@ -737,11 +737,12 @@ def _getitem_impl_(var, item):
                 infer_flags[i] = -1
             else:
                 attrs['ends'].append(dim)
+    else:
+        attrs['ends'] = slice_end
+
     # strides
     if use_strided_slice == True:
-        if not contain_var(slice_step):
-            attrs['strides'] = slice_step
-        else:
+        if contain_var(slice_step):
             inputs['StridesTensorList'] = get_new_list_tensor(slice_step)
             for i, dim in enumerate(slice_step):
                 if isinstance(dim, Variable):
@@ -749,6 +750,8 @@ def _getitem_impl_(var, item):
                     infer_flags[i] = -1
                 else:
                     attrs['strides'].append(dim)
+        else:
+            attrs['strides'] = slice_step
     # infer_flags
     attrs['infer_flags'] = infer_flags
 
@@ -2344,12 +2347,12 @@ class Block(object):
                 if isinstance(item[1], Parameter))
 
     def create_var(self, *args, **kwargs):
-        if not in_dygraph_mode():
+        if in_dygraph_mode():
+            var = _varbase_creator(*args, **kwargs)
+        else:
             var = Variable(block=self, *args, **kwargs)
             if 'initializer' in kwargs:
                 kwargs['initializer'](var, self)
-        else:
-            var = _varbase_creator(*args, **kwargs)
         return var
 
     def has_var(self, name):
@@ -2396,9 +2399,8 @@ class Block(object):
         # NOTE: v is destroyed by C++ after calling _rename_var.
         d = self.desc.find_var(cpt.to_bytes(new_name))
         if var_type == "Parameter":
-            if not in_dygraph_mode():
-                var = Parameter(
-                    self,
+            if in_dygraph_mode():
+                var = ParamBase(
                     d.shape(),
                     d.dtype(),
                     type=orig_var_type,
@@ -2410,7 +2412,8 @@ class Block(object):
                     gradient_clip_attr=gradient_clip_attr,
                     error_clip=error_clip)
             else:
-                var = ParamBase(
+                var = Parameter(
+                    self,
                     d.shape(),
                     d.dtype(),
                     type=orig_var_type,
@@ -2444,10 +2447,10 @@ class Block(object):
     def create_parameter(self, *args, **kwargs):
         global_block = self.program.global_block()
         param = None
-        if not in_dygraph_mode():
-            param = Parameter(global_block, *args, **kwargs)
-        else:
+        if in_dygraph_mode():
             param = ParamBase(*args, **kwargs)
+        else:
+            param = Parameter(global_block, *args, **kwargs)
         if 'initializer' in kwargs:
 
             def _is_inited_by(block, var):
@@ -2687,9 +2690,8 @@ class Block(object):
                                  "same topology")
             assert isinstance(v, Variable)
             new_p = None
-            if not in_dygraph_mode():
-                new_p = Parameter(
-                    block=self,
+            if in_dygraph_mode():
+                new_p = ParamBase(
                     shape=v.shape,
                     dtype=v.dtype,
                     type=v.type,
@@ -2702,7 +2704,8 @@ class Block(object):
                     error_clip=p.error_clip,
                     name=v.name)
             else:
-                new_p = ParamBase(
+                new_p = Parameter(
+                    block=self,
                     shape=v.shape,
                     dtype=v.dtype,
                     type=v.type,
@@ -4523,6 +4526,65 @@ class Program(object):
         for each_block in self.blocks:
             for each_var in list(each_block.vars.values()):
                 yield each_var
+
+    @dygraph_not_support
+    def all_parameters(self):
+        """
+        Get all :ref:`api_guide_parameter_en` from this Program. A list object is returned.
+
+        Returns:
+            list[ :ref:`api_guide_parameter_en` ]: The list contians all parameters in this program.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                program = fluid.default_main_program()
+                data = fluid.data(name='x', shape=[None, 13], dtype='float32')
+                hidden = fluid.layers.fc(input=data, size=10)
+                loss = fluid.layers.mean(hidden)
+                fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+
+                for param in program.all_parameters():
+                    print(param)
+
+                # Here will print all parameters in current program, in this example,
+                # the result is like:
+                #
+                # name: "fc_0.w_0"
+                # type {
+                #   type: LOD_TENSOR
+                #   lod_tensor {
+                #     tensor {
+                #       data_type: FP32
+                #       dims: 13
+                #       dims: 10
+                #     }
+                #   }
+                # }
+                # persistable: true
+                #
+                # name: "fc_0.b_0"
+                # type {
+                # type: LOD_TENSOR
+                # lod_tensor {
+                #     tensor {
+                #       data_type: FP32
+                #       dims: 10
+                #     }
+                #   }
+                # }
+                # persistable: true
+                #
+                # Here print(param) will print out all the properties of a parameter,
+                # including name, type and persistable, you can access to specific
+                # property of a parameter, such as param.name, param.type
+        """
+        parameters = []
+        for each_block in self.blocks:
+            parameters.extend(each_block.all_parameters())
+        return parameters
 
 
 @six.add_metaclass(ParameterMetaClass)

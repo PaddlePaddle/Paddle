@@ -209,8 +209,8 @@ class OpTest(unittest.TestCase):
 
         if not hasattr(cls, "op_type"):
             raise AssertionError(
-                "This test do not have op_type in class attrs,"
-                " please set self.__class__.op_type=the_real_op_type manually.")
+                "This test do not have op_type in class attrs, "
+                "please set self.__class__.op_type=the_real_op_type manually.")
 
         # case in NO_FP64_CHECK_GRAD_CASES and op in NO_FP64_CHECK_GRAD_OP_LIST should be fixed
         if not hasattr(cls, "no_need_check_grad") \
@@ -222,9 +222,11 @@ class OpTest(unittest.TestCase):
                 raise AssertionError("This test of %s op needs check_grad." %
                                      cls.op_type)
 
+            # check for op test with fp64 precision, but not check mkldnn op test for now
             if cls.dtype in [np.float32, np.float64] \
                 and cls.op_type not in op_accuracy_white_list.NO_FP64_CHECK_GRAD_OP_LIST \
-                and not hasattr(cls, 'exist_fp64_check_grad'):
+                and not hasattr(cls, 'exist_fp64_check_grad') \
+                and (not hasattr(cls, "use_mkldnn") or cls.use_mkldnn == False):
                 raise AssertionError(
                     "This test of %s op needs check_grad with fp64 precision." %
                     cls.op_type)
@@ -389,6 +391,42 @@ class OpTest(unittest.TestCase):
             shape = [13, 23]
         assert len(lod[0]) == 1
         assert lod[0][0] == shape[0]
+        x = np.random.uniform(0.1, 1, shape).astype('float32')
+        return (x, lod)
+
+    def lod_has_single_zero(self, lod):
+        for i in range(len(lod) - 2):
+            if lod[i] != 0 and lod[i + 1] == 0 and lod[i + 2] != 0:
+                return True
+        return False
+
+    def lod_has_continuous_zero(self, lod):
+        for i in range(len(lod) - 3):
+            if lod[i] != 0 and lod[i + 1] == 0 and lod[i + 2] == 0 and lod[
+                    i + 3] != 0:
+                return True
+        return False
+
+    def get_sequence_instance_size_0_input(self, lod=None, shape=None):
+        """Get LoD input data whose instance size is 0.
+        All sequence related OP unittests should call this function to contain the case of instance size is 0.
+        Args:
+            lod (list[list of int], optional): Length-based LoD, lod[0]'s size must at least eight, lod[0] must at least two zeros at the beginning and at least two zeros at the end, the middle position of lod[0] contains a single zero and multiple zero. Default: [[0, 0, 4, 0, 3, 0, 0, 5, 0, 0]].
+            shape (list, optional): Shape of input, shape[0] should be equals to lod[0][0]. Default: [13, 23].
+        Returns:
+            tuple (ndarray, lod): LoD input data whose instance size is 0.
+        """
+        if lod is None:
+            lod = [[0, 0, 4, 0, 3, 0, 0, 5, 0, 0]]
+        if shape is None:
+            shape = [12, 10]
+        assert len(lod[0]) >= 8
+        assert lod[0][0] == 0 and lod[0][1] == 0 and lod[0][-1] == 0 and lod[0][
+            -2] == 0
+        assert self.lod_has_single_zero(lod[0]) is True
+        assert self.lod_has_continuous_zero(lod[0]) is True
+        assert sum(lod[0]) == shape[0]
+
         x = np.random.uniform(0.1, 1, shape).astype('float32')
         return (x, lod)
 
