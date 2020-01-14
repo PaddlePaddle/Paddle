@@ -115,7 +115,7 @@ class TestMKLDNNReluDim4(TestRelu):
     def setUp(self):
         super(TestMKLDNNReluDim4, self).setUp()
 
-        x = np.random.uniform(-1, 1, [2, 4, 3, 5]).astype("float32")
+        x = np.random.uniform(-1, 1, [2, 4, 3, 5])
         # The same reason with TestAbs
         x[np.abs(x) < 0.005] = 0.02
         out = np.maximum(x, 0)
