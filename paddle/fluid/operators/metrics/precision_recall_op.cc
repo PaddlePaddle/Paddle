@@ -179,12 +179,18 @@ Output(AccumStatesInfo) is metrics of accumulation data.
   }
 };
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(PrecisionRecallNoNeedBufferVarInference,
+                                      "MaxProbs");
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(precision_recall, ops::PrecisionRecallOp,
-                             ops::PrecisionRecallOpMaker);
+REGISTER_OPERATOR(
+    precision_recall, ops::PrecisionRecallOp, ops::PrecisionRecallOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::PrecisionRecallNoNeedBufferVarInference);
 REGISTER_OP_CPU_KERNEL(
     precision_recall,
     ops::PrecisionRecallKernel<paddle::platform::CPUPlace, float>,

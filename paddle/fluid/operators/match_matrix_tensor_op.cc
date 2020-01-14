@@ -15,6 +15,7 @@ limitations under the License. */
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <memory>
 #include <vector>
 
 #include "paddle/fluid/operators/match_matrix_tensor_op.h"
@@ -313,15 +314,36 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename T>
+class MatchMatrixTensorGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  std::unique_ptr<T> Apply() const override {
+    auto* grad_op = new T();
+    grad_op->SetType("match_matrix_tensor_grad");
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput("Y", this->Input("Y"));
+    grad_op->SetInput("W", this->Input("W"));
+    grad_op->SetInput("Tmp", this->Output("Tmp"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    grad_op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+    grad_op->SetOutput(framework::GradVarName("W"), this->InputGrad("W"));
+    grad_op->SetAttrMap(this->Attrs());
+    return std::unique_ptr<T>(grad_op);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(
-    match_matrix_tensor, ops::MatchMatrixTensorOP,
-    ops::MatchMatrixTensorOpMaker,
-    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
-    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>)
+REGISTER_OPERATOR(match_matrix_tensor, ops::MatchMatrixTensorOP,
+                  ops::MatchMatrixTensorOpMaker,
+                  ops::MatchMatrixTensorGradOpMaker<paddle::framework::OpDesc>,
+                  ops::MatchMatrixTensorGradOpMaker<paddle::imperative::OpBase>)
 REGISTER_OPERATOR(match_matrix_tensor_grad, ops::MatchMatrixTensorOpGrad);
 
 REGISTER_OP_CPU_KERNEL(match_matrix_tensor,
