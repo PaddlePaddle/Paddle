@@ -21,7 +21,11 @@ from . import core
 __all__ = ['L1Decay', 'L2Decay', 'L1DecayRegularizer', 'L2DecayRegularizer']
 
 
-def create_regularization_of_grad(param, grad, regularization=None):
+def _create_regularization_of_grad(param, grad, regularization=None):
+    """ Create and add backward regularization Operators
+
+    Function helper of append_regularization_ops.
+    """
     # If no gradient or no regularization is specified,  then we don't need to do anything
     if grad is None or (param.regularizer is None and regularization is None):
         return grad
@@ -82,15 +86,15 @@ def append_regularization_ops(parameters_and_grads, regularization=None):
     if in_dygraph_mode():
         with framework.name_scope('regularization'):
             for param, grad in parameters_and_grads:
-                new_grad = create_regularization_of_grad(param, grad,
+                new_grad = _create_regularization_of_grad(param, grad,
                                                          regularization)
                 params_and_grads.append((param, new_grad))
     else:
         with framework.name_scope('regularization'):
             for param, grad in parameters_and_grads:
                 with param.block.program._optimized_guard([param, grad]):
-                    new_grad = create_regularization_of_grad(param, grad,
-                                                             regularization)
+                    new_grad = _create_regularization_of_grad(param, grad,
+                                                              regularization)
                     params_and_grads.append((param, new_grad))
     return params_and_grads
 
