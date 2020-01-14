@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/device_code.h"
+#include <utility>
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/init.h"
@@ -28,7 +29,12 @@ void saxpy_kernel(float a, float *x, float* y, float* z, size_t n) {
 )";
 
 #ifdef PADDLE_WITH_CUDA
-TEST(device_code, cuda) {
+TEST(DeviceCode, cuda) {
+  if (!paddle::platform::dynload::HasNVRTC() ||
+      !paddle::platform::dynload::HasCUDADriver()) {
+    return;
+  }
+
   paddle::framework::InitDevices(false, {0});
   paddle::platform::CUDAPlace place = paddle::platform::CUDAPlace(0);
   paddle::platform::CUDADeviceCode code(place, "saxpy_kernel", saxpy_code);
@@ -62,17 +68,43 @@ TEST(device_code, cuda) {
   TensorCopySync(cpu_x, place, &x);
   TensorCopySync(cpu_y, place, &y);
 
-  code.Compile();
+  EXPECT_EQ(code.Compile(), true);
 
   std::vector<void*> args = {&scale, &x_data, &y_data, &z_data, &n};
   code.SetNumThreads(1024);
   code.SetWorkloadPerThread(1);
   code.Launch(n, &args);
 
+  auto* dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
+  dev_ctx->Wait();
+
   TensorCopySync(z, paddle::platform::CPUPlace(), &cpu_z);
   for (size_t i = 0; i < n; i++) {
-    PADDLE_ENFORCE_EQ(cpu_z.data<float>()[i],
-                      static_cast<float>(i) * scale + 0.5);
+    EXPECT_EQ(cpu_z.data<float>()[i], static_cast<float>(i) * scale + 0.5);
   }
+}
+
+TEST(DeviceCodePool, cuda) {
+  if (!paddle::platform::dynload::HasNVRTC() ||
+      !paddle::platform::dynload::HasCUDADriver()) {
+    return;
+  }
+
+  paddle::framework::InitDevices(false, {0});
+  paddle::platform::CUDAPlace place = paddle::platform::CUDAPlace(0);
+  paddle::platform::DeviceCodePool& pool =
+      paddle::platform::DeviceCodePool::Init({place});
+  size_t num_device_codes_before = pool.size(place);
+  EXPECT_EQ(num_device_codes_before, 0UL);
+
+  std::unique_ptr<paddle::platform::DeviceCode> code(
+      new paddle::platform::CUDADeviceCode(place, "saxpy_kernel", saxpy_code));
+  LOG(INFO) << "origin ptr: " << code.get();
+  pool.Set(std::move(code));
+  size_t num_device_codes_after = pool.size(place);
+  EXPECT_EQ(num_device_codes_after, 1UL);
+
+  paddle::platform::DeviceCode* code_get = pool.Get(place, "saxpy_kernel");
+  LOG(INFO) << "get ptr: " << code_get;
 }
 #endif

@@ -82,7 +82,7 @@ void FusionGroupPass::InsertFusionGroupOp(
     input_names.push_back(n->Name());
     external_nodes.insert(n);
   }
-  op_desc.SetInput("Xs", input_names);
+  op_desc.SetInput("Inputs", input_names);
 
   std::vector<std::string> output_names;
   for (auto* n : output_vars_of_subgraph) {

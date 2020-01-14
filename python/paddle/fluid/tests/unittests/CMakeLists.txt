@@ -53,7 +53,6 @@ endif()
 list(REMOVE_ITEM TEST_OPS test_seq_concat_op) # FIXME(helin): https://github.com/PaddlePaddle/Paddle/issues/8290
 list(REMOVE_ITEM TEST_OPS test_lstm_unit_op) # # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5185
 list(REMOVE_ITEM TEST_OPS test_cond_op) # FIXME(qijun): https://github.com/PaddlePaddle/Paddle/issues/5101#issuecomment-339814957
-list(REMOVE_ITEM TEST_OPS test_kldiv_loss_op) # FIXME(dengkaipeng): https://github.com/PaddlePaddle/Paddle/issues/21750
 
 list(REMOVE_ITEM TEST_OPS op_test) # op_test is a helper python file, not a test
 list(REMOVE_ITEM TEST_OPS decorator_helper) # decorator_helper is a helper python file, not a test
@@ -79,6 +78,7 @@ if(NOT WITH_MKL OR NOT WITH_AVX)
 endif()
 if(WITH_COVERAGE OR NOT WITH_AVX OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_pyramid_hash_op)
+  list(REMOVE_ITEM TEST_OPS test_fleet_pyramid_hash)
 endif()
 
 if(WITH_GPU OR NOT WITH_MKLML)
@@ -129,11 +129,20 @@ function(bash_test_modules TARGET_NAME)
         set(timeout ${bash_test_modules_TIMEOUT})
     endif()
 
-    add_test(NAME ${TARGET_NAME}
-        COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python 
-        TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${bash_test_modules_ENVS}
-        bash ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_MODULES}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    if(WITH_COVERAGE)
+        add_test(NAME ${TARGET_NAME}
+            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python 
+            TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${bash_test_modules_ENVS}
+            WITH_COVERAGE=ON COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
+            bash ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_MODULES}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    else()
+        add_test(NAME ${TARGET_NAME}
+            COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${PADDLE_BINARY_DIR}/python 
+            TEST_TARGET_NAME=${TARGET_NAME} TEST_TIMEOUT=${timeout} ${bash_test_modules_ENVS}
+            bash ${CMAKE_CURRENT_BINARY_DIR}/${bash_test_modules_MODULES}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    endif()
 
     if (bash_test_modules_SERIAL)
         set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
@@ -174,6 +183,7 @@ list(REMOVE_ITEM TEST_OPS test_basic_gru_unit_op)
 list(REMOVE_ITEM TEST_OPS test_basic_lstm_api)
 list(REMOVE_ITEM TEST_OPS test_basic_lstm_unit_op)
 list(REMOVE_ITEM TEST_OPS test_imperative_debug_string)
+list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
 
 if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_dataset)
@@ -199,8 +209,8 @@ set(TEST_OPS_WITH_GC
   test_pad2d_op
   test_scatter_op
   test_sequence_concat
-  test_seq_conv
-  test_seq_pool
+  test_sequence_conv
+  test_sequence_pool
   test_sequence_expand_as
   test_sequence_expand
   test_sequence_pad_op
@@ -278,7 +288,7 @@ if(WITH_DISTRIBUTE)
         set(dist_ut_port 1000)
         foreach(TEST_OP ${DIST_TEST_OPS})
             message(STATUS "set dist_ut_port=${dist_ut_port} on ${TEST_OP}")
-            bash_test_modules(${TEST_OP} MODULES dist_test.sh LABELS "RUN_TYPE=EXCLUSIVE" ENVS "PADDLE_DIST_UT_PORT=${dist_ut_port}")
+            bash_test_modules(${TEST_OP} MODULES dist_test.sh SERIAL LABELS "RUN_TYPE=EXCLUSIVE" ENVS "PADDLE_DIST_UT_PORT=${dist_ut_port}")
             MATH(EXPR dist_ut_port "${dist_ut_port}+50")
         endforeach(TEST_OP)
     endif(NOT APPLE)
@@ -293,6 +303,7 @@ py_test_modules(test_parallel_executor_seresnext_base_cpu MODULES test_parallel_
 py_test_modules(test_parallel_executor_seresnext_with_reduce_cpu MODULES test_parallel_executor_seresnext_with_reduce_cpu)
 py_test_modules(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu MODULES test_parallel_executor_seresnext_with_fuse_all_reduce_cpu)
 py_test_modules(test_data_norm_op MODULES test_data_norm_op)
+py_test_modules(test_fuse_bn_act_pass MODULES test_fuse_bn_act_pass ENVS FLAGS_cudnn_deterministic=1 FLAGS_cudnn_batchnorm_spatial_persistent=1 FLAGS_conv_workspace_size_limit=1000)
 
 if(NOT WIN32)
     py_test_modules(test_ir_memory_optimize_transformer MODULES test_ir_memory_optimize_transformer)
@@ -325,5 +336,6 @@ set_tests_properties(test_parallel_executor_test_while_train test_parallel_execu
         test_parallel_executor_crf test_sync_batch_norm_op
         test_parallel_executor_feed_persistable_var
         test_parallel_executor_crf_auto_growth test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
-        test_data_norm_op
+        test_data_norm_op test_imperative_using_non_zero_gpu test_fuse_bn_act_pass
+        test_optimizer_in_control_flow
         test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")

@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 
@@ -278,7 +278,6 @@ class TestNearestNeighborInterpCase1Uint8(TestNearestInterpOpUint8):
         self.align_corners = True
 
 
-@skip_check_grad_ci(reason="int8 type only be used in test and inference.")
 class TestNearestNeighborInterpCase2Uint8(TestNearestInterpOpUint8):
     def init_test_case(self):
         self.interp_method = 'nearest'
@@ -378,7 +377,7 @@ class TestNearestInterpOp_attr_tensor(OpTest):
 
     def init_test_case(self):
         self.interp_method = 'nearest'
-        self.input_shape = [2, 3, 4, 4]
+        self.input_shape = [2, 5, 4, 4]
         self.out_h = 3
         self.out_w = 3
         self.scale = 0.
