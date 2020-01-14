@@ -25,11 +25,7 @@ class AssignFunctor {
  public:
   AssignFunctor(framework::Variable *out,
                 const platform::DeviceContext &dev_ctx)
-      : out_(out), dev_ctx_(dev_ctx), force_cpu_(false) {}
-
-  AssignFunctor(framework::Variable *out,
-                const platform::DeviceContext &dev_ctx, const bool force_cpu)
-      : out_(out), dev_ctx_(dev_ctx), force_cpu_(force_cpu) {}
+      : out_(out), dev_ctx_(dev_ctx) {}
 
   void operator()(const framework::LoDTensor &lod_tensor) const {
     auto &out_tensor = *out_->GetMutable<framework::LoDTensor>();
@@ -64,17 +60,12 @@ class AssignFunctor {
                    framework::LoDTensor *out) const {
     if (lod_tensor.numel() == 0) return;
     auto &out_tensor = *out;
-    if (force_cpu_) {
-      TensorCopy(lod_tensor, platform::CPUPlace(), &out_tensor);
-    } else {
-      TensorCopy(lod_tensor, lod_tensor.place(), dev_ctx_, &out_tensor);
-    }
+    TensorCopy(lod_tensor, lod_tensor.place(), dev_ctx_, &out_tensor);
     out_tensor.set_lod(lod_tensor.lod());
   }
 
   framework::Variable *out_;
   const platform::DeviceContext &dev_ctx_;
-  const bool force_cpu_;
 };
 
 }  // namespace operators

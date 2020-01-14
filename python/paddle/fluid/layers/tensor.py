@@ -443,7 +443,7 @@ def sums(input, out=None):
     return out
 
 
-def assign(input, output=None, force_cpu=False):
+def assign(input, output=None):
     """
     The OP copies the :attr:`input` to the :attr:`output`.
 
@@ -452,9 +452,6 @@ def assign(input, output=None, force_cpu=False):
             float32, float64, int32 and int64.
         output (Variable, optional): A tensor. If :attr:`output` is None, a new tensor will
             be created as :attr:`output`. Default: None.
-        force_cpu (bool, optional): Whether force to store the output tensor in CPU memory.
-            If :attr:`force_cpu` is False, the output tensor will be stored in running device
-            memory. Default: False.
 
     Returns:
         Variable: A tensor with the same shape, data type and value as :attr:`input`.
@@ -480,10 +477,7 @@ def assign(input, output=None, force_cpu=False):
             output = helper.create_variable_for_type_inference(
                 dtype=input.dtype)
         helper.append_op(
-            type='assign',
-            inputs={'X': [input]},
-            outputs={'Out': [output]},
-            attrs={'force_cpu': force_cpu})
+            type='assign', inputs={'X': [input]}, outputs={'Out': [output]})
     elif isinstance(input, numpy.ndarray):
         dtype = convert_np_dtype_to_dtype_(input.dtype)
         if dtype == VarDesc.VarType.FP32:

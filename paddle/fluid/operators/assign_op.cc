@@ -70,8 +70,7 @@ class AssignKernel {
         "The Output(Out) should not be null if the Input(X) is set.");
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(ctx.GetPlace());
-    auto force_cpu = ctx.Attr<bool>("force_cpu");
-    framework::VisitVarType(*x, AssignFunctor(out, dev_ctx, force_cpu));
+    framework::VisitVarType(*x, AssignFunctor(out, dev_ctx));
   }
 };
 
@@ -85,11 +84,6 @@ class AssignOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out",
               "(LoDTensor, SelectedRows or LoDTensorArray) The type of output "
               "is the same as input X.");
-    AddAttr<bool>(
-        "force_cpu",
-        "(bool, default false) Force the data of output variable on cpu "
-        "memory. Otherwise, the data would be on the running device.")
-        .SetDefault(false);
     AddComment(R"DOC(Assign Operator
 
 Out = X,  when type in [LoDTensor/SelectedRows/LoDTensorArray]
