@@ -1556,8 +1556,9 @@ class TestBook(LayerTest):
             "make_gaussian_random", "make_gaussian_random_batch_size_like",
             "make_kldiv_loss", "make_prelu",
             "make_sampled_softmax_with_cross_entropy", "make_sampling_id",
-            "make_uniform_random_batch_size_like", "make_spectral_norm"
+            "make_uniform_random_batch_size_like"
         })
+        self.all_close_compare = set({"make_spectral_norm"})
 
     def test_all_layers(self):
         attrs = (getattr(self, name) for name in dir(self))
@@ -1593,6 +1594,14 @@ class TestBook(LayerTest):
                 if isinstance(dy_result, tuple):
                     dy_result = dy_result[0]
                 dy_result_value = dy_result.numpy()
+
+            if method.__name__ in self.all_close_compare:
+                self.assertTrue(
+                    np.allclose(
+                        static_result[0], dy_result_value, atol=0, rtol=1e-05),
+                    "Result of function [{}] compare failed".format(
+                        method.__name__))
+                continue
 
             if method.__name__ not in self.not_compare_static_dygraph_set:
                 self.assertTrue(
