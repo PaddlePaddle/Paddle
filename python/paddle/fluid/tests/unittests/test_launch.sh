@@ -45,7 +45,6 @@ fi
 
 echo ""
 echo "paddle.distributed.launch async poll process test"
-nvidia-smi
 if ! CUDA_VISIBLE_DEVICES=0,1 python -m paddle.distributed.launch ${distributed_args} multi_process.py abort; then
     echo "train abort as planned"
 fi
