@@ -286,21 +286,50 @@ class Optimizer(object):
     @framework.dygraph_only
     def current_step_lr(self):
         """
+        **Notes**:
+            **This API is ONLY avaliable in Dygraph mode**
+        
         Get current step learning rate. The return value is all the same When LearningRateDecay is not used,
         otherwise return the step learning rate.
 
-        Args: None
-        Return:
-            learing_rate(float) : The learning rate of the current step.
+        Returns:
+            float: The learning rate of the current step.
 
         Examples:
             .. code-block:: python
 
                 import paddle.fluid as fluid
+
+                # example1
                 with fluid.dygraph.guard():
                     emb = fluid.dygraph.Embedding([10, 10])
-                    adam = fluid.optimizer.Adam(0.001, parameter_list = emb.parameters() )
+                    adam = fluid.optimizer.Adam(0.001, parameter_list = emb.parameters())
                     lr = adam.current_step_lr()
+                    print(lr) # 0.001
+
+                # example2
+                with fluid.dygraph.guard():
+                    emb = fluid.dygraph.Embedding([10, 10])
+                    bd = [2, 4, 6, 8]
+                    value = [0.2, 0.4, 0.6, 0.8, 1.0]
+                    adam = fluid.optimizer.Adam(fluid.dygraph.PiecewiseDecay(bd, value, 0),
+                                           parameter_list=emb.parameters())
+                    lr=adam.current_step_lr()
+                    print(lr) # 0.2
+
+                # example3
+                with fluid.dygraph.guard():
+                    emb = fluid.dygraph.Embedding([10, 10])
+                    base_lr = 1.0
+                    adam = fluid.optimizer.Adam(
+                                           fluid.dygraph.NaturalExpDecay(
+                                                         learning_rate=base_lr,
+                                                         decay_steps=3,
+                                                         decay_rate=0.5,
+                                                         staircase=True),
+                                           parameter_list=emb.parameters())
+                    lr=adam.current_step_lr()
+                    print(lr) # 1.0
 
         """
         current_lr = self._global_learning_rate()
@@ -1065,6 +1094,8 @@ class DGCMomentumOptimizer(Optimizer):
                  num_trainers=None,
                  regularization=None,
                  name=None):
+        if framework.in_dygraph_mode():
+            raise Exception("In dygraph, don't support DGCMomentumOptimizer.")
         assert learning_rate is not None
         assert momentum is not None
         super(DGCMomentumOptimizer, self).__init__(
@@ -1561,24 +1592,16 @@ class AdagradOptimizer(Optimizer):
         assert isinstance(block, framework.Block)
 
         for p in parameters:
-            self._add_accumulator(self._moment_acc_str, p)
+            self._add_accumulator(
+                self._moment_acc_str,
+                p,
+                fill_value=self.initial_accumulator_value)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
 
         moment_acc = self._get_accumulator(self._moment_acc_str,
                                            param_and_grad[0])
-        startup_block = framework.default_startup_program().global_block()
-        startup_block.append_op(
-            type='fill_constant',
-            inputs={},
-            outputs={'Out': [moment_acc]},
-            attrs={
-                'dtype': moment_acc.dtype,
-                'value': self.initial_accumulator_value,
-                'shape': moment_acc.shape,
-            })
-
         # Create the adagrad optimizer op
         adagrad_op = block.append_op(
             type=self.type,
@@ -2066,11 +2089,21 @@ class DpsgdOptimizer(Optimizer):
         self._clip = clip
         self._batch_size = batch_size
         self._sigma = sigma
+        '''
+        Note(wangzhongpu):
+        This property is only used for debugging, do not need to set it!
+        Dpsgd operator use time(NULL) as random seed to generate random number.
+        However, during debugging, we need determinated result, so we will set self._seed to a fixed number.
+        '''
+        self._seed = None
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
 
         # create the dpsgd optimize op
+        if self._seed == None:
+            self._seed = 0
+
         dpsgd_op = block.append_op(
             type=self.type,
             inputs={
@@ -2082,7 +2115,8 @@ class DpsgdOptimizer(Optimizer):
             attrs={
                 "clip": self._clip,
                 "batch_size": self._batch_size,
-                "sigma": self._sigma
+                "sigma": self._sigma,
+                "seed": self._seed
             },
             stop_gradient=True)
 
@@ -2881,6 +2915,8 @@ class ModelAverage(Optimizer):
                  max_average_window=10000,
                  regularization=None,
                  name=None):
+        if framework.in_dygraph_mode():
+            raise Exception("In dygraph, don't support ModelAverage.")
         super(ModelAverage, self).__init__(
             0.0, regularization=regularization, name=name)
         self.average_window = average_window_rate
@@ -3194,6 +3230,9 @@ class ExponentialMovingAverage(object):
     """
 
     def __init__(self, decay=0.999, thres_steps=None, name=None):
+        if framework.in_dygraph_mode():
+            raise Exception(
+                "In dygraph, don't support ExponentialMovingAverage.")
         self._decay = decay
         self._thres_steps = thres_steps
         self._name = name if name is not None else ''
@@ -3415,6 +3454,8 @@ class PipelineOptimizer(object):
                  queue_size=30,
                  sync_steps=1,
                  start_cpu_core_id=0):
+        if framework.in_dygraph_mode():
+            raise Exception("In dygraph, don't support PipelineOptimizer.")
         # TODO: check properties
         self._optimizer = optimizer
         self._cut_list = cut_list
@@ -3700,6 +3741,8 @@ class RecomputeOptimizer(Optimizer):
     """
 
     def __init__(self, optimizer):
+        if framework.in_dygraph_mode():
+            raise Exception("In dygraph, don't support RecomputeOptimizer.")
         self._optimizer = optimizer
         self._checkpoints = None
 
@@ -3986,6 +4029,8 @@ class LookaheadOptimizer(object):
 
     def __init__(self, inner_optimizer, alpha=0.5, k=5):
 
+        if framework.in_dygraph_mode():
+            raise Exception("In dygraph, don't support LookaheadOptimizer.")
         assert (inner_optimizer is not None), "inner optimizer can not be None"
         assert (
             0.0 <= alpha <= 1.0

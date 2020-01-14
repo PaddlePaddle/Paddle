@@ -14,7 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "ngraph/ngraph.hpp"
@@ -34,19 +36,18 @@ void BuildSumNode(
   for (auto& var_name_item : op->Inputs()) {
     for (auto& var_name : var_name_item.second) {
       op_inputs.push_back(var_name);
-      if (ngb_node_map->find(var_name) == ngb_node_map->end()) {
-        PADDLE_THROW("op % input varname %s is not found in var_node_map",
-                     op->Type(), var_name);
-      }
+      PADDLE_ENFORCE_NE(
+          ngb_node_map->find(var_name), ngb_node_map->end(),
+          platform::errors::NotFound(
+              "op %s input varname %s is not found in var_node_map", op->Type(),
+              var_name));
     }
   }
   std::shared_ptr<ngraph::Node>& sum = ngb_node_map->at(op_inputs[0]);
   for (size_t k = 1; k < op_inputs.size(); ++k) {
     std::shared_ptr<ngraph::Node>& nodek = ngb_node_map->at(op_inputs[k]);
-    if (nodek->get_element_type() != sum->get_element_type()) {
-      nodek =
-          std::make_shared<ngraph::op::Convert>(nodek, sum->get_element_type());
-    }
+    nodek =
+        std::make_shared<ngraph::op::Convert>(nodek, sum->get_element_type());
     sum = sum + nodek;
   }
   platform::SetOutputNode(op, "Out", sum, ngb_node_map);

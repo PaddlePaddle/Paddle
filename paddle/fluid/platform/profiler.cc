@@ -372,12 +372,13 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
       std::vector<std::vector<EventItem>> child_table;
       std::vector<EventItem> table;
       bool do_next = false;
-      std::string op_end_str = "_op";
+      std::string op_end_str = "inner_op";
       for (auto it = child_map.begin(); it != child_map.end(); it++) {
         if (it->first == event_item.name) {
           table.push_back(it->second);
-          do_next = it->second.name.rfind(op_end_str) ==
-                    (it->second.name.length() - op_end_str.length());
+          if (!do_next)
+            do_next = !(it->second.name.rfind(op_end_str) ==
+                        (it->second.name.length() - op_end_str.length()));
         }
       }
       child_table.push_back(table);
@@ -579,6 +580,7 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
     std::vector<EventItem> event_items;
     std::vector<EventItem> main_event_items;
     std::unordered_map<std::string, int> event_idx;
+    std::multimap<std::string, EventItem> sub_child_map;
 
     for (size_t j = 0; j < (*analyze_events)[i].size(); j++) {
       Event analyze_event = (*analyze_events)[i][j];
@@ -599,7 +601,7 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
                          (cname[fname.length()] == '/' &&
                           cname.rfind('/') == fname.length());
         if (condition) {
-          child_map.insert(
+          sub_child_map.insert(
               std::pair<std::string, EventItem>(fname, event_items[k]));
           child_index[k] = 1;
         }
@@ -618,9 +620,9 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
       item.ave_time = item.total_time / item.calls;
       item.ratio = item.total_time / total;
     }
-    for (auto it = child_map.begin(); it != child_map.end(); it++) {
+    for (auto it = sub_child_map.begin(); it != sub_child_map.end(); it++) {
       it->second.ratio = it->second.total_time / total;
-      it->second.ave_time = it->second.ave_time / it->second.calls;
+      it->second.ave_time = it->second.total_time / it->second.calls;
     }
 
     // sort
@@ -635,6 +637,11 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
       LOG(WARNING) << "Cannot find the pop marker of event \'" << rit->name()
                    << "\', which will be ignored in profiling report.";
       ++rit;
+    }
+
+    for (auto it = sub_child_map.begin(); it != sub_child_map.end(); it++) {
+      child_map.insert(
+          std::pair<std::string, EventItem>(it->first, it->second));
     }
   }
 

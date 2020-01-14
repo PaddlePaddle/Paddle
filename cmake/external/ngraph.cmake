@@ -17,7 +17,7 @@ INCLUDE(GNUInstallDirs)
 INCLUDE(ExternalProject)
 
 SET(NGRAPH_PROJECT         "extern_ngraph")
-SET(NGRAPH_GIT_TAG         "a9a3ae79012c5193ed4e72ec68cf9860e232a8ec")
+SET(NGRAPH_GIT_TAG         "972dd2f5ecfa18e3819b17c47698fae9795b499f")
 SET(NGRAPH_SOURCES_DIR     ${THIRD_PARTY_PATH}/ngraph)
 SET(NGRAPH_INSTALL_DIR     ${THIRD_PARTY_PATH}/install/ngraph)
 SET(NGRAPH_INC_DIR         ${NGRAPH_INSTALL_DIR}/include)
@@ -57,7 +57,6 @@ ExternalProject_Add(
     CMAKE_ARGS               -DMKLDNN_INCLUDE_DIR=${MKLDNN_INC_DIR}
     CMAKE_ARGS               -DMKLDNN_LIB_DIR=${MKLDNN_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}
     CMAKE_ARGS               -DMKLML_LIB_DIR=${MKLML_INSTALL_DIR}/lib
-    CMAKE_ARGS               -NGRAPH_USE_LEGACY_MKLDNN=FALSE
 )
 
 add_library(ngraph INTERFACE)
