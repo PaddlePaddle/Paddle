@@ -156,6 +156,14 @@ class TestWithStride(TestConv2dMKLDNNOp):
 
 
 class TestWithGroup(TestConv2dMKLDNNOp):
+    def init_test_case(self):
+        self.pad = [0, 0]
+        self.stride = [1, 1]
+        self.input_size = [2, 6, 5, 5]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [6, f_c, 3, 3]
+
     def init_group(self):
         self.groups = 3
 
@@ -163,13 +171,13 @@ class TestWithGroup(TestConv2dMKLDNNOp):
 class TestWith1x1(TestConv2dMKLDNNOp):
     def init_test_case(self):
         TestConv2dMKLDNNOp.init_test_case(self)
-        self.filter_size = [6, 3, 1, 1]
+        self.filter_size = [40, 3, 1, 1]
 
 
 class TestWithInput1x1Filter1x1(TestConv2dMKLDNNOp):
     def init_test_case(self):
         TestConv2dMKLDNNOp.init_test_case(self)
-        self.input_size = [2, 3, 1, 1]  # NCHW
+        self.input_size = [2, 60, 1, 1]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 1, 1]
