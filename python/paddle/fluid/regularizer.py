@@ -84,11 +84,10 @@ def append_regularization_ops(parameters_and_grads, regularization=None):
     """
     params_and_grads = []
     if in_dygraph_mode():
-        with framework.name_scope('regularization'):
-            for param, grad in parameters_and_grads:
-                new_grad = _create_regularization_of_grad(param, grad,
-                                                         regularization)
-                params_and_grads.append((param, new_grad))
+        for param, grad in parameters_and_grads:
+            new_grad = _create_regularization_of_grad(param, grad,
+                                                      regularization)
+            params_and_grads.append((param, new_grad))
     else:
         with framework.name_scope('regularization'):
             for param, grad in parameters_and_grads:
