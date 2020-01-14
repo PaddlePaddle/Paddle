@@ -22,14 +22,6 @@ from paddle.fluid.op import Operator
 from op_test import OpTest
 
 
-def safe_repr(obj):
-    try:
-        result = repr(obj)
-    except Exception:
-        result = object.__repr__(obj)
-    return result
-
-
 def update_step(param, grad, rows, sq_accum, lin_accum, lr, l1, l2, lr_power):
     l1 += 1e-10
     l2 += 1e-10
@@ -79,6 +71,7 @@ def update_step(param, grad, rows, sq_accum, lin_accum, lr, l1, l2, lr_power):
 class TestGFTRLOp(OpTest):
     def setUp(self):
         self.op_type = "gftrl"
+        self.conf()
         row_height = 100
         row_numel = 16
         w = np.random.random((row_height, row_numel)).astype("float32")
@@ -86,9 +79,9 @@ class TestGFTRLOp(OpTest):
         sq_accum = np.full((row_height, row_numel), 0.1).astype("float32")
         linear_accum = np.full((row_height, row_numel), 0.1).astype("float32")
         lr = np.array([0.01]).astype("float32")
-        l1 = 0.1
+        l1 = self.l1
         l2 = 0.2
-        lr_power = -0.5
+        lr_power = self.lr_power
 
         self.inputs = {
             'Param': w,
@@ -114,12 +107,29 @@ class TestGFTRLOp(OpTest):
             'LinearAccumOut': lin_accum_out
         }
 
+    def conf(self):
+        self.l1 = 0.1
+        self.lr_power = -0.5
+
     def test_check_output(self):
         self.check_output()
 
 
+class TestGFTRLOp2(TestGFTRLOp):
+    def conf(self):
+        self.l1 = 0.1
+        self.lr_power = -0.6
+
+
+class TestGFTRLOp3(TestGFTRLOp):
+    def conf(self):
+        self.l1 = 100000000.0
+        self.lr_power = -0.5
+
+
 class TestSparseGFTRLOp(unittest.TestCase):
     def setUp(self):
+        self.l1 = 0.1
         self.lr_power = -0.5
 
     def check_with_place(self, place):
@@ -129,7 +139,7 @@ class TestSparseGFTRLOp(unittest.TestCase):
         height = 100
         rows = random.sample(range(height), 30)
         row_numel = 16
-        l1 = 0.1
+        l1 = self.l1
         l2 = 0.2
         lr_power = self.lr_power
 
@@ -211,7 +221,14 @@ class TestSparseGFTRLOp(unittest.TestCase):
 
 class TestSparseGFTRLOp2(TestSparseGFTRLOp):
     def init_kernel(self):
+        self.l1 = 0.1
         self.lr_power = -0.6
+
+
+class TestSparseGFTRLOp3(TestSparseGFTRLOp):
+    def init_kernel(self):
+        self.l1 = 100000000.0
+        self.lr_power = -0.5
 
 
 if __name__ == "__main__":
