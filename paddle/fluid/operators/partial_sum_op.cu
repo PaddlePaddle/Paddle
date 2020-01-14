@@ -135,9 +135,6 @@ class PartialSumGradOpCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
                       "This kernel only runs on GPU device.");
-
-    // auto* out_grad =
-    //     ctx.Input<Tensor>(framework::GradVarName("Out"));
     const Tensor *out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto ins = ctx.MultiInput<framework::LoDTensor>("X");
     auto outs =
