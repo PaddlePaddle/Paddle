@@ -4346,23 +4346,22 @@ def split(input, num_or_sections, dim=-1, name=None):
         if isinstance(num_or_sections, int):
             num = num_or_sections
             attrs['num'] = num_or_sections
-            res = core.ops.split(inputs, attrs, {}, {'Out': num})
-            return res['Out']
-        elif isinstance(num_or_sections, list):
+        elif isinstance(num_or_sections, (list, tuple)):
             num = len(num_or_sections)
-            attrs['sections'] = list(
-                map(lambda ele: -1 if isinstance(ele, Variable) else ele,
-                    num_or_sections))
-            contain_var = not all(not isinstance(ele, Variable)
-                                  for ele in num_or_sections)
-            if contain_var:
+            if utils._contain_var(num_or_sections):
                 raise TypeError(
-                    "The type of 'num_or_sections' in split must be int or list[int] in Dygraph mode, but "
-                    "received %s." % ('list[Variable]'))
+                    "The type of 'num_or_sections' in split must be int or list[int] or tuple[int] in Dygraph mode, but "
+                    "received %s, which contains Variable." %
+                    (type(num_or_sections)))
+            else:
+                attrs['sections'] = list(num_or_sections)
         else:
             raise TypeError(
                 "The type of 'num_or_sections' in split must be int or list in Dygraph mode, but "
                 "received %s." % (type(num_or_sections)))
+
+        res = core.ops.split(inputs, attrs, {}, {'Out': num})
+        return res['Out']
 
     if not isinstance(num_or_sections, (int, list, tuple)):
         raise TypeError(
@@ -4422,9 +4421,7 @@ def split(input, num_or_sections, dim=-1, name=None):
         attrs['sections'] = list(
             map(lambda ele: -1 if isinstance(ele, Variable) else ele,
                 num_or_sections))
-        contain_var = not all(not isinstance(ele, Variable)
-                              for ele in num_or_sections)
-        if contain_var:
+        if utils._contain_var(num_or_sections):
             inputs['SectionsTensorList'] = _get_SectionsTensorList(
                 num_or_sections)
 
@@ -5572,16 +5569,14 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
             # the shape of reshaped_3 is [6,8].
     """
     if in_dygraph_mode():
-        #TODO(zhiqiu): open inplace if we can.
+        #TODO(zhiqiu): enable inplace in dygraph mode.
         if inplace:
             warnings.warn(
                 "Inplace on reshape is not allowed and will be discarded in dygraph mode currently."
             )
         attrs = {}
         if isinstance(shape, (list, tuple)):
-            contain_var = not all(not isinstance(ele, Variable)
-                                  for ele in shape)
-            if contain_var:
+            if utils._contain_var(shape):
                 raise TypeError(
                     "The type of 'shape' in reshape must be list[int] or tuple(int) in Dygraph mode, but "
                     "received %s, which contains Variable." % type(shape))
@@ -5603,12 +5598,6 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
     check_type(actual_shape, 'actual_shape', (Variable, type(None)), 'reshape')
 
     helper = LayerHelper("reshape2", **locals())
-
-    def contain_var(one_list):
-        for ele in one_list:
-            if isinstance(ele, Variable):
-                return True
-        return False
 
     def get_new_shape_tensor(list_shape):
         new_shape_tensor = []
@@ -5659,7 +5648,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
         assert len(shape) > 0, ("The size of 'shape' in reshape can't be zero, "
                                 "but received %s." % len(shape))
         attrs["shape"] = get_attr_shape(shape)
-        if contain_var(shape):
+        if utils._contain_var(shape):
             inputs['ShapeTensor'] = get_new_shape_tensor(shape)
         elif isinstance(actual_shape, Variable):
             actual_shape.stop_gradient = True
@@ -5804,8 +5793,7 @@ def unsqueeze(input, axes, name=None):
         axes.stop_gradient = True
         inputs["AxesTensor"] = axes
     elif isinstance(axes, (list, tuple)):
-        contain_var = not all(not isinstance(ele, Variable) for ele in axes)
-        if contain_var:
+        if utils._contain_var(axes):
             inputs["AxesTensorList"] = _to_Variable_list(axes)
         else:
             attrs["axes"] = axes
@@ -8256,12 +8244,6 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
     ipts = {'X': x}
     attrs = {}
 
-    def _contain_var(input_list):
-        for ele in input_list:
-            if isinstance(ele, Variable):
-                return True
-        return False
-
     def _attr_shape_check(shape_val):
         if not isinstance(shape_val, int):
             raise TypeError(
@@ -8290,7 +8272,7 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
         offsets.stop_gradient = True
         ipts['Offsets'] = offsets
         attrs['offsets'] = [-1] * len(x.shape)
-    elif _contain_var(offsets):
+    elif utils._contain_var(offsets):
         new_offsets_tensor = []
         offsets_attr = []
         for dim in offsets:
@@ -8314,7 +8296,7 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
     if isinstance(shape, Variable):
         shape.stop_gradient = True
         ipts['Shape'] = shape
-    elif _contain_var(shape):
+    elif utils._contain_var(shape):
         new_shape_tensor = []
         shape_attr = []
         for dim_size in shape:
@@ -9344,20 +9326,12 @@ def expand(x, expand_times, name=None):
             expanded_2 = fluid.layers.expand(data_2, expand_times=expand_times)
             # the shape of expanded_2 is [48, 56].
     """
-
-    def contain_var(expand_times):
-        for ele in expand_times:
-            if isinstance(ele, Variable):
-                return True
-        return False
-
     inputs = {"X": [x]}
     attrs = {}
 
     if in_dygraph_mode():
         if isinstance(expand_times, (list, tuple)):
-            contain_var = contain_var(expand_times)
-            if contain_var:
+            if utils._contain_var(expand_times):
                 raise TypeError(
                     "The type of 'expand_times' in expand must be list[int] or tuple(int) in Dygraph mode, but "
                     "received %s, which contains Variable." % type(shape))
@@ -9404,18 +9378,14 @@ def expand(x, expand_times, name=None):
                 new_expand_times_tensor.append(temp_out)
         return new_expand_times_tensor
 
-    if in_dygraph_mode():
-        inputs = {'X': x}
-        attrs = {'expand_times': expand_times}
-    else:
-        if isinstance(expand_times, Variable):
-            expand_times.stop_gradient = True
-            inputs['ExpandTimes'] = expand_times
-        elif isinstance(expand_times, (list, tuple)):
-            attrs['expand_times'] = get_attr_expand_times(expand_times)
-            if contain_var(expand_times):
-                inputs['expand_times_tensor'] = get_new_expand_times_tensor(
-                    expand_times)
+    if isinstance(expand_times, Variable):
+        expand_times.stop_gradient = True
+        inputs['ExpandTimes'] = expand_times
+    elif isinstance(expand_times, (list, tuple)):
+        attrs['expand_times'] = get_attr_expand_times(expand_times)
+        if utils._contain_var(expand_times):
+            inputs['expand_times_tensor'] = get_new_expand_times_tensor(
+                expand_times)
 
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
@@ -9912,19 +9882,12 @@ def slice(input, axes, starts, ends):
             sliced_2 = fluid.layers.slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends)
             # sliced_2 is input[0:3, 0:2, 2:4].
     """
-
-    def contain_var(one_list):
-        for ele in one_list:
-            if isinstance(ele, Variable):
-                return True
-        return False
-
     if in_dygraph_mode():
         infer_flags = list(1 for i in range(len(axes)))
         inputs = {'Input': [input]}
 
         if isinstance(starts, (list, tuple)):
-            if contain_var(starts):
+            if utils._contain_var(starts):
                 raise TypeError(
                     "The type of 'starts' in slice must be list[int] or tuple(int) in Dygraph mode, but "
                     "received %s, which contains Variable." % type(shape))
@@ -9934,7 +9897,7 @@ def slice(input, axes, starts, ends):
                 "received %s." % type(shape))
 
         if isinstance(ends, (list, tuple)):
-            if contain_var(ends):
+            if utils._contain_var(ends):
                 raise TypeError(
                     "The type of 'ends' in slice must be list[int] or tuple(int) in Dygraph mode, but "
                     "received %s, which contains Variable." % type(shape))
@@ -9985,9 +9948,7 @@ def slice(input, axes, starts, ends):
         infer_flags = list(-1 for i in range(len(axes)))
     elif isinstance(starts, (list, tuple)):
         attrs['starts'] = []
-        if not contain_var(starts):
-            attrs['starts'] = starts
-        else:
+        if utils._contain_var(starts):
             inputs['StartsTensorList'] = get_new_list_tensor(starts)
             for i, dim in enumerate(starts):
                 if isinstance(dim, Variable):
@@ -9995,6 +9956,8 @@ def slice(input, axes, starts, ends):
                     infer_flags[i] = -1
                 else:
                     attrs['starts'].append(dim)
+        else:
+            attrs['starts'] = starts
 
     # ends
     if isinstance(ends, Variable):
@@ -10003,9 +9966,7 @@ def slice(input, axes, starts, ends):
         infer_flags = list(-1 for i in range(len(axes)))
     elif isinstance(ends, (list, tuple)):
         attrs['ends'] = []
-        if not contain_var(ends):
-            attrs['ends'] = ends
-        else:
+        if utils._contain_var(ends):
             inputs['EndsTensorList'] = get_new_list_tensor(ends)
             for i, dim in enumerate(ends):
                 if isinstance(dim, Variable):
@@ -10013,6 +9974,9 @@ def slice(input, axes, starts, ends):
                     infer_flags[i] = -1
                 else:
                     attrs['ends'].append(dim)
+        else:
+            attrs['ends'] = ends
+
     # infer_flags
     attrs['infer_flags'] = infer_flags
     out = helper.create_variable_for_type_inference(
@@ -10130,12 +10094,6 @@ def strided_slice(input, axes, starts, ends, strides):
 
     helper = LayerHelper('strided_slice', **locals())
 
-    def contain_var(one_list):
-        for ele in one_list:
-            if isinstance(ele, Variable):
-                return True
-        return False
-
     def get_new_list_tensor(old_list):
         new_list_tensor = []
         for dim in old_list:
@@ -10169,9 +10127,7 @@ def strided_slice(input, axes, starts, ends, strides):
             inputs['StartsTensor'] = starts
         elif isinstance(starts, (list, tuple)):
             attrs['starts'] = []
-            if not contain_var(starts):
-                attrs['starts'] = starts
-            else:
+            if utils._contain_var(starts):
                 inputs['StartsTensorList'] = get_new_list_tensor(starts)
                 for i, dim in enumerate(starts):
                     if isinstance(dim, Variable):
@@ -10179,6 +10135,8 @@ def strided_slice(input, axes, starts, ends, strides):
                         infer_flags[i] = -1
                     else:
                         attrs['starts'].append(dim)
+            else:
+                attrs['starts'] = starts
 
         # ends
         if isinstance(ends, Variable):
@@ -10186,9 +10144,7 @@ def strided_slice(input, axes, starts, ends, strides):
             inputs['EndsTensor'] = ends
         elif isinstance(ends, (list, tuple)):
             attrs['ends'] = []
-            if not contain_var(ends):
-                attrs['ends'] = ends
-            else:
+            if utils._contain_var(ends):
                 inputs['EndsTensorList'] = get_new_list_tensor(ends)
                 for i, dim in enumerate(ends):
                     if isinstance(dim, Variable):
@@ -10196,15 +10152,16 @@ def strided_slice(input, axes, starts, ends, strides):
                         infer_flags[i] = -1
                     else:
                         attrs['ends'].append(dim)
+            else:
+                attrs['ends'] = ends
+
         # strides
         if isinstance(strides, Variable):
             strides.stop_gradient = True
             inputs['StridesTensor'] = strides
         elif isinstance(strides, (list, tuple)):
             attrs['strides'] = []
-            if not contain_var(strides):
-                attrs['strides'] = strides
-            else:
+            if utils._contain_var(strides):
                 inputs['StridesTensorList'] = get_new_list_tensor(strides)
                 for i, dim in enumerate(strides):
                     if isinstance(dim, Variable):
@@ -10212,6 +10169,8 @@ def strided_slice(input, axes, starts, ends, strides):
                         infer_flags[i] = -1
                     else:
                         attrs['strides'].append(dim)
+            else:
+                attrs['strides'] = strides
         attrs['infer_flags'] = infer_flags
     out = helper.create_variable_for_type_inference(
         dtype=helper.input_dtype('input'))
@@ -13894,12 +13853,6 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
         dtype = convert_np_dtype_to_dtype_(dtype)
     check_dtype(dtype, 'dtype', ['float32', 'float64'], 'uniform_random')
 
-    def contain_var(one_list):
-        for ele in one_list:
-            if isinstance(ele, Variable):
-                return True
-        return False
-
     def get_new_shape_tensor(list_shape):
         new_shape_tensor = []
         for dim in list_shape:
@@ -13939,7 +13892,7 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
             assert len(shape) > 0, (
                 "The size of argument(shape) can't be zero.")
             attrs["shape"] = get_attr_shape(shape)
-            if contain_var(shape):
+            if utils._contain_var(shape):
                 inputs['ShapeTensorList'] = get_new_shape_tensor(shape)
 
     out = helper.create_variable_for_type_inference(dtype)
