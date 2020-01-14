@@ -14,10 +14,37 @@
 
 NOT_CHECK_OP_LIST = [
     # The increment's input must be 1-d and only has one data
-    'increment'
+    'increment',
+    # elementwise ops have cases(y_shape: (1) or (1,1)) to test broadcast
+    'elementwise_add',
+    'elementwise_sub',
+    'elementwise_mul',
+    'elementwise_div',
+    'elementwise_max',
+    'elementwise_min',
+    'elementwise_pow',
+    'fused_elemwise_activation',
+    # prelu op's input alpha must be 1-d and only has one data in 'all' mode
+    'prelu'
 ]
 
 NEED_TO_FIX_OP_LIST = [
-    'sequence_topk_avg_pooling', 'matmul', 'add_position_encoding',
-    'margin_rank_loss', 'elementwise_pow', 'fused_elemwise_activation', 'mul'
+    'bilinear_tensor_product',
+    'conv2d_transpose',
+    'deformable_conv',
+    'deformable_conv',
+    'grid_sampler',
+    'hierarchical_sigmoid',
+    'lstmp',
+    'margin_rank_loss',
+    'matmul',
+    'mul',
+    'row_conv',
+    'scatter',
+    'smooth_l1_loss',
+    'soft_relu',
+    'spp',
+    'squared_l2_distance',
+    'tree_conv',
+    'var_conv_2d',
 ]
