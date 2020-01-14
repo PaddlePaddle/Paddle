@@ -331,6 +331,14 @@ class LayerHelperBase(object):
         if in_dygraph_mode():
             # In dygraph mode, we want the returned parameter to be
             # initialized so that it can be used imperatively.
+            # check parameter name
+            is_used = unique_name.dygraph_parameter_name_checker(attr.name)
+            if is_used:
+                raise ValueError(
+                    "parameter name [{}] have be been used. "
+                    "In dygraph mode, the name of parameter can't be same."
+                    "Please check the parameter attr value passed to self.create_parameter or "
+                    "constructor of dygraph Layers".format(attr.name))
             return self.main_program.global_block().create_parameter(
                 dtype=dtype,
                 shape=shape,
