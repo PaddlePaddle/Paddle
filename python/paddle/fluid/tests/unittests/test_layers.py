@@ -1556,7 +1556,7 @@ class TestBook(LayerTest):
             "make_gaussian_random", "make_gaussian_random_batch_size_like",
             "make_kldiv_loss", "make_prelu",
             "make_sampled_softmax_with_cross_entropy", "make_sampling_id",
-            "make_uniform_random_batch_size_like"
+            "make_uniform_random_batch_size_like", "make_spectral_norm"
         })
 
     def test_all_layers(self):
@@ -1596,7 +1596,8 @@ class TestBook(LayerTest):
 
             if method.__name__ not in self.not_compare_static_dygraph_set:
                 self.assertTrue(
-                    np.array_equal(static_result[0], dy_result_value))
+                    np.array_equal(static_result[0], dy_result_value),
+                    "Result of function [{}] not equal".format(method.__name__))
 
     def _get_np_data(self, shape, dtype, append_batch_size=True):
         np.random.seed(self.seed)
