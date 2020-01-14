@@ -47,10 +47,15 @@ function(inference_analysis_api_int8_test_run TARGET_NAME test_binary model_dir 
 	COMMAND ${test_binary}
         ARGS --infer_model=${model_dir}/model
              --infer_data=${data_path}
-             --warmup_batch_size=100
+             --warmup_batch_size=${WARMUP_BATCH_SIZE}
              --batch_size=50
              --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
 	     --iterations=2)
+endfunction()
+
+function(inference_analysis_api_int8_test_run_custom_warmup_batch_size TARGET_NAME test_binary model_dir data_path warmup_batch_size)
+    set(WARMUP_BATCH_SIZE ${warmup_batch_size})
+    inference_analysis_api_int8_test_run(${TARGET_NAME} ${test_binary} ${model_dir} ${data_path})
 endfunction()
 
 function(inference_analysis_api_object_dection_int8_test_run TARGET_NAME test_binary model_dir data_path)
@@ -268,7 +273,7 @@ if(WITH_MKLDNN)
   # googlenet int8
   set(INT8_GOOGLENET_MODEL_DIR "${INT8_DATA_DIR}/googlenet")
   download_int8_data(${INT8_GOOGLENET_MODEL_DIR} "GoogleNet_int8_model.tar.gz" )
-  inference_analysis_api_int8_test_run(test_analyzer_int8_googlenet ${INT8_IMG_CLASS_TEST_APP} ${INT8_GOOGLENET_MODEL_DIR} ${IMAGENET_DATA_PATH})
+  inference_analysis_api_int8_test_run_custom_warmup_batch_size(test_analyzer_int8_googlenet ${INT8_IMG_CLASS_TEST_APP} ${INT8_GOOGLENET_MODEL_DIR} ${IMAGENET_DATA_PATH} 10)
 
   ### Object detection models
   set(PASCALVOC_DATA_PATH "${INT8_DATA_DIR}/pascalvoc_val_head_300.bin")
