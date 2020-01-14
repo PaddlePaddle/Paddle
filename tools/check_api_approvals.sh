@@ -33,6 +33,7 @@ API_FILES=("CMakeLists.txt"
            "python/paddle/fluid/tests/unittests/white_list/no_check_set_white_list.py"
            "python/paddle/fluid/tests/unittests/white_list/check_op_sequence_instance_0_input_white_list.py"
            "python/paddle/fluid/tests/unittests/white_list/op_threshold_white_list.py"
+           "python/paddle/fluid/tests/unittests/white_list/check_op_sequence_batch_1_input_white_list.py"
            )
 
 approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
@@ -54,7 +55,7 @@ function check_approval(){
 function add_failed(){
     failed_num=`expr $failed_num + 1`
     echo_list="${echo_list[@]}$1"
-} 
+}
 
 
 if [[ $git_files -gt 19 || $git_count -gt 999 ]];then
@@ -125,11 +126,14 @@ for API_FILE in ${API_FILES[*]}; do
           echo_line="You must have one RD (cryoco (Recommend), luotao1 or phlrain) approval for the python/paddle/fluid/tests/unittests/white_list/no_check_set_white_list.py, which manages the white list of setting no_check_set of check_output. \n"
           check_approval 1 12407750 26615455 6836917
       elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/check_op_sequence_instance_0_input_white_list.py" ]; then
-          echo_line="You must have one RD (JepsonWong (Recommend), luotao1, phlrain) approval for the python/paddle/fluid/tests/unittests/white_list/check_op_sequence_instance_0_input_white_list.py, which manages the white list of instance size 0 input for sequence op test. \n"
+          echo_line="You must have one RD (JepsonWong (Recommend), luotao1, phlrain) approval for the ${API_FILE}, which manages the white list of instance size 0 input for sequence op test. For more information, please refer to [https://github.com/PaddlePaddle/Paddle/wiki/It-is-required-to-include-LoDTensor-input-with-instance_size=0-in-sequence-OP-test]. \n"
           check_approval 1 16509038 6836917 43953930
       elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/op_threshold_white_list.py" ];then
           echo_line="It is an Op accuracy problem, please take care of it. You must have one RD (juncaipeng (Recommend), zhangting2020 or luotao1) approval for the python/paddle/fluid/tests/unittests/white_list/op_threshold_white_list.py, which manages the white list of error threshold for op test with float64 precision. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Upgrade-OP-Precision-to-Float64. \n"
           check_approval 1 52520497 26615455 6836917
+      elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/check_op_sequence_batch_1_input_white_list.py" ];then
+          echo_line="You must have one RD (songyouwei, luotao1 or phlrain) approval for ${API_FILE}, which manages the white list of batch size 1 input for sequence op test. For more information, please refer to [https://github.com/PaddlePaddle/Paddle/wiki/It-is-required-to-include-LoDTensor-input-with-batch_size=1-in-sequence-OP-test]. \n"
+          check_approval 1 2573291 6836917 43953930
       else
           echo_line="It is an Op accuracy problem, please take care of it. You must have one RD (XiaoguangHu01,Xreki,luotao1,sneaxiy) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
           check_approval 1 3048612 46782768 12538138 6836917 32832641
@@ -169,6 +173,19 @@ if [ "${INVALID_PADDLE_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 6836917 47554610 22561442
 fi
 
+ALL_CHANGE_FILES=`git diff --numstat upstream/$BRANCH | awk '{print $3}' | grep ".py"`
+ALL_OPTEST_BAN_DYGRAPH_MESSAGE=""
+for CHANGE_FILE in ${ALL_CHANGE_FILES}; do
+    ALL_OPTEST_BAN_DYGRAPH=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/${CHANGE_FILE} | grep "+" | grep "check_dygraph=" || true`
+    if [ "${ALL_OPTEST_BAN_DYGRAPH}" != "" ]; then
+        ALL_OPTEST_BAN_DYGRAPH_MESSAGE="${ALL_OPTEST_BAN_DYGRAPH_MESSAGE} ${CHANGE_FILE} : \n${ALL_OPTEST_BAN_DYGRAPH} \n"
+    fi
+done
+if [ "${ALL_OPTEST_BAN_DYGRAPH_MESSAGE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="Developers are not allowed to set the check_dygraph field directly, which is set to True by default. If you need to change the check_dygraph field, you must have one RD (phlrain (Recommend) or lanxianghit) review and approve. \nThe code that do not meet the specification are as follows:\n${ALL_OPTEST_BAN_DYGRAPH_MESSAGE}\n"
+    check_approval 1 43953930 47554610
+fi
+
 NEW_OP_ADDED=`git diff --name-only --diff-filter=A upstream/$BRANCH |grep -oE ".+_op..*" || true`
 if [ "${NEW_OP_ADDED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     GET_KERNEL_TYPE_FUNC_CNT=`git diff -U0 --diff-filter=A upstream/$BRANCH |grep "+" |grep -czoE "GetExpectedKernelType[(][^(){}]+[)][^{]+[{][^}]+[}]" || true`
@@ -177,28 +194,6 @@ if [ "${NEW_OP_ADDED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
         echo_line="If you override GetExpectedKernelType method of OperatorWithKernel, please use OperatorWithKernel::IndicateVarDataType() method to get specific input variable's dtype, which checked whether the input variable is initialized (The details in https://github.com/PaddlePaddle/FluidDoc/pull/1527). If you don't use this method to check, you must have one RD (chenwhql (Recommend) , luotao1 or lanxianghit) approval for the usage of other methods.\n"
         check_approval 1 6836917 47554610 22561442
     fi
-fi
-
-ALL_SEQUENCE_OP=`grep '(sequence_' ${PADDLE_ROOT}/build/paddle/fluid/pybind/pybind.h | grep -Ev '^$' | cut -d'(' -f 2 | cut -d')' -f 1`
-INVALID_SEQUENCE_OP_UNITTEST_INSTANCE_0_INPUT=""
-for OP_NAME in ${ALL_SEQUENCE_OP}; do
-    SEQUENCE_INSTANCE_0_INPUT_WHITE_LIST=`python ${PADDLE_ROOT}/python/paddle/fluid/tests/unittests/white_list/check_op_sequence_instance_0_input_white_list.py ${OP_NAME}`
-    if [ "${SEQUENCE_INSTANCE_0_INPUT_WHITE_LIST}" == "True" ]; then
-        continue
-    fi
-    sequence_op_unittest_file="python/paddle/fluid/tests/unittests/sequence/test_${OP_NAME}.py"
-    if [ ! -f "${PADDLE_ROOT}/${sequence_op_unittest_file}" ]; then
-        INVALID_SEQUENCE_OP_UNITTEST_INSTANCE_0_INPUT="${INVALID_SEQUENCE_OP_UNITTEST_INSTANCE_0_INPUT}${sequence_op_unittest_file} (unittest file does not exists)\n"
-        continue
-    fi
-    instance_size_0_funtion_calls=`grep "self.get_sequence_instance_size_0_input(" ${PADDLE_ROOT}/${sequence_op_unittest_file} || true`
-    if [ "${instance_size_0_funtion_calls}" == "" ]; then
-        INVALID_SEQUENCE_OP_UNITTEST_INSTANCE_0_INPUT="${INVALID_SEQUENCE_OP_UNITTEST_INSTANCE_0_INPUT}${sequence_op_unittest_file} (missing required function call)\n"
-    fi
-done
-if [ "${INVALID_SEQUENCE_OP_UNITTEST_INSTANCE_0_INPUT}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="It is required that the LoDTensor in sequence related OP unittests must be obtained by self.get_sequence_instance_size_0_input() function to cover the case of instance size is 0. If it is a mismatch, please specify JepsonWong (Recommend), luotao1, phlrain review and approve.\nPlease check the following unittest files:\n${INVALID_SEQUENCE_OP_UNITTEST_INSTANCE_0_INPUT}"
-    check_approval 1 16509038 6836917 43953930
 fi
 
 HAS_OPERATORBASE_FLAG=`git diff -U0 --diff-filter=A upstream/$BRANCH | grep -E "public[[:space:]]+.*OperatorBase" || true`
