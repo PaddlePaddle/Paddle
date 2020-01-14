@@ -192,6 +192,10 @@ paddlecloud environment.".format(args.cluster_node_ips, node_ips))
             # e.g. CUDA_VISIBLE_DEVICES=4,5,6,7; args.selected_gpus=4,5,6,7;
             # therefore selected_gpus=0,1,2,3
             cuda_visible_devices_list = cuda_visible_devices.split(',')
+            for x in args.selected_gpus.split(','):
+                assert x in cuda_visible_devices_list, "Can't find "\
+                "your selected_gpus %s in CUDA_VISIBLE_DEVICES[%s]."\
+                % (x, cuda_visible_devices)
             selected_gpus = [
                 cuda_visible_devices_list.index(x.strip())
                 for x in args.selected_gpus.split(',')
