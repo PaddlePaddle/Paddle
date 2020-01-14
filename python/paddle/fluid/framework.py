@@ -1805,9 +1805,13 @@ class Operator(object):
             namescope_var_name = op_maker.kOpNameScopeAttrName()
             op_attrs[namescope_var_name] = _full_name_scope()
 
+            # set device for op with kernels, give warning for op without kernels
             if _current_device is not None:
-                op_device = op_maker.kOpDeviceAttrName()
-                op_attrs[op_device] = _current_device
+                if self._has_kernel(type):
+                    op_device = op_maker.kOpDeviceAttrName()
+                    op_attrs[op_device] = _current_device
+                else:
+                    warnings.warn("The Op(%s) is support to set device." % type)
 
             def find_name(var_list, name):
                 for var_name in var_list:
@@ -5063,32 +5067,29 @@ def switch_device(device):
 
 
 @signature_safe_contextmanager
-def device_guard(device):
+def device_guard(device=None):
     """
     Returns a context manager that specifies the device type to use.
     Args:
         device(str): Specify the device to use inside `"with"` statement.
             Wnen it is set to "cpu" or "gpu", all operations constructed
-            inside `"with"` statement will be placed on CPUPlace or CUDAPlace to execute.
+            inside `"with"` statement will be placed on CPUPlace or CUDAPlace to execute. Default: None.
 
     Examples:
         .. code-block:: python
+
             import paddle.fluid as fluid
             data1 = fluid.layers.fill_constant(shape=[1, 3, 8, 8], value=0.5, dtype='float32')
             data2 = fluid.layers.fill_constant(shape=[1, 3, 5, 5], value=0.5, dtype='float32')
-            shape = fluid.layers.shape(data2) # GPU执行
+            shape = fluid.layers.shape(data2)
             with fluid.device_guard("cpu"):
                 shape = fluid.layers.slice(shape, axes=[0], starts=[0], ends=[4])
             out = fluid.layers.crop_tensor(data1, shape=shape)
-            place = fluid.CUDAPlace(0)
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
-            result = exe.run(fetch_list=[out])
     """
-    if device not in ['cpu', 'gpu']:
+    if device not in ['cpu', 'gpu', '', None]:
         raise ValueError(
-            "The Attr(device_type) should be 'cpu' or 'gpu', but received %s" %
-            device_type)
+            "The Attr(device) should be 'cpu' or 'gpu', and it can also be an empty string or None "
+            "when there is no need to set device, but received %s" % device)
     pre_device = switch_device(device)
     yield
     switch_device(pre_device)
