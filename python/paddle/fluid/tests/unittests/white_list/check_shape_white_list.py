@@ -32,7 +32,7 @@ NEED_TO_FIX_OP_LIST = [
     'bilinear_tensor_product',
     'conv2d_transpose',
     'deformable_conv',
-    'deformable_conv',
+    'depthwise_conv2d_transpose',
     'grid_sampler',
     'hierarchical_sigmoid',
     'lstmp',
