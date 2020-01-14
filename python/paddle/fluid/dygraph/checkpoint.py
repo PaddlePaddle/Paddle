@@ -82,7 +82,12 @@ def save_dygraph(state_dict, model_path):
         name_table[k] = v.name
     model_dict["StructuredToParameterName@@"] = name_table
 
-    with open(model_path + suffix, 'wb') as f:
+    file_name = model_path + suffix
+    dir_name = os.path.dirname(file_name)
+    if not os.path.exists(dir_name):
+        os.makedirs(dir_name)
+
+    with open(file_name, 'wb') as f:
         pickle.dump(model_dict, f)
 
 

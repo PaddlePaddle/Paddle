@@ -879,9 +879,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
         with fluid.dygraph.guard():
             emb = fluid.dygraph.Embedding([10, 10])
             state_dict = emb.state_dict()
-            fluid.save_dygraph(state_dict, "emb_dy")
+            fluid.save_dygraph(state_dict, "./saved_dy/emb_dy")
 
-            para_state_dict, opti_state_dict = fluid.load_dygraph("emb_dy")
+            para_state_dict, opti_state_dict = fluid.load_dygraph(
+                "./saved_dy/emb_dy")
 
             self.assertTrue(opti_state_dict == None)
 
