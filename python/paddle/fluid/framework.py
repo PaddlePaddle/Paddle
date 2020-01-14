@@ -4524,6 +4524,65 @@ class Program(object):
             for each_var in list(each_block.vars.values()):
                 yield each_var
 
+    @dygraph_not_support
+    def all_parameters(self):
+        """
+        Get all :ref:`api_guide_parameter_en` from this Program. A list object is returned.
+
+        Returns:
+            list[ :ref:`api_guide_parameter_en` ]: The list contians all parameters in this program.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                program = fluid.default_main_program()
+                data = fluid.data(name='x', shape=[None, 13], dtype='float32')
+                hidden = fluid.layers.fc(input=data, size=10)
+                loss = fluid.layers.mean(hidden)
+                fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+
+                for param in program.all_parameters():
+                    print(param)
+
+                # Here will print all parameters in current program, in this example,
+                # the result is like:
+                #
+                # name: "fc_0.w_0"
+                # type {
+                #   type: LOD_TENSOR
+                #   lod_tensor {
+                #     tensor {
+                #       data_type: FP32
+                #       dims: 13
+                #       dims: 10
+                #     }
+                #   }
+                # }
+                # persistable: true
+                #
+                # name: "fc_0.b_0"
+                # type {
+                # type: LOD_TENSOR
+                # lod_tensor {
+                #     tensor {
+                #       data_type: FP32
+                #       dims: 10
+                #     }
+                #   }
+                # }
+                # persistable: true
+                #
+                # Here print(param) will print out all the properties of a parameter,
+                # including name, type and persistable, you can access to specific
+                # property of a parameter, such as param.name, param.type
+        """
+        parameters = []
+        for each_block in self.blocks:
+            parameters.extend(each_block.all_parameters())
+        return parameters
+
 
 @six.add_metaclass(ParameterMetaClass)
 class Parameter(Variable):

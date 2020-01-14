@@ -62,10 +62,10 @@ class TranspilerTest(unittest.TestCase):
         self.origin_prog = main.clone()
         return main
 
-    def get_trainer(self, config=None):
+    def get_trainer(self, config=None, sync_mode=True):
         src = fluid.default_startup_program().clone()
 
-        t = self._transpiler_instance(config)
+        t = self._transpiler_instance(config, sync_mode=True)
 
         trainer_main = t.get_trainer_program(wait_port=False)
         trainer_startup = fluid.default_startup_program()
