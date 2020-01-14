@@ -441,7 +441,6 @@ class Optimizer(object):
             [p[0] for p in parameters_and_grads if p[0].trainable])
         self._create_global_learning_rate()
 
-        optimize_ops = []
         if framework.in_dygraph_mode():
             for param_and_grad in parameters_and_grads:
                 if param_and_grad[1] is None:
@@ -449,7 +448,6 @@ class Optimizer(object):
                 if param_and_grad[0].trainable is True:
                     optimize_op = self._append_optimize_op(target_block,
                                                            param_and_grad)
-                    optimize_ops.append(optimize_op)
         else:
             for param_and_grad in parameters_and_grads:
                 if param_and_grad[1] is None:
@@ -459,7 +457,6 @@ class Optimizer(object):
                     if param_and_grad[0].trainable is True:
                         optimize_op = self._append_optimize_op(target_block,
                                                                param_and_grad)
-                        optimize_ops.append(optimize_op)
 
         # Get custom finish ops for subclasses
         # FIXME: Need to fix this once we figure out how to handle dependencies
