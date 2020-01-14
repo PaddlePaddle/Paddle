@@ -3,7 +3,7 @@
 # which requires some headers and symbols not present on CentOS-5 (e.g.,
 # signalfd.h, pipe2, O_NONBLOCK, SOCK_NONBLOCK, etc.). See
 # https://github.com/sandstorm-io/capnproto/issues/350.
-FROM nvidia/cuda:10.0-cudnn7-devel-centos6
+FROM nvidia/cuda:9.0-cudnn7-devel-centos6
 MAINTAINER Numenta, based on the ManyLinux project
 
 ENV LC_ALL en_US.UTF-8
@@ -14,7 +14,8 @@ ENV LD_LIBRARY_PATH /opt/rh/devtoolset-2/root/usr/lib64:/opt/rh/devtoolset-2/roo
 ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
 
 RUN yum install -y sqlite-devel zlib-devel openssl-devel pcre-devel tk-devel tkinter libtool xz graphviz gettext-devel
-COPY ./tools/manylinux1/build_scripts ./build_scripts
+
+COPY tools/manylinux1/build_scripts build_scripts
 RUN bash build_scripts/build.sh && \
   bash build_scripts/install_nccl2.sh && rm -rf build_scripts
 
