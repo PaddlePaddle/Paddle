@@ -58,12 +58,14 @@ class PartialSumOp : public framework::OperatorWithKernel {
         batch_size = inputs_dims[0][0];
         input_len = inputs_dims[0][1];
       } else {
-        PADDLE_ENFORCE_EQ(inputs_dims[i][0], batch_size,
-                          platform::errors::InvalidArgument(("The batch size "
-                           "of all inputs must be same"));
-        PADDLE_ENFORCE_EQ(inputs_dims[i][1], input_len,
-                          platform::errors::InvalidArgument("The input len "
-                          "of all inputs must be same"));
+        PADDLE_ENFORCE_EQ(
+            inputs_dims[i][0], batch_size,
+            platform::errors::InvalidArgument("The batch size "
+                                              "of all inputs must be same"));
+        PADDLE_ENFORCE_EQ(
+            inputs_dims[i][1], input_len,
+            platform::errors::InvalidArgument("The input len "
+                                              "of all inputs must be same"));
       }
     }
     PADDLE_ENFORCE_GT(input_len, start_index,
