@@ -19,18 +19,9 @@ It's a wrapper of a cpp class Communicator and should be used inside fleet API.
 """
 from . import core
 from .framework import Program
+from .transpiler.distribute_transpiler import DistributedMode
 
-__all__ = ['Communicator', 'TrainingMode']
-
-
-class Enum(set):
-    def __getattr__(self, name):
-        if name in self:
-            return name
-        raise AttributeError
-
-
-TrainingMode = Enum(["SYNC", "HALF_ASYNC", "ASYNC", "GEO"])
+__all__ = ['Communicator']
 
 
 class Communicator(object):
@@ -62,7 +53,7 @@ class Communicator(object):
             if op.type == "recv":
                 op._set_attr('do_not_run', True)
 
-        if mode == TrainingMode.GEO:
+        if mode == DistributedMode.GEO:
             push_vars = kwargs["push_vars"]
             push_var_names = []
 
@@ -79,7 +70,18 @@ class Communicator(object):
             envs["geo_need_push_nums"] = str(kwargs["push_nums"])
             envs["geo_send_varnames"] = '#'.join(push_var_names)
 
-        self.communicator_ = core.DistCommunicator(mode, program.desc,
+        mode_str = None
+
+        if mode == DistributedMode.SYNC:
+            mode_str = "SYNC"
+        elif mode == DistributedMode.ASYNC:
+            mode_str = "ASYNC"
+        elif mode == DistributedMode.HALF_ASYNC:
+            mode_str = "HALF_ASYNC"
+        elif mode == DistributedMode.GEO:
+            mode_str = "GEO"
+
+        self.communicator_ = core.DistCommunicator(mode_str, program.desc,
                                                    global_scope(), envs)
 
     def start(self):

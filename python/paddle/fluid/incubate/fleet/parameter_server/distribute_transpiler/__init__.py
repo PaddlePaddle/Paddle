@@ -18,7 +18,7 @@ import warnings
 Convert the fluid program to distributed data-parallelism programs.
 """
 import paddle.fluid.io as io
-from paddle.fluid.communicator import Communicator, TrainingMode
+from paddle.fluid.communicator import Communicator
 from paddle.fluid.framework import default_main_program
 from paddle.fluid.framework import default_startup_program
 from paddle.fluid.framework import Program
@@ -30,7 +30,7 @@ from paddle.fluid.optimizer import Optimizer
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import TrainerRuntimeConfig, DistributedStrategy, SyncStrategy, AsyncStrategy, HalfAsyncStrategy, GeoStrategy, StrategyFactory
 
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspiler as OriginTranspiler
-from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig, ServerRuntimeConfig
+from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig, ServerRuntimeConfig, DistributedMode
 
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
@@ -86,17 +86,17 @@ class DistributedTranspiler(Fleet):
             ).geo_sgd_need_push_nums
 
             self._communicator = Communicator(
-                self.main_program, TrainingMode.GEO, kwargs,
+                self.main_program, DistributedMode.GEO, kwargs,
                 trainer_communicator_config.get_communicator_flags())
 
         elif isinstance(self._transpile_config, AsyncStrategy):
             self._communicator = Communicator(
-                self.main_program, TrainingMode.ASYNC, None,
+                self.main_program, DistributedMode.ASYNC, None,
                 trainer_communicator_config.get_communicator_flags())
 
         elif isinstance(self._transpile_config, HalfAsyncStrategy):
             self._communicator = Communicator(
-                self.main_program, TrainingMode.HALF_ASYNC, None,
+                self.main_program, DistributedMode.HALF_ASYNC, None,
                 trainer_communicator_config.get_communicator_flags())
         else:
             raise TypeError("Training MODE do not supported")

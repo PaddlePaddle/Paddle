@@ -22,7 +22,7 @@ import numpy
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.communicator import Communicator
-from paddle.fluid.communicator import TrainingMode
+from paddle.fluid.transpiler.distribute_transpiler import DistributedMode
 
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
@@ -77,7 +77,7 @@ class TestCommunicator(unittest.TestCase):
 #         kwargs["trainers"] = 10
 #         kwargs["push_nums"] = 10
 
-#         comm = Communicator(prog, TrainingMode.GEO, kwargs, envs)
+#         comm = Communicator(prog, DistributedMode.GEO, kwargs, envs)
 
 if __name__ == '__main__':
     unittest.main()
