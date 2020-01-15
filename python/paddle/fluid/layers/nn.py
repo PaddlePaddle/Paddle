@@ -13939,21 +13939,15 @@ def nce_sampler(dict_path,
     helper.set_variable_initializer(alias_probs_tensor, Constant(0.0))
 
     attrs = dict()
+    inputs = dict()
+    outputs = dict()
+
     attrs['filename'] = dict_path
     attrs['num_total_classes'] = int(num_total_classes)
     attrs['num_neg_samples'] = int(num_neg_samples)
     attrs['seed'] = seed
     attrs['factor'] = factor
 
-    inputs = dict()
-    inputs['CustomDistProbs'] = probs_tensor
-    inputs['CustomDistAlias'] = alias_tensor
-    inputs['CustomDistAliasProbs'] = alias_probs_tensor
-    if positive_inputs:
-        inputs['PositiveSamples'] = positive_inputs
-
-    outputs = dict()
-    outputs['Out'] = out
     outputs['CustomDistProbsInit'] = probs_tensor
     outputs['CustomDistAliasInit'] = alias_tensor
     outputs['CustomDistAliasProbsInit'] = alias_probs_tensor
@@ -13962,6 +13956,15 @@ def nce_sampler(dict_path,
     attrs['init_flag'] = True
     block.append_op(
         type='nce_sampler', inputs=inputs, outputs=outputs, attrs=attrs)
+
+    inputs['CustomDistProbs'] = probs_tensor
+    inputs['CustomDistAlias'] = alias_tensor
+    inputs['CustomDistAliasProbs'] = alias_probs_tensor
+    if positive_inputs:
+        inputs['PositiveSamples'] = positive_inputs
+
+    outputs['Out'] = out
+
     attrs['init_flag'] = False
     helper.append_op(
         type='nce_sampler', inputs=inputs, outputs=outputs, attrs=attrs)
