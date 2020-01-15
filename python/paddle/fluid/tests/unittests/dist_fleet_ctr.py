@@ -223,25 +223,6 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                 debug=False)
             pass_time = time.time() - pass_start
 
-        res_dict = dict()
-        res_dict['loss'] = self.avg_cost
-
-        class FH(fluid.executor.FetchHandler):
-            def handle(self, res_dict):
-                for key in res_dict:
-                    v = res_dict[key]
-                    print("{}: \n {}\n".format(key, v))
-
-        for epoch_id in range(1):
-            pass_start = time.time()
-            dataset.set_filelist(filelist)
-            exe.train_from_dataset(
-                program=fleet.main_program,
-                dataset=dataset,
-                fetch_handler=FH(var_dict=res_dict, period_secs=2),
-                debug=False)
-            pass_time = time.time() - pass_start
-
         model_dir = tempfile.mkdtemp()
         fleet.save_inference_model(
             exe, model_dir, [feed.name for feed in self.feeds], self.avg_cost)
