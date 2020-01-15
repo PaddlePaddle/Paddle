@@ -198,7 +198,7 @@ class TestWithDilation(TestModulatedDeformableConvOp):
     def init_test_case(self):
         self.pad = [2, 2]
         self.stride = [1, 1]
-        self.input_size = [2, 3, 4, 4]  # NCHW
+        self.input_size = [5, 3, 4, 4]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 3, 3]
@@ -221,7 +221,7 @@ class TestWith1x1(TestModulatedDeformableConvOp):
         self.input_size = [2, 3, 5, 5]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 1, 1]
+        self.filter_size = [40, f_c, 1, 1]
         self.im2col_step = 1
         self.deformable_groups = 1
         offset_c = 2 * self.deformable_groups * self.filter_size[
@@ -232,6 +232,22 @@ class TestWith1x1(TestModulatedDeformableConvOp):
 
 
 class TestWithGroup(TestModulatedDeformableConvOp):
+    def init_test_case(self):
+        self.pad = [1, 1]
+        self.stride = [1, 1]
+        self.dilations = [1, 1]
+        self.input_size = [2, 8, 4, 4]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [4, f_c, 3, 3]
+        self.im2col_step = 1
+        self.deformable_groups = 1
+        offset_c = 2 * self.deformable_groups * self.filter_size[
+            2] * self.filter_size[3]
+        self.offset_size = [
+            self.input_size[0], offset_c, self.input_size[2], self.input_size[3]
+        ]
+
     def init_group(self):
         self.groups = 2
 

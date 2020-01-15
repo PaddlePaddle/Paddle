@@ -1518,6 +1518,10 @@ def save(program, model_path):
     assert base_name != "", \
         "model_path MUST be format of dirname/filename [dirname\\filename in Window], Now filename is empty str"
 
+    dir_name = os.path.dirname(model_path)
+    if dir_name and not os.path.exists(dir_name):
+        os.makedirs(dir_name)
+
     def get_tensor(var):
         t = global_scope().find_var(var.name).get_tensor()
         return np.array(t)
