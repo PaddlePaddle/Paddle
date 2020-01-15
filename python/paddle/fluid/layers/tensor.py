@@ -32,7 +32,8 @@ __all__ = [
     'tensor_array_to_tensor', 'concat', 'sums', 'assign',
     'fill_constant_batch_size_like', 'fill_constant', 'argmin', 'argmax',
     'argsort', 'ones', 'zeros', 'reverse', 'has_inf', 'has_nan', 'isfinite',
-    'range', 'linspace', 'zeros_like', 'ones_like', 'diag', 'eye'
+    'range', 'linspace', 'zeros_like', 'ones_like', 'diag', 'eye',
+    'partial_concat'
 ]
 
 
@@ -1455,4 +1456,70 @@ def ones_like(x, out=None):
         inputs={'X': [x]},
         attrs={'value': 1.0},
         outputs={'Out': [out]})
+    return out
+
+
+def partial_concat(input, start_index=0, length=-1):
+    """
+    **Partial Concat**
+    This OP concatenates the inputs according to the start index and length.
+    Args:
+        input(list): List of input Tensors with data type float32, float64, int32,
+            int64.
+        start_index(int32): The start index of each instance for partial concatenation.
+            Default is 0.
+        length(int32): The length of each instance for partial concatenation. Default is 0.
+    Returns:
+        Variable: A Tensor with the same data type as input's.
+    Examples:
+        .. code-block:: python
+            import paddle.fluid as fluid
+            import numpy as np
+            in1 = np.array([[1,2,3],
+                            [4,5,6]])
+            in2 = np.array([[11,12,13],
+                            [14,15,16]])
+            in3 = np.array([[21,22,23],
+                            [24,25,26]])
+            with fluid.dygraph.guard():
+                x1 = fluid.dygraph.to_variable(in1)
+                x2 = fluid.dygraph.to_variable(in2)
+                x3 = fluid.dygraph.to_variable(in3)
+                out1 = fluid.layers.partial_concat(input=[x1,x2,x3], start_index=1, length=2)
+                out2 = fluid.layers.partial_concat(input=[x1,x2], start_index=-1, length=1)
+                print(out1.numpy())
+                # [[ 2  3  12 13 22 23]
+                #  [ 5  6  15 16 25 26]]
+                print(out2.numpy())
+                # [[3 13]
+                #  [6 16]]
+    """
+
+    if in_dygraph_mode():
+        inputs = {'X': input}
+        attrs = {'start_index': start_index, 'length': length}
+        outs = core.ops.partial_concat(inputs, attrs)
+        return outs['Out'][0]
+
+    if not isinstance(input, list):
+        warnings.warn(
+            "The type of input in partial_concat should be list, but received %s."
+            % (type(input)))
+        input = [input]
+    for id, x in enumerate(input):
+        check_type_and_dtype(
+            x, 'input[' + str(id) + ']', Variable,
+            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            'partial_concat')
+    check_type(start_index, 'start_index', (int), 'partial_concat')
+    check_type(length, 'length', (int), 'partial_concat')
+    inputs = {'X': input}
+    attrs = {'start_index': start_index, 'length': length}
+    helper = LayerHelper('partial_concat', **locals())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+    helper.append_op(
+        type='partial_concat',
+        inputs=inputs,
+        outputs={'Out': [out]},
+        attrs=attrs)
     return out
