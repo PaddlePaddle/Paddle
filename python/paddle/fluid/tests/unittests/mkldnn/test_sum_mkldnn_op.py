@@ -79,7 +79,7 @@ class TestMKLDNNSumInplaceOp(unittest.TestCase):
         self.assertTrue(
             np.allclose(
                 expected_out, out_array, atol=1e-5),
-            "Sum mkldnn inplace Out has diff with expected out")
+            "Inplace sum_mkldnn_op output has diff with expected output")
 
 
 if __name__ == '__main__':

@@ -53,9 +53,15 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                    "It must use CPUPlace.");
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
+    auto in_vars = ctx.MultiInputVar("X");
     auto out_var = ctx.OutputVar("Out");
 
-    if (out_var->IsType<framework::LoDTensor>()) {
+    PADDLE_ENFORCE_NE(in_vars.empty(), true, platform::errors::InvalidArgument(
+                                                 "Input variable is empty."));
+    bool in_place = out_var == in_vars[0];
+
+    if (out_var->IsType<framework::LoDTensor>() &&
+        in_vars[0]->IsType<LoDTensor>()) {
       LoDTensor* output = ctx.Output<LoDTensor>("Out");
       T* output_data = output->mutable_data<T>(ctx.GetPlace());
 
@@ -65,30 +71,31 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       std::vector<float> scales;
       std::vector<memory::desc> srcs_md;
       std::vector<mkldnn::memory> srcs_mem;
-      auto in_vars = ctx.MultiInputVar("X");
 
-      PADDLE_ENFORCE_GT(in_vars.size(), 1,
-                        "Input variables size must be bigger than 1");
-      PADDLE_ENFORCE_EQ(in_vars[0]->IsType<LoDTensor>(), true,
-                        "Input[0] must be LoDTensors");
       auto& input0 = in_vars[0]->Get<LoDTensor>();
-      PADDLE_ENFORCE_EQ(input0.layout(), DataLayout::kMKLDNN,
-                        "Wrong layout set for inputs[0] tensor");
-      PADDLE_ENFORCE_NE(input0.format(), MKLDNNMemoryFormat::undef,
-                        "Wrong format set for inputs[0] tensor");
+      PADDLE_ENFORCE_EQ(
+          input0.layout(), DataLayout::kMKLDNN,
+          platform::errors::InvalidArgument("Wrong layout set for input[0]"));
+      PADDLE_ENFORCE_NE(
+          input0.format(), MKLDNNMemoryFormat::undef,
+          platform::errors::InvalidArgument("Wrong format set for intput[0]"));
 
-      bool in_place = (input0.numel()) > 0 && (input0.data<T>() == output_data);
+      in_place = (input0.numel() > 0) && (input0.data<T>() == output_data);
 
       MKLDNNMemoryFormat input_format = input0.format();
 
       for (size_t i = 0; i < in_vars.size(); i++) {
-        PADDLE_ENFORCE_EQ(in_vars[i]->IsType<LoDTensor>(), true,
-                          "all inputs must be all LoDTensors");
+        PADDLE_ENFORCE_EQ(
+            in_vars[i]->IsType<LoDTensor>(), true,
+            platform::errors::PreconditionNotMet(
+                "To use mkldnn sum op, all inputs must be all LoDTensors"));
         auto& input = in_vars[i]->Get<LoDTensor>();
-        PADDLE_ENFORCE_EQ(input.layout(), DataLayout::kMKLDNN,
-                          "Wrong layout set for inputs");
-        PADDLE_ENFORCE_NE(input.format(), MKLDNNMemoryFormat::undef,
-                          "Wrong format set for inputs");
+        PADDLE_ENFORCE_EQ(
+            input.layout(), DataLayout::kMKLDNN,
+            platform::errors::InvalidArgument("Wrong layout set for inputs"));
+        PADDLE_ENFORCE_NE(
+            input.format(), MKLDNNMemoryFormat::undef,
+            platform::errors::InvalidArgument("Wrong format set for inputs"));
 
         if (input.numel() == 0) {
           continue;
