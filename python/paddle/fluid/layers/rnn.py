@@ -1230,7 +1230,7 @@ def dynamic_decode(decoder,
             map_structure(
                 lambda x, x_array: control_flow.array_write(
                     x, i=step_idx, array=x_array), next_states, states_arrays)
-        tensor.assign(next_finished, global_finished, force_cpu=True)
+        tensor.assign(next_finished, global_finished)
         tensor.assign(next_sequence_lengths, sequence_lengths)
         if max_step_num is not None:
             control_flow.logical_and(

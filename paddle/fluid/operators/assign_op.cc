@@ -70,6 +70,7 @@ class AssignKernel {
         "The Output(Out) should not be null if the Input(X) is set.");
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(ctx.GetPlace());
+
     framework::VisitVarType(*x, AssignFunctor(out, dev_ctx));
   }
 };
