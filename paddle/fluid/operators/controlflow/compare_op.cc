@@ -56,11 +56,6 @@ class CompareOpProtoMaker : public framework::OpProtoAndCheckerMaker {
         "The start dimension index for broadcasting Y onto X. [default -1]")
         .SetDefault(-1)
         .EqualGreaterThan(-1);
-    AddAttr<bool>("force_cpu",
-                  "Force fill output variable to cpu "
-                  "memory. Otherwise, fill output variable to the running "
-                  "device [default true].")
-        .SetDefault(true);
     AddOutput("Out", string::Sprintf("n-dim bool tensor. Each element is %s",
                                      comment.equation));
     AddComment(string::Sprintf(R"DOC(
@@ -97,9 +92,7 @@ class CompareOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
     // CompareOp kernel's device type is decided by input tensor place
-    bool force_cpu = ctx.Attr<bool>("force_cpu");
-    kt.place_ = force_cpu ? platform::CPUPlace()
-                          : ctx.Input<framework::LoDTensor>("X")->place();
+    kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
     return kt;
   }
 };

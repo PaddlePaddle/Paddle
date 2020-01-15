@@ -1306,7 +1306,6 @@ def less_than(x, y, force_cpu=None, cond=None):
     Args:
         x(${x_type}): ${x_comment}.
         y(${y_type}): ${y_comment}.
-        force_cpu(${force_cpu_type}): ${force_cpu_comment}.
         cond(Variable|None): Optional output variable to store the result of *less_than*
 
     Returns:
@@ -1341,8 +1340,6 @@ def less_than(x, y, force_cpu=None, cond=None):
         cond.stop_gradient = True
 
     attrs = dict()
-    if force_cpu is not None:
-        attrs['force_cpu'] = force_cpu
 
     helper.append_op(
         type='less_than',

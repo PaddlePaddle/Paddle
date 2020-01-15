@@ -62,7 +62,12 @@ std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
 std::unique_ptr<OperatorBase> OpRegistry::CreateOp(const OpDesc& op_desc) {
   auto op = CreateOp(op_desc.Type(), op_desc.Inputs(), op_desc.Outputs(),
                      op_desc.GetAttrMap());
-  op->SetDeviceType(op_desc.DeviceType());
+  if (op_desc.HasAttr("force_cpu") &&
+      boost::get<bool>(op_desc.GetAttr("force_cpu")) == true) {
+    op->SetDeviceType("cpu");
+  } else {
+    op->SetDeviceType(op_desc.DeviceType());
+  }
   return op;
 }
 
