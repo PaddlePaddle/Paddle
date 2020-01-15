@@ -23,6 +23,7 @@ namespace operators {
 #define CEIL_DIV(x, y) (((x) + (y)-1) / (y))
 
 using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
 template <class T>
 __global__ void SumArrayPartialCUDAKernel(T **in, T *out, int64_t lod_length,
@@ -68,11 +69,12 @@ template <typename T>
 class PartialSumOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto in_vars = ctx.MultiInput<framework::Tensor>("X");
-    framework::Tensor *out = ctx.Output<framework::Tensor>("Out");
+    auto in_vars = ctx.MultiInput<Tensor>("X");
+    Tensor *out = ctx.Output<Tensor>("Out");
 
-    PADDLE_ENFORCE_EQ(in_vars[0] != nullptr, true,
-                      "The input should not be null.");
+    PADDLE_ENFORCE_EQ(
+        in_vars[0] != nullptr, true,
+        platform::errors::InvalidArgument("The input should not be null."));
 
     auto place = ctx.GetPlace();  // GPUPlace only now
     auto start_index = ctx.Attr<int>("start_index");
@@ -81,8 +83,6 @@ class PartialSumOpCUDAKernel : public framework::OpKernel<T> {
     if (length == -1) {
       length = in_vars[0]->dims()[1] - start_index;
     }
-    VLOG(0) << "Partial Runtime: batch_size:" << batch_size
-            << " start_index: " << start_index << " length:" << length;
 
     constexpr size_t theory_sm_threads = 1024;
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
@@ -133,14 +133,13 @@ template <typename T>
 class PartialSumGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
-                      "This kernel only runs on GPU device.");
     const Tensor *out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto ins = ctx.MultiInput<framework::LoDTensor>("X");
-    auto outs =
-        ctx.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
+    auto ins = ctx.MultiInput<LoDTensor>("X");
+    auto outs = ctx.MultiOutput<LoDTensor>(framework::GradVarName("X"));
 
-    PADDLE_ENFORCE_EQ(ins[0] != nullptr, true, "The input should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ins[0] != nullptr, true,
+        platform::errors::InvalidArgument("The input should not be null."));
     auto start_index = ctx.Attr<int>("start_index");
     auto length = ctx.Attr<int>("length");
     if (length == -1) {
@@ -150,7 +149,7 @@ class PartialSumGradOpCUDAKernel : public framework::OpKernel<T> {
     // initialize
     auto &place = *ctx.template device_context<platform::CUDADeviceContext>()
                        .eigen_device();
-    for (auto i = 0; i < outs.size(); ++i) {
+    for (size_t i = 0; i < outs.size(); ++i) {
       outs[i]->mutable_data<T>(ctx.GetPlace());
       auto dxt = framework::EigenVector<T>::Flatten(*outs[i]);
       dxt.device(place) = dxt.constant(static_cast<T>(0));
@@ -210,7 +209,6 @@ class PartialSumGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(partial_sum, ops::PartialSumOpCUDAKernel<float>,
                         ops::PartialSumOpCUDAKernel<double>,
                         ops::PartialSumOpCUDAKernel<int>,

@@ -24,17 +24,21 @@ class PartialSumOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_GE(ctx->Inputs("X").size(), 1UL,
-                      "Inputs(X) of PartialSumOp should not be empty.");
+                      platform::errors::InvalidArgument(
+                          "Inputs(X) of PartialSumOp should not be empty."));
 
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of PartialSumOp should not be null.");
+                      platform::errors::InvalidArgument(
+                          "Output(Out) of PartialSumOp should not be null."));
 
     auto inputs_dims = ctx->GetInputsDim("X");
 
     const size_t inputs_num = inputs_dims.size();
-    PADDLE_ENFORCE_GT(inputs_num, 0,
-                      "ShapeError: Input tensors count should > 0. But "
-                      "recevied inputs' length is 0.");
+    PADDLE_ENFORCE_GT(
+        inputs_num, 0,
+        platform::errors::InvalidArgument(
+            "ShapeError: Input tensors "
+            "count should > 0. But recevied inputs' length is 0."));
     if (inputs_num == 1) {
       VLOG(3) << "Warning: partial_sum op have only one input, may be useless";
     }
@@ -48,22 +52,28 @@ class PartialSumOp : public framework::OperatorWithKernel {
     int64_t input_len = -1;
     for (size_t i = 0; i < inputs_num; ++i) {
       PADDLE_ENFORCE_EQ(inputs_dims[i].size(), 2,
-                        "Only suppert two dimensions input now.");
+                        platform::errors::InvalidArgument(
+                            "Only suppert two dimensions input now."));
       if (i == 0) {
         batch_size = inputs_dims[0][0];
         input_len = inputs_dims[0][1];
       } else {
         PADDLE_ENFORCE_EQ(inputs_dims[i][0], batch_size,
-                          "The batch size of all inputs must be same");
+                          platform::errors::InvalidArgument(("The batch size "
+                           "of all inputs must be same"));
         PADDLE_ENFORCE_EQ(inputs_dims[i][1], input_len,
-                          "The input len of all inputs must be same");
+                          platform::errors::InvalidArgument("The input len "
+                          "of all inputs must be same"));
       }
     }
     PADDLE_ENFORCE_GT(input_len, start_index,
-                      "start_index must be less than input len");
+                      platform::errors::OutOfRange(
+                          "start_index must be less than input len"));
     if (length > 0) {
-      PADDLE_ENFORCE_GE(input_len, start_index + length,
-                        "input len is too short");
+      PADDLE_ENFORCE_GE(
+          input_len, start_index + length,
+          platform::errors::OutOfRange(
+              "start_index + length is larger than input length"));
     }
 
     std::vector<int64_t> out_dims(2);
@@ -86,9 +96,9 @@ class PartialSumOp : public framework::OperatorWithKernel {
         break;
       }
     }
-    if (flag == 0) {
-      PADDLE_THROW("All Inputs of PartialSum OP are Empty!");
-    }
+
+    PADDLE_ENFORCE_EQ(flag, 1, platform::errors::InvalidArgument(
+                                   "All Inputs of PartialSum OP are Empty!"));
     return framework::OpKernelType(input_data_type, platform::CPUPlace());
   }
 };
@@ -107,8 +117,9 @@ class PartialSumGradOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_EQ(
         in_names.size(), out_names.size(),
-        "The number of arguments in %s[%d] and %s[%d] is not equal.", in_x,
-        in_names.size(), out_x_g_n, out_names.size());
+        platform::errors::InvalidArgument(
+            "The number of arguments in %s[%d] and %s[%d] is not equal.", in_x,
+            in_names.size(), out_x_g_n, out_names.size()));
     for (size_t i = 0; i < in_names.size(); ++i) {
       if (out_names[i] != framework::kEmptyVarName) {
         ctx->ShareLoD(in_x, out_x_g_n, i, i);

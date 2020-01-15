@@ -11,7 +11,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <iostream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -28,7 +27,9 @@ class PartialSumKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto ins = ctx.MultiInput<Tensor>("X");
     Tensor* out = ctx.Output<Tensor>("Out");
-    PADDLE_ENFORCE_EQ(ins[0] != nullptr, true, "The input should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ins[0] != nullptr, true,
+        platform::errors::InvalidArgument("The input should not be null."));
 
     auto place = ctx.GetPlace();  // CPUPlace only now
 
@@ -42,7 +43,7 @@ class PartialSumKernel : public framework::OpKernel<T> {
 
     memset(out_t, 0, sizeof(T) * batch_size * length);
 
-    for (auto i = 0; i < ins.size(); ++i) {
+    for (size_t i = 0; i < ins.size(); ++i) {
       auto* in_t = ins[i]->data<T>();
       auto total_len = ins[i]->dims()[1];
       for (auto bs_id = 0; bs_id < batch_size; ++bs_id) {
@@ -59,15 +60,14 @@ template <typename T>
 class PartialSumGradientOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
-                      "This kernel only runs on CPU.");
-
     auto* out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto ins = ctx.MultiInput<framework::LoDTensor>("X");
     auto outs =
         ctx.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
 
-    PADDLE_ENFORCE_EQ(ins[0] != nullptr, true, "The input should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ins[0] != nullptr, true,
+        platform::errors::InvalidArgument("The input should not be null."));
     auto start_index = ctx.Attr<int>("start_index");
     auto length = ctx.Attr<int>("length");
     auto batch_size = ins[0]->dims()[0];
@@ -78,14 +78,14 @@ class PartialSumGradientOpKernel : public framework::OpKernel<T> {
     // initialize
     auto& place = *ctx.template device_context<platform::CPUDeviceContext>()
                        .eigen_device();
-    for (auto i = 0; i < outs.size(); ++i) {
+    for (size_t i = 0; i < outs.size(); ++i) {
       outs[i]->mutable_data<T>(ctx.GetPlace());
       auto dxt = framework::EigenVector<T>::Flatten(*outs[i]);
       dxt.device(place) = dxt.constant(static_cast<T>(0));
     }
 
     auto* out_grad_t = out_grad->data<T>();
-    for (auto i = 0; i < outs.size(); ++i) {
+    for (size_t i = 0; i < outs.size(); ++i) {
       auto* out_t = outs[i]->data<T>();
       auto total_len = ins[i]->dims()[1];
       for (auto bs_id = 0; bs_id < batch_size; ++bs_id) {
