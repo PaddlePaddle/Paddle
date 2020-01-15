@@ -446,13 +446,13 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 class GeneralRoleMaker(RoleMakerBase):
     """
     This role maker is for general use, you can set os.environ to customize:
-        PADDLE_PSERVERS_IP_PORT_LIST : pserver ip:port, seperated by ','
-        PADDLE_TRAINER_ENDPOINTS     : trainer pi:port, seperated by ','
-        PADDLE_TRAINER_ID            : trainer id (only for trainer)
+        PADDLE_PSERVERS_IP_PORT_LIST : all pservers' ip:port, seperated by ','
+        PADDLE_TRAINER_ENDPOINTS     : all trainers' ip:port, seperated by ','
+        PADDLE_TRAINER_ID            : current trainer id (only for trainer)
         PADDLE_TRAINERS_NUM          : num of trainers
         TRAINING_ROLE                : TRAINER or PSERVER
-        POD_IP                       : ip (only for pserver)
-        PADDLE_PORT                  : port (only for pserver)
+        POD_IP                       : current pserver ip (only for pserver)
+        PADDLE_PORT                  : current pserver port (only for pserver)
     """
 
     def __init__(self, **kwargs):
@@ -460,7 +460,7 @@ class GeneralRoleMaker(RoleMakerBase):
         self._role_is_generated = False
         self._hdfs_name = kwargs.get("hdfs_name", "")
         self._hdfs_ugi = kwargs.get("hdfs_ugi", "")
-        self._hdfs_path = kwargs.get("path", "")
+        self._hdfs_path = kwargs.get("hdfs_path", "")
         self._iface = self.__get_default_iface()
         self._prefix = os.getenv("SYS_JOB_ID", "")
 
