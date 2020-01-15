@@ -385,7 +385,7 @@ class GRUCPUKernel : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class CRUGradOpMaker : public framework::SingleGradOpMaker<T> {
+class GRUGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
@@ -427,8 +427,8 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(GRUGradOpNoNeedBufferVarInference,
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(gru, ops::GRUOp, ops::GRUOpMaker,
-                  ops::CRUGradOpMaker<paddle::framework::OpDesc>,
-                  ops::CRUGradOpMaker<paddle::imperative::OpBase>)
+                  ops::GRUGradOpMaker<paddle::framework::OpDesc>,
+                  ops::GRUGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(gru_grad, ops::GRUGradOp,
                   ops::GRUGradOpNoNeedBufferVarInference);
 REGISTER_OP_CPU_KERNEL(gru, ops::GRUCPUKernel<float>,

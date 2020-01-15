@@ -26,24 +26,35 @@ DEFINE_bool(enable_unused_var_check, false,
             "Checking whether operator contains unused inputs, "
             "especially for grad operator. It should be in unittest.");
 
+// NOTE(zhiqiu): Currently, there are some operators which involves unused
+// inputs and cannot be removed from the white_list below.
+// They can be mainly divided into three categories:
+// 0: the inputs of which are only used in if branch, or used in cuda kernel but
+// not in cpu kernel;
+// 1: the inputs of which are used to indicate dtype of outputs;
+// 2: the inputs of which are used in fused operators.
+// 3: specical operators, like ngraph_engine.
+// The categories number is presented in the comments after each operator.
+
 const std::unordered_set<std::string> op_has_unsed_vars_white_list = {
-    "batch_norm",
-    "batch_norm_grad",
-    "sync_batch_norm",
-    "sync_batch_norm_grad",
-    "fused_batch_norm_act",
-    "fused_batch_norm_act_grad",
-    "dgc_momentum",
-    "fake_quantize_range_abs_max",
-    "fill_zeros_like",
-    "fill_any_like",
-    "fusion_seqpool_cvm_concat",
-    "nce_grad",
-    "ngraph_engine",
-    "rmsprop",
-    "precision_recall",
-    "sequence_conv_grad",
-    "roi_perspective_transform_grad",
+    "batch_norm",                      // 0
+    "batch_norm_grad",                 // 0
+    "sync_batch_norm",                 // 0
+    "sync_batch_norm_grad",            // 0
+    "dgc_momentum",                    // 0
+    "fake_quantize_range_abs_max",     // 0
+    "rmsprop",                         // 0
+    "sequence_conv_grad",              // 0
+    "roi_perspective_transform_grad",  // 0
+    "center_loss_grad",                // 0
+    "fill_zeros_like",                 // 1
+    "fill_any_like",                   // 1
+    "nce_grad",                        // 1
+    "precision_recall",                // 1
+    "fusion_seqpool_cvm_concat",       // 2
+    "fused_batch_norm_act",            // 2
+    "fused_batch_norm_act_grad",       // 2
+    "ngraph_engine",                   // 3
 };
 
 namespace paddle {
