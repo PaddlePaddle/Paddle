@@ -13901,3 +13901,48 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
         outputs={"Out": out})
 
     return helper.append_activation(out)
+
+
+def tdm_sampler(input,
+                tree_travel_tensor,
+                tree_layer_tensor,
+                neg_samples_num_list,
+                output_labels=False,
+                output_positive=False,
+                seed=0):
+    '''
+    used for tdm data reader, get neg sample at every layer
+    1. build tree in memory
+    2. travel the tree, find path of input (root->node(input))
+    3. get neg sample at every layer
+    '''
+    helper = LayerHelper("tdm_sampler", **locals())
+    out = helper.create_variable_for_type_inference(dtype='int64')
+    labels = helper.create_variable_for_type_inference(dtype='int64')
+    tree_travel_tensor.stop_gradient = True
+    tree_layer_tensor.stop_gradient = True
+
+    # check input : tensor , type=int
+    # check tree_tensor : lod_tensor, type=int
+    # check neg_samples_num_list : list, len() < tree.depth
+
+    helper.append_op(
+        type='tdm_sampler',
+        inputs={
+            "Input": input,
+            "Travel": tree_travel_tensor,
+            "Layer": tree_layer_tensor
+        },
+        outputs={'Out': out,
+                 'Labels': labels},
+        attrs={
+            'neg_samples_num_list': neg_samples_num_list,
+            'output_labels': output_labels,
+            'output_positive': output_positive,
+            'seed': seed
+        })
+    layer_out = split(out, )
+
+    if output_labels:
+        return out, labels
+    return out
