@@ -125,7 +125,11 @@ __global__ void ClipAndQuantKernel(const T* in, const T* scale,
     T v = x > s ? s : x;
     v = v < -s ? -s : v;
     v = bin_cnt / s * v;
-    out[i] = round(v);
+    if (std::is_same<T, float>::value) {
+      out[i] = roundf(v);
+    } else {
+      out[i] = round(v);
+    }
   }
 }
 
@@ -142,7 +146,11 @@ __global__ void ClipAndQuantDequantKernel(const T* in, const T* scale,
     T v = x > s ? s : x;
     v = v < -s ? -s : v;
     v = bin_cnt / s * v;
-    out[i] = round(v) * s / bin_cnt;
+    if (std::is_same<T, float>::value) {
+      out[i] = roundf(v) * s / bin_cnt;
+    } else {
+      out[i] = round(v) * s / bin_cnt;
+    }
   }
 }
 
@@ -203,7 +211,11 @@ __global__ void ChannelClipAndQuantKernel(const T* in, const T* scale,
     T v = x > s ? s : x;
     v = v < -s ? -s : v;
     v = bin_cnt / s * v;
-    out_c[i] = round(v);
+    if (std::is_same<T, float>::value) {
+      out_c[i] = roundf(v);
+    } else {
+      out_c[i] = round(v);
+    }
   }
 }
 
