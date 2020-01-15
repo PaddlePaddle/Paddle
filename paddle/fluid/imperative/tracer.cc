@@ -84,6 +84,14 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                      const platform::Place& place, bool trace_backward) {
   VLOG(1) << "Trace Op: " << type;
   size_t op_id = GenerateUniqueId();
+
+  // NOTE(zhiqiu): Set "is_test" attribute for some operators that has different
+  // behaviors when training and testing, such as batch_norm, dropout.
+  // Ensure the correctness even if it is not properly set in Python side.
+  if (attrs.find("is_test") != attrs.end()) {
+    attrs["is_test"] = !no_grad_;
+  }
+
   auto op = OpBase::Create(op_id, type, ins, outs, attrs, place);
   op->Run(ins, outs);
 
@@ -104,6 +112,14 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                      framework::AttributeMap attrs) {
   VLOG(1) << "Trace Op: " << type;
   size_t op_id = GenerateUniqueId();
+
+  // NOTE(zhiqiu): Set "is_test" attribute for some operators that has different
+  // behaviors when training and testing, such as batch_norm, dropout.
+  // Ensure the correctness even if it is not properly set in Python side.
+  if (attrs.find("is_test") != attrs.end()) {
+    attrs["is_test"] = !no_grad_;
+  }
+
   auto op =
       OpBase::Create(op_id, type, ins, outs, std::move(attrs), expected_place_);
   op->Run(ins, outs);
