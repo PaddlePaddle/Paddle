@@ -1,0 +1,16 @@
+cos_sim
+fsp
+gru
+match_matrix_tensor
+maxout
+pool2d
+pool3d
+reduce_max
+reduce_min
+reduce_prod
+reshape
+rnn_memory_helper
+sequence_softmax
+spp
+transpose
+unsqueeze
