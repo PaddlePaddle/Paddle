@@ -1,7 +1,4 @@
-cos_sim
 fsp
-gru
-match_matrix_tensor
 maxout
 pool2d
 pool3d
@@ -13,4 +10,3 @@ rnn_memory_helper
 sequence_softmax
 spp
 transpose
-unsqueeze

@@ -41,6 +41,7 @@ const std::unordered_set<std::string> op_has_unsed_vars_white_list = {
     "nce_grad",
     "ngraph_engine",
     "rmsprop",
+    "precision_recall",
     "sequence_conv_grad",
     "roi_perspective_transform_grad",
 };
