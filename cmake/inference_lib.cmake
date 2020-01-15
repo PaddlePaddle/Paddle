@@ -135,7 +135,7 @@ function(copy_part_of_thrid_party TARGET DST)
 endfunction()
 
 # inference library for only inference
-set(inference_lib_deps third_party paddle_fluid paddle_fluid_shared paddle_fluid_c paddle_fluid_c_shared)
+set(inference_lib_deps third_party paddle_fluid paddle_fluid_c paddle_fluid_shared paddle_fluid_c_shared)
 add_custom_target(inference_lib_dist DEPENDS ${inference_lib_deps})
 
 set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/eigen3")
@@ -171,7 +171,7 @@ copy_part_of_thrid_party(inference_lib_dist ${FLUID_INFERENCE_INSTALL_DIR})
 
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
 if(WIN32)
-    set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/libpaddle_fluid.*)
+    set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/*paddle_fluid.*)
 else(WIN32)
     set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*)
 endif(WIN32)
@@ -180,7 +180,6 @@ copy(inference_lib_dist
         SRCS  ${src_dir}/inference/api/paddle_*.h ${paddle_fluid_lib}
         DSTS  ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include ${FLUID_INFERENCE_INSTALL_DIR}/paddle/lib)
 
-
 # CAPI inference library for only inference
 set(FLUID_INFERENCE_C_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_inference_c_install_dir" CACHE STRING
 "A path setting CAPI fluid inference shared")
@@ -188,22 +187,14 @@ copy_part_of_thrid_party(inference_lib_dist ${FLUID_INFERENCE_C_INSTALL_DIR})
 
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
 if(WIN32)
-    set(paddle_fluid_c_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi/${CMAKE_BUILD_TYPE}/paddle_fluid_c.dll
-        ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi/${CMAKE_BUILD_TYPE}/paddle_fluid_c.lib)
+    set(paddle_fluid_c_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi/${CMAKE_BUILD_TYPE}/paddle_fluid_c.*)
 else(WIN32)
-    set(paddle_fluid_c_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*)
+    set(paddle_fluid_c_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi/libpaddle_fluid_c.*)
 endif(WIN32)
 
-if(WIN32)
-    copy(inference_lib_dist
-            SRCS  ${src_dir}/inference/capi/c_api.h ${paddle_fluid_c_lib}
-            DSTS  ${FLUID_INFERENCE_C_INSTALL_DIR}/paddle/include ${FLUID_INFERENCE_C_INSTALL_DIR}/paddle/lib
-                  ${FLUID_INFERENCE_C_INSTALL_DIR}/paddle/lib)
-else()
-    copy(inference_lib_dist
-        SRCS  ${src_dir}/inference/capi/c_api.h ${paddle_fluid_c_lib}
+copy(inference_lib_dist
+        SRCS  ${src_dir}/inference/capi/c_api.h  ${paddle_fluid_c_lib}
         DSTS  ${FLUID_INFERENCE_C_INSTALL_DIR}/paddle/include ${FLUID_INFERENCE_C_INSTALL_DIR}/paddle/lib)
-endif()
 
 # fluid library for both train and inference
 set(fluid_lib_deps inference_lib_dist)
@@ -279,11 +270,17 @@ function(version version_file)
             "WITH_MKL: ${WITH_MKL}\n"
             "WITH_MKLDNN: ${WITH_MKLDNN}\n"
             "WITH_GPU: ${WITH_GPU}\n")
-    if (WITH_GPU)
+    if(WITH_GPU)
         file(APPEND ${version_file}
                 "CUDA version: ${CUDA_VERSION}\n"
                 "CUDNN version: v${CUDNN_MAJOR_VERSION}\n")
-    endif ()
+    endif()
+    if(TENSORRT_FOUND)
+        file(APPEND ${version_file}
+                "WITH_TENSORRT: ${TENSORRT_FOUND}\n"
+                "TENSORRT_ROOT: ${TENSORRT_ROOT}\n")
+    endif()
+    
 endfunction()
 version(${FLUID_INSTALL_DIR}/version.txt)
 version(${FLUID_INFERENCE_INSTALL_DIR}/version.txt)
