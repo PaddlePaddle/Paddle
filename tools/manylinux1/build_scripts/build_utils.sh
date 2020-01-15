@@ -99,6 +99,7 @@ function build_cpython {
     check_var $py_ver
     check_var $PYTHON_DOWNLOAD_URL
     wget -q $PYTHON_DOWNLOAD_URL/$py_ver/Python-$py_ver.tgz
+    build_cpythons
     if [ $(lex_pyver $py_ver) -lt $(lex_pyver 3.3) ]; then
         # NOTE We only need wide unicode for nupic.bindings wheel
         do_cpython_build $py_ver ucs2
