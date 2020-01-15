@@ -13885,10 +13885,10 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
 
 def nce_sampler(dict_path,
                 num_total_classes,
-                positive_inputs=None,
                 num_neg_samples=10,
                 seed=0,
-                factor=0.75):
+                factor=0.75,
+                positive_inputs=None):
     '''
     This Op will sample `num_neg_samples` items from all samples. Total number of samples is `num_total_classes`.
     
@@ -13911,7 +13911,7 @@ def nce_sampler(dict_path,
             word_count = [x+1 for x in range(10)]
             with open("word_count_tmp", 'w') as f:
                 for _ in word_count:
-                    f.write(_)
+                    f.write(str(_))
                     f.write("\n")
 
             neg_word = fluid.layers.nce_sampler("word_count_tmp", 10, 2)

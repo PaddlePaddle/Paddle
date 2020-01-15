@@ -41,10 +41,10 @@ class TestNceSamplerOp(unittest.TestCase):
         out = fluid.layers.nce_sampler(
             self.dict_path,
             self.total_class_numbers,
-            inputs,
             self.num_neg_samples,
             seed=0,
-            factor=1.0)
+            factor=1.0,
+            positive_inputs=inputs)
 
         custom_probs = np.array([0.1] * 10).astype(np.float32)
         custom_alias = np.array([-1] * 10).astype(int)
