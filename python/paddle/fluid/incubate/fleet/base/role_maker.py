@@ -348,6 +348,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
     role maker for paddle cloud,
     base class is RoleMakerBase
     """
+
     def __init__(self, is_collective=False):
         super(PaddleCloudRoleMaker, self).__init__()
         self._role_is_generated = False
