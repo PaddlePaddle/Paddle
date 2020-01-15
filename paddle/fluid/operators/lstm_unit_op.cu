@@ -19,7 +19,6 @@ https://github.com/caffe2/caffe2/blob/master/caffe2/operators/lstm_unit_op_gpu.c
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/cross_entropy_op.h"
 #include "paddle/fluid/operators/lstm_unit_op.h"
-#include "paddle/fluid/platform/assert.h"
 #include "paddle/fluid/platform/hostdevice.h"
 
 namespace paddle {
@@ -63,9 +62,9 @@ __global__ void LSTMUnitKernel(const int nthreads, const int dim,
 template <typename T>
 __global__ void LSTMUnitGradientKernel(const int nthreads, const int dim,
                                        const T* C_prev, const T* X, const T* C,
-                                       const T* H, const T* C_diff,
-                                       const T* H_diff, T* C_prev_diff,
-                                       T* X_diff, const T forget_bias) {
+                                       const T* C_diff, const T* H_diff,
+                                       T* C_prev_diff, T* X_diff,
+                                       const T forget_bias) {
   CUDA_1D_KERNEL_LOOP(index, nthreads) {
     const int n = index / dim;
     const int d = index % dim;
@@ -147,7 +146,6 @@ class LstmUnitGradOpCUDAKernel : public framework::OpKernel<T> {
     auto* X = x_tensor->data<T>();
     auto* C_prev = c_prev_tensor->data<T>();
     auto* C = c_tensor->data<T>();
-    auto* H = h_tensor->data<T>();
 
     auto* H_diff = hdiff_tensor->data<T>();
     auto* C_diff = cdiff_tensor->data<T>();
@@ -164,9 +162,8 @@ class LstmUnitGradOpCUDAKernel : public framework::OpKernel<T> {
     int n = N * D;
     int grid = (n + block - 1) / block;
 
-    LSTMUnitGradientKernel<T><<<grid, block>>>(n, D, C_prev, X, C, H, C_diff,
-                                               H_diff, C_prev_diff, X_diff,
-                                               forget_bias);
+    LSTMUnitGradientKernel<T><<<grid, block>>>(
+        n, D, C_prev, X, C, C_diff, H_diff, C_prev_diff, X_diff, forget_bias);
   }
 };
 

@@ -82,9 +82,9 @@ def gru(
     hidden = np.zeros((T, D), dtype=dtype)
 
     idx_in_seq_list, sorted_seqs = _seq_to_batch(lod, is_reverse)
-    h_p = h0[sorted_seqs]
+    h_p = h0[[seq for seq in sorted_seqs if lod[0][seq] > 0]]
+
     max_seq_len = len(idx_in_seq_list)
-    assert len(idx_in_seq_list[0]) == N
     end_idx = 0
     for batch_idx in range(max_seq_len):
         x = input[idx_in_seq_list[batch_idx]]
@@ -107,7 +107,7 @@ class TestGRUOp(OpTest):
     def setUp(self):
         self.op_type = "gru"
         self.lod = [[2, 4, 3]]
-        self.D = 5
+        self.D = 40
         self.is_reverse = False
         self.with_h0 = True
         self.with_bias = True
@@ -119,7 +119,6 @@ class TestGRUOp(OpTest):
 
         T = sum(self.lod[0])
         N = len(self.lod[0])
-
         input = np.random.rand(T, 3 * self.D).astype(self.dtype)
         weight = np.random.rand(self.D, 3 * self.D).astype(self.dtype)
         bias = np.random.rand(
@@ -156,10 +155,11 @@ class TestGRUOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(atol=1e-8)
+        self.check_output(atol=1e-8, check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['Input', 'H0', 'Weight', 'Bias'], ['Hidden'])
+        self.check_grad(
+            ['Input', 'H0', 'Weight', 'Bias'], ['Hidden'], check_dygraph=False)
 
 
 class TestGRUOriginMode(TestGRUOp):
@@ -169,14 +169,32 @@ class TestGRUOriginMode(TestGRUOp):
 
 class TestGRUOp2(TestGRUOp):
     def set_confs(self):
-        self.D = 19
-        self.dtype = 'float32'
+        self.dtype = 'float64'
+
+
+class TestGRUOp2Len0(TestGRUOp):
+    def set_confs(self):
+        self.lod = [[2, 0, 4]]
+        self.dtype = 'float64'
 
 
 class TestGRUOp2OriginMode(TestGRUOp):
     def set_confs(self):
-        self.D = 19
-        self.dtype = 'float32'
+        self.dtype = 'float64'
+        self.origin_mode = True
+
+
+class TestGRUOp2OriginModeLen0(TestGRUOp):
+    def set_confs(self):
+        self.lod = [[0, 3, 4]]
+        self.dtype = 'float64'
+        self.origin_mode = True
+
+
+class TestGRUOp2OriginModeLastLen0(TestGRUOp):
+    def set_confs(self):
+        self.lod = [[0, 3, 0]]
+        self.dtype = 'float64'
         self.origin_mode = True
 
 
@@ -185,7 +203,8 @@ class TestGRUOpNoInitial(TestGRUOp):
         self.with_h0 = False
 
     def test_check_grad(self):
-        self.check_grad(['Input', 'Weight', 'Bias'], ['Hidden'])
+        self.check_grad(
+            ['Input', 'Weight', 'Bias'], ['Hidden'], check_dygraph=False)
 
 
 class TestGRUOpNoBias(TestGRUOp):
@@ -193,7 +212,8 @@ class TestGRUOpNoBias(TestGRUOp):
         self.with_bias = False
 
     def test_check_grad(self):
-        self.check_grad(['Input', 'H0', 'Weight'], ['Hidden'])
+        self.check_grad(
+            ['Input', 'H0', 'Weight'], ['Hidden'], check_dygraph=False)
 
 
 class TestGRUOpReverse(TestGRUOp):

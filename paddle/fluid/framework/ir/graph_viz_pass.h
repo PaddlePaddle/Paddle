@@ -18,6 +18,7 @@ limitations under the License. */
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/framework/ir/graph.h"
@@ -34,8 +35,7 @@ class GraphVizPass : public Pass {
   using marked_nodes_t = std::unordered_set<const Node*>;
 
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override;
+  void ApplyImpl(ir::Graph* graph) const override;
 
   // Tell whether there are any marked nodes in the graph. Consume the
   // corresponding attribute.

@@ -17,6 +17,7 @@
 #include <memory>
 #include <tuple>
 #include <type_traits>
+#include <utility>  // for std::move
 #include "paddle/fluid/operators/jit/kernel_base.h"
 #include "paddle/fluid/operators/jit/kernel_pool.h"
 #include "paddle/fluid/platform/place.h"
@@ -49,8 +50,8 @@ struct JitKernelRegistrarFunctor<Pool, PlaceType, false, I, KernelImpls...> {
 
   void operator()(KernelType kt) const {
     KernelKey kkey(kt, PlaceType());
-    Pool().Instance().Insert(kkey,
-                             std::move(make_unique<const KERNEL_IMPL_TYPE>()));
+    Pool::Instance().Insert(kkey,
+                            std::move(make_unique<const KERNEL_IMPL_TYPE>()));
     constexpr auto size = std::tuple_size<std::tuple<KernelImpls...>>::value;
     JitKernelRegistrarFunctor<Pool, PlaceType, I + 1 == size, I + 1,
                               KernelImpls...>

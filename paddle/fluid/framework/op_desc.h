@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/type_defs.h"
@@ -72,12 +73,22 @@ class OpDesc {
   std::vector<std::string> AttrNames() const;
 
   void SetAttr(const std::string &name, const Attribute &v);
+  void RemoveAttr(const std::string &name);
 
   void SetBlockAttr(const std::string &name, BlockDesc *block);
 
   void SetBlocksAttr(const std::string &name, std::vector<BlockDesc *> blocks);
 
   Attribute GetAttr(const std::string &name) const;
+
+  template <typename T>
+  T GetAttrIfExists(const std::string &name) const {
+    T result{};
+    if (HasAttr(name)) {
+      result = boost::get<T>(GetAttr(name));
+    }
+    return result;
+  }
 
   const proto::OpProto::Attr &GetProtoAttr(const std::string &name) const;
 

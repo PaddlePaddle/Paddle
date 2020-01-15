@@ -16,7 +16,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/framework/data_layout_transform.h"
+#include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {
 namespace operators {
@@ -42,7 +43,6 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
     auto* z = ctx.Output<Tensor>("Out");
     const T* x_data = x->data<T>();
     const T* y_data = y->data<T>();
-    T* z_data = z->mutable_data<T>(ctx.GetPlace());
 
     int axis = ctx.Attr<int>("axis");
 
@@ -50,15 +50,55 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
     auto y_dims_untrimed = y->dims();
     auto z_dims = z->dims();
 
+    mkldnn::stream astream(mkldnn_engine);
+
     // Execute default elementwise_add operator when
     // broadcast operations need to performed.
     if (x_dims != y_dims_untrimed) {
+      Tensor _x;
+      MKLDNNMemoryFormat format;
+      auto src_x_tz = framework::vectorize<int64_t>(x_dims);
+
+      if ((src_x_tz.size() == 3 &&
+           x->format() != (format = MKLDNNMemoryFormat::ncw)) ||
+          (src_x_tz.size() == 4 &&
+           x->format() != (format = MKLDNNMemoryFormat::nchw)) ||
+          (src_x_tz.size() == 5 &&
+           x->format() != (format = MKLDNNMemoryFormat::ncdhw))) {
+        _x.Resize(x_dims);
+
+        mkldnn::memory::data_type in_type = platform::MKLDNNGetDataType<T>();
+        auto out_format = platform::MKLDNNFormatForSize(
+            x_dims.size(), MKLDNNMemoryFormat::nchw);
+
+        const std::string key =
+            platform::CreateKey(src_x_tz, x->format(), out_format, in_type);
+
+        platform::ReorderMKLDNNHandler handler(src_x_tz, x->type(), in_type,
+                                               dev_ctx, mkldnn_engine, key);
+
+        auto user_x_memory_p = handler.AcquireSrcMemory(
+            x->format(), paddle::platform::to_void_cast(x_data));
+
+        auto x_memory_p =
+            handler.AcquireDstMemory(&_x, out_format, ctx.GetPlace());
+
+        auto x_reorder = handler.AcquireReorder(x_memory_p, user_x_memory_p);
+
+        x_reorder->execute(astream, *user_x_memory_p, *x_memory_p);
+        astream.wait();
+      } else {
+        format = x->format();
+        _x.ShareDataWith(*x);
+      }
+
+      z->mutable_data<T>(ctx.GetPlace());
       auto sum_func = [](T a, T b) -> T { return a + b; };
 
       TransformFunctor<decltype(sum_func), T,
                        paddle::platform::CPUDeviceContext, T>
           functor(
-              x, y, z,
+              &_x, y, z,
               ctx.template device_context<paddle::platform::CPUDeviceContext>(),
               sum_func);
 
@@ -69,8 +109,9 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
       auto y_dims = trim_trailing_singular_dims(y_dims_untrimed);
       axis = (y_dims.size() == 0) ? x_dims.size() : axis;
 
-      int pre, n, post;
-      get_mid_dims(x_dims, y_dims, axis, &pre, &n, &post);
+      int pre, n, post, is_run_common_broadcast;
+      get_mid_dims(x_dims, y_dims, axis, &pre, &n, &post,
+                   &is_run_common_broadcast);
 
       if (post == 1) {
         functor.RunRowWise(n, pre);
@@ -78,60 +119,57 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
         functor.RunMidWise(n, pre, post);
       }
       z->set_layout(DataLayout::kMKLDNN);
-      z->set_format(x->format());
+      z->set_format(format);
     } else {
-      PADDLE_ENFORCE(x->layout() == DataLayout::kMKLDNN &&
-                         x->format() != memory::format::format_undef,
-                     "Wrong layout/format set for X tensor");
-      PADDLE_ENFORCE(y->layout() == DataLayout::kMKLDNN &&
-                         y->format() != memory::format::format_undef,
-                     "Wrong layout/format set for Y tensor");
+      PADDLE_ENFORCE_EQ(x->layout(), DataLayout::kMKLDNN,
+                        "Wrong layout set for X tensor");
+      PADDLE_ENFORCE_NE(x->format(), MKLDNNMemoryFormat::undef,
+                        "Wrong format set for X tensor");
 
-      std::vector<int> src_x_tz = framework::vectorize2int(x_dims);
-      std::vector<int> src_y_tz = framework::vectorize2int(y_dims_untrimed);
-      std::vector<int> dst_tz = framework::vectorize2int(z_dims);
+      PADDLE_ENFORCE_EQ(y->layout(), DataLayout::kMKLDNN,
+                        "Wrong layout set for Y tensor");
+      PADDLE_ENFORCE_NE(y->format(), MKLDNNMemoryFormat::undef,
+                        "Wrong format set for Y tensor");
 
-      std::vector<memory::primitive_desc> srcs_pd;
-      std::vector<memory> srcs;
+      auto src_x_tz = framework::vectorize<int64_t>(x_dims);
+      auto src_y_tz = framework::vectorize<int64_t>(y_dims_untrimed);
+      auto dst_tz = framework::vectorize<int64_t>(z_dims);
+
       std::vector<float> scales = {1.0f, 1.0f};
 
-      auto src_x_pd = memory::primitive_desc(
-          {{src_x_tz}, memory::data_type::f32, x->format()}, mkldnn_engine);
-      auto src_y_pd = memory::primitive_desc(
-          {{src_y_tz}, memory::data_type::f32, y->format()}, mkldnn_engine);
-      auto src_x_memory =
-          memory(src_x_pd, paddle::platform::to_void_cast(x_data));
-      auto src_y_memory =
-          memory(src_y_pd, paddle::platform::to_void_cast(y_data));
+      const std::string key =
+          platform::CreateKey(src_x_tz, ctx.OutputName("Out"));
 
-      srcs_pd.push_back(src_x_pd);
-      srcs_pd.push_back(src_y_pd);
-      srcs.push_back(src_x_memory);
-      srcs.push_back(src_y_memory);
+      platform::SumMKLDNNHandler handler(dev_ctx, mkldnn_engine, key);
 
-      auto dst_md =
-          memory::desc({dst_tz}, memory::data_type::f32, memory::format::any);
+      auto src_x_memory = handler.AcquireSrcMemory(
+          {{src_x_tz}, platform::MKLDNNGetDataType<T>(), x->format()},
+          paddle::platform::to_void_cast(x_data));
 
-      // create primitive descriptor for sum
-      auto sum_pd = sum::primitive_desc(dst_md, scales, srcs_pd);
+      auto src_y_memory = handler.AcquireSecondSrcMemory(
+          {{src_y_tz}, platform::MKLDNNGetDataType<T>(), y->format()},
+          paddle::platform::to_void_cast(y_data));
 
-      // create mkldnn memory for dst
-      memory dst_memory = memory(sum_pd.dst_primitive_desc(), z_data);
+      auto dst_md = memory::desc({dst_tz}, platform::MKLDNNGetDataType<T>(),
+                                 MKLDNNMemoryFormat::any);
 
-      std::vector<primitive::at> inputs;
-      inputs.push_back(srcs[0]);
-      inputs.push_back(srcs[1]);
+      auto sum_pd = handler.AcquireSumPrimitiveDescriptor(
+          {src_x_memory, src_y_memory}, scales, dst_md);
 
-      // create sum primitive
-      auto sum_prim = sum(sum_pd, inputs, dst_memory);
+      T* z_data =
+          z->mutable_data<T>(ctx.GetPlace(), sum_pd->dst_desc().get_size());
 
-      std::vector<primitive> pipeline;
-      pipeline.push_back(sum_prim);
-      stream(stream::kind::eager).submit(pipeline).wait();
+      auto dst_memory = handler.AcquireDstMemoryFromPrimitive(z_data);
+
+      auto sum_prim = handler.AcquireSum();
+
+      sum_prim->execute(astream, {{MKLDNN_ARG_MULTIPLE_SRC, *src_x_memory},
+                                  {MKLDNN_ARG_MULTIPLE_SRC + 1, *src_y_memory},
+                                  {MKLDNN_ARG_DST, *dst_memory}});
+      astream.wait();
 
       z->set_layout(DataLayout::kMKLDNN);
-      z->set_format(
-          (memory::format)dst_memory.get_primitive_desc().desc().data.format);
+      z->set_format(platform::GetMKLDNNFormat(*dst_memory));
     }
   }
 };
@@ -174,6 +212,8 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
       }
     } else {
       // Execute default kernel when broadcast is needed
+      x = ctx.Input<Tensor>("X");
+      y = ctx.Input<Tensor>("Y");
       ElemwiseExplicitGradCompute<paddle::platform::CPUDeviceContext, T,
                                   IdentityGrad<T>, IdentityGrad<T>>(
           ctx, *x, *y, *out, *dout, axis, dx, dy, IdentityGrad<T>(),

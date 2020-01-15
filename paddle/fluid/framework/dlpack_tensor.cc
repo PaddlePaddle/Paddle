@@ -11,9 +11,10 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include <unordered_map>
 
-#include "paddle/fluid/framework/dlpack_tensor.h"
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/dlpack_tensor.h"
 namespace paddle {
 namespace framework {
 
@@ -118,6 +119,42 @@ DLPackTensor::DLPackTensor(const Tensor &tensor, LaneType lanes) {
 
   // init byte_offset
   t_.byte_offset = 0;
+}
+
+::DLManagedTensor *DLPackTensor::ToCudfCompatibleDLManagedTensor() {
+  // init shape, tensor dims
+  // for DLManagedTensor shape need to be compatible with ndim
+  // refer to cupy and cudf, we new int64[ndim]
+  auto shape = new int64_t[t_.ndim];
+  using DimType = decltype(t_.ndim);  // int
+  for (DimType i = 0; i < t_.ndim; ++i) {
+    shape[i] = t_.shape[i];
+  }
+  t_.shape = shape;
+
+  // init strides, nullptr means the tensor is compact
+  // refer to cupy and cudf, the compact tensor first dim's strides need to be 1
+  // and second dim's strides need to be length of rows of cudf
+  // cudf now only support dim=2
+  PADDLE_ENFORCE_LE(t_.ndim, 2, "cudf now only support dim=2.");
+
+  if (t_.ndim > 1)
+    t_.strides = new int64_t[2]{1, t_.shape[1]};
+  else
+    t_.strides = new int64_t[1]{1};
+
+  auto tensor = new DLManagedTensor;
+  tensor->dl_tensor = t_;
+
+  tensor->deleter = [](DLManagedTensor *arg) {
+    delete[] arg->dl_tensor.shape;
+    delete[] arg->dl_tensor.strides;
+    delete arg;
+  };
+
+  tensor->manager_ctx = nullptr;
+
+  return tensor;
 }
 
 }  // namespace framework

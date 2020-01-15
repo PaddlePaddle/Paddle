@@ -29,6 +29,7 @@ import os
 import signal
 from functools import reduce
 from test_dist_base import TestDistRunnerBase, runtime_main
+from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
 
 DTYPE = "float32"
 paddle.dataset.mnist.fetch()
@@ -73,7 +74,7 @@ def cnn_model(data):
 
 
 class TestDistMnist2x2(TestDistRunnerBase):
-    def get_model(self, batch_size=2):
+    def get_model(self, batch_size=2, use_dgc=False, dist_strategy=None):
         # Input data
         images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
@@ -93,14 +94,25 @@ class TestDistMnist2x2(TestDistRunnerBase):
         # TODO(typhoonzero): fix distributed adam optimizer
         # opt = fluid.optimizer.AdamOptimizer(
         #     learning_rate=0.001, beta1=0.9, beta2=0.999)
-        opt = fluid.optimizer.Momentum(learning_rate=self.lr, momentum=0.9)
+        if not use_dgc:
+            opt = fluid.optimizer.Momentum(learning_rate=self.lr, momentum=0.9)
+        else:
+            opt = fluid.optimizer.DGCMomentumOptimizer(
+                learning_rate=self.lr, momentum=0.9, rampup_begin_step=2)
 
         # Reader
         train_reader = paddle.batch(
             paddle.dataset.mnist.test(), batch_size=batch_size)
         test_reader = paddle.batch(
             paddle.dataset.mnist.test(), batch_size=batch_size)
-        opt.minimize(avg_cost)
+
+        if dist_strategy:
+            dist_opt = fleet.distributed_optimizer(
+                optimizer=opt, strategy=dist_strategy)
+            _, param_grads = dist_opt.minimize(avg_cost)
+        else:
+            opt.minimize(avg_cost)
+
         return inference_program, avg_cost, train_reader, test_reader, batch_acc, predict
 
 

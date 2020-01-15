@@ -40,6 +40,8 @@ struct GatherOpHandle : public OpHandleBase {
  protected:
   void RunImpl() override;
 
+  std::vector<Scope *> GetLocalScopes() override { return local_scopes_; }
+
  private:
   const std::vector<Scope *> &local_scopes_;
   const std::vector<platform::Place> &places_;

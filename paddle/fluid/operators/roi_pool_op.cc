@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/roi_pool_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -69,8 +70,9 @@ class ROIPoolOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -89,8 +91,9 @@ class ROIPoolGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -158,12 +161,32 @@ https://stackoverflow.com/questions/43430056/what-is-roi-layer-in-fast-rcnn
   }
 };
 
+template <typename T>
+class ROIPoolGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
+    op->SetType("roi_pool_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("ROIs", this->Input("ROIs"));
+    op->SetInput("Argmax", this->Output("Argmax"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
+    return op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(roi_pool, ops::ROIPoolOp, ops::ROIPoolOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::ROIPoolGradMaker<paddle::framework::OpDesc>,
+                  ops::ROIPoolGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(roi_pool_grad, ops::ROIPoolGradOp);
 REGISTER_OP_CPU_KERNEL(
     roi_pool,

@@ -16,17 +16,16 @@
 #include <algorithm>
 #include <limits>
 #include <utility>
-#include "paddle/fluid/memory/allocation/allocation_with_underlying.h"
 
 namespace paddle {
 namespace memory {
 namespace allocation {
 
-BufferedAllocator::BufferedAllocator(std::unique_ptr<Allocator> &&allocator)
+BufferedAllocator::BufferedAllocator(std::shared_ptr<Allocator> allocator)
     : underlying_allocator_(std::move(allocator)) {
   PADDLE_ENFORCE_NOT_NULL(
       underlying_allocator_,
-      "Underlying allocator of BufferedAllocator must be unmanaged");
+      "Underlying allocator of BufferedAllocator must not be null");
   if (underlying_allocator_->IsAllocThreadSafe()) {
     mtx_.reset(new std::mutex());
   }
@@ -41,37 +40,35 @@ void BufferedAllocator::FreeCache(size_t size) {
   while (!allocations_.empty()) {  // free the largest
     auto it = --allocations_.end();
     cur += it->second->size();
-    delete it->second.release();
+    underlying_allocator_->Free(it->second.release());
     allocations_.erase(it);
     if (cur >= size) return;
   }
 }
 
-bool BufferedAllocator::IsAllocThreadSafe() const {
-  return this->underlying_allocator_->IsAllocThreadSafe();
-}
-void BufferedAllocator::Free(Allocation *allocation) {
+bool BufferedAllocator::IsAllocThreadSafe() const { return mtx_ != nullptr; }
+
+void BufferedAllocator::FreeImpl(Allocation *allocation) {
   platform::LockGuardPtr<std::mutex> guard(mtx_);
   allocations_.emplace(allocation->size(), AllocationPtr(allocation));
 }
-Allocation *BufferedAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
+
+Allocation *BufferedAllocator::AllocateImpl(size_t size) {
   {
     platform::LockGuardPtr<std::mutex> guard(mtx_);
     auto it = allocations_.lower_bound(size);
     if (it != allocations_.end() && it->first < size * 2) {
       AllocationPtr result(std::move(it->second));
       allocations_.erase(it);
-      return new AllocationWithUnderlying(std::move(result));
+      return result.release();
     }
   }
 
   try {
-    return new AllocationWithUnderlying(
-        underlying_allocator_->Allocate(size, attr));
+    return underlying_allocator_->Allocate(size).release();
   } catch (BadAlloc &) {
     FreeCache(size);
-    return new AllocationWithUnderlying(
-        underlying_allocator_->Allocate(size, attr));
+    return underlying_allocator_->Allocate(size).release();
   }
 }
 

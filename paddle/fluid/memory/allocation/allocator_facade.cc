@@ -17,19 +17,17 @@
 #include <map>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
-#include "paddle/fluid/memory/allocation/aligned_allocator.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
-#include "paddle/fluid/memory/allocation/auto_increment_allocator.h"
-#include "paddle/fluid/memory/allocation/best_fit_allocator.h"
-#include "paddle/fluid/memory/allocation/conditional_allocator.h"
+#include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
-#include "paddle/fluid/memory/allocation/legacy_allocator.h"
 #include "paddle/fluid/memory/allocation/locked_allocator.h"
+#include "paddle/fluid/memory/allocation/naive_best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
-#include "paddle/fluid/memory/allocation/zero_size_allocator.h"
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/memory/allocation/cuda_allocator.h"
@@ -39,211 +37,179 @@
 #endif
 
 DEFINE_int64(
-    gpu_allocator_retry_time, 0,
+    gpu_allocator_retry_time, 10000,
     "The retry time (milliseconds) when allocator fails "
     "to allocate memory. No retry if this value is not greater than 0");
+
+DEFINE_bool(use_system_allocator, false,
+            "Whether to use system allocator to allocate CPU and GPU memory. "
+            "Only used for unittests.");
 
 namespace paddle {
 namespace memory {
 namespace allocation {
 
-// TODO(yy): Dirty code here. This class should be configurable in runtime.
-class CPUManagedAllocator : public Allocator {
- public:
-  CPUManagedAllocator() : normal_allocator_(new CPUAllocator()) {}
-
-  bool IsAllocThreadSafe() const override { return true; }
-
- protected:
-  Allocation* AllocateImpl(size_t size, Allocator::Attr attr) override {
-    return normal_allocator_->Allocate(size, attr).release();
-  }
-
- private:
-  std::shared_ptr<Allocator> normal_allocator_;
-};
-
-// TODO(yy): Dirty code here. This class should be configurable in runtime.
-class ChunkedAllocator : public Allocator {
- public:
-  explicit ChunkedAllocator(std::unique_ptr<Allocator> system_allocator,
-                            size_t max_chunk_size, size_t capacity = 1,
-                            int64_t retry_time = -1)
-      : max_chunk_size_(max_chunk_size), retry_time_(retry_time) {
-    raw_allocator_ = std::move(system_allocator);
-
-    if (max_chunk_size_ == 0) {
-      default_allocator_ = raw_allocator_;
-    } else {
-      if (capacity == 1) {
-        VLOG(1) << "Create BestFitAllocator with chunk_size "
-                << max_chunk_size_;
-        default_allocator_ = CreateAllocatorWithChunk();
-      } else {
-        VLOG(1) << "Create AutoIncrementAllocator with chunk_size "
-                << max_chunk_size_ << " and capacity " << capacity;
-        default_allocator_ = std::make_shared<AutoIncrementAllocator>(
-            [this] { return CreateAllocatorWithChunk(); }, capacity);
-      }
-    }
-
-    auto* cond_allocator = new ConditionalAllocator();
-    cond_allocator
-        ->AddAllocator(
-            [this](size_t size, Attr attr) { return size < max_chunk_size_; },
-            default_allocator_)
-        .AddAllocator(
-            [](size_t size, Attr attr) {
-              return true;  // default case
-            },
-            raw_allocator_);
-    default_allocator_.reset(cond_allocator);
-  }
-
-  ~ChunkedAllocator() override {
-    // Specify destruct order.
-    default_allocator_.reset();
-    chunks_.clear();
-    raw_allocator_.reset();
-  }
-
-  std::shared_ptr<Allocator> CreateAllocatorWithChunk() {
-    chunks_.emplace_back(raw_allocator_->Allocate(max_chunk_size_));
-    auto* allocation = chunks_.back().get();
-    std::unique_ptr<Allocator> allocator(new LockedAllocator(
-        std::unique_ptr<Allocator>(new BestFitAllocator(allocation))));
-
-    if (retry_time_ > 0) {
-      auto* retry_allocator =
-          new RetryAllocator(std::move(allocator), retry_time_);
-      allocator.reset(retry_allocator);
-    }
-
-    return std::make_shared<AlignedAllocator<64u>>(std::move(allocator));
-  }
-
-  bool IsAllocThreadSafe() const override { return true; }
-
- protected:
-  Allocation* AllocateImpl(size_t size, Allocator::Attr attr) override {
-    return default_allocator_->Allocate(size, attr).release();
-  }
-
- protected:
-  size_t max_chunk_size_;
-  int64_t retry_time_;
-  std::vector<AllocationPtr> chunks_;
-  std::shared_ptr<Allocator> raw_allocator_;
-  std::shared_ptr<Allocator> default_allocator_;
-};
-
-#ifdef PADDLE_WITH_CUDA
-
-class CUDAChunkedAllocator : public ChunkedAllocator {
- public:
-  explicit CUDAChunkedAllocator(int dev_id)
-      : ChunkedAllocator(std::unique_ptr<Allocator>(
-                             new CUDAAllocator(platform::CUDAPlace(dev_id))),
-                         GetMaxChunkSize(dev_id), GetCapcity(dev_id),
-                         GetRetryTime()) {}
-
- private:
-  static size_t GetMaxChunkSize(int dev_id) {
-    platform::CUDADeviceGuard guard(dev_id);
-    return platform::GpuMaxChunkSize();
-  }
-
-  static size_t GetCapcity(int dev_id) {
-    platform::CUDADeviceGuard guard(dev_id);
-    size_t available, total;
-    platform::GpuMemoryUsage(&available, &total);
-    size_t max_chunk_size = platform::GpuMaxChunkSize();
-    return max_chunk_size == 0 ? 0 : available / max_chunk_size;
-  }
-
-  static int64_t GetRetryTime() { return FLAGS_gpu_allocator_retry_time; }
-};
-
-class CUDAPinnedChunkedAllocator : public ChunkedAllocator {
- public:
-  CUDAPinnedChunkedAllocator()
-      : ChunkedAllocator(std::unique_ptr<Allocator>(new CPUPinnedAllocator()),
-                         platform::CUDAPinnedMaxChunkSize(), GetCapacity(),
-                         -1) {}  // never retry
-
- private:
-  static size_t GetCapacity() {
-    size_t total = platform::CpuTotalPhysicalMemory();
-    size_t max_chunk_size = platform::CUDAPinnedMaxChunkSize();
-    return max_chunk_size == 0 ? 0 : total / max_chunk_size;
-  }
-};
-
-#endif
-
 class AllocatorFacadePrivate {
  public:
-  std::map<platform::Place, std::shared_ptr<Allocator>> allocators_;
-
-  ~AllocatorFacadePrivate() = default;
+  using AllocatorMap = std::map<platform::Place, std::shared_ptr<Allocator>>;
 
   AllocatorFacadePrivate() {
-    if (GetAllocatorStrategy() == AllocatorStrategy::kLegacy) {
-      InitLegacyAllocator();
-    } else {
-      InitCPUAllocator();
-      InitCUDAAllocator();
-      InitCUDAPinnedAllocator();
-      WrapZeroSizeAllocator();
+    auto strategy = GetAllocatorStrategy();
+    switch (strategy) {
+      case AllocatorStrategy::kNaiveBestFit: {
+        InitNaiveBestFitCPUAllocator();
+#ifdef PADDLE_WITH_CUDA
+        for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount();
+             ++dev_id) {
+          InitNaiveBestFitCUDAAllocator(platform::CUDAPlace(dev_id));
+        }
+        InitNaiveBestFitCUDAPinnedAllocator();
+#endif
+        break;
+      }
+
+      case AllocatorStrategy::kAutoGrowth: {
+        InitNaiveBestFitCPUAllocator();
+#ifdef PADDLE_WITH_CUDA
+        for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount();
+             ++dev_id) {
+          InitAutoGrowthCUDAAllocator(platform::CUDAPlace(dev_id));
+        }
+        InitNaiveBestFitCUDAPinnedAllocator();
+#endif
+        break;
+      }
+
+      default: {
+        PADDLE_THROW("Unsupported allocator strategy: %d",
+                     static_cast<int>(strategy));
+      }
     }
+    InitZeroSizeAllocators();
+    InitSystemAllocators();
+
+    if (FLAGS_gpu_allocator_retry_time > 0) {
+      WrapCUDARetryAllocator(FLAGS_gpu_allocator_retry_time);
+    }
+
+    CheckAllocThreadSafe();
+  }
+
+  inline const std::shared_ptr<Allocator>& GetAllocator(
+      const platform::Place& place, size_t size) {
+    const auto& allocators =
+        (size > 0 ? (UNLIKELY(FLAGS_use_system_allocator) ? system_allocators_
+                                                          : allocators_)
+                  : zero_size_allocators_);
+    auto iter = allocators.find(place);
+    PADDLE_ENFORCE(iter != allocators.end(),
+                   "No such allocator for the place, %s", place);
+    return iter->second;
   }
 
  private:
-  void InitLegacyAllocator() {
-    std::vector<platform::Place> places{platform::CPUPlace()};
+  void InitSystemAllocators() {
+    system_allocators_[platform::CPUPlace()] = std::make_shared<CPUAllocator>();
 #ifdef PADDLE_WITH_CUDA
-    for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount(); ++dev_id) {
+    system_allocators_[platform::CUDAPinnedPlace()] =
+        std::make_shared<CPUPinnedAllocator>();
+    int device_count = platform::GetCUDADeviceCount();
+    for (int i = 0; i < device_count; ++i) {
+      platform::CUDAPlace p(i);
+      system_allocators_[p] = std::make_shared<CUDAAllocator>(p);
+    }
+#endif
+  }
+
+  void InitNaiveBestFitCPUAllocator() {
+    allocators_[platform::CPUPlace()] =
+        std::make_shared<NaiveBestFitAllocator>(platform::CPUPlace());
+  }
+
+#ifdef PADDLE_WITH_CUDA
+  void InitNaiveBestFitCUDAPinnedAllocator() {
+    allocators_[platform::CUDAPinnedPlace()] =
+        std::make_shared<NaiveBestFitAllocator>(platform::CUDAPinnedPlace());
+  }
+
+  void InitNaiveBestFitCUDAAllocator(platform::CUDAPlace p) {
+    allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
+  }
+
+  void InitAutoGrowthCUDAAllocator(platform::CUDAPlace p) {
+    auto cuda_allocator = std::make_shared<CUDAAllocator>(p);
+    allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
+        cuda_allocator, platform::GpuMinChunkSize());
+  }
+#endif
+
+  class ZeroSizeAllocator : public Allocator {
+   public:
+    explicit ZeroSizeAllocator(platform::Place place) : place_(place) {}
+
+    bool IsAllocThreadSafe() const override { return true; }
+
+   protected:
+    Allocation* AllocateImpl(size_t size) override {
+      return new Allocation(nullptr, 0, place_);
+    }
+
+    void FreeImpl(Allocation* allocation) override { delete allocation; }
+
+   private:
+    platform::Place place_;
+  };
+
+  void InitZeroSizeAllocators() {
+    std::vector<platform::Place> places;
+    places.emplace_back(platform::CPUPlace());
+#ifdef PADDLE_WITH_CUDA
+    int device_count = platform::GetCUDADeviceCount();
+    for (int dev_id = 0; dev_id < device_count; ++dev_id) {
       places.emplace_back(platform::CUDAPlace(dev_id));
     }
     places.emplace_back(platform::CUDAPinnedPlace());
 #endif
+
     for (auto& p : places) {
-      allocators_[p] = std::make_shared<LegacyAllocator>(p);
+      zero_size_allocators_[p] = std::make_shared<ZeroSizeAllocator>(p);
     }
   }
 
-  void InitCPUAllocator() {
-    allocators_[platform::CPUPlace()] = std::make_shared<CPUManagedAllocator>();
-  }
-
-  void InitCUDAAllocator() {
-#ifdef PADDLE_WITH_CUDA
-    int device_count = platform::GetCUDADeviceCount();
-    for (int dev_id = 0; dev_id < device_count; ++dev_id) {
-      allocators_[platform::CUDAPlace(dev_id)] =
-          std::make_shared<CUDAChunkedAllocator>(dev_id);
+  static void CheckAllocThreadSafe(const AllocatorMap& allocators) {
+    for (auto& pair : allocators) {
+      PADDLE_ENFORCE_EQ(pair.second->IsAllocThreadSafe(), true,
+                        platform::errors::InvalidArgument(
+                            "Public allocators must be thread safe"));
     }
-#endif
   }
 
-  void InitCUDAPinnedAllocator() {
-#ifdef PADDLE_WITH_CUDA
-    allocators_[platform::CUDAPinnedPlace()] =
-        std::make_shared<CUDAPinnedChunkedAllocator>();
-#endif
+  void CheckAllocThreadSafe() const {
+    CheckAllocThreadSafe(allocators_);
+    CheckAllocThreadSafe(zero_size_allocators_);
+    CheckAllocThreadSafe(system_allocators_);
   }
 
-  void WrapZeroSizeAllocator() {
+  void WrapCUDARetryAllocator(size_t retry_time) {
+    PADDLE_ENFORCE_GT(retry_time, 0, "Retry time must be larger than 0");
     for (auto& pair : allocators_) {
-      pair.second =
-          std::make_shared<ZeroSizeAllocator>(pair.second, pair.first);
+      if (platform::is_gpu_place(pair.first)) {
+        pair.second = std::make_shared<RetryAllocator>(pair.second, retry_time);
+      }
     }
   }
+
+ private:
+  AllocatorMap allocators_;
+  AllocatorMap zero_size_allocators_;
+  AllocatorMap system_allocators_;
 };
 
 // Pimpl. Make interface clean.
 AllocatorFacade::AllocatorFacade() : m_(new AllocatorFacadePrivate()) {}
-AllocatorFacade::~AllocatorFacade() { delete m_; }
+// delete m_ may cause core dump when the destructor of python in conflict with
+// cpp.
+AllocatorFacade::~AllocatorFacade() {}
 
 AllocatorFacade& AllocatorFacade::Instance() {
   static AllocatorFacade instance;
@@ -251,19 +217,13 @@ AllocatorFacade& AllocatorFacade::Instance() {
 }
 
 std::shared_ptr<Allocation> AllocatorFacade::AllocShared(
-    const platform::Place& place, size_t size, Allocator::Attr attr) {
-  return std::shared_ptr<Allocation>(Alloc(place, size, attr).release(),
-                                     AllocationDeleter());
+    const platform::Place& place, size_t size) {
+  return std::shared_ptr<Allocation>(Alloc(place, size));
 }
 
-AllocationPtr AllocatorFacade::Alloc(const platform::Place& place, size_t size,
-                                     Allocator::Attr attr) {
-  auto it = m_->allocators_.find(place);
-  if (it == m_->allocators_.end()) {
-    throw BadAlloc(
-        string::Sprintf("No such allocator for the place, %s", place));
-  }
-  return m_->allocators_.at(place)->Allocate(size, attr);
+AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
+                                     size_t size) {
+  return m_->GetAllocator(place, size)->Allocate(size);
 }
 
 }  // namespace allocation

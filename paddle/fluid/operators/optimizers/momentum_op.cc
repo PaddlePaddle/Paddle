@@ -21,18 +21,14 @@ using Tensor = framework::Tensor;
 
 class MomentumOpInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc& op_desc,
-                  framework::BlockDesc* block) const override {
-    auto input_var = op_desc.Input("Param")[0];
-    for (auto& out_var : op_desc.Output("ParamOut")) {
-      if (block->FindRecursiveOrCreateVar(input_var).GetType() ==
-          framework::proto::VarType::SELECTED_ROWS) {
-        block->FindRecursiveOrCreateVar(out_var).SetType(
-            framework::proto::VarType::SELECTED_ROWS);
-      } else if (block->FindRecursiveOrCreateVar(input_var).GetType() ==
+  void operator()(framework::InferVarTypeContext* ctx) const override {
+    auto& input_var = ctx->Input("Param")[0];
+    for (auto& out_var : ctx->Output("ParamOut")) {
+      if (ctx->GetType(input_var) == framework::proto::VarType::SELECTED_ROWS) {
+        ctx->SetType(out_var, framework::proto::VarType::SELECTED_ROWS);
+      } else if (ctx->GetType(input_var) ==
                  framework::proto::VarType::LOD_TENSOR) {
-        block->FindRecursiveOrCreateVar(out_var).SetType(
-            framework::proto::VarType::LOD_TENSOR);
+        ctx->SetType(out_var, framework::proto::VarType::LOD_TENSOR);
       } else {
         PADDLE_THROW(
             "Only support LodTensor and SelectedRows, Unexpected Input Type.");
@@ -41,36 +37,34 @@ class MomentumOpInferVarType : public framework::VarTypeInference {
   }
 };
 
-class MomentumOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("Param",
-             "(Tensor, default Tensor<float>) "
-             "Input parameter that has to be updated");
-    AddInput("Grad",
-             "(Tensor, default Tensor<float>) "
-             "Input gradient of the parameter");
-    AddInput("Velocity",
-             "(Tensor, default Tensor<float>) "
-             "Input velocity (corresponding to the parameter) "
-             "that has to be updated");
-    AddInput("LearningRate",
-             "(Tensor, default Tensor<float>) "
-             "Input learning rate");
+void MomentumOpMaker::Make() {
+  AddInput("Param",
+           "(Tensor, default Tensor<float>) "
+           "Input parameter that has to be updated");
+  AddInput("Grad",
+           "(Tensor, default Tensor<float>) "
+           "Input gradient of the parameter");
+  AddInput("Velocity",
+           "(Tensor, default Tensor<float>) "
+           "Input velocity (corresponding to the parameter) "
+           "that has to be updated");
+  AddInput("LearningRate",
+           "(Tensor, default Tensor<float>) "
+           "Input learning rate");
 
-    AddOutput("ParamOut",
-              "(Tensor) This output is updated parameter. "
-              "It shared memory with Input(Param).");
-    AddOutput("VelocityOut",
-              "(Tensor) This output is updated velocity. "
-              "It shared memory with Input(Velocity).");
+  AddOutput("ParamOut",
+            "(Tensor) This output is updated parameter. "
+            "It shared memory with Input(Param).");
+  AddOutput("VelocityOut",
+            "(Tensor) This output is updated velocity. "
+            "It shared memory with Input(Velocity).");
 
-    AddAttr<float>("mu", "(float) Momentum coefficient");
-    AddAttr<bool>("use_nesterov",
-                  "(bool, default false) "
-                  "Use Nesterov Momentum")
-        .SetDefault(false);
-    AddComment(R"DOC(
+  AddAttr<float>("mu", "(float) Momentum coefficient");
+  AddAttr<bool>("use_nesterov",
+                "(bool, default false) "
+                "Use Nesterov Momentum")
+      .SetDefault(false);
+  AddComment(R"DOC(
 Momentum Optimizer.
 
 This optimizer has a flag for Nestrov Momentum.
@@ -85,15 +79,17 @@ else:   \\
 $$
 
 )DOC");
-  }
-};
+}
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(momentum, ops::MomentumOp, ops::MomentumOpMaker,
-                  paddle::framework::EmptyGradOpMaker,
-                  ops::MomentumOpInferVarType);
+REGISTER_OPERATOR(
+    momentum, ops::MomentumOp, ops::MomentumOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::MomentumOpInferVarType);
 REGISTER_OP_CPU_KERNEL(
     momentum, ops::MomentumOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MomentumOpKernel<paddle::platform::CPUDeviceContext, double>);

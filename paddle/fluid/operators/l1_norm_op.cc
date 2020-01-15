@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/l1_norm_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -62,12 +63,30 @@ $$Out = \sum{|X|}$$
   }
 };
 
+template <typename T>
+class L1NormGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
+    op->SetType("l1_norm_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
+    return op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(l1_norm, ops::L1NormOp, ops::L1NormOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::L1NormGradMaker<paddle::framework::OpDesc>,
+                  ops::L1NormGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(l1_norm_grad, ops::L1NormGradOp);
 REGISTER_OP_CPU_KERNEL(
     l1_norm, ops::L1NormKernel<paddle::platform::CPUDeviceContext, float>);

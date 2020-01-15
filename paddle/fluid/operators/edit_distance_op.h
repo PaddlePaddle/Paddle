@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <algorithm>
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 namespace paddle {
 namespace operators {
@@ -29,17 +30,37 @@ class EditDistanceKernel : public framework::OpKernel<T> {
     auto* x2_t = ctx.Input<framework::LoDTensor>("Refs");
     auto* sequence_num = ctx.Output<framework::Tensor>("SequenceNum");
     int64_t* seq_num_data = sequence_num->mutable_data<int64_t>(ctx.GetPlace());
+    auto batch_size = x1_t->dims()[0];
 
     auto normalized = ctx.Attr<bool>("normalized");
 
-    auto hyp_lod = x1_t->lod()[0];
-    auto ref_lod = x2_t->lod()[0];
-    PADDLE_ENFORCE(
-        hyp_lod.size() == ref_lod.size(),
-        "Input(Hyps) and Input(Refs) must have the same batch size.");
-    for (size_t i = 1; i < ref_lod.size(); ++i) {
-      PADDLE_ENFORCE(ref_lod[i] > ref_lod[i - 1],
-                     "Reference string %d is empty.", i);
+    framework::Vector<size_t> hyp_lod(batch_size + 1);
+    framework::Vector<size_t> ref_lod(batch_size + 1);
+
+    bool use_length = ctx.HasInput("HypsLength");
+
+    if (use_length) {
+      // build lod when using padding
+      auto hyp_length_ptr =
+          ctx.Input<framework::Tensor>("HypsLength")->data<int64_t>();
+      auto ref_length_ptr =
+          ctx.Input<framework::Tensor>("RefsLength")->data<int64_t>();
+
+      for (auto i = 0; i < batch_size; i++) {
+        hyp_lod[i + 1] = hyp_lod[i] + hyp_length_ptr[i];
+        ref_lod[i + 1] = ref_lod[i] + ref_length_ptr[i];
+      }
+
+    } else {
+      hyp_lod = x1_t->lod()[0];
+      ref_lod = x2_t->lod()[0];
+    }
+
+    if (normalized) {
+      for (size_t i = 1; i < ref_lod.size(); ++i) {
+        PADDLE_ENFORCE(ref_lod[i] > ref_lod[i - 1],
+                       "Reference string %d is empty.", i);
+      }
     }
     auto num_strs = hyp_lod.size() - 1;
     *seq_num_data = static_cast<int64_t>(num_strs);
@@ -62,8 +83,10 @@ class EditDistanceKernel : public framework::OpKernel<T> {
         dist_t.Resize({m + 1, n + 1});
         dist_t.mutable_data<T>(ctx.GetPlace());
         auto dist = dist_t.data<T>();
-        auto x1 = x1_t->data<int64_t>() + hyp_lod[num];
-        auto x2 = x2_t->data<int64_t>() + ref_lod[num];
+        auto hyp_offset = use_length ? num * x1_t->dims()[1] : hyp_lod[num];
+        auto ref_offset = use_length ? num * x2_t->dims()[1] : ref_lod[num];
+        auto x1 = x1_t->data<int64_t>() + hyp_offset;
+        auto x2 = x2_t->data<int64_t>() + ref_offset;
         for (int64_t i = 0; i < m + 1; ++i) {
           dist[i * (n + 1)] = i;
         }

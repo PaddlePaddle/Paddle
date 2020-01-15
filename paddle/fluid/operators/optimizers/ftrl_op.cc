@@ -57,6 +57,11 @@ class FTRLOp : public framework::OperatorWithKernel {
                       "Two input of FTRL Op's dimension must be same.");
 
     auto lr_dim = ctx->GetInputDim("LearningRate");
+    PADDLE_ENFORCE_NE(framework::product(lr_dim), 0,
+                      "Maybe the Input variable LearningRate has not "
+                      "been initialized. You may need to confirm "
+                      "if you put exe.run(startup_program) "
+                      "after optimizer.minimize function.");
     PADDLE_ENFORCE_EQ(framework::product(lr_dim), 1,
                       "Learning Rate should be a scalar.");
 
@@ -66,7 +71,8 @@ class FTRLOp : public framework::OperatorWithKernel {
   }
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input_data_type = ctx.Input<Tensor>("Param")->type();
+    auto input_data_type =
+        OperatorWithKernel::IndicateVarDataType(ctx, "Param");
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };

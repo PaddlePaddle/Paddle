@@ -18,6 +18,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cudnn_helper.h"
 #endif
+#include "paddle/fluid/platform/cudnn_workspace_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -57,7 +58,8 @@ class ConvInceptionFusionOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>("Input")->type(), ctx.device_context());
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
   }
 };
 
@@ -66,7 +68,7 @@ class ConvInceptionFusionOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("Input", "(Tensor) NCHW layout.");
     AddInput("Filter", "(vector<Tensor>) 4 aggregated filters").AsDuplicable();
-    AddInput("Bias", "(vector<Tensor>) it's lenght is equal to Filter")
+    AddInput("Bias", "(vector<Tensor>) it's length is equal to Filter")
         .AsDuplicable();
     AddOutput("Output",
               "(Tensor) The output tensor of convolution operator. "
@@ -81,7 +83,7 @@ class ConvInceptionFusionOpMaker : public framework::OpProtoAndCheckerMaker {
         "exclusive",
         "(bool, default True) When true, will exclude the zero-padding in the "
         "averaging calculating, otherwise, include the zero-padding. Note, it "
-        "is only used when pooling_type is avg. The defalut is True.")
+        "is only used when pooling_type is avg. The default is True.")
         .SetDefault(true);
     AddAttr<std::string>(
         "activation",
@@ -95,7 +97,7 @@ class ConvInceptionFusionOpMaker : public framework::OpProtoAndCheckerMaker {
                  "allocated/freed each time the operator runs, larger "
                  "workspace size can increase performance but also requires "
                  "better hardware. This size should be chosen carefully.")
-        .SetDefault(4096);
+        .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB());
     AddComment(R"DOC(
 )DOC");
   }
@@ -105,6 +107,8 @@ class ConvInceptionFusionOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(conv2d_inception_fusion, ops::ConvInceptionFusionOp,
-                  ops::ConvInceptionFusionOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    conv2d_inception_fusion, ops::ConvInceptionFusionOp,
+    ops::ConvInceptionFusionOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

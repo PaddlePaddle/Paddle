@@ -14,13 +14,13 @@ limitations under the License. */
 
 #pragma once
 
+#include <algorithm>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/pooling.h"
-
 namespace paddle {
 namespace operators {
 
@@ -35,6 +35,10 @@ class PoolOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override;
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override;
 };
 
 class PoolOpGrad : public framework::OperatorWithKernel {
@@ -46,6 +50,10 @@ class PoolOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override;
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override;
 };
 
 class Pool2dOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -58,6 +66,61 @@ class Pool3dOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override;
 };
 
+template <typename T = int>
+inline void UpdatePadding(std::vector<T>* paddings, const bool global_pooling,
+                          const bool adaptive,
+                          const std::string padding_algorithm,
+                          const framework::DDim data_dims,
+                          const std::vector<T>& strides,
+                          const std::vector<T>& ksize) {
+  // set padding size == data_dims.size() * 2
+  auto data_shape = framework::vectorize<T>(data_dims);
+  if (static_cast<int>(paddings->size()) == data_dims.size()) {
+    for (int i = 0; i < data_dims.size(); ++i) {
+      T copy_pad = *(paddings->begin() + 2 * i);
+      paddings->insert(paddings->begin() + 2 * i + 1, copy_pad);
+    }
+  } else {
+    PADDLE_ENFORCE_EQ(
+        data_dims.size() * 2, paddings->size(),
+        "Paddings size should be the same or twice as the pooling size.");
+  }
+
+  // when padding_algorithm is "VALID" or "SAME"
+  if (padding_algorithm == "SAME") {
+    for (int i = 0; i < data_dims.size(); ++i) {
+      T out_size = (data_dims[i] + strides[i] - 1) / strides[i];
+      T pad_sum =
+          std::max((out_size - 1) * strides[i] + ksize[i] - data_shape[i],
+                   static_cast<T>(0));
+      T pad_0 = pad_sum / 2;
+      T pad_1 = pad_sum - pad_0;
+      *(paddings->begin() + i * 2) = pad_0;
+      *(paddings->begin() + i * 2 + 1) = pad_1;
+    }
+  } else if (padding_algorithm == "VALID") {
+    for (auto it = paddings->begin(); it != paddings->end(); it++) {
+      *it = 0;
+    }
+  }
+
+  // if global_pooling == true or adaptive == true, padding will be ignore
+  if (global_pooling || adaptive) {
+    for (auto it = paddings->begin(); it != paddings->end(); it++) {
+      *it = 0;
+    }
+  }
+}
+
+template <typename T = int>
+inline void UpdateKsize(std::vector<T>* ksize,
+                        const framework::DDim data_dims) {
+  ksize->resize(static_cast<size_t>(data_dims.size()));
+  for (size_t i = 0; i < ksize->size(); ++i) {
+    *(ksize->begin() + i) = static_cast<T>(data_dims[i]);
+  }
+}
+
 template <typename DeviceContext, typename T>
 class PoolKernel : public framework::OpKernel<T> {
  public:
@@ -69,14 +132,36 @@ class PoolKernel : public framework::OpKernel<T> {
     std::vector<int> ksize = context.Attr<std::vector<int>>("ksize");
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
+    std::string data_format = context.Attr<std::string>("data_format");
     bool exclusive = context.Attr<bool>("exclusive");
     bool adaptive = context.Attr<bool>("adaptive");
-    if (context.Attr<bool>("global_pooling")) {
-      for (size_t i = 0; i < ksize.size(); ++i) {
-        paddings[i] = 0;
-        ksize[i] = static_cast<int>(in_x->dims()[i + 2]);
+    bool global_pooling = context.Attr<bool>("global_pooling");
+    std::string padding_algorithm =
+        context.Attr<std::string>("padding_algorithm");
+
+    const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
+
+    // update paddings
+    auto in_x_dims = in_x->dims();
+    framework::DDim data_dims;
+    if (channel_last) {
+      data_dims = framework::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
+    } else {
+      data_dims = framework::slice_ddim(in_x_dims, 2, in_x_dims.size());
+    }
+
+    UpdatePadding(&paddings, global_pooling, adaptive, padding_algorithm,
+                  data_dims, strides, ksize);
+    if (data_dims.size() * 2 == static_cast<int>(paddings.size())) {
+      for (int i = 0; i < data_dims.size(); ++i) {
+        paddings.erase(paddings.begin() + i + 1);
       }
     }
+
+    if (global_pooling) {
+      UpdateKsize(&ksize, data_dims);
+    }
+
     auto& dev_ctx = context.template device_context<DeviceContext>();
     switch (ksize.size()) {
       case 2: {
@@ -85,16 +170,16 @@ class PoolKernel : public framework::OpKernel<T> {
               DeviceContext, paddle::operators::math::MaxPool<T>, T>
               pool2d_forward;
           paddle::operators::math::MaxPool<T> pool_process;
-          pool2d_forward(dev_ctx, *in_x, ksize, strides, paddings, pool_process,
-                         true, false, out);
+          pool2d_forward(dev_ctx, *in_x, ksize, strides, paddings, data_format,
+                         pool_process, true, false, out);
 
         } else if (pooling_type == "avg") {
           paddle::operators::math::Pool2dFunctor<
               DeviceContext, paddle::operators::math::AvgPool<T>, T>
               pool2d_forward;
           paddle::operators::math::AvgPool<T> pool_process;
-          pool2d_forward(dev_ctx, *in_x, ksize, strides, paddings, pool_process,
-                         exclusive, adaptive, out);
+          pool2d_forward(dev_ctx, *in_x, ksize, strides, paddings, data_format,
+                         pool_process, exclusive, adaptive, out);
         }
       } break;
       case 3: {
@@ -103,15 +188,16 @@ class PoolKernel : public framework::OpKernel<T> {
               DeviceContext, paddle::operators::math::MaxPool<T>, T>
               pool3d_forward;
           paddle::operators::math::MaxPool<T> pool_process;
-          pool3d_forward(dev_ctx, *in_x, ksize, strides, paddings, pool_process,
-                         true, false, out);
+          pool3d_forward(dev_ctx, *in_x, ksize, strides, paddings, data_format,
+                         pool_process, true, false, out);
+
         } else if (pooling_type == "avg") {
           paddle::operators::math::Pool3dFunctor<
               DeviceContext, paddle::operators::math::AvgPool<T>, T>
               pool3d_forward;
           paddle::operators::math::AvgPool<T> pool_process;
-          pool3d_forward(dev_ctx, *in_x, ksize, strides, paddings, pool_process,
-                         exclusive, adaptive, out);
+          pool3d_forward(dev_ctx, *in_x, ksize, strides, paddings, data_format,
+                         pool_process, exclusive, adaptive, out);
         }
       } break;
       default: { PADDLE_THROW("Pool op only supports 2D and 3D input."); }
@@ -135,13 +221,33 @@ class PoolGradKernel : public framework::OpKernel<T> {
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
     bool exclusive = context.Attr<bool>("exclusive");
     bool adaptive = context.Attr<bool>("adaptive");
+    std::string data_format = context.Attr<std::string>("data_format");
+    bool global_pooling = context.Attr<bool>("global_pooling");
+    std::string padding_algorithm =
+        context.Attr<std::string>("padding_algorithm");
 
-    if (context.Attr<bool>("global_pooling")) {
-      for (size_t i = 0; i < ksize.size(); ++i) {
-        paddings[i] = 0;
-        ksize[i] = static_cast<int>(in_x->dims()[i + 2]);
+    const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
+
+    // update paddings
+    auto in_x_dims = in_x->dims();
+    framework::DDim data_dims;
+    if (channel_last) {
+      data_dims = framework::slice_ddim(in_x_dims, 1, in_x_dims.size() - 1);
+    } else {
+      data_dims = framework::slice_ddim(in_x_dims, 2, in_x_dims.size());
+    }
+    UpdatePadding(&paddings, global_pooling, adaptive, padding_algorithm,
+                  data_dims, strides, ksize);
+    if (data_dims.size() * 2 == static_cast<int>(paddings.size())) {
+      for (int i = 0; i < data_dims.size(); ++i) {
+        paddings.erase(paddings.begin() + i + 1);
       }
     }
+
+    if (global_pooling) {
+      UpdateKsize(&ksize, data_dims);
+    }
+
     auto& dev_ctx = context.template device_context<DeviceContext>();
     if (in_x_grad) {
       in_x_grad->mutable_data<T>(context.GetPlace());
@@ -154,15 +260,15 @@ class PoolGradKernel : public framework::OpKernel<T> {
             paddle::operators::math::MaxPool2dGradFunctor<DeviceContext, T>
                 pool2d_backward;
             pool2d_backward(dev_ctx, *in_x, *out, *out_grad, ksize, strides,
-                            paddings, in_x_grad);
+                            paddings, data_format, in_x_grad);
           } else if (pooling_type == "avg") {
             paddle::operators::math::Pool2dGradFunctor<
                 DeviceContext, paddle::operators::math::AvgPoolGrad<T>, T>
                 pool2d_backward;
             paddle::operators::math::AvgPoolGrad<T> pool_process;
             pool2d_backward(dev_ctx, *in_x, *out, *out_grad, ksize, strides,
-                            paddings, pool_process, exclusive, adaptive,
-                            in_x_grad);
+                            paddings, data_format, pool_process, exclusive,
+                            adaptive, in_x_grad);
           }
         } break;
         case 3: {
@@ -170,15 +276,15 @@ class PoolGradKernel : public framework::OpKernel<T> {
             paddle::operators::math::MaxPool3dGradFunctor<DeviceContext, T>
                 pool3d_backward;
             pool3d_backward(dev_ctx, *in_x, *out, *out_grad, ksize, strides,
-                            paddings, in_x_grad);
+                            paddings, data_format, in_x_grad);
           } else if (pooling_type == "avg") {
             paddle::operators::math::Pool3dGradFunctor<
                 DeviceContext, paddle::operators::math::AvgPoolGrad<T>, T>
                 pool3d_backward;
             paddle::operators::math::AvgPoolGrad<T> pool_process;
             pool3d_backward(dev_ctx, *in_x, *out, *out_grad, ksize, strides,
-                            paddings, pool_process, exclusive, adaptive,
-                            in_x_grad);
+                            paddings, data_format, pool_process, exclusive,
+                            adaptive, in_x_grad);
           }
         } break;
         default: { PADDLE_THROW("Pool op only supports 2D and 3D input."); }

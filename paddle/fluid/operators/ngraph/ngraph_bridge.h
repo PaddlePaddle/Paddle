@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <map>
+#include <memory>
 #include <string>
 #include <unordered_map>
 
@@ -37,6 +38,8 @@ class NgraphBridge {
   void BuildNgNode(const std::shared_ptr<framework::OperatorBase>& op);
 
   static bool isRegister(const std::string& str);
+
+  static bool isSupported(const std::unique_ptr<framework::OperatorBase>& op);
 
  private:
   std::shared_ptr<

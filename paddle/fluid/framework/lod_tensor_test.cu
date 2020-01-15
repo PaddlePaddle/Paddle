@@ -18,7 +18,6 @@
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/platform/assert.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
 

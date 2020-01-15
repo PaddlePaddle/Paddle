@@ -40,9 +40,12 @@ class RNNMemoryHelperOp : public framework::OperatorBase {
                    "Cannot find out_var in scope, out_var_name is %s",
                    out_name);
 
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(dev_place);
+
     auto *out_tensor = out_var->GetMutable<framework::LoDTensor>();
     auto &mem_tensor = mem_var->Get<framework::LoDTensor>();
-    framework::TensorCopySync(mem_tensor, dev_place, out_tensor);
+    framework::TensorCopy(mem_tensor, dev_place, dev_ctx, out_tensor);
     out_tensor->set_lod(mem_tensor.lod());
   }
 };
@@ -88,9 +91,13 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
 
     auto in_grad_var_name = Output(framework::GradVarName("X"));
     auto *in_grad_var = scope.FindVar(in_grad_var_name);
+
     PADDLE_ENFORCE(in_grad_var != nullptr,
                    "Cannot find in_grad_var in scope, name is %s",
                    in_grad_var_name);
+
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(dev_place);
 
     if (out_grad_var == nullptr) {
       VLOG(5) << "Using fill constant 0 as starting gradient";
@@ -100,7 +107,7 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
 
       framework::AttributeMap attrs;
       attrs["dtype"] = in_var_tensor.type();
-      attrs["shape"] = framework::vectorize2int(in_var_tensor.dims());
+      attrs["shape"] = framework::vectorize<int>(in_var_tensor.dims());
       attrs["value"] = 0.0f;
 
       auto zero_op = framework::OpRegistry::CreateOp(
@@ -109,7 +116,8 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
     } else {
       auto &out_grad_tensor = out_grad_var->Get<framework::LoDTensor>();
       auto *in_grad_tensor = in_grad_var->GetMutable<framework::LoDTensor>();
-      framework::TensorCopySync(out_grad_tensor, dev_place, in_grad_tensor);
+      framework::TensorCopy(out_grad_tensor, dev_place, dev_ctx,
+                            in_grad_tensor);
       in_grad_tensor->set_lod(out_grad_tensor.lod());
     }
   }
@@ -148,10 +156,12 @@ class RNNMemoryHelperGradOpShapeInference : public framework::InferShapeBase {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(rnn_memory_helper, paddle::operators::RNNMemoryHelperOp,
-                  paddle::operators::RNNMemoryHelperOpInfoMaker,
-                  paddle::operators::RNNMemoryHelperOpShapeInference,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(
+    rnn_memory_helper, paddle::operators::RNNMemoryHelperOp,
+    paddle::operators::RNNMemoryHelperOpInfoMaker,
+    paddle::operators::RNNMemoryHelperOpShapeInference,
+    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
 REGISTER_OPERATOR(rnn_memory_helper_grad,
                   paddle::operators::RNNMemoryHelperGradOp,
                   paddle::operators::RNNMemoryHelperGradOpInfoMaker,

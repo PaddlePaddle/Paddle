@@ -93,7 +93,11 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 if(NOT APPLE)
   find_package(Threads REQUIRED)
   link_libraries(${CMAKE_THREAD_LIBS_INIT})
-  set(CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt")
+  if(WITH_PSLIB)
+    set(CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt -lz -lssl")
+  else()
+    set(CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt")
+  endif()
 endif(NOT APPLE)
 
 set_property(GLOBAL PROPERTY FLUID_MODULES "")
@@ -110,17 +114,11 @@ function(find_fluid_modules TARGET_NAME)
   endif()
 endfunction(find_fluid_modules)
 
-
 function(common_link TARGET_NAME)
   if (WITH_PROFILER)
     target_link_libraries(${TARGET_NAME} gperftools::profiler)
   endif()
-
-  if (WITH_JEMALLOC)
-    target_link_libraries(${TARGET_NAME} jemalloc::jemalloc)
-  endif()
 endfunction()
-
 
 # find all third_party modules is used for paddle static library
 # for reduce the dependency when building the inference libs.
@@ -135,6 +133,32 @@ function(find_fluid_thirdparties TARGET_NAME)
     set_property(GLOBAL PROPERTY FLUID_THIRD_PARTY "${fluid_third_partys}")
   endif()
 endfunction(find_fluid_thirdparties)
+
+function(create_static_lib TARGET_NAME)
+  set(libs ${ARGN})
+  list(REMOVE_DUPLICATES libs)
+  if(WIN32)
+    set(dummy_index 1)
+    set(dummy_offset 1)
+    # the dummy target would be consisted of limit size libraries
+    set(dummy_limit 60)
+    list(LENGTH libs libs_len)
+    foreach(lib ${libs})
+      list(APPEND dummy_list ${lib})
+      list(LENGTH dummy_list listlen)
+      if ((${listlen} GREATER ${dummy_limit}) OR (${dummy_offset} EQUAL ${libs_len}))
+        merge_static_libs(${TARGET_NAME}_dummy_${dummy_index} ${dummy_list})
+        set(dummy_list)
+        list(APPEND ${TARGET_NAME}_dummy_list ${TARGET_NAME}_dummy_${dummy_index})
+        MATH(EXPR dummy_index "${dummy_index}+1")
+      endif()
+      MATH(EXPR dummy_offset "${dummy_offset}+1")
+    endforeach()
+    merge_static_libs(${TARGET_NAME} ${${TARGET_NAME}_dummy_list})
+  else()
+    merge_static_libs(${TARGET_NAME} ${libs})
+  endif()
+endfunction()
 
 function(merge_static_libs TARGET_NAME)
   set(libs ${ARGN})
@@ -242,7 +266,7 @@ function(merge_static_libs TARGET_NAME)
 endfunction(merge_static_libs)
 
 function(cc_library TARGET_NAME)
-  set(options STATIC static SHARED shared)
+  set(options STATIC static SHARED shared INTERFACE interface)
   set(oneValueArgs "")
   set(multiValueArgs SRCS DEPS)
   cmake_parse_arguments(cc_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -251,13 +275,16 @@ function(cc_library TARGET_NAME)
       set(${TARGET_NAME}_LIB_NAME "${CMAKE_STATIC_LIBRARY_PREFIX}${TARGET_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}" CACHE STRING "output library name for target ${TARGET_NAME}")
   endif(WIN32)
   if(cc_library_SRCS)
-    if(cc_library_SHARED OR cc_library_shared) # build *.so
-      add_library(${TARGET_NAME} SHARED ${cc_library_SRCS})
-    else()
-      add_library(${TARGET_NAME} STATIC ${cc_library_SRCS})
-      find_fluid_modules(${TARGET_NAME})
-    endif()
-
+      if(cc_library_SHARED OR cc_library_shared) # build *.so
+        add_library(${TARGET_NAME} SHARED ${cc_library_SRCS})
+      elseif(cc_library_INTERFACE OR cc_library_interface)
+        set(target_SRCS ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_dummy.c)
+        file(WRITE ${target_SRCS} "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
+        add_library(${TARGET_NAME} STATIC ${target_SRCS})
+      else()
+        add_library(${TARGET_NAME} STATIC ${cc_library_SRCS})
+        find_fluid_modules(${TARGET_NAME})
+      endif()
     if(cc_library_DEPS)
       # Don't need link libwarpctc.so
       if("${cc_library_DEPS};" MATCHES "warpctc;")
@@ -289,7 +316,6 @@ function(cc_library TARGET_NAME)
         endif(WIN32)
       endif()
       target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
-      add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
       common_link(${TARGET_NAME})
     endif()
 
@@ -302,51 +328,17 @@ function(cc_library TARGET_NAME)
     endforeach()
   else(cc_library_SRCS)
     if(cc_library_DEPS)
-      merge_static_libs(${TARGET_NAME} ${cc_library_DEPS})
+      list(REMOVE_DUPLICATES cc_library_DEPS)
+      set(target_SRCS ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_dummy.c)
+      file(WRITE ${target_SRCS} "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
+      add_library(${TARGET_NAME} STATIC ${target_SRCS})
+      target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
     else()
       message(FATAL_ERROR "Please specify source files or libraries in cc_library(${TARGET_NAME} ...).")
     endif()
   endif(cc_library_SRCS)
 endfunction(cc_library)
 
-# The link operation under windows may exceeds the maximum characters limit, simply break the link command
-# into multiple link opeartion can fix that, say
-# original:
-#     lib /out:target.lib a.lib b.lib c.lib d.lib
-# after:
-#    1. lib /out:dummy_lib_1.lib a.lib b.lib
-#    2. lib /out:dummy_lib_2.lib c.lib d.lib
-#    1. lib /out:target.lib dummy_lib_1.lib dummy_lib_2.lib
-function(sep_library TARGET_NAME)
-  set(options STATIC static SHARED shared)
-  set(oneValueArgs "")
-  set(multiValueArgs SRCS DEPS)
-  cmake_parse_arguments(sep_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-  set(dummy_index 1)
-  set(dummy_offset 1)
-  # the dummy target would be consisted of limit size libraries
-  set(dummy_limit 50)
-  list(LENGTH sep_library_DEPS sep_all_len)
-  foreach(v ${sep_library_DEPS})
-    list(APPEND dummy_list ${v})
-    list(LENGTH dummy_list listlen )
-    if ((${listlen} GREATER ${dummy_limit}) OR (${dummy_offset} EQUAL ${sep_all_len}))
-      message("create dummy library ${TARGET_NAME}_dummy_lib_${dummy_index} for ${TARGET_NAME}")
-      cc_library(${TARGET_NAME}_dummy_lib_${dummy_index} STATIC DEPS ${dummy_list})
-      foreach(i ${dummy_list})
-        list(REMOVE_AT dummy_list 0)
-      endforeach()
-      list(APPEND ${TARGET_NAME}_dummy_list ${TARGET_NAME}_dummy_lib_${dummy_index})
-      MATH(EXPR dummy_index "${dummy_index}+1")
-    endif()
-    MATH(EXPR dummy_offset "${dummy_offset}+1")
-  endforeach()
-  if(${sep_library_SHARED})
-    cc_library(${TARGET_NAME} SHARED SRCS ${sep_library_SRCS} DEPS ${${TARGET_NAME}_dummy_list})
-  else(${sep_library_SHARED})
-    cc_library(${TARGET_NAME} STATIC SRCS ${sep_library_SRCS} DEPS ${${TARGET_NAME}_dummy_list})
-  endif(${sep_library_SHARED})
-endfunction(sep_library)
 
 function(cc_binary TARGET_NAME)
   set(options "")
@@ -363,11 +355,10 @@ function(cc_binary TARGET_NAME)
   target_link_libraries(${TARGET_NAME} ${os_dependency_modules})
 endfunction(cc_binary)
 
-function(cc_test TARGET_NAME)
+function(cc_test_build TARGET_NAME)
   if(WITH_TESTING)
-    set(options SERIAL)
     set(oneValueArgs "")
-    set(multiValueArgs SRCS DEPS ARGS)
+    set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_executable(${TARGET_NAME} ${cc_test_SRCS})
     if(WIN32)
@@ -380,18 +371,37 @@ function(cc_test TARGET_NAME)
     target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} ${os_dependency_modules} paddle_gtest_main lod_tensor memory gtest gflags glog)
     add_dependencies(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog)
     common_link(${TARGET_NAME})
+  endif()
+endfunction()
+
+function(cc_test_run TARGET_NAME)
+  if(WITH_TESTING)
+    set(oneValueArgs "")
+    set(multiValueArgs COMMAND ARGS)
+    cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_test(NAME ${TARGET_NAME}
-             COMMAND ${TARGET_NAME} ${cc_test_ARGS}
-             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-    if (${cc_test_SERIAL})
-        set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
-    endif()
+	    COMMAND ${cc_test_COMMAND}
+	    ARGS ${cc_test_ARGS}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cpu_deterministic=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_init_allocated_mem=true)
-    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_limit_of_tmp_allocation=4294967296) # 4G
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cudnn_deterministic=true)
     # No unit test should exceed 10 minutes.
     set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 600)
+  endif()
+endfunction()
+
+function(cc_test TARGET_NAME)
+  if(WITH_TESTING)
+    set(oneValueArgs "")
+    set(multiValueArgs SRCS DEPS ARGS)
+    cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    cc_test_build(${TARGET_NAME}
+	    SRCS ${cc_test_SRCS}
+	    DEPS ${cc_test_DEPS})
+    cc_test_run(${TARGET_NAME}
+	    COMMAND ${TARGET_NAME}
+	    ARGS ${cc_test_ARGS})
   endif()
 endfunction(cc_test)
 
@@ -421,7 +431,12 @@ function(nv_library TARGET_NAME)
       endforeach()
     else(nv_library_SRCS)
       if (nv_library_DEPS)
-        merge_static_libs(${TARGET_NAME} ${nv_library_DEPS})
+        list(REMOVE_DUPLICATES nv_library_DEPS)
+        set(target_SRCS ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_dummy.c)
+        file(WRITE ${target_SRCS} "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
+        add_library(${TARGET_NAME} STATIC ${target_SRCS})
+        target_link_libraries(${TARGET_NAME} ${nv_library_DEPS})
+        add_dependencies(${TARGET_NAME} ${nv_library_DEPS})
       else()
         message(FATAL "Please specify source file or library in nv_library.")
       endif()
@@ -446,7 +461,6 @@ endfunction(nv_binary)
 
 function(nv_test TARGET_NAME)
   if (WITH_GPU AND WITH_TESTING)
-    set(options SERIAL)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(nv_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -456,12 +470,8 @@ function(nv_test TARGET_NAME)
     add_dependencies(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog)
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})
-    if (nv_test_SERIAL)
-        set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
-    endif()
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cpu_deterministic=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_init_allocated_mem=true)
-    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_limit_of_tmp_allocation=4294967296) # 4G
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cudnn_deterministic=true)
   endif()
 endfunction(nv_test)
@@ -701,7 +711,7 @@ function(py_proto_compile TARGET_NAME)
   cmake_parse_arguments(py_proto_compile "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
   set(py_srcs)
   protobuf_generate_python(py_srcs ${py_proto_compile_SRCS})
-  add_custom_target(${TARGET_NAME} ALL DEPENDS ${py_srcs})
+  add_custom_target(${TARGET_NAME} ALL DEPENDS ${py_srcs} protobuf)
 endfunction()
 
 function(py_test TARGET_NAME)
@@ -711,12 +721,23 @@ function(py_test TARGET_NAME)
     set(multiValueArgs SRCS DEPS ARGS ENVS)
     cmake_parse_arguments(py_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    add_test(NAME ${TARGET_NAME}
-             COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
-             FLAGS_cpu_deterministic=true FLAGS_limit_of_tmp_allocation=4294967296  # 4G
-             PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
-             ${PYTHON_EXECUTABLE} -u ${py_test_SRCS} ${py_test_ARGS}
-             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    if(WITH_COVERAGE)
+      add_test(NAME ${TARGET_NAME}
+               COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
+               FLAGS_cpu_deterministic=true
+               PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
+               COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
+               ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${py_test_SRCS} ${py_test_ARGS}
+               WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    else()
+      add_test(NAME ${TARGET_NAME}
+               COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
+               FLAGS_cpu_deterministic=true
+               PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
+               ${PYTHON_EXECUTABLE} -u ${py_test_SRCS} ${py_test_ARGS}
+               WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    endif()
+
     # No unit test should exceed 10 minutes.
     set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 600)
   endif()

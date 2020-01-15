@@ -95,47 +95,11 @@ struct UnrollCompare<kStart, kEnd, true> {
 };
 
 template <size_t kStart, size_t kEnd, bool kStop>
-struct UnrollAdd {
-  template <typename T>
-  HOSTDEVICE inline static void Run(const T *d1, const T *d2, T *d3) {
-    d3[kStart] = d1[kStart] + d2[kStart];
-    UnrollAdd<kStart + 1, kEnd, kStart + 1 == kEnd>::Run(d1, d2, d3);
-  }
-};
-
-template <size_t kStart, size_t kEnd>
-struct UnrollAdd<kStart, kEnd, true> {
-  template <typename T>
-  HOSTDEVICE inline static void Run(const T *d1, const T *d2, T *d3) {}
-};
-
-template <size_t kStart, size_t kEnd, bool kStop>
-struct UnrollMul {
-  template <typename T>
-  HOSTDEVICE inline static void Run(const T *d1, const T *d2, T *d3) {
-    d3[kStart] = d1[kStart] * d2[kStart];
-    UnrollMul<kStart + 1, kEnd, kStart + 1 == kEnd>::Run(d1, d2, d3);
-  }
-};
-
-template <size_t kStart, size_t kEnd>
-struct UnrollMul<kStart, kEnd, true> {
-  template <typename T>
-  HOSTDEVICE inline static void Run(const T *d1, const T *d2, T *d3) {}
-};
-
-template <size_t kStart, size_t kEnd, bool kStop>
 struct UnrollProduct {
   template <typename T>
   HOSTDEVICE inline static T Run(const T *d) {
     return d[kStart] *
            UnrollProduct<kStart + 1, kEnd, kStart + 1 == kEnd>::Run(d);
-  }
-
-  template <typename T>
-  HOSTDEVICE inline static T Run(const T *d1, const T *d2) {
-    return d1[kStart] * d2[kStart] +
-           UnrollProduct<kStart + 1, kEnd, kStart + 1 == kEnd>::Run(d1, d2);
   }
 };
 
@@ -144,11 +108,6 @@ struct UnrollProduct<kStart, kEnd, true> {
   template <typename T>
   HOSTDEVICE inline constexpr static T Run(const T *d) {
     return 1;
-  }
-
-  template <typename T>
-  HOSTDEVICE inline constexpr static T Run(const T *d1, const T *d2) {
-    return 0;
   }
 };
 
@@ -165,12 +124,6 @@ using UnrollVarArgsAssign = detail::UnrollVarArgsAssign<T>;
 
 template <size_t N>
 using UnrollCompare = detail::UnrollCompare<0, N, N == 0>;
-
-template <size_t N>
-using UnrollAdd = detail::UnrollAdd<0, N, N == 0>;
-
-template <size_t N>
-using UnrollMul = detail::UnrollMul<0, N, N == 0>;
 
 template <size_t N>
 using UnrollProduct = detail::UnrollProduct<0, N, N == 0>;

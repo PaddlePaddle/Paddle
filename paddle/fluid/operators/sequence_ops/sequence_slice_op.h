@@ -49,8 +49,11 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<LoDTensor>("Out");
 
     auto lod = in->lod();
-    auto n = lod[0].size() - 1;
+    PADDLE_ENFORCE_EQ(
+        lod.empty(), false,
+        "Input(X) Tensor of SequenceSliceOp does not contain LoD information.");
 
+    auto n = lod[0].size() - 1;
     PADDLE_ENFORCE_EQ(lod.size(), 1UL, "Only support one level sequence now.");
     PADDLE_ENFORCE_EQ(
         n, static_cast<size_t>(length->dims()[0]),
@@ -76,9 +79,9 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
 
     for (size_t i = 0; i < n; ++i) {
       PADDLE_ENFORCE_LE(0, offset_data[i],
-                        "The offset[%d] must greater than zero.", i);
-      PADDLE_ENFORCE_LT(0, length_data[i],
-                        "The length[%d] must greater than zero.", i);
+                        "The offset[%d] must be nonnegative.", i);
+      PADDLE_ENFORCE_LE(0, length_data[i],
+                        "The length[%d] must be nonnegative.", i);
       PADDLE_ENFORCE_LE(lod[0][i] + offset_data[i] + length_data[i],
                         lod[0][i + 1], "The target tensor's length overflow.");
     }
@@ -95,6 +98,7 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
 
     size_t out_offset = 0;
     for (size_t i = 0; i < n; ++i) {
+      if (length_data[i] == 0) continue;
       Tensor in_t = in->Slice(
           static_cast<int>(lod[0][i] + offset_data[i]),
           static_cast<int>(lod[0][i] + offset_data[i] + length_data[i]));
@@ -134,7 +138,8 @@ class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
     }
 
     auto lod = in->lod();
-    auto out_lod = out_grad->lod();
+    // to avoid out_grad missing lod, compute lod again
+    auto out_lod = SequenceSliceLoD(*in, offset_data, length_data);
 
     if (x_grad) {
       x_grad->mutable_data<T>(ctx.GetPlace());
@@ -144,6 +149,7 @@ class SequenceSliceGradOpKernel : public framework::OpKernel<T> {
                static_cast<T>(0));
 
       for (size_t i = 0; i < out_lod[0].size() - 1; ++i) {
+        if (length_data[i] == 0) continue;
         Tensor out_grad_t =
             out_grad->Slice(static_cast<int>(out_lod[0][i]),
                             static_cast<int>(out_lod[0][i + 1]));

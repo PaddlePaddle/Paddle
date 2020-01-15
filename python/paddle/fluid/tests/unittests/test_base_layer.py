@@ -16,33 +16,23 @@ import unittest
 import numpy as np
 
 import paddle.fluid as fluid
-from paddle.fluid.layer_helper import LayerHelper
 
 
-class L1(fluid.imperative.Layer):
+class L1(fluid.Layer):
     def __init__(self):
         super(L1, self).__init__()
-        self._helper = LayerHelper(
-            'MyLayer',
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.1)))
-
-        self.w1 = self._helper.create_parameter(
-            attr=self._helper.param_attr,
-            shape=[2, 2],
-            dtype='float32',
-            is_bias=False)
-        self.w2 = self._helper.create_parameter(
-            attr=self._helper.param_attr,
-            shape=[2, 2],
-            dtype='float32',
-            is_bias=False)
+        self._param_attr = fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.1))
+        self.w1 = self.create_parameter(
+            attr=self._param_attr, shape=[2, 2], dtype='float32', is_bias=False)
+        self.w2 = self.create_parameter(
+            attr=self._param_attr, shape=[2, 2], dtype='float32', is_bias=False)
 
     def forward(self):
         return self.w1 + self.w2
 
 
-class L2(fluid.imperative.Layer):
+class L2(fluid.Layer):
     def __init__(self):
         super(L2, self).__init__()
         self.layer1 = L1()
@@ -52,7 +42,7 @@ class L2(fluid.imperative.Layer):
         return self.layer1() + self.layer2()
 
 
-class L3(fluid.imperative.Layer):
+class L3(fluid.Layer):
     def __init__(self):
         super(L3, self).__init__()
         self.layer1 = L2()
@@ -64,18 +54,35 @@ class L3(fluid.imperative.Layer):
 
 class TestBaseLayer(unittest.TestCase):
     def test_one_level(self):
-        with fluid.imperative.guard():
+        with fluid.dygraph.guard():
             l = L1()
             ret = l()
-            self.assertEqual(l.w1.name, "MyLayer_0.w_0")
-            self.assertEqual(l.w2.name, "MyLayer_0.w_1")
-            self.assertTrue(np.allclose(ret._numpy(), 0.2 * np.ones([2, 2])))
+            expected_names = ['l1.w1', 'l1.w2']
+            idx = 0
+            for name, _ in l.named_parameters(prefix='l1'):
+                self.assertEqual(name, expected_names[idx])
+                idx += 1
+            self.assertTrue(np.allclose(ret.numpy(), 0.2 * np.ones([2, 2])))
 
     def test_three_level(self):
-        with fluid.imperative.guard():
+        with fluid.dygraph.guard():
             l = L3()
+            expected_names = [
+                'l3.layer1.layer1.w1',
+                'l3.layer1.layer1.w2',
+                'l3.layer1.layer2.w1',
+                'l3.layer1.layer2.w2',
+                'l3.layer2.layer1.w1',
+                'l3.layer2.layer1.w2',
+                'l3.layer2.layer2.w1',
+                'l3.layer2.layer2.w2',
+            ]
+            idx = 0
+            for name, _ in l.named_parameters(prefix='l3'):
+                self.assertEqual(name, expected_names[idx])
+                idx += 1
             ret = l()
-            self.assertTrue(np.allclose(ret._numpy(), 0.8 * np.ones([2, 2])))
+            self.assertTrue(np.allclose(ret.numpy(), 0.8 * np.ones([2, 2])))
 
 
 if __name__ == '__main__':

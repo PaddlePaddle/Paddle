@@ -30,5 +30,9 @@ void InitDevices(bool init_p2p);
 
 void InitDevices(bool init_p2p, const std::vector<int> devices);
 
+#ifndef _WIN32
+void SignalHandle(const char *data, int size);
+#endif
+
 }  // namespace framework
 }  // namespace paddle

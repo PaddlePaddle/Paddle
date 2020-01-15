@@ -13,11 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
 #include <iostream>
 #include <iterator>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/clip_op.h"
@@ -64,45 +67,6 @@ class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
     auto* pre_out = ctx.Output<framework::LoDTensor>("PreOut");
     size_t num_classes = static_cast<size_t>(ctx.Attr<int>("num_classes"));
     // for remote prefetch
-
-    auto epmap = ctx.Attr<std::vector<std::string>>("epmap");
-    if (!epmap.empty()) {
-      // if epmap is not empty, then the parameter will be fetched from remote
-      // parameter
-      // server
-      auto height_sections = ctx.Attr<std::vector<int>>("height_sections");
-      auto table_names = ctx.Attr<std::vector<std::string>>("table_names");
-      std::vector<int64_t> real_rows = PathToRows(*path);
-      framework::Scope& local_scope = ctx.scope().NewScope();
-      auto* ids = local_scope.Var("Ids@Prefetch");
-      auto* x_tensor = ids->GetMutable<framework::LoDTensor>();
-
-      x_tensor->mutable_data<int64_t>(
-          framework::make_ddim({static_cast<int64_t>(real_rows.size()), 1}),
-          ctx.GetPlace());
-      // copy.
-
-      std::memcpy(x_tensor->data<int64_t>(), real_rows.data(),
-                  real_rows.size() * sizeof(int64_t));
-
-      framework::DDim w_dims = ctx.Input<Tensor>("W")->dims();
-      w_dims[0] = x_tensor->dims()[0];
-      auto* w_tensor =
-          local_scope.Var("W@Prefetch")->GetMutable<framework::LoDTensor>();
-      w_tensor->Resize(w_dims);
-
-#ifdef PADDLE_WITH_DISTRIBUTE
-      // w_Out is set to used by prefetch, never change it in other cases
-      auto* w_out = ctx.Output<framework::LoDTensor>("W_Out");
-      operators::distributed::prefetch_with_reconstruct<T>(
-          "Ids@Prefetch", "W@Prefetch", table_names, epmap, height_sections,
-          ctx, local_scope, w_out);
-#else
-      PADDLE_THROW(
-          "paddle is not compiled with distribute support, can not do "
-          "parameter prefetch!");
-#endif
-    }
 
     bool is_custom = false;
     if (path) {
@@ -234,6 +198,8 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
       zero(dev_ctx, w_grad, static_cast<T>(0.0));
       bit_code->MulGradWeight(pre_out_grad, w_grad, in);
     } else {
+      PADDLE_ENFORCE(path != nullptr,
+                     "Sparse mode should not be used without custom tree!");
       framework::Vector<int64_t> real_rows = PathToRows(*path);
       auto* w_grad =
           ctx.Output<framework::SelectedRows>(framework::GradVarName("W"));
@@ -242,8 +208,7 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
       w_grad->set_height(w.dims()[0]);
       auto* w_grad_value = w_grad->mutable_value();
       framework::DDim temp_dim(w.dims());
-      set(temp_dim, 0, real_rows.size());
-
+      temp_dim[0] = real_rows.size();
       w_grad_value->mutable_data<T>(temp_dim, ctx.GetPlace());
       zero(dev_ctx, w_grad_value, static_cast<T>(0.0));
       bit_code->MulGradWeight(pre_out_grad, w_grad, in);

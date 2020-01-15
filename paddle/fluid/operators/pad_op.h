@@ -30,14 +30,14 @@ class PadKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto pads = context.Attr<std::vector<int>>("paddings");
-    T pad_value = context.Attr<T>("pad_value");
+    float pad_value = context.Attr<float>("pad_value");
     auto* x = context.Input<Tensor>("X");
     auto* out = context.Output<Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
 
     int rank = x->dims().size();
-    math::PaddingFunctor<DeviceContext, T>(rank, context, pads, pad_value, *x,
-                                           out);
+    math::PaddingFunctor<DeviceContext, T>(rank, context, pads,
+                                           static_cast<T>(pad_value), *x, out);
   }
 };
 

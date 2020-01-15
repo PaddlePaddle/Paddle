@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/fused_broadcast_op_handle.h"
+#include <memory>
+#include <unordered_map>
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/details/broadcast_op_handle_test.h"
 
@@ -27,17 +29,16 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
   void InitFusedBroadcastOp(std::vector<size_t> input_scope_idxes) {
     nodes_.clear();
     // initialize scope and var
+    std::unordered_map<Scope*, Scope*> scope_map;
     for (size_t i = 0; i < place_list_.size(); ++i) {
       local_scopes_.push_back(&(g_scope_.NewScope()));
       Scope& local_scope = local_scopes_.back()->NewScope();
-      *local_scopes_.back()
-           ->Var(details::kLocalExecScopeName)
-           ->GetMutable<Scope*>() = &local_scope;
       for (size_t j = 0; j < input_scope_idxes.size(); ++j) {
         local_scope.Var("out_var" + std::to_string(j));
         if (i == j) local_scope.Var("in_var" + std::to_string(j));
       }
       param_scopes_.emplace_back(&local_scope);
+      scope_map.emplace(local_scopes_.back(), param_scopes_.back());
     }
 
     // create op handle node
@@ -59,6 +60,8 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
                                               local_scopes_, place_list_);
 #endif
     }
+
+    op_handle_->SetLocalExecScopes(scope_map);
 
     for (size_t i = 0; i < input_scope_idxes.size(); ++i) {
       // add input var handle

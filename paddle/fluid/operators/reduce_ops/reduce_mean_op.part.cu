@@ -15,12 +15,12 @@
 // .part used to speed up nvcc compile
 #include "paddle/fluid/operators/reduce_ops/reduce_mean_op.h"
 
-REGISTER_OP_CUDA_KERNEL(
-    reduce_mean_grad, ops::ReduceGradKernel<paddle::platform::CUDADeviceContext,
-                                            float, ops::MeanGradFunctor>,
-    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, double,
-                          ops::MeanGradFunctor>,
-    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, int,
-                          ops::MeanGradFunctor>,
-    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, int64_t,
-                          ops::MeanGradFunctor>);
+template <typename T>
+using CUDAReduceMeanGradKernel =
+    ops::ReduceGradKernel<paddle::platform::CUDADeviceContext, T,
+                          ops::MeanGradFunctor, true>;
+
+REGISTER_OP_CUDA_KERNEL(reduce_mean_grad, CUDAReduceMeanGradKernel<float>,
+                        CUDAReduceMeanGradKernel<double>,
+                        CUDAReduceMeanGradKernel<int>,
+                        CUDAReduceMeanGradKernel<int64_t>);

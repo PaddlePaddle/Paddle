@@ -34,8 +34,7 @@ class PadConstantLikeKernel : public framework::OpKernel<T> {
     auto* out = context.Output<framework::Tensor>("Out");
 
     if (in_x->dims() == in_y->dims()) {
-      // TensorCopy(in_y, context.GetPlace(), context, out);
-      out->ShareDataWith(*in_y);
+      framework::TensorCopy(*in_y, context.GetPlace(), out);
       return;
     }
 
@@ -70,8 +69,7 @@ class PadConstantLikeGradKernel : public framework::OpKernel<T> {
     }
 
     if (in_dout->dims() == in_y->dims()) {
-      // TensorCopy(in_dout, context.GetPlace(), context, d_y);
-      d_y->ShareDataWith(*in_dout);
+      framework::TensorCopy(*in_dout, context.GetPlace(), d_y);
       return;
     }
 

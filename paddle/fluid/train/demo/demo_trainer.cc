@@ -73,7 +73,7 @@ int main() {
   PADDLE_ENFORCE_NE(loss_name, "", "loss not found");
 
   // init all parameters
-  executor.Run(*startup_program.get(), &scope, 0);
+  executor.Run(*startup_program, &scope, 0);
 
   // prepare data
   auto x_var = scope.Var("x");
@@ -101,7 +101,7 @@ int main() {
   clock_t t1 = clock();
 
   for (int i = 0; i < 10; ++i) {
-    executor.Run(*train_program.get(), &scope, 0, false, true);
+    executor.Run(*train_program, &scope, 0, false, true);
     std::cout << "step: " << i << " loss: "
               << loss_var->Get<paddle::framework::LoDTensor>().data<float>()[0]
               << std::endl;

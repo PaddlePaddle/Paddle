@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <memory>
 #include <string>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -27,6 +28,11 @@ using framework::Tensor;
 using framework::SelectedRows;
 struct NoNesterov;
 struct UseNesterov;
+
+class MomentumOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override;
+};
 
 class MomentumOp : public framework::OperatorWithKernel {
  public:
@@ -53,6 +59,15 @@ class MomentumOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("VelocityOut"),
                    "Output(VelocityOut) of Momentum should not be null.");
 
+    auto lr_dims = ctx->GetInputDim("LearningRate");
+    PADDLE_ENFORCE_NE(framework::product(lr_dims), 0,
+                      "Maybe the Input variable LearningRate has not "
+                      "been initialized. You may need to confirm "
+                      "if you put exe.run(startup_program) "
+                      "after optimizer.minimize function.");
+    PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
+                      "Learning_rate should be a scalar");
+
     auto param_dim = ctx->GetInputDim("Param");
     if (ctx->GetInputsVarType("Grad")[0] ==
         framework::proto::VarType::LOD_TENSOR) {
@@ -63,15 +78,15 @@ class MomentumOp : public framework::OperatorWithKernel {
           param_dim, ctx->GetInputDim("Velocity"),
           "Param and Velocity of MomentumOp should have the same dimension.");
     }
-    PADDLE_ENFORCE_EQ(framework::product(ctx->GetInputDim("LearningRate")), 1,
-                      "Learning_rate should be a scalar");
 
     ctx->SetOutputDim("ParamOut", param_dim);
     ctx->SetOutputDim("VelocityOut", param_dim);
   }
+
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto input_data_type = framework::GetDataTypeOfVar(ctx.InputVar("Param"));
+    auto input_data_type =
+        OperatorWithKernel::IndicateVarDataType(ctx, "Param");
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
@@ -351,23 +366,14 @@ class MomentumOpKernel : public framework::OpKernel<T> {
         VLOG(3) << "Grad SelectedRows contains no data!";
         return;
       }
-      auto* merged_grad = const_cast<framework::Scope&>(ctx.scope())
-                              .Var()
-                              ->GetMutable<framework::SelectedRows>();
+
+      framework::SelectedRows tmp_merged_grad;
+      framework::SelectedRows* merged_grad = &tmp_merged_grad;
       math::scatter::MergeAdd<DeviceContext, T> merge_func;
       merge_func(ctx.template device_context<DeviceContext>(), *grad,
                  merged_grad);
 
-      const int64_t* rows = nullptr;
-#ifdef PADDLE_WITH_CUDA
-      if (platform::is_gpu_place(ctx.GetPlace())) {
-        rows = merged_grad->rows().CUDAData(ctx.GetPlace());
-      } else {
-#endif
-        rows = merged_grad->rows().data();
-#ifdef PADDLE_WITH_CUDA
-      }
-#endif
+      const int64_t* rows = merged_grad->rows().Data(ctx.GetPlace());
       int64_t row_numel =
           merged_grad->value().numel() / merged_grad->rows().size();
       platform::ForRange<DeviceContext> for_range(

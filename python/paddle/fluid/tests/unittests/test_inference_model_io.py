@@ -19,10 +19,13 @@ import unittest
 import six
 import numpy as np
 import paddle.fluid.core as core
+import paddle.fluid as fluid
+import warnings
 
 import paddle.fluid.executor as executor
 import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
+from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.io import save_inference_model, load_inference_model
 from paddle.fluid.transpiler import memory_optimize
@@ -108,10 +111,64 @@ class TestSaveInferenceModel(unittest.TestCase):
         exe = executor.Executor(place)
         exe.run(init_program, feed={}, fetch_list=[])
 
-        memory_optimize(program, print_log=True)
-        self.assertEqual(program._is_mem_optimized, True)
-        # will print warning message
         save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, program)
+
+    def test_save_inference_model_with_auc(self):
+        MODEL_DIR = "./tmp/inference_model4"
+        init_program = Program()
+        program = Program()
+
+        # fake program without feed/fetch
+        with program_guard(program, init_program):
+            x = layers.data(name='x', shape=[2], dtype='float32')
+            y = layers.data(name='y', shape=[1], dtype='float32')
+            predict = fluid.layers.fc(input=x, size=2, act='softmax')
+            acc = fluid.layers.accuracy(input=predict, label=y)
+            auc_var, batch_auc_var, auc_states = fluid.layers.auc(input=predict,
+                                                                  label=y)
+            cost = fluid.layers.cross_entropy(input=predict, label=y)
+            avg_cost = fluid.layers.mean(x=cost)
+
+        place = core.CPUPlace()
+        exe = executor.Executor(place)
+        exe.run(init_program, feed={}, fetch_list=[])
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe,
+                                 program)
+            expected_warn = "please ensure that you have set the auc states to zeros before saving inference model"
+            self.assertTrue(len(w) > 0)
+            self.assertTrue(expected_warn == str(w[0].message))
+
+
+class TestInstance(unittest.TestCase):
+    def test_save_inference_model(self):
+        MODEL_DIR = "./tmp/inference_model3"
+        init_program = Program()
+        program = Program()
+
+        # fake program without feed/fetch
+        with program_guard(program, init_program):
+            x = layers.data(name='x', shape=[2], dtype='float32')
+            y = layers.data(name='y', shape=[1], dtype='float32')
+
+            y_predict = layers.fc(input=x, size=1, act=None)
+
+            cost = layers.square_error_cost(input=y_predict, label=y)
+            avg_cost = layers.mean(cost)
+
+        place = core.CPUPlace()
+        exe = executor.Executor(place)
+        exe.run(init_program, feed={}, fetch_list=[])
+
+        # will print warning message
+
+        cp_prog = CompiledProgram(program).with_data_parallel(
+            loss_name=avg_cost.name)
+
+        save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, cp_prog)
+        self.assertRaises(TypeError, save_inference_model,
+                          [MODEL_DIR, ["x", "y"], [avg_cost], [], cp_prog])
 
 
 if __name__ == '__main__':

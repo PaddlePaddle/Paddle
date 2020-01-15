@@ -22,7 +22,10 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
+#include <unordered_set>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
@@ -36,6 +39,7 @@ namespace inference {
 namespace analysis {
 using framework::ProgramDesc;
 using framework::ir::Graph;
+using framework::ir::Pass;
 
 class IRPassManager final {
  public:
@@ -50,9 +54,13 @@ class IRPassManager final {
 
  private:
   void CreatePasses(Argument *argument, const std::vector<std::string> &passes);
+  bool HasPass(const std::string &pass_type);
+  std::unique_ptr<Pass> &GetPass(const std::string &pass_type);
+  void UpdatePasses();
 
   std::unique_ptr<Graph> graph_;
-  std::vector<std::unique_ptr<framework::ir::Pass>> passes_;
+  std::vector<std::unique_ptr<Pass>> passes_;
+  bool disable_logs_{false};
 };
 
 }  // namespace analysis

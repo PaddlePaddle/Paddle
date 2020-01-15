@@ -15,7 +15,7 @@
 Print all signature of a python module in alphabet order.
 
 Usage:
-    ./print_signature  "paddle.fluid,paddle.reader" > signature.txt
+    ./print_signature  "paddle.fluid" > signature.txt
 """
 from __future__ import print_function
 
@@ -24,27 +24,53 @@ import inspect
 import collections
 import sys
 import pydoc
+import hashlib
 
 member_dict = collections.OrderedDict()
 
-experimental_namespace = {"paddle.fluid.imperative"}
+# APIs that should not be printed into API.spec 
+omitted_list = [
+    "paddle.fluid.LoDTensor.set",  # Do not know why it should be omitted
+    "paddle.fluid.io.ComposeNotAligned",
+    "paddle.fluid.io.ComposeNotAligned.__init__",
+]
+
+
+def md5(doc):
+    hash = hashlib.md5()
+    hash.update(str(doc).encode('utf-8'))
+    return hash.hexdigest()
+
+
+def queue_dict(member, cur_name):
+    if cur_name in omitted_list:
+        return
+
+    doc = ('document', md5(member.__doc__))
+
+    if inspect.isclass(member):
+        args = member.__module__ + "." + member.__name__
+    else:
+        try:
+            args = inspect.getargspec(member)
+        except TypeError:  # special for PyBind method
+            args = "  ".join([
+                line.strip() for line in pydoc.render_doc(member).split('\n')
+                if "->" in line
+            ])
+    member_dict[cur_name] = (args, doc)
 
 
 def visit_member(parent_name, member):
     cur_name = ".".join([parent_name, member.__name__])
     if inspect.isclass(member):
+        queue_dict(member, cur_name)
         for name, value in inspect.getmembers(member):
             if hasattr(value, '__name__') and (not name.startswith("_") or
                                                name == "__init__"):
                 visit_member(cur_name, value)
     elif callable(member):
-        try:
-            member_dict[cur_name] = inspect.getargspec(member)
-        except TypeError:  # special for PyBind method
-            member_dict[cur_name] = "  ".join([
-                line.strip() for line in pydoc.render_doc(member).split('\n')
-                if "->" in line
-            ])
+        queue_dict(member, cur_name)
     elif inspect.isgetsetdescriptor(member):
         return
     else:
@@ -53,8 +79,6 @@ def visit_member(parent_name, member):
 
 
 def visit_all_module(mod):
-    if (mod.__name__ in experimental_namespace):
-        return
     for member_name in (
             name
             for name in (mod.__all__ if hasattr(mod, "__all__") else dir(mod))

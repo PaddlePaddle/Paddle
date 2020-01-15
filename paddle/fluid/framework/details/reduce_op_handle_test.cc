@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
+#include <unordered_map>
 #include "gtest/gtest.h"
 #include "paddle/fluid/platform/device_context.h"
 
@@ -86,14 +87,13 @@ struct TestReduceOpHandle {
   void InitReduceOp(size_t out_scope_idx) {
     std::vector<std::unique_ptr<ir::Node>> nodes;
     // init scope
+    std::unordered_map<Scope *, Scope *> scope_map;
     for (size_t j = 0; j < gpu_list_.size(); ++j) {
       local_scopes_.push_back(&(g_scope_.NewScope()));
       Scope &local_scope = local_scopes_.back()->NewScope();
-      *local_scopes_.back()
-           ->Var(details::kLocalExecScopeName)
-           ->GetMutable<Scope *>() = &local_scope;
       local_scope.Var("input");
       param_scopes_.emplace_back(&local_scope);
+      scope_map.emplace(local_scopes_.back(), param_scopes_.back());
     }
     param_scopes_[out_scope_idx]->Var("out");
 
@@ -114,6 +114,8 @@ struct TestReduceOpHandle {
           new ReduceOpHandle(nodes.back().get(), local_scopes_, gpu_list_));
 #endif
     }
+
+    op_handle_->SetLocalExecScopes(scope_map);
 
     // init op handle
     // add input

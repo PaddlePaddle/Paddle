@@ -42,6 +42,29 @@ class TestScaleOp(OpTest):
         self.check_grad(['X'], 'Out')
 
 
+class TestScaleOpScaleVariable(OpTest):
+    def setUp(self):
+        self.op_type = "scale"
+        self.dtype = np.float32
+        self.init_dtype_type()
+        self.scale = -2.3
+        self.inputs = {
+            'X': np.random.random((10, 10)).astype(self.dtype),
+            'ScaleTensor': np.array([self.scale]).astype('float32')
+        }
+        self.attrs = {}
+        self.outputs = {'Out': self.inputs['X'] * self.dtype(self.scale)}
+
+    def init_dtype_type(self):
+        pass
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
 class TestScaleOpSelectedRows(unittest.TestCase):
     def init_dtype_type(self):
         pass

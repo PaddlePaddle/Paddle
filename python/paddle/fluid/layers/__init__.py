@@ -28,11 +28,17 @@ from . import device
 from .device import *
 from . import math_op_patch
 from .math_op_patch import *
+from . import loss
+from .loss import *
 from . import detection
 from .detection import *
 from . import metric_op
 from .metric_op import *
 from .learning_rate_scheduler import *
+from .collective import *
+from .distributions import *
+from .sequence_lod import *
+from . import rnn
 
 __all__ = []
 __all__ += nn.__all__
@@ -44,3 +50,9 @@ __all__ += device.__all__
 __all__ += detection.__all__
 __all__ += metric_op.__all__
 __all__ += learning_rate_scheduler.__all__
+__all__ += distributions.__all__
+__all__ += sequence_lod.__all__
+__all__ += loss.__all__
+__all__ += rnn.__all__
+
+from .rnn import *

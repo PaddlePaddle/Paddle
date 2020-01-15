@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/hash_op.h"
 #include <string>
-#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -36,15 +35,8 @@ class HashOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(dims.size(), 2UL,
                       "The input of hash_op's dimensions must be 2");
     std::vector<int64_t> out_dims;
-    out_dims.reserve(dims.size() + 1);
-    // copy all dims except the last one
-    for (int i = 0u; i != dims.size() - 1; ++i) {
-      out_dims.emplace_back(dims[i]);
-    }
     int num_hash = ctx->Attrs().Get<int>("num_hash");
-    out_dims.emplace_back(num_hash);
-    // keep the last dim to 1
-    out_dims.emplace_back(1);
+    HashOutputSize(dims, out_dims, num_hash);
 
     ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -54,14 +46,16 @@ class HashOp : public framework::OperatorWithKernel {
 class HashOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor) Input tensor of scale operator.");
-    AddOutput("Out", "(Tensor) Output tensor of scale operator.");
+    AddInput("X", "(Tensor) Input tensor of hash operator.");
+    AddOutput("Out", "(Tensor) Output tensor of hash operator.");
     AddComment(R"DOC(
-**Hash Operator**
-$$Out = scale * X$$
+        Execute `num_hash` times xxHash algorithm on all elements on second dimension of input. 
 )DOC");
     AddAttr<int>("num_hash", "").SetDefault(1);
-    AddAttr<int>("mod_by", "").SetDefault(100000);
+    AddAttr<int64_t>("mod_by", "").SetDefault(100000);
+    AddAttr<bool>(framework::kAllKernelsMustComputeRuntimeShape,
+                  "Skip calling InferShape() function in the runtime.")
+        .SetDefault(true);
   }
 };
 
@@ -71,4 +65,4 @@ $$Out = scale * X$$
 namespace ops = paddle::operators;
 
 REGISTER_OP_WITHOUT_GRADIENT(hash, ops::HashOp, ops::HashOpMaker);
-REGISTER_OP_CPU_KERNEL(hash, ops::HashKerel<int>, ops::HashKerel<int64_t>);
+REGISTER_OP_CPU_KERNEL(hash, ops::HashKernel<int>, ops::HashKernel<int64_t>);

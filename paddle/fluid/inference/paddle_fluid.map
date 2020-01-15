@@ -1,7 +1,11 @@
 {
 	global:
 		*paddle*;
-                *Pass*;
+		*Pass*;
+		extern "C++" {
+			fL*::*;
+		};
 	local:
 		*;
 };
+

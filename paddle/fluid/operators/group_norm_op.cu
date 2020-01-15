@@ -19,6 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using DataLayout = framework::DataLayout;
 enum GroupNormKernelFlags { kHasScale = 1, kHasBias = 2 };
 
 #define CHECK_CASE(i, flags, kernel_name, ...)                              \
@@ -45,18 +46,27 @@ __device__ __inline__ void CudaAtomicAddWithWarp(T* sum, T value) {
 }
 
 template <typename T>
-__global__ void GroupNormForwardGetMeanAndVar(const T* x, int N, int C,
+__global__ void GroupNormForwardGetMeanAndVar(const T* x, int N, int C, int W,
                                               int imsize, int groups,
-                                              int group_size, T* mean, T* var) {
+                                              int group_size, T* mean, T* var,
+                                              const DataLayout data_layout) {
   int gid = blockIdx.y;
   int cid = blockIdx.x;
   int bid = blockIdx.z;
+  int H = imsize / W;
   int number = min(group_size, static_cast<int>(C - gid * group_size));
   int ccid = gid * group_size + cid;
   if (ccid >= C) return;
   T x_mean = 0, x_var = 0;
   for (int imid = threadIdx.x; imid < imsize; imid += blockDim.x) {
-    T val = x[(bid * C + ccid) * imsize + imid];
+    T val;
+    if (data_layout == DataLayout::kNCHW) {
+      val = x[(bid * C + ccid) * imsize + imid];
+    } else {
+      int hid = imid / W;
+      int wid = imid % W;
+      val = x[(bid * H + hid) * W * C + wid * C + ccid];
+    }
     x_mean += val;
     x_var += val * val;
   }
@@ -69,11 +79,13 @@ __global__ void GroupNormForwardGetMeanAndVar(const T* x, int N, int C,
 template <typename T, int flags>
 __global__ void GroupNormForward(const T* x, const T* mean, const T* var,
                                  const T* scale, const T* bias, int N, int C,
-                                 int imsize, int groups, int group_size,
-                                 T epsilon, T* y, T* real_var) {
+                                 int W, int imsize, int groups, int group_size,
+                                 T epsilon, T* y, T* real_var,
+                                 const DataLayout data_layout) {
   int gid = blockIdx.y;
   int cid = blockIdx.x;
   int bid = blockIdx.z;
+  int H = imsize / W;
   int ccid = gid * group_size + cid;
   if (ccid >= C) return;
   T x_mean = mean[bid * groups + gid];
@@ -82,11 +94,23 @@ __global__ void GroupNormForward(const T* x, const T* mean, const T* var,
   T var_inv = 1.0 / sqrt(x_var + epsilon);
   if (cid == 0 && threadIdx.x == 0) real_var[bid * groups + gid] = x_var;
   for (int imid = threadIdx.x; imid < imsize; imid += blockDim.x) {
-    T val = x[(bid * C + ccid) * imsize + imid];
+    T val;
+    int hid, wid;
+    if (data_layout == DataLayout::kNCHW) {
+      val = x[(bid * C + ccid) * imsize + imid];
+    } else {
+      hid = imid / W;
+      wid = imid % W;
+      val = x[(bid * H + hid) * W * C + wid * C + ccid];
+    }
     val = (val - x_mean) * var_inv;
     if (flags & kHasScale) val *= scale[gid * group_size + cid];
     if (flags & kHasBias) val += bias[gid * group_size + cid];
-    y[(bid * C + ccid) * imsize + imid] = val;
+    if (data_layout == DataLayout::kNCHW) {
+      y[(bid * C + ccid) * imsize + imid] = val;
+    } else {
+      y[(bid * H + hid) * W * C + wid * C + ccid] = val;
+    }
   }
 }
 
@@ -95,6 +119,9 @@ class GroupNormKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
+    const DataLayout data_layout =
+        framework::StringToDataLayout(data_layout_str);
     const float epsilon = ctx.Attr<float>("epsilon");
     auto* scale = ctx.Input<Tensor>("Scale");
     auto* bias = ctx.Input<Tensor>("Bias");
@@ -106,7 +133,13 @@ class GroupNormKernel<platform::CUDADeviceContext, T>
     const auto groups = ctx.Attr<int>("groups");
 
     const auto x_dims = x->dims();
-    const int group_size = (x_dims[1] - 1) / groups + 1;
+    const int C =
+        (data_layout == DataLayout::kNCHW ? x_dims[1]
+                                          : x_dims[x_dims.size() - 1]);
+    const int group_size = (C - 1) / groups + 1;
+    const int W =
+        (data_layout == DataLayout::kNCHW ? x_dims[x_dims.size() - 1]
+                                          : x_dims[x_dims.size() - 2]);
 
     y->mutable_data<T>(ctx.GetPlace());
     mean->mutable_data<T>(ctx.GetPlace());
@@ -130,31 +163,32 @@ class GroupNormKernel<platform::CUDADeviceContext, T>
     const T* bias_data = nullptr;
     if (bias) bias_data = bias->data<T>();
 
-    int imsize = x_dims[2] * x_dims[3];
+    int imsize = (data_layout == DataLayout::kNCHW ? x_dims[2] * x_dims[3]
+                                                   : x_dims[1] * x_dims[2]);
+
     int block_size = std::min(1024, imsize);
     dim3 grid(group_size, groups, x_dims[0]);
     dim3 threads(block_size, 1, 1);
     GroupNormForwardGetMeanAndVar<T><<<grid, threads, 0, dev_ctx.stream()>>>(
-        x_data, x_dims[0], x_dims[1], imsize, groups, group_size, mean_data,
-        temp_var_data);
+        x_data, x_dims[0], C, W, imsize, groups, group_size, mean_data,
+        temp_var_data, data_layout);
     int flags =
         (scale_data != nullptr) * kHasScale + (bias_data != nullptr) * kHasBias;
     UNROLL_ALL_CASES(flags, GroupNormForward, x_data, mean_data, temp_var_data,
-                     scale_data, bias_data, x_dims[0], x_dims[1], imsize,
-                     groups, group_size, epsilon, y_data, var_data);
+                     scale_data, bias_data, x_dims[0], C, W, imsize, groups,
+                     group_size, epsilon, y_data, var_data, data_layout);
   }
 };
 
 template <typename T, int flags>
-__global__ void GroupNormBackwardGetMeanAndVar(const T* x, const T* scale,
-                                               const T* bias, const T* d_y,
-                                               int N, int C, int imsize,
-                                               int groups, int group_size,
-                                               T epsilon, T* d_mean, T* d_var,
-                                               T* d_scale, T* d_bias) {
+__global__ void GroupNormBackwardGetMeanAndVar(
+    const T* x, const T* scale, const T* bias, const T* d_y, int N, int C,
+    int W, int imsize, int groups, int group_size, T epsilon, T* d_mean,
+    T* d_var, T* d_scale, T* d_bias, const DataLayout data_layout) {
   int gid = blockIdx.y;
   int cid = blockIdx.x;
   int bid = blockIdx.z;
+  int H = imsize / W;
   int number = min(group_size, static_cast<int>(C - gid * group_size));
   int ccid = gid * group_size + cid;
   if (ccid >= C) return;
@@ -165,8 +199,16 @@ __global__ void GroupNormBackwardGetMeanAndVar(const T* x, const T* scale,
   T d_mean_data = 0, d_var_data = 0, d_scale_data = 0, d_bias_data = 0;
 
   for (int imid = threadIdx.x; imid < imsize; imid += blockDim.x) {
-    T val = x[(bid * C + ccid) * imsize + imid] - x_bias;
-    T dval = d_y[(bid * C + ccid) * imsize + imid];
+    T val, dval;
+    if (data_layout == DataLayout::kNCHW) {
+      val = x[(bid * C + ccid) * imsize + imid] - x_bias;
+      dval = d_y[(bid * C + ccid) * imsize + imid];
+    } else {
+      int hid = imid / W;
+      int wid = imid % W;
+      val = x[(bid * H + hid) * W * C + wid * C + ccid] - x_bias;
+      dval = d_y[(bid * H + hid) * W * C + wid * C + ccid];
+    }
 
     d_var_data += val * dval;
     d_mean_data += dval * x_scale;
@@ -184,12 +226,14 @@ __global__ void GroupNormBackwardGetMeanAndVar(const T* x, const T* scale,
 template <typename T, int flags>
 __global__ void GroupNormBackward(const T* x, const T* d_y, const T* scale,
                                   const T* bias, const T* var, const T* d_mean,
-                                  const T* d_var, int N, int C, int imsize,
-                                  int groups, int group_size, T epsilon,
-                                  T* d_x) {
+                                  const T* d_var, int N, int C, int W,
+                                  int imsize, int groups, int group_size,
+                                  T epsilon, T* d_x,
+                                  const DataLayout data_layout) {
   int gid = blockIdx.y;
   int cid = blockIdx.x;
   int bid = blockIdx.z;
+  int H = imsize / W;
   int number = min(group_size, static_cast<int>(C - gid * group_size));
   int ccid = gid * group_size + cid;
   if (ccid >= C) return;
@@ -206,12 +250,23 @@ __global__ void GroupNormBackward(const T* x, const T* d_y, const T* scale,
   if (x_scale != 0) x_scale_inv = 1.0 / x_scale;
 
   for (int imid = threadIdx.x; imid < imsize; imid += blockDim.x) {
-    T tmp = x[(bid * C + ccid) * imsize + imid];
-    T v_y = (tmp - x_bias) * x_scale_inv;
-    T dly = d_y[(bid * C + ccid) * imsize + imid];
-    d_x[(bid * C + ccid) * imsize + imid] =
-        x_var_inv *
-        (dly * x_scale - number_inv * d_x_var * v_y - number_inv * d_x_mean);
+    if (data_layout == DataLayout::kNCHW) {
+      T tmp = x[(bid * C + ccid) * imsize + imid];
+      T v_y = (tmp - x_bias) * x_scale_inv;
+      T dly = d_y[(bid * C + ccid) * imsize + imid];
+      d_x[(bid * C + ccid) * imsize + imid] =
+          x_var_inv *
+          (dly * x_scale - number_inv * d_x_var * v_y - number_inv * d_x_mean);
+    } else {
+      int hid = imid / W;
+      int wid = imid % W;
+      T tmp = x[(bid * H + hid) * W * C + wid * C + ccid];
+      T v_y = (tmp - x_bias) * x_scale_inv;
+      T dly = d_y[(bid * H + hid) * W * C + wid * C + ccid];
+      d_x[(bid * H + hid) * W * C + wid * C + ccid] =
+          x_var_inv *
+          (dly * x_scale - number_inv * d_x_var * v_y - number_inv * d_x_mean);
+    }
   }
 }
 
@@ -220,6 +275,9 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
+    const DataLayout data_layout =
+        framework::StringToDataLayout(data_layout_str);
     const float epsilon = ctx.Attr<float>("epsilon");
     auto* x = ctx.Input<Tensor>("Y");
     auto* var = ctx.Input<Tensor>("Variance");
@@ -234,7 +292,13 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
     auto* d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
 
     const auto& x_dims = x->dims();
-    const int group_size = (x_dims[1] - 1) / groups + 1;
+    const int C =
+        (data_layout == DataLayout::kNCHW ? x_dims[1]
+                                          : x_dims[x_dims.size() - 1]);
+    const int group_size = (C - 1) / groups + 1;
+    const int W =
+        (data_layout == DataLayout::kNCHW ? x_dims[x_dims.size() - 1]
+                                          : x_dims[x_dims.size() - 2]);
 
     d_x->mutable_data<T>(ctx.GetPlace());
     math::SetConstant<platform::CUDADeviceContext, T> set_zero;
@@ -273,21 +337,23 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
     const T* bias_data = nullptr;
     if (bias) bias_data = bias->data<T>();
 
-    int imsize = x_dims[2] * x_dims[3];
+    int imsize = (data_layout == DataLayout::kNCHW ? x_dims[2] * x_dims[3]
+                                                   : x_dims[1] * x_dims[2]);
+
     int block_size = std::min(1024, imsize);
     dim3 grid(group_size, groups, x_dims[0]);
     dim3 threads(block_size, 1, 1);
     int flags =
         (scale_data != nullptr) * kHasScale + (bias_data != nullptr) * kHasBias;
     UNROLL_ALL_CASES(flags, GroupNormBackwardGetMeanAndVar, x_data, scale_data,
-                     bias_data, y_data, x_dims[0], x_dims[1], imsize, groups,
+                     bias_data, y_data, x_dims[0], C, W, imsize, groups,
                      group_size, epsilon, temp_mean_data, temp_var_data,
-                     d_scale_data, d_bias_data);
+                     d_scale_data, d_bias_data, data_layout);
     if (d_x_data != nullptr) {
       UNROLL_ALL_CASES(flags, GroupNormBackward, x_data, y_data, scale_data,
                        bias_data, var_data, temp_mean_data, temp_var_data,
-                       x_dims[0], x_dims[1], imsize, groups, group_size,
-                       epsilon, d_x_data);
+                       x_dims[0], C, W, imsize, groups, group_size, epsilon,
+                       d_x_data, data_layout);
     }
   }
 };

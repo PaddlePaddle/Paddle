@@ -14,6 +14,9 @@
 
 #pragma once
 
+#include <memory>
+#include <string>
+
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -26,9 +29,9 @@ class ExceptionHolder {
   void Catch(std::exception_ptr eptr) {
     try {
       std::rethrow_exception(eptr);
-    } catch (platform::EOFException exp) {
+    } catch (platform::EOFException& exp) {
       Catch(exp);
-    } catch (platform::EnforceNotMet exp) {
+    } catch (platform::EnforceNotMet& exp) {
       Catch(exp);
     } catch (std::exception& ex) {
       LOG(FATAL) << "std::exception caught, " << ex.what();
@@ -62,6 +65,21 @@ class ExceptionHolder {
   void Clear() {
     std::lock_guard<std::mutex> lock(mu_);
     ClearImpl();
+  }
+
+  std::string Type() {
+    std::lock_guard<std::mutex> lock(mu_);
+    switch (type_) {
+      case kNone:
+        return "None";
+      case kEnforceNotMet: {
+        return "EnforceNotMet";
+      }
+      case kEOF: {
+        return "EOF";
+      }
+    }
+    return "unknown";
   }
 
  private:

@@ -13,6 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/norm_op.h"
+#include <memory>
+#include <string>
+#include <vector>
+
 namespace paddle {
 namespace operators {
 
@@ -74,6 +78,25 @@ class NormOpGrad : public framework::OperatorWithKernel {
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };
+
+template <typename T>
+class NormOpGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
+    op->SetType("norm_grad");
+    op->SetAttrMap(this->Attrs());
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetInput("Norm", this->Output("Norm"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    return op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -81,7 +104,8 @@ namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
 
 REGISTER_OPERATOR(norm, ops::NormOp, ops::NormOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::NormOpGradOpMaker<paddle::framework::OpDesc>,
+                  ops::NormOpGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(norm_grad, ops::NormOpGrad);
 REGISTER_OP_CPU_KERNEL(norm, ops::NormKernel<CPU, float>,
                        ops::NormKernel<CPU, double>);

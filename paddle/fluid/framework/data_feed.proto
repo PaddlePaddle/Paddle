@@ -19,6 +19,7 @@ message Slot {
   required string type = 2;
   optional bool is_dense = 3 [ default = false ];
   optional bool is_used = 4 [ default = false ];
+  repeated int32 shape = 5; // we can define N-D Tensor
 }
 
 message MultiSlotDesc { repeated Slot slots = 1; }
@@ -27,4 +28,6 @@ message DataFeedDesc {
   optional string name = 1;
   optional int32 batch_size = 2 [ default = 32 ];
   optional MultiSlotDesc multi_slot_desc = 3;
+  optional string pipe_command = 4;
+  optional int32 thread_num = 5;
 }

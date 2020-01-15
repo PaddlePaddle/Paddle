@@ -23,6 +23,8 @@ namespace paddle {
 namespace operators {
 namespace math {
 
+using DataLayout = framework::DataLayout;
+
 /* The storage format of the coldata in the Im2ColFunctor and Col2ImFunctor. */
 enum class ColFormat { kCFO = 0, kOCF = 1 };
 
@@ -86,7 +88,8 @@ class Im2ColFunctor {
   void operator()(const DeviceContext& context, const framework::Tensor& im,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
-                  const std::vector<int>& padding, framework::Tensor* col);
+                  const std::vector<int>& padding, framework::Tensor* col,
+                  const DataLayout data_layout = DataLayout::kNCHW);
 };
 
 template <ColFormat Format, typename DeviceContext, typename T>
@@ -95,7 +98,8 @@ class Col2ImFunctor {
   void operator()(const DeviceContext& context, const framework::Tensor& col,
                   const std::vector<int>& dilation,
                   const std::vector<int>& stride,
-                  const std::vector<int>& padding, framework::Tensor* im);
+                  const std::vector<int>& padding, framework::Tensor* im,
+                  const DataLayout data_layout = DataLayout::kNCHW);
 };
 
 }  // namespace math

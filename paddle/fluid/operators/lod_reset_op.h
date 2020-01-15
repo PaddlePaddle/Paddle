@@ -29,8 +29,9 @@ class LoDResetKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<framework::LoDTensor>("Out");
     auto* in = ctx.Input<framework::LoDTensor>("X");
     auto* lod_t = ctx.Input<framework::LoDTensor>("Y");
+    bool append = ctx.Attr<bool>("append");
 
-    out->ShareDataWith(*in);
+    framework::TensorCopy(*in, in->place(), out);
 
     std::vector<int> level0;
     if (lod_t) {
@@ -44,8 +45,8 @@ class LoDResetKernel : public framework::OpKernel<T> {
         return;  // early return, since lod already set
       } else {
         auto* lod = lod_t->data<int>();
-        if (platform::is_gpu_place(ctx.GetPlace())) {
-          framework::Tensor lod_cpu;
+        framework::Tensor lod_cpu;
+        if (platform::is_gpu_place(lod_t->place())) {
           framework::TensorCopySync(*lod_t, platform::CPUPlace(), &lod_cpu);
           lod = lod_cpu.data<int>();
         }
@@ -63,7 +64,7 @@ class LoDResetKernel : public framework::OpKernel<T> {
                       "Target LoD should be a vector end with the "
                       "first dimension of Input(X).");
     for (size_t i = 0; i < level0.size() - 1; ++i) {
-      PADDLE_ENFORCE(level0[i + 1] > level0[i],
+      PADDLE_ENFORCE(level0[i + 1] >= level0[i],
                      "Target LoD should be an ascending vector.");
     }
 
@@ -71,9 +72,14 @@ class LoDResetKernel : public framework::OpKernel<T> {
     std::vector<size_t> ulevel0(level0.size(), 0);
     std::transform(level0.begin(), level0.end(), ulevel0.begin(),
                    [](int a) { return static_cast<size_t>(a); });
-    framework::LoD target_lod;
-    target_lod.push_back(ulevel0);
-    out->set_lod(target_lod);
+    if (append) {
+      auto* out_lod = out->mutable_lod();
+      out_lod->push_back(ulevel0);
+    } else {
+      framework::LoD target_lod;
+      target_lod.push_back(ulevel0);
+      out->set_lod(target_lod);
+    }
   }
 };
 
@@ -84,7 +90,7 @@ class LoDResetGradKernel : public framework::OpKernel<T> {
     auto* d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* d_x = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
 
-    d_x->ShareDataWith(*d_out);
+    framework::TensorCopy(*d_out, d_out->place(), d_x);
   }
 };
 }  // namespace operators

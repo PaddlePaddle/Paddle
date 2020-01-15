@@ -42,6 +42,7 @@ class PreluScalarDirectCUDAFunctor {
   void operator()(cudaStream_t stream, const T *input, const T *alpha,
                   T *output, std::vector<int> input_shape);
 };
+
 #endif
 
 }  // namespace math

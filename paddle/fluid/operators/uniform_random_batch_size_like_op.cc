@@ -56,6 +56,14 @@ with random values sampled from a uniform distribution.
                  "Note that if seed is not 0, this operator will always "
                  "generate the same random numbers every time.")
         .SetDefault(0);
+    AddAttr<int>("diag_num",
+                 "The number of diag elements. Note that if "
+                 "diag_num is 0, it means without diag init.[default 0].")
+        .SetDefault(0);
+    AddAttr<int>("diag_step", "The step between two diag element.[default 0].")
+        .SetDefault(0);
+    AddAttr<float>("diag_val", "The value of diag element. [default 1.0].")
+        .SetDefault(1.0f);
     AddAttr<int>("dtype", "(int, default 5(FP32)) Output tensor data type")
         .SetDefault(framework::proto::VarType::FP32);
   }
@@ -64,8 +72,11 @@ with random values sampled from a uniform distribution.
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_WITHOUT_GRADIENT(
+REGISTER_OPERATOR(
     uniform_random_batch_size_like,
     paddle::operators::UniformRandomBatchSizeLikeOp,
-    paddle::operators::UniformRandomBatchSizeLikeOpMaker);
+    paddle::operators::UniformRandomBatchSizeLikeOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    paddle::operators::BatchSizeLikeNoNeedBufferVarsInference);
 // Kernels are registered in uniform_random_op.cc and uniform_random_op.cu

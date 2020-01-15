@@ -60,14 +60,15 @@ class BoxCoderOp : public framework::OperatorWithKernel {
     } else if (code_type == BoxCodeType::kDecodeCenterSize) {
       PADDLE_ENFORCE_EQ(target_box_dims.size(), 3,
                         "The rank of Input TargetBox must be 3");
-      if (axis == 0) {
-        PADDLE_ENFORCE_EQ(target_box_dims[1], prior_box_dims[0]);
-      } else if (axis == 1) {
-        PADDLE_ENFORCE_EQ(target_box_dims[0], prior_box_dims[0]);
-      } else {
-        PADDLE_THROW("axis must be 0 or 1.");
+      PADDLE_ENFORCE(axis == 0 || axis == 1, "axis must be 0 or 1");
+      if (ctx->IsRuntime()) {
+        if (axis == 0) {
+          PADDLE_ENFORCE_EQ(target_box_dims[1], prior_box_dims[0]);
+        } else if (axis == 1) {
+          PADDLE_ENFORCE_EQ(target_box_dims[0], prior_box_dims[0]);
+        }
+        PADDLE_ENFORCE_EQ(target_box_dims[2], prior_box_dims[1]);
       }
-      PADDLE_ENFORCE_EQ(target_box_dims[2], prior_box_dims[1]);
       ctx->ShareDim("TargetBox", /*->*/ "OutputBox");
     }
 
@@ -184,8 +185,10 @@ box will broadcast to target box along the assigned axis.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(box_coder, ops::BoxCoderOp, ops::BoxCoderOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    box_coder, ops::BoxCoderOp, ops::BoxCoderOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     box_coder, ops::BoxCoderKernel<paddle::platform::CPUDeviceContext, float>,
     ops::BoxCoderKernel<paddle::platform::CPUDeviceContext, double>);

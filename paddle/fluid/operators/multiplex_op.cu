@@ -53,20 +53,25 @@ class MultiplexGradGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
     auto* d_out = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto ins = ctx.MultiInput<Tensor>("X");
     auto* ids = ctx.Input<Tensor>("Ids");
     auto d_ins = ctx.MultiOutput<Tensor>(framework::GradVarName("X"));
+
+    size_t idx = -1UL;
     for (size_t i = 0; i < d_ins.size(); i++) {
       if (d_ins[i]) {
         d_ins[i]->mutable_data<T>(ctx.GetPlace());
         auto t = framework::EigenVector<T>::Flatten(*d_ins[i]);
         t.device(*ctx.template device_context<Place>().eigen_device()) =
             t.constant(static_cast<T>(0));
+
+        idx = i;
       }
     }
 
-    auto rows = ins[0]->dims()[0];
-    auto cols = ins[0]->numel() / rows;
+    if (idx == -1UL) return;
+
+    auto rows = d_ins[idx]->dims()[0];
+    auto cols = d_ins[idx]->numel() / rows;
     // copy index to cpu
     Tensor index_t_cpu;
     TensorCopySync(*ids, platform::CPUPlace(), &index_t_cpu);

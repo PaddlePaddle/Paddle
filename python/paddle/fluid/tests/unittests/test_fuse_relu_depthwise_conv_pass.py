@@ -21,8 +21,6 @@ import paddle.dataset.mnist as mnist
 import unittest
 import os
 
-MNIST_RECORDIO_FILE = "./mnist_test_pe.recordio"
-
 
 def norm(*args, **kargs):
     return fluid.layers.batch_norm(*args, **kargs)
@@ -51,17 +49,9 @@ def sep_conv(input, channel, stride, filter, dilation=1, act=None):
 
 
 def simple_depthwise_net(use_feed):
-    if use_feed:
-        img = fluid.layers.data(name='image', shape=[784], dtype='float32')
-        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-    else:
-        reader = fluid.layers.open_files(
-            filenames=[MNIST_RECORDIO_FILE],
-            shapes=[[-1, 784], [-1, 1]],
-            lod_levels=[0, 0],
-            dtypes=['float32', 'int64'])
-        reader = fluid.layers.io.double_buffer(reader)
-        img, label = fluid.layers.read_file(reader)
+    assert use_feed
+    img = fluid.layers.data(name='image', shape=[784], dtype='float32')
+    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
     hidden = fluid.layers.reshape(img, (-1, 1, 28, 28))
     for _ in range(4):
         hidden = sep_conv(hidden, channel=200, stride=2, filter=5)
@@ -73,23 +63,6 @@ def simple_depthwise_net(use_feed):
 
 
 class TestMNIST(TestParallelExecutorBase):
-    @classmethod
-    def setUpClass(cls):
-        os.environ['CPU_NUM'] = str(4)
-        # Convert mnist to recordio file
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            reader = paddle.batch(mnist.train(), batch_size=4)
-            feeder = fluid.DataFeeder(
-                feed_list=[  # order is image and label
-                    fluid.layers.data(
-                        name='image', shape=[784]),
-                    fluid.layers.data(
-                        name='label', shape=[1], dtype='int64'),
-                ],
-                place=fluid.CPUPlace())
-            fluid.recordio_writer.convert_reader_to_recordio_file(
-                MNIST_RECORDIO_FILE, reader, feeder)
-
     def _init_data(self, random=True):
         np.random.seed(5)
         if random:
@@ -120,7 +93,6 @@ class TestMNIST(TestParallelExecutorBase):
             use_cuda=use_cuda,
             fuse_relu_depthwise_conv=True,
             use_ir_memory_optimize=True,
-            memory_opt=False,
             optimizer=_optimizer)
         not_fuse_op_first_loss, not_fuse_op_last_loss = self.check_network_convergence(
             model,
@@ -128,7 +100,6 @@ class TestMNIST(TestParallelExecutorBase):
                        "label": label},
             use_cuda=use_cuda,
             fuse_relu_depthwise_conv=False,
-            memory_opt=False,
             optimizer=_optimizer)
 
         for loss in zip(not_fuse_op_first_loss, fuse_op_first_loss):

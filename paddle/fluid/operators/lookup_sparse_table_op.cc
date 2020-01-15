@@ -114,7 +114,8 @@ random value and set the value into the table for the next looking up.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(lookup_sparse_table, ops::LookupSparseTableOp,
-                  ops::LookupSparseTableInferShape,
-                  ops::LookupSparseTableOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    lookup_sparse_table, ops::LookupSparseTableOp,
+    ops::LookupSparseTableInferShape, ops::LookupSparseTableOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

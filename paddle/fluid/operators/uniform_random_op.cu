@@ -15,7 +15,7 @@ limitations under the License. */
 #include <thrust/transform.h>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-
+#include "paddle/fluid/operators/uniform_random_op.h"
 namespace paddle {
 namespace operators {
 
@@ -23,16 +23,29 @@ template <typename T>
 struct UniformGenerator {
   T min_, max_;
   unsigned int seed_;
-
-  __host__ __device__ UniformGenerator(T min, T max, int seed)
-      : min_(min), max_(max), seed_(seed) {}
+  T diag_val_;
+  unsigned int diag_num_;
+  unsigned int diag_step_;
+  __host__ __device__ UniformGenerator(T min, T max, int seed, int diag_num,
+                                       int diag_step, T diag_val)
+      : min_(min),
+        max_(max),
+        seed_(seed),
+        diag_num_(diag_num),
+        diag_step_(diag_step),
+        diag_val_(diag_val) {}
 
   __host__ __device__ T operator()(const unsigned int n) const {
     thrust::minstd_rand rng;
     rng.seed(seed_);
     thrust::uniform_real_distribution<T> dist(min_, max_);
     rng.discard(n);
-    return dist(rng);
+    T out = dist(rng);
+    unsigned int remainder = n % (diag_step_ + 1);
+    if (remainder == 0 && diag_num_ > n / (diag_step_ + 1)) {
+      out = diag_val_;
+    }
+    return out;
   }
 };
 
@@ -45,12 +58,28 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     framework::Tensor* tensor = nullptr;
     auto out_var = context.OutputVar("Out");
-    if (out_var->IsType<framework::LoDTensor>()) {
-      tensor = out_var->GetMutable<framework::LoDTensor>();
-    } else if (out_var->IsType<framework::SelectedRows>()) {
+    std::vector<int64_t> new_shape;
+    auto list_new_shape_tensor =
+        context.MultiInput<framework::Tensor>("ShapeTensorList");
+    if (list_new_shape_tensor.size() > 0 || context.HasInput("ShapeTensor")) {
+      if (context.HasInput("ShapeTensor")) {
+        auto* shape_tensor = context.Input<framework::Tensor>("ShapeTensor");
+        new_shape = GetNewDataFromShapeTensor(shape_tensor);
+      } else if (list_new_shape_tensor.size() > 0) {
+        new_shape = GetNewDataFromShapeTensorList(list_new_shape_tensor);
+      }
+    }
+
+    if (out_var->IsType<framework::SelectedRows>()) {
+      auto* selected_rows = out_var->GetMutable<framework::SelectedRows>();
+      tensor = selected_rows->mutable_value();
       auto shape = context.Attr<std::vector<int64_t>>("shape");
-      tensor = out_var->GetMutable<framework::SelectedRows>()->mutable_value();
+      if (!new_shape.empty()) shape = new_shape;
       tensor->Resize(framework::make_ddim(shape));
+      selected_rows->mutable_rows()->reserve(shape[0]);
+    } else if (out_var->IsType<framework::LoDTensor>()) {
+      tensor = out_var->GetMutable<framework::LoDTensor>();
+      if (!new_shape.empty()) tensor->Resize(framework::make_ddim(new_shape));
     } else {
       PADDLE_THROW(
           "uniform_random_op's output only"
@@ -64,11 +93,17 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
     }
     T min = static_cast<T>(context.Attr<float>("min"));
     T max = static_cast<T>(context.Attr<float>("max"));
+    unsigned int diag_num =
+        static_cast<unsigned int>(context.Attr<int>("diag_num"));
+    unsigned int diag_step =
+        static_cast<unsigned int>(context.Attr<int>("diag_step"));
+    T diag_val = static_cast<T>(context.Attr<float>("diag_val"));
     thrust::counting_iterator<unsigned int> index_sequence_begin(0);
     int64_t size = tensor->numel();
-    thrust::transform(index_sequence_begin, index_sequence_begin + size,
-                      thrust::device_ptr<T>(data),
-                      UniformGenerator<T>(min, max, seed));
+    thrust::transform(
+        index_sequence_begin, index_sequence_begin + size,
+        thrust::device_ptr<T>(data),
+        UniformGenerator<T>(min, max, seed, diag_num, diag_step, diag_val));
   }
 };
 

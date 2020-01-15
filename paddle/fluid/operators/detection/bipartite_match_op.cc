@@ -45,8 +45,9 @@ class BipartiteMatchOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<LoDTensor>("DistMat")->type(),
-                                   platform::CPUPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "DistMat"),
+        platform::CPUPlace());
   }
 };
 
@@ -231,14 +232,14 @@ class BipartiteMatchOpMaker : public framework::OpProtoAndCheckerMaker {
         "entities.");
     AddAttr<std::string>(
         "match_type",
-        "(string, defalut: per_prediction) "
+        "(string, default: per_prediction) "
         "The type of matching method, should be 'bipartite' or "
-        "'per_prediction', 'bipartite' by defalut.")
+        "'per_prediction', 'bipartite' by default.")
         .SetDefault("bipartite")
         .InEnum({"bipartite", "per_prediction"});
     AddAttr<float>(
         "dist_threshold",
-        "(float, defalut: 0.5) "
+        "(float, default: 0.5) "
         "If `match_type` is 'per_prediction', this threshold is to determine "
         "the extra matching bboxes based on the maximum distance.")
         .SetDefault(0.5);
@@ -283,8 +284,9 @@ If Tensor, the height of ColToRowMatchIndices is 1.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(bipartite_match, ops::BipartiteMatchOp,
-                  ops::BipartiteMatchOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    bipartite_match, ops::BipartiteMatchOp, ops::BipartiteMatchOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(bipartite_match, ops::BipartiteMatchKernel<float>,
                        ops::BipartiteMatchKernel<double>);

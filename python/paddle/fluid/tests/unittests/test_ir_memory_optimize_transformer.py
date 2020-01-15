@@ -13,35 +13,39 @@
 # limitations under the License.
 
 import os
+import sys
 import unittest
+from timeit import default_timer as timer
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.dataset.wmt16 as wmt16
 
 os.environ['FLAGS_eager_delete_tensor_gb'] = "0.0"
-os.environ[
-    'RECORDIO_FILENAME'] = '/tmp/ir_memory_optimize_transformer.wmt16.recordio'
 
-from test_parallel_executor_transformer import TestTransformer
-from test_parallel_executor_transformer import transformer
+from parallel_executor_test_base import TestParallelExecutorBase
+from test_parallel_executor_transformer import get_feed_data_reader, transformer
 
 
 # NOTE(dzhwinter): test diferent strategy colisions.
 # open the eager delete tensor strategy by default.
-class TestTransformerWithIR(TestTransformer):
+class TestTransformerWithIR(TestParallelExecutorBase):
     def test_main(self):
         if core.is_compiled_with_cuda():
             # check python transpiler
             self.check_network_convergence(
                 transformer,
                 use_cuda=True,
-                memory_opt=True,
-                use_ir_memory_optimize=False)
+                feed_data_reader=get_feed_data_reader(),
+                use_ir_memory_optimize=False,
+                iter=2)
             # check IR memory optimize
             self.check_network_convergence(
                 transformer,
                 use_cuda=True,
-                memory_opt=False,
-                use_ir_memory_optimize=True)
+                feed_data_reader=get_feed_data_reader(),
+                use_ir_memory_optimize=True,
+                iter=2)
 
 
 if __name__ == '__main__':

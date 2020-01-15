@@ -55,7 +55,8 @@ class Array {
 
   HOSTDEVICE inline T &at(size_t i) {
 #ifndef __CUDA_ARCH__
-    PADDLE_ENFORCE_LT(i, N, "Array index out of bounds");
+    PADDLE_ENFORCE_LT(
+        i, N, platform::errors::OutOfRange("Array index out of bounds."));
 #endif
     return (*this)[i];
   }

@@ -22,6 +22,11 @@ namespace paddle {
 namespace operators {
 namespace jit {
 
+std::map<size_t, std::shared_ptr<void>>& GetFuncCacheMap() {
+  static thread_local std::map<size_t, std::shared_ptr<void>> g_func_cache_map;
+  return g_func_cache_map;
+}
+
 #define ONE_CASE(key) \
   case key:           \
     return #key
@@ -34,8 +39,11 @@ const char* to_string(KernelType kt) {
     ONE_CASE(kVAddRelu);
     ONE_CASE(kVSub);
     ONE_CASE(kVScal);
+    ONE_CASE(kStrideScal);
     ONE_CASE(kVAddBias);
     ONE_CASE(kVRelu);
+    ONE_CASE(kVBroadcast);
+    ONE_CASE(kVCopy);
     ONE_CASE(kVIdentity);
     ONE_CASE(kVExp);
     ONE_CASE(kVSquare);
@@ -53,8 +61,10 @@ const char* to_string(KernelType kt) {
     ONE_CASE(kMatMul);
     ONE_CASE(kHMax);
     ONE_CASE(kHSum);
+    ONE_CASE(kStrideASum);
     ONE_CASE(kSoftmax);
     ONE_CASE(kEmbSeqPool);
+    ONE_CASE(kSgd);
     default:
       PADDLE_THROW("Not support type: %d, or forget to add it.", kt);
       return "NOT JITKernel";

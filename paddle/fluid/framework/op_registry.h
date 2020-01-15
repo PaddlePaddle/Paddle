@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <atomic>
+#include <memory>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -53,8 +54,9 @@ class Registrar {
 template <typename... ARGS>
 struct OperatorRegistrar : public Registrar {
   explicit OperatorRegistrar(const char* op_type) {
-    PADDLE_ENFORCE(!OpInfoMap::Instance().Has(op_type),
-                   "'%s' is registered more than once.", op_type);
+    if (OpInfoMap::Instance().Has(op_type)) {
+      PADDLE_THROW("'%s' is registered more than once.", op_type);
+    }
     static_assert(sizeof...(ARGS) != 0,
                   "OperatorRegistrar should be invoked at least by OpClass");
     OpInfo info;
@@ -65,10 +67,34 @@ struct OperatorRegistrar : public Registrar {
 
 class OpRegistry {
  public:
+  /**
+   * @brief Return an OperatorBase constructed by type, inputs, outputs, attrs.
+   *        In dygraph mode, inputs, output, attrs will be set to empty map to
+   *        improve the execution efficiency of dygraph.
+   *        Dygraph mode will use:
+   *        framework::OpRegistry::CreateOp(type, {}, {}, {}, false).
+   *
+   * @param[str] type               The operator type.
+   * @param[map] inputs             Inputs map of the operator.
+   * @param[map] outputs            Outputs map of the operator.
+   * @param[unordered_map] attrs    Attributes map of the operator.
+   * @param[bool] attr_check
+   *            Whether do the attribute check before OperatorBase construction.
+   *            Default is true.
+   *            Attr_check is used to control the check of attribute map.
+   *            The check of attribute map have two purposes:
+   *            1. check whether the attribute item is valid or not.
+   *            2. add attribute item which has default value
+   *            if it is not in attrs.
+   *            In dygraph mode, attrs is an empty unordered_map,
+   *            attr_check is set to false, otherwise it will be failed
+   *            when check function called.
+   */
   static std::unique_ptr<OperatorBase> CreateOp(const std::string& type,
                                                 const VariableNameMap& inputs,
                                                 const VariableNameMap& outputs,
-                                                AttributeMap attrs);
+                                                AttributeMap attrs,
+                                                bool attr_check = true);
 
   static std::unique_ptr<OperatorBase> CreateOp(const proto::OpDesc& op_desc);
 
@@ -206,7 +232,9 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
   }
 
 #define REGISTER_OP_WITHOUT_GRADIENT(op_type, op_class, op_maker_class) \
-  REGISTER_OPERATOR(op_type, op_class, op_maker_class)
+  REGISTER_OPERATOR(op_type, op_class, op_maker_class, \
+        paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,   \
+        paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)
 
 /**
  * Macro to register OperatorKernel.
@@ -290,7 +318,7 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
       "USE_OP_DEVICE_KERNEL must be in global namespace");                 \
   extern int                                                               \
       TouchOpKernelRegistrar_##op_type##_##LIBRARY_TYPE##_##customized_name(); \
-  UNUSED static int use_op_kernel_##op_type##_##LIBRARY_TYPE##_##DEFAULT_TYPE##_ = /* NOLINT */ \
+  UNUSED static int use_op_kernel_##op_type##_##LIBRARY_TYPE##_##customized_name##_ = /* NOLINT */ \
       TouchOpKernelRegistrar_##op_type##_##LIBRARY_TYPE##_##customized_name()
 
 #define USE_OP_DEVICE_KERNEL(op_type, LIBRARY_TYPE) \

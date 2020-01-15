@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 from . import framework
+from .framework import in_dygraph_mode, _varbase_creator
 from . import core
 
 __all__ = ['L1Decay', 'L2Decay', 'L1DecayRegularizer', 'L2DecayRegularizer']
@@ -74,10 +75,12 @@ def append_regularization_ops(parameters_and_grads, regularization=None):
                     lod_level=param.lod_level,
                     type=core.VarDesc.VarType.LOD_TENSOR)
 
-            grad.block.append_op(
-                type='sum',
-                inputs={"X": [grad, regularization_term]},
-                outputs={"Out": new_grad})
+            inputs = {"X": [grad, regularization_term]}
+            outputs = {"Out": [new_grad]}
+            if in_dygraph_mode():
+                core.ops.sum(inputs, {}, outputs)
+            else:
+                grad.block.append_op(type='sum', inputs=inputs, outputs=outputs)
 
             params_and_grads.append((param, new_grad))
 
@@ -110,25 +113,38 @@ class WeightDecayRegularizer(object):
 
 
 class L2DecayRegularizer(WeightDecayRegularizer):
-    """Implements the L2 Weight Decay Regularization
+    """ 
+    Implement the L2 Weight Decay Regularization, which helps to prevent the model over-fitting.
 
-    Small values of L2 can help prevent over fitting the training data.
+    In the implementation, the formula of L2 Weight Decay Regularization is as follows:
 
     .. math::
 
         L2WeightDecay = reg\_coeff * parameter
 
     Args:
-        regularization_coeff(float): regularization coeff
+        regularization_coeff(float, optional): regularization coeff.
+					       Default:0.0
 
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
+
+            main_prog = fluid.Program()
+            startup_prog = fluid.Program()
+            with fluid.program_guard(main_prog, startup_prog):
+                data = fluid.layers.data(name='image', shape=[3, 28, 28], dtype='float32')
+                label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+                hidden = fluid.layers.fc(input=data, size=128, act='relu')
+                prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
+                loss = fluid.layers.cross_entropy(input=prediction, label=label)
+                avg_loss = fluid.layers.mean(loss)
             optimizer = fluid.optimizer.Adagrad(
                 learning_rate=1e-4,
                 regularization=fluid.regularizer.L2DecayRegularizer(
                     regularization_coeff=0.1))
-            optimizer.minimize(avg_cost)
+            optimizer.minimize(avg_loss)
     """
 
     def __init__(self, regularization_coeff=0.0):
@@ -152,42 +168,62 @@ class L2DecayRegularizer(WeightDecayRegularizer):
         assert isinstance(param, framework.Parameter)
         assert isinstance(block, framework.Block)
 
-        decay = block.create_var(
-            dtype=param.dtype, shape=param.shape, lod_level=param.lod_level)
+        inputs = {"X": [param]}
+        attrs = {"scale": self._regularization_coeff}
 
-        # Append Op to calculate decay
-        block.append_op(
-            type='scale',
-            inputs={"X": param},
-            outputs={"Out": decay},
-            attrs={"scale": self._regularization_coeff})
+        if framework.in_dygraph_mode():
+            outs = core.ops.scale(inputs, attrs)
+            return outs['Out'][0]
+        else:
+            decay = block.create_var(
+                dtype=param.dtype, shape=param.shape, lod_level=param.lod_level)
 
-        return decay
+            # Append Op to calculate decay
+            block.append_op(
+                type='scale',
+                inputs={"X": param},
+                outputs={"Out": decay},
+                attrs={"scale": self._regularization_coeff})
+
+            return decay
 
     def __str__(self):
         return "L2Decay, regularization_coeff=%f" % self._regularization_coeff
 
 
 class L1DecayRegularizer(WeightDecayRegularizer):
-    """Implements the L1 Weight Decay Regularization
-
-    L1 regularization encourages sparsity.
-
+    """
+    Implement the L1 Weight Decay Regularization, which encourages the weights to be sparse.
+    
+    In the implementation, the formula of L1 Weight Decay Regularization is as follows:
+	
     .. math::
 
         L1WeightDecay = reg\_coeff * sign(parameter)
 
     Args:
-        regularization_coeff(float): regularization coeff
-
+        regularization_coeff(float, optional): regularization coeff.
+					       Default:0.0.
+	
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
+
+            main_prog = fluid.Program()
+            startup_prog = fluid.Program()
+            with fluid.program_guard(main_prog, startup_prog):
+                data = fluid.layers.data(name='image', shape=[3, 28, 28], dtype='float32')
+                label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+                hidden = fluid.layers.fc(input=data, size=128, act='relu')
+                prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
+                loss = fluid.layers.cross_entropy(input=prediction, label=label)
+                avg_loss = fluid.layers.mean(loss)
             optimizer = fluid.optimizer.Adagrad(
                 learning_rate=1e-4,
                 regularization=fluid.regularizer.L1DecayRegularizer(
                     regularization_coeff=0.1))
-            optimizer.minimize(avg_cost)
+            optimizer.minimize(avg_loss)
     """
 
     def __init__(self, regularization_coeff=0.0):
@@ -211,8 +247,11 @@ class L1DecayRegularizer(WeightDecayRegularizer):
         assert isinstance(param, framework.Parameter)
         assert isinstance(block, framework.Block)
 
-        decay = block.create_var(
-            dtype=param.dtype, shape=param.shape, lod_level=param.lod_level)
+        if framework.in_dygraph_mode():
+            decay = block.create_var(dtype=param.dtype, shape=param.shape)
+        else:
+            decay = block.create_var(
+                dtype=param.dtype, shape=param.shape, lod_level=param.lod_level)
 
         # Append sign op
         block.append_op(

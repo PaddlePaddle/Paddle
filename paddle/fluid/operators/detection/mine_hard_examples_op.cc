@@ -195,25 +195,31 @@ class MineHardExamplesOp : public framework::OperatorWithKernel {
       auto loc_loss_dims = ctx->GetInputDim("LocLoss");
       PADDLE_ENFORCE_EQ(loc_loss_dims.size(), 2UL,
                         "The shape of LocLoss is [N, Np].");
-      PADDLE_ENFORCE_EQ(cls_loss_dims[0], loc_loss_dims[0],
-                        "Batch size of ClsLoss and LocLoss must be the same.");
-      PADDLE_ENFORCE_EQ(
-          cls_loss_dims[1], loc_loss_dims[1],
-          "Prior box number of ClsLoss and LocLoss must be the same.");
+      if (ctx->IsRuntime()) {
+        PADDLE_ENFORCE_EQ(
+            cls_loss_dims[0], loc_loss_dims[0],
+            "Batch size of ClsLoss and LocLoss must be the same.");
+        PADDLE_ENFORCE_EQ(
+            cls_loss_dims[1], loc_loss_dims[1],
+            "Prior box number of ClsLoss and LocLoss must be the same.");
+      }
     }
 
-    PADDLE_ENFORCE_EQ(
-        cls_loss_dims[0], idx_dims[0],
-        "Batch size of ClsLoss and MatchIndices must be the same.");
-    PADDLE_ENFORCE_EQ(
-        cls_loss_dims[1], idx_dims[1],
-        "Prior box number of ClsLoss and MatchIndices must be the same.");
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(
+          cls_loss_dims[0], idx_dims[0],
+          "Batch size of ClsLoss and MatchIndices must be the same.");
+      PADDLE_ENFORCE_EQ(
+          cls_loss_dims[1], idx_dims[1],
+          "Prior box number of ClsLoss and MatchIndices must be the same.");
 
-    PADDLE_ENFORCE_EQ(cls_loss_dims[0], dis_dims[0],
-                      "Batch size of ClsLoss and MatchDist must be the same.");
-    PADDLE_ENFORCE_EQ(
-        cls_loss_dims[1], idx_dims[1],
-        "Prior box number of ClsLoss and MatchDist must be the same.");
+      PADDLE_ENFORCE_EQ(
+          cls_loss_dims[0], dis_dims[0],
+          "Batch size of ClsLoss and MatchDist must be the same.");
+      PADDLE_ENFORCE_EQ(
+          cls_loss_dims[1], idx_dims[1],
+          "Prior box number of ClsLoss and MatchDist must be the same.");
+    }
 
     auto mining_type =
         GetMiningType(ctx->Attrs().Get<std::string>("mining_type"));
@@ -249,7 +255,8 @@ class MineHardExamplesOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        ctx.Input<framework::Tensor>("ClsLoss")->type(), platform::CPUPlace());
+        OperatorWithKernel::IndicateVarDataType(ctx, "ClsLoss"),
+        platform::CPUPlace());
   }
 };
 
@@ -325,9 +332,10 @@ MatchIndices elements with value -1.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(mine_hard_examples, ops::MineHardExamplesOp,
-                  ops::MineHardExamplesOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    mine_hard_examples, ops::MineHardExamplesOp, ops::MineHardExamplesOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(
     mine_hard_examples,

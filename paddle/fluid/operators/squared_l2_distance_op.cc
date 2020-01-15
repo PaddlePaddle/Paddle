@@ -14,6 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/squared_l2_distance_op.h"
 
+#include <memory>
+
+#include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
+
 namespace paddle {
 namespace operators {
 
@@ -41,16 +45,57 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
 
     int rank = framework::arity(x_dims);
     PADDLE_ENFORCE_GE(rank, 2, "Tensor rank should be at least equal to 2.");
-    PADDLE_ENFORCE_EQ(product(x_dims) / x_dims[0], product(y_dims) / y_dims[0],
-                      "Product of dimensions expcet the first dimension of "
-                      "input and target must be equal.");
-    PADDLE_ENFORCE(y_dims[0] == 1 || y_dims[0] == x_dims[0],
-                   "First dimension of target must be equal to input "
-                   "or to 1.");
-
+    bool check = true;
+    if ((!ctx->IsRuntime()) &&
+        (framework::product(x_dims) <= 0 || framework::product(y_dims) <= 0)) {
+      check = false;
+    }
+    if (check) {
+      PADDLE_ENFORCE_EQ(product(x_dims) / x_dims[0],
+                        product(y_dims) / y_dims[0],
+                        "Product of dimensions expcet the first dimension of "
+                        "input and target must be equal.");
+    }
+    check = true;
+    if ((!ctx->IsRuntime()) && (y_dims[0] <= 0 || x_dims[0] <= 0)) {
+      check = false;
+    }
+    if (check) {
+      PADDLE_ENFORCE(y_dims[0] == 1 || y_dims[0] == x_dims[0],
+                     "First dimension of target must be equal to input "
+                     "or to 1.");
+    }
     ctx->SetOutputDim("sub_result", {x_dims[0], product(x_dims) / x_dims[0]});
     ctx->SetOutputDim("Out", {x_dims[0], 1});
     ctx->ShareLoD("X", /*->*/ "Out");
+  }
+};
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(SquaredL2DistanceGradOpNoBuffer, "X",
+                                      "Y");
+
+template <typename T>
+class SquaredL2DistanceGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
+
+    op->SetType("squared_l2_distance_grad");
+
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetInput("sub_result", this->Output("sub_result"));
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+
+    op->SetAttrMap(this->Attrs());
+
+    return op;
   }
 };
 
@@ -88,19 +133,30 @@ class SquaredL2DistanceGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Gradient of Out should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("sub_result"), "SubResult should not be null");
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
-    PADDLE_ENFORCE_EQ(out_dims[0], x_dims[0],
-                      "First dimension of output gradient and "
-                      "input value must be equal.");
-    PADDLE_ENFORCE_EQ(out_dims[1], 1,
-                      "Second dimension of output gradient "
-                      "must be 1.");
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(out_dims[0], x_dims[0],
+                        "First dimension of output gradient and "
+                        "input value must be equal.");
+      PADDLE_ENFORCE_EQ(out_dims[1], 1,
+                        "Second dimension of output gradient "
+                        "must be 1.");
+    }
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
     if (ctx->HasOutput(x_grad_name)) ctx->SetOutputDim(x_grad_name, x_dims);
     if (ctx->HasOutput(y_grad_name)) ctx->SetOutputDim(y_grad_name, y_dims);
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "sub_result"),
+        ctx.GetPlace());
   }
 };
 
@@ -108,10 +164,13 @@ class SquaredL2DistanceGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(squared_l2_distance, ops::SquaredL2DistanceOp,
-                  ops::SquaredL2DistanceOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(squared_l2_distance_grad, ops::SquaredL2DistanceGradOp);
+REGISTER_OPERATOR(
+    squared_l2_distance, ops::SquaredL2DistanceOp,
+    ops::SquaredL2DistanceOpMaker,
+    ops::SquaredL2DistanceGradOpMaker<paddle::framework::OpDesc>,
+    ops::SquaredL2DistanceGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(squared_l2_distance_grad, ops::SquaredL2DistanceGradOp,
+                  ops::SquaredL2DistanceGradOpNoBuffer);
 REGISTER_OP_CPU_KERNEL(
     squared_l2_distance,
     ops::SquaredL2DistanceKernel<paddle::platform::CPUDeviceContext, float>);

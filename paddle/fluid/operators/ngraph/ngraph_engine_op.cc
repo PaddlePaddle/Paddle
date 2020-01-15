@@ -29,6 +29,7 @@ class NgraphEngineOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Xs", "A list of inputs.").AsDispensable();
     AddOutput("Ys", "A list of outputs").AsDispensable();
     AddAttr<std::string>("graph", "the graph.");
+    AddAttr<std::string>("engine_key", "the engine hash key.");
     AddAttr<std::vector<int>>("interval", "op interval supported by ngraph");
     AddComment("ngraph engine operator.");
   }
@@ -36,8 +37,7 @@ class NgraphEngineOpMaker : public framework::OpProtoAndCheckerMaker {
 
 class NgraphEngineInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {}
+  void operator()(framework::InferVarTypeContext *ctx) const override {}
 };
 
 }  // namespace operators
@@ -45,8 +45,7 @@ class NgraphEngineInferVarType : public framework::VarTypeInference {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(ngraph_engine, ops::NgraphEngineOp, ops::NgraphEngineOpMaker,
-                  ops::NgraphEngineOpMaker);
+REGISTER_OPERATOR(ngraph_engine, ops::NgraphEngineOp, ops::NgraphEngineOpMaker);
 REGISTER_OP_CPU_KERNEL(
     ngraph_engine,
     ops::NgraphEngineKernel<paddle::platform::CPUDeviceContext, float>);

@@ -23,6 +23,7 @@
  */
 
 #include <cassert>
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -36,6 +37,8 @@ namespace paddle {
 enum PaddleDType {
   FLOAT32,
   INT64,
+  INT32,
+  UINT8,
   // TODO(Superjomn) support more data types if needed.
 };
 
@@ -148,8 +151,8 @@ class ZeroCopyTensor {
 
   /** Get the memory in CPU or GPU with specific data type, should Reshape first
    * to tell the data size.
-   * Once can directly call this data to feed the data.
-   * This is for write the input tensor.
+   * One can directly call this data to feed the data.
+   * This is for writing the input tensor.
    */
   template <typename T>
   T* mutable_data(PaddlePlace place);
@@ -160,11 +163,23 @@ class ZeroCopyTensor {
   template <typename T>
   T* data(PaddlePlace* place, int* size) const;
 
-  std::vector<int64_t> shape() const;
+  template <typename T>
+  void copy_from_cpu(const T* data);
+
+  template <typename T>
+  void copy_to_cpu(T* data);
+
+  std::vector<int> shape() const;
 
   void SetLoD(const std::vector<std::vector<size_t>>& x);
   std::vector<std::vector<size_t>> lod() const;
   const std::string& name() const { return name_; }
+  void SetPlace(PaddlePlace place, int device = -1) {
+    place_ = place;
+    device_ = device;
+  }
+
+  PaddleDType type() const;
 
  protected:
   explicit ZeroCopyTensor(void* scope) : scope_{scope} {}
@@ -179,6 +194,9 @@ class ZeroCopyTensor {
   // The corresponding tensor pointer inside Paddle workspace is cached for
   // performance.
   mutable void* tensor_{nullptr};
+  PaddlePlace place_;
+  PaddleDType dtype_;
+  int device_;
 };
 
 /** A simple Inference API for Paddle.
@@ -199,6 +217,20 @@ class PaddlePredictor {
   virtual bool Run(const std::vector<PaddleTensor>& inputs,
                    std::vector<PaddleTensor>* output_data,
                    int batch_size = -1) = 0;
+
+  /** \brief Get input names of the model
+   */
+  virtual std::vector<std::string> GetInputNames() { return {}; }
+
+  /** \brief Get input shapes of the model
+   */
+  virtual std::map<std::string, std::vector<int64_t>> GetInputTensorShape() {
+    return {};
+  }
+
+  /** \brief Get output names of the model
+   */
+  virtual std::vector<std::string> GetOutputNames() { return {}; }
 
   /** \brief Get a mutable tensor directly.
    *
