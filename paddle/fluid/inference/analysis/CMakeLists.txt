@@ -14,8 +14,7 @@ cc_library(ir_pass_manager SRCS ir_pass_manager.cc DEPS graph pass ${INFER_IR_PA
 cc_library(argument INTERFACE SRCS argument.cc DEPS scope proto_desc)
 cc_library(analysis_pass INTERFACE SRCS analysis_pass.cc DEPS proto_desc)
 
-cc_library(analysis SRCS
-  analyzer.cc
+cc_library(analysis SRCS analyzer.cc
   DEPS ${analysis_deps} analysis_helper
   analysis_pass ${INFER_IR_PASSES}
   )
