@@ -24,8 +24,8 @@ from paddle.fluid import Program, program_guard
 def generate_compatible_shapes(dim_X, dim_Y, transpose_X, transpose_Y):
     BATCH_SIZE = 2
     M = 3
-    N = 4
-    K = 5
+    N = 50
+    K = 4
     if (dim_X == 1 and transpose_X) or (dim_Y == 1 and transpose_Y):
         K = 1
     if dim_X == 1:
@@ -82,15 +82,15 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
         # np.matmul outputs a scalar, we must convert to a Tensor of
         # shape (1, ) instead.
         # Everywhere else, we are compatible with np.matmul.
-        Out = np.array([Out], dtype="float32")
+        Out = np.array([Out], dtype="float64")
     return Out
 
 
 class Generator(object):
     def setUp(self):
         self.op_type = "matmul"
-        X = np.random.random(self.shape_X).astype("float32")
-        Y = np.random.random(self.shape_Y).astype("float32")
+        X = np.random.random(self.shape_X).astype("float64")
+        Y = np.random.random(self.shape_Y).astype("float64")
         Out = reference_matmul(X, Y, self.transpose_X, self.transpose_Y)
         self.inputs = {'X': X, 'Y': Y}
         self.attrs = {
@@ -147,12 +147,12 @@ def generate_negative_dims(in_shape):
 def test_negative_dims_program(obj):
     for shape_x in generate_negative_dims(obj.shape_X):
         for shape_y in generate_negative_dims(obj.shape_Y):
-            X = np.random.random(obj.shape_X).astype("float32")
-            Y = np.random.random(obj.shape_Y).astype("float32")
+            X = np.random.random(obj.shape_X).astype("float64")
+            Y = np.random.random(obj.shape_Y).astype("float64")
             Ref = reference_matmul(X, Y, obj.transpose_X, obj.transpose_Y)
             with program_guard(Program(), Program()):
-                x = fluid.data(name='x', shape=shape_x, dtype='float32')
-                y = fluid.data(name='y', shape=shape_y, dtype='float32')
+                x = fluid.data(name='x', shape=shape_x, dtype='float64')
+                y = fluid.data(name='y', shape=shape_y, dtype='float64')
                 output = fluid.layers.matmul(x, y, obj.transpose_X,
                                              obj.transpose_Y)
                 obj.assertEqual(len(Ref.shape), len(output.shape))
@@ -206,9 +206,9 @@ for dim_X in (1, 2, 3):
 
 # Test case n-dim
 def generate_compatible_shapes(dim, transpose_X, transpose_Y):
-    M = 2
-    N = 4
-    K = 3
+    M = 3
+    N = 50
+    K = 5
     shape_X = [2 for _ in range(dim - 2)]
     shape_Y = [2 for _ in range(dim - 2)]
 
@@ -247,8 +247,8 @@ class BigShapeTestCase(Generator):
         self.op_type = "matmul"
         self.transpose_X = False
         self.transpose_Y = False
-        X = np.random.random([100, 103]).astype("float32")
-        Y = np.random.random([103, 102]).astype("float32")
+        X = np.random.random([100, 103]).astype("float64")
+        Y = np.random.random([103, 102]).astype("float64")
         Out = reference_matmul(X, Y, self.transpose_X, self.transpose_Y)
         self.inputs = {'X': X, 'Y': Y}
         self.attrs = {
