@@ -11,15 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Defination of Role Makers."""
 
 from __future__ import print_function
+import paddle.fluid as fluid
+import os
+import time
 
 __all__ = [
     'Role', 'RoleMakerBase', 'MPISymetricRoleMaker', 'UserDefinedRoleMaker',
-    'UserDefinedCollectiveRoleMaker', 'PaddleCloudRoleMaker'
+    'UserDefinedCollectiveRoleMaker', 'PaddleCloudRoleMaker', 'GeneralRoleMaker'
 ]
-
-import os
 
 
 class Role:
@@ -115,6 +117,7 @@ class MPIRoleMaker(RoleMakerBase):
     """
 
     def __init__(self):
+        """Init."""
         super(MPIRoleMaker, self).__init__()
         from mpi4py import MPI
         self.MPI = MPI
@@ -124,16 +127,12 @@ class MPIRoleMaker(RoleMakerBase):
         self._ip = None
 
     def _get_rank(self):
-        """
-        return rank
-        """
+        """Return rank."""
         self._rank = self._comm.Get_rank()
         return self._rank
 
     def _get_size(self):
-        """
-        return size
-        """
+        """Return size."""
         self._size = self._comm.Get_size()
         return self._size
 
@@ -174,9 +173,7 @@ class MPIRoleMaker(RoleMakerBase):
         return self._ips
 
     def get_local_ip(self):
-        """
-        return get local ip
-        """
+        """Return get local ip."""
         import socket
         self._ip = socket.gethostbyname(socket.gethostname())
         return self._ip
@@ -196,12 +193,14 @@ class MPISymetricRoleMaker(MPIRoleMaker):
     """
 
     def __init__(self):
+        """Init."""
         super(MPISymetricRoleMaker, self).__init__()
         self._node_type = None
         self._proc_per_node = 2
         self._pserver_rand_port = 0
 
     def _check_role_generation(self):
+        """Check whether role has been generated."""
         if not self._role_is_generated:
             raise NameError("generate_role() should be called first")
         return True
@@ -215,6 +214,12 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         return False
 
     def get_pserver_endpoints(self):
+        """
+        get pserver endpoints
+        
+        Returns:
+            endpoints(list): pserver endpoints
+        """
         if self._pserver_rand_port <= 0:
             import random
             random.seed(self._server_num())
@@ -305,6 +310,20 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         else:
             raise Exception("You should check role generation first")
 
+    def _all_reduce(self, input, output, mode="sum"):
+        """
+        all reduce between all nodes in _node_type_comm
+        """
+        if mode == "sum":
+            mode = self.MPI.SUM
+        elif mode == "max":
+            mode = self.MPI.MAX
+        elif mode == "min":
+            mode = self.MPI.MIN
+        else:
+            raise ValueError("unknown mode: %s" % mode)
+        self._node_type_comm.Allreduce(input, output, op=mode)
+
     def generate_role(self):
         """
         generate currently process's role
@@ -325,12 +344,17 @@ class MPISymetricRoleMaker(MPIRoleMaker):
 
 
 class PaddleCloudRoleMaker(RoleMakerBase):
+    """
+    role maker for paddle cloud,
+    base class is RoleMakerBase
+    """
     def __init__(self, is_collective=False):
         super(PaddleCloudRoleMaker, self).__init__()
         self._role_is_generated = False
         self._is_collective = is_collective
 
     def generate_role(self):
+        """Generate role."""
         if not self._role_is_generated:
             if not self._is_collective:
                 try:
@@ -419,17 +443,286 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         return self._trainers_num
 
 
+class GeneralRoleMaker(RoleMakerBase):
+    """
+    This role maker is for general use, you can set os.environ to customize:
+        PADDLE_PSERVERS_IP_PORT_LIST : pserver ip:port, seperated by ','
+        PADDLE_TRAINER_ENDPOINTS     : trainer pi:port, seperated by ','
+        PADDLE_TRAINER_ID            : trainer id (only for trainer)
+        PADDLE_TRAINERS_NUM          : num of trainers
+        TRAINING_ROLE                : TRAINER or PSERVER
+        POD_IP                       : ip (only for pserver)
+        PADDLE_PORT                  : port (only for pserver)
+    """
+
+    def __init__(self, **kwargs):
+        super(RoleMakerBase, self).__init__()
+        self._role_is_generated = False
+        self._hdfs_name = kwargs.get("hdfs_name", "")
+        self._hdfs_ugi = kwargs.get("hdfs_ugi", "")
+        self._hdfs_path = kwargs.get("path", "")
+        self._iface = self.__get_default_iface()
+        self._prefix = os.getenv("SYS_JOB_ID", "")
+
+    def __get_default_iface(self):
+        """
+        get default physical interface
+        """
+        import netifaces
+        gateways = netifaces.gateways()
+        if gateways.get(netifaces.AF_INET) != None:
+            gateway = gateways[netifaces.AF_INET]
+            if len(gateway) > 0 and len(gateway[0]) > 1:
+                return gateway[0][1]
+        for intf_name in netifaces.interfaces():
+            addresses = netifaces.ifaddresses(intf_name)
+            if netifaces.AF_INET in addresses:
+                ipv4_addresses = addresses[netifaces.AF_INET]
+                    for ipv4_address in ipv4_addresses:
+                        if 'broadcast' in ipv4_address:
+                            return intf_name
+        print("warning: cannot pick default physical interface, set to lo")
+        return "lo"
+
+    def generate_role(self):
+        """
+        generate role for general role maker
+        """
+        if not self._role_is_generated:
+            eplist = os.environ["PADDLE_PSERVERS_IP_PORT_LIST"].split(",")
+            trainers_num = int(os.environ["PADDLE_TRAINERS_NUM"])
+            training_role = os.environ["TRAINING_ROLE"]
+            worker_endpoints = os.environ["PADDLE_TRAINER_ENDPOINTS"].split(",")
+            if training_role not in ["TRAINER", "PSERVER"]:
+                raise ValueError("TRAINING_ROLE must be PSERVER or TRAINER")
+            if training_role == "TRAINER":
+                role = Role.WORKER
+                current_id = int(os.environ["PADDLE_TRAINER_ID"])
+                self._node_type = 1
+                self._cur_endpoint = worker_endpoints[current_id]
+                gloo = fluid.core.Gloo()
+                gloo.init(current_id,
+                          len(worker_endpoints),
+                          self._hdfs_path.rstrip("/") + "/trainer",
+                          self._hdfs_name, self._hdfs_ugi, self._iface,
+                          self._prefix)
+                self._node_type_comm = gloo
+            elif training_role == "PSERVER":
+                role = Role.SERVER
+                cur_ip = os.environ["POD_IP"]
+                cur_port = os.environ["PADDLE_PORT"]
+                cur_endpoint = ":".join([cur_ip, cur_port])
+                current_id = eplist.index(cur_endpoint)
+                self._node_type = 0
+                self._cur_endpoint = cur_endpoint
+                gloo = fluid.core.Gloo()
+                gloo.init(current_id,
+                          len(eplist),
+                          self._hdfs_path.rstrip("/") + "/pserver",
+                          self._hdfs_name, self._hdfs_ugi, self._iface,
+                          self._prefix)
+                self._node_type_comm = gloo
+
+            gloo = fluid.core.Gloo()
+            all_list = worker_endpoints + eplist
+            gloo.init(
+                all_list.index(self._cur_endpoint),
+                len(all_list),
+                self._hdfs_path.rstrip("/") + "/all", self._hdfs_name,
+                self._hdfs_ugi, self._iface, self._prefix)
+            self._all_comm = gloo
+            self._trainers_num = trainers_num
+            self._server_endpoints = eplist
+            self._role = role
+            self._current_id = current_id
+            self._rank = all_list.index(self._cur_endpoint)
+            self._size = len(all_list)
+            self._worker_endpoints = worker_endpoints
+            self._role_is_generated = True
+
+    def _finalize(self):
+        """Default do nothing."""
+        pass
+
+    def _all_reduce(self, input, output, mode="sum"):
+        """
+        all reduce between all workers
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        input_list = [i for i in input]
+        output_list = [i for i in output]
+        self._node_type_comm.all_reduce(input_list, output_list, mode)
+        for i in range(len(output_list)):
+            output[i] = output_list[i]
+
+    def _all_gather(self, obj):
+        """
+        gather between all workers and pservers
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        self._barrier_all()
+        return self._all_comm.all_gather(obj)
+
+    def _worker_gather(self, obj):
+        """
+        gather between all workers
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        if not self.is_worker():
+            return None
+        self._barrier_worker()
+        return self._node_type_comm.all_gather(obj)
+
+    def _get_rank(self):
+        """
+        get current rank in all workers and pservers
+        """
+        return self._rank
+
+    def _get_size(self):
+        """
+        get total num of all workers and pservers
+        """
+        return self._size
+
+    def get_local_endpoint(self):
+        """
+        get local endpoint of current process
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._cur_endpoint
+
+    def get_trainer_endpoints(self):
+        """
+        get endpoint of all trainers
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._worker_endpoints
+
+    def get_pserver_endpoints(self):
+        """
+        get endpoint of all pservers
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._server_endpoints
+
+    def is_worker(self):
+        """
+        whether current process is worker
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._role == Role.WORKER
+
+    def is_server(self):
+        """
+        whether current process is server
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._role == Role.SERVER
+
+    def is_first_worker(self):
+        """
+        whether current process is worker of rank 0
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._role == Role.WORKER and self._current_id == 0
+
+    def worker_index(self):
+        """
+        get index of current worker
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._current_id
+
+    def server_index(self):
+        """
+        get index of current server
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._current_id
+
+    def worker_num(self):
+        """
+        retrun the current number of worker
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._worker_num()
+
+    def server_num(self):
+        """
+        return the current number of server
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._server_num()
+
+    def _barrier_worker(self):
+        """
+        barrier all workers in current distributed job
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        if self.is_worker():
+            self._node_type_comm.barrier()
+
+    def _barrier_all(self):
+        """
+        barrier all workers and servers in current distributed job
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        self._all_comm.barrier()
+
+    def _barrier_server(self):
+        """
+        barrier all servers in current distributed job
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        if self.is_server():
+            self._node_type_comm.barrier()
+
+    def _worker_num(self):
+        """
+        return the current number of worker
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._trainers_num
+
+    def _server_num(self):
+        """
+        return the current number of server
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return len(self._server_endpoints)
+
+
 class UserDefinedRoleMaker(RoleMakerBase):
+    """
+    UserDefinedRoleMaker is designed for worker and server assignment
+    under manual. Typically, a worker and a server node will be appointed
+    on each physical node, It can be assign by user.
+    """
+
     def __init__(self,
                  current_id=0,
                  role=Role.WORKER,
                  worker_num=0,
                  server_endpoints=None):
-        """
-        UserDefinedRoleMaker is designed for worker and server assignment
-        under manual. Typically, a worker and a server node will be appointed
-        on each physical node, It can be assign by user.
-        """
         super(UserDefinedRoleMaker, self).__init__()
 
         if not isinstance(server_endpoints, list):
@@ -495,11 +788,12 @@ class UserDefinedRoleMaker(RoleMakerBase):
 
 
 class UserDefinedCollectiveRoleMaker(RoleMakerBase):
+    """
+    UserDefinedCollectiveRoleMaker is designed for worker assignment
+    under manual for collective mode.
+    """
+
     def __init__(self, current_id=0, worker_endpoints=None):
-        """
-        UserDefinedCollectiveRoleMaker is designed for worker assignment
-        under manual for collective mode.
-        """
         super(UserDefinedCollectiveRoleMaker, self).__init__()
 
         if not isinstance(worker_endpoints, list):
