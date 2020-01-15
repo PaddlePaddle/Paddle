@@ -37,7 +37,6 @@ typedef __half float16;
 
 __device__ inline float16 real_exp(float16 x) { return ::hexp(x); }
 __device__ inline float16 real_log(float16 x) { return ::hlog(x); }
-
 )";
 
 static constexpr char elementwise_cuda_template[] = R"(

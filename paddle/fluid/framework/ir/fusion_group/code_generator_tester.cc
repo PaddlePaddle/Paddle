@@ -169,7 +169,7 @@ void TestMainImpl(std::string func_name, std::string code_str,
   paddle::framework::InitDevices(false, {0});
   paddle::platform::CUDAPlace place = paddle::platform::CUDAPlace(0);
   paddle::platform::CUDADeviceCode device_code(place, func_name, code_str);
-  device_code.Compile();
+  device_code.Compile(true);
 
   std::vector<paddle::framework::LoDTensor> gpu_tensors(cpu_tensors.size());
 
