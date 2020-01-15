@@ -70,6 +70,23 @@ TEST(PassTest, TestPassAttrCheck) {
   graph.reset(new Graph(prog));
   pass->SetNotOwned<int>("test_pass_attr", &val);
 
+  for (std::string try_type : {"bool", "const int", "std::string"}) {
+    try {
+      if (try_type == "bool") {
+        pass->Get<bool>("test_pass_attr");
+      } else if (try_type == "const int") {
+        pass->Get<const int>("test_pass_attr");
+      } else if (try_type == "std::string") {
+        pass->Get<std::string>("test_pass_attr");
+      }
+    } catch (paddle::platform::EnforceNotMet& e) {
+      exception = std::string(e.what());
+    }
+    std::string msg = "Invalid type for attritube test_pass_attr, expected: " +
+                      try_type + ", actual: int";
+    ASSERT_TRUE(exception.find(msg) != exception.npos);
+  }
+
   try {
     graph.reset(pass->Apply(graph.release()));
   } catch (paddle::platform::EnforceNotMet& e) {

@@ -61,12 +61,13 @@ class Pass {
       return *boost::any_cast<AttrType *>(attrs_.at(attr_name));
     } catch (boost::bad_any_cast &) {
       auto TypeToString = [](const std::type_info &info) -> std::string {
-        if (std::type_index(info) == std::type_index(typeid(void *))) {
-          return "void";
-        } else if (std::type_index(info) == std::type_index(typeid(bool *))) {
+        if (std::type_index(info) == std::type_index(typeid(bool *))) {
           return "bool";
         } else if (std::type_index(info) == std::type_index(typeid(int *))) {
           return "int";
+        } else if (std::type_index(info) ==
+                   std::type_index(typeid(const int *))) {
+          return "const int";
         } else if (std::type_index(info) ==
                    std::type_index(typeid(std::string *))) {
           return "std::string";
