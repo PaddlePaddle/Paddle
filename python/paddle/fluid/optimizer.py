@@ -67,7 +67,7 @@ class Optimizer(object):
                  parameter_list=None,
                  regularization=None,
                  name=None):
-        self._parameter_list = None
+        self._params_grads = None
         if framework.in_dygraph_mode():
             if not isinstance(learning_rate, float) and \
                     not isinstance(learning_rate, LearningRateDecay):
@@ -79,7 +79,7 @@ class Optimizer(object):
             else:
                 self._name = unique_name.generate(self.__class__.__name__)
             if parameter_list is not None:
-                self._parameter_list = parameter_list
+                self._params_grads = self._get_params_grads(parameter_list)
             else:
                 raise AttributeError(
                     "parameter_list argument given to the Optimizer should not be None in dygraph mode."
@@ -103,8 +103,8 @@ class Optimizer(object):
         # Dictionary of accumulators. Some optimizer subclasses need to
         # allocate and manage extra variables associated with the parameters
         # to train. These variables are called accumulators.
-        # {accum_name : { parameter_name : accumulator_for_parameter, ...}, ...}
-        self._accumulators = defaultdict(lambda: dict())
+        # {accum_name : accumulator_for_parameter}
+        self._accumulators = defaultdict()
         self.helper = None
         self._opti_name_list = []
         self._accumulators_holder = {}
@@ -359,18 +359,18 @@ class Optimizer(object):
         """
         if self._name is not None:
             name = self._name + "_" + name
-        if (name in self._accumulators and
-                param.name in self._accumulators[name]):
+        accumulator_name = param.name + "_" + name
+        if accumulator_name in self._accumulators:
             if framework.in_dygraph_mode():
-                return self._accumulators[name][param.name]
-            raise Exception("Accumulator {} already exists for parameter {}".
-                            format(name, param.name))
+                return self._accumulators[accumulator_name]
+            raise Exception(
+                "Accumulator {} already exists for parameter {} with name: {}".
+                format(name, param.name, accumulator_name))
         if shape == None:
             shape = param.shape
         assert isinstance(self.helper, LayerHelper)
-
-        var_name = param.name + "_" + name
-        var_name = unique_name.generate(var_name)
+        # Variable name of accumulator.
+        var_name = unique_name.generate(accumulator_name)
         self._opti_name_list.append(var_name)
 
         var = self.helper.create_global_variable(
@@ -389,7 +389,7 @@ class Optimizer(object):
                         "Optimizer set error, {} should in state dict".format( var_name )
                 var.set_value(self._accumulators_holder[var_name])
 
-        self._accumulators[name][param.name] = var
+        self._accumulators[accumulator_name] = var
         return var
 
     def _get_accumulator(self, name, param):
@@ -404,11 +404,12 @@ class Optimizer(object):
         """
         if self._name is not None:
             name = self._name + "_" + name
-        if (name not in self._accumulators or
-                param.name not in self._accumulators[name]):
-            raise Exception("Accumulator {} does not exist for parameter {}".
-                            format(name, param.name))
-        return self._accumulators[name][param.name]
+        accumulator_name = param.name + "_" + name
+        if accumulator_name not in self._accumulators:
+            raise Exception(
+                "Accumulator {} does not exist for parameter {} with name: {}".
+                format(name, param.name, accumulator_name))
+        return self._accumulators[accumulator_name]
 
     def _create_optimization_pass(self, parameters_and_grads):
         """Add optimization operators to update gradients to variables.
@@ -524,6 +525,27 @@ class Optimizer(object):
     def _append_dgc_ops(self, param_and_grad):
         pass
 
+    def _get_params_grads(self, parameter_list):
+        """
+        Get params_grads from parameter_list in dygraph mode.
+        Args:
+            parameter_list (list): List of ``Variable`` or ``Variable.name`` to update
+                to minimize ``loss``.
+
+        Return:
+            list: list of (param, grad) variable pairs, param is ``Parameter``,
+                grad is the gradient value corresponding to the parameter.
+        """
+        params_grads = []
+        for param in parameter_list:
+            if not param.trainable:
+                continue
+            if param._grad_ivar() is not None:
+                # create gradient variable
+                grad_var = param._grad_ivar()
+                params_grads.append((param, grad_var))
+        return params_grads
+
     def backward(self,
                  loss,
                  startup_program=None,
@@ -562,14 +584,7 @@ class Optimizer(object):
 
         self._dtype = loss.dtype
         if framework.in_dygraph_mode():
-            params_grads = []
-            for param in self._parameter_list:
-                if not param.trainable:
-                    continue
-                if param._grad_ivar() is not None:
-                    # create gradient variable
-                    grad_var = param._grad_ivar()
-                    params_grads.append((param, grad_var))
+            return self._params_grads
         else:
             if callbacks is None:
                 callbacks = [error_clip_callback]
