@@ -12,6 +12,7 @@
 #include "paddle/fluid/operators/detection/yolov3_loss_op.h"
 #include <memory>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/imperative/type_defs.h"
 
 namespace paddle {
 namespace operators {
@@ -98,8 +99,9 @@ class Yolov3LossOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   platform::CPUPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        platform::CPUPlace());
   }
 };
 
@@ -255,34 +257,36 @@ class Yolov3LossOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   platform::CPUPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        platform::CPUPlace());
   }
 };
 
-class Yolov3LossGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class Yolov3LossGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto* op = new T();
     op->SetType("yolov3_loss_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput("GTBox", Input("GTBox"));
-    op->SetInput("GTLabel", Input("GTLabel"));
-    op->SetInput("GTScore", Input("GTScore"));
-    op->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
-    op->SetInput("ObjectnessMask", Output("ObjectnessMask"));
-    op->SetInput("GTMatchMask", Output("GTMatchMask"));
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("GTBox", this->Input("GTBox"));
+    op->SetInput("GTLabel", this->Input("GTLabel"));
+    op->SetInput("GTScore", this->Input("GTScore"));
+    op->SetInput(framework::GradVarName("Loss"), this->OutputGrad("Loss"));
+    op->SetInput("ObjectnessMask", this->Output("ObjectnessMask"));
+    op->SetInput("GTMatchMask", this->Output("GTMatchMask"));
 
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
 
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetOutput(framework::GradVarName("GTBox"), {});
     op->SetOutput(framework::GradVarName("GTLabel"), {});
     op->SetOutput(framework::GradVarName("GTScore"), {});
-    return std::unique_ptr<framework::OpDesc>(op);
+    return std::unique_ptr<T>(op);
   }
 };
 
@@ -291,7 +295,8 @@ class Yolov3LossGradMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(yolov3_loss, ops::Yolov3LossOp, ops::Yolov3LossOpMaker,
-                  ops::Yolov3LossGradMaker);
+                  ops::Yolov3LossGradMaker<paddle::framework::OpDesc>,
+                  ops::Yolov3LossGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(yolov3_loss_grad, ops::Yolov3LossOpGrad);
 REGISTER_OP_CPU_KERNEL(yolov3_loss, ops::Yolov3LossKernel<float>,
                        ops::Yolov3LossKernel<double>);

@@ -64,9 +64,9 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
     if (list_new_shape_tensor.size() > 0 || context.HasInput("ShapeTensor")) {
       if (context.HasInput("ShapeTensor")) {
         auto* shape_tensor = context.Input<framework::Tensor>("ShapeTensor");
-        new_shape = get_new_data_from_shape_tensor(shape_tensor);
+        new_shape = GetNewDataFromShapeTensor(shape_tensor);
       } else if (list_new_shape_tensor.size() > 0) {
-        new_shape = get_new_shape_from_shape_tensorlist(list_new_shape_tensor);
+        new_shape = GetNewDataFromShapeTensorList(list_new_shape_tensor);
       }
     }
 

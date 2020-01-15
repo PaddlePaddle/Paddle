@@ -65,6 +65,8 @@ class LoDTensorBlockingQueue {
 
   inline bool IsClosed() const { return queue_.IsClosed(); }
 
+  inline void Kill() { queue_.Kill(); }
+
  private:
   BlockingQueue<std::vector<framework::LoDTensor>> queue_;
 };

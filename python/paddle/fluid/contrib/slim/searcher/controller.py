@@ -123,11 +123,14 @@ class SAController(EvolutionaryController):
         _logger.info("current_reward: {}; current tokens: {}".format(
             self._reward, self._tokens))
 
-    def next_tokens(self):
+    def next_tokens(self, control_token=None):
         """
         Get next tokens.
         """
-        tokens = self._tokens
+        if control_token:
+            tokens = control_token[:]
+        else:
+            tokens = self._tokens
         new_tokens = tokens[:]
         index = int(len(self._range_table) * np.random.random())
         new_tokens[index] = (

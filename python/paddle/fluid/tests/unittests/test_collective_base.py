@@ -163,7 +163,7 @@ class TestDistBase(unittest.TestCase):
         w0_ep, w1_ep = worker_endpoints
         #print("w0_ep:",w0_ep," w1_ep:",w1_ep)
         env0 = {
-            "FLAGS_selected_gpus": "2",
+            "FLAGS_selected_gpus": "0",
             "PADDLE_TRAINER_ID": "0",
             "PADDLE_TRAINERS_NUM": "2",
             "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
@@ -171,7 +171,7 @@ class TestDistBase(unittest.TestCase):
         }
 
         env1 = {
-            "FLAGS_selected_gpus": "3",
+            "FLAGS_selected_gpus": "1",
             "PADDLE_TRAINER_ID": "1",
             "PADDLE_TRAINERS_NUM": "2",
             "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,

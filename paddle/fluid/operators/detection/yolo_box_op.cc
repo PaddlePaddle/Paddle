@@ -43,9 +43,12 @@ class YoloBoxOp : public framework::OperatorWithKernel {
         "+ class_num)).");
     PADDLE_ENFORCE_EQ(dim_imgsize.size(), 2,
                       "Input(ImgSize) should be a 2-D tensor.");
-    PADDLE_ENFORCE_EQ(
-        dim_imgsize[0], dim_x[0],
-        "Input(ImgSize) dim[0] and Input(X) dim[0] should be same.");
+    if ((dim_imgsize[0] > 0 && dim_x[0] > 0) || ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(
+          dim_imgsize[0], dim_x[0],
+          platform::errors::InvalidArgument(
+              "Input(ImgSize) dim[0] and Input(X) dim[0] should be same."));
+    }
     PADDLE_ENFORCE_EQ(dim_imgsize[1], 2, "Input(ImgSize) dim[1] should be 2.");
     PADDLE_ENFORCE_GT(anchors.size(), 0,
                       "Attr(anchors) length should be greater than 0.");
@@ -65,8 +68,8 @@ class YoloBoxOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 
@@ -110,6 +113,10 @@ class YoloBoxOpMaker : public framework::OpProtoAndCheckerMaker {
                    "Boxes with confidence scores under threshold should "
                    "be ignored.")
         .SetDefault(0.01);
+    AddAttr<bool>("clip_bbox",
+                  "Whether clip output bonding box in Input(ImgSize) "
+                  "boundary. Default true.")
+        .SetDefault(true);
     AddComment(R"DOC(
          This operator generates YOLO detection boxes from output of YOLOv3 network.
          
@@ -161,7 +168,9 @@ class YoloBoxOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(yolo_box, ops::YoloBoxOp, ops::YoloBoxOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    yolo_box, ops::YoloBoxOp, ops::YoloBoxOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(yolo_box, ops::YoloBoxKernel<float>,
                        ops::YoloBoxKernel<double>);

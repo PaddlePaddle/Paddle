@@ -18,6 +18,7 @@
 #include "paddle/fluid/platform/place.h"
 
 #include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/imperative/type_defs.h"
 
 namespace paddle {
 namespace framework {

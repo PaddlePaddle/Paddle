@@ -63,6 +63,8 @@ class AllReduceOpHandle : public OpHandleBase {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
   void NCCLAllReduceFunc(
       const std::vector<std::function<void()>> &all_reduce_calls);
+
+  void SyncNCCLAllReduce();
 #endif
 
   void AllReduceImpl(const std::vector<VarHandle *> &in_var_handles,

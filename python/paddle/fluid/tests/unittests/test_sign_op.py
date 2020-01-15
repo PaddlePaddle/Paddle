@@ -17,13 +17,15 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 
 
 class TestSignOp(OpTest):
     def setUp(self):
         self.op_type = "sign"
         self.inputs = {
-            'X': np.random.uniform(-10, 10, (10, 10)).astype("float32")
+            'X': np.random.uniform(-10, 10, (10, 10)).astype("float64")
         }
         self.outputs = {'Out': np.sign(self.inputs['X'])}
 
@@ -32,6 +34,21 @@ class TestSignOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
+
+class TestSignOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # The input type of sign_op must be Variable or numpy.ndarray.
+            input1 = 12
+            self.assertRaises(TypeError, fluid.layers.sign, input1)
+            # The input dtype of sign_op must be float16, float32, float64.
+            input2 = fluid.layers.data(
+                name='input2', shape=[12, 10], dtype="int32")
+            self.assertRaises(TypeError, fluid.layers.sign, input2)
+            input3 = fluid.layers.data(
+                name='input3', shape=[4], dtype="float16")
+            fluid.layers.sign(input3)
 
 
 if __name__ == "__main__":

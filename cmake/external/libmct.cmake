@@ -12,18 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-IF(NOT ${WITH_LIBMCT})
-  return()
-ENDIF(NOT ${WITH_LIBMCT})
-
-IF(WIN32 OR APPLE)
-    MESSAGE(WARNING
-        "Windows or Mac is not supported with LIBMCT in Paddle yet."
-        "Force WITH_LIBMCT=OFF")
-    SET(WITH_LIBMCT OFF CACHE STRING "Disable LIBMCT package in Windows and MacOS" FORCE)
-    return()
-ENDIF()
-
 INCLUDE(ExternalProject)
 
 SET(LIBMCT_PROJECT       "extern_libmct")

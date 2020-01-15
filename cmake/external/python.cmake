@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-IF(NOT WITH_PYTHON)
-    return()
-ENDIF()
-
 INCLUDE(python_module)
 
 FIND_PACKAGE(PythonInterp ${PY_VERSION} REQUIRED)

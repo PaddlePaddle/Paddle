@@ -84,7 +84,8 @@ class CheckpointNotifyOpShapeInference : public framework::InferShapeBase {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(checkpoint_notify, ops::CheckpointNotifyOp,
-                  paddle::framework::EmptyGradOpMaker,
-                  ops::CheckpointNotifyOpMaker,
-                  ops::CheckpointNotifyOpShapeInference);
+REGISTER_OPERATOR(
+    checkpoint_notify, ops::CheckpointNotifyOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::CheckpointNotifyOpMaker, ops::CheckpointNotifyOpShapeInference);

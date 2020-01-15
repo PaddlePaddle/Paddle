@@ -171,9 +171,18 @@ struct AnalysisConfig {
       std::vector<std::string> passes_filter = {},
       std::vector<std::string> ops_filter = {});
 
+  void EnableLiteEngine(
+      AnalysisConfig::Precision precision_mode = Precision::kFloat32,
+      const std::vector<std::string>& passes_filter = {},
+      const std::vector<std::string>& ops_filter = {});
+
   /** A boolean state indicating whether the Anakin sub-graph engine is used.
   */
   bool anakin_engine_enabled() const { return use_anakin_; }
+
+  /** A boolean state indicating whether the Lite sub-graph engine is used.
+  */
+  bool lite_engine_enabled() const { return use_lite_; }
 
   /** \brief Control whether to debug IR graph analysis phase.
    *
@@ -257,6 +266,15 @@ struct AnalysisConfig {
    */
   bool profile_enabled() const { return with_profile_; }
 
+  /** \brief Disable GLOG information output for security.
+   *
+   * If called, no LOG(INFO) logs will be generated.
+   */
+  void DisableGlogInfo();
+  /** A boolean state telling whether the GLOG info is disabled.
+   */
+  bool glog_info_disabled() const { return !with_glog_info_; }
+
   void SetInValid() const { is_valid_ = false; }
   bool is_valid() const { return is_valid_; }
 
@@ -325,6 +343,8 @@ struct AnalysisConfig {
 
   bool with_profile_{false};
 
+  bool with_glog_info_{true};
+
   // A runtime cache, shouldn't be transferred to others.
   std::string serialized_info_cache_;
 
@@ -338,6 +358,11 @@ struct AnalysisConfig {
   bool anakin_auto_config_layout_{false};
   std::vector<std::string> anakin_passes_filter_;
   std::vector<std::string> anakin_ops_filter_;
+
+  bool use_lite_{false};
+  std::vector<std::string> lite_passes_filter_;
+  std::vector<std::string> lite_ops_filter_;
+  Precision lite_precision_mode_;
 
   // mkldnn related.
   int mkldnn_cache_capacity_{0};

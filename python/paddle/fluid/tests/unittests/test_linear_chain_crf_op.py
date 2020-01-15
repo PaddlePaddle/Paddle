@@ -205,7 +205,7 @@ class TestLinearChainCrfPaddingTensor(OpTest):
             "Emission": self.seq_pad(emission, lod[0]),
             "Transition": transition,
             "Label": self.seq_pad(labels, lod[0]),
-            "length": np.array(lod).astype("int64")
+            "Length": np.array(lod).astype("int64")
         }
         crf = LinearChainCrfForward(seq_start_pos, emission, emission_row_max,
                                     emission_exps, transition, transition_exps,

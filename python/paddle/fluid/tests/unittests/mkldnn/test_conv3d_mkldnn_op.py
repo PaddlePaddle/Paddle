@@ -15,44 +15,83 @@
 from __future__ import print_function
 
 import unittest
-
-from paddle.fluid.tests.unittests.test_conv3d_op import TestConv3dOp, TestCase1, TestWithGroup1, TestWithGroup2, TestWith1x1, TestWithInput1x1Filter1x1
+import numpy as np
+from paddle.fluid.tests.unittests.test_conv3d_op import TestConv3dOp, TestCase1, TestWithGroup1, TestWithGroup2, TestWith1x1, TestWithInput1x1Filter1x1, TestConv3dOp_2
 
 
 class TestMKLDNN(TestConv3dOp):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_format = "NCHW"
+        self.dtype = np.float32
 
 
 class TestMKLDNNCase1(TestCase1):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_format = "NCHW"
+        self.dtype = np.float32
 
 
 class TestMKLDNNGroup1(TestWithGroup1):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_format = "NCHW"
+        self.dtype = np.float32
 
 
 class TestMKLDNNGroup2(TestWithGroup2):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_format = "NCHW"
+        self.dtype = np.float32
 
 
 class TestMKLDNNWith1x1(TestWith1x1):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_format = "NCHW"
+        self.dtype = np.float32
 
 
 class TestMKLDNNWithInput1x1Filter1x1(TestWithInput1x1Filter1x1):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_format = "NCHW"
+        self.dtype = np.float32
+
+
+class TestConv3dOp_AsyPadding_MKLDNN(TestConv3dOp):
+    def init_kernel_type(self):
+        self.use_mkldnn = True
+        self.data_format = "NCHW"
+        self.dtype = np.float32
+
+    def init_paddings(self):
+        self.pad = [1, 0, 1, 0, 0, 2]
+        self.padding_algorithm = "EXPLICIT"
+
+
+class TestConv3dOp_Same_MKLDNN(TestConv3dOp_AsyPadding_MKLDNN):
+    def init_paddings(self):
+        self.pad = [0, 0, 0]
+        self.padding_algorithm = "SAME"
+
+    def init_kernel_type(self):
+        self.use_mkldnn = True
+        self.data_format = "NCHW"
+        self.dtype = np.float32
+
+
+class TestConv3dOp_Valid_MKLDNN(TestConv3dOp_AsyPadding_MKLDNN):
+    def init_paddings(self):
+        self.pad = [1, 1, 1]
+        self.padding_algorithm = "VALID"
+
+    def init_kernel_type(self):
+        self.use_mkldnn = True
+        self.data_format = "NCHW"
+        self.dtype = np.float32
 
 
 if __name__ == '__main__':

@@ -18,11 +18,7 @@ import unittest, sys
 sys.path.append("../")
 import numpy as np
 
-from test_logical_op import create_test_class
-
-create_test_class('logical_and', lambda _a, _b: np.logical_and(_a, _b))
-create_test_class('logical_or', lambda _a, _b: np.logical_or(_a, _b))
-create_test_class('logical_not', lambda _a: np.logical_not(_a), False)
+from test_logical_op import *
 
 if __name__ == '__main__':
     unittest.main()

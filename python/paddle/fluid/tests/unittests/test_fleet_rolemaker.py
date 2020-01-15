@@ -21,9 +21,9 @@ import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 
 class TestCloudRoleMaker(unittest.TestCase):
     def setUp(self):
-        os.environ["PADDLE_PORT"] = "36001"
-        os.environ["PADDLE_PSERVERS"] = "127.0.0.1,127.0.0.2"
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
+        os.environ[
+            "PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36001,127.0.0.2:36001"
 
     def test_tr_rolemaker(self):
         os.environ["TRAINING_ROLE"] = "TRAINER"
@@ -39,6 +39,7 @@ class TestCloudRoleMaker(unittest.TestCase):
     def test_ps_rolemaker(self):
         os.environ["TRAINING_ROLE"] = "PSERVER"
         os.environ["POD_IP"] = "127.0.0.1"
+        os.environ["PADDLE_PORT"] = "36001"
 
         ro = role_maker.PaddleCloudRoleMaker(is_collective=False)
         ro.generate_role()

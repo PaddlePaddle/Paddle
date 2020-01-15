@@ -71,9 +71,6 @@ TEST(AnalysisPredictor, analysis_on) {
   auto _predictor = CreatePaddlePredictor<AnalysisConfig>(config);
   auto* predictor = static_cast<AnalysisPredictor*>(_predictor.get());
 
-  if (predictor->inference_program_->Version() == 0) {
-    ASSERT_FALSE(predictor->CheckOperatorCompatible());
-  }
   ASSERT_TRUE(predictor->scope_);
   ASSERT_TRUE(predictor->sub_scope_);
   ASSERT_EQ(predictor->scope_->parent(), nullptr);
@@ -279,7 +276,7 @@ class MkldnnQuantizerTest : public testing::Test {
 
   std::pair<bool, framework::LoDTensor> GetMaxChScalingFactor(
       const framework::LoDTensor& var_tensor, bool is_unsigned) const {
-    return mkldnn_quantizer->GetMaxChScalingFactor(var_tensor, is_unsigned);
+    return mkldnn_quantizer->GetMaxChScalingFactor(var_tensor, is_unsigned, 0);
   }
 
   std::pair<bool, framework::LoDTensor> GetKLScalingFactor(

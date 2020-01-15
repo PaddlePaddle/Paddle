@@ -82,8 +82,10 @@ namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
 using float16 = paddle::platform::float16;
 
-REGISTER_OPERATOR(eye, ops::EyeOp, ops::EyeOpMaker, ops::EyeOpVarTypeInference,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    eye, ops::EyeOp, ops::EyeOpMaker, ops::EyeOpVarTypeInference,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(eye, ops::EyeKernel<CPU, float>,
                        ops::EyeKernel<CPU, double>,

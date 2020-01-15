@@ -1,10 +1,10 @@
-paddle/operators/check_t.save
-paddle/operators/check_tensor.ls
-paddle/operators/tensor.save
-python/paddle/v2/fluid/tests/book/image_classification_resnet.inference.model/
-python/paddle/v2/fluid/tests/book/image_classification_vgg.inference.model/
-python/paddle/v2/fluid/tests/book/label_semantic_roles.inference.model/
 paddle/fluid/operators/distributed/send_recv.proto
+paddle/fluid/API.spec
+paddle/fluid/API_DEV.spec
+paddle/fluid/API_PR.spec
+paddle/fluid/op_use_default_grad_maker_DEV.spec
+paddle/fluid/op_use_default_grad_maker_PR.spec
+
 *.DS_Store
 *.vs
 build/

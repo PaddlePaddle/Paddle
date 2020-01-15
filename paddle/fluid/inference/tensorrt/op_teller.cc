@@ -32,31 +32,47 @@ struct SimpleOpTypeSetTeller : public Teller {
   }
 
  private:
-  std::unordered_set<std::string> teller_set{{"mul",
-                                              "conv2d",
-                                              "pool2d",
-                                              "relu",
-                                              "softmax",
-                                              "sigmoid",
-                                              "depthwise_conv2d",
-                                              "batch_norm",
-                                              "concat",
-                                              "tanh",
-                                              "pad",
-                                              "elementwise_add",
-                                              "elementwise_mul",
-                                              "dropout",
-                                              "prelu",
-                                              "conv2d_transpose",
-                                              "leaky_relu",
-                                              "fc",
-                                              "shuffle_channel",
-                                              "swish",
-                                              "split"}};
+  std::unordered_set<std::string> teller_set{{
+      "mul",
+      "conv2d",
+      "pool2d",
+      "relu",
+      "softmax",
+      "sigmoid",
+      "depthwise_conv2d",
+      "batch_norm",
+      "concat",
+      "tanh",
+      "pad",
+      "elementwise_add",
+      "elementwise_mul",
+      "dropout",
+      "prelu",
+      "conv2d_transpose",
+      "leaky_relu",
+      "fc",
+      "shuffle_channel",
+      "swish",
+      "split",
+      "instance_norm",
+      "gelu",
+      "layer_norm",
+      "multihead_matmul",
+  }};
 };
 
 bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc) {
+  // do not support the op which is labeled the `skip_quant`
+  if (desc.HasAttr("op_namescope") &&
+      boost::get<std::string>(desc.GetAttr("op_namescope")) == "/skip_quant_2/")
+    return false;
   for (auto& teller : tellers_) {
+    if (op_type == "pool2d" || op_type == "conv2d" ||
+        op_type == "depthwise_conv2d" || op_type == "conv2d_transpose") {
+      std::vector<int> paddings =
+          boost::get<std::vector<int>>(desc.GetAttr("paddings"));
+      if (paddings.size() > 2) return false;
+    }
     if ((*teller)(op_type, desc)) return true;
   }
   return false;

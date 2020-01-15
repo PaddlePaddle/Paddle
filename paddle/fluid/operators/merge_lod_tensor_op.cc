@@ -213,20 +213,21 @@ class MergeLoDTensorInferShape : public framework::InferShapeBase {
   }
 };
 
-class MergeLoDTensorGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class MergeLoDTensorGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *grad_op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto *grad_op = new T();
     grad_op->SetType("split_lod_tensor");
-    grad_op->SetInput("X", OutputGrad("Out"));
-    grad_op->SetInput("Mask", Input("Mask"));
-    grad_op->SetOutput("OutTrue", InputGrad("InTrue"));
-    grad_op->SetOutput("OutFalse", InputGrad("InFalse"));
-    grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+    grad_op->SetInput("X", this->OutputGrad("Out"));
+    grad_op->SetInput("Mask", this->Input("Mask"));
+    grad_op->SetOutput("OutTrue", this->InputGrad("InTrue"));
+    grad_op->SetOutput("OutFalse", this->InputGrad("InFalse"));
+    grad_op->SetAttrMap(this->Attrs());
+    return std::unique_ptr<T>(grad_op);
   }
 };
 
@@ -236,8 +237,11 @@ class MergeLoDTensorGradMaker : public framework::SingleGradOpDescMaker {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(merge_lod_tensor, ops::MergeLoDTensorOp,
                   ops::MergeLoDTensorOpProtoMaker,
-                  ops::MergeLoDTensorInferShape, ops::MergeLoDTensorGradMaker);
-REGISTER_OPERATOR(merge_lod_tensor_infer, ops::MergeLoDTensorInferOp,
-                  ops::MergeLoDTensorOpProtoMaker,
                   ops::MergeLoDTensorInferShape,
-                  paddle::framework::EmptyGradOpMaker);
+                  ops::MergeLoDTensorGradMaker<paddle::framework::OpDesc>,
+                  ops::MergeLoDTensorGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(
+    merge_lod_tensor_infer, ops::MergeLoDTensorInferOp,
+    ops::MergeLoDTensorOpProtoMaker, ops::MergeLoDTensorInferShape,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

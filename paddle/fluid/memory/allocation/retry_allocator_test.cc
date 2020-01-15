@@ -133,9 +133,7 @@ TEST(RetryAllocator, RetryAllocatorLastAllocFailure) {
       ASSERT_TRUE(false);
       allocation.reset();
     } catch (BadAlloc &ex) {
-      ASSERT_TRUE(std::string(ex.what()).find(
-                      "Cannot allocate " + std::to_string(allocate_size) +
-                      " on GPU " + std::to_string(p.device)) !=
+      ASSERT_TRUE(std::string(ex.what()).find("Cannot allocate") !=
                   std::string::npos);
     }
   }

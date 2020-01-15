@@ -81,9 +81,9 @@ inline FeedFetchList ThreadedSSAGraphExecutor::RunImpl(
     // run the recorded operators directly. This strategy could make the
     // execution faster.
     VLOG(3) << "Run the traced ops.";
-    RunTracedOps(traced_ops_);
-    RunTracedOps(fetch_ops);
-    if (exception_holder_.IsCaught()) {
+    bool is_exception_free =
+        RunTracedOps(traced_ops_) && RunTracedOps(fetch_ops);
+    if (!is_exception_free) {
       ExecutionFinal(&fetch_ops);
     }
   } else {
@@ -170,10 +170,15 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
   for (size_t i = 0; i < fetch_tensors.size(); ++i) {
     auto &var_name = fetch_tensors[i];
     auto fetched_var_it = fetched_vars.find(var_name);
-    PADDLE_ENFORCE(fetched_var_it != fetched_vars.end(),
-                   "Cannot find fetched variable(%s).(Perhaps the main_program "
-                   "is not set to ParallelExecutor)",
-                   var_name);
+    PADDLE_ENFORCE_NE(
+        fetched_var_it, fetched_vars.end(),
+        platform::errors::PreconditionNotMet(
+            "Cannot find fetched variable(%s) in current computation graph. "
+            "Possible reasons are:\n"
+            "  1. The variable to be fetched is not defined in main program.\n"
+            "  2. The variable to be fetched is not an input or output of any "
+            "operator.",
+            var_name));
 
     auto &vars = fetched_var_it->second;
 
@@ -308,27 +313,25 @@ void ThreadedSSAGraphExecutor::RunOp(
   RecordOps(op);
 }
 
-void ThreadedSSAGraphExecutor::RunTracedOps(
+bool ThreadedSSAGraphExecutor::RunTracedOps(
     const std::vector<OpHandleBase *> &traced_ops) {
   for (auto &op : traced_ops) {
-    if (exception_holder_.IsCaught()) {
-      return;
-    }
-    RunOpSync(op);
+    if (!RunOpSync(op)) return false;
   }
+  return true;
 }
 
-void ThreadedSSAGraphExecutor::RunOpSync(OpHandleBase *op) {
+bool ThreadedSSAGraphExecutor::RunOpSync(OpHandleBase *op) {
   try {
-    if (VLOG_IS_ON(10)) {
-      VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
-    }
+    VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
     if (LIKELY(!strategy_.dry_run_)) {
       op->Run(strategy_.use_cuda_);
     }
     VLOG(10) << op << " " << op->Name() << " Done ";
+    return true;
   } catch (...) {
     exception_holder_.Catch(std::current_exception());
+    return false;
   }
 }
 

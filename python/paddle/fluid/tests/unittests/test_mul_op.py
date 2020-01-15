@@ -18,12 +18,14 @@ import unittest
 import numpy as np
 import paddle.fluid.core as core
 from op_test import OpTest
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 
 
 class TestMulOp(OpTest):
     def setUp(self):
         self.op_type = "mul"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_dtype_type()
         self.inputs = {
             'X': np.random.random((2, 5)).astype(self.dtype),
@@ -38,7 +40,7 @@ class TestMulOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.5)
+        self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
@@ -49,10 +51,25 @@ class TestMulOp(OpTest):
             ['X'], 'Out', max_relative_error=0.5, no_grad_set=set('Y'))
 
 
+class TestMulOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # The input type of mul_op must be Variable.
+            x1 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace())
+            x2 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace())
+            self.assertRaises(TypeError, fluid.layers.mul, x1, x2)
+            # The input dtype of mul_op must be float32 or float64.
+            x3 = fluid.layers.data(name='x3', shape=[4], dtype="int32")
+            x4 = fluid.layers.data(name='x4', shape=[4], dtype="int32")
+            self.assertRaises(TypeError, fluid.layers.mul, x3, x4)
+
+
 class TestMulOp2(OpTest):
     def setUp(self):
         self.op_type = "mul"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_dtype_type()
         self.inputs = {
             'X': np.random.random((3, 4, 4, 3)).astype(self.dtype),
@@ -74,7 +91,7 @@ class TestMulOp2(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.5)
+        self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
         self.check_grad(

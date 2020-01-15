@@ -17,8 +17,12 @@ limitations under the License. */
 #include <memory>
 #include <sstream>
 #include <string>
+#include <unordered_set>
 #include <vector>
+#include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/program_desc.h"
 
 namespace paddle {
 namespace framework {
@@ -43,6 +47,19 @@ struct Layers {
     op->SetInput("Bias", {bias->Name()});
     op->SetOutput("Out", {out->Name()});
     op->SetAttr("use_cudnn", use_cudnn);
+    op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                static_cast<int>(OpRole::kForward));
+    return out;
+  }
+
+  VarDesc* conv2d_transpose(VarDesc* input, VarDesc* filter, VarDesc* bias) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("conv2d_transpose");
+    op->SetInput("Input", {input->Name()});
+    op->SetInput("Filter", {filter->Name()});
+    op->SetInput("Bias", {bias->Name()});
+    op->SetOutput("Out", {out->Name()});
     op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                 static_cast<int>(OpRole::kForward));
     return out;
@@ -79,6 +96,14 @@ struct Layers {
     return unary_op("relu", x, out);
   }
 
+  VarDesc* sigmoid(VarDesc* x, VarDesc* out = nullptr) {
+    return unary_op("sigmoid", x, out);
+  }
+
+  VarDesc* tanh(VarDesc* x, VarDesc* out = nullptr) {
+    return unary_op("tanh", x, out);
+  }
+
   VarDesc* fc(VarDesc* input, VarDesc* w, VarDesc* bias,
               int in_num_col_dims = 1, std::string activation_type = "") {
     VarDesc* out = lod_tensor(unique_name());
@@ -104,6 +129,10 @@ struct Layers {
 
   VarDesc* elementwise_add(VarDesc* x, VarDesc* y, VarDesc* out = nullptr) {
     return binary_op("elementwise_add", x, y, out);
+  }
+
+  VarDesc* elementwise_mul(VarDesc* x, VarDesc* y, VarDesc* out = nullptr) {
+    return binary_op("elementwise_mul", x, y, out);
   }
 
   VarDesc* dropout(VarDesc* x, float dropout_prob,
@@ -160,6 +189,136 @@ struct Layers {
                 static_cast<int>(OpRole::kForward));
     std::vector<VarDesc*> outs = {y, mean, variance};
     return outs;
+  }
+
+  VarDesc* matmul(VarDesc* x, VarDesc* y, VarDesc* alpha = nullptr) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("matmul");
+    op->SetInput("X", {x->Name()});
+    op->SetInput("Y", {y->Name()});
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
+  VarDesc* transpose2(VarDesc* x, std::vector<int> axis) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("transpose2");
+    op->SetInput("X", {x->Name()});
+    op->SetAttr("axis", axis);
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
+  VarDesc* reshape2(VarDesc* x, std::vector<int> shape) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("reshape2");
+    op->SetInput("X", {x->Name()});
+    op->SetAttr("shape", shape);
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
+  VarDesc* softmax(VarDesc* x, int axis) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("softmax");
+    op->SetInput("X", {x->Name()});
+    op->SetAttr("axis", axis);
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
+  VarDesc* scale(VarDesc* x, float scale, float bias, bool bias_after) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("scale");
+    op->SetInput("X", {x->Name()});
+    op->SetAttr("scale", scale);
+    op->SetAttr("bias", bias);
+    op->SetAttr("bias_after_scale", bias_after);
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
+  std::vector<VarDesc*> batch_norm(VarDesc* x, VarDesc* scale, VarDesc* bias,
+                                   VarDesc* mean, VarDesc* variance) {
+    VarDesc* y = lod_tensor(unique_name());
+    VarDesc* mean_out = lod_tensor(unique_name());
+    VarDesc* variance_out = lod_tensor(unique_name());
+    VarDesc* saved_mean = lod_tensor(unique_name());
+    VarDesc* saved_variance = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("batch_norm");
+    op->SetInput("X", {x->Name()});
+    op->SetInput("Scale", {scale->Name()});
+    op->SetInput("Bias", {bias->Name()});
+    op->SetInput("Mean", {mean->Name()});
+    op->SetInput("Variance", {variance->Name()});
+    op->SetOutput("Y", {y->Name()});
+    op->SetOutput("MeanOut", {mean_out->Name()});
+    op->SetOutput("VarianceOut", {variance_out->Name()});
+    op->SetOutput("SavedMean", {saved_mean->Name()});
+    op->SetOutput("SavedVariance", {saved_variance->Name()});
+    op->SetAttr("epsilon", static_cast<float>(1e-5));
+    op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                static_cast<int>(OpRole::kForward));
+    std::vector<VarDesc*> outs = {y, mean_out, variance_out, saved_mean,
+                                  saved_variance};
+    return outs;
+  }
+
+  void backward(std::vector<VarDesc*> targets) {
+    // This function is designed to simulate the structure of training program,
+    //  but is constructed differently as the actual program.
+    BlockDesc* block = program_.MutableBlock(0);
+    std::vector<OpDesc*> forward_ops = block->AllOps();
+    for (auto* var : targets) {
+      OpDesc* none_op = block->AppendOp();
+      none_op->SetType("none");
+      none_op->SetInput("X", {var->Name()});
+      VarDesc* grad_var =
+          lod_tensor(GradVarName(var->Name()), var->GetShape(), false);
+      none_op->SetOutput("Out", {grad_var->Name()});
+    }
+    for (int i = forward_ops.size() - 1; i >= 0; --i) {
+      OpDesc* op = forward_ops[i];
+      OpDesc* grad_op = block->AppendOp();
+      grad_op->SetType(op->Type() + "_grad");
+      // All op's inputs are grad_op's input.
+      for (auto name : op->InputNames()) {
+        grad_op->SetInput(name, op->Input(name));
+      }
+      // All op's outputs are grad_op's input.
+      for (auto name : op->OutputNames()) {
+        grad_op->SetInput(name, op->Output(name));
+      }
+      // All op's outputs grad are grad_op's input.
+      for (auto name : op->OutputNames()) {
+        std::vector<std::string> grad_var_names;
+        for (auto var_name : op->Output(name)) {
+          VarDesc* var = block->FindVar(var_name);
+          VarDesc* grad_var =
+              lod_tensor(GradVarName(var_name), var->GetShape(), false);
+          grad_var_names.push_back(grad_var->Name());
+        }
+        grad_op->SetInput(GradVarName(name), grad_var_names);
+      }
+      // All op's inputs grad are grad_op's output.
+      for (auto name : op->InputNames()) {
+        std::vector<std::string> grad_var_names;
+        for (auto var_name : op->Input(name)) {
+          VarDesc* var = block->FindVar(var_name);
+          VarDesc* grad_var =
+              lod_tensor(GradVarName(var_name), var->GetShape(), false);
+          grad_var_names.push_back(grad_var->Name());
+        }
+        grad_op->SetOutput(GradVarName(name), grad_var_names);
+      }
+      // TODO(liuyiqun): attrs
+    }
   }
 
  private:
@@ -279,8 +438,21 @@ static std::string DebugString(Node* node) {
       is_first = false;
     }
     os << "}.";
-  } else if (node->IsVar() && node->Var()) {
-    os << "Node(" << node->Name() << "), inputs:{";
+  } else {
+    os << "Node(" << node->Name();
+    if (node->IsVar() && node->Var()) {
+      os << "{";
+      bool is_first = true;
+      for (auto dim : node->Var()->GetShape()) {
+        if (!is_first) {
+          os << "x";
+        }
+        os << dim;
+        is_first = false;
+      }
+      os << "}";
+    }
+    os << "), inputs:{";
     bool is_first = true;
     for (auto* in : node->inputs) {
       if (!is_first) {
@@ -307,10 +479,9 @@ static std::string DebugString(Node* node) {
   return os.str();
 }
 
-static std::string DebugString(const std::unique_ptr<Graph>& graph) {
+static std::string DebugString(const std::vector<Node*>& nodes) {
   std::ostringstream os;
-  os << "Graph: {\n";
-  for (auto* node : graph->Nodes()) {
+  for (auto* node : nodes) {
     if (node->IsOp() && node->Op()) {
       os << "  ";
     } else if (node->IsVar() && node->Var()) {
@@ -318,8 +489,25 @@ static std::string DebugString(const std::unique_ptr<Graph>& graph) {
     }
     os << DebugString(node) << "\n";
   }
-  os << "}\n";
   return os.str();
+}
+
+static std::string DebugString(const std::unordered_set<Node*>& nodes) {
+  std::vector<Node*> vec;
+  for (auto* node : nodes) {
+    vec.push_back(node);
+  }
+  return DebugString(vec);
+}
+
+static std::string DebugString(Graph* graph) {
+  std::ostringstream os;
+  os << "Graph: {\n" << DebugString(graph->Nodes()) << "}\n";
+  return os.str();
+}
+
+static std::string DebugString(const std::unique_ptr<Graph>& graph) {
+  return DebugString(graph.get());
 }
 
 static int GetNumOpNodes(const std::unique_ptr<Graph>& graph,

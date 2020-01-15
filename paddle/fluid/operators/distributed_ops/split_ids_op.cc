@@ -66,8 +66,7 @@ class SplitIdsOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        framework::GetDataTypeOfVar(ctx.MultiInputVar("Ids").front()),
-        ctx.GetPlace());
+        OperatorWithKernel::IndicateVarDataType(ctx, "Ids"), ctx.GetPlace());
   }
 };
 

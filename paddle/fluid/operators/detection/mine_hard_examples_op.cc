@@ -255,7 +255,8 @@ class MineHardExamplesOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        ctx.Input<framework::Tensor>("ClsLoss")->type(), platform::CPUPlace());
+        OperatorWithKernel::IndicateVarDataType(ctx, "ClsLoss"),
+        platform::CPUPlace());
   }
 };
 
@@ -331,9 +332,10 @@ MatchIndices elements with value -1.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(mine_hard_examples, ops::MineHardExamplesOp,
-                  ops::MineHardExamplesOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    mine_hard_examples, ops::MineHardExamplesOp, ops::MineHardExamplesOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(
     mine_hard_examples,

@@ -77,7 +77,7 @@ class RpnTargetAssignOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>("Anchor")->type(),
+        OperatorWithKernel::IndicateVarDataType(ctx, "Anchor"),
         platform::CPUPlace());
   }
 };
@@ -726,7 +726,7 @@ class RetinanetTargetAssignOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>("Anchor")->type(),
+        OperatorWithKernel::IndicateVarDataType(ctx, "Anchor"),
         platform::CPUPlace());
   }
 };
@@ -1022,14 +1022,17 @@ class RetinanetTargetAssignKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(rpn_target_assign, ops::RpnTargetAssignOp,
-                  ops::RpnTargetAssignOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    rpn_target_assign, ops::RpnTargetAssignOp, ops::RpnTargetAssignOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(rpn_target_assign, ops::RpnTargetAssignKernel<float>,
                        ops::RpnTargetAssignKernel<double>);
-REGISTER_OPERATOR(retinanet_target_assign, ops::RetinanetTargetAssignOp,
-                  ops::RetinanetTargetAssignOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    retinanet_target_assign, ops::RetinanetTargetAssignOp,
+    ops::RetinanetTargetAssignOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(retinanet_target_assign,
                        ops::RetinanetTargetAssignKernel<float>,
                        ops::RetinanetTargetAssignKernel<double>);

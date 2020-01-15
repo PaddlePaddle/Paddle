@@ -52,8 +52,10 @@ Return the shape of the input.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(shape, ops::ShapeOp, ops::ShapeOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    shape, ops::ShapeOp, ops::ShapeOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(shape, ops::ShapeKernel<int>, ops::ShapeKernel<int32_t>,
                        ops::ShapeKernel<int64_t>, ops::ShapeKernel<float>,
                        ops::ShapeKernel<double>);

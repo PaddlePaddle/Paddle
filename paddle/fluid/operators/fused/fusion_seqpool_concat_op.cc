@@ -47,7 +47,7 @@ void FusionSeqPoolConcatOp::InferShape(
 framework::OpKernelType FusionSeqPoolConcatOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   return framework::OpKernelType(
-      framework::GetDataTypeOfVar(ctx.MultiInputVar("X")[0]), ctx.GetPlace());
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
 }
 
 void FusionSeqPoolConcatOpMaker::Make() {

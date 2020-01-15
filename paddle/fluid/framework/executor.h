@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/trainer.h"
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
@@ -57,6 +58,7 @@ class Executor {
 
   explicit Executor(const platform::Place& place);
 
+  ~Executor();
   /*
    * Close this Executor.
    * Calling this method will send complete messages to all pserver instances.
@@ -69,12 +71,18 @@ class Executor {
    * @param
    *  ProgramDesc
    *  Scope
+   *  block_id
+   *  create_local_scope
+   *  create_vars
+   *  skip_ref_cnt_vars
+   *  force_disable_gc
+   *  keep_kid_scopes
    */
   void Run(const ProgramDesc& prog, Scope* scope, int block_id,
            bool create_local_scope = true, bool create_vars = true,
            const std::vector<std::string>& skip_ref_cnt_vars =
                std::vector<std::string>(),
-           bool force_disable_gc = false);
+           bool force_disable_gc = false, bool keep_kid_scopes = false);
 
   // This API is very slow.
   void Run(const ProgramDesc& program, Scope* scope,
@@ -92,12 +100,6 @@ class Executor {
                           bool create_vars = true,
                           const std::string& feed_holder_name = "feed",
                           const std::string& fetch_holder_name = "fetch");
-
-  std::unique_ptr<ExecutorPrepareContext> PrepareCtxCache(
-      const ProgramDesc& program, int block_id,
-      const std::vector<std::string>& skip_ref_cnt_vars =
-          std::vector<std::string>(),
-      bool force_disable_gc = false);
 
   static std::unique_ptr<ExecutorPrepareContext> Prepare(
       const ProgramDesc& program, int block_id,
@@ -119,8 +121,14 @@ class Executor {
 
   void EnableMKLDNN(const ProgramDesc& program);
 
-  void RunFromDataset(const ProgramDesc& main_program, Scope* scope,
-                      Dataset* dataset, const std::string& trainer_desc_str);
+  std::shared_ptr<TrainerBase> InitForDataset(
+      const ProgramDesc& main_program, const std::string& trainer_desc_str,
+      Scope* scope, Dataset* dataset);
+  void RunFromDataset(std::shared_ptr<TrainerBase> trainer);
+
+  void ReleaseTrainer(std::shared_ptr<TrainerBase> trainer);
+
+  const platform::Place GetPlace() const { return place_; }
 
  private:
   const platform::Place place_;

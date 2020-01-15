@@ -22,23 +22,25 @@ namespace detail {
 
 MetadataCache::MetadataCache(bool uses_gpu) : uses_gpu_(uses_gpu) {}
 
-MemoryBlock::Desc MetadataCache::load(const MemoryBlock* block) const {
+MemoryBlock::Desc* MetadataCache::LoadDesc(MemoryBlock* block) {
   if (uses_gpu_) {
-    auto existing_desc = cache_.find(block);
-    PADDLE_ENFORCE_EQ(existing_desc->second.check_guards(), true);
-    return existing_desc->second;
+    auto iter = cache_.find(block);
+    PADDLE_ENFORCE_NE(iter, cache_.end());
+    auto* desc = &(iter->second);
+    PADDLE_ENFORCE_EQ(desc->CheckGuards(), true, "Invalid CPU memory access");
+    return desc;
   } else {
-    auto* desc = reinterpret_cast<const MemoryBlock::Desc*>(block);
+    auto* desc = reinterpret_cast<MemoryBlock::Desc*>(block);
     VLOG(10) << "Load MemoryBlock::Desc type=" << desc->type;
-    PADDLE_ENFORCE_EQ(desc->check_guards(), true);
-    return *reinterpret_cast<const MemoryBlock::Desc*>(block);
+    PADDLE_ENFORCE_EQ(desc->CheckGuards(), true, "Invalid CPU memory access");
+    return reinterpret_cast<MemoryBlock::Desc*>(block);
   }
 }
 
-void MetadataCache::save(MemoryBlock* block,
+void MetadataCache::Save(MemoryBlock* block,
                          const MemoryBlock::Desc& original_desc) {
   auto desc = original_desc;
-  desc.update_guards();
+  desc.UpdateGuards();
 
   if (uses_gpu_) {
     cache_[block] = desc;
@@ -47,7 +49,7 @@ void MetadataCache::save(MemoryBlock* block,
   }
 }
 
-void MetadataCache::invalidate(MemoryBlock* block) {
+void MetadataCache::Invalidate(MemoryBlock* block) {
   if (uses_gpu_) {
     cache_.erase(block);
   }

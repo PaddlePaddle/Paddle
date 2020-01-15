@@ -60,7 +60,7 @@ TEST(PassTest, TestPassAttrCheck) {
   std::string exception;
   try {
     graph.reset(pass->Apply(graph.release()));
-  } catch (paddle::platform::EnforceNotMet e) {
+  } catch (paddle::platform::EnforceNotMet& e) {
     exception = std::string(e.what());
   }
   ASSERT_TRUE(exception.find("test_pass_attr not set") != exception.npos);
@@ -71,7 +71,7 @@ TEST(PassTest, TestPassAttrCheck) {
 
   try {
     graph.reset(pass->Apply(graph.release()));
-  } catch (paddle::platform::EnforceNotMet e) {
+  } catch (paddle::platform::EnforceNotMet& e) {
     exception = std::string(e.what());
   }
   ASSERT_TRUE(exception.find("test_graph_attr not set") != exception.npos);
@@ -96,7 +96,7 @@ TEST(PassTest, TestPassAttrCheck) {
   graph->Get<int>("test_graph_attr") = 2;
   try {
     pass->Apply(graph.release());
-  } catch (paddle::platform::EnforceNotMet e) {
+  } catch (paddle::platform::EnforceNotMet& e) {
     exception = std::string(e.what());
   }
   ASSERT_TRUE(exception.find("shouldn't have cycle") != exception.npos);

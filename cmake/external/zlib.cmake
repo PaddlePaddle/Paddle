@@ -14,20 +14,29 @@
 
 INCLUDE(ExternalProject)
 
-SET(ZLIB_SOURCES_DIR ${THIRD_PARTY_PATH}/zlib)
+SET(ZLIB_PREFIX_DIR ${THIRD_PARTY_PATH}/zlib)
+SET(ZLIB_SOURCE_DIR ${THIRD_PARTY_PATH}/zlib/src/extern_zlib)
 SET(ZLIB_INSTALL_DIR ${THIRD_PARTY_PATH}/install/zlib)
 SET(ZLIB_ROOT ${ZLIB_INSTALL_DIR} CACHE FILEPATH "zlib root directory." FORCE)
 SET(ZLIB_INCLUDE_DIR "${ZLIB_INSTALL_DIR}/include" CACHE PATH "zlib include directory." FORCE)
+set(ZLIB_REPOSITORY https://github.com/madler/zlib.git)
+set(ZLIB_TAG        v1.2.8)
 
 INCLUDE_DIRECTORIES(${ZLIB_INCLUDE_DIR}) # For zlib code to include its own headers.
 INCLUDE_DIRECTORIES(${THIRD_PARTY_PATH}/install) # For Paddle code to include zlib.h.
 
+cache_third_party(extern_zlib
+    REPOSITORY    ${ZLIB_REPOSITORY}
+    TAG           ${ZLIB_TAG}
+    DIR           ZLIB_SOURCE_DIR)
+
 ExternalProject_Add(
     extern_zlib
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    GIT_REPOSITORY  "https://github.com/madler/zlib.git"
-    GIT_TAG         "v1.2.8"
-    PREFIX          ${ZLIB_SOURCES_DIR}
+    ${SHALLOW_CLONE}
+    "${ZLIB_DOWNLOAD_CMD}"
+    PREFIX          ${ZLIB_PREFIX_DIR}
+    SOURCE_DIR      ${ZLIB_SOURCE_DIR}
     UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                     -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}

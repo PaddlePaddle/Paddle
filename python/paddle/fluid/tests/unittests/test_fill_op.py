@@ -55,7 +55,7 @@ class TestFillOp2(OpTest):
         self.check_output()
 
 
-class TestFillOp3(OpTest):
+class TestFillOp3(unittest.TestCase):
     def check_with_place(self, place, f_cpu):
         scope = core.Scope()
         # create Out Variable

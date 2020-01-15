@@ -55,6 +55,9 @@ class FetchBarrierOp : public framework::OperatorBase {
 class FetchBarrierOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
+    AddInput("X", "(Any) Dummy inputs, used for control dependency")
+        .AsDispensable()
+        .AsDuplicable();
     AddOutput("Out", "(Any) Dummy outputs, used for control dependency")
         .AsDuplicable();
     AddComment(R"DOC(
@@ -82,6 +85,8 @@ class FetchBarrierOpShapeInference : public framework::InferShapeBase {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(fetch_barrier, ops::FetchBarrierOp,
-                  paddle::framework::EmptyGradOpMaker, ops::FetchBarrierOpMaker,
-                  ops::FetchBarrierOpShapeInference);
+REGISTER_OPERATOR(
+    fetch_barrier, ops::FetchBarrierOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::FetchBarrierOpMaker, ops::FetchBarrierOpShapeInference);

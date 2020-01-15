@@ -53,14 +53,15 @@ __global__ void SparseSGDFunctorKernel(const T* selected_rows,
 }  // namespace
 
 template <typename T>
-class SGDOpCUDAKernel : public framework::OpKernel<T> {
+class SGDOpKernel<platform::CUDADeviceContext, T>
+    : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* param_var = ctx.InputVar("Param");
     PADDLE_ENFORCE(param_var->IsType<framework::LoDTensor>(),
                    "The Var(%s)'s type should be LoDTensor, "
                    "but the received is %s",
-                   ctx.Inputs("Param").front(),
+                   ctx.InputNames("Param").front(),
                    framework::ToTypeName(param_var->Type()));
 
     auto* param = ctx.Input<framework::Tensor>("Param");
@@ -72,8 +73,12 @@ class SGDOpCUDAKernel : public framework::OpKernel<T> {
     if (grad_var->IsType<framework::LoDTensor>()) {
       param_out->mutable_data<T>(ctx.GetPlace());
       auto* grad = ctx.Input<framework::Tensor>("Grad");
+      // LOG(ERROR) << "grad";
+      // LOG(ERROR) << ctx.op().Input("Grad");
       auto* grad_data = grad->data<T>();
+      // LOG(ERROR) << "param";
       auto* param_data = param->data<T>();
+      // LOG(ERROR) << "fin";
       auto* param_out_data = param_out->data<T>();
 
       int block = 512;
@@ -123,6 +128,7 @@ class SGDOpCUDAKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(sgd, ops::SGDOpCUDAKernel<float>,
-                        ops::SGDOpCUDAKernel<double>,
-                        ops::SGDOpCUDAKernel<plat::float16>);
+REGISTER_OP_CUDA_KERNEL(
+    sgd, ops::SGDOpKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::SGDOpKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::SGDOpKernel<paddle::platform::CUDADeviceContext, plat::float16>);

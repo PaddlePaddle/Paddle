@@ -23,18 +23,16 @@ class BinaryLogicalOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     OpComment comment;
-    AddInput("X",
-             string::Sprintf("(LoDTensor) Left hand operand of %s operator",
-                             comment.type));
-    AddInput("Y",
-             string::Sprintf("(LoDTensor) Right hand operand of %s operator",
-                             comment.type));
-    AddOutput("Out", string::Sprintf(
-                         "(LoDTensor) n-dim bool tensor. Each element is %s",
-                         comment.equation));
+    AddInput("X", string::Sprintf("Left hand operand of %s operator. Must be "
+                                  "a LoDTensor or Tensor of type bool.",
+                                  comment.type));
+    AddInput("Y", string::Sprintf("Right hand operand of %s operator. Must be "
+                                  "a LoDTensor or Tensor of type bool.",
+                                  comment.type));
+    AddOutput("Out", string::Sprintf("n-dim bool LoDTensor or Tensor"));
     AddComment(string::Sprintf(R"DOC(%s Operator
 
-It operates element-wise on X and Y, and returns the Out. X, Y and Out are N-dim boolean tensors.
+It operates element-wise on X and Y, and returns the Out. X, Y and Out are N-dim boolean LoDTensor or Tensor.
 Each element of Out is calculated by %s
 )DOC",
                                comment.type, comment.equation));
@@ -46,29 +44,62 @@ class UnaryLogicalOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     OpComment comment;
-    AddInput("X", string::Sprintf("(LoDTensor) Operand of %s operator",
+    AddInput("X", string::Sprintf("Operand of %s operator. Must be "
+                                  "a LoDTensor or Tensor of type bool.",
                                   comment.type));
-    AddOutput("Out", string::Sprintf(
-                         "(LoDTensor) n-dim bool tensor. Each element is %s",
-                         comment.equation));
+    AddOutput("Out", string::Sprintf("n-dim bool LoDTensor or Tensor."));
     AddComment(string::Sprintf(R"DOC(%s Operator
 
-It operates element-wise on X, and returns the Out. X and Out are N-dim boolean tensors.
+It operates element-wise on X, and returns the Out. X and Out are N-dim boolean LoDTensor or Tensor.
 Each element of Out is calculated by %s
 )DOC",
                                comment.type, comment.equation));
   }
 };
 
-template <typename OpComment>
-class BinaryLogicalOpInferShape : public framework::InferShapeBase {
+class LogicalOp : public framework::OperatorWithKernel {
  public:
-  void operator()(framework::InferShapeContext *context) const override {
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
+    // LogicalOp kernel's device type is decided by input tensor place
+    kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
+    return kt;
+  }
+};
+
+template <typename OpComment>
+class UnaryLogicalOp : public LogicalOp {
+ public:
+  using LogicalOp::LogicalOp;
+
+ protected:
+  void InferShape(framework::InferShapeContext *context) const override {
     OpComment comment;
-    PADDLE_ENFORCE(context->HasInput("X"),
-                   "Input(X) of %s operator must not be null", comment.type);
-    PADDLE_ENFORCE(context->HasInput("Y"),
-                   "Input(Y) of %s operator must not be null", comment.type);
+    PADDLE_ENFORCE_EQ(
+        context->HasInput("X"), true,
+        platform::errors::NotFound("Input(X) of %s operator must not be null",
+                                   comment.type));
+    context->SetOutputDim("Out", context->GetInputDim("X"));
+    context->ShareLoD("X", "Out");
+  }
+};
+
+template <typename OpComment>
+class BinaryLogicalOp : public LogicalOp {
+ public:
+  using LogicalOp::LogicalOp;
+
+ protected:
+  void InferShape(framework::InferShapeContext *context) const override {
+    OpComment comment;
+    PADDLE_ENFORCE_EQ(context->HasInput("X"), true,
+                      "Input(X) of %s operator must not be null", comment.type);
+    PADDLE_ENFORCE_EQ(context->HasInput("Y"), true,
+                      "Input(Y) of %s operator must not be null", comment.type);
     auto dim_x = context->GetInputDim("X");
     auto dim_y = context->GetInputDim("Y");
 
@@ -87,32 +118,6 @@ class BinaryLogicalOpInferShape : public framework::InferShapeBase {
   }
 };
 
-template <typename OpComment>
-class UnaryLogicalOpInferShape : public framework::InferShapeBase {
- public:
-  void operator()(framework::InferShapeContext *context) const override {
-    OpComment comment;
-    PADDLE_ENFORCE(context->HasInput("X"),
-                   "Input(X) of %s operator must not be null", comment.type);
-    context->SetOutputDim("Out", context->GetInputDim("X"));
-    context->ShareLoD("X", "Out");
-  }
-};
-
-class LogicalOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
-    framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
-    // LogicalOp kernel's device type is decided by input tensor place
-    kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
-    return kt;
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -124,10 +129,10 @@ class LogicalOp : public framework::OperatorWithKernel {
   char _##op_type##Comment::type[]{#op_type};                              \
   char _##op_type##Comment::equation[]{_equation};                         \
   REGISTER_OPERATOR(                                                       \
-      op_type, ::paddle::operators::LogicalOp,                             \
+      op_type, ::paddle::operators::BinaryLogicalOp<_##op_type##Comment>,  \
       ::paddle::operators::BinaryLogicalOpProtoMaker<_##op_type##Comment>, \
-      ::paddle::operators::BinaryLogicalOpInferShape<_##op_type##Comment>, \
-      ::paddle::framework::EmptyGradOpMaker);
+      ::paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,    \
+      ::paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 #define REGISTER_UNARY_LOGICAL_OP(op_type, _equation)                     \
   struct _##op_type##Comment {                                            \
@@ -137,10 +142,10 @@ class LogicalOp : public framework::OperatorWithKernel {
   char _##op_type##Comment::type[]{#op_type};                             \
   char _##op_type##Comment::equation[]{_equation};                        \
   REGISTER_OPERATOR(                                                      \
-      op_type, ::paddle::operators::LogicalOp,                            \
+      op_type, ::paddle::operators::UnaryLogicalOp<_##op_type##Comment>,  \
       ::paddle::operators::UnaryLogicalOpProtoMaker<_##op_type##Comment>, \
-      ::paddle::operators::UnaryLogicalOpInferShape<_##op_type##Comment>, \
-      ::paddle::framework::EmptyGradOpMaker);
+      ::paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,   \
+      ::paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_BINARY_LOGICAL_OP(logical_and, "$$Out = X \\&\\& Y$$");
 REGISTER_BINARY_LOGICAL_KERNEL(logical_and, CPU,

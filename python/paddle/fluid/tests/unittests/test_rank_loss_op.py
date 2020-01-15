@@ -22,7 +22,7 @@ from op_test import OpTest
 class TestRankLossOp(OpTest):
     def setUp(self):
         self.op_type = "rank_loss"
-        shape = (5, 1)
+        shape = (100, 1)
         # labels_{i} = {0, 1.0} or {0, 0.5, 1.0}
         label_shape, left_shape, right_shape = self.set_shape()
         label = np.random.randint(0, 2, size=shape).astype("float32")
@@ -38,7 +38,7 @@ class TestRankLossOp(OpTest):
         self.outputs = {'Out': loss.reshape(label_shape)}
 
     def set_shape(self):
-        batch_size = 5
+        batch_size = 100
         return (batch_size, 1), (batch_size, 1), (batch_size, 1)
 
     def test_check_output(self):
@@ -56,31 +56,31 @@ class TestRankLossOp(OpTest):
 
 class TestRankLossOp1(TestRankLossOp):
     def set_shape(self):
-        batch_size = 5
+        batch_size = 100
         return (batch_size), (batch_size, 1), (batch_size, 1)
 
 
 class TestRankLossOp2(TestRankLossOp):
     def set_shape(self):
-        batch_size = 5
+        batch_size = 100
         return (batch_size, 1), (batch_size), (batch_size, 1)
 
 
 class TestRankLossOp3(TestRankLossOp):
     def set_shape(self):
-        batch_size = 5
+        batch_size = 100
         return (batch_size, 1), (batch_size, 1), (batch_size)
 
 
 class TestRankLossOp4(TestRankLossOp):
     def set_shape(self):
-        batch_size = 5
+        batch_size = 100
         return (batch_size), (batch_size), (batch_size, 1)
 
 
 class TestRankLossOp5(TestRankLossOp):
     def set_shape(self):
-        batch_size = 5
+        batch_size = 100
         return (batch_size), (batch_size), (batch_size)
 
 

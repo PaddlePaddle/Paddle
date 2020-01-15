@@ -60,8 +60,10 @@ class TestConv2dTransposeMKLDNNOp(TestConv2dTransposeOp):
         f_c = self.input_size[1]
         self.filter_size = [f_c, 6, 3, 3]
         self.groups = 1
+        self.dtype = np.float32
 
     def setUp(self):
+
         TestConv2dTransposeOp.setUp(self)
 
         output = self.outputs['Output']
@@ -105,3 +107,32 @@ class TestMKLDNNWithStride(TestConv2dTransposeMKLDNNOp):
         self.pad = [1, 1]
         self.stride = [2, 2]
         self.input_size = [2, 3, 6, 6]  # NCHW
+
+
+class TestMKLDNNWithAsymPad(TestConv2dTransposeMKLDNNOp):
+    def init_test_case(self):
+        TestConv2dTransposeMKLDNNOp.init_test_case(self)
+        self.pad = [0, 0, 1, 2]
+        self.padding_algorithm = "EXPLICIT"
+
+
+class TestMKLDNNWithSamePad(TestConv2dTransposeMKLDNNOp):
+    def init_test_case(self):
+        TestConv2dTransposeMKLDNNOp.init_test_case(self)
+        self.pad = [0, 0]
+        self.padding_algorithm = "SAME"
+
+
+class TestMKLDNNWithValidPad(TestConv2dTransposeMKLDNNOp):
+    def init_test_case(self):
+        TestConv2dTransposeMKLDNNOp.init_test_case(self)
+        self.pad = [1, 1]
+        self.padding_algorithm = "VALID"
+
+
+class TestMKLDNNWithValidPad_NHWC(TestMKLDNNWithValidPad):
+    def init_test_case(self):
+        super(TestMKLDNNWithValidPad, self).init_test_case()
+        self.data_format = "NHWC"
+        N, C, H, W = self.input_size
+        self.input_size = [N, H, W, C]
