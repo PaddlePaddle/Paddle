@@ -125,25 +125,29 @@ class NCESamplerKernel : public framework::OpKernel<T> {
 
       PADDLE_ENFORCE_EQ(
           dist_probs.numel(), num_total_classes,
-          "ShapeError: The number of elements in Input(CustomDistProbs) "
-          "should be equal to the number of total classes. But Received: "
-          "Input(CustomDistProbs).numel() = %d, Attr(num_total_classes) "
-          "= %d.",
-          dist_probs.numel(), num_total_classes);
+          platform::errors::InvalidArgument(
+              "ShapeError: The number of elements in Input(CustomDistProbs) "
+              "should be equal to the number of total classes. But Received: "
+              "Input(CustomDistProbs).numel() = %d, Attr(num_total_classes) "
+              "= %d.",
+              dist_probs.numel(), num_total_classes));
       PADDLE_ENFORCE_EQ(
           dist_alias.numel(), num_total_classes,
-          "ShapeError: The number of elements in Input(CustomDistAlias) "
-          "should be equal to the number of total classes. But Received: "
-          "Input(CustomDistAlias).numel() = %d, Attr(num_total_classes) "
-          "= %d.",
-          dist_alias.numel(), num_total_classes);
+          platform::errors::InvalidArgument(
+              "ShapeError: The number of elements in Input(CustomDistAlias) "
+              "should be equal to the number of total classes. But Received: "
+              "Input(CustomDistAlias).numel() = %d, Attr(num_total_classes) "
+              "= %d.",
+              dist_alias.numel(), num_total_classes));
       PADDLE_ENFORCE_EQ(
           dist_alias_probs.numel(), num_total_classes,
-          "ShapeError: The number of elements in Input(CustomDistAliasProbs) "
-          "should be equal to the number of total classes. But Received: "
-          "Input(CustomDistAliasProbs).numel() = %d, "
-          "Attr(num_total_classes) = %d.",
-          dist_alias_probs.numel(), num_total_classes);
+          platform::errors::InvalidArgument(
+              "ShapeError: The number of elements in "
+              "Input(CustomDistAliasProbs) "
+              "should be equal to the number of total classes. But Received: "
+              "Input(CustomDistAliasProbs).numel() = %d, "
+              "Attr(num_total_classes) = %d.",
+              dist_alias_probs.numel(), num_total_classes));
 
       const float *probs_data = dist_probs.data<float>();
       const int *alias_data = dist_alias.data<int>();
