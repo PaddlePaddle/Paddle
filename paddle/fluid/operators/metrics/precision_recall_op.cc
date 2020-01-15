@@ -93,7 +93,7 @@ class PrecisionRecallOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "MaxProbs"),
+        OperatorWithKernel::IndicateVarDataType(ctx, "Weights"),
         ctx.device_context());
   }
 };
