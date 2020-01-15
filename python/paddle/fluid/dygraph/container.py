@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import OrderedDict
 from ..framework import Parameter
 from .layers import Layer
 
 __all__ = [
     'Sequential',
     'ParameterList',
+    'LayerList',
 ]
 
 
@@ -168,4 +170,72 @@ class ParameterList(Layer):
         """
         idx = len(self._parameters)
         self.add_parameter(str(idx), parameter)
+        return self
+
+
+class LayerList(Layer):
+    """
+    LayerList holds sublayers, and sublayers it contains are properly registered.
+    Holded sublayers can be indexed like a regular python list.
+
+    Parameters:
+        sublayers (iterable of Layer, optional): sublayers to hold
+
+    Examples:
+        .. code-block:: python
+            import paddle.fluid as fluid
+            import numpy as np
+
+            class MyLayer(fluid.Layer):
+                def __init__(self):
+                    super(MyLayer, self).__init__()
+                    self.linears = fluid.dygraph.LayerList(
+                        [fluid.dygraph.Linear(10, 10) for i in range(10)])
+
+                def forward(self, x):
+                    # LayerList can act as an iterable, or be indexed using ints
+                    for i, l in enumerate(self.linears):
+                        x = self.linears[i // 2](x) + l(x)
+                    return x
+    """
+
+    def __init__(self, sublayers=None):
+        super(LayerList, self).__init__()
+        if sublayers is not None:
+            for idx, layer in enumerate(sublayers):
+                self.add_sublayer(str(idx), layer)
+
+    def __getitem__(self, idx):
+        if isinstance(idx, slice):
+            return self.__class__(list(self._sub_layers.values())[idx])
+        else:
+            return self._sub_layers[str(idx)]
+
+    def __setitem__(self, idx, sublayer):
+        return setattr(self, str(idx), sublayer)
+
+    def __delitem__(self, idx):
+        if isinstance(idx, slice):
+            for k in range(len(self._sub_layers))[idx]:
+                delattr(self, str(k))
+        else:
+            delattr(self, str(idx))
+        str_indices = [str(i) for i in range(len(self._sub_layers))]
+        self._sub_layers = OrderedDict(
+            list(zip(str_indices, self._sub_layers.values())))
+
+    def __len__(self):
+        return len(self._sub_layers)
+
+    def __iter__(self):
+        return iter(self._sub_layers.values())
+
+    def append(self, sublayer):
+        """
+        Appends a sublayer to the end of the list.
+
+        Parameters:
+            sublayer (Layer): sublayer to append
+        """
+        self.add_sublayer(str(len(self)), sublayer)
         return self

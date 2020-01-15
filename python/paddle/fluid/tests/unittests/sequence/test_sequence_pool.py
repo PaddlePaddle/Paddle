@@ -57,26 +57,30 @@ class TestSeqAvgPool(OpTest):
     def set_lod(self):
         return [[11]]
 
-    def set_data(self):
-        self.op_type = 'sequence_pool'
+    def set_lod_data(self):
         x = np.random.uniform(0.1, 1, [11, 23]).astype('float32')
+        return x
+
+    def set_data(self):
+        x = self.set_lod_data()
         lod = self.set_lod()
         level = len(lod) - 1
         self.inputs = {'X': (x, lod)}
         offset = convert_to_offset(lod)
-        out = np.zeros((len(lod[level]), 23)).astype('float32')
+        out = np.zeros((len(lod[level]), x.shape[1])).astype('float32')
         self.outputs = {'Out': out}
-        return x, offset, out
+        return x, lod, offset, out
 
     def compute(self, x, offset, out):
         self.attrs = {"pad_value": 0.0, 'pooltype': "AVERAGE"}
         compute_seqpool_avg(x, offset, out, self.attrs["pad_value"])
 
     def setUp(self):
-        x, offset, out = self.set_data()
+        self.op_type = 'sequence_pool'
+        x, lod, offset, out = self.set_data()
         self.compute(x, offset, out)
         if len(offset) > 1:
-            self.outputs = {'Out': (out, [self.set_lod()[0]])}
+            self.outputs = {'Out': (out, [lod[0]])}
 
     def test_check_output(self):
         self.check_output(check_dygraph=False)
@@ -88,6 +92,28 @@ class TestSeqAvgPool(OpTest):
         self.outputs['MaxIndex'] = \
             np.zeros(out.shape).astype('int32')
         self.check_grad(["X"], "Out", check_dygraph=False)
+
+
+class TestSeqAvgPoolBatch1(TestSeqAvgPool):
+    def set_lod(self):
+        return [[11]]
+
+    def set_lod_data(self):
+        lod = self.set_lod()
+        x, _ = self.get_sequence_batch_size_1_input(
+            lod=lod, shape=[lod[0][0], 23])
+        return x
+
+
+class TestSeqAvgPoolInstance0(TestSeqAvgPool):
+    def set_lod(self):
+        return [[0, 0, 4, 0, 3, 0, 0, 5, 0, 0]]
+
+    def set_lod_data(self):
+        lod = self.set_lod()
+        x, _ = self.get_sequence_instance_size_0_input(
+            lod=lod, shape=[sum(lod[0]), 10])
+        return x
 
 
 class TestSeqAvgPoolLen0(TestSeqAvgPool):
@@ -135,7 +161,7 @@ class TestSeqMaxPool(TestSeqAvgPool):
 
         out = np.zeros((len(lod[level]), 23)).astype('float32')
         self.outputs = {'Out': out}
-        return x, offset, out
+        return x, lod, offset, out
 
     def compute(self, x, offset, out):
         self.attrs = {"pad_value": 0.5, 'pooltype': "MAX"}
@@ -232,7 +258,7 @@ class TestSeqAvgPool2D(TestSeqAvgPool):
 
         out = np.zeros((len(lod[level]), 3, 17)).astype('float32')
         self.outputs = {'Out': out}
-        return x, offset, out
+        return x, lod, offset, out
 
     def compute(self, x, offset, out):
         self.attrs = {"pad_value": 0.0, 'pooltype': "AVERAGE"}
@@ -321,19 +347,19 @@ class TestSeqMaxPool2D(TestSeqAvgPool2D):
     def set_data(self):
         self.op_type = 'sequence_pool'
         x = np.random.uniform(0.1, 1, [13, 3, 11]).astype('float32')
-        self.lod = self.set_lod()
-        level = len(self.lod) - 1
-        self.inputs = {'X': (x, self.lod)}
-        offset = convert_to_offset(self.lod)
+        lod = self.set_lod()
+        level = len(lod) - 1
+        self.inputs = {'X': (x, lod)}
+        offset = convert_to_offset(lod)
         for i in range(len(offset[level]) - 1):
             l = offset[level][i + 1] - offset[level][i]
             if l == 0:
                 continue
             x[offset[level][i] + np.random.randint(l), :] += 1.0
 
-        out = np.zeros((len(self.lod[level]), 3, 11)).astype('float32')
+        out = np.zeros((len(lod[level]), 3, 11)).astype('float32')
         self.outputs = {'Out': out}
-        return x, offset, out
+        return x, lod, offset, out
 
     def compute(self, x, offset, out):
         self.attrs = {"pad_value": 0.0, 'pooltype': "MAX"}
