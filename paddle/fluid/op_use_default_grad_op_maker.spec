@@ -1,4 +1,7 @@
 fsp
+cos_sim
+gru
+match_matrix_tensor
 maxout
 pool2d
 pool3d

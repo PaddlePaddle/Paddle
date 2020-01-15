@@ -609,7 +609,7 @@ class TestProgramStatePartial(unittest.TestCase):
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
-            fluid.save(main_program, "./test_1")
+            fluid.save(main_program, os.path.join('some_dir', 'test_1'))
 
             # set var to zero
             for var in main_program.list_vars():
@@ -623,7 +623,8 @@ class TestProgramStatePartial(unittest.TestCase):
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             #fluid.load(test_program, "./test_1", None )
-            program_state = fluid.load_program_state("./test_1")
+            program_state = fluid.load_program_state(
+                os.path.join('some_dir', 'test_1'))
             fluid.set_program_state(test_program, program_state)
 
             for var in test_program.list_vars():
