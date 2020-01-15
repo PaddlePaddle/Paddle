@@ -13919,21 +13919,31 @@ def nce_sampler(dict_path,
     helper = LayerHelper('nce_sampler', **locals())
     out = helper.create_variable_for_type_inference(dtype='int64')
     probs_tensor = helper.create_global_variable(
-        dtype='float32', shape=[num_total_classes])
+        persistable=True,
+        name='CustomDistProbs',
+        dtype='float32',
+        shape=[num_total_classes])
     alias_tensor = helper.create_global_variable(
-        dtype='int32', shape=[num_total_classes])
+        persistable=True,
+        name='CustomDistAlias',
+        dtype='int32',
+        shape=[num_total_classes])
     alias_probs_tensor = helper.create_global_variable(
-        dtype='float32', shape=[num_total_classes])
+        persistable=True,
+        name='CustomDistAliasProbs',
+        dtype='float32',
+        shape=[num_total_classes])
 
     helper.set_variable_initializer(probs_tensor, Constant(0.0))
     helper.set_variable_initializer(alias_tensor, Constant(0))
     helper.set_variable_initializer(alias_probs_tensor, Constant(0.0))
 
     attrs = dict()
-    attrs['dict_path'] = dict_path
+    attrs['filename'] = dict_path
     attrs['num_total_classes'] = int(num_total_classes)
     attrs['num_neg_samples'] = int(num_neg_samples)
     attrs['seed'] = seed
+    attrs['factor'] = factor
 
     inputs = dict()
     inputs['CustomDistProbs'] = probs_tensor

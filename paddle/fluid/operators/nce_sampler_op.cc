@@ -64,7 +64,7 @@ class NCESamplerOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddInput("PositiveSamples",
              "(Tensor) element in PositiveSamples can't be sampled.")
-        AsDispensable();
+        .AsDispensable();
     AddOutput("Out",
               "An output tensor of shape[sample_batch_size, num_neg_samples].")
         .AsDispensable();

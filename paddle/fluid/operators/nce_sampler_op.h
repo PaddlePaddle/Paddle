@@ -36,7 +36,7 @@ class NCESamplerKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     bool init_flag = context.Attr<bool>("init_flag");
     if (init_flag) {
-      // init customprobs, customalias, customaliasprobs
+      VLOG(1) << "start to init nce sampler";
       auto *dist_probs_var = context.OutputVar("CustomDistProbsInit");
       auto *dist_alias_var = context.OutputVar("CustomDistAliasInit");
       auto *dist_alias_probs_var =
@@ -50,7 +50,7 @@ class NCESamplerKernel : public framework::OpKernel<T> {
           dist_alias_probs_var->GetMutable<framework::LoDTensor>();
 
       auto filename = context.Attr<std::string>("filename");
-      auto factor = context.Attr<std::float>("factor");
+      auto factor = context.Attr<float>("factor");
 
       std::ifstream fin(filename);
       int64_t f_count, f_count_pow, total_count;
@@ -170,10 +170,11 @@ class NCESamplerKernel : public framework::OpKernel<T> {
           output->mutable_data<int64_t>(context.GetPlace());
 
       for (int64_t index = 0; index < num_neg_samples; ++index) {
-        do {
-          auto res = sampler->Sample();
-        } while (pos_samples_data.find(res) != pos_samples_data.end());
-        pos_samples_data[index] = res;
+        auto res = sampler->Sample();
+        while (pos_samples.find(res) != pos_samples.end()) {
+          res = sampler->Sample();
+        }
+        sample_labels_data[index] = res;
       }
       delete sampler;
     }
