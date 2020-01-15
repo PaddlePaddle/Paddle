@@ -478,9 +478,9 @@ class GeneralRoleMaker(RoleMakerBase):
             addresses = netifaces.ifaddresses(intf_name)
             if netifaces.AF_INET in addresses:
                 ipv4_addresses = addresses[netifaces.AF_INET]
-                    for ipv4_address in ipv4_addresses:
-                        if 'broadcast' in ipv4_address:
-                            return intf_name
+                for ipv4_address in ipv4_addresses:
+                    if 'broadcast' in ipv4_address:
+                        return intf_name
         print("warning: cannot pick default physical interface, set to lo")
         return "lo"
 
