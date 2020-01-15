@@ -45,9 +45,6 @@ def _set_use_system_allocator(value=None):
     return old_value
 
 
-NO_GRAD_SET_NULL = []
-
-
 def randomize_probability(batch_size, class_num, dtype='float32'):
     prob = np.random.uniform(
         0.1, 1.0, size=(batch_size, class_num)).astype(dtype)
@@ -1256,8 +1253,6 @@ class OpTest(unittest.TestCase):
                    check_dygraph=True):
         self._check_grad_helper()
         places = self._get_places()
-        print('check_grad')
-        print('places: ', places)
         for place in places:
             self.check_grad_with_place(place, inputs_to_check, output_names,
                                        no_grad_set, numeric_grad_delta,
@@ -1299,15 +1294,6 @@ class OpTest(unittest.TestCase):
 
         if no_grad_set is None:
             no_grad_set = set()
-            print('no_grad_set: None, op_type: ', self.op_type)
-
-        else:
-            if self.op_type not in NO_GRAD_SET_NULL:
-                with open("grag_set_val.txt", "a+") as f:
-                    print('op_type: {}, no_grad_set: {}'.format(self.op_type,
-                                                                no_grad_set))
-                    f.write('op_type: {}, no_grad_set: {} \n'.format(
-                        self.op_type, no_grad_set))
 
         if not type(output_names) is list:
             output_names = [output_names]
