@@ -1,5 +1,4 @@
 cos_sim
-fsp
 gru
 match_matrix_tensor
 maxout
