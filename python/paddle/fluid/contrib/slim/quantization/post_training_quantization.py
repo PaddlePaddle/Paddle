@@ -244,7 +244,9 @@ class PostTrainingQuantization(object):
             drop_last=True,
             places=self._place)
 
-        # collect the variable names for sampling
+        # collect the variable names for sampling.
+        # TODO(juncaipeng), consider the name_scope of skip_quant and
+        # reduce the variables for sampling
         persistable_var_names = []
         for var in self._program.list_vars():
             if var.persistable:
@@ -257,16 +259,18 @@ class PostTrainingQuantization(object):
                     self._quantized_act_var_name.add(op.input("Input")[0])
                     self._quantized_weight_var_name.add(op.input("Filter")[0])
                     self._quantized_act_var_name.add(op.output("Output")[0])
-                elif op_type == "mul":
-                    if self._is_input_all_not_persistable(
-                            op, persistable_var_names):
-                        op._set_attr("skip_quant", True)
-                        _logger.warning("Skip quant a mul op for two "
-                                        "input variables are not persistable")
+                elif op_type in ["mul", "matmul"]:
+                    x_var_name = op.input("X")[0]
+                    if x_var_name in persistable_var_names:
+                        self._quantized_weight_var_name.add(x_var_name)
                     else:
-                        self._quantized_act_var_name.add(op.input("X")[0])
-                        self._quantized_weight_var_name.add(op.input("Y")[0])
-                        self._quantized_act_var_name.add(op.output("Out")[0])
+                        self._quantized_act_var_name.add(x_var_name)
+                    y_var_name = op.input("Y")[0]
+                    if y_var_name in persistable_var_names:
+                        self._quantized_weight_var_name.add(y_var_name)
+                    else:
+                        self._quantized_act_var_name.add(y_var_name)
+                    self._quantized_act_var_name.add(op.output("Out")[0])
                 else:
                     # process other quantizable op type, the input must all not persistable
                     if self._is_input_all_not_persistable(
