@@ -232,7 +232,6 @@ class OpTest(unittest.TestCase):
                     cls.op_type)
 
             if not get_numeric_gradient.is_large_shape \
-                and cls.op_type not in check_shape_white_list.NOT_CHECK_OP_LIST \
                 and cls.op_type not in check_shape_white_list.NEED_TO_FIX_OP_LIST:
                 raise AssertionError(
                     "Input's shape should be large than or equal to 100 for " +
