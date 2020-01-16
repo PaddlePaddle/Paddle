@@ -369,7 +369,7 @@ class Layer(core.Layer):
             return object.__getattribute__(self, name)
 
     def __setattr__(self, name, value):
-        def _remove_from(*dicts):
+        def _remove_if_exist(*dicts):
             for d in dicts:
                 if name in d:
                     del d[name]
@@ -387,7 +387,7 @@ class Layer(core.Layer):
 
                 value.set_value(self._loaddict_holder[value.name])
 
-            _remove_from(self.__dict__, self._sub_layers)
+            _remove_if_exist(self.__dict__, self._sub_layers)
             params[name] = value
         elif isinstance(value, core.Layer):
             layers = self.__dict__.get('_sub_layers', None)
@@ -395,7 +395,7 @@ class Layer(core.Layer):
                 raise ValueError(
                     "super(YourLayer, self).__init__() should be called first")
 
-            _remove_from(self.__dict__, self._parameters)
+            _remove_if_exist(self.__dict__, self._parameters)
             layers[name] = value
         else:
             object.__setattr__(self, name, value)
