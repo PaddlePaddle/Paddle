@@ -503,21 +503,23 @@ def warpctc(input,
     Args:
        input (Variable): The unscaled probabilities of variable-length sequences,
          which is a 2-D Tensor with LoD information, or a 3-D Tensor without Lod
-         information. When it is a 2-D LodTensor, it's shape is 
-         [Lp, num_classes + 1], where Lp is the sum of all input
-         sequences' length and num_classes is the true number of classes.
-         (not including the blank label). When it is a 3-D Tensor, it's shape 
-         is [max_logit_length, batch_size, num_classes + 1],
-         where max_logit_length is the length of the longest
+         information. When it is a 2-D LodTensor, its shape is 
+         `[Lp, num_classes + 1]`, where `Lp` is the sum of all input
+         sequences' length and `num_classes` is the true number of classes.
+         (not including the blank label). When it is a 3-D Tensor, its shape 
+         is `[max_logit_length, batch_size, num_classes + 1]`,
+         where `max_logit_length` is the longest length of
          input logit sequence. The data type must be float32.
        label (Variable): The ground truth of variable-length sequence,
-         which is a 2-D Tensor with LoD information or a 2-D Tensor without
-         LoD information. When it is a 2-D LoDTensor or 2-D Tensor, 
-         it is of the shape [Lg, 1], where Lg is th sum of all labels' length.
-         The data type must be int32.
+         which must be a 2-D Tensor with LoD information or a 3-D Tensor without
+         LoD information, needs to be consistent with the coressponding input. 
+         When it is a 2-D LoDTensor, its shape is `[Lg, 1]`, where `Lg` is the sum 
+         of all labels' length. When it is a 3-D Tensor, its shape is 
+         `[batch_size, max_label_length]`, where `max_label_length` is the longest
+         length of label sequence. Data type must be int32.
        blank (int, default 0): The blank label index of Connectionist
          Temporal Classification (CTC) loss, which is in the
-         half-opened interval [0, num_classes + 1). The data type must be int32. 
+         half-opened interval `[0, num_classes + 1)`. The data type must be int32. 
        norm_by_times(bool, default false): Whether to normalize the gradients
          by the number of time-step, which is also the sequence's length.
          There is no need to normalize the gradients if warpctc layer was
@@ -529,7 +531,7 @@ def warpctc(input,
 
     Returns:
         Variable: The Connectionist Temporal Classification (CTC) loss,
-        which is a 2-D Tensor with the shape [batch_size, 1].
+        which is a 2-D Tensor with the shape `[batch_size, 1]`.
         The date type is the same as input.
 
     Examples:
@@ -539,60 +541,67 @@ def warpctc(input,
             # using LoDTensor
             import paddle.fluid as fluid
             import numpy as np
-            
-            predict = fluid.data(name='predict', 
-                                        shape=[None, 5],
-                                        dtype='float32',lod_level=1)
+
+            # lengths of logit sequences
+            seq_lens = [2,6]
+            # lengths of label sequences
+            label_lens = [2,3]
+            # class num
+            class_num = 5
+
+            logits = fluid.data(name='logits',shape=[None, class_num+1],
+                                 dtype='float32',lod_level=1)
             label = fluid.data(name='label', shape=[None, 1],
-                                      dtype='int32', lod_level=1)
-            cost = fluid.layers.warpctc(input=predict, label=label)
+                               dtype='int32', lod_level=1)
+            cost = fluid.layers.warpctc(input=logits, label=label)
             place = fluid.CPUPlace()
-            x=fluid.LoDTensor()
-            data = np.random.rand(8, 5).astype("float32")
-            x.set(data, place)
-            x.set_lod([[0,4,8]])
-            y=fluid.LoDTensor()
-            data = np.random.randint(0, 5, [4, 1]).astype("int32")
-            y.set(data, place)
-            y.set_lod([[0,2,4]])
+            x = fluid.create_lod_tensor(
+                     np.random.rand(np.sum(seq_lens), class_num+1).astype("float32"), 
+                     [seq_lens], place)
+            y = fluid.create_lod_tensor(
+                     np.random.randint(0, class_num, [np.sum(label_lens), 1]).astype("int32"), 
+                     [label_lens], place)
             exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
-            output= exe.run(feed={"predict": x,"label": y},
-                                         fetch_list=[cost.name])
-            print output
+            output= exe.run(fluid.default_main_program(),
+                            feed={"logits": x,"label": y},
+                            fetch_list=[cost.name])
+            print(output)
 
         .. code-block:: python
 
             # using Tensor
             import paddle.fluid as fluid
             import numpy as np
-            
+
             # length of the longest logit sequence
             max_seq_length = 5
+            #length of the longest label sequence
+            max_label_length = 3
             # number of logit sequences
-            batch_size = None
-            logits = fluid.data(name='logits', 
-                                       shape=[max_seq_length, batch_size, 5],
-                                       dtype='float32')
+            batch_size = 16
+            # class num
+            class_num = 5
+            logits = fluid.data(name='logits',
+                           shape=[max_seq_length, batch_size, class_num+1],
+                           dtype='float32')
             logits_length = fluid.data(name='logits_length', shape=[None],
-                                         dtype='int64')
-            label = fluid.layers.data(name='label', shape=[None, 1],
-                                       dtype='int32')
-            label_length = fluid.layers.data(name='labels_length', shape=[None],
-                                         dtype='int64')
+                             dtype='int64')
+            label = fluid.data(name='label', shape=[batch_size, max_label_length],
+                           dtype='int32')
+            label_length = fluid.data(name='labels_length', shape=[None],
+                             dtype='int64')
             cost = fluid.layers.warpctc(input=logits, label=label,
-                                        input_length=logits_length,
-                                        label_length=label_length)
+                            input_length=logits_length,
+                            label_length=label_length)
             place = fluid.CPUPlace()
-            batch_size = 2
-            x = np.random.rand(max_seq_length, batch_size, 5).astype("float32")
-            y = np.random.randint(0, 5, [max_seq_length * batch_size, 1]).astype("int32")
+            x = np.random.rand(max_seq_length, batch_size, class_num+1).astype("float32")
+            y = np.random.randint(0, class_num, [batch_size, max_label_length]).astype("int32")
             exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
-            output= exe.run(feed={"logits": x,
+            output= exe.run(fluid.default_main_program(),
+                            feed={"logits": x,
                                   "label": y,
-                                  "logits_length": np.array([5, 4]).astype("int64"),
-                                  "labels_length": np.array([3, 2]).astype("int64")},
+                                  "logits_length": np.array([max_seq_length]*batch_size).astype("int64"),
+                                  "labels_length": np.array([max_label_length]*batch_size).astype("int64")},
                                   fetch_list=[cost.name])
             print(output)
     """
