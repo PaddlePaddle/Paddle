@@ -60,17 +60,17 @@ function add_failed(){
 if [[ $git_files -gt 19 || $git_count -gt 999 ]];then
     echo_line="You must have Dianhai approval for change 20+ files or add than 1000+ lines of content.\n"
     check_approval 1 38231817
-fi    
+fi
 
-api_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.api  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.api` 
+api_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.api  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.api`
 if [ "$api_spec_diff" != "" ]; then
     echo_line="You must have one RD (XiaoguangHu01 or lanxianghit) and one TPM (saxon-zh or Boyan-Liu or swtkiwi) approval for the api change for the management reason of API interface.\n"
     check_approval 1 46782768 47554610
     echo_line=""
-    check_approval 1 2870059 2870059 27208573 
+    check_approval 1 2870059 2870059 27208573
 fi
 
-api_doc_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.doc  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.doc` 
+api_doc_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.doc  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.doc`
 if [ "$api_doc_spec_diff" != "" ]; then
     echo_line="You must have one TPM (saxon-zh or Boyan-Liu or swtkiwi) approval for the api change for the management reason of API document.\n"
     check_approval 1 31623103 2870059 27208573
@@ -228,7 +228,7 @@ if [ "${NEW_OP_TEST_ADDED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     CHECK_GRAD_CHECK=`git diff -U5 --diff-filter=AMR upstream/$BRANCH |grep -A2 -E "checker\.double_grad_check"|grep "eps=|atol=|rtol=" |grep "+" || true`
     CHECK_WHOLE=$CHECK_OUTPUT$CHECK_OUTPUT_WITH_PLACE$CHECK_GRAD$CHECK_GRAD_CHECK
     if [ "${CHECK_WHOLE}" != "" ] ; then
-        CHECK_OP=${CHECK_WHOLE//+/'\n+'}       
+        CHECK_OP=${CHECK_WHOLE//+/'\n+'}
         echo_line="Please use the default precision parameters of 'atol, rtol, eps, max_relative_error'. If you don't use the default value, you must have one RD (Xreki (Recommend), luotao1, lanxianghit or phlrain) approval for the usage of other values. The detailed information is in the link: https://github.cor/PaddlePaddle/Paddle/wiki/OP-test-accuracy-requirements. The error line is ${CHECK_OP}\n"
         check_approval 1 6836917 47554610 12538138 43953930
     fi
@@ -252,10 +252,20 @@ fi
 
 DEV_OP_USE_DEFAULT_GRAD_MAKER_SPEC=${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_DEV.spec
 PR_OP_USE_DEFAULT_GRAD_MAKER_SPEC=${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_PR.spec
-ADDED_OP_USE_DEFAULT_GRAD_MAKER=`python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py ${DEV_OP_USE_DEFAULT_GRAD_MAKER_SPEC} ${PR_OP_USE_DEFAULT_GRAD_MAKER_SPEC}` 
+ADDED_OP_USE_DEFAULT_GRAD_MAKER=`python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py ${DEV_OP_USE_DEFAULT_GRAD_MAKER_SPEC} ${PR_OP_USE_DEFAULT_GRAD_MAKER_SPEC}`
 if [ "${ADDED_OP_USE_DEFAULT_GRAD_MAKER}" != "" ]; then
-  echo_line="You must have one RD (sneaxiy (Recommend) or luotao1) approval because you use DefaultGradOpMaker for ${ADDED_OP_USE_DEFAULT_GRAD_MAKER}, which manages the grad_op memory optimization.\n" 
+  echo_line="You must have one RD (sneaxiy (Recommend) or luotao1) approval because you use DefaultGradOpMaker for ${ADDED_OP_USE_DEFAULT_GRAD_MAKER}, which manages the grad_op memory optimization.\n"
   check_approval 1 32832641 6836917
+fi
+
+NO_GRAD_SET_VALUE=`git diff --name-only --diff-filter=AMR upstream/$BRANCH |grep -oE "test_.*.\.py" || true`
+if ["${NO_GRAD_SET_VALUE}" != ""] && [ "${GIT_PR_ID}" != "" ]; then
+    CHECK_GRAD=`git diff -U5 --diff-filter=AMR upstream/$BRANCH |grep -A5 -E "self\.check_grad|self\.check_grad_with_place"|grep "no_grad_set=None" |grep "+" || true`
+    if [ "${CHECK_GRAD}" != "" ] ; then
+      ERROR_LINES=${CHECK_GRAD//+/'\n+'}
+      echo_line="not_grad_set must be None'. If you don't use the default value, you must have one RD (chenjiaoAngel (Recommend), luotao1 or phlrain) approval for the usage of other value"
+      check_approval 1 38650344 6836917 43953930
+    fi
 fi
 
 if [ -n "${echo_list}" ];then
