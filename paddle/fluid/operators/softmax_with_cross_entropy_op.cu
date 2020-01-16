@@ -200,6 +200,10 @@ static __global__ void RowReductionForDiffMaxSum(const T* logits_data,
     softmax[beg_idx] -= diff_max_sum;
     beg_idx += step;
   }
+
+  // Note(zhiqiu): since different threads may use max_data[blockIdx.x] to
+  // calculate diff_max_sum, __syncthreads() is needed here.
+  __syncthreads();
   if (threadIdx.x == 0) max_data[blockIdx.x] = 0;
 }
 
@@ -415,18 +419,18 @@ class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel<T> {
     const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
     int axis_dim = logits->dims()[axis];
 
+    const int n = SizeToAxis(axis, logits->dims());
+    const int d = SizeFromAxis(axis, logits->dims());
+
+    auto* softmax_data = softmax->mutable_data<T>(context.GetPlace());
+    auto* loss_data = loss->mutable_data<T>(context.GetPlace());
+
     if (axis_dim == 1) {
       math::SetConstant<platform::CUDADeviceContext, T> set_constant;
       set_constant(context.cuda_device_context(), softmax, static_cast<T>(1));
       set_constant(context.cuda_device_context(), loss, static_cast<T>(0));
       return;
     }
-
-    const int n = SizeToAxis(axis, logits->dims());
-    const int d = SizeFromAxis(axis, logits->dims());
-
-    auto* softmax_data = softmax->mutable_data<T>(context.GetPlace());
-    auto* loss_data = loss->mutable_data<T>(context.GetPlace());
 
     auto soft_label = context.Attr<bool>("soft_label");
     auto ignore_index = context.Attr<int>("ignore_index");

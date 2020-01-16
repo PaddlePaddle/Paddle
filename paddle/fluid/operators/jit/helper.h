@@ -15,6 +15,7 @@
 #pragma once
 
 #include <iostream>
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -176,8 +177,7 @@ typename KernelTuple::func_type GetDefaultBestFunc(
   return funcs[0];
 }
 
-extern std::unordered_map<std::string, std::shared_ptr<void>>&
-GetFuncCacheMap();
+extern std::map<size_t, std::shared_ptr<void>>& GetFuncCacheMap();
 
 template <typename KernelTuple, typename PlaceType>
 class KernelFuncs {
@@ -185,7 +185,7 @@ class KernelFuncs {
   KernelFuncs() = default;
   static KernelFuncs& Cache() {
     auto& func_cache_map = GetFuncCacheMap();
-    std::string key = typeid(KernelFuncs<KernelTuple, PlaceType>).name();
+    auto key = typeid(KernelFuncs<KernelTuple, PlaceType>).hash_code();
     auto iter = func_cache_map.find(key);
     if (iter != func_cache_map.end()) {
       return *(KernelFuncs<KernelTuple, PlaceType>*)(iter->second.get());

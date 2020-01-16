@@ -19,20 +19,103 @@ import unittest
 from test_dist_fleet_base import TestFleetBase
 
 
-def skip_ci(func):
-    on_ci = bool(int(os.environ.get("SKIP_UNSTABLE_CI", '0')))
-
-    def __func__(*args, **kwargs):
-        if on_ci:
-            return
-        return func(*args, **kwargs)
-
-    return __func__
-
-
-class TestDistMnist2x2(TestFleetBase):
+class TestDistMnistSync2x2(TestFleetBase):
     def _setup_config(self):
-        self._sync_mode = False
+        self._mode = "sync"
+        self._reader = "pyreader"
+
+    def check_with_place(self,
+                         model_file,
+                         delta=1e-3,
+                         check_error_log=False,
+                         need_envs={}):
+        required_envs = {
+            "PATH": os.getenv("PATH", ""),
+            "PYTHONPATH": os.getenv("PYTHONPATH", ""),
+            "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
+            "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
+            "http_proxy": ""
+        }
+
+        required_envs.update(need_envs)
+
+        if check_error_log:
+            required_envs["GLOG_v"] = "3"
+            required_envs["GLOG_logtostderr"] = "1"
+
+        tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
+
+    def test_dist_train(self):
+        self.check_with_place(
+            "dist_fleet_ctr.py", delta=1e-5, check_error_log=True)
+
+
+class TestDistMnistHalfAsync2x2(TestFleetBase):
+    def _setup_config(self):
+        self._mode = "half_async"
+        self._reader = "pyreader"
+
+    def check_with_place(self,
+                         model_file,
+                         delta=1e-3,
+                         check_error_log=False,
+                         need_envs={}):
+        required_envs = {
+            "PATH": os.getenv("PATH", ""),
+            "PYTHONPATH": os.getenv("PYTHONPATH", ""),
+            "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
+            "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
+            "http_proxy": ""
+        }
+
+        required_envs.update(need_envs)
+
+        if check_error_log:
+            required_envs["GLOG_v"] = "3"
+            required_envs["GLOG_logtostderr"] = "1"
+
+        tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
+
+    def test_dist_train(self):
+        self.check_with_place(
+            "dist_fleet_ctr.py", delta=1e-5, check_error_log=True)
+
+
+class TestDistMnistAsync2x2(TestFleetBase):
+    def _setup_config(self):
+        self._mode = "async"
+        self._reader = "pyreader"
+
+    def check_with_place(self,
+                         model_file,
+                         delta=1e-3,
+                         check_error_log=False,
+                         need_envs={}):
+        required_envs = {
+            "PATH": os.getenv("PATH", ""),
+            "PYTHONPATH": os.getenv("PYTHONPATH", ""),
+            "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
+            "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
+            "http_proxy": ""
+        }
+
+        required_envs.update(need_envs)
+
+        if check_error_log:
+            required_envs["GLOG_v"] = "3"
+            required_envs["GLOG_logtostderr"] = "1"
+
+        tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
+
+    def test_dist_train(self):
+        self.check_with_place(
+            "dist_fleet_ctr.py", delta=1e-5, check_error_log=True)
+
+
+class TestDistMnistAsyncDataset2x2(TestFleetBase):
+    def _setup_config(self):
+        self._mode = "async"
+        self._reader = "dataset"
 
     def check_with_place(self,
                          model_file,

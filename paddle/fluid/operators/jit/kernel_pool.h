@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <map>
 #include <memory>  // for unique_ptr
 #include <string>
 #include <unordered_map>
@@ -28,7 +29,7 @@ namespace paddle {
 namespace operators {
 namespace jit {
 
-extern std::unordered_map<std::string, std::shared_ptr<void>>& GetJITCodesMap();
+extern std::map<size_t, std::shared_ptr<void>>& GetJITCodesMap();
 
 template <KernelType KT>
 class JitCodePool {
@@ -39,7 +40,7 @@ class JitCodePool {
   JitCodePool() = default;
   static JitCodePool& Instance() {
     auto& jit_codes_map = GetJITCodesMap();
-    std::string key = typeid(JitCodePool<KT>).name();
+    auto key = typeid(JitCodePool<KT>).hash_code();
     auto iter = jit_codes_map.find(key);
     if (iter != jit_codes_map.end()) {
       return *(JitCodePool<KT>*)(iter->second.get());

@@ -107,7 +107,7 @@ class TestGRUOp(OpTest):
     def setUp(self):
         self.op_type = "gru"
         self.lod = [[2, 4, 3]]
-        self.D = 5
+        self.D = 40
         self.is_reverse = False
         self.with_h0 = True
         self.with_bias = True
@@ -155,10 +155,11 @@ class TestGRUOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(atol=1e-8, check_dygraph=True)
+        self.check_output(atol=1e-8, check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['Input', 'H0', 'Weight', 'Bias'], ['Hidden'])
+        self.check_grad(
+            ['Input', 'H0', 'Weight', 'Bias'], ['Hidden'], check_dygraph=False)
 
 
 class TestGRUOriginMode(TestGRUOp):
@@ -168,37 +169,32 @@ class TestGRUOriginMode(TestGRUOp):
 
 class TestGRUOp2(TestGRUOp):
     def set_confs(self):
-        self.D = 19
-        self.dtype = 'float32'
+        self.dtype = 'float64'
 
 
 class TestGRUOp2Len0(TestGRUOp):
     def set_confs(self):
-        self.D = 19
         self.lod = [[2, 0, 4]]
-        self.dtype = 'float32'
+        self.dtype = 'float64'
 
 
 class TestGRUOp2OriginMode(TestGRUOp):
     def set_confs(self):
-        self.D = 19
-        self.dtype = 'float32'
+        self.dtype = 'float64'
         self.origin_mode = True
 
 
 class TestGRUOp2OriginModeLen0(TestGRUOp):
     def set_confs(self):
-        self.D = 19
         self.lod = [[0, 3, 4]]
-        self.dtype = 'float32'
+        self.dtype = 'float64'
         self.origin_mode = True
 
 
 class TestGRUOp2OriginModeLastLen0(TestGRUOp):
     def set_confs(self):
-        self.D = 19
         self.lod = [[0, 3, 0]]
-        self.dtype = 'float32'
+        self.dtype = 'float64'
         self.origin_mode = True
 
 
@@ -207,7 +203,8 @@ class TestGRUOpNoInitial(TestGRUOp):
         self.with_h0 = False
 
     def test_check_grad(self):
-        self.check_grad(['Input', 'Weight', 'Bias'], ['Hidden'])
+        self.check_grad(
+            ['Input', 'Weight', 'Bias'], ['Hidden'], check_dygraph=False)
 
 
 class TestGRUOpNoBias(TestGRUOp):
@@ -215,7 +212,8 @@ class TestGRUOpNoBias(TestGRUOp):
         self.with_bias = False
 
     def test_check_grad(self):
-        self.check_grad(['Input', 'H0', 'Weight'], ['Hidden'])
+        self.check_grad(
+            ['Input', 'H0', 'Weight'], ['Hidden'], check_dygraph=False)
 
 
 class TestGRUOpReverse(TestGRUOp):

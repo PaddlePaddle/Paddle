@@ -48,7 +48,7 @@ TEST(ConcurrentSet, All) {
   EXPECT_EQ(in, out);
 
   concurrent_set.GetAndClear(&ret).wait();
-  EXPECT_EQ(ret.size(), 0);
+  EXPECT_EQ(ret.size(), 0UL);
 }
 
 TEST(AsyncSparseParamUpdateRecorder, All) {
@@ -90,7 +90,7 @@ TEST(AsyncSparseParamUpdateRecorder, All) {
     EXPECT_EQ(in, out);
 
     recorder.GetAndClear("param1", i, &ret);
-    EXPECT_EQ(ret.size(), 0);
+    EXPECT_EQ(ret.size(), 0UL);
   }
 }
 

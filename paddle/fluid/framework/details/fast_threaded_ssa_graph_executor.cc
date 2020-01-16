@@ -142,8 +142,11 @@ void FastThreadedSSAGraphExecutor::InsertFetchOps(
     PADDLE_ENFORCE_NE(
         fetched_var_it, fetched_vars->end(),
         platform::errors::PreconditionNotMet(
-            "Cannot find fetched variable(%s). Perhaps the main_program "
-            "is not set to ParallelExecutor.",
+            "Cannot find fetched variable(%s) in current computation graph. "
+            "Possible reasons are:\n"
+            "  1. The variable to be fetched is not defined in main program.\n"
+            "  2. The variable to be fetched is not an input or output of any "
+            "operator.",
             var_name));
 
     auto &vars = fetched_var_it->second;

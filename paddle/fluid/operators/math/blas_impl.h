@@ -24,6 +24,14 @@ namespace math {
 template <typename T>
 struct CBlas;
 
+template <>
+struct CBlas<int8_t> {
+  template <typename... ARGS>
+  static void VCOPY(ARGS... args) {
+    PADDLE_THROW("Blas VCOPY don't support int8_t");
+  }
+};
+
 #ifdef PADDLE_WITH_MKLML
 template <>
 struct CBlas<float> {

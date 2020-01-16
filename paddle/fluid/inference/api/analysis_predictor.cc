@@ -122,11 +122,7 @@ bool AnalysisPredictor::PrepareScope(
     scope_ = parent_scope;
     status_is_cloned_ = true;
   } else {
-    if (config_.use_gpu_) {
-      paddle::framework::InitDevices(false, {config_.device_id_});
-    } else {
-      paddle::framework::InitDevices(false, {});
-    }
+    paddle::framework::InitDevices(false);
     scope_.reset(new paddle::framework::Scope());
     status_is_cloned_ = false;
   }
@@ -432,6 +428,13 @@ void AnalysisPredictor::PrepareArgument() {
     LOG(INFO) << "Anakin subgraph engine is enabled";
   }
 
+  if (config_.lite_engine_enabled()) {
+    argument_.SetLitePrecisionMode(config_.lite_precision_mode_);
+    argument_.SetLitePassesFilter(config_.lite_passes_filter_);
+    argument_.SetLiteOpsFilter(config_.lite_ops_filter_);
+    LOG(INFO) << "Lite subgraph engine is enabled";
+  }
+
   if (config_.use_mkldnn_) {
     LOG(INFO) << "MKLDNN is enabled";
     argument_.SetMKLDNNEnabledOpTypes(config_.mkldnn_enabled_op_types_);
@@ -452,6 +455,7 @@ void AnalysisPredictor::PrepareArgument() {
     passes.clear();
     LOG(INFO) << "ir_optim is turned off, no IR pass will be executed";
   }
+  argument_.SetDisableLogs(config_.glog_info_disabled());
   argument_.SetIrAnalysisPasses(passes);
   argument_.SetAnalysisPasses(config_.pass_builder()->AnalysisPasses());
   argument_.SetScopeNotOwned(scope_.get());
@@ -477,6 +481,10 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig &config) {
+  if (config.glog_info_disabled()) {
+    FLAGS_logtostderr = 1;
+    FLAGS_minloglevel = 2;  // GLOG_ERROR
+  }
   VLOG(3) << "create AnalysisConfig";
   PADDLE_ENFORCE(config.is_valid(),
                  "Note: Each config can only be used for one predictor.");
@@ -501,16 +509,10 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
       std::string flag = "--fraction_of_gpu_memory_to_use=" +
                          std::to_string(fraction_of_gpu_memory);
       flags.push_back(flag);
-      flags.push_back("--selected_gpus=" +
-                      std::to_string(config.gpu_device_id()));
+      flags.push_back("--cudnn_deterministic=True");
       VLOG(3) << "set flag: " << flag;
       framework::InitGflags(flags);
     }
-  }
-  if (config.glog_info_disabled()) {
-    FLAGS_logtostderr = 1;
-    FLAGS_minloglevel = google::WARNING;
-    LOG(WARNING) << " - GLOG's LOG(INFO) is disabled.";
   }
 
   std::unique_ptr<PaddlePredictor> predictor(new AnalysisPredictor(config));
@@ -943,6 +945,10 @@ USE_TRT_CONVERTER(conv2d_transpose);
 USE_TRT_CONVERTER(leaky_relu);
 USE_TRT_CONVERTER(shuffle_channel);
 USE_TRT_CONVERTER(swish);
+USE_TRT_CONVERTER(instance_norm);
+USE_TRT_CONVERTER(layer_norm);
+USE_TRT_CONVERTER(gelu);
+USE_TRT_CONVERTER(multihead_matmul);
 #endif
 
 #if PADDLE_WITH_ANAKIN

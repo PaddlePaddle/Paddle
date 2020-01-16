@@ -33,6 +33,8 @@ void CUDAAllocator::FreeImpl(Allocation* allocation) {
 }
 
 Allocation* CUDAAllocator::AllocateImpl(size_t size) {
+  std::call_once(once_flag_, [this] { platform::SetDeviceId(place_.device); });
+
   platform::CUDADeviceGuard guard(place_.device);
   void* ptr;
   auto result = cudaMalloc(&ptr, size);

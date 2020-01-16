@@ -69,6 +69,7 @@ option(WITH_BRPC_RDMA     "Use brpc rdma as the rpc protocal"           OFF)
 option(ON_INFER         "Turn on inference optimization and inference-lib generation" OFF)
 ################################ Internal Configurations #######################################
 option(WITH_AMD_GPU     "Compile PaddlePaddle with AMD GPU"             OFF)
+option(WITH_NV_JETSON     "Compile PaddlePaddle with NV JETSON"             OFF)
 option(WITH_NGRAPH      "Compile PaddlePaddle with nGraph support."     OFF)
 option(WITH_PROFILER    "Compile PaddlePaddle with GPU profiler and gperftools"        OFF)
 option(WITH_COVERAGE    "Compile PaddlePaddle with code coverage"       OFF)
@@ -85,6 +86,7 @@ option(WITH_HIGH_LEVEL_API_TEST   "Test fluid python high-level api interface"  
 option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VERSION})
 option(WITH_DGC   "Use DGC(Deep Gradient Compression) or not" ${WITH_DISTRIBUTE})
 option(SANITIZER_TYPE "Choose the type of sanitizer, options are: Address, Leak, Memory, Thread, Undefined" OFF)
+option(WITH_LITE   "Compile Paddle Fluid with Lite Engine" OFF)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -132,7 +134,6 @@ endif()
 include(third_party)        # download, build, install third_party
 
 if(WITH_DISTRIBUTE)
-    include(external/cares)
     if(WITH_GRPC)
         message(STATUS "Use grpc framework.")
         include(external/grpc)

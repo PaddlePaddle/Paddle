@@ -540,6 +540,37 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename T>
+class TopkOpGradCUDAKernel: public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    PADDLE_ENFORCE(platform::is_gpu_place(context.GetPlace()),
+                   "It must use CUDAPlace.");
+    auto* x = context.Input<Tensor>("X");
+    auto* out_grad = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* indices = context.Input<Tensor>("Indices");
+    auto* x_grad = context.Output<Tensor>(framework::GradVarName("X"));
+
+    T* x_grad_data = x_grad->mutable_data<T>(context.GetPlace());
+    const T* out_grad_data = out_grad->data<T>();
+    const int64_t* indices_data = indices->data<int64_t>();
+    size_t k = indices->dims()[indices->dims().size() - 1];
+
+    framework::DDim xdims = x->dims();
+    const size_t row = framework::product(
+      framework::slice_ddim(xdims, 0, xdims.size()-1));
+    const size_t col = xdims[xdims.size() - 1];
+
+    //cudaMemset(x_grad_data, 0, row * col * sizeof(T));
+
+    for (size_t i = 0; i < row; ++i) {
+      for (size_t j = 0; j < k; ++j) {
+        size_t idx = indices_data[i * k + j];
+        x_grad_data[i * col + idx] = out_grad_data[i * k + j];
+      }
+    }  
+  }
+};
 #undef FIXED_BLOCK_DIM_BASE
 #undef FIXED_BLOCK_DIM
 
@@ -549,4 +580,13 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
 REGISTER_OP_CUDA_KERNEL(
     top_k, paddle::operators::TopkOpCUDAKernel<float>,
     paddle::operators::TopkOpCUDAKernel<double>,
+    paddle::operators::TopkOpCUDAKernel<int>,
+    paddle::operators::TopkOpCUDAKernel<int64_t>,
     paddle::operators::TopkOpCUDAKernel<paddle::platform::float16>);
+
+REGISTER_OP_CUDA_KERNEL(
+    top_k_grad, paddle::operators::TopkOpGradCUDAKernel<float>,
+    paddle::operators::TopkOpGradCUDAKernel<double>,
+    paddle::operators::TopkOpGradCUDAKernel<int>,
+    paddle::operators::TopkOpGradCUDAKernel<int64_t>,
+    paddle::operators::TopkOpGradCUDAKernel<paddle::platform::float16>);

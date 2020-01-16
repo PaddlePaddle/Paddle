@@ -919,7 +919,7 @@ class FleetUtil(object):
                         dirname=model_name,
                         feeded_var_names=feeded_var_names,
                         target_vars=target_vars,
-                        executor=exe,
+                        executor=executor,
                         main_program=program,
                         params_filename="params")
                 else:
@@ -927,7 +927,7 @@ class FleetUtil(object):
                         dirname=model_name,
                         feeded_var_names=feeded_var_names,
                         target_vars=target_vars,
-                        executor=exe,
+                        executor=executor,
                         main_program=program)
 
             configs = {

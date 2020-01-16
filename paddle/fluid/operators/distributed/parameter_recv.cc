@@ -119,7 +119,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
                   << sstream.str();
         }
 
-        for (auto i = 0; i < recv_slr.rows().size(); ++i) {
+        for (size_t i = 0; i < recv_slr.rows().size(); ++i) {
           auto row_id = recv_slr.rows()[i] + row_offset;
           PADDLE_ENFORCE_LT(row_id, recv_dims[0]);
           memcpy(recv_tensor->data<T>() + row_id * width,
@@ -148,7 +148,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
     std::vector<int64_t> abs_sections =
         ToAbsoluteSection(rpc_ctx.height_sections);
 
-    for (int i = 0; i < rpc_ctx.splited_var_names.size(); i++) {
+    for (size_t i = 0; i < rpc_ctx.splited_var_names.size(); i++) {
       auto &recv_var_name = rpc_ctx.splited_var_names[i];
       auto *var = local_scope->FindVar(recv_var_name);
       auto *var_slr = var->GetMutable<framework::SelectedRows>();

@@ -491,7 +491,7 @@ class InstanceNormDoubleGradKernel<platform::CPUDeviceContext, T>
                   sample_size * inv_var_tile_data * inv_var_tile_data *
                   (ddx_arr.colwise().sum() / sample_size - ddx_arr);
 
-        dx_arr = scale_tile_data * dx_arr.eval();
+        dx_arr = scale_tile_data * dx_arr;
       }
       if (ddScale) {
         ConstEigenVectorArrayMap<T> ddscale_arr(ddScale->data<T>(), C);
@@ -532,7 +532,7 @@ class InstanceNormDoubleGradKernel<platform::CPUDeviceContext, T>
              x_sub_mean_mul_invstd_arr *
                  (dy_arr * x_sub_mean_mul_invstd_arr).colwise().sum() /
                  sample_size);
-        first_grad_arr = first_grad_arr.eval() * ddx_arr;
+        first_grad_arr = first_grad_arr * ddx_arr;
         for (int nc = 0; nc < NxC; ++nc) {
           int c = nc % C;
           dscale_arr(c) += first_grad_arr.colwise().sum()(nc);

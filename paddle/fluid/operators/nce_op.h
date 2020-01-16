@@ -217,7 +217,7 @@ class NCEKernel : public framework::OpKernel<T> {
       w_tensor->Resize(framework::make_ddim(w_dims));
 
 #ifdef PADDLE_WITH_DISTRIBUTE
-      auto weight = context.Inputs("Weight").front();
+      auto weight = context.InputNames("Weight").front();
       operators::distributed::prefetch("Ids@Prefetch", "Weight@Prefetch",
                                        weight, false, table_names, epmap,
                                        height_sections, context, local_scope);

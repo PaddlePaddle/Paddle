@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import compiler, Program, program_guard, core
 
 
 class TestSplitOp(OpTest):
@@ -34,7 +34,7 @@ class TestSplitOp(OpTest):
             for i in range(len(out))]}
 
     def get_dtype(self):
-        return "float32"
+        return "float64"
 
     def _set_op_type(self):
         self.op_type = "split"
@@ -71,7 +71,7 @@ class TestSplitOp_2(OpTest):
         self.indices_or_sections = 3
 
     def get_dtype(self):
-        return "float32"
+        return "float64"
 
     def _set_op_type(self):
         self.op_type = "split"
@@ -107,7 +107,7 @@ class TestSplitOp_AxisTensor(OpTest):
         self.indices_or_sections = 3
 
     def get_dtype(self):
-        return "float32"
+        return "float64"
 
     def _set_op_type(self):
         self.op_type = "split"
@@ -153,7 +153,7 @@ class TestSplitOp_SectionsTensor(OpTest):
         self.indices_or_sections = [2, 3]
 
     def get_dtype(self):
-        return "float32"
+        return "float64"
 
     def _set_op_type(self):
         self.op_type = "split"
@@ -189,7 +189,7 @@ class TestSplitOp_unk_section(OpTest):
         self.indices_or_sections = [2, 3]
 
     def get_dtype(self):
-        return "float32"
+        return "float64"
 
     def _set_op_type(self):
         self.op_type = "split"
@@ -210,6 +210,8 @@ class TestSplitByrefOp(OpTest):
 
 
 def create_test_fp16(parent):
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
     class TestSplitFp16(parent):
         def get_dtype(self):
             return np.float16
@@ -225,7 +227,7 @@ def create_test_fp16(parent):
 create_test_fp16(TestSplitOp)
 
 
-class TestSplitAPI(OpTest):
+class TestSplitAPI(unittest.TestCase):
     def test_api(self):
         input_1 = np.random.random([4, 5, 6]).astype("int32")
         positive_1_int32 = fluid.layers.fill_constant([1], "int32", 1)
@@ -259,7 +261,7 @@ class TestSplitAPI(OpTest):
         assert np.array_equal(res_5, out[2])
 
 
-class TestSplitOpError(OpTest):
+class TestSplitOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The type of axis in split_op should be int or Variable.

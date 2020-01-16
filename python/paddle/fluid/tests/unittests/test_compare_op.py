@@ -48,7 +48,7 @@ for _type_name in {'float32', 'float64', 'int32', 'int64'}:
     create_test_class('not_equal', _type_name, lambda _a, _b: _a != _b)
 
 
-class TestCompareOpError(op_test.OpTest):
+class TestCompareOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input x and y of compare_op must be Variable.

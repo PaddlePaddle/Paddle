@@ -20,6 +20,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/ir/fusion_group/operation.h"
 #include "paddle/fluid/framework/ir/node.h"
+#include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -170,6 +171,11 @@ struct SubGraph {
           }
         }
 
+        if (from > to) {
+          LOG(INFO) << "subgraph: {\n" << DebugString(Nodes()) << "}\n";
+          LOG(INFO) << "sorted nodes: {\n"
+                    << DebugString(sorted_nodes) << "}\n";
+        }
         PADDLE_ENFORCE_LE(from, to, "Range [%d, %d] is invalid.", from, to);
         sorted_nodes.insert(sorted_nodes.begin() + to, n);
         sorted_vars[n->Name()] = n;
@@ -225,6 +231,9 @@ struct SubGraph {
           }
         }
         if (found_connected_ops) {
+          if (from > to) {
+            LOG(INFO) << "subgraph: {\n" << DebugString(Nodes()) << "}\n";
+          }
           PADDLE_ENFORCE_LE(from, to, "Range [%d, %d] is invalid.", from, to);
           sorted_ops.insert(sorted_ops.begin() + to, op_n);
           erased_ops.insert(op_n);

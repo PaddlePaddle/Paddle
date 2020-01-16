@@ -97,7 +97,7 @@ class DataParallel(layers.Layer):
            import paddle.fluid as fluid
            import paddle.fluid.dygraph as dygraph
            from paddle.fluid.optimizer import AdamOptimizer
-           from paddle.fluid.dygraph.nn import FC
+           from paddle.fluid.dygraph.nn import Linear
            from paddle.fluid.dygraph.base import to_variable
 
            place = fluid.CUDAPlace(0)
@@ -106,28 +106,28 @@ class DataParallel(layers.Layer):
                # prepare the data parallel context
                strategy=dygraph.parallel.prepare_context()
 
-               fc_layer = FC("FC", 10, act="softmax")
+               linear = Linear(1, 10, act="softmax")
                adam = fluid.optimizer.AdamOptimizer()
 
                # make the module become the data parallelism module
-               fc_layer = dygraph.parallel.DataParallel(fc_layer, strategy)
+               linear = dygraph.parallel.DataParallel(linear, strategy)
 
                x_data = np.random.random(size=[10, 1]).astype(np.float32)
                data = to_variable(x_data)
 
-               hidden = fc_layer(data)
+               hidden = linear(data)
                avg_loss = fluid.layers.mean(hidden)
 
                # scale the loss according to the number of trainers.
-               avg_loss = fc_layer.scale_loss(avg_loss)
+               avg_loss = linear.scale_loss(avg_loss)
 
                avg_loss.backward()
 
                # collect the gradients of trainers.
-               fc_layer.apply_collective_grads()
+               linear.apply_collective_grads()
 
                adam.minimize(avg_loss)
-               fc_layer.clear_gradients()
+               linear.clear_gradients()
 
     Args:
         layers(Layer): The module that should be executed by data parallel.
@@ -184,6 +184,15 @@ class DataParallel(layers.Layer):
                 [coalesced_grad, grad_vars, g_var_shapes])
         return coalesced_grads_and_grad_vars
 
+    def _reshape_inplace(self, x, shape):
+        x_shape = self._helper.create_variable_for_type_inference(dtype=x.dtype)
+        self._helper.append_op(
+            type="reshape2",
+            inputs={'X': x},
+            attrs={'shape': shape},
+            outputs={'Out': x,
+                     'XShape': x_shape})
+
     def _split_tensors(self, coalesced_grads_and_grad_vars):
         from ..layers import nn
         for coalesced_grad, origin_grad_vars, grad_shapes in coalesced_grads_and_grad_vars:
@@ -195,7 +204,8 @@ class DataParallel(layers.Layer):
                 attrs={'sections': grad_var_len,
                        'axis': 0})
             for g_var, g_shape in zip(origin_grad_vars, grad_shapes):
-                nn.reshape(x=g_var, shape=g_shape, inplace=True)
+                self._reshape_inplace(x=g_var, shape=g_shape)
+                assert g_var.shape == g_shape
 
     @no_grad
     def apply_collective_grads(self):
@@ -209,12 +219,8 @@ class DataParallel(layers.Layer):
         grad_vars = []
         for param in self._layers.parameters():
             # NOTE(zcd): The grad_ivar maybe no generated.
-            if param.trainable and param._ivar._grad_ivar():
-                g_var = framework.Variable(
-                    block=self._helper.main_program.current_block(),
-                    name=param._ivar._grad_name(),
-                    stop_gradient=True,
-                    ivar=param._ivar._grad_ivar())
+            if param.trainable and param._grad_ivar():
+                g_var = param._grad_ivar()
                 grad_vars.append(g_var)
                 assert g_var not in grad_var_set
                 grad_var_set.add(g_var)

@@ -18,7 +18,7 @@ cc_test(heart_beat_monitor_test SRCS heart_beat_monitor_test.cc DEPS heart_beat_
 # FIXME(typhoonzero): use add_subdirectory once we clean the dependency of these files
 set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
 if(WITH_GRPC)
-  set(GRPC_DEPS grpc++_unsecure grpc_unsecure gpr cares zlib protobuf)
+  set(GRPC_DEPS grpc++_unsecure grpc_unsecure gpr zlib protobuf)
   set(GRPC_SRCS grpc/grpc_client.cc grpc/grpc_server.cc grpc/grpc_serde.cc grpc/grpc_bytebuffer_stream.cc grpc/grpc_variable_response.cc)
   grpc_library(sendrecvop_rpc SRCS sendrecvop_utils.cc
         request_handler_impl.cc rpc_client.cc rpc_server.cc
@@ -38,7 +38,7 @@ else()
   set(BRPC_SRCS brpc/brpc_client.cc brpc/brpc_server.cc brpc/brpc_sendrecvop_utils.cc brpc/brpc_variable_response.cc brpc/brpc_rdma_pool.cc)
   set_source_files_properties(${BRPC_SRCS} parameter_prefetch.cc parameter_send.cc parameter_recv.cc communicator.cc rpc_server_test.cc brpc/brpc_serde_test.cc collective_server.cc collective_server_test.cc collective_client.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 
-  set(BRPC_DEPS brpc ssl crypto protobuf leveldb snappystream snappy zlib)
+  set(BRPC_DEPS brpc ssl crypto protobuf leveldb zlib)
 
   brpc_library(sendrecvop_rpc SRCS sendrecvop_utils.cc
       request_handler_impl.cc rpc_client.cc rpc_server.cc

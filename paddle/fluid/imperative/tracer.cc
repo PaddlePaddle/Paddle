@@ -53,6 +53,7 @@ static void ClearNoNeedBufferInputs(OpBase* op) {
           new_var->MutableVar()->GetMutable<framework::LoDTensor>();
       auto& old_tensor = var.Get<framework::LoDTensor>();
       new_tensor->Resize(old_tensor.dims());
+      new_tensor->set_lod(old_tensor.lod());
       each_var.reset(new_var);
     }
   }
@@ -81,10 +82,9 @@ static void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad) {
 void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                      const NameVarBaseMap& outs, framework::AttributeMap attrs,
                      const platform::Place& place, bool trace_backward) {
-  platform::RecordEvent event(type);
   VLOG(1) << "Trace Op: " << type;
   size_t op_id = GenerateUniqueId();
-  auto op = OpBase::Create(op_id, type, ins, outs, std::move(attrs), place);
+  auto op = OpBase::Create(op_id, type, ins, outs, attrs, place);
   op->Run(ins, outs);
 
   if (enable_program_desc_tracing_) {
@@ -93,6 +93,27 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   }
 
   if (ComputeRequiredGrad(ins, outs, trace_backward)) {
+    TraceBackward(op, ins, outs);
+  } else {
+    VLOG(3) << "No Grad to track for Op: " << type;
+  }
+}
+
+void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
+                     const NameVarBaseMap& outs,
+                     framework::AttributeMap attrs) {
+  VLOG(1) << "Trace Op: " << type;
+  size_t op_id = GenerateUniqueId();
+  auto op =
+      OpBase::Create(op_id, type, ins, outs, std::move(attrs), expected_place_);
+  op->Run(ins, outs);
+
+  if (enable_program_desc_tracing_) {
+    VLOG(5) << "Trace op " << type << " into ProgramDesc";
+    program_desc_tracer_->InsertOp(type, ins, outs, op->Attrs());
+  }
+
+  if (ComputeRequiredGrad(ins, outs, no_grad_)) {
     TraceBackward(op, ins, outs);
   } else {
     VLOG(3) << "No Grad to track for Op: " << type;
