@@ -12,6 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <curand.h>
+#include <curand_kernel.h>
+#include <cmath>
 #include <string>
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/fake_quantize_op.h"
@@ -125,10 +128,73 @@ __global__ void ClipAndQuantKernel(const T* in, const T* scale,
     T v = x > s ? s : x;
     v = v < -s ? -s : v;
     v = bin_cnt / s * v;
-    out[i] = round(v);
+    if (std::is_same<T, float>::value) {
+      out[i] = roundf(v);
+    } else {
+      out[i] = round(v);
+    }
   }
 }
 
+// //////////////////////////////////////////////////////0
+__global__ void init_random_kernel(curandState_t* state, unsigned int seed) {
+  int bid = threadIdx.x + blockIdx.x * blockDim.x;
+  curand_init(seed, bid, 0, &state[bid]);
+}
+
+template <typename T>
+__global__ void ClipAndRandomQuantKernel(const T* in, const T* scale,
+                                         const int bin_cnt, const int n,
+                                         curandState_t* globalState,
+                                         const float random_min_threshold,
+                                         const float random_max_threshold,
+                                         T* out) {
+  int bid = threadIdx.x + blockIdx.x * blockDim.x;
+
+  T s = scale[0];
+  for (int i = bid; i < n; i += blockDim.x * gridDim.x) {
+    T x = in[i];
+    T v = x > s ? s : x;
+    v = v < -s ? -s : v;
+    v = bin_cnt / s * v;
+
+    // TODO(juncaipeng) consider float and double
+    T v_abs = abs(v);
+    T v_fp = v_abs - static_cast<int>(v_abs);
+    if (v_fp > random_min_threshold && v_fp < random_max_threshold) {
+      curandState_t localState = globalState[bid];
+      unsigned int random_data = curand(&localState) % 2;
+      globalState[bid] = localState;
+      if (random_data == 0) {
+        out[i] = static_cast<T>(floorf(v));
+      } else {
+        out[i] = static_cast<T>(ceilf(v));
+      }
+    } else {
+      out[i] = roundf(v);
+    }
+  }
+}
+
+template <typename T>
+__global__ void ClipFixPrecisionAndQuantKernel(const T* in, const T* scale,
+                                               const int bin_cnt, const int n,
+                                               const float base, T* out) {
+  int bid = threadIdx.x + blockIdx.x * blockDim.x;
+  int tid = threadIdx.x;
+
+  T s = scale[0];
+  for (int i = bid; i < n; i += blockDim.x * gridDim.x) {
+    T x = in[i];
+    T y = round(x * base) / static_cast<T>(base);
+    T v = y > s ? s : y;
+    v = v < -s ? -s : v;
+    v = bin_cnt / s * v;
+    out[i] = roundf(v);
+  }
+}
+
+// /////////////////////////////////////////////////////1
 template <typename T>
 __global__ void ClipAndQuantDequantKernel(const T* in, const T* scale,
                                           const int bin_cnt, const int n,
@@ -142,7 +208,11 @@ __global__ void ClipAndQuantDequantKernel(const T* in, const T* scale,
     T v = x > s ? s : x;
     v = v < -s ? -s : v;
     v = bin_cnt / s * v;
-    out[i] = round(v) * s / bin_cnt;
+    if (std::is_same<T, float>::value) {
+      out[i] = roundf(v) * s / bin_cnt;
+    } else {
+      out[i] = round(v) * s / bin_cnt;
+    }
   }
 }
 
@@ -159,8 +229,30 @@ struct ClipAndFakeQuantFunctor<platform::CUDADeviceContext, T> {
     const T* scale_data = scale.data<T>();
     T* out_data = out->mutable_data<T>(ctx.GetPlace());
 
+    /*
     ClipAndQuantKernel<T><<<grid, block, 0, ctx.stream()>>>(
         in_data, scale_data, bin_cnt, num, out_data);
+    */
+    /////////////////////////////////////////////
+    /*
+    float base = 1e6;
+    ClipFixPrecisionAndQuantKernel<T><<<grid, block, 0, ctx.stream()>>>(
+    in_data, scale_data, bin_cnt, num, base, out_data);
+    */
+
+    curandState_t* devStates;
+    cudaMalloc(static_cast<void**> & devStates,
+               grid * block * sizeof(curandState_t));
+    init_random_kernel<<<grid, block, 0, ctx.stream()>>>(devStates,
+                                                         std::time(NULL));
+    float random_min_threshold = 0.499;
+    float random_max_threshold = 0.501;
+    ClipAndRandomQuantKernel<T><<<grid, block, 0, ctx.stream()>>>(
+        in_data, scale_data, bin_cnt, num, devStates, random_min_threshold,
+        random_max_threshold, out_data);
+    cudaFree(devStates);
+
+    /////////////////////////////////////////////
   }
 };
 
@@ -203,7 +295,11 @@ __global__ void ChannelClipAndQuantKernel(const T* in, const T* scale,
     T v = x > s ? s : x;
     v = v < -s ? -s : v;
     v = bin_cnt / s * v;
-    out_c[i] = round(v);
+    if (std::is_same<T, float>::value) {
+      out_c[i] = roundf(v);
+    } else {
+      out_c[i] = round(v);
+    }
   }
 }
 
