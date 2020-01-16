@@ -217,7 +217,7 @@ class TestDataNormOp(OpTest):
         """
         test check backward, check grad
         """
-        self.check_grad(['X'], 'Y', no_grad_set=set(['X', 'Y']), check_dygraph=False)
+        self.check_grad(['X'], 'Y', no_grad_set=set(['X', 'Y']), check_dygraph=True)
 
 
 class TestDataNormOpWithSlotDim(OpTest):
