@@ -311,11 +311,6 @@ def partial_sum(input, start_index=0, length=-1):
         out = exe.run(feed={"x":xx, "y":yy}, fetch_list=[sum])
         print(out)
     """
-    if not isinstance(input, list):
-        warnings.warn(
-            "The type of input in partial_sum should be list, but received %s."
-            % (type(input)))
-        input = [input]
     for id, x in enumerate(input):
         check_type_and_dtype(x, 'input[' + str(id) + ']', Variable,
                              ['float32', 'int32', 'int64'], 'partial_sum')

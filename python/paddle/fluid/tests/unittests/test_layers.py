@@ -2780,6 +2780,13 @@ class TestBook(LayerTest):
             self.assertIsNotNone(out2)
             return (out1)
 
+    def test_partial_sum(self):
+        with self.static_graph():
+            x = layers.data(name="x", shape=[3], dtype="float32")
+            y = layers.data(name="y", shape=[3], dtype="float32")
+            sum = layers.partial_sum([x, y], start_index=0, length=2)
+            return (sum)
+
     def test_roi_pool(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():

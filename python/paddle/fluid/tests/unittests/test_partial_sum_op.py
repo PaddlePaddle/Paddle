@@ -19,11 +19,13 @@ import numpy as np
 from op_test import OpTest
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
+import paddle.fluid.layers as layers
+import paddle.fluid as fluid
 import random
 import six
 
 
-class TestSumOp(OpTest):
+class TestPartialSumOp(OpTest):
     def setUp(self):
         self.op_type = "partial_sum"
         self.init_kernel_type()
@@ -63,7 +65,7 @@ class TestSumOp(OpTest):
             self.check_grad([var_name], 'Out')
 
 
-class TestSumOp2(TestSumOp):
+class TestPartialSumOp2(TestPartialSumOp):
     def init_para(self):
         self.batch_size = random.randint(1, 10)
         self.column = random.randint(101, 200)
@@ -72,7 +74,7 @@ class TestSumOp2(TestSumOp):
         self.var_num = 3
 
 
-class TestSumOp3(TestSumOp):
+class TestPartialSumOp3(TestPartialSumOp):
     def init_para(self):
         self.batch_size = random.randint(1, 10)
         self.column = random.randint(101, 200)
@@ -81,7 +83,7 @@ class TestSumOp3(TestSumOp):
         self.var_num = 2
 
 
-class TestSumOp4(TestSumOp):
+class TestPartialSumOp4(TestPartialSumOp):
     def init_para(self):
         self.batch_size = random.randint(1, 10)
         self.column = random.randint(101, 200)
