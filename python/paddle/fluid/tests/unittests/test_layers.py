@@ -1558,6 +1558,7 @@ class TestBook(LayerTest):
             "make_sampled_softmax_with_cross_entropy", "make_sampling_id",
             "make_uniform_random_batch_size_like"
         })
+        self.all_close_compare = set({"make_spectral_norm"})
 
     def test_all_layers(self):
         attrs = (getattr(self, name) for name in dir(self))
@@ -1594,9 +1595,18 @@ class TestBook(LayerTest):
                     dy_result = dy_result[0]
                 dy_result_value = dy_result.numpy()
 
+            if method.__name__ in self.all_close_compare:
+                self.assertTrue(
+                    np.allclose(
+                        static_result[0], dy_result_value, atol=0, rtol=1e-05),
+                    "Result of function [{}] compare failed".format(
+                        method.__name__))
+                continue
+
             if method.__name__ not in self.not_compare_static_dygraph_set:
                 self.assertTrue(
-                    np.array_equal(static_result[0], dy_result_value))
+                    np.array_equal(static_result[0], dy_result_value),
+                    "Result of function [{}] not equal".format(method.__name__))
 
     def _get_np_data(self, shape, dtype, append_batch_size=True):
         np.random.seed(self.seed)

@@ -5,7 +5,6 @@ fi
 
 PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../" && pwd )"
 API_FILES=("CMakeLists.txt"
-           "paddle/fluid/op_use_default_grad_op_maker.spec"
            "paddle/fluid/framework/operator.h"
            "paddle/fluid/framework/tensor.h"
            "paddle/fluid/framework/details/op_registry.h"
@@ -31,6 +30,7 @@ API_FILES=("CMakeLists.txt"
            "python/paddle/fluid/tests/unittests/white_list/op_accuracy_white_list.py"
            "python/paddle/fluid/tests/unittests/white_list/compile_vs_runtime_white_list.py"
            "python/paddle/fluid/tests/unittests/white_list/no_check_set_white_list.py"
+           "python/paddle/fluid/tests/unittests/white_list/check_op_sequence_instance_0_input_white_list.py"
            "python/paddle/fluid/tests/unittests/white_list/op_threshold_white_list.py"
            "python/paddle/fluid/tests/unittests/white_list/check_op_sequence_batch_1_input_white_list.py"
            )
@@ -94,10 +94,7 @@ for API_FILE in ${API_FILES[*]}; do
       # NOTE: per_page=10000 should be ok for all cases, a PR review > 10000 is not human readable.
       # You can use http://caius.github.io/github_id/ to find Github user id.
       # approval_user_list: XiaoguangHu01 46782768,Xreki 12538138,luotao1 6836917,sneaxiy 32832641,qingqing01 7845005,guoshengCS 14105589,heavengate 12605721,kuke 3064195,Superjomn 328693,lanxianghit 47554610,cyj1986 39645414,hutuxian 11195205,frankwhzhang 20274488,nepeplwu 45024560,Dianhai 38231817,chenwhql 22561442,zhiqiu 6888866,seiriosPlus 5442383,gongweibao 10721757,saxon-zh 2870059,Boyan-Liu 31623103, zhouwei25 52485244, Aurelius84 9301846, liym27 33742067, zhhsplendid 7913861, kolinwei 22165420, liuwei1031 46661762, swtkiwi 27208573, juncaipeng 52520497, zhangting2020 26615455, JepsonWong 16509038.
-      if [ "${API_FILE}" == "paddle/fluid/op_use_default_grad_op_maker.spec" ];then
-          echo_line="You must have one RD (sneaxiy (Recommend) or luotao1) approval for op_use_default_grad_op_maker.spec, which manages the grad_op memory optimization.\n"
-          check_approval 1 32832641 6836917
-      elif [ "${API_FILE}" == "CMakeLists.txt" ];then
+      if [ "${API_FILE}" == "CMakeLists.txt" ];then
           echo_line="You must have one RD (luotao1 or XiaoguangHu01) approval for CMakeLists.txt, which manages the compilation parameter.\n"
           check_approval 1 6836917 46782768
       elif [ "${API_FILE}" == "python/paddle/fluid/__init__.py" ];then
@@ -113,7 +110,7 @@ for API_FILE in ${API_FILES[*]}; do
           echo_line="You must have one RD (zhiqiu (Recommend) , sneaxiy or luotao1) approval for the paddle/fluid/framework/unused_var_check.cc, which manages the white list of operators that have unused input variables. Before change the white list, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/OP-Should-Not-Have-Unused-Input] and try to refine code first. \n"
           check_approval 1 6888866 32832641 6836917
       elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/check_shape_white_list.py" ];then
-          echo_line="It is an Op accuracy problem, please take care of it. You must have one RD (hong19860320 (Recommend), luotao1, phlrain) approval for the changes of check_shape_white_list.py, which manages the white list of operators with limited input size. The op test must have at least one test case with input size greater than or equal to 100. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/OP-Test-Input-Shape-Requirements. \n"
+          echo_line="It is an Op accuracy problem, please take care of it. You must have one RD (hong19860320 (Recommend), luotao1, phlrain) approval for the changes of check_shape_white_list.py, which manages the white list of operators with limited input size. Inputs size of all cases in the op test must be greater than or equal to 100. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/OP-Test-Input-Shape-Requirements. \n"
           check_approval 1 9973393 6836917 43953930
       elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/op_accuracy_white_list.py" ];then
           echo_line="It is an Op accuracy problem, please take care of it. You must have one RD (juncaipeng (Recommend), zhangting2020 (Recommend) or luotao1) approval for the python/paddle/fluid/tests/unittests/white_list/op_accuracy_white_list.py, which manages the white list of upgrading the precision of op test to float64. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Upgrade-OP-Precision-to-Float64. \n"
@@ -124,6 +121,9 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/no_check_set_white_list.py" ];then
           echo_line="You must have one RD (cryoco (Recommend), luotao1 or phlrain) approval for the python/paddle/fluid/tests/unittests/white_list/no_check_set_white_list.py, which manages the white list of setting no_check_set of check_output. \n"
           check_approval 1 12407750 26615455 6836917
+      elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/check_op_sequence_instance_0_input_white_list.py" ]; then
+          echo_line="You must have one RD (JepsonWong (Recommend), luotao1, phlrain) approval for the ${API_FILE}, which manages the white list of instance size 0 input for sequence op test. For more information, please refer to [https://github.com/PaddlePaddle/Paddle/wiki/It-is-required-to-include-LoDTensor-input-with-instance_size=0-in-sequence-OP-test]. \n"
+          check_approval 1 16509038 6836917 43953930
       elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/op_threshold_white_list.py" ];then
           echo_line="It is an Op accuracy problem, please take care of it. You must have one RD (juncaipeng (Recommend), zhangting2020 or luotao1) approval for the python/paddle/fluid/tests/unittests/white_list/op_threshold_white_list.py, which manages the white list of error threshold for op test with float64 precision. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Upgrade-OP-Precision-to-Float64. \n"
           check_approval 1 52520497 26615455 6836917
@@ -248,6 +248,14 @@ if [ "${UNITTEST_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
         echo_line="It is an Op accuracy problem, please take care of it. You must have one RD (zhangting2020 (Recommend), luotao1 or phlrain) approval for the usage (either add or delete) of @skip_check_grad_ci. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Gradient-Check-Is-Required-for-Op-Test. The corresponding lines are as follows:\n${ERROR_LINES}\n"
         check_approval 1 26615455 6836917 43953930
     fi
+fi
+
+DEV_OP_USE_DEFAULT_GRAD_MAKER_SPEC=${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_DEV.spec
+PR_OP_USE_DEFAULT_GRAD_MAKER_SPEC=${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_PR.spec
+ADDED_OP_USE_DEFAULT_GRAD_MAKER=`python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py ${DEV_OP_USE_DEFAULT_GRAD_MAKER_SPEC} ${PR_OP_USE_DEFAULT_GRAD_MAKER_SPEC}` 
+if [ "${ADDED_OP_USE_DEFAULT_GRAD_MAKER}" != "" ]; then
+  echo_line="You must have one RD (sneaxiy (Recommend) or luotao1) approval because you use DefaultGradOpMaker for ${ADDED_OP_USE_DEFAULT_GRAD_MAKER}, which manages the grad_op memory optimization.\n" 
+  check_approval 1 32832641 6836917
 fi
 
 if [ -n "${echo_list}" ];then
