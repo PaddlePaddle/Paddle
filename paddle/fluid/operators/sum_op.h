@@ -132,8 +132,6 @@ class SumKernel : public framework::OpKernel<T> {
 
       std::vector<T *> tensor;
       std::vector<size_t> select_row;
-      tensor.clear();
-      select_row.clear();
       for (size_t i = 0; i < in_num; i++) {
         if (in_vars[i]->IsType<framework::LoDTensor>()) {
           auto in_tensor = in_vars[i]->Get<framework::LoDTensor>();
