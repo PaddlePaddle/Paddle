@@ -39,6 +39,12 @@ enum ProfilerState {
   kAll,       // Profile both CPU and GPU. (Currently experimental).
 };
 
+enum TracerOption {
+  kWhole,
+  kOP,
+  kDetail,
+};
+
 void Mark(const std::string& name);
 
 void PushMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
@@ -181,6 +187,8 @@ bool ShouldSendProfileState();
 void SetProfileListener();
 int64_t ListenerId();
 
+void SetTracerOption(TracerOption option);
+platform::TracerOption GetTracerOption();
 #ifdef PADDLE_WITH_CUDA
 void DummyKernelAndEvent();
 #endif

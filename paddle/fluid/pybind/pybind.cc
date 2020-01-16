@@ -1555,6 +1555,12 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 #endif
 
+  py::enum_<platform::TracerOption>(m, "TracerOption", py::arithmetic())
+      .value("kWhole", platform::TracerOption::kWhole)
+      .value("kOP", platform::TracerOption::kOP)
+      .value("kDetail", platform::TracerOption::kDetail)
+      .export_values();
+
   py::enum_<platform::ProfilerState>(m, "ProfilerState", py::arithmetic())
       .value("kDisabled", platform::ProfilerState::kDisabled)
       .value("kCPU", platform::ProfilerState::kCPU)
@@ -1571,6 +1577,7 @@ All parameter, weight, gradient are variables in Paddle.
       .value("kAve", platform::EventSortingKey::kAve)
       .export_values();
 
+  m.def("set_tracer_option", platform::SetTracerOption);
   m.def("enable_profiler", platform::EnableProfiler);
   m.def("disable_profiler", platform::DisableProfiler);
   m.def("is_profiler_enabled", platform::IsProfileEnabled);

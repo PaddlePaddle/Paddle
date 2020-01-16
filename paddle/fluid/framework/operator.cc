@@ -75,6 +75,23 @@ static DDim GetDimsDebug(const Scope& scope, const std::string& name,
     return DDim({-1});
   }
 }
+static std::string GetTypeName(const VariableNameMap& name_map,
+                               const std::string& type_name) {
+  if (platform::GetTracerOption() != platform::TracerOption::kDetail) return "";
+  std::string ret = type_name + "%";
+  for (auto it = name_map.begin(); it != name_map.end(); it++) {
+    auto name_outputs = it->second;
+    if (!name_outputs.empty() &&
+        type_name.length() < name_outputs[0].length()) {
+      char split_ch = '.';
+      size_t split_pos = name_outputs[0].find(split_ch);
+      ret = ret + name_outputs[0].substr(0, split_pos);
+      break;
+    }
+  }
+  ret = ret + "%";
+  return ret;
+}
 
 static bool VarInited(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
@@ -168,6 +185,8 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
 
     {
       platform::RecordEvent record_event(Type());
+      auto type_name = GetTypeName(outputs_, Type());
+      platform::RecordEvent detail_record_event(type_name);
       RunImpl(scope, place);
     }
 

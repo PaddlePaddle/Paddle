@@ -42,6 +42,7 @@ static int64_t profiler_lister_id = 0;
 static bool should_send_profile_state = false;
 std::mutex profiler_mu;
 
+static TracerOption g_tracer_option = TracerOption::kWhole;
 // The profiler state, the initial value is ProfilerState::kDisabled
 static ProfilerState g_state = ProfilerState::kDisabled;
 // The thread local event list only can be accessed by the specific thread
@@ -372,7 +373,7 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
       std::vector<std::vector<EventItem>> child_table;
       std::vector<EventItem> table;
       bool do_next = false;
-      std::string op_end_str = "inner_op";
+      std::string op_end_str = "----inner_op";
       for (auto it = child_map.begin(); it != child_map.end(); it++) {
         if (it->first == event_item.name) {
           table.push_back(it->second);
@@ -774,5 +775,11 @@ void SetProfileListener() {
 }
 int64_t ListenerId() { return profiler_lister_id; }
 
+void SetTracerOption(TracerOption option) {
+  std::lock_guard<std::mutex> l(profiler_mu);
+  g_tracer_option = option;
+}
+
+platform::TracerOption GetTracerOption() { return g_tracer_option; }
 }  // namespace platform
 }  // namespace paddle

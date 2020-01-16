@@ -126,7 +126,7 @@ def reset_profiler():
     core.reset_profiler()
 
 
-def start_profiler(state):
+def start_profiler(state, tracer_option="Whole"):
     """
     Enable the profiler. Uers can use `fluid.profiler.start_profiler` and
     `fluid.profiler.stop_profiler` to profile, which is equal to the usage 
@@ -137,6 +137,8 @@ def start_profiler(state):
             or 'All'. 'CPU' means only profiling CPU; 'GPU' means profiling
             both CPU and GPU; 'All' means profiling both CPU and GPU, and 
             generates timeline as well.
+        tracer_option (str) : tracer_option can be one of ['Whole', 'OP', 'Detail'], it
+            can control the profile level and print the different level profile result.
 
     Raises:
         ValueError: If `state` is not in ['CPU', 'GPU', 'All'].
@@ -165,6 +167,17 @@ def start_profiler(state):
         prof_state = core.ProfilerState.kCPU
     else:
         prof_state = core.ProfilerState.kAll
+
+    if tracer_option not in ["Whole", "OP", "Detail"]:
+        raise ValueError("tracer option must be 'Whole', 'OP', 'Detail'.")
+    if tracer_option == "Whole":
+        prof_tracer_option = core.TracerOption.kWhole
+    elif tracer_option == "OP":
+        prof_tracer_option = core.TracerOption.kOP
+    else:
+        prof_tracer_option = core.TracerOption.kDetail
+
+    core.set_tracer_option(prof_tracer_option)
     core.enable_profiler(prof_state)
 
 
@@ -184,8 +197,8 @@ def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
             The `max` means sorting by the maximum execution time.
             The `min` means sorting by the minimum execution time.
             The `ave` means sorting by the average execution time.
-        profile_path (str, optional) : If state == 'All', it will generate timeline,
             and write it into `profile_path`. The default profile_path is `/tmp/profile`. 
+        profile_path (str, optional) : If state == 'All', it will generate timeline,
 
     Raises:
         ValueError: If `sorted_key` is not in
@@ -225,7 +238,10 @@ def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
 
 
 @signature_safe_contextmanager
-def profiler(state, sorted_key=None, profile_path='/tmp/profile'):
+def profiler(state,
+             sorted_key=None,
+             profile_path='/tmp/profile',
+             tracer_option="OP"):
     """
     The profiler interface. Different from `fluid.profiler.cuda_profiler`, 
     this profiler can be used to profile both CPU and GPU program.
@@ -246,6 +262,8 @@ def profiler(state, sorted_key=None, profile_path='/tmp/profile'):
             The `ave` means sorting by the average execution time.
         profile_path (str, optional) : If state == 'All', it will generate timeline,
             and write it into `profile_path`. The default profile_path is `/tmp/profile`. 
+        tracer_option (str) : tracer_option can be one of ['Whole', 'OP', 'Detail'], it
+            can control the profile level and print the different level profile result.
 
     Raises:
         ValueError: If `state` is not in ['CPU', 'GPU', 'All']. If `sorted_key` is
@@ -311,6 +329,6 @@ def profiler(state, sorted_key=None, profile_path='/tmp/profile'):
             thread0::conv2d             8           7.93456     0.291385    5.63342     0.99182     0.795243
             thread0::elementwise_add    8           1.96555     0.191884    0.518004    0.245693    0.196998
     """
-    start_profiler(state)
+    start_profiler(state, tracer_option)
     yield
     stop_profiler(sorted_key, profile_path)
