@@ -79,7 +79,7 @@ class TestEmbeddingIdStopGradientBase(unittest.TestCase):
 
 class TestEmbeddingIdStopGradient2(TestEmbeddingIdStopGradientBase):
     def setUp(self):
-        self.reshape_times = 1
+        self.reshape_times = 100
         self.iteration = 10
 
 
