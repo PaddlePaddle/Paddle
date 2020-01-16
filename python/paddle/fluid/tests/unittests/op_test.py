@@ -1273,13 +1273,14 @@ class OpTest(unittest.TestCase):
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
         op_attrs = self.attrs if hasattr(self, "attrs") else dict()
 
-        if hasattr(self, "inputs"):
+        
+        if self.op_type in ['softmax', 'pool2d', 'pool3d'] and hasattr(self, "inputs"):
             op_inputs = copy.deepcopy(self.inputs)
             for input_to_check in inputs_to_check:
                 if not op_inputs[input_to_check].dtype == np.float64:
                     op_inputs[input_to_check] = op_inputs[input_to_check].astype(np.float64)
         else:
-            op_inputs = dict()
+            op_inputs = self.inputs if hasattr(self, "inputs") else dict()
 
         self._check_grad_helper()
         if self.dtype == np.float64 and \
@@ -1304,17 +1305,19 @@ class OpTest(unittest.TestCase):
         if not type(output_names) is list:
             output_names = [output_names]
 
-        self.inputs_fp64 = copy.deepcopy(self.inputs)
-        for input_to_check in inputs_to_check:
-            if not self.inputs_fp64[input_to_check].dtype == np.float64:
-                self.inputs_fp64[input_to_check] = self.inputs_fp64[input_to_check].astype(np.float64)
+        if self.op_type in ['softmax', 'pool2d', 'pool3d']:
+            self.inputs_fp64 = copy.deepcopy(self.inputs)
+            for input_to_check in inputs_to_check:
+                if not self.inputs_fp64[input_to_check].dtype == np.float64:
+                    self.inputs_fp64[input_to_check] = self.inputs_fp64[input_to_check].astype(np.float64)
+            self.inputs = self.inputs_fp64
 
         numeric_grads = user_defined_grads or [
             get_numeric_gradient(
                 place,
                 self.scope,
                 self.op,
-                self.inputs_fp64,
+                self.inputs,
                 input_to_check,
                 output_names,
                 delta=numeric_grad_delta,
