@@ -174,8 +174,17 @@ void BasicEngine::SumGradient(OpBase* op, std::shared_ptr<VarBase> src,
 
   PADDLE_ENFORCE_EQ(iter != accumulators_.end(), true,
                     "Cannot find gradient of variable %s", dst->Name());
-  iter->second->Add(std::move(src), op->id());
+
+  auto var_tmp = src->Var();
+  if (var_tmp.IsInitialized() &&
+      ((var_tmp.IsType<framework::LoDTensor>() &&
+        var_tmp.Get<framework::LoDTensor>().IsInitialized()) ||
+       (var_tmp.IsType<framework::SelectedRows>() &&
+        var_tmp.Get<framework::SelectedRows>()..value().IsInitialized()))) {
+    iter->second->Add(std::move(src), op->id());
+  }
 }
+
 void BasicEngine::Execute() {
   PrepareDeps();
   // Start execute Computation graph
