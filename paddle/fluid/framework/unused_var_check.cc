@@ -28,13 +28,13 @@ DEFINE_bool(enable_unused_var_check, false,
 
 // NOTE(zhiqiu): Currently, there are some operators which involves unused
 // inputs and cannot be removed from the white_list below.
-// They can be mainly divided into three categories:
+// They can be mainly divided into four categories:
 // 0: the inputs of which are only used in if branch, or used in cuda kernel but
 // not in cpu kernel;
 // 1: the inputs of which are used to indicate dtype of outputs;
 // 2: the inputs of which are used in fused operators.
 // 3: specical operators, like ngraph_engine.
-// The categories number is presented in the comments after each operator.
+// The category number is presented in the comments after each operator.
 
 const std::unordered_set<std::string> op_has_unsed_vars_white_list = {
     "batch_norm",                      // 0
@@ -46,7 +46,6 @@ const std::unordered_set<std::string> op_has_unsed_vars_white_list = {
     "rmsprop",                         // 0
     "sequence_conv_grad",              // 0
     "roi_perspective_transform_grad",  // 0
-    "center_loss_grad",                // 0
     "fill_zeros_like",                 // 1
     "fill_any_like",                   // 1
     "nce_grad",                        // 1
