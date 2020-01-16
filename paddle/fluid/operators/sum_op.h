@@ -125,25 +125,31 @@ class SumKernel : public framework::OpKernel<T> {
     size_t in_num = in_vars.size();
     auto out_var = context.OutputVar("Out");
 
+    bool in_place = out_var == in_vars[0];
     size_t item_size = 0;
     if (out_var->IsType<framework::LoDTensor>()) {
       auto *out = out_var->GetMutable<framework::LoDTensor>();
       auto *out_ptr = out->mutable_data<T>(context.GetPlace());
       if (in_num >= 1 && in_vars[0]->IsType<framework::LoDTensor>()) {
         auto &in_0_tensor = in_vars[0]->Get<framework::LoDTensor>();
-        item_size = in_0_tensor.numel();
+        if (in_0_tensor.numel() > 0) {
+          in_place = (in_0_tensor.data<T>() == out_ptr);
+          item_size = in_0_tensor.numel();
+        }
       }
 
       std::vector<T *> tensor;
       std::vector<size_t> select_row;
       tensor.clear();
       select_row.clear();
-      for (size_t i = 0; i < in_num; i++) {
+      size_t start = in_place ? 1 : 0;
+      for (size_t i = start; i < in_num; i++) {
         if (in_vars[i]->IsType<framework::LoDTensor>()) {
           auto in_tensor = in_vars[i]->Get<framework::LoDTensor>();
           if (in_tensor.numel()) {
             auto in_data = in_tensor.data<T>();
             tensor.push_back(in_data);
+            item_size = in_tensor.numel();
           }
         } else if (in_vars[i]->IsType<framework::SelectedRows>()) {
           select_row.push_back(i);
@@ -151,7 +157,6 @@ class SumKernel : public framework::OpKernel<T> {
           PADDLE_THROW("Variable type must be LoDTensor/SelectedRows.");
         }
       }
-
       if (tensor.size()) {
         for (size_t i = 0; i < item_size; ++i) {
           T result_temp = 0;
@@ -159,9 +164,9 @@ class SumKernel : public framework::OpKernel<T> {
             auto in0_ptr = tensor[j];
             result_temp = result_temp + in0_ptr[i];
           }
-          out_ptr[i] = result_temp;
+          out_ptr[i] = in_place ? out_ptr[i] + result_temp : result_temp;
         }
-      } else if (!tensor.size()) {
+      } else if (!in_place) {
         math::SetConstant<DeviceContext, T> constant_functor;
         constant_functor(context.template device_context<DeviceContext>(), out,
                          static_cast<T>(0));
