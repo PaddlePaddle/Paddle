@@ -24,8 +24,7 @@ namespace allocation {
 class CUDAAllocator : public Allocator {
  public:
   explicit CUDAAllocator(const platform::CUDAPlace& place) : place_(place) {}
-  explicit CUDAAllocator(const platform::Place& place)
-      : place_(boost::get<platform::CUDAPlace>(place)) {}
+
   bool IsAllocThreadSafe() const override;
 
  protected:
