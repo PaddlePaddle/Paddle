@@ -34,5 +34,5 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
 ]
 
 NO_FP16_CHECK_GRAD_OP_LIST = [
-    'fused_elemwise_activation', 'pool2d', 'pool3d', 'softmax'
+    'fused_elemwise_activation'
 ]

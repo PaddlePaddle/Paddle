@@ -257,8 +257,6 @@ class TestPool3d_Op(OpTest):
             self.check_output()
 
     def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
         if self.has_cudnn() and self.pool_type != "max":
             place = core.CUDAPlace(0)
             self.check_grad_with_place(place, set(['X']), 'Out')
@@ -284,6 +282,10 @@ class TestPool3d_Op(OpTest):
 
     def init_pool_type(self):
         self.pool_type = "avg"
+        self.pool3D_forward_naive = avg_pool3D_forward_naive
+
+    def init_data_type(self):
+        self.dtype = np.float64
 
     def init_global_pool(self):
         self.global_pool = True
@@ -311,6 +313,7 @@ class TestCase1(TestPool3d_Op):
 
     def init_pool_type(self):
         self.pool_type = "avg"
+        self.pool3D_forward_naive = avg_pool3D_forward_naive
 
     def init_global_pool(self):
         self.global_pool = False
@@ -329,6 +332,7 @@ class TestCase2(TestPool3d_Op):
 
     def init_pool_type(self):
         self.pool_type = "avg"
+        self.pool3D_forward_naive = avg_pool3D_forward_naive
 
     def init_global_pool(self):
         self.global_pool = False
@@ -337,16 +341,19 @@ class TestCase2(TestPool3d_Op):
 class TestCase3(TestPool3d_Op):
     def init_pool_type(self):
         self.pool_type = "max"
+        self.pool3D_forward_naive = max_pool3D_forward_naive
 
 
 class TestCase4(TestCase1):
     def init_pool_type(self):
         self.pool_type = "max"
+        self.pool3D_forward_naive = max_pool3D_forward_naive
 
 
 class TestCase5(TestCase2):
     def init_pool_type(self):
         self.pool_type = "max"
+        self.pool3D_forward_naive = max_pool3D_forward_naive
 
 
 #--------------------test pool3d cudnn--------------------
@@ -385,6 +392,27 @@ def create_test_cudnn_fp16_class(parent):
                 place = core.CUDAPlace(0)
                 if core.is_float16_supported(place):
                     self.check_output_with_place(place, atol=1e-3)
+
+        def test_check_grad(self):
+            # TODO(wangzhongpu): support mkldnn op in dygraph mode
+            place = core.CUDAPlace(0)
+            #if core.is_float16_supported(
+            #        place) and self.pool_type != "max":
+            if core.is_float16_supported(
+                    place) and self.pool_type != "max":
+                self.check_grad_with_place(
+                    place,
+                    set(['X']),
+                    'Out',
+                    max_relative_error=0.07)
+            elif core.is_float16_supported(
+                    place) and self.pool_type == "max":
+                self.check_grad_with_place(
+                    place,
+                    set(['X']),
+                    'Out',
+                    max_relative_error=1.0)
+
 
     cls_name = "{0}_{1}".format(parent.__name__, "CUDNNFp16Op")
     TestCUDNNFp16Case.__name__ = cls_name
@@ -647,8 +675,6 @@ class TestCase5_Max(TestCase2):
         self.pool_type = "max"
 
     def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
         if self.has_cudnn() and self.pool_type == "max":
             place = core.CUDAPlace(0)
             self.check_grad_with_place(

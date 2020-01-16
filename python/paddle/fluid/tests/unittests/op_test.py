@@ -24,6 +24,7 @@ import time
 import itertools
 import collections
 from collections import defaultdict
+import copy
 
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -1271,9 +1272,16 @@ class OpTest(unittest.TestCase):
                               check_dygraph=True):
         OpTest.op_type = self.op_type
         self.scope = core.Scope()
-        op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
         op_attrs = self.attrs if hasattr(self, "attrs") else dict()
+
+        if hasattr(self, "inputs"):
+            op_inputs = copy.deepcopy(self.inputs)
+            for input_to_check in inputs_to_check:
+                if not op_inputs[input_to_check].dtype == np.float64:
+                    op_inputs[input_to_check] = op_inputs[input_to_check].astype(np.float64)
+        else:
+            op_inputs = dict()
 
         self._check_grad_helper()
         if self.dtype == np.float64 and \
@@ -1298,12 +1306,17 @@ class OpTest(unittest.TestCase):
         if not type(output_names) is list:
             output_names = [output_names]
 
+        self.inputs_fp64 = copy.deepcopy(self.inputs)
+        for input_to_check in inputs_to_check:
+            if not self.inputs_fp64[input_to_check].dtype == np.float64:
+                self.inputs_fp64[input_to_check] = self.inputs_fp64[input_to_check].astype(np.float64)
+
         numeric_grads = user_defined_grads or [
             get_numeric_gradient(
                 place,
                 self.scope,
                 self.op,
-                self.inputs,
+                self.inputs_fp64,
                 input_to_check,
                 output_names,
                 delta=numeric_grad_delta,
