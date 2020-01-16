@@ -24,8 +24,6 @@ NOT_CHECK_OP_LIST = [
     'elementwise_min',
     'elementwise_pow',
     'fused_elemwise_activation',
-    # prelu op's input alpha must be 1-d and only has one data in 'all' mode
-    'prelu'
 ]
 
 NEED_TO_FIX_OP_LIST = [
