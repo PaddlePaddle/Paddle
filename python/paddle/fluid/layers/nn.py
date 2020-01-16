@@ -13941,7 +13941,6 @@ def tdm_sampler(input,
             'output_positive': output_positive,
             'seed': seed
         })
-    layer_out = split(out, )
 
     if output_labels:
         return out, labels

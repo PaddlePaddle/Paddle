@@ -46,7 +46,7 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
     auto output_positive_flag = context.Attr<bool>("output_positive");
 
     // get all tensor
-    auto &input_tensor = input_var->Get<framework::Tensor>();
+    auto &input_tensor = input_var->Get<framework::LoDTensor>();
     auto &travel_lod_tensor = travel_var->Get<framework::LoDTensor>();
     auto &layer_lod_tensor = layer_var->Get<framework::LoDTensor>();
     auto *out_tensor = context.Output<framework::LoDTensor>("Out");
@@ -74,9 +74,8 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
     int64_t *lable_data = lable_tensor->data<int64_t>();
 
     // generate uniform sampler
-    auto node_nums = layer_lod_tensor.numel();
+
     auto seed = context.Attr<int>("seed");
-    Sampler *sampler = new math::UniformSampler(node_nums - 1, seed);
 
     for (int64_t i = 0; i < input_ids_num; ++i) {
       // find leaf node travel path
@@ -88,10 +87,13 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
               : (pos_offset.second - pos_offset.first);
 
       // nce sample, layer by layer
+
       int64_t offset = 0;
       for (size_t layer_idx = 0; layer_idx < sampling_depth; ++layer_idx) {
         int64_t sample_num = neg_samples_num_vec[layer_idx];
-
+        int64_t node_nums =
+            layer_node_offset[layer_idx + 1] - layer_node_offset[layer_idx];
+        Sampler *sampler = new math::UniformSampler(node_nums, seed);
         // If output positive, add itself
         if (output_positive_flag) {
           output_data[i * sample_res_length + offset] =
@@ -106,7 +108,7 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
           // Avoid sampling to positive samples
           int64_t sample_res = 0;
           do {
-            sample_res = sampler->Sample() % neg_samples_num_vec[layer_idx];
+            sample_res = sampler->Sample();
           } while (travel_data[pos_offset.first + layer_idx] ==
                    layer_data[layer_node_offset[layer_idx] + sample_res]);
 
@@ -115,12 +117,25 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
           lable_data[i * sample_res_length + offset] = 0;
           offset += 1;
         }  // end layer nce
-      }    // end one input nce
+        delete sampler;
+      }  // end one input nce
 
       while (sampling_depth < layer_nums) {
-        // padding example
-        output_data[i * sample_res_length + offset] = input_data[i];
-        lable_data[i * sample_res_length + offset] = 1;
+        // padding extra neg example
+        int64_t sample_num =
+            neg_samples_num_vec[sampling_depth] + (int64_t)output_positive_flag;
+        int64_t node_nums = layer_node_offset[sampling_depth + 1] -
+                            layer_node_offset[sampling_depth];
+        Sampler *sampler = new math::UniformSampler(node_nums, seed);
+        for (int64_t sample_index = 0; sample_index < sample_num;
+             ++sample_index) {
+          int64_t sample_res = sampler->Sample();
+          output_data[i * sample_res_length + offset] =
+              layer_data[layer_node_offset[sampling_depth] + sample_res];
+          lable_data[i * sample_res_length + offset] = 0;
+          offset += 1;
+        }
+        delete sampler;
         sampling_depth += 1;
       }
     }  // end all input nce

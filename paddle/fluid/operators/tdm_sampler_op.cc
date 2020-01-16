@@ -36,18 +36,17 @@ class TDMSamplerOpMaker : framework::OpProtoAndCheckerMaker {
              "Which nodes are included in each layer");
     AddAttr<bool>("output_labels",
                   "output_labels(bool)"
-                  "Whether output sampling results's labels");
-    AddAttr<bool>(
-        "sample_positive",
-        "sample_positive(bool)"
-        "Whether exclude positive samples when we do negative sampling");
+                  "Whether output sampling results's labels")
+        .SetDefault(false);
     AddAttr<bool>("output_positive",
                   "output_positive(bool)"
-                  "Whether positive samples are included in the output");
+                  "Whether positive samples are included in the output")
+        .SetDefault(false);
     AddAttr<std::vector<int>>(
         "neg_samples_num_list",
         "neg_samples_num_list(python:list[int], C:vector<int>)"
-        "The num of negative samples of every layer");
+        "The num of negative samples of every layer")
+        .SetDefault({});
     AddOutput("Out",
               "Sampling result lodTensor, with shape [batch_size, layer_num, "
               "neg_num_of_layer]");
@@ -70,8 +69,26 @@ class TDMSamplerOp : public framework::OperatorWithKernel {
 
     auto neg_samples_num_vec =
         ctx->Attrs().Get<std::vector<int>>("neg_samples_num_list");
+    PADDLE_ENFORCE_NE(neg_samples_num_vec.size(), 0);
+    auto output_positive_flag = ctx->Attrs().Get<bool>("output_positive");
+
+    int64_t sample_res_length = 0;
+    for (auto sample_nums : neg_samples_num_vec) {
+      sample_res_length += sample_nums + (int64_t)output_positive_flag;
+    }
+    std::vector<int64_t> out_dims_vec;
+    int64_t out_dim_0 = -1;
+    auto input_dims = ctx->GetInputDim("Input");
+    if (ctx->IsRuntime()) {
+      out_dim_0 = input_dims[0];
+    }
+    out_dims_vec.push_back(out_dim_0);
+    out_dims_vec.push_back(sample_res_length);
     // check vec.size() < tree deepth
     // check every layer neg num <= layer nodes num
+
+    ctx->SetOutputDim("Out", framework::make_ddim(out_dims_vec));
+    ctx->SetOutputDim("Labels", framework::make_ddim(out_dims_vec));
   }
 
  protected:
