@@ -184,6 +184,8 @@ class SubGraph {
       data_type_ = "float";
     } else if (data_type == proto::VarType::FP64) {
       data_type_ = "double";
+    } else if (data_type == proto::VarType::FP16) {
+      data_type_ = "float16";
     } else {
       VLOG(2) << "Only support fp32 and fp64 in fusion_group.";
       return false;

@@ -184,9 +184,14 @@ std::string CodeGenerator::EmitComputeBody(
     std::string dtype) {
   std::ostringstream compute;
   std::unordered_set<int> used;
+#if CUDA_VERSION >= 9010
+  std::string compute_dtype = dtype;
+#else
+  std::string compute_dtype = (dtype == "float16") ? "float" : dtype;
+#endif
   for (size_t i = 0; i < expressions.size(); i++) {
     VLOG(3) << DebugString(expressions[i]);
-    compute << expressions[i].GetExpression(dtype, &used);
+    compute << expressions[i].GetExpression(compute_dtype, &used);
   }
 
   // Load input to temporal variables.
@@ -194,14 +199,31 @@ std::string CodeGenerator::EmitComputeBody(
   for (auto id : input_ids) {
     if (output_ids.find(id) == output_ids.end() &&
         used.find(id) != used.end()) {
+#if CUDA_VERSION >= 9010
       load << dtype << " " << TmpName(id) << " = " << ArgName(id) << "[idx];";
+#else
+      if (dtype == "float16") {
+        load << "float " << TmpName(id) << " = __half2float(" << ArgName(id)
+             << "[idx]);";
+      } else {
+        load << dtype << " " << TmpName(id) << " = " << ArgName(id) << "[idx];";
+      }
+#endif
     }
   }
 
   // Store temporal variables to memory.
   std::ostringstream store;
   for (auto id : output_ids) {
+#if CUDA_VERSION >= 9010
     store << ArgName(id) << "[idx] = " << TmpName(id) << ";";
+#else
+    if (dtype == "float16") {
+      store << ArgName(id) << "[idx] = __float2half(" << TmpName(id) << ");";
+    } else {
+      store << ArgName(id) << "[idx] = " << TmpName(id) << ";";
+    }
+#endif
   }
 
   return load.str() + compute.str() + store.str();

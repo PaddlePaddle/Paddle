@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/platform/device_code.h"
+#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/init.h"
 
 #ifdef PADDLE_WITH_CUDA
@@ -88,7 +89,8 @@ inline float elementwise_mul_grad_dy(float x, float y, float out, float dout) {
 void CheckOutput(const std::vector<OperationExpression>& expressions,
                  const std::vector<LoDTensor> cpu_tensors,
                  const std::vector<int> input_ids_of_subgraph,
-                 const std::vector<int> output_ids_of_subgraph, int i) {
+                 const std::vector<int> output_ids_of_subgraph, int i,
+                 float eps) {
   std::vector<float> var(cpu_tensors.size());
   for (auto id : input_ids_of_subgraph) {
     if (id >= 0) {
@@ -138,7 +140,12 @@ void CheckOutput(const std::vector<OperationExpression>& expressions,
   for (auto id : output_ids_of_subgraph) {
     float actual = cpu_tensors[id].data<float>()[i];
     float expect = var[id];
-    EXPECT_LT(fabs(actual - expect), 1.E-05);
+    if (fabs(actual - expect) > eps) {
+      LOG(INFO) << "Precision check failed from i = " << id
+                << ", expect: " << expect << ", actual: " << actual;
+      EXPECT_LT(fabs(actual - expect), eps);
+      break;
+    }
   }
 }
 
@@ -166,12 +173,16 @@ template <typename T>
 void TestMainImpl(std::string func_name, std::string code_str,
                   std::vector<paddle::framework::LoDTensor> cpu_tensors, int n,
                   std::vector<int> input_ids, std::vector<int> output_ids) {
+  bool is_float16 = std::type_index(typeid(T)) ==
+                    std::type_index(typeid(paddle::platform::float16));
+
   paddle::framework::InitDevices(false, {0});
   paddle::platform::CUDAPlace place = paddle::platform::CUDAPlace(0);
   paddle::platform::CUDADeviceCode device_code(place, func_name, code_str);
-  device_code.Compile(true);
+  device_code.Compile(is_float16);
 
   std::vector<paddle::framework::LoDTensor> gpu_tensors(cpu_tensors.size());
+  std::vector<paddle::framework::LoDTensor> tmp_cpu_tensors(cpu_tensors.size());
 
   std::vector<T*> gpu_ptrs(gpu_tensors.size());
   std::vector<void*> args;
@@ -181,8 +192,19 @@ void TestMainImpl(std::string func_name, std::string code_str,
     if (id >= 0) {
       gpu_ptrs[id] =
           gpu_tensors[id].mutable_data<T>(cpu_tensors[id].dims(), place);
-      fusion_group::SetupRandomCPUTensor<T>(&cpu_tensors[id]);
-      TensorCopySync(cpu_tensors[id], place, &gpu_tensors[id]);
+      fusion_group::SetupRandomCPUTensor<float>(&cpu_tensors[id]);
+      if (is_float16) {
+        paddle::platform::float16* tmp_cpu_ptr =
+            tmp_cpu_tensors[id].mutable_data<paddle::platform::float16>(
+                cpu_tensors[id].dims(), paddle::platform::CPUPlace());
+        const float* cpu_ptr = cpu_tensors[id].data<float>();
+        for (size_t i = 0; i < cpu_tensors[id].numel(); ++i) {
+          tmp_cpu_ptr[i] = paddle::platform::float16(cpu_ptr[i]);
+        }
+        TensorCopySync(tmp_cpu_tensors[id], place, &gpu_tensors[id]);
+      } else {
+        TensorCopySync(cpu_tensors[id], place, &gpu_tensors[id]);
+      }
       args.push_back(&gpu_ptrs[id]);
     }
   }
@@ -203,8 +225,22 @@ void TestMainImpl(std::string func_name, std::string code_str,
 
   // Copy the results back to CPU.
   for (auto id : output_ids) {
-    TensorCopySync(gpu_tensors[id], paddle::platform::CPUPlace(),
-                   &cpu_tensors[id]);
+    if (is_float16) {
+      paddle::platform::float16* tmp_cpu_ptr =
+          tmp_cpu_tensors[id].mutable_data<paddle::platform::float16>(
+              cpu_tensors[id].dims(), paddle::platform::CPUPlace());
+      TensorCopySync(gpu_tensors[id], paddle::platform::CPUPlace(),
+                     &tmp_cpu_tensors[id]);
+
+      float* cpu_ptr = cpu_tensors[id].mutable_data<float>(
+          cpu_tensors[id].dims(), paddle::platform::CPUPlace());
+      for (size_t i = 0; i < cpu_tensors[id].numel(); ++i) {
+        cpu_ptr[i] = float(tmp_cpu_ptr[i]);
+      }
+    } else {
+      TensorCopySync(gpu_tensors[id], paddle::platform::CPUPlace(),
+                     &cpu_tensors[id]);
+    }
   }
 }
 
@@ -221,7 +257,7 @@ void TestElementwiseMain(
     ids.insert(id);
   }
 
-  // Prepare CPU tensors
+  // Prepare CPU tensors which always hold float.
   std::vector<paddle::framework::LoDTensor> cpu_tensors(ids.size());
   auto dims = paddle::framework::make_ddim(
       {static_cast<int64_t>(256), static_cast<int64_t>(1024)});
@@ -230,13 +266,19 @@ void TestElementwiseMain(
   }
 
   int n = cpu_tensors[0].numel();
-  TestMainImpl<float>(func_name, code_str, cpu_tensors, n, input_ids,
-                      output_ids);
+  if (dtype == "float16") {
+    TestMainImpl<paddle::platform::float16>(func_name, code_str, cpu_tensors, n,
+                                            input_ids, output_ids);
+  } else {
+    TestMainImpl<float>(func_name, code_str, cpu_tensors, n, input_ids,
+                        output_ids);
+  }
 
   // Check the results
+  float eps = (dtype == "float16") ? 1E-2 : 1E-5;
   for (int i = 0; i < n; i++) {
     fusion_group::CheckOutput(expressions, cpu_tensors, input_ids, output_ids,
-                              i);
+                              i, eps);
   }
 }
 
@@ -249,6 +291,7 @@ void TestMain(std::string func_name,
   std::string code_str = code_generator.Generate(func_name, dtype, expressions);
   VLOG(3) << code_str;
 
+  LOG(INFO) << "dtype: " << dtype;
   TestElementwiseMain(func_name, code_str, expressions, input_ids, output_ids,
                       dtype);
 }
@@ -264,6 +307,7 @@ void TestMain(fusion_group::SubGraph* subgraph, std::vector<int> input_ids,
   std::vector<fusion_group::OperationExpression> expressions =
       code_generator.ConvertToExpressions(subgraph);
 
+  LOG(INFO) << "dtype: " << subgraph->GetDataType();
   TestElementwiseMain(subgraph->GetFuncName(), code_str, expressions, input_ids,
                       output_ids, subgraph->GetDataType());
 }
@@ -282,7 +326,7 @@ TEST(code_generator, elementwise) {
   std::vector<fusion_group::OperationExpression> expressions = {
       exp1, exp2, exp3, exp4, exp5};
 
-  for (std::string dtype : {"float16"}) {
+  for (std::string dtype : {"float", "float16"}) {
     // Expressions:
     //  Op(elementwise_mul), inputs:{0,1}, outputs:{2}
     //  Op(elementwise_add), inputs:{2,3}, outputs:{4}
@@ -294,7 +338,7 @@ TEST(code_generator, elementwise) {
     TestMain("elementwise_kernel_0", expressions, input_ids, output_ids, dtype);
   }
 }
-#if 0
+
 TEST(code_generator, elementwise_grad) {
   // The var order: t0, t1, t2, t3, t0', t1', t2', t3'
   // t2 = t0 * t1
@@ -306,17 +350,19 @@ TEST(code_generator, elementwise_grad) {
                                          {4, 5});
   std::vector<fusion_group::OperationExpression> expressions = {exp1, exp2};
 
-  // Expressions:
-  //  Op(relu_grad), inputs:{2,3,7}, outputs:{6}
-  //  Op(elementwise_mul_grad), inputs:{0,1,2,6}, outputs:{4,5}
-  std::vector<int> input_ids = {0, 1, 2, 3, 7};
-  std::vector<int> output_ids = {4, 5, 6};
-  TestMain("elementwise_grad_kernel_0", expressions, input_ids, output_ids,
-           "float");
+  for (std::string dtype : {"float", "float16"}) {
+    // Expressions:
+    //  Op(relu_grad), inputs:{2,3,7}, outputs:{6}
+    //  Op(elementwise_mul_grad), inputs:{0,1,2,6}, outputs:{4,5}
+    std::vector<int> input_ids = {0, 1, 2, 3, 7};
+    std::vector<int> output_ids = {4, 5, 6};
+    TestMain("elementwise_grad_kernel_0", expressions, input_ids, output_ids,
+             dtype);
+  }
 }
 
-std::unique_ptr<paddle::framework::ir::Graph> BuildGraph(
-    bool backward = false) {
+std::unique_ptr<paddle::framework::ir::Graph> BuildGraph(bool backward,
+                                                         std::string dtype) {
   // inputs                     operator            output
   // --------------------------------------------------------
   // x0                         sigmoid          -> tmp_0
@@ -358,6 +404,14 @@ std::unique_ptr<paddle::framework::ir::Graph> BuildGraph(
 
   std::unique_ptr<paddle::framework::ir::Graph> graph(
       new paddle::framework::ir::Graph(layers.main_program()));
+  auto proto_dtype = (dtype == "float16")
+                         ? paddle::framework::proto::VarType::FP16
+                         : paddle::framework::proto::VarType::FP32;
+  for (auto* n : graph->Nodes()) {
+    if (n && n->IsVar() && n->Var()) {
+      n->Var()->SetDataType(proto_dtype);
+    }
+  }
 #ifdef __clang__
   return graph;
 #else
@@ -406,35 +460,40 @@ std::unordered_set<paddle::framework::ir::Node*> DistilGradNodes(
 }
 
 TEST(code_generator, subgraph) {
-  std::unique_ptr<paddle::framework::ir::Graph> graph = BuildGraph(false);
-  fusion_group::SubGraph subgraph(0, "elementwise_kernel_1", true,
-                                  graph->Nodes());
+  for (std::string dtype : {"float", "float16"}) {
+    std::unique_ptr<paddle::framework::ir::Graph> graph =
+        BuildGraph(false, dtype);
+    fusion_group::SubGraph subgraph(0, "elementwise_kernel_1", true,
+                                    graph->Nodes());
 
-  // Expressions generated by code_generator (they may be different):
-  //  Op(sigmoid), inputs:{0}, outputs:{4}
-  //  Op(elementwise_mul), inputs:{4,1}, outputs:{7}
-  //  Op(tanh), inputs:{2}, outputs:{5}
-  //  Op(elementwise_mul), inputs:{3,5}, outputs:{6}
-  //  Op(elementwise_add), inputs:{7,6}, outputs:{8}
-  std::vector<int> input_ids = {0, 1, 2, 3};
-  std::vector<int> output_ids = {4, 5, 6, 7, 8};
-  TestMain(&subgraph, input_ids, output_ids);
+    // Expressions generated by code_generator (they may be different):
+    //  Op(sigmoid), inputs:{0}, outputs:{4}
+    //  Op(elementwise_mul), inputs:{4,1}, outputs:{7}
+    //  Op(tanh), inputs:{2}, outputs:{5}
+    //  Op(elementwise_mul), inputs:{3,5}, outputs:{6}
+    //  Op(elementwise_add), inputs:{7,6}, outputs:{8}
+    std::vector<int> input_ids = {0, 1, 2, 3};
+    std::vector<int> output_ids = {4, 5, 6, 7, 8};
+    TestMain(&subgraph, input_ids, output_ids);
+  }
 }
 
 TEST(code_generator, subgraph_grad) {
-  std::unique_ptr<paddle::framework::ir::Graph> graph = BuildGraph(true);
-  fusion_group::SubGraph subgraph(0, "elementwise_grad_kernel_1", true,
-                                  DistilGradNodes(graph));
+  for (std::string dtype : {"float", "float16"}) {
+    std::unique_ptr<paddle::framework::ir::Graph> graph =
+        BuildGraph(true, dtype);
+    fusion_group::SubGraph subgraph(0, "elementwise_grad_kernel_1", true,
+                                    DistilGradNodes(graph));
 
-  // Expressions generated by code_generator (they may be different):
-  //  Op(elementwise_add_grad), inputs:{1,2,3,0}, outputs:{11,10}
-  //  Op(elementwise_mul_grad), inputs:{5,4,2,10}, outputs:{17,13}
-  //  Op(elementwise_mul_grad), inputs:{7,6,1,11}, outputs:{12,15}
-  //  Op(sigmoid_grad), inputs:{8,7,12}, outputs:{16}
-  //  Op(tanh_grad), inputs:{9,4,13}, outputs:{14}
-  std::vector<int> input_ids = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-  std::vector<int> output_ids = {10, 11, 12, 13, 14, 15, 16, 17};
-  TestMain(&subgraph, input_ids, output_ids);
+    // Expressions generated by code_generator (they may be different):
+    //  Op(elementwise_add_grad), inputs:{1,2,3,0}, outputs:{11,10}
+    //  Op(elementwise_mul_grad), inputs:{5,4,2,10}, outputs:{17,13}
+    //  Op(elementwise_mul_grad), inputs:{7,6,1,11}, outputs:{12,15}
+    //  Op(sigmoid_grad), inputs:{8,7,12}, outputs:{16}
+    //  Op(tanh_grad), inputs:{9,4,13}, outputs:{14}
+    std::vector<int> input_ids = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    std::vector<int> output_ids = {10, 11, 12, 13, 14, 15, 16, 17};
+    TestMain(&subgraph, input_ids, output_ids);
+  }
 }
-#endif
 #endif
