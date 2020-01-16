@@ -13948,6 +13948,7 @@ def nce_sampler(dict_path,
     attrs['seed'] = seed
     attrs['factor'] = factor
 
+    outputs['Out'] = out
     outputs['CustomDistProbsInit'] = probs_tensor
     outputs['CustomDistAliasInit'] = alias_tensor
     outputs['CustomDistAliasProbsInit'] = alias_probs_tensor
@@ -13962,8 +13963,6 @@ def nce_sampler(dict_path,
     inputs['CustomDistAliasProbs'] = alias_probs_tensor
     if positive_inputs:
         inputs['PositiveSamples'] = positive_inputs
-
-    outputs['Out'] = out
 
     attrs['init_flag'] = False
     helper.append_op(

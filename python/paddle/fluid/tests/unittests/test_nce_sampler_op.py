@@ -18,6 +18,7 @@ import unittest
 import paddle.fluid as fluid
 from paddle.fluid.executor import Executor
 import numpy as np
+import os
 
 
 class TestNceSamplerOp(unittest.TestCase):
@@ -74,6 +75,7 @@ class TestNceSamplerOp(unittest.TestCase):
         self.assertEqual(result.shape[0], self.num_neg_samples)
         for item in result:
             self.assertTrue(item > 1 and item < 10)
+        os.system("rm " + self.dict_path)
 
 
 if __name__ == '__main__':
