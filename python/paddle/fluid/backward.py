@@ -933,11 +933,11 @@ def _append_backward_ops_(block,
                 cb(block=target_block, context=grad_to_var)
 
 
-def _is_grad_var_(var):
-    return core.grad_var_suffix() in var
+def _is_grad_var_(var_name):
+    return core.grad_var_suffix() in var_name
 
 
-# Find the op whose holds the sub_block as its "sub_block" attr
+# Find the op who holds the sub_block as its "sub_block" attr
 def _find_parent_op_(sub_block):
     sub_block_id = sub_block.idx
 
