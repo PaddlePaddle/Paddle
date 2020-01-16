@@ -438,9 +438,6 @@ class Reshape2GradMaker : public framework::SingleGradOpMaker<T> {
     auto *grad_op = new T();
     grad_op->SetType("reshape2_grad");
     grad_op->SetInput("XShape", this->Output("XShape"));
-    if (this->HasInput("ShapeTensor")) {
-      grad_op->SetInput("ShapeTensor", this->Input("ShapeTensor"));
-    }
     grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     grad_op->SetAttrMap(this->Attrs());
@@ -456,11 +453,8 @@ class Reshape2DoubleGradMaker : public framework::SingleGradOpMaker<T> {
   std::unique_ptr<T> Apply() const override {
     auto *grad_op = new T();
     grad_op->SetType("reshape2_grad_grad");
-
-    grad_op->SetInput("ShapeTensor", this->Input("ShapeTensor"));
     grad_op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
     grad_op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
-
     grad_op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
     grad_op->SetAttrMap(this->Attrs());
     return std::unique_ptr<T>(grad_op);
@@ -546,6 +540,8 @@ DECLARE_INPLACE_OP_INFERER(ReshapeGradInplaceInToOut,
                            {framework::GradVarName("Out"),
                             framework::GradVarName("X")});
 DECLARE_INPLACE_OP_INFERER(ReshapeDoubleGradInplaceInToOut, {"DDX", "DDOut"});
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
+    ReshapeDoubleGradOpNoNeedBufferVarInference, "DOut");
 
 }  // namespace operators
 }  // namespace paddle
@@ -576,7 +572,8 @@ REGISTER_OPERATOR(reshape2_grad, ops::Reshape2GradOp,
                   ops::Reshape2DoubleGradMaker<paddle::imperative::OpBase>,
                   ops::ReshapeGradInplaceInToOut);
 REGISTER_OPERATOR(reshape2_grad_grad, ops::Reshape2DoubleGradOp,
-                  ops::ReshapeDoubleGradInplaceInToOut);
+                  ops::ReshapeDoubleGradInplaceInToOut,
+                  ops::ReshapeDoubleGradOpNoNeedBufferVarInference);
 
 REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape2, float, ops::ReshapeKernel, double,
                                ops::ReshapeKernel, int8_t, ops::ReshapeKernel,
