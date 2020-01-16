@@ -17,7 +17,7 @@ from __future__ import print_function
 from six.moves import reduce
 from .. import core
 from ..layers import utils
-from ..dygraph import dygraph_utils
+from .. import dygraph_utils
 from . import layers
 from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer, _varbase_creator
 from ..param_attr import ParamAttr
