@@ -42,11 +42,6 @@ class TopkOp : public framework::OperatorWithKernel {
 
     framework::DDim dims = input_dims;
     dims[dims.size() - 1] = k;
-    // If has K as tensor, set k=-1 as not know real size at this time.
-    if (ctx->HasInput("K")) {
-      dims[dims.size() - 1] = -1;
-    }
-
     ctx->SetOutputDim("Out", dims);
     ctx->SetOutputDim("Indices", dims);
     ctx->ShareLoD("X", "Out");
@@ -89,16 +84,66 @@ For matrices, this operator computes the top k entries in each row. )DOC");
   }
 };
 
+  class TopkOpGrad : public framework::OperatorWithKernel {
+  public:
+    using framework::OperatorWithKernel::OperatorWithKernel;
+    void InferShape(framework::InferShapeContext* ctx) const override {
+      PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                        "Input(X) should be not null");
+      PADDLE_ENFORCE_EQ(ctx->HasInput("Indices"), true,
+                        "Input(Indices) should be not null");
+      PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+                        "Grad Input(Out) should be not null");
+      PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
+                        "Grad Output(X) should be not null");
+
+      auto x_dims = ctx->GetInputDim("X");
+      ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+    }
+
+  protected:
+    framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+      auto data_type = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
+      return framework::OpKernelType(data_type, ctx.device_context());
+    }
+  };
+
+  template <typename T>
+  class TopkGradOpMaker : public framework::SingleGradOpMaker<T> {
+  public:
+    using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+  protected:
+    std::unique_ptr<T> Apply() const override {
+      std::unique_ptr<T> op(new T());
+      op->SetType("top_k_grad");
+      op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+      op->SetInput("X", this->Input("X"));
+      op->SetInput("Indices", this->Output("Indices"));
+      op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+      return op;
+    }
+  };
+
+
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
     top_k, ops::TopkOp, ops::TopkOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    ops::TopkGradOpMaker<paddle::framework::OpDesc>,
+    ops::TopkGradOpMaker<paddle::imperative::OpBase>);
+
+REGISTER_OPERATOR(top_k_grad, ops::TopkOpGrad);
+
 REGISTER_OP_CPU_KERNEL(top_k,
                        ops::TopkKernel<paddle::platform::CPUPlace, float>,
-                       ops::TopkKernel<paddle::platform::CPUPlace, double>,
-                       ops::TopkKernel<paddle::platform::CPUPlace, int>,
-                       ops::TopkKernel<paddle::platform::CPUPlace, int64_t>);
+                       ops::TopkKernel<paddle::platform::CPUPlace, double>);
+
+REGISTER_OP_CPU_KERNEL(top_k_grad,
+  ops::TopkGradKernel<paddle::platform::CPUPlace, float>,
+  ops::TopkGradKernel<paddle::platform::CPUPlace, double>);
