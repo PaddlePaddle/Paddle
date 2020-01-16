@@ -284,8 +284,6 @@ class TestPool2D_Op(OpTest):
             self.check_output(check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.has_cudnn() and self.pool_type != "max":
             place = core.CUDAPlace(0)
@@ -449,6 +447,16 @@ def create_test_cudnn_fp16_class(parent, check_grad=True):
                     'Out',
                     max_relative_error=0.07,
                     check_dygraph=(self.use_mkldnn == False))
+            elif core.is_float16_supported(
+                    place) and self.pool_type == "max" and check_grad:
+                self.check_grad_with_place(
+                    place,
+                    set(['X']),
+                    'Out',
+                    max_relative_error=1.0,
+                    check_dygraph=(self.use_mkldnn == False))
+
+
 
     cls_name = "{0}_{1}".format(parent.__name__, "CUDNNFp16Op")
     TestCUDNNFp16Case.__name__ = cls_name
@@ -456,7 +464,7 @@ def create_test_cudnn_fp16_class(parent, check_grad=True):
 
 
 create_test_cudnn_fp16_class(TestPool2D_Op)
-create_test_cudnn_fp16_class(TestCase1, check_grad=False)
+create_test_cudnn_fp16_class(TestCase1)
 create_test_cudnn_fp16_class(TestCase2)
 create_test_cudnn_fp16_class(TestCase3)
 create_test_cudnn_fp16_class(TestCase4)
@@ -587,7 +595,7 @@ create_test_cudnn_class(TestCase4_AsyPadding)
 create_test_cudnn_class(TestCase5_AsyPadding)
 
 create_test_cudnn_fp16_class(TestPool2D_AsyPadding)
-create_test_cudnn_fp16_class(TestCase1_AsyPadding, check_grad=False)
+create_test_cudnn_fp16_class(TestCase1_AsyPadding)
 create_test_cudnn_fp16_class(TestCase2_AsyPadding)
 create_test_cudnn_fp16_class(TestCase3_AsyPadding)
 create_test_cudnn_fp16_class(TestCase4_AsyPadding)
@@ -699,7 +707,7 @@ create_test_cudnn_class(TestCase4_channel_last)
 create_test_cudnn_class(TestCase5_channel_last)
 
 create_test_cudnn_fp16_class(TestPool2D_channel_last)
-create_test_cudnn_fp16_class(TestCase1_channel_last, check_grad=False)
+create_test_cudnn_fp16_class(TestCase1_channel_last)
 create_test_cudnn_fp16_class(TestCase2_channel_last)
 create_test_cudnn_fp16_class(TestCase3_channel_last)
 create_test_cudnn_fp16_class(TestCase4_channel_last)
@@ -717,8 +725,6 @@ class TestCase5_Max(TestCase2):
         self.pool_type = "max"
 
     def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
         if self.has_cudnn() and self.pool_type == "max":
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
@@ -813,8 +819,7 @@ create_test_cudnn_class(TestCase4_AsyPadding_channel_last)
 create_test_cudnn_class(TestCase5_AsyPadding_channel_last)
 
 create_test_cudnn_fp16_class(TestPool2D_AsyPadding_channel_last)
-create_test_cudnn_fp16_class(
-    TestCase1_AsyPadding_channel_last, check_grad=False)
+create_test_cudnn_fp16_class(TestCase1_AsyPadding_channel_last)
 create_test_cudnn_fp16_class(TestCase2_AsyPadding_channel_last)
 create_test_cudnn_fp16_class(TestCase3_AsyPadding_channel_last)
 create_test_cudnn_fp16_class(TestCase4_AsyPadding_channel_last)

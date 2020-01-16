@@ -175,10 +175,6 @@ class TestSoftmaxFP16Op(TestSoftmaxOp):
             if core.is_float16_supported(place):
                 self.check_output_with_place(place, atol=1e-3)
 
-    # FIXME: If the x_shape is [10, 10], gradient failed.
-    def test_check_grad(self):
-        pass
-
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
