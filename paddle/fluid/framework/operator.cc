@@ -1246,7 +1246,8 @@ void OperatorWithKernel::ParseInputDataType(
       } else if (var->IsType<SelectedRows>()) {
         t = &(var->Get<SelectedRows>().value());
       } else if (var->IsType<LoDTensorArray>()) {
-        t = &(var->Get<LoDTensorArray>()[0]);
+        auto t_arr = var->Get<LoDTensorArray>();
+        t = &(t_arr[0]);
       }
       if (t != nullptr) {
         PADDLE_ENFORCE_EQ(
