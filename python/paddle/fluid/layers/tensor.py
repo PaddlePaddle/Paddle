@@ -22,6 +22,7 @@ from ..initializer import Constant, force_init_on_cpu
 from ..core import VarDesc
 from .. import core
 from .layer_function_generator import templatedoc
+from . import utils
 from ..data_feeder import check_type_and_dtype, check_type, check_dtype, convert_dtype
 import numpy
 import warnings
@@ -552,13 +553,6 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
           shape = fluid.layers.fill_constant([1,2], "int32", 2) # shape=[2,2]
           data4 = fluid.layers.fill_constant(shape=shape, dtype='bool', value=True) # data4=[[True,True],[True,True]]
     """
-
-    def _contain_var(one_list):
-        for ele in one_list:
-            if isinstance(ele, Variable):
-                return True
-        return False
-
     attrs = {
         'value': float(value),
         'force_cpu': force_cpu or force_init_on_cpu()
@@ -571,8 +565,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
 
     if in_dygraph_mode():
         if isinstance(shape, (list, tuple)):
-            contain_var = _contain_var(shape)
-            if contain_var:
+            if utils._contain_var(shape):
                 raise TypeError(
                     "The type of 'shape' in fill_constant must be list[int] or tuple(int) in Dygraph mode, but "
                     "received %s, which contains Variable." % type(shape))
@@ -644,7 +637,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
             "The size of 'shape' in fill_constant can't be zero, "
             "but received %s." % len(shape))
         attrs["shape"] = _get_attr_shape(shape)
-        if _contain_var(shape):
+        if utils._contain_var(shape):
             inputs['ShapeTensorList'] = _get_shape_tensor(shape)
 
     if out is None:

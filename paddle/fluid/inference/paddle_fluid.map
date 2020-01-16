@@ -2,9 +2,7 @@
 	global:
 		*paddle*;
 		*Pass*;
-		extern "C++" {
-			fL*::*;
-		};
+		*profile*;
 	local:
 		*;
 };

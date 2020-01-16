@@ -123,9 +123,11 @@ class Optimizer(object):
             .. code-block:: python
 
                 import paddle.fluid as fluid
+
                 with fluid.dygraph.guard():
                     emb = fluid.dygraph.Embedding([10, 10])
-                    adam = fluid.optimizer.Adam(0.001, parameter_list = emb.parameters() )
+
+                    adam = fluid.optimizer.Adam(0.001, parameter_list=emb.parameters())
                     state_dict = adam.state_dict()
 
         '''
@@ -136,11 +138,11 @@ class Optimizer(object):
         # global step if use lr decay
         if isinstance(self._learning_rate, LearningRateDecay):
             var_tmp = None
-            if not framework.in_dygraph_mode():
-                var_temp = Variable(None, name='global_step', dtype='int32')
-            else:
+            if framework.in_dygraph_mode():
                 var_temp = framework._varbase_creator(
                     None, name='global_step', dtype='int32')
+            else:
+                var_temp = Variable(None, name='global_step', dtype='int32')
 
             tensor.fill_constant(
                 [1], "int32", self._learning_rate.step_num, out=var_temp)
@@ -162,19 +164,19 @@ class Optimizer(object):
             .. code-block:: python
 
                 with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding( [10, 10])
+                    emb = fluid.dygraph.Embedding([10, 10])
 
                     state_dict = emb.state_dict()
-                    fluid.save_dygraph( state_dict, "paddle_dy")
+                    fluid.save_dygraph(state_dict, "paddle_dy")
 
-                    adam = fluid.optimizer.Adam( learning_rate = fluid.layers.noam_decay( 100, 10000), 
-                                                 parameter_list = emb.parameters() )
+                    adam = fluid.optimizer.Adam(learning_rate=fluid.layers.noam_decay( 100, 10000), 
+                                                parameter_list=emb.parameters())
                     state_dict = adam.state_dict()
-                    fluid.save_dygraph( state_dict, "padle_dy")
+                    fluid.save_dygraph(state_dict, "paddle_dy")
 
                     para_state_dict, opti_state_dict = fluid.load_dygraph( "paddle_dy")
 
-                    adam.set_dict( opti_state_dict )
+                    adam.set_dict(opti_state_dict)
 
         '''
 
@@ -505,17 +507,12 @@ class Optimizer(object):
             [p[0] for p in parameters_and_grads if p[0].trainable])
         self._create_global_learning_rate()
 
-        optimize_ops = []
         if framework.in_dygraph_mode():
             for param_and_grad in parameters_and_grads:
                 if param_and_grad[1] is None:
                     continue
-                with param_and_grad[0].block.program._optimized_guard(
-                        param_and_grad):
-                    if param_and_grad[0].trainable is True:
-                        optimize_op = self._append_optimize_op(target_block,
-                                                               param_and_grad)
-                        optimize_ops.append(optimize_op)
+                if param_and_grad[0].trainable is True:
+                    self._append_optimize_op(target_block, param_and_grad)
         else:
             for param_and_grad in parameters_and_grads:
                 if param_and_grad[1] is None:
@@ -523,9 +520,7 @@ class Optimizer(object):
                 with param_and_grad[0].block.program._optimized_guard(
                         param_and_grad), name_scope("optimizer"):
                     if param_and_grad[0].trainable is True:
-                        optimize_op = self._append_optimize_op(target_block,
-                                                               param_and_grad)
-                        optimize_ops.append(optimize_op)
+                        self._append_optimize_op(target_block, param_and_grad)
 
         # Get custom finish ops for subclasses
         # FIXME: Need to fix this once we figure out how to handle dependencies
@@ -610,10 +605,10 @@ class Optimizer(object):
             See examples in ``apply_gradients``.
         """
         act_no_grad_set = None
-        if not framework.in_dygraph_mode():
-            act_no_grad_set = self._get_no_grad_set(loss, no_grad_set)
-        else:
+        if framework.in_dygraph_mode():
             pass
+        else:
+            act_no_grad_set = self._get_no_grad_set(loss, no_grad_set)
 
         self._dtype = loss.dtype
         if framework.in_dygraph_mode():
