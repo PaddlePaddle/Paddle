@@ -87,6 +87,4 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'warpctc'
 ]
 
-NO_FP16_CHECK_GRAD_OP_LIST = [
-    'fused_elemwise_activation'
-]
+NO_FP16_CHECK_GRAD_OP_LIST = ['fused_elemwise_activation']
