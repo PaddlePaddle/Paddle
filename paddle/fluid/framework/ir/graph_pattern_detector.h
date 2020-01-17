@@ -318,6 +318,9 @@ bool IsNthInput(Node* var, Node* op, const std::string& argument, size_t nth);
 // Check whether the op node has input of given name.
 bool HasInput(Node* op, const std::string& argument);
 
+// Check whether the op node has output of given name.
+bool HasOutput(Node* op, const std::string& argument);
+
 // Tell whether a var node is a op node's nth output.
 bool IsNthOutput(Node* var, Node* op, const std::string& argument, size_t nth);
 

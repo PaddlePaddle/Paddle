@@ -110,8 +110,10 @@ class TestDistCTR2x2(FleetDistRunnerBase):
 
         predict = fluid.layers.fc(input=merge_layer, size=2, act='softmax')
         acc = fluid.layers.accuracy(input=predict, label=label)
+
         auc_var, batch_auc_var, auc_states = fluid.layers.auc(input=predict,
                                                               label=label)
+
         cost = fluid.layers.cross_entropy(input=predict, label=label)
         avg_cost = fluid.layers.mean(x=cost)
 
@@ -223,11 +225,14 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                 debug=False)
             pass_time = time.time() - pass_start
 
-        model_dir = tempfile.mkdtemp()
-        fleet.save_inference_model(
-            exe, model_dir, [feed.name for feed in self.feeds], self.avg_cost)
-        self.check_model_right(model_dir)
-        shutil.rmtree(model_dir)
+        if os.getenv("SAVE_MODEL") == "1":
+            model_dir = tempfile.mkdtemp()
+            fleet.save_inference_model(exe, model_dir,
+                                       [feed.name for feed in self.feeds],
+                                       self.avg_cost)
+            self.check_model_right(model_dir)
+            shutil.rmtree(model_dir)
+
         fleet.stop_worker()
 
 

@@ -83,12 +83,12 @@ class MergeIdsOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInputs("Ids"),
-                   "MergeIdsOp must has multi input Ids.");
+                   "MergeIdsOp must have multi input Ids.");
     PADDLE_ENFORCE(ctx->HasInputs("Rows"),
-                   "MergeIdsOp must has multi input Rows.");
-    PADDLE_ENFORCE(ctx->HasInputs("X"), "MergeIdsOp must has multi input X.");
+                   "MergeIdsOp must have multi input Rows.");
+    PADDLE_ENFORCE(ctx->HasInputs("X"), "MergeIdsOp must have multi input X.");
     PADDLE_ENFORCE(ctx->HasOutputs("Out"),
-                   "MergeIdsOp must has multi output Out.");
+                   "MergeIdsOp must have multi output Out.");
 
     auto ids_var_type = ctx->GetInputsVarType("Ids").front();
     auto ids_dims = ctx->GetInputsDim("Ids");
