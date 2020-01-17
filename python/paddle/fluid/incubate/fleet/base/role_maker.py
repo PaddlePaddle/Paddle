@@ -399,7 +399,6 @@ class MPISymetricRoleMaker(MPIRoleMaker):
             raise ValueError("unknown mode: %s" % mode)
         self._node_type_comm.Allreduce(input, output, op=mode)
 
-
     def _barrier_worker(self):
         """
         barrier all workers in current distributed job
