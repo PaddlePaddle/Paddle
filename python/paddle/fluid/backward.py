@@ -1057,7 +1057,7 @@ def append_backward(loss,
                                                be invoked once each time a
                                                new gradient operator is added
                                                into the program. The callable
-                                               object must has two input
+                                               object must have two input
                                                parameters: 'block' and 'context'.
                                                The 'block' is the :ref:`api_guide_Block_en` which
                                                the new gradient operator will

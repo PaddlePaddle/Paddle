@@ -232,12 +232,12 @@ class OpTest(unittest.TestCase):
                     "This test of %s op needs check_grad with fp64 precision." %
                     cls.op_type)
 
-        if not get_numeric_gradient.is_large_shape \
-            and cls.op_type not in check_shape_white_list.NOT_CHECK_OP_LIST \
-            and cls.op_type not in check_shape_white_list.NEED_TO_FIX_OP_LIST:
-            raise AssertionError(
-                "Input's shape should be large than or equal to 100 for " +
-                cls.op_type + " Op.")
+            if not get_numeric_gradient.is_large_shape \
+                and cls.op_type not in check_shape_white_list.NOT_CHECK_OP_LIST \
+                and cls.op_type not in check_shape_white_list.NEED_TO_FIX_OP_LIST:
+                raise AssertionError(
+                    "Input's shape should be large than or equal to 100 for " +
+                    cls.op_type + " Op.")
 
     def try_call_once(self, data_type):
         if not self.call_once:
