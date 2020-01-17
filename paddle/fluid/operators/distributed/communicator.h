@@ -191,6 +191,8 @@ class Communicator {
   virtual void Barrier() {}
   virtual void BarrierTriggerDecrement() {}
   virtual void BarrierTriggerReset(int init_counter) {}
+  virtual void BarrierSend() {}
+  virtual void BarrierFetch() {}
 
   virtual void InitImpl(const RpcCtxMap& send_varname_to_ctx,
                         const RpcCtxMap& recv_varname_to_ctx,
@@ -351,6 +353,14 @@ class HalfAsyncCommunicator : public Communicator {
   std::atomic<int64_t> barrier_trigger_{0};
   std::atomic<int64_t> barrier_counter_{0};
 };
+
+class SyncCommunicator : public HalfAsyncCommunicator {
+ public:
+  SyncCommunicator() : HalfAsyncCommunicator() {}
+  explicit SyncCommunicator(const std::map<std::string, std::string>& envs)
+      : HalfAsyncCommunicator(envs) {}
+  ~SyncCommunicator();
+}
 
 class GeoSgdCommunicator : public Communicator {
  public:
