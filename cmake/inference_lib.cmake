@@ -126,6 +126,13 @@ function(copy_part_of_thrid_party TARGET DST)
                 DSTS ${dst_dir}/include ${dst_dir}/lib)
     endif ()
 
+    if (LITE_BINARY_DIR)
+        set(dst_dir "${DST}/third_party/install/lite")
+        copy(${TARGET}
+                SRCS ${LITE_BINARY_DIR}/inference_lite_lib/*
+                DSTS ${dst_dir})
+    endif()
+
     if (ANAKIN_FOUND)
         set(dst_dir "${DST}/third_party/install/anakin")
         copy(${TARGET}
