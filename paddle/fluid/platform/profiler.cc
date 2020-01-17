@@ -735,18 +735,22 @@ void DisableProfiler(EventSortingKey sorted_key,
     for (size_t j = 0; j < (all_events)[i].size(); j++) {
       std::string event_name = (all_events)[i][j].name();
       size_t start = event_name.find('%', 0);
-      size_t end = event_name.rfind('%', event_name.length() - 1);
-      if (start == std::string::npos || end == std::string::npos) continue;
-      std::string search_str = event_name.substr(start, end - start + 1);
-      auto it = find(op_name.begin(), op_name.end(), search_str);
-      std::string replace_str;
-      if (it != op_name.end()) {
-        replace_str = std::to_string(std::distance(op_name.begin(), it));
-      } else {
-        replace_str = std::to_string(op_name.size());
-        op_name.push_back(search_str);
+      size_t end = event_name.find('%', start + 1);
+      while (start != std::string::npos && end != std::string::npos) {
+        auto search_str = event_name.substr(start, end - start + 1);
+        auto it = find(op_name.begin(), op_name.end(), search_str);
+        std::string replace_str;
+        if (it != op_name.end()) {
+          replace_str = std::to_string(std::distance(op_name.begin(), it));
+        } else {
+          replace_str = std::to_string(op_name.size());
+          op_name.push_back(search_str);
+        }
+        event_name.replace(start, end - start + 1, replace_str);
+        start = start + 1;
+        start = event_name.find('%', start);
+        end = event_name.find('%', start + 1);
       }
-      event_name.replace(start, end - start + 1, replace_str);
       (all_events)[i][j].set_name(event_name);
     }
   }
