@@ -469,8 +469,7 @@ class AdamOpKernel : public framework::OpKernel<T> {
     if (grad_var->IsType<framework::LoDTensor>()) {
       auto& grad = Ref(ctx.Input<LoDTensor>("Grad"), "Must set Grad");
 
-      if (platform::is_cpu_place(ctx.GetPlace())) {
-        AdamFunctor<T, CPUAdam> functor(
+      AdamFunctor<T, CPUAdam> functor(
             beta1, beta2, epsilon, beta1_pow.template data<T>(),
             beta2_pow.template data<T>(), mom1.template data<T>(),
             mom1_out.template mutable_data<T>(ctx.GetPlace()),
@@ -479,29 +478,9 @@ class AdamOpKernel : public framework::OpKernel<T> {
             lr.template data<T>(), grad.template data<T>(),
             param.template data<T>(),
             param_out.template mutable_data<T>(ctx.GetPlace()));
-        functor(param.numel());
-        beta_functor.apply_update(beta2_pow.numel());
-      } else if (platform::is_gpu_place(ctx.GetPlace())) {
-        AdamFunctor<T, GPUAdam> functor(
-            beta1, beta2, epsilon, beta1_pow.template data<T>(),
-            beta2_pow.template data<T>(), mom1.template data<T>(),
-            mom1_out.template mutable_data<T>(ctx.GetPlace()),
-            mom2.template data<T>(),
-            mom2_out.template mutable_data<T>(ctx.GetPlace()),
-            lr.template data<T>(), grad.template data<T>(),
-            param.template data<T>(),
-            param_out.template mutable_data<T>(ctx.GetPlace()));
-        // update param and moment
-        platform::ForRange<DeviceContext> for_range(
-            static_cast<const DeviceContext&>(ctx.device_context()),
-            param.numel());
-        for_range(functor);
-        // update beta1 and beta2
-        platform::ForRange<DeviceContext> for_range_beta(
-            static_cast<const DeviceContext&>(ctx.device_context()),
-            beta2_pow.numel());
-        for_range_beta(beta_functor);
-      }
+      functor(param.numel());
+      beta_functor.apply_update(beta2_pow.numel());
+
     } else if (grad_var->IsType<framework::SelectedRows>()) {
       auto& grad =
           Ref(ctx.Input<framework::SelectedRows>("Grad"), "Must set Grad");
@@ -538,8 +517,7 @@ class AdamOpKernel : public framework::OpKernel<T> {
       const int64_t* rows = grad_merge.rows().Data(ctx.GetPlace());
       auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
 
-      if (platform::is_cpu_place(ctx.GetPlace())) {
-        SparseAdamFunctor<T, CPUAdam> functor(
+      SparseAdamFunctor<T, CPUAdam> functor(
             beta1, beta2, epsilon, beta1_pow.template data<T>(),
             beta2_pow.template data<T>(), mom1.template data<T>(),
             mom1_out.template mutable_data<T>(ctx.GetPlace()),
@@ -549,8 +527,8 @@ class AdamOpKernel : public framework::OpKernel<T> {
             param_out.template mutable_data<T>(ctx.GetPlace()), rows, row_numel,
             grad_merge.rows().size(), lazy_mode);
         // update beta1 and beta2
-        beta_functor.apply_update(beta2_pow.numel());
-        if (lazy_mode) {
+      beta_functor.apply_update(beta2_pow.numel());
+      if (lazy_mode) {
           VLOG(3) << "run cpu lazy mode";
           size_t row_count = grad_merge.rows().size();
           std::vector<int64_t> cpu_rows(grad_merge.rows());
@@ -560,9 +538,9 @@ class AdamOpKernel : public framework::OpKernel<T> {
               functor.adam_update(i, grad_data[row_index * row_numel + offset]);
             }
           }
-        }
+      }
 #ifndef _WIN32
-        else if (FLAGS_inner_op_parallelism > 1 &&  // NOLINT
+      else if (FLAGS_inner_op_parallelism > 1 &&  // NOLINT
                  min_row_size_to_use_multithread > 0 &&
                  param.dims()[0] > min_row_size_to_use_multithread) {
           VLOG(3) << "use multi thread, inner_op_parallelism="
@@ -620,31 +598,9 @@ class AdamOpKernel : public framework::OpKernel<T> {
           for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
         }
 #endif          // !_WIN32
-        else {  // NOLINT
+      else {  // NOLINT
           functor(param.numel());
         }
-      } else if (platform::is_gpu_place(ctx.GetPlace())) {
-        SparseAdamFunctor<T, GPUAdam> functor(
-            beta1, beta2, epsilon, beta1_pow.template data<T>(),
-            beta2_pow.template data<T>(), mom1.template data<T>(),
-            mom1_out.template mutable_data<T>(ctx.GetPlace()),
-            mom2.template data<T>(),
-            mom2_out.template mutable_data<T>(ctx.GetPlace()),
-            lr.template data<T>(), grad_data, param.template data<T>(),
-            param_out.template mutable_data<T>(ctx.GetPlace()), rows, row_numel,
-            grad_merge.rows().size(), lazy_mode);
-
-        // FIXME(minqiyang): remove BinarySearch in GPU later
-        platform::ForRange<DeviceContext> for_range(
-            static_cast<const DeviceContext&>(ctx.device_context()),
-            param.numel());
-        for_range(functor);
-        // update beta1 and beta2
-        platform::ForRange<DeviceContext> for_range_beta(
-            static_cast<const DeviceContext&>(ctx.device_context()),
-            beta2_pow.numel());
-        for_range_beta(beta_functor);
-      }
     } else {
       PADDLE_THROW("Variable type not supported by adam_op");
     }
