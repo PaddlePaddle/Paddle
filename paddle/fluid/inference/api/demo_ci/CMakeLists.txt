@@ -1,4 +1,3 @@
-
 cmake_minimum_required(VERSION 3.0)
 project(cpp_inference_demo CXX C)
 option(WITH_MKL        "Compile demo with MKL/OpenBlas support, default use MKL."       ON)
