@@ -526,7 +526,7 @@ class InMemoryDataset(DatasetBase):
         """
         trainer_num = 1
         if fleet is not None:
-            fleet._role_maker._barrier_worker()
+            fleet._role_maker.barrier_worker()
             trainer_num = fleet.worker_num()
         if self.fleet_send_batch_size is None:
             self.fleet_send_batch_size = 1024
@@ -537,14 +537,14 @@ class InMemoryDataset(DatasetBase):
         self.dataset.set_fleet_send_batch_size(self.fleet_send_batch_size)
         self.dataset.set_fleet_send_sleep_seconds(self.fleet_send_sleep_seconds)
         if fleet is not None:
-            fleet._role_maker._barrier_worker()
+            fleet._role_maker.barrier_worker()
         self.dataset.global_shuffle(thread_num)
         if fleet is not None:
-            fleet._role_maker._barrier_worker()
+            fleet._role_maker.barrier_worker()
         if self.merge_by_lineid:
             self.dataset.merge_by_lineid()
         if fleet is not None:
-            fleet._role_maker._barrier_worker()
+            fleet._role_maker.barrier_worker()
 
     def release_memory(self):
         """
@@ -599,7 +599,7 @@ class InMemoryDataset(DatasetBase):
         local_data_size = np.array([local_data_size])
         if fleet is not None:
             global_data_size = local_data_size * 0
-            fleet._role_maker._all_reduce(local_data_size, global_data_size)
+            fleet._role_maker.all_reduce(local_data_size, global_data_size)
             return global_data_size[0]
         return local_data_size[0]
 
@@ -636,7 +636,7 @@ class InMemoryDataset(DatasetBase):
         local_data_size = np.array([local_data_size])
         if fleet is not None:
             global_data_size = local_data_size * 0
-            fleet._role_maker._all_reduce(local_data_size, global_data_size)
+            fleet._role_maker.all_reduce(local_data_size, global_data_size)
             return global_data_size[0]
         return local_data_size[0]
 
