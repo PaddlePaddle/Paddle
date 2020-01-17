@@ -252,7 +252,7 @@ fi
 
 NO_GRAD_SET_VALUE=`git diff --name-only --diff-filter=AMR upstream/$BRANCH |grep -oE "test_.*.\.py" || true`
 if ["${NO_GRAD_SET_VALUE}" != ""] && [ "${GIT_PR_ID}" != "" ]; then
-    CHECK_GRAD=`git diff -U5 --diff-filter=AMR upstream/$BRANCH |grep -A5 -E "self\.check_grad|self\.check_grad_with_place"|grep "no_grad_set=None" |grep "+" || true`
+    CHECK_GRAD=`git diff -U5 --diff-filter=AMR upstream/$BRANCH |grep -A5 -E "no_grad_set=None" |grep "+" || true`
     if [ "${CHECK_GRAD}" != "" ] ; then
       ERROR_LINES=${CHECK_GRAD//+/'\n+'}
       echo_line="not_grad_set must be None'. If you don't use the default value, you must have one RD (chenjiaoAngel (Recommend), luotao1 or phlrain) approval for the usage of other value"
