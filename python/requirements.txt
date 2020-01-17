@@ -16,5 +16,4 @@ funcsigs
 pyyaml
 decorator
 prettytable
-netifaces
 objgraph
