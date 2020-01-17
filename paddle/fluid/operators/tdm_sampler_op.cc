@@ -21,7 +21,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class TDMSamplerOpMaker : framework::OpProtoAndCheckerMaker {
+class TDMSamplerOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("Input",
