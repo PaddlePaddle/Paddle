@@ -34,7 +34,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
                          -DWITH_LITE=OFF
                          -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=OFF
                          -DWITH_PYTHON=OFF
-                         -DWITH_TESTING=ON
+                         -DWITH_TESTING=OFF
                          -DLITE_BUILD_EXTRA=ON
                          -DCUDNN_ROOT=${CUDNN_ROOT}
                          -DLITE_WITH_STATIC_CUDA=OFF
