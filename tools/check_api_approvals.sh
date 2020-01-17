@@ -254,7 +254,7 @@ NO_GRAD_SET_VALUE=`git diff  --name-only --diff-filter=AM upstream/$BRANCH |grep
 if ["${NO_GRAD_SET_VALUE}" != ""] && [ "${GIT_PR_ID}" != "" ]; then
     for TEST_FILE in ${UNITTEST_FILE_CHANGED};
     do
-        CHECK_GRAD=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/${TEST_FILE} |grep -A5 -E "no_grad_set=None" |grep "+" || true`
+        CHECK_GRAD=`git diff -U5 upstream/$BRANCH ${PADDLE_ROOT}/${TEST_FILE} |grep -A2 -E "self\.check_grad|self\.check_grad_with_place"|grep "no_grad_set=None" |grep "+" || true`
         if [ "${CHECK_GRAD}" != "" ] ; then
             ERROR_LINES="${ERROR_LINES}\n${TEST_FILE}\n${CHECK_GRAD}\n"
         fi
