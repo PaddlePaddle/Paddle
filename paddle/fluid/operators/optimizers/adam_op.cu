@@ -72,7 +72,6 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
     bool lazy_mode = ctx.Attr<bool>("lazy_mode");
     T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
     auto& param = Ref(ctx.Input<LoDTensor>("Param"), "Must set Param");
-    // auto& grad = Ref(ctx.Input<LoDTensor>("Grad"), "Must set Grad");
     auto* grad_var = ctx.InputVar("Grad");
     auto& mom1 = Ref(ctx.Input<LoDTensor>("Moment1"), "Must set Moment1");
     auto& mom2 = Ref(ctx.Input<LoDTensor>("Moment2"), "Must set Moment2");
