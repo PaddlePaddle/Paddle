@@ -110,4 +110,6 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     tdm_sampler, ops::TDMSamplerKernel<paddle::platform::CPUPlace, float>,
-    ops::TDMSamplerKernel<paddle::platform::CPUPlace, double>);
+    ops::TDMSamplerKernel<paddle::platform::CPUPlace, double>,
+    ops::TDMSamplerKernel<paddle::platform::CPUPlace, int>,
+    ops::TDMSamplerKernel<paddle::platform::CPUPlace, int64_t>);
