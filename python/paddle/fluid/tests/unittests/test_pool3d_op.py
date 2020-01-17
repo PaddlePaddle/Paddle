@@ -229,7 +229,7 @@ class TestPool3d_Op(OpTest):
             nums = 1
             for i in self.shape:
                 nums = nums * i
-            unique_numbers = random.sample(np.arange(-40000.0, 40000.0), nums)
+            unique_numbers = random.sample(range(-40000, 40000), nums)
             input = np.reshape(unique_numbers, self.shape)
             input = input.astype(self.dtype) / 100.0
         else:
