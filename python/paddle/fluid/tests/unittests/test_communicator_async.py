@@ -16,7 +16,10 @@ from __future__ import print_function
 
 import unittest
 import time
+import threading
+import numpy
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.communicator import Communicator
 
@@ -35,7 +38,7 @@ class TestCommunicator(unittest.TestCase):
         avg_cost = fluid.layers.mean(cost)
         return avg_cost
 
-    def test_communicator_init_and_start(self):
+    def test_communicator_async(self):
         role = role_maker.UserDefinedRoleMaker(
             current_id=0,
             role=role_maker.Role.WORKER,
@@ -48,23 +51,15 @@ class TestCommunicator(unittest.TestCase):
         optimizer = fluid.optimizer.SGD(0.01)
 
         strategy = DistributeTranspilerConfig()
-        strategy.sync_mode = True
+        strategy.sync_mode = False
+        strategy.runtime_split_send_recv = True
         strategy.wait_port = False
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
 
-        comm = Communicator(fleet.main_program)
-        comm.start()
+        fleet.init_worker()
         time.sleep(10)
-        comm.stop()
-
-
-class TestCommunicator2(unittest.TestCase):
-    def test_communicator_init_and_start(self):
-        prog = fluid.Program()
-        comm = Communicator(prog)
-        comm.start()
-        comm.stop()
+        fleet.stop_worker()
 
 
 if __name__ == '__main__':

@@ -102,8 +102,10 @@ class TestStrategyFactor(unittest.TestCase):
         trainer_runtime_config = strategy.get_trainer_runtime_config()
         trainer_communicator_flags = trainer_runtime_config.get_communicator_flags(
         )
-        self.assertIn('send_queue_size', trainer_communicator_flags)
-        self.assertEqual(trainer_communicator_flags['send_queue_size'], 100)
+        self.assertIn('communicator_send_queue_size',
+                      trainer_communicator_flags)
+        self.assertEqual(
+            trainer_communicator_flags['communicator_send_queue_size'], 100)
 
         # test set_trainer_runtime_config exception
         trainer_runtime_config_dict['unknown'] = None
@@ -138,9 +140,8 @@ class TestStrategyFactor(unittest.TestCase):
     def test_half_async_strategy(self):
         strategy = StrategyFactory.create_half_async_strategy()
         self.assertEqual(strategy._program_config.sync_mode, False)
-        self.assertEqual(strategy._program_config.runtime_split_send_recv,
-                         False)
-        self.assertEqual(strategy._build_strategy.async_mode, False)
+        self.assertEqual(strategy._program_config.runtime_split_send_recv, True)
+        self.assertEqual(strategy._build_strategy.async_mode, True)
 
         # test set_server_runtime_config using ServerRuntimeConfig
         server_runtime_config_class = ServerRuntimeConfig()
