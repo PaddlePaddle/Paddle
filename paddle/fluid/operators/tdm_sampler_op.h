@@ -72,8 +72,8 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
         const_cast<int64_t *>(travel_lod_tensor.data<int64_t>());
     int64_t *layer_data =
         const_cast<int64_t *>(layer_lod_tensor.data<int64_t>());
-    int64_t *output_data = out_tensor->mutable_data<int64_t>();
-    int64_t *label_data = label_tensor->mutable_data<int64_t>();
+    int64_t *output_data = out_tensor->data<int64_t>();
+    int64_t *label_data = label_tensor->data<int64_t>();
 
     // generate uniform sampler
 
@@ -101,7 +101,7 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
         if (output_positive_flag) {
           output_data[i * sample_res_length + offset] =
               travel_data[pos_offset.first + layer_idx];
-          lable_data[i * sample_res_length + offset] = 1;
+          label_data[i * sample_res_length + offset] = 1;
           offset += 1;
         }
 
@@ -117,7 +117,7 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
 
           output_data[i * sample_res_length + offset] =
               layer_data[layer_node_offset[layer_idx] + sample_res];
-          lable_data[i * sample_res_length + offset] = 0;
+          label_data[i * sample_res_length + offset] = 0;
           offset += 1;
         }  // end layer nce
         delete sampler;
