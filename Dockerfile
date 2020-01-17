@@ -224,6 +224,7 @@ RUN wget --no-check-certificate https://pslib.bj.bcebos.com/openmpi-1.4.5.tar.gz
     export LD_LIBRARY_PATH=/usr/local/lib/:$LD_LIBRARY_PATH && export PATH=/usr/local/bin:$PATH && cd .. && \
     rm -rf openmpi-1.4.5.tar.gz && pip --no-cache-dir install mpi4py && ln -fs /bin/bash /bin/sh && \
     apt-get install libprotobuf-dev -y
+RUN pip --no-cache-dir install -U netifaces==0.10.9
 
 # Older versions of patchelf limited the size of the files being processed and were fixed in this pr.
 # https://github.com/NixOS/patchelf/commit/ba2695a8110abbc8cc6baf0eea819922ee5007fa
