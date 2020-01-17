@@ -599,7 +599,8 @@ class InMemoryDataset(DatasetBase):
         local_data_size = np.array([local_data_size])
         if fleet is not None:
             global_data_size = local_data_size * 0
-            fleet._role_maker.all_reduce(local_data_size, global_data_size)
+            fleet._role_maker.all_reduce_worker(local_data_size,
+                                                global_data_size)
             return global_data_size[0]
         return local_data_size[0]
 
@@ -636,7 +637,8 @@ class InMemoryDataset(DatasetBase):
         local_data_size = np.array([local_data_size])
         if fleet is not None:
             global_data_size = local_data_size * 0
-            fleet._role_maker.all_reduce(local_data_size, global_data_size)
+            fleet._role_maker.all_reduce_worker(local_data_size,
+                                                global_data_size)
             return global_data_size[0]
         return local_data_size[0]
 
