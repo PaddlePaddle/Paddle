@@ -80,9 +80,9 @@ class CompareOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* context) const override {
     OpComment comment;
-    PADDLE_ENFORCE(context->HasInput("X"), "%s operator must has input X",
+    PADDLE_ENFORCE(context->HasInput("X"), "%s operator must have input X",
                    comment.type);
-    PADDLE_ENFORCE(context->HasInput("Y"), "%s operator must has input Y",
+    PADDLE_ENFORCE(context->HasInput("Y"), "%s operator must have input Y",
                    comment.type);
     auto dim_x = context->GetInputDim("X");
     auto dim_y = context->GetInputDim("Y");

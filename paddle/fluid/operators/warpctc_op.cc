@@ -175,11 +175,14 @@ class WarpCTCGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Logits"),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Loss")),
+                                   ctx.device_context());
   }
 };
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(WarpCTCGradOpNoNeedBufferVarInference,
+                                      "Logits");
 
 }  // namespace operators
 }  // namespace paddle
@@ -188,7 +191,8 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(warpctc, ops::WarpCTCOp, ops::WarpCTCOpMaker,
                   ops::WarpCTCGradOpMaker<paddle::framework::OpDesc>,
                   ops::WarpCTCGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(warpctc_grad, ops::WarpCTCGradOp);
+REGISTER_OPERATOR(warpctc_grad, ops::WarpCTCGradOp,
+                  ops::WarpCTCGradOpNoNeedBufferVarInference);
 REGISTER_OP_CPU_KERNEL(
     warpctc, ops::WarpCTCKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(
