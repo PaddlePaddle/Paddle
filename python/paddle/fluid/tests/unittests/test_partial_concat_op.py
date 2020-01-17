@@ -1,4 +1,4 @@
-#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,9 +16,9 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
-import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard, core
+from op_test import OpTest
+import random
+import six
 
 
 def np_partial_concat(inputs, start, length):
@@ -36,104 +36,68 @@ def np_partial_concat(inputs, start, length):
     for elem in inputs:
         assert (elem.shape == inputs[0].shape)
         elems.append(elem[:, start:start + length])
+    res = np.concatenate(elems, axis=1)
     return np.concatenate(elems, axis=1)
 
 
-@skip_check_grad_ci(reason="For inference, check_grad is not required.")
 class TestPartialConcatOp(OpTest):
     def setUp(self):
         self.op_type = "partial_concat"
-        self.dtype = self.get_dtype()
-        self.init_test_data()
-        self.init_attrs()
-        self.inputs = {'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)]}
-        self.outputs = {
-            'Out': np_partial_concat((self.x0, self.x1, self.x2),
-                                     self.start_index, self.length)
-        }
+        self.init_kernel_type()
+        self.init_para()
+        self.var_names = [
+            'x' + str(num) for num in six.moves.range(self.var_num)
+        ]
+        self.vars = [np.random.random((self.batch_size, self.column)).astype(self.dtype)\
+                     for num in six.moves.range(self.var_num) ]
+        self.inputs = {'X': list(zip(self.var_names, self.vars))}
+        self.attrs = {'start_index': self.start_index, 'length': self.length}
+        y = np_partial_concat(self.vars[:], self.start_index, self.length)
+        self.outputs = {'Out': y}
 
-    def get_dtype(self):
-        return "float32"
+    def init_kernel_type(self):
+        self.dtype = np.float64
 
-    def init_attrs(self):
-        self.start_index = 0
+    def init_para(self):
+        self.batch_size = random.randint(10, 20)
+        self.column = random.randint(101, 200)
+        self.start_index = random.randint(0, self.column - 1)
         self.length = -1
+        self.var_num = random.randint(1, 3)
 
     def test_check_output(self):
         self.check_output()
 
-    def init_test_data(self):
-        self.x0 = np.random.random((10, 20)).astype(self.dtype)
-        self.x1 = np.random.random((10, 20)).astype(self.dtype)
-        self.x2 = np.random.random((10, 20)).astype(self.dtype)
+    def test_check_grad(self):
+        for var_name in self.var_names:
+            self.check_grad([var_name], 'Out')
 
 
-@skip_check_grad_ci(reason="For inference, check_grad is not required.")
 class TestPartialConcatOp2(TestPartialConcatOp):
-    def init_attrs(self):
-        self.start_index = 5
-        self.length = -1
-
-
-@skip_check_grad_ci(reason="For inference, check_grad is not required.")
-class TestPartialConcatOp3(TestPartialConcatOp):
-    def init_attrs(self):
+    def init_para(self):
+        self.batch_size = random.randint(1, 10)
+        self.column = random.randint(101, 200)
         self.start_index = -5
         self.length = -1
+        self.var_num = 3
 
 
-@skip_check_grad_ci(reason="For inference, check_grad is not required.")
+class TestPartialConcatOp3(TestPartialConcatOp):
+    def init_para(self):
+        self.batch_size = random.randint(1, 10)
+        self.column = random.randint(101, 200)
+        self.start_index = 10
+        self.length = 20
+        self.var_num = 2
+
+
 class TestPartialConcatOp4(TestPartialConcatOp):
-    def init_attrs(self):
-        self.start_index = 5
-        self.length = 3
-
-
-#class TestPartialConcatOpError(unittest.TestCase):
-#    def test_errors(self):
-#        with program_guard(Program(), Program()):
-#            # The input type of concat_op should be list.
-#            x1 = fluid.layers.data(shape=[4], dtype='int32', name='x1')
-#            fluid.layers.concat(x1)
-#            # The item in input must be Variable.
-#            x2 = fluid.create_lod_tensor(
-#                np.array([[-1]]), [[1]], fluid.CPUPlace())
-#            x3 = fluid.create_lod_tensor(
-#                np.array([[-1]]), [[1]], fluid.CPUPlace())
-#            self.assertRaises(TypeError, fluid.layers.concat, [x2])
-#            # The input dtype of concat_op must be float16(only support on GPU), float32, float64, int32, int64.
-#            x4 = fluid.layers.data(shape=[4], dtype='uint8', name='x4')
-#            x5 = fluid.layers.data(shape=[4], dtype='uint8', name='x5')
-#            self.assertRaises(TypeError, fluid.layers.concat, [x4, x5])
-#            x6 = fluid.layers.data(shape=[4], dtype='float16', name='x6')
-#            x7 = fluid.layers.data(shape=[4], dtype='float16', name='x7')
-#            fluid.layers.concat([x6, x7])
-#
-#            # The type of axis in concat_op should be int or Variable.
-#            def test_axis_type():
-#                fluid.layers.concat([x6, x7], 3.2)
-#
-#            self.assertRaises(TypeError, test_axis_type)
-
-
-class TestPartialConcatAPI(unittest.TestCase):
-    def test_api(self):
-        x1 = fluid.data(shape=[10, 20], dtype='float32', name='x1')
-        x2 = fluid.data(shape=[10, 20], dtype='float32', name='x2')
-        out1 = fluid.layers.partial_concat([x1, x2], 1, 2)
-        out2 = fluid.layers.partial_concat([x1, x2], 1, -1)
-        out3 = fluid.layers.partial_concat([x1, x2], -5, -1)
-
-        input1 = np.random.random([10, 20]).astype("float32")
-        input2 = np.random.random([10, 20]).astype("float32")
-        exe = fluid.Executor(place=fluid.CPUPlace())
-        [res1, res2, res3] = exe.run(fluid.default_main_program(),
-                                     feed={"x1": input1,
-                                           "x2": input2},
-                                     fetch_list=[out1, out2, out3])
-        assert np.array_equal(res1, np_partial_concat((input1, input2), 1, 2))
-        assert np.array_equal(res2, np_partial_concat((input1, input2), 1, -1))
-        assert np.array_equal(res3, np_partial_concat((input1, input2), -5, -1))
+    def init_para(self):
+        self.batch_size = random.randint(1, 10)
+        self.column = random.randint(101, 200)
+        self.start_index = -1
+        self.length = -1
+        self.var_num = 1
 
 
 if __name__ == '__main__':

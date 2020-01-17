@@ -21,6 +21,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+using Tensor = framework::Tensor;
 
 static inline int64_t ComputeStartIndex(int64_t start_index, int64_t size) {
   PADDLE_ENFORCE_EQ(
@@ -40,12 +41,16 @@ class PartialConcatKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto ins = ctx.MultiInput<framework::Tensor>("X");
     framework::Tensor* out = ctx.Output<framework::Tensor>("Out");
-    PADDLE_ENFORCE_EQ(ins[0] != nullptr, true, "The input should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ins[0] != nullptr, true,
+        platform::errors::InvalidArgument("The input should not be null."));
 
     auto input_dim = ins[0]->dims();
-    PADDLE_ENFORCE_EQ(input_dim.size(), 2,
-                      "Only supports 2-D array with batch size in the 1st "
-                      "dimension and data in the 2nd.");
+    PADDLE_ENFORCE_EQ(
+        input_dim.size(), 2,
+        platform::errors::InvalidArgument("Only supports 2-D array with "
+                                          "batch size in the 1st "
+                                          "dimension and data in the 2nd."));
     auto in_size = input_dim[1];
 
     // may be negative
@@ -64,12 +69,57 @@ class PartialConcatKernel : public framework::OpKernel<T> {
     T* out_data = out->mutable_data<T>(place);
 
     for (size_t i = 0; i < ins.size(); ++i) {
-      PADDLE_ENFORCE_EQ(ins[i] && ins[i]->numel() > 0, true);
       for (int j = 0; j < batch; ++j) {
         const T* in_data = ins[i]->data<T>();
         memcpy(out_data + out_size * j + partial_len * i,
                in_data + in_size * j + start_index, partial_len * sizeof(T));
       }
+    }
+  }
+};
+
+template <typename T>
+class PartialConcatGradientOpKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto ins = ctx.MultiInput<framework::LoDTensor>("X");
+    auto outs =
+        ctx.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
+
+    PADDLE_ENFORCE_EQ(
+        ins[0] != nullptr, true,
+        platform::errors::InvalidArgument("The input should not be null."));
+    // all parameters
+    auto batch_size = ins[0]->dims()[0];
+    auto in_size = ins[0]->dims()[1];
+    // may be negative
+    auto start_index = ctx.Attr<int>("start_index");
+    start_index = ComputeStartIndex(start_index, in_size);
+    auto partial_len = ctx.Attr<int>("length");
+    if (partial_len < 0) partial_len = in_size - start_index;
+
+    auto in_num = ins.size();
+    auto grad_batch_len = partial_len * in_num;
+    auto all_length = grad_batch_len * batch_size;
+
+    // initialize
+    auto& place = *ctx.template device_context<platform::CPUDeviceContext>()
+                       .eigen_device();
+    for (size_t i = 0; i < outs.size(); ++i) {
+      outs[i]->mutable_data<T>(ctx.GetPlace());
+      auto dxt = framework::EigenVector<T>::Flatten(*outs[i]);
+      dxt.device(place) = dxt.constant(static_cast<T>(0));
+    }
+
+    auto* out_grad_t = out_grad->data<T>();
+    for (size_t id = 0; id < all_length; id += partial_len) {
+      int bs_id = id / grad_batch_len;
+      int bs_index = id % grad_batch_len;
+      int var_id = bs_index / partial_len;
+      auto* out_t = outs[var_id]->data<T>();
+      memcpy(out_t + bs_id * in_size + start_index, out_grad_t + id,
+             partial_len * sizeof(T));
     }
   }
 };
