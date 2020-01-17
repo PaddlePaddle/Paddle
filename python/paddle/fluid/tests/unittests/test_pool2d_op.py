@@ -303,7 +303,8 @@ class TestPool2D_Op(OpTest):
                 set(['X']),
                 'Out',
                 max_relative_error=0.07,
-                check_dygraph=(self.use_mkldnn == False))
+                check_dygraph=(self.use_mkldnn == False),
+                fp16_to_fp64=True)
         elif self.pool_type != "max":
             self.check_grad(
                 set(['X']),
@@ -450,14 +451,14 @@ def create_test_cudnn_fp16_class(parent, check_grad=True):
         def test_check_grad(self):
             # TODO(wangzhongpu): support mkldnn op in dygraph mode
             place = core.CUDAPlace(0)
-            if core.is_float16_supported(
-                    place) and check_grad:
+            if core.is_float16_supported(place) and check_grad:
                 self.check_grad_with_place(
                     place,
                     set(['X']),
                     'Out',
                     max_relative_error=0.07,
-                    check_dygraph=(self.use_mkldnn == False))
+                    check_dygraph=(self.use_mkldnn == False),
+                    fp16_to_fp64=True)
 
     cls_name = "{0}_{1}".format(parent.__name__, "CUDNNFp16Op")
     TestCUDNNFp16Case.__name__ = cls_name

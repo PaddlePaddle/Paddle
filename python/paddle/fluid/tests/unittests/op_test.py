@@ -1268,17 +1268,18 @@ class OpTest(unittest.TestCase):
                               in_place=False,
                               max_relative_error=0.005,
                               user_defined_grads=None,
-                              check_dygraph=True):
+                              check_dygraph=True,
+                              fp16_to_fp64=False):
         self.scope = core.Scope()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
         op_attrs = self.attrs if hasattr(self, "attrs") else dict()
 
-        
-        if self.op_type in ['softmax', 'pool2d', 'pool3d'] and hasattr(self, "inputs"):
+        if fp16_to_fp64 and hasattr(self, "inputs"):
             op_inputs = copy.deepcopy(self.inputs)
             for input_to_check in inputs_to_check:
                 if not op_inputs[input_to_check].dtype == np.float64:
-                    op_inputs[input_to_check] = op_inputs[input_to_check].astype(np.float64)
+                    op_inputs[input_to_check] = op_inputs[
+                        input_to_check].astype(np.float64)
         else:
             op_inputs = self.inputs if hasattr(self, "inputs") else dict()
 
@@ -1305,11 +1306,12 @@ class OpTest(unittest.TestCase):
         if not type(output_names) is list:
             output_names = [output_names]
 
-        if self.op_type in ['softmax', 'pool2d', 'pool3d']:
+        if fp16_to_fp64:
             self.inputs_fp64 = copy.deepcopy(self.inputs)
             for input_to_check in inputs_to_check:
                 if not self.inputs_fp64[input_to_check].dtype == np.float64:
-                    self.inputs_fp64[input_to_check] = self.inputs_fp64[input_to_check].astype(np.float64)
+                    self.inputs_fp64[input_to_check] = self.inputs_fp64[
+                        input_to_check].astype(np.float64)
             self.inputs = self.inputs_fp64
 
         numeric_grads = user_defined_grads or [

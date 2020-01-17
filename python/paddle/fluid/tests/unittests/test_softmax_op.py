@@ -79,7 +79,8 @@ class TestSoftmaxOp(OpTest):
                     place, ["X"],
                     "Out",
                     max_relative_error=0.01,
-                    check_dygraph=(self.use_mkldnn == False))
+                    check_dygraph=(self.use_mkldnn == False),
+                    fp16_to_fp64=True)
         else:
             self.check_grad(
                 ["X"],
