@@ -109,6 +109,43 @@ class RoleMakerBase(object):
             self._role, self._current_id, self._worker_endpoints,
             self._server_endpoints)
 
+    def all_gather(self, input):
+        """
+        all gather between trainers and pservers
+
+        Args:
+            input(int|float): input value
+
+        Returns:
+            return a list of values
+        """
+        print("warning: RoleMakerBase does not have all gather.")
+        return None
+
+    def all_reduce_worker(self, input, output, mode="sum"):
+        """
+        all reduce between trainers if current role is TRAINER,
+        only support array of one dim.
+
+        Args:
+            input(list/numpy.array): array of one dim
+            output(list/numpy.array): array of one dim
+            mode(str): "sum" or "min" or "max"
+        """
+        print("warning: RoleMakerBase does not have all reduce worker.")
+
+    def barrier_worker(self):
+        """
+        barrier between trainers if current role is TRAINER
+        """
+        print("warning: RoleMakerBase does not have barrier worker.")
+
+    def barrier_all(self):
+        """
+        barrier between trainers if current role is PSERVER
+        """
+        print("warning: RoleMakerBase does not have barrier all.")
+
 
 class MPIRoleMaker(RoleMakerBase):
     """
@@ -205,6 +242,56 @@ class MPISymetricRoleMaker(MPIRoleMaker):
             raise NameError("generate_role() should be called first")
         return True
 
+    def all_gather(self, input):
+        """
+        all gather between trainers and pservers
+
+        Args:
+            input(int|float): input value
+
+        Returns:
+            return a list of values
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._all_gather(input)
+
+    def all_reduce_worker(self, input, output, mode="sum"):
+        """
+        all reduce between trainers if current role is TRAINER,
+        only support array of one dim.
+
+        Args:
+            input(list/numpy.array): array of one dim
+            output(list/numpy.array): array of one dim
+            mode(str): "sum" or "min" or "max"
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        if not self.is_worker():
+            print("warning: current role is not worker in all_reduce_worker")
+            return
+        self._all_reduce(input, output, mode)
+
+    def barrier_worker(self):
+        """
+        barrier between trainers if current role is TRAINER
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        if self.is_worker():
+            self._node_type_comm.barrier()
+        else:
+            print("warning: current role is not worker in barrier_worker")
+
+    def barrier_all(self):
+        """
+        barrier between trainers if current role is PSERVER
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        self._comm.barrier()
+
     def is_first_worker(self):
         """
         return whether current process is the first worker assigned by role maker
@@ -290,6 +377,29 @@ class MPISymetricRoleMaker(MPIRoleMaker):
             self.generate_role()
             return self._get_size() / self._proc_per_node
 
+    def _all_reduce(self, input, output, mode="sum"):
+        """
+        all reduce between trainers if current role is TRAINER,
+        only support array of one dim.
+
+        Args:
+            input(list/numpy.array): array of one dim
+            output(list/numpy.array): array of one dim
+            mode(str): "sum" or "min" or "max"
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        if mode == "sum":
+            mode = self.MPI.SUM
+        elif mode == "max":
+            mode = self.MPI.MAX
+        elif mode == "min":
+            mode = self.MPI.MIN
+        else:
+            raise ValueError("unknown mode: %s" % mode)
+        self._node_type_comm.Allreduce(input, output, op=mode)
+
+
     def _barrier_worker(self):
         """
         barrier all workers in current distributed job
@@ -309,20 +419,6 @@ class MPISymetricRoleMaker(MPIRoleMaker):
                 self._node_type_comm.barrier()
         else:
             raise Exception("You should check role generation first")
-
-    def _all_reduce(self, input, output, mode="sum"):
-        """
-        all reduce between all nodes in _node_type_comm
-        """
-        if mode == "sum":
-            mode = self.MPI.SUM
-        elif mode == "max":
-            mode = self.MPI.MAX
-        elif mode == "min":
-            mode = self.MPI.MIN
-        else:
-            raise ValueError("unknown mode: %s" % mode)
-        self._node_type_comm.Allreduce(input, output, op=mode)
 
     def generate_role(self):
         """
@@ -449,11 +545,11 @@ class GeneralRoleMaker(RoleMakerBase):
     This role maker is for general use, you can set os.environ to customize:
         PADDLE_PSERVERS_IP_PORT_LIST : all pservers' ip:port, seperated by ','
         PADDLE_TRAINER_ENDPOINTS     : all trainers' ip:port, seperated by ','
-        PADDLE_TRAINER_ID            : current trainer id (only for trainer)
-        PADDLE_TRAINERS_NUM          : num of trainers
         TRAINING_ROLE                : TRAINER or PSERVER
-        POD_IP                       : current pserver ip (only for pserver)
-        PADDLE_PORT                  : current pserver port (only for pserver)
+        PADDLE_TRAINER_ID            : current trainer id (only for trainer),
+                                       it is index in PADDLE_TRAINER_ENDPOINTS
+        PADDLE_PSERVER_ID            : current pserver id (only for pserver)
+                                       it is index in PADDLE_PSERVERS_IP_PORT_LIST
     """
 
     def __init__(self, **kwargs):
@@ -461,29 +557,9 @@ class GeneralRoleMaker(RoleMakerBase):
         self._role_is_generated = False
         self._hdfs_name = kwargs.get("hdfs_name", "")
         self._hdfs_ugi = kwargs.get("hdfs_ugi", "")
-        self._hdfs_path = kwargs.get("hdfs_path", "")
+        self._hdfs_path = kwargs.get("path", "")
         self._iface = self.__get_default_iface()
         self._prefix = os.getenv("SYS_JOB_ID", "")
-
-    def __get_default_iface(self):
-        """
-        get default physical interface
-        """
-        import netifaces
-        gateways = netifaces.gateways()
-        if gateways.get(netifaces.AF_INET) != None:
-            gateway = gateways[netifaces.AF_INET]
-            if len(gateway) > 0 and len(gateway[0]) > 1:
-                return gateway[0][1]
-        for intf_name in netifaces.interfaces():
-            addresses = netifaces.ifaddresses(intf_name)
-            if netifaces.AF_INET in addresses:
-                ipv4_addresses = addresses[netifaces.AF_INET]
-                for ipv4_address in ipv4_addresses:
-                    if 'broadcast' in ipv4_address:
-                        return intf_name
-        print("warning: cannot pick default physical interface, set to lo")
-        return "lo"
 
     def generate_role(self):
         """
@@ -491,9 +567,9 @@ class GeneralRoleMaker(RoleMakerBase):
         """
         if not self._role_is_generated:
             eplist = os.environ["PADDLE_PSERVERS_IP_PORT_LIST"].split(",")
-            trainers_num = int(os.environ["PADDLE_TRAINERS_NUM"])
             training_role = os.environ["TRAINING_ROLE"]
             worker_endpoints = os.environ["PADDLE_TRAINER_ENDPOINTS"].split(",")
+            trainers_num = len(worker_endpoints)
             if training_role not in ["TRAINER", "PSERVER"]:
                 raise ValueError("TRAINING_ROLE must be PSERVER or TRAINER")
             if training_role == "TRAINER":
@@ -510,10 +586,15 @@ class GeneralRoleMaker(RoleMakerBase):
                 self._node_type_comm = gloo
             elif training_role == "PSERVER":
                 role = Role.SERVER
-                cur_ip = os.environ["POD_IP"]
-                cur_port = os.environ["PADDLE_PORT"]
-                cur_endpoint = ":".join([cur_ip, cur_port])
-                current_id = eplist.index(cur_endpoint)
+                if os.environ.get("PADDLE_PSERVER_ID") is not None:
+                    current_id = int(os.environ["PADDLE_PSERVER_ID"])
+                    cur_endpoint = eplist[current_id]
+                else:
+                    # this is for compatible with paddlecloud
+                    cur_ip = os.environ["POD_IP"]
+                    cur_port = os.environ["PADDLE_PORT"]
+                    cur_endpoint = ":".join([cur_ip, cur_port])
+                    current_id = eplist.index(cur_endpoint)
                 self._node_type = 0
                 self._cur_endpoint = cur_endpoint
                 gloo = fluid.core.Gloo()
@@ -541,53 +622,43 @@ class GeneralRoleMaker(RoleMakerBase):
             self._worker_endpoints = worker_endpoints
             self._role_is_generated = True
 
-    def _finalize(self):
-        """Default do nothing."""
-        pass
+    def all_gather(self, input):
+        """
+        all gather between trainers and pservers
 
-    def _all_reduce(self, input, output, mode="sum"):
-        """
-        all reduce between all workers
-        """
-        if not self._role_is_generated:
-            self.generate_role()
-        input_list = [i for i in input]
-        output_list = [i for i in output]
-        self._node_type_comm.all_reduce(input_list, output_list, mode)
-        for i in range(len(output_list)):
-            output[i] = output_list[i]
+        Args:
+            input(int|float): input value
 
-    def _all_gather(self, obj):
+        Returns:
+            return a list of values
         """
-        gather between all workers and pservers
-        """
-        if not self._role_is_generated:
-            self.generate_role()
-        self._barrier_all()
-        return self._all_comm.all_gather(obj)
+        return self._all_gather(input)
 
-    def _worker_gather(self, obj):
+    def all_reduce_worker(self, input, output, mode="sum"):
         """
-        gather between all workers
+        all reduce between trainers if current role is TRAINER,
+        only support array of one dim.
+
+        Args:
+            input(list/numpy.array): array of one dim
+            output(list/numpy.array): array of one dim
+            mode(str): "sum" or "min" or "max"
         """
-        if not self._role_is_generated:
-            self.generate_role()
         if not self.is_worker():
-            return None
+            return
+        self._all_reduce(input, output, mode)
+
+    def barrier_worker(self):
+        """
+        barrier between trainers if current role is TRAINER
+        """
         self._barrier_worker()
-        return self._node_type_comm.all_gather(obj)
 
-    def _get_rank(self):
+    def barrier_all(self):
         """
-        get current rank in all workers and pservers
+        barrier between trainers if current role is PSERVER
         """
-        return self._rank
-
-    def _get_size(self):
-        """
-        get total num of all workers and pservers
-        """
-        return self._size
+        self._barrier_all()
 
     def get_local_endpoint(self):
         """
@@ -710,6 +781,88 @@ class GeneralRoleMaker(RoleMakerBase):
         if not self._role_is_generated:
             self.generate_role()
         return len(self._server_endpoints)
+
+    def _finalize(self):
+        """Default do nothing."""
+        pass
+
+    def _all_reduce(self, input, output, mode="sum"):
+        """
+        all reduce between all workers
+
+        Args:
+            input(list/numpy.array): array of one dim
+            output(list/numpy.array): array of one dim
+            mode(str): "sum" or "min" or "max"
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        input_list = [i for i in input]
+        output_list = [i for i in output]
+        self._node_type_comm.all_reduce(input_list, output_list, mode)
+        for i in range(len(output_list)):
+            output[i] = output_list[i]
+
+    def _all_gather(self, obj):
+        """
+        gather between all workers and pservers
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        self._barrier_all()
+        return self._all_comm.all_gather(obj)
+
+    def _worker_gather(self, obj):
+        """
+        gather between all workers
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        if not self.is_worker():
+            return None
+        self._barrier_worker()
+        return self._node_type_comm.all_gather(obj)
+
+    def _get_rank(self):
+        """
+        get current rank in all workers and pservers
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._rank
+
+    def _get_size(self):
+        """
+        get total num of all workers and pservers
+        """
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._size
+
+    def __get_default_iface(self):
+        """
+        get default physical interface
+        """
+        import netifaces
+        gateways = netifaces.gateways()
+        print("gateways ", gateways)
+        print("netifaces.interfaces ", netifaces.interfaces)
+        if gateways.get(netifaces.AF_INET) != None:
+            gateway = gateways[netifaces.AF_INET]
+            if len(gateway) > 0 and len(gateway[0]) > 1:
+                return gateway[0][1]
+        print("netifaces.interfaces ", netifaces.interfaces)
+        for intf_name in netifaces.interfaces():
+            addresses = netifaces.ifaddresses(intf_name)
+            print("addr of ", intf_name, " is ", addresses)
+            if netifaces.AF_INET in addresses:
+                ipv4_addresses = addresses[netifaces.AF_INET]
+                for ipv4_address in ipv4_addresses:
+                    if 'broadcast' in ipv4_address:
+                        print("pick ", intf_name)
+                        return intf_name
+        print("warning: cannot pick default physical interface, set to lo")
+        return "lo"
 
 
 class UserDefinedRoleMaker(RoleMakerBase):
