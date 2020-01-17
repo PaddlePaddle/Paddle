@@ -26,5 +26,5 @@ NEED_TO_FIX_OP_LIST = [
     'conv2d_transpose', 'spectral_norm', 'cross_entropy2', 'linear_chain_crf',
     'lookup_table_v2', 'conv2d', 'gru_unit', 'lookup_table', 'conv3d',
     'deformable_conv_v1', 'depthwise_conv2d', 'depthwise_conv2d_transpose',
-    'hierarchical_sigmoid', 'affine_grid', 'data_norm'
+    'hierarchical_sigmoid', 'affine_grid'
 ]
