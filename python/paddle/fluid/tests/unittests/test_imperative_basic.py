@@ -37,6 +37,7 @@ class MyLayer(fluid.Layer):
 class MLP(fluid.Layer):
     def __init__(self, input_size):
         super(MLP, self).__init__()
+        self._linear1 = None
         self._linear1 = Linear(
             input_size,
             3,
@@ -71,6 +72,7 @@ class SimpleRNNCell(fluid.Layer):
         i2h_param_shape = [self.step_input_size, self.hidden_size]
         h2h_param_shape = [self.hidden_size, self.hidden_size]
         h2o_param_shape = [self.output_size, self.hidden_size]
+        self._i2h_w = None
         self._i2h_w = self.create_parameter(
             attr=self.param_attr,
             shape=i2h_param_shape,
