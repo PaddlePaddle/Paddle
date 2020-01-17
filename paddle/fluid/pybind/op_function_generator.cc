@@ -29,7 +29,7 @@ const char* OUT_INITIALIZER_TEMPLATE =
 
 const char* OP_FUNCTION_TEMPLATE =
 R"(
-imperative::NameVarBaseMap %s(const imperative::NameVarBaseMap& ins, const framework::AttributeMap& attrs, 
+inline imperative::NameVarBaseMap %s(const imperative::NameVarBaseMap& ins, const framework::AttributeMap& attrs, 
   imperative::NameVarBaseMap outs, const std::map<std::string, size_t>& out_nums)
 {
   auto tracer = imperative::GetCurrentTracer();
@@ -41,8 +41,7 @@ imperative::NameVarBaseMap %s(const imperative::NameVarBaseMap& ins, const frame
       for (auto &pair : out_nums) {
         for (size_t i = 0; i < pair.second; i ++) {
           auto var_base_name = tracer->GenerateUniqueName();
-          auto out = new imperative::VarBase(var_base_name);
-          outs[pair.first].emplace_back(std::shared_ptr<imperative::VarBase>(out));
+          outs[pair.first].emplace_back(new imperative::VarBase(var_base_name));
         }
       }
     }
