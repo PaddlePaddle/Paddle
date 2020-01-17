@@ -1494,13 +1494,6 @@ def partial_concat(input, start_index=0, length=-1):
                 # [[3 13]
                 #  [6 16]]
     """
-
-    if in_dygraph_mode():
-        inputs = {'X': input}
-        attrs = {'start_index': start_index, 'length': length}
-        outs = core.ops.partial_concat(inputs, attrs)
-        return outs['Out'][0]
-
     if not isinstance(input, list):
         warnings.warn(
             "The type of input in partial_concat should be list, but received %s."
