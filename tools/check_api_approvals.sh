@@ -250,14 +250,22 @@ if [ "${UNITTEST_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     fi
 fi
 
-NO_GRAD_SET_VALUE=`git diff  --name-only --diff-filter=AMR upstream/$BRANCH |grep -oE "test_.*.\.py" || true`
+NO_GRAD_SET_VALUE=`git diff  --name-only --diff-filter=AM upstream/$BRANCH |grep -oE "test_.*.\.py" || true`
 if ["${NO_GRAD_SET_VALUE}" != ""] && [ "${GIT_PR_ID}" != "" ]; then
-    CHECK_GRAD=`git diff -U5 --diff-filter=AMR upstream/$BRANCH |grep -A5 -E "no_grad_set=None" |grep "+" || true`
-    if [ "${CHECK_GRAD}" != "" ] ; then
-      ERROR_LINES=${CHECK_GRAD//+/'\n+'}
-      echo_line="not_grad_set must be None'. If you don't use the default value, you must have one RD (chenjiaoAngel (Recommend), luotao1 or phlrain) approval for the usage of other value"
-      check_approval 1 38650344 6836917 43953930
+    for TEST_FILE in ${UNITTEST_FILE_CHANGED};
+    do
+        print('TEST_FILE: ', ${TEST_FILE})
+        CHECK_GRAD=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/${TEST_FILE} |grep -A5 -E "no_grad_set=None" |grep "+" || true`
+        if [ "${CHECK_GRAD}" != "" ] ; then
+            ERROR_LINES="${ERROR_LINES}\n${TEST_FILE}\n${CHECK_GRAD}\n"
+        fi
+    done
+    if [ "${ERROR_LINES}" != "" ]; then
+        RROR_LINES=${ERROR_LINES//+/'\n+\t'}
+        echo_line="not_grad_set must be None'. If you don't use the default value, you must have one RD (chenjiaoAngel (Recommend), luotao1 or phlrain) approval for the usage of other value"
+        check_approval 1 38650344 6836917 43953930
     fi
+    
 fi
 
 DEV_OP_USE_DEFAULT_GRAD_MAKER_SPEC=${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_DEV.spec
