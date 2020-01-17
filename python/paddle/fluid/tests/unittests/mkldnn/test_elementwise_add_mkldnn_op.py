@@ -16,7 +16,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
 from paddle.fluid.tests.unittests.test_elementwise_add_op import *
 '''
 Some tests differ from the tests defined in test_elementwise_add_op.py
@@ -35,6 +35,8 @@ class TestMKLDNNElementwiseAddOp(TestElementwiseAddOp):
         self.use_mkldnn = True
 
 
+@skip_check_grad_ci(
+    reason="[skip shape check] Use y_shape(1) to test broadcast.")
 class TestMKLDNNElementwiseAddOp_scalar(TestElementwiseAddOp_scalar):
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 4, 5).astype(self.dtype)
@@ -45,6 +47,8 @@ class TestMKLDNNElementwiseAddOp_scalar(TestElementwiseAddOp_scalar):
         self.use_mkldnn = True
 
 
+@skip_check_grad_ci(
+    reason="[skip shape check] Use y_shape(1,1) to test broadcast.")
 class TestMKLDNNElementwiseAddOp_scalar2(TestElementwiseAddOp_scalar2):
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 4, 5).astype(self.dtype)
@@ -62,9 +66,9 @@ class TestMKLDNNElementwiseAddOp_Vector(TestElementwiseAddOp_Vector):
 
 class TesMKLDNNtElementwiseAddOp_broadcast_0(TestElementwiseAddOp_broadcast_0):
     def init_input_output(self):
-        self.x = np.random.rand(2, 3, 4, 5).astype(self.dtype)
-        self.y = np.random.rand(2).astype(self.dtype)
-        self.out = self.x + self.y.reshape(2, 1, 1, 1)
+        self.x = np.random.rand(100, 2, 3, 4).astype(self.dtype)
+        self.y = np.random.rand(100).astype(self.dtype)
+        self.out = self.x + self.y.reshape(100, 1, 1, 1)
 
     def init_kernel_type(self):
         self.use_mkldnn = True
@@ -72,9 +76,9 @@ class TesMKLDNNtElementwiseAddOp_broadcast_0(TestElementwiseAddOp_broadcast_0):
 
 class TestMKLDNNElementwiseAddOp_broadcast_1(TestElementwiseAddOp_broadcast_1):
     def init_input_output(self):
-        self.x = np.random.rand(2, 3, 4, 5).astype(self.dtype)
-        self.y = np.random.rand(3).astype(self.dtype)
-        self.out = self.x + self.y.reshape(1, 3, 1, 1)
+        self.x = np.random.rand(2, 100, 3, 4).astype(self.dtype)
+        self.y = np.random.rand(100).astype(self.dtype)
+        self.out = self.x + self.y.reshape(1, 100, 1, 1)
 
     def init_kernel_type(self):
         self.use_mkldnn = True
@@ -82,9 +86,9 @@ class TestMKLDNNElementwiseAddOp_broadcast_1(TestElementwiseAddOp_broadcast_1):
 
 class TestMKLDNNElementwiseAddOp_broadcast_2(TestElementwiseAddOp_broadcast_2):
     def init_input_output(self):
-        self.x = np.random.rand(2, 2, 3, 4).astype(self.dtype)
-        self.y = np.random.rand(4).astype(self.dtype)
-        self.out = self.x + self.y.reshape(1, 1, 1, 4)
+        self.x = np.random.rand(2, 2, 3, 100).astype(self.dtype)
+        self.y = np.random.rand(100).astype(self.dtype)
+        self.out = self.x + self.y.reshape(1, 1, 1, 100)
 
     def init_kernel_type(self):
         self.use_mkldnn = True
@@ -103,9 +107,9 @@ class TestMKLDNNElementwiseAddOp_broadcast_4(TestElementwiseAddOp_broadcast_4):
 class TestMKLDNNElementwiseAddOp_rowwise_add_0(
         TestElementwiseAddOp_rowwise_add_0):
     def init_input_output(self):
-        self.x = np.random.rand(2, 3, 4, 5).astype(self.dtype)
-        self.y = np.random.rand(3, 4).astype(self.dtype)
-        self.out = self.x + self.y.reshape(1, 3, 4, 1)
+        self.x = np.random.rand(2, 10, 12, 3).astype(self.dtype)
+        self.y = np.random.rand(10, 12).astype(self.dtype)
+        self.out = self.x + self.y.reshape(1, 10, 12, 1)
 
     def init_kernel_type(self):
         self.use_mkldnn = True
@@ -120,8 +124,8 @@ class TestMKLDNNElementwiseAddOp_rowwise_add_1(
 class TestMKLDNNElementwiseAddOp_channelwise_add(
         TestElementwiseAddOp_channelwise_add):
     def init_input_output(self):
-        self.x = np.random.rand(3, 5, 20, 20).astype(self.dtype)
-        self.y = np.random.rand(3, 1, 1, 1).astype(self.dtype)
+        self.x = np.random.rand(100, 2, 3, 3).astype(self.dtype)
+        self.y = np.random.rand(100, 1, 1, 1).astype(self.dtype)
         self.out = self.x + self.y
 
     def init_kernel_type(self):
