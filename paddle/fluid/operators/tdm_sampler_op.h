@@ -63,15 +63,17 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
       sample_res_length +=
           (neg_samples_num_vec[layer_idx] + (int64_t)output_positive_flag);
     }
-    std::vector<int64_t> layer_node_offset = layer_lod[0];
+
+    auto layer_node_offset = layer_lod[0];
 
     // get all data
     int64_t *input_data = const_cast<int64_t *>(input_tensor.data<int64_t>());
     int64_t *travel_data =
-        const_cast<int64_t *>(travel_lod_tensor.data<int64_t>);
-    int64_t *layer_data = const_cast<int64_t *>(layer_lod_tensor.data<int64_t>);
-    int64_t *output_data = out_tensor->data<int64_t>();
-    int64_t *lable_data = lable_tensor->data<int64_t>();
+        const_cast<int64_t *>(travel_lod_tensor.data<int64_t>());
+    int64_t *layer_data =
+        const_cast<int64_t *>(layer_lod_tensor.data<int64_t>());
+    int64_t *output_data = out_tensor->mutable_data<int64_t>();
+    int64_t *label_data = label_tensor->mutable_data<int64_t>();
 
     // generate uniform sampler
 
@@ -79,8 +81,9 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
 
     for (int64_t i = 0; i < input_ids_num; ++i) {
       // find leaf node travel path
-      std::pair<size_t, size_t> pos_offset =
-          find_leaf_travel(input_data[i], travel_lod);
+      auto lod_and_offset = framework::GetSubLoDAndAbsoluteOffset(
+          travel_lod, input_data[i], input_data[i] + 1, 0);
+      std::pair<size_t, size_t> pos_offset = lod_and_offset.second;
       size_t sampling_depth =
           (pos_offset.second - pos_offset.first) > layer_nums
               ? layer_nums
@@ -132,21 +135,13 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
           int64_t sample_res = sampler->Sample();
           output_data[i * sample_res_length + offset] =
               layer_data[layer_node_offset[sampling_depth] + sample_res];
-          lable_data[i * sample_res_length + offset] = 0;
+          label_data[i * sample_res_length + offset] = 0;
           offset += 1;
         }
         delete sampler;
         sampling_depth += 1;
       }
     }  // end all input nce
-  }
-
-  std::pair<size_t, size_t> find_leaf_travel(const int64_t &leaf_idx,
-                                             const LoD &travel_lod) {
-    // check leaf whether in tree
-    LoDAndOffset res = framework::GetSubLoDAndAbsoluteOffset(
-        travel_lod, leaf_idx, leaf_idx + 1, 0);
-    return res.second;
   }
 };
 
