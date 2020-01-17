@@ -21,6 +21,7 @@ import numpy as np
 import paddle.fluid.core as core
 from op_test import OpTest
 import paddle.fluid as fluid
+import random
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -247,7 +248,17 @@ class TestPool2D_Op(OpTest):
         self.init_data_format()
         self.init_shape()
 
-        input = np.random.random(self.shape).astype(self.dtype)
+        if self.dtype == np.float16 and self.pool_type == "max" and self.use_cudnn == True:
+            shape_len = len(self.shape)
+            nums = 1
+            for i in self.shape:
+                nums = nums * i
+            unique_numbers = random.sample(np.arange(1, 1000), nums)
+            input = np.reshape(unique_numbers, self.shape)
+            input = input.astype(self.dtype)
+        else:
+            input = np.random.random(self.shape).astype(self.dtype)
+
         output = pool2D_forward_naive(
             input, self.ksize, self.strides, self.paddings, self.global_pool,
             self.ceil_mode, self.exclusive, self.adaptive, self.data_format,
@@ -440,23 +451,13 @@ def create_test_cudnn_fp16_class(parent, check_grad=True):
             # TODO(wangzhongpu): support mkldnn op in dygraph mode
             place = core.CUDAPlace(0)
             if core.is_float16_supported(
-                    place) and self.pool_type != "max" and check_grad:
+                    place) and check_grad:
                 self.check_grad_with_place(
                     place,
                     set(['X']),
                     'Out',
                     max_relative_error=0.07,
                     check_dygraph=(self.use_mkldnn == False))
-            elif core.is_float16_supported(
-                    place) and self.pool_type == "max" and check_grad:
-                self.check_grad_with_place(
-                    place,
-                    set(['X']),
-                    'Out',
-                    max_relative_error=1.0,
-                    check_dygraph=(self.use_mkldnn == False))
-
-
 
     cls_name = "{0}_{1}".format(parent.__name__, "CUDNNFp16Op")
     TestCUDNNFp16Case.__name__ = cls_name

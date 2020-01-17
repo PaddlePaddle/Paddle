@@ -21,6 +21,7 @@ import numpy as np
 import paddle.fluid.core as core
 from op_test import OpTest
 import paddle.fluid as fluid
+import random
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -222,7 +223,18 @@ class TestPool3d_Op(OpTest):
         self.init_data_format()
         self.init_shape()
 
-        input = np.random.random(self.shape).astype(self.dtype)
+        if self.dtype == np.float16 and self.pool_type == "max" and self.use_cudnn == True:
+            #construct example to test max pooling with fp16 and cudnn
+            shape_len = len(self.shape)
+            nums = 1
+            for i in self.shape:
+                nums = nums * i
+            unique_numbers = random.sample(np.arange(-40000.0, 40000.0), nums)
+            input = np.reshape(unique_numbers, self.shape)
+            input = input.astype(self.dtype) / 100.0
+        else:
+            input = np.random.random(self.shape).astype(self.dtype)
+
         output = pool3D_forward_naive(
             input, self.ksize, self.strides, self.paddings, self.global_pool,
             self.ceil_mode, self.exclusive, self.adaptive, self.data_format,
@@ -349,6 +361,9 @@ class TestCase4(TestCase1):
         self.pool_type = "max"
         self.pool3D_forward_naive = max_pool3D_forward_naive
 
+    def init_shape(self):
+        self.shape = [2, 3, 6, 7, 7]
+
 
 class TestCase5(TestCase2):
     def init_pool_type(self):
@@ -396,22 +411,13 @@ def create_test_cudnn_fp16_class(parent):
         def test_check_grad(self):
             # TODO(wangzhongpu): support mkldnn op in dygraph mode
             place = core.CUDAPlace(0)
-            #if core.is_float16_supported(
-            #        place) and self.pool_type != "max":
             if core.is_float16_supported(
-                    place) and self.pool_type != "max":
+                    place):
                 self.check_grad_with_place(
                     place,
                     set(['X']),
                     'Out',
                     max_relative_error=0.07)
-            elif core.is_float16_supported(
-                    place) and self.pool_type == "max":
-                self.check_grad_with_place(
-                    place,
-                    set(['X']),
-                    'Out',
-                    max_relative_error=1.0)
 
 
     cls_name = "{0}_{1}".format(parent.__name__, "CUDNNFp16Op")
@@ -539,7 +545,7 @@ class TestCase4_AsyPadding(TestCase4):
         self.paddings = [1, 0, 2, 1, 2, 1]
 
     def init_shape(self):
-        self.shape = [2, 3, 7, 7, 7]
+        self.shape = [2, 3, 6, 7, 7]
 
 
 class TestCase5_AsyPadding(TestCase5):
@@ -551,7 +557,7 @@ class TestCase5_AsyPadding(TestCase5):
         self.paddings = [1, 2, 1, 1, 1, 0]
 
     def init_shape(self):
-        self.shape = [2, 3, 7, 7, 7]
+        self.shape = [2, 3, 6, 7, 7]
 
 
 create_test_cudnn_class(TestPool3d_Op_AsyPadding)
