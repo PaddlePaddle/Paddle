@@ -29,10 +29,10 @@ class TDMSamplerOpMaker : public framework::OpProtoAndCheckerMaker {
              "mapping the leaf node idx of tdm tree"
              "must has the same dtype with tree node idx");
     AddInput("Travel",
-             "Travel(LodTensor), must has the same dtype with tree node idx"
+             "Travel(Tensor), must has the same dtype with tree node idx"
              "Contains path information of all leaf nodes to root nodes");
     AddInput("Layer",
-             "Layer(LodTensor), must has the same dtype with tree node idx"
+             "Layer(Tensor), must has the same dtype with tree node idx"
              "Which nodes are included in each layer");
     AddAttr<bool>("output_labels",
                   "output_labels(bool)"
@@ -46,6 +46,8 @@ class TDMSamplerOpMaker : public framework::OpProtoAndCheckerMaker {
         "neg_samples_num_list",
         "neg_samples_num_list(python:list[int], C:vector<int>)"
         "The num of negative samples of every layer")
+        .SetDefault({});
+    AddAttr<std::vector<int>>("layer_offset_lod", "layer offset lod info")
         .SetDefault({});
     AddOutput("Out",
               "Sampling result lodTensor, with shape [batch_size, layer_num, "
@@ -69,7 +71,7 @@ class TDMSamplerOp : public framework::OperatorWithKernel {
 
     auto neg_samples_num_vec =
         ctx->Attrs().Get<std::vector<int>>("neg_samples_num_list");
-    PADDLE_ENFORCE_NE(neg_samples_num_vec.size(), 0);
+    auto PADDLE_ENFORCE_NE(neg_samples_num_vec.size(), 0);
     auto output_positive_flag = ctx->Attrs().Get<bool>("output_positive");
 
     int64_t sample_res_length = 0;

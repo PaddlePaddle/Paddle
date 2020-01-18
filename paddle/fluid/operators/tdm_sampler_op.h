@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <gflags/gflags.h>
 #include <cmath>
 #include <fstream>
 #include <set>
@@ -43,6 +44,8 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
 
     auto neg_samples_num_vec =
         context.Attr<std::vector<int64_t>>("neg_samples_num_list");
+    auto layer_offset_lod =
+        ctx->Attrs().Get<std::vector<int>>("layer_offset_lod");
     auto output_positive_flag = context.Attr<bool>("output_positive");
 
     // get all tensor
@@ -54,17 +57,16 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
 
     // get dimension
     int64_t input_ids_num = input_tensor.numel();
-    auto travel_lod = travel_lod_tensor.lod();
-    auto layer_lod = layer_lod_tensor.lod();
+    VLOG(1) << "input_ids_num: " << input_ids_num;
     auto layer_nums = neg_samples_num_vec.size();
+    VLOG(1) << "layer_nums: " << layer_nums;
 
     int64_t sample_res_length = 0;
     for (int64_t layer_idx = 0; layer_idx < layer_nums; ++layer_idx) {
       sample_res_length +=
           (neg_samples_num_vec[layer_idx] + (int64_t)output_positive_flag);
     }
-
-    auto layer_node_offset = layer_lod[0];
+    VLOG(1) << "sample_res_length: " << sample_res_length;
 
     // get all data
     int64_t *input_data = const_cast<int64_t *>(input_tensor.data<int64_t>());
@@ -81,27 +83,22 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
 
     for (int64_t i = 0; i < input_ids_num; ++i) {
       // find leaf node travel path
-      auto lod_and_offset = framework::GetSubLoDAndAbsoluteOffset(
-          travel_lod, input_data[i], input_data[i] + 1, 0);
-      std::pair<size_t, size_t> pos_offset = lod_and_offset.second;
-      size_t sampling_depth =
-          (pos_offset.second - pos_offset.first) > layer_nums
-              ? layer_nums
-              : (pos_offset.second - pos_offset.first);
-
+      auto input_id = input_ids_num[i];
+      auto start_offset = input_id * layer_nums;
       // nce sample, layer by layer
-
       int64_t offset = 0;
-      for (size_t layer_idx = 0; layer_idx < sampling_depth; ++layer_idx) {
+      for (size_t layer_idx = 0; layer_idx < layer_nums; ++layer_idx) {
         int64_t sample_num = neg_samples_num_vec[layer_idx];
         int64_t node_nums =
-            layer_node_offset[layer_idx + 1] - layer_node_offset[layer_idx];
+            layer_offset_lod[layer_idx + 1] - layer_offset_lod[layer_idx];
+        VLOG(1) << "node_nums" << node_nums;
         Sampler *sampler = new math::UniformSampler(node_nums, seed);
         // If output positive, add itself
         if (output_positive_flag) {
           output_data[i * sample_res_length + offset] =
-              travel_data[pos_offset.first + layer_idx];
-          label_data[i * sample_res_length + offset] = 1;
+              travel_data[start_offset + layer_idx];
+          label_data[i * sample_res_length + offset] =
+              travel_data[start_offset + layer_idx] == 0 ? 0 : 1;
           offset += 1;
         }
 
@@ -112,7 +109,7 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
           int64_t sample_res = 0;
           do {
             sample_res = sampler->Sample();
-          } while (travel_data[pos_offset.first + layer_idx] ==
+          } while (travel_data[start_offset + layer_idx] ==
                    layer_data[layer_node_offset[layer_idx] + sample_res]);
 
           output_data[i * sample_res_length + offset] =
@@ -122,26 +119,7 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
         }  // end layer nce
         delete sampler;
       }  // end one input nce
-
-      while (sampling_depth < layer_nums) {
-        // padding extra neg example
-        int64_t sample_num =
-            neg_samples_num_vec[sampling_depth] + (int64_t)output_positive_flag;
-        int64_t node_nums = layer_node_offset[sampling_depth + 1] -
-                            layer_node_offset[sampling_depth];
-        Sampler *sampler = new math::UniformSampler(node_nums, seed);
-        for (int64_t sample_index = 0; sample_index < sample_num;
-             ++sample_index) {
-          int64_t sample_res = sampler->Sample();
-          output_data[i * sample_res_length + offset] =
-              layer_data[layer_node_offset[sampling_depth] + sample_res];
-          label_data[i * sample_res_length + offset] = 0;
-          offset += 1;
-        }
-        delete sampler;
-        sampling_depth += 1;
-      }
-    }  // end all input nce
+    }    // end all input nce
   }
 };
 

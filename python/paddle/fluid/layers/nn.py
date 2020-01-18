@@ -13905,41 +13905,52 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
 
 
 def tdm_sampler(input,
-                tree_travel_tensor,
-                tree_layer_tensor,
+                node_nums,
+                leaf_node_nums,
                 neg_samples_num_list,
+                tree_layer_offset_lod,
+                tree_travel_attr=None,
+                tree_layer_attr=None,
                 output_labels=False,
                 output_positive=False,
-                seed=0):
+                seed=0,
+                dtype='int64'):
     '''
     used for tdm data reader, get neg sample at every layer
-    1. build tree in memory
-    2. travel the tree, find path of input (root->node(input))
-    3. get neg sample at every layer
+    1. travel the tree, find path of input (root->node(input))
+    2. get neg sample at every layer
     '''
     helper = LayerHelper("tdm_sampler", **locals())
+    layer_nums = len(neg_samples_num_list)
+    sampling_nums = 0
+    for layer_sampling_nums in neg_samples_num_list:
+        sampling_nums += (layer_sampling_nums + int(output_positive))
+
+    travel_shape = [leaf_node_nums, layer_nums]
+    travel = helper.create_parameter(
+        attr=tree_travel_attr, shape=travel_shape, dtype=dtype)
+    travel.stop_gradient = True
+
+    layer_shape = [node_nums, 1]
+    layer = helper.create_parameter(
+        attr=tree_layer_attr, shape=layer_shape, dtype=dtype)
+    layer.stop_gradient = True
+
     out = helper.create_variable_for_type_inference(dtype='int64')
     labels = helper.create_variable_for_type_inference(dtype='int64')
-    tree_travel_tensor.stop_gradient = True
-    tree_layer_tensor.stop_gradient = True
-
-    # check input : tensor , type=int
-    # check tree_tensor : lod_tensor, type=int
-    # check neg_samples_num_list : list, len() < tree.depth
 
     helper.append_op(
         type='tdm_sampler',
-        inputs={
-            "Input": input,
-            "Travel": tree_travel_tensor,
-            "Layer": tree_layer_tensor
-        },
+        inputs={"Input": input,
+                "Travel": travel,
+                "Layer": layer},
         outputs={'Out': out,
                  'Labels': labels},
         attrs={
             'neg_samples_num_list': neg_samples_num_list,
             'output_labels': output_labels,
             'output_positive': output_positive,
+            'layer_offset_lod': tree_layer_offset_lod,
             'seed': seed
         })
 
