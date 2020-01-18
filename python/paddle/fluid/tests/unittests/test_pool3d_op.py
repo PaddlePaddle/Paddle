@@ -229,9 +229,9 @@ class TestPool3d_Op(OpTest):
             nums = 1
             for i in self.shape:
                 nums = nums * i
-            unique_numbers = random.sample(range(-40000, 40000), nums)
-            input = np.reshape(unique_numbers, self.shape)
-            input = input.astype(self.dtype) / 100.0
+            unique_numbers = random.sample(range(-100000, 100000, 50), nums)
+            input = np.reshape(unique_numbers, self.shape) / 100.0
+            input = input.astype(self.dtype)
         else:
             input = np.random.random(self.shape).astype(self.dtype)
 
@@ -362,9 +362,6 @@ class TestCase4(TestCase1):
         self.pool_type = "max"
         self.pool3D_forward_naive = max_pool3D_forward_naive
 
-    def init_shape(self):
-        self.shape = [2, 3, 6, 7, 7]
-
 
 class TestCase5(TestCase2):
     def init_pool_type(self):
@@ -414,11 +411,7 @@ def create_test_cudnn_fp16_class(parent):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
                 self.check_grad_with_place(
-                    place,
-                    set(['X']),
-                    'Out',
-                    max_relative_error=0.07,
-                    fp16_to_fp64=True)
+                    place, set(['X']), 'Out', fp16_to_fp64=True)
 
     cls_name = "{0}_{1}".format(parent.__name__, "CUDNNFp16Op")
     TestCUDNNFp16Case.__name__ = cls_name
@@ -545,7 +538,7 @@ class TestCase4_AsyPadding(TestCase4):
         self.paddings = [1, 0, 2, 1, 2, 1]
 
     def init_shape(self):
-        self.shape = [2, 3, 6, 7, 7]
+        self.shape = [2, 3, 7, 7, 7]
 
 
 class TestCase5_AsyPadding(TestCase5):
@@ -557,7 +550,7 @@ class TestCase5_AsyPadding(TestCase5):
         self.paddings = [1, 2, 1, 1, 1, 0]
 
     def init_shape(self):
-        self.shape = [2, 3, 6, 7, 7]
+        self.shape = [2, 3, 7, 7, 7]
 
 
 create_test_cudnn_class(TestPool3d_Op_AsyPadding)

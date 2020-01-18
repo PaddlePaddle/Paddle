@@ -253,8 +253,8 @@ class TestPool2D_Op(OpTest):
             nums = 1
             for i in self.shape:
                 nums = nums * i
-            unique_numbers = random.sample(range(1000), nums)
-            input = np.reshape(unique_numbers, self.shape)
+            unique_numbers = random.sample(range(-1000, 1000), nums)
+            input = np.reshape(unique_numbers, self.shape) / 10.0
             input = input.astype(self.dtype)
         else:
             input = np.random.random(self.shape).astype(self.dtype)
