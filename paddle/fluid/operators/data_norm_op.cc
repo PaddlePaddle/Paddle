@@ -294,6 +294,9 @@ class DataNormGradOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim(framework::GradVarName("BatchSize"), {C});
     ctx->SetOutputDim(framework::GradVarName("BatchSum"), {C});
     ctx->SetOutputDim(framework::GradVarName("BatchSquareSum"), {C});
+    ctx->SetOutputDim("BatchSize", {C});
+    ctx->SetOutputDim("BatchSum", {C});
+    ctx->SetOutputDim("BatchSquareSum", {C});
   }
 
  protected:
