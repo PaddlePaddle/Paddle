@@ -656,8 +656,8 @@ void MultiSlotDataset::GenerateLocalTablesUnlock(int table_id, int feadim,
 
   CHECK(multi_output_channel_.size() != 0); // NOLINT
   auto fleet_ptr_ = FleetWrapper::GetInstance();
-  std::vector<std::unordered_map<uint64_t, std::vector<float>>>
-      &local_map_tables = fleet_ptr_->GetLocalTable();
+  std::vector<std::unordered_map<uint64_t, std::vector<float>>>&
+      local_map_tables = fleet_ptr_->GetLocalTable();
   local_map_tables.resize(shard_num);
   // read thread
   int channel_num = multi_output_channel_.size();
@@ -672,7 +672,7 @@ void MultiSlotDataset::GenerateLocalTablesUnlock(int table_id, int feadim,
   // std::vector<std::vector<std::future<void>>> task_futures(shard_num);
   // auto consume_func = [&local_map_tables]
   auto consume_func = [&local_map_tables](int shard_id,
-                                          std::vector<uint64_t> &keys) {
+                                          std::vector<uint64_t>& keys) {
     for (auto k : keys) {
       if (local_map_tables[shard_id].find(k) ==
           local_map_tables[shard_id].end()) {
@@ -687,7 +687,7 @@ void MultiSlotDataset::GenerateLocalTablesUnlock(int table_id, int feadim,
     this->multi_output_channel_[i]->Close();
     this->multi_output_channel_[i]->ReadAll(vec_data);
     for (size_t j = 0; j < vec_data.size(); j++) {
-      for (auto &feature : vec_data[j].uint64_feasigns_) {
+      for (auto& feature : vec_data[j].uint64_feasigns_) {
         int shard = feature.sign().uint64_feasign_ % shard_num;
         task_keys[shard].push_back(feature.sign().uint64_feasign_);
         // this->local_tables_[shard].insert(feature.sign().uint64_feasign_);
@@ -703,20 +703,20 @@ void MultiSlotDataset::GenerateLocalTablesUnlock(int table_id, int feadim,
     multi_output_channel_[i]->Write(std::move(vec_data));
     vec_data.clear();
     vec_data.shrink_to_fit();
-    for (auto &tk : task_keys) {
+    for (auto& tk : task_keys) {
       tk.clear();
       std::vector<uint64_t>().swap(tk);
     }
     task_keys.clear();
     std::vector<std::vector<uint64_t>>().swap(task_keys);
-    for (auto &tf : task_futures) {
+    for (auto& tf : task_futures) {
       tf.wait();
     }
   };
   for (size_t i = 0; i < threads.size(); i++) {
     threads[i] = std::thread(gen_func, i);
   }
-  for (std::thread &t : threads) {
+  for (std::thread& t : threads) {
     t.join();
   }
   for (size_t i = 0; i < consume_task_pool_.size(); i++) {
@@ -741,7 +741,7 @@ void MultiSlotDataset::MergeByInsId() {
       use_slots_is_dense.push_back(slot.is_dense());
     }
   }
-  CHECK(multi_output_channel_.size() != 0);  // NOLINT
+  CHECK(multi_output_channel_.size() != 0);   // NOLINT
   auto channel_data = paddle::framework::MakeChannel<Record>();
   VLOG(3) << "multi_output_channel_.size() " << multi_output_channel_.size();
   for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
