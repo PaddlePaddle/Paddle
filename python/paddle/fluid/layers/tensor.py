@@ -1474,25 +1474,9 @@ def partial_concat(input, start_index=0, length=-1):
     Examples:
         .. code-block:: python
             import paddle.fluid as fluid
-            import numpy as np
-            in1 = np.array([[1,2,3],
-                            [4,5,6]])
-            in2 = np.array([[11,12,13],
-                            [14,15,16]])
-            in3 = np.array([[21,22,23],
-                            [24,25,26]])
-            with fluid.dygraph.guard():
-                x1 = fluid.dygraph.to_variable(in1)
-                x2 = fluid.dygraph.to_variable(in2)
-                x3 = fluid.dygraph.to_variable(in3)
-                out1 = fluid.layers.partial_concat(input=[x1,x2,x3], start_index=1, length=2)
-                out2 = fluid.layers.partial_concat(input=[x1,x2], start_index=-1, length=1)
-                print(out1.numpy())
-                # [[ 2  3  12 13 22 23]
-                #  [ 5  6  15 16 25 26]]
-                print(out2.numpy())
-                # [[3 13]
-                #  [6 16]]
+            x = fluid.layers.data(name="x", shape=[3], dtype="float32")
+            y = fluid.layers.data(name="y", shape=[3], dtype="float32")
+            concat = fluid.layers.partial_concat([x, y], start_index=0, length=2)
     """
     if not isinstance(input, list):
         warnings.warn(

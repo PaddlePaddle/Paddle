@@ -2906,8 +2906,9 @@ class TestBook(LayerTest):
         with self.static_graph():
             x = layers.data(name="x", shape=[3], dtype="float32")
             y = layers.data(name="y", shape=[3], dtype="float32")
-            concat = layers.partial_concat([x, y], start_index=0, length=2)
-            return (concat)
+            concat1 = layers.partial_concat([x, y], start_index=0, length=2)
+            concat2 = layers.partial_concat(x, start_index=0, length=-1)
+            return concat1, concat2
 
     def test_deform_roi_pooling(self):
         with program_guard(fluid.default_main_program(),
