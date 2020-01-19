@@ -17,7 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
 from paddle.fluid.tests.unittests.test_activation_op import TestRelu, TestTanh, TestSqrt, TestAbs, TestLeakyRelu
 from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
 
@@ -111,6 +111,7 @@ class TestMKLDNNAbsDim2(TestAbs):
             ['X'], 'Out', max_relative_error=0.007, check_dygraph=False)
 
 
+@skip_check_grad_ci(reason="Use float32 in mkldnn relu op.")
 class TestMKLDNNReluDim4(TestRelu):
     def setUp(self):
         super(TestMKLDNNReluDim4, self).setUp()

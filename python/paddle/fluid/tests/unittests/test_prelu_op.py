@@ -26,21 +26,19 @@ class PReluTest(OpTest):
         self.init_attr()
         self.op_type = "prelu"
 
-        x_np = np.random.uniform(-1, 1, self.x_shape).astype("float32")
+        x_np = np.random.uniform(-1, 1, self.x_shape)
         # Since zero point in prelu is not differentiable, avoid randomize
         # zero.
         x_np[np.abs(x_np) < 0.005] = 0.02
 
         if self.attrs == {'mode': "all"}:
-            alpha_np = np.random.rand(1).astype("float32")
-            self.inputs = {'X': x_np, 'Alpha': alpha_np}
+            alpha_np = np.random.uniform(-1, -0.5, (1))
         elif self.attrs == {'mode': "channel"}:
-            alpha_np = np.random.rand(1, x_np.shape[1], 1, 1).astype("float32")
-            self.inputs = {'X': x_np, 'Alpha': alpha_np}
+            alpha_np = np.random.uniform(-1, -0.5, (1, x_np.shape[1], 1, 1))
         else:
-            alpha_np = np.random.rand(1, x_np.shape[1], x_np.shape[2],
-                                      x_np.shape[3]).astype("float32")
-            self.inputs = {'X': x_np, 'Alpha': alpha_np}
+            alpha_np = np.random.uniform(-1, -0.5, \
+                (1, x_np.shape[1], x_np.shape[2], x_np.shape[3]))
+        self.inputs = {'X': x_np, 'Alpha': alpha_np}
 
         out_np = np.maximum(self.inputs['X'], 0.)
         out_np = out_np + np.minimum(self.inputs['X'],
