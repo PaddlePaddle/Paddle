@@ -1811,7 +1811,8 @@ class Operator(object):
                     op_device = op_maker.kOpDeviceAttrName()
                     op_attrs[op_device] = _current_device
                 else:
-                    warnings.warn("The Op(%s) is support to set device." % type)
+                    warnings.warn("The Op(%s) is not support to set device." %
+                                  type)
 
             def find_name(var_list, name):
                 for var_name in var_list:

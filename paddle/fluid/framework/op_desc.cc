@@ -504,15 +504,6 @@ Attribute OpDesc::GetAttr(const std::string &name) const {
   return it->second;
 }
 
-const std::string OpDesc::DeviceType() const {
-  std::string op_device;
-  std::string device_attr_name = OpProtoAndCheckerMaker::OpDeviceAttrName();
-  if (HasAttr(device_attr_name)) {
-    op_device = boost::get<std::string>(this->GetAttr(device_attr_name));
-  }
-  return op_device;
-}
-
 const proto::OpProto::Attr &OpDesc::GetProtoAttr(
     const std::string &name) const {
   const proto::OpProto &proto = OpInfoMap::Instance().Get(Type()).Proto();

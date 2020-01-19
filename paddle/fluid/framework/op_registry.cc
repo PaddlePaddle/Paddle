@@ -60,10 +60,8 @@ std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
 }
 
 std::unique_ptr<OperatorBase> OpRegistry::CreateOp(const OpDesc& op_desc) {
-  auto op = CreateOp(op_desc.Type(), op_desc.Inputs(), op_desc.Outputs(),
-                     op_desc.GetAttrMap());
-  op->SetDeviceType(op_desc.DeviceType());
-  return op;
+  return CreateOp(op_desc.Type(), op_desc.Inputs(), op_desc.Outputs(),
+                  op_desc.GetAttrMap());
 }
 
 }  // namespace framework
