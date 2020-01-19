@@ -33,7 +33,8 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable
 from testsuite import create_op, set_input, append_input_output, append_loss_ops
 from paddle.fluid import unique_name
-from white_list import op_accuracy_white_list, op_check_grad_white_list, check_shape_white_list, compile_vs_runtime_white_list
+from white_list import op_accuracy_white_list, check_shape_white_list, compile_vs_runtime_white_list, no_check_set_white_list
+from white_list import op_threshold_white_list
 
 
 def _set_use_system_allocator(value=None):
@@ -69,10 +70,8 @@ def get_numeric_gradient(place,
 
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.shape())
-    if not hasattr(get_numeric_gradient, 'check_shape_time'):
-        get_numeric_gradient.check_shape_time = 0
-    if tensor_size >= 100:
-        get_numeric_gradient.check_shape_time += 1
+    if tensor_size < 100:
+        get_numeric_gradient.is_large_shape = False
     tensor_to_check_dtype = tensor_to_check._dtype()
     if tensor_to_check_dtype == core.VarDesc.VarType.FP32:
         tensor_to_check_dtype = np.float32
@@ -185,6 +184,8 @@ class OpTest(unittest.TestCase):
 
         cls._use_system_allocator = _set_use_system_allocator(True)
 
+        get_numeric_gradient.is_large_shape = True
+
     @classmethod
     def tearDownClass(cls):
         """Restore random seeds"""
@@ -193,14 +194,35 @@ class OpTest(unittest.TestCase):
 
         _set_use_system_allocator(cls._use_system_allocator)
 
+        def is_empty_grad_op(op_type):
+            all_op_kernels = core._get_all_register_op_kernels()
+            grad_op = op_type + '_grad'
+            if grad_op in all_op_kernels.keys():
+                if is_mkldnn_op_test():
+                    grad_op_kernels = all_op_kernels[grad_op]
+                    for grad_op_kernel in grad_op_kernels:
+                        if 'MKLDNN' in grad_op_kernel:
+                            return False
+                else:
+                    return False
+            return True
+
+        def is_mkldnn_op_test():
+            if (hasattr(cls, "use_mkldnn") and cls.use_mkldnn == True) or \
+                (hasattr(cls, "attrs") and "use_mkldnn" in cls.attrs and \
+                    cls.attrs["use_mkldnn"] == True):
+                return True
+            else:
+                return False
+
         if not hasattr(cls, "op_type"):
             raise AssertionError(
-                "This test do not have op_type in class attrs,"
-                " please set self.__class__.op_type=the_real_op_type manually.")
+                "This test do not have op_type in class attrs, "
+                "please set self.__class__.op_type=the_real_op_type manually.")
 
         # case in NO_FP64_CHECK_GRAD_CASES and op in NO_FP64_CHECK_GRAD_OP_LIST should be fixed
         if not hasattr(cls, "no_need_check_grad") \
-            and cls.op_type not in op_check_grad_white_list.EMPTY_GRAD_OP_LIST:
+            and not is_empty_grad_op(cls.op_type):
             if cls.dtype is None or \
                 (cls.dtype == np.float16 \
                     and cls.op_type not in op_accuracy_white_list.NO_FP16_CHECK_GRAD_OP_LIST \
@@ -208,20 +230,20 @@ class OpTest(unittest.TestCase):
                 raise AssertionError("This test of %s op needs check_grad." %
                                      cls.op_type)
 
+            # check for op test with fp64 precision, but not check mkldnn op test for now
             if cls.dtype in [np.float32, np.float64] \
                 and cls.op_type not in op_accuracy_white_list.NO_FP64_CHECK_GRAD_OP_LIST \
-                and not hasattr(cls, 'exist_fp64_check_grad'):
+                and not hasattr(cls, 'exist_fp64_check_grad') \
+                and not is_mkldnn_op_test():
                 raise AssertionError(
                     "This test of %s op needs check_grad with fp64 precision." %
                     cls.op_type)
 
-        if hasattr(get_numeric_gradient, 'check_shape_time') \
-            and get_numeric_gradient.check_shape_time == 0 \
-            and OpTest.op_type not in check_shape_white_list.NOT_CHECK_OP_LIST \
-            and OpTest.op_type not in check_shape_white_list.NEED_TO_FIX_OP_LIST:
-            raise AssertionError(
-                "At least one input's shape should be large than or equal to 100 for "
-                + OpTest.op_type + " Op.")
+            if not get_numeric_gradient.is_large_shape \
+                and cls.op_type not in check_shape_white_list.NEED_TO_FIX_OP_LIST:
+                raise AssertionError(
+                    "Input's shape should be large than or equal to 100 for " +
+                    cls.op_type + " Op.")
 
     def try_call_once(self, data_type):
         if not self.call_once:
@@ -299,6 +321,8 @@ class OpTest(unittest.TestCase):
 
     def _append_ops(self, block):
         self.__class__.op_type = self.op_type  # for ci check, please not delete it for now
+        if hasattr(self, "use_mkldnn"):
+            self.__class__.use_mkldnn = self.use_mkldnn
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
         "infer datatype from inputs and outputs for this test case"
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
@@ -357,6 +381,60 @@ class OpTest(unittest.TestCase):
             return v
         else:
             return fluid.dygraph.base.to_variable(value)
+
+    def get_sequence_batch_size_1_input(self, lod=None, shape=None):
+        """Get LoD input data whose batch size is 1.
+        All sequence related OP unittests should call this function to contain the case of batch size = 1.
+        Args:
+            lod (list[list of int], optional): Length-based LoD, length of lod[0] should be 1. Default: [[13]].
+            shape (list, optional): Shape of input, shape[0] should be equals to lod[0][0]. Default: [13, 23].
+        Returns:
+            tuple (ndarray, lod) : LoD input data whose batch size is 1.
+        """
+        if lod is None:
+            lod = [[13]]
+        if shape is None:
+            shape = [13, 23]
+        assert len(lod[0]) == 1
+        assert lod[0][0] == shape[0]
+        x = np.random.uniform(0.1, 1, shape).astype('float32')
+        return (x, lod)
+
+    def lod_has_single_zero(self, lod):
+        for i in range(len(lod) - 2):
+            if lod[i] != 0 and lod[i + 1] == 0 and lod[i + 2] != 0:
+                return True
+        return False
+
+    def lod_has_continuous_zero(self, lod):
+        for i in range(len(lod) - 3):
+            if lod[i] != 0 and lod[i + 1] == 0 and lod[i + 2] == 0 and lod[
+                    i + 3] != 0:
+                return True
+        return False
+
+    def get_sequence_instance_size_0_input(self, lod=None, shape=None):
+        """Get LoD input data whose instance size is 0.
+        All sequence related OP unittests should call this function to contain the case of instance size is 0.
+        Args:
+            lod (list[list of int], optional): Length-based LoD, lod[0]'s size must at least eight, lod[0] must at least two zeros at the beginning and at least two zeros at the end, the middle position of lod[0] contains a single zero and multiple zero. Default: [[0, 0, 4, 0, 3, 0, 0, 5, 0, 0]].
+            shape (list, optional): Shape of input, shape[0] should be equals to lod[0][0]. Default: [13, 23].
+        Returns:
+            tuple (ndarray, lod): LoD input data whose instance size is 0.
+        """
+        if lod is None:
+            lod = [[0, 0, 4, 0, 3, 0, 0, 5, 0, 0]]
+        if shape is None:
+            shape = [12, 10]
+        assert len(lod[0]) >= 8
+        assert lod[0][0] == 0 and lod[0][1] == 0 and lod[0][-1] == 0 and lod[0][
+            -2] == 0
+        assert self.lod_has_single_zero(lod[0]) is True
+        assert self.lod_has_continuous_zero(lod[0]) is True
+        assert sum(lod[0]) == shape[0]
+
+        x = np.random.uniform(0.1, 1, shape).astype('float32')
+        return (x, lod)
 
     def append_input_output_for_dygraph(self, op_proto, np_list, is_input,
                                         if_return_inputs_grad_dict, block):
@@ -883,11 +961,21 @@ class OpTest(unittest.TestCase):
 
     def check_output_with_place(self,
                                 place,
-                                atol,
+                                atol=0,
                                 no_check_set=None,
                                 equal_nan=False,
                                 check_dygraph=True,
                                 inplace_atol=None):
+        self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
+        if self.dtype == np.float64 and \
+            self.op_type not in op_threshold_white_list.NEED_FIX_FP64_CHECK_OUTPUT_THRESHOLD_OP_LIST:
+            atol = 0
+
+        if no_check_set is not None:
+            if self.op_type not in no_check_set_white_list.no_check_set_white_list:
+                raise AssertionError(
+                    "no_check_set of op %s must be set to None." % self.op_type)
+
         if check_dygraph:
             dygraph_outs = self._calc_dygraph_output(
                 place, no_check_set=no_check_set)
@@ -1099,9 +1187,10 @@ class OpTest(unittest.TestCase):
                      no_check_set=None,
                      equal_nan=False,
                      check_dygraph=True,
-                     inplace_atol=None,
-                     check_compile_vs_runtime=True):
+                     inplace_atol=None):
         self.__class__.op_type = self.op_type
+        if hasattr(self, "use_mkldnn"):
+            self.__class__.use_mkldnn = self.use_mkldnn
         places = self._get_places()
         for place in places:
             res = self.check_output_with_place(place, atol, no_check_set,
@@ -1110,9 +1199,7 @@ class OpTest(unittest.TestCase):
                 outs, dygraph_outs, fetch_list = res
             else:
                 outs, fetch_list = res
-            if check_compile_vs_runtime and (
-                    self.op_type not in
-                    compile_vs_runtime_white_list.COMPILE_RUN_OP_WHITE_LIST):
+            if self.op_type not in compile_vs_runtime_white_list.COMPILE_RUN_OP_WHITE_LIST:
                 self.check_compile_vs_runtime(fetch_list, outs)
 
     def check_output_customized(self, checker):
@@ -1127,18 +1214,30 @@ class OpTest(unittest.TestCase):
                          max_relative_error, msg_prefix):
 
         for a, b, name in six.moves.zip(numeric_grads, analytic_grads, names):
+            # It asserts np.abs(a - b) / np.abs(a) < max_relative_error, in which
+            # max_relative_error is 1e-7. According to the value of np.abs(a), we
+            # change np.abs(a) to achieve dynamic threshold. For example, if
+            # the value of np.abs(a) is between 1e-10 and 1e-8, we set np.abs(a)*=1e4.
+            # Therefore, it asserts np.abs(a - b) / (np.abs(a)*1e4) < max_relative_error,
+            # which is the same as np.abs(a - b) / np.abs(a) < max_relative_error*1e4.
             abs_a = np.abs(a)
-            abs_a[abs_a < 1e-3] = 1
+            if self.dtype == np.float64 and \
+                self.op_type not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST:
+                abs_a[abs_a < 1e-10] = 1e-3
+                abs_a[np.logical_and(abs_a > 1e-10, abs_a <= 1e-8)] *= 1e4
+                abs_a[np.logical_and(abs_a > 1e-8, abs_a <= 1e-6)] *= 1e2
+            else:
+                abs_a[abs_a < 1e-3] = 1
 
             diff_mat = np.abs(a - b) / abs_a
             max_diff = np.max(diff_mat)
 
             def err_msg():
                 offset = np.argmax(diff_mat > max_relative_error)
-                return ("%s Variable %s max gradient diff %f over limit %f, "
-                        "the first error element is %d, expected %f, but got %f"
-                        ) % (msg_prefix, name, max_diff, max_relative_error,
-                             offset, a.flatten()[offset], b.flatten()[offset])
+                return ("%s error, %s variable %s max gradient diff %f over limit %f, "
+                    "the first error element is %d, expected %f, but got %f.") \
+                    % (self.op_type, msg_prefix, name, max_diff, max_relative_error,
+                    offset, a.flatten()[offset], b.flatten()[offset])
 
             self.assertLessEqual(max_diff, max_relative_error, err_msg())
 
@@ -1176,13 +1275,16 @@ class OpTest(unittest.TestCase):
                               max_relative_error=0.005,
                               user_defined_grads=None,
                               check_dygraph=True):
-        OpTest.op_type = self.op_type
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
         op_attrs = self.attrs if hasattr(self, "attrs") else dict()
 
         self._check_grad_helper()
+        if self.dtype == np.float64 and \
+            self.op_type not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST:
+            numeric_grad_delta = 1e-5
+            max_relative_error = 1e-7
 
         cache_list = None
         if hasattr(self, "cache_name_list"):

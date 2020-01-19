@@ -62,6 +62,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/fleet_wrapper_py.h"
 #include "paddle/fluid/pybind/global_value_getter_setter.h"
+#include "paddle/fluid/pybind/gloo_wrapper_py.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
@@ -1597,6 +1598,8 @@ All parameter, weight, gradient are variables in Paddle.
             self.Set<std::string>(name, new std::string(attr));
           })
       .def("set", [](ir::Pass &self, const std::string &name,
+                     bool val) { self.Set<bool>(name, new bool(val)); })
+      .def("set", [](ir::Pass &self, const std::string &name,
                      int val) { self.Set<const int>(name, new int(val)); })
       .def("set",
            [](ir::Pass &self, const std::string &name,
@@ -1995,6 +1998,26 @@ All parameter, weight, gradient are variables in Paddle.
                         build_strategy.fuse_elewise_add_act_ops = True
                      )DOC")
       .def_property(
+          "fuse_bn_act_ops",
+          [](const BuildStrategy &self) { return self.fuse_bn_act_ops_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy is finlaized."));
+            self.fuse_bn_act_ops_ = b;
+          },
+          R"DOC((bool, optional): fuse_bn_act_ops indicate whether
+                to fuse batch_norm and activation_op,
+                it may make the execution faster. Default is False.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle.fluid as fluid
+                        build_strategy = fluid.BuildStrategy()
+                        build_strategy.fuse_bn_act_ops = True
+                     )DOC")
+      .def_property(
           "fuse_relu_depthwise_conv",
           [](const BuildStrategy &self) {
             return self.fuse_relu_depthwise_conv_;
@@ -2175,13 +2198,16 @@ All parameter, weight, gradient are variables in Paddle.
            &ParallelExecutor::FeedTensorsIntoLocalScopes)
       .def("feed_and_split_tensor_into_local_scopes",
            &ParallelExecutor::FeedAndSplitTensorIntoLocalScopes)
-      .def("run", [](ParallelExecutor &self,
-                     const std::vector<std::string> &fetch_tensors) {
-        pybind11::gil_scoped_release release;
-        return self.Run(fetch_tensors);
-      });
+      .def("run",
+           [](ParallelExecutor &self,
+              const std::vector<std::string> &fetch_tensors) {
+             pybind11::gil_scoped_release release;
+             return self.Run(fetch_tensors);
+           })
+      .def("device_count", &ParallelExecutor::DeviceCount);
 
   BindFleetWrapper(&m);
+  BindGlooWrapper(&m);
   BindBoxHelper(&m);
 #ifndef _WIN32
   BindNCCLWrapper(&m);

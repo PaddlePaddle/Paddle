@@ -12,18 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
-os.environ['CUDA_VISIBLE_DEVICES'] = ''
-
-import paddle.fluid as fluid
-import sys
-
-if len(sys.argv) != 2:
-    print('Usage: python generate_op_use_grad_op_desc_maker_spec.py [filepath]')
-    sys.exit(1)
-
-with open(sys.argv[1], 'w') as f:
-    ops = fluid.core._get_use_default_grad_op_desc_maker_ops()
-    for op in ops:
-        f.write(op + '\n')
+# no_check_set of check_output must be None
+no_check_set_white_list = [
+    'fake_quantize_range_abs_max',
+    'coalesce_tensor',
+    'flatten2',
+    'squeeze2',
+    'reshape2',
+    'transpose2',
+    'unsqueeze2',
+    'cross_entropy2',
+    'seed',
+]

@@ -192,7 +192,7 @@ if(WITH_DISTRIBUTE)
   data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto trainer_desc_proto glog fs shell fleet_wrapper lodtensor_printer
-  lod_rank_table feed_fetch_method sendrecvop_rpc collective_helper ${GLOB_DISTRIBUTE_DEPS}
+  lod_rank_table feed_fetch_method sendrecvop_rpc communicator collective_helper ${GLOB_DISTRIBUTE_DEPS}
   graph_to_program_pass variable_helper data_feed_proto ${NGRAPH_EXE_DEPS} timer)
 set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
 set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
@@ -262,14 +262,9 @@ message(STATUS "branch: ${PADDLE_BRANCH}")
 
 configure_file(commit.h.in commit.h)
 
-
 set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer)
-if(WIN32)
-  sep_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
-else(WIN32)
-  cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
-endif(WIN32)
 
+cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
 cc_library(paddle_framework_shared
     SHARED SRCS executor.cc operator.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/c/c_api.cc

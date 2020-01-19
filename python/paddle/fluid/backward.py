@@ -1009,6 +1009,17 @@ def _get_stop_gradients_(program):
     return no_grad_dict
 
 
+def _get_son_parent_block_idx_dict(program, current_block_idx):
+
+    son_parent_block_idx_dict = collections.OrderedDict()
+    while current_block_idx >= 0:
+        parent_block_idx = program.block(current_block_idx).parent_idx
+        son_parent_block_idx_dict[current_block_idx] = parent_block_idx
+        current_block_idx = parent_block_idx
+
+    return son_parent_block_idx_dict
+
+
 def append_backward(loss,
                     parameter_list=None,
                     no_grad_set=None,
@@ -1027,18 +1038,18 @@ def append_backward(loss,
 
     Parameters:
         loss( :ref:`api_guide_Variable_en` ): The loss variable of the network.
-        parameter_list(list of str, optional): Names of parameters that need
-                                           to be updated by optimizers.
+        parameter_list(list[Variable|str], optional): List of Parameters or Parameter.names
+                                           that need to be updated by optimizers.
                                            If it is None, all parameters
                                            will be updated.
                                            Default: None.
-        no_grad_set(set of str, optional): Variable names in the :ref:`api_guide_Block_en` 0 whose gradients
+        no_grad_set(set[str], optional): Variable names in the :ref:`api_guide_Block_en` 0 whose gradients
                                should be ignored. All variables with
                                `stop_gradient=True` from all blocks will
                                be automatically added into this set.
                                If this parameter is not None, the names in this set will be added to the default set.
                                Default: None.
-        callbacks(list of callable object, optional): List of callback functions.
+        callbacks(list[callable object], optional): List of callback functions.
                                                The callbacks are used for
                                                doing some custom jobs during
                                                backward part building. All
@@ -1046,7 +1057,7 @@ def append_backward(loss,
                                                be invoked once each time a
                                                new gradient operator is added
                                                into the program. The callable
-                                               object must has two input
+                                               object must have two input
                                                parameters: 'block' and 'context'.
                                                The 'block' is the :ref:`api_guide_Block_en` which
                                                the new gradient operator will
@@ -1101,78 +1112,138 @@ def append_backward(loss,
         isinstance(callbacks, list)
 
     program = loss.block.program
-    program._appending_grad_times += 1
+    root_block = program.block(0)
+    current_block_idx = program.current_block_idx
+    current_block = program.block(current_block_idx)
+
+    is_in_control_flow = current_block_idx != 0
+
+    # Double grad is not supported in sub-block (control flow)
+    if not is_in_control_flow:
+        # _appending_grad_times used for double grad
+        program._appending_grad_times += 1
 
     if no_grad_set is None:
         no_grad_set = set()
     no_grad_set = copy.copy(no_grad_set)
     no_grad_dict = _get_stop_gradients_(program)
+    # no_grad_set only contains vars in block 0
+    # Todo(liym27): support vars in sub block
     no_grad_dict[0].update(list(map(_append_grad_suffix_, no_grad_set)))
 
-    root_block = program.block(0)
+    # Currently it is only to support the optimizer.minimize
+    # in a switch branch, which can append_backward in a sub_block.
+    # Note: while_loop is in control flow, but it makes no sense to call optimizer in while.
+    # Todo: report error when it is in while_loop
+    if is_in_control_flow:
+        # create grad block if in switch control flow.
+        target_grad_block = program._create_block(
+            parent_idx=current_block.parent_idx)
+        target_grad_block._set_forward_block_idx(current_block_idx)
+        # after _create_block, program.current_block changes
+    else:
+        target_grad_block = root_block
 
-    fwd_op_num = root_block.desc.op_size()
-    current_block_idx = program.current_block_idx
+    son_parent_block_idx_dict = _get_son_parent_block_idx_dict(
+        program, current_block_idx)
+
+    block_fwd_op_num_dict = {}  # block_id: fwd_op_num
+    for idx in son_parent_block_idx_dict:
+        block_fwd_op_num_dict[idx] = program.block(idx).desc.op_size()
+
     grad_to_var = dict()
 
     op_desc = _create_loss_op_desc_(loss)
-    root_block.desc.append_op().copy_from(op_desc)
+    target_grad_block.desc.append_op().copy_from(op_desc)
 
-    block_no_grad_set = set(map(_strip_grad_suffix_, no_grad_dict[0]))
-    op_path = _find_op_path_(root_block, [loss], [], block_no_grad_set)
-    no_grad_vars = _find_no_grad_vars(root_block, op_path, [loss],
-                                      block_no_grad_set)
-    block_no_grad_set.update(no_grad_vars)
-    no_grad_dict[0].update(list(map(_append_grad_suffix_, block_no_grad_set)))
+    for block_idx in son_parent_block_idx_dict:
+        block = program.block(block_idx)
 
-    input_grad_names_set = None
-    # For double backward, input_grad_names is used for filter
-    # some non-used gradients op.
-    if program._appending_grad_times > 1:
-        input_grad_names_set = set([_append_grad_suffix_(loss.name)])
+        block_no_grad_set = set(
+            map(_strip_grad_suffix_, no_grad_dict[block_idx]))
+        op_path = _find_op_path_(block, [loss], [], block_no_grad_set)
 
+        no_grad_vars = _find_no_grad_vars(block, op_path, [loss],
+                                          block_no_grad_set)
 
-    if checkpoints != None and \
-       isinstance(checkpoints, list) and \
-       len(checkpoints) > 0:
-        program_stat, checkpoint_names, \
-        vars_should_be_hold, \
-        recompute_segments = \
-                        _append_backward_ops_with_checkpoints_(
-                            root_block,
-                            op_path,
-                            root_block,
-                            no_grad_dict,
-                            grad_to_var,
-                            checkpoints)
-    else:
-        _append_backward_ops_(
-            root_block,
-            op_path,
-            root_block,
-            no_grad_dict,
-            grad_to_var,
-            callbacks,
-            input_grad_names_set=input_grad_names_set)
+        block_no_grad_set.update(no_grad_vars)
+        no_grad_dict[block_idx].update(
+            list(map(_append_grad_suffix_, block_no_grad_set)))
 
-    # Because calc_gradient may be called multiple times,
-    # we need rename the internal gradient variables so that they have
-    # different names.
-    _rename_grad_(root_block, fwd_op_num, grad_to_var, {})
+        input_grad_names_set = None
+        # For double backward, input_grad_names is used for filtering
+        # some non-used gradients op(s).
+
+        # Todo(liym27): need a better design.
+        # not support double grad in control flow sub-block now.
+        if not is_in_control_flow:
+            if program._appending_grad_times > 1:
+                input_grad_names_set = set([_append_grad_suffix_(loss.name)])
+
+        # Todo: support _append_backward_ops_with_checkpoints_ in
+        #  sub-block (control flow)
+        if checkpoints != None and \
+                isinstance(checkpoints, list) and \
+                len(checkpoints) > 0:
+            program_stat, checkpoint_names, \
+            vars_should_be_hold, \
+            recompute_segments = \
+                _append_backward_ops_with_checkpoints_(
+                    root_block,
+                    op_path,
+                    root_block,
+                    no_grad_dict,
+                    grad_to_var,
+                    checkpoints)
+        else:
+            _append_backward_ops_(
+                block,  # the block where forward ops are in
+                op_path,
+                target_grad_block,
+                no_grad_dict,
+                grad_to_var,
+                callbacks,
+                input_grad_names_set=input_grad_names_set)
 
     grad_info_map = dict()
-    _append_backward_vars_(root_block, fwd_op_num, grad_to_var, grad_info_map)
+
+    # if in control flow, target_grad_block is a created new block which only contains grad ops,
+    # so fwd_op_num is set to 0.
+    fwd_op_num = block_fwd_op_num_dict[
+        current_block_idx] if not is_in_control_flow else 0
+
+    # Because append_backward may be called multiple times,
+    # we need rename the internal gradient variables so that they have
+    # different names.
+    _rename_grad_(target_grad_block, fwd_op_num, grad_to_var, {})
+
+    _append_backward_vars_(target_grad_block, fwd_op_num, grad_to_var,
+                           grad_info_map)
 
     program.current_block_idx = current_block_idx
     program._sync_with_cpp()
 
     if parameter_list is not None:
-        parameters = parameter_list
+        if not isinstance(parameter_list, (list, tuple, set)):
+            raise TypeError(
+                "The type of parameter_list argument must be list or tuple or set, but received %s."
+                % (type(parameter_list)))
+        parameters = []
+        for i, param in enumerate(parameter_list):
+            if isinstance(param, framework.Variable):
+                parameters.append(param.name)
+            elif isinstance(param, six.string_types):
+                parameters.append(param)
+            else:
+                raise TypeError(
+                    "The type of parameter_list's member must be paddle.fluid.Variable or str, but received %s."
+                    % (type(param)))
     else:
         params = program.global_block().all_parameters()
         parameters = [param.name for param in params if param.trainable]
 
     params_and_grads = []
+    op_role_var_attr_name = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
     for param in parameters:
         if cpt.to_text(param) not in grad_info_map:
             continue
@@ -1184,16 +1255,20 @@ def append_backward(loss,
         # Get the param var from the global block
         param_var = program.global_block().var(param)
         grad_var = grad_block.var(grad_info[0])
-        if loss.block.has_var(grad_info[0]):
-            params_and_grads.append((param_var, grad_var))
+        if not is_in_control_flow:
+            if loss.block.has_var(grad_info[0]):
+                params_and_grads.append((param_var, grad_var))
+            else:
+                params_and_grads.append((param_var, None))
         else:
-            params_and_grads.append((param_var, None))
+            params_and_grads.append((param_var, grad_var))
 
-    op_role_var_attr_name = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
     for p, g in params_and_grads:
         if g is None:
             continue
-        for op in reversed(program.global_block().ops):
+        ops = grad_block.ops if is_in_control_flow else program.global_block(
+        ).ops
+        for op in reversed(ops):
             assert isinstance(op, framework.Operator)
             if g.name in op.output_arg_names:
                 g.op = op
@@ -1215,12 +1290,62 @@ def _as_list(x):
     return list(x) if isinstance(x, collections.Sequence) else [x]
 
 
+def _is_ancestor_block(ancestor_block, block):
+    prog = block.program
+    ancestor_idx = ancestor_block.idx
+    parent_idx = block.parent_idx
+
+    while parent_idx != -1:
+        if parent_idx == ancestor_idx:
+            return True
+        parent_idx = prog.block(parent_idx).parent_idx
+
+    return False
+
+
+def _get_output_names(cur_block, targets):
+    """
+    In `cur_block`, get output names those linked to targets.
+    NOTE:
+    1. `targets` can be in `cur_block`;
+    Usually, `targets` is in `cur_block`. However, considering control flow,
+    2. `targets` may be in sub-block but `cur_block` is an ancestor of `targets[0].block`;
+    3. `targets` may be in the block which is ancestor of `cur_block`.
+    """
+
+    block = targets[0].block if targets else cur_block
+    prog = cur_block.program
+    if _is_ancestor_block(block, cur_block):
+        return set()
+
+    current_output_names = set([out.name for out in targets])
+
+    # if `cur_block` is an ancestor of `targets[0].block`, run while loop
+    while block.idx != cur_block.idx:
+        assert block.parent_idx != -1
+        parent_block = prog.block(block.parent_idx)
+
+        parent_block_output_names = set()
+        for op in reversed(block.ops):
+            if _some_in_set_(op.desc.output_arg_names(), current_output_names):
+                for name in op.desc.input_arg_names():
+                    current_output_names.add(name)
+                    if not block.desc.find_var(cpt.to_bytes(name)) \
+                            and parent_block.desc.find_var(cpt.to_bytes(name)):
+                        parent_block_output_names.add(name)
+
+        block = parent_block
+        current_output_names = parent_block_output_names
+
+    return current_output_names
+
+
 def _find_no_grad_vars(block, op_path, targets, no_grad_set):
     """
     Find the vars which is not used in the program, and
-    those var belong to no_grad_var.
+    those vars belong to no_grad_var.
     """
-    output_names = set([out.name for out in targets])
+    output_names = _get_output_names(block, targets)
     no_grad_var = []
     for i, op in reversed(list(enumerate(op_path))):
         # If the op has sub_block, it is too complicated to find the correct no_grad_var.
@@ -1240,7 +1365,7 @@ def _find_op_path_(block, outputs, inputs, no_grad_set):
     no_grad_set will also be changed
     """
     input_names = set([inp.name for inp in inputs])
-    output_names = set([out.name for out in outputs])
+    output_names = _get_output_names(block, outputs)
 
     relevant_op_flags = [True] * len(block.ops)
 
