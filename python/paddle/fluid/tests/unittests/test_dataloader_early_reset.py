@@ -82,6 +82,9 @@ class TestDataLoaderEarlyReset(unittest.TestCase):
 
             self.assertEqual(batch_id, self.stop_batch)
 
+        if loader.iterable:
+            loader._reset()
+
 
 class TestDataLoaderEarlyReset2(TestDataLoaderEarlyReset):
     def setUp(self):

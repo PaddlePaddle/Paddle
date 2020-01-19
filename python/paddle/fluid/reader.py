@@ -618,8 +618,6 @@ class GeneratorLoader(DataLoaderBase):
         self._tensor_reader = None
         self._places = None
         self._thread = None
-        self._exited = False
-        self._exited_lock = threading.Lock()
         self._queue = None
         self._feed_list = feed_list
         if not capacity:
@@ -784,11 +782,7 @@ class GeneratorLoader(DataLoaderBase):
                     if not self._queue.push(array):
                         break
 
-                self._exited_lock.acquire()
-                if not self._exited:
-                    self._queue.close()
-                self._exited_lock.release()
-
+                self._queue.close()
                 self._thread = None
             except Exception as ex:
                 self._queue.kill()
@@ -801,18 +795,12 @@ class GeneratorLoader(DataLoaderBase):
         self._thread.start()
 
     def _reset(self):
-        self._exited_lock.acquire()
-        self._reader.reset()
-        self._exited = True
-        self._exited_lock.release()
-
+        self._queue.close()
         thread = self._thread
         if thread is not None:
             thread.join()
 
-        self._exited_lock.acquire()
-        self._exited = False
-        self._exited_lock.release()
+        self._reader.reset()
 
     def set_sample_generator(self,
                              reader,
