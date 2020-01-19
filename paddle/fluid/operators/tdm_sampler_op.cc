@@ -64,20 +64,21 @@ class TDMSamplerOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
+    VLOG(1) << "Begin tdm sampler infershape";
     PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
                       "Inputs(Input) of TdmSampler should not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("Travel"), true);
     PADDLE_ENFORCE_EQ(ctx->HasInput("Layer"), true);
-
+    VLOG(1) << "Begin infershape vec get";
     auto neg_samples_num_vec =
         ctx->Attrs().Get<std::vector<int>>("neg_samples_num_list");
-    auto PADDLE_ENFORCE_NE(neg_samples_num_vec.size(), 0);
     auto output_positive_flag = ctx->Attrs().Get<bool>("output_positive");
 
     int64_t sample_res_length = 0;
     for (auto sample_nums : neg_samples_num_vec) {
       sample_res_length += sample_nums + (int64_t)output_positive_flag;
     }
+    VLOG(1) << "Infershape sample_res_length: " << sample_res_length;
     std::vector<int64_t> out_dims_vec;
     int64_t out_dim_0 = -1;
     auto input_dims = ctx->GetInputDim("Input");
@@ -85,7 +86,9 @@ class TDMSamplerOp : public framework::OperatorWithKernel {
       out_dim_0 = input_dims[0];
     }
     out_dims_vec.push_back(out_dim_0);
+    VLOG(1) << "Infershape out_dims_vec [0]: " << out_dim_0;
     out_dims_vec.push_back(sample_res_length);
+
     // check vec.size() < tree deepth
     // check every layer neg num <= layer nodes num
 
