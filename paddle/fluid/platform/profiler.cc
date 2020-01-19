@@ -141,8 +141,29 @@ void PopEvent(const std::string &name) {
 RecordEvent::RecordEvent(const std::string &name)
     : is_enabled_(false), start_ns_(PosixInNsec()) {
   if (g_state == ProfilerState::kDisabled || name.empty()) return;
+  if ((g_tracer_option == TracerOption::kOP &&
+       r_type_ == RecordType::kInnerOP) ||
+      (g_tracer_option == TracerOption::kWhole &&
+       r_type_ != RecordType::kOrdinary))
+    return;
   // lock is not needed, the code below is thread-safe
 
+  is_enabled_ = true;
+  Event *e = PushEvent(name);
+  // Maybe need the same push/pop behavior.
+  SetCurAnnotation(e);
+  name_ = e->name();
+}
+
+RecordEvent::RecordEvent(const std::string &name, const RecordType r_type)
+    : is_enabled_(false), start_ns_(PosixInNsec()), r_type_(r_type) {
+  if (g_state == ProfilerState::kDisabled || name.empty()) return;
+  if ((g_tracer_option == TracerOption::kOP &&
+       r_type_ != RecordType::kInnerOP) ||
+      (g_tracer_option == TracerOption::kWhole &&
+       r_type != RecordType::kOrdinary))
+    return;
+  // lock is not needed, the code below is thread-safe
   is_enabled_ = true;
   Event *e = PushEvent(name);
   // Maybe need the same push/pop behavior.
@@ -365,29 +386,18 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
               << "Max." << std::setw(data_width) << "Ave."
               << std::setw(data_width) << "Ratio." << std::endl;
   }
-  if (print_depth >= 100) return;
-  int print_depth_next = print_depth;
+  if (events_table.size() <= 0) return;
   for (size_t i = 0; i < events_table.size(); ++i) {
     for (size_t j = 0; j < events_table[i].size(); ++j) {
       auto event_item = events_table[i][j];
       std::vector<std::vector<EventItem>> child_table;
       std::vector<EventItem> table;
-      bool do_next = false;
-      std::string op_end_str = "----inner_op";
       for (auto it = child_map.begin(); it != child_map.end(); it++) {
         if (it->first == event_item.name) {
           table.push_back(it->second);
-          if (!do_next)
-            do_next = !(it->second.name.rfind(op_end_str) ==
-                        (it->second.name.length() - op_end_str.length()));
         }
       }
       child_table.push_back(table);
-
-      if (do_next)
-        print_depth_next = print_depth + 1;
-      else
-        print_depth_next = print_depth + 100;
 
       auto name_len = event_item.name.length();
       std::string print_name = event_item.name.substr(remove_len, name_len);
@@ -396,10 +406,7 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
         delimiter = "  " + delimiter;
       }
       print_name = delimiter + print_name;
-      size_t pos = 0;
-      while ((pos = print_name.find(op_end_str)) != std::string::npos) {
-        print_name.erase(pos, op_end_str.length());
-      }
+
       std::cout << std::setw(name_width) << print_name << std::setw(data_width)
                 << event_item.calls << std::setw(data_width)
                 << event_item.total_time;
@@ -418,7 +425,7 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
                 << std::setw(data_width) << event_item.ave_time
                 << std::setw(data_width) << event_item.ratio << std::endl;
       PrintProfiler(child_table, child_map, sorted_domain, name_width,
-                    data_width, merge_thread, print_depth_next, 0);
+                    data_width, merge_thread, print_depth + 1, 0);
     }
   }
 }

@@ -78,18 +78,21 @@ static DDim GetDimsDebug(const Scope& scope, const std::string& name,
 static std::string GetTypeName(const VariableNameMap& name_map,
                                const std::string& type_name) {
   if (platform::GetTracerOption() != platform::TracerOption::kDetail) return "";
+
   std::string ret = type_name + "%";
   for (auto it = name_map.begin(); it != name_map.end(); it++) {
     auto name_outputs = it->second;
     if (!name_outputs.empty() &&
         type_name.length() < name_outputs[0].length()) {
-      char split_ch = '.';
-      size_t split_pos = name_outputs[0].find(split_ch);
-      ret = ret + name_outputs[0].substr(0, split_pos);
+      ret = ret + name_outputs[0];
+      // char split_ch = '.';
+      // size_t split_pos = name_outputs[0].find(split_ch);
+      // ret = ret + name_outputs[0].substr(0, split_pos);
       break;
     }
   }
   ret = ret + "%";
+
   return ret;
 }
 
@@ -186,7 +189,8 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     {
       platform::RecordEvent record_event(Type());
       auto type_name = GetTypeName(outputs_, Type());
-      platform::RecordEvent detail_record_event(type_name);
+      platform::RecordEvent detail_record_event(
+          type_name, platform::RecordType::kUniqueOP);
       RunImpl(scope, place);
     }
 
@@ -969,7 +973,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   std::vector<std::string> transfered_inplace_vars;
   Scope* transfer_scope = nullptr;
   {
-    platform::RecordEvent record_event("prepare_data_inner_op");
+    platform::RecordEvent record_event("prepare_data",
+                                       platform::RecordType::kInnerOP);
     transfer_scope = PrepareData(scope, *kernel_type_, &transfered_inplace_vars,
                                  runtime_ctx);
   }
@@ -982,7 +987,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 
   if (!all_kernels_must_compute_runtime_shape_) {
-    platform::RecordEvent record_event("infer_shape_inner_op");
+    platform::RecordEvent record_event("infer_shape",
+                                       platform::RecordType::kInnerOP);
     RuntimeInferShapeContext infer_shape_ctx(*this, *runtime_ctx);
     this->InferShape(&infer_shape_ctx);
   }
@@ -994,7 +1000,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
   {
-    platform::RecordEvent record_event("compute_inner_op");
+    platform::RecordEvent record_event("compute",
+                                       platform::RecordType::kInnerOP);
     (*kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx,
                                      kernel_configs));
   }

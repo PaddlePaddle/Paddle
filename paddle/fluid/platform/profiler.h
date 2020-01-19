@@ -39,6 +39,11 @@ enum ProfilerState {
   kAll,       // Profile both CPU and GPU. (Currently experimental).
 };
 
+enum RecordType {
+  kOrdinary,
+  kInnerOP,
+  kUniqueOP,
+};
 enum TracerOption {
   kWhole,
   kOP,
@@ -86,6 +91,7 @@ void PopEvent(const std::string& name);
 
 struct RecordEvent {
   explicit RecordEvent(const std::string& name);
+  explicit RecordEvent(const std::string& name, const RecordType r_type);
 
   ~RecordEvent();
 
@@ -96,6 +102,7 @@ struct RecordEvent {
   // Need to distinguish name by op type, block_id, program_id and perhaps
   // different kernel invocations within an op.
   std::string full_name_;
+  RecordType r_type_{RecordType::kOrdinary};
 };
 
 class RecordRPCEvent {
