@@ -43,9 +43,8 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
     auto *layer_var = context.InputVar("Layer");
 
     auto neg_samples_num_vec =
-        context.Attr<std::vector<int64_t>>("neg_samples_num_list");
-    auto layer_offset_lod =
-        ctx->Attrs().Get<std::vector<int>>("layer_offset_lod");
+        context.Attr<std::vector<int>>("neg_samples_num_list");
+    auto layer_offset_lod = context.Attr<std::vector<int>>("layer_offset_lod");
     auto output_positive_flag = context.Attr<bool>("output_positive");
 
     // get all tensor
@@ -83,7 +82,7 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
 
     for (int64_t i = 0; i < input_ids_num; ++i) {
       // find leaf node travel path
-      auto input_id = input_ids_num[i];
+      auto input_id = input_data[i];
       auto start_offset = input_id * layer_nums;
       // nce sample, layer by layer
       int64_t offset = 0;
@@ -110,10 +109,10 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
           do {
             sample_res = sampler->Sample();
           } while (travel_data[start_offset + layer_idx] ==
-                   layer_data[layer_node_offset[layer_idx] + sample_res]);
+                   layer_data[layer_offset_lod[layer_idx] + sample_res]);
 
           output_data[i * sample_res_length + offset] =
-              layer_data[layer_node_offset[layer_idx] + sample_res];
+              layer_data[layer_offset_lod[layer_idx] + sample_res];
           label_data[i * sample_res_length + offset] = 0;
           offset += 1;
         }  // end layer nce
