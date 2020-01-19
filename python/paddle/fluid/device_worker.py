@@ -13,7 +13,9 @@
 # limitations under the License.
 """Defination of device workers."""
 
-__all__ = ['DeviceWorker', 'Hogwild', 'DownpourSGD', 'Section']
+__all__ = [
+    'DeviceWorker', 'Hogwild', 'DownpourSGD', 'Section', 'DownpourSGDOPT'
+]
 
 
 class DeviceWorker(object):
@@ -173,9 +175,11 @@ class DownpourSGD(DeviceWorker):
                 sparse_table.fea_dim = sparse_table.emb_dim + 2
             # TODO(guru4elephant): hard code here, need to improve
             sparse_table.label_var_name = "click"
-            if "local_tables" in opt_info and sparse_table.table_id in opt_info["local_tables"]:
+            if "local_tables" in opt_info and sparse_table.table_id in opt_info[
+                    "local_tables"]:
                 sparse_table.is_local = True
-            if "async_tables" in opt_info and sparse_table.table_id in opt_info["async_tables"]:
+            if "async_tables" in opt_info and sparse_table.table_id in opt_info[
+                    "async_tables"]:
                 sparse_table.is_async = True
         if opt_info["stat_var_names"]:
             for i in opt_info["stat_var_names"]:
@@ -192,6 +196,7 @@ class DownpourSGD(DeviceWorker):
         if self._infer:
             downpour.push_dense = False
             downpour.push_sparse = False
+
 
 class DownpourSGDOPT(DeviceWorker):
     """
@@ -295,8 +300,6 @@ class DownpourSGDOPT(DeviceWorker):
         if self._infer:
             downpour.push_dense = False
             downpour.push_sparse = False
-
-
 
 
 class Section(DeviceWorker):

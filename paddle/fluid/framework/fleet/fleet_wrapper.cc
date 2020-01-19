@@ -143,80 +143,89 @@ void FleetWrapper::CreateClient2ClientConnection() {
 #endif
 }
 
-void FleetWrapper::PullSparseToLocalV2(const uint64_t table_id, int fea_value_dim) {
+void FleetWrapper::PullSparseToLocalV2(const uint64_t table_id,
+                                       int fea_value_dim) {
 #ifdef PADDLE_WITH_PSLIB
-    //std::cout << "FleetWrapper Start pull sparse to local" << std::endl;
-    size_t fea_keys_size = local_tables_.size();
-    if (fea_keys_size == 0) {
-      return;    
-    }
-    // int pid = getpid();
-    // std::cout << "fleet wrapper puul to local table with local table size: " << local_tables_.size() << " capacity: " << local_tables_.capacity() <<  std::endl;
-    // std::cout  << shell_get_command_output(std::string("cat /proc/") + std::to_string(pid) + "/status | grep VmRSS");
-    local_table_shard_num_ = fea_keys_size;
-    double set_local_table_time = 0.0;
-    platform::Timer timeline;
-    std::vector<std::thread> threads(fea_keys_size);
-    auto ptl_func = [this, &table_id] (int i) {
-      size_t key_size = this->local_tables_[i].size();
-      // std::cout << "start ptl thread with key size: " << key_size << "with i: " << i << std::endl;
-      std::vector<uint64_t> keys;
-      keys.reserve(key_size);
-      std::vector<float*> pull_result_ptr;
-      pull_result_ptr.reserve(key_size);
+  // std::cout << "FleetWrapper Start pull sparse to local" << std::endl;
+  size_t fea_keys_size = local_tables_.size();
+  if (fea_keys_size == 0) {
+    return;
+  }
+  // int pid = getpid();
+  // std::cout << "fleet wrapper puul to local table with local table size: " <<
+  // local_tables_.size() << " capacity: " << local_tables_.capacity() <<
+  // std::endl;
+  // std::cout  << shell_get_command_output(std::string("cat /proc/") +
+  // std::to_string(pid) + "/status | grep VmRSS");
+  local_table_shard_num_ = fea_keys_size;
+  double set_local_table_time = 0.0;
+  platform::Timer timeline;
+  std::vector<std::thread> threads(fea_keys_size);
+  auto ptl_func = [this, &table_id](int i) {
+    size_t key_size = this->local_tables_[i].size();
+    // std::cout << "start ptl thread with key size: " << key_size << "with i: "
+    // << i << std::endl;
+    std::vector<uint64_t> keys;
+    keys.reserve(key_size);
+    std::vector<float *> pull_result_ptr;
+    pull_result_ptr.reserve(key_size);
 
-      for (auto& kv : this->local_tables_[i]) {
-        keys.emplace_back(kv.first);
-        pull_result_ptr.emplace_back(kv.second.data());
-      } 
-      //std::cout << "debug finish set local table" << std::endl;
-      auto tt = pslib_ptr_->_worker_ptr->pull_sparse(
-            pull_result_ptr.data(), table_id, keys.data(), key_size);
-      tt.wait();
-      auto status = tt.get();
-      if (status != 0) {
-        LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
-        sleep(sleep_seconds_before_fail_exit_);
-        exit(-1);
-      }else {
-         // std::cout << "FleetWrapper Pull sparse to local done with table size: " << pull_result_ptr.size() << std::endl;    
-         VLOG(3) << "FleetWrapper Pull sparse to local done with table size: " << pull_result_ptr.size(); 
-      }
-    };
-    timeline.Start();
-    for (size_t i = 0; i < threads.size(); i++) {
-      threads[i] = std::thread(ptl_func, i);    
+    for (auto &kv : this->local_tables_[i]) {
+      keys.emplace_back(kv.first);
+      pull_result_ptr.emplace_back(kv.second.data());
     }
-    for (std::thread& t : threads) {
-      t.join();
+    // std::cout << "debug finish set local table" << std::endl;
+    auto tt = pslib_ptr_->_worker_ptr->pull_sparse(
+        pull_result_ptr.data(), table_id, keys.data(), key_size);
+    tt.wait();
+    auto status = tt.get();
+    if (status != 0) {
+      LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
+      sleep(sleep_seconds_before_fail_exit_);
+      exit(-1);
+    } else {
+      // std::cout << "FleetWrapper Pull sparse to local done with table size: "
+      // << pull_result_ptr.size() << std::endl;
+      VLOG(3) << "FleetWrapper Pull sparse to local done with table size: "
+              << pull_result_ptr.size();
     }
-    local_pull_pool_.reset(
-                new ::ThreadPool(pull_local_thread_num_));
-    timeline.Pause();
-    set_local_table_time = timeline.ElapsedSec();
-    // std::cout << "Done fleet wrapper puul to local table with local table size: " << local_tables_.size() << " capacity: " << local_tables_.capacity() <<  std::endl;
-    // std::cout  << shell_get_command_output(std::string("cat /proc/") + std::to_string(pid) + "/status | grep VmRSS");
-    std::cout << "Pull sparse to local done, set local table time: " <<
-    set_local_table_time << std::endl;
+  };
+  timeline.Start();
+  for (size_t i = 0; i < threads.size(); i++) {
+    threads[i] = std::thread(ptl_func, i);
+  }
+  for (std::thread &t : threads) {
+    t.join();
+  }
+  local_pull_pool_.reset(new ::ThreadPool(pull_local_thread_num_));
+  timeline.Pause();
+  set_local_table_time = timeline.ElapsedSec();
+  // std::cout << "Done fleet wrapper puul to local table with local table size:
+  // " << local_tables_.size() << " capacity: " << local_tables_.capacity() <<
+  // std::endl;
+  // std::cout  << shell_get_command_output(std::string("cat /proc/") +
+  // std::to_string(pid) + "/status | grep VmRSS");
+  std::cout << "Pull sparse to local done, set local table time: "
+            << set_local_table_time << std::endl;
 #endif
 }
 
 void FleetWrapper::PullSparseVarsFromLocal(
-    const Scope& scope, const uint64_t table_id,
-    const std::vector<std::string>& var_names, std::vector<uint64_t>* fea_keys,
-    std::vector<std::vector<float>>* fea_values, int fea_value_dim) {
+    const Scope &scope, const uint64_t table_id,
+    const std::vector<std::string> &var_names, std::vector<uint64_t> *fea_keys,
+    std::vector<std::vector<float>> *fea_values, int fea_value_dim) {
 #ifdef PADDLE_WITH_PSLIB
   fea_keys->clear();
   fea_keys->resize(0);
   fea_keys->reserve(MAX_FEASIGN_NUM);
   for (auto name : var_names) {
-    Variable* var = scope.FindVar(name);
+    Variable *var = scope.FindVar(name);
     if (var == nullptr) {
       continue;
     }
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    LoDTensor *tensor = var->GetMutable<LoDTensor>();
     CHECK(tensor != nullptr) << "tensor of var " << name << " is null";
-    int64_t* ids = tensor->data<int64_t>();
+    int64_t *ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
     for (auto i = 0u; i < len; ++i) {
       if (ids[i] == 0u) {
@@ -224,66 +233,73 @@ void FleetWrapper::PullSparseVarsFromLocal(
       }
       fea_keys->push_back(static_cast<uint64_t>(ids[i]));
     }
-    
   }
   fea_values->resize(fea_keys->size() + 1);
-  for (auto& t : *fea_values) {
+  for (auto &t : *fea_values) {
     t.resize(fea_value_dim);
   }
   size_t key_length = fea_keys->size();
-  // std::cout << "fleet eraper one request key num: " << key_length << std::endl;
+  // std::cout << "fleet eraper one request key num: " << key_length <<
+  // std::endl;
   int local_step = key_length / pull_local_thread_num_;
   std::vector<std::future<void>> task_futures;
-  task_futures.reserve(key_length/local_step + 1);
-  for(size_t i = 0; i < key_length; i += local_step) {
+  task_futures.reserve(key_length / local_step + 1);
+  for (size_t i = 0; i < key_length; i += local_step) {
     // uint64_t key = (*fea_keys)[i];
-    size_t end = i + local_step < key_length ? i+local_step : key_length;
-    auto pull_local_task = [this, i, end, &fea_values, &fea_keys, &fea_value_dim] {
-        for (size_t j = i; j < end; j++) {
-            std::memcpy((*fea_values)[j].data(), local_tables_[(*fea_keys)[j] % local_table_shard_num_][(*fea_keys)[j]].data(), fea_value_dim * sizeof(float));  
-        }    
+    size_t end = i + local_step < key_length ? i + local_step : key_length;
+    auto pull_local_task = [this, i, end, &fea_values, &fea_keys,
+                            &fea_value_dim] {
+      for (size_t j = i; j < end; j++) {
+        std::memcpy((*fea_values)[j].data(),
+                    local_tables_[(*fea_keys)[j] % local_table_shard_num_]
+                                 [(*fea_keys)[j]]
+                                     .data(),
+                    fea_value_dim * sizeof(float));
+      }
     };
-    task_futures.emplace_back(local_pull_pool_->enqueue(std::move(pull_local_task)));
-    // std::memcpy((*fea_values)[i].data(), local_table_[(*fea_keys)[i]].data(), fea_value_dim * sizeof(float));
+    task_futures.emplace_back(
+        local_pull_pool_->enqueue(std::move(pull_local_task)));
+    // std::memcpy((*fea_values)[i].data(), local_table_[(*fea_keys)[i]].data(),
+    // fea_value_dim * sizeof(float));
     // (*fea_values)[i] = local_table_[(*fea_keys)[i]]
   }
   for (auto &tf : task_futures) {
     tf.wait();
-    //std::cout << "thread pool done" << std::endl;
+    // std::cout << "thread pool done" << std::endl;
   }
-  
-   
-  // std::cout << "Pull sparse from local done with fea value size: " << fea_values->size() << std::endl;
-#endif
 
+// std::cout << "Pull sparse from local done with fea value size: " <<
+// fea_values->size() << std::endl;
+#endif
 }
 
 void FleetWrapper::ClearLocalTable() {
 #ifdef PADDLE_WITH_PSLIB
-  for (auto& t : local_tables_) {
+  for (auto &t : local_tables_) {
     t.clear();
     // std::unordered_map<uint64_t, std::vector<float>>().swap(t);
   }
-  // std::vector<std::unordered_map<uint64_t, std::vector<float>>>().swap(local_tables_);
+// std::vector<std::unordered_map<uint64_t,
+// std::vector<float>>>().swap(local_tables_);
 #endif
 }
 
 std::future<int32_t> FleetWrapper::PullSparseVarsAsync(
-    const Scope& scope, const uint64_t table_id,
-    const std::vector<std::string>& var_names, std::vector<uint64_t>* fea_keys,
-    std::vector<std::vector<float>>* fea_values, int fea_value_dim) {
+    const Scope &scope, const uint64_t table_id,
+    const std::vector<std::string> &var_names, std::vector<uint64_t> *fea_keys,
+    std::vector<std::vector<float>> *fea_values, int fea_value_dim) {
 #ifdef PADDLE_WITH_PSLIB
   fea_keys->clear();
   fea_keys->resize(0);
   fea_keys->reserve(MAX_FEASIGN_NUM);
   for (auto name : var_names) {
-    Variable* var = scope.FindVar(name);
+    Variable *var = scope.FindVar(name);
     if (var == nullptr) {
       continue;
     }
-    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    LoDTensor *tensor = var->GetMutable<LoDTensor>();
     CHECK(tensor != nullptr) << "tensor of var " << name << " is null";
-    int64_t* ids = tensor->data<int64_t>();
+    int64_t *ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
     for (auto i = 0u; i < len; ++i) {
       if (ids[i] == 0u) {
@@ -293,11 +309,11 @@ std::future<int32_t> FleetWrapper::PullSparseVarsAsync(
     }
   }
   fea_values->resize(fea_keys->size() + 1);
-  for (auto& t : *fea_values) {
+  for (auto &t : *fea_values) {
     t.resize(fea_value_dim);
   }
-  std::vector<float*> pull_result_ptr;
-  for (auto& t : *fea_values) {
+  std::vector<float *> pull_result_ptr;
+  for (auto &t : *fea_values) {
     pull_result_ptr.push_back(t.data());
   }
   return pslib_ptr_->_worker_ptr->pull_sparse(

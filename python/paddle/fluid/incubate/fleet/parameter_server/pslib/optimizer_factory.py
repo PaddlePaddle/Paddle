@@ -182,7 +182,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         prog_id_to_param_grads = OrderedDict()
         # sparse_grads of each program
         prog_id_to_sparse_grads = OrderedDict()
-        #unique program set
+        # unique program set
         program_id_set = set()
 
         sparse_table_to_index = OrderedDict()
@@ -319,20 +319,27 @@ class DistributedAdam(DistributedOptimizerImplBase):
 
                     if strategy.get('dense_table') is not None:
                         server.add_dense_table(dense_table_index, params, grads,
-                                            strategy['dense_table'],
-                                            sparse_table_names)
-                    else:
-                        server.add_dense_table(dense_table_index, params, grads, None,
+                                               strategy['dense_table'],
                                                sparse_table_names)
-                    worker.add_dense_table(dense_table_index, self._learning_rate,
-                                           params, grads, dense_start_table_id,
-                                           sparse_table_names)
-                    if "pull_dense" in program_configs[program_id]  and "push_dense" in program_configs[program_id] and len(program_configs[program_id]["pull_dense"]) > 0:
-                        program_configs[program_id]["pull_dense"].extend([dense_table_index])
-                        program_configs[program_id]["push_dense"].extend([dense_table_index])
                     else:
-                        program_configs[program_id]["pull_dense"] = [dense_table_index]
-                        program_configs[program_id]["push_dense"] = [dense_table_index]
+                        server.add_dense_table(dense_table_index, params, grads,
+                                               None, sparse_table_names)
+                    worker.add_dense_table(
+                        dense_table_index, self._learning_rate, params, grads,
+                        dense_start_table_id, sparse_table_names)
+                    if "pull_dense" in program_configs[
+                            program_id] and "push_dense" in program_configs[
+                                program_id] and len(program_configs[program_id][
+                                    "pull_dense"]) > 0:
+                        program_configs[program_id]["pull_dense"].extend(
+                            [dense_table_index])
+                        program_configs[program_id]["push_dense"].extend(
+                            [dense_table_index])
+                    else:
+                        program_configs[program_id][
+                            "pull_dense"] = [dense_table_index]
+                        program_configs[program_id][
+                            "push_dense"] = [dense_table_index]
                     '''
                     if not program_configs[program_id]["pull_dense"]:
                         program_configs[program_id]["pull_dense"] = [dense_table_index]
@@ -356,9 +363,10 @@ class DistributedAdam(DistributedOptimizerImplBase):
                                 data_norm_params, data_norm_grads, None,
                                 sparse_table_names)
 
-                        worker.add_dense_table(dense_table_index, self._learning_rate,
-                                               data_norm_params, data_norm_grads,
-                                               dense_start_table_id, sparse_table_names)
+                        worker.add_dense_table(
+                            dense_table_index, self._learning_rate,
+                            data_norm_params, data_norm_grads,
+                            dense_start_table_id, sparse_table_names)
                     program_configs[program_id]["pull_dense"].extend(
                         [dense_table_index])
                     program_configs[program_id]["push_dense"].extend(

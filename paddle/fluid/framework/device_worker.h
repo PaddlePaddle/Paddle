@@ -258,21 +258,19 @@ class DownpourWorker : public HogwildWorker {
 };
 
 class DownpourWorkerOpt : public DownpourWorker {
-  public:
-    DownpourWorkerOpt() {}
-    virtual ~DownpourWorkerOpt() {}
-    virtual void CreateDeviceResource(const ProgramDesc& main_prog) {}
-    virtual void TrainFiles(); 
+ public:
+  DownpourWorkerOpt() {}
+  virtual ~DownpourWorkerOpt() {}
+  // virtual void CreateDeviceResource(const ProgramDesc& main_prog) {}
+  virtual void TrainFiles();
 
-  protected:
-    void CreateThreadOperatorsWithRerank(const ProgramDesc& program);
-    std::vector<std::vector<OperatorBase*>> loss_ops_;
-    std::vector<std::vector<OperatorBase*>> loss_op_names_;
-    std::string async_wait_name_;
-    int async_index_ = -1;
-    uint64_t async_tid_ = 0;
-
-
+ protected:
+  void CreateThreadOperatorsWithRerank(const ProgramDesc &program);
+  std::vector<std::vector<OperatorBase *>> loss_ops_;
+  std::vector<std::vector<OperatorBase *>> loss_op_names_;
+  std::string async_wait_name_;
+  int async_index_ = -1;
+  uint64_t async_tid_ = 0;
 };
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)

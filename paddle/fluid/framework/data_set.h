@@ -24,7 +24,7 @@
 #include <vector>
 #include <unordered_set>
 #include <ThreadPool.h>
- 
+
 #include "paddle/fluid/framework/data_feed.h"
 
 namespace paddle {
@@ -115,7 +115,10 @@ class Dataset {
   virtual int64_t GetShuffleDataSize() = 0;
   // merge by ins id
   virtual void MergeByInsId() = 0;
-  virtual void GenerateLocalTablesUnlock(int table_id, int feadim, int read_thread_num, int consume_thread_num, int shard_num, int send_freq) = 0;
+  virtual void GenerateLocalTablesUnlock(int table_id, int feadim,
+                                         int read_thread_num,
+                                         int consume_thread_num, int shard_num,
+                                         int send_freq) = 0;
   virtual void ClearLocalTables() = 0;
   // create preload readers
   virtual void CreatePreLoadReaders() = 0;
@@ -184,8 +187,11 @@ class DatasetImpl : public Dataset {
   virtual int64_t GetMemoryDataSize();
   virtual int64_t GetShuffleDataSize();
   virtual void MergeByInsId() {}
-  virtual void GenerateLocalTablesUnlock(int table_id, int feadim, int read_thread_num, int consume_thread_num, int shard_num, int send_freq) {}
-  virtual void ClearLocalTables() {};
+  virtual void GenerateLocalTablesUnlock(int table_id, int feadim,
+                                         int read_thread_num,
+                                         int consume_thread_num, int shard_num,
+                                         int send_freq) {}
+  virtual void ClearLocalTables(){};
   virtual void CreatePreLoadReaders();
   virtual void DestroyPreLoadReaders();
   virtual void SetPreLoadThreadNum(int thread_num);
@@ -238,9 +244,12 @@ class MultiSlotDataset : public DatasetImpl<Record> {
  public:
   MultiSlotDataset() {}
   virtual void MergeByInsId();
-  virtual void GenerateLocalTablesUnlock(int table_id, int feadim, int read_thread_num, int consume_thread_num, int shard_num, int send_freq);
+  virtual void GenerateLocalTablesUnlock(int table_id, int feadim,
+                                         int read_thread_num,
+                                         int consume_thread_num, int shard_num,
+                                         int send_freq);
   virtual void ClearLocalTables() {
-    for (auto& t : local_tables_) {
+    for (auto &t : local_tables_) {
       t.clear();
       std::unordered_set<uint64_t>().swap(t);
     }

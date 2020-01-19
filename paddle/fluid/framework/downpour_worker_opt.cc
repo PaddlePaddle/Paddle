@@ -12,180 +12,182 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <set>
-#include <unordered_map>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
+#include <set>
+#include <unordered_map>
 
-bool HasDependentOutput(
-        const OpDesc& op_desc,
-        const std::unordered_set<std::string>& dependent_vars) {
-    for (auto& var : op_desc.Outputs()) {
-        for (auto& argu : var.second) {
-            if (dependent_vars.count(argu) != 0) {
-                return true;
-            }
-        }
+bool HasDependentOutput(const OpDesc &op_desc,
+                        const std::unordered_set<std::string> &dependent_vars) {
+  for (auto &var : op_desc.Outputs()) {
+    for (auto &argu : var.second) {
+      if (dependent_vars.count(argu) != 0) {
+        return true;
+      }
     }
-    return false;
+  }
+  return false;
 }
 
-bool HasDependentInput(
-        const OpDesc& op_desc,
-        const std::unordered_set<std::string>& dependent_vars) {
-    for (auto& var : op_desc.Inputs()) {
-        for (auto& argu : var.second) {
-            if (dependent_vars.count(argu) != 0) {
-                return true;
-            }
-        }
+bool HasDependentInput(const OpDesc &op_desc,
+                       const std::unordered_set<std::string> &dependent_vars) {
+  for (auto &var : op_desc.Inputs()) {
+    for (auto &argu : var.second) {
+      if (dependent_vars.count(argu) != 0) {
+        return true;
+      }
     }
-    return false;
+  }
+  return false;
 }
 
 bool NotHasDependentOutput(
-        const OpDesc& op_desc,
-        const std::unordered_set<std::string>& dependent_vars) {
-    for (auto& var : op_desc.Outputs()) {
-        for (auto& argu : var.second) {
-            if (dependent_vars.count(argu) == 0) {
-                return true;
-            }
-        }
+    const OpDesc &op_desc,
+    const std::unordered_set<std::string> &dependent_vars) {
+  for (auto &var : op_desc.Outputs()) {
+    for (auto &argu : var.second) {
+      if (dependent_vars.count(argu) == 0) {
+        return true;
+      }
     }
-    return false;
+  }
+  return false;
 }
 
-bool HasOutput(
-        const OpDesc& op_desc,
-        const std::string& name) {
-    for (auto& var : op_desc.Outputs()) {
-        for (auto& argu : var.second) {
-            if (argu == name) {
-                return true;
-            }
-        }
+bool HasOutput(const OpDesc &op_desc, const std::string &name) {
+  for (auto &var : op_desc.Outputs()) {
+    for (auto &argu : var.second) {
+      if (argu == name) {
+        return true;
+      }
     }
-    return false;
+  }
+  return false;
 }
-void AppendInputVar(const OpDesc& op_desc,
-                           std::unordered_set<std::string>* vars_set) {
-    for (auto& var : op_desc.Inputs()) {
-        for (auto& arg : var.second) {
-            vars_set->emplace(arg);
-        }
+void AppendInputVar(const OpDesc &op_desc,
+                    std::unordered_set<std::string> *vars_set) {
+  for (auto &var : op_desc.Inputs()) {
+    for (auto &arg : var.second) {
+      vars_set->emplace(arg);
     }
+  }
 }
 
-void AppendOutputVar(const OpDesc& op_desc,
-                            std::unordered_set<std::string>* vars_set) {
-    for (auto& var : op_desc.Outputs()) {
-        for (auto& arg : var.second) {
-            vars_set->emplace(arg);
-        }
+void AppendOutputVar(const OpDesc &op_desc,
+                     std::unordered_set<std::string> *vars_set) {
+  for (auto &var : op_desc.Outputs()) {
+    for (auto &arg : var.second) {
+      vars_set->emplace(arg);
     }
+  }
 }
-void DownpourWorkerOpt::CreateThreadOperatorsWithRerank(const ProgramDesc& program) {
-    auto &block = program.Block(0);
-    auto* ops = block.AllOps();
-    // check if Independent between losses if not skip for now
-    int loss_num = loss_names_.size();
-    std::unordered_map<std::string, std::unordered_set<std::string>> loss_input_map; 
-    std::unordered_map<std::string, std::unordered_set<std::string>> loss_output_map;
-    // mark forward ops by loss
-    for (int i = 0; i < loss_num; i++) {
-      for (auto op_iter = ops.rbegin(); op_iter != ops.rend(); ++op_iter) {
-        auto &op_desc = *op_iter;
-        if (i > 0) {
-          for (int j = 0; j < i; j++) {
-            if (HasDependentInput(*op_desc, loss_input_map[loss_names[j]])) {
-              VLOG(3) << "losses must be independence currently";
-              return;
-            }
+void DownpourWorkerOpt::CreateThreadOperatorsWithRerank(
+    const ProgramDesc &program) {
+  auto &block = program.Block(0);
+  auto *ops = block.AllOps();
+  // check if Independent between losses if not skip for now
+  int loss_num = loss_names_.size();
+  std::unordered_map<std::string, std::unordered_set<std::string>>
+      loss_input_map;
+  std::unordered_map<std::string, std::unordered_set<std::string>>
+      loss_output_map;
+  // mark forward ops by loss
+  for (int i = 0; i < loss_num; i++) {
+    for (auto op_iter = ops.rbegin(); op_iter != ops.rend(); ++op_iter) {
+      auto &op_desc = *op_iter;
+      if (i > 0) {
+        for (int j = 0; j < i; j++) {
+          if (HasDependentInput(*op_desc, loss_input_map[loss_names[j]])) {
+            VLOG(3) << "losses must be independence currently";
+            return;
           }
         }
-        if (HasOutput(*op_desc, loss_names[i]) || HasDependentOutput(*op_desc, loss_input_map[loss_names[i]])) {
-          AppendInputVar(*op_desc, &loss_input_map[loss_names[i]]);
-          AppendOutputVar(*op_desc, &loss_output_map[loss_names[i]]);
-        }
+      }
+      if (HasOutput(*op_desc, loss_names[i]) ||
+          HasDependentOutput(*op_desc, loss_input_map[loss_names[i]])) {
+        AppendInputVar(*op_desc, &loss_input_map[loss_names[i]]);
+        AppendOutputVar(*op_desc, &loss_output_map[loss_names[i]]);
       }
     }
-
-
-    //
-    std::vector<std::string> loss_grad_names;
-    for (int i = 0; i < loss_num; i++) {
-        loss_grad_names.push_back(loss_names_[i]+"@GRAD");
-    }
-    std::unordered_map<std::string, std::unordered_set<std::string>> loss_input_grad_map;
-    std::unordered_map<std::string, std::unordered_set<std::string>> loss_output_grad_map;
-    for (int i = 0; i < loss_num; i++) {
-        for (auto op_iter = ops.begin(); op_iter != ops.end(); ++op_iter) {
-            auto &op_desc = *op_iter;
-
-            if (HasOutput(*op_desc, loss_grad_names[i]) || 
-                HasDependentOutput(*op_desc, loss_output_grad_map[loss_names_[i]])) {
-                AppendInputVar(*op_desc, &loss_input_grad_map[loss_names_[i]]);
-                AppendOutputVar(*op_desc, &loss_output_grad_map[loss_names_[i]]);
-            }
-        }
-    }
-
-
-    std::unordered_map<std::string, std::unordered_set<std::string>> metric_input_map;
-    std::unordered_map<std::string, std::unordered_set<std::string>> metric_output_map;
-    for (int i = 0; i < loss_num; i++) {
-        for (auto op_iter = ops.begin(); op_iter != ops.end(); ++op_iter) {
-            auto &op_desc = *op_iter;
-            if ((HasDependentInput(*op_desc, loss_output_map[loss_names_[i]]) &&
-                NotHasDependentOutput(op_desc, loss_input_map[loss_name_[i]])) ||
-                HasDependentInput(op_desc, metric_output_vars[loss_names_[i]])) {
-                AppendInputVar(op_desc, &metric_input_map[loss_names_[i]]);
-                AppendOutputVar(op_desc, &metric_input_vars[loss_names_[i]]);
-            }
-        }
-    }
-    
-    for (int i = 0; i < param_.program_config(0).pull_sparse_table_id_size();
-         ++i) {
-      uint64_t tid = static_cast<uint64_t>(
-          param_.program_config(0).pull_sparse_table_id(i));
-      TableParameter table;
-      for (auto j : param_.sparse_table()) {
-        if (j.table_id() == tid) {
-          table = j;
-          break;
-        }
-      }
-      if (table.is_async()) {
-        async_tid_ = tid;
-        async_index_ = i;
-        async_wait_name_ = table.async_wait_op_name();
-      }
   }
-    for (int i = 0; i < loss_num; i++) {
-        for (auto op_iter = ops->begin(); op_iter != ops->end(); ++op_iter) {
-            auto &op_desc = *op_iter;
-            if (HasDependentInput(op_desc, loss_input_vars[i]) ||
-                HasDependentInput(op_desc, loss_input_grad_vars[i]) ||
-                HasDependentInput(op_desc, metric_input_vars[i])) {
-                std::unique_ptr<OperatorBase> local_op = OpRegistry::CreateOp(*op_desc);
-                if (HasOutput(*op_desc, async_wait_name_)) {
-                  loss_op_names_[i].push_back("async_wait_flag");    
-                } else {
-                  loss_op_names_[i].push_back(op_desc->Type());
-                }
-                OperatorBase *local_op_ptr = local_op.release();
-                loss_ops_[i].push_back(local_op_ptr);
-            }
-        }
+
+  //
+  std::vector<std::string> loss_grad_names;
+  for (int i = 0; i < loss_num; i++) {
+    loss_grad_names.push_back(loss_names_[i] + "@GRAD");
+  }
+  std::unordered_map<std::string, std::unordered_set<std::string>>
+      loss_input_grad_map;
+  std::unordered_map<std::string, std::unordered_set<std::string>>
+      loss_output_grad_map;
+  for (int i = 0; i < loss_num; i++) {
+    for (auto op_iter = ops.begin(); op_iter != ops.end(); ++op_iter) {
+      auto &op_desc = *op_iter;
+
+      if (HasOutput(*op_desc, loss_grad_names[i]) ||
+          HasDependentOutput(*op_desc, loss_output_grad_map[loss_names_[i]])) {
+        AppendInputVar(*op_desc, &loss_input_grad_map[loss_names_[i]]);
+        AppendOutputVar(*op_desc, &loss_output_grad_map[loss_names_[i]]);
+      }
     }
+  }
+
+  std::unordered_map<std::string, std::unordered_set<std::string>>
+      metric_input_map;
+  std::unordered_map<std::string, std::unordered_set<std::string>>
+      metric_output_map;
+  for (int i = 0; i < loss_num; i++) {
+    for (auto op_iter = ops.begin(); op_iter != ops.end(); ++op_iter) {
+      auto &op_desc = *op_iter;
+      if ((HasDependentInput(*op_desc, loss_output_map[loss_names_[i]]) &&
+           NotHasDependentOutput(op_desc, loss_input_map[loss_name_[i]])) ||
+          HasDependentInput(op_desc, metric_output_vars[loss_names_[i]])) {
+        AppendInputVar(op_desc, &metric_input_map[loss_names_[i]]);
+        AppendOutputVar(op_desc, &metric_input_vars[loss_names_[i]]);
+      }
+    }
+  }
+
+  for (int i = 0; i < param_.program_config(0).pull_sparse_table_id_size();
+       ++i) {
+    uint64_t tid =
+        static_cast<uint64_t>(param_.program_config(0).pull_sparse_table_id(i));
+    TableParameter table;
+    for (auto j : param_.sparse_table()) {
+      if (j.table_id() == tid) {
+        table = j;
+        break;
+      }
+    }
+    if (table.is_async()) {
+      async_tid_ = tid;
+      async_index_ = i;
+      async_wait_name_ = table.async_wait_op_name();
+    }
+  }
+  for (int i = 0; i < loss_num; i++) {
+    for (auto op_iter = ops->begin(); op_iter != ops->end(); ++op_iter) {
+      auto &op_desc = *op_iter;
+      if (HasDependentInput(op_desc, loss_input_vars[i]) ||
+          HasDependentInput(op_desc, loss_input_grad_vars[i]) ||
+          HasDependentInput(op_desc, metric_input_vars[i])) {
+        std::unique_ptr<OperatorBase> local_op = OpRegistry::CreateOp(*op_desc);
+        if (HasOutput(*op_desc, async_wait_name_)) {
+          loss_op_names_[i].push_back("async_wait_flag");
+        } else {
+          loss_op_names_[i].push_back(op_desc->Type());
+        }
+        OperatorBase *local_op_ptr = local_op.release();
+        loss_ops_[i].push_back(local_op_ptr);
+      }
+    }
+  }
 }
 
-void DownpourWorker::TrainFiles() {
+void DownpourWorkerOpt::TrainFiles() {
   VLOG(3) << "Begin to train files";
   platform::SetNumThreads(1);
   device_reader_->Start();
@@ -194,16 +196,16 @@ void DownpourWorker::TrainFiles() {
   std::future<int32_t> pull_async_status;
   std::string async_wait_name = "";
   for (int i = 0; i < param_.program_config(0).pull_sparse_table_id_size();
-         ++i) {
-      uint64_t tid = static_cast<uint64_t>(
-          param_.program_config(0).pull_sparse_table_id(i));
-      TableParameter table;
-      for (auto j : param_.sparse_table()) {
-        if (j.table_id() == tid) {
-          table = j;
-          break;
-        }
+       ++i) {
+    uint64_t tid =
+        static_cast<uint64_t>(param_.program_config(0).pull_sparse_table_id(i));
+    TableParameter table;
+    for (auto j : param_.sparse_table()) {
+      if (j.table_id() == tid) {
+        table = j;
+        break;
       }
+    }
   }
   // pre-defined for the first op run with async-pulled embedding
   // uint64_t general_tid = 1;
@@ -235,23 +237,25 @@ void DownpourWorker::TrainFiles() {
         }
       }
       if (table.is_local()) {
-        fleet_ptr_->PullSparseVarsFromLocal(*thread_scope_, tid,
-                                       sparse_key_names_[tid], &features_[tid],
-                                       &feature_values_[tid], table.fea_dim());
-        // FillSparseFromLocal(*thread_scope_, tid, sparse_key_names_[tid], fleet_ptr_->GetLocalTable());
-        // std::cout << "local sparse table with fea dim: " << table.fea_dim() << std::endl;
+        fleet_ptr_->PullSparseVarsFromLocal(
+            *thread_scope_, tid, sparse_key_names_[tid], &features_[tid],
+            &feature_values_[tid], table.fea_dim());
+        // FillSparseFromLocal(*thread_scope_, tid, sparse_key_names_[tid],
+        // fleet_ptr_->GetLocalTable());
+        // std::cout << "local sparse table with fea dim: " << table.fea_dim()
+        // << std::endl;
         CollectLabelInfo(i);
         // general_tid = tid;
         continue;
       } else if (table.is_async()) {
-        pull_async_status = fleet_ptr_->PullSparseVarsAsync(*thread_scope_, tid,
-                                            sparse_key_names_[tid], &features_[tid],
-                                            &feature_values_[tid], table.fea_dim());
+        pull_async_status = fleet_ptr_->PullSparseVarsAsync(
+            *thread_scope_, tid, sparse_key_names_[tid], &features_[tid],
+            &feature_values_[tid], table.fea_dim());
         continue;
       } else {
         fleet_ptr_->PullSparseVarsSync(
-              *thread_scope_, tid, sparse_key_names_[tid], &features_[tid],
-              &feature_values_[tid], table.fea_dim(), sparse_value_names_[tid]); 
+            *thread_scope_, tid, sparse_key_names_[tid], &features_[tid],
+            &feature_values_[tid], table.fea_dim(), sparse_value_names_[tid]);
       }
       CollectLabelInfo(i);
       FillSparseValue(i);
@@ -266,8 +270,8 @@ void DownpourWorker::TrainFiles() {
 
     // do computation here
     for (int loss_idx = 0; loss_idx < loss_ops_.szie(); loss_idx++) {
-      int op_idx = 0;  
-      for (auto& op : loss_ops_[loss_idx]) {
+      int op_idx = 0;
+      for (auto &op : loss_ops_[loss_idx]) {
         bool need_skip = false;
         for (auto t = 0u; t < skip_ops_.size(); ++t) {
           if (op->Type().find(skip_ops_[t]) != std::string::npos) {
@@ -277,15 +281,18 @@ void DownpourWorker::TrainFiles() {
         }
         if (!need_skip) {
           if (loss_op_names[loss_idx][op_idx] == async_wait_name_) {
-          // std::cout << "Wait Async Pull with tid: " << async_tid << std::endl;
-             pull_async_status.wait();
+            // std::cout << "Wait Async Pull with tid: " << async_tid <<
+            // std::endl;
+            pull_async_status.wait();
             auto status = pull_async_status.get();
             if (status != 0) {
-              LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
+              LOG(ERROR) << "fleet pull sparse failed, status[" << status
+                         << "]";
               sleep(1);
               exit(-1);
             } else {
-              // std::cout << "Done Async Pull with tid: " << async_tid << std::endl;  
+              // std::cout << "Done Async Pull with tid: " << async_tid <<
+              // std::endl;
               // CollectLabelInfo(async_index);
               FillSparseValue(async_index_);
               auto nid_iter = std::find(sparse_value_names_[async_tid_].begin(),
@@ -293,9 +300,8 @@ void DownpourWorker::TrainFiles() {
                                         adjust_ins_weight_config_.nid_slot());
               if (nid_iter != sparse_value_names_[async_tid_].end()) {
                 AdjustInsWeight();
-               }          
+              }
             }
-
           }
           op->Run(*thread_scope_, place_);
         }
@@ -303,21 +309,25 @@ void DownpourWorker::TrainFiles() {
       op_idx++;
     }
     // check inf and nan
-    for (std::string& var_name : check_nan_var_names_) {
-      Variable* var = thread_scope_->FindVar(var_name);
+    for (std::string &var_name : check_nan_var_names_) {
+      Variable *var = thread_scope_->FindVar(var_name);
       if (var == nullptr) {
         continue;
       }
-      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      LoDTensor *tensor = var->GetMutable<LoDTensor>();
       if (tensor == nullptr) {
         continue;
       }
-      PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor), false,
-                        platform::errors::InvalidArgument("The target tensor %s contains Inf "
-                        "should check some layers output.", var_name));
-      PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor), false,
-                        platform::errors::InvalidArgument("The target tensor %s contains Nan "
-                        "should check some layers output.", var_name));
+      PADDLE_ENFORCE_EQ(
+          framework::TensorContainsInf(*tensor), false,
+          platform::errors::InvalidArgument("The target tensor %s contains Inf "
+                                            "should check some layers output.",
+                                            var_name));
+      PADDLE_ENFORCE_EQ(
+          framework::TensorContainsNAN(*tensor), false,
+          platform::errors::InvalidArgument("The target tensor %s contains Nan "
+                                            "should check some layers output.",
+                                            var_name));
     }
 
     if (need_to_push_sparse_) {
@@ -359,7 +369,7 @@ void DownpourWorker::TrainFiles() {
           static_cast<uint32_t>(tmp_push_dense_wait_times);
 
       if (push_dense_status_.size() >= push_dense_wait_times) {
-        for (auto& t : push_dense_status_) {
+        for (auto &t : push_dense_status_) {
           t.wait();
         }
         push_dense_status_.resize(0);
@@ -376,7 +386,7 @@ void DownpourWorker::TrainFiles() {
       static uint32_t push_sparse_wait_times =
           static_cast<uint32_t>(tmp_push_sparse_wait_times);
       if (push_sparse_status_.size() >= push_sparse_wait_times) {
-        for (auto& t : push_sparse_status_) {
+        for (auto &t : push_sparse_status_) {
           t.wait();
         }
         push_sparse_status_.resize(0);
@@ -398,21 +408,21 @@ void DownpourWorker::TrainFiles() {
     if (need_dump_field_) {
       size_t batch_size = device_reader_->GetCurBatchSize();
       std::vector<std::string> ars(batch_size);
-      for (auto& ar : ars) {
+      for (auto &ar : ars) {
         ar.clear();
       }
-      auto& ins_id_vec = device_reader_->GetInsIdVec();
-      auto& ins_content_vec = device_reader_->GetInsContentVec();
+      auto &ins_id_vec = device_reader_->GetInsIdVec();
+      auto &ins_content_vec = device_reader_->GetInsContentVec();
       for (size_t i = 0; i < ins_id_vec.size(); i++) {
         ars[i] += ins_id_vec[i];
         ars[i] = ars[i] + "\t" + ins_content_vec[i];
       }
-      for (auto& field : dump_fields_) {
-        Variable* var = thread_scope_->FindVar(field);
+      for (auto &field : dump_fields_) {
+        Variable *var = thread_scope_->FindVar(field);
         if (var == nullptr) {
           continue;
         }
-        LoDTensor* tensor = var->GetMutable<LoDTensor>();
+        LoDTensor *tensor = var->GetMutable<LoDTensor>();
         if (!CheckValidOutput(tensor, batch_size)) {
           continue;
         }
