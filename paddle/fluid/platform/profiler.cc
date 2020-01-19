@@ -724,7 +724,6 @@ void DisableProfiler(EventSortingKey sorted_key,
   DeviceTracer *tracer = GetDeviceTracer();
   if (tracer->IsEnabled()) {
     tracer->Disable();
-    tracer->GenProfile(profile_path);
     tracer->GenEventKernelCudaElapsedTime();
   }
 
@@ -755,6 +754,7 @@ void DisableProfiler(EventSortingKey sorted_key,
     }
   }
 
+  tracer->GenProfile(profile_path);
   ParseEvents(all_events, true, sorted_key);
   ParseEvents(all_events, false, sorted_key);
   if (VLOG_IS_ON(5)) {
