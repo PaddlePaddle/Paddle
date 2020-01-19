@@ -795,10 +795,12 @@ class GeneratorLoader(DataLoaderBase):
         self._thread.start()
 
     def _reset(self):
-        self._reader.reset()
+        self._queue.close()
         thread = self._thread
         if thread is not None:
             thread.join()
+
+        self._reader.reset()
 
     def set_sample_generator(self,
                              reader,
