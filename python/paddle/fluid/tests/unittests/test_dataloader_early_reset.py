@@ -78,6 +78,7 @@ class TestDataLoaderEarlyReset(unittest.TestCase):
                     exe.run(prog, fetch_list=[self.x])
                     batch_id += 1
                     if batch_id >= self.stop_batch:
+                        loader.reset()
                         break
 
             self.assertEqual(batch_id, self.stop_batch)
