@@ -1247,7 +1247,14 @@ void OperatorWithKernel::ParseInputDataType(
         t = &(var->Get<SelectedRows>().value());
       } else if (var->IsType<LoDTensorArray>()) {
         auto t_arr = var->Get<LoDTensorArray>();
-        t = &(t_arr[0]);
+        if (t_arr.size() > 0) {
+          t = &(t_arr[0]);
+        } else {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "The LoDTensorArray in the %s Op's Input Variable %s(%s) is "
+              "empty.",
+              Type(), name, ctx.InputNames(name).at(i)));
+        }
       }
       if (t != nullptr) {
         PADDLE_ENFORCE_EQ(
@@ -1293,7 +1300,7 @@ proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
   PADDLE_ENFORCE_NE(
       data_type, dafault_data_type,
       "The Input Variable(%s) of %s Op used to determine kernel data type "
-      "is empty or not LoDTensor or SelectedRows.",
+      "is empty or not LoDTensor, SelectedRows or LoDTensorArray.",
       name, Type());
   return data_type;
 }
