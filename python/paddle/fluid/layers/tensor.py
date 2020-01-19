@@ -28,12 +28,31 @@ import numpy
 import warnings
 
 __all__ = [
-    'create_tensor', 'create_parameter', 'create_global_var', 'cast',
-    'tensor_array_to_tensor', 'concat', 'sums', 'assign',
-    'fill_constant_batch_size_like', 'fill_constant', 'argmin', 'argmax',
-    'argsort', 'ones', 'zeros', 'reverse', 'has_inf', 'has_nan', 'isfinite',
-    'range', 'linspace', 'zeros_like', 'ones_like', 'diag', 'eye',
-    'partial_concat'
+    'create_tensor',
+    'create_parameter',
+    'create_global_var',
+    'cast',
+    'tensor_array_to_tensor',
+    'concat',
+    'sums',
+    'assign',
+    'fill_constant_batch_size_like',
+    'fill_constant',
+    'argmin',
+    'argmax',
+    'argsort',
+    'ones',
+    'zeros',
+    'reverse',
+    'has_inf',
+    'has_nan',
+    'isfinite',
+    'range',
+    'linspace',
+    'zeros_like',
+    'ones_like',
+    'diag',
+    'eye',
 ]
 
 
@@ -1456,47 +1475,4 @@ def ones_like(x, out=None):
         inputs={'X': [x]},
         attrs={'value': 1.0},
         outputs={'Out': [out]})
-    return out
-
-
-def partial_concat(input, start_index=0, length=-1):
-    """
-    **Partial Concat**
-    This OP concatenates the inputs according to the start index and length.
-    Args:
-        input(list): List of input Tensors with data type float32, float64, int32,
-            int64.
-        start_index(int32): The start index of each instance for partial concatenation.
-            Default is 0.
-        length(int32): The length of each instance for partial concatenation. Default is 0.
-    Returns:
-        Variable: A Tensor with the same data type as input's.
-    Examples:
-        .. code-block:: python
-            import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[3], dtype="float32")
-            y = fluid.layers.data(name="y", shape=[3], dtype="float32")
-            concat = fluid.layers.partial_concat([x, y], start_index=0, length=2)
-    """
-    if not isinstance(input, list):
-        warnings.warn(
-            "The type of input in partial_concat should be list, but received %s."
-            % (type(input)))
-        input = [input]
-    for id, x in enumerate(input):
-        check_type_and_dtype(
-            x, 'input[' + str(id) + ']', Variable,
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
-            'partial_concat')
-    check_type(start_index, 'start_index', (int), 'partial_concat')
-    check_type(length, 'length', (int), 'partial_concat')
-    inputs = {'X': input}
-    attrs = {'start_index': start_index, 'length': length}
-    helper = LayerHelper('partial_concat', **locals())
-    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    helper.append_op(
-        type='partial_concat',
-        inputs=inputs,
-        outputs={'Out': [out]},
-        attrs=attrs)
     return out
