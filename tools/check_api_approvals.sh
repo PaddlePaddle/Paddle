@@ -33,6 +33,7 @@ API_FILES=("CMakeLists.txt"
            "python/paddle/fluid/tests/unittests/white_list/check_op_sequence_instance_0_input_white_list.py"
            "python/paddle/fluid/tests/unittests/white_list/op_threshold_white_list.py"
            "python/paddle/fluid/tests/unittests/white_list/check_op_sequence_batch_1_input_white_list.py"
+           "python/paddle/fluid/tests/unittests/white_list/no_grad_set_white_list.py"
            )
 
 approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
@@ -130,6 +131,9 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/check_op_sequence_batch_1_input_white_list.py" ];then
           echo_line="You must have one RD (songyouwei, luotao1 or phlrain) approval for ${API_FILE}, which manages the white list of batch size 1 input for sequence op test. For more information, please refer to [https://github.com/PaddlePaddle/Paddle/wiki/It-is-required-to-include-LoDTensor-input-with-batch_size=1-in-sequence-OP-test]. \n"
           check_approval 1 2573291 6836917 43953930
+      elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/no_grad_set_white_list.py" ];then
+        echo_line="You must have one RD (chenjiaoAngel (Recommend), luotao1 or phlrain) approval for the python/paddle/fluid/tests/unittests/white_list/no_grad_set_white_list.py, which manages the white list of no_grad_set without value in operators.\n"
+        check_approval 1 38650344 6836917 43953930
       else
           echo_line="It is an Op accuracy problem, please take care of it. You must have one RD (XiaoguangHu01,Xreki,luotao1,sneaxiy) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
           check_approval 1 3048612 46782768 12538138 6836917 32832641

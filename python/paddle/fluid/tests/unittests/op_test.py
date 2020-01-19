@@ -34,7 +34,7 @@ from paddle.fluid.framework import Program, OpProtoHolder, Variable
 from testsuite import create_op, set_input, append_input_output, append_loss_ops
 from paddle.fluid import unique_name
 from white_list import op_accuracy_white_list, check_shape_white_list, compile_vs_runtime_white_list, no_check_set_white_list
-from white_list import op_threshold_white_list
+from white_list import op_threshold_white_list, no_grad_set_white_list
 
 
 def _set_use_system_allocator(value=None):
@@ -1291,6 +1291,12 @@ class OpTest(unittest.TestCase):
 
         if no_grad_set is None:
             no_grad_set = set()
+        else:
+            if (self.op_type not in no_grad_set_white_list.NEED_TO_FIX_OP_LIST
+                ) and (self.op_type not in
+                       no_grad_set_white_list.NOT_CHECK_OP_LIST):
+                raise AssertionError("no_grad_set must be None, op_type is " +
+                                     self.op_type + " Op.")
 
         if not type(output_names) is list:
             output_names = [output_names]
