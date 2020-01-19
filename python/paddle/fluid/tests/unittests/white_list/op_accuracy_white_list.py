@@ -46,7 +46,6 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'matmul', \
     'max_pool2d_with_index', \
     'max_pool3d_with_index', \
-    'maxout', \
     'minus', \
     'modified_huber_loss', \
     'mul', \
@@ -56,12 +55,10 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'pad_constant_like', \
     'pool2d', \
     'pool3d', \
-    'prelu', \
     'prroi_pool', \
     'rank_loss', \
     'reduce_max', \
     'reduce_min', \
-    'relu', \
     'reshape2', \
     'roi_perspective_transform', \
     'row_conv', \
