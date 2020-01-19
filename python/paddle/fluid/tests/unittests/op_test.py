@@ -70,10 +70,8 @@ def get_numeric_gradient(place,
 
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.shape())
-    if not hasattr(get_numeric_gradient, 'check_shape_time'):
-        get_numeric_gradient.check_shape_time = 0
-    if tensor_size >= 100:
-        get_numeric_gradient.check_shape_time += 1
+    if tensor_size < 100:
+        get_numeric_gradient.is_large_shape = False
     tensor_to_check_dtype = tensor_to_check._dtype()
     if tensor_to_check_dtype == core.VarDesc.VarType.FP32:
         tensor_to_check_dtype = np.float32
@@ -186,6 +184,8 @@ class OpTest(unittest.TestCase):
 
         cls._use_system_allocator = _set_use_system_allocator(True)
 
+        get_numeric_gradient.is_large_shape = True
+
     @classmethod
     def tearDownClass(cls):
         """Restore random seeds"""
@@ -198,7 +198,7 @@ class OpTest(unittest.TestCase):
             all_op_kernels = core._get_all_register_op_kernels()
             grad_op = op_type + '_grad'
             if grad_op in all_op_kernels.keys():
-                if hasattr(cls, "use_mkldnn") and cls.use_mkldnn == True:
+                if is_mkldnn_op_test():
                     grad_op_kernels = all_op_kernels[grad_op]
                     for grad_op_kernel in grad_op_kernels:
                         if 'MKLDNN' in grad_op_kernel:
@@ -206,6 +206,14 @@ class OpTest(unittest.TestCase):
                 else:
                     return False
             return True
+
+        def is_mkldnn_op_test():
+            if (hasattr(cls, "use_mkldnn") and cls.use_mkldnn == True) or \
+                (hasattr(cls, "attrs") and "use_mkldnn" in cls.attrs and \
+                    cls.attrs["use_mkldnn"] == True):
+                return True
+            else:
+                return False
 
         if not hasattr(cls, "op_type"):
             raise AssertionError(
@@ -226,18 +234,16 @@ class OpTest(unittest.TestCase):
             if cls.dtype in [np.float32, np.float64] \
                 and cls.op_type not in op_accuracy_white_list.NO_FP64_CHECK_GRAD_OP_LIST \
                 and not hasattr(cls, 'exist_fp64_check_grad') \
-                and (not hasattr(cls, "use_mkldnn") or cls.use_mkldnn == False):
+                and not is_mkldnn_op_test():
                 raise AssertionError(
                     "This test of %s op needs check_grad with fp64 precision." %
                     cls.op_type)
 
-        if hasattr(get_numeric_gradient, 'check_shape_time') \
-            and get_numeric_gradient.check_shape_time == 0 \
-            and OpTest.op_type not in check_shape_white_list.NOT_CHECK_OP_LIST \
-            and OpTest.op_type not in check_shape_white_list.NEED_TO_FIX_OP_LIST:
-            raise AssertionError(
-                "At least one input's shape should be large than or equal to 100 for "
-                + OpTest.op_type + " Op.")
+            if not get_numeric_gradient.is_large_shape \
+                and cls.op_type not in check_shape_white_list.NEED_TO_FIX_OP_LIST:
+                raise AssertionError(
+                    "Input's shape should be large than or equal to 100 for " +
+                    cls.op_type + " Op.")
 
     def try_call_once(self, data_type):
         if not self.call_once:
@@ -1269,7 +1275,6 @@ class OpTest(unittest.TestCase):
                               max_relative_error=0.005,
                               user_defined_grads=None,
                               check_dygraph=True):
-        OpTest.op_type = self.op_type
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
