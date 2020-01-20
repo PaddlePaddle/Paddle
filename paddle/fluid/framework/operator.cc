@@ -1249,11 +1249,6 @@ void OperatorWithKernel::ParseInputDataType(
         auto t_arr = var->Get<LoDTensorArray>();
         if (t_arr.size() > 0) {
           t = &(t_arr[0]);
-        } else {
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "The LoDTensorArray in the %s Op's Input Variable %s(%s) is "
-              "empty.",
-              Type(), name, ctx.InputNames(name).at(i)));
         }
       }
       if (t != nullptr) {
