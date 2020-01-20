@@ -11,9 +11,11 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
 #include <algorithm>
 #include <limits>
 #include <utility>
+#include "paddle/fluid/framework/gpu_utils.h"
 
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
@@ -24,6 +26,8 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+using Dim3 = framework::Dim3;
+using Index3 = framework::Index3;
 
 #define CUDA_1D_KERNEL_LOOP(i, n)                              \
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
@@ -74,71 +78,7 @@ constexpr bool CheckNonLongTileSize(int tile_long, int tile_short, int size_T) {
          !CheckLongTileSize(tile_long, tile_short, size_T);
 }
 
-template <typename T, T DefaultValue>
-struct Array3 {
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE T& operator[](int index) {
-    return data[index];
-  }
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE const T& operator[](int index) const {
-    return data[index];
-  }
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE Array3() {
-    for (int i = 0; i < 3; i++) {
-      data[i] = DefaultValue;
-    }
-  }
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE Array3(T d0, T d1, T d2) {
-    data[0] = d0;
-    data[1] = d1;
-    data[2] = d2;
-  }
-  EIGEN_STRONG_INLINE Array3(const std::array<T, 3>& array) {
-    for (int i = 0; i < 3; i++) {
-      data[i] = array[i];
-    }
-  }
-  T data[3];
-};
-
-struct Dim3 : Array3<int, 1> {
-  typedef Array3<int, 1> Base;
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE Dim3() : Base() {}
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE Dim3(int a0, int a1, int a2)
-      : Base(a0, a1, a2) {}
-  EIGEN_STRONG_INLINE Dim3(const std::array<int, 3>& array) : Base(array) {}
-};
-
-struct Index3 : Array3<int, 0> {
-  typedef Array3<int, 0> Base;
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE Index3() : Base() {}
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE Index3(int a0, int a1, int a2)
-      : Base(a0, a1, a2) {}
-};
-
-// Flat index with real domension
-EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE int FlatTensorIndex(const Index3& index,
-                                                          const Dim3& dims) {
-  int flat_index = index[0];
-  for (int i = 1; i < 3; i++) {
-    flat_index = flat_index * dims[i] + index[i];
-  }
-  return flat_index;
-}
-
-// Convert index to tensor index with dimension..
-EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE Index3
-ConvertTensorIndex(int index, const Dim3& dims) {
-  Index3 tensor_index;
-  for (int i = 2; i >= 0; i--) {
-    int new_index = index / dims[i];
-    tensor_index[i] = index - dims[i] * new_index;
-    index = new_index;
-  }
-  return tensor_index;
-}
-
 // Use SM to do data transfer, load a tile into SM then store out.
-
 template <typename T, int NumThreads, int TileX, int TileY>
 __global__ void TilingSwapDim1And2(const T* __restrict__ input, Dim3 input_dims,
                                    T* __restrict__ output) {
@@ -268,30 +208,32 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input, Dim3 input_dims,
 }
 
 template <int TSIZE>
-const std::vector<std::pair<int, int>>& SelectProperTileSize() {
+bool SelectProperTileSize(std::vector<std::pair<int, int>>* tiles) {
   PADDLE_ENFORCE_LE(
       TSIZE, 16,
-      "Currently, only data types of sizes 16 bytes or less are supported.");
-  PADDLE_ENFORCE_EQ((TSIZE & (TSIZE - 1)), 0,
-                    "Data types must have sizes that are powers of 2.");
-  auto frontier = std::vector<std::pair<int, int>>();
+      platform::errors::InvalidArgument(
+          "The tile size should smaller than 16, but received is:%d.", TSIZE));
+
+  PADDLE_ENFORCE_EQ(
+      (TSIZE & (TSIZE - 1)), 0,
+      platform::errors::InvalidArgument(
+          "Data types should be powers of 2, but reived size is:%d.", TSIZE));
+
   const int kMaxLongSideLen = 1024;
   const int kMaxShortSideLen = 15;
 
   for (int long_side = 32; long_side <= kMaxLongSideLen; long_side *= 2) {
     for (int short_side = 2; short_side <= kMaxShortSideLen; short_side += 1) {
       if (CheckLongTileSize(long_side, short_side, TSIZE)) {
-        frontier.push_back(std::make_pair(long_side, short_side));
+        tiles->push_back(std::make_pair(long_side, short_side));
 
-        if (short_side == 2) return frontier;
+        if (short_side == 2) return true;
 
         break;
       }
     }
   }
-  LOG(FATAL) << "The corresponding short side length of the largest long side "
-                "length has to be 2.";
-  return frontier;
+  return false;
 }
 
 // Get Transpose Type
@@ -366,9 +308,9 @@ void LaunchNarrowDims2TransposeKernel(const platform::CUDADeviceContext& d,
 
 template <typename T, int tile_long, int tile_short, typename dummy = void>
 struct NarrowDims2TransposeDispatch {
-  static void DoIt(const platform::CUDADeviceContext& d, int tile_size_i,
-                   int tile_size_j, int total_tiles_count, const T* input,
-                   const Dim3& input_dims, T* output) {
+  static void DoTranspose(const platform::CUDADeviceContext& d, int tile_size_i,
+                          int tile_size_j, int total_tiles_count,
+                          const T* input, const Dim3& input_dims, T* output) {
     PADDLE_ENFORCE_EQ(
         (tile_long & (tile_long - 1)), 0,
         "The length of the longer side of the tile is always a power of 2.");
@@ -386,11 +328,11 @@ struct NarrowDims2TransposeDispatch {
         std::max(tile_size_i, tile_size_j) > tile_long;
 
     if (long_side_request_not_satisfied) {
-      NarrowDims2TransposeDispatch<T, tile_long * 2, tile_short>::DoIt(
+      NarrowDims2TransposeDispatch<T, tile_long * 2, tile_short>::DoTranspose(
           d, tile_size_i, tile_size_j, total_tiles_count, input, input_dims,
           output);
     } else {
-      NarrowDims2TransposeDispatch<T, tile_long, tile_short + 1>::DoIt(
+      NarrowDims2TransposeDispatch<T, tile_long, tile_short + 1>::DoTranspose(
           d, tile_size_i, tile_size_j, total_tiles_count, input, input_dims,
           output);
     }
@@ -402,9 +344,9 @@ struct NarrowDims2TransposeDispatch<
     T, tile_long, tile_short,
     typename std::enable_if<
         CheckNonLongTileSize(tile_long, tile_short, sizeof(T)), void>::type> {
-  static void DoIt(const platform::CUDADeviceContext& d, int tile_size_i,
-                   int tile_size_j, int total_tiles_count, const T* input,
-                   const Dim3& input_dims, T* output) {
+  static void DoTranspose(const platform::CUDADeviceContext& d, int tile_size_i,
+                          int tile_size_j, int total_tiles_count,
+                          const T* input, const Dim3& input_dims, T* output) {
     PADDLE_ENFORCE_EQ(
         (tile_long & (tile_long - 1)), 0,
         "The length of the longer side of the tile is always a power of 2.");
@@ -418,7 +360,7 @@ struct NarrowDims2TransposeDispatch<
       return;
     }
 
-    NarrowDims2TransposeDispatch<T, tile_long, tile_short + 1>::DoIt(
+    NarrowDims2TransposeDispatch<T, tile_long, tile_short + 1>::DoTranspose(
         d, tile_size_i, tile_size_j, total_tiles_count, input, input_dims,
         output);
   }
@@ -429,12 +371,15 @@ struct NarrowDims2TransposeDispatch<
     T, tile_long, tile_short,
     typename std::enable_if<CheckLongTileSize(tile_long, tile_short, sizeof(T)),
                             void>::type> {
-  static void DoIt(const platform::CUDADeviceContext& d, int tile_size_i,
-                   int tile_size_j, int total_tiles_count, const T* input,
-                   const Dim3& input_dims, T* output) {
+  static void DoTranspose(const platform::CUDADeviceContext& d, int tile_size_i,
+                          int tile_size_j, int total_tiles_count,
+                          const T* input, const Dim3& input_dims, T* output) {
     PADDLE_ENFORCE_EQ(
         (tile_long & (tile_long - 1)), 0,
-        "The length of the longer side of the tile is always a power of 2.");
+        platform::errors::InvalidArgument(
+            "The length of the longer side of the tile should be power of 2,"
+            " but received is:%d.",
+            tile_long));
 
     LaunchNarrowDims2TransposeKernel<T, tile_long, tile_short>(
         d, tile_size_i, tile_size_j, total_tiles_count, input, input_dims,
@@ -447,14 +392,20 @@ void SwapDim1And2InNarrow(const platform::CUDADeviceContext& d, const T* input,
                           const Dim3& input_dims, T* output,
                           const int kMinTileSize) {
   // Get available tile sizes here for the data type requested:
-  const auto& tile_spec = SelectProperTileSize<sizeof(T)>();
+  std::vector<std::pair<int, int>> tile_sele;
+  auto ret = SelectProperTileSize<sizeof(T)>(&tile_sele);
+  PADDLE_ENFORCE_EQ(
+      ret, true,
+      platform::errors::InvalidArgument(
+          "SelectProperTileSize should return true, but return value is:%d.",
+          ret));
 
   int tile_long_edge = 0;
   int tile_short_edge = 0;
   float lowest_cost = std::numeric_limits<float>::max();
   int input_long_edge = std::max(input_dims[1], input_dims[2]);
 
-  for (auto tile_size_pair : tile_spec) {
+  for (auto tile_size_pair : tile_sele) {
     int proposed_tile_long_edge = tile_size_pair.first;
     // data may not aligned to tile, so some threads wasted
     int num_wasted_threads = input_long_edge -
@@ -506,7 +457,7 @@ void SwapDim1And2InNarrow(const platform::CUDADeviceContext& d, const T* input,
 
   using ElemType = typename TransposeElemType<sizeof(T)>::type;
   static_assert(alignof(T) >= alignof(ElemType), "Unexpected data alignment.");
-  NarrowDims2TransposeDispatch<ElemType, 32, 2>::DoIt(
+  NarrowDims2TransposeDispatch<ElemType, 32, 2>::DoTranspose(
       d, select_tile_size_i, select_tile_size_j, total_tiles_count,
       reinterpret_cast<const ElemType*>(input), input_dims,
       reinterpret_cast<ElemType*>(output));
@@ -536,9 +487,9 @@ __global__ void TransposeSimpleKernel(int nthreads, const T* __restrict__ input,
 
 // Here suppose convert all tensor to dim3, so just change dim1 and 2.
 template <typename T>
-void RunSwapDim1And2InTranspose(const platform::CUDADeviceContext& d,
-                                const T* input, const Dim3 input_dims,
-                                T* output) {
+void SendSwapDim1And2InTranspose(const platform::CUDADeviceContext& d,
+                                 const T* input, const Dim3& input_dims,
+                                 T* output) {
   // Suppose tile size > 16
   static const int kMinTileSize = 16;
   static const int kMinNarrowTileSize = 96;
@@ -584,7 +535,7 @@ struct SwapDim1And2InTranspose {
     Dim3 input_dims = {static_cast<int>(combined_dims[0]),
                        static_cast<int>(combined_dims[1]),
                        static_cast<int>(combined_dims[2])};
-    RunSwapDim1And2InTranspose<T>(d, in, input_dims, out);
+    SendSwapDim1And2InTranspose<T>(d, in, input_dims, out);
   }
 };
 
@@ -611,7 +562,11 @@ inline void CombineTransposeDim3(const framework::DDim& shape,
                                  std::vector<int>* new_perm,
                                  framework::DDim* new_dims) {
   PADDLE_ENFORCE_EQ(shape.size(), perm.size(),
-                    " shape should have the save dim with");
+                    platform::errors::InvalidArgument(
+                        " shape should have the save dim with perm, but"
+                        " received shape size is:%d, perm size is:%d.",
+                        shape.size(), perm.size()));
+
   std::vector<int> dim_vec;
   if (shape.size() == 1) {
     // If input dimension is already 1, n<<dim_idx;o need to reduce dimension.
