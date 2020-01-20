@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/trainer.h"
 #include "gtest/gtest.h"
+#include "paddle/fluid/framework/trainer.h"
 
 #if defined _WIN32 || defined __APPLE__
 #else
