@@ -117,8 +117,8 @@ class TestMKLDNNElementwiseAddOp_scalar2(TestMKLDNNElementwiseAddOp):
 
 class TestMKLDNNElementwiseAddOp_Vector(TestMKLDNNElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.random((32, )).astype(self.dtype)
-        self.y = np.random.random((32, )).astype(self.dtype)
+        self.x = np.random.random((100, )).astype(self.dtype)
+        self.y = np.random.random((100, )).astype(self.dtype)
         self.out = np.add(self.x, self.y)
 
 
@@ -147,7 +147,7 @@ class TestMKLDNNElementwiseAddOp_broadcast_2(TestMKLDNNElementwiseAddOp):
         print("### TestMKLDNNElementwiseAddOp_broadcast2 ###")
 
     def init_input_output(self):
-        self.x = np.random.rand(2, 2, 3, 100).astype(self.dtype)
+        self.x = np.random.rand(2, 3, 4, 100).astype(self.dtype)
         self.y = np.random.rand(100).astype(self.dtype)
         self.out = self.x + self.y.reshape(1, 1, 1, 100)
 
@@ -157,9 +157,9 @@ class TestMKLDNNElementwiseAddOp_broadcast_3(TestMKLDNNElementwiseAddOp):
         print("### TestMKLDNNElementwiseAddOp_bradcast_3 ###")
 
     def init_input_output(self):
-        self.x = np.random.rand(2, 3, 4, 5).astype(self.dtype)
-        self.y = np.random.rand(3, 4).astype(self.dtype)
-        self.out = self.x + self.y.reshape(1, 3, 4, 1)
+        self.x = np.random.rand(2, 30, 40, 5).astype(self.dtype)
+        self.y = np.random.rand(30, 40).astype(self.dtype)
+        self.out = self.x + self.y.reshape(1, 30, 40, 1)
 
     def init_axis(self):
         self.axis = 1
@@ -170,9 +170,9 @@ class TestMKLDNNElementwiseAddOp_broadcast_4(TestMKLDNNElementwiseAddOp):
         print("### TestMKLDNNElementwiseAddOp_broadcast_4 ###")
 
     def init_input_output(self):
-        self.x = np.random.rand(2, 3, 4, 5).astype(self.dtype)
-        self.y = np.random.rand(2, 1).astype(self.dtype)
-        self.out = self.x + self.y.reshape(2, 1, 1, 1)
+        self.x = np.random.rand(100, 2, 3, 4).astype(self.dtype)
+        self.y = np.random.rand(100, 1).astype(self.dtype)
+        self.out = self.x + self.y.reshape(100, 1, 1, 1)
 
     def init_axis(self):
         self.axis = 0
@@ -191,12 +191,14 @@ class TestMKLDNNElementwiseAddOp_rowwise_add_0(TestMKLDNNElementwiseAddOp):
         self.axis = 1
 
 
+@skip_check_grad_ci(
+    reason="[skip shape check] Use y_shape(1) to test broadcast.")
 class TestMKLDNNElementwiseAddOp_rowwise_add_1(TestMKLDNNElementwiseAddOp):
     def print_info(self):
         print("### TestMKLDNNElementwiseAddOp_rowwise_add_1 ###")
 
     def init_input_output(self):
-        self.x = np.random.rand(2, 1).astype(self.dtype)
+        self.x = np.random.rand(100, 1).astype(self.dtype)
         self.y = np.random.rand(1).astype(self.dtype)
         self.out = self.x + self.y.reshape(1, 1)
 
@@ -220,6 +222,7 @@ class TestMKLDNNElementwiseAddOp_channelwise_add(TestMKLDNNElementwiseAddOp):
     reason="This test is to verify the NHWC case for inference only.")
 class TestMKLDNNElementwiseAddOp_NHWC(OpTest):
     def setUp(self):
+        self.__class__.op_type = "elementwise_add"
         self.use_mkldnn = True
         self._cpu_only = True
         self.use_cudnn = False
