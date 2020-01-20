@@ -34,7 +34,6 @@ def fsp_matrix(a, b):
     return np.mean(a_r * b_r, axis=1)
 
 
-@unittest.skip("Disable temporarily.")
 class TestFSPOp(OpTest):
     def setUp(self):
         self.op_type = "fsp"

@@ -82,7 +82,12 @@ def save_dygraph(state_dict, model_path):
         name_table[k] = v.name
     model_dict["StructuredToParameterName@@"] = name_table
 
-    with open(model_path + suffix, 'wb') as f:
+    file_name = model_path + suffix
+    dir_name = os.path.dirname(file_name)
+    if dir_name and not os.path.exists(dir_name):
+        os.makedirs(dir_name)
+
+    with open(file_name, 'wb') as f:
         pickle.dump(model_dict, f)
 
 
@@ -113,7 +118,7 @@ def load_dygraph(model_path, keep_name_table=False):
                 adam = fluid.optimizer.Adam( learning_rate = fluid.layers.noam_decay( 100, 10000),
                                              parameter_list = emb.parameters() )
                 state_dict = adam.state_dict()
-                fluid.save_dygraph( state_dict, "padle_dy")
+                fluid.save_dygraph( state_dict, "paddle_dy")
 
                 para_state_dict, opti_state_dict = fluid.load_dygraph( "paddle_dy")
 
