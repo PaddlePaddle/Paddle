@@ -202,6 +202,16 @@ paddlecloud environment.".format(args.cluster_node_ips, node_ips))
             ]
     selected_gpus_num = len(selected_gpus)
 
+    if args.use_paddlecloud and num_nodes > 1:
+        cloud_paddle_port = os.getrenv("PADDLE_PORT", "")
+        cloud_paddle_port_num = os.getrenv("PADDLE_PORTS_NUM", "")
+        if cloud_paddle_port != "" and cloud_paddle_port_num != "":
+            cloud_paddle_port_num = int(cloud_paddle_port_num)
+            if cloud_paddle_port_num >= selected_gpus_num:
+                args.started_port = int(cloud_paddle_port)
+                logger.warning("Use Cloud specified port:{}.".format(
+                    cloud_paddle_port))
+
     trainers_endpoints = ""
     for ip in node_ips:
         for i in range(selected_gpus_num):
