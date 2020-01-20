@@ -237,26 +237,26 @@ bool SelectProperTileSize(std::vector<std::pair<int, int>>* tiles) {
 }
 
 // Get Transpose Type
-template <int ElemBytes>
-struct TransposeElemType;
+template <int ByteSize>
+struct SystemElemType;
 template <>
-struct TransposeElemType<1> {
+struct SystemElemType<1> {
   using type = uint8_t;
 };
 template <>
-struct TransposeElemType<2> {
+struct SystemElemType<2> {
   using type = uint16_t;
 };
 template <>
-struct TransposeElemType<4> {
+struct SystemElemType<4> {
   using type = uint32_t;
 };
 template <>
-struct TransposeElemType<8> {
+struct SystemElemType<8> {
   using type = uint64_t;
 };
 template <>
-struct TransposeElemType<16> {
+struct SystemElemType<16> {
   using type = float4;
 };
 
@@ -455,8 +455,9 @@ void SwapDim1And2InNarrow(const platform::CUDADeviceContext& d, const T* input,
   int total_tiles_count =
       input_dims_aligned[0] * input_dims_aligned[1] * input_dims_aligned[2];
 
-  using ElemType = typename TransposeElemType<sizeof(T)>::type;
-  static_assert(alignof(T) >= alignof(ElemType), "Unexpected data alignment.");
+  // Suppose T can be replaced by system builtin types
+  using ElemType = typename SystemElemType<sizeof(T)>::type;
+
   NarrowDims2TransposeDispatch<ElemType, 32, 2>::DoTranspose(
       d, select_tile_size_i, select_tile_size_j, total_tiles_count,
       reinterpret_cast<const ElemType*>(input), input_dims,
@@ -499,6 +500,7 @@ void SendSwapDim1And2InTranspose(const platform::CUDADeviceContext& d,
   bool narrow_tile = input_dims[1] >= kMinNarrowTileSize ||
                      input_dims[2] >= kMinNarrowTileSize;
   if (large_tile) {
+    // If input is large square, such as 32X32, use SM to do copy.
     // suppose 32 X 32 gives best performance, and 8 warp in block.
     constexpr int kTileSize = 32;
     constexpr int kNumThreads = 256;
@@ -517,8 +519,10 @@ void SendSwapDim1And2InTranspose(const platform::CUDADeviceContext& d,
         input, input_dims, output);
 
   } else if (narrow_tile) {
+    // If input shape is like Rect, such as 2X100, use Narrow tile size.
     SwapDim1And2InNarrow<T>(d, input, input_dims, output, kMinTileSize);
   } else {
+    // If input shape is small, such as 8X8, just do simple copy
     int total_elements = input_dims[0] * input_dims[1] * input_dims[2];
     auto config = GetGpuLaunchConfig1D(d, total_elements);
     TransposeSimpleKernel<T, 0, 2, 1><<<
@@ -557,6 +561,8 @@ struct SwapDim0And2InTranspose {
   }
 };
 
+// This function is to combine dimension. fox example:
+// (0, 1, 3, 2) --> (0, 2, 1)
 inline void CombineTransposeDim3(const framework::DDim& shape,
                                  const std::vector<int>& perm,
                                  std::vector<int>* new_perm,
@@ -569,7 +575,7 @@ inline void CombineTransposeDim3(const framework::DDim& shape,
 
   std::vector<int> dim_vec;
   if (shape.size() == 1) {
-    // If input dimension is already 1, n<<dim_idx;o need to reduce dimension.
+    // If input dimension is already 1, no need to combine dim.
     new_perm->resize(1);
     (*new_perm)[0] = perm[0];
     dim_vec.push_back(shape[0]);
