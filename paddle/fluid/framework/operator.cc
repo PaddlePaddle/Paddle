@@ -1300,7 +1300,7 @@ proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
   PADDLE_ENFORCE_NE(
       data_type, dafault_data_type,
       "The Input Variable(%s) of %s Op used to determine kernel data type "
-      "is empty or not LoDTensor, SelectedRows or LoDTensorArray.",
+      "is empty or not LoDTensor or SelectedRows.",
       name, Type());
   return data_type;
 }
