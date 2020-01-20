@@ -14,10 +14,11 @@
 
 #pragma once
 
-#include <array>
-#include "Eigen/src/Core/util/Macros.h"
-
 #define EIGEN_USE_GPU
+
+#include <array>
+#include "paddle/fluid/platform/enforce.h"
+#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
 namespace framework {
@@ -79,7 +80,7 @@ struct Index3 : DeviceArray<int, 3, 0> {
       : Base(a0, a1, a2) {}
 };
 
-// Flat index with real domension
+// Flat index with real dimension
 EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE int FlatTensorIndex(const Index3& index,
                                                           const Dim3& dims) {
   int flat_index = index[0];
@@ -89,7 +90,7 @@ EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE int FlatTensorIndex(const Index3& index,
   return flat_index;
 }
 
-// Convert index to tensor index with dimension..
+// Convert index to tensor index with dimension.
 EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE Index3
 ConvertTensorIndex(int index, const Dim3& dims) {
   Index3 tensor_index;
@@ -99,6 +100,33 @@ ConvertTensorIndex(int index, const Dim3& dims) {
     index = new_index;
   }
   return tensor_index;
+}
+
+template <typename IntType, bool ceil>
+IntType CeilOrFloor(IntType x, IntType deviser) {
+  PADDLE_ENFORCE_NE(0, deviser, platform::errors::InvalidArgument(
+                                    "deviser should not equal to 0, "
+                                    "but received is:%d",
+                                    deviser));
+
+  const IntType rounded_toward_zero = x / deviser;
+  const IntType intermediate_product = rounded_toward_zero * deviser;
+
+  if (ceil) {
+    const bool needs_adjustment = (rounded_toward_zero >= 0) &&
+                                  ((deviser > 0 && x > intermediate_product) ||
+                                   (deviser < 0 && x < intermediate_product));
+    const IntType adjustment = static_cast<IntType>(needs_adjustment);
+    const IntType ceil_of_ratio = rounded_toward_zero + adjustment;
+    return ceil_of_ratio;
+  } else {
+    const bool needs_adjustment = (rounded_toward_zero <= 0) &&
+                                  ((deviser > 0 && x < intermediate_product) ||
+                                   (deviser < 0 && x > intermediate_product));
+    const IntType adjustment = static_cast<IntType>(needs_adjustment);
+    const IntType floor_of_ratio = rounded_toward_zero - adjustment;
+    return floor_of_ratio;
+  }
 }
 
 }  // namespace framework

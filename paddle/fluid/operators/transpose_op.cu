@@ -15,8 +15,8 @@ limitations under the License. */
 #include <algorithm>
 #include <limits>
 #include <utility>
-#include "paddle/fluid/framework/gpu_utils.h"
 
+#include "paddle/fluid/framework/gpu_utils.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/float16.h"
@@ -79,6 +79,7 @@ constexpr bool CheckNonLongTileSize(int tile_long, int tile_short, int size_T) {
 }
 
 // Use SM to do data transfer, load a tile into SM then store out.
+// All tile read and write are colascing, so can speedup memory copy
 template <typename T, int NumThreads, int TileX, int TileY>
 __global__ void TilingSwapDim1And2(const T* __restrict__ input, Dim3 input_dims,
                                    T* __restrict__ output) {
@@ -236,7 +237,7 @@ bool SelectProperTileSize(std::vector<std::pair<int, int>>* tiles) {
   return false;
 }
 
-// Get Transpose Type
+// Use system built in type
 template <int ByteSize>
 struct SystemElemType;
 template <>
@@ -259,33 +260,6 @@ template <>
 struct SystemElemType<16> {
   using type = float4;
 };
-
-template <typename IntegralType, bool ceil>
-IntegralType CeilOrFloorOfRatio(IntegralType numerator,
-                                IntegralType denominator) {
-  PADDLE_ENFORCE_NE(0, denominator, "Division by zero is not supported.");
-
-  const IntegralType rounded_toward_zero = numerator / denominator;
-  const IntegralType intermediate_product = rounded_toward_zero * denominator;
-
-  if (ceil) {
-    const bool needs_adjustment =
-        (rounded_toward_zero >= 0) &&
-        ((denominator > 0 && numerator > intermediate_product) ||
-         (denominator < 0 && numerator < intermediate_product));
-    const IntegralType adjustment = static_cast<IntegralType>(needs_adjustment);
-    const IntegralType ceil_of_ratio = rounded_toward_zero + adjustment;
-    return ceil_of_ratio;
-  } else {
-    const bool needs_adjustment =
-        (rounded_toward_zero <= 0) &&
-        ((denominator > 0 && numerator < intermediate_product) ||
-         (denominator < 0 && numerator > intermediate_product));
-    const IntegralType adjustment = static_cast<IntegralType>(needs_adjustment);
-    const IntegralType floor_of_ratio = rounded_toward_zero - adjustment;
-    return floor_of_ratio;
-  }
-}
 
 template <typename T, int tile_long, int tile_short>
 void LaunchNarrowDims2TransposeKernel(const platform::CUDADeviceContext& d,
@@ -409,11 +383,11 @@ void SwapDim1And2InNarrow(const platform::CUDADeviceContext& d, const T* input,
     int proposed_tile_long_edge = tile_size_pair.first;
     // data may not aligned to tile, so some threads wasted
     int num_wasted_threads = input_long_edge -
-                             CeilOrFloorOfRatio<int, false>(
+                             framework::CeilOrFloor<int, false>(
                                  input_long_edge, proposed_tile_long_edge) *
                                  proposed_tile_long_edge;
 
-    int num_full_tiles = CeilOrFloorOfRatio<int, false>(
+    int num_full_tiles = framework::CeilOrFloor<int, false>(
         input_long_edge, proposed_tile_long_edge);
 
     float cost = 0;
@@ -448,8 +422,8 @@ void SwapDim1And2InNarrow(const platform::CUDADeviceContext& d, const T* input,
 
   Dim3 input_dims_aligned = {
       input_dims[0],
-      CeilOrFloorOfRatio<int, true>(input_dims[1], select_tile_size_i),
-      CeilOrFloorOfRatio<int, true>(input_dims[2], select_tile_size_j),
+      framework::CeilOrFloor<int, true>(input_dims[1], select_tile_size_i),
+      framework::CeilOrFloor<int, true>(input_dims[2], select_tile_size_j),
   };
 
   int total_tiles_count =
@@ -464,6 +438,8 @@ void SwapDim1And2InNarrow(const platform::CUDADeviceContext& d, const T* input,
       reinterpret_cast<ElemType*>(output));
 }
 
+// This is for case that cannot do coalescing read and write.
+// Or input is too small to split into tiles.
 template <typename T, int pos0, int pos1, int pos2>
 __global__ void TransposeSimpleKernel(int nthreads, const T* __restrict__ input,
                                       Dim3 input_dims, T* __restrict__ output) {
@@ -506,8 +482,9 @@ void SendSwapDim1And2InTranspose(const platform::CUDADeviceContext& d,
     constexpr int kNumThreads = 256;
 
     Dim3 input_dims_aligned = {
-        input_dims[0], CeilOrFloorOfRatio<int, true>(input_dims[1], kTileSize),
-        CeilOrFloorOfRatio<int, true>(input_dims[2], kTileSize),
+        input_dims[0],
+        framework::CeilOrFloor<int, true>(input_dims[1], kTileSize),
+        framework::CeilOrFloor<int, true>(input_dims[2], kTileSize),
     };
 
     int total_tiles_count =
@@ -621,18 +598,18 @@ template <typename T>
 struct TransposeSimple {
   static bool run(const platform::CUDADeviceContext& ctx, const Tensor& in,
                   const std::vector<int32_t> perm, Tensor* out) {
-    // First try to reduce the dimensions of the input tensor.
+    // First reduce the dimensions of the input tensor if possible.
     std::vector<int> new_perm;
     framework::DDim new_dims;
     CombineTransposeDim3(in.dims(), perm, &new_perm, &new_dims);
 
-    // Only use special GPU kernel when dimension is 2 or 3.
+    // Only use tile copy GPU kernel when dimension is 2 or 3.
     int dims = new_dims.size();
     std::vector<int> new_dim_vec = framework::vectorize<int>(new_dims);
     if (dims < 2 || dims > 3) return false;
     auto in_data = in.data<T>();
     auto out_data = out->data<T>();
-
+    // In most cases, dim will not greater than 3 after combine.
     switch (dims) {
       case 2:
         if (new_perm[0] == 1 && new_perm[1] == 0) {
@@ -643,10 +620,15 @@ struct TransposeSimple {
         }
         break;
       case 3:
+        // In this case, suppose we can do coalescing read and write in tile.
         if (new_perm == std::vector<int>({0, 2, 1})) {
           SwapDim1And2InTranspose<T>()(ctx, in_data, new_dim_vec, out_data);
           return true;
         } else if (new_perm == std::vector<int>({2, 1, 0})) {
+          // Maybe can optimize later, find a way to do coalescing memory copy.
+          // But I think it depends on the data size. If span is not large,
+          // maybe
+          // can do coalescing.
           SwapDim0And2InTranspose<T>()(ctx, in_data, new_dim_vec, out_data);
           return true;
         } else {
