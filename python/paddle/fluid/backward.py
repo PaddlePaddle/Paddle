@@ -933,6 +933,31 @@ def _append_backward_ops_(block,
                 cb(block=target_block, context=grad_to_var)
 
 
+def _is_grad_var_(var_name):
+    return core.grad_var_suffix() in var_name
+
+
+# Find the op who holds the sub_block as its "sub_block" attr
+def _find_parent_op_(sub_block):
+    sub_block_id = sub_block.idx
+
+    if sub_block_id == 0:
+        return None
+
+    program = sub_block.program
+    for block_id in six.moves.range(program.num_blocks):
+        block_desc = program.block(block_id).desc
+        for op_idx in six.moves.range(block_desc.op_size()):
+            op = block_desc.op(op_idx)
+            if op.has_attr("sub_block") and op._block_attr_id(
+                    "sub_block") == sub_block_id:
+                return op
+
+    # NOTE(paddle-dev): When optimizer is added in conditional block, 
+    # sub_block may not be found.
+    return None
+
+
 def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
     """
     Create new variables required by backward pass.
@@ -948,11 +973,73 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
             key(str): forward variable name
             val(tuple): a tuple of (str, Block), str is the corresponding grad name, Block is the block containing grad variable
     """
+    ops_to_remove = []
+    '''
+    NOTE(paddle-dev): while_grad op may hold some inputs which are not found 
+    in the parent/forward block, and they are also the outputs of while_grad 
+    op. These kinds of inputs are the recursive outputs inside while_grad op. 
+    They should be considered as "already created" when scanning the inner 
+    ops of while_grad ops.  
+    '''
+    parent_op = _find_parent_op_(block)
+    parent_op_vars = []
+    if parent_op is not None:
+        input_args = parent_op.input_arg_names()
+        output_args = parent_op.output_arg_names()
+        for in_arg in input_args:
+            if in_arg in output_args:
+                parent_op_vars.append(in_arg)
+
     for op_idx in range(start_op_idx, block.desc.op_size()):
         op_desc = block.desc.op(op_idx)
         if op_desc.has_attr("sub_block"):
             sub_block = block.program.block(op_desc._block_attr_id("sub_block"))
             _append_backward_vars_(sub_block, 0, grad_to_var, grad_info_map)
+
+        grad_var_ins = [
+            var for var in op_desc.input_arg_names() if _is_grad_var_(var)
+        ]
+        grad_var_outs = [
+            var for var in op_desc.output_arg_names() if _is_grad_var_(var)
+        ]
+
+        inputs = [
+            var for var in op_desc.input_arg_names()
+            if var != core.empty_var_name()
+        ]
+        outputs = [
+            var for var in op_desc.output_arg_names()
+            if var != core.empty_var_name()
+        ]
+
+        # If the outputs of grad op is empty, just remove it 
+        if not outputs:
+            ops_to_remove.append(op_idx)
+            continue
+        else:
+            '''
+            If the output is not empty and there is any grad input, find 
+            whether there is any existing input. If not, just remove it.
+            '''
+            if grad_var_ins:
+                existing_grad_var_ins = [
+                    var for var in grad_var_ins
+                    if block.desc.has_var_recursive(cpt.to_bytes(var)) or var in
+                    parent_op_vars
+                ]
+                if not existing_grad_var_ins:
+                    '''
+                    FIXME(paddle-dev, zengjinle): rnn_memory_helper_grad is used
+                    in recurrent op. The input of this op does not even exist in 
+                    the program! Therefore, any dependency analysis would not 
+                    work to this op! If I do not add the following code, this op
+                    would be pruned, and the calculation result would be wrong. 
+                    Maybe we should re-design this op later...  
+                    '''
+                    if op_desc.type() not in ['rnn_memory_helper_grad']:
+                        ops_to_remove.append(op_idx)
+                    continue
+
         new_vars = set()
         # create new gradient variables
         for grad_var_name in op_desc.output_arg_names():
@@ -971,6 +1058,9 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
         for arg in op_desc.output_arg_names():
             if arg in new_vars:
                 _infer_var_data_type_shape_(arg, block)
+
+    for op_idx in reversed(ops_to_remove):
+        block.desc._remove_op(op_idx, op_idx + 1)
 
 
 def _rename_grad_(block, start_op_idx, grad_to_var, target_grad_map):
