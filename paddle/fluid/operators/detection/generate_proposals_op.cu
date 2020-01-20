@@ -376,6 +376,7 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
 
     auto *rpn_rois = context.Output<LoDTensor>("RpnRois");
     auto *rpn_roi_probs = context.Output<LoDTensor>("RpnRoiProbs");
+    auto *rpn_rois_lod = context.Output<Tensor>("RpnRoisLod");
 
     int pre_nms_top_n = context.Attr<int>("pre_nms_topN");
     int post_nms_top_n = context.Attr<int>("post_nms_topN");
@@ -419,9 +420,12 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
     T *rpn_roi_probs_data = rpn_roi_probs->data<T>();
 
     auto place = boost::get<platform::CUDAPlace>(dev_ctx.GetPlace());
+    auto cpu_place = platform::CPUPlace();
 
     int64_t num_proposals = 0;
     std::vector<size_t> offset(1, 0);
+    std::vector<int64_t> tmp_lod;
+
     for (int64_t i = 0; i < num; ++i) {
       Tensor im_info_slice = im_info->Slice(i, i + 1);
       Tensor bbox_deltas_slice = bbox_deltas_swap.Slice(i, i + 1);
@@ -447,13 +451,21 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
       dev_ctx.Wait();
       num_proposals += proposals.dims()[0];
       offset.emplace_back(num_proposals);
+
+      tmp_lod.push_back(num_proposals);
     }
+    rpn_rois_lod->mutable_data<int64_t>({num}, context.GetPlace());
+    int64_t *lod_data = rpn_rois_lod->data<int64_t>();
+    memory::Copy(place, lod_data, cpu_place, &tmp_lod[0], sizeof(int64_t) * num,
+                 dev_ctx.stream());
+
     framework::LoD lod;
     lod.emplace_back(offset);
     rpn_rois->set_lod(lod);
     rpn_roi_probs->set_lod(lod);
     rpn_rois->Resize({num_proposals, 4});
     rpn_roi_probs->Resize({num_proposals, 1});
+    rpn_rois_lod->Resize({num});
   }
 };
 

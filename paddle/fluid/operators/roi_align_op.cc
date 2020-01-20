@@ -27,16 +27,22 @@ class ROIAlignOp : public framework::OperatorWithKernel {
                    "Input(X) of ROIAlignOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("ROIs"),
                    "Input(ROIs) of ROIAlignOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("RoisLod"),
+                   "Input(RoisLod) of ROIPoolOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of ROIAlignOp should not be null.");
+
     auto input_dims = ctx->GetInputDim("X");
     auto rois_dims = ctx->GetInputDim("ROIs");
+    auto rois_lod_dims = ctx->GetInputDim("RoisLod");
 
     PADDLE_ENFORCE(input_dims.size() == 4,
                    "The format of input tensor is NCHW.");
     PADDLE_ENFORCE(rois_dims.size() == 2,
                    "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
                    "given as [[x1, y1, x2, y2], ...].");
+    PADDLE_ENFORCE(rois_lod_dims.size() == 1, "");
+
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE(rois_dims[1] == 4,
                      "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
@@ -109,6 +115,7 @@ class ROIAlignOpMaker : public framework::OpProtoAndCheckerMaker {
              "given as [[x1, y1, x2, y2], ...]. "
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates.");
+    AddInput("RoisLod", "(Tensor)");
     AddOutput("Out",
               "(Tensor), "
               "The output of ROIAlignOp is a 4-D tensor with shape "
@@ -164,6 +171,7 @@ class ROIAlignGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetType("roi_align_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("ROIs", this->Input("ROIs"));
+    op->SetInput("RoisLod", this->Input("RoisLod"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
