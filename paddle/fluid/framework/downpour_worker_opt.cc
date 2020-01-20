@@ -12,13 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <set>
+#include <unordered_map>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
-#include <set>
-#include <unordered_map>
 
 bool HasDependentOutput(const OpDesc& op_desc,
                         const std::unordered_set<std::string>& dependent_vars) {
@@ -97,7 +97,7 @@ void DownpourWorkerOpt::CreateThreadOperatorsWithRerank(
   // mark forward ops by loss
   for (int i = 0; i < loss_num; i++) {
     for (auto op_iter = ops.rbegin(); op_iter != ops.rend(); ++op_iter) {
-      auto &op_desc = *op_iter;
+      auto& op_desc = *op_iter;
       if (i > 0) {
         for (int j = 0; j < i; j++) {
           if (HasDependentInput(*op_desc, loss_input_map[loss_names[j]])) {
@@ -125,7 +125,7 @@ void DownpourWorkerOpt::CreateThreadOperatorsWithRerank(
       loss_output_grad_map;
   for (int i = 0; i < loss_num; i++) {
     for (auto op_iter = ops.begin(); op_iter != ops.end(); ++op_iter) {
-      auto &op_desc = *op_iter;
+      auto& op_desc = *op_iter;
 
       if (HasOutput(*op_desc, loss_grad_names[i]) ||
           HasDependentOutput(*op_desc, loss_output_grad_map[loss_names_[i]])) {
@@ -141,7 +141,7 @@ void DownpourWorkerOpt::CreateThreadOperatorsWithRerank(
       metric_output_map;
   for (int i = 0; i < loss_num; i++) {
     for (auto op_iter = ops.begin(); op_iter != ops.end(); ++op_iter) {
-      auto &op_desc = *op_iter;
+      auto& op_desc = *op_iter;
       if ((HasDependentInput(*op_desc, loss_output_map[loss_names_[i]]) &&
            NotHasDependentOutput(op_desc, loss_input_map[loss_name_[i]])) ||
           HasDependentInput(op_desc, metric_output_vars[loss_names_[i]])) {
@@ -170,7 +170,7 @@ void DownpourWorkerOpt::CreateThreadOperatorsWithRerank(
   }
   for (int i = 0; i < loss_num; i++) {
     for (auto op_iter = ops->begin(); op_iter != ops->end(); ++op_iter) {
-      auto &op_desc = *op_iter;
+      auto& op_desc = *op_iter;
       if (HasDependentInput(op_desc, loss_input_vars[i]) ||
           HasDependentInput(op_desc, loss_input_grad_vars[i]) ||
           HasDependentInput(op_desc, metric_input_vars[i])) {
@@ -271,7 +271,7 @@ void DownpourWorkerOpt::TrainFiles() {
     // do computation here
     for (int loss_idx = 0; loss_idx < loss_ops_.szie(); loss_idx++) {
       int op_idx = 0;
-      for (auto &op : loss_ops_[loss_idx]) {
+      for (auto& op : loss_ops_[loss_idx]) {
         bool need_skip = false;
         for (auto t = 0u; t < skip_ops_.size(); ++t) {
           if (op->Type().find(skip_ops_[t]) != std::string::npos) {
@@ -306,11 +306,11 @@ void DownpourWorkerOpt::TrainFiles() {
     }
     // check inf and nan
     for (std::string &var_name : check_nan_var_names_) {
-      Variable *var = thread_scope_->FindVar(var_name);
+      Variable* var = thread_scope_->FindVar(var_name);
       if (var == nullptr) {
         continue;
       }
-      LoDTensor *tensor = var->GetMutable<LoDTensor>();
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
       if (tensor == nullptr) {
         continue;
       }
@@ -414,11 +414,11 @@ void DownpourWorkerOpt::TrainFiles() {
         ars[i] = ars[i] + "\t" + ins_content_vec[i];
       }
       for (auto &field : dump_fields_) {
-        Variable *var = thread_scope_->FindVar(field);
+        Variable* var = thread_scope_->FindVar(field);
         if (var == nullptr) {
           continue;
         }
-        LoDTensor *tensor = var->GetMutable<LoDTensor>();
+        LoDTensor* tensor = var->GetMutable<LoDTensor>();
         if (!CheckValidOutput(tensor, batch_size)) {
           continue;
         }
