@@ -45,6 +45,9 @@ if [ -f $file_1 ]; then
     rm $file_1
 fi
 
+unset PADDLE_PORT
+unset PADDLE_PORTS_NUM
+
 echo ""
 echo "paddle.distributed.launch async poll process test"
 if ! CUDA_VISIBLE_DEVICES=0,1 python -m paddle.distributed.launch ${distributed_args} multi_process.py abort; then
