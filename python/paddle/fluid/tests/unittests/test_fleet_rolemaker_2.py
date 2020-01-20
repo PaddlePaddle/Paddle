@@ -197,31 +197,87 @@ class TestCloudRoleMaker2(unittest.TestCase):
         os.remove("./test_fleet_gloo_role_maker_1.txt")
 
         class TmpClass():
+            """
+            dummy tmp class
+            """
+
             def __init__(self):
                 pass
+
             def all_reduce_worker(self, input, output):
+                """
+                dummy all reduce worker
+
+                Args:
+                    input(None): fake input
+                    output(None): fale output
+                """
                 pass
+
             def barrier_worker(self):
+                """
+                dummy barrier worker
+                """
                 pass
 
         from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
+
         class TmpFleet(Fleet):
+            """
+            dummy tmp fleet
+            """
+
             def __init__(self):
                 super(Fleet, self).__init__()
                 self._role_maker = None
+
             def init_worker(self):
+                """
+                dummy init worker
+                """
                 pass
+
             def init_server(self, model_dir=None):
+                """
+                dummy init server
+
+                Args:
+                    model_dir(None): fake model_dir
+                """
                 pass
+
             def run_server(self):
+                """
+                dummy run server
+                """
                 pass
+
             def stop_worker(self):
+                """
+                dummy stop worker
+                """
                 pass
+
             def distributed_optimizer(self, optimizer, strategy=None):
+                """
+                dummy distributed optimizer
+                
+                Args:
+                    optimizer(None): fake optimizer
+                    strategy(None): fake strategy
+                """
                 pass
+
             def save_inference_model(self):
+                """
+                dummy save inference model
+                """
                 pass
+
             def save_persistables(self):
+                """
+                dummy save persistables
+                """
                 pass
 
         os.environ["TRAINING_ROLE"] = "TRAINER"

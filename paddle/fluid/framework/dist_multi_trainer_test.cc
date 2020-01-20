@@ -15,9 +15,15 @@
 #include "paddle/fluid/framework/trainer.h"
 #include "gtest/gtest.h"
 
+#if defined _WIN32 || defined __APPLE__
+#else
+#define _LINUX
+#endif
+
 namespace paddle {
 namespace framework {
 TEST(DisMultiTrainerTest, test1) {
+#ifdef _LINUX
   std::shared_ptr<DistMultiTrainer> tmp = std::make_shared<DistMultiTrainer>();
   TrainerDesc t;
   std::shared_ptr<MultiSlotDataset> dataset =
@@ -27,6 +33,7 @@ TEST(DisMultiTrainerTest, test1) {
   dataset->SetTrainerNum(1);
   dataset->CreateReaders();
   tmp->Initialize(t, dataset.get());
+#endif
 }
 }  // namespace framework
 }  // namespace paddle
