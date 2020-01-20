@@ -558,6 +558,7 @@ class GeneralRoleMaker(RoleMakerBase):
         self._hdfs_ugi = kwargs.get("hdfs_ugi", "")
         self._hdfs_path = kwargs.get("path", "")
         self._iface = self.__get_default_iface()
+        # this environment variable can be empty
         self._prefix = os.getenv("SYS_JOB_ID", "")
 
     def generate_role(self):
@@ -842,25 +843,34 @@ class GeneralRoleMaker(RoleMakerBase):
         """
         get default physical interface
         """
+        default1 = self.__get_default_iface_from_gateway()
+        default2 = self.__get_default_iface_from_interfaces()
+        return default2 if default1 == "lo" else default1
+
+    def __get_default_iface_from_gateway(self):
+        """
+        get default physical interface
+        """
         import netifaces
         gateways = netifaces.gateways()
-        print("gateways ", gateways)
-        print("netifaces.interfaces ", netifaces.interfaces)
         if gateways.get(netifaces.AF_INET) != None:
             gateway = gateways[netifaces.AF_INET]
             if len(gateway) > 0 and len(gateway[0]) > 1:
                 return gateway[0][1]
-        print("netifaces.interfaces ", netifaces.interfaces)
+        return "lo"
+
+    def __get_default_iface_from_interfaces(self):
+        """
+        get default physical interface
+        """
+        import netifaces
         for intf_name in netifaces.interfaces():
             addresses = netifaces.ifaddresses(intf_name)
-            print("addr of ", intf_name, " is ", addresses)
             if netifaces.AF_INET in addresses:
                 ipv4_addresses = addresses[netifaces.AF_INET]
                 for ipv4_address in ipv4_addresses:
                     if 'broadcast' in ipv4_address:
-                        print("pick ", intf_name)
                         return intf_name
-        print("warning: cannot pick default physical interface, set to lo")
         return "lo"
 
 

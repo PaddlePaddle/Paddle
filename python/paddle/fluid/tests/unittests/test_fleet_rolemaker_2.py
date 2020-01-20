@@ -35,6 +35,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
         from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
         from paddle.fluid.incubate.fleet.parameter_server.pslib import PSLib
         from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
+        from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase
         try:
             import netifaces
         except:
@@ -89,6 +90,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
         role2._all_gather(1)
         role2._all_gather(1)
         role2._barrier_server()
+        role2.all_gather(1)
 
         role3 = GeneralRoleMaker(path="./test_gloo_3")
         role3._worker_gather(1)
@@ -167,6 +169,21 @@ class TestCloudRoleMaker2(unittest.TestCase):
         b = [0]
         role20._all_reduce(a, b)
 
+        role21 = GeneralRoleMaker(path="./test_gloo_21")
+        role21.all_reduce_worker([], [])
+        role21.all_reduce_worker([], [])
+        role21.barrier_worker()
+        role21.barrier_all()
+
+        role22 = GeneralRoleMaker(path="./test_gloo_22")
+        role22._get_rank()
+        role22._get_rank()
+
+        os.environ["PADDLE_PSERVER_ID"] = "0"
+        role23 = GeneralRoleMaker(path="./test_gloo_23")
+        role23._get_size()
+        role23._get_size()
+
         with open("test_fleet_gloo_role_maker_1.txt", "w") as f:
             data = "1 1 1 1\n"
             f.write(data)
@@ -178,6 +195,61 @@ class TestCloudRoleMaker2(unittest.TestCase):
         dataset.get_memory_data_size(fleet)
         dataset.get_shuffle_data_size(fleet)
         os.remove("./test_fleet_gloo_role_maker_1.txt")
+
+        class TmpClass():
+            def __init__(self):
+                pass
+            def all_reduce_worker(self, input, output):
+                pass
+            def barrier_worker(self):
+                pass
+
+        from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
+        class TmpFleet(Fleet):
+            def __init__(self):
+                super(Fleet, self).__init__()
+                self._role_maker = None
+            def init_worker(self):
+                pass
+            def init_server(self, model_dir=None):
+                pass
+            def run_server(self):
+                pass
+            def stop_worker(self):
+                pass
+            def distributed_optimizer(self, optimizer, strategy=None):
+                pass
+            def save_inference_model(self):
+                pass
+            def save_persistables(self):
+                pass
+
+        os.environ["TRAINING_ROLE"] = "TRAINER"
+        tmp = TmpFleet()
+        tmp._role_maker = TmpClass()
+        tmp.all_reduce_worker([], [])
+        tmp.barrier_worker()
+
+        from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
+        tmp = RoleMakerBase()
+        tmp.all_gather(1)
+        tmp.all_reduce_worker([], [])
+        tmp.barrier_worker()
+        tmp.barrier_all()
+
+        from paddle.fluid.incubate.fleet.base.role_maker import \
+            MPISymetricRoleMaker
+        tmp1 = MPISymetricRoleMaker()
+        tmp1.all_gather(1)
+        tmp1.all_gather(1)
+        tmp2 = MPISymetricRoleMaker()
+        tmp2.all_reduce_worker([], [])
+        tmp3 = MPISymetricRoleMaker()
+        tmp3.barrier_worker()
+        tmp3.barrier_worker()
+        tmp4 = MPISymetricRoleMaker()
+        tmp4.barrier_all()
+        tmp4.barrier_all()
 
 
 if __name__ == "__main__":
