@@ -18,8 +18,7 @@ RUN yum install -y curl-devel
 
 COPY tools/manylinux1/build_scripts ./build_scripts
 
-RUN bash build_scripts/build.sh && \
-  bash build_scripts/install_nccl2.sh && rm -rf build_scripts
+RUN bash build_scripts/build.sh && bash build_scripts/install_nccl2.sh && rm -rf build_scripts
 
 ENV SSL_CERT_FILE=/opt/_internal/certs.pem
 
