@@ -51,47 +51,49 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
     auto &input_tensor = input_var->Get<framework::LoDTensor>();
     auto &travel_lod_tensor = travel_var->Get<framework::LoDTensor>();
     auto &layer_lod_tensor = layer_var->Get<framework::LoDTensor>();
-    auto *out_tensor = context.Output<framework::LoDTensor>("Out");
-    auto *label_tensor = context.Output<framework::LoDTensor>("Labels");
-
+    auto *out_var = context.OutputVar("Out");
+    auto *label_var = context.OutputVar("Labels");
+    auto *out_tensor = out_var->GetMutable<framework::LoDTensor>();
+    auto *label_tensor = label_var->GetMutable<framework::LoDTensor>();
     // get dimension
-    int64_t input_ids_num = input_tensor.numel();
+    int input_ids_num = input_tensor.numel();
     VLOG(1) << "input_ids_num: " << input_ids_num;
     auto layer_nums = neg_samples_num_vec.size();
     VLOG(1) << "layer_nums: " << layer_nums;
 
-    int64_t sample_res_length = 0;
-    for (int64_t layer_idx = 0; layer_idx < layer_nums; ++layer_idx) {
-      sample_res_length +=
-          (neg_samples_num_vec[layer_idx] + (int64_t)output_positive_flag);
+    int sample_res_length = 0;
+    for (int layer_idx = 0; layer_idx < layer_nums; ++layer_idx) {
+      sample_res_length += (neg_samples_num_vec[layer_idx] +
+                            static_cast<int>(output_positive_flag));
     }
     VLOG(1) << "sample_res_length: " << sample_res_length;
 
     // get all data
-    int64_t *input_data = const_cast<int64_t *>(input_tensor.data<int64_t>());
-    int64_t *travel_data =
-        const_cast<int64_t *>(travel_lod_tensor.data<int64_t>());
-    int64_t *layer_data =
-        const_cast<int64_t *>(layer_lod_tensor.data<int64_t>());
-    int64_t *output_data = out_tensor->data<int64_t>();
-    int64_t *label_data = label_tensor->data<int64_t>();
-
+    int *input_data = const_cast<int *>(input_tensor.data<int>());
+    int *travel_data = const_cast<int *>(travel_lod_tensor.data<int>());
+    int *layer_data = const_cast<int *>(layer_lod_tensor.data<int>());
+    int *output_data = out_tensor->mutable_data<int>(context.GetPlace());
+    int *label_data = label_tensor->mutable_data<int>(context.GetPlace());
+    VLOG(1) << "End get input & output data";
     // generate uniform sampler
 
     auto seed = context.Attr<int>("seed");
-
-    for (int64_t i = 0; i < input_ids_num; ++i) {
+    VLOG(1) << "input_ids_num: " << input_ids_num;
+    for (int i = 0; i < input_ids_num; ++i) {
       // find leaf node travel path
       auto input_id = input_data[i];
+      VLOG(1) << "input_id: " << input_id;
       auto start_offset = input_id * layer_nums;
+      VLOG(1) << "Start offset: " << start_offset;
       // nce sample, layer by layer
-      int64_t offset = 0;
-      for (size_t layer_idx = 0; layer_idx < layer_nums; ++layer_idx) {
-        int64_t sample_num = neg_samples_num_vec[layer_idx];
-        int64_t node_nums =
+      int offset = 0;
+      for (int layer_idx = 0; layer_idx < layer_nums; ++layer_idx) {
+        int sample_num = neg_samples_num_vec[layer_idx];
+        VLOG(1) << "Sample num: " << sample_num;
+        int node_nums =
             layer_offset_lod[layer_idx + 1] - layer_offset_lod[layer_idx];
-        VLOG(1) << "node_nums" << node_nums;
-        Sampler *sampler = new math::UniformSampler(node_nums, seed);
+        VLOG(1) << "node_nums: " << node_nums;
+        Sampler *sampler = new math::UniformSampler(node_nums - 1, seed);
         // If output positive, add itself
         if (output_positive_flag) {
           output_data[i * sample_res_length + offset] =
@@ -102,12 +104,13 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
         }
 
         // Sampling at layer, until samples enough
-        for (int64_t sample_index = 0; sample_index < sample_num;
-             ++sample_index) {
+        for (int sample_index = 0; sample_index < sample_num; ++sample_index) {
           // Avoid sampling to positive samples
-          int64_t sample_res = 0;
+          int sample_res = 0;
           do {
             sample_res = sampler->Sample();
+            VLOG(1) << "sample res: " << sample_res
+                    << " layer_offset: " << layer_offset_lod[layer_idx];
           } while (travel_data[start_offset + layer_idx] ==
                    layer_data[layer_offset_lod[layer_idx] + sample_res]);
 

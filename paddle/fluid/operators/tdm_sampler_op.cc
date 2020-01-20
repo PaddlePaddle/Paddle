@@ -49,6 +49,10 @@ class TDMSamplerOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({});
     AddAttr<std::vector<int>>("layer_offset_lod", "layer offset lod info")
         .SetDefault({});
+    AddAttr<int>("seed",
+                 "(int) The seed used in sampler. If it is 0, "
+                 "the sampler will generate a seed randomly.")
+        .SetDefault(0);
     AddOutput("Out",
               "Sampling result lodTensor, with shape [batch_size, layer_num, "
               "neg_num_of_layer]");
