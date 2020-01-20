@@ -419,7 +419,7 @@ void GeoSgdCommunicator::Stop() {
 void GeoSgdCommunicator::Send(const std::vector<std::string> &sparse_var_names,
                               const std::vector<std::string> &sparse_var_tables,
                               const framework::Scope &scope) {
-  if (sparse_var_names[0] == "param_init") {
+  if (sparse_var_names.size() == 1 && sparse_var_names[0] == "param_init") {
     for (auto &iter : var_list_) {
       // For sparse param, old_scope store LoDTensor,
       // pserver_scope store SelectedRows.
