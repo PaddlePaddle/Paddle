@@ -126,7 +126,7 @@ def reset_profiler():
     core.reset_profiler()
 
 
-def start_profiler(state, tracer_option="Whole"):
+def start_profiler(state, tracer_option="Default"):
     """
     Enable the profiler. Uers can use `fluid.profiler.start_profiler` and
     `fluid.profiler.stop_profiler` to profile, which is equal to the usage 
@@ -137,7 +137,7 @@ def start_profiler(state, tracer_option="Whole"):
             or 'All'. 'CPU' means only profiling CPU; 'GPU' means profiling
             both CPU and GPU; 'All' means profiling both CPU and GPU, and 
             generates timeline as well.
-        tracer_option (str) : tracer_option can be one of ['Whole', 'OP', 'Detail'], it
+        tracer_option (str) : tracer_option can be one of ['Default', 'OPDetail', 'AllOPDetail'], it
             can control the profile level and print the different level profile result.
 
     Raises:
@@ -168,14 +168,14 @@ def start_profiler(state, tracer_option="Whole"):
     else:
         prof_state = core.ProfilerState.kAll
 
-    if tracer_option not in ["Whole", "OP", "Detail"]:
+    if tracer_option not in ["Default", "OPDetail", "AllOPDetail"]:
         raise ValueError("tracer option must be 'Whole', 'OP', 'Detail'.")
-    if tracer_option == "Whole":
-        prof_tracer_option = core.TracerOption.kWhole
-    elif tracer_option == "OP":
-        prof_tracer_option = core.TracerOption.kOP
+    if tracer_option == "Default":
+        prof_tracer_option = core.TracerOption.kDefault
+    elif tracer_option == "OPDetail":
+        prof_tracer_option = core.TracerOption.kOPDetail
     else:
-        prof_tracer_option = core.TracerOption.kDetail
+        prof_tracer_option = core.TracerOption.kAllOPDetail
 
     core.set_tracer_option(prof_tracer_option)
     core.enable_profiler(prof_state)

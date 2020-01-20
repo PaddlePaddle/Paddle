@@ -44,10 +44,11 @@ enum RecordType {
   kInnerOP,
   kUniqueOP,
 };
-enum TracerOption {
-  kWhole,
-  kOP,
-  kDetail,
+
+enum class TracerOption {
+  kDefault,
+  kOPDetail,
+  kAllOPDetail,
 };
 
 void Mark(const std::string& name);

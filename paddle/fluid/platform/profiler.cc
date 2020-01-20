@@ -42,7 +42,7 @@ static int64_t profiler_lister_id = 0;
 static bool should_send_profile_state = false;
 std::mutex profiler_mu;
 
-static TracerOption g_tracer_option = TracerOption::kWhole;
+static TracerOption g_tracer_option = TracerOption::kDefault;
 // The profiler state, the initial value is ProfilerState::kDisabled
 static ProfilerState g_state = ProfilerState::kDisabled;
 // The thread local event list only can be accessed by the specific thread
@@ -141,9 +141,9 @@ void PopEvent(const std::string &name) {
 RecordEvent::RecordEvent(const std::string &name)
     : is_enabled_(false), start_ns_(PosixInNsec()) {
   if (g_state == ProfilerState::kDisabled || name.empty()) return;
-  if ((g_tracer_option == TracerOption::kOP &&
+  if ((g_tracer_option == TracerOption::kOPDetail &&
        r_type_ == RecordType::kInnerOP) ||
-      (g_tracer_option == TracerOption::kWhole &&
+      (g_tracer_option == TracerOption::kDefault &&
        r_type_ != RecordType::kOrdinary))
     return;
   // lock is not needed, the code below is thread-safe
@@ -158,9 +158,9 @@ RecordEvent::RecordEvent(const std::string &name)
 RecordEvent::RecordEvent(const std::string &name, const RecordType r_type)
     : is_enabled_(false), start_ns_(PosixInNsec()), r_type_(r_type) {
   if (g_state == ProfilerState::kDisabled || name.empty()) return;
-  if ((g_tracer_option == TracerOption::kOP &&
+  if ((g_tracer_option == TracerOption::kOPDetail &&
        r_type_ != RecordType::kInnerOP) ||
-      (g_tracer_option == TracerOption::kWhole &&
+      (g_tracer_option == TracerOption::kDefault &&
        r_type != RecordType::kOrdinary))
     return;
   // lock is not needed, the code below is thread-safe
@@ -386,7 +386,9 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
               << "Max." << std::setw(data_width) << "Ave."
               << std::setw(data_width) << "Ratio." << std::endl;
   }
+
   if (events_table.size() <= 0) return;
+
   for (size_t i = 0; i < events_table.size(); ++i) {
     for (size_t j = 0; j < events_table[i].size(); ++j) {
       auto event_item = events_table[i][j];
@@ -432,7 +434,7 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
 
 std::function<bool(const EventItem &, const EventItem &)> SetSortedFunc(
     EventSortingKey sorted_by, std::string *domain) {
-  auto sorted_domain = *domain;
+  std::string sorted_domain;
   std::function<bool(const EventItem &, const EventItem &)> sorted_func;
   switch (sorted_by) {
     case EventSortingKey::kCalls:
@@ -480,6 +482,7 @@ std::function<bool(const EventItem &, const EventItem &)> SetSortedFunc(
     default:
       sorted_domain = "event first end time";
   }
+  *domain = sorted_domain;
   return sorted_func;
 }
 

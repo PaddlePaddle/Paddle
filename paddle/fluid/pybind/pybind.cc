@@ -1556,9 +1556,9 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 
   py::enum_<platform::TracerOption>(m, "TracerOption", py::arithmetic())
-      .value("kWhole", platform::TracerOption::kWhole)
-      .value("kOP", platform::TracerOption::kOP)
-      .value("kDetail", platform::TracerOption::kDetail)
+      .value("kDefault", platform::TracerOption::kDefault)
+      .value("kOPDetail", platform::TracerOption::kOPDetail)
+      .value("kAllOPDetail", platform::TracerOption::kAllOPDetail)
       .export_values();
 
   py::enum_<platform::ProfilerState>(m, "ProfilerState", py::arithmetic())

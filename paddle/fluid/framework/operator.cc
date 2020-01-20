@@ -77,7 +77,8 @@ static DDim GetDimsDebug(const Scope& scope, const std::string& name,
 }
 static std::string GetTypeName(const VariableNameMap& name_map,
                                const std::string& type_name) {
-  if (platform::GetTracerOption() != platform::TracerOption::kDetail) return "";
+  if (platform::GetTracerOption() != platform::TracerOption::kAllOPDetail)
+    return "";
 
   std::string ret = type_name + "%";
   for (auto it = name_map.begin(); it != name_map.end(); it++) {
@@ -85,9 +86,6 @@ static std::string GetTypeName(const VariableNameMap& name_map,
     if (!name_outputs.empty() &&
         type_name.length() < name_outputs[0].length()) {
       ret = ret + name_outputs[0];
-      // char split_ch = '.';
-      // size_t split_pos = name_outputs[0].find(split_ch);
-      // ret = ret + name_outputs[0].substr(0, split_pos);
       break;
     }
   }
