@@ -180,7 +180,7 @@ void DownpourWorkerOpt::CreateThreadOperatorsWithRerank(
         } else {
           loss_op_names_[i].push_back(op_desc->Type());
         }
-        OperatorBase *local_op_ptr = local_op.release();
+        OperatorBase* local_op_ptr = local_op.release();
         loss_ops_[i].push_back(local_op_ptr);
       }
     }
@@ -305,7 +305,7 @@ void DownpourWorkerOpt::TrainFiles() {
       op_idx++;
     }
     // check inf and nan
-    for (std::string &var_name : check_nan_var_names_) {
+    for (std::string& var_name : check_nan_var_names_) {
       Variable* var = thread_scope_->FindVar(var_name);
       if (var == nullptr) {
         continue;
@@ -365,7 +365,7 @@ void DownpourWorkerOpt::TrainFiles() {
           static_cast<uint32_t>(tmp_push_dense_wait_times);
 
       if (push_dense_status_.size() >= push_dense_wait_times) {
-        for (auto &t : push_dense_status_) {
+        for (auto& t : push_dense_status_) {
           t.wait();
         }
         push_dense_status_.resize(0);
@@ -382,7 +382,7 @@ void DownpourWorkerOpt::TrainFiles() {
       static uint32_t push_sparse_wait_times =
           static_cast<uint32_t>(tmp_push_sparse_wait_times);
       if (push_sparse_status_.size() >= push_sparse_wait_times) {
-        for (auto &t : push_sparse_status_) {
+        for (auto& t : push_sparse_status_) {
           t.wait();
         }
         push_sparse_status_.resize(0);
@@ -404,11 +404,11 @@ void DownpourWorkerOpt::TrainFiles() {
     if (need_dump_field_) {
       size_t batch_size = device_reader_->GetCurBatchSize();
       std::vector<std::string> ars(batch_size);
-      for (auto &ar : ars) {
+      for (auto& ar : ars) {
         ar.clear();
       }
-      auto &ins_id_vec = device_reader_->GetInsIdVec();
-      auto &ins_content_vec = device_reader_->GetInsContentVec();
+      auto& ins_id_vec = device_reader_->GetInsIdVec();
+      auto& ins_content_vec = device_reader_->GetInsContentVec();
       for (size_t i = 0; i < ins_id_vec.size(); i++) {
         ars[i] += ins_id_vec[i];
         ars[i] = ars[i] + "\t" + ins_content_vec[i];
