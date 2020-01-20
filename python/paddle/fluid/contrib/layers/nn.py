@@ -24,6 +24,9 @@ import inspect
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import utils
 from ... import unique_name
+from paddle.fluid.data_feeder import check_type_and_dtype, check_type, check_dtype, convert_dtype
+from paddle.fluid.framework import Variable
+import warnings
 
 __all__ = [
     'fused_elemwise_activation', 'sequence_topk_avg_pooling', 'var_conv_2d',
