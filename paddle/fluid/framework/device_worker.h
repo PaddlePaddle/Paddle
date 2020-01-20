@@ -266,9 +266,9 @@ class DownpourWorkerOpt : public DownpourWorker {
   virtual void TrainFiles();
 
  protected:
-  void CreateThreadOperatorsWithRerank(const ProgramDesc &program);
-  std::vector<std::vector<OperatorBase *>> loss_ops_;
-  std::vector<std::vector<OperatorBase *>> loss_op_names_;
+  void CreateThreadOperatorsWithRerank(const ProgramDesc& program);
+  std::vector<std::vector<OperatorBase*>> loss_ops_;
+  std::vector<std::vector<OperatorBase*>> loss_op_names_;
   std::string async_wait_name_;
   int async_index_ = -1;
   uint64_t async_tid_ = 0;

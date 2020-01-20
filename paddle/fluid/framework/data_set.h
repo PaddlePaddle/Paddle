@@ -21,9 +21,9 @@
 #include <set>
 #include <string>
 #include <thread>  // NOLINT
+#include <unordered_set>
 #include <utility>
 #include <vector>
-#include <unordered_set>
 
 #include "paddle/fluid/framework/data_feed.h"
 
@@ -249,7 +249,7 @@ class MultiSlotDataset : public DatasetImpl<Record> {
                                          int consume_thread_num, int shard_num,
                                          int send_freq);
   virtual void ClearLocalTables() {
-    for (auto &t : local_tables_) {
+    for (auto& t : local_tables_) {
       t.clear();
       std::unordered_set<uint64_t>().swap(t);
     }

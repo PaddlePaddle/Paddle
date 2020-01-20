@@ -20,10 +20,10 @@ limitations under the License. */
 #include <set>
 #include <unordered_map>
 
-bool HasDependentOutput(const OpDesc &op_desc,
-                        const std::unordered_set<std::string> &dependent_vars) {
-  for (auto &var : op_desc.Outputs()) {
-    for (auto &argu : var.second) {
+bool HasDependentOutput(const OpDesc& op_desc,
+                        const std::unordered_set<std::string>& dependent_vars) {
+  for (auto& var : op_desc.Outputs()) {
+    for (auto& argu : var.second) {
       if (dependent_vars.count(argu) != 0) {
         return true;
       }
@@ -32,10 +32,10 @@ bool HasDependentOutput(const OpDesc &op_desc,
   return false;
 }
 
-bool HasDependentInput(const OpDesc &op_desc,
-                       const std::unordered_set<std::string> &dependent_vars) {
-  for (auto &var : op_desc.Inputs()) {
-    for (auto &argu : var.second) {
+bool HasDependentInput(const OpDesc& op_desc,
+                       const std::unordered_set<std::string>& dependent_vars) {
+  for (auto& var : op_desc.Inputs()) {
+    for (auto& argu : var.second) {
       if (dependent_vars.count(argu) != 0) {
         return true;
       }
@@ -45,10 +45,10 @@ bool HasDependentInput(const OpDesc &op_desc,
 }
 
 bool NotHasDependentOutput(
-    const OpDesc &op_desc,
-    const std::unordered_set<std::string> &dependent_vars) {
-  for (auto &var : op_desc.Outputs()) {
-    for (auto &argu : var.second) {
+    const OpDesc& op_desc,
+    const std::unordered_set<std::string>& dependent_vars) {
+  for (auto& var : op_desc.Outputs()) {
+    for (auto& argu : var.second) {
       if (dependent_vars.count(argu) == 0) {
         return true;
       }
@@ -57,9 +57,9 @@ bool NotHasDependentOutput(
   return false;
 }
 
-bool HasOutput(const OpDesc &op_desc, const std::string &name) {
-  for (auto &var : op_desc.Outputs()) {
-    for (auto &argu : var.second) {
+bool HasOutput(const OpDesc& op_desc, const std::string& name) {
+  for (auto& var : op_desc.Outputs()) {
+    for (auto& argu : var.second) {
       if (argu == name) {
         return true;
       }
@@ -67,27 +67,27 @@ bool HasOutput(const OpDesc &op_desc, const std::string &name) {
   }
   return false;
 }
-void AppendInputVar(const OpDesc &op_desc,
-                    std::unordered_set<std::string> *vars_set) {
-  for (auto &var : op_desc.Inputs()) {
-    for (auto &arg : var.second) {
+void AppendInputVar(const OpDesc& op_desc,
+                    std::unordered_set<std::string>* vars_set) {
+  for (auto& var : op_desc.Inputs()) {
+    for (auto& arg : var.second) {
       vars_set->emplace(arg);
     }
   }
 }
 
-void AppendOutputVar(const OpDesc &op_desc,
-                     std::unordered_set<std::string> *vars_set) {
-  for (auto &var : op_desc.Outputs()) {
-    for (auto &arg : var.second) {
+void AppendOutputVar(const OpDesc& op_desc,
+                     std::unordered_set<std::string>* vars_set) {
+  for (auto& var : op_desc.Outputs()) {
+    for (auto& arg : var.second) {
       vars_set->emplace(arg);
     }
   }
 }
 void DownpourWorkerOpt::CreateThreadOperatorsWithRerank(
-    const ProgramDesc &program) {
-  auto &block = program.Block(0);
-  auto *ops = block.AllOps();
+    const ProgramDesc& program) {
+  auto& block = program.Block(0);
+  auto* ops = block.AllOps();
   // check if Independent between losses if not skip for now
   int loss_num = loss_names_.size();
   std::unordered_map<std::string, std::unordered_set<std::string>>
