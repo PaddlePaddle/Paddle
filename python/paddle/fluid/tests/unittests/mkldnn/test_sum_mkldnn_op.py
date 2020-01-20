@@ -81,6 +81,9 @@ class TestMKLDNNSumInplaceOp(unittest.TestCase):
                 expected_out, out_array, atol=1e-5),
             "Inplace sum_mkldnn_op output has diff with expected output")
 
+    def test_check_grad(self):
+        pass
+
 
 if __name__ == '__main__':
     unittest.main()

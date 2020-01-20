@@ -113,14 +113,6 @@ class SumOp : public framework::OperatorWithKernel {
     framework::LibraryType library{framework::LibraryType::kPlain};
     framework::DataLayout layout{framework::DataLayout::kAnyLayout};
 
-#ifdef PADDLE_WITH_MKLDNN
-    if (library == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
-      library = framework::LibraryType::kMKLDNN;
-      layout = framework::DataLayout::kMKLDNN;
-    }
-#endif
-
     if (x_vars[0]->IsType<framework::LoDTensor>()) {
       int dtype = -1;
       for (size_t idx = 0; idx < x_vars.size(); ++idx) {
@@ -140,6 +132,18 @@ class SumOp : public framework::OperatorWithKernel {
       }
       PADDLE_ENFORCE_NE(dtype, -1,
                         "Sum operator should have at least one tensor");
+
+#ifdef PADDLE_WITH_MKLDNN
+      if (library == framework::LibraryType::kPlain &&
+          platform::CanMKLDNNBeUsed(ctx)) {
+        if (static_cast<framework::proto::VarType::Type>(dtype) ==
+            framework::proto::VarType::FP32) {
+          return framework::OpKernelType(
+              framework::proto::VarType::FP32, ctx.GetPlace(),
+              framework::DataLayout::kMKLDNN, framework::LibraryType::kMKLDNN);
+        }
+      }
+#endif
 
       return framework::OpKernelType(
           static_cast<framework::proto::VarType::Type>(dtype), ctx.GetPlace(),
