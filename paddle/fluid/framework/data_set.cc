@@ -654,7 +654,7 @@ void MultiSlotDataset::GenerateLocalTablesUnlock(int table_id, int feadim,
     return;
   }
 
-  CHECK(multi_output_channel_.size() != 0); // NOLINT
+  CHECK(multi_output_channel_.size() != 0);  // NOLINT
   auto fleet_ptr_ = FleetWrapper::GetInstance();
   std::vector<std::unordered_map<uint64_t, std::vector<float>>>&
       local_map_tables = fleet_ptr_->GetLocalTable();
@@ -741,7 +741,7 @@ void MultiSlotDataset::MergeByInsId() {
       use_slots_is_dense.push_back(slot.is_dense());
     }
   }
-  CHECK(multi_output_channel_.size() != 0);   // NOLINT
+  CHECK(multi_output_channel_.size() != 0);  // NOLINT
   auto channel_data = paddle::framework::MakeChannel<Record>();
   VLOG(3) << "multi_output_channel_.size() " << multi_output_channel_.size();
   for (size_t i = 0; i < multi_output_channel_.size(); ++i) {

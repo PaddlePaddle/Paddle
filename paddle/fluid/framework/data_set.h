@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <ThreadPool.h>
 #include <fstream>
 #include <memory>
 #include <mutex>  // NOLINT
@@ -23,7 +24,6 @@
 #include <utility>
 #include <vector>
 #include <unordered_set>
-#include <ThreadPool.h>
 
 #include "paddle/fluid/framework/data_feed.h"
 

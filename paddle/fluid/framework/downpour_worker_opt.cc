@@ -281,8 +281,6 @@ void DownpourWorkerOpt::TrainFiles() {
         }
         if (!need_skip) {
           if (loss_op_names[loss_idx][op_idx] == async_wait_name_) {
-            // std::cout << "Wait Async Pull with tid: " << async_tid <<
-            // std::endl;
             pull_async_status.wait();
             auto status = pull_async_status.get();
             if (status != 0) {
@@ -291,8 +289,6 @@ void DownpourWorkerOpt::TrainFiles() {
               sleep(1);
               exit(-1);
             } else {
-              // std::cout << "Done Async Pull with tid: " << async_tid <<
-              // std::endl;
               // CollectLabelInfo(async_index);
               FillSparseValue(async_index_);
               auto nid_iter = std::find(sparse_value_names_[async_tid_].begin(),

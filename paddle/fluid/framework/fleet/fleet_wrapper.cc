@@ -156,25 +156,16 @@ void FleetWrapper::CreateClient2ClientConnection() {
 void FleetWrapper::PullSparseToLocalV2(const uint64_t table_id,
                                        int fea_value_dim) {
 #ifdef PADDLE_WITH_PSLIB
-  // std::cout << "FleetWrapper Start pull sparse to local" << std::endl;
   size_t fea_keys_size = local_tables_.size();
   if (fea_keys_size == 0) {
     return;
   }
-  // int pid = getpid();
-  // std::cout << "fleet wrapper puul to local table with local table size: " <<
-  // local_tables_.size() << " capacity: " << local_tables_.capacity() <<
-  // std::endl;
-  // std::cout  << shell_get_command_output(std::string("cat /proc/") +
-  // std::to_string(pid) + "/status | grep VmRSS");
   local_table_shard_num_ = fea_keys_size;
   double set_local_table_time = 0.0;
   platform::Timer timeline;
   std::vector<std::thread> threads(fea_keys_size);
   auto ptl_func = [this, &table_id](int i) {
     size_t key_size = this->local_tables_[i].size();
-    // std::cout << "start ptl thread with key size: " << key_size << "with i: "
-    // << i << std::endl;
     std::vector<uint64_t> keys;
     keys.reserve(key_size);
     std::vector<float *> pull_result_ptr;
@@ -184,7 +175,6 @@ void FleetWrapper::PullSparseToLocalV2(const uint64_t table_id,
       keys.emplace_back(kv.first);
       pull_result_ptr.emplace_back(kv.second.data());
     }
-    // std::cout << "debug finish set local table" << std::endl;
     auto tt = pslib_ptr_->_worker_ptr->pull_sparse(
         pull_result_ptr.data(), table_id, keys.data(), key_size);
     tt.wait();
@@ -194,8 +184,6 @@ void FleetWrapper::PullSparseToLocalV2(const uint64_t table_id,
       sleep(sleep_seconds_before_fail_exit_);
       exit(-1);
     } else {
-      // std::cout << "FleetWrapper Pull sparse to local done with table size: "
-      // << pull_result_ptr.size() << std::endl;
       VLOG(3) << "FleetWrapper Pull sparse to local done with table size: "
               << pull_result_ptr.size();
     }
@@ -210,13 +198,6 @@ void FleetWrapper::PullSparseToLocalV2(const uint64_t table_id,
   local_pull_pool_.reset(new ::ThreadPool(pull_local_thread_num_));
   timeline.Pause();
   set_local_table_time = timeline.ElapsedSec();
-  // std::cout << "Done fleet wrapper puul to local table with local table size:
-  // " << local_tables_.size() << " capacity: " << local_tables_.capacity() <<
-  // std::endl;
-  // std::cout  << shell_get_command_output(std::string("cat /proc/") +
-  // std::to_string(pid) + "/status | grep VmRSS");
-  std::cout << "Pull sparse to local done, set local table time: "
-            << set_local_table_time << std::endl;
 #endif
 }
 
@@ -249,13 +230,10 @@ void FleetWrapper::PullSparseVarsFromLocal(
     t.resize(fea_value_dim);
   }
   size_t key_length = fea_keys->size();
-  // std::cout << "fleet eraper one request key num: " << key_length <<
-  // std::endl;
   int local_step = key_length / pull_local_thread_num_;
   std::vector<std::future<void>> task_futures;
   task_futures.reserve(key_length / local_step + 1);
   for (size_t i = 0; i < key_length; i += local_step) {
-    // uint64_t key = (*fea_keys)[i];
     size_t end = i + local_step < key_length ? i + local_step : key_length;
     auto pull_local_task = [this, i, end, &fea_values, &fea_keys,
                             &fea_value_dim] {
@@ -269,17 +247,10 @@ void FleetWrapper::PullSparseVarsFromLocal(
     };
     task_futures.emplace_back(
         local_pull_pool_->enqueue(std::move(pull_local_task)));
-    // std::memcpy((*fea_values)[i].data(), local_table_[(*fea_keys)[i]].data(),
-    // fea_value_dim * sizeof(float));
-    // (*fea_values)[i] = local_table_[(*fea_keys)[i]]
   }
   for (auto &tf : task_futures) {
     tf.wait();
-    // std::cout << "thread pool done" << std::endl;
   }
-
-// std::cout << "Pull sparse from local done with fea value size: " <<
-// fea_values->size() << std::endl;
 #endif
 }
 
@@ -287,10 +258,7 @@ void FleetWrapper::ClearLocalTable() {
 #ifdef PADDLE_WITH_PSLIB
   for (auto &t : local_tables_) {
     t.clear();
-    // std::unordered_map<uint64_t, std::vector<float>>().swap(t);
   }
-// std::vector<std::unordered_map<uint64_t,
-// std::vector<float>>>().swap(local_tables_);
 #endif
 }
 
