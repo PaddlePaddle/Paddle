@@ -116,20 +116,20 @@ class TestProfiler(unittest.TestCase):
                     print("Warning: unregister", event.name)
 
     def test_cpu_profiler(self):
-        self.net_profiler('CPU', "Whole")
-        self.net_profiler('CPU', "Whole", use_parallel_executor=True)
+        self.net_profiler('CPU', "Default")
+        self.net_profiler('CPU', "Default", use_parallel_executor=True)
 
     @unittest.skipIf(not core.is_compiled_with_cuda(),
                      "profiler is enabled only with GPU")
     def test_cuda_profiler(self):
-        self.net_profiler('GPU', "OP")
-        self.net_profiler('GPU', "OP", use_parallel_executor=True)
+        self.net_profiler('GPU', "OPDetail")
+        self.net_profiler('GPU', "OPDetail", use_parallel_executor=True)
 
     @unittest.skipIf(not core.is_compiled_with_cuda(),
                      "profiler is enabled only with GPU")
     def test_all_profiler(self):
-        self.net_profiler('All', "Detail")
-        self.net_profiler('All', "Detail", use_parallel_executor=True)
+        self.net_profiler('All', "AllOPDetail")
+        self.net_profiler('All', "AllOPDetail", use_parallel_executor=True)
 
 
 if __name__ == '__main__':

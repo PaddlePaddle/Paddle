@@ -169,7 +169,8 @@ def start_profiler(state, tracer_option="Default"):
         prof_state = core.ProfilerState.kAll
 
     if tracer_option not in ["Default", "OPDetail", "AllOPDetail"]:
-        raise ValueError("tracer option must be 'Whole', 'OP', 'Detail'.")
+        raise ValueError(
+            "tracer option must be 'Default', 'OPDetail', 'AllOPDetail'.")
     if tracer_option == "Default":
         prof_tracer_option = core.TracerOption.kDefault
     elif tracer_option == "OPDetail":
@@ -241,7 +242,7 @@ def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
 def profiler(state,
              sorted_key=None,
              profile_path='/tmp/profile',
-             tracer_option="OP"):
+             tracer_option="Default"):
     """
     The profiler interface. Different from `fluid.profiler.cuda_profiler`, 
     this profiler can be used to profile both CPU and GPU program.
@@ -262,7 +263,7 @@ def profiler(state,
             The `ave` means sorting by the average execution time.
         profile_path (str, optional) : If state == 'All', it will generate timeline,
             and write it into `profile_path`. The default profile_path is `/tmp/profile`. 
-        tracer_option (str) : tracer_option can be one of ['Whole', 'OP', 'Detail'], it
+        tracer_option (str) : tracer_option can be one of ['Default', 'OPDetail', 'AllOPDetail'], it
             can control the profile level and print the different level profile result.
 
     Raises:
