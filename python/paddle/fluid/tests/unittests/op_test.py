@@ -316,9 +316,9 @@ class OpTest(unittest.TestCase):
 
     def _append_ops(self, block):
         self.__class__.op_type = self.op_type  # for ci check, please not delete it for now
-        if (hasattr(cls, "use_mkldnn") and cls.use_mkldnn == True) or \
-            (hasattr(cls, "attrs") and "use_mkldnn" in cls.attrs and \
-                    cls.attrs["use_mkldnn"] == True):
+        if (hasattr(self, "use_mkldnn") and self.use_mkldnn == True) or \
+            (hasattr(self, "attrs") and "use_mkldnn" in self.attrs and \
+                    self.attrs["use_mkldnn"] == True):
             self.__class__.use_mkldnn = True
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
         "infer datatype from inputs and outputs for this test case"
@@ -1186,9 +1186,9 @@ class OpTest(unittest.TestCase):
                      check_dygraph=True,
                      inplace_atol=None):
         self.__class__.op_type = self.op_type
-        if (hasattr(cls, "use_mkldnn") and cls.use_mkldnn == True) or \
-            (hasattr(cls, "attrs") and "use_mkldnn" in cls.attrs and \
-                    cls.attrs["use_mkldnn"] == True):
+        if (hasattr(self, "use_mkldnn") and self.use_mkldnn == True) or \
+            (hasattr(self, "attrs") and "use_mkldnn" in self.attrs and \
+                    self.attrs["use_mkldnn"] == True):
             self.__class__.use_mkldnn = True
         places = self._get_places()
         for place in places:
