@@ -478,8 +478,7 @@ class MatMulOpGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto *retv = new T();
+  void Apply(GradOpPtr<T> retv) const override {
     retv->SetType("matmul_grad");
     retv->SetInput("X", this->Input("X"));
     retv->SetInput("Y", this->Input("Y"));
@@ -487,7 +486,6 @@ class MatMulOpGradMaker : public framework::SingleGradOpMaker<T> {
     retv->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     retv->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
     retv->SetAttrMap(this->Attrs());
-    return std::unique_ptr<T>(retv);
   }
 };
 }  // namespace operators

@@ -227,8 +227,7 @@ class FusedElemwiseActivationGradMaker
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto *grad_op = new T();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType(this->ForwardOpType() + "_grad");
 
     for (auto &input_param : this->InputNames()) {
@@ -258,8 +257,6 @@ class FusedElemwiseActivationGradMaker
       grad_op->SetInput("IntermediateOut", {});
       grad_op->SetOutput(framework::GradVarName("IntermediateOut"), {});
     }
-
-    return std::unique_ptr<T>(grad_op);
   }
 };
 

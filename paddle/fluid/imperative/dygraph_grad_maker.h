@@ -37,7 +37,11 @@ class GradOpBaseMakerBase {
         var_base_map_out_(var_base_map_out) {}
 
   virtual ~GradOpBaseMakerBase() = default;
-  virtual std::vector<std::unique_ptr<OpBase>> operator()() const = 0;
+  virtual std::vector<std::shared_ptr<OpBase>> operator()() const = 0;
+
+  static std::shared_ptr<OpBase> CreateOp() {
+    return std::make_shared<OpBase>();
+  }
 
   std::vector<std::shared_ptr<VarBase>> InputGrad(
       const std::string& name, bool drop_empty_grad = true) const {
@@ -49,7 +53,7 @@ class GradOpBaseMakerBase {
     return GetVarBaseList(name, true, false);
   }
 
-  std::vector<std::shared_ptr<VarBase>> Input(const std::string name) const {
+  std::vector<std::shared_ptr<VarBase>> Input(const std::string& name) const {
     return GetVarBaseList(name, false, true);
   }
 
@@ -79,9 +83,7 @@ class GradOpBaseMakerBase {
     return vec_temp;
   }
 
-  const std::unordered_map<std::string, framework::Attribute>& Attrs() const {
-    return fw_op_base_->Attrs();
-  }
+  const framework::AttributeMap& Attrs() const { return fw_op_base_->Attrs(); }
 
   const framework::Attribute& GetAttr(const std::string& name) const {
     auto& map = fw_op_base_->Attrs();
@@ -102,15 +104,11 @@ class GradOpBaseMakerBase {
 
  protected:
   bool HasInput(const std::string& name) const {
-    auto it = var_base_map_in_.find(name);
-
-    return it != var_base_map_in_.end();
+    return var_base_map_in_.count(name) > 0;
   }
 
-  bool HasOutput(const std::string name) const {
-    auto it = var_base_map_out_.find(name);
-
-    return it != var_base_map_out_.end();
+  bool HasOutput(const std::string& name) const {
+    return var_base_map_out_.count(name) > 0;
   }
 
  private:
@@ -153,9 +151,6 @@ class GradOpBaseMakerBase {
   const OpBase* fw_op_base_;
   const NameVarBaseMap& var_base_map_in_;
   const NameVarBaseMap& var_base_map_out_;
-
- protected:
-  std::vector<framework::BlockDesc*> grad_block_;
 };
 
 }  // namespace imperative

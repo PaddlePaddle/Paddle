@@ -580,8 +580,7 @@ class RecurrentGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  virtual std::unique_ptr<T> Apply() const {
-    auto *grad = new T();
+  void Apply(GradOpPtr<T> grad) const override {
     grad->SetType("recurrent_grad");
     for (auto &input_param : this->InputNames()) {
       grad->SetInput(input_param, this->Input(input_param));
@@ -602,8 +601,6 @@ class RecurrentGradOpMaker : public framework::SingleGradOpMaker<T> {
     }
     grad->SetAttrMap(this->Attrs());
     grad->SetBlockAttr(RecurrentBase::kStepBlock, this->grad_block_[0]);
-
-    return std::unique_ptr<T>(grad);
   }
 };
 

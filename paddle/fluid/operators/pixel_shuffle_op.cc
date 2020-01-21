@@ -82,13 +82,11 @@ class PixelShuffleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("pixel_shuffle_grad");
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetAttrMap(this->Attrs());
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    return std::unique_ptr<T>(op);
   }
 };
 

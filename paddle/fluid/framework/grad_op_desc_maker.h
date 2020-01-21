@@ -47,6 +47,10 @@ class GradOpDescMakerBase {
         grad_to_var_(grad_to_var),
         grad_block_(grad_block) {}
 
+  static std::unique_ptr<OpDesc> CreateOp() {
+    return std::unique_ptr<OpDesc>(new OpDesc());
+  }
+
   virtual ~GradOpDescMakerBase() = default;
   virtual std::vector<std::unique_ptr<OpDesc>> operator()() const = 0;
 
@@ -154,17 +158,28 @@ class GradOpDescMakerBase {
   std::vector<BlockDesc*> grad_block_;
 };
 
-template <typename T>
-class SingleGradOpMaker {
- public:
-  std::vector<std::unique_ptr<T>> operator()() const {
-    PADDLE_ENFORCE(false, "should not call this function");
-    return {};
-  }
+namespace details {
 
- protected:
-  virtual std::unique_ptr<T> Apply() const = 0;
+template <typename T>
+struct GradOpPtrTrait {};
+
+template <>
+struct GradOpPtrTrait<OpDesc> {
+  using Type = OpDesc*;
 };
+
+template <>
+struct GradOpPtrTrait<imperative::OpBase> {
+  using Type = imperative::OpBase*;
+};
+
+}  // namespace details
+
+template <typename T>
+using GradOpPtr = typename details::GradOpPtrTrait<T>::Type;
+
+template <typename T>
+class SingleGradOpMaker {};
 
 template <>
 class SingleGradOpMaker<OpDesc> : public GradOpDescMakerBase {
@@ -173,12 +188,13 @@ class SingleGradOpMaker<OpDesc> : public GradOpDescMakerBase {
 
   std::vector<std::unique_ptr<OpDesc>> operator()() const {
     std::vector<std::unique_ptr<OpDesc>> retv;
-    retv.emplace_back(this->Apply());
+    retv.emplace_back(new OpDesc());
+    this->Apply(retv[0].get());
     return retv;
   }
 
  protected:
-  virtual std::unique_ptr<OpDesc> Apply() const = 0;
+  virtual void Apply(GradOpPtr<OpDesc> op) const = 0;
 };
 
 template <>
@@ -187,16 +203,17 @@ class SingleGradOpMaker<imperative::OpBase>
  public:
   using GradOpBaseMakerBase::GradOpBaseMakerBase;
 
- public:
-  std::vector<std::unique_ptr<imperative::OpBase>> operator()() const {
-    std::vector<std::unique_ptr<imperative::OpBase>> retv;
-    retv.emplace_back(this->Apply());
+  using OpPtr = imperative::OpBase*;
 
+  std::vector<std::shared_ptr<imperative::OpBase>> operator()() const {
+    std::vector<std::shared_ptr<imperative::OpBase>> retv{
+        std::make_shared<imperative::OpBase>()};
+    this->Apply(retv[0].get());
     return retv;
   }
 
  protected:
-  virtual std::unique_ptr<imperative::OpBase> Apply() const = 0;
+  virtual void Apply(GradOpPtr<imperative::OpBase> op) const = 0;
 };
 
 template <typename T, bool DropEmptyIG = true>
@@ -205,8 +222,7 @@ class DefaultGradOpMaker final : public SingleGradOpMaker<T> {
   using SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const final {
-    auto* grad = new T();
+  void Apply(GradOpPtr<T> grad) const final {
     grad->SetType(this->ForwardOpType() + "_grad");
 
     for (auto& input_param : this->InputNames()) {
@@ -221,19 +237,11 @@ class DefaultGradOpMaker final : public SingleGradOpMaker<T> {
     }
 
     grad->SetAttrMap(this->Attrs());
-
-    return std::unique_ptr<T>(grad);
   }
 };
 
 template <typename T>
-class EmptyGradOpMaker {
- public:
-  virtual std::vector<std::unique_ptr<T>> operator()()
-      const final { /* NOLINT */
-    return {};
-  }
-};
+class EmptyGradOpMaker {};
 
 template <>
 class EmptyGradOpMaker<OpDesc> final : public GradOpDescMakerBase {
@@ -247,10 +255,18 @@ class EmptyGradOpMaker<imperative::OpBase> final
     : public imperative::GradOpBaseMakerBase {
  public:
   using GradOpBaseMakerBase::GradOpBaseMakerBase;
-  std::vector<std::unique_ptr<imperative::OpBase>> operator()() const final {
+  std::vector<std::shared_ptr<imperative::OpBase>> operator()() const final {
     return {};
   }
 };
 
 }  // namespace framework
+
+namespace operators {
+
+template <typename T>
+using GradOpPtr = framework::GradOpPtr<T>;
+
+}  // namespace operators
+
 }  // namespace paddle

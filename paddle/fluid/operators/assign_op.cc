@@ -99,12 +99,10 @@ class AssignGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto *op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("assign");
     op->SetInput("X", this->OutputGrad("Out"));
     op->SetOutput("Out", this->InputGrad("X"));
-    return std::unique_ptr<T>(op);
   }
 };
 

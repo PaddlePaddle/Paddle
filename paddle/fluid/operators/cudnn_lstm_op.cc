@@ -203,8 +203,7 @@ class CudnnLSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("cudnn_lstm_grad");
     op->SetInput("Input", this->Input("Input"));
     op->SetInput("InitH", this->Input("InitH"));
@@ -223,7 +222,6 @@ class CudnnLSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("InitH"), this->InputGrad("InitH"));
     op->SetOutput(framework::GradVarName("InitC"), this->InputGrad("InitC"));
     op->SetAttrMap(this->Attrs());
-    return op;
   }
 };
 

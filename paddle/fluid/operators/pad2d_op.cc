@@ -633,8 +633,7 @@ class Pad2dOpGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto* bind = new T();
+  void Apply(GradOpPtr<T> bind) const override {
     bind->SetInput("X", this->Input("X"));
     if (this->HasInput("Paddings")) {
       bind->SetInput("Paddings", this->Input("Paddings"));
@@ -643,7 +642,6 @@ class Pad2dOpGradMaker : public framework::SingleGradOpMaker<T> {
     bind->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     bind->SetAttrMap(this->Attrs());
     bind->SetType("pad2d_grad");
-    return std::unique_ptr<T>(bind);
   }
 };
 

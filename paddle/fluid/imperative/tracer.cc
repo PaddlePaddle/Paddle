@@ -59,7 +59,7 @@ static void ClearNoNeedBufferInputs(OpBase* op) {
   }
 }
 
-static std::vector<std::unique_ptr<OpBase>> CreateGradOpBases(
+static std::vector<std::shared_ptr<OpBase>> CreateGradOpBases(
     const OpBase* fw_op_base, const NameVarBaseMap& in,
     const NameVarBaseMap& out) {
   if (fw_op_base->Info().dygraph_grad_op_maker_) {
@@ -146,10 +146,9 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
   std::unordered_map<std::string, std::string> grad_to_var;
 
   // Get grad_op_desc using fwd_op_desc
-  std::vector<std::unique_ptr<OpBase>> grad_op_bases_ =
-      CreateGradOpBases(fwd_op.get(), ins, outs);
+  auto grad_op_bases = CreateGradOpBases(fwd_op.get(), ins, outs);
 
-  size_t grad_op_num = grad_op_bases_.size();
+  size_t grad_op_num = grad_op_bases.size();
 
   std::set<VarBase*> set_input_vars;
   for (auto& fwd_in_it : ins) {
@@ -166,8 +165,7 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
 
   for (size_t i = 0; i < grad_op_num; ++i) {
     size_t trace_id = fwd_op->id();
-
-    std::shared_ptr<OpBase> grad_op = std::move(grad_op_bases_[i]);
+    auto& grad_op = grad_op_bases[i];
     grad_op->SetId(trace_id);
     grad_op->SetPlace(fwd_op->place());
     grad_op->CreateOperatorBase();

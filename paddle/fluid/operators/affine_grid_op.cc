@@ -203,8 +203,7 @@ class AffineGridGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("affine_grid_grad");
     op->SetInput("Theta", this->Input("Theta"));
     op->SetInput("OutputShape", this->Input("OutputShape"));
@@ -213,7 +212,6 @@ class AffineGridGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
 
     op->SetOutput(framework::GradVarName("Theta"), this->InputGrad("Theta"));
-    return std::unique_ptr<T>(op);
   }
 };
 

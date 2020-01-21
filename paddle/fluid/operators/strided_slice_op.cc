@@ -257,8 +257,7 @@ class StridedSliceOpGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto *bind = new T();
+  void Apply(GradOpPtr<T> bind) const override {
     bind->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     bind->SetInput("Input", this->Input("Input"));
     bind->SetInput("StartsTensor", this->Input("StartsTensor"));
@@ -270,7 +269,6 @@ class StridedSliceOpGradMaker : public framework::SingleGradOpMaker<T> {
     bind->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
     bind->SetAttrMap(this->Attrs());
     bind->SetType("strided_slice_grad");
-    return std::unique_ptr<T>(bind);
   }
 };
 

@@ -99,8 +99,7 @@ class ScaleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<T> Apply() const override {
-    auto *grad_op = new T();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("scale");
     grad_op->SetInput("X", this->OutputGrad("Out"));
     if (this->HasInput("ScaleTensor") > 0) {
@@ -110,7 +109,6 @@ class ScaleGradMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetAttr("scale", this->GetAttr("scale"));
     grad_op->SetAttr("bias", 0.0f);
     grad_op->SetAttr("bias_after_scale", true);
-    return std::unique_ptr<T>(grad_op);
   }
 };
 

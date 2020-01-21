@@ -269,8 +269,7 @@ class Yolov3LossGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("yolov3_loss_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("GTBox", this->Input("GTBox"));
@@ -286,7 +285,6 @@ class Yolov3LossGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("GTBox"), {});
     op->SetOutput(framework::GradVarName("GTLabel"), {});
     op->SetOutput(framework::GradVarName("GTScore"), {});
-    return std::unique_ptr<T>(op);
   }
 };
 

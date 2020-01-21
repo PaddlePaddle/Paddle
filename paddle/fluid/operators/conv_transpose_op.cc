@@ -441,8 +441,7 @@ class ConvTransposeGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     op->SetInput("Input", this->Input("Input"));
     op->SetInput("Filter", this->Input("Filter"));
@@ -454,7 +453,6 @@ class ConvTransposeGradOpMaker : public framework::SingleGradOpMaker<T> {
     }
     op->SetInput(framework::GradVarName("Output"), this->OutputGrad("Output"));
     op->SetAttrMap(this->Attrs());
-    return op;
   }
 };
 

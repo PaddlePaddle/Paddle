@@ -219,15 +219,13 @@ class MergeLoDTensorGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto *grad_op = new T();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("split_lod_tensor");
     grad_op->SetInput("X", this->OutputGrad("Out"));
     grad_op->SetInput("Mask", this->Input("Mask"));
     grad_op->SetOutput("OutTrue", this->InputGrad("InTrue"));
     grad_op->SetOutput("OutFalse", this->InputGrad("InFalse"));
     grad_op->SetAttrMap(this->Attrs());
-    return std::unique_ptr<T>(grad_op);
   }
 };
 

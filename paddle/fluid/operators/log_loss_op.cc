@@ -111,8 +111,7 @@ class LogLossGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("log_loss_grad");
     op->SetInput("Predicted", this->Input("Predicted"));
     op->SetInput("Labels", this->Input("Labels"));
@@ -120,7 +119,6 @@ class LogLossGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("Predicted"),
                   this->InputGrad("Predicted"));
     op->SetAttrMap(this->Attrs());
-    return op;
   }
 };
 
