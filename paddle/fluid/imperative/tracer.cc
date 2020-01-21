@@ -145,7 +145,7 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
   // in_var_name/out_var_name
   std::unordered_map<std::string, std::string> grad_to_var;
 
-  // Get grad_op_desc using fwd_op_desc
+  // Get grad_ops using fwd_op
   std::vector<std::unique_ptr<OpBase>> grad_op_bases_ =
       CreateGradOpBases(fwd_op.get(), ins, outs);
 
