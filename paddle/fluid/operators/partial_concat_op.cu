@@ -67,9 +67,9 @@ class PartialConcatOpCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto in_vars = ctx.MultiInput<Tensor>("X");
     Tensor *out = ctx.Output<Tensor>("Out");
-    PADDLE_ENFORCE_EQ(
-        in_vars[0] != nullptr, true,
-        platform::errors::InvalidArgument("The input should not be null."));
+    PADDLE_ENFORCE_EQ(in_vars[0] != nullptr, true,
+                      platform::errors::InvalidArgument(
+                          "The input of partial concat should not be null."));
 
     auto input_dim = in_vars[0]->dims();
     PADDLE_ENFORCE_EQ(
@@ -140,9 +140,9 @@ class PartialConcatGradOpCUDAKernel : public framework::OpKernel<T> {
     auto ins = ctx.MultiInput<LoDTensor>("X");
     auto outs = ctx.MultiOutput<LoDTensor>(framework::GradVarName("X"));
 
-    PADDLE_ENFORCE_EQ(
-        ins[0] != nullptr, true,
-        platform::errors::InvalidArgument("The input should not be null."));
+    PADDLE_ENFORCE_EQ(ins[0] != nullptr, true,
+                      platform::errors::InvalidArgument(
+                          "The input of partial concat should not be null."));
     // all parameters
     auto batch_size = ins[0]->dims()[0];
     auto in_size = ins[0]->dims()[1];

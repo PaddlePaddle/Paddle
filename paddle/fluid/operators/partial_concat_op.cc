@@ -54,7 +54,7 @@ class PartialConcatOp : public framework::OperatorWithKernel {
     for (size_t i = 0; i < inputs_num; ++i) {
       PADDLE_ENFORCE_EQ(inputs_dims[i].size(), 2,
                         platform::errors::InvalidArgument(
-                            "Only suppert two dimensions input now."));
+                            "It only supports two dimensions input now."));
       if (i == 0) {
         batch_size = inputs_dims[0][0];
         input_len = inputs_dims[0][1];
@@ -65,7 +65,7 @@ class PartialConcatOp : public framework::OperatorWithKernel {
                                               "of all inputs must be same"));
         PADDLE_ENFORCE_EQ(
             inputs_dims[i][1], input_len,
-            platform::errors::InvalidArgument("The input len "
+            platform::errors::InvalidArgument("The input length "
                                               "of all inputs must be same"));
       }
     }
