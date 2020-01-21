@@ -26,9 +26,9 @@ class TestSumMKLDNN(TestSumOp):
         self.op_type = "sum"
         self.init_data_type()
         self.use_mkldnn = True
-        x0 = np.random.random((25, 4)).astype(self.dtype)
-        x1 = np.random.random((25, 4)).astype(self.dtype)
-        x2 = np.random.random((25, 4)).astype(self.dtype)
+        x0 = np.random.random((25, 8)).astype(self.dtype)
+        x1 = np.random.random((25, 8)).astype(self.dtype)
+        x2 = np.random.random((25, 8)).astype(self.dtype)
         self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
         y = x0 + x1 + x2
         self.outputs = {'Out': y}
@@ -51,8 +51,8 @@ class TestMKLDNNSumInplaceOp(unittest.TestCase):
         self.op_type = "sum"
         self.init_data_type()
         self.use_mkldnn = True
-        self.x0 = np.random.random((5, 4)).astype(self.dtype)
-        self.x1 = np.random.random((5, 4)).astype(self.dtype)
+        self.x0 = np.random.random((25, 8)).astype(self.dtype)
+        self.x1 = np.random.random((25, 8)).astype(self.dtype)
 
     def init_data_type(self):
         self.dtype = np.float32
