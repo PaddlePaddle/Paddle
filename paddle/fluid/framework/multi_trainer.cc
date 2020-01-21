@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/trainer.h"
+#include "paddle/fluid/operators/distributed/distributed.h"
 
 namespace paddle {
 namespace framework {
@@ -38,6 +39,14 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
   thread_num_ = readers.size();
   VLOG(3) << "worker thread num: " << thread_num_;
   workers_.resize(thread_num_);
+
+#ifdef PADDLE_WITH_DISTRIBUTE
+  if (trainer_desc.thread_barrier()) {
+    operators::distributed::Communicator::GetInstance()->BarrierTriggerReset(
+        thread_num_);
+  }
+#endif
+
   for (int i = 0; i < thread_num_; ++i) {
     workers_[i] = DeviceWorkerFactory::CreateDeviceWorker(
         trainer_desc.device_worker_name());

@@ -190,6 +190,9 @@ class DistributeTranspilerConfig(object):
     __runtime_split_send_recv = False
     __sync_mode = True
 
+    # half_async
+    half_async = False
+
     # Geo-sgd algorithm
     geo_sgd_mode = False
     geo_sgd_need_push_nums = 100
@@ -744,27 +747,15 @@ class DistributeTranspiler(object):
             for _, var in enumerate(splited_vars):
                 send_vars.append(var)
 
-        if self.sync_mode:
-            fetch_barrier_input = []
-            send_barrier_out = program.global_block().create_var(
-                name=framework.generate_control_dev_var_name())
-            if self.has_distributed_lookup_table:
-                self.grad_name_to_send_dummy_out[
-                    self.table_name] = program.global_block().create_var(
-                        name=framework.generate_control_dev_var_name())
-            input_deps = list(self.grad_name_to_send_dummy_out.values())
+        send_barrier_out = program.global_block().create_var(
+            name=framework.generate_control_dev_var_name())
+        if self.has_distributed_lookup_table:
+            self.grad_name_to_send_dummy_out[
+                self.table_name] = program.global_block().create_var(
+                    name=framework.generate_control_dev_var_name())
+        input_deps = list(self.grad_name_to_send_dummy_out.values())
 
-            program.global_block().append_op(
-                type="send_barrier",
-                inputs={"X": list(input_deps)},
-                outputs={"Out": send_barrier_out},
-                attrs={
-                    "endpoints": pserver_endpoints,
-                    "trainer_id": self.trainer_id,
-                    RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-                })
-            fetch_barrier_input.append(send_barrier_out)
-        else:
+        if not self.sync_mode:
             lr_ops = self._get_lr_ops()
             if len(lr_ops) > 0 and self.counter_var:
                 decay_dummy_output = program.global_block().create_var(
@@ -788,6 +779,35 @@ class DistributeTranspiler(object):
                         RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
                         OP_ROLE_VAR_ATTR_NAME:
                         [self.counter_var.name, self.counter_var.name]
+                    })
+                input_deps.append(decay_dummy_output)
+
+        if self.sync_mode:
+            fetch_barrier_input = []
+
+            program.global_block().append_op(
+                type="send_barrier",
+                inputs={"X": list(input_deps)},
+                outputs={"Out": send_barrier_out},
+                attrs={
+                    "endpoints": pserver_endpoints,
+                    "trainer_id": self.trainer_id,
+                    "half_async": False,
+                    RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+                })
+
+            fetch_barrier_input.append(send_barrier_out)
+        else:
+            if self.config.runtime_split_send_recv and self.config.half_async:
+                program.global_block().append_op(
+                    type="send_barrier",
+                    inputs={"X": list(input_deps)},
+                    outputs={"Out": send_barrier_out},
+                    attrs={
+                        "endpoints": pserver_endpoints,
+                        "trainer_id": self.trainer_id,
+                        "half_async": True,
+                        RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                     })
 
         # step 3: insert recv op to receive parameters from parameter server
@@ -859,8 +879,6 @@ class DistributeTranspiler(object):
                         OP_ROLE_VAR_ATTR_NAME:
                         [param_varname, recv_op_role_var_name]
                     })
-                if self.sync_mode:
-                    fetch_barrier_input.extend(splited_var)
 
         self._update_remote_sparse_update_op(program, need_sparse_update_params)
 
@@ -877,10 +895,11 @@ class DistributeTranspiler(object):
                 })
 
         for param_varname, splited_var in six.iteritems(self.param_var_mapping):
+            if len(splited_var) <= 1:
+                continue
             orig_param = program.global_block().vars[param_varname]
             if param_varname not in self.sparse_param_to_height_sections:
-                if len(splited_var
-                       ) > 1 and not self.config.runtime_split_send_recv:
+                if not self.config.runtime_split_send_recv:
                     program.global_block().append_op(
                         type="concat",
                         inputs={"X": splited_var},
