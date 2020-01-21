@@ -816,7 +816,7 @@ def partial_concat(input, start_index=0, length=-1):
             int64.
         start_index(int32): The start index of each instance for partial concatenation.
             Default is 0.
-        length(int32): The length of each instance for partial concatenation. Default is 0.
+        length(int32): The length of each instance for partial concatenation. Default is -1.
     Returns:
         Variable: A Tensor with the same data type as input's.
     Examples:
