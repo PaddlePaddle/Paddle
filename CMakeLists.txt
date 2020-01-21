@@ -87,6 +87,7 @@ option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VER
 option(WITH_DGC   "Use DGC(Deep Gradient Compression) or not" ${WITH_DISTRIBUTE})
 option(SANITIZER_TYPE "Choose the type of sanitizer, options are: Address, Leak, Memory, Thread, Undefined" OFF)
 option(WITH_LITE   "Compile Paddle Fluid with Lite Engine" OFF)
+option(WITH_NCCL   "Compile PaddlePaddle with NCCL support"              ON)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -99,6 +100,10 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING
       "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"
       FORCE)
+endif()
+
+if(WITH_NCCL)
+  add_definitions("-DPADDLE_WITH_NCCL")
 endif()
 
 # Replace PADDLE_ENFORCE with glog/CHECK for better debug
