@@ -142,7 +142,7 @@ class DataToLoDTensorConverter(object):
                     format(self.shape, shape))
 
     def done(self):
-        arr = numpy.array(self.data, dtype=self.dtype)
+        arr = np.array(self.data, dtype=self.dtype)
         if self.shape:
             if len(arr.shape) != len(self.shape):
                 try:
