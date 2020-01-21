@@ -104,25 +104,29 @@ ConvertTensorIndex(int index, const Dim3& dims) {
 
 template <typename IntType, bool ceil>
 IntType CeilOrFloor(IntType x, IntType deviser) {
-  PADDLE_ENFORCE_NE(0, deviser, platform::errors::InvalidArgument(
-                                    "deviser should not equal to 0, "
+  PADDLE_ENFORCE_GT(deviser, 0, platform::errors::InvalidArgument(
+                                    "deviser should be greater than 0, "
                                     "but received is:%d",
                                     deviser));
+
+  PADDLE_ENFORCE_GT(
+      x, 0, platform::errors::InvalidArgument("input should be greater than 0, "
+                                              "but received is:%d",
+                                              x));
 
   const IntType rounded_toward_zero = x / deviser;
   const IntType intermediate_product = rounded_toward_zero * deviser;
 
   if (ceil) {
-    const bool needs_adjustment = (rounded_toward_zero >= 0) &&
-                                  ((deviser > 0 && x > intermediate_product) ||
-                                   (deviser < 0 && x < intermediate_product));
+    const bool needs_adjustment =
+        (rounded_toward_zero >= 0) && (deviser > 0 && x > intermediate_product);
     const IntType adjustment = static_cast<IntType>(needs_adjustment);
     const IntType ceil_of_ratio = rounded_toward_zero + adjustment;
     return ceil_of_ratio;
   } else {
-    const bool needs_adjustment = (rounded_toward_zero <= 0) &&
-                                  ((deviser > 0 && x < intermediate_product) ||
-                                   (deviser < 0 && x > intermediate_product));
+    const bool needs_adjustment =
+        (rounded_toward_zero <= 0) && (deviser > 0 && x < intermediate_product);
+
     const IntType adjustment = static_cast<IntType>(needs_adjustment);
     const IntType floor_of_ratio = rounded_toward_zero - adjustment;
     return floor_of_ratio;

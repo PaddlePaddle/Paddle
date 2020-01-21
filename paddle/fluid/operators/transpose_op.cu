@@ -208,6 +208,7 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input, Dim3 input_dims,
   }
 }
 
+// This function will find combination of long_side X short_side in backups
 template <int TSIZE>
 bool SelectProperTileSize(std::vector<std::pair<int, int>>* tiles) {
   PADDLE_ENFORCE_LE(
@@ -287,7 +288,11 @@ struct NarrowDims2TransposeDispatch {
                           const T* input, const Dim3& input_dims, T* output) {
     PADDLE_ENFORCE_EQ(
         (tile_long & (tile_long - 1)), 0,
-        "The length of the longer side of the tile is always a power of 2.");
+        platform::errors::InvalidArgument(
+            "The length of the longer side of the tile should be power of 2."
+            " But received value is:%d.",
+            tile_long));
+
     bool request_satisfied = std::max(tile_size_i, tile_size_j) <= tile_long &&
                              std::min(tile_size_i, tile_size_j) <= tile_short;
 
@@ -313,6 +318,7 @@ struct NarrowDims2TransposeDispatch {
   }
 };
 
+// If Not long tile size, goto this function when compile.
 template <typename T, int tile_long, int tile_short>
 struct NarrowDims2TransposeDispatch<
     T, tile_long, tile_short,
@@ -323,7 +329,11 @@ struct NarrowDims2TransposeDispatch<
                           const T* input, const Dim3& input_dims, T* output) {
     PADDLE_ENFORCE_EQ(
         (tile_long & (tile_long - 1)), 0,
-        "The length of the longer side of the tile is always a power of 2.");
+        platform::errors::InvalidArgument(
+            "The length of the longer side of the tile should be power of 2."
+            " But received value is:%d.",
+            tile_long));
+
     bool request_satisfied = std::max(tile_size_i, tile_size_j) <= tile_long &&
                              std::min(tile_size_i, tile_size_j) <= tile_short;
 
@@ -340,6 +350,7 @@ struct NarrowDims2TransposeDispatch<
   }
 };
 
+// If long tile size, goto this function when compile.
 template <typename T, int tile_long, int tile_short>
 struct NarrowDims2TransposeDispatch<
     T, tile_long, tile_short,
@@ -365,7 +376,7 @@ template <typename T, bool conjugate = false>
 void SwapDim1And2InNarrow(const platform::CUDADeviceContext& d, const T* input,
                           const Dim3& input_dims, T* output,
                           const int kMinTileSize) {
-  // Get available tile sizes here for the data type requested:
+  // First get available tile sizes for the data type requested as backups
   std::vector<std::pair<int, int>> tile_sele;
   auto ret = SelectProperTileSize<sizeof(T)>(&tile_sele);
   PADDLE_ENFORCE_EQ(
@@ -379,9 +390,12 @@ void SwapDim1And2InNarrow(const platform::CUDADeviceContext& d, const T* input,
   float lowest_cost = std::numeric_limits<float>::max();
   int input_long_edge = std::max(input_dims[1], input_dims[2]);
 
+  // Find the tile size that best suit in  inputs.
   for (auto tile_size_pair : tile_sele) {
     int proposed_tile_long_edge = tile_size_pair.first;
-    // data may not aligned to tile, so some threads wasted
+    // data may not aligned to tile, so some threads wasted, we need
+    // to find least wasted threads, which means we need to find tile
+    // can split input properly, in another words: num_wasted_threads=0.
     int num_wasted_threads = input_long_edge -
                              framework::CeilOrFloor<int, false>(
                                  input_long_edge, proposed_tile_long_edge) *
@@ -390,16 +404,15 @@ void SwapDim1And2InNarrow(const platform::CUDADeviceContext& d, const T* input,
     int num_full_tiles = framework::CeilOrFloor<int, false>(
         input_long_edge, proposed_tile_long_edge);
 
-    float cost = 0;
+    float cost = num_wasted_threads;
 
-    if (num_full_tiles <= 1) cost = num_wasted_threads;
-
-    // Find least weasted threads.
     if (cost <= lowest_cost) {
       tile_long_edge = proposed_tile_long_edge;
       tile_short_edge = tile_size_pair.second;
       lowest_cost = cost;
     }
+    // break as we already find best tile size.
+    if (cost == 0) break;
   }
 
   // The tile size we select should be match with input dim, long side to long
@@ -420,6 +433,7 @@ void SwapDim1And2InNarrow(const platform::CUDADeviceContext& d, const T* input,
                            ? tile_long_edge
                            : std::min(select_tile_size_j, tile_short_edge);
 
+  // Here finally get proper long X short tile size.
   Dim3 input_dims_aligned = {
       input_dims[0],
       framework::CeilOrFloor<int, true>(input_dims[1], select_tile_size_i),
@@ -497,6 +511,8 @@ void SendSwapDim1And2InTranspose(const platform::CUDADeviceContext& d,
 
   } else if (narrow_tile) {
     // If input shape is like Rect, such as 2X100, use Narrow tile size.
+    // It makes things complicated, because need to find a tile can coverr
+    // input and also reach best coalescing.
     SwapDim1And2InNarrow<T>(d, input, input_dims, output, kMinTileSize);
   } else {
     // If input shape is small, such as 8X8, just do simple copy
