@@ -270,7 +270,7 @@ class TestAdagradOptimizer(unittest.TestCase):
 
         # Check init_program
         init_ops = init_program.global_block().ops
-        self.assertEqual(len(init_ops), 3)
+        self.assertEqual(len(init_ops), 2)
         self.assertEqual(init_ops[0].type, "fill_constant")
         self.assertAlmostEqual(init_ops[0].attr('value'), learning_rate)
         self.assertEqual(init_ops[1].type, "fill_constant")
@@ -320,9 +320,8 @@ class TestAdamOptimizer(unittest.TestCase):
         self.assertEqual(len(adam_optimizer.get_accumulators()), 0)
         with framework.program_guard(program, init_program):
             opts = adam_optimizer.apply_gradients(params_grads)
-        self.assertEqual(len(opts), 4)
-        self.assertEqual([op.type for op in opts],
-                         ["scale", "adam", "scale", "scale"])
+        self.assertEqual(len(opts), 2)
+        self.assertEqual([op.type for op in opts], ["scale", "adam"])
 
         # Check accumulators
         accumulators = adam_optimizer.get_accumulators()

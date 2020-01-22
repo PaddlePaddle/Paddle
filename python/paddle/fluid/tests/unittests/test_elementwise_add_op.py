@@ -16,7 +16,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid.core as core
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 
@@ -27,7 +27,7 @@ class TestElementwiseAddOp(OpTest):
 
     def setUp(self):
         self.op_type = "elementwise_add"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.axis = -1
         self.init_dtype()
         self.init_input_output()
@@ -50,10 +50,7 @@ class TestElementwiseAddOp(OpTest):
         if self.dtype == np.float16:
             return
         self.check_grad(
-            ['X', 'Y'],
-            'Out',
-            max_relative_error=0.005,
-            check_dygraph=(self.use_mkldnn == False))
+            ['X', 'Y'], 'Out', check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad_ingore_x(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
@@ -62,7 +59,6 @@ class TestElementwiseAddOp(OpTest):
         self.check_grad(
             ['Y'],
             'Out',
-            max_relative_error=0.005,
             no_grad_set=set("X"),
             check_dygraph=(self.use_mkldnn == False))
 
@@ -73,7 +69,6 @@ class TestElementwiseAddOp(OpTest):
         self.check_grad(
             ['X'],
             'Out',
-            max_relative_error=0.005,
             no_grad_set=set('Y'),
             check_dygraph=(self.use_mkldnn == False))
 
@@ -104,6 +99,8 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
                     place, atol=1e-3, check_dygraph=(self.use_mkldnn == False))
 
 
+@skip_check_grad_ci(
+    reason="[skip shape check] Use y_shape(1) to test broadcast.")
 class TestElementwiseAddOp_scalar(TestElementwiseAddOp):
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 4).astype(self.dtype)
@@ -111,6 +108,8 @@ class TestElementwiseAddOp_scalar(TestElementwiseAddOp):
         self.out = self.x + self.y
 
 
+@skip_check_grad_ci(
+    reason="[skip shape check] Use y_shape(1) to test broadcast.")
 class TestFP16ElementwiseAddOp_scalar(TestFP16ElementwiseAddOp):
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 4).astype(self.dtype)
@@ -118,6 +117,8 @@ class TestFP16ElementwiseAddOp_scalar(TestFP16ElementwiseAddOp):
         self.out = self.x + self.y
 
 
+@skip_check_grad_ci(
+    reason="[skip shape check] Use y_shape(1,1) to test broadcast.")
 class TestElementwiseAddOp_scalar2(TestElementwiseAddOp):
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 4).astype(self.dtype)
@@ -125,6 +126,8 @@ class TestElementwiseAddOp_scalar2(TestElementwiseAddOp):
         self.out = self.x + self.y
 
 
+@skip_check_grad_ci(
+    reason="[skip shape check] Use y_shape(1,1) to test broadcast.")
 class TestFP16ElementwiseAddOp_scalar2(TestFP16ElementwiseAddOp):
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 4).astype(self.dtype)
@@ -134,23 +137,23 @@ class TestFP16ElementwiseAddOp_scalar2(TestFP16ElementwiseAddOp):
 
 class TestElementwiseAddOp_Vector(TestElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.random((32, )).astype(self.dtype)
-        self.y = np.random.random((32, )).astype(self.dtype)
+        self.x = np.random.random((100, )).astype(self.dtype)
+        self.y = np.random.random((100, )).astype(self.dtype)
         self.out = np.add(self.x, self.y)
 
 
 class TestFP16ElementwiseAddOp_Vector(TestFP16ElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.random((32, )).astype(self.dtype)
-        self.y = np.random.random((32, )).astype(self.dtype)
+        self.x = np.random.random((100, )).astype(self.dtype)
+        self.y = np.random.random((100, )).astype(self.dtype)
         self.out = np.add(self.x, self.y)
 
 
 class TestElementwiseAddOp_broadcast_0(TestElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
-        self.y = np.random.rand(2).astype(self.dtype)
-        self.out = self.x + self.y.reshape(2, 1, 1)
+        self.x = np.random.rand(100, 2, 3).astype(self.dtype)
+        self.y = np.random.rand(100).astype(self.dtype)
+        self.out = self.x + self.y.reshape(100, 1, 1)
 
     def init_axis(self):
         self.axis = 0
@@ -158,9 +161,9 @@ class TestElementwiseAddOp_broadcast_0(TestElementwiseAddOp):
 
 class TestFP16ElementwiseAddOp_broadcast_0(TestFP16ElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
-        self.y = np.random.rand(2).astype(self.dtype)
-        self.out = self.x + self.y.reshape(2, 1, 1)
+        self.x = np.random.rand(100, 2, 3).astype(self.dtype)
+        self.y = np.random.rand(100).astype(self.dtype)
+        self.out = self.x + self.y.reshape(100, 1, 1)
 
     def init_axis(self):
         self.axis = 0
@@ -168,9 +171,9 @@ class TestFP16ElementwiseAddOp_broadcast_0(TestFP16ElementwiseAddOp):
 
 class TestElementwiseAddOp_broadcast_1(TestElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
-        self.y = np.random.rand(3).astype(self.dtype)
-        self.out = self.x + self.y.reshape(1, 3, 1)
+        self.x = np.random.rand(2, 100, 3).astype(self.dtype)
+        self.y = np.random.rand(100).astype(self.dtype)
+        self.out = self.x + self.y.reshape(1, 100, 1)
 
     def init_axis(self):
         self.axis = 1
@@ -178,9 +181,9 @@ class TestElementwiseAddOp_broadcast_1(TestElementwiseAddOp):
 
 class TestFP16ElementwiseAddOp_broadcast_1(TestFP16ElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
-        self.y = np.random.rand(3).astype(self.dtype)
-        self.out = self.x + self.y.reshape(1, 3, 1)
+        self.x = np.random.rand(2, 100, 3).astype(self.dtype)
+        self.y = np.random.rand(100).astype(self.dtype)
+        self.out = self.x + self.y.reshape(1, 100, 1)
 
     def init_axis(self):
         self.axis = 1
@@ -188,23 +191,23 @@ class TestFP16ElementwiseAddOp_broadcast_1(TestFP16ElementwiseAddOp):
 
 class TestElementwiseAddOp_broadcast_2(TestElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
-        self.y = np.random.rand(4).astype(self.dtype)
-        self.out = self.x + self.y.reshape(1, 1, 4)
+        self.x = np.random.rand(2, 3, 100).astype(self.dtype)
+        self.y = np.random.rand(100).astype(self.dtype)
+        self.out = self.x + self.y.reshape(1, 1, 100)
 
 
 class TestFP16ElementwiseAddOp_broadcast_2(TestFP16ElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
-        self.y = np.random.rand(4).astype(self.dtype)
-        self.out = self.x + self.y.reshape(1, 1, 4)
+        self.x = np.random.rand(2, 3, 100).astype(self.dtype)
+        self.y = np.random.rand(100).astype(self.dtype)
+        self.out = self.x + self.y.reshape(1, 1, 100)
 
 
 class TestElementwiseAddOp_broadcast_3(TestElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.rand(2, 3, 4, 5).astype(self.dtype)
-        self.y = np.random.rand(3, 4).astype(self.dtype)
-        self.out = self.x + self.y.reshape(1, 3, 4, 1)
+        self.x = np.random.rand(2, 10, 12, 3).astype(self.dtype)
+        self.y = np.random.rand(10, 12).astype(self.dtype)
+        self.out = self.x + self.y.reshape(1, 10, 12, 1)
 
     def init_axis(self):
         self.axis = 1
@@ -212,9 +215,9 @@ class TestElementwiseAddOp_broadcast_3(TestElementwiseAddOp):
 
 class TestFP16ElementwiseAddOp_broadcast_3(TestFP16ElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.rand(2, 3, 4, 5).astype(self.dtype)
-        self.y = np.random.rand(3, 4).astype(self.dtype)
-        self.out = self.x + self.y.reshape(1, 3, 4, 1)
+        self.x = np.random.rand(2, 10, 12, 3).astype(self.dtype)
+        self.y = np.random.rand(10, 12).astype(self.dtype)
+        self.out = self.x + self.y.reshape(1, 10, 12, 1)
 
     def init_axis(self):
         self.axis = 1
@@ -222,9 +225,9 @@ class TestFP16ElementwiseAddOp_broadcast_3(TestFP16ElementwiseAddOp):
 
 class TestElementwiseAddOp_broadcast_4(TestElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.rand(2, 3, 4, 5).astype(self.dtype)
-        self.y = np.random.rand(2, 1).astype(self.dtype)
-        self.out = self.x + self.y.reshape(2, 1, 1, 1)
+        self.x = np.random.rand(100, 2, 3, 4).astype(self.dtype)
+        self.y = np.random.rand(100, 1).astype(self.dtype)
+        self.out = self.x + self.y.reshape(100, 1, 1, 1)
 
     def init_axis(self):
         self.axis = 0
@@ -232,9 +235,9 @@ class TestElementwiseAddOp_broadcast_4(TestElementwiseAddOp):
 
 class TestFP16ElementwiseAddOp_broadcast_4(TestFP16ElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.rand(2, 3, 4, 5).astype(self.dtype)
-        self.y = np.random.rand(2, 1).astype(self.dtype)
-        self.out = self.x + self.y.reshape(2, 1, 1, 1)
+        self.x = np.random.rand(100, 2, 3, 4).astype(self.dtype)
+        self.y = np.random.rand(100, 1).astype(self.dtype)
+        self.out = self.x + self.y.reshape(100, 1, 1, 1)
 
     def init_axis(self):
         self.axis = 0
@@ -242,37 +245,37 @@ class TestFP16ElementwiseAddOp_broadcast_4(TestFP16ElementwiseAddOp):
 
 class TestElementwiseAddOp_broadcast_5(TestElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
-        self.y = np.random.rand(2, 1, 4).astype(self.dtype)
+        self.x = np.random.rand(10, 3, 12).astype(self.dtype)
+        self.y = np.random.rand(10, 1, 12).astype(self.dtype)
         self.out = self.x + self.y
 
 
 class TestFP16ElementwiseAddOp_broadcast_5(TestFP16ElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
-        self.y = np.random.rand(2, 1, 4).astype(self.dtype)
+        self.x = np.random.rand(10, 3, 12).astype(self.dtype)
+        self.y = np.random.rand(10, 1, 12).astype(self.dtype)
         self.out = self.x + self.y
 
 
 class TestElementwiseAddOp_broadcast_6(TestElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.rand(2, 3, 4, 5).astype(self.dtype)
-        self.y = np.random.rand(2, 3, 1, 5).astype(self.dtype)
+        self.x = np.random.rand(2, 12, 3, 5).astype(self.dtype)
+        self.y = np.random.rand(2, 12, 1, 5).astype(self.dtype)
         self.out = self.x + self.y
 
 
 class TestFP16ElementwiseAddOp_broadcast_6(TestFP16ElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.rand(2, 3, 4, 5).astype(self.dtype)
-        self.y = np.random.rand(2, 3, 1, 5).astype(self.dtype)
+        self.x = np.random.rand(2, 12, 3, 5).astype(self.dtype)
+        self.y = np.random.rand(2, 12, 1, 5).astype(self.dtype)
         self.out = self.x + self.y
 
 
 class TestElementwiseAddOp_rowwise_add_0(TestElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
-        self.y = np.random.rand(3, 4).astype(self.dtype)
-        self.out = self.x + self.y.reshape(1, 3, 4)
+        self.x = np.random.rand(2, 10, 12).astype(self.dtype)
+        self.y = np.random.rand(10, 12).astype(self.dtype)
+        self.out = self.x + self.y.reshape(1, 10, 12)
 
     def init_axis(self):
         self.axis = 1
@@ -280,17 +283,19 @@ class TestElementwiseAddOp_rowwise_add_0(TestElementwiseAddOp):
 
 class TestFP16ElementwiseAddOp_rowwise_add_0(TestFP16ElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
-        self.y = np.random.rand(3, 4).astype(self.dtype)
-        self.out = self.x + self.y.reshape(1, 3, 4)
+        self.x = np.random.rand(2, 10, 12).astype(self.dtype)
+        self.y = np.random.rand(10, 12).astype(self.dtype)
+        self.out = self.x + self.y.reshape(1, 10, 12)
 
     def init_axis(self):
         self.axis = 1
 
 
+@skip_check_grad_ci(
+    reason="[skip shape check] Use y_shape(1) to test broadcast.")
 class TestElementwiseAddOp_rowwise_add_1(TestElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.rand(2, 1).astype(self.dtype)
+        self.x = np.random.rand(100, 1).astype(self.dtype)
         self.y = np.random.rand(1).astype(self.dtype)
         self.out = self.x + self.y.reshape(1, 1)
 
@@ -298,9 +303,11 @@ class TestElementwiseAddOp_rowwise_add_1(TestElementwiseAddOp):
         self.axis = 1
 
 
+@skip_check_grad_ci(
+    reason="[skip shape check] Use y_shape(1) to test broadcast.")
 class TestFP16ElementwiseAddOp_rowwise_add_1(TestFP16ElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.rand(2, 1).astype(self.dtype)
+        self.x = np.random.rand(100, 1).astype(self.dtype)
         self.y = np.random.rand(1).astype(self.dtype)
         self.out = self.x + self.y.reshape(1, 1)
 
@@ -310,8 +317,8 @@ class TestFP16ElementwiseAddOp_rowwise_add_1(TestFP16ElementwiseAddOp):
 
 class TestElementwiseAddOp_channelwise_add(TestElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.rand(3, 20, 20).astype(self.dtype)
-        self.y = np.random.rand(3, 1, 1).astype(self.dtype)
+        self.x = np.random.rand(100, 2, 3).astype(self.dtype)
+        self.y = np.random.rand(100, 1, 1).astype(self.dtype)
         self.out = self.x + self.y
 
     def init_axis(self):
@@ -320,8 +327,8 @@ class TestElementwiseAddOp_channelwise_add(TestElementwiseAddOp):
 
 class TestFP16ElementwiseAddOp_channelwise_add(TestFP16ElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.rand(3, 10, 20).astype(self.dtype)
-        self.y = np.random.rand(3, 1, 1).astype(self.dtype)
+        self.x = np.random.rand(100, 2, 3).astype(self.dtype)
+        self.y = np.random.rand(100, 1, 1).astype(self.dtype)
         self.out = self.x + self.y
 
     def init_axis(self):
@@ -330,8 +337,8 @@ class TestFP16ElementwiseAddOp_channelwise_add(TestFP16ElementwiseAddOp):
 
 class TestElementwiseAddOp_commonuse_add1(TestElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
-        self.y = np.random.rand(1, 1, 4).astype(self.dtype)
+        self.x = np.random.rand(2, 3, 100).astype(self.dtype)
+        self.y = np.random.rand(1, 1, 100).astype(self.dtype)
         self.out = self.x + self.y
 
     def init_axis(self):
@@ -340,8 +347,8 @@ class TestElementwiseAddOp_commonuse_add1(TestElementwiseAddOp):
 
 class TestElementwiseAddOp_commonuse_add2(TestElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.rand(2, 3, 1, 5).astype(self.dtype)
-        self.y = np.random.rand(2, 1, 4, 1).astype(self.dtype)
+        self.x = np.random.rand(10, 3, 1, 4).astype(self.dtype)
+        self.y = np.random.rand(10, 1, 12, 1).astype(self.dtype)
         self.out = self.x + self.y
 
     def init_axis(self):
@@ -350,8 +357,8 @@ class TestElementwiseAddOp_commonuse_add2(TestElementwiseAddOp):
 
 class TestElementwiseAddOp_xsize_lessthan_ysize_add(TestElementwiseAddOp):
     def init_input_output(self):
-        self.x = np.random.rand(4, 5).astype(self.dtype)
-        self.y = np.random.rand(2, 3, 4, 5).astype(self.dtype)
+        self.x = np.random.rand(10, 12).astype(self.dtype)
+        self.y = np.random.rand(2, 3, 10, 12).astype(self.dtype)
         self.out = self.x + self.y
 
     def init_axis(self):

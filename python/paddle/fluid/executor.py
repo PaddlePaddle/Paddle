@@ -193,7 +193,7 @@ def dimension_is_compatible_with(first, second):
     return True
 
 
-def check_feed_shape_type(var, feed):
+def check_feed_shape_type(var, feed, num_places=1):
     """
     Returns True if the variable doesn't require feed check or it is compatible
     with the shape and have same dtype as the feeded value.
@@ -207,6 +207,8 @@ def check_feed_shape_type(var, feed):
     Args:
         var (Variable): the Variable object
         feed (LoDTensor): the feeded value, which must be a LoDTensor
+        num_places: an integer value indicating the number of places.
+            ParallelExecutor will divide data into devices (CPU/GPU) evenly.
     Returns:
         True if the shape and dtype of variable is compatible with the feed value
     Raises:
@@ -214,11 +216,18 @@ def check_feed_shape_type(var, feed):
             the feed value
     """
     if var.desc.need_check_feed():
-        if not dimension_is_compatible_with(feed.shape(), var.shape):
+        feed_shape = feed.shape()
+        if six.PY2:
+            feed_shape[0] = long(feed_shape[0] /
+                                 num_places) if len(feed.lod()) == 0 else -1
+        else:
+            feed_shape[0] = int(feed_shape[0] /
+                                num_places) if len(feed.lod()) == 0 else -1
+        if not dimension_is_compatible_with(feed_shape, var.shape):
             raise ValueError(
                 'The feeded Variable %r should have dimensions = %d, shape = '
-                '%r, but received feeded shape %r' %
-                (var.name, len(var.shape), var.shape, feed.shape()))
+                '%r, but received feeded shape %r on each device' %
+                (var.name, len(var.shape), var.shape, feed_shape))
         if not dtype_is_compatible_with(feed._dtype(), var.dtype):
             var_dtype_format = convert_dtype(var.dtype) if isinstance(
                 var.dtype, core.VarDesc.VarType) else var.dtype
@@ -632,7 +641,7 @@ class Executor(object):
                     feed_tensor.set(feed[feed_name], core.CPUPlace())
                 if need_check_feed:
                     var = global_block.var(feed_name)
-                    check_feed_shape_type(var, feed_tensor)
+                    check_feed_shape_type(var, feed_tensor, exe.device_count())
                 feed_tensor_dict[feed_name] = feed_tensor
 
             exe.feed_and_split_tensor_into_local_scopes(feed_tensor_dict)
@@ -783,9 +792,15 @@ class Executor(object):
             program = default_main_program()
         if isinstance(program, Program) and \
                         len(program.global_block().ops) == 0:
-            error_info = "The current program is empty."
             if use_default_main_program:
-                error_info += " Maybe you should pass the Program or the CompiledProgram manually."
+                error_info = "Now you are using default_main_program, "\
+                    "but there are no operators in the program to be executed. "\
+                    "Please ensure you create model correctly or you can pass "\
+                    "the Program or the CompiledProgram manually."
+            else:
+                error_info = "There are no operators in the program to be executed. "\
+                    "If you pass Program manually, please use fluid.program_guard "\
+                    "to ensure the current Program is being used."
             warnings.warn(error_info)
 
         if scope is None:
@@ -948,6 +963,7 @@ class Executor(object):
                     program._pipeline_opt)
             else:
                 trainer = TrainerFactory()._create_trainer(program._fleet_opt)
+                trainer._set_thread_barrier(program._is_distributed)
             trainer._set_program(program)
         else:
             if program._pipeline_opt:

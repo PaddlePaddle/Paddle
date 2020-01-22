@@ -26,6 +26,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 #include "paddle/fluid/imperative/backward_strategy.h"
+#include "paddle/fluid/imperative/data_loader.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/nccl_context.h"
 #include "paddle/fluid/imperative/profiler.h"
@@ -277,6 +278,19 @@ void BindImperative(py::module *m_ptr) {
           imperative::SetCurrentTracer(tracer);
         });
 
+#ifndef _WIN32
+  // Dygraph DataLoader signal handler
+  m.def("_set_process_pid", [](int64_t key, pid_t pid) {
+    imperative::SetLoadProcessPID(key, pid);
+  });
+  m.def("_erase_process_pid",
+        [](int64_t key) { imperative::EraseLoadProcessPID(key); });
+  m.def("_set_process_signal_handler",
+        []() { imperative::SetLoadProcessSignalHandler(); });
+  m.def("_throw_error_if_process_failed",
+        []() { imperative::ThrowErrorIfLoadProcessFailed(); });
+#endif
+
   py::class_<imperative::RemovablePyCallableObject,
              std::shared_ptr<imperative::RemovablePyCallableObject>>(
       m, "RemovablePyCallableObject",
@@ -350,14 +364,14 @@ void BindImperative(py::module *m_ptr) {
 
                 import paddle.fluid as fluid
                 from paddle.fluid.dygraph.base import to_variable
-                from paddle.fluid.dygraph import FC
+                from paddle.fluid.dygraph import Linear
                 import numpy as np
 
                 data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
                 with fluid.dygraph.guard():
-                    fc = FC("fc", 64, num_flatten_dims=2)
+                    linear = Linear(32, 64)
                     data = to_variable(data)
-                    x = fc(data)
+                    x = linear(data)
                     print(x.numpy())
 
        )DOC")
@@ -384,14 +398,14 @@ void BindImperative(py::module *m_ptr) {
 
                 import paddle.fluid as fluid
                 from paddle.fluid.dygraph.base import to_variable
-                from paddle.fluid.dygraph import FC
+                from paddle.fluid.dygraph import Linear
                 import numpy as np
 
                 data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
                 with fluid.dygraph.guard():
-                    fc = FC("fc", 64, num_flatten_dims=2)
+                    linear = Linear(32, 64)
                     data = to_variable(data)
-                    x = fc(data)
+                    x = linear(data)
                     y = x.detach()
 
        )DOC")
@@ -560,18 +574,18 @@ void BindImperative(py::module *m_ptr) {
           [](imperative::Tracer &self, const py::object &obj) {
             if (py::isinstance<platform::CUDAPlace>(obj)) {
               auto p = obj.cast<platform::CUDAPlace *>();
-              self.SetExpectedPlace<platform::CUDAPlace>(*p);
+              self.SetExpectedPlace(*p);
             } else if (py::isinstance<platform::CPUPlace>(obj)) {
               auto p = obj.cast<platform::CPUPlace *>();
-              self.SetExpectedPlace<platform::CPUPlace>(*p);
+              self.SetExpectedPlace(*p);
             } else if (py::isinstance<platform::CUDAPinnedPlace>(obj)) {
               auto p = obj.cast<platform::CUDAPinnedPlace *>();
-              self.SetExpectedPlace<platform::CUDAPinnedPlace>(*p);
+              self.SetExpectedPlace(*p);
             } else {
-              PADDLE_THROW(
+              PADDLE_THROW(platform::errors::InvalidArgument(
                   "Incompatible Place Type: supports CUDAPlace, CPUPlace, "
-                  "CUDAPinnedPlace, "
-                  "but got Unknown Type!");
+                  "and CUDAPinnedPlace, "
+                  "but got Unknown Type!"));
             }
           })
       .def("_get_program_desc_tracer",

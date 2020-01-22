@@ -29,6 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/async_executor.h"
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/data_feed.pb.h"
+#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/place.h"
@@ -45,7 +46,11 @@ void BindFleetWrapper(py::module* m) {
       .def("push_dense", &framework::FleetWrapper::PushDenseVarsSync)
       .def("pull_dense", &framework::FleetWrapper::PullDenseVarsSync)
       .def("init_server", &framework::FleetWrapper::InitServer)
-      .def("run_server", &framework::FleetWrapper::RunServer)
+      .def("run_server", (uint64_t (framework::FleetWrapper::*)(void)) &
+                             framework::FleetWrapper::RunServer)
+      .def("run_server", (uint64_t (framework::FleetWrapper::*)(  // NOLINT
+                             const std::string&, uint32_t)) &     // NOLINT
+                             framework::FleetWrapper::RunServer)
       .def("init_worker", &framework::FleetWrapper::InitWorker)
       .def("init_model", &framework::FleetWrapper::PushDenseParamSync)
       .def("save_model", &framework::FleetWrapper::SaveModel)

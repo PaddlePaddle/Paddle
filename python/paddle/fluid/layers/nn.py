@@ -24,8 +24,8 @@ import os
 import inspect
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant, NumpyArrayInitializer
-from ..framework import Variable, OpProtoHolder, in_dygraph_mode
-from ..dygraph import base
+from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program
+from .. import dygraph_utils
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
 from .tensor import concat, assign, fill_constant, zeros
@@ -33,7 +33,6 @@ from . import utils
 from .. import unique_name
 from functools import reduce
 from .. import core
-from ..dygraph import layers
 from ..data_feeder import convert_dtype, check_type_and_dtype, check_type, check_dtype
 
 __all__ = [
@@ -184,6 +183,23 @@ __all__ = [
     'gather_tree',
     'uniform_random',
 ]
+
+
+@dygraph_only
+def _elementwise_op_in_dygraph(x,
+                               y,
+                               axis=-1,
+                               act=None,
+                               use_mkldnn=False,
+                               op_name=None):
+    attrs = {'axis': axis, 'use_mkldnn': use_mkldnn}
+    inputs = {'X': [x], 'Y': [y]}
+    op = getattr(core.ops, op_name)
+    outs = op(inputs, attrs)
+    out = outs['Out'][0]
+
+    return dygraph_utils._append_activation_in_dygraph(
+        out, act, use_mkldnn=use_mkldnn)
 
 
 def fc(input,
@@ -804,28 +820,41 @@ def dropout(x,
             droped = fluid.layers.dropout(x, dropout_prob=0.5)
     """
 
+    def get_attrs(prog, dropout_prob, is_test, seed):
+        if (seed is None or seed == 0) and prog.random_seed != 0:
+            seed = prog.random_seed
+        attrs = {
+            'dropout_prob': dropout_prob,
+            'is_test': is_test,
+            'fix_seed': seed is not None,
+            'seed': seed if seed is not None else 0,
+            'dropout_implementation': dropout_implementation,
+        }
+        return attrs
+
+    if in_dygraph_mode():
+        attrs = get_attrs(default_main_program(), dropout_prob, is_test, seed)
+        attrs['is_test'] = not _dygraph_tracer()._train_mode
+        inputs = {'X': [x]}
+        outs = core.ops.dropout(inputs, attrs)
+        return outs['Out'][0]
+
     helper = LayerHelper('dropout', **locals())
     check_type_and_dtype(x, 'x', Variable, ['float16', 'float32', 'float64'],
                          'dropout')
+
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     mask = helper.create_variable_for_type_inference(
         dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
 
-    if (seed is None or seed == 0) and helper.main_program.random_seed != 0:
-        seed = helper.main_program.random_seed
+    attrs = get_attrs(helper.main_program, dropout_prob, is_test, seed)
 
     helper.append_op(
         type='dropout',
         inputs={'X': [x]},
         outputs={'Out': [out],
                  'Mask': [mask]},
-        attrs={
-            'dropout_prob': dropout_prob,
-            'is_test': is_test,
-            'fix_seed': seed is not None,
-            'seed': seed if seed is not None else 0,
-            'dropout_implementation': dropout_implementation,
-        })
+        attrs=attrs)
     return out
 
 
@@ -1087,6 +1116,13 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
                              fetch_list=[result[0]])
             print(output)
     """
+    inputs = {"X": [input]}
+    attrs = {"axis": axis, "use_cudnn": use_cudnn}
+
+    if in_dygraph_mode():
+        outs = core.ops.softmax(inputs, attrs)
+        return outs['Out'][0]
+
     helper = LayerHelper('softmax', **locals())
     check_type_and_dtype(input, 'input', Variable,
                          ['float16', 'float32', 'float64'], 'softmax')
@@ -1097,8 +1133,7 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
         type="softmax",
         inputs={"X": input},
         outputs={"Out": softmax_out},
-        attrs={"axis": axis,
-               "use_cudnn": use_cudnn})
+        attrs=attrs)
     return softmax_out
 
 
@@ -2430,6 +2465,7 @@ def batch_norm(input,
     Note:
         if build_strategy.sync_batch_norm=True, the batch_norm in network will use 
         sync_batch_norm automatically.
+        `is_test = True` can only be used in test program and inference program, `is_test` CANNOT be set to True in train program, if you want to use global status from pre_train model in train program, please set `use_global_stats = True`.
 
     Args:
         input(Variable): The rank of input variable can be 2, 3, 4, 5. The data type 
@@ -2970,7 +3006,7 @@ def layer_norm(input,
             print(output)
     """
     assert in_dygraph_mode(
-    ) is not True, "please use FC instead of fc in dygraph mode!"
+    ) is not True, "please use LayerNorm instead of layer_norm in dygraph mode!"
     helper = LayerHelper('layer_norm', **locals())
     dtype = helper.input_dtype()
 
@@ -3847,21 +3883,28 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_sum(y, dim=[0, 1]) # [16, 20]
 
     """
-    helper = LayerHelper('reduce_sum', **locals())
-    check_type_and_dtype(input, 'input', Variable,
-                         ['float32', 'float64', 'int32', 'int64'], 'reduce_sum')
-    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
+    attrs = {
+        'dim': dim if dim != None and dim != [] else [0],
+        'keep_dim': keep_dim,
+        'reduce_all': True if dim == None or dim == [] else False
+    }
+
+    if in_dygraph_mode():
+        inputs = {'X': [input]}
+        outs = core.ops.reduce_sum(inputs, attrs)
+        return outs['Out'][0]
+
+    check_type_and_dtype(input, 'input', Variable,
+                         ['float32', 'float64', 'int32', 'int64'], 'reduce_sum')
+    helper = LayerHelper('reduce_sum', **locals())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     helper.append_op(
         type='reduce_sum',
         inputs={'X': input},
         outputs={'Out': out},
-        attrs={
-            'dim': dim if dim != None else [0],
-            'keep_dim': keep_dim,
-            'reduce_all': True if dim == None else False
-        })
+        attrs=attrs)
     return out
 
 
@@ -3914,22 +3957,30 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_mean(y, dim=[1, 2]) # [2.5, 6.5]
             fluid.layers.reduce_mean(y, dim=[0, 1]) # [4.0, 5.0]
     """
-    helper = LayerHelper('reduce_mean', **locals())
+
+    if dim is not None and not isinstance(dim, list):
+        dim = [dim]
+    attrs = {
+        'dim': dim if dim != None and dim != [] else [0],
+        'keep_dim': keep_dim,
+        'reduce_all': True if dim == None or dim == [] else False
+    }
+
+    if in_dygraph_mode():
+        inputs = {'X': [input]}
+        outs = core.ops.reduce_mean(inputs, attrs)
+        return outs['Out'][0]
+
     check_type_and_dtype(input, 'input', Variable,
                          ['float32', 'float64', 'int32', 'int64'],
                          'reduce_mean')
+    helper = LayerHelper('reduce_mean', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    if dim is not None and not isinstance(dim, list):
-        dim = [dim]
     helper.append_op(
         type='reduce_mean',
         inputs={'X': input},
         outputs={'Out': out},
-        attrs={
-            'dim': dim if dim != None else [0],
-            'keep_dim': keep_dim,
-            'reduce_all': True if dim == None else False
-        })
+        attrs=attrs)
     return out
 
 
@@ -3987,9 +4038,9 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else [0],
+            'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None else False
+            'reduce_all': True if dim == None or dim == [] else False
         })
     return out
 
@@ -4048,9 +4099,9 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else [0],
+            'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None else False
+            'reduce_all': True if dim == None or dim == [] else False
         })
     return out
 
@@ -4110,9 +4161,9 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else [0],
+            'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None else False
+            'reduce_all': True if dim == None or dim == [] else False
         })
     return out
 
@@ -4168,9 +4219,9 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else [0],
+            'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None else False
+            'reduce_all': True if dim == None or dim == [] else False
         })
     return out
 
@@ -4226,9 +4277,9 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None else [0],
+            'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None else False
+            'reduce_all': True if dim == None or dim == [] else False
         })
     return out
 
@@ -4280,6 +4331,36 @@ def split(input, num_or_sections, dim=-1, name=None):
             # x1.shape [3, 3, 5]
             # x2.shape [3, 4, 5]
     """
+    if in_dygraph_mode():
+        inputs = {'X': [input]}
+        attrs = {}
+        if isinstance(dim, int):
+            dim = (len(input.shape) + dim) if dim < 0 else dim
+            attrs['axis'] = dim
+        else:
+            dim.stop_gradient = True
+            inputs['AxisTensor'] = [dim]
+
+        if isinstance(num_or_sections, int):
+            num = num_or_sections
+            attrs['num'] = num_or_sections
+        elif isinstance(num_or_sections, (list, tuple)):
+            num = len(num_or_sections)
+            if utils._contain_var(num_or_sections):
+                raise TypeError(
+                    "The type of 'num_or_sections' in split must be int or list[int] or tuple[int] in Dygraph mode, but "
+                    "received %s, which contains Variable." %
+                    (type(num_or_sections)))
+            else:
+                attrs['sections'] = list(num_or_sections)
+        else:
+            raise TypeError(
+                "The type of 'num_or_sections' in split must be int or list in Dygraph mode, but "
+                "received %s." % (type(num_or_sections)))
+
+        res = core.ops.split(inputs, attrs, {}, {'Out': num})
+        return res['Out']
+
     if not isinstance(num_or_sections, (int, list, tuple)):
         raise TypeError(
             "The type of 'num_or_sections' in split must be int, list or "
@@ -4338,9 +4419,7 @@ def split(input, num_or_sections, dim=-1, name=None):
         attrs['sections'] = list(
             map(lambda ele: -1 if isinstance(ele, Variable) else ele,
                 num_or_sections))
-        contain_var = not all(not isinstance(ele, Variable)
-                              for ele in num_or_sections)
-        if contain_var:
+        if utils._contain_var(num_or_sections):
             inputs['SectionsTensorList'] = _get_SectionsTensorList(
                 num_or_sections)
 
@@ -4508,6 +4587,16 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
             y = fluid.layers.data(name='y', shape=[3, 2], dtype='float32')
             out = fluid.layers.matmul(x, y, True, True)
     """
+    attrs = {
+        'transpose_X': transpose_x,
+        'transpose_Y': transpose_y,
+        'alpha': float(alpha),
+    }
+
+    if in_dygraph_mode():
+        inputs = {'X': [x], 'Y': [y]}
+        outs = core.ops.matmul(inputs, attrs)
+        return outs['Out'][0]
 
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
@@ -4554,11 +4643,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
         inputs={'X': x,
                 'Y': y},
         outputs={'Out': out},
-        attrs={
-            'transpose_X': transpose_x,
-            'transpose_Y': transpose_y,
-            'alpha': float(alpha),
-        })
+        attrs=attrs)
     return out
 
 
@@ -4629,15 +4714,23 @@ def topk(input, k, name=None):
             vk_values, vk_indices = layers.topk(input2, k=vk) #vk_values.shape=[None, 13, k], vk_indices.shape=[None, 13, k]
 
     """
+    inputs = {"X": [input]}
+    attrs = {}
+    if isinstance(k, Variable):
+        inputs['K'] = [k]
+    else:
+        attrs = {'k': k}
+
+    if in_dygraph_mode():
+        outs = core.ops.top_k(inputs, attrs)
+        outs['Out'][0].stop_gradient = True
+        outs['Indices'][0].stop_gradient = True
+        return outs['Out'][0], outs['Indices'][0]
+
     helper = LayerHelper("top_k", **locals())
     values = helper.create_variable_for_type_inference(dtype=input.dtype)
     indices = helper.create_variable_for_type_inference(dtype="int64")
-    inputs = {"X": [input]}
-    attrs = None
-    if isinstance(k, Variable):
-        inputs['K'] = k
-    else:
-        attrs = {'k': k}
+
     helper.append_op(
         type="top_k",
         inputs=inputs,
@@ -4863,10 +4956,17 @@ def transpose(x, perm, name=None):
             #(3L, 2L, 4L)
 
     """
+    if in_dygraph_mode():
+        attrs = {'axis': perm}
+        inputs = {'X': [x]}
+        outs = core.ops.transpose2(inputs, attrs)
+        return outs['Out'][0]
+
     check_type_and_dtype(x, 'x', Variable,
                          ['float16', 'float32', 'float64', 'int32', 'int64'],
                          'transpose')
     check_type(perm, 'perm', list, 'transpose')
+
     if len(perm) != len(x.shape):
         raise ValueError(
             "Input(perm) is the permutation of dimensions of Input(x), "
@@ -5299,22 +5399,24 @@ def one_hot(input, depth, allow_out_of_range=False):
             label = fluid.data(name="label", shape=[4, 1], dtype="int64")
             one_hot_label = fluid.layers.one_hot(input=label, depth=4)
     """
-    helper = LayerHelper("one_hot", **locals())
+    if in_dygraph_mode():
+        inputs = {'X': [input]}
+        attrs = {'depth': depth, 'allow_out_of_range': allow_out_of_range}
+        outs = core.ops.one_hot(inputs, attrs)
+        outs['Out'][0].stop_gradient = True
+        return outs['Out'][0]
 
+    helper = LayerHelper("one_hot", **locals())
     one_hot_out = helper.create_variable_for_type_inference(dtype='float32')
 
-    if in_dygraph_mode():
+    if not isinstance(depth, Variable):
+        # user attribute
         inputs = {'X': input}
         attrs = {'depth': depth, 'allow_out_of_range': allow_out_of_range}
     else:
-        if not isinstance(depth, Variable):
-            # user attribute
-            inputs = {'X': input}
-            attrs = {'depth': depth, 'allow_out_of_range': allow_out_of_range}
-        else:
-            depth.stop_gradient = True
-            inputs = {'X': input, 'depth_tensor': depth}
-            attrs = {'allow_out_of_range': allow_out_of_range}
+        depth.stop_gradient = True
+        inputs = {'X': input, 'depth_tensor': depth}
+        attrs = {'allow_out_of_range': allow_out_of_range}
     helper.append_op(
         type="one_hot",
         inputs=inputs,
@@ -5457,21 +5559,43 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
             dim = fluid.layers.fill_constant([1], "int32", 5)
             reshaped_2 = fluid.layers.reshape(data_2, shape=[dim, 10])
             # the shape of reshaped_2 is [5,10].
+
+            # example 3:
+            data_3 = fluid.data(
+              name="data_3", shape=[2,4,6], dtype='float32')
+            reshaped_3 = fluid.layers.reshape(x=data_3, shape=[6,8])
+            # the shape of reshaped_3 is [6,8].
     """
+    if in_dygraph_mode():
+        #TODO(zhiqiu): enable inplace in dygraph mode.
+        if inplace:
+            warnings.warn(
+                "Inplace on reshape is not allowed and will be discarded in dygraph mode currently."
+            )
+        attrs = {}
+        if isinstance(shape, (list, tuple)):
+            if utils._contain_var(shape):
+                raise TypeError(
+                    "The type of 'shape' in reshape must be list[int] or tuple(int) in Dygraph mode, but "
+                    "received %s, which contains Variable." % type(shape))
+            attrs['shape'] = shape
+        else:
+            raise TypeError(
+                "The type of 'shape' in reshape must be list[int] or tuple(int) in Dygraph mode, but "
+                "received %s." % type(shape))
+
+        inputs = {'X': [x]}
+        outs = core.ops.reshape2(inputs, attrs)
+        out = outs['Out'][0]
+        return dygraph_utils._append_activation_in_dygraph(out, act)
+
     check_type_and_dtype(x, 'x', Variable,
                          ['float16', 'float32', 'float64', 'int32', 'int64'],
                          'reshape')
     check_type(shape, 'shape', (list, tuple, Variable), 'reshape')
     check_type(actual_shape, 'actual_shape', (Variable, type(None)), 'reshape')
-    helper = LayerHelper("reshape2", **locals())
-    inputs = {"X": x}
-    attrs = {}
 
-    def contain_var(one_list):
-        for ele in one_list:
-            if isinstance(ele, Variable):
-                return True
-        return False
+    helper = LayerHelper("reshape2", **locals())
 
     def get_new_shape_tensor(list_shape):
         new_shape_tensor = []
@@ -5513,26 +5637,23 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                         (dim_idx, str(dim_size)))
         return attrs_shape
 
-    if in_dygraph_mode():
-        inputs = {'X': x}
-        attrs = {'shape': shape}
-    else:
-        if isinstance(shape, Variable):
-            shape.stop_gradient = True
-            inputs["Shape"] = shape
-        elif isinstance(shape, (list, tuple)):
-            assert len(shape) > 0, (
-                "The size of 'shape' in reshape can't be zero, "
-                "but received %s." % len(shape))
-            attrs["shape"] = get_attr_shape(shape)
-            if contain_var(shape):
-                inputs['ShapeTensor'] = get_new_shape_tensor(shape)
-            elif isinstance(actual_shape, Variable):
-                actual_shape.stop_gradient = True
-                inputs["Shape"] = actual_shape
+    inputs = {"X": x}
+    attrs = {}
+    if isinstance(shape, Variable):
+        shape.stop_gradient = True
+        inputs["Shape"] = shape
+    elif isinstance(shape, (list, tuple)):
+        assert len(shape) > 0, ("The size of 'shape' in reshape can't be zero, "
+                                "but received %s." % len(shape))
+        attrs["shape"] = get_attr_shape(shape)
+        if utils._contain_var(shape):
+            inputs['ShapeTensor'] = get_new_shape_tensor(shape)
+        elif isinstance(actual_shape, Variable):
+            actual_shape.stop_gradient = True
+            inputs["Shape"] = actual_shape
 
-    out = x if inplace and not in_dygraph_mode(
-    ) else helper.create_variable_for_type_inference(dtype=x.dtype)
+    out = x if inplace else helper.create_variable_for_type_inference(
+        dtype=x.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type="reshape2",
@@ -5670,8 +5791,7 @@ def unsqueeze(input, axes, name=None):
         axes.stop_gradient = True
         inputs["AxesTensor"] = axes
     elif isinstance(axes, (list, tuple)):
-        contain_var = not all(not isinstance(ele, Variable) for ele in axes)
-        if contain_var:
+        if utils._contain_var(axes):
             inputs["AxesTensorList"] = _to_Variable_list(axes)
         else:
             attrs["axes"] = axes
@@ -6140,6 +6260,15 @@ def label_smooth(label,
     """
     if epsilon > 1. or epsilon < 0.:
         raise ValueError("The value of epsilon must be between 0 and 1.")
+
+    if in_dygraph_mode():
+        inputs = {"X": [label]}
+        if prior_dist:
+            inputs["PriorDist"] = [prior_dist]
+        attrs = {"epsilon": float(epsilon)}
+        outs = core.ops.label_smooth(inputs, attrs)
+        return outs['Out'][0]
+
     helper = LayerHelper("label_smooth", **locals())
     label.stop_gradient = True
     smooth_label = helper.create_variable_for_type_inference(dtype)
@@ -7545,7 +7674,7 @@ def scatter_nd_add(ref, index, updates, name=None):
             output = [[67, 19], [-16, -27]]
 
     Args:
-        ref (Variable): The ref input. Its dtype should be int32, int64, float32, float64.
+        ref (Variable): The ref input. Its dtype should be float32, float64.
         index (Variable): The index input with rank > 1 and index.shape[-1] <= ref.rank.
                           Its dtype should be int32 or int64 as it is used as indexes.
         updates (Variable): The updated value of scatter_nd_add op, and it must have the same dtype
@@ -7602,7 +7731,7 @@ def scatter_nd(index, updates, shape, name=None):
     Args:
         index (Variable): The index input with rank > 1 and index.shape[-1] <= len(shape).
                           Its dtype should be int32 or int64 as it is used as indexes.
-        updates (Variable): The updated value of scatter_nd op. Its dtype should be int32, int64, float32, float64.
+        updates (Variable): The updated value of scatter_nd op. Its dtype should be float32, float64.
                             It must have the shape index.shape[:-1] + shape[index.shape[-1]:]
         shape(tuple|list): Shape of output tensor.
         name (str|None): The output variable name. If set None, the layer will be named automatically.
@@ -7713,6 +7842,11 @@ def log(x, name=None):
             res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i}, fetch_list=[res])
             print(res_val) # [[0.], [0.6931472]]
     """
+    inputs = {'X': [x]}
+    if in_dygraph_mode():
+        outs = core.ops.log(inputs)
+        return outs['Out'][0]
+
     helper = LayerHelper('log', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
@@ -7748,6 +7882,11 @@ def relu(x, name=None):
                 # [[0.  0. ]
                 #  [1.  2.6]]
 """
+    inputs = {'X': [x]}
+    if in_dygraph_mode():
+        outs = core.ops.relu(inputs)
+        return outs['Out'][0]
+
     helper = LayerHelper('relu', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
@@ -8103,12 +8242,6 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
     ipts = {'X': x}
     attrs = {}
 
-    def _contain_var(input_list):
-        for ele in input_list:
-            if isinstance(ele, Variable):
-                return True
-        return False
-
     def _attr_shape_check(shape_val):
         if not isinstance(shape_val, int):
             raise TypeError(
@@ -8137,7 +8270,7 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
         offsets.stop_gradient = True
         ipts['Offsets'] = offsets
         attrs['offsets'] = [-1] * len(x.shape)
-    elif _contain_var(offsets):
+    elif utils._contain_var(offsets):
         new_offsets_tensor = []
         offsets_attr = []
         for dim in offsets:
@@ -8161,7 +8294,7 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
     if isinstance(shape, Variable):
         shape.stop_gradient = True
         ipts['Shape'] = shape
-    elif _contain_var(shape):
+    elif utils._contain_var(shape):
         new_shape_tensor = []
         shape_attr = []
         for dim_size in shape:
@@ -8336,6 +8469,17 @@ def pad2d(input,
           result = fluid.layers.pad2d(input=data, paddings=[1, 2, 3, 4],
                                       mode='reflect')
     """
+    attrs = {'mode': mode, 'pad_value': pad_value, 'data_format': data_format}
+    inputs = {'X': [input]}
+    if isinstance(paddings, Variable):
+        inputs['Paddings'] = [paddings]
+        attrs['paddings'] = []
+    else:
+        attrs['paddings'] = paddings
+
+    if in_dygraph_mode():
+        outs = core.ops.pad2d(inputs, attrs)
+        return outs['Out'][0]
 
     helper = LayerHelper('pad2d', **locals())
 
@@ -8344,14 +8488,6 @@ def pad2d(input,
 
     dtype = helper.input_dtype(input_param_name='input')
     out = helper.create_variable_for_type_inference(dtype)
-    inputs = {'X': input}
-    attrs = {'mode': mode, 'pad_value': pad_value, 'data_format': data_format}
-
-    if isinstance(paddings, Variable):
-        inputs['Paddings'] = paddings
-        attrs['paddings'] = []
-    else:
-        attrs['paddings'] = paddings
 
     helper.append_op(
         type='pad2d', inputs=inputs, outputs={"Out": out}, attrs=attrs)
@@ -8781,13 +8917,16 @@ def leaky_relu(x, alpha=0.02, name=None):
             res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i}, fetch_list=[res])
             print(res_val) # [[-0.1, 2], [3, -0.4]]
     """
+    inputs = {'X': [x]}
+    attrs = {'alpha': alpha}
+    if in_dygraph_mode():
+        outs = core.ops.leaky_relu(inputs, attrs)
+        return outs['Out'][0]
+
     helper = LayerHelper('leaky_relu', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
-        type='leaky_relu',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'alpha': alpha})
+        type='leaky_relu', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return out
 
 
@@ -9185,6 +9324,24 @@ def expand(x, expand_times, name=None):
             expanded_2 = fluid.layers.expand(data_2, expand_times=expand_times)
             # the shape of expanded_2 is [48, 56].
     """
+    inputs = {"X": [x]}
+    attrs = {}
+
+    if in_dygraph_mode():
+        if isinstance(expand_times, (list, tuple)):
+            if utils._contain_var(expand_times):
+                raise TypeError(
+                    "The type of 'expand_times' in expand must be list[int] or tuple(int) in Dygraph mode, but "
+                    "received %s, which contains Variable." % type(shape))
+            attrs['expand_times'] = expand_times
+        else:
+            raise TypeError(
+                "The type of 'expand_times' in expand must be list[int] or tuple(int) in Dygraph mode, but "
+                "received %s." % type(shape))
+
+        outs = core.ops.expand(inputs, attrs)
+        return outs['Out'][0]
+
     check_type_and_dtype(x, 'x', Variable,
                          ['bool', 'float32', 'float64', 'int32', 'int64'],
                          'expand')
@@ -9194,14 +9351,6 @@ def expand(x, expand_times, name=None):
             "expand op bool date type must set the stop_gradient to be False")
 
     helper = LayerHelper('expand', input=x, **locals())
-    inputs = {"X": x}
-    attrs = {}
-
-    def contain_var(expand_times):
-        for ele in expand_times:
-            if isinstance(ele, Variable):
-                return True
-        return False
 
     def get_attr_expand_times(list_expand_times):
         attrs_expand_times = []
@@ -9227,18 +9376,14 @@ def expand(x, expand_times, name=None):
                 new_expand_times_tensor.append(temp_out)
         return new_expand_times_tensor
 
-    if in_dygraph_mode():
-        inputs = {'X': x}
-        attrs = {'expand_times': expand_times}
-    else:
-        if isinstance(expand_times, Variable):
-            expand_times.stop_gradient = True
-            inputs['ExpandTimes'] = expand_times
-        elif isinstance(expand_times, (list, tuple)):
-            attrs['expand_times'] = get_attr_expand_times(expand_times)
-            if contain_var(expand_times):
-                inputs['expand_times_tensor'] = get_new_expand_times_tensor(
-                    expand_times)
+    if isinstance(expand_times, Variable):
+        expand_times.stop_gradient = True
+        inputs['ExpandTimes'] = expand_times
+    elif isinstance(expand_times, (list, tuple)):
+        attrs['expand_times'] = get_attr_expand_times(expand_times)
+        if utils._contain_var(expand_times):
+            inputs['expand_times_tensor'] = get_new_expand_times_tensor(
+                expand_times)
 
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
@@ -9735,6 +9880,38 @@ def slice(input, axes, starts, ends):
             sliced_2 = fluid.layers.slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends)
             # sliced_2 is input[0:3, 0:2, 2:4].
     """
+    if in_dygraph_mode():
+        infer_flags = list(1 for i in range(len(axes)))
+        inputs = {'Input': [input]}
+
+        if isinstance(starts, (list, tuple)):
+            if utils._contain_var(starts):
+                raise TypeError(
+                    "The type of 'starts' in slice must be list[int] or tuple(int) in Dygraph mode, but "
+                    "received %s, which contains Variable." % type(shape))
+        else:
+            raise TypeError(
+                "The type of 'starts' in slice must be list[int] or tuple(int) in Dygraph mode, but "
+                "received %s." % type(shape))
+
+        if isinstance(ends, (list, tuple)):
+            if utils._contain_var(ends):
+                raise TypeError(
+                    "The type of 'ends' in slice must be list[int] or tuple(int) in Dygraph mode, but "
+                    "received %s, which contains Variable." % type(shape))
+        else:
+            raise TypeError(
+                "The type of 'ends' in slice must be list[int] or tuple(int) in Dygraph mode, but "
+                "received %s." % type(shape))
+
+        attrs = {
+            'axes': axes,
+            'starts': starts,
+            'ends': ends,
+            'infer_flags': infer_flags
+        }
+        outs = core.ops.slice(inputs, attrs)
+        return outs['Out'][0]
 
     if not isinstance(starts, (list, tuple, Variable)):
         raise ValueError(
@@ -9744,12 +9921,6 @@ def slice(input, axes, starts, ends):
             "Input ends must be an Variable, python list or tuple.")
 
     helper = LayerHelper('slice', **locals())
-
-    def contain_var(one_list):
-        for ele in one_list:
-            if isinstance(ele, Variable):
-                return True
-        return False
 
     def get_new_list_tensor(old_list):
         new_list_tensor = []
@@ -9768,52 +9939,44 @@ def slice(input, axes, starts, ends):
     attrs = {'axes': axes}
     infer_flags = list(1 for i in range(len(axes)))
 
-    if in_dygraph_mode():
-        inputs = {'Input': input}
-        attrs = {
-            'axes': axes,
-            'starts': starts,
-            'ends': ends,
-            'infer_flags': infer_flags
-        }
-    else:
-        # starts
-        if isinstance(starts, Variable):
-            starts.stop_gradient = True
-            inputs['StartsTensor'] = starts
-            infer_flags = list(-1 for i in range(len(axes)))
-        elif isinstance(starts, (list, tuple)):
-            attrs['starts'] = []
-            if not contain_var(starts):
-                attrs['starts'] = starts
-            else:
-                inputs['StartsTensorList'] = get_new_list_tensor(starts)
-                for i, dim in enumerate(starts):
-                    if isinstance(dim, Variable):
-                        attrs['starts'].append(-1)
-                        infer_flags[i] = -1
-                    else:
-                        attrs['starts'].append(dim)
+    # starts
+    if isinstance(starts, Variable):
+        starts.stop_gradient = True
+        inputs['StartsTensor'] = starts
+        infer_flags = list(-1 for i in range(len(axes)))
+    elif isinstance(starts, (list, tuple)):
+        attrs['starts'] = []
+        if utils._contain_var(starts):
+            inputs['StartsTensorList'] = get_new_list_tensor(starts)
+            for i, dim in enumerate(starts):
+                if isinstance(dim, Variable):
+                    attrs['starts'].append(-1)
+                    infer_flags[i] = -1
+                else:
+                    attrs['starts'].append(dim)
+        else:
+            attrs['starts'] = starts
 
-        # ends
-        if isinstance(ends, Variable):
-            ends.stop_gradient = True
-            inputs['EndsTensor'] = ends
-            infer_flags = list(-1 for i in range(len(axes)))
-        elif isinstance(ends, (list, tuple)):
-            attrs['ends'] = []
-            if not contain_var(ends):
-                attrs['ends'] = ends
-            else:
-                inputs['EndsTensorList'] = get_new_list_tensor(ends)
-                for i, dim in enumerate(ends):
-                    if isinstance(dim, Variable):
-                        attrs['ends'].append(-1)
-                        infer_flags[i] = -1
-                    else:
-                        attrs['ends'].append(dim)
-        # infer_flags
-        attrs['infer_flags'] = infer_flags
+    # ends
+    if isinstance(ends, Variable):
+        ends.stop_gradient = True
+        inputs['EndsTensor'] = ends
+        infer_flags = list(-1 for i in range(len(axes)))
+    elif isinstance(ends, (list, tuple)):
+        attrs['ends'] = []
+        if utils._contain_var(ends):
+            inputs['EndsTensorList'] = get_new_list_tensor(ends)
+            for i, dim in enumerate(ends):
+                if isinstance(dim, Variable):
+                    attrs['ends'].append(-1)
+                    infer_flags[i] = -1
+                else:
+                    attrs['ends'].append(dim)
+        else:
+            attrs['ends'] = ends
+
+    # infer_flags
+    attrs['infer_flags'] = infer_flags
     out = helper.create_variable_for_type_inference(
         dtype=helper.input_dtype('input'))
     helper.append_op(
@@ -9929,12 +10092,6 @@ def strided_slice(input, axes, starts, ends, strides):
 
     helper = LayerHelper('strided_slice', **locals())
 
-    def contain_var(one_list):
-        for ele in one_list:
-            if isinstance(ele, Variable):
-                return True
-        return False
-
     def get_new_list_tensor(old_list):
         new_list_tensor = []
         for dim in old_list:
@@ -9968,9 +10125,7 @@ def strided_slice(input, axes, starts, ends, strides):
             inputs['StartsTensor'] = starts
         elif isinstance(starts, (list, tuple)):
             attrs['starts'] = []
-            if not contain_var(starts):
-                attrs['starts'] = starts
-            else:
+            if utils._contain_var(starts):
                 inputs['StartsTensorList'] = get_new_list_tensor(starts)
                 for i, dim in enumerate(starts):
                     if isinstance(dim, Variable):
@@ -9978,6 +10133,8 @@ def strided_slice(input, axes, starts, ends, strides):
                         infer_flags[i] = -1
                     else:
                         attrs['starts'].append(dim)
+            else:
+                attrs['starts'] = starts
 
         # ends
         if isinstance(ends, Variable):
@@ -9985,9 +10142,7 @@ def strided_slice(input, axes, starts, ends, strides):
             inputs['EndsTensor'] = ends
         elif isinstance(ends, (list, tuple)):
             attrs['ends'] = []
-            if not contain_var(ends):
-                attrs['ends'] = ends
-            else:
+            if utils._contain_var(ends):
                 inputs['EndsTensorList'] = get_new_list_tensor(ends)
                 for i, dim in enumerate(ends):
                     if isinstance(dim, Variable):
@@ -9995,15 +10150,16 @@ def strided_slice(input, axes, starts, ends, strides):
                         infer_flags[i] = -1
                     else:
                         attrs['ends'].append(dim)
+            else:
+                attrs['ends'] = ends
+
         # strides
         if isinstance(strides, Variable):
             strides.stop_gradient = True
             inputs['StridesTensor'] = strides
         elif isinstance(strides, (list, tuple)):
             attrs['strides'] = []
-            if not contain_var(strides):
-                attrs['strides'] = strides
-            else:
+            if utils._contain_var(strides):
                 inputs['StridesTensorList'] = get_new_list_tensor(strides)
                 for i, dim in enumerate(strides):
                     if isinstance(dim, Variable):
@@ -10011,6 +10167,8 @@ def strided_slice(input, axes, starts, ends, strides):
                         infer_flags[i] = -1
                     else:
                         attrs['strides'].append(dim)
+            else:
+                attrs['strides'] = strides
         attrs['infer_flags'] = infer_flags
     out = helper.create_variable_for_type_inference(
         dtype=helper.input_dtype('input'))
@@ -10116,9 +10274,6 @@ def _elementwise_op(helper):
     op_type = helper.layer_type
     x = helper.kwargs.get('x', None)
     y = helper.kwargs.get('y', None)
-    if in_dygraph_mode():
-        x = base.to_variable(x)
-        y = base.to_variable(y)
 
     assert x is not None, 'x cannot be None in {}'.format(op_type)
     assert y is not None, 'y cannot be None in {}'.format(op_type)
@@ -10213,6 +10368,19 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
             print(res) # [array([[ 3.,  5.,  7.], [ 9., 11., 13.]], dtype=float32)]
 
     """
+    inputs = {'X': [x]}
+    attrs = {
+        'bias': float(bias),
+        'bias_after_scale': bias_after_scale,
+    }
+    if isinstance(scale, Variable):
+        inputs['ScaleTensor'] = [scale]
+    else:
+        attrs['scale'] = float(scale)
+
+    if in_dygraph_mode():
+        outs = core.ops.scale(inputs, attrs)
+        return dygraph_utils._append_activation_in_dygraph(outs['Out'][0])
 
     helper = LayerHelper('scale', **locals())
     if name is None:
@@ -10220,16 +10388,6 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     else:
         out = helper.create_variable(
             name=name, dtype=x.dtype, persistable=False)
-
-    inputs = {'X': x}
-    attrs = {
-        'bias': float(bias),
-        'bias_after_scale': bias_after_scale,
-    }
-    if isinstance(scale, Variable):
-        inputs['ScaleTensor'] = scale
-    else:
-        attrs['scale'] = float(scale)
 
     helper.append_op(
         type='scale', inputs=inputs, outputs={'Out': out}, attrs=attrs)
@@ -10310,6 +10468,10 @@ Examples:
         print(z_value) # z.shape=[2,3,4,5]
 
     """
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name='elementwise_add')
+
     return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 
 
@@ -10387,6 +10549,10 @@ Examples:
         print(z_value) # z.shape=[2,3,4,5]
 
     """
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name='elementwise_div')
+
     return _elementwise_op(LayerHelper('elementwise_div', **locals()))
 
 
@@ -10464,6 +10630,10 @@ Examples:
         print(z_value) # z.shape=[2,3,4,5]
 
     """
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name='elementwise_sub')
+
     return _elementwise_op(LayerHelper('elementwise_sub', **locals()))
 
 
@@ -10541,6 +10711,10 @@ Examples:
         print(z_value) # z.shape=[2,3,4,5]
  
     """
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name='elementwise_mul')
+
     return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
 
 
@@ -10595,6 +10769,10 @@ Examples:
         print(z_value)#[[[[1., 1., 1., 1., 1.] .... [1., 1., 1., 1., 1.]]]]
 
     """
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name='elementwise_max')
+
     return _elementwise_op(LayerHelper('elementwise_max', **locals()))
 
 
@@ -10647,6 +10825,9 @@ Examples:
 
         print(z_value)#[[[[0., 0., 0., 0., 0.] .... [0., 0., 0., 0., 0.]]]]
     """
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name='elementwise_min')
 
     return _elementwise_op(LayerHelper('elementwise_min', **locals()))
 
@@ -10677,7 +10858,9 @@ Examples:
 
         print(z_value) #[2, 243, 16]
     """
-
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name='elementwise_pow')
     return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
 
 
@@ -10707,6 +10890,10 @@ Examples:
 
         print(z_value) #[1, 3, 3]
     """
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name='elementwise_mod')
+
     return _elementwise_op(LayerHelper('elementwise_mod', **locals()))
 
 
@@ -10736,6 +10923,10 @@ Examples:
 
         print(z_value) #[3, 2, 1]
     """
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name='elementwise_floordiv')
+
     return _elementwise_op(LayerHelper('elementwise_floordiv', **locals()))
 
 
@@ -11141,6 +11332,10 @@ def mean(x, name=None):
                 name='data', shape=[2, 3], dtype='float32')
             mean = fluid.layers.mean(input)
     """
+    if in_dygraph_mode():
+        inputs = {"X": [x]}
+        outs = core.ops.mean(inputs)
+        return outs['Out'][0]
 
     helper = LayerHelper("mean", **locals())
     check_type_and_dtype(x, 'x', Variable, ['float16', 'float32', 'float64'],
@@ -11223,6 +11418,11 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
             
 
     """
+    inputs = {"X": [x], "Y": [y]}
+    attrs = {"x_num_col_dims": x_num_col_dims, "y_num_col_dims": y_num_col_dims}
+    if in_dygraph_mode():
+        outs = core.ops.mul(inputs, attrs)
+        return outs['Out'][0]
 
     helper = LayerHelper("mul", **locals())
     check_type_and_dtype(x, 'x', Variable, ['float16', 'float32', 'float64'],
@@ -11236,14 +11436,8 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
             name=name, dtype=x.dtype, persistable=False)
 
     helper.append_op(
-        type="mul",
-        inputs={"X": x,
-                "Y": y},
-        attrs={
-            "x_num_col_dims": x_num_col_dims,
-            "y_num_col_dims": y_num_col_dims
-        },
-        outputs={"Out": out})
+        type="mul", inputs={"X": x,
+                            "Y": y}, attrs=attrs, outputs={"Out": out})
     return out
 
 
@@ -11786,8 +11980,8 @@ def log_loss(input, label, epsilon=1e-4, name=None):
         .. code-block:: python
 
           import paddle.fluid as fluid
-          label = fluid.data(name='label', shape=[-1, 1], dtype='int64')
-          prob = fluid.data(name='prob', shape=[-1, 10], dtype='float32')
+          label = fluid.data(name='label', shape=[None, 1], dtype='float32')
+          prob = fluid.data(name='prob', shape=[None, 1], dtype='float32')
           cost = fluid.layers.log_loss(input=prob, label=label)
     """
     helper = LayerHelper('log_loss', **locals())
@@ -12190,12 +12384,15 @@ class PyFuncRegistry(object):
 @templatedoc()
 def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     """
-    This API is used to register customized OP to Fluid. The forward  function 
-    of the registered OP is ``func`` and the backward function of that is 
-    ``backward_func``. Paddle will call ``func`` at forward runtime  and call 
-    ``backward_func`` at backward runtime(if ``backward_func`` is not  None). 
+    This OP is used to register customized Python OP to Paddle Fluid. The design 
+    principe of py_func is that LodTensor and numpy array can be converted to each
+    other easily. So you can use Python and numpy API to register a python OP.
+
+    The forward  function of the registered OP is ``func`` and the backward function 
+    of that is  ``backward_func``. Paddle will call ``func`` at forward runtime and 
+    call ``backward_func`` at backward runtime(if ``backward_func`` is not  None). 
     ``x`` is the input of ``func``, whose type must be LoDTensor; ``out`` is 
-    the output of ``func``, whose type can be either LoDTensor or NumPy array.
+    the output of ``func``, whose type can be either LoDTensor or numpy array.
 
     The input of the backward function ``backward_func`` is ``x``, ``out`` and 
     the gradient of ``out``. If some variables of ``out`` have no gradient, the 
@@ -12212,49 +12409,56 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     Args:
         func (callable): The forward function of the registered OP. When the network
             is running, the forward output ``out`` will be calculated according to this 
-            function and the forward input ``x``.
-        x (Variable): The input of the forward function ``func``, its type can be 
-            Variable | tuple[Variable] | list[Variale], in which Variable is LoDTensor.
-        out (Variable): The output of the forward function ``func``, its type can be
-            Variable | tuple[Variable] | list[Variale], in which Variable can be either 
-            LoDTensor or NumPy array. Since Paddle cannot automatically infer the shape
-            and data type of ``out``, ``out`` must be created in advance.
+            function and the forward input ``x``. In ``func`` , it's suggested that we 
+            actively convert LoDTensor into a numpy array, so that we can use Python and
+            numpy API arbitrarily. If not, some operations of numpy may not be compatible.
+        x (Variable|tuple(Variale)|list[Variale]): The input of the forward function ``func``. 
+            It can be Variable|tuple(Variale)|list[Variale], where Variable is LoDTensor or 
+            Tenosor. In addition, Multiple Variable should be passed in the form of tuple(Variale)
+            or list[Variale].
+        out (Variable|tuple(Variale)|list[Variale]): The output of the forward function ``func``, 
+            it can be Variable|tuple(Variale)|list[Variale], where Variable can be either LoDTensor
+            or numpy array. Since Paddle cannot automatically infer the shape and type of ``out``, 
+            you must create ``out`` in advance.
         backward_func (callable, optional): The backward function of the registered OP. 
             Its default value is None, which means there is no reverse calculation. If 
             it is not None, ``backward_func`` is called to calculate the gradient of 
             ``x`` when the network is at backward runtime.
         skip_vars_in_backward_input (Variable, optional): It's used to limit the input 
-            variable list of ``backward_func``, and it can be single Variable, tuple[Variable]
-            or list[Variable]. It must belong to either ``x`` or ``out``. The default 
-            value is None, which means that no variables need to be removed from ``x`` 
-            and ``out``. If it is not None, these variables will not be the input of 
-            ``backward_func``. This parameter is only useful when ``backward_func`` is 
-            not None.
+            variable list of ``backward_func``, and it can be Variable|tuple(Variale)|list[Variale]. 
+            It must belong to either ``x`` or ``out``. The default  value is None, which means 
+            that no variables need to be removed from ``x`` and ``out``. If it is not None, 
+            these variables will not be the input of ``backward_func``. This parameter is only 
+            useful when ``backward_func`` is not None.
     
     Returns: 
-        Variable: The output ``out`` of the forward function ``func``.
+        Variable|tuple(Variale)|list[Variale]: The output ``out`` of the forward function ``func``.
 
     Examples:
         .. code-block:: python
-
+	    
+            # example 1:
             import paddle.fluid as fluid
             import six
 
-            def create_tmp_var(name, dtype, shape):
-            return fluid.default_main_program().current_block().create_var(
-            name=name, dtype=dtype, shape=shape)
-
-            # Tanh activation function provided by Paddle C++ op
-            # Here, tanh is used as an example to show how to use py_func
+            # Creates a forward function, LodTensor can be input directly without
+            # being converted into numpy array.
             def tanh(x):
                 return np.tanh(x)
 
-            # Skip forward input x
+            # Skip x in backward function and return the gradient of x
+            # LodTensor must be actively converted to numpy array, otherwise, 
+            # operations such as +/- can't be used.
             def tanh_grad(y, dy):
                 return np.array(dy) * (1 - np.square(np.array(y)))
-
+            
+            # Creates a forward function for debugging running networks(print value)
             def debug_func(x):
                 print(x)
+            
+            def create_tmp_var(name, dtype, shape):
+                return fluid.default_main_program().current_block().create_var(
+                    name=name, dtype=dtype, shape=shape)
 
             def simple_net(img, label):
                 hidden = img
@@ -12268,28 +12472,87 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
                         out=new_hidden, backward_func=tanh_grad,
                         skip_vars_in_backward_input=hidden)
 
-                    # User-defined debugging layer, which can print out variable details
+                    # User-defined debug functions that print out the input LodTensor
                     fluid.layers.py_func(func=debug_func, x=hidden, out=None)
 
                 prediction = fluid.layers.fc(hidden, size=10, act='softmax')
                 loss = fluid.layers.cross_entropy(input=prediction, label=label)
                 return fluid.layers.mean(loss)
+
+            # example 2: 
+            # This example shows how to turn LoDTensor into numpy array and 
+            # use numpy API to register an Python OP
+            import paddle.fluid as fluid
+            import numpy as np
+
+            def element_wise_add(x, y): 
+                # LodTensor must be actively converted to numpy array, otherwise, 
+                # numpy.shape can't be used.
+                x = np.array(x)    
+                y = np.array(y)
+
+                if x.shape != y.shape:
+                    raise AssertionError("the shape of inputs must be the same!")
+
+                result = np.zeros(x.shape, dtype='int32')
+                for i in range(len(x)):
+                    for j in range(len(x[0])):
+                        result[i][j] = x[i][j] + y[i][j]
+
+                return result
+
+            def create_tmp_var(name, dtype, shape):
+                return fluid.default_main_program().current_block().create_var(
+                            name=name, dtype=dtype, shape=shape)
+
+            def py_func_demo():
+                start_program = fluid.default_startup_program()
+                main_program = fluid.default_main_program()
+
+                # Input of the forward function
+                x = fluid.data(name='x', shape=[2,3], dtype='int32')
+                y = fluid.data(name='y', shape=[2,3], dtype='int32')
+                
+                # Output of the forward function, name/dtype/shape must be specified
+                output = create_tmp_var('output','int32', [3,1])
+
+                # Multiple Variable should be passed in the form of tuple(Variale) or list[Variale]
+                fluid.layers.py_func(func=element_wise_add, x=[x,y], out=output)
+
+                exe=fluid.Executor(fluid.CPUPlace())
+                exe.run(start_program)
+
+                # Feed numpy array to main_program
+                input1 = np.random.randint(1, 10, size=[2,3], dtype='int32')
+                input2 = np.random.randint(1, 10, size=[2,3], dtype='int32')
+                out = exe.run(main_program, 
+                            feed={'x':input1, 'y':input2},
+                            fetch_list=[output.name])
+                print("{0} + {1} = {2}".format(input1, input2, out))
+
+            py_func_demo()
+
+            # Reference output:
+            # [[5, 9, 9]   + [[7, 8, 4]  =  [array([[12, 17, 13]
+            #  [7, 5, 2]]     [1, 3, 3]]            [8, 8, 5]], dtype=int32)]
     """
     helper = LayerHelper('py_func', **locals())
     if x is None:
         x = []
     elif isinstance(x, Variable):
         x = [x]
-    elif not isinstance(x, (list, tuple)):
+    elif isinstance(x, tuple):
+        x = list(x)
+    elif not isinstance(x, (list, tuple, Variable)):
         raise TypeError('Input must be Variable/list(Variable)/tuple(Variable)')
 
     if out is None:
         out_list = []
     elif isinstance(out, Variable):
         out_list = [out]
-    elif isinstance(out, (list, tuple)):
-        out_list = out
-    else:
+    elif isinstance(out, tuple):
+        out_list = list(out)
+    elif not isinstance(x, (list, tuple, Variable)):
         raise TypeError(
             'Output must be Variable/list(Variable)/tuple(Variable)')
 
@@ -12408,35 +12671,53 @@ def prroi_pool(input,
                spatial_scale=1.0,
                pooled_height=1,
                pooled_width=1,
+               batch_roi_nums=None,
                name=None):
     """
-    The precise roi pooling implementation for paddle?https://arxiv.org/pdf/1807.11590.pdf
+    The precise roi pooling implementation for paddle. Reference: https://arxiv.org/pdf/1807.11590.pdf
 
     Args:
-        input (Variable):The input of Deformable PSROIPooling.The shape of input tensor is
+        input (Variable):The input of precise roi pooliing.The shape of input tensor is
                         [N,C,H,W]. Where N is batch size,C is number of input channels,H
                         is height of the feature, and W is the width of the feature.
         rois (Variable): ROIs (Regions of Interest) to pool over.It should be
-                        a 2-D LoDTensor of shape (num_rois, 4), the lod level
-                        is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
+                        a 2-D LoDTensor or Tensor of shape (num_rois, 4), the lod level
+                        is 1 when it is LoDTensor. The LoD include the rois's batch index
+                        information. If rois is Tensor, its batch index information should
+                        be provided by batch_index.
+                        Given as [[x1, y1, x2, y2], ...], (x1, y1) is
                         the top left coordinates, and (x2, y2) is the bottom
                         right coordinates.
         spatial_scale (float): Ratio of input feature map height (or width) to raw image height (or width).
                              Equals the reciprocal of total stride in convolutional layers, Default: 1.0.
         pooled_height (integer): The pooled output height. Default: 1.
         pooled_width (integer): The pooled output width. Default: 1.
+        batch_roi_nums (Variable): The number of roi for each image in batch. It 
+                         shoule be 1-D Tensor, with shape [N] and dtype int64, 
+                         where N is the batch size. Default: None. Be note: The lod of input should be
+                         empty when batch_roi_nums has values;
         name (str, default None): The name of this operation.
 
     Returns:
-        Variable(Tensor): The shape of the returned Tensor is (num_rois, output_channels, pooled_h, pooled_w), with value type float32,float16..
+        Variable(Tensor):The shape of the returned Tensor is (N, C, pooled_height, pooled_width), with value type float32,float16. N, C denote batch_size and channels of input respectively.
 
     Examples:
         .. code-block:: python
 
+            ## prroi_pool without batch_roi_num
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[490, 28, 28], dtype='float32')
-            rois = fluid.layers.data(name='rois', shape=[4], lod_level=1, dtype='float32')
+            x = fluid.data(name='x', shape=[None, 490, 28, 28], dtype='float32')
+            rois = fluid.data(name='rois', shape=[None, 4], lod_level=1, dtype='float32')
             pool_out = fluid.layers.prroi_pool(x, rois, 1.0, 7, 7)
+            
+            ## prroi_pool with batch_roi_num
+            batchsize=4
+            x2 = fluid.data(name='x2', shape=[batchsize, 490, 28, 28], dtype='float32')
+            rois2 = fluid.data(name='rois2', shape=[batchsize, 4], dtype='float32')
+            batch_rois_num = fluid.data(name='rois_nums', shape=[batchsize], dtype='int64')
+            pool_out2 = fluid.layers.prroi_pool(x2, rois2, 1.0, 7, 7, batch_roi_nums=batch_rois_num)
+
+
     """
     helper = LayerHelper('prroi_pool', **locals())
     # check attrs
@@ -12448,10 +12729,12 @@ def prroi_pool(input,
         raise TypeError("pooled_width must be int type")
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
+    inputs_op = {'X': input, 'ROIs': rois}
+    if batch_roi_nums is not None:
+        inputs_op['BatchRoINums'] = batch_roi_nums
     helper.append_op(
         type='prroi_pool',
-        inputs={'X': input,
-                'ROIs': rois},
+        inputs=inputs_op,
         outputs={'Out': out},
         attrs={
             'spatial_scale': spatial_scale,
@@ -13565,12 +13848,6 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
         dtype = convert_np_dtype_to_dtype_(dtype)
     check_dtype(dtype, 'dtype', ['float32', 'float64'], 'uniform_random')
 
-    def contain_var(one_list):
-        for ele in one_list:
-            if isinstance(ele, Variable):
-                return True
-        return False
-
     def get_new_shape_tensor(list_shape):
         new_shape_tensor = []
         for dim in list_shape:
@@ -13610,7 +13887,7 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
             assert len(shape) > 0, (
                 "The size of argument(shape) can't be zero.")
             attrs["shape"] = get_attr_shape(shape)
-            if contain_var(shape):
+            if utils._contain_var(shape):
                 inputs['ShapeTensorList'] = get_new_shape_tensor(shape)
 
     out = helper.create_variable_for_type_inference(dtype)

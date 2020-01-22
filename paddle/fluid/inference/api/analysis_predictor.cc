@@ -122,11 +122,7 @@ bool AnalysisPredictor::PrepareScope(
     scope_ = parent_scope;
     status_is_cloned_ = true;
   } else {
-    if (config_.use_gpu_) {
-      paddle::framework::InitDevices(false);
-    } else {
-      paddle::framework::InitDevices(false, {});
-    }
+    paddle::framework::InitDevices(false);
     scope_.reset(new paddle::framework::Scope());
     status_is_cloned_ = false;
   }
@@ -430,6 +426,13 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetAnakinPassesFilter(config_.anakin_passes_filter_);
     argument_.SetAnakinOpsFilter(config_.anakin_ops_filter_);
     LOG(INFO) << "Anakin subgraph engine is enabled";
+  }
+
+  if (config_.lite_engine_enabled()) {
+    argument_.SetLitePrecisionMode(config_.lite_precision_mode_);
+    argument_.SetLitePassesFilter(config_.lite_passes_filter_);
+    argument_.SetLiteOpsFilter(config_.lite_ops_filter_);
+    LOG(INFO) << "Lite subgraph engine is enabled";
   }
 
   if (config_.use_mkldnn_) {
@@ -942,6 +945,10 @@ USE_TRT_CONVERTER(conv2d_transpose);
 USE_TRT_CONVERTER(leaky_relu);
 USE_TRT_CONVERTER(shuffle_channel);
 USE_TRT_CONVERTER(swish);
+USE_TRT_CONVERTER(instance_norm);
+USE_TRT_CONVERTER(layer_norm);
+USE_TRT_CONVERTER(gelu);
+USE_TRT_CONVERTER(multihead_matmul);
 #endif
 
 #if PADDLE_WITH_ANAKIN

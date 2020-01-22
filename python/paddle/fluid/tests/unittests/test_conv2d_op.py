@@ -151,19 +151,13 @@ def create_test_cudnn_fp16_class(parent, grad_check=True):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
-                    place, ['Input'],
-                    'Output',
-                    max_relative_error=0.02,
-                    no_grad_set=set(['Filter']))
+                    place, ['Input'], 'Output', no_grad_set=set(['Filter']))
 
         def test_check_grad_no_input(self):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
-                    place, ['Filter'],
-                    'Output',
-                    max_relative_error=0.02,
-                    no_grad_set=set(['Input']))
+                    place, ['Filter'], 'Output', no_grad_set=set(['Input']))
 
     cls_name = "{0}_{1}".format(parent.__name__, "CUDNNFp16")
     TestConv2DCUDNNFp16.__name__ = cls_name
@@ -221,19 +215,13 @@ def create_test_cudnn_channel_last_fp16_class(parent, grad_check=True):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
-                    place, ['Input'],
-                    'Output',
-                    max_relative_error=0.02,
-                    no_grad_set=set(['Filter']))
+                    place, ['Input'], 'Output', no_grad_set=set(['Filter']))
 
         def test_check_grad_no_input(self):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
-                    place, ['Filter'],
-                    'Output',
-                    max_relative_error=0.02,
-                    no_grad_set=set(['Input']))
+                    place, ['Filter'], 'Output', no_grad_set=set(['Input']))
 
         def init_data_format(self):
             self.data_format = "NHWC"
@@ -310,7 +298,7 @@ class TestConv2dOp(OpTest):
         self.use_mkldnn = False
         self.fuse_relu_before_depthwise_conv = False
         self.data_format = "AnyLayout"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_kernel_type()
         self.init_group()
         self.init_dilation()
@@ -397,7 +385,6 @@ class TestConv2dOp(OpTest):
         self.check_grad_with_place(
             place, ['Filter'],
             'Output',
-            max_relative_error=0.02,
             no_grad_set=set(['Input']),
             check_dygraph=(self.use_mkldnn == False))
 
@@ -443,8 +430,14 @@ class TestWithStride(TestConv2dOp):
 
 
 class TestWithGroup(TestConv2dOp):
-    def init_group(self):
-        self.groups = 3
+    def init_test_case(self):
+        self.pad = [0, 0]
+        self.stride = [1, 1]
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        self.group = 3
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [18, f_c, 3, 3]
 
 
 class TestWith1x1(TestConv2dOp):
@@ -454,7 +447,7 @@ class TestWith1x1(TestConv2dOp):
         self.input_size = [2, 3, 5, 5]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 1, 1]
+        self.filter_size = [120, f_c, 1, 1]
 
     def init_group(self):
         self.groups = 3
@@ -467,7 +460,7 @@ class TestWithDepthWise3x3(TestConv2dOp):
         self.input_size = [3, 4, 10, 10]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [8, f_c, 3, 3]
+        self.filter_size = [12, f_c, 3, 3]
 
     def init_dilation(self):
         self.dilations = [2, 2]
@@ -509,7 +502,7 @@ class TestWithDilation(TestConv2dOp):
         self.input_size = [2, 3, 10, 10]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 3, 3]
+        self.filter_size = [12, f_c, 3, 3]
 
     def init_dilation(self):
         self.dilations = [2, 2]
@@ -522,10 +515,10 @@ class TestWithInput1x1Filter1x1(TestConv2dOp):
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
-        self.input_size = [2, 3, 1, 1]  # NCHW
+        self.input_size = [100, 3, 1, 1]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 1, 1]
+        self.filter_size = [120, f_c, 1, 1]
 
     def init_group(self):
         self.groups = 3
@@ -561,7 +554,7 @@ class TestDepthwiseConv(TestConv2dOp):
         self.groups = 3
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [3, f_c, 3, 3]
+        self.filter_size = [12, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
 
 
@@ -574,7 +567,7 @@ class TestDepthwiseConv2(TestConv2dOp):
         self.groups = 3
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [3, f_c, 3, 3]
+        self.filter_size = [12, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
 
 
@@ -587,7 +580,7 @@ class TestDepthwiseConv3(TestConv2dOp):
         self.groups = 3
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 3, 3]
+        self.filter_size = [24, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
 
 
@@ -601,7 +594,7 @@ class TestDepthwiseConvWithDilation(TestConv2dOp):
         self.dilations = [2, 2]
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 3, 3]
+        self.filter_size = [24, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
 
 
@@ -615,7 +608,7 @@ class TestDepthwiseConvWithDilation2(TestConv2dOp):
         self.dilations = [2, 2]
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 3, 3]
+        self.filter_size = [24, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
 
 
@@ -629,7 +622,7 @@ class TestDepthwiseConvandFuse(TestConv2dOp):
         self.groups = 3
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [3, f_c, 3, 3]
+        self.filter_size = [12, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
 
 
@@ -643,7 +636,7 @@ class TestDepthwiseConv2andFuse(TestConv2dOp):
         self.groups = 3
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [3, f_c, 3, 3]
+        self.filter_size = [12, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
 
 
@@ -657,7 +650,7 @@ class TestDepthwiseConv3andFuse(TestConv2dOp):
         self.groups = 3
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 3, 3]
+        self.filter_size = [24, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
 
 
@@ -672,7 +665,7 @@ class TestDepthwiseConvWithDilationandFuse(TestConv2dOp):
         self.dilations = [2, 2]
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 3, 3]
+        self.filter_size = [24, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
 
 
@@ -687,7 +680,7 @@ class TestDepthwiseConvWithDilation2andFuse(TestConv2dOp):
         self.dilations = [2, 2]
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 3, 3]
+        self.filter_size = [24, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
 
 
@@ -736,7 +729,7 @@ class TestConv2dOp_v2(OpTest):
         self.use_cuda = False
         self.use_mkldnn = False
         self.fuse_relu_before_depthwise_conv = False
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_kernel_type()
         self.init_group()
         self.init_dilation()
@@ -827,7 +820,6 @@ class TestConv2dOp_v2(OpTest):
         self.check_grad_with_place(
             place, ['Filter'],
             'Output',
-            max_relative_error=0.02,
             no_grad_set=set(['Input']),
             check_dygraph=(self.use_mkldnn == False))
 
@@ -892,8 +884,14 @@ class TestWithStride_AsyPadding(TestConv2dOp_v2):
 
 
 class TestWithGroup_AsyPadding(TestConv2dOp_v2):
-    def init_group(self):
-        self.groups = 3
+    def init_test_case(self):
+        self.pad = [0, 0]
+        self.stride = [1, 2]
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        self.group = 3
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [24, f_c, 4, 3]
 
 
 class TestWith1x1_AsyPadding(TestConv2dOp_v2):
@@ -902,7 +900,7 @@ class TestWith1x1_AsyPadding(TestConv2dOp_v2):
         self.input_size = [2, 3, 5, 5]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 1, 1]
+        self.filter_size = [120, f_c, 1, 1]
 
     def init_group(self):
         self.groups = 3
@@ -918,7 +916,7 @@ class TestWithDepthWise3x3_AsyPadding(TestConv2dOp_v2):
         self.input_size = [3, 4, 10, 10]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [8, f_c, 3, 3]
+        self.filter_size = [16, f_c, 3, 3]
 
     def init_dilation(self):
         self.dilations = [2, 2]
@@ -969,7 +967,7 @@ class TestWithDilation_AsyPadding(TestConv2dOp_v2):
         self.input_size = [2, 3, 10, 10]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 3, 3]
+        self.filter_size = [24, f_c, 3, 3]
 
     def init_dilation(self):
         self.dilations = [2, 2]
@@ -985,10 +983,10 @@ class TestWithDilation_AsyPadding(TestConv2dOp_v2):
 class TestWithInput1x1Filter1x1_AsyPadding(TestConv2dOp_v2):
     def init_test_case(self):
         self.stride = [1, 1]
-        self.input_size = [2, 3, 1, 1]  # NCHW
+        self.input_size = [40, 3, 1, 1]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 1, 1]
+        self.filter_size = [120, f_c, 1, 1]
 
     def init_group(self):
         self.groups = 3
@@ -1014,7 +1012,7 @@ class TestDepthwiseConv_AsyPadding(TestConv2dOp_v2):
         self.groups = 3
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [3, f_c, 3, 3]
+        self.filter_size = [12, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
 
     def init_paddings(self):
@@ -1030,7 +1028,7 @@ class TestDepthwiseConv2_AsyPadding(TestConv2dOp_v2):
         self.groups = 3
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [3, f_c, 3, 3]
+        self.filter_size = [12, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
 
     def init_paddings(self):
@@ -1046,7 +1044,7 @@ class TestDepthwiseConv3_AsyPadding(TestConv2dOp_v2):
         self.groups = 3
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 3, 3]
+        self.filter_size = [24, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
 
     def init_paddings(self):
@@ -1064,7 +1062,7 @@ class TestDepthwiseConvWithDilation_AsyPadding(TestConv2dOp_v2):
         self.dilations = [2, 2]
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 3, 3]
+        self.filter_size = [24, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
 
     def init_paddings(self):
@@ -1082,7 +1080,7 @@ class TestDepthwiseConvWithDilation2_AsyPadding(TestConv2dOp_v2):
         self.dilations = [2, 2]
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 3, 3]
+        self.filter_size = [24, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
 
     def init_paddings(self):
@@ -1100,7 +1098,7 @@ class TestDepthwiseConvandFuse_AsyPadding(TestConv2dOp_v2):
         self.groups = 3
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [3, f_c, 3, 3]
+        self.filter_size = [12, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
 
     def init_paddings(self):
@@ -1118,7 +1116,7 @@ class TestDepthwiseConv2andFuse_AsyPadding(TestConv2dOp_v2):
         self.groups = 3
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [3, f_c, 3, 3]
+        self.filter_size = [12, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
 
     def init_paddings(self):
@@ -1136,7 +1134,7 @@ class TestDepthwiseConv3andFuse_AsyPadding(TestConv2dOp_v2):
         self.groups = 3
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 3, 3]
+        self.filter_size = [24, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
 
     def init_paddings(self):
@@ -1155,7 +1153,7 @@ class TestDepthwiseConvWithDilationandFuse_AsyPadding(TestConv2dOp_v2):
         self.dilations = [2, 2]
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 3, 3]
+        self.filter_size = [24, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
 
     def init_paddings(self):
@@ -1174,7 +1172,7 @@ class TestDepthwiseConvWithDilation2andFuse_AsyPadding(TestConv2dOp_v2):
         self.dilations = [2, 2]
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 3, 3]
+        self.filter_size = [24, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
 
     def init_paddings(self):

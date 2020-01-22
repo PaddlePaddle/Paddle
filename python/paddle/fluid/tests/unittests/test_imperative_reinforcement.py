@@ -23,18 +23,18 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, FC
+from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
 import paddle.fluid.dygraph.nn as nn
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 
 
 class Policy(fluid.dygraph.Layer):
-    def __init__(self, name_scope):
-        super(Policy, self).__init__(name_scope)
+    def __init__(self, input_size):
+        super(Policy, self).__init__()
 
-        self.affine1 = nn.FC(self.full_name(), size=128)
-        self.affine2 = nn.FC(self.full_name(), size=2)
+        self.affine1 = nn.Linear(input_size, 128)
+        self.affine2 = nn.Linear(128, 2)
         self.dropout_ratio = 0.6
 
         self.saved_log_probs = []
@@ -67,7 +67,7 @@ class TestImperativeMnist(unittest.TestCase):
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
-            policy = Policy("PolicyModel")
+            policy = Policy(input_size=4)
 
             dy_state = fluid.dygraph.base.to_variable(state)
             dy_state.stop_gradient = True
@@ -86,7 +86,8 @@ class TestImperativeMnist(unittest.TestCase):
             loss_probs = fluid.layers.elementwise_mul(dy_reward, loss_probs)
             loss = fluid.layers.reduce_sum(loss_probs)
 
-            sgd = SGDOptimizer(learning_rate=1e-3)
+            sgd = SGDOptimizer(
+                learning_rate=1e-3, parameter_list=policy.parameters())
 
             dy_param_init_value = {}
 
@@ -110,7 +111,7 @@ class TestImperativeMnist(unittest.TestCase):
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
 
-            policy = Policy("PolicyModel")
+            policy = Policy(input_size=4)
 
             st_sgd = SGDOptimizer(learning_rate=1e-3)
 

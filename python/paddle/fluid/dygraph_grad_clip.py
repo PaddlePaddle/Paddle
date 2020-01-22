@@ -65,7 +65,7 @@ class GradClipByValue(GradClipBase):
             import paddle.fluid as fluid
 
             from paddle.fluid.dygraph.base import to_variable
-            from paddle.fluid.dygraph.nn import FC
+            from paddle.fluid.dygraph.nn import Linear
 
             from paddle.fluid.clip import GradClipByValue, GradClipByNorm, GradClipByGlobalNorm
 
@@ -77,9 +77,9 @@ class GradClipByValue(GradClipBase):
                 
                 init_value = np.random.uniform( -1, 1, (10, 10)).astype('float32')
 
-                fc = FC( "fc", 10)
+                linear = Linear( 10, 10)
 
-                out = fc( to_variable(init_value) )
+                out = linear( to_variable(init_value) )
 
                 loss = fluid.layers.reduce_mean( out )
 
@@ -144,7 +144,7 @@ class GradClipByNorm(GradClipBase):
             import paddle.fluid as fluid
 
             from paddle.fluid.dygraph.base import to_variable
-            from paddle.fluid.dygraph.nn import FC
+            from paddle.fluid.dygraph.nn import Linear
 
             from paddle.fluid.clip import GradClipByValue, GradClipByNorm, GradClipByGlobalNorm
 
@@ -156,9 +156,9 @@ class GradClipByNorm(GradClipBase):
                 
                 init_value = np.random.uniform( -1, 1, (10, 10)).astype('float32')
 
-                fc = FC( "fc", 10)
+                linear = Linear( 10, 10)
 
-                out = fc( to_variable(init_value) )
+                out = linear( to_variable(init_value) )
 
                 loss = fluid.layers.reduce_mean( out )
 
@@ -222,7 +222,7 @@ class GradClipByGlobalNorm(GradClipBase):
             import paddle.fluid as fluid
 
             from paddle.fluid.dygraph.base import to_variable
-            from paddle.fluid.dygraph.nn import FC
+            from paddle.fluid.dygraph.nn import Linear
 
             from paddle.fluid.dygraph_grad_clip import GradClipByValue, GradClipByNorm, GradClipByGlobalNorm
 
@@ -234,9 +234,9 @@ class GradClipByGlobalNorm(GradClipBase):
                 
                 init_value = np.random.uniform( -1, 1, (10, 10)).astype('float32')
 
-                fc = FC( "fc", 10)
+                linear = Linear( 10, 10)
 
-                out = fc( to_variable(init_value) )
+                out = linear( to_variable(init_value) )
 
                 loss = fluid.layers.reduce_mean( out )
 
@@ -274,16 +274,15 @@ class GradClipByGlobalNorm(GradClipBase):
         norm_global = layers.reduce_sum(norm_global)
         norm_global = layers.sqrt(norm_global)
 
-        clip_scale = layers.elementwise_div(
-            x=self.max_global_norm,
-            y=layers.elementwise_max(
-                x=norm_global, y=self.max_global_norm))
+        clip_scale = self.max_global_norm / (layers.elementwise_max(
+            x=norm_global, y=self.max_global_norm))
 
         for p, g in para_and_grad:
             if g is None:
                 out.append((p, g))
                 continue
-            new_grad = layers.elementwise_mul(x=g, y=clip_scale)
+
+            new_grad = g * clip_scale
 
             out.append((p, new_grad))
 

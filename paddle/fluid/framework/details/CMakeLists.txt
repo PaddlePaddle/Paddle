@@ -22,6 +22,7 @@ endif()
 
 
 if(WITH_GPU)
+    nv_library(nan_inf_utils SRCS nan_inf_utils_detail.cc nan_inf_utils_detail.cu DEPS framework_proto scope place)
     nv_library(all_reduce_op_handle SRCS all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
             dynload_cuda variable_visitor)
     nv_library(fused_all_reduce_op_handle SRCS fused_all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
@@ -43,6 +44,7 @@ if(WITH_GPU)
     nv_library(fused_broadcast_op_handle SRCS fused_broadcast_op_handle.cc DEPS broadcast_op_handle)
 
 else()
+    cc_library(nan_inf_utils SRCS nan_inf_utils_detail.cc DEPS framework_proto scope place)
     cc_library(all_reduce_op_handle SRCS all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
              variable_visitor)
     cc_library(fused_all_reduce_op_handle SRCS fused_all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
@@ -98,7 +100,7 @@ endif()
 cc_library(build_strategy SRCS build_strategy.cc DEPS
         graph_viz_pass multi_devices_graph_pass
         multi_devices_graph_print_pass multi_devices_graph_check_pass
-        fuse_elewise_add_act_pass multi_batch_merge_pass 
+        fuse_elewise_add_act_pass fuse_bn_act_pass multi_batch_merge_pass
         fuse_relu_depthwise_conv_pass
         lock_free_optimize_pass
         coalesce_grad_tensor_pass fuse_all_reduce_op_pass backward_optimizer_op_deps_pass

@@ -36,8 +36,8 @@ class TestKLDivLossOp(OpTest):
     def setUp(self):
         self.initTestCase()
         self.op_type = 'kldiv_loss'
-        x = np.random.uniform(-10, 10, self.x_shape).astype('float32')
-        target = np.random.uniform(-10, 10, self.x_shape).astype('float32')
+        x = np.random.uniform(-10, 10, self.x_shape).astype('float64')
+        target = np.random.uniform(-10, 10, self.x_shape).astype('float64')
 
         self.attrs = {"reduction": self.reduction}
 
@@ -46,17 +46,16 @@ class TestKLDivLossOp(OpTest):
             'Target': target,
         }
         loss = kldiv_loss(x, target, self.reduction)
-        self.outputs = {'Loss': loss.astype('float32')}
+        self.outputs = {'Loss': loss.astype('float64')}
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Loss', no_grad_set=set(["Target"]), max_relative_error=0.06)
+        self.check_grad(['X'], 'Loss', no_grad_set=set(["Target"]))
 
     def initTestCase(self):
-        self.x_shape = (2, 5, 5)
+        self.x_shape = (4, 5, 5)
         self.reduction = 'batchmean'
 
 
@@ -74,7 +73,7 @@ class TestKLDivLossOp3(TestKLDivLossOp):
 
 class TestKLDivLossOp4(TestKLDivLossOp):
     def initTestCase(self):
-        self.x_shape = (5, 7)
+        self.x_shape = (5, 20)
         self.reduction = 'sum'
 
 

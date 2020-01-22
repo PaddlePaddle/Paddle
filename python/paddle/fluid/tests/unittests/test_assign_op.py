@@ -26,7 +26,7 @@ from paddle.fluid import compiler, Program, program_guard
 class TestAssignOp(op_test.OpTest):
     def setUp(self):
         self.op_type = "assign"
-        x = np.random.random(size=(100, 10))
+        x = np.random.random(size=(100, 10)).astype('float64')
         self.inputs = {'X': x}
         self.outputs = {'Out': x}
 

@@ -81,7 +81,7 @@ class TestFillConstantOp4(OpTest):
         self.check_output()
 
 
-class TestFillConstantOpWithSelectedRows(OpTest):
+class TestFillConstantOpWithSelectedRows(unittest.TestCase):
     def check_with_place(self, place):
         scope = core.Scope()
         # create Out Variable
@@ -216,20 +216,24 @@ class TestFillConstantAPI(unittest.TestCase):
         out_5 = fluid.layers.fill_constant(
             shape=shape_tensor_int64, dtype="float32", value=1.1)
 
+        out_6 = fluid.layers.fill_constant(
+            shape=shape_tensor_int64, dtype=np.float32, value=1.1)
+
         exe = fluid.Executor(place=fluid.CPUPlace())
-        res_1, res_2, res_3, res_4, res_5 = exe.run(
+        res_1, res_2, res_3, res_4, res_5, res_6 = exe.run(
             fluid.default_main_program(),
             feed={
                 "shape_tensor_int32": np.array([1, 2]).astype("int32"),
                 "shape_tensor_int64": np.array([1, 2]).astype("int64"),
             },
-            fetch_list=[out_1, out_2, out_3, out_4, out_5])
+            fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6])
 
         assert np.array_equal(res_1, np.full([1, 2], 1.1, dtype="float32"))
         assert np.array_equal(res_2, np.full([1, 2], 1.1, dtype="float32"))
         assert np.array_equal(res_3, np.full([1, 2], 1.1, dtype="float32"))
         assert np.array_equal(res_4, np.full([1, 2], 1.1, dtype="float32"))
         assert np.array_equal(res_5, np.full([1, 2], 1.1, dtype="float32"))
+        assert np.array_equal(res_6, np.full([1, 2], 1.1, dtype="float32"))
 
 
 class TestFillConstantOpError(unittest.TestCase):

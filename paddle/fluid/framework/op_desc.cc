@@ -469,6 +469,14 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
     return;
   }
 
+  // In order to set bool attr properly
+  if (attr_type == proto::AttrType::INT && HasProtoAttr(name) &&
+      GetProtoAttr(name).type() == proto::AttrType::BOOLEAN) {
+    this->attrs_[name] = static_cast<bool>(boost::get<int>(v));
+    need_update_ = true;
+    return;
+  }
+
   this->attrs_[name] = v;
   need_update_ = true;
 }

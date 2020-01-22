@@ -104,8 +104,10 @@ class PiecewiseDecay(LearningRateDecay):
           boundaries = [10000, 20000]
           values = [1.0, 0.5, 0.1]
           with fluid.dygraph.guard():
+              emb = fluid.dygraph.Embedding( [10, 10] )
               optimizer = fluid.optimizer.SGD(
-                 learning_rate=fluid.dygraph.PiecewiseDecay(boundaries, values, 0) )
+                 learning_rate=fluid.dygraph.PiecewiseDecay(boundaries, values, 0),
+                 parameter_list = emb.parameters() )
     """
 
     def __init__(self, boundaries, values, begin, step=1, dtype='float32'):
@@ -323,12 +325,14 @@ class InverseTimeDecay(LearningRateDecay):
           import paddle.fluid as fluid
           base_lr = 0.1
           with fluid.dygraph.guard():
+              emb = fluid.dygraph.Embedding([10, 10])
               sgd_optimizer = fluid.optimizer.SGD(
 	          learning_rate=fluid.dygraph.InverseTimeDecay(
 		        learning_rate=base_lr,
 		        decay_steps=10000,
 		        decay_rate=0.5,
-		        staircase=True))
+		        staircase=True),
+                  parameter_list = emb.parameters())
 
     """
 
@@ -404,9 +408,11 @@ class PolynomialDecay(LearningRateDecay):
           total_step = 5000
           end_lr = 0
           with fluid.dygraph.guard():
+              emb = fluid.dygraph.Embedding( [10, 10])
               optimizer  = fluid.optimizer.SGD(
                   learning_rate = fluid.dygraph.PolynomialDecay(
-                  start_lr, total_step, end_lr, power=1.0) )
+                  start_lr, total_step, end_lr, power=1.0),
+                  parameter_list = emb.parameters())
 
     """
 
@@ -536,10 +542,12 @@ class NoamDecay(LearningRateDecay):
           warmup_steps = 100
           learning_rate = 0.01
           with fluid.dygraph.guard():
+              emb = fluid.dygraph.Embedding([10, 10])
               optimizer  = fluid.optimizer.SGD(
                   learning_rate = fluid.dygraph.NoamDecay(
                          1/(warmup_steps *(learning_rate ** 2)),
-                         warmup_steps) )
+                         warmup_steps),
+                  parameter_list = emb.parameters())
     """
 
     def __init__(self, d_model, warmup_steps, begin=1, step=1, dtype='float32'):
@@ -626,9 +634,8 @@ class LinearLrWarmup(LearningRateDecay):
                 format(learning_rate))
         self.learning_rate = learning_rate
         self.warmup_steps = warmup_steps
-        assert (end_lr > start_lr,
-                "end_lr {} MUST GREATER than start_lr {}".format(end_lr,
-                                                                 start_lr))
+        assert end_lr > start_lr, "end_lr {} must be greater than start_lr {}".format(
+            end_lr, start_lr)
         self.lr_ratio_before_warmup = (
             float(end_lr) - float(start_lr)) / float(warmup_steps)
 

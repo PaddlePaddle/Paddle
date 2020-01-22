@@ -171,7 +171,7 @@ def __bootstrap__():
         'enable_parallel_graph', 'fuse_parameter_groups_size',
         'multiple_of_cupti_buffer_size', 'fuse_parameter_memory_size',
         'tracer_profile_fname', 'dygraph_debug', 'use_system_allocator',
-        'enable_unused_var_check'
+        'enable_unused_var_check', 'free_idle_chunk', 'free_when_no_cache_hit'
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')
@@ -199,17 +199,6 @@ def __bootstrap__():
 
         read_env_flags.append('worker_update_interval_secs')
 
-        # env for communicator
-        read_env_flags.append('communicator_independent_recv_thread')
-        read_env_flags.append('communicator_send_queue_size')
-        read_env_flags.append('communicator_min_send_grad_num_before_recv')
-        read_env_flags.append('communicator_thread_pool_size')
-        read_env_flags.append('communicator_max_merge_var_num')
-        read_env_flags.append('communicator_merge_sparse_bucket')
-        read_env_flags.append('communicator_fake_rpc')
-        read_env_flags.append('communicator_send_wait_times')
-        read_env_flags.append('communicator_merge_sparse_grad')
-        read_env_flags.append('communicator_is_sgd_optimizer')
         if core.is_compiled_with_brpc():
             read_env_flags.append('max_body_size')
             #set brpc max body size
