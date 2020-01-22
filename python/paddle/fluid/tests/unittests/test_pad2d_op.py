@@ -23,7 +23,7 @@ class TestPad2dOp(OpTest):
         self.variable_paddings = False
         self.initTestCase()
         self.op_type = "pad2d"
-        self.inputs = {'X': np.random.random(self.shape).astype("double")}
+        self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {}
         if self.variable_paddings:
             self.attrs['paddings'] = []
