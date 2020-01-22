@@ -476,7 +476,7 @@ void BindImperative(py::module *m_ptr) {
                std::shared_ptr<imperative::RemovablePyCallableObject>
                    removable_obj =
                        std::make_shared<imperative::RemovablePyCallableObject>(
-                           self.GetBackwardHooks());
+                           self.GetBackwardHooks(), self.Get_Hooks_Id());
                self.RegisterBackwardHooks(obj, removable_obj->Get_Hooks_Id());
                return removable_obj;
              } else {

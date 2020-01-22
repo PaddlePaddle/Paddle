@@ -52,6 +52,7 @@ class gil_scoped_acquire {
 };
 
 class PyCallableObject {
+ public:
   PyCallableObject(PyObject* func, PyObject* param)
       : py_obj_func_(func), py_obj_param_(param) {}
 
@@ -70,23 +71,24 @@ class PyCallableObject {
 class RemovablePyCallableObject {
  public:
   RemovablePyCallableObject(
-      std::map<int, std::shared_ptr<PyCallableObject>> hooks)
-      : hooks_(hooks) {
-    hooks_id_ = next_hooks_id_;
-    next_hooks_id_++;
+      std::map<int, std::shared_ptr<PyCallableObject>> hooks, int hooks_id)
+      : hooks_(hooks), hooks_id_(hooks_id) {
+    // hooks_id_ = next_hooks_id_;
+    // next_hooks_id_++;
   }
 
   int Get_Hooks_Id() { return hooks_id_; }
 
   ~RemovablePyCallableObject() {}
 
+  // static int next_hooks_id_;
  private:
   std::map<int, std::shared_ptr<PyCallableObject>> hooks_;
-  static int next_hooks_id_;
+  // static int next_hooks_id_;
   int hooks_id_;
 };
 
-int RemovablePyCallableObject::next_hooks_id_ = 0;
+// int RemovablePyCallableObject::next_hooks_id_ = 0;
 
 class OpBase;
 
@@ -111,6 +113,7 @@ class VarBase {
   explicit VarBase(bool has_grad, const std::string& name)
       : name_(name),
         grad_var_(has_grad ? new VarBase(false, GradVarName()) : nullptr) {
+    next_hooks_id_ = 0;
     if (IsDebugEnabled()) {
       VLOG(10) << "Construct VarBase: " << name;
       name_set_.Insert(name_);
@@ -265,6 +268,11 @@ class VarBase {
     // backward_hooks_.emplace_back(obj)
   }
 
+  int Get_Hooks_Id() {
+    next_hooks_id_++;
+    return next_hooks_id_;
+  }
+
   std::map<int, std::shared_ptr<PyCallableObject>> GetBackwardHooks() {
     return backward_hooks_;
   }
@@ -273,6 +281,7 @@ class VarBase {
   framework::Variable var_;
   std::string name_;
   std::shared_ptr<VarBase> grad_var_;
+  int next_hooks_id_;
   std::map<int, std::shared_ptr<PyCallableObject>> backward_hooks_;
   // std::vector<std::shared_ptr<PyCallableObject> > backward_hooks_;
 
