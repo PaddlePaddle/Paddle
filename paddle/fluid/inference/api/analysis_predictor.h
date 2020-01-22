@@ -76,6 +76,8 @@ class AnalysisPredictor : public PaddlePredictor {
   void PrepareArgument();
   void OptimizeInferenceProgram();
 
+  void ClearIntermediateTensor();
+
   Argument &analysis_argument() { return argument_; }
 
   std::unique_ptr<PaddlePredictor> Clone() override;

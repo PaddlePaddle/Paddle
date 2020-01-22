@@ -44,6 +44,7 @@ TEST(AnalysisPredictor, use_gpu) {
   for (auto& input : inputs_all) {
     ASSERT_TRUE(predictor->Run(input, &outputs));
   }
+  predictor->ClearIntermediateTensor();
 }
 
 }  // namespace inference

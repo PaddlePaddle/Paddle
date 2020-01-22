@@ -268,6 +268,8 @@ class PaddlePredictor {
    */
   virtual bool ZeroCopyRun() { return false; }
 
+  virtual void ClearIntermediateTensor() {}
+
   /** Clone a predictor that share the model weights, the Cloned predictor
    * should be thread-safe.
    */
