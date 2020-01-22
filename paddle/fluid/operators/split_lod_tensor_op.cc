@@ -147,13 +147,13 @@ class SplitLoDTensorInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE(context->HasInput("X"),
-                   "SplitLoDTensorOp must has input X.");
+                   "SplitLoDTensorOp must have input X.");
     PADDLE_ENFORCE(context->HasInput("Mask"),
-                   "SplitLoDTensorOp must has input Mask.");
+                   "SplitLoDTensorOp must have input Mask.");
     PADDLE_ENFORCE(context->HasOutput("OutTrue"),
-                   "SplitLoDTensorOp must has output OutTrue.");
+                   "SplitLoDTensorOp must have output OutTrue.");
     PADDLE_ENFORCE(context->HasOutput("OutFalse"),
-                   "SplitLoDTensorOp must has output OutFalse.");
+                   "SplitLoDTensorOp must have output OutFalse.");
 
     auto mask_dim = context->GetInputDim("Mask");
     PADDLE_ENFORCE_EQ(mask_dim.size(), 2,

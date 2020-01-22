@@ -191,9 +191,10 @@ class AffineGridOpGrad : public framework::OperatorWithKernel {
       library_ = framework::LibraryType::kCUDNN;
     }
 #endif
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Theta"), ctx.GetPlace(),
-        framework::DataLayout::kAnyLayout, library_);
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Output")),
+                                   ctx.GetPlace(),
+                                   framework::DataLayout::kAnyLayout, library_);
   }
 };
 
@@ -205,7 +206,6 @@ class AffineGridGradMaker : public framework::SingleGradOpMaker<T> {
  protected:
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("affine_grid_grad");
-    op->SetInput("Theta", this->Input("Theta"));
     op->SetInput("OutputShape", this->Input("OutputShape"));
     op->SetInput(framework::GradVarName("Output"), this->OutputGrad("Output"));
 

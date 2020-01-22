@@ -136,8 +136,9 @@ class KLDivLossOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Loss")),
+                                   ctx.GetPlace());
   }
 };
 
@@ -159,6 +160,9 @@ class KLDivLossOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(KLDivLossGradNoNeedBufferVarInference,
+                                      "X");
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -166,7 +170,8 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(kldiv_loss, ops::KLDivLossOp, ops::KLDivLossOpMaker,
                   ops::KLDivLossOpGradMaker<paddle::framework::OpDesc>,
                   ops::KLDivLossOpGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(kldiv_loss_grad, ops::KLDivLossOpGrad);
+REGISTER_OPERATOR(kldiv_loss_grad, ops::KLDivLossOpGrad,
+                  ops::KLDivLossGradNoNeedBufferVarInference);
 REGISTER_OP_CPU_KERNEL(
     kldiv_loss, ops::KLDivLossKernel<paddle::platform::CPUDeviceContext, float>,
     ops::KLDivLossKernel<paddle::platform::CPUDeviceContext, double>);

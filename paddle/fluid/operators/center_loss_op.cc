@@ -139,6 +139,9 @@ class CenterLossOpGradMaker : public framework::SingleGradOpMaker<T> {
     retv->SetAttrMap(this->Attrs());
   }
 };
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(CenterLossGradNoNeedBufVarsInferer, "X");
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -149,7 +152,8 @@ REGISTER_OPERATOR(center_loss, ops::CenterLossOp, ops::CenterLossOpMaker,
                   ops::CenterLossOpGradMaker<paddle::framework::OpDesc>,
                   ops::CenterLossOpGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(center_loss_grad, ops::CenterLossGradOp);
+REGISTER_OPERATOR(center_loss_grad, ops::CenterLossGradOp,
+                  ops::CenterLossGradNoNeedBufVarsInferer);
 
 REGISTER_OP_CPU_KERNEL(center_loss, ops::CenterLossKernel<CPUCtx, float>,
                        ops::CenterLossKernel<CPUCtx, double>);
