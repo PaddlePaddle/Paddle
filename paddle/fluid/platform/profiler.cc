@@ -730,41 +730,43 @@ void DisableProfiler(EventSortingKey sorted_key,
   if (g_state == ProfilerState::kDisabled) return;
   // Mark the profiling stop.
   Mark("_stop_profiler_");
+  std::vector<std::string> op_name;
+  for (auto it = g_all_event_lists.begin(); it != g_all_event_lists.end();
+       ++it) {
+    for (auto &block : (*it)->event_blocks) {
+      for (auto &r : block) {
+        auto event_name = r.name();
+        size_t start = event_name.find('%', 0);
+        size_t end = event_name.find('%', start + 1);
+        while (start != std::string::npos && end != std::string::npos) {
+          auto search_str = event_name.substr(start, end - start + 1);
+          auto it = find(op_name.begin(), op_name.end(), search_str);
+          std::string replace_str;
+          if (it != op_name.end()) {
+            replace_str = std::to_string(std::distance(op_name.begin(), it));
+          } else {
+            replace_str = std::to_string(op_name.size());
+            op_name.push_back(search_str);
+          }
+          event_name.replace(start, end - start + 1, replace_str);
+          start = start + 1;
+          start = event_name.find('%', start);
+          end = event_name.find('%', start + 1);
+        }
+        r.set_name(event_name);
+      }
+    }
+  }
 
   DeviceTracer *tracer = GetDeviceTracer();
   if (tracer->IsEnabled()) {
     tracer->Disable();
     tracer->GenEventKernelCudaElapsedTime();
+    tracer->GenProfile(profile_path);
   }
 
   std::vector<std::vector<Event>> all_events = GetAllEvents();
 
-  std::vector<std::string> op_name;
-  for (size_t i = 0; i < (all_events).size(); i++) {
-    for (size_t j = 0; j < (all_events)[i].size(); j++) {
-      std::string event_name = (all_events)[i][j].name();
-      size_t start = event_name.find('%', 0);
-      size_t end = event_name.find('%', start + 1);
-      while (start != std::string::npos && end != std::string::npos) {
-        auto search_str = event_name.substr(start, end - start + 1);
-        auto it = find(op_name.begin(), op_name.end(), search_str);
-        std::string replace_str;
-        if (it != op_name.end()) {
-          replace_str = std::to_string(std::distance(op_name.begin(), it));
-        } else {
-          replace_str = std::to_string(op_name.size());
-          op_name.push_back(search_str);
-        }
-        event_name.replace(start, end - start + 1, replace_str);
-        start = start + 1;
-        start = event_name.find('%', start);
-        end = event_name.find('%', start + 1);
-      }
-      (all_events)[i][j].set_name(event_name);
-    }
-  }
-
-  tracer->GenProfile(profile_path);
   ParseEvents(all_events, true, sorted_key);
   ParseEvents(all_events, false, sorted_key);
   if (VLOG_IS_ON(5)) {
