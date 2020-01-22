@@ -19,6 +19,7 @@ limitations under the License. */
 #include <pybind11/complex.h>
 #include <pybind11/functional.h>
 #include <pybind11/stl.h>
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -276,6 +277,15 @@ void BindImperative(py::module *m_ptr) {
           imperative::SetCurrentTracer(tracer);
         });
 
+  py::class_<imperative::RemovablePyCallableObject,
+             std::shared_ptr<imperative::RemovablePyCallableObject>>(
+      m, "RemovablePyCallableObject",
+      R"DOC()DOC")
+      .def("__init__",
+           [](imperative::RemovablePyCallableObject &self,
+              std::map<int, std::shared_ptr<imperative::PyCallableObject>>
+                  hooks) {});
+
   py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>>(
       m, "VarBase",
       R"DOC()DOC")
@@ -444,10 +454,17 @@ void BindImperative(py::module *m_ptr) {
       //return py::object;
       })*/
       .def("register_hook",
-           [](imperative::VarBase &self, const py::object &hook) {
+           [](imperative::VarBase &self, const py::handle &hook) {
              if (self.HasGradVar()) {
-               // self.GradVarBase()->RegisterBackwardHooks(hook.ptr());
-               self.RegisterBackwardHooks(hook.ptr());
+               std::shared_ptr<imperative::PyCallableObject> obj =
+                   std::make_shared<imperative::PyCallableObject>(
+                       hook.ptr(), py::cast(self).ptr());
+               std::shared_ptr<imperative::RemovablePyCallableObject>
+                   removable_obj =
+                       std::make_shared<imperative::RemovablePyCallableObject>(
+                           self.GetBackwardHooks());
+               self.RegisterBackwardHooks(obj, removable_obj->Get_Hooks_Id());
+               return removable_obj;
              } else {
                PADDLE_THROW(
                    "Can not register hook for VarBase who has not GradVar");

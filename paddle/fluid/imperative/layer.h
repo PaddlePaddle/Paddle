@@ -13,11 +13,7 @@
 // limitations under the License.
 
 #pragma once
-// #include <pybind11/chrono.h>
-// #include <pybind11/complex.h>
-// #include <pybind11/functional.h>
-// #include <pybind11/stl.h>
-#include <pybind11/pybind11.h>
+#include <Python.h>
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
@@ -47,39 +43,51 @@
 namespace paddle {
 namespace imperative {
 
-namespace py = ::pybind11;
+class gil_scoped_acquire {
+  PyGILState_STATE state;
 
-// warper for pyobject to avoid imperative module depend on python
-// enable backward hook
-/*class PyCallableObjectBase {
-public:
-PyCallableObjectBase(){}
-virtual ~PyCallableObjectBase(){}
-virtual py::object operator()(VarBase& var) const;
-};*/
-/*
-class PYBIND11_HIDDEN PyCallableObject1 {//: public PyCallableObjectBase
-//class PyCallableObject {
-  public:
-  PyCallableObject(std::shared_ptr<py::object> py_obj_ptr)
-  : py_obj_ptr_(std::move(py_obj_ptr)) {}
-//PyCallableObject(const PyCallableObject& py_call_obj_ptr){
-//py_obj_ptr_ = py_call_obj_ptr.py_obj_ptr_;
-//}
-  ~PyCallableObject() {
-    py::call_guard<py::gil_scoped_acquire>();
-    py_obj_ptr_.reset();
-  }
-  py::object operator()(VarBase& var) const {
-    py::call_guard<py::gil_scoped_acquire>();
-    return py_obj_ptr_->operator()(var);
-  }
-
-  private:
-  std::shared_ptr<py::object> py_obj_ptr_;
-  //PyObject* py_obj_ptr_;
+ public:
+  gil_scoped_acquire() { state = PyGILState_Ensure(); }
+  ~gil_scoped_acquire() { PyGILState_Release(state); }
 };
-*/
+
+class PyCallableObject {
+  PyCallableObject(PyObject* func, PyObject* param)
+      : py_obj_func_(func), py_obj_param_(param) {}
+
+  ~PyCallableObject() {}
+
+  void operator()() {
+    gil_scoped_acquire gil;
+    PyObject_CallFunctionObjArgs(py_obj_func_, py_obj_param_, nullptr);
+  }
+
+ private:
+  PyObject* py_obj_func_;
+  PyObject* py_obj_param_;
+};
+
+class RemovablePyCallableObject {
+ public:
+  RemovablePyCallableObject(
+      std::map<int, std::shared_ptr<PyCallableObject>> hooks)
+      : hooks_(hooks) {
+    hooks_id_ = next_hooks_id_;
+    next_hooks_id_++;
+  }
+
+  int Get_Hooks_Id() { return hooks_id_; }
+
+  ~RemovablePyCallableObject() {}
+
+ private:
+  std::map<int, std::shared_ptr<PyCallableObject>> hooks_;
+  static int next_hooks_id_;
+  int hooks_id_;
+};
+
+int RemovablePyCallableObject::next_hooks_id_ = 0;
+
 class OpBase;
 
 class ThreadSafeNameSet {
@@ -101,9 +109,8 @@ class VarBase {
  public:
   static std::vector<std::string> AliveVarNames();
   explicit VarBase(bool has_grad, const std::string& name)
-      : name_(name), /*backward_hooks_id_(0),*/
+      : name_(name),
         grad_var_(has_grad ? new VarBase(false, GradVarName()) : nullptr) {
-    /*backward_hooks_id_ = 0;*/
     if (IsDebugEnabled()) {
       VLOG(10) << "Construct VarBase: " << name;
       name_set_.Insert(name_);
@@ -234,40 +241,22 @@ class VarBase {
 
   std::shared_ptr<VarBase> NewVarBase(const platform::Place& dst_place,
                                       const bool blocking) const;
-  /*
-  void RegisterBackwardHooks(std::shared_ptr<PyCallableObject> obj) {
-  //backward_hooks_id_ = backward_hooks_id_ + 1;
-      //backward_hooks_[backward_hooks_id_] = obj;
-  backward_hooks_.emplace_back(obj);
-  VLOG(1) << "11111111111111111111111111111111 tianjia " << std::endl;
-  //obj(*this);
-  VLOG(1) << "11111111111111111111111111111111 tianjia1 " << std::endl;
+
+  void RegisterBackwardHooks(std::shared_ptr<PyCallableObject> obj, int id) {
+    backward_hooks_[id] = obj;
+    // backward_hooks_.emplace_back(obj)
   }
-  */
-  void RegisterBackwardHooks(PyObject* obj) {
-    backward_hooks_.emplace_back(obj);
-    PyObject* para = py::cast(this).ptr();
-    VLOG(1) << "11111111111111111111111111111111 tianjia " << std::endl;
-    PyObject_CallFunctionObjArgs(obj, para, nullptr);
-    VLOG(1) << "11111111111111111111111111111111 tianjia1 " << std::endl;
+
+  std::map<int, std::shared_ptr<PyCallableObject>> GetBackwardHooks() {
+    return backward_hooks_;
   }
-  /*
-  std::map<int, PyCallableObject> GetBackwardHooks() {
-  return backward_hooks_;
-  }
-  */
-  /*int GetBackwardHooksId() {
-  return backward_hooks_id_;
-  }*/
 
  private:
   framework::Variable var_;
   std::string name_;
   std::shared_ptr<VarBase> grad_var_;
-  /*int backward_hooks_id_;
-  std::map<int, PyCallableObject> backward_hooks_;*/
-  // std::vector<std::shared_ptr<PyCallableObject>> backward_hooks_;
-  std::vector<PyObject*> backward_hooks_;
+  std::map<int, std::shared_ptr<PyCallableObject>> backward_hooks_;
+  // std::vector<std::shared_ptr<PyCallableObject> > backward_hooks_;
 
   mutable size_t copied_counter_ = 0;
 
