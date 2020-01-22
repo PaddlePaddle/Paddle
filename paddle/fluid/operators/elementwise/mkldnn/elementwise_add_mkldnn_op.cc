@@ -42,15 +42,19 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
     auto* y = ctx.Input<Tensor>("Y");
     auto* z = ctx.Output<Tensor>("Out");
 
-    PADDLE_ENFORCE_EQ(x->layout(), DataLayout::kMKLDNN,
-                      "Wrong layout set for X tensor");
-    PADDLE_ENFORCE_NE(x->format(), MKLDNNMemoryFormat::undef,
-                      "Wrong format set for X tensor");
+    PADDLE_ENFORCE_EQ(
+        x->layout(), DataLayout::kMKLDNN,
+        platform::errors::InvalidArgument("Wrong layout set for X tensor"));
+    PADDLE_ENFORCE_NE(
+        x->format(), MKLDNNMemoryFormat::undef,
+        platform::errors::InvalidArgument("Wrong format set for X tensor"));
 
-    PADDLE_ENFORCE_EQ(y->layout(), DataLayout::kMKLDNN,
-                      "Wrong layout set for Y tensor");
-    PADDLE_ENFORCE_NE(y->format(), MKLDNNMemoryFormat::undef,
-                      "Wrong format set for Y tensor");
+    PADDLE_ENFORCE_EQ(
+        y->layout(), DataLayout::kMKLDNN,
+        platform::errors::InvalidArgument("Wrong layout set for Y tensor"));
+    PADDLE_ENFORCE_NE(
+        y->format(), MKLDNNMemoryFormat::undef,
+        platform::errors::InvalidArgument("Wrong format set for Y tensor"));
 
     const T* x_data = x->data<T>();
     const T* y_data = y->data<T>();
