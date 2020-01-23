@@ -27,8 +27,6 @@ class TestElementwiseAddOp(OpTest):
 
     def setUp(self):
         self.op_type = "elementwise_add"
-        self.dtype = np.float64
-        self.axis = -1
         self.init_dtype()
         self.init_input_output()
         self.init_kernel_type()
@@ -78,10 +76,10 @@ class TestElementwiseAddOp(OpTest):
         self.out = np.add(self.x, self.y)
 
     def init_dtype(self):
-        pass
+        self.dtype = np.float64
 
     def init_axis(self):
-        pass
+        self.axis = -1
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
