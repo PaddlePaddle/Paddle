@@ -27,6 +27,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 using framework::Tensor;
+using Variable = framework::Variable;
 
 class SumOp : public framework::OperatorWithKernel {
  public:
@@ -139,13 +140,8 @@ class SumOp : public framework::OperatorWithKernel {
           static_cast<framework::proto::VarType::Type>(dtype) ==
               framework::proto::VarType::FP32 &&
           ctx.OutputVar("Out")->IsType<framework::LoDTensor>()) {
-        bool can_use_mkldnn_sum = true;
-        for (size_t idx = 0; idx < x_vars.size(); ++idx) {
-          if (!x_vars[idx]->IsType<LoDTensor>()) {
-            can_use_mkldnn_sum = false;
-          }
-        }
-        if (can_use_mkldnn_sum) {
+        if (std::all_of(x_vars.begin(), x_vars.end(),
+                        [](Variable* v) { return v->IsType<LoDTensor>(); })) {
           return framework::OpKernelType(
               framework::proto::VarType::FP32, ctx.GetPlace(),
               framework::DataLayout::kMKLDNN, framework::LibraryType::kMKLDNN);
