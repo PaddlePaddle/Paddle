@@ -138,9 +138,21 @@ class SumOp : public framework::OperatorWithKernel {
           platform::CanMKLDNNBeUsed(ctx)) {
         if (static_cast<framework::proto::VarType::Type>(dtype) ==
             framework::proto::VarType::FP32) {
-          return framework::OpKernelType(
-              framework::proto::VarType::FP32, ctx.GetPlace(),
-              framework::DataLayout::kMKLDNN, framework::LibraryType::kMKLDNN);
+          auto out_var = ctx.OutputVar("Out");
+          if (out_var->IsType<framework::LoDTensor>()) {
+            bool can_use_mkldnn_sum = true;
+            for (size_t idx = 0; idx < x_vars.size(); ++idx) {
+              if (!x_vars[idx]->IsType<LoDTensor>()) {
+                can_use_mkldnn_sum = false;
+              }
+            }
+            if (can_use_mkldnn_sum) {
+              return framework::OpKernelType(framework::proto::VarType::FP32,
+                                             ctx.GetPlace(),
+                                             framework::DataLayout::kMKLDNN,
+                                             framework::LibraryType::kMKLDNN);
+            }
+          }
         }
       }
 #endif
