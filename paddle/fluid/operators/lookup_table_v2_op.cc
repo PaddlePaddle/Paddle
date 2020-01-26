@@ -71,8 +71,7 @@ class LookupTableV2OpMaker : public framework::OpProtoAndCheckerMaker {
              "which is a learnable parameter.");
     AddInput("Ids",
              "An input with type int64 "
-             "contains the ids to be looked up in W. "
-             "The last dimension size must be 1.");
+             "contains the ids to be looked up in W.");
     AddOutput("Out", "The lookup results, which have the same type as W.");
     AddAttr<bool>("is_sparse",
                   "(boolean, default false) "

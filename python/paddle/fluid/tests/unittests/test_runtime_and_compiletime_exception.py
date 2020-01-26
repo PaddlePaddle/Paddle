@@ -21,7 +21,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 
 
-class TestRunTimeException(OpTest):
+class TestRunTimeException(unittest.TestCase):
     def test_run_time_exception(self):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -39,7 +39,7 @@ class TestRunTimeException(OpTest):
         self.assertRaises(core.EnforceNotMet, _run_program)
 
 
-class TestCompileTimeException(OpTest):
+class TestCompileTimeException(unittest.TestCase):
     def test_compile_time_exception(self):
         self.assertRaises(core.EnforceNotMet, self.build_model)
 

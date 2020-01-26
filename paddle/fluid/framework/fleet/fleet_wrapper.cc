@@ -107,6 +107,16 @@ uint64_t FleetWrapper::RunServer() {
 #endif
 }
 
+uint64_t FleetWrapper::RunServer(const std::string& ip, uint32_t port) {
+#ifdef PADDLE_WITH_PSLIB
+  VLOG(3) << "Going to run server with ip " << ip << " port " << port;
+  auto ret = pslib_ptr_->run_server(ip, port);
+  return ret;
+#else
+  return 0;
+#endif
+}
+
 void FleetWrapper::GatherServers(const std::vector<uint64_t>& host_sign_list,
                                  int node_num) {
 #ifdef PADDLE_WITH_PSLIB
@@ -161,7 +171,7 @@ void FleetWrapper::PullSparseVarsSync(
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
     CHECK(tensor != nullptr) << "tensor of var " << name << " is null";
     int64_t* ids = tensor->data<int64_t>();
-    int len = tensor->numel();
+    size_t len = tensor->numel();
 
     // skip slots which do not have embedding
     const std::string& emb_name = var_emb_names[var_index];
@@ -350,7 +360,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
     }
-    int len = tensor->numel();
+    size_t len = tensor->numel();
     int64_t* ids = tensor->data<int64_t>();
     int slot = 0;
     if (dump_slot) {
@@ -413,7 +423,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
     }
-    int len = tensor->numel();
+    size_t len = tensor->numel();
     int64_t* ids = tensor->data<int64_t>();
     for (auto id_idx = 0u; id_idx < len; ++id_idx) {
       if (ids[id_idx] == 0) {
@@ -596,7 +606,7 @@ void FleetWrapper::CacheShuffle(int table_id, const std::string& path,
                                 const int mode, const double cache_threshold) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->cache_shuffle(
-      0, path, std::to_string(mode), std::to_string(cache_threshold));
+      table_id, path, std::to_string(mode), std::to_string(cache_threshold));
   ret.wait();
   int32_t feasign_cnt = ret.get();
   if (feasign_cnt == -1) {

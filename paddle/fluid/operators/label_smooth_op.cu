@@ -34,7 +34,7 @@ __global__ void LabelSmoothRunDistKernel(const int N, const float epsilon,
                                          const T* dist_data, T* dst) {
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
   for (; idx < N; idx += blockDim.x * gridDim.x) {
-    int dist_idx = idx - (idx / dist_numel) * dist_numel;
+    int dist_idx = idx % dist_numel;
     dst[idx] = static_cast<T>(1 - epsilon) * src[idx] +
                static_cast<T>(epsilon) * dist_data[dist_idx];
   }
@@ -56,7 +56,7 @@ class LabelSmoothGPUKernel : public framework::OpKernel<T> {
     auto* out_t = ctx.Output<framework::LoDTensor>("Out");
     auto* in_t = ctx.Input<framework::LoDTensor>("X");
     auto* dist_t = ctx.Input<framework::Tensor>("PriorDist");
-    auto label_dim = in_t->dims()[1];
+    auto label_dim = in_t->dims()[in_t->dims().size() - 1];
     auto epsilon = ctx.Attr<float>("epsilon");
     auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
     auto size_prob = in_t->numel();

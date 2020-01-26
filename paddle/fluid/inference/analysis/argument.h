@@ -149,6 +149,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(analysis_passes, AnalysisPasses,
                       std::vector<std::string>);
 
+  // whether to mute all logs in inference.
+  DECL_ARGUMENT_FIELD(disable_logs, DisableLogs, bool);
+
   // Pass a set of op types to enable its mkldnn kernel
   DECL_ARGUMENT_FIELD(mkldnn_enabled_op_types, MKLDNNEnabledOpTypes,
                       std::unordered_set<std::string>);
@@ -193,6 +196,12 @@ struct Argument {
                       std::vector<std::string>);
   DECL_ARGUMENT_FIELD(anakin_ops_filter, AnakinOpsFilter,
                       std::vector<std::string>);
+
+  DECL_ARGUMENT_FIELD(lite_passes_filter, LitePassesFilter,
+                      std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(lite_ops_filter, LiteOpsFilter, std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(lite_precision_mode, LitePrecisionMode,
+                      AnalysisConfig::Precision);
 
   // Memory optimized related.
   DECL_ARGUMENT_FIELD(enable_memory_optim, EnableMemoryOptim, bool);

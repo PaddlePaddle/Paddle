@@ -88,7 +88,7 @@ class TestNCE(OpTest):
         }
 
     def set_data(self):
-        self.generate_data(5, 5, 4, 1, 2, False)
+        self.generate_data(5, 25, 100, 1, 2, False)
 
     def compute(self):
         out = nce(self.inputs['Input'], self.inputs['Weight'],
@@ -116,7 +116,7 @@ class TestNCE(OpTest):
 
 class TestNCECase1Tensor(TestNCE):
     def set_data(self):
-        self.generate_data(10, 20, 10, 2, 5, False)
+        self.generate_data(10, 20, 100, 2, 5, False)
 
 
 class TestNCECase1SelectedRows(unittest.TestCase):
@@ -220,7 +220,7 @@ class TestNCECase1SelectedRows(unittest.TestCase):
         self.assertEqual(rets[0], rets[1])
 
 
-class TestNCE_OpError(OpTest):
+class TestNCE_OpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             input1 = fluid.create_lod_tensor(

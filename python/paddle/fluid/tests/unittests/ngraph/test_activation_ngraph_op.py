@@ -14,13 +14,14 @@
 
 from __future__ import print_function
 
-import unittest
+import unittest, sys
+sys.path.append("../")
 import numpy as np
-import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest
-from paddle.fluid.tests.unittests.test_activation_op import TestAbs, TestGelu, TestSigmoid, TestSquare, TestRelu, TestTanh
+from op_test import OpTest, skip_check_grad_ci
+from test_activation_op import TestAbs, TestGelu, TestSigmoid, TestSquare, TestRelu, TestTanh
 
 
+@skip_check_grad_ci(reason="Use float32 in ngraph relu op.")
 class TestNGRAPHReluDim4(TestRelu):
     def setUp(self):
         super(TestNGRAPHReluDim4, self).setUp()

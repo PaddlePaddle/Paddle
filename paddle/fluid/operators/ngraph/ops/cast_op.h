@@ -40,23 +40,8 @@ static void BuildCastNode(
   auto out = std::make_shared<ngraph::op::Convert>(input, ng_dtype);
   paddle::platform::SetOutputNode(op, "Out", out, ngb_node_map);
 }
-
-static void BuildCastGradNode(
-    const std::shared_ptr<framework::OperatorBase>& op,
-    std::shared_ptr<
-        std::unordered_map<std::string, std::shared_ptr<ngraph::Node>>>
-        ngb_node_map) {
-  auto input = platform::GetInputNode(op, "Out@GRAD", ngb_node_map);
-  auto op_attrs = framework::AttrReader(op->Attrs());
-  auto ng_dtype =
-      platform::GetNgType(static_cast<paddle::framework::proto::VarType::Type>(
-          op_attrs.Get<int>("out_dtype")));
-  auto out = std::make_shared<ngraph::op::Convert>(input, ng_dtype);
-  platform::SetOutputNode(op, "X@GRAD", out, ngb_node_map);
-}
 }  // namespace ngraphs
 }  // namespace operators
 }  // namespace paddle
 
 REGISTER_NG_OP(cast, BuildCastNode);
-REGISTER_NG_OP(cast_grad, BuildCastGradNode);

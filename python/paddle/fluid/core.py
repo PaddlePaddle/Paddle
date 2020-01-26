@@ -170,6 +170,7 @@ if avx_supported():
         from .core_avx import _append_python_callable_object_and_return_id
         from .core_avx import _cleanup, _Scope
         from .core_avx import _get_use_default_grad_op_desc_maker_ops
+        from .core_avx import _get_all_register_op_kernels
         from .core_avx import _is_program_version_supported
         from .core_avx import _set_eager_deletion_mode
         from .core_avx import _set_fuse_parameter_group_size
@@ -183,6 +184,11 @@ if avx_supported():
         from .core_avx import _save_dygraph_dict
         from .core_avx import _load_dygraph_dict
         from .core_avx import _create_loaded_parameter
+        if sys.platform != 'win32':
+            from .core_avx import _set_process_pid
+            from .core_avx import _erase_process_pid
+            from .core_avx import _set_process_signal_handler
+            from .core_avx import _throw_error_if_process_failed
     except Exception as e:
         if has_avx_core:
             raise e
@@ -205,6 +211,7 @@ if load_noavx:
         from .core_noavx import _append_python_callable_object_and_return_id
         from .core_noavx import _cleanup, _Scope
         from .core_noavx import _get_use_default_grad_op_desc_maker_ops
+        from .core_noavx import _get_all_register_op_kernels
         from .core_noavx import _is_program_version_supported
         from .core_noavx import _set_eager_deletion_mode
         from .core_noavx import _set_fuse_parameter_group_size
@@ -218,6 +225,11 @@ if load_noavx:
         from .core_noavx import _save_dygraph_dict
         from .core_noavx import _load_dygraph_dict
         from .core_noavx import _create_loaded_parameter
+        if sys.platform != 'win32':
+            from .core_noavx import _set_process_pid
+            from .core_noavx import _erase_process_pid
+            from .core_noavx import _set_process_signal_handler
+            from .core_noavx import _throw_error_if_process_failed
     except Exception as e:
         if has_noavx_core:
             sys.stderr.write(

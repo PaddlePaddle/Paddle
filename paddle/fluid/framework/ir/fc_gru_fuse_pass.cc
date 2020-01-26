@@ -92,8 +92,12 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
     }
 #undef GET_NODE
 
-#define NEW_IMTERMEDIATE_OUT(key) \
-  scope.Var(NEW_NAME(key))->GetMutable<framework::LoDTensor>()
+#define NEW_IMTERMEDIATE_OUT(key)                \
+  VarDesc key(NEW_NAME(key));                    \
+  key.SetPersistable(false);                     \
+  auto* key##_node = graph->CreateVarNode(&key); \
+  IR_NODE_LINK_TO(op, key##_node);
+
     NEW_IMTERMEDIATE_OUT(ReorderedH0);
     NEW_IMTERMEDIATE_OUT(XX);
     NEW_IMTERMEDIATE_OUT(BatchedInput);

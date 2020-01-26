@@ -72,16 +72,16 @@ class StridedSliceOp : public framework::OperatorWithKernel {
         ctx->HasInput("StridesTensor")) {
       tensor_input = true;
     }
-    if (ctx->HasInput("EndsTensor") == false) {
+    if (!ctx->HasInput("EndsTensor")) {
       PADDLE_ENFORCE_EQ(ends_size, axes.size(),
                         "The size of ends must be equal to the size of axes.");
     }
-    if (ctx->HasInput("StartsTensor") == false) {
+    if (!ctx->HasInput("StartsTensor")) {
       PADDLE_ENFORCE_EQ(
           starts_size, axes.size(),
           "The size of starts must be equal to the size of axes.");
     }
-    if (ctx->HasInput("StridesTensor") == false) {
+    if (!ctx->HasInput("StridesTensor")) {
       PADDLE_ENFORCE_EQ(
           strides_size, axes.size(),
           "The size of strides must be equal to the size of axes.");
