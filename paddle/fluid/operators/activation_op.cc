@@ -634,6 +634,21 @@ It is recommended to use the defaults for this activation.
   }
 };
 
+class MishOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "Input of Mish operator");
+    AddOutput("Out", "Output of Mish operator");
+    AddComment(R"DOC(
+Mish Activation Operator.
+
+$$out = xtanh(ln(1 + e^x))$$
+
+)DOC");
+  }
+};
+
+
 REGISTER_ACTIVATION_OP_MAKER(Sigmoid, SigmoidDoc);
 REGISTER_ACTIVATION_OP_MAKER(LogSigmoid, LogSigmoidDoc);
 REGISTER_ACTIVATION_OP_MAKER(Exp, ExpDoc);

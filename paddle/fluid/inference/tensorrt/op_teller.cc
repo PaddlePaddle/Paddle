@@ -52,6 +52,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                                               "fc",
                                               "shuffle_channel",
                                               "swish",
+                                              "mish",
                                               "split"}};
 };
 
