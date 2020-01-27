@@ -795,6 +795,23 @@ class TestSwish(TestActivation):
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.008)
 
+class TestMish(TestActivation):
+    def setUp(self):
+        self.op_type = "mish"
+        self.init_dtype()
+
+        X = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
+        out = X * tanh(log(1 + exp(X)))
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(X)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', max_relative_error=0.008)
+
+
 
 #------------------ Test Cudnn Activation----------------------
 def create_test_act_cudnn_class(parent, atol=1e-3, grad_atol=1e-3):

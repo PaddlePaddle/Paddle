@@ -112,6 +112,7 @@ __all__ = [
     'stanh',
     'hard_sigmoid',
     'swish',
+    'mish',
     'prelu',
     'brelu',
     'leaky_relu',
@@ -8776,6 +8777,81 @@ def swish(x, beta=1.0, name=None):
         inputs={'X': x},
         outputs={'Out': out},
         attrs={'slope': beta})
+    return out
+
+@templatedoc()
+def mish(x, name=None):
+    """
+    Elementwise mish activation function. 
+    
+    Equation:
+
+    .. math::
+        out = \\x tanh(log(1 + e^x))
+    
+    Args:
+        x(Variable): Tensor or LoDTensor, dtype: float32 or float64, the input of swish activation.
+        
+        name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+
+        Variable: Output of the mish activation, Tensor or LoDTensor, with the same dtype and shape with the input x.
+
+    Examples:
+
+        .. code-block:: python
+            
+            # declarative mode
+            import numpy as np
+            from paddle import fluid
+            
+            x = fluid.data(name="x", shape=(-1, 3), dtype="float32")
+            y = fluid.layers.mish(x)
+            
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            start = fluid.default_startup_program()
+            main = fluid.default_main_program()
+            
+            data = np.random.randn(2, 3).astype("float32")
+            exe.run(start)
+            y_np, = exe.run(main, feed={"x": data}, fetch_list=[y])
+            
+            data
+            # array([[-1.1239197 ,  1.3391294 ,  0.03921051],
+            #        [ 1.1970421 ,  0.02440812,  1.2055548 ]], dtype=float32)
+            y_np
+            # array([[-0.3081947 ,  1.2284171 ,  0.02401722],
+            #        [ 1.0747625 ,  0.01483526,  1.08392621 ]], dtype=float32)
+
+
+        .. code-block:: python
+
+            # imperative mode
+            import numpy as np
+            from paddle import fluid
+            import paddle.fluid.dygraph as dg
+            
+            data = np.random.randn(2, 3).astype("float32")
+            place = fluid.CPUPlace()
+            with dg.guard(place) as g:
+                x = dg.to_variable(data)
+                y = fluid.layers.mish(x)
+                y_np = y.numpy()
+            data
+            # array([[-0.0816701 ,  1.1603649 , -0.88325626],
+            #        [ 0.7522361 ,  1.0978601 ,  0.12987892]], dtype=float32)
+            y_np
+            # array([[-0.03916847,  0.8835007 , -0.25835553],
+            #        [ 0.51126915,  0.82324016,  0.06915068]], dtype=float32)
+    """
+    helper = LayerHelper('mish', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='mish',
+        inputs={'X': x},
+        outputs={'Out': out})
     return out
 
 
