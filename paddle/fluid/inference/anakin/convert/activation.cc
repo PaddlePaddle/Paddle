@@ -61,5 +61,4 @@ void ActivationOpConverter<TargetT, PrecisionT>::operator()(
 REGISTER_ANAKIN_OP_CONVERTER(sigmoid, SigmoidOpConverter);
 REGISTER_ANAKIN_OP_CONVERTER(tanh, TanhOpConverter);
 REGISTER_ANAKIN_OP_CONVERTER(swish, SwishOpConverter);
-REGISTER_ANAKIN_OP_CONVERTER(mish, MishOpConverter);
 REGISTER_ANAKIN_OP_CONVERTER(relu6, Relu6OpConverter);
