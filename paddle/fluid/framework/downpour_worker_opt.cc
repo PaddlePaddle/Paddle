@@ -413,7 +413,7 @@ void DownpourWorkerOpt::TrainFiles() {
         ars[i] += ins_id_vec[i];
         ars[i] = ars[i] + "\t" + ins_content_vec[i];
       }
-      for (auto &field : dump_fields_) {
+      for (auto& field : dump_fields_) {
         Variable* var = thread_scope_->FindVar(field);
         if (var == nullptr) {
           continue;
