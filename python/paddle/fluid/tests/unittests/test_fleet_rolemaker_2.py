@@ -91,11 +91,9 @@ class TestCloudRoleMaker2(unittest.TestCase):
         role2._all_gather(1)
         role2._barrier_server()
         role2.all_gather(1)
-
         role3 = GeneralRoleMaker(path="./test_gloo_3")
         role3._worker_gather(1)
         role3._worker_gather(1)
-
         os.environ["TRAINING_ROLE"] = "TRAINER"
         os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36002"
         role4 = GeneralRoleMaker(path="./test_gloo_4")
@@ -103,82 +101,63 @@ class TestCloudRoleMaker2(unittest.TestCase):
         role4._get_rank()
         role4._get_size()
         role4._all_comm.init(0, 0, "", "", "", "", "")
-
         role5 = GeneralRoleMaker(path="./test_gloo_5")
         role5.get_local_endpoint()
         role5.get_local_endpoint()
-
         role6 = GeneralRoleMaker(path="./test_gloo_6")
         role6.get_trainer_endpoints()
         role6.get_trainer_endpoints()
-
         role7 = GeneralRoleMaker(path="./test_gloo_7")
         role7.get_pserver_endpoints()
         role7.get_pserver_endpoints()
-
         role8 = GeneralRoleMaker(path="./test_gloo_8")
         role8.is_worker()
         role8.is_worker()
-
         role9 = GeneralRoleMaker(path="./test_gloo_9")
         role9.is_server()
         role9.is_server()
-
         role10 = GeneralRoleMaker(path="./test_gloo_10")
         role10.is_first_worker()
         role10.is_first_worker()
-
         role11 = GeneralRoleMaker(path="./test_gloo_11")
         role11.worker_index()
         role11.worker_index()
-
         role12 = GeneralRoleMaker(path="./test_gloo_12")
         role12.server_index()
         role12.server_index()
-
         role13 = GeneralRoleMaker(path="./test_gloo_13")
         role13.worker_num()
         role13.worker_num()
-
         role14 = GeneralRoleMaker(path="./test_gloo_14")
         role14.server_num()
         role14.server_num()
-
         role15 = GeneralRoleMaker(path="./test_gloo_15")
         role15._barrier_worker()
         role15._barrier_worker()
-
         role16 = GeneralRoleMaker(path="./test_gloo_16")
         role16._barrier_all()
         role16._barrier_all()
-
         role17 = GeneralRoleMaker(path="./test_gloo_17")
         role17._barrier_server()
         role17._barrier_server()
-
         role18 = GeneralRoleMaker(path="./test_gloo_18")
         role18._worker_num()
         role18._worker_num()
-
         role19 = GeneralRoleMaker(path="./test_gloo_19")
         role19._server_num()
         role19._server_num()
-
         role20 = GeneralRoleMaker(path="./test_gloo_20")
         a = [1]
         b = [0]
         role20._all_reduce(a, b)
-
         role21 = GeneralRoleMaker(path="./test_gloo_21")
         role21.all_reduce_worker([], [])
         role21.all_reduce_worker([], [])
         role21.barrier_worker()
         role21.barrier_all()
-
         role22 = GeneralRoleMaker(path="./test_gloo_22")
         role22._get_rank()
         role22._get_rank()
-
         os.environ["PADDLE_PSERVER_ID"] = "0"
         role23 = GeneralRoleMaker(path="./test_gloo_23")
         role23._get_size()
