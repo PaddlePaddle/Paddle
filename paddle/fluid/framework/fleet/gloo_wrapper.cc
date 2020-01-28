@@ -21,11 +21,11 @@ HdfsStore::HdfsStore(const std::string& path) {
   path_ = path;
   wait_sleep_ms_ = 3000;
   wait_timeout_ = std::chrono::seconds(999999999);
+  retry_times_ = 100;
 }
 
 void HdfsStore::set(const std::string& key, const std::vector<char>& data) {
 #ifdef PADDLE_WITH_GLOO
-  VLOG(0) << "EncodeName " << key << " " << EncodeName(key);
   auto tmp = TmpPath(key);
   auto path = ObjectPath(key);
   bool is_exists = paddle::framework::fs_exists(path);
@@ -34,29 +34,27 @@ void HdfsStore::set(const std::string& key, const std::vector<char>& data) {
     paddle::framework::fs_remove(path);
   }
   int err_no = 0;
-  for(int i = 0; i < 100; ++i) {
-    std::shared_ptr<FILE> fp = paddle::framework::fs_open_write(tmp, &err_no, "");
+  for(int i = 1; i <= retry_times_; ++i) {
+    std::shared_ptr<FILE> fp =
+        paddle::framework::fs_open_write(tmp, &err_no, "");
     if (err_no != 0) {
-        VLOG(0) << "retry times " << i << " EncodeName " << key << " " << EncodeName(key) << " err no " << err_no;
+        VLOG(0) << "fs_open_write failed, retry times " << i << " err no "
+                << err_no;
         fp.reset();
-        sleep(2);
+        sleep(wait_sleep_ms_ / 1000);
         continue;
     }
     size_t write_count = fwrite_unlocked(data.data(), 1, data.size(), fp.get());
-    VLOG(0) << "HdfsStore::set write_count=" << write_count << " key " << key << " data.size() " << data.size();
     if (write_count != data.size()) {
-        VLOG(0) << "retry times " << i << " EncodeName " << key << " " << EncodeName(key) << " write_count " << write_count
-                << " data.size() " << data.size();
+        VLOG(0) << "fwrite_unlocked failed, retry times " << i
+                << " write_count " << write_count << " data.size() "
+                << data.size();
         fp.reset();
         sleep(2);
         continue;
     }
     fp.reset();
-    //if (err_no == 0) {
     break;
-    //}
-    //VLOG(0) << "retry times " << i << " EncodeName " << key << " " << EncodeName(key); 
-    //sleep(2);
   }
   paddle::framework::fs_mv(tmp, path);
 #endif
@@ -110,7 +108,6 @@ void HdfsStore::wait(const std::vector<std::string>& keys,
 
 std::string HdfsStore::EncodeName(const std::string& name) {
   thread_local std::hash<std::string> hash_func;
-  //VLOG(0) << "EncodeName " << name << " " << std::to_string(hash_func(name));
   return std::to_string(hash_func(name));
 }
 
