@@ -70,6 +70,7 @@ class HdfsStore {
   std::string path_;
   int wait_sleep_ms_;
   std::chrono::seconds wait_timeout_;
+  int retry_times_;
 };
 
 }  // namespace rendezvous
