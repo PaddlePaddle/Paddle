@@ -34,24 +34,23 @@ void HdfsStore::set(const std::string& key, const std::vector<char>& data) {
     paddle::framework::fs_remove(path);
   }
   int err_no = 0;
-  for(int i = 1; i <= retry_times_; ++i) {
+  for (int i = 1; i <= retry_times_; ++i) {
     std::shared_ptr<FILE> fp =
         paddle::framework::fs_open_write(tmp, &err_no, "");
     if (err_no != 0) {
-        VLOG(0) << "fs_open_write failed, retry times " << i << " err no "
-                << err_no;
-        fp.reset();
-        sleep(wait_sleep_ms_ / 1000);
-        continue;
+      VLOG(0) << "fs_open_write failed, retry times " << i << " err no "
+              << err_no;
+      fp.reset();
+      sleep(wait_sleep_ms_ / 1000);
+      continue;
     }
     size_t write_count = fwrite_unlocked(data.data(), 1, data.size(), fp.get());
     if (write_count != data.size()) {
-        VLOG(0) << "fwrite_unlocked failed, retry times " << i
-                << " write_count " << write_count << " data.size() "
-                << data.size();
-        fp.reset();
-        sleep(2);
-        continue;
+      VLOG(0) << "fwrite_unlocked failed, retry times " << i << " write_count "
+              << write_count << " data.size() " << data.size();
+      fp.reset();
+      sleep(2);
+      continue;
     }
     fp.reset();
     break;
