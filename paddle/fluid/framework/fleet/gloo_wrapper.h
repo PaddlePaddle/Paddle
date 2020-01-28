@@ -133,8 +133,8 @@ class GlooWrapper {
                                   "AllReduce mode not known: " + mode));
     }
     gloo::allreduce(opts);
-    return recvbuf;
 #endif
+    return recvbuf;
   }
 
   template <typename T>
