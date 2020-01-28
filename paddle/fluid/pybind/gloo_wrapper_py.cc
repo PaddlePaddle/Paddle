@@ -42,7 +42,7 @@ void BindGlooWrapper(py::module* m) {
       .def("all_reduce", &framework::GlooWrapper::AllReduce<double>)
       .def("all_gather", &framework::GlooWrapper::AllGather<uint64_t>)
       .def("all_gather", &framework::GlooWrapper::AllGather<int64_t>)
-      .def("all_gather", &framework::GlooWrapper::AllGather<double>)
+      .def("all_gather", &framework::GlooWrapper::AllGather<double>);
 }  // end BindGlooWrapper
 }  // end namespace pybind
 }  // end namespace paddle
