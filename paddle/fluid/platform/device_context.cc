@@ -404,7 +404,16 @@ thread_local int cur_input_shape_cache_capacity = 1;
 // know for converting MKL-DNN Tensor to non MKL-DNN
 thread_local paddle::framework::DataLayout cur_paddle_data_layout =
     paddle::framework::DataLayout::kNCHW;
+thread_local bool memory_mkldnn_optimizer_enabled = false;
 }  // namespace
+
+void enable_mkldnn_memory_optimizer(bool state) {
+  VLOG(2) << "Enabling MKL-DNN memory optimizer: " << state;
+  memory_mkldnn_optimizer_enabled = state;
+}
+bool is_mkldnn_memory_optimizer_enabled() {
+  return memory_mkldnn_optimizer_enabled;
+}
 
 void set_cur_mkldnn_session_id(size_t sid) { cur_mkldnn_session_id = sid; }
 size_t get_cur_mkldnn_session_id(void) { return cur_mkldnn_session_id; }

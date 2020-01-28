@@ -524,6 +524,10 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     return nullptr;
   }
 
+#ifdef PADDLE_WITH_MKLDNN
+  // TODO(jczaja): Enable memory optimizer for MKL-DNN/DNNL INT8 ops
+  platform::enable_mkldnn_memory_optimizer(!config.mkldnn_quantizer_enabled());
+#endif
   if (config.mkldnn_quantizer_enabled() && !predictor_p->MkldnnQuantize()) {
     return nullptr;
   }

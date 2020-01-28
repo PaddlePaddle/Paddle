@@ -300,6 +300,8 @@ void set_cur_input_shape_str(std::string input_shape_str);
 void set_cur_input_shape_cache_capacity(int input_shape_cache_capacity);
 void set_cur_paddle_data_layout(framework::DataLayout);
 framework::DataLayout get_cur_paddle_data_layout(void);
+void enable_mkldnn_memory_optimizer(bool state);
+bool is_mkldnn_memory_optimizer_enabled(void);
 
 class MKLDNNDeviceContext : public CPUDeviceContext {
  public:

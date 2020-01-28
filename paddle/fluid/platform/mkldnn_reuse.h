@@ -929,16 +929,43 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
     return this->AcquireMemory(md, ptr, "@user_bias_mem_p");
   }
 
+  // TODO(jczaja) : make a template
   std::shared_ptr<mkldnn::memory> AcquireWeightsMemoryFromPrimitive(
+      const framework::Tensor* filter,
       const std::shared_ptr<mkldnn::memory> user_weights_memory_p,
       std::vector<mkldnn::primitive>& pipeline,  // NOLINT
       bool is_persistent = false, bool is_INT8 = false,
       std::vector<float> scale_data = {1.0f}, int mask = 0) {
     auto user_weights_pd = user_weights_memory_p->get_desc();
     auto weights_pd = conv_pd_->weights_desc();
-    return this->AcquireMemory(
+    auto target_memory_p = this->AcquireMemory(
         weights_pd, user_weights_pd, user_weights_memory_p, "@weights_mem_p",
         pipeline, is_persistent, is_INT8, scale_data, mask);
+    // In case for persistent mode we made in place reorder
+    // Tensor is updated with DNNL format and layout
+    // Original allocation with user data is overwritten
+    auto original_size = filter->memory_size();
+    auto reordered_size = weights_pd.get_size();
+    if (is_persistent && (is_INT8 == false) &&
+        (original_size == reordered_size) &&
+        (platform::is_mkldnn_memory_optimizer_enabled())) {
+      float* dst_ptr_f = nullptr;
+      dst_ptr_f = const_cast<framework::Tensor*>(filter)->mutable_data<float>(
+          dev_ctx_.GetPlace(), weights_pd.get_size());
+      auto src_ptr = target_memory_p->get_data_handle();
+      // Copy
+      if (dst_ptr_f != src_ptr) {
+        VLOG(2) << "Overwritting original weights with DNNL weights";
+        std::memcpy(dst_ptr_f, src_ptr, weights_pd.get_size());
+        auto local_key = key_ + "@user_weights_mem_p";
+        dev_ctx_.SetBlob(local_key, target_memory_p);
+        target_memory_p->set_data_handle(dst_ptr_f);
+      } else {
+        VLOG(2) << "Original weights match DNNL weights";
+      }
+    }
+
+    return target_memory_p;
   }
 
   std::shared_ptr<mkldnn::memory> AcquireBiasMemoryFromPrimitive(

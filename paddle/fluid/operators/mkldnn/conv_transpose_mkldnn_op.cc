@@ -208,7 +208,7 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto src_memory_p =
         handler.AcquireSrcMemoryFromPrimitive(user_src_memory_p, pipeline);
     auto weights_memory_p = handler.AcquireWeightsMemoryFromPrimitive(
-        user_weights_memory_p, pipeline, is_test);
+        filter, user_weights_memory_p, pipeline, is_test);
 
     auto output_data =
         output->mutable_data<T>(ctx.GetPlace(), handler.GetDstMemorySize());
