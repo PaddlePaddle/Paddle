@@ -25,6 +25,7 @@ HdfsStore::HdfsStore(const std::string& path) {
 
 void HdfsStore::set(const std::string& key, const std::vector<char>& data) {
 #ifdef PADDLE_WITH_GLOO
+  VLOG(0) << "EncodeName " << key << " " << EncodeName(key);
   auto tmp = TmpPath(key);
   auto path = ObjectPath(key);
   bool is_exists = paddle::framework::fs_exists(path);
@@ -33,10 +34,30 @@ void HdfsStore::set(const std::string& key, const std::vector<char>& data) {
     paddle::framework::fs_remove(path);
   }
   int err_no = 0;
-  std::shared_ptr<FILE> fp = paddle::framework::fs_open_write(tmp, &err_no, "");
-  size_t write_count = fwrite_unlocked(data.data(), 1, data.size(), fp.get());
-  VLOG(3) << "HdfsStore::set write_count=" << write_count << " key " << key;
-  fp.reset();
+  for(int i = 0; i < 100; ++i) {
+    std::shared_ptr<FILE> fp = paddle::framework::fs_open_write(tmp, &err_no, "");
+    if (err_no != 0) {
+        VLOG(0) << "retry times " << i << " EncodeName " << key << " " << EncodeName(key) << " err no " << err_no;
+        fp.reset();
+        sleep(2);
+        continue;
+    }
+    size_t write_count = fwrite_unlocked(data.data(), 1, data.size(), fp.get());
+    VLOG(0) << "HdfsStore::set write_count=" << write_count << " key " << key << " data.size() " << data.size();
+    if (write_count != data.size()) {
+        VLOG(0) << "retry times " << i << " EncodeName " << key << " " << EncodeName(key) << " write_count " << write_count
+                << " data.size() " << data.size();
+        fp.reset();
+        sleep(2);
+        continue;
+    }
+    fp.reset();
+    //if (err_no == 0) {
+    break;
+    //}
+    //VLOG(0) << "retry times " << i << " EncodeName " << key << " " << EncodeName(key); 
+    //sleep(2);
+  }
   paddle::framework::fs_mv(tmp, path);
 #endif
 }
@@ -89,6 +110,7 @@ void HdfsStore::wait(const std::vector<std::string>& keys,
 
 std::string HdfsStore::EncodeName(const std::string& name) {
   thread_local std::hash<std::string> hash_func;
+  //VLOG(0) << "EncodeName " << name << " " << std::to_string(hash_func(name));
   return std::to_string(hash_func(name));
 }
 
@@ -131,7 +153,7 @@ void GlooWrapper::Init(int rank, int size, const std::string& path,
   }
   rank_ = rank;
   size_ = size;
-  std::string cmd = std::string("hadoop fs");
+  std::string cmd = std::string("${HADOOP_HOME}/bin/hadoop fs");
   cmd += " -D fs.default.name=" + fs_name;
   cmd += " -D hadoop.job.ugi=" + fs_ugi;
   paddle::framework::hdfs_set_command(cmd);
@@ -149,16 +171,19 @@ void GlooWrapper::Init(int rank, int size, const std::string& path,
   is_initialized_ = true;
 }
 
-template void GlooWrapper::AllReduce<int64_t>(
+template std::vector<int64_t> GlooWrapper::AllReduce<int64_t>(
     std::vector<int64_t>& sendbuf,  // NOLINT
-    std::vector<int64_t>& recvbuf,  // NOLINT
     const std::string& mode);
-template void GlooWrapper::AllReduce<double>(
+template std::vector<double> GlooWrapper::AllReduce<double>(
     std::vector<double>& sendbuf,  // NOLINT
-    std::vector<double>& recvbuf,  // NOLINT
+    const std::string& mode);
+template std::vector<uint64_t> GlooWrapper::AllReduce<uint64_t>(
+    std::vector<uint64_t>& sendbuf,  // NOLINT
     const std::string& mode);
 template std::vector<int64_t> GlooWrapper::AllGather<int64_t>(
     int64_t& input);  // NOLINT
+template std::vector<uint64_t> GlooWrapper::AllGather<uint64_t>(
+    uint64_t& input);  // NOLINT
 template std::vector<double> GlooWrapper::AllGather<double>(
     double& input);  // NOLINT
 

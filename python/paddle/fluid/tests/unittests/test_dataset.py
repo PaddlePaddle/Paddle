@@ -824,6 +824,10 @@ class TestDataset2(unittest.TestCase):
             dataset.set_pipe_command("cat")
             dataset.set_use_var(slots_vars)
             dataset.load_into_memory()
+            try:
+                dataset.global_shuffle(fleet)
+            except:
+                print("warning: catch expected error")
             fleet._opt_info = None
             fleet._fleet_ptr = None
 

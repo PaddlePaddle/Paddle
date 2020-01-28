@@ -791,17 +791,16 @@ class GeneralRoleMaker(RoleMakerBase):
         all reduce between all workers
 
         Args:
-            input(list/numpy.array): array of one dim
-            output(list/numpy.array): array of one dim
+            input(list|numpy.array): array of one dim
+            output(list|numpy.array): array of one dim
             mode(str): "sum" or "min" or "max"
         """
         if not self._role_is_generated:
             self.generate_role()
         input_list = [i for i in input]
-        output_list = [i for i in output]
-        self._node_type_comm.all_reduce(input_list, output_list, mode)
-        for i in range(len(output_list)):
-            output[i] = output_list[i]
+        ans = self._node_type_comm.all_reduce(input_list, mode)
+        for i in range(len(ans)):
+            output[i] = ans[i]
 
     def _all_gather(self, obj):
         """
