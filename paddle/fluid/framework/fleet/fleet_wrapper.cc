@@ -169,10 +169,10 @@ void FleetWrapper::PullSparseToLocalV2(const uint64_t table_id,
     size_t key_size = this->local_tables_[i].size();
     std::vector<uint64_t> keys;
     keys.reserve(key_size);
-    std::vector<float *> pull_result_ptr;
+    std::vector<float*> pull_result_ptr;
     pull_result_ptr.reserve(key_size);
 
-    for (auto &kv : this->local_tables_[i]) {
+    for (auto& kv : this->local_tables_[i]) {
       keys.emplace_back(kv.first);
       pull_result_ptr.emplace_back(kv.second.data());
     }
@@ -193,7 +193,7 @@ void FleetWrapper::PullSparseToLocalV2(const uint64_t table_id,
   for (size_t i = 0; i < threads.size(); i++) {
     threads[i] = std::thread(ptl_func, i);
   }
-  for (std::thread &t : threads) {
+  for (std::thread& t : threads) {
     t.join();
   }
   local_pull_pool_.reset(new ::ThreadPool(pull_local_thread_num_));
@@ -203,9 +203,9 @@ void FleetWrapper::PullSparseToLocalV2(const uint64_t table_id,
 }
 
 void FleetWrapper::PullSparseVarsFromLocal(
-    const Scope &scope, const uint64_t table_id,
-    const std::vector<std::string> &var_names, std::vector<uint64_t> *fea_keys,
-    std::vector<std::vector<float>> *fea_values, int fea_value_dim) {
+    const Scope& scope, const uint64_t table_id,
+    const std::vector<std::string>& var_names, std::vector<uint64_t>* fea_keys,
+    std::vector<std::vector<float>>* fea_values, int fea_value_dim) {
 #ifdef PADDLE_WITH_PSLIB
   fea_keys->clear();
   fea_keys->resize(0);
@@ -249,7 +249,7 @@ void FleetWrapper::PullSparseVarsFromLocal(
     task_futures.emplace_back(
         local_pull_pool_->enqueue(std::move(pull_local_task)));
   }
-  for (auto &tf : task_futures) {
+  for (auto& tf : task_futures) {
     tf.wait();
   }
 #endif
@@ -257,16 +257,16 @@ void FleetWrapper::PullSparseVarsFromLocal(
 
 void FleetWrapper::ClearLocalTable() {
 #ifdef PADDLE_WITH_PSLIB
-  for (auto &t : local_tables_) {
+  for (auto& t : local_tables_) {
     t.clear();
   }
 #endif
 }
 
 std::future<int32_t> FleetWrapper::PullSparseVarsAsync(
-    const Scope &scope, const uint64_t table_id,
-    const std::vector<std::string> &var_names, std::vector<uint64_t> *fea_keys,
-    std::vector<std::vector<float>> *fea_values, int fea_value_dim) {
+    const Scope& scope, const uint64_t table_id,
+    const std::vector<std::string>& var_names, std::vector<uint64_t>* fea_keys,
+    std::vector<std::vector<float>>* fea_values, int fea_value_dim) {
 #ifdef PADDLE_WITH_PSLIB
   fea_keys->clear();
   fea_keys->resize(0);
@@ -288,11 +288,11 @@ std::future<int32_t> FleetWrapper::PullSparseVarsAsync(
     }
   }
   fea_values->resize(fea_keys->size() + 1);
-  for (auto &t : *fea_values) {
+  for (auto& t : *fea_values) {
     t.resize(fea_value_dim);
   }
   std::vector<float *> pull_result_ptr;
-  for (auto &t : *fea_values) {
+  for (auto& t : *fea_values) {
     pull_result_ptr.push_back(t.data());
   }
   return pslib_ptr_->_worker_ptr->pull_sparse(
