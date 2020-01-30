@@ -211,13 +211,13 @@ void FleetWrapper::PullSparseVarsFromLocal(
   fea_keys->resize(0);
   fea_keys->reserve(MAX_FEASIGN_NUM);
   for (auto name : var_names) {
-    Variable *var = scope.FindVar(name);
+    Variable* var = scope.FindVar(name);
     if (var == nullptr) {
       continue;
     }
-    LoDTensor *tensor = var->GetMutable<LoDTensor>();
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
     CHECK(tensor != nullptr) << "tensor of var " << name << " is null";
-    int64_t *ids = tensor->data<int64_t>();
+    int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
     for (auto i = 0u; i < len; ++i) {
       if (ids[i] == 0u) {
@@ -227,7 +227,7 @@ void FleetWrapper::PullSparseVarsFromLocal(
     }
   }
   fea_values->resize(fea_keys->size() + 1);
-  for (auto &t : *fea_values) {
+  for (auto& t : *fea_values) {
     t.resize(fea_value_dim);
   }
   size_t key_length = fea_keys->size();
@@ -272,13 +272,13 @@ std::future<int32_t> FleetWrapper::PullSparseVarsAsync(
   fea_keys->resize(0);
   fea_keys->reserve(MAX_FEASIGN_NUM);
   for (auto name : var_names) {
-    Variable *var = scope.FindVar(name);
+    Variable* var = scope.FindVar(name);
     if (var == nullptr) {
       continue;
     }
-    LoDTensor *tensor = var->GetMutable<LoDTensor>();
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
     CHECK(tensor != nullptr) << "tensor of var " << name << " is null";
-    int64_t *ids = tensor->data<int64_t>();
+    int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
     for (auto i = 0u; i < len; ++i) {
       if (ids[i] == 0u) {
