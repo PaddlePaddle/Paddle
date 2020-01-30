@@ -120,6 +120,8 @@ class MulOp : public framework::OperatorWithKernel {
       if (input_data_type == framework::DataTypeTrait<int8_t>::DataType() ||
           input_data_type == framework::DataTypeTrait<uint8_t>::DataType()) {
         customized_type_value = kMULMKLDNNINT8;
+      } else {
+        customized_type_value = kMULMKLDNNFP32;
       }
     }
 #endif

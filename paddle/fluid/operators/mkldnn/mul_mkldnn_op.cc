@@ -45,31 +45,6 @@ class MulPrimitiveFactory {
   virtual inner_product_forward CreateMulPrimitive(
       const Tensor *input_x, const Tensor *input_y, Tensor *output,
       const ExecutionContext &ctx) {
-    /* check format and reorder if need */
-    int x_num_col_dims = ctx.Attr<int>("x_num_col_dims");
-    int y_num_col_dims = ctx.Attr<int>("y_num_col_dims");
-
-    auto x_matrix = UpdateDataFormat<XT>(input_x, x_num_col_dims, ctx);
-    auto y_matrix = UpdateDataFormat<YT>(input_y, y_num_col_dims, ctx);
-
-    auto output_dim = output->dims();
-    if (output_dim.size() != 2) {
-      output->Resize({x_matrix.dims()[0], y_matrix.dims()[1]});
-    }
-
-    if (mul_) {
-      UpdateDataPointers(ctx, output, &x_matrix);
-      Execute();
-      return *mul_;
-    }
-
-    auto src_desc = CreateMemDescriptor<XT>(&x_matrix, MKLDNNMemoryFormat::nc);
-    x_input_ = CreateMemory<XT>(src_desc, &x_matrix);
-    y_input_ = TransposeInputY(&y_matrix);
-    auto dst_desc = CreateMemDescriptor<OT>(output, MKLDNNMemoryFormat::any);
-
-    mul_ = CreateMulPrimitive(*x_input_, *y_input_, dst_desc, output, ctx);
-    Execute();
     return *mul_;
   }
 
@@ -81,7 +56,6 @@ class MulPrimitiveFactory {
     astream.wait();
   }
 
- protected:
   template <typename T>
   Tensor UpdateDataFormat(const Tensor *data, int num_col_dims,
                           const ExecutionContext &ctx) {
@@ -176,20 +150,6 @@ class MulPrimitiveFactory {
     return Reorder(src_desc, dst_desc, to_void_cast<YT>(input_y->data<YT>()));
   }
 
-  inner_product_forward CreateMulPrimitive(const memory &x_memory,
-                                           const memory &y_memory,
-                                           const memory::desc &dst_desc,
-                                           Tensor *output,
-                                           const ExecutionContext &ctx) {
-    const auto y_desc = y_memory.get_desc();
-    const auto x_desc = x_memory.get_desc();
-
-    auto mul_prim_desc = CreateMulPrimDesc(x_desc, y_desc, dst_desc);
-    output_ = CreateDstMemory(mul_prim_desc, ctx, output);
-
-    return inner_product_forward(mul_prim_desc);
-  }
-
   inner_product_forward::primitive_desc CreateMulPrimDesc(
       const memory::desc &x_desc, const memory::desc &y_desc,
       const memory::desc &dst_desc) {
@@ -208,13 +168,70 @@ class MulPrimitiveFactory {
 };  // namespace operators
 
 template <typename XT, typename YT, typename OT>
+class FP32MulPrimitiveFactory : public MulPrimitiveFactory<XT, YT, OT> {
+ public:
+  using MulPrimitiveFactory<XT, YT, OT>::MulPrimitiveFactory;
+
+  inner_product_forward CreateMulPrimitive(
+      const Tensor *input_x, const Tensor *input_y, Tensor *output,
+      const ExecutionContext &ctx) override {
+    /* check format and reorder if need */
+    int x_num_col_dims = ctx.Attr<int>("x_num_col_dims");
+    int y_num_col_dims = ctx.Attr<int>("y_num_col_dims");
+
+    auto x_matrix =
+        this->template UpdateDataFormat<XT>(input_x, x_num_col_dims, ctx);
+    auto y_matrix =
+        this->template UpdateDataFormat<YT>(input_y, y_num_col_dims, ctx);
+
+    auto output_dim = output->dims();
+    if (output_dim.size() != 2) {
+      output->Resize({x_matrix.dims()[0], y_matrix.dims()[1]});
+    }
+
+    if (this->mul_) {
+      this->template UpdateDataPointers(ctx, output, &x_matrix);
+      this->template Execute();
+      return *this->mul_;
+    }
+
+    auto src_desc = this->template CreateMemDescriptor<XT>(
+        &x_matrix, MKLDNNMemoryFormat::nc);
+    this->x_input_ = this->template CreateMemory<XT>(src_desc, &x_matrix);
+    this->y_input_ = this->template TransposeInputY(&y_matrix);
+    auto dst_desc =
+        this->template CreateMemDescriptor<OT>(output, MKLDNNMemoryFormat::any);
+
+    this->mul_ = CreateMemMulPrimitive(*this->x_input_, *this->y_input_,
+                                       dst_desc, output, ctx);
+    this->template Execute();
+    return *this->mul_;
+  }
+
+  inner_product_forward CreateMemMulPrimitive(const memory &x_memory,
+                                              const memory &y_memory,
+                                              const memory::desc &dst_desc,
+                                              Tensor *output,
+                                              const ExecutionContext &ctx) {
+    const auto y_desc = y_memory.get_desc();
+    const auto x_desc = x_memory.get_desc();
+
+    auto mul_prim_desc =
+        this->template CreateMulPrimDesc(x_desc, y_desc, dst_desc);
+    this->output_ = this->template CreateDstMemory(mul_prim_desc, ctx, output);
+
+    return inner_product_forward(mul_prim_desc);
+  }
+};
+
+template <typename XT, typename YT, typename OT>
 class QuantMulPrimitiveFactory : public MulPrimitiveFactory<XT, YT, OT> {
  public:
   using MulPrimitiveFactory<XT, YT, OT>::MulPrimitiveFactory;
 
-  virtual inner_product_forward CreateMulPrimitive(
+  inner_product_forward CreateMulPrimitive(
       const Tensor *x_input, const Tensor *y_input, Tensor *output,
-      const ExecutionContext &ctx) {
+      const ExecutionContext &ctx) override {
     /* check data format and reorder if need */
     int x_num_col_dims = ctx.Attr<int>("x_num_col_dims");
     int y_num_col_dims = ctx.Attr<int>("y_num_col_dims");
@@ -222,11 +239,11 @@ class QuantMulPrimitiveFactory : public MulPrimitiveFactory<XT, YT, OT> {
 
     // TODO(intel-minghui) : Remove the restriction that only supports Input(Y)
     // as weights
-    bool enforce = std::is_same<YT, float>::value;
-    PADDLE_ENFORCE(
-        enforce == true,
-        "Input(Y) supposed to be fp32 data type since only fp32 data type is "
-        "supported in the current design of MKLDNN INT8.");
+    PADDLE_ENFORCE_EQ(
+        (std::is_same<YT, float>::value), true,
+        platform::errors::InvalidArgument(
+            "Input(Y) must be fp32 data type since only fp32 data type is "
+            "supported in the current design of MKLDNN INT8."));
 
     auto x_matrix =
         this->template UpdateDataFormat<XT>(x_input, x_num_col_dims, ctx);
@@ -239,8 +256,8 @@ class QuantMulPrimitiveFactory : public MulPrimitiveFactory<XT, YT, OT> {
     }
 
     if (this->mul_) {
-      this->UpdateDataPointers(ctx, output, &x_matrix);
-      this->Execute();
+      this->template UpdateDataPointers(ctx, output, &x_matrix);
+      this->template Execute();
       return *(this->mul_);
     }
 
@@ -248,14 +265,14 @@ class QuantMulPrimitiveFactory : public MulPrimitiveFactory<XT, YT, OT> {
         &x_matrix, MKLDNNMemoryFormat::nc);
     this->x_input_ = this->template CreateMemory<XT>(src_desc, &x_matrix);
 
-    const auto trans_y = this->TransposeInputY(&y_matrix);
+    const auto trans_y = this->template TransposeInputY(&y_matrix);
     this->y_input_ = QuantInputY(trans_y, scale_y);
 
     auto dst_desc =
         this->template CreateMemDescriptor<OT>(output, MKLDNNMemoryFormat::any);
 
-    this->mul_ = CreateMulPrimitive(*(this->x_input_), *(this->y_input_),
-                                    dst_desc, output, ctx);
+    this->mul_ = CreateMemMulPrimitive(*(this->x_input_), *(this->y_input_),
+                                       dst_desc, output, ctx);
     this->Execute();
     return *(this->mul_);
   }
@@ -320,11 +337,11 @@ class QuantMulPrimitiveFactory : public MulPrimitiveFactory<XT, YT, OT> {
     return mul_attr;
   }
 
-  inner_product_forward CreateMulPrimitive(const memory &x_memory,
-                                           const memory &y_memory,
-                                           const memory::desc &dst_desc,
-                                           Tensor *output,
-                                           const ExecutionContext &ctx) {
+  inner_product_forward CreateMemMulPrimitive(const memory &x_memory,
+                                              const memory &y_memory,
+                                              const memory::desc &dst_desc,
+                                              Tensor *output,
+                                              const ExecutionContext &ctx) {
     const auto x_desc = x_memory.get_desc();
     const auto y_desc = y_memory.get_desc();
     bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
@@ -362,11 +379,14 @@ std::shared_ptr<MulPrimitiveFactory<XT, YT, OT>> GetPrimitiveFactory(
       dev_ctx.GetBlob(key));
 
   if (prim_creator == nullptr) {
-    prim_creator =
-        enable_quant
-            ? std::make_shared<QuantMulPrimitiveFactory<XT, YT, OT>>(
-                  mkldnn_engine)
-            : std::make_shared<MulPrimitiveFactory<XT, YT, OT>>(mkldnn_engine);
+    if (enable_quant) {
+      prim_creator =
+          std::make_shared<QuantMulPrimitiveFactory<XT, YT, OT>>(mkldnn_engine);
+    } else {
+      prim_creator =
+          std::make_shared<FP32MulPrimitiveFactory<XT, YT, OT>>(mkldnn_engine);
+    }
+
     dev_ctx.SetBlob(key, prim_creator);
   }
 
@@ -433,6 +453,10 @@ REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(mul, MKLDNN, ::paddle::platform::CPUPlace,
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(mul, MKLDNN, ::paddle::platform::CPUPlace,
                                     S8, ops::kMULMKLDNNINT8,
                                     ops::MulMKLDNNKernel<int8_t, float>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(mul, MKLDNN, ::paddle::platform::CPUPlace,
+                                    FP32, ops::kMULMKLDNNFP32,
+                                    ops::MulMKLDNNKernel<float, float>);
 
 REGISTER_OP_KERNEL(mul, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::MulMKLDNNKernel<uint8_t, float>);

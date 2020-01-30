@@ -17,7 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
 '''
  test case for s8 * s8
 '''
@@ -52,11 +52,11 @@ class TestMKLDNNMulOpS8S8(OpTest):
 
         # limit random range inside |-127, 127| to avoid overflow on SKL
         if self.srctype == np.int8:
-            A_data = np.random.randint(-127, 127, (2, 5)).astype(np.int8)
-        else:
-            A_data = np.random.randint(0, 127, (2, 5)).astype(np.uint8)
+            A_data = np.random.randint(-127, 127, (20, 5)).astype(np.int8)
+        elif self.srctype == np.uint8:
+            A_data = np.random.randint(0, 127, (20, 5)).astype(np.uint8)
 
-        B_data = np.random.uniform(-127, 127, (5, 3)).astype(np.float32)
+        B_data = np.random.uniform(-127, 127, (5, 20)).astype(np.float32)
 
         quant_B = np.round(B_data * self.scale_y[0]).astype(np.int)
         output = np.dot(A_data, quant_B)
@@ -85,6 +85,39 @@ class TestMKLDNNMulOpS8S8(OpTest):
 
     def test_check_grad_ingore_y(self):
         pass
+
+
+'''
+ test case for  float32 * float32 
+'''
+
+
+class TestMKLDNNMulOpFP32FP32(TestMKLDNNMulOpS8S8):
+    def setUp(self):
+        self.op_type = "mul"
+        self.init_kernel_type()
+        self.init_data_type()
+        self.init_data()
+        self.attrs = {"use_mkldnn": self.use_mkldnn, }
+
+    def init_data_type(self):
+        self.srctype = np.float32
+        self.dsttype = np.float32
+
+    def init_data(self):
+
+        # limit random range inside |-127, 127| to avoid overflow on SKL
+        A_data = np.random.uniform(-127, 127, (20, 5, 10, 5)).astype(np.float32)
+        B_data = np.random.uniform(-127, 127,
+                                   (5, 10, 20, 5, 1)).astype(np.float32)
+
+        A_data_reshape = A_data.reshape(20 * 5, 10 * 5)
+        B_data_reshape = B_data.reshape(5 * 10, 20 * 5 * 1)
+
+        output = np.dot(A_data_reshape, B_data_reshape).astype(self.dsttype)
+
+        self.inputs = {'X': A_data_reshape, 'Y': B_data_reshape}
+        self.outputs = {'Out': output}
 
 
 '''

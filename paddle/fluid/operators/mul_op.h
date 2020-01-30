@@ -24,7 +24,7 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-constexpr int kMULMKLDNNINT8 = 1;
+enum { kMULMKLDNNFP32 = 1, kMULMKLDNNINT8 = 2 };
 
 template <typename DeviceContext, typename T>
 class MulKernel : public framework::OpKernel<T> {
