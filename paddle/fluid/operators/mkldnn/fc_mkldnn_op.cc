@@ -56,9 +56,11 @@ class FCPrimitiveFactory {
 
     auto in_col_dims = ctx.Attr<int>("in_num_col_dims");
     if (in_col_dims == 2) {
-      PADDLE_ENFORCE_EQ(input->dims().size(), 3,
-                        "DNNL FC only supports in_num_col_dims equal to 2 when "
-                        "3 dim input is provided.");
+      PADDLE_ENFORCE_EQ(
+          input->dims().size(), 3,
+          platform::errors::Unimplemented(
+              "DNNL FC only supports in_num_col_dims equal to 2 when "
+              "3 dim input is provided."));
     } else if (in_col_dims > 2) {
       PADDLE_THROW(platform::errors::Unimplemented(
           "DNNL FC doesn't support in_num_col_dims paramter to be higher than "
