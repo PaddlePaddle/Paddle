@@ -26,6 +26,7 @@ limitations under the License. */
 #include <random>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
@@ -132,7 +133,7 @@ class FleetWrapper {
   std::vector<std::unordered_map<uint64_t, std::vector<float>>>&
   GetLocalTable() {
     return local_tables_;
-  };
+  }
   // This is specially designed for click/show stats in server
   // Param<in>: scope, table_id, fea_keys, fea_labels, sparse_key_names,
   //            sparse_grad_names, batch_size, use_cvm, dump_slot
