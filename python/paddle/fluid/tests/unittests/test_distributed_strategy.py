@@ -105,7 +105,7 @@ class TestStrategyFactor(unittest.TestCase):
         self.assertIn('communicator_send_queue_size',
                       trainer_communicator_flags)
         self.assertEqual(
-            trainer_communicator_flags['communicator_send_queue_size'], 100)
+            trainer_communicator_flags['communicator_send_queue_size'], '100')
 
         # test set_trainer_runtime_config exception
         trainer_runtime_config_dict['unknown'] = None
