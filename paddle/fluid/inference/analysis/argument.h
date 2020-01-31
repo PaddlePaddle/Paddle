@@ -169,9 +169,6 @@ struct Argument {
 
   // Scales for variables to be quantized
   DECL_ARGUMENT_FIELD(quant_var_scales, QuantVarScales, VarQuantScale);
-
-  // Destination data layout of quantization
-  DECL_ARGUMENT_FIELD(quantization_data_layout, DataLayout, std::string);
 #endif
 
   // Passed from config.
