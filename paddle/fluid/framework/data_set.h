@@ -191,7 +191,7 @@ class DatasetImpl : public Dataset {
                                          int read_thread_num,
                                          int consume_thread_num, int shard_num,
                                          int send_freq) {}
-  virtual void ClearLocalTables(){}
+  virtual void ClearLocalTables() {}
   virtual void CreatePreLoadReaders();
   virtual void DestroyPreLoadReaders();
   virtual void SetPreLoadThreadNum(int thread_num);
