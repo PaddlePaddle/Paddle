@@ -19,13 +19,14 @@ limitations under the License. */
 #include <archive.h>
 #include <pslib.h>
 #endif
+#include <ThreadPool.h>
 #include <atomic>
 #include <ctime>
 #include <map>
 #include <random>
 #include <string>
 #include <vector>
-#include <ThreadPool.h>
+
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable_helper.h"

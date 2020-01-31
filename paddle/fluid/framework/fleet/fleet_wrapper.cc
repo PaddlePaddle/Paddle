@@ -291,7 +291,7 @@ std::future<int32_t> FleetWrapper::PullSparseVarsAsync(
   for (auto& t : *fea_values) {
     t.resize(fea_value_dim);
   }
-  std::vector<float *> pull_result_ptr;
+  std::vector<float*> pull_result_ptr;
   for (auto& t : *fea_values) {
     pull_result_ptr.push_back(t.data());
   }
