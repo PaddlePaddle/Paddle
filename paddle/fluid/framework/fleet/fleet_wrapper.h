@@ -86,11 +86,11 @@ class FleetWrapper {
                           std::vector<std::vector<float>>* fea_values,
                           int fea_dim,
                           const std::vector<std::string>& var_emb_names);
-  std::future<int32_t>
-  PullSparseVarsAsync(const Scope &scope, const uint64_t table_id,
-                      const std::vector<std::string> &var_names,
-                      std::vector<uint64_t> *fea_keys,
-                      std::vector<std::vector<float>> *fea_values, int fea_dim);
+  std::future<int32_t> PullSparseVarsAsync(
+      const Scope& scope, const uint64_t table_id,
+      const std::vector<std::string>& var_names,
+      std::vector<uint64_t>* fea_keys,
+      std::vector<std::vector<float>>* fea_values, int fea_dim);
   // pull dense variables from server in sync mod
   void PullDenseVarsSync(const Scope& scope, const uint64_t table_id,
                          const std::vector<std::string>& var_names);
@@ -121,15 +121,15 @@ class FleetWrapper {
                          const std::vector<std::string>& var_names);
 
   // Push sparse variables with labels to server in async mode
-  std::vector< std::unordered_map<uint64_t, std::vector<float>> > local_tables_;
+  std::vector<std::unordered_map<uint64_t, std::vector<float>>> local_tables_;
   void PullSparseToLocalV2(const uint64_t table_id, int fea_value_dim);
-  void PullSparseVarsFromLocal(const Scope &scope, const uint64_t table_id,
-                               const std::vector<std::string> &var_names,
-                               std::vector<uint64_t> *fea_keys,
-                               std::vector<std::vector<float>> *fea_values,
+  void PullSparseVarsFromLocal(const Scope& scope, const uint64_t table_id,
+                               const std::vector<std::string>& var_names,
+                               std::vector<uint64_t>* fea_keys,
+                               std::vector<std::vector<float>>* fea_values,
                                int fea_value_dim);
   void ClearLocalTable();
-  std::vector<std::unordered_map<uint64_t, std::vector<float>>> &
+  std::vector<std::unordered_map<uint64_t, std::vector<float>>>&
   GetLocalTable() {
     return local_tables_;
   };
