@@ -55,16 +55,22 @@ class FCPrimitiveFactory {
     }  // Otherwise, create a new one.
 
     auto in_col_dims = ctx.Attr<int>("in_num_col_dims");
+    PADDLE_ENFORCE_LE(in_col_dims, 2,
+                      platform::errors::Unimplemented(
+                          "DNNL FC doesn't support in_num_col_dims paramter to "
+                          "be higher than "
+                          "2."));
     if (in_col_dims == 2) {
       PADDLE_ENFORCE_EQ(
           input->dims().size(), 3,
           platform::errors::Unimplemented(
               "DNNL FC only supports in_num_col_dims equal to 2 when "
               "3 dim input is provided."));
-    } else if (in_col_dims > 2) {
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "DNNL FC doesn't support in_num_col_dims paramter to be higher than "
-          "2."));
+      PADDLE_ENFORCE_EQ(
+          input->format(), MKLDNNMemoryFormat::ncw,
+          platform::errors::Unimplemented(
+              "DNNL FC only supports in_num_col_dims equal to 2 when "
+              "input format is equal to ncw."));
     }
 
     // Transform weights to default MKL-DNN format

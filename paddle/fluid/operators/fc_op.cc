@@ -70,7 +70,7 @@ class FCOp : public framework::OperatorWithKernel {
     }
     if (ctx->Attrs().Get<bool>("use_mkldnn")) {
       PADDLE_ENFORCE_EQ(
-          in_dims.size() >= 2 || in_dims.size() <= 4, true,
+          in_dims.size() >= 2 && in_dims.size() <= 4, true,
           platform::errors::Unimplemented(
               "Fully Connected input should be 2D, 3D or 4D tensor."));
     }

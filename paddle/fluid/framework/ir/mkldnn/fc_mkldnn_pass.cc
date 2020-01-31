@@ -62,9 +62,8 @@ void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
     bool is_size_supported =
         dim_num == 4 ? (dims[width_axis] == 1 && dims[height_axis] == 1) : true;
     if (!are_dims_supported || !is_size_supported) {
-      VLOG(3)
-          << "Do not enable FC MKL-DNN for dimensions different than 2, 3 & 4";
-      VLOG(3) << "Or when width and height are different than one";
+      VLOG(3) << "Do not enable FC MKL-DNN for dimensions different than"
+                 "2, 3 & 4, and when both width and height are equal to one";
       return;
     }
     desc->SetAttr("use_mkldnn", true);
