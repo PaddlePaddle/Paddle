@@ -24,7 +24,7 @@ namespace ir {
 void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs, bool use_mkldnn,
-           float scale = 0) {
+           float scale = 0, float bias = 0.0) {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
   op->SetAttr("use_mkldnn", use_mkldnn);
@@ -59,6 +59,11 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
                           inputs.size()));
     op->SetInput("W", {inputs[1]});
     op->SetOutput("Out", outputs);
+  } else if (type == "scale") {
+    op->SetInput("X", {inputs[0]});
+    op->SetOutput("Out", {outputs[0]});
+    op->SetAttr("scale", scale);
+    op->SetAttr("bias", bias);
   }
 }
 
@@ -248,6 +253,20 @@ ProgramDesc BuildMultipleQuantizeProgramDesc(bool use_mkldnn, float first_scale,
   SetOp(&prog, "concat", "Concat2", {"b"}, {"e"}, use_mkldnn);
   SetOp(&prog, "fc", "Fc1", {"c", "w1"}, {"f"}, use_mkldnn, first_scale);
   SetOp(&prog, "fc", "Fc2", {"d", "w2"}, {"g"}, use_mkldnn, second_scale);
+
+  return prog;
+}
+
+// a->Dequant->b
+// b->Scale->c
+ProgramDesc BuildDequantScaleProgramDesc(bool use_mkldnn, float first_scale,
+                                         float second_scale, float bias) {
+  ProgramDesc prog;
+  for (auto& v : variable_names) {
+    prog.MutableBlock(0)->Var(v);
+  }
+  SetOp(&prog, "dequantize", "Dequant", {"a"}, {"b"}, use_mkldnn, first_scale);
+  SetOp(&prog, "scale", "Scale", {"b"}, {"c"}, use_mkldnn, second_scale, bias);
 
   return prog;
 }
@@ -541,6 +560,32 @@ TEST(CpuQuantizeSquashPass, quatize_with_different_scale) {
   auto remove_nodes = 0;
   CountNodeTest(
       BuildMultipleQuantizeProgramDesc(use_mkldnn, first_scale, second_scale),
+      remove_nodes);
+}
+
+// if scale has no bias
+TEST(CpuQuantizeSquashPass, dequantize_scale_with_no_bias) {
+  auto first_scale = 1.2345f;
+  auto second_scale = 1.5432f;
+  auto bias = 0.0f;
+  auto use_mkldnn = true;
+  // remove: dequant out, scale op
+  auto remove_nodes = 2;
+  CountNodeTest(
+      BuildDequantScaleProgramDesc(use_mkldnn, first_scale, second_scale, bias),
+      remove_nodes);
+}
+
+// if scale has bias
+TEST(CpuQuantizeSquashPass, dequantize_scale_with_bias) {
+  auto first_scale = 1.2345f;
+  auto second_scale = 1.5432f;
+  auto bias = 1.0f;
+  auto use_mkldnn = true;
+  // nothing change
+  auto remove_nodes = 0;
+  CountNodeTest(
+      BuildDequantScaleProgramDesc(use_mkldnn, first_scale, second_scale, bias),
       remove_nodes);
 }
 
