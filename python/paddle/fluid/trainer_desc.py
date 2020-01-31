@@ -118,7 +118,7 @@ class TrainerDesc(object):
     def _set_loss_names(self, loss_names):
         for loss in loss_names:
             self.proto_desc.loss_names.append(loss)
-    
+
     def _set_adjust_ins_weight(self, config_dict):
         self.proto_desc.adjust_ins_weight_config.need_adjust = \
                 config_dict.get("need_adjust", False)
