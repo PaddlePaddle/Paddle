@@ -50,7 +50,7 @@ class PSLib(Fleet):
         self._client2client_max_retry = max_retry
 
     def set_pull_local_thread_num(self, thread_num):
-       self._fleet_ptr.set_pull_local_thread_num(thread_num)
+        self._fleet_ptr.set_pull_local_thread_num(thread_num)
     
     def init_worker(self):
         """
