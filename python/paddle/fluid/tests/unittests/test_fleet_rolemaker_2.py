@@ -48,7 +48,6 @@ class TestCloudRoleMaker2(unittest.TestCase):
         os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36002"
         os.environ["PADDLE_TRAINER_ID"] = "0"
         os.environ["PADDLE_TRAINERS_NUM"] = "1"
-
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         try:
@@ -56,7 +55,6 @@ class TestCloudRoleMaker2(unittest.TestCase):
         except:
             print("no mpi4py, skip test_pslib_2")
             return
-
         train_program = fluid.Program()
         startup_program = fluid.Program()
         scope = fluid.Scope()
@@ -76,7 +74,6 @@ class TestCloudRoleMaker2(unittest.TestCase):
         except:
             print("do not support pslib test, skip")
             return
-
         os.environ["TRAINING_ROLE"] = "wrong"
         try:
             role1 = GeneralRoleMaker(path="./test_gloo_1")
@@ -162,7 +159,6 @@ class TestCloudRoleMaker2(unittest.TestCase):
         role23 = GeneralRoleMaker(path="./test_gloo_23")
         role23._get_size()
         role23._get_size()
-
         with open("test_fleet_gloo_role_maker_1.txt", "w") as f:
             data = "1 1 1 1\n"
             f.write(data)
@@ -264,14 +260,12 @@ class TestCloudRoleMaker2(unittest.TestCase):
         tmp._role_maker = TmpClass()
         tmp.all_reduce_worker([], [])
         tmp.barrier_worker()
-
         from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
         tmp = RoleMakerBase()
         tmp.all_gather(1)
         tmp.all_reduce_worker([], [])
         tmp.barrier_worker()
         tmp.barrier_all()
-
         from paddle.fluid.incubate.fleet.base.role_maker import \
             MPISymetricRoleMaker
         tmp1 = MPISymetricRoleMaker()
