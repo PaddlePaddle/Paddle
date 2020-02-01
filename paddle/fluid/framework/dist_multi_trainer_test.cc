@@ -12,8 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <fstream>
+#include "google/protobuf/io/zero_copy_stream_impl.h"
+#include "google/protobuf/message.h"
+#include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"
+#include <iostream>
 #include "paddle/fluid/framework/trainer.h"
+#include <sstream>
 
 #if defined _WIN32 || defined __APPLE__
 #else
@@ -24,15 +30,33 @@ namespace paddle {
 namespace framework {
 TEST(DisMultiTrainerTest, test1) {
 #ifdef _LINUX
-  std::shared_ptr<DistMultiTrainer> tmp = std::make_shared<DistMultiTrainer>();
+  std::shared_ptr<DistMultiTrainer> tmp1 = std::make_shared<DistMultiTrainer>();
   TrainerDesc t;
+  std::string str;
+  str += "name: \"MultiSlotDataFeed\"\n";
+  str += "batch_size: 2\n";
+  str += "multi_slot_desc {\n";
+  str += "    slots {\n";
+  str += "         name: \"words\"\n";
+  str += "         type: \"uint64\"\n";
+  str += "         is_dense: false\n";
+  str += "         is_used: true\n";
+  str += "     }\n";
+  str += "     slots {\n";
+  str += "         name: \"label\"\n";
+  str += "         type: \"uint64\"\n";
+  str += "         is_dense: false\n";
+  str += "         is_used: true\n";
+  str += "    }\n";
+  str += "}\n";
   std::shared_ptr<MultiSlotDataset> dataset =
       std::make_shared<MultiSlotDataset>();
   dataset->SetFileList(std::vector<std::string>());
   dataset->SetThreadNum(1);
   dataset->SetTrainerNum(1);
+  dataset->SetDataFeedDesc(str);
   dataset->CreateReaders();
-  tmp->Initialize(t, dataset.get());
+  tmp1->Initialize(t, dataset.get());
 #endif
 }
 }  // namespace framework
