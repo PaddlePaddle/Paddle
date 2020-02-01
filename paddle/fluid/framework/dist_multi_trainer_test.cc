@@ -32,6 +32,11 @@ TEST(DisMultiTrainerTest, test1) {
 #ifdef _LINUX
   std::shared_ptr<DistMultiTrainer> tmp1 = std::make_shared<DistMultiTrainer>();
   TrainerDesc t;
+  t.set_class_name("DistMultiTrainer");
+  t.set_device_worker_name("DownpourWorker");
+  t.set_thread_num(1);
+  auto* m = t.mutable_downpour_param()->add_program_config();
+  m->set_program_id("123");
   std::string str;
   str += "name: \"MultiSlotDataFeed\"\nbatch_size: 2\nmulti_slot_desc {\n";
   str += "slots {\nname: \"words\"\ntype: \"uint64\"\nis_dense: false\n";
