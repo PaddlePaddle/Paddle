@@ -16,6 +16,8 @@ import unittest
 import paddle.fluid as fluid
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig, ServerRuntimeConfig
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import TrainerRuntimeConfig, StrategyFactory
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
+import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 import os
 
 
@@ -164,6 +166,19 @@ class TestStrategyFactor(unittest.TestCase):
         server_runtime_config_illegal = None
         self.assertRaises(Exception, strategy.set_server_runtime_config,
                           server_runtime_config_illegal)
+
+
+class TestCreateDefaultStrategy(unittest.TestCase):
+    def test_default_strategy(self):
+        role = role_maker.UserDefinedRoleMaker(
+            current_id=0,
+            role=role_maker.Role.WORKER,
+            worker_num=2,
+            server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"])
+        fleet.init(role)
+
+        optimizer = fluid.optimizer.SGD(0.0001)
+        optimizer = fleet.distributed_optimizer(optimizer)
 
 
 if __name__ == '__main__':
