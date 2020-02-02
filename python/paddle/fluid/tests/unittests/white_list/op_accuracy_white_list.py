@@ -50,9 +50,6 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'modified_huber_loss', \
     'mul', \
     'nce', \
-    'pad', \
-    'pad2d', \
-    'pad_constant_like', \
     'pool2d', \
     'pool3d', \
     'prroi_pool', \
