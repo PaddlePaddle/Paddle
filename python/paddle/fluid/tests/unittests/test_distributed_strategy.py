@@ -181,5 +181,24 @@ class TestCreateDefaultStrategy(unittest.TestCase):
         optimizer = fleet.distributed_optimizer(optimizer)
 
 
+class TestHalfAsyncStrategy(unittest.TestCase):
+    def test_half_async_strategy(self):
+        role = role_maker.UserDefinedRoleMaker(
+            current_id=0,
+            role=role_maker.Role.WORKER,
+            worker_num=2,
+            server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"])
+        fleet.init(role)
+
+        half_async_config = DistributeTranspilerConfig()
+
+        half_async_config.sync_mode = False
+        half_async_config.geo_sgd_mode = False
+        half_async_config.runtime_split_send_recv = False
+
+        optimizer = fluid.optimizer.SGD(0.0001)
+        optimizer = fleet.distributed_optimizer(optimizer, half_async_config)
+
+
 if __name__ == '__main__':
     unittest.main()
