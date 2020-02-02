@@ -13905,10 +13905,9 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
 
 
 def tdm_sampler(input,
-                node_nums,
-                leaf_node_nums,
                 neg_samples_num_list,
-                tree_layer_offset_lod,
+                tree_travel_list,
+                tree_layer_list,
                 tree_travel_attr=None,
                 tree_layer_attr=None,
                 output_labels=False,
@@ -13921,7 +13920,7 @@ def tdm_sampler(input,
     2. get neg sample at every layer
     '''
     helper = LayerHelper("tdm_sampler", **locals())
-    layer_nums = len(neg_samples_num_list)
+    layer_nums = len(tree_layer_list)
     sampling_nums = 0
     for layer_sampling_nums in neg_samples_num_list:
         sampling_nums += (layer_sampling_nums + int(output_positive))
