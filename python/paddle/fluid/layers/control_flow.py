@@ -1002,10 +1002,10 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         output_vars = body(*loop_vars)
         map_structure(assign, output_vars, loop_vars)
         if len(loop_vars) == 1:
-            new_cond = cond(output_vars)
+            now_cond = cond(output_vars)
         else:
-            new_cond = cond(*output_vars)
-        assign(new_cond, pre_cond)
+            now_cond = cond(*output_vars)
+        assign(now_cond, pre_cond)
     return loop_vars
 
 
