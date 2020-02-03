@@ -299,6 +299,25 @@ class TestTensor(unittest.TestCase):
             self.assertEqual(tensor._dtype(), core.VarDesc.VarType.FP16)
             self.assertTrue(numpy.array_equal(numpy.array(tensor), array))
 
+    def test_tensor_set_int16(self):
+        array = numpy.random.randint(100, size=(300, 500)).astype("int16")
+        tensor = fluid.Tensor()
+        place = core.CPUPlace()
+        tensor.set(array, place)
+        self.assertEqual(tensor._dtype(), core.VarDesc.VarType.INT16)
+        self.assertTrue(numpy.array_equal(numpy.array(tensor), array))
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            tensor.set(array, place)
+            self.assertEqual(tensor._dtype(), core.VarDesc.VarType.INT16)
+            self.assertTrue(numpy.array_equal(numpy.array(tensor), array))
+
+            place = core.CUDAPinnedPlace()
+            tensor.set(array, place)
+            self.assertEqual(tensor._dtype(), core.VarDesc.VarType.INT16)
+            self.assertTrue(numpy.array_equal(numpy.array(tensor), array))
+
     def test_tensor_set_from_array_list(self):
         array = numpy.random.randint(1000, size=(200, 300))
         list_array = [array, array]
