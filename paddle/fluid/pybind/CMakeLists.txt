@@ -51,9 +51,9 @@ if(WITH_PYTHON)
   list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OP_LIB})
   list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OPERATOR_DEPS})
 
-  if(NOT WIN32 AND WITH_NCCL)
+  if(WITH_NCCL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS nccl_context)
-  endif(NOT WIN32)
+  endif(WITH_NCCL)
 
   add_executable(op_function_generator op_function_generator.cc)
   target_link_libraries(op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})

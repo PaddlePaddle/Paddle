@@ -30,7 +30,7 @@ endforeach()
 
 register_operators(EXCLUDES gen_nccl_id_op DEPS ${DISTRIBUTE_DEPS})
 
-if(WITH_GPU AND NOT WIN32 AND WITH_NCCL)
+if(WITH_NCCL)
     set(DISTRIBUTE_DEPS ${DISTRIBUTE_DEPS} nccl_common)
     op_library(gen_nccl_id_op DEPS ${DISTRIBUTE_DEPS} nccl_common)
 endif()
