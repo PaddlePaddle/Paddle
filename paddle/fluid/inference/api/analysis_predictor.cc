@@ -758,7 +758,8 @@ void AnalysisPredictor::ClearIntermediateTensor() {
     if (!IsPersistable(var)) {
       const std::string name = var->Name();
       auto *variable = executor_->scope()->FindVar(name);
-      if (variable != nullptr && name != "feed" && name != "fetch") {
+      if (variable != nullptr && variable->IsType<framework::LoDTensor>() &&
+          name != "feed" && name != "fetch") {
         VLOG(3) << "Clear Intermediate Tensor: " << name;
         auto *t = variable->GetMutable<framework::LoDTensor>();
         t->clear();
