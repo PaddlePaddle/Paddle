@@ -30,10 +30,6 @@ if (TENSORRT_FOUND)
   add_subdirectory(tensorrt)
 endif()
 
-if (ANAKIN_SUBGRAPH)
-  add_subdirectory(anakin)
-endif()
-
 if (WITH_LITE)
   add_subdirectory(lite)
 endif()
@@ -68,9 +64,6 @@ if(NOT APPLE)
   set_target_properties(paddle_fluid PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
 endif()
 
-if(ANAKIN_FOUND)
-    set(ANAKIN_SHARED_INFERENCE_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/api/api_anakin_engine.cc)
-endif()
 set(SHARED_INFERENCE_SRCS
     io.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/../framework/data_feed.cc
@@ -80,8 +73,7 @@ set(SHARED_INFERENCE_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/api/api_impl.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/analysis_predictor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/details/zero_copy_tensor.cc
-    ${mkldnn_quantizer_src_file}
-    ${ANAKIN_SHARED_INFERENCE_SRCS})
+    ${mkldnn_quantizer_src_file})
 
 # Create shared inference library defaultly
 cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
