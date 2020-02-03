@@ -16,6 +16,8 @@ import unittest
 import paddle.fluid as fluid
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig, ServerRuntimeConfig
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import TrainerRuntimeConfig, StrategyFactory
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
+import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 import os
 
 
@@ -102,8 +104,10 @@ class TestStrategyFactor(unittest.TestCase):
         trainer_runtime_config = strategy.get_trainer_runtime_config()
         trainer_communicator_flags = trainer_runtime_config.get_communicator_flags(
         )
-        self.assertIn('send_queue_size', trainer_communicator_flags)
-        self.assertEqual(trainer_communicator_flags['send_queue_size'], 100)
+        self.assertIn('communicator_send_queue_size',
+                      trainer_communicator_flags)
+        self.assertEqual(
+            trainer_communicator_flags['communicator_send_queue_size'], '100')
 
         # test set_trainer_runtime_config exception
         trainer_runtime_config_dict['unknown'] = None
@@ -138,9 +142,8 @@ class TestStrategyFactor(unittest.TestCase):
     def test_half_async_strategy(self):
         strategy = StrategyFactory.create_half_async_strategy()
         self.assertEqual(strategy._program_config.sync_mode, False)
-        self.assertEqual(strategy._program_config.runtime_split_send_recv,
-                         False)
-        self.assertEqual(strategy._build_strategy.async_mode, False)
+        self.assertEqual(strategy._program_config.runtime_split_send_recv, True)
+        self.assertEqual(strategy._build_strategy.async_mode, True)
 
         # test set_server_runtime_config using ServerRuntimeConfig
         server_runtime_config_class = ServerRuntimeConfig()
@@ -163,6 +166,38 @@ class TestStrategyFactor(unittest.TestCase):
         server_runtime_config_illegal = None
         self.assertRaises(Exception, strategy.set_server_runtime_config,
                           server_runtime_config_illegal)
+
+
+class TestCreateDefaultStrategy(unittest.TestCase):
+    def test_default_strategy(self):
+        role = role_maker.UserDefinedRoleMaker(
+            current_id=0,
+            role=role_maker.Role.WORKER,
+            worker_num=2,
+            server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"])
+        fleet.init(role)
+
+        optimizer = fluid.optimizer.SGD(0.0001)
+        optimizer = fleet.distributed_optimizer(optimizer)
+
+
+class TestHalfAsyncStrategy(unittest.TestCase):
+    def test_half_async_strategy(self):
+        role = role_maker.UserDefinedRoleMaker(
+            current_id=0,
+            role=role_maker.Role.WORKER,
+            worker_num=2,
+            server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"])
+        fleet.init(role)
+
+        half_async_config = DistributeTranspilerConfig()
+
+        half_async_config.sync_mode = False
+        half_async_config.geo_sgd_mode = False
+        half_async_config.runtime_split_send_recv = False
+
+        optimizer = fluid.optimizer.SGD(0.0001)
+        optimizer = fleet.distributed_optimizer(optimizer, half_async_config)
 
 
 if __name__ == '__main__':

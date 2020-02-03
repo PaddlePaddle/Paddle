@@ -10,6 +10,7 @@ cc_library(engine SRCS engine.cc DEPS layer gradient_accumulator)
 cc_library(imperative_profiler SRCS profiler.cc)
 if(NOT WIN32)
     cc_library(nccl_context SRCS nccl_context.cc DEPS device_context)
+    cc_library(data_loader SRCS data_loader.cc DEPS enforce)
 endif(NOT WIN32)
 
 add_subdirectory(tests)
