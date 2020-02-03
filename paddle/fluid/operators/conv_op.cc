@@ -675,12 +675,12 @@ class Conv2DDoubleGradMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetOutput("DDOutput",
                   ddx.empty()
-                      ? this->Empty()
+                      ? this->EmptyInputGrad()
                       : this->InputGrad(framework::GradVarName("Output")));
-    op->SetOutput("DFilter",
-                  ddx.empty() ? this->Empty() : this->InputGrad("Filter"));
-    op->SetOutput("DInput",
-                  ddw.empty() ? this->Empty() : this->InputGrad("Input"));
+    op->SetOutput("DFilter", ddx.empty() ? this->EmptyInputGrad()
+                                         : this->InputGrad("Filter"));
+    op->SetOutput("DInput", ddw.empty() ? this->EmptyInputGrad()
+                                        : this->InputGrad("Input"));
 
     op->SetAttrMap(this->Attrs());
   }
@@ -710,12 +710,12 @@ class Conv3DDoubleGradMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetOutput("DDOutput",
                   ddx.empty()
-                      ? this->Empty()
+                      ? this->EmptyInputGrad()
                       : this->InputGrad(framework::GradVarName("Output")));
-    op->SetOutput("DFilter",
-                  ddx.empty() ? this->Empty() : this->InputGrad("Filter"));
-    op->SetOutput("DInput",
-                  ddw.empty() ? this->Empty() : this->InputGrad("Input"));
+    op->SetOutput("DFilter", ddx.empty() ? this->EmptyInputGrad()
+                                         : this->InputGrad("Filter"));
+    op->SetOutput("DInput", ddw.empty() ? this->EmptyInputGrad()
+                                        : this->InputGrad("Input"));
 
     op->SetAttrMap(this->Attrs());
   }

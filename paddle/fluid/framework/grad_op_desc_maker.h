@@ -28,6 +28,26 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+namespace details {
+
+template <typename T>
+struct GradOpPtrTrait {};
+
+template <>
+struct GradOpPtrTrait<OpDesc> {
+  using Type = OpDesc*;
+};
+
+template <>
+struct GradOpPtrTrait<imperative::OpBase> {
+  using Type = imperative::TracedGradOp*;
+};
+
+}  // namespace details
+
+template <typename T>
+using GradOpPtr = typename details::GradOpPtrTrait<T>::Type;
+
 /*
   This functor class is responsible for creating the gradient ops for the given
   operator fwd_op. After it is called (through operator()), the pairs of
@@ -104,7 +124,13 @@ class GradOpDescMakerBase {
     return ret_val;
   }
 
-  std::vector<std::string> Empty() const { return {}; }
+  static std::vector<std::string> EmptyInput() { return {}; }
+
+  static std::vector<std::string> EmptyOutput() { return {}; }
+
+  static std::vector<std::string> EmptyInputGrad() { return {}; }
+
+  static std::vector<std::string> EmptyOutputGrad() { return {}; }
 
   std::vector<std::string> InputNames() const {
     return this->fwd_op_.InputNames();
@@ -158,26 +184,6 @@ class GradOpDescMakerBase {
   std::vector<BlockDesc*> grad_block_;
 };
 
-namespace details {
-
-template <typename T>
-struct GradOpPtrTrait {};
-
-template <>
-struct GradOpPtrTrait<OpDesc> {
-  using Type = OpDesc*;
-};
-
-template <>
-struct GradOpPtrTrait<imperative::OpBase> {
-  using Type = imperative::OpBase*;
-};
-
-}  // namespace details
-
-template <typename T>
-using GradOpPtr = typename details::GradOpPtrTrait<T>::Type;
-
 template <typename T>
 class SingleGradOpMaker {};
 
@@ -189,7 +195,7 @@ class SingleGradOpMaker<OpDesc> : public GradOpDescMakerBase {
   std::vector<std::unique_ptr<OpDesc>> operator()() const {
     std::vector<std::unique_ptr<OpDesc>> retv;
     retv.emplace_back(new OpDesc());
-    this->Apply(retv[0].get());
+    this->Apply(retv.front().get());
     return retv;
   }
 
@@ -203,12 +209,13 @@ class SingleGradOpMaker<imperative::OpBase>
  public:
   using GradOpBaseMakerBase::GradOpBaseMakerBase;
 
-  using OpPtr = imperative::OpBase*;
-
   std::vector<std::shared_ptr<imperative::OpBase>> operator()() const {
     std::vector<std::shared_ptr<imperative::OpBase>> retv{
         std::make_shared<imperative::OpBase>()};
-    this->Apply(retv[0].get());
+    {
+      imperative::TracedGradOp grad_op(retv.front());
+      this->Apply(&grad_op);
+    }
     return retv;
   }
 

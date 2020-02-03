@@ -282,9 +282,9 @@ class Yolov3LossGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
 
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    op->SetOutput(framework::GradVarName("GTBox"), {});
-    op->SetOutput(framework::GradVarName("GTLabel"), {});
-    op->SetOutput(framework::GradVarName("GTScore"), {});
+    op->SetOutput(framework::GradVarName("GTBox"), this->EmptyInputGrad());
+    op->SetOutput(framework::GradVarName("GTLabel"), this->EmptyInputGrad());
+    op->SetOutput(framework::GradVarName("GTScore"), this->EmptyInputGrad());
   }
 };
 

@@ -70,11 +70,12 @@ class ReduceMeanDoubleGradOpBaseMaker : public imperative::GradOpBaseMakerBase {
     auto out_grads = InputGrad(framework::GradVarName("Out"));
     if (!out_grads.empty()) {
       auto out_grad_op = CreateOp();
-      out_grad_op->SetType("reduce_mean");
-      out_grad_op->SetInput("X", x_gg);
-      out_grad_op->SetAttrMap(Attrs());
-      out_grad_op->SetOutput("Out", out_grads);
-      ops.emplace_back(std::move(out_grad_op));
+      imperative::TracedGradOp op(out_grad_op);
+      op.SetType("reduce_mean");
+      op.SetInput("X", x_gg);
+      op.SetAttrMap(Attrs());
+      op.SetOutput("Out", out_grads);
+      ops.emplace_back(out_grad_op);
     }
 
     return ops;

@@ -265,16 +265,19 @@ class SumGradOpBaseMaker : public imperative::GradOpBaseMakerBase {
 
   std::vector<std::shared_ptr<imperative::OpBase>> operator()() const override {
     auto x_grads = InputGrad("X", false);
+    using InputGradsType = decltype(x_grads);
+
     std::vector<std::shared_ptr<imperative::OpBase>> grad_ops;
     grad_ops.reserve(x_grads.size());
     auto og = OutputGrad("Out");
     std::transform(x_grads.begin(), x_grads.end(), std::back_inserter(grad_ops),
                    [&og](const std::shared_ptr<imperative::VarBase>& x_grad) {
                      auto grad_op = CreateOp();
-                     grad_op->SetType("scale");
-                     grad_op->SetInput("X", og);
-                     grad_op->SetOutput("Out", {x_grad});
-                     grad_op->SetAttr("scale", 1.0f);
+                     imperative::TracedGradOp op(grad_op);
+                     op.SetType("scale");
+                     op.SetInput("X", og);
+                     op.SetOutput("Out", InputGradsType{x_grad});
+                     op.SetAttr("scale", 1.0f);
                      return grad_op;
                    });
 

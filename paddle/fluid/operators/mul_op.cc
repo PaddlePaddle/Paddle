@@ -297,8 +297,10 @@ class MulDoubleGradMaker : public framework::SingleGradOpMaker<T> {
     if (!ddx.empty() || !ddw.empty()) {
       retv->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
     }
-    retv->SetOutput("DX", ddw.empty() ? this->Empty() : this->InputGrad("X"));
-    retv->SetOutput("DY", ddx.empty() ? this->Empty() : this->InputGrad("Y"));
+    retv->SetOutput(
+        "DX", ddw.empty() ? this->EmptyInputGrad() : this->InputGrad("X"));
+    retv->SetOutput(
+        "DY", ddx.empty() ? this->EmptyInputGrad() : this->InputGrad("Y"));
 
     retv->SetAttrMap(this->Attrs());
   }
