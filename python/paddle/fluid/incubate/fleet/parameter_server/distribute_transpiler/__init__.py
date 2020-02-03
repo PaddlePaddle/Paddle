@@ -271,13 +271,21 @@ class DistributedTranspiler(Fleet):
         elif isinstance(config, DistributeTranspilerConfig):
             if config.sync_mode:
                 self._transpile_config = SyncStrategy()
-            elif config.geo_sgd_mode:
-                self._transpile_config = GeoStrategy(
-                    config.geo_sgd_need_push_nums)
-            elif config.runtime_split_send_recv and config.half_async:
-                self._transpile_config = HalfAsyncStrategy()
             else:
-                self._transpile_config = AsyncStrategy()
+                if config.runtime_split_send_recv:
+                    if config.geo_sgd_mode:
+                        self._transpile_config = GeoStrategy(
+                            config.geo_sgd_need_push_nums)
+                    elif config.half_async:
+                        self._transpile_config = HalfAsyncStrategy()
+                    else:
+                        self._transpile_config = AsyncStrategy()
+
+                else:
+                    self._transpile_config = HalfAsyncStrategy()
+                    # for half_async compatibility
+                    config.half_async = True
+                    config.runtime_split_send_recv = True
             self._transpile_config.set_program_config(config)
         else:
             raise TypeError(
@@ -359,7 +367,7 @@ class TranspilerOptimizer(DistributedOptimizer):
                     "In {} mode, strategy must be an instance of DistributeTranspilerConfig, SyncStrategy, HalfAsyncStrategy, AsyncStrategy, or GeoStrategy".
                     format(fleet._mode))
         else:
-            self._strategy = DistributedStrategy()
+            self._strategy = StrategyFactory.create_sync_strategy()
 
     def backward(self,
                  loss,
