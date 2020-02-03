@@ -963,6 +963,7 @@ class Executor(object):
                     program._pipeline_opt)
             else:
                 trainer = TrainerFactory()._create_trainer(program._fleet_opt)
+                trainer._set_thread_barrier(program._is_distributed)
             trainer._set_program(program)
         else:
             if program._pipeline_opt:

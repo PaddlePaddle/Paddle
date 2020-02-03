@@ -104,6 +104,11 @@ function(copy_part_of_thrid_party TARGET DST)
     copy(${TARGET}
             SRCS ${GLOG_INCLUDE_DIR} ${GLOG_LIBRARIES}
             DSTS ${dst_dir} ${dst_dir}/lib)
+
+    set(dst_dir "${DST}/third_party/install/xxhash")
+    copy(${TARGET}
+        SRCS ${XXHASH_INCLUDE_DIR} ${XXHASH_LIBRARIES}
+        DSTS ${dst_dir} ${dst_dir}/lib)    
             
     if (NOT PROTOBUF_FOUND OR WIN32)
         set(dst_dir "${DST}/third_party/install/protobuf")
@@ -126,6 +131,13 @@ function(copy_part_of_thrid_party TARGET DST)
                 DSTS ${dst_dir}/include ${dst_dir}/lib)
     endif ()
 
+    if (LITE_BINARY_DIR)
+        set(dst_dir "${DST}/third_party/install/lite")
+        copy(${TARGET}
+                SRCS ${LITE_BINARY_DIR}/inference_lite_lib/*
+                DSTS ${dst_dir})
+    endif()
+
     if (ANAKIN_FOUND)
         set(dst_dir "${DST}/third_party/install/anakin")
         copy(${TARGET}
@@ -137,31 +149,6 @@ endfunction()
 # inference library for only inference
 set(inference_lib_deps third_party paddle_fluid paddle_fluid_c paddle_fluid_shared paddle_fluid_c_shared)
 add_custom_target(inference_lib_dist DEPENDS ${inference_lib_deps})
-
-set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/eigen3")
-copy(inference_lib_dist
-        SRCS ${EIGEN_INCLUDE_DIR}/Eigen/Core ${EIGEN_INCLUDE_DIR}/Eigen/src ${EIGEN_INCLUDE_DIR}/unsupported/Eigen
-        DSTS ${dst_dir}/Eigen ${dst_dir}/Eigen ${dst_dir}/unsupported)
-
-set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/boost")
-copy(inference_lib_dist
-        SRCS ${BOOST_INCLUDE_DIR}/boost
-        DSTS ${dst_dir})
-
-set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/dlpack")
-copy(inference_lib_dist
-        SRCS ${DLPACK_INCLUDE_DIR}/dlpack
-        DSTS ${dst_dir})
-
-set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/install/xxhash")
-copy(inference_lib_dist
-        SRCS ${XXHASH_INCLUDE_DIR} ${XXHASH_LIBRARIES}
-        DSTS ${dst_dir} ${dst_dir}/lib)
-
-set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/install/zlib")
-copy(inference_lib_dist
-        SRCS ${ZLIB_INCLUDE_DIR} ${ZLIB_LIBRARIES}
-        DSTS ${dst_dir} ${dst_dir}/lib)
 
 copy(inference_lib_dist
         SRCS ${CMAKE_CURRENT_BINARY_DIR}/CMakeCache.txt
@@ -252,6 +239,26 @@ copy(fluid_lib_dist
         SRCS ${CMAKE_CURRENT_BINARY_DIR}/paddle/fluid/${module}/pybind.h
         DSTS ${dst_dir}/${module}
         )
+
+set(dst_dir "${FLUID_INSTALL_DIR}/third_party/eigen3")
+copy(inference_lib_dist
+        SRCS ${EIGEN_INCLUDE_DIR}/Eigen/Core ${EIGEN_INCLUDE_DIR}/Eigen/src ${EIGEN_INCLUDE_DIR}/unsupported/Eigen
+        DSTS ${dst_dir}/Eigen ${dst_dir}/Eigen ${dst_dir}/unsupported)
+
+set(dst_dir "${FLUID_INSTALL_DIR}/third_party/boost")
+copy(inference_lib_dist
+        SRCS ${BOOST_INCLUDE_DIR}/boost
+        DSTS ${dst_dir})
+
+set(dst_dir "${FLUID_INSTALL_DIR}/third_party/dlpack")
+copy(inference_lib_dist
+        SRCS ${DLPACK_INCLUDE_DIR}/dlpack
+        DSTS ${dst_dir})
+
+set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/zlib")
+copy(inference_lib_dist
+        SRCS ${ZLIB_INCLUDE_DIR} ${ZLIB_LIBRARIES}
+        DSTS ${dst_dir} ${dst_dir}/lib)
 
 # CMakeCache Info
 copy(fluid_lib_dist

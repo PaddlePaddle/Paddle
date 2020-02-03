@@ -4,7 +4,7 @@ set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper box_wrapp
   gloo_wrapper)
 
 if(NOT WIN32)
-  set(PYBIND_DEPS ${PYBIND_DEPS} nccl_context)
+  set(PYBIND_DEPS ${PYBIND_DEPS} nccl_context data_loader)
 endif(NOT WIN32)
 
 if(WITH_PYTHON)

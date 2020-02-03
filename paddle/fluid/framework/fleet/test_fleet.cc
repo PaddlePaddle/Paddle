@@ -49,8 +49,7 @@ TEST(TEST_GLOO, store_1) {
   gw.Size();
   gw.Barrier();
   std::vector<double> input;
-  std::vector<double> output;
-  gw.AllReduce(input, output);
+  gw.AllReduce(input);
   int64_t t;
   gw.AllGather(t);
 #endif
