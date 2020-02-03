@@ -188,17 +188,6 @@ typedef struct PD_MaxInputShape {
   int shape_size;
 } PD_MaxInputShape;
 
-PADDLE_CAPI_EXPORT extern void PD_EnableAnakinEngine(
-    PD_AnalysisConfig* config, int max_batch_size = 1,
-    PD_MaxInputShape* max_input_shape = NULL, int max_input_shape_size = 0,
-    int min_subgraph_size = 6, Precision precision = Precision::kFloat32,
-    bool auto_config_layout = false, char** passes_filter = NULL,
-    int passes_filter_size = 0, char** ops_filter = NULL,
-    int ops_filter_size = 0);
-
-PADDLE_CAPI_EXPORT extern bool PD_AnakinEngineEnabled(
-    const PD_AnalysisConfig* config);
-
 PADDLE_CAPI_EXPORT extern void PD_SwitchIrDebug(PD_AnalysisConfig* config,
                                                 bool x = true);
 
