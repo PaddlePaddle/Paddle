@@ -22,6 +22,12 @@ import numbers
 
 
 class TestTensor(unittest.TestCase):
+    def setUp(self):
+        self.support_dtypes = [
+            'bool', 'uint8', 'int8', 'int16', 'int32', 'int64', 'float16',
+            'float32', 'float64'
+        ]
+
     def test_int_tensor(self):
         scope = core.Scope()
         var = scope.var("test_tensor")
@@ -184,15 +190,15 @@ class TestTensor(unittest.TestCase):
             tensor_array = numpy.array(tensor)
             self.assertEqual((0, 1), tensor_array.shape)
 
-    def run_slice_tensor(self, place):
-
+    def run_slice_tensor(self, place, dtype):
         tensor = fluid.Tensor()
         shape = [3, 3, 3]
         tensor._set_dims(shape)
 
-        tensor_array = numpy.array([[[1, 2, 3], [4, 5, 6], [7, 8, 9]],
-                                    [[10, 11, 12], [13, 14, 15], [16, 17, 18]],
-                                    [[19, 20, 21], [22, 23, 24], [25, 26, 27]]])
+        tensor_array = numpy.array(
+            [[[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+             [[10, 11, 12], [13, 14, 15], [16, 17, 18]],
+             [[19, 20, 21], [22, 23, 24], [25, 26, 27]]]).astype(dtype)
 
         tensor.set(tensor_array, place)
         n1 = tensor[1]
@@ -228,13 +234,14 @@ class TestTensor(unittest.TestCase):
         self.assertTrue((numpy.array(n8) == numpy.array(t8)).all())
 
     def test_slice_tensor(self):
-        # run cpu first
-        place = core.CPUPlace()
-        self.run_slice_tensor(place)
+        for dtype in self.support_dtypes:
+            # run cpu first
+            place = core.CPUPlace()
+            self.run_slice_tensor(place, dtype)
 
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            self.run_slice_tensor(place)
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+                self.run_slice_tensor(place, dtype)
 
     def test_print_tensor(self):
         scope = core.Scope()
@@ -306,7 +313,6 @@ class TestTensor(unittest.TestCase):
         tensor.set(array, place)
         self.assertEqual(tensor._dtype(), core.VarDesc.VarType.INT16)
         self.assertTrue(numpy.array_equal(numpy.array(tensor), array))
-        self.assertTrue(numpy.array_equal(numpy.array(tensor[1:]), array[1:]))
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)

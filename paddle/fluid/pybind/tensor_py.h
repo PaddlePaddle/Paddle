@@ -440,7 +440,7 @@ inline framework::Tensor *_sliceTensor(const framework::Tensor &self,
     case framework::proto::VarType::FP64:
       return _sliceAndConcat<double>(self, obj, dim);
     case framework::proto::VarType::INT8:
-      return _sliceAndConcat<bool>(self, obj, dim);
+      return _sliceAndConcat<int8_t>(self, obj, dim);
     case framework::proto::VarType::INT16:
       return _sliceAndConcat<int16_t>(self, obj, dim);
     case framework::proto::VarType::INT32:
@@ -450,7 +450,7 @@ inline framework::Tensor *_sliceTensor(const framework::Tensor &self,
     case framework::proto::VarType::BOOL:
       return _sliceAndConcat<bool>(self, obj, dim);
     case framework::proto::VarType::UINT8:
-      return _sliceAndConcat<bool>(self, obj, dim);
+      return _sliceAndConcat<uint8_t>(self, obj, dim);
     default:
       PADDLE_THROW("Not support type %d", src_type);
   }
