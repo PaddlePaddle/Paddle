@@ -43,10 +43,6 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set(inference_deps ${inference_deps} tensorrt_engine tensorrt_converter)
 endif()
 
-if (ANAKIN_SUBGRAPH)
-    set(inference_deps ${inference_deps} anakin_op_converter anakin_engine)
-endif()
-
 if(WITH_NGRAPH)
     set(inference_deps ${inference_deps} ngraph)
 endif()
@@ -64,17 +60,3 @@ if(WITH_TESTING)
 endif()
 cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS analysis_predictor benchmark ${inference_deps}
         ARGS --dirname=${WORD2VEC_MODEL_DIR})
-
-if(ANAKIN_FOUND)
-  # Do not turn warnings into errors.
-  set_source_files_properties(api.cc api_anakin_engine.cc PROPERTIES COMPILE_FLAGS "-Wno-error")
-  cc_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc DEPS boost xxhash framework_proto eigen3)
-  target_link_libraries(inference_anakin_api anakin anakin_saber_common)
-  cc_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc DEPS boost xxhash framework_proto eigen3)
-  target_link_libraries(inference_anakin_api_shared anakin anakin_saber_common)
-  function(anakin_target target_name)
-    target_compile_options(${target_name} BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
-  endfunction()
-  anakin_target(inference_anakin_api)
-  anakin_target(inference_anakin_api_shared)
-endif()
