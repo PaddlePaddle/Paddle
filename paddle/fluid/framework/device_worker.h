@@ -245,25 +245,32 @@ class DownpourWorker : public HogwildWorker {
   ChannelWriter<std::string> writer_;
   // skipped ops
   std::vector<std::string> skip_ops_;
-
- private:
   std::vector<std::string> dump_param_;
   // just save the value in param_ for easy access
   std::map<uint64_t, std::string> label_var_name_;
   std::map<uint64_t, std::vector<std::string>> dense_value_names_;
+  std::map<uint64_t, uint64_t> table_dependency_;
+  std::vector<std::pair<uint64_t, uint64_t>> copy_dense_tables_;
+
+ private:
+  // std::vector<std::string> dump_param_;
+  // just save the value in param_ for easy access
+  // std::map<uint64_t, std::string> label_var_name_;
+  // std::map<uint64_t, std::vector<std::string>> dense_value_names_;
 
   std::shared_ptr<PullDenseWorker> _pull_dense_worker;
 
   std::vector<float> nid_show_;
-  std::map<uint64_t, uint64_t> table_dependency_;
-  std::vector<std::pair<uint64_t, uint64_t>> copy_dense_tables_;
+  // std::map<uint64_t, uint64_t> table_dependency_;
+  // std::vector<std::pair<uint64_t, uint64_t>> copy_dense_tables_;
 };
 
 class DownpourWorkerOpt : public DownpourWorker {
  public:
   DownpourWorkerOpt() {}
   virtual ~DownpourWorkerOpt() {}
-  // virtual void CreateDeviceResource(const ProgramDesc& main_prog) {}
+  virtual void CreateDeviceResource(const ProgramDesc& main_prog);
+  virtual void Initialize(const TrainerDesc& desc);
   virtual void TrainFiles();
 
  protected:

@@ -88,6 +88,110 @@ void AppendOutputVar(const OpDesc& op_desc,
     }
   }
 }
+
+void DownpourWorkerOpt::Initialize(const TrainerDesc& desc) {
+  param_ = desc.downpour_param();
+  for (int i = 0; i < param_.sparse_table_size(); ++i) {
+    uint64_t table_id =
+        static_cast<uint64_t>(param_.sparse_table(i).table_id());
+    TableParameter table = param_.sparse_table(i);
+    sparse_key_names_[table_id].resize(table.sparse_key_name_size());
+    for (int j = 0; j < table.sparse_key_name_size(); ++j) {
+      sparse_key_names_[table_id][j] = table.sparse_key_name(j);
+    }
+    sparse_value_names_[table_id].resize(table.sparse_value_name_size());
+    for (int j = 0; j < table.sparse_value_name_size(); ++j) {
+      sparse_value_names_[table_id][j] = table.sparse_value_name(j);
+    }
+    sparse_grad_names_[table_id].resize(table.sparse_grad_name_size());
+    for (int j = 0; j < table.sparse_grad_name_size(); ++j) {
+      sparse_grad_names_[table_id][j] = table.sparse_grad_name(j);
+    }
+    label_var_name_[table_id] = table.label_var_name();
+    sparse_push_keys_[table_id] = std::vector<uint64_t>();
+  }
+
+  for (int i = 0; i < param_.dense_table_size(); ++i) {
+    uint64_t table_id = static_cast<uint64_t>(param_.dense_table(i).table_id());
+    auto table = param_.dense_table(i);
+    dense_value_names_[table_id].resize(table.dense_value_name_size());
+    for (int j = 0; j < table.dense_value_name_size(); ++j) {
+      dense_value_names_[table_id][j] = table.dense_value_name(j);
+    }
+    dense_grad_names_[table_id].resize(table.dense_grad_name_size());
+    for (int j = 0; j < table.dense_grad_name_size(); ++j) {
+      dense_grad_names_[table_id][j] = table.dense_grad_name(j);
+    }
+  }
+
+  skip_ops_.resize(param_.skip_ops_size());
+  for (int i = 0; i < param_.skip_ops_size(); ++i) {
+    skip_ops_[i] = param_.skip_ops(i);
+  }
+
+  for (int i = 0; i < param_.stat_var_names_size(); ++i) {
+    stat_var_name_map_[param_.stat_var_names(i)] = 1;
+  }
+
+  need_to_push_sparse_ = param_.push_sparse();
+  need_to_push_dense_ = param_.push_dense();
+
+  fleet_ptr_ = FleetWrapper::GetInstance();
+  fetch_config_ = desc.fetch_config();
+  use_cvm_ = desc.use_cvm();
+  // for sparse value accessor, embedding only
+  no_cvm_ = desc.no_cvm();
+  scale_datanorm_ = desc.scale_datanorm();
+  dump_slot_ = desc.dump_slot();
+  dump_fields_.resize(desc.dump_fields_size());
+  for (int i = 0; i < desc.dump_fields_size(); ++i) {
+    dump_fields_[i] = desc.dump_fields(i);
+  }
+  adjust_ins_weight_config_ = desc.adjust_ins_weight_config();
+  need_dump_param_ = false;
+  dump_param_.resize(desc.dump_param_size());
+  for (int i = 0; i < desc.dump_param_size(); ++i) {
+    dump_param_[i] = desc.dump_param(i);
+  }
+  if (desc.dump_param_size() != 0) {
+    need_dump_param_ = true;
+  }
+  for (int i = 0; i < desc.loss_names_size(); ++i) {
+    loss_names_.push_back(desc.loss_names(i));
+  }
+  for (int i = 0; i < desc.check_nan_var_names_size(); ++i) {
+    check_nan_var_names_.push_back(desc.check_nan_var_names(i));
+  }
+  copy_table_config_ = desc.copy_table_config();
+  for (int i = 0; i < copy_table_config_.src_sparse_tables_size(); ++i) {
+    uint64_t src_table = copy_table_config_.src_sparse_tables(i);
+    uint64_t dest_table = copy_table_config_.dest_sparse_tables(i);
+    VLOG(3) << "copy_sparse_tables_ push back " << src_table << "->"
+            << dest_table;
+    copy_sparse_tables_.push_back(std::make_pair(src_table, dest_table));
+  }
+  for (int i = 0; i < copy_table_config_.src_dense_tables_size(); ++i) {
+    uint64_t src_table = copy_table_config_.src_dense_tables(i);
+    uint64_t dest_table = copy_table_config_.dest_dense_tables(i);
+    VLOG(3) << "copy_dense_tables_ push back " << src_table << "->"
+            << dest_table;
+    copy_dense_tables_.push_back(std::make_pair(src_table, dest_table));
+  }
+  for (auto& m : copy_table_config_.table_denpendency_map()) {
+    if (sparse_key_names_.find(m.key()) != sparse_key_names_.end()) {
+      // currently only support one dependency
+      for (auto& value : m.values()) {
+        table_dependency_[m.key()] = value;
+      }
+    }
+  }
+}
+
+void DownpourWorkerOpt::CreateDeviceResource(const ProgramDesc &main_prog) {
+  CreateThreadScope(main_prog);
+  CreateThreadOperatorsWithRerank(main_prog);
+}
+
 void DownpourWorkerOpt::CreateThreadOperatorsWithRerank(
     const ProgramDesc& program) {
   auto& block = program.Block(0);
@@ -118,7 +222,6 @@ void DownpourWorkerOpt::CreateThreadOperatorsWithRerank(
     }
   }
 
-  //
   std::vector<std::string> loss_grad_names;
   for (int i = 0; i < loss_num; i++) {
     loss_grad_names.push_back(loss_names_[i] + "@GRAD");
@@ -214,7 +317,6 @@ void DownpourWorkerOpt::TrainFiles() {
     }
   }
   // pre-defined for the first op run with async-pulled embedding
-  // uint64_t general_tid = 1;
   while ((cur_batch = device_reader_->Next()) > 0) {
     if (copy_table_config_.need_copy()) {
       if (copy_table_config_.sparse_copy_by_feasign()) {
@@ -246,12 +348,7 @@ void DownpourWorkerOpt::TrainFiles() {
         fleet_ptr_->PullSparseVarsFromLocal(
             *thread_scope_, tid, sparse_key_names_[tid], &features_[tid],
             &feature_values_[tid], table.fea_dim());
-        // FillSparseFromLocal(*thread_scope_, tid, sparse_key_names_[tid],
-        // fleet_ptr_->GetLocalTable());
-        // std::cout << "local sparse table with fea dim: " << table.fea_dim()
-        // << std::endl;
         CollectLabelInfo(i);
-        // general_tid = tid;
         continue;
       } else if (table.is_async()) {
         pull_async_status = fleet_ptr_->PullSparseVarsAsync(

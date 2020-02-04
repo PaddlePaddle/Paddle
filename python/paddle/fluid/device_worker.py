@@ -200,7 +200,7 @@ class DownpourSGD(DeviceWorker):
 
 class DownpourSGDOPT(DeviceWorker):
     """
-    DownpourSGD is a kind of distributed SGD algorithm.
+    DownpourSGDOPT is a kind of distributed SGD algorithm.
     """
 
     def __init__(self):
@@ -208,7 +208,7 @@ class DownpourSGDOPT(DeviceWorker):
         Init.
         initialize downpourSGD device worker
         """
-        super(DownpourSGD, self).__init__()
+        super(DownpourSGDOPT, self).__init__()
 
     def _gen_worker_desc(self, trainer_desc):
         """

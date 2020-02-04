@@ -155,7 +155,7 @@ void FleetWrapper::CreateClient2ClientConnection() {
 }
 
 void FleetWrapper::PullSparseToLocal(const uint64_t table_id,
-                                       int fea_value_dim) {
+                                     int fea_value_dim) {
 #ifdef PADDLE_WITH_PSLIB
   size_t fea_keys_size = local_tables_.size();
   if (fea_keys_size == 0) {
