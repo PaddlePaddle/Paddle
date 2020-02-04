@@ -40,6 +40,22 @@ def _convert_camel_to_snake(name):
     return _all_cap_re.sub(r'\1_\2', s1).lower()
 
 
+class RemovableHook(object):
+    """ A RemovableHook that can be used to remove hook. """
+
+    next_hook_id = 0
+
+    def __init__(self, hooks):
+        self._hooks_ref = weakref.ref(hooks)
+        self._hook_id = RemovableHook.next_hook_id
+        RemovableHook.next_hook_id += 1
+
+    def remove(self):
+        hooks = self._hooks_ref()
+        if hooks is not None and self._hook_id in hooks:
+            del hooks[self._hook_id]
+
+
 class Layer(core.Layer):
     """Dynamic graph Layer based on OOD, includes the parameters of the layer, the structure of the forward graph and so on.
 
@@ -70,6 +86,9 @@ class Layer(core.Layer):
         self._sub_layers = collections.OrderedDict()
         self._loaddict_holder = collections.OrderedDict()
 
+        self._forward_hooks = collections.OrderedDict()
+        self._forward_pre_hooks = collections.OrderedDict()
+
     def train(self):
         framework._dygraph_tracer().train_mode()
 
@@ -83,6 +102,32 @@ class Layer(core.Layer):
             str: full name of this layer.
         """
         return self._full_name
+
+    def register_forward_hook(self, hook):
+        """Register a forward hook for Layer. The hook will be called after `forward` function has been computed.
+        The hook can modify the output. It should have the following form:
+
+        hook(Layer, input, output) -> None or modified output
+
+        Returns:
+            RemovableHook: a removablehook object that can be used to remove the added hook by calling `removablehook.renove()` .
+        """
+        removable_hook = RemovableHook(self._forward_hooks)
+        self._forward_hooks[removable_hook.id] = hook
+        return removable_hook
+
+    def register_forward_pre_hook(self, hook):
+        """Register a forward pre-hook for Layer. The hook will be called before `forward` has been computed.
+        The hook can modify the input. It should have the following form:
+
+        hook(Layer, input) -> None or modified input
+
+        Returns:
+            RemovableHook: a removablehook object that can be used to remove the added hook by calling `removablehook.renove()` .
+        """
+        removable_hook = RemovableHook(self._forward_pre_hooks)
+        self._forward_pre_hooks[removable_hook.id] = hook
+        return removable_hook
 
     def create_parameter(self,
                          shape,
@@ -297,6 +342,13 @@ class Layer(core.Layer):
         pass
 
     def __call__(self, *inputs, **kwargs):
+        for forward_pre_hook in self._forward_pre_hooks.values():
+            hook_result = forward_pre_hook(self, inputs)
+            if hook_result is not None:
+                if not isinstance(hook_result, tuple):
+                    hook_result = (hook_result, )
+                inputs = hook_result
+
         if not self._built:
             with program_desc_tracing_guard(False):
                 self._build_once(*inputs, **kwargs)
@@ -306,6 +358,12 @@ class Layer(core.Layer):
             self._built = True
 
         outputs = self.forward(*inputs, **kwargs)
+
+        for forward_hook in self._forward_hooks.values():
+            hook_result = forward_hook(self, inputs, outputs)
+            if hook_result is not None:
+                outputs = hook_result
+
         return outputs
 
     def forward(self, *inputs, **kwargs):
