@@ -497,6 +497,13 @@ class TestImperative(unittest.TestCase):
         self.assertTrue(hasattr(layer, "test_attr"))
         self.assertEqual(layer.test_attr, 1)
 
+        my_layer = MyLayer()
+        my_layer.w1 = my_layer.create_parameter([3, 3])
+        my_layer.add_parameter('w2', None)
+        self.assertRaises(TypeError, my_layer.add_parameter, 'w3', 'str')
+        my_layer.l1 = fluid.dygraph.Linear(3, 3)
+        self.assertRaises(TypeError, my_layer.__setattr__, 'l1', 'str')
+
 
 if __name__ == '__main__':
     unittest.main()
