@@ -69,7 +69,7 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
     VLOG(1) << "sample_res_length: " << sample_res_length;
 
     // get all data
-    int *input_data = const_cast<int *>(input_tensor.data<int>());
+    int *input_data = const_cast<int *>(input_tensor.data<int64_t>());
     int *travel_data = const_cast<int *>(travel_lod_tensor.data<int>());
     int *layer_data = const_cast<int *>(layer_lod_tensor.data<int>());
     int *output_data = out_tensor->mutable_data<int>(context.GetPlace());

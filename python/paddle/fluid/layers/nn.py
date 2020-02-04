@@ -13929,7 +13929,7 @@ def tdm_sampler(input,
     leaf_node_nums = len(tree_travel_list)
     travel_shape = [leaf_node_nums, layer_nums]
     travel = helper.create_parameter(
-        attr=tree_travel_attr, shape=travel_shape, dtype=dtype)
+        attr=tree_travel_attr, shape=travel_shape, dtype='int32')
     travel.stop_gradient = True
 
     node_nums = 0
@@ -13940,11 +13940,11 @@ def tdm_sampler(input,
     layer_shape = [node_nums, 1]
 
     layer = helper.create_parameter(
-        attr=tree_layer_attr, shape=layer_shape, dtype=dtype)
+        attr=tree_layer_attr, shape=layer_shape, dtype='int32')
     layer.stop_gradient = True
 
-    out = helper.create_variable_for_type_inference(dtype='int64')
-    labels = helper.create_variable_for_type_inference(dtype='int64')
+    out = helper.create_variable_for_type_inference(dtype=dtype)
+    labels = helper.create_variable_for_type_inference(dtype=dtype)
 
     helper.append_op(
         type='tdm_sampler',
@@ -13964,14 +13964,19 @@ def tdm_sampler(input,
     if output_list:
         output_list = []
         start_offset = 0
+
         for layer_sample_num in neg_samples_num_list:
             end_offset = start_offset + layer_sample_num + int(output_positive)
             layer_samples = slice(
-                out, axes=1, start=start_offset, end=end_offset)
+                out, axes=[1], starts=[start_offset], ends=[end_offset])
+            layer_samples = reshape(layer_samples, [-1, 1])
+            layer_samples.stop_gradient = True
             output_list.append(layer_samples)
             start_offset = end_offset
         out = output_list
 
     if output_labels:
+        labels = reshape(labels, [-1, 1])
+        labels.stop_gradient = True
         return out, labels
     return out
