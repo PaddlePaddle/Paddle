@@ -1174,18 +1174,26 @@ def append_backward(loss,
         .. code-block:: python
 
             import paddle.fluid as fluid
+
             x = fluid.data(name='x', shape=[None, 13], dtype='float32')
             y = fluid.data(name='y', shape=[None, 1], dtype='float32')
-
-            y_predict = fluid.layers.fc(input=x, size=1, act=None)
+            y_predict = fluid.layers.fc(input=x, size=1, act=None, name='my_fc')
             loss = fluid.layers.square_error_cost(input=y_predict, label=y)
-
             avg_loss = fluid.layers.mean(loss)
-            param_grad_list = fluid.backward.append_backward(loss=avg_loss)
-            p_g_list1 = fluid.backward.append_backward(loss=avg_loss)  # len(p_g_list1) == 2
-            p_g_list2 = fluid.backward.append_backward(loss=avg_loss, parameter_list=[p_g_list1[0][0].name])  # len(p_g_list1) == 1
-            p_g_list3 = fluid.backward.append_backward(loss=avg_loss, no_grad_set=set([p_g_list1[0][0].name]))  # len(p_g_list1) == 1
-            p_g_list4 = fluid.backward.append_backward(loss=avg_loss, parameter_list=[p_g_list1[0][0].name], no_grad_set=set([p_g_list1[0][0].name]))  # len(p_g_list1) == 0
+
+            # Get all weights in main_program, not include bias.
+            all_weights = [param for param in fluid.default_main_program().block(0).all_parameters() if 'w_' in param.name]  # [my_fc.w_0]
+            all_weights_name = [w.name for w in all_weights]
+
+            # return all param_grads needed to be updated if parameter_list set default None.
+            p_g_list1 = fluid.backward.append_backward(loss=avg_loss)  # [(my_fc.w_0, my_fc.w_0@GRAD), (my_fc.b_0, my_fc.b_0@GRAD)]
+            # return the param_grads corresponding to parameter_list that can be list of param (Variable).
+            p_g_list2 = fluid.backward.append_backward(loss=avg_loss, parameter_list=all_weights)  # [(my_fc.w_0, my_fc.w_0@GRAD)]
+            # parameter_list can be list of param.name (str).
+            p_g_list3 = fluid.backward.append_backward(loss=avg_loss, parameter_list=all_weights_name)  # [(my_fc.w_0, my_fc.w_0@GRAD)]
+            p_g_list4 = fluid.backward.append_backward(loss=avg_loss, no_grad_set=set(['my_fc.b_0']))  # [(my_fc.w_0, my_fc.w_0@GRAD)]
+            # return [] because all param_grads are filtered by no_grad_set.
+            p_g_list5 = fluid.backward.append_backward(loss=avg_loss, parameter_list=all_weights, no_grad_set=set(all_weights_name))  # []
 
     """
     assert isinstance(loss, framework.Variable)
@@ -1626,9 +1634,10 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
         target_gradients (Variable|list[Variable]|None): The gradient variables
             of targets which has the same shape with targets, If None, ones will
             be created for them.
-        no_grad_set (set[string]): The names of variables that have no gradients
-            in Block 0. All variables with `stop_gradient=True` from all blocks
-            will be automatically added.
+        no_grad_set (set[string]|None): Variable names in the :ref:`api_guide_Block_en` 0 whose gradients
+            should be ignored. All variables with `stop_gradient=True` from all blocks will
+            be automatically added into this set. If this parameter is not None, the names
+            in this set will be added to the default set. Default: None.
 
     Return:
         (list[Variable]): A list of gradients for inputs
