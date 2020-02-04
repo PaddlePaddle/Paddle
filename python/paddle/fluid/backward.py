@@ -1211,8 +1211,10 @@ def append_backward(loss,
             # parameter_list can be list of param.name (str).
             p_g_list3 = fluid.backward.append_backward(loss=avg_loss, parameter_list=all_weights_name)  # [(my_fc.w_0, my_fc.w_0@GRAD)]
             p_g_list4 = fluid.backward.append_backward(loss=avg_loss, no_grad_set=set(['my_fc.b_0']))  # [(my_fc.w_0, my_fc.w_0@GRAD)]
-            # return [] because all param_grads are filtered by no_grad_set.
-            p_g_list5 = fluid.backward.append_backward(loss=avg_loss, parameter_list=all_weights, no_grad_set=set(all_weights_name))  # []
+            # return [] because all param_grads are filtered by no_grad_set that can be set of param (Variable).
+            p_g_list5 = fluid.backward.append_backward(loss=avg_loss, parameter_list=all_weights, no_grad_set=set(all_weights))  # []
+            # no_grad_set can be set of param.name (str).
+            p_g_list6 = fluid.backward.append_backward(loss=avg_loss, parameter_list=all_weights, no_grad_set=set(all_weights_name))  # []
 
     """
     assert isinstance(loss, framework.Variable)
