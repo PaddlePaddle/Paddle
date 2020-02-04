@@ -184,7 +184,7 @@ class TestTensor(unittest.TestCase):
             tensor_array = numpy.array(tensor)
             self.assertEqual((0, 1), tensor_array.shape)
 
-    def run_sliece_tensor(self, place):
+    def run_slice_tensor(self, place):
 
         tensor = fluid.Tensor()
         shape = [3, 3, 3]
@@ -227,14 +227,14 @@ class TestTensor(unittest.TestCase):
         t8 = tensor_array[0::1, 0::-1, 2:]
         self.assertTrue((numpy.array(n8) == numpy.array(t8)).all())
 
-    def test_sliece_tensor(self):
+    def test_slice_tensor(self):
         # run cpu first
         place = core.CPUPlace()
-        self.run_sliece_tensor(place)
+        self.run_slice_tensor(place)
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.run_sliece_tensor(place)
+            self.run_slice_tensor(place)
 
     def test_print_tensor(self):
         scope = core.Scope()
@@ -306,6 +306,7 @@ class TestTensor(unittest.TestCase):
         tensor.set(array, place)
         self.assertEqual(tensor._dtype(), core.VarDesc.VarType.INT16)
         self.assertTrue(numpy.array_equal(numpy.array(tensor), array))
+        self.assertTrue(numpy.array_equal(numpy.array(tensor[1:]), array[1:]))
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)

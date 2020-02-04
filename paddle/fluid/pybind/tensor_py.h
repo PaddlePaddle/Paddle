@@ -442,7 +442,7 @@ inline framework::Tensor *_sliceTensor(const framework::Tensor &self,
     case framework::proto::VarType::INT8:
       return _sliceAndConcat<bool>(self, obj, dim);
     case framework::proto::VarType::INT16:
-      return _sliceAndConcat<bool>(self, obj, dim);
+      return _sliceAndConcat<int16_t>(self, obj, dim);
     case framework::proto::VarType::INT32:
       return _sliceAndConcat<int>(self, obj, dim);
     case framework::proto::VarType::INT64:
