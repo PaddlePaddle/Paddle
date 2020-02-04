@@ -669,8 +669,6 @@ void MultiSlotDataset::GenerateLocalTablesUnlock(int table_id, int feadim,
   for (size_t i = 0; i < consume_task_pool_.size(); i++) {
     consume_task_pool_[i].reset(new ::ThreadPool(1));
   }
-  // std::vector<std::vector<std::future<void>>> task_futures(shard_num);
-  // auto consume_func = [&local_map_tables]
   auto consume_func = [&local_map_tables](int shard_id,
                                           std::vector<uint64_t>& keys) {
     for (auto k : keys) {
@@ -690,7 +688,6 @@ void MultiSlotDataset::GenerateLocalTablesUnlock(int table_id, int feadim,
       for (auto& feature : vec_data[j].uint64_feasigns_) {
         int shard = feature.sign().uint64_feasign_ % shard_num;
         task_keys[shard].push_back(feature.sign().uint64_feasign_);
-        // this->local_tables_[shard].insert(feature.sign().uint64_feasign_);
       }
     }
 
@@ -723,7 +720,7 @@ void MultiSlotDataset::GenerateLocalTablesUnlock(int table_id, int feadim,
     consume_task_pool_[i].reset();
   }
   consume_task_pool_.clear();
-  fleet_ptr_->PullSparseToLocalV2(table_id, feadim);
+  fleet_ptr_->PullSparseToLocal(table_id, feadim);
 }
 void MultiSlotDataset::MergeByInsId() {
   VLOG(3) << "MultiSlotDataset::MergeByInsId begin";

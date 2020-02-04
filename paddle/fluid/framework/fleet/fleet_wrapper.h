@@ -123,7 +123,7 @@ class FleetWrapper {
 
   // Push sparse variables with labels to server in async mode
   std::vector<std::unordered_map<uint64_t, std::vector<float>>> local_tables_;
-  void PullSparseToLocalV2(const uint64_t table_id, int fea_value_dim);
+  void PullSparseToLocal(const uint64_t table_id, int fea_value_dim);
   void PullSparseVarsFromLocal(const Scope& scope, const uint64_t table_id,
                                const std::vector<std::string>& var_names,
                                std::vector<uint64_t>* fea_keys,

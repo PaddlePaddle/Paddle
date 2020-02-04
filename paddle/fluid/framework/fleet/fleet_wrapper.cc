@@ -154,7 +154,7 @@ void FleetWrapper::CreateClient2ClientConnection() {
 #endif
 }
 
-void FleetWrapper::PullSparseToLocalV2(const uint64_t table_id,
+void FleetWrapper::PullSparseToLocal(const uint64_t table_id,
                                        int fea_value_dim) {
 #ifdef PADDLE_WITH_PSLIB
   size_t fea_keys_size = local_tables_.size();
@@ -162,7 +162,6 @@ void FleetWrapper::PullSparseToLocalV2(const uint64_t table_id,
     return;
   }
   local_table_shard_num_ = fea_keys_size;
-  double set_local_table_time = 0.0;
   platform::Timer timeline;
   std::vector<std::thread> threads(fea_keys_size);
   auto ptl_func = [this, &table_id](int i) {
@@ -198,7 +197,6 @@ void FleetWrapper::PullSparseToLocalV2(const uint64_t table_id,
   }
   local_pull_pool_.reset(new ::ThreadPool(pull_local_thread_num_));
   timeline.Pause();
-  set_local_table_time = timeline.ElapsedSec();
 #endif
 }
 

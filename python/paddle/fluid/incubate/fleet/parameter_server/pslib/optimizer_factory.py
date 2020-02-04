@@ -340,16 +340,6 @@ class DistributedAdam(DistributedOptimizerImplBase):
                             "pull_dense"] = [dense_table_index]
                         program_configs[program_id][
                             "push_dense"] = [dense_table_index]
-                    '''
-                    if not program_configs[program_id]["pull_dense"]:
-                        program_configs[program_id]["pull_dense"] = [dense_table_index]
-                        program_configs[program_id]["push_dense"] = [dense_table_index]
-                    else:
-                        program_configs[program_id]["pull_dense"].extend(
-                            [dense_table_index])
-                        program_configs[program_id]["push_dense"].extend(
-                        [dense_table_index])
-                    '''
                     if len(data_norm_params) != 0 and len(data_norm_grads) != 0:
                         dense_table_index += 1
                         if strategy.get('datanorm_table') is not None:
