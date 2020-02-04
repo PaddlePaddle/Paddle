@@ -1649,7 +1649,7 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
 
             import paddle.fluid as fluid
 
-            x = fluid.layers.data(name='x', shape=[2,8,8], dtype='float32')
+            x = fluid.data(name='x', shape=[None,2,8,8], dtype='float32')
             x.stop_gradient=False
             y = fluid.layers.conv2d(x, 4, 1, bias_attr=False)
             y = fluid.layers.relu(y)
