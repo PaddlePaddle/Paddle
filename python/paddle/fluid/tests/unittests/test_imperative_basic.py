@@ -500,9 +500,15 @@ class TestImperative(unittest.TestCase):
         my_layer = MyLayer()
         my_layer.w1 = my_layer.create_parameter([3, 3])
         my_layer.add_parameter('w2', None)
-        self.assertRaises(TypeError, my_layer.add_parameter, 'w3', 'str')
+        self.assertEqual(len(my_layer.parameters()), 1)
+        self.assertRaises(TypeError, my_layer.__setattr__, 'w1', 'str')
+        my_layer.w1 = None
+        self.assertEqual(len(my_layer.parameters()), 0)
         my_layer.l1 = fluid.dygraph.Linear(3, 3)
+        self.assertEqual(len(my_layer.sublayers()), 1)
         self.assertRaises(TypeError, my_layer.__setattr__, 'l1', 'str')
+        my_layer.l1 = None
+        self.assertEqual(len(my_layer.sublayers()), 0)
 
 
 if __name__ == '__main__':
