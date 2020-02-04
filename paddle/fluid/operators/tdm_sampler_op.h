@@ -72,8 +72,8 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
     int *input_data = const_cast<int *>(input_tensor.data<int64_t>());
     int *travel_data = const_cast<int *>(travel_lod_tensor.data<int>());
     int *layer_data = const_cast<int *>(layer_lod_tensor.data<int>());
-    int *output_data = out_tensor->mutable_data<int>(context.GetPlace());
-    int *label_data = label_tensor->mutable_data<int>(context.GetPlace());
+    auto *output_data = out_tensor->mutable_data<int64_t>(context.GetPlace());
+    auto *label_data = label_tensor->mutable_data<int64_t>(context.GetPlace());
     VLOG(1) << "End get input & output data";
     // generate uniform sampler
 
@@ -106,16 +106,20 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
         // Sampling at layer, until samples enough
         for (int sample_index = 0; sample_index < sample_num; ++sample_index) {
           // Avoid sampling to positive samples
-          int sample_res = 0;
+          int64_t sample_res = 0;
           do {
             sample_res = sampler->Sample();
-            VLOG(1) << "sample res: " << sample_res
-                    << " layer_offset: " << layer_offset_lod[layer_idx];
           } while (travel_data[start_offset + layer_idx] ==
                    layer_data[layer_offset_lod[layer_idx] + sample_res]);
 
           output_data[i * sample_res_length + offset] =
               layer_data[layer_offset_lod[layer_idx] + sample_res];
+          VLOG(1) << "sample res: " << sample_res
+                  << " layer_offset: " << layer_offset_lod[layer_idx]
+                  << " layer res: "
+                  << layer_data[layer_offset_lod[layer_idx] + sample_res]
+                  << " output res: "
+                  << output_data[i * sample_res_length + offset];
           label_data[i * sample_res_length + offset] = 0;
           offset += 1;
         }  // end layer nce
