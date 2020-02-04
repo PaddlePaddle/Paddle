@@ -124,7 +124,7 @@ if(WIN32)
         MESSAGE(WARNING
             "Disable NCCL when compiling for Windows. Force WITH_NCCL=OFF.")
         set(WITH_NCCL OFF CACHE STRING
-            "Disable NCCL when compiling for WINDOWS" FORCE)
+            "Disable NCCL when compiling for Windows" FORCE)
     endif()
 endif()
 
@@ -136,7 +136,11 @@ if (NOT WITH_GPU AND WITH_NCCL)
 endif()
 
 if(WITH_NCCL)
-  add_definitions("-DPADDLE_WITH_NCCL")
+     add_definitions("-DPADDLE_WITH_NCCL")
+else()
+     if(WITH_GPU)
+         MESSAGE(WARNING "If the environment is multi-card, the WITH_NCCL option needs to be turned on, otherwise only a single card can be used.")
+     endif()
 endif()
 
 if(WITH_BRPC_RDMA)

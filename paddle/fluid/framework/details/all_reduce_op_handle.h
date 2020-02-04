@@ -54,8 +54,7 @@ class AllReduceOpHandle : public OpHandleBase {
 
   std::vector<Scope *> local_scopes_;
 
-#if !(defined(PADDLE_WITH_CUDA) && !defined(_WIN32) && \
-      defined(PADDLE_WITH_NCCL))
+#ifndef PADDLE_WITH_NCCL
   // NCCLOpHandleBase already have these attributes.
   // Will polish it by class inheritance framework.
   std::vector<platform::Place> places_;
