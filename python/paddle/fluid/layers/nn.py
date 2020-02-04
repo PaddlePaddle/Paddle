@@ -13912,6 +13912,7 @@ def tdm_sampler(input,
                 tree_layer_attr=None,
                 output_labels=False,
                 output_positive=False,
+                output_list=False,
                 seed=0,
                 dtype='int64'):
     '''
@@ -13925,12 +13926,19 @@ def tdm_sampler(input,
     for layer_sampling_nums in neg_samples_num_list:
         sampling_nums += (layer_sampling_nums + int(output_positive))
 
+    leaf_node_nums = len(tree_travel_list)
     travel_shape = [leaf_node_nums, layer_nums]
     travel = helper.create_parameter(
         attr=tree_travel_attr, shape=travel_shape, dtype=dtype)
     travel.stop_gradient = True
 
+    node_nums = 0
+    tree_layer_offset_lod = [0]
+    for layer in tree_layer_list:
+        node_nums += len(layer)
+        tree_layer_offset_lod.append(node_nums)
     layer_shape = [node_nums, 1]
+
     layer = helper.create_parameter(
         attr=tree_layer_attr, shape=layer_shape, dtype=dtype)
     layer.stop_gradient = True
@@ -13952,6 +13960,17 @@ def tdm_sampler(input,
             'layer_offset_lod': tree_layer_offset_lod,
             'seed': seed
         })
+
+    if output_list:
+        output_list = []
+        start_offset = 0
+        for layer_sample_num in neg_samples_num_list:
+            end_offset = start_offset + layer_sample_num + int(output_positive)
+            layer_samples = slice(
+                out, axes=1, start=start_offset, end=end_offset)
+            output_list.append(layer_samples)
+            start_offset = end_offset
+        out = output_list
 
     if output_labels:
         return out, labels
