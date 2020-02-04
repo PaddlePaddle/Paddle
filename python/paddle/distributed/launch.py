@@ -184,8 +184,33 @@ paddlecloud environment.".format(args.cluster_node_ips, node_ips))
         gpus_num = fluid.core.get_cuda_device_count()
         selected_gpus = [str(x) for x in range(0, gpus_num)]
     else:
-        selected_gpus = [x.strip() for x in args.selected_gpus.split(',')]
+        cuda_visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
+        if cuda_visible_devices is None or cuda_visible_devices == "":
+            selected_gpus = [x.strip() for x in args.selected_gpus.split(',')]
+        else:
+            # change selected_gpus into relative values
+            # e.g. CUDA_VISIBLE_DEVICES=4,5,6,7; args.selected_gpus=4,5,6,7;
+            # therefore selected_gpus=0,1,2,3
+            cuda_visible_devices_list = cuda_visible_devices.split(',')
+            for x in args.selected_gpus.split(','):
+                assert x in cuda_visible_devices_list, "Can't find "\
+                "your selected_gpus %s in CUDA_VISIBLE_DEVICES[%s]."\
+                % (x, cuda_visible_devices)
+            selected_gpus = [
+                cuda_visible_devices_list.index(x.strip())
+                for x in args.selected_gpus.split(',')
+            ]
     selected_gpus_num = len(selected_gpus)
+
+    if args.use_paddlecloud and num_nodes > 1:
+        cloud_paddle_port = os.getenv("PADDLE_PORT", "")
+        cloud_paddle_port_num = os.getenv("PADDLE_PORTS_NUM", "")
+        if cloud_paddle_port != "" and cloud_paddle_port_num != "":
+            cloud_paddle_port_num = int(cloud_paddle_port_num)
+            if cloud_paddle_port_num >= selected_gpus_num:
+                args.started_port = int(cloud_paddle_port)
+                logger.warning("Use Cloud specified port:{}.".format(
+                    cloud_paddle_port))
 
     trainers_endpoints = ""
     for ip in node_ips:

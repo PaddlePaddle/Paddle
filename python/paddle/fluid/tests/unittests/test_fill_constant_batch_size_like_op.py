@@ -90,7 +90,7 @@ class TestFillConstantBatchSizeLikeWithLoDTensor(OpTest):
 
 
 # Test python API
-class TestFillConstantBatchSizeLikeAPI(OpTest):
+class TestFillConstantBatchSizeLikeAPI(unittest.TestCase):
     def test_api(self):
         like = fluid.layers.fill_constant(
             shape=[1, 200], value=10, dtype='int64')

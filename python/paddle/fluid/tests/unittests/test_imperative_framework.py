@@ -21,17 +21,17 @@ from test_imperative_base import new_program_scope
 
 
 class MLP(fluid.Layer):
-    def __init__(self, name_scope):
-        super(MLP, self).__init__(name_scope)
-        self._fc1 = fluid.dygraph.FC(
-            self.full_name(),
+    def __init__(self, input_size):
+        super(MLP, self).__init__()
+        self._linear1 = fluid.dygraph.Linear(
+            input_size,
             3,
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.1)),
             bias_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.1)))
-        self._fc2 = fluid.dygraph.FC(
-            self.full_name(),
+        self._linear2 = fluid.dygraph.Linear(
+            3,
             4,
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.1)),
@@ -39,8 +39,8 @@ class MLP(fluid.Layer):
                 initializer=fluid.initializer.Constant(value=0.1)))
 
     def forward(self, inputs):
-        x = self._fc1(inputs)
-        x = self._fc2(x)
+        x = self._linear1(inputs)
+        x = self._linear2(x)
         x = fluid.layers.reduce_sum(x)
         return x
 
@@ -48,7 +48,7 @@ class MLP(fluid.Layer):
 class TestDygraphFramework(unittest.TestCase):
     def test_dygraph_backward(self):
         with new_program_scope():
-            mlp = MLP("mlp")
+            mlp = MLP(input_size=2)
             var_inp = fluid.layers.data(
                 "input", shape=[2, 2], dtype="float32", append_batch_size=False)
             out = mlp(var_inp)

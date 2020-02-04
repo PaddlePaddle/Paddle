@@ -127,9 +127,11 @@ class GradOpBaseMakerBase {
 
       for (auto& var_base_temp : iterator->second) {
         if (is_grad) {
-          PADDLE_ENFORCE_NOT_NULL(var_base_temp->GradVarBase(),
-                                  "VarBase grad of OP [%s] should not be null",
-                                  fw_op_base_->Type());
+          if (!var_base_temp->HasGradVar()) {
+            VLOG(6) << "GradVarBase of var " << var_base_temp->Name()
+                    << " in OP " << fw_op_base_->Type() << " is null";
+            var_base_temp->MutableGradVarBase();
+          }
           auto grad_var_base_tmp = var_base_temp->GradVarBase();
           if (!is_input) {
             auto* tensor = grad_var_base_tmp->MutableVar()

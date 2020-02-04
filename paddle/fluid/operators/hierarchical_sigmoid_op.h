@@ -68,46 +68,6 @@ class HierarchicalSigmoidOpKernel : public framework::OpKernel<T> {
     size_t num_classes = static_cast<size_t>(ctx.Attr<int>("num_classes"));
     // for remote prefetch
 
-    auto remote_prefetch = ctx.Attr<bool>("remote_prefetch");
-    auto epmap = ctx.Attr<std::vector<std::string>>("epmap");
-    if (remote_prefetch && !epmap.empty()) {
-      // if epmap is not empty, then the parameter will be fetched from remote
-      // parameter
-      // server
-      auto height_sections = ctx.Attr<std::vector<int64_t>>("height_sections");
-      auto table_names = ctx.Attr<std::vector<std::string>>("table_names");
-      std::vector<int64_t> real_rows = PathToRows(*path);
-      framework::Scope& local_scope = ctx.scope().NewScope();
-      auto* ids = local_scope.Var("Ids@Prefetch");
-      auto* x_tensor = ids->GetMutable<framework::LoDTensor>();
-
-      x_tensor->mutable_data<int64_t>(
-          framework::make_ddim({static_cast<int64_t>(real_rows.size()), 1}),
-          ctx.GetPlace());
-      // copy.
-
-      std::memcpy(x_tensor->data<int64_t>(), real_rows.data(),
-                  real_rows.size() * sizeof(int64_t));
-
-      framework::DDim w_dims = ctx.Input<Tensor>("W")->dims();
-      w_dims[0] = x_tensor->dims()[0];
-      auto* w_tensor =
-          local_scope.Var("W@Prefetch")->GetMutable<framework::LoDTensor>();
-      w_tensor->Resize(w_dims);
-
-#ifdef PADDLE_WITH_DISTRIBUTE
-      // w_Out is set to used by prefetch, never change it in other cases
-      auto weight = ctx.OutputNames("W_Out").front();
-      operators::distributed::prefetch("Ids@Prefetch", "W@Prefetch", weight,
-                                       true, table_names, epmap,
-                                       height_sections, ctx, local_scope);
-#else
-      PADDLE_THROW(
-          "paddle is not compiled with distribute support, can not do "
-          "parameter prefetch!");
-#endif
-    }
-
     bool is_custom = false;
     if (path) {
       is_custom = true;

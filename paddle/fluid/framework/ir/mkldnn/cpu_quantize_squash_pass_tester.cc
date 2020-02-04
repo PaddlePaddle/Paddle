@@ -50,6 +50,15 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
   } else if (type == "concat") {
     op->SetInput("X", inputs);
     op->SetOutput("Out", outputs);
+  } else if (type == "fc") {
+    op->SetInput("Input", {inputs[0]});
+    PADDLE_ENFORCE_EQ(inputs.size(), 2UL,
+                      platform::errors::InvalidArgument(
+                          "The fc inputs should contain input and weights, but "
+                          "now the size of inputs is %d",
+                          inputs.size()));
+    op->SetInput("W", {inputs[1]});
+    op->SetOutput("Out", outputs);
   }
 }
 
@@ -176,6 +185,36 @@ ProgramDesc BuildConvDequantConcatProgramDesc(bool use_mkldnn, float scale_out,
   return prog;
 }
 
+// a->fc->b
+// b->Dequant1->c
+// c->Concat1->d
+ProgramDesc BuildFcDequantConcatProgramDesc(bool use_mkldnn, float scale_out,
+                                            float scale) {
+  ProgramDesc prog;
+  for (auto& v : variable_names) {
+    prog.MutableBlock(0)->Var(v);
+  }
+  SetOp(&prog, "fc", "Fc1", {"a", "w1"}, {"b"}, use_mkldnn, scale_out);
+  SetOp(&prog, "dequantize", "Dequant1", {"b"}, {"c"}, use_mkldnn, scale);
+  SetOp(&prog, "concat", "Concat1", {"c"}, {"d"}, use_mkldnn);
+  return prog;
+}
+
+// a->fc->b
+// b->Dequant1->c
+// b->concat->d
+ProgramDesc BuildFcDequantFcProgramDesc(bool use_mkldnn, float scale_out,
+                                        float scale) {
+  ProgramDesc prog;
+  for (auto& v : variable_names) {
+    prog.MutableBlock(0)->Var(v);
+  }
+  SetOp(&prog, "fc", "Fc1", {"a", "w1"}, {"b"}, use_mkldnn, scale_out);
+  SetOp(&prog, "dequantize", "Dequant1", {"b"}, {"c"}, use_mkldnn, scale);
+  SetOp(&prog, "concat", "Concat1", {"b"}, {"d"}, use_mkldnn);
+  return prog;
+}
+
 // a->Conv1->b
 // b->Dequant1(Scale1)->c
 // b->Conv2->d
@@ -188,6 +227,28 @@ ProgramDesc BuildConvDequantConvProgramDesc(bool use_mkldnn, float scale_out,
   SetOp(&prog, "conv2d", "Conv1", {"a"}, {"b"}, use_mkldnn, scale_out);
   SetOp(&prog, "dequantize", "Dequant1", {"b"}, {"c"}, use_mkldnn, scale);
   SetOp(&prog, "conv2d", "Conv2", {"b"}, {"d"}, use_mkldnn);
+  return prog;
+}
+
+// a->concat->b
+// b->Quant1(Scale1)->c
+// b->Quant2(Scale2)->d
+// b->concat->e
+// c->fc->f
+// d->fc->g
+ProgramDesc BuildMultipleQuantizeProgramDesc(bool use_mkldnn, float first_scale,
+                                             float second_scale) {
+  ProgramDesc prog;
+  for (auto& v : variable_names) {
+    prog.MutableBlock(0)->Var(v);
+  }
+  SetOp(&prog, "concat", "Concat1", {"a"}, {"b"}, use_mkldnn);
+  SetOp(&prog, "quantize", "Quantize1", {"b"}, {"c"}, use_mkldnn, first_scale);
+  SetOp(&prog, "quantize", "Quantize2", {"b"}, {"d"}, use_mkldnn, second_scale);
+  SetOp(&prog, "concat", "Concat2", {"b"}, {"e"}, use_mkldnn);
+  SetOp(&prog, "fc", "Fc1", {"c", "w1"}, {"f"}, use_mkldnn, first_scale);
+  SetOp(&prog, "fc", "Fc2", {"d", "w2"}, {"g"}, use_mkldnn, second_scale);
+
   return prog;
 }
 
@@ -261,6 +322,23 @@ void CheckRequantScalesTest(const ProgramDesc& prog, float scale_in,
   }
 }
 
+// check requant_op scales
+void IsForceFp32OutputTest(const ProgramDesc& prog, std::string op_type,
+                           bool target_is_force_fp32_output) {
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
+
+  PrepareGraph(&graph, prog);
+  RegisterPass(&graph);
+
+  for (auto* node : graph->Nodes()) {
+    if (node->IsOp() && node->Op()->Type() == op_type) {
+      bool is_force_fp32_output =
+          node->Op()->GetAttrIfExists<bool>("force_fp32_output");
+      EXPECT_EQ(is_force_fp32_output, target_is_force_fp32_output);
+    }
+  }
+}
+
 // From Conv1->d->Dequant->e->Quant->f->Conv2
 // To Conv1->d->Conv2
 TEST(CpuQuantizeSquashPass, equal_scales) {
@@ -277,18 +355,45 @@ TEST(CpuQuantizeSquashPass, equal_scales) {
 
 // From Conv1->d->Dequant->e->Quant->f->Conv2
 // First change to Conv1->d->Requant->f->Conv2
+// Then Conv1->f->Conv2
 TEST(CpuQuantizeSquashPass, unequal_scales) {
   auto scale_out = 1.0f;
   auto scale1 = 1.2345f;
   auto scale2 = 21.0f;
   auto use_mkldnn = true;
-  // Remove 3 nodes: Dequant, Quant, e
-  // Insert 1 node: Requant
-  auto remove_nodes = 2;
+  // Remove 4 nodes: Dequant, Quant, e, d
+  auto remove_nodes = 4;
 
   CountNodeTest(
       BuildConvRequantProgramDesc(use_mkldnn, scale_out, scale1, scale2),
       remove_nodes);
+
+  EqualScaleOutTest(
+      BuildConvRequantProgramDesc(use_mkldnn, scale_out, scale1, scale2),
+      "Conv1", scale2);
+}
+
+//  a->Conv1->b->Requant->c
+//  d->Conv2->e->Requant->f
+//  {c,f}->Concat
+TEST(CpuQuantizeSquashPass, equal_scales_squash_requantize) {
+  // Delete both requantize op
+  auto scale_out = 1.0f;
+  auto scale = 1.2345f;
+  auto use_mkldnn = true;
+  // Remove 4 nodes: b, Requant1, e, Requant2
+  auto remove_nodes = 4;
+  CountNodeTest(
+      BuildConvsRequantConcatProgramDesc(use_mkldnn, scale_out, scale, scale),
+      remove_nodes);
+
+  // check equal scale conv->scale_out and requant->scale_out
+  EqualScaleOutTest(
+      BuildConvsRequantConcatProgramDesc(use_mkldnn, scale_out, scale, scale),
+      "Conv1", scale);
+  EqualScaleOutTest(
+      BuildConvsRequantConcatProgramDesc(use_mkldnn, scale_out, scale, scale),
+      "Conv2", scale);
 }
 
 // from
@@ -362,8 +467,12 @@ TEST(CpuQuantizeSquashPass, conv_dequant_only_one_output) {
   auto remove_nodes = 2;
   CountNodeTest(BuildConvDequantConcatProgramDesc(use_mkldnn, scale_out, scale),
                 remove_nodes);
+  IsForceFp32OutputTest(
+      BuildConvDequantConcatProgramDesc(use_mkldnn, scale_out, scale), "conv2d",
+      true);
 }
 
+// If there are more than one op after conv->dequantize, do not fuse
 TEST(CpuQuantizeSquashPass, conv_dequant_more_than_one_op_after_conv) {
   auto scale_out = 1.0f;
   auto scale = 1.2345f;
@@ -372,6 +481,67 @@ TEST(CpuQuantizeSquashPass, conv_dequant_more_than_one_op_after_conv) {
   auto remove_nodes = 0;
   CountNodeTest(BuildConvDequantConvProgramDesc(use_mkldnn, scale_out, scale),
                 remove_nodes);
+  IsForceFp32OutputTest(
+      BuildConvDequantConvProgramDesc(use_mkldnn, scale_out, scale), "conv2d",
+      false);
+}
+
+// from
+// a->fc->b->Dequant1->c->Concat1->d
+// to
+// a->fc->c->Concat->d
+TEST(CpuQuantizeSquashPass, fc_dequant_only_one_output) {
+  auto scale_out = 1.0f;
+  auto scale = 1.2345f;
+  auto use_mkldnn = true;
+  // remove 2 nodes: b, Dequant1
+  auto remove_nodes = 2;
+  CountNodeTest(BuildFcDequantConcatProgramDesc(use_mkldnn, scale_out, scale),
+                remove_nodes);
+  IsForceFp32OutputTest(
+      BuildFcDequantConcatProgramDesc(use_mkldnn, scale_out, scale), "fc",
+      true);
+}
+
+// If there are more than one op after fc->dequantize, do not fuse
+TEST(CpuQuantizeSquashPass, fc_dequant_more_than_one_op_after_dequant) {
+  auto scale_out = 1.0f;
+  auto scale = 1.2345f;
+  auto use_mkldnn = true;
+  // nothing change
+  auto remove_nodes = 0;
+  CountNodeTest(BuildFcDequantFcProgramDesc(use_mkldnn, scale_out, scale),
+                remove_nodes);
+  IsForceFp32OutputTest(
+      BuildFcDequantFcProgramDesc(use_mkldnn, scale_out, scale), "fc", false);
+}
+
+// a->Concat1->b
+// b->Concat2
+// b->Quatize1(Scale)->c
+// c->Fc1
+// c->Fc2
+TEST(CpuQuantizeSquashPass, quatize_with_same_scale) {
+  auto first_scale = 1.2345f;
+  auto second_scale = 1.2345f;
+  auto use_mkldnn = true;
+  // remove nodes: Quantize2 + d
+  auto remove_nodes = 1 + 1;
+  CountNodeTest(
+      BuildMultipleQuantizeProgramDesc(use_mkldnn, first_scale, second_scale),
+      remove_nodes);
+}
+
+// if scales are not the same, do not fuse
+TEST(CpuQuantizeSquashPass, quatize_with_different_scale) {
+  auto first_scale = 1.2345f;
+  auto second_scale = 1.5432f;
+  auto use_mkldnn = true;
+  // nothing change
+  auto remove_nodes = 0;
+  CountNodeTest(
+      BuildMultipleQuantizeProgramDesc(use_mkldnn, first_scale, second_scale),
+      remove_nodes);
 }
 
 }  // namespace ir

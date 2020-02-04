@@ -206,7 +206,7 @@ class FleetUtil(object):
         pos = pos.reshape(-1)
         global_pos = np.copy(pos) * 0
         # mpi allreduce
-        fleet._role_maker._node_type_comm.Allreduce(pos, global_pos)
+        fleet._role_maker._all_reduce(pos, global_pos)
         # reshape to its original shape
         global_pos = global_pos.reshape(old_pos_shape)
 
@@ -215,7 +215,7 @@ class FleetUtil(object):
         old_neg_shape = np.array(neg.shape)
         neg = neg.reshape(-1)
         global_neg = np.copy(neg) * 0
-        fleet._role_maker._node_type_comm.Allreduce(neg, global_neg)
+        fleet._role_maker._all_reduce(neg, global_neg)
         global_neg = global_neg.reshape(old_neg_shape)
 
         # calculate auc
@@ -1350,7 +1350,7 @@ class FleetUtil(object):
         pos = pos.reshape(-1)
         global_pos = np.copy(pos) * 0
         # mpi allreduce
-        fleet._role_maker._node_type_comm.Allreduce(pos, global_pos)
+        fleet._role_maker._all_reduce(pos, global_pos)
         # reshape to its original shape
         global_pos = global_pos.reshape(old_pos_shape)
         # auc neg bucket
@@ -1358,7 +1358,7 @@ class FleetUtil(object):
         old_neg_shape = np.array(neg.shape)
         neg = neg.reshape(-1)
         global_neg = np.copy(neg) * 0
-        fleet._role_maker._node_type_comm.Allreduce(neg, global_neg)
+        fleet._role_maker._all_reduce(neg, global_neg)
         global_neg = global_neg.reshape(old_neg_shape)
 
         num_bucket = len(global_pos[0])
@@ -1368,7 +1368,7 @@ class FleetUtil(object):
             old_metric_shape = np.array(metric.shape)
             metric = metric.reshape(-1)
             global_metric = np.copy(metric) * 0
-            fleet._role_maker._node_type_comm.Allreduce(metric, global_metric)
+            fleet._role_maker._all_reduce(metric, global_metric)
             global_metric = global_metric.reshape(old_metric_shape)
             return global_metric[0]
 

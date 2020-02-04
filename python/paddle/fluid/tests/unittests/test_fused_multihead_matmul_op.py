@@ -54,7 +54,8 @@ class TestFusedMultiheadMatmulOp(OpTest):
         self.BiasK = np.random.random((1, w)).astype("float32")
         self.BiasV = np.random.random((1, w)).astype("float32")
         self.BiasQK = np.random.random(
-            (1, self.head_number, self.seq_len, self.seq_len)).astype("float32")
+            (self.batch_size, self.head_number, self.seq_len,
+             self.seq_len)).astype("float32")
         # Compute Q path
         fc_q = self.Q + self.BiasQ
         reshape_q = np.reshape(fc_q, (self.batch_size, self.seq_len,

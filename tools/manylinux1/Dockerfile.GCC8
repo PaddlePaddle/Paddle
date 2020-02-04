@@ -27,10 +27,10 @@ RUN apt-get install -y python-dev python-pip wget vim git
 
 # install cmake
 WORKDIR /home
-RUN wget -q https://cmake.org/files/v3.10/cmake-3.10.0-Linux-x86_64.tar.gz
-RUN tar -xvf cmake-3.10.0-Linux-x86_64.tar.gz
+RUN wget -q https://cmake.org/files/v3.16/cmake-3.16.0-Linux-x86_64.tar.gz
+RUN tar -zxvf cmake-3.16.0-Linux-x86_64.tar.gz
 RUN apt install libidn11
-ENV PATH=/home/cmake-3.10.0-Linux-x86_64/bin:$PATH
+ENV PATH=/home/cmake-3.16.0-Linux-x86_64/bin:$PATH
 WORKDIR /usr/bin
 RUN wget -q http://mirror.linux-ia64.org/gnu/gcc/releases/gcc-8.2.0/gcc-8.2.0.tar.xz && \
   tar -xvf gcc-8.2.0.tar.xz && \
@@ -75,7 +75,7 @@ RUN apt-get update && \
     wget unzip unrar tar xz-utils bzip2 gzip coreutils ntp \
     curl sed grep graphviz libjpeg-dev zlib1g-dev  \
     python-matplotlib \
-    automake locales clang-format swig cmake  \
+    automake locales clang-format swig  \
     liblapack-dev liblapacke-dev \
     net-tools libtool ccache module-init-tools && \
     apt-get clean -y

@@ -210,6 +210,8 @@ def create_test_channel_last_class(parent):
 
 
 def create_test_cudnn_channel_last_class(parent):
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
     class TestCudnnChannelLastCase(parent):
         def init_kernel_type(self):
             self.use_cudnn = True
@@ -232,7 +234,7 @@ class TestConv3dOp(OpTest):
         self.use_cudnn = False
         self.use_mkldnn = False
         self.data_format = "AnyLayout"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_kernel_type()
         self.init_group()
         self.init_dilation()
@@ -359,7 +361,7 @@ class TestWith1x1(TestConv3dOp):
         self.input_size = [2, 3, 4, 4, 4]
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 1, 1, 1]
+        self.filter_size = [120, f_c, 1, 1, 1]
 
     def init_dilation(self):
         self.dilations = [1, 1, 1]
@@ -372,10 +374,10 @@ class TestWithInput1x1Filter1x1(TestConv3dOp):
     def init_test_case(self):
         self.pad = [0, 0, 0]
         self.stride = [1, 1, 1]
-        self.input_size = [2, 3, 1, 1, 1]
+        self.input_size = [40, 3, 1, 1, 1]
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 1, 1, 1]
+        self.filter_size = [120, f_c, 1, 1, 1]
 
     def init_dilation(self):
         self.dilations = [1, 1, 1]
@@ -391,7 +393,7 @@ class TestWithDilation(TestConv3dOp):
         self.input_size = [2, 3, 6, 6, 6]
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 2, 2, 2]
+        self.filter_size = [24, f_c, 2, 2, 2]
 
     def init_dilation(self):
         self.dilations = [2, 2, 2]
@@ -403,11 +405,15 @@ class TestWithDilation(TestConv3dOp):
 #---------------- Conv3dCUDNN ----------------
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestCUDNN(TestConv3dOp):
     def init_kernel_type(self):
         self.use_cudnn = True
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestFP16CUDNN(TestConv3dOp):
     def init_kernel_type(self):
         self.use_cudnn = True
@@ -420,11 +426,15 @@ class TestFP16CUDNN(TestConv3dOp):
                 self.check_output_with_place(place, atol=2e-2)
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestWithGroup1CUDNN(TestWithGroup1):
     def init_kernel_type(self):
         self.use_cudnn = True
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestFP16WithGroup1CUDNN(TestWithGroup1):
     def init_kernel_type(self):
         self.use_cudnn = True
@@ -437,11 +447,15 @@ class TestFP16WithGroup1CUDNN(TestWithGroup1):
                 self.check_output_with_place(place, atol=2e-2)
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestWithGroup2CUDNN(TestWithGroup2):
     def init_kernel_type(self):
         self.use_cudnn = True
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestFP16WithGroup2CUDNN(TestWithGroup2):
     def init_kernel_type(self):
         self.use_cudnn = True
@@ -454,11 +468,15 @@ class TestFP16WithGroup2CUDNN(TestWithGroup2):
                 self.check_output_with_place(place, atol=2e-2)
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestWith1x1CUDNN(TestWith1x1):
     def init_kernel_type(self):
         self.use_cudnn = True
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestFP16With1x1CUDNN(TestWith1x1):
     def init_kernel_type(self):
         self.use_cudnn = True
@@ -471,11 +489,15 @@ class TestFP16With1x1CUDNN(TestWith1x1):
                 self.check_output_with_place(place, atol=2e-2)
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestWithInput1x1Filter1x1CUDNN(TestWithInput1x1Filter1x1):
     def init_kernel_type(self):
         self.use_cudnn = True
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestFP16WithInput1x1Filter1x1CUDNN(TestWithInput1x1Filter1x1):
     def init_kernel_type(self):
         self.use_cudnn = True
@@ -503,7 +525,7 @@ class TestConv3dOp_2(OpTest):
         self.use_cudnn = False
         self.use_mkldnn = False
         self.data_format = "NCDHW"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_kernel_type()
         self.init_group()
         self.init_dilation()
@@ -677,7 +699,7 @@ class TestWith1x1_AsyPadding(TestConv3dOp_2):
         self.input_size = [2, 3, 4, 4, 4]
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 1, 1, 1]
+        self.filter_size = [120, f_c, 1, 1, 1]
 
     def init_dilation(self):
         self.dilations = [1, 1, 1]
@@ -696,7 +718,7 @@ class TestWithDilation_AsyPadding(TestConv3dOp_2):
         self.input_size = [2, 3, 6, 6, 6]
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 2, 2, 2]
+        self.filter_size = [24, f_c, 2, 2, 2]
 
     def init_dilation(self):
         self.dilations = [2, 2, 2]

@@ -122,11 +122,7 @@ bool AnalysisPredictor::PrepareScope(
     scope_ = parent_scope;
     status_is_cloned_ = true;
   } else {
-    if (config_.use_gpu_) {
-      paddle::framework::InitDevices(false);
-    } else {
-      paddle::framework::InitDevices(false, {});
-    }
+    paddle::framework::InitDevices(false);
     scope_.reset(new paddle::framework::Scope());
     status_is_cloned_ = false;
   }
@@ -432,6 +428,13 @@ void AnalysisPredictor::PrepareArgument() {
     LOG(INFO) << "Anakin subgraph engine is enabled";
   }
 
+  if (config_.lite_engine_enabled()) {
+    argument_.SetLitePrecisionMode(config_.lite_precision_mode_);
+    argument_.SetLitePassesFilter(config_.lite_passes_filter_);
+    argument_.SetLiteOpsFilter(config_.lite_ops_filter_);
+    LOG(INFO) << "Lite subgraph engine is enabled";
+  }
+
   if (config_.use_mkldnn_) {
     LOG(INFO) << "MKLDNN is enabled";
     argument_.SetMKLDNNEnabledOpTypes(config_.mkldnn_enabled_op_types_);
@@ -506,8 +509,6 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
       std::string flag = "--fraction_of_gpu_memory_to_use=" +
                          std::to_string(fraction_of_gpu_memory);
       flags.push_back(flag);
-      // use auto growth strategy here.
-      flags.push_back("--allocator_strategy=auto_growth");
       flags.push_back("--cudnn_deterministic=True");
       VLOG(3) << "set flag: " << flag;
       framework::InitGflags(flags);
@@ -944,6 +945,10 @@ USE_TRT_CONVERTER(conv2d_transpose);
 USE_TRT_CONVERTER(leaky_relu);
 USE_TRT_CONVERTER(shuffle_channel);
 USE_TRT_CONVERTER(swish);
+USE_TRT_CONVERTER(instance_norm);
+USE_TRT_CONVERTER(layer_norm);
+USE_TRT_CONVERTER(gelu);
+USE_TRT_CONVERTER(multihead_matmul);
 #endif
 
 #if PADDLE_WITH_ANAKIN

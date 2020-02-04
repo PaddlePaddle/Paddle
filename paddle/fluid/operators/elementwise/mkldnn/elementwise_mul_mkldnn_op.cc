@@ -70,7 +70,7 @@ class ElementwiseMulMKLDNNKernel : public framework::OpKernel<T> {
 
     auto x_dims = x->dims();
     auto y_dims_untrimmed = y->dims();
-    auto x_int_dims = paddle::framework::vectorize<int>(x_dims);
+    auto x_int_dims = paddle::framework::vectorize<int64_t>(x_dims);
 
     int pre, num, post, is_run_common_broadcast;
     get_mid_dims(x_dims, y_dims_untrimmed, axis, &pre, &num, &post,
