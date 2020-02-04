@@ -42,12 +42,11 @@ class MulPrimitiveFactory {
 
   inner_product_forward CreateMulPrimitive(const Tensor *x_input,
                                            const Tensor *y_input,
-                                           Tensor *output,
+                                           Tensor *output, const bool is_int8,
                                            const ExecutionContext &ctx) {
     /* check data format and reorder if need */
     int x_num_col_dims = ctx.Attr<int>("x_num_col_dims");
     int y_num_col_dims = ctx.Attr<int>("y_num_col_dims");
-    auto scale_y = ctx.Attr<std::vector<float>>("scale_y");
 
     // TODO(intel-minghui) : Remove the restriction that only supports Input(Y)
     // as weights
@@ -74,13 +73,18 @@ class MulPrimitiveFactory {
     auto src_desc = CreateMemDescriptor<XT>(&x_matrix, MKLDNNMemoryFormat::nc);
     x_input_ = CreateMemory<XT>(src_desc, &x_matrix);
 
-    const auto trans_y = TransposeInputY(&y_matrix);
-    y_input_ = QuantInputY(trans_y, scale_y);
+    if (is_int8) {
+      const auto trans_y = TransposeInputY(&y_matrix);
+      auto scale_y = ctx.Attr<std::vector<float>>("scale_y");
+      y_input_ = QuantInputY(trans_y, scale_y);
+    } else {
+      y_input_ = TransposeInputY(&y_matrix);
+    }
 
     auto dst_desc = CreateMemDescriptor<OT>(output, MKLDNNMemoryFormat::any);
 
-    mul_ =
-        CreateMemMulPrimitive(*(x_input_), *(y_input_), dst_desc, output, ctx);
+    mul_ = CreateMemMulPrimitive(*(x_input_), *(y_input_), dst_desc, output,
+                                 is_int8, ctx);
     Execute();
     return *(mul_);
   }
@@ -147,13 +151,23 @@ class MulPrimitiveFactory {
                                               const memory &y_memory,
                                               const memory::desc &dst_desc,
                                               Tensor *output,
+                                              const bool is_int8,
                                               const ExecutionContext &ctx) {
     const auto x_desc = x_memory.get_desc();
     const auto y_desc = y_memory.get_desc();
-    bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
+    inner_product_forward::primitive_desc mul_prim_desc;
 
-    mkldnn::primitive_attr mul_attr = CreateMulAttr(ctx, force_fp32_output);
-    auto mul_prim_desc = CreateMulPrimDesc(x_desc, y_desc, dst_desc, mul_attr);
+    const auto &mul_desc = inner_product_forward::desc(
+        prop_kind::forward, x_desc, y_desc, dst_desc);
+
+    if (is_int8) {
+      bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
+      auto mul_attr = CreateMulAttr(ctx, force_fp32_output);
+      mul_prim_desc =
+          inner_product_forward::primitive_desc(mul_desc, mul_attr, engine_);
+    } else {
+      mul_prim_desc = inner_product_forward::primitive_desc(mul_desc, engine_);
+    }
 
     output_ = CreateDstMemory(mul_prim_desc, ctx, output);
 
@@ -162,11 +176,11 @@ class MulPrimitiveFactory {
 
   inner_product_forward::primitive_desc CreateMulPrimDesc(
       const memory::desc &x_desc, const memory::desc &y_desc,
-      const memory::desc &dst_desc, const mkldnn::primitive_attr &mul_attr) {
-    const auto &mul_desc = inner_product_forward::desc(
-        prop_kind::forward, x_desc, y_desc, dst_desc);
+      const memory::desc &dst_desc) {
+    auto mul_desc = inner_product_forward::desc(prop_kind::forward, x_desc,
+                                                y_desc, dst_desc);
 
-    return inner_product_forward::primitive_desc(mul_desc, mul_attr, engine_);
+    return inner_product_forward::primitive_desc(mul_desc, engine_);
   }
 
   void Execute() {
@@ -271,15 +285,6 @@ class MulPrimitiveFactory {
     return Reorder(src_desc, dst_desc, to_void_cast<YT>(input_y->data<YT>()));
   }
 
-  inner_product_forward::primitive_desc CreateMulPrimDesc(
-      const memory::desc &x_desc, const memory::desc &y_desc,
-      const memory::desc &dst_desc) {
-    auto mul_desc = inner_product_forward::desc(prop_kind::forward, x_desc,
-                                                y_desc, dst_desc);
-
-    return inner_product_forward::primitive_desc(mul_desc, engine_);
-  }
-
  protected:
   const mkldnn::engine &engine_;
   boost::optional<memory> x_input_;
@@ -293,7 +298,7 @@ template <typename XT, typename YT, typename OT>
 std::shared_ptr<MulPrimitiveFactory<XT, YT, OT>> GetPrimitiveFactory(
     const MKLDNNDeviceContext &dev_ctx, const ExecutionContext &ctx,
     const Tensor *input_x, const Tensor *input_y,
-    const mkldnn::engine &mkldnn_engine, bool enable_quant) {
+    const mkldnn::engine &mkldnn_engine, bool is_int8) {
   const std::string key = platform::CreateKey(
       input_x->type(), framework::vectorize(input_x->dims()), input_y->type(),
       framework::vectorize(input_y->dims()), ctx.OutputName("Out"));
@@ -302,14 +307,8 @@ std::shared_ptr<MulPrimitiveFactory<XT, YT, OT>> GetPrimitiveFactory(
       dev_ctx.GetBlob(key));
 
   if (prim_creator == nullptr) {
-    if (enable_quant) {
-      prim_creator =
-          std::make_shared<MulPrimitiveFactory<XT, YT, OT>>(mkldnn_engine);
-    } else {
-      prim_creator =
-          std::make_shared<MulPrimitiveFactory<XT, YT, OT>>(mkldnn_engine);
-    }
-
+    prim_creator =
+        std::make_shared<MulPrimitiveFactory<XT, YT, OT>>(mkldnn_engine);
     dev_ctx.SetBlob(key, prim_creator);
   }
 
@@ -322,19 +321,19 @@ inner_product_forward GetMulPrimitive(const MKLDNNDeviceContext &dev_ctx,
                                       const Tensor *input_x,
                                       const Tensor *input_y, Tensor *output,
                                       const mkldnn::engine &mkldnn_engine) {
-  bool enable_quant =
+  constexpr bool is_int8 =
       std::is_same<XT, int8_t>::value || std::is_same<XT, uint8_t>::value;
   bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
 
-  if (enable_quant && !force_fp32_output) {
+  if (is_int8 && !force_fp32_output) {
     return GetPrimitiveFactory<XT, YT, int8_t>(dev_ctx, ctx, input_x, input_y,
-                                               mkldnn_engine, enable_quant)
-        ->CreateMulPrimitive(input_x, input_y, output, ctx);
+                                               mkldnn_engine, is_int8)
+        ->CreateMulPrimitive(input_x, input_y, output, is_int8, ctx);
 
   } else {
     return GetPrimitiveFactory<XT, YT, float>(dev_ctx, ctx, input_x, input_y,
-                                              mkldnn_engine, enable_quant)
-        ->CreateMulPrimitive(input_x, input_y, output, ctx);
+                                              mkldnn_engine, is_int8)
+        ->CreateMulPrimitive(input_x, input_y, output, is_int8, ctx);
   }
 }
 
