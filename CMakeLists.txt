@@ -151,7 +151,6 @@ if(NOT WIN32)
     include(cupti)
 endif()
 
-include(anakin_subgraph)
 include(flags)              # set paddle compile flags
 include(cudnn)              # set cudnn libraries, must before configure
 
