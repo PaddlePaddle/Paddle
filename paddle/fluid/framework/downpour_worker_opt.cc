@@ -17,8 +17,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
+#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
+
+namespace paddle {
+namespace framework {
 
 bool HasDependentOutput(const OpDesc& op_desc,
                         const std::unordered_set<std::string>& dependent_vars) {
@@ -87,7 +91,7 @@ void AppendOutputVar(const OpDesc& op_desc,
 void DownpourWorkerOpt::CreateThreadOperatorsWithRerank(
     const ProgramDesc& program) {
   auto& block = program.Block(0);
-  auto* ops = block.AllOps();
+  std::vector<OpDesc*> ops = block.AllOps();
   // check if Independent between losses if not skip for now
   int loss_num = loss_names_.size();
   std::unordered_map<std::string, std::unordered_set<std::string>>
@@ -100,16 +104,16 @@ void DownpourWorkerOpt::CreateThreadOperatorsWithRerank(
       auto& op_desc = *op_iter;
       if (i > 0) {
         for (int j = 0; j < i; j++) {
-          if (HasDependentInput(*op_desc, loss_input_map[loss_names[j]])) {
+          if (HasDependentInput(*op_desc, loss_input_map[loss_names_[j]])) {
             VLOG(3) << "losses must be independence currently";
             return;
           }
         }
       }
-      if (HasOutput(*op_desc, loss_names[i]) ||
-          HasDependentOutput(*op_desc, loss_input_map[loss_names[i]])) {
-        AppendInputVar(*op_desc, &loss_input_map[loss_names[i]]);
-        AppendOutputVar(*op_desc, &loss_output_map[loss_names[i]]);
+      if (HasOutput(*op_desc, loss_names_[i]) ||
+          HasDependentOutput(*op_desc, loss_input_map[loss_names_[i]])) {
+        AppendInputVar(*op_desc, &loss_input_map[loss_names_[i]]);
+        AppendOutputVar(*op_desc, &loss_output_map[loss_names_[i]]);
       }
     }
   }
@@ -143,10 +147,10 @@ void DownpourWorkerOpt::CreateThreadOperatorsWithRerank(
     for (auto op_iter = ops.begin(); op_iter != ops.end(); ++op_iter) {
       auto& op_desc = *op_iter;
       if ((HasDependentInput(*op_desc, loss_output_map[loss_names_[i]]) &&
-           NotHasDependentOutput(op_desc, loss_input_map[loss_name_[i]])) ||
-          HasDependentInput(op_desc, metric_output_vars[loss_names_[i]])) {
-        AppendInputVar(op_desc, &metric_input_map[loss_names_[i]]);
-        AppendOutputVar(op_desc, &metric_input_vars[loss_names_[i]]);
+           NotHasDependentOutput(*op_desc, loss_input_map[loss_names_[i]])) ||
+          HasDependentInput(*op_desc, metric_output_map[loss_names_[i]])) {
+        AppendInputVar(*op_desc, &metric_input_map[loss_names_[i]]);
+        AppendOutputVar(*op_desc, &metric_input_map[loss_names_[i]]);
       }
     }
   }
@@ -168,15 +172,17 @@ void DownpourWorkerOpt::CreateThreadOperatorsWithRerank(
       async_wait_name_ = table.async_wait_op_name();
     }
   }
+  loss_op_names_.resize(loss_num);
+  std::string async_wait_flag = "async_wait_flag";
   for (int i = 0; i < loss_num; i++) {
-    for (auto op_iter = ops->begin(); op_iter != ops->end(); ++op_iter) {
+    for (auto op_iter = ops.begin(); op_iter != ops.end(); ++op_iter) {
       auto& op_desc = *op_iter;
-      if (HasDependentInput(op_desc, loss_input_vars[i]) ||
-          HasDependentInput(op_desc, loss_input_grad_vars[i]) ||
-          HasDependentInput(op_desc, metric_input_vars[i])) {
+      if (HasDependentInput(*op_desc, loss_input_map[loss_names_[i]]) ||
+          HasDependentInput(*op_desc, loss_input_grad_map[loss_names_[i]]) ||
+          HasDependentInput(*op_desc, metric_input_map[loss_names_[i]])) {
         std::unique_ptr<OperatorBase> local_op = OpRegistry::CreateOp(*op_desc);
         if (HasOutput(*op_desc, async_wait_name_)) {
-          loss_op_names_[i].push_back("async_wait_flag");
+          loss_op_names_[i].push_back(async_wait_flag);
         } else {
           loss_op_names_[i].push_back(op_desc->Type());
         }
@@ -269,7 +275,7 @@ void DownpourWorkerOpt::TrainFiles() {
     VLOG(3) << "fill sparse value for all sparse table done.";
 
     // do computation here
-    for (int loss_idx = 0; loss_idx < loss_ops_.szie(); loss_idx++) {
+    for (size_t loss_idx = 0; loss_idx < loss_ops_.size(); loss_idx++) {
       int op_idx = 0;
       for (auto& op : loss_ops_[loss_idx]) {
         bool need_skip = false;
@@ -280,7 +286,7 @@ void DownpourWorkerOpt::TrainFiles() {
           }
         }
         if (!need_skip) {
-          if (loss_op_names[loss_idx][op_idx] == async_wait_name_) {
+          if (loss_op_names_[loss_idx][op_idx] == async_wait_name_) {
             pull_async_status.wait();
             auto status = pull_async_status.get();
             if (status != 0) {
@@ -456,3 +462,6 @@ void DownpourWorkerOpt::TrainFiles() {
     CopyDenseVars();
   }
 }
+
+}  // end namespace framework
+}  // end namespace paddle

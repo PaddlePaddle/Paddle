@@ -207,55 +207,87 @@ class DownpourWorker : public HogwildWorker {
   void CopySparseTable();
   void CopyDenseTable();
   void CopyDenseVars();
-
- private:
-  bool need_dump_param_;
-  std::vector<std::string> dump_param_;
-  bool need_to_push_dense_;
-  bool need_dump_field_;
-  bool dump_slot_;
-  bool need_to_push_sparse_;
-  std::vector<std::string> dump_fields_;
-  std::vector<std::string> loss_names_;
-  ChannelWriter<std::string> writer_;
+  std::string PrintLodTensor(LoDTensor* tensor, int64_t start, int64_t end);
+  std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int index);
+  bool CheckValidOutput(LoDTensor* tensor, size_t batch_size);
   DownpourWorkerParameter param_;
-  float scale_datanorm_;
-  // just save the value in param_ for easy access
-  std::map<uint64_t, std::string> label_var_name_;
-  std::map<uint64_t, std::vector<std::string>> sparse_key_names_;
-  std::map<uint64_t, std::vector<std::string>> sparse_value_names_;
-  std::map<uint64_t, std::vector<std::string>> sparse_grad_names_;
-  std::map<uint64_t, std::vector<std::string>> dense_value_names_;
-  std::map<uint64_t, std::vector<std::string>> dense_grad_names_;
-  // actually pushed feasign of each table
+  CopyTableConfig copy_table_config_;
+  std::vector<std::pair<uint64_t, uint64_t>> copy_sparse_tables_;
+  std::unordered_map<uint64_t, std::unordered_set<uint64_t>> feasign_set_;
   std::map<uint64_t, std::vector<uint64_t>> sparse_push_keys_;
-
-  // feasign
+  std::map<uint64_t, std::vector<std::string>> sparse_key_names_;
   std::map<uint64_t, std::vector<uint64_t>> features_;
-  // feasign stats
-  std::map<uint64_t, std::vector<float>> feature_labels_;
-  // feasign embedding
   std::map<uint64_t, std::vector<std::vector<float>>> feature_values_;
-  // feasign embedding gradient
-  std::map<uint64_t, std::vector<std::vector<float>>> feature_grads_;
-  // skipped ops
-  std::vector<std::string> skip_ops_;
-
-  std::shared_ptr<PullDenseWorker> _pull_dense_worker;
-  std::vector<::std::future<int32_t>> push_sparse_status_;
-  std::vector<::std::future<int32_t>> push_dense_status_;
-
-  // adjust ins weight
+  std::map<uint64_t, std::vector<std::string>> sparse_value_names_;
   AdjustInsWeightConfig adjust_ins_weight_config_;
-  std::vector<float> nid_show_;
   // check nan and inf during training
   std::vector<std::string> check_nan_var_names_;
+  bool need_to_push_sparse_;
+  // feasign stats
+  std::map<uint64_t, std::vector<float>> feature_labels_;
+  std::map<uint64_t, std::vector<std::string>> sparse_grad_names_;
+  // feasign embedding gradient
+  std::map<uint64_t, std::vector<std::vector<float>>> feature_grads_;
+  std::vector<::std::future<int32_t>> push_sparse_status_;
+  bool dump_slot_;
+  bool need_to_push_dense_;
+  bool need_dump_field_;
+  bool need_dump_param_;
+  std::map<uint64_t, std::vector<std::string>> dense_grad_names_;
+  float scale_datanorm_;
+  std::vector<::std::future<int32_t>> push_dense_status_;
+  std::vector<std::string> dump_fields_;
+  ChannelWriter<std::string> writer_;
+  std::vector<std::string> skip_ops_;
+
+private:
+  // bool need_dump_param_;
+  std::vector<std::string> dump_param_;
+  // bool need_to_push_dense_;
+  // bool need_dump_field_;
+  // bool dump_slot_;
+  // bool need_to_push_sparse_;
+  // std::vector<std::string> dump_fields_;
+  // std::vector<std::string> loss_names_;
+  // ChannelWriter<std::string> writer_;
+  // DownpourWorkerParameter param_;
+  // float scale_datanorm_;
+  // just save the value in param_ for easy access
+  std::map<uint64_t, std::string> label_var_name_;
+  // std::map<uint64_t, std::vector<std::string>> sparse_key_names_;
+  // std::map<uint64_t, std::vector<std::string>> sparse_value_names_;
+  // std::map<uint64_t, std::vector<std::string>> sparse_grad_names_;
+  std::map<uint64_t, std::vector<std::string>> dense_value_names_;
+  // std::map<uint64_t, std::vector<std::string>> dense_grad_names_;
+  // actually pushed feasign of each table
+  // std::map<uint64_t, std::vector<uint64_t>> sparse_push_keys_;
+
+  // feasign
+  // std::map<uint64_t, std::vector<uint64_t>> features_;
+  // feasign stats
+  // std::map<uint64_t, std::vector<float>> feature_labels_;
+  // feasign embedding
+  // std::map<uint64_t, std::vector<std::vector<float>>> feature_values_;
+  // feasign embedding gradient
+  // std::map<uint64_t, std::vector<std::vector<float>>> feature_grads_;
+  // skipped ops
+  // std::vector<std::string> skip_ops_;
+
+  std::shared_ptr<PullDenseWorker> _pull_dense_worker;
+  // std::vector<::std::future<int32_t>> push_sparse_status_;
+  // std::vector<::std::future<int32_t>> push_dense_status_;
+
+  // adjust ins weight
+  // AdjustInsWeightConfig adjust_ins_weight_config_;
+  std::vector<float> nid_show_;
+  // check nan and inf during training
+  // std::vector<std::string> check_nan_var_names_;
   // copy table
-  CopyTableConfig copy_table_config_;
+  // CopyTableConfig copy_table_config_;
   std::map<uint64_t, uint64_t> table_dependency_;
-  std::vector<std::pair<uint64_t, uint64_t>> copy_sparse_tables_;
+  // std::vector<std::pair<uint64_t, uint64_t>> copy_sparse_tables_;
   std::vector<std::pair<uint64_t, uint64_t>> copy_dense_tables_;
-  std::unordered_map<uint64_t, std::unordered_set<uint64_t>> feasign_set_;
+  // std::unordered_map<uint64_t, std::unordered_set<uint64_t>> feasign_set_;
 };
 
 class DownpourWorkerOpt : public DownpourWorker {
@@ -268,7 +300,8 @@ class DownpourWorkerOpt : public DownpourWorker {
  protected:
   void CreateThreadOperatorsWithRerank(const ProgramDesc& program);
   std::vector<std::vector<OperatorBase*>> loss_ops_;
-  std::vector<std::vector<OperatorBase*>> loss_op_names_;
+  std::vector<std::vector<std::string>> loss_op_names_;
+  std::vector<std::string> loss_names_;
   std::string async_wait_name_;
   int async_index_ = -1;
   uint64_t async_tid_ = 0;
