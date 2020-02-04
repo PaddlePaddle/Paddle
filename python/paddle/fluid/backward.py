@@ -1110,6 +1110,25 @@ def _get_son_parent_block_idx_dict(program, current_block_idx):
     return son_parent_block_idx_dict
 
 
+def _get_no_grad_set_name(no_grad_set):
+    no_grad_set_name = set()
+    if no_grad_set is not None:
+        if isinstance(no_grad_set, (set, list, tuple)):
+            for i, no_grad_var in enumerate(no_grad_set):
+                if isinstance(no_grad_var, framework.Variable):
+                    no_grad_set_name.add(no_grad_var.name)
+                elif isinstance(no_grad_var, six.string_types):
+                    no_grad_set_name.add(no_grad_var)
+                else:
+                    raise TypeError(
+                        "The type of no_grad_set's member must be paddle.fluid.Variable or str, but received %s."
+                        % (type(no_grad_var)))
+        else:
+            assert "no_grad_set should be list or set or tuple, but the passed type is {}".format(
+                type(no_grad_set))
+    return no_grad_set_name
+
+
 def append_backward(loss,
                     parameter_list=None,
                     no_grad_set=None,
@@ -1133,7 +1152,7 @@ def append_backward(loss,
                                            If it is None, all parameters
                                            will be updated.
                                            Default: None.
-        no_grad_set(set[str], optional): Variable names in the :ref:`api_guide_Block_en` 0 whose gradients
+        no_grad_set(set[Variable|str], optional): Set of Variables or Variable.names in the :ref:`api_guide_Block_en` 0 whose gradients
                                should be ignored. All variables with
                                `stop_gradient=True` from all blocks will
                                be automatically added into this set.
@@ -1223,7 +1242,8 @@ def append_backward(loss,
 
     if no_grad_set is None:
         no_grad_set = set()
-    no_grad_set = copy.copy(no_grad_set)
+    else:
+        no_grad_set = _get_no_grad_set_name(copy.copy(no_grad_set))
     no_grad_dict = _get_stop_gradients_(program)
     # no_grad_set only contains vars in block 0
     # Todo(liym27): support vars in sub block
@@ -1512,7 +1532,7 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
         target_gradients (Variable|list[Variable]|None): The gradient variables
             of targets which has the same shape with targets, If None, ones will
             be created for them.
-        no_grad_set(set[string]): The names of variables that have no gradients
+        no_grad_set(set[string|Variable]): The variables that have no gradients
             in Block 0. All variables with `stop_gradient=True` from all blocks
             will be automatically added.
 
@@ -1540,7 +1560,8 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
 
     if no_grad_set is None:
         no_grad_set = set()
-    no_grad_set = copy.copy(no_grad_set)
+    else:
+        no_grad_set = _get_no_grad_set_name(copy.copy(no_grad_set))
     no_grad_dict = _get_stop_gradients_(prog)
     no_grad_dict[0].update(list(map(_append_grad_suffix_, no_grad_set)))
 
@@ -1634,7 +1655,7 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
         target_gradients (Variable|list[Variable]|None): The gradient variables
             of targets which has the same shape with targets, If None, ones will
             be created for them.
-        no_grad_set (set[string]|None): Variable names in the :ref:`api_guide_Block_en` 0 whose gradients
+        no_grad_set (set[string|Variable]|None): Set of Variables or Variable.names in the :ref:`api_guide_Block_en` 0 whose gradients
             should be ignored. All variables with `stop_gradient=True` from all blocks will
             be automatically added into this set. If this parameter is not None, the names
             in this set will be added to the default set. Default: None.
