@@ -241,7 +241,6 @@ PDNode* EmbeddingEltwiseLayerNormPattern::operator()() {
 }  // namespace patterns
 
 void EmbeddingEltwiseLayerNormFusePass::ApplyImpl(Graph* graph) const {
-  PADDLE_ENFORCE_NOT_NULL(graph);
   FusePassBase::Init(name_scope_, graph);
 
   int fusion_count = patterns::BuildFusion(graph, name_scope_);

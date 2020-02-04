@@ -25,32 +25,65 @@ class EmbeddingEltWiseLayerNormOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* context) const override {
-    PADDLE_ENFORCE_EQ(
-        context->HasInput("WordId"), true,
-        "Input(WordId) of EmbeddingEltWiseLayerNormOp should not be null.");
-    PADDLE_ENFORCE_EQ(
-        context->HasInput("PosId"), true,
-        "Input(PosId) of EmbeddingEltWiseLayerNormOp should not be null.");
-    PADDLE_ENFORCE_EQ(
-        context->HasInput("SentId"), true,
-        "Input(SentId) of EmbeddingEltWiseLayerNormOp should not be null.");
+    bool has_word_id = context->HasInput("WordId");
+    bool has_pos_id = context->HasInput("PosId");
+    bool has_sent_id = context->HasInput("SentId");
 
-    PADDLE_ENFORCE_EQ(
-        context->HasInput("WordEmb"), true,
-        "Input(WordEmb) of EmbeddingEltWiseLayerNormOp should not be null.");
-    PADDLE_ENFORCE_EQ(
-        context->HasInput("PosEmb"), true,
-        "Input(PosEmb) of EmbeddingEltWiseLayerNormOp should not be null.");
-    PADDLE_ENFORCE_EQ(
-        context->HasInput("SentEmb"), true,
-        "Input(SentEmb) of EmbeddingEltWiseLayerNormOp should not be null.");
+    PADDLE_ENFORCE_EQ(has_word_id, true,
+                      "We can not find the WordId Input of "
+                      "EmbeddingEltWiseLayerNormOp for the value of "
+                      "HasInput('WordId') is %d.",
+                      has_word_id);
+    PADDLE_ENFORCE_EQ(has_pos_id, true,
+                      "We can not find the PosId Input of "
+                      "EmbeddingEltWiseLayerNormOp for the value of "
+                      "HasInput('PosId') is %d.",
+                      has_pos_id);
+    PADDLE_ENFORCE_EQ(has_sent_id, true,
+                      "We can not find the SentId Input of "
+                      "EmbeddingEltWiseLayerNormOp for the value of "
+                      "HasInput('PosId') is %d.",
+                      has_sent_id);
 
-    PADDLE_ENFORCE_EQ(context->HasInput("Bias"), true,
-                      "Input(Bias) of MultiheadOp should not be null.");
-    PADDLE_ENFORCE_EQ(context->HasInput("Scale"), true,
-                      "Input(Scale) of MultiheadOp should not be null.");
-    PADDLE_ENFORCE_EQ(context->HasOutput("Out"), true,
-                      "Output(Out) of MatMulOp should not be null.");
+    bool has_word_emb = context->HasInput("WordEmb");
+    bool has_pos_emb = context->HasInput("PosEmb");
+    bool has_sent_emb = context->HasInput("SentEmb");
+
+    PADDLE_ENFORCE_EQ(has_word_emb, true,
+                      "We can not find the WordEmb Input of "
+                      "EmbeddingEltWiseLayerNormOp for the value of "
+                      "HasInput('WordEmb') is %d.",
+                      has_word_emb);
+    PADDLE_ENFORCE_EQ(has_pos_emb, true,
+                      "We can not find the PosEmb Input of "
+                      "EmbeddingEltWiseLayerNormOp for the value of "
+                      "HasInput('PosEmb') is %d.",
+                      has_pos_emb);
+    PADDLE_ENFORCE_EQ(has_sent_emb, true,
+                      "We can not find the SentEmb Input of "
+                      "EmbeddingEltWiseLayerNormOp for the value of "
+                      "HasInput('SentEmb') is %d.",
+                      has_sent_emb);
+
+    bool has_bias = context->HasInput("Bias");
+    bool has_scale = context->HasInput("Scale");
+    bool has_out = context->HasOutput("Out");
+
+    PADDLE_ENFORCE_EQ(has_bias, true,
+                      "We can not find the Bias Input of "
+                      "EmbeddingEltWiseLayerNormOp for the value of "
+                      "HasInput('Bias') is %d.",
+                      has_bias);
+    PADDLE_ENFORCE_EQ(has_scale, true,
+                      "We can not find the Scale Input of "
+                      "EmbeddingEltWiseLayerNormOp for the value of "
+                      "HasInput('Scale') is %d.",
+                      has_scale);
+    PADDLE_ENFORCE_EQ(has_out, true,
+                      "We can not find the 'Out' Output of "
+                      "EmbeddingEltWiseLayerNormOp for the value of "
+                      "HasOutput('Out') is %d.",
+                      has_out);
 
     // batch * seq_len * 1
     auto dim_word_id = context->GetInputDim("WordId");
@@ -58,9 +91,11 @@ class EmbeddingEltWiseLayerNormOp : public framework::OperatorWithKernel {
     auto dim_word_emb = context->GetInputDim("WordEmb");
     // hidden
     auto dim_bias = context->GetInputDim("Bias");
-    PADDLE_ENFORCE_EQ(dim_word_emb[1], dim_bias[0],
-                      "The second dims of the Word Embedding should be equal "
-                      "to the Bias's size.");
+    PADDLE_ENFORCE_EQ(
+        dim_word_emb[1], dim_bias[0],
+        "The second dims (%d) of the Word Embedding should be equal "
+        "to the Bias's size(%d).",
+        dim_word_emb[1], dim_bias[0]);
 
     int batch = dim_word_id[0];
     int seq_len = dim_word_id[1];
@@ -98,10 +133,14 @@ class EmbeddingEltWiseLayerNormOpMaker
                    "Constant for numerical stability [default 1e-5].")
         .SetDefault(1e-5)
         .AddCustomChecker([](const float& epsilon) {
-          PADDLE_ENFORCE_GE(epsilon, 0.0f,
-                            "'epsilon' should be between 0.0 and 0.001.");
-          PADDLE_ENFORCE_LE(epsilon, 0.001f,
-                            "'epsilon' should be between 0.0 and 0.001.");
+          PADDLE_ENFORCE_GE(
+              epsilon, 0.0f,
+              "'epsilon' is %f, but it should be between 0.0 and 0.001",
+              epsilon);
+          PADDLE_ENFORCE_LE(
+              epsilon, 0.001f,
+              "'epsilon' is %f, but it should be between 0.0 and 0.001.",
+              epsilon);
         });
     AddComment(R"DOC(
 EmbeddingEltWiseLayerNorm Operator.

@@ -51,17 +51,17 @@ TEST(EmbeddingEltwiseLayernormFusePass, basic) {
 
   auto pass =
       PassRegistry::Instance().Get("embedding_eltwise_layernorm_fuse_pass");
-  int num_nodes_before = graph->Nodes().size();
   VLOG(3) << DebugString(graph);
 
   graph.reset(pass->Apply(graph.release()));
-  int num_nodes_after = graph->Nodes().size();
   int num_fused_nodes_after =
       GetNumOpNodes(graph, "fused_embedding_eltwise_layernorm");
   VLOG(3) << DebugString(graph);
 
-  PADDLE_ENFORCE_EQ(num_nodes_before, num_nodes_after + 12);
-  PADDLE_ENFORCE_EQ(num_fused_nodes_after, 1);
+  PADDLE_ENFORCE_EQ(num_fused_nodes_after, 1,
+                    "After the embedding_eltwise_layernorm pass, there should "
+                    "be one embedding_eltwise_layernorm op, but result is  %d",
+                    num_fused_nodes_after);
 }
 
 }  // namespace ir

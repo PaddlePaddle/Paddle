@@ -476,8 +476,6 @@ static int BuildFusionV2(Graph* graph, const std::string& name_scope,
     auto* bk_data = bk_tensor->mutable_data<float>(platform::CPUPlace());
     auto* bv_data = bv_tensor->mutable_data<float>(platform::CPUPlace());
 
-    PADDLE_ENFORCE_EQ(wq_tensor->dims().size(), 2);
-    PADDLE_ENFORCE_EQ(bq_tensor->dims().size(), 1);
     auto combined_w_dims =
         framework::make_ddim({wq_tensor->dims()[0], 3, wq_tensor->dims()[1]});
     auto combined_bias_dims = framework::make_ddim({3, bq_tensor->dims()[0]});
@@ -693,7 +691,6 @@ static int BuildFusionV2(Graph* graph, const std::string& name_scope,
 }  // namespace patterns
 
 void MultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
-  PADDLE_ENFORCE_NOT_NULL(graph);
   FusePassBase::Init(name_scope_, graph);
 
   int fusion_count = patterns::BuildFusion(graph, name_scope_);
@@ -701,10 +698,10 @@ void MultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
 }
 
 void MultiHeadMatmulV2FusePass::ApplyImpl(Graph* graph) const {
-  PADDLE_ENFORCE_NOT_NULL(graph);
   FusePassBase::Init(name_scope_, graph);
   auto* scope = param_scope();
-  PADDLE_ENFORCE(scope);
+  PADDLE_ENFORCE_NOT_NULL(
+      scope, "During the multiheadMatmul pass, The scope should not be null.");
 
   patterns::BuildFusionV2(graph, name_scope_, scope);
 }

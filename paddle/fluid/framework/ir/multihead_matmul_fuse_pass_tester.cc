@@ -120,8 +120,14 @@ TEST(MultiHeadMatmulFusePass, basic) {
   int num_fused_nodes_after = GetNumOpNodes(graph, "multihead_matmul");
   VLOG(3) << DebugString(graph);
 
-  PADDLE_ENFORCE_EQ(num_nodes_before, num_nodes_after + 39);
-  PADDLE_ENFORCE_EQ(num_fused_nodes_after, 1);
+  PADDLE_ENFORCE_EQ(num_nodes_before, num_nodes_after + 39,
+                    "After the multihead_matmul pass, The node num in graph "
+                    "should be %d, but the result is %d",
+                    num_nodes_before - 39, num_nodes_after);
+  PADDLE_ENFORCE_EQ(num_fused_nodes_after, 1,
+                    "After the multihead_matmul pass, there should be one "
+                    "multihead_matmul op, but the result is %d",
+                    num_fused_nodes_after);
 }
 
 }  // namespace ir

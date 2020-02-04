@@ -25,32 +25,61 @@ class MultiHeadMatMulV2Op : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE_EQ(context->HasInput("Input"), true,
-                      "Input(Input) of MultiheadOp should not be null.");
-    PADDLE_ENFORCE_EQ(context->HasInput("W"), true,
-                      "Input(W) of MultiheadOp should not be null.");
-    PADDLE_ENFORCE_EQ(context->HasInput("Bias"), true,
-                      "Input(Bias) of MultiheadOp should not be null.");
-    PADDLE_ENFORCE_EQ(context->HasInput("BiasQK"), true,
-                      "Input(BiasQK) of MultiheadOp should not be null.");
-    PADDLE_ENFORCE_EQ(context->HasOutput("Out"), true,
-                      "Output(Out) of MatMulOp should not be null.");
+    bool has_input = context->HasInput("Input");
+    bool has_w = context->HasInput("W");
+    bool has_bias = context->HasInput("Bias");
+    bool has_bias_qk = context->HasInput("BiasQK");
+    bool has_out = context->HasOutput("Out");
+
+    PADDLE_ENFORCE_EQ(has_input, true,
+                      "We can not find the 'Input' input of "
+                      "EmbeddingEltWiseLayerNormOp for the value of "
+                      "HasInput('Input') is %d.",
+                      has_input);
+    PADDLE_ENFORCE_EQ(has_w, true,
+                      "We can not find the 'W' input of "
+                      "EmbeddingEltWiseLayerNormOp for the value of "
+                      "HasInput('W') is %d.",
+                      has_w);
+    PADDLE_ENFORCE_EQ(has_bias, true,
+                      "We can not find the 'Bias' input of "
+                      "EmbeddingEltWiseLayerNormOp for the value of "
+                      "HasInput('Bias') is %d.",
+                      has_bias);
+    PADDLE_ENFORCE_EQ(has_bias_qk, true,
+                      "We can not find the 'BiasQK' input of "
+                      "EmbeddingEltWiseLayerNormOp for the value of "
+                      "HasInput('BiasQK') is %d.",
+                      has_bias_qk);
+    PADDLE_ENFORCE_EQ(has_out, true,
+                      "We can not find the 'Out' output of "
+                      "EmbeddingEltWiseLayerNormOp for the value of "
+                      "HasOutput('Out') is %d.",
+                      has_out);
 
     auto dim_w = context->GetInputDim("W");
     PADDLE_ENFORCE_GT(dim_w.size(), 2,
-                      "Multihead input should be at least 3-D tensor.");
+                      "Multihead input is expected at least a 3-D tensor, but "
+                      "it's %d-D tensor now.",
+                      dim_w.size());
 
     auto dim_bias_q = context->GetInputDim("Bias");
     PADDLE_ENFORCE_GT(dim_bias_q.size(), 1,
-                      "Multihead input should be at least 2-D tensor.");
+                      "Multihead input should be at least 2-D tensor, but it's "
+                      "%d-D tensor now.",
+                      dim_bias_q.size());
 
     auto dim_bias_qk = context->GetInputDim("BiasQK");
     PADDLE_ENFORCE_GT(dim_bias_qk.size(), 3,
-                      "Multihead input bias qk should be at least 4-D tensor.");
+                      "Multihead input bias qk should be at least 4-D tensor, "
+                      "but it's %d-D tensor now.",
+                      dim_bias_qk.size());
 
     int head_number = context->Attrs().Get<int>("head_number");
-    PADDLE_ENFORCE_GT(head_number, 1,
-                      "Multihead input head number should be at least 1.");
+    PADDLE_ENFORCE_GT(
+        head_number, 1,
+        "Multihead input head number should be at least 1, but it %d now.",
+        head_number);
     // modify this
     auto dim_input = context->GetInputDim("Input");
     context->SetOutputDim("Out", dim_input);

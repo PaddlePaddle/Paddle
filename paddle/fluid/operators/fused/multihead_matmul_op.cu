@@ -430,7 +430,6 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
 
     int all_head_size = w_dims[2];
     int head_size = all_head_size / head_number;
-    PADDLE_ENFORCE_EQ(hidden, w_dims[0]);
 
     // (B*S, hidden)
     const Tensor input_matrix =
