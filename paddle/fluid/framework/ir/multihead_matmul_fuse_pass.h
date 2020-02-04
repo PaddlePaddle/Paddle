@@ -98,6 +98,16 @@ class MultiHeadMatmulFusePass : public FusePassBase {
   const std::string name_scope_{"multihead_matmul_fuse"};
 };
 
+class MultiHeadMatmulV2FusePass : public FusePassBase {
+ public:
+  virtual ~MultiHeadMatmulV2FusePass() {}
+
+ protected:
+  void ApplyImpl(Graph* graph) const;
+
+  const std::string name_scope_{"multihead_matmul_fuse_v2"};
+};
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
