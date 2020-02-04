@@ -214,6 +214,7 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
             i = layers.zeros(shape=[1], dtype='int64')
             i.stop_gradient = True
             init = layers.zeros(shape=[10], dtype='float32')
+            init.stop_gradient = False
             mem_array = layers.array_write(x=init, i=i)
             data_array = layers.array_write(x=d0, i=i)
             i = layers.increment(i)
@@ -236,8 +237,7 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
             mean = layers.mean(sum_result)
             append_backward(mean)
 
-            place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-            ) else fluid.CPUPlace()
+            place = fluid.CPUPlace()
             exe = fluid.Executor(place)
 
             d = []
