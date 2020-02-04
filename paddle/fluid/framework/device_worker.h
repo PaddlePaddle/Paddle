@@ -252,7 +252,6 @@ class DownpourWorker : public HogwildWorker {
   std::map<uint64_t, std::string> label_var_name_;
   std::map<uint64_t, std::vector<std::string>> dense_value_names_;
 
-
   std::shared_ptr<PullDenseWorker> _pull_dense_worker;
 
   std::vector<float> nid_show_;

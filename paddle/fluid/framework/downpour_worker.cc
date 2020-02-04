@@ -157,7 +157,8 @@ std::string PrintLodTensorIntType(LoDTensor* tensor, int64_t start,
   return os.str();
 }
 
-std::string DownpourWorker::PrintLodTensor(LoDTensor* tensor, int64_t start, int64_t end) {
+std::string DownpourWorker::PrintLodTensor(LoDTensor* tensor, int64_t start,
+                                           int64_t end) {
   std::string out_val;
   if (tensor->type() == proto::VarType::FP32) {
     out_val = PrintLodTensorType<float>(tensor, start, end);
@@ -171,7 +172,8 @@ std::string DownpourWorker::PrintLodTensor(LoDTensor* tensor, int64_t start, int
   return out_val;
 }
 
-std::pair<int64_t, int64_t> DownpourWorker::GetTensorBound(LoDTensor* tensor, int index) {
+std::pair<int64_t, int64_t> DownpourWorker::GetTensorBound(LoDTensor* tensor,
+                                                           int index) {
   auto& dims = tensor->dims();
   if (tensor->lod().size() != 0) {
     auto& lod = tensor->lod()[0];
