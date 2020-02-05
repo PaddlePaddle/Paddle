@@ -21,7 +21,6 @@ NEED_TO_FIX_OP_LIST = [
     'fused_elemwise_activation',
     'bilinear_tensor_product',
     'conv2d_transpose',
-    'deformable_conv',
     'depthwise_conv2d_transpose',
     'grid_sampler',
     'hierarchical_sigmoid',
