@@ -40,7 +40,7 @@ see: [IMDB Dataset of 50K Movie Reviews | Kaggle](https://www.kaggle.com/lakshmi
     mkdir build
     cd build
     rm -rf *
-    PADDLE_LIB=${PADDLE_ROOT}/build/fluid_install_dir
+    PADDLE_LIB=path/to/Paddle/build/fluid_install_dir
     cmake .. -DPADDLE_LIB=$PADDLE_LIB  -DWITH_MKLDNN=OFF -DWITH_MKL=OFF
     make
 ```
