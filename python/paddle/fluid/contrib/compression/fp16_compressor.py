@@ -44,7 +44,7 @@ class FP16Compressor(optimizer.Optimizer):
         op_maker = core.op_proto_and_checker_maker
 
         for param, grad in param_and_grads:
-            if grad.dtype != core.VarDesc.VarType.FP32:
+            if grad is None or grad.dtype != core.VarDesc.VarType.FP32:
                 continue
 
             op = grad.op
