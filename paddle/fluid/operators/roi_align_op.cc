@@ -27,8 +27,6 @@ class ROIAlignOp : public framework::OperatorWithKernel {
                    "Input(X) of ROIAlignOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("ROIs"),
                    "Input(ROIs) of ROIAlignOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("RoisLod"),
-                   "Input(RoisLod) of ROIPoolOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of ROIAlignOp should not be null.");
 
@@ -115,7 +113,9 @@ class ROIAlignOpMaker : public framework::OpProtoAndCheckerMaker {
              "given as [[x1, y1, x2, y2], ...]. "
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates.");
-    AddInput("RoisLod", "(Tensor)");
+    AddInput("RoisLod",
+             "(Tensor), "
+             "The lod info of rois.");
     AddOutput("Out",
               "(Tensor), "
               "The output of ROIAlignOp is a 4-D tensor with shape "
@@ -193,8 +193,10 @@ REGISTER_OPERATOR(roi_align_grad, ops::ROIAlignGradOp,
 REGISTER_OP_CPU_KERNEL(
     roi_align,
     ops::CPUROIAlignOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CPUROIAlignOpKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::CPUROIAlignOpKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::CPUROIAlignOpKernel<paddle::platform::CPUDeviceContext, int>);
 REGISTER_OP_CPU_KERNEL(
     roi_align_grad,
     ops::CPUROIAlignGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CPUROIAlignGradOpKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::CPUROIAlignGradOpKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::CPUROIAlignGradOpKernel<paddle::platform::CPUDeviceContext, int>);

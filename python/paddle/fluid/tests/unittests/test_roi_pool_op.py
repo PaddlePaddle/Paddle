@@ -38,7 +38,7 @@ class TestROIPoolOp(OpTest):
         self.inputs = {
             'X': self.x,
             'ROIs': (self.rois[:, 1:5], self.rois_lod),
-            'RoisLod': np.asarray(lod)
+            'RoisLod': np.asarray(lod).astype('int64')
         }
 
         self.attrs = {

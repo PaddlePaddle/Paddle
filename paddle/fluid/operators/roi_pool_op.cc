@@ -30,8 +30,6 @@ class ROIPoolOp : public framework::OperatorWithKernel {
                    "Input(X) of ROIPoolOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("ROIs"),
                    "Input(ROIs) of ROIPoolOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("RoisLod"),
-                   "Input(RoisLod) of ROIPoolOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of ROIPoolOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Argmax"),
@@ -118,7 +116,7 @@ class ROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
              "Where batch_id is the id of the data, "
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates.");
-    AddInput("RoisLod", "(Tensor)");
+    AddInput("RoisLod", "(Tensor), The lod info of rois.");
     AddOutput("Out",
               "(Tensor), "
               "The output of ROIPoolOp is a 4-D tensor with shape "
@@ -197,8 +195,9 @@ REGISTER_OP_CPU_KERNEL(
     roi_pool,
     ops::CPUROIPoolOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::CPUROIPoolOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::CPUROIPoolOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::CPUROIPoolOpKernel<paddle::platform::CPUDeviceContext, int>);
 REGISTER_OP_CPU_KERNEL(
     roi_pool_grad,
     ops::CPUROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CPUROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::CPUROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::CPUROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, int>);
