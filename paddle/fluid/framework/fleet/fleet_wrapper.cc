@@ -308,6 +308,7 @@ void FleetWrapper::PushDenseVarsAsync(
 
     float* g_data = tensor->data<float>();
     float* g = g_data;
+    #ifdef PADDLE_WITH_CUDA
     if (!platform::is_cpu_place(place)) {
       if (int(dense_grad_regions_[i].size()) < count) {
         dense_grad_regions_[i].resize(count);
@@ -315,10 +316,11 @@ void FleetWrapper::PushDenseVarsAsync(
       memory::Copy(
           platform::CPUPlace(),
           dense_grad_regions_[i].data(),
-          boost::get<platform::CPUPlace>(place),
+          boost::get<platform::CUDAPlace>(place),
           g_data, sizeof(float) * count);
       g = dense_grad_regions_[i].data();
     }
+    #endif
     if (scale_datanorm >= 0) {
       if (t.find(".batch_size@GRAD") != std::string::npos ||
           t.find(".batch_sum@GRAD") != std::string::npos) {
@@ -431,26 +433,30 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
           memcpy((*push_values)[fea_idx].data() + offset + slot_offset, g,
                  sizeof(float) * emb_dim);
         }
+        #ifdef PADDLE_WITH_CUDA
         else {
           memory::Copy(
               platform::CPUPlace(),
               (*push_values)[fea_idx].data() + offset + slot_offset,
-              boost::get<platform::CPUPlace>(place),
+              boost::get<platform::CUDAPlace>(place),
               g, sizeof(float) * emb_dim);
         }
+        #endif
       } else {
         CHECK(fea_idx < fea_labels.size());
         if (platform::is_cpu_place(place)) {
           memcpy((*push_values)[fea_idx].data() + offset + slot_offset, g,
                  sizeof(float) * emb_dim);
         }
+        #ifdef PADDLE_WITH_CUDA
         else {
           memory::Copy(
               platform::CPUPlace(),
               (*push_values)[fea_idx].data() + offset + slot_offset,
-              boost::get<platform::CPUPlace>(place),
+              boost::get<platform::CUDAPlace>(place),
               g, sizeof(float) * emb_dim);
         }
+        #endif
         (*push_values)[fea_idx][show_index] = 1.0f;
         (*push_values)[fea_idx][click_index] =
             static_cast<float>(fea_labels[fea_idx]);

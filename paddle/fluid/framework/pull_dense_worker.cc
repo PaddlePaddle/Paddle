@@ -76,6 +76,7 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
     exit(-1);
   }
   status_vec->resize(0);
+  #ifdef PADDLE_WITH_CUDA
   if (!platform::is_cpu_place(place_)) {
     
     for (int i = 0; i < dwp_param_.program_config(0).pull_dense_table_id_size();
@@ -90,13 +91,14 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
         LoDTensor* tensor = var->GetMutable<LoDTensor>();
         float* w = tensor->data<float>();
         memory::Copy(
-            boost::get<platform::CPUPlace>(place_),
+            boost::get<platform::CUDAPlace>(place_),
             w,
             platform::CPUPlace(),
             dense_region[i].data(), sizeof(float) * tensor->numel());
       }
     }
   }
+  #endif
 }
 
 void PullDenseWorker::Stop() {
