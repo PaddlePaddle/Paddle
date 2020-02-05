@@ -834,7 +834,6 @@ def dropout(x,
 
     if in_dygraph_mode():
         attrs = get_attrs(default_main_program(), dropout_prob, is_test, seed)
-        attrs['is_test'] = not _dygraph_tracer()._train_mode
         inputs = {'X': [x]}
         outs = core.ops.dropout(inputs, attrs)
         return outs['Out'][0]

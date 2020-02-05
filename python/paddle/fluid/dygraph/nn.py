@@ -1151,7 +1151,7 @@ class BatchNorm(layers.Layer):
         }
 
         if in_dygraph_mode():
-            attrs['is_test'] = not _dygraph_tracer()._train_mode
+            attrs['is_test'] = not self.training
             saved_mean = _varbase_creator(dtype=self._dtype)
             saved_variance = _varbase_creator(dtype=self._dtype)
             batch_norm_out = _varbase_creator(dtype=self._dtype)
@@ -1183,6 +1183,24 @@ class BatchNorm(layers.Layer):
 
         # Currently, we don't support inplace in dygraph mode
         return self._helper.append_activation(batch_norm_out, self._act)
+
+
+class Dropout(layers.Layer):
+    def __init__(self,
+                 dropout_prob,
+                 seed=None,
+                 dropout_implementation="downgrade_in_infer",
+                 is_test=False):
+        super(Dropout).__init__()
+        self.dropout_prob = dropout_prob
+        self.seed = seed
+        self.dropout_implementation = dropout_implementation
+        self.is_test = is_test
+
+    def forward(self, input):
+        is_test = self.training if in_dygraph_mode() else self.is_test
+        return nn.dropout(
+            input, dropout_prob=self.dropout_prob, is_test=is_test)
 
 
 class Embedding(layers.Layer):
