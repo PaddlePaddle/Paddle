@@ -13,30 +13,13 @@
 #include <string>
 #include "paddle/fluid/operators/interpolate_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/gpu_launch_config.h"
 
 namespace paddle {
 namespace operators {
 
 using framework::Tensor;
 using DataLayout = framework::DataLayout;
-
-struct GpuLaunchConfig {
-  int threads;
-  int blocks;
-  GpuLaunchConfig(int threads, int blocks) : threads(threads), blocks(blocks) {}
-};
-
-static inline GpuLaunchConfig getGpuLaunchConfig(
-    const int N, const framework::ExecutionContext& ctx) {
-  int threads =
-      std::min(1024, ctx.cuda_device_context().GetMaxThreadsPerBlock());
-  int physical_thread_count =
-      std::min(ctx.cuda_device_context().GetMaxPhysicalThreadCount(), N);
-  int blocks = std::min((physical_thread_count + threads - 1) / threads,
-                        ctx.cuda_device_context().GetSMCount());
-  GpuLaunchConfig config(threads, blocks);
-  return config;
-}
 
 template <typename T>
 __global__ void KeNearestNeighborInterpFw(
@@ -606,7 +589,8 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
 
   int pixelNum = n * out_chw;
 
-  GpuLaunchConfig config = getGpuLaunchConfig(pixelNum, ctx);
+  platform::GpuLaunchConfig config =
+      platform::getGpuLaunchConfig(pixelNum, ctx);
 
   if ("nearest" == interp_method) {
     KeNearestNeighborInterpFw<T><<<config.blocks, config.threads, 0,
@@ -716,7 +700,8 @@ static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx,
 
   int pixelNum = n * out_cdhw;
 
-  GpuLaunchConfig config = getGpuLaunchConfig(pixelNum, ctx);
+  platform::GpuLaunchConfig config =
+      platform::getGpuLaunchConfig(pixelNum, ctx);
 
   if ("trilinear" == interp_method) {
     KeTrilinearInterpFw<T><<<config.blocks, config.threads, 0,
@@ -807,7 +792,8 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
 
   int pixelNum = n * out_chw;
 
-  GpuLaunchConfig config = getGpuLaunchConfig(pixelNum, ctx);
+  platform::GpuLaunchConfig config =
+      platform::getGpuLaunchConfig(pixelNum, ctx);
 
   if ("nearest" == interp_method) {
     KeNearestNeighborInterpBw<T><<<config.blocks, config.threads, 0,
@@ -912,7 +898,8 @@ static void Interpolate3DCUDABwd(const framework::ExecutionContext& ctx,
 
   int pixelNum = n * out_cdhw;
 
-  GpuLaunchConfig config = getGpuLaunchConfig(pixelNum, ctx);
+  platform::GpuLaunchConfig config =
+      platform::getGpuLaunchConfig(pixelNum, ctx);
 
   if ("trilinear" == interp_method) {
     KeTrilinearInterpBw<T><<<config.blocks, config.threads, 0,
