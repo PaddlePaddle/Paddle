@@ -47,6 +47,7 @@ void PullDenseWorker::Initialize(const TrainerDesc& param) {
     // setup dense variables for each table
     int var_num = table.dense_value_name_size();
     dense_value_names_[tid].resize(var_num);
+    dense_regions_[tid].resize(var_num);
     for (int j = 0; j < var_num; ++j) {
       dense_value_names_[tid][j] = table.dense_value_name(j);
     }
@@ -75,6 +76,27 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
     exit(-1);
   }
   status_vec->resize(0);
+  if (!platform::is_cpu_place(place_)) {
+    
+    for (int i = 0; i < dwp_param_.program_config(0).pull_dense_table_id_size();
+         ++i) {
+      uint64_t tid = static_cast<uint64_t>(
+          dwp_param_.program_config(0).pull_dense_table_id(i));
+      auto& var_names = dense_value_names_[tid];
+      auto& dense_region = dense_regions_[tid];
+      std::cout << dense_region.size() << std::endl;
+      for (auto i = 0u; i < var_names.size(); ++i) {
+        Variable* var = (*root_scope_).FindVar(var_names[i]);
+        LoDTensor* tensor = var->GetMutable<LoDTensor>();
+        float* w = tensor->data<float>();
+        memory::Copy(
+            boost::get<platform::CPUPlace>(place_),
+            w,
+            platform::CPUPlace(),
+            dense_region[i].data(), sizeof(float) * tensor->numel());
+      }
+    }
+  }
 }
 
 void PullDenseWorker::Stop() {
@@ -92,7 +114,7 @@ void PullDenseWorker::PullDense(bool force_update) {
         dwp_param_.program_config(0).pull_dense_table_id(i));
     if (force_update || CheckUpdateParam(tid)) {
       fleet_ptr_->PullDenseVarsAsync(*root_scope_, tid, dense_value_names_[tid],
-                                     &pull_dense_status_);
+                                     &pull_dense_status_, dense_regions_[tid], place_);
       ResetThreadVersion(tid);
     }
   }

@@ -62,6 +62,9 @@ class PullDenseWorker {
   void ResetThreadVersion(uint64_t table_id);
   void Wait(std::vector<::std::future<int32_t>>* status_vec);
   void PullDense(bool force_update = false);
+  void SetPlace(const paddle::platform::Place& place) {
+    place_ = place;
+  }
   static std::shared_ptr<PullDenseWorker> GetInstance() {
     if (NULL == s_instance_) {
       s_instance_.reset(new paddle::framework::PullDenseWorker());
@@ -80,8 +83,9 @@ class PullDenseWorker {
   PullDenseWorkerParameter param_;
   DownpourWorkerParameter dwp_param_;
   Scope* root_scope_;
+  paddle::platform::Place place_;
   bool running_;
-
+  
   static std::map<uint64_t, uint64_t> last_versions_;
   static std::map<uint64_t, uint64_t> current_version_;
   static std::mutex mutex_for_version_;
@@ -101,6 +105,7 @@ class PullDenseWorker {
   float squared_sum_epsilon_ = 1e-4;
   std::mutex mutex_for_mean_scale_;
   float total_batch_num_ = 0;
+  std::map<uint64_t, std::vector<std::vector<float>>> dense_regions_; 
 };
 
 // should incorporate different type of device
@@ -123,6 +128,7 @@ class DeviceWorker {
   virtual void SetDataFeed(DataFeed* data_feed);
   virtual void SetNeedDump(bool need_dump_field) {}
   virtual void SetChannelWriter(ChannelObject<std::string>* queue) {}
+  virtual const platform::Place& place() const { return place_; }
   virtual void SetPlace(const paddle::platform::Place& place) {
     place_ = place;
   }
@@ -226,6 +232,7 @@ class DownpourWorker : public HogwildWorker {
   std::map<uint64_t, std::vector<std::string>> sparse_grad_names_;
   std::map<uint64_t, std::vector<std::string>> dense_value_names_;
   std::map<uint64_t, std::vector<std::string>> dense_grad_names_;
+  std::vector<std::vector<float>> dense_grad_regions_;
   // actually pushed feasign of each table
   std::map<uint64_t, std::vector<uint64_t>> sparse_push_keys_;
 
@@ -304,7 +311,6 @@ class SectionWorker : public DeviceWorker {
 
   void PrintFetchVars() override {}
 
-  const platform::Place& place() const { return place_; }
 
   void SetSectionIndex(int section_id) { section_id_ = section_id; }
   void SetDeviceIndex(int tid) override { pipeline_id_ = tid; }

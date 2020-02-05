@@ -56,6 +56,9 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
       dense_value_names_[table_id][j] = table.dense_value_name(j);
     }
     dense_grad_names_[table_id].resize(table.dense_grad_name_size());
+    if (int(dense_grad_regions_.size()) < table.dense_grad_name_size()) {
+      dense_grad_regions_.resize(table.dense_grad_name_size());
+    }
     for (int j = 0; j < table.dense_grad_name_size(); ++j) {
       dense_grad_names_[table_id][j] = table.dense_grad_name(j);
     }
@@ -481,9 +484,9 @@ void DownpourWorker::CopyDenseTable() {
     if (copy_table_config_.dense_pull_after_copy()) {
       VLOG(3) << "dense pull after copy, table=" << dest_table;
       pull_dense_status.resize(0);
-      fleet_ptr_->PullDenseVarsAsync(*root_scope_, dest_table,
-                                     dense_value_names_[dest_table],
-                                     &pull_dense_status);
+      //fleet_ptr_->PullDenseVarsAsync(*root_scope_, dest_table,
+      //                               dense_value_names_[dest_table],
+      //                               &pull_dense_status);
       for (auto& t : pull_dense_status) {
         t.wait();
         auto status = t.get();
@@ -689,7 +692,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
             *thread_scope_, tid, features_[tid], feature_labels_[tid],
             sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
             &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
-            dump_slot_, &sparse_push_keys_[tid], no_cvm_);
+            dump_slot_, &sparse_push_keys_[tid], no_cvm_, place_);
         timeline.Pause();
         push_sparse_time += timeline.ElapsedSec();
         total_time += timeline.ElapsedSec();
@@ -704,7 +707,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
             param_.program_config(0).push_dense_table_id(i));
         fleet_ptr_->PushDenseVarsAsync(
             *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
-            scale_datanorm_, cur_batch);
+            scale_datanorm_, cur_batch, dense_grad_regions_, place_);
       }
       timeline.Pause();
       push_dense_time += timeline.ElapsedSec();
@@ -914,7 +917,7 @@ void DownpourWorker::TrainFiles() {
             *thread_scope_, tid, features_[tid], feature_labels_[tid],
             sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
             &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
-            dump_slot_, &sparse_push_keys_[tid], no_cvm_);
+            dump_slot_, &sparse_push_keys_[tid], no_cvm_, place_);
       }
     }
 
@@ -925,7 +928,7 @@ void DownpourWorker::TrainFiles() {
             param_.program_config(0).push_dense_table_id(i));
         fleet_ptr_->PushDenseVarsAsync(
             *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
-            scale_datanorm_, cur_batch);
+            scale_datanorm_, cur_batch, dense_grad_regions_, place_);
       }
       VLOG(3) << "push dense gradient done.";
 

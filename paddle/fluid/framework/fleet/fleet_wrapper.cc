@@ -110,7 +110,7 @@ uint64_t FleetWrapper::RunServer() {
 uint64_t FleetWrapper::RunServer(const std::string& ip, uint32_t port) {
 #ifdef PADDLE_WITH_PSLIB
   VLOG(3) << "Going to run server with ip " << ip << " port " << port;
-  auto ret = pslib_ptr_->run_server(ip, port);
+  auto ret = pslib_ptr_->run_server();
   return ret;
 #else
   return 0;
@@ -213,7 +213,9 @@ void FleetWrapper::PullSparseVarsSync(
 void FleetWrapper::PullDenseVarsAsync(
     const Scope& scope, const uint64_t tid,
     const std::vector<std::string>& var_names,
-    std::vector<::std::future<int32_t>>* pull_dense_status) {
+    std::vector<::std::future<int32_t>>* pull_dense_status,
+    std::vector<std::vector<float>>& dense_region,
+    const paddle::platform::Place& place) {
 #ifdef PADDLE_WITH_PSLIB
   auto& regions = _regions[tid];
   regions.clear();
@@ -222,7 +224,16 @@ void FleetWrapper::PullDenseVarsAsync(
     Variable* var = scope.FindVar(var_names[i]);
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
     float* w = tensor->data<float>();
-    paddle::ps::Region reg(w, tensor->numel());
+    paddle::ps::Region reg;
+    if (platform::is_cpu_place(place)) {
+      reg = paddle::ps::Region(w, tensor->numel());
+    }
+    else {
+      if (int(dense_region[i].size()) < tensor->numel()) {
+        dense_region[i].resize(tensor->numel());
+      }
+      reg = paddle::ps::Region(dense_region[i].data(), tensor->numel());
+    }
     regions[i] = std::move(reg);
   }
   auto status =
@@ -281,14 +292,33 @@ void FleetWrapper::PushDenseVarsAsync(
     const Scope& scope, const uint64_t table_id,
     const std::vector<std::string>& var_names,
     std::vector<::std::future<int32_t>>* push_sparse_status,
-    float scale_datanorm, int batch_size) {
+    float scale_datanorm, int batch_size,
+    std::vector<std::vector<float>>& dense_grad_regions_,
+    const paddle::platform::Place& place) {
 #ifdef PADDLE_WITH_PSLIB
+  if (!platform::is_cpu_place(place)) {
+    platform::DeviceContextPool::Instance().Get(place)->Wait();
+  }
   std::vector<paddle::ps::Region> regions;
-  for (auto& t : var_names) {
+  for (size_t i = 0; i < var_names.size(); ++i) {
+    auto& t = var_names[i];
     Variable* var = scope.FindVar(t);
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
     int count = tensor->numel();
-    float* g = tensor->data<float>();
+
+    float* g_data = tensor->data<float>();
+    float* g = g_data;
+    if (!platform::is_cpu_place(place)) {
+      if (int(dense_grad_regions_[i].size()) < count) {
+        dense_grad_regions_[i].resize(count);
+      }
+      memory::Copy(
+          platform::CPUPlace(),
+          dense_grad_regions_[i].data(),
+          boost::get<platform::CPUPlace>(place),
+          g_data, sizeof(float) * count);
+      g = dense_grad_regions_[i].data();
+    }
     if (scale_datanorm >= 0) {
       if (t.find(".batch_size@GRAD") != std::string::npos ||
           t.find(".batch_sum@GRAD") != std::string::npos) {
@@ -320,7 +350,8 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     std::vector<std::vector<float>>* push_values,
     std::vector<::std::future<int32_t>>* push_sparse_status,
     const int batch_size, const bool use_cvm, const bool dump_slot,
-    std::vector<uint64_t>* sparse_push_keys, const bool no_cvm) {
+    std::vector<uint64_t>* sparse_push_keys, const bool no_cvm,
+    const paddle::platform::Place& place) {
 #ifdef PADDLE_WITH_PSLIB
   int offset = 2;
   int slot_offset = 0;
@@ -349,6 +380,9 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     t.resize(emb_dim + offset + slot_offset);
   }
   uint64_t fea_idx = 0u;
+  if (!platform::is_cpu_place(place)) {
+    platform::DeviceContextPool::Instance().Get(place)->Wait();
+  }
   for (size_t i = 0;
        i < sparse_key_names.size() && i < sparse_grad_names.size(); ++i) {
     Variable* var = scope.FindVar(sparse_key_names[i]);
@@ -393,12 +427,30 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       CHECK(fea_idx < (*push_values).size());
 
       if (use_cvm || no_cvm) {
-        memcpy((*push_values)[fea_idx].data() + offset + slot_offset, g,
-               sizeof(float) * emb_dim);
+        if (platform::is_cpu_place(place)) {
+          memcpy((*push_values)[fea_idx].data() + offset + slot_offset, g,
+                 sizeof(float) * emb_dim);
+        }
+        else {
+          memory::Copy(
+              platform::CPUPlace(),
+              (*push_values)[fea_idx].data() + offset + slot_offset,
+              boost::get<platform::CPUPlace>(place),
+              g, sizeof(float) * emb_dim);
+        }
       } else {
         CHECK(fea_idx < fea_labels.size());
-        memcpy((*push_values)[fea_idx].data() + offset + slot_offset, g,
-               sizeof(float) * emb_dim);
+        if (platform::is_cpu_place(place)) {
+          memcpy((*push_values)[fea_idx].data() + offset + slot_offset, g,
+                 sizeof(float) * emb_dim);
+        }
+        else {
+          memory::Copy(
+              platform::CPUPlace(),
+              (*push_values)[fea_idx].data() + offset + slot_offset,
+              boost::get<platform::CPUPlace>(place),
+              g, sizeof(float) * emb_dim);
+        }
         (*push_values)[fea_idx][show_index] = 1.0f;
         (*push_values)[fea_idx][click_index] =
             static_cast<float>(fea_labels[fea_idx]);
