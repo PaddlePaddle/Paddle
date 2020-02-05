@@ -4,6 +4,9 @@ set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0 FLAGS_fast_eager_deletion_mode=1 FL
 set(dist_ENVS http_proxy="" https_proxy="")
 
 file(GLOB DIST_TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_dist_*.py")
+if(NOT WITH_NCCL)
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_dgc_nccl")
+endif()
 string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_mnist)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_se_resnext)
