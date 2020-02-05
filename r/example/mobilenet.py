@@ -1,4 +1,5 @@
 #!/usr/bin/env python3.7
+# pylint: skip-file
 
 from typing import List
 from typing import Tuple
@@ -15,6 +16,7 @@ def main():
     predictor: AnalysisPredictor = create_paddle_predictor(config)
 
     data, result = parse_data()
+
     input_names: List[str] = predictor.get_input_names()
     input_tensor = predictor.get_input_tensor(input_names[0])
     shape: Tuple[int] = (1, 3, 300, 300)
@@ -39,6 +41,7 @@ def set_config() -> AnalysisConfig:
 
 
 def parse_data() -> Tuple[np.array, np.array]:
+    """ parse input and output data """
     with open('data/data.txt', 'r') as fr:
         data = np.array([float(_) for _ in fr.read().split()])
 
