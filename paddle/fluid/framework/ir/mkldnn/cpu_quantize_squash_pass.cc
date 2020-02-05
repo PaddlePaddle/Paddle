@@ -294,6 +294,7 @@ void CPUQuantizeSquashPass::ApplyImpl(ir::Graph* graph) const {
   std::unordered_map<const Node*, int> nodes_keep_counter;
   FindNodesToKeep(graph, &nodes_keep_counter);
   DequantQuantSquash(graph, &nodes_keep_counter);
+  ConvRequantSquash(graph);
   ConvDequantSquash(graph);
   FcDequantSquash(graph);
   MultipleQuantizeSquash(graph);
