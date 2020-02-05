@@ -1124,8 +1124,9 @@ def _get_no_grad_set_name(no_grad_set):
                         "The type of no_grad_set's member must be paddle.fluid.Variable or str, but received %s."
                         % (type(no_grad_var)))
         else:
-            assert "no_grad_set should be list or set or tuple, but the passed type is {}".format(
-                type(no_grad_set))
+            raise TypeError(
+                "The type of no_grad_set should be set or list or tuple, but received {}".
+                format(type(no_grad_set)))
     return no_grad_set_name
 
 
