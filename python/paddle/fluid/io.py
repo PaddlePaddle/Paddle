@@ -687,7 +687,11 @@ def load_vars(executor,
             # And all the variables are supposed to be saved in separate files.
 
     """
-    load_dirname = os.path.normpath(dirname)
+    vars_from_memory = False
+    if dirname is not None:
+        dirname = os.path.normpath(dirname)
+    else:
+        vars_from_memory = True
 
     if vars is None:
         if main_program is None:
@@ -697,7 +701,7 @@ def load_vars(executor,
 
         load_vars(
             executor,
-            dirname=load_dirname,
+            dirname=dirname,
             main_program=main_program,
             vars=list(filter(predicate, main_program.list_vars())),
             filename=filename)
@@ -724,13 +728,15 @@ def load_vars(executor,
                 ))
             new_var = _clone_var_in_block_(load_block, each_var)
             if filename is None:
+                if dirname is None:
+                    raise ValueError(
+                        "The directory path and params cannot be None at the same time."
+                    )
                 load_block.append_op(
                     type='load',
                     inputs={},
                     outputs={'Out': [new_var]},
-                    attrs={
-                        'file_path': os.path.join(load_dirname, new_var.name)
-                    })
+                    attrs={'file_path': os.path.join(dirname, new_var.name)})
             else:
                 load_var_map[new_var.name] = new_var
 
@@ -739,11 +745,17 @@ def load_vars(executor,
             for name in sorted(load_var_map.keys()):
                 load_var_list.append(load_var_map[name])
 
+            if vars_from_memory is False:
+                filename = os.path.join(dirname, filename)
+
             load_block.append_op(
                 type='load_combine',
                 inputs={},
                 outputs={"Out": load_var_list},
-                attrs={'file_path': os.path.join(load_dirname, filename)})
+                attrs={
+                    'file_path': filename,
+                    'model_from_memory': vars_from_memory
+                })
         executor.run(load_prog)
 
         # check var shape
@@ -1129,17 +1141,6 @@ def save_inference_model(dirname,
             )
             break
 
-    # fix the bug that the activation op's output as target will be pruned.
-    # will affect the inference performance.
-    # TODO(Superjomn) add an IR pass to remove 1-scale op.
-    with program_guard(main_program):
-        uniq_target_vars = []
-        for i, var in enumerate(target_vars):
-            if isinstance(var, Variable):
-                var = layers.scale(
-                    var, 1., name="save_infer_model/scale_{}".format(i))
-            uniq_target_vars.append(var)
-        target_vars = uniq_target_vars
     target_var_name_list = [var.name for var in target_vars]
 
     # when a pserver and a trainer running on the same machine, mkdir may conflict
@@ -1223,19 +1224,22 @@ def load_inference_model(dirname,
     You can refer to :ref:`api_guide_model_save_reader_en` for more details.
 
     Args:
-        dirname(str): The given directory path.
+        dirname(str): One of the following:
+          - The given directory path.
+          - Set to None when reading the model from memory.
         executor(Executor): The executor to run for loading inference model.
                             See :ref:`api_guide_executor_en` for more details about it.
-        model_filename(str, optional): The name of file to load the inference program.
-                                  If it is None, the default filename
-                                  ``__model__`` will be used.
-                                  Default: ``None``.
-        params_filename(str, optional): The name of file to load all parameters.
-                                   It is only used for the case that all
-                                   parameters were saved in a single binary
-                                   file. If parameters were saved in separate
-                                   files, set it as ``None``.
-                                   Default: ``None``.
+        model_filename(str, optional): One of the following:
+          - The name of file to load the inference program.
+          - If it is None, the default filename ``__model__`` will be used.
+          - When ``dirname`` is ``None``, it must be set to a string containing model.
+          Default: ``None``.
+        params_filename(str, optional): It is only used for the case that all
+            parameters were saved in a single binary file. One of the following:
+          - The name of file to load all parameters.  
+          - When ``dirname`` is ``None``, it must be set to a string containing all the parameters.
+          - If parameters were saved in separate files, set it as ``None``.
+            Default: ``None``.
 
         pserver_endpoints(list, optional): It is only needed by the distributed inference.
                                     If using a distributed look up table during the training,
@@ -1303,21 +1307,32 @@ def load_inference_model(dirname,
             # fetch_targets, we can use an executor to run the inference
             # program for getting the inference result.
     """
-    load_dirname = os.path.normpath(dirname)
-    if not os.path.isdir(load_dirname):
-        raise ValueError("There is no directory named '%s'", dirname)
+    load_from_memory = False
+    if dirname is not None:
+        load_dirname = os.path.normpath(dirname)
+        if not os.path.isdir(load_dirname):
+            raise ValueError("There is no directory named '%s'", dirname)
 
-    if model_filename is not None:
-        model_filename = os.path.basename(model_filename)
+        if model_filename is None:
+            model_filename = '__model__'
+
+        model_filename = os.path.join(load_dirname,
+                                      os.path.basename(model_filename))
+
+        if params_filename is not None:
+            params_filename = os.path.basename(params_filename)
+
+        with open(model_filename, "rb") as f:
+            program_desc_str = f.read()
     else:
-        model_filename = "__model__"
-    model_filename = os.path.join(load_dirname, model_filename)
-
-    if params_filename is not None:
-        params_filename = os.path.basename(params_filename)
-
-    with open(model_filename, "rb") as f:
-        program_desc_str = f.read()
+        load_from_memory = True
+        if params_filename is None:
+            raise ValueError(
+                "The path of params cannot be None when the directory path is None."
+            )
+        load_dirname = dirname
+        program_desc_str = model_filename
+        params_filename = params_filename
 
     program = Program.parse_from_string(program_desc_str)
     if not core._is_program_version_supported(program._version()):
