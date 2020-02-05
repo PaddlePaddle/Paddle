@@ -23,11 +23,17 @@ from ... import optimizer
 __all__ = ["fp16_compression"]
 
 
-class FP16Compressor(object):
-    """Compress all fp32 gradients to fp16 during allreduce."""
+class FP16Compressor(optimizer.Optimizer):
+    """
+    Compress all fp32 gradients to fp16 during allreduce.
 
-    def __init__(self, **kwargs):
-        super(FP16Compressor, self).__init__(**kwargs)
+    Args:
+        optimizer (Optimizer): A common Optimizer object.
+
+    """
+
+    def __init__(self, optimizer):
+        self._optimizer = optimizer
 
     def _append_cast_ops(self, param_and_grads):
         """
@@ -80,7 +86,7 @@ class FP16Compressor(object):
 
             # cast grad from fp16->fp32 after allreduce.
             with param.block.program._optimized_guard(
-                [param, out_var]), framework.name_scope('fp16_compressor'):
+                [param, grad]), framework.name_scope('fp16_compressor'):
                 cast_op = block.append_op(
                     type="cast",
                     inputs={"X": out_var},
@@ -92,11 +98,11 @@ class FP16Compressor(object):
                     stop_gradient=True)
 
     def backward(self, **kargs):
-        return super(FP16Compressor, self).backward(**kargs)
+        return self._optimizer.backward(**kargs)
 
     def apply_optimize(self, **kargs):
         self._append_cast_ops(kargs['params_grads'])
-        return super(FP16Compressor, self).apply_optimize(**kargs)
+        return self._optimizer.apply_optimize(**kargs)
 
     def minimize(self,
                  loss,
@@ -120,27 +126,27 @@ class FP16Compressor(object):
         return optimize_ops, params_grads
 
 
-def fp16_compression(base_optimizer):
+def fp16_compression(optimizer):
     """
     Compress all fp32 gradients to fp16 during allreduce.
 
     Args:
-        base_optimizer (Optimizer): The base_optimizer should be a derived class of Optimizer.
+        optimizer(Optimizer): A common Optimizer.
 
     Returns:
-        OptimizerWithFP16Compressor: the optimizer with fp16 compressor. 
-    
+        An optimizer acting like a normal one but with fp16 comperssor training 
+        enabled.
 
+    Examples:
+	.. code-block:: python
+
+	    loss = network()
+            optimizer = fluid.optimizer.Adam(learning_rate=0.001)
+	
+            optimizer = fluid.contrib.fp16_compression(
+	              optimizer=optimizer)
+	
+            ops, param_grads = optimizer.minimize(loss)
     """
 
-    if not issubclass(base_optimizer, optimizer.Optimizer):
-        raise TypeError(
-            "The input(base_optimizer) should be a derived class of Optimizer.")
-
-    class OptimizerWithFP16Compressor(FP16Compressor, base_optimizer):
-        """Compress all fp32 gradients to fp16 during allreduce."""
-
-        def __init__(self, **kwargs):
-            super(OptimizerWithFP16Compressor, self).__init__(**kwargs)
-
-    return OptimizerWithFP16Compressor
+    return FP16Compressor(optimizer)
