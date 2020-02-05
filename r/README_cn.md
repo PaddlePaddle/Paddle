@@ -2,13 +2,6 @@
 在 R 中使用 PaddlePaddle
 
 ## 环境安装
-### 使用docker快速安装
-将[Dockerfile](./Dockerfile)下载到本地，使用以下命令构建docker镜像
-``` bash
-docker build -t paddle-rapi:latest .
-```
-
-### 本地安装
 首先确保已安装Python，假设路径为`/opt/python3.7`
 
 使用Python安装Paddle
@@ -108,3 +101,20 @@ output_data <- np_array(output_data)
 ```
 
 点击查看完整的[R预测示例](./example/mobilenet.r)及对应的[python预测示例](./example/mobilenet.py)
+
+### 快速运行
+将[Dockerfile](./Dockerfile)和[example](./example)下载到本地，使用以下命令构建docker镜像
+``` bash
+docker build -t paddle-rapi:latest .
+```
+
+启动一个容器
+``` bash
+docker run --rm -it paddle-rapi:latest bash
+```
+
+运行示例
+``` bash
+cd example && chmod +x mobilenet.r
+./mobilenet.r
+```

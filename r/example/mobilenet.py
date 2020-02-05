@@ -1,9 +1,6 @@
 #!/usr/bin/env python3.7
 # pylint: skip-file
 
-from typing import List
-from typing import Tuple
-
 import functools
 import numpy as np
 from paddle.fluid.core import AnalysisConfig
@@ -12,25 +9,25 @@ from paddle.fluid.core import create_paddle_predictor
 
 
 def main():
-    config: AnalysisConfig = set_config()
-    predictor: AnalysisPredictor = create_paddle_predictor(config)
+    config = set_config()
+    predictor = create_paddle_predictor(config)
 
     data, result = parse_data()
 
-    input_names: List[str] = predictor.get_input_names()
+    input_names = predictor.get_input_names()
     input_tensor = predictor.get_input_tensor(input_names[0])
-    shape: Tuple[int] = (1, 3, 300, 300)
-    input_data: np.array = data[:-4].astype(np.float32).reshape(shape)
+    shape = (1, 3, 300, 300)
+    input_data = data[:-4].astype(np.float32).reshape(shape)
     input_tensor.copy_from_cpu(input_data)
 
     predictor.zero_copy_run()
 
-    output_names: str = predictor.get_output_names()
+    output_names = predictor.get_output_names()
     output_tensor = predictor.get_output_tensor(output_names[0])
-    output_data: np.array = output_tensor.copy_to_cpu()
+    output_data = output_tensor.copy_to_cpu()
 
 
-def set_config() -> AnalysisConfig:
+def set_config():
     config = AnalysisConfig("")
     config.set_model("model/__model__", "model/__params__")
     config.switch_use_feed_fetch_ops(False)
@@ -40,7 +37,7 @@ def set_config() -> AnalysisConfig:
     return config
 
 
-def parse_data() -> Tuple[np.array, np.array]:
+def parse_data():
     """ parse input and output data """
     with open('data/data.txt', 'r') as fr:
         data = np.array([float(_) for _ in fr.read().split()])

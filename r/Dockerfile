@@ -7,7 +7,7 @@ ENV PATH /opt/python3/bin:/root/.local/bin:$PATH
 ENV LD_LIBRARY_PATH $LD_LIBRARY_PATH:/opt/python3/lib
 
 # Install Python
-ADD https://mirrors.tuna.tsinghua.edu.cn/anaconda/miniconda/Miniconda3-4.7.12.1-Linux-x86_64.sh
+ADD https://mirrors.tuna.tsinghua.edu.cn/anaconda/miniconda/Miniconda3-4.7.12.1-Linux-x86_64.sh miniconda3.sh
 RUN /bin/bash miniconda3.sh -b -p /opt/python3/ && \
     rm -f miniconda3.sh
 
@@ -41,3 +41,7 @@ RUN /opt/python3/bin/python -m pip install \
 # Install reticulate, R interface to Python
 RUN Rscript -e 'install.packages("reticulate", repos="https://cran.rstudio.com")'
 
+COPY example example
+RUN cd example && \
+    curl -O https://paddle-inference-dist.cdn.bcebos.com/mobilenet-test-model-data.tar.gz && \
+    tar -zxvf mobilenet-test-model-data.tar.gz && rm mobilenet-test-model-data.tar.gz 

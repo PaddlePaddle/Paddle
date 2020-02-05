@@ -102,3 +102,20 @@ output_data <- np_array(output_data)
 
 Click to see the full [R mobilenet example](./example/mobilenet.r) and the corresponding [Python mobilenet example](./example/mobilenet.py) the above. For more examples, see [R inference example](./example).
 
+## Quick start
+Download [Dockerfile](./Dockerfile) and [example](./example) to local directory, and build docker image
+``` bash
+docker build -t paddle-rapi:latest .
+```
+
+Create and enter container
+``` bash
+docker run --rm -it paddle-rapi:latest bash
+```
+
+Run the following command in th container
+```
+cd example
+chmod +x mobilenet.r
+./mobilenet.r
+```
