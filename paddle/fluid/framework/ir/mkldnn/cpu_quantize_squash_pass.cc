@@ -306,12 +306,12 @@ void CPUQuantizeSquashPass::DequantScaleSquash(Graph* graph) const {
       auto dequant_scale = dequant_op->Op()->GetAttrIfExists<float>("Scale");
       auto scale_scale = scale_op->Op()->GetAttrIfExists<float>("scale");
 
-      PADDLE_ENFORCE_NE(dequant_scale, 0.0f,
+      PADDLE_ENFORCE_GT(dequant_scale, 0.0f,
                         platform::errors::InvalidArgument(
-                            "Dequantize scale should not be equal 0"));
-      PADDLE_ENFORCE_NE(scale_scale, 0.0f,
+                            "Dequantize scale should have positive value"));
+      PADDLE_ENFORCE_GT(scale_scale, 0.0f,
                         platform::errors::InvalidArgument(
-                            "Scale of scale op should not be equal 0"));
+                            "Scale of scale op should have positive value"));
 
       dequant_op->Op()->SetAttr("Scale", dequant_scale / scale_scale);
       dequant_op->Op()->SetOutput(
