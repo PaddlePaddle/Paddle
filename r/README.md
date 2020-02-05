@@ -4,8 +4,15 @@ English | [简体中文](./README_cn.md)
 
 Use paddle in R.
 
-## Environment install
-First, make sure `Python` is installed, assuming that the path is `/opt/python3`.
+## Install
+### Use docker
+Download [`Dockerfile`](./Dockerfile), run
+``` bash
+docker build -t paddle-rapi:latest .
+```
+
+### Local installation
+First, make sure `Python` is installed, assuming that the path is `/opt/python3.7`.
 
 ``` bash
 python -m pip install paddlepaddle # CPU version
@@ -24,7 +31,7 @@ First, load PaddlePaddle in R.
 library(reticulate)
 library(RcppCNPy)
 
-use_python("/opt/python3/bin/python3")
+use_python("/opt/python3.7/bin/python3.7")
 paddle <- import("paddle.fluid.core")
 ```
 

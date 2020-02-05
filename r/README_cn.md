@@ -2,7 +2,14 @@
 在 R 中使用 PaddlePaddle
 
 ## 环境安装
-首先确保已安装Python，路径为`/opt/python3.7`
+### 使用docker快速安装
+将[Dockerfile](./Dockerfile)下载到本地，使用以下命令构建docker镜像
+``` bash
+docker build -t paddle-rapi:latest .
+```
+
+### 本地安装
+首先确保已安装Python，假设路径为`/opt/python3.7`
 
 使用Python安装Paddle
 ``` bash
@@ -100,4 +107,4 @@ output_data <- output_tensor$copy_to_cpu()
 output_data <- np_array(output_data)
 ```
 
-点击查看完整的[r预测示例](./example/mobilenet.r)及对应的[python预测示例](./example/mobilenet.py)
+点击查看完整的[R预测示例](./example/mobilenet.r)及对应的[python预测示例](./example/mobilenet.py)
