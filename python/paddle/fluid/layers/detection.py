@@ -2748,9 +2748,9 @@ def generate_proposals(scores,
             represents the differece between predicted box locatoin and
             anchor location. The data type must be float32.
         im_info(Variable): A 2-D Tensor with shape [N, 3] represents origin
-            image information for N batch. Info contains height, width and scale
-            between origin image size and the size of feature map.
-            The data type must be int32.
+            image information for N batch. It contains height and width of model's 
+            inputed image. It also contains scale that is between the pre-processed 
+            image size and original image size. The data type must be int32.
         anchors(Variable):   A 4-D Tensor represents the anchors with a layout
             of [H, W, A, 4]. H and W are height and width of the feature map,
             num_anchors is the box count of each position. Each anchor is
