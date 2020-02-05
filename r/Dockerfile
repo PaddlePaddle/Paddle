@@ -21,7 +21,7 @@ RUN echo "channels:" >> ~/.condarc && \
     echo "  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/" >> ~/.condarc && \
     echo "  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/" >> ~/.condarc && \
     echo "  - defaults" >> ~/.condarc && \
-	echo "custom_channels:" >> ~/.condarc && \
+    echo "custom_channels:" >> ~/.condarc && \
     echo "  conda-forge: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud" >> ~/.condarc && \
     echo "  msys2: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud" >> ~/.condarc && \
     echo "  bioconda: https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud" >> ~/.condarc && \
