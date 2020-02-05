@@ -605,8 +605,7 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
   int out_chw = c * out_hw;
 
   int pixelNum = n * out_chw;
-  // int blocks = NumBlocks(pixelNum);
-  // int threads = kNumCUDAThreads;
+
   GpuLaunchConfig config = getGpuLaunchConfig(pixelNum, ctx);
 
   if ("nearest" == interp_method) {
@@ -716,8 +715,6 @@ static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx,
   int out_cdhw = c * out_dhw;
 
   int pixelNum = n * out_cdhw;
-  // int blocks = NumBlocks(pixelNum);
-  // int threads = kNumCUDAThreads;
 
   GpuLaunchConfig config = getGpuLaunchConfig(pixelNum, ctx);
 
@@ -809,8 +806,6 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
   int out_chw = c * out_hw;
 
   int pixelNum = n * out_chw;
-  // int blocks = NumBlocks(pixelNum);
-  // int threads = kNumCUDAThreads;
 
   GpuLaunchConfig config = getGpuLaunchConfig(pixelNum, ctx);
 
