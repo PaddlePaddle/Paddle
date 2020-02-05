@@ -733,7 +733,7 @@ class TestDataset2(unittest.TestCase):
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             try:
-                fleet.init(exe)
+                fleet.init()
             except ImportError as e:
                 print("warning: no mpi4py")
             adam = fluid.optimizer.Adam(learning_rate=0.000005)
@@ -795,7 +795,7 @@ class TestDataset2(unittest.TestCase):
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             try:
-                fleet.init(exe)
+                fleet.init()
             except ImportError as e:
                 print("warning: no mpi4py")
             adam = fluid.optimizer.Adam(learning_rate=0.000005)
@@ -824,6 +824,10 @@ class TestDataset2(unittest.TestCase):
             dataset.set_pipe_command("cat")
             dataset.set_use_var(slots_vars)
             dataset.load_into_memory()
+            try:
+                dataset.global_shuffle(fleet)
+            except:
+                print("warning: catch expected error")
             fleet._opt_info = None
             fleet._fleet_ptr = None
 

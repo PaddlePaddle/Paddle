@@ -21,6 +21,7 @@ HdfsStore::HdfsStore(const std::string& path) {
   path_ = path;
   wait_sleep_ms_ = 3000;
   wait_timeout_ = std::chrono::seconds(999999999);
+  retry_times_ = 100;
 }
 
 void HdfsStore::set(const std::string& key, const std::vector<char>& data) {
@@ -33,10 +34,27 @@ void HdfsStore::set(const std::string& key, const std::vector<char>& data) {
     paddle::framework::fs_remove(path);
   }
   int err_no = 0;
-  std::shared_ptr<FILE> fp = paddle::framework::fs_open_write(tmp, &err_no, "");
-  size_t write_count = fwrite_unlocked(data.data(), 1, data.size(), fp.get());
-  VLOG(3) << "HdfsStore::set write_count=" << write_count << " key " << key;
-  fp.reset();
+  for (int i = 1; i <= retry_times_; ++i) {
+    std::shared_ptr<FILE> fp =
+        paddle::framework::fs_open_write(tmp, &err_no, "");
+    if (err_no != 0) {
+      VLOG(0) << "fs_open_write failed, retry times " << i << " err no "
+              << err_no;
+      fp.reset();
+      sleep(wait_sleep_ms_ / 1000);
+      continue;
+    }
+    size_t write_count = fwrite_unlocked(data.data(), 1, data.size(), fp.get());
+    if (write_count != data.size()) {
+      VLOG(0) << "fwrite_unlocked failed, retry times " << i << " write_count "
+              << write_count << " data.size() " << data.size();
+      fp.reset();
+      sleep(2);
+      continue;
+    }
+    fp.reset();
+    break;
+  }
   paddle::framework::fs_mv(tmp, path);
 #endif
 }
@@ -131,7 +149,7 @@ void GlooWrapper::Init(int rank, int size, const std::string& path,
   }
   rank_ = rank;
   size_ = size;
-  std::string cmd = std::string("hadoop fs");
+  std::string cmd = std::string("${HADOOP_HOME}/bin/hadoop fs");
   cmd += " -D fs.default.name=" + fs_name;
   cmd += " -D hadoop.job.ugi=" + fs_ugi;
   paddle::framework::hdfs_set_command(cmd);
@@ -149,16 +167,19 @@ void GlooWrapper::Init(int rank, int size, const std::string& path,
   is_initialized_ = true;
 }
 
-template void GlooWrapper::AllReduce<int64_t>(
+template std::vector<int64_t> GlooWrapper::AllReduce<int64_t>(
     std::vector<int64_t>& sendbuf,  // NOLINT
-    std::vector<int64_t>& recvbuf,  // NOLINT
     const std::string& mode);
-template void GlooWrapper::AllReduce<double>(
+template std::vector<double> GlooWrapper::AllReduce<double>(
     std::vector<double>& sendbuf,  // NOLINT
-    std::vector<double>& recvbuf,  // NOLINT
+    const std::string& mode);
+template std::vector<uint64_t> GlooWrapper::AllReduce<uint64_t>(
+    std::vector<uint64_t>& sendbuf,  // NOLINT
     const std::string& mode);
 template std::vector<int64_t> GlooWrapper::AllGather<int64_t>(
     int64_t& input);  // NOLINT
+template std::vector<uint64_t> GlooWrapper::AllGather<uint64_t>(
+    uint64_t& input);  // NOLINT
 template std::vector<double> GlooWrapper::AllGather<double>(
     double& input);  // NOLINT
 
