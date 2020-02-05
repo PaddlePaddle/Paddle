@@ -245,7 +245,7 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
             CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT,
             workspace_size_limit, &algo));
 
-    if (algo == 0 && FLAGS_cudnn_deterministic) {
+    if (FLAGS_cudnn_deterministic) {
       algo = static_cast<cudnnConvolutionBwdDataAlgo_t>(1);
     }
 
@@ -476,6 +476,10 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
               handle, cudnn_output_desc, cudnn_filter_desc, cudnn_conv_desc,
               cudnn_input_desc, CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
               workspace_size_limit, &data_algo));
+
+      if (FLAGS_cudnn_deterministic) {
+        data_algo = static_cast<cudnnConvolutionFwdAlgo_t>(1);
+      }
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
               handle, cudnn_output_desc, cudnn_filter_desc, cudnn_conv_desc,
@@ -492,6 +496,9 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
               CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT,
               workspace_size_limit, &filter_algo));
 
+      if (FLAGS_cudnn_deterministic) {
+        filter_algo = static_cast<cudnnConvolutionBwdFilterAlgo_t>(1);
+      }
       // get workspace for backwards filter algorithm
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnGetConvolutionBackwardFilterWorkspaceSize(

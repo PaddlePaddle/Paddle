@@ -194,7 +194,7 @@ class TestSeqProjectCase1(TestSeqProject):
         self.padding_trainable = True
         self.context_stride = 1
 
-        self.input_size = [self.input_row, 23]
+        self.input_size = [self.input_row, 50]
         offset_lod = [[0, 4, 5, 8, self.input_row]]
         self.lod = [[]]
         # convert from offset-based lod to length-based lod
@@ -211,7 +211,7 @@ class TestSeqProjectCase2Len0(TestSeqProject):
         self.padding_trainable = True
         self.context_stride = 1
 
-        self.input_size = [self.input_row, 23]
+        self.input_size = [self.input_row, 50]
         offset_lod = [[0, 0, 4, 5, 5, 8, self.input_row, self.input_row]]
         self.lod = [[]]
         # convert from offset-based lod to length-based lod
@@ -228,7 +228,7 @@ class TestSeqProjectCase3(TestSeqProject):
         self.padding_trainable = True
         self.context_stride = 1
 
-        self.input_size = [self.input_row, 23]
+        self.input_size = [self.input_row, 25]
         idx = list(range(self.input_size[0]))
         del idx[0]
         offset_lod = [[0] + np.sort(random.sample(idx, 8)).tolist() +

@@ -577,13 +577,6 @@ void DownpourWorker::TrainFilesWithProfiler() {
     timeline.Start();
     if (copy_table_config_.need_copy()) {
       VLOG(3) << "copy_sparse_tables_.size " << copy_sparse_tables_.size();
-      if (copy_table_config_.sparse_copy_by_feasign()) {
-        for (size_t i = 0; i < copy_sparse_tables_.size(); ++i) {
-          uint64_t tid = copy_sparse_tables_[i].first;
-          feasign_set_[tid].insert(sparse_push_keys_[tid].begin(),
-                                   sparse_push_keys_[tid].end());
-        }
-      }
       if (batch_cnt % copy_table_config_.batch_num() == 0) {
         CopySparseTable();
         CopyDenseTable();
@@ -695,6 +688,18 @@ void DownpourWorker::TrainFilesWithProfiler() {
         total_time += timeline.ElapsedSec();
       }
     }
+
+#ifdef PADDLE_WITH_PSLIB
+    if (copy_table_config_.need_copy()) {
+      if (copy_table_config_.sparse_copy_by_feasign()) {
+        for (size_t i = 0; i < copy_sparse_tables_.size(); ++i) {
+          uint64_t tid = copy_sparse_tables_[i].first;
+          feasign_set_[tid].insert(sparse_push_keys_[tid].begin(),
+                                   sparse_push_keys_[tid].end());
+        }
+      }
+    }
+#endif
 
     if (need_to_push_dense_) {
       timeline.Start();
@@ -828,13 +833,6 @@ void DownpourWorker::TrainFiles() {
   int cur_batch;
   while ((cur_batch = device_reader_->Next()) > 0) {
     if (copy_table_config_.need_copy()) {
-      if (copy_table_config_.sparse_copy_by_feasign()) {
-        for (size_t i = 0; i < copy_sparse_tables_.size(); ++i) {
-          uint64_t tid = copy_sparse_tables_[i].first;
-          feasign_set_[tid].insert(sparse_push_keys_[tid].begin(),
-                                   sparse_push_keys_[tid].end());
-        }
-      }
       if (batch_cnt % copy_table_config_.batch_num() == 0) {
         CopySparseTable();
         CopyDenseTable();
@@ -917,6 +915,18 @@ void DownpourWorker::TrainFiles() {
             dump_slot_, &sparse_push_keys_[tid], no_cvm_);
       }
     }
+
+#ifdef PADDLE_WITH_PSLIB
+    if (copy_table_config_.need_copy()) {
+      if (copy_table_config_.sparse_copy_by_feasign()) {
+        for (size_t i = 0; i < copy_sparse_tables_.size(); ++i) {
+          uint64_t tid = copy_sparse_tables_[i].first;
+          feasign_set_[tid].insert(sparse_push_keys_[tid].begin(),
+                                   sparse_push_keys_[tid].end());
+        }
+      }
+    }
+#endif
 
     if (need_to_push_dense_) {
       for (int i = 0; i < param_.program_config(0).push_dense_table_id_size();

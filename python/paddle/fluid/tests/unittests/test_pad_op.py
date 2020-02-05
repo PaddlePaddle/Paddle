@@ -37,7 +37,7 @@ class TestPadOp(OpTest):
         }
 
     def get_dtype(self):
-        return np.float32
+        return np.float64
 
     def test_check_output(self):
         self.check_output()

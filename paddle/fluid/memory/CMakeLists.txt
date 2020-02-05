@@ -11,10 +11,7 @@ cc_library(malloc SRCS malloc.cc DEPS
     place enforce allocator_facade profiler ${MKLDNN_CTX_DEPS})
 cc_library(memcpy SRCS memcpy.cc DEPS place)
 
-cc_library(memory
-        DEPS
-        malloc
-        memcpy)
+cc_library(memory DEPS malloc memcpy)
 
 if (WITH_GPU)
     nv_test(malloc_test

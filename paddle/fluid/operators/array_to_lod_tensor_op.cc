@@ -189,9 +189,9 @@ class ArrayToLoDTensorInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE(context->HasInput("X"),
-                   "ArrayToLoDTensorOp must has input X.");
+                   "ArrayToLoDTensorOp must have input X.");
     PADDLE_ENFORCE(context->HasInput("RankTable"),
-                   "ArrayToLoDTensorOp must has input RankTable.");
+                   "ArrayToLoDTensorOp must have input RankTable.");
     // For compile-time, the first dim of input X and output Out should be -1.
     // For runtime, the first dim of output Out should be the sum of all
     // elements's first dim in input X. The output's dims will be re-computed in

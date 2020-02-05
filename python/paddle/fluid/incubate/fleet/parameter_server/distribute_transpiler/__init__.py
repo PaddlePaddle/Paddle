@@ -17,7 +17,6 @@ import warnings
 """
 Convert the fluid program to distributed data-parallelism programs.
 """
-from .distributed_strategy import *
 import paddle.fluid.io as io
 from paddle.fluid.communicator import Communicator
 from paddle.fluid.framework import default_main_program
@@ -27,8 +26,11 @@ from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.executor import Executor
 from paddle.fluid.parallel_executor import ParallelExecutor
 from paddle.fluid.optimizer import Optimizer
+
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import TrainerRuntimeConfig, DistributedStrategy, SyncStrategy, AsyncStrategy, HalfAsyncStrategy, GeoStrategy, StrategyFactory
+
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspiler as OriginTranspiler
-from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig, ServerRuntimeConfig
+from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig, ServerRuntimeConfig, DistributedMode
 
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
@@ -70,25 +72,39 @@ class DistributedTranspiler(Fleet):
         program_config = self._transpile_config.get_program_config()
         trainer_communicator_config = self._transpile_config.get_trainer_runtime_config(
         )
+
+        if isinstance(self._transpile_config, SyncStrategy):
+            return
+
         print(trainer_communicator_config)
 
-        need_communicator_flag = False
         if isinstance(self._transpile_config, GeoStrategy):
-            need_communicator_flag = True
+            kwargs = {}
+            kwargs["push_vars"] = self.vars_info
+            kwargs["trainers"] = fleet.worker_num()
+            kwargs["push_nums"] = self._transpile_config.get_program_config(
+            ).geo_sgd_need_push_nums
+
             self._communicator = Communicator(
-                self.main_program, self.vars_info,
-                fleet.worker_num(), program_config.geo_sgd_need_push_nums,
+                self.main_program, DistributedMode.GEO, kwargs,
                 trainer_communicator_config.get_communicator_flags())
+
         elif isinstance(self._transpile_config, AsyncStrategy):
-            need_communicator_flag = True
             self._communicator = Communicator(
-                self.main_program,
-                env_flags=trainer_communicator_config.get_communicator_flags())
-        if need_communicator_flag:
-            if not self._communicator.is_running():
-                self._communicator.start()
-            else:
-                warnings.warn("communicator has been initialized, skip")
+                self.main_program, DistributedMode.ASYNC, None,
+                trainer_communicator_config.get_communicator_flags())
+
+        elif isinstance(self._transpile_config, HalfAsyncStrategy):
+            self._communicator = Communicator(
+                self.main_program, DistributedMode.HALF_ASYNC, None,
+                trainer_communicator_config.get_communicator_flags())
+        else:
+            raise TypeError("Training MODE do not supported")
+
+        if not self._communicator.is_running():
+            self._communicator.start()
+        else:
+            warnings.warn("communicator has been initialized, skip")
 
     def init_server(self, model_dir=None):
         """
@@ -139,12 +155,12 @@ class DistributedTranspiler(Fleet):
         Returns:
             None
         """
-        if isinstance(self._transpile_config, GeoStrategy) or isinstance(
-                self._transpile_config, AsyncStrategy):
+
+        if not isinstance(self._transpile_config, SyncStrategy):
             self._communicator.stop()
-        self._executor.close()
         if isinstance(self._role_maker, MPISymetricRoleMaker):
             self._role_maker._finalize()
+        self._executor.close()
 
     def distributed_optimizer(self, optimizer, strategy=None):
         """
@@ -250,14 +266,30 @@ class DistributedTranspiler(Fleet):
         io.save_persistables(executor, dirname, main_program, None)
 
     def _transpile(self, config):
-        if isinstance(config, DistributeTranspilerConfig):
-            self._transpile_config = DistributedStrategy()
-            self._transpile_config.set_program_config(config)
-        elif isinstance(config, DistributedStrategy):
+        if isinstance(config, DistributedStrategy):
             self._transpile_config = config
+        elif isinstance(config, DistributeTranspilerConfig):
+            if config.sync_mode:
+                self._transpile_config = SyncStrategy()
+            else:
+                if config.runtime_split_send_recv:
+                    if config.geo_sgd_mode:
+                        self._transpile_config = GeoStrategy(
+                            config.geo_sgd_need_push_nums)
+                    elif config.half_async:
+                        self._transpile_config = HalfAsyncStrategy()
+                    else:
+                        self._transpile_config = AsyncStrategy()
+
+                else:
+                    self._transpile_config = HalfAsyncStrategy()
+                    # for half_async compatibility
+                    config.half_async = True
+                    config.runtime_split_send_recv = True
+            self._transpile_config.set_program_config(config)
         else:
             raise TypeError(
-                "config must be an instance of DistributeTranspilerConfig or DistributedStrategy"
+                "config must be an instance of DistributeTranspilerConfig, SyncStrategy, HalfAsyncStrategy, AsyncStrategy or GeoStratey."
             )
 
         program_config = self._transpile_config.get_program_config()
@@ -327,17 +359,15 @@ class TranspilerOptimizer(DistributedOptimizer):
         super(TranspilerOptimizer, self).__init__(optimizer, strategy)
 
         if strategy:
-            if isinstance(strategy, DistributedStrategy):
+            if isinstance(strategy, DistributeTranspilerConfig) or isinstance(
+                    strategy, DistributedStrategy):
                 self._strategy = strategy
-            elif isinstance(strategy, DistributeTranspilerConfig):
-                self._strategy = DistributedStrategy()
-                self._strategy.set_program_config(strategy)
             else:
                 raise TypeError(
-                    "In {} mode, strategy must be an instance of DistributeTranspilerConfig or DistributedStrategy".
+                    "In {} mode, strategy must be an instance of DistributeTranspilerConfig, SyncStrategy, HalfAsyncStrategy, AsyncStrategy, or GeoStrategy".
                     format(fleet._mode))
         else:
-            self._strategy = DistributedStrategy()
+            self._strategy = StrategyFactory.create_sync_strategy()
 
     def backward(self,
                  loss,
