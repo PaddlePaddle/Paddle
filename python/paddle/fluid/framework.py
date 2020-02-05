@@ -4262,8 +4262,6 @@ class Program(object):
 
         Returns:
             int64: Random seed in current Program
-
-
         Examples:
             .. code-block:: python
 
