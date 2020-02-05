@@ -187,7 +187,7 @@ void DownpourWorkerOpt::Initialize(const TrainerDesc& desc) {
   }
 }
 
-void DownpourWorkerOpt::CreateDeviceResource(const ProgramDesc &main_prog) {
+void DownpourWorkerOpt::CreateDeviceResource(const ProgramDesc& main_prog) {
   CreateThreadScope(main_prog);
   CreateThreadOperatorsWithRerank(main_prog);
 }
@@ -202,6 +202,18 @@ void DownpourWorkerOpt::CreateThreadOperatorsWithRerank(
       loss_input_map;
   std::unordered_map<std::string, std::unordered_set<std::string>>
       loss_output_map;
+  std::unordered_map<std::string, std::unordered_set<std::string>>
+      loss_input_grad_map;
+  std::unordered_map<std::string, std::unordered_set<std::string>>
+      loss_output_grad_map;
+  std::unordered_map<std::string, std::unordered_set<std::string>>
+      metric_input_map;
+  std::unordered_map<std::string, std::unordered_set<std::string>>
+      metric_output_map;
+  std::vector<std::string> loss_grad_names;
+  for (int i = 0; i < loss_num; i++) {
+    loss_grad_names.push_back(loss_names_[i] + "@GRAD");
+  }
   // mark forward ops by loss
   for (int i = 0; i < loss_num; i++) {
     for (auto op_iter = ops.rbegin(); op_iter != ops.rend(); ++op_iter) {
@@ -215,6 +227,7 @@ void DownpourWorkerOpt::CreateThreadOperatorsWithRerank(
         }
       }
       if (HasOutput(*op_desc, loss_names_[i]) ||
+          HasOutput(*op_desc, loss_grad_names[i]) ||
           HasDependentOutput(*op_desc, loss_input_map[loss_names_[i]])) {
         AppendInputVar(*op_desc, &loss_input_map[loss_names_[i]]);
         AppendOutputVar(*op_desc, &loss_output_map[loss_names_[i]]);
@@ -222,30 +235,17 @@ void DownpourWorkerOpt::CreateThreadOperatorsWithRerank(
     }
   }
 
-  std::vector<std::string> loss_grad_names;
-  for (int i = 0; i < loss_num; i++) {
-    loss_grad_names.push_back(loss_names_[i] + "@GRAD");
-  }
-  std::unordered_map<std::string, std::unordered_set<std::string>>
-      loss_input_grad_map;
-  std::unordered_map<std::string, std::unordered_set<std::string>>
-      loss_output_grad_map;
   for (int i = 0; i < loss_num; i++) {
     for (auto op_iter = ops.begin(); op_iter != ops.end(); ++op_iter) {
       auto& op_desc = *op_iter;
-
       if (HasOutput(*op_desc, loss_grad_names[i]) ||
-          HasDependentOutput(*op_desc, loss_output_grad_map[loss_names_[i]])) {
+          HasDependentInput(*op_desc, loss_output_grad_map[loss_names_[i]])) {
         AppendInputVar(*op_desc, &loss_input_grad_map[loss_names_[i]]);
         AppendOutputVar(*op_desc, &loss_output_grad_map[loss_names_[i]]);
       }
     }
   }
 
-  std::unordered_map<std::string, std::unordered_set<std::string>>
-      metric_input_map;
-  std::unordered_map<std::string, std::unordered_set<std::string>>
-      metric_output_map;
   for (int i = 0; i < loss_num; i++) {
     for (auto op_iter = ops.begin(); op_iter != ops.end(); ++op_iter) {
       auto& op_desc = *op_iter;
@@ -253,7 +253,7 @@ void DownpourWorkerOpt::CreateThreadOperatorsWithRerank(
            NotHasDependentOutput(*op_desc, loss_input_map[loss_names_[i]])) ||
           HasDependentInput(*op_desc, metric_output_map[loss_names_[i]])) {
         AppendInputVar(*op_desc, &metric_input_map[loss_names_[i]]);
-        AppendOutputVar(*op_desc, &metric_input_map[loss_names_[i]]);
+        AppendOutputVar(*op_desc, &metric_output_map[loss_names_[i]]);
       }
     }
   }
@@ -276,13 +276,19 @@ void DownpourWorkerOpt::CreateThreadOperatorsWithRerank(
     }
   }
   loss_op_names_.resize(loss_num);
+  loss_ops_.resize(loss_num);
   std::string async_wait_flag = "async_wait_flag";
   for (int i = 0; i < loss_num; i++) {
     for (auto op_iter = ops.begin(); op_iter != ops.end(); ++op_iter) {
       auto& op_desc = *op_iter;
-      if (HasDependentInput(*op_desc, loss_input_map[loss_names_[i]]) ||
-          HasDependentInput(*op_desc, loss_input_grad_map[loss_names_[i]]) ||
-          HasDependentInput(*op_desc, metric_input_map[loss_names_[i]])) {
+      if ((op_desc->Type() == "fill_constant" &&
+          HasDependentOutput(*op_desc, loss_output_grad_map[loss_names_[i]])) ||
+          (HasDependentInput(*op_desc, loss_input_map[loss_names_[i]]) &&
+          HasDependentOutput(*op_desc, loss_output_map[loss_names_[i]])) ||
+          (HasDependentInput(*op_desc, loss_input_grad_map[loss_names_[i]]) &&
+          HasDependentOutput(*op_desc, loss_output_grad_map[loss_names_[i]])) ||
+          (HasDependentInput(*op_desc, metric_input_map[loss_names_[i]]) &&
+          HasDependentOutput(*op_desc, metric_output_map[loss_names_[i]]))) {
         std::unique_ptr<OperatorBase> local_op = OpRegistry::CreateOp(*op_desc);
         if (HasOutput(*op_desc, async_wait_name_)) {
           loss_op_names_[i].push_back(async_wait_flag);
