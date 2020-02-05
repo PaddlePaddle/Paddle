@@ -628,9 +628,9 @@ class WeightQuantization(object):
                 weight, and it should be 8 or 16. Default is 8.
             threshold_rate(float, optional): This api uses abs_max methd to 
                 quantize the weight from float32 to int8/16, and the abs max 
-                value is important for quantization diff. When the is far 
-                away from the center of the numerical distribution, we can 
-                set threshold_rate between 1e-6 and 1e-8, so the abs max 
+                value is important for quantization diff. When the abs_max 
+                value is far away from the center of the numerical distribution, 
+                we can set threshold_rate between 1e-6 and 1e-8, so the abs max 
                 value will be optimized. Default is 0.0.
         '''
         for op_type in quantizable_op_type:
