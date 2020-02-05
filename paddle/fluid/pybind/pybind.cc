@@ -2209,7 +2209,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindFleetWrapper(&m);
   BindGlooWrapper(&m);
   BindBoxHelper(&m);
-#ifndef _WIN32
+#ifdef PADDLE_WITH_NCCL
   BindNCCLWrapper(&m);
 #endif
   BindGraph(&m);
