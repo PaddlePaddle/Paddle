@@ -62,10 +62,10 @@ __global__ void emb_eltwise_layernorm_kernel(
     const int64_t *sent_id_d, const T *scale, const T *bias, const T *word_emb,
     const T *pos_emb, const T *sent_emb, T *output, float eps) {
   cub::Sum pair_sum;
-  // blockIdx.x = position in the sequence
-  // blockIdx.y = batch
-  // gridDim.x = Seq
-  // gridDim.y = Batch
+  // blockIdx.x: position in the sequence
+  // blockIdx.y: batch
+  // gridDim.x: Seq
+  // gridDim.y: Batch
   __shared__ int word_id;
   __shared__ int pos_id;
   __shared__ int sent_id;
@@ -103,7 +103,6 @@ __global__ void emb_eltwise_layernorm_kernel(
 
     thread_data = pair_sum(thread_data, temp_data);
   }
-  // layer norm on the sum
   layer_norm<T, TPB>(thread_data, hidden, out_offset, bias, scale, output, eps);
 }
 

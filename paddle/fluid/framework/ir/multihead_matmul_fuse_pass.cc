@@ -445,19 +445,9 @@ static int BuildFusionV2(Graph* graph, const std::string& name_scope,
       Node* reshape2, Node* reshape2_qkv_out, Node* scale, Node* scale_out) {
     auto scale_attr = boost::get<float>(scale->Op()->GetAttr("scale"));
 
-    // create multihead
-    // 1. Get the weights and change the weights.
-    // 2. Recreate an weight var and set the weights toe it. destroy the old
-    // one.
-    // 3. Recreate the bias var and Set bias to it.
-    // 4. Set out to it.
     // mul (B * S * Hidden) x (Hidden * 3 * N * H) = (B * S * 3 * N * H)
     // bias (B * S * 3 * N * H) + bias (3 * N * H)
     // Transpose (B * S * 3 * N * H) -> (3 * B * N * S * H)
-    //
-    // QKVToCTX
-    // qptr, kptr, vptr.
-    // modify the bias
     auto* wq_tensor = scope->FindVar(mul0_w->Name())->GetMutable<LoDTensor>();
     auto* wk_tensor = scope->FindVar(mul1_w->Name())->GetMutable<LoDTensor>();
     auto* wv_tensor = scope->FindVar(mul2_w->Name())->GetMutable<LoDTensor>();
@@ -505,6 +495,7 @@ static int BuildFusionV2(Graph* graph, const std::string& name_scope,
         combined_w_tensor->mutable_data<float>(platform::CPUPlace());
     std::vector<float*> w_vec = {wq_data, wk_data, wv_data};
     int dims_h = combined_w_dims[0], dims_w = combined_w_dims[2];
+    // Combine the three fc weights together.
     for (int i = 0; i < dims_h; i++) {
       for (int j = 0; j < 3; j++) {
         for (int k = 0; k < dims_w; k++) {
@@ -636,49 +627,48 @@ static int BuildFusionV2(Graph* graph, const std::string& name_scope,
                  mul0_w, mul1_w, mul2_w, eltadd0_b, eltadd1_b, eltadd2_b,
                  eltadd_qk_b, reshape2_0, reshape2_qkv_out, scale, scale_out);
 
-    std::unordered_set<const Node*> marked_nodes(
-        {eltadd0,
-         eltadd1,
-         eltadd2,
-         eltadd0_b,
-         eltadd1_b,
-         eltadd2_b,
-         eltadd0_out,
-         eltadd1_out,
-         eltadd2_out,
-         reshape2_0,
-         reshape2_1,
-         reshape2_2,
-         reshape2_0_out,
-         reshape2_1_out,
-         reshape2_2_out,
-         transpose2_0,
-         transpose2_1,
-         transpose2_2,
-         transpose2_0_out,
-         transpose2_1_out,
-         transpose2_2_out,
-         matmul_qk,
-         matmul_qk_out,
-         eltadd_qk,
-         eltadd_qk_out,
-         softmax_qk,
-         softmax_qk_out,  // dropout_qk, dropout_qk_out,
-         transpose2_qkv,
-         transpose2_qkv_out,
-         matmul_qkv,
-         matmul_qkv_out,
-         mul0,
-         mul1,
-         mul2,
-         mul0_out,
-         mul1_out,
-         mul2_out,
-         mul0_w,
-         mul1_w,
-         mul2_w,
-         reshape2_qkv,
-         scale});
+    std::unordered_set<const Node*> marked_nodes({eltadd0,
+                                                  eltadd1,
+                                                  eltadd2,
+                                                  eltadd0_b,
+                                                  eltadd1_b,
+                                                  eltadd2_b,
+                                                  eltadd0_out,
+                                                  eltadd1_out,
+                                                  eltadd2_out,
+                                                  reshape2_0,
+                                                  reshape2_1,
+                                                  reshape2_2,
+                                                  reshape2_0_out,
+                                                  reshape2_1_out,
+                                                  reshape2_2_out,
+                                                  transpose2_0,
+                                                  transpose2_1,
+                                                  transpose2_2,
+                                                  transpose2_0_out,
+                                                  transpose2_1_out,
+                                                  transpose2_2_out,
+                                                  matmul_qk,
+                                                  matmul_qk_out,
+                                                  eltadd_qk,
+                                                  eltadd_qk_out,
+                                                  softmax_qk,
+                                                  softmax_qk_out,
+                                                  transpose2_qkv,
+                                                  transpose2_qkv_out,
+                                                  matmul_qkv,
+                                                  matmul_qkv_out,
+                                                  mul0,
+                                                  mul1,
+                                                  mul2,
+                                                  mul0_out,
+                                                  mul1_out,
+                                                  mul2_out,
+                                                  mul0_w,
+                                                  mul1_w,
+                                                  mul2_w,
+                                                  reshape2_qkv,
+                                                  scale});
     // Remove unneeded nodes.
     GraphSafeRemoveNodes(graph, marked_nodes);
     ++fusion_count;

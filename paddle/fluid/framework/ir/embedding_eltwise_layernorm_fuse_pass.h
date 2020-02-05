@@ -75,7 +75,7 @@ struct EmbeddingEltwiseLayerNormPattern : public PatternBase {
 // (elemtwise_out_0, sent_emb)      elementweise_add -> elementwise_out_1
 // (elementwise_out_1, scale, bias) layer_norm       -> layer_norm_out
 //
-// and then convtert the Corresponding subgraph to:
+// and then convert the corresponding subgraph to:
 //
 // (word, pos, sent, weights_0, weights_1, weights_2,
 //       scale, baias)   embedding_eltwise_layernorm -> layer_norm_out

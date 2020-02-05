@@ -32,8 +32,6 @@ struct MultiHeadMatmulPattern : public PatternBase {
   PDNode* operator()(PDNode* x);
 
   // declare operator node's name
-  // PATTERN_DECL_NODE(dropout);
-  // PATTERN_DECL_NODE(dropout_out);
   PATTERN_DECL_NODE(layer_norm);
   PATTERN_DECL_NODE(layer_norm_out);
   PATTERN_DECL_NODE(mul0);
@@ -79,8 +77,6 @@ struct MultiHeadMatmulPattern : public PatternBase {
   PATTERN_DECL_NODE(eltadd_qk_out);
   PATTERN_DECL_NODE(softmax_qk);
   PATTERN_DECL_NODE(softmax_qk_out);
-  // PATTERN_DECL_NODE(dropout_qk);
-  // PATTERN_DECL_NODE(dropout_qk_out);
 
   PATTERN_DECL_NODE(matmul_qkv);
   PATTERN_DECL_NODE(matmul_qkv_out);
