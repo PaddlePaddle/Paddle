@@ -305,7 +305,7 @@ CUDADeviceContext::~CUDADeviceContext() {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroy(cudnn_handle_),
                                 "Failed to destory Cudnn handle");
   }
-#if !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
   if (nccl_comm_) {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclCommDestroy(nccl_comm_));
   }

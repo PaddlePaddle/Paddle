@@ -45,14 +45,14 @@ struct TestFusedBroadcastOpHandle : TestBroadcastOpHandle {
     nodes_.emplace_back(
         ir::CreateNodeForTest("fused_broadcast", ir::Node::Type::kOperation));
     if (use_gpu_) {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
       op_handle_ = new FusedBroadcastOpHandle(
           nodes_.back().get(), local_scopes_, place_list_, nccl_ctxs_.get());
 #else
       PADDLE_THROW("CUDA is not supported.");
 #endif
     } else {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
       op_handle_ = new FusedBroadcastOpHandle(
           nodes_.back().get(), local_scopes_, place_list_, nccl_ctxs_.get());
 #else
