@@ -53,7 +53,7 @@ class TestMKLDNNMulOpS8S8(OpTest):
         # limit random range inside |-127, 127| to avoid overflow on SKL
         if self.srctype == np.int8:
             A_data = np.random.randint(-127, 127, (20, 5)).astype(np.int8)
-        elif self.srctype == np.uint8:
+        else:
             A_data = np.random.randint(0, 127, (20, 5)).astype(np.uint8)
 
         B_data = np.random.uniform(-127, 127, (5, 20)).astype(np.float32)
