@@ -1195,27 +1195,39 @@ def append_backward(loss,
 
             import paddle.fluid as fluid
 
-            x = fluid.data(name='x', shape=[None, 13], dtype='float32')
+            x = fluid.data(name='x', shape=[None, 13], dtype='int64')
             y = fluid.data(name='y', shape=[None, 1], dtype='float32')
-            y_predict = fluid.layers.fc(input=x, size=1, act=None, name='my_fc')
+            x_emb = fluid.embedding(x, size=[100, 256])
+            y_predict = fluid.layers.fc(input=x_emb, size=1, act=None, name='my_fc')
             loss = fluid.layers.square_error_cost(input=y_predict, label=y)
             avg_loss = fluid.layers.mean(loss)
 
             # Get all weights in main_program, not include bias.
-            all_weights = [param for param in fluid.default_main_program().block(0).all_parameters() if 'w_' in param.name]  # [my_fc.w_0]
+            all_weights = [param for param in fluid.default_main_program().block(0).all_parameters() if 'w_' in param.name]
             all_weights_name = [w.name for w in all_weights]
 
             # return all param_grads needed to be updated if parameter_list set default None.
-            p_g_list1 = fluid.backward.append_backward(loss=avg_loss)  # [(my_fc.w_0, my_fc.w_0@GRAD), (my_fc.b_0, my_fc.b_0@GRAD)]
+            p_g_list1 = fluid.backward.append_backward(loss=avg_loss)
+            # output: [(embedding_0.w_0, embedding_0.w_0@GRAD), (my_fc.w_0, my_fc.w_0@GRAD), (my_fc.b_0, my_fc.b_0@GRAD)]
+
             # return the param_grads corresponding to parameter_list that can be list of param (Variable).
-            p_g_list2 = fluid.backward.append_backward(loss=avg_loss, parameter_list=all_weights)  # [(my_fc.w_0, my_fc.w_0@GRAD)]
+            p_g_list2 = fluid.backward.append_backward(loss=avg_loss, parameter_list=all_weights)
+            # output: [(embedding_0.w_0, embedding_0.w_0@GRAD), (my_fc.w_0, my_fc.w_0@GRAD)]
+
             # parameter_list can be list of param.name (str).
-            p_g_list3 = fluid.backward.append_backward(loss=avg_loss, parameter_list=all_weights_name)  # [(my_fc.w_0, my_fc.w_0@GRAD)]
-            p_g_list4 = fluid.backward.append_backward(loss=avg_loss, no_grad_set=set(['my_fc.b_0']))  # [(my_fc.w_0, my_fc.w_0@GRAD)]
-            # return [] because all param_grads are filtered by no_grad_set that can be set of param (Variable).
-            p_g_list5 = fluid.backward.append_backward(loss=avg_loss, parameter_list=all_weights, no_grad_set=set(all_weights))  # []
-            # no_grad_set can be set of param.name (str).
-            p_g_list6 = fluid.backward.append_backward(loss=avg_loss, parameter_list=all_weights, no_grad_set=set(all_weights_name))  # []
+            p_g_list3 = fluid.backward.append_backward(loss=avg_loss, parameter_list=all_weights_name)
+            # output: [(embedding_0.w_0, embedding_0.w_0@GRAD), (my_fc.w_0, my_fc.w_0@GRAD)]
+
+            # no_grad_set can be set of Variable that means grad will be cut off from these Variable.
+            p_g_list4 = fluid.backward.append_backward(loss=avg_loss, no_grad_set=set([x_emb]))
+            # output: [(my_fc.w_0, my_fc.w_0@GRAD), (my_fc.b_0, my_fc.b_0@GRAD)]
+
+            # no_grad_set can be set of Variable.name when the Variable is created inside layers and can't be specified explicitly.
+            p_g_list5 = fluid.backward.append_backward(loss=avg_loss, no_grad_set=set(['my_fc.b_0']))
+            # output: [(embedding_0.w_0, embedding_0.w_0@GRAD), (my_fc.w_0, my_fc.w_0@GRAD)]
+
+            # return [] because all param_grads are filtered by no_grad_set.
+            p_g_list6 = fluid.backward.append_backward(loss=avg_loss, parameter_list=all_weights, no_grad_set=set(all_weights))
 
     """
     assert isinstance(loss, framework.Variable)
@@ -1532,12 +1544,15 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
     Args:
         targets(Variable|list[Variable]): The target variables
         inputs(Variable|list[Variable]): The input variables
-        target_gradients (Variable|list[Variable]|None): The gradient variables
+        target_gradients (Variable|list[Variable], optional): The gradient variables
             of targets which has the same shape with targets, If None, ones will
             be created for them.
-        no_grad_set(set[string|Variable]): The variables that have no gradients
-            in Block 0. All variables with `stop_gradient=True` from all blocks
-            will be automatically added.
+        no_grad_set(set[Variable|str], optional): Set of Variables or Variable.names in the :ref:`api_guide_Block_en` 0 whose gradients
+                               should be ignored. All variables with
+                               `stop_gradient=True` from all blocks will
+                               be automatically added into this set.
+                               If this parameter is not None, the Variables or Variable.names in this set will be added to the default set.
+                               Default: None.
 
     Return:
         (list[Variable]): A list of gradients for inputs
@@ -1655,10 +1670,10 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
     Args:
         targets (Variable|list[Variable]): The target variables.
         inputs (Variable|list[Variable]): The input variables.
-        target_gradients (Variable|list[Variable]|None): The gradient variables
+        target_gradients (Variable|list[Variable], optional): The gradient variables
             of targets which has the same shape with targets, If None, ones will
             be created for them.
-        no_grad_set (set[string|Variable]|None): Set of Variables or Variable.names in the :ref:`api_guide_Block_en` 0 whose gradients
+        no_grad_set (set[Variable|str], optional): Set of Variables or Variable.names in the :ref:`api_guide_Block_en` 0 whose gradients
             should be ignored. All variables with `stop_gradient=True` from all blocks will
             be automatically added into this set. If this parameter is not None, the Variables or Variable.names
             in this set will be added to the default set. Default: None.
