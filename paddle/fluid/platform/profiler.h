@@ -32,7 +32,7 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-enum ProfilerState {
+enum class ProfilerState {
   kDisabled,  // disabled state
   kCPU,       // CPU profiling state
   kCUDA,      // GPU profiling state
@@ -116,7 +116,7 @@ struct RecordBlock {
 std::vector<std::vector<Event>> GetAllEvents();
 
 // Candidate keys to sort the profiling report
-enum EventSortingKey {
+enum class EventSortingKey {
   kDefault,
   kCalls,
   kTotal,
