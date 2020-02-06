@@ -17,7 +17,7 @@ from __future__ import print_function
 from six.moves import reduce
 from .. import core
 from ..layers import utils
-from ..layers import nn
+from ..layers import nn as F
 from .. import dygraph_utils
 from . import layers
 from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer, _varbase_creator
@@ -30,9 +30,10 @@ import numbers
 import logging
 
 __all__ = [
-    'Conv2D', 'Conv3D', 'Pool2D', 'Linear', 'BatchNorm', 'Embedding', 'GRUUnit',
-    'LayerNorm', 'NCE', 'PRelu', 'BilinearTensorProduct', 'Conv2DTranspose',
-    'Conv3DTranspose', 'GroupNorm', 'SpectralNorm', 'TreeConv'
+    'Conv2D', 'Conv3D', 'Pool2D', 'Linear', 'BatchNorm', 'Dropout', 'Embedding',
+    'GRUUnit', 'LayerNorm', 'NCE', 'PRelu', 'BilinearTensorProduct',
+    'Conv2DTranspose', 'Conv3DTranspose', 'GroupNorm', 'SpectralNorm',
+    'TreeConv'
 ]
 
 
@@ -1199,8 +1200,7 @@ class Dropout(layers.Layer):
 
     def forward(self, input):
         is_test = self.training if in_dygraph_mode() else self.is_test
-        return nn.dropout(
-            input, dropout_prob=self.dropout_prob, is_test=is_test)
+        return F.dropout(input, dropout_prob=self.dropout_prob, is_test=is_test)
 
 
 class Embedding(layers.Layer):

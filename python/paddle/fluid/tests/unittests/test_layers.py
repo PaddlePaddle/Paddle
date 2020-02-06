@@ -106,6 +106,26 @@ class TestLayer(LayerTest):
             ret = custom(x, do_linear2=True)
             self.assertTrue(np.array_equal(ret.numpy().shape, [3, 1]))
 
+    def test_dropout(self):
+        inp = np.ones([3, 32, 32], dtype='float32')
+        with self.static_graph():
+            t = layers.data(
+                name='data',
+                shape=[3, 32, 32],
+                dtype='float32',
+                append_batch_size=False)
+            dropout = nn.Dropout(dropout_prob=0.35, seed=1, is_test=False)
+            ret = dropout(t)
+            static_ret = self.get_static_graph_result(
+                feed={'data': inp}, fetch_list=[ret])[0]
+        with self.dynamic_graph():
+            t = base.to_variable(inp)
+            dropout = nn.Dropout(dropout_prob=0.35, seed=1, is_test=False)
+            dy_ret = dropout(t)
+            dy_ret_value = dy_ret.numpy()
+
+        self.assertTrue(np.array_equal(static_ret, dy_ret_value))
+
     def test_linear(self):
         inp = np.ones([3, 32, 32], dtype='float32')
         with self.static_graph():
