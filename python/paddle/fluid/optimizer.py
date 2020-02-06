@@ -123,8 +123,12 @@ class Optimizer(object):
             .. code-block:: python
 
                 import paddle.fluid as fluid
-                adam = fluid.optimizer.Adam(0.001)
-                state_dict = adam.state_dict()
+
+                with fluid.dygraph.guard():
+                    emb = fluid.dygraph.Embedding([10, 10])
+
+                    adam = fluid.optimizer.Adam(0.001, parameter_list=emb.parameters())
+                    state_dict = adam.state_dict()
 
         '''
         state_dict = {}
@@ -134,11 +138,11 @@ class Optimizer(object):
         # global step if use lr decay
         if isinstance(self._learning_rate, LearningRateDecay):
             var_tmp = None
-            if not framework.in_dygraph_mode():
-                var_temp = Variable(None, name='global_step', dtype='int32')
-            else:
+            if framework.in_dygraph_mode():
                 var_temp = framework._varbase_creator(
                     None, name='global_step', dtype='int32')
+            else:
+                var_temp = Variable(None, name='global_step', dtype='int32')
 
             tensor.fill_constant(
                 [1], "int32", self._learning_rate.step_num, out=var_temp)
@@ -160,19 +164,19 @@ class Optimizer(object):
             .. code-block:: python
 
                 with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding( "emb", [10, 10])
+                    emb = fluid.dygraph.Embedding([10, 10])
 
                     state_dict = emb.state_dict()
-                    fluid.save_dygraph( state_dict, "paddle_dy")
+                    fluid.save_dygraph(state_dict, "paddle_dy")
 
-                    adam = fluid.optimizer.Adam( learning_rate = fluid.layers.noam_decay( 100, 10000), 
-                                                 parameter_list = emb.parameters() )
+                    adam = fluid.optimizer.Adam(learning_rate=fluid.layers.noam_decay( 100, 10000), 
+                                                parameter_list=emb.parameters())
                     state_dict = adam.state_dict()
-                    fluid.save_dygraph( state_dict, "padle_dy")
+                    fluid.save_dygraph(state_dict, "paddle_dy")
 
                     para_state_dict, opti_state_dict = fluid.load_dygraph( "paddle_dy")
 
-                    adam.set_dict( opti_state_dict )
+                    adam.set_dict(opti_state_dict)
 
         '''
 
@@ -280,6 +284,68 @@ class Optimizer(object):
                 value=float(self._learning_rate),
                 dtype='float32' if self._dtype is None else self._dtype,
                 persistable=True)
+
+    @framework.dygraph_only
+    def current_step_lr(self):
+        """
+        .. note::
+          **This API is ONLY avaliable in Dygraph mode**
+        
+        Get current step learning rate. The return value is all the same When LearningRateDecay is not used,
+        otherwise return the step learning rate.
+
+        Returns:
+            float: The learning rate of the current step.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                import numpy as np
+
+                # example1: LearningRateDecay is not used, return value is all the same
+                with fluid.dygraph.guard():
+                    emb = fluid.dygraph.Embedding([10, 10])
+                    adam = fluid.optimizer.Adam(0.001, parameter_list = emb.parameters())
+                    lr = adam.current_step_lr()
+                    print(lr) # 0.001
+
+                # example2: PiecewiseDecay is used, return the step learning rate
+                with fluid.dygraph.guard():
+                    inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+                    linear = fluid.dygraph.nn.Linear(10, 10)
+                    inp = fluid.dygraph.to_variable(inp)
+                    out = linear(inp)
+                    loss = fluid.layers.reduce_mean(out)
+                    
+                    bd = [2, 4, 6, 8]
+                    value = [0.2, 0.4, 0.6, 0.8, 1.0]
+                    adam = fluid.optimizer.Adam(fluid.dygraph.PiecewiseDecay(bd, value, 0),
+                                           parameter_list=linear.parameters())
+
+                    # first step: learning rate is 0.2
+                    np.allclose(adam.current_step_lr(), 0.2, rtol=1e-06, atol=0.0) # True
+
+                    # learning rate for different steps
+                    ret = [0.2, 0.2, 0.4, 0.4, 0.6, 0.6, 0.8, 0.8, 1.0, 1.0, 1.0, 1.0]
+                    for i in range(12):
+                        adam.minimize(loss)
+                        lr = adam.current_step_lr()
+                        np.allclose(lr, ret[i], rtol=1e-06, atol=0.0) # True
+
+        """
+        current_lr = self._global_learning_rate()
+        if current_lr:
+            return self._global_learning_rate().numpy()[0]
+
+        if isinstance(self._learning_rate, float):
+            return self._learning_rate
+        else:
+            step_lr = self._learning_rate.step()
+            if isinstance(step_lr, (float, int)):
+                return step_lr
+            else:
+                return step_lr.numpy()[0]
 
     def _global_learning_rate(self, program=None):
         """
@@ -441,17 +507,12 @@ class Optimizer(object):
             [p[0] for p in parameters_and_grads if p[0].trainable])
         self._create_global_learning_rate()
 
-        optimize_ops = []
         if framework.in_dygraph_mode():
             for param_and_grad in parameters_and_grads:
                 if param_and_grad[1] is None:
                     continue
-                with param_and_grad[0].block.program._optimized_guard(
-                        param_and_grad):
-                    if param_and_grad[0].trainable is True:
-                        optimize_op = self._append_optimize_op(target_block,
-                                                               param_and_grad)
-                        optimize_ops.append(optimize_op)
+                if param_and_grad[0].trainable is True:
+                    self._append_optimize_op(target_block, param_and_grad)
         else:
             for param_and_grad in parameters_and_grads:
                 if param_and_grad[1] is None:
@@ -459,9 +520,7 @@ class Optimizer(object):
                 with param_and_grad[0].block.program._optimized_guard(
                         param_and_grad), name_scope("optimizer"):
                     if param_and_grad[0].trainable is True:
-                        optimize_op = self._append_optimize_op(target_block,
-                                                               param_and_grad)
-                        optimize_ops.append(optimize_op)
+                        self._append_optimize_op(target_block, param_and_grad)
 
         # Get custom finish ops for subclasses
         # FIXME: Need to fix this once we figure out how to handle dependencies
@@ -546,10 +605,10 @@ class Optimizer(object):
             See examples in ``apply_gradients``.
         """
         act_no_grad_set = None
-        if not framework.in_dygraph_mode():
-            act_no_grad_set = self._get_no_grad_set(loss, no_grad_set)
-        else:
+        if framework.in_dygraph_mode():
             pass
+        else:
+            act_no_grad_set = self._get_no_grad_set(loss, no_grad_set)
 
         self._dtype = loss.dtype
         if framework.in_dygraph_mode():

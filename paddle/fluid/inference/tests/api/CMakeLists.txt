@@ -47,10 +47,15 @@ function(inference_analysis_api_int8_test_run TARGET_NAME test_binary model_dir 
 	COMMAND ${test_binary}
         ARGS --infer_model=${model_dir}/model
              --infer_data=${data_path}
-             --warmup_batch_size=100
+             --warmup_batch_size=${WARMUP_BATCH_SIZE}
              --batch_size=50
              --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
 	     --iterations=2)
+endfunction()
+
+function(inference_analysis_api_int8_test_run_custom_warmup_batch_size TARGET_NAME test_binary model_dir data_path warmup_batch_size)
+    set(WARMUP_BATCH_SIZE ${warmup_batch_size})
+    inference_analysis_api_int8_test_run(${TARGET_NAME} ${test_binary} ${model_dir} ${data_path})
 endfunction()
 
 function(inference_analysis_api_object_dection_int8_test_run TARGET_NAME test_binary model_dir data_path)
@@ -268,7 +273,7 @@ if(WITH_MKLDNN)
   # googlenet int8
   set(INT8_GOOGLENET_MODEL_DIR "${INT8_DATA_DIR}/googlenet")
   download_int8_data(${INT8_GOOGLENET_MODEL_DIR} "GoogleNet_int8_model.tar.gz" )
-  inference_analysis_api_int8_test_run(test_analyzer_int8_googlenet ${INT8_IMG_CLASS_TEST_APP} ${INT8_GOOGLENET_MODEL_DIR} ${IMAGENET_DATA_PATH})
+  inference_analysis_api_int8_test_run_custom_warmup_batch_size(test_analyzer_int8_googlenet ${INT8_IMG_CLASS_TEST_APP} ${INT8_GOOGLENET_MODEL_DIR} ${IMAGENET_DATA_PATH} 10)
 
   ### Object detection models
   set(PASCALVOC_DATA_PATH "${INT8_DATA_DIR}/pascalvoc_val_head_300.bin")
@@ -305,6 +310,13 @@ if(WITH_MKLDNN)
   download_qat_data(${QAT2_INT8_MobileNet_MODEL_DIR} "MobileNet_qat_perf_int8.tar.gz")
   inference_analysis_api_qat_test_run(test_analyzer_qat_performance_benchmark ${QAT_IMG_CLASS_TEST_APP} ${QAT2_MobileNet_MODEL_DIR}/MobileNet_qat_perf/float ${QAT2_INT8_MobileNet_MODEL_DIR}/MobileNet_qat_perf_int8 ${IMAGENET_DATA_PATH})
 
+  ### Other tests
+ 
+  # MKLDNN quantizer config
+  set(MKLDNN_QUANTIZER_CONFIG_TEST_APP "test_mkldnn_quantizer_config")
+  set(MKLDNN_QUANTIZER_CONFIG_TEST_APP_SRC "mkldnn_quantizer_config_tester.cc")
+  inference_analysis_api_test_build(${MKLDNN_QUANTIZER_CONFIG_TEST_APP} ${MKLDNN_QUANTIZER_CONFIG_TEST_APP_SRC})
+  inference_analysis_test_run(test_mkldnn_quantizer_config COMMAND ${MKLDNN_QUANTIZER_CONFIG_TEST_APP})
 endif()
 
 # bert, max_len=20, embedding_dim=128
@@ -370,6 +382,7 @@ inference_analysis_test(lite_mul_model_test SRCS lite_mul_model_test.cc
 inference_analysis_test(lite_resnet50_test SRCS lite_resnet50_test.cc
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
         ARGS --infer_model=${RESNET50_MODEL_DIR})
+
 inference_analysis_test(test_analyzer_capi SRCS analyzer_capi_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
             ARGS --infer_model=${RESNET50_MODEL_DIR}/model)

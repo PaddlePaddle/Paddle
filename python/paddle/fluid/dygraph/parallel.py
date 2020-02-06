@@ -254,3 +254,116 @@ class DataParallel(layers.Layer):
 
     def _is_data_parallel_mode(self):
         return self._strategy.nranks > 1
+
+    def state_dict(self,
+                   destination=None,
+                   include_sublayers=True,
+                   structured_name_prefix=""):
+        '''
+        Get all parameters of self._layers and its sub-layers. And set all the parameters into a dict
+
+        Parameters:
+            destination(dict, optional) : If provide, all the parameters will set to this dict . Default: None
+            include_sublayers(bool, optional) : If true, also include the parameters from sublayers. Default: True
+            structured_name_prefix(str, optional): If not empty str, all the key in state dict will start 
+                                                 with structured_name_prefix
+
+        Retruns:
+            dict: a dict contains all the parameters of self._layers
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                with fluid.dygraph.guard():
+                    strategy=dygraph.parallel.prepare_context()
+                    emb = fluid.dygraph.Embedding([10, 10])
+                    emb = dygraph.parallel.DataParallel(emb, strategy)
+
+                    state_dict = emb.state_dict()
+                    fluid.save_dygraph( state_dict, "paddle_dy")
+
+        '''
+
+        return self._layers.state_dict(
+            destination=destination,
+            include_sublayers=include_sublayers,
+            structured_name_prefix=structured_name_prefix)
+
+    def set_dict(self,
+                 stat_dict,
+                 include_sublayers=True,
+                 use_structured_name=True):
+        '''
+        Set parameters of self._layers from stat_dict. All the parameters of self._layers will be reset by the tensor in the stat_dict
+
+        Parameters:
+            state_dict(dict) : Dict contains all the parameters
+            include_sublayers(bool, optional) : If true, also include the parameters from sublayers. Default: True
+            use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter name as key. 
+                                                  Default: True
+        Returns:
+            None
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                with fluid.dygraph.guard():
+                    strategy=dygraph.parallel.prepare_context()
+                    emb = fluid.dygraph.Embedding([10, 10])
+                    emb = dygraph.parallel.DataParallel(emb, strategy)
+
+                    state_dict = emb.state_dict()
+                    fluid.save_dygraph( state_dict, "paddle_dy")
+                    
+                    para_state_dict, _ = fluid.load_dygraph( "paddle_dy")
+
+                    emb.set_dict( para_state_dict )
+
+        '''
+
+        self._layers.set_dict(
+            stat_dict,
+            include_sublayers=include_sublayers,
+            use_structured_name=use_structured_name)
+
+    def load_dict(self,
+                  stat_dict,
+                  include_sublayers=True,
+                  use_structured_name=True):
+        '''
+        Set parameters of self._layers from stat_dict. All the parameters of self._layers will be reset by the tensor in the stat_dict
+
+        This api will be Deprecated. Please use set_dict
+
+        Parameters:
+            state_dict(dict) : Dict contains all the parameters
+            include_sublayers(bool, optional) : If true, also include the parameters from sublayers. Default: True
+            use_structured_name(bool, optional) : If true, use structured name as key, otherwise, use parameter name as key.
+                                                  Default: True
+        Returns:
+            None
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                with fluid.dygraph.guard():
+                    strategy=dygraph.parallel.prepare_context()
+                    emb = fluid.dygraph.Embedding([10, 10])
+                    emb = dygraph.parallel.DataParallel(emb, strategy)
+
+                    state_dict = emb.state_dict()
+                    fluid.save_dygraph( state_dict, "paddle_dy")
+                    
+                    para_state_dict, _ = fluid.load_dygraph( "paddle_dy")
+
+                    emb.load_dict( para_state_dict )
+
+        '''
+
+        self._layers.load_dict(
+            stat_dict,
+            include_sublayers=include_sublayers,
+            use_structured_name=use_structured_name)

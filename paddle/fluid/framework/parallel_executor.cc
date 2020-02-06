@@ -109,7 +109,7 @@ class ParallelExecutorPrivate {
     }
   }
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
   void InitNCCLCtxs(framework::Scope *scope, const BuildStrategy &bst) {
     VLOG(1) << "nccl comm num:" << bst.nccl_comm_num_ << ", nranks:" << nranks_
             << ", num_trainers:" << bst.num_trainers_
@@ -473,7 +473,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   }
 
   if (member_->use_cuda_ && member_->nranks_ > 1) {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
     member_->InitOrGetNCCLCommunicator(scope, &member_->build_strategy_);
 
     // Initialize device context's nccl comm, will be used by normal
@@ -652,7 +652,7 @@ void ParallelExecutor::BCastParamsToDevices(
     }
     auto &dims = main_tensor.dims();
     if (paddle::platform::is_gpu_place(main_tensor.place())) {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
       std::vector<void *> buffers;
       buffers.reserve(member_->places_.size());
       size_t numel = main_tensor.numel();

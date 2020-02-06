@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 
 
 class TestVarConv2dOp(OpTest):
@@ -244,6 +244,9 @@ class TestVarConv2dOpCase5(TestVarConv2dOp):
                        col)
 
 
+@skip_check_grad_ci(
+    reason="[skip shape check] Use shape of input_channel, row and col all is 1 to test special LoDTensor."
+)
 class TestVarConv2dOpCase6(TestVarConv2dOp):
     def set_data(self):
         input_channel = 1

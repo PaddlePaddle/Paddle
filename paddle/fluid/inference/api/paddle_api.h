@@ -352,7 +352,6 @@ enum class PaddleEngineKind {
   kNative = 0,        /*!< Use the native Fluid facility. */
   kAutoMixedTensorRT, /*!< Automatically mix Fluid with TensorRT. */
   kAnalysis,          /*!< More optimization. */
-  kAnakin             /*!< Use Anakin for inference, not mature yet. */
 };
 
 template <typename ConfigT, PaddleEngineKind engine>
