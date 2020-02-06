@@ -929,6 +929,20 @@ struct FcDequant : public PatternBase {
   PATTERN_DECL_NODE(dequant_out);
 };
 
+// Dequantize + Scale
+struct DequantScale : public PatternBase {
+  DequantScale(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "dequant_scale") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(dequant_op);
+  PATTERN_DECL_NODE(dequant_out);
+
+  PATTERN_DECL_NODE(scale_op);
+  PATTERN_DECL_NODE(scale_out);
+};
+
 // PriorBox operator
 // operator: prior_box_op
 // inputs: prior_box_input, prior_box_image
@@ -1091,37 +1105,6 @@ struct TransposeFlattenConcat : public PatternBase {
   PDNode* GetPDNode(const std::string& op_type) {
     return pattern->RetrieveNode(GetNodeName(op_type));
   }
-};
-
-struct AnakinDetectionPattern : public PatternBase {
-  AnakinDetectionPattern(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "anakin_detect_pattern") {}
-
-  PDNode* operator()(std::vector<PDNode*> conv_inputs, int times,
-                     std::string priorbox_type, bool is_reshape);
-
-  std::string GetNodeName(const std::string& op_type) {
-    return PDNodeName(name_scope_, repr_, id_, op_type);
-  }
-
-  PDNode* GetPDNode(const std::string& op_type) {
-    return pattern->RetrieveNode(GetNodeName(op_type));
-  }
-};
-
-struct FillConstantElementWiseMulFuse : public PatternBase {
-  FillConstantElementWiseMulFuse(PDPattern* pattern,
-                                 const std::string& name_scope)
-      : PatternBase(pattern, name_scope,
-                    "anakin_fillconstant_elementwisemul_fuse") {}
-
-  PDNode* operator()(PDNode* elementwise_op_input);
-
-  // declare operator node's name
-  PATTERN_DECL_NODE(fill_constant);
-  PATTERN_DECL_NODE(fill_constant_out);
-  PATTERN_DECL_NODE(elementwise_mul);
-  PATTERN_DECL_NODE(elementwise_mul_out);
 };
 
 struct QuantDequantOpFuse : public PatternBase {

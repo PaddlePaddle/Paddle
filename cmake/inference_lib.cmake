@@ -137,13 +137,6 @@ function(copy_part_of_thrid_party TARGET DST)
                 SRCS ${LITE_BINARY_DIR}/inference_lite_lib/*
                 DSTS ${dst_dir})
     endif()
-
-    if (ANAKIN_FOUND)
-        set(dst_dir "${DST}/third_party/install/anakin")
-        copy(${TARGET}
-                SRCS ${ANAKIN_ROOT}/*
-                DSTS ${dst_dir})
-    endif ()
 endfunction()
 
 # inference library for only inference

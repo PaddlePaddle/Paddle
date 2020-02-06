@@ -138,22 +138,11 @@ REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(transpose2, MKLDNN,
                                     ops::kTransposeMKLDNNINT8,
                                     ops::TransposeMKLDNNOpKernel<int8_t>);
 
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(transpose, MKLDNN,
-                                    ::paddle::platform::CPUPlace, FP32,
-                                    ops::kTransposeMKLDNNFP32,
-                                    ops::TransposeMKLDNNOpKernel<float>);
-
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(transpose, MKLDNN,
-                                    ::paddle::platform::CPUPlace, U8,
-                                    ops::kTransposeMKLDNNINT8,
-                                    ops::TransposeMKLDNNOpKernel<uint8_t>);
-
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(transpose, MKLDNN,
-                                    ::paddle::platform::CPUPlace, S8,
-                                    ops::kTransposeMKLDNNINT8,
-                                    ops::TransposeMKLDNNOpKernel<int8_t>);
+REGISTER_OP_KERNEL(transpose, MKLDNN, ::paddle::platform::CPUPlace,
+                   ops::TransposeMKLDNNOpKernel<float>);
 
 REGISTER_OP_KERNEL(transpose_grad, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::TransposeMKLDNNGradOpKernel<float>);
+
 REGISTER_OP_KERNEL(transpose2_grad, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::TransposeMKLDNNGradOpKernel<float>);
