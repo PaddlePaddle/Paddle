@@ -13,6 +13,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
+#include "paddle/fluid/platform/errors.h"
 
 namespace paddle {
 namespace framework {
@@ -58,10 +59,12 @@ TEST(EmbeddingEltwiseLayernormFusePass, basic) {
       GetNumOpNodes(graph, "fused_embedding_eltwise_layernorm");
   VLOG(3) << DebugString(graph);
 
-  PADDLE_ENFORCE_EQ(num_fused_nodes_after, 1,
-                    "After the embedding_eltwise_layernorm pass, there should "
-                    "be one embedding_eltwise_layernorm op, but result is  %d",
-                    num_fused_nodes_after);
+  PADDLE_ENFORCE_EQ(
+      num_fused_nodes_after, 1,
+      platform::errors::InvalidArgument(
+          "After the embedding_eltwise_layernorm pass, there should "
+          "be one embedding_eltwise_layernorm op, but result is  %d",
+          num_fused_nodes_after));
 }
 
 }  // namespace ir

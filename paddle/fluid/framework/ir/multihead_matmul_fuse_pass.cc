@@ -19,6 +19,7 @@
 #include <vector>
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/platform/errors.h"
 
 namespace paddle {
 namespace framework {
