@@ -82,7 +82,7 @@ class TestWeightQuantizationMobilenetv1(TestWeightQuantization):
     def test_weight_quantization_mobilenetv1_16bit(self):
         quantize_weight_bits = 16
         quantizable_op_type = ['conv2d', 'depthwise_conv2d', 'mul']
-        threshold_rate = 0.0
+        threshold_rate = 1e-9
         self.run_test(self.model_name, self.model_data_url, self.model_data_md5,
                       quantize_weight_bits, quantizable_op_type, threshold_rate)
 
