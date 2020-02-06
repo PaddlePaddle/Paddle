@@ -35,5 +35,4 @@ NEED_TO_FIX_OP_LIST = [
     'spp',
     'squared_l2_distance',
     'tree_conv',
-    'var_conv_2d',
 ]
