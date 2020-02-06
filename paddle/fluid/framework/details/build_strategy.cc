@@ -374,7 +374,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
         continue;
       }
     } else if (pass->Type() == "fusion_group_pass") {
-      pass->Set("use_gpu", new bool(use_cuda));
+      pass->Set<bool>("use_gpu", new bool(use_cuda));
       if (!use_cuda) {
         LOG(WARNING) << "fusion_group_pass is only supported on GPU, skipped.";
         continue;

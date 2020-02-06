@@ -442,21 +442,26 @@ class PaddingRNNTestBase(unittest.TestCase):
         self.reader = Reader()
         self.device_count = 1
 
-        # Default exec_strategy
+        # The default exec_strategy used for PaddingRNN.
+        # You can change it in set_customed_config.
         self.exec_strategy = fluid.ExecutionStrategy()
         self.exec_strategy.num_threads = self.device_count
         self.exec_strategy.num_iteration_per_drop_scope = 100
 
-        # Default build_strategy
+        # The default build_strategy used for PaddingRNN.
+        # You can change it in set_customed_config.
         self.build_strategy = fluid.BuildStrategy()
         self.build_strategy.enable_inplace = True
         self.build_strategy.memory_optimize = False
         self.build_strategy.fuse_all_optimizer_ops = True
 
-        # Default executor
+        # CPU executor is used for PaddingRNN default.
+        # You can change to CUDA executor in set_customed_config.
         self.exe = Executor(fluid.CPUPlace())
 
     def set_customed_config(self):
+        # This function will be called before training.
+        # You can override the function to set your own config.
         pass
 
     def _prepare_program(self, config, parallel=True):

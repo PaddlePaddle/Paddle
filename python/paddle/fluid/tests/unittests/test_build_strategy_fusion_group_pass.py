@@ -22,7 +22,6 @@ from test_eager_deletion_padding_rnn import RNNConfig, PaddingRNNTestBase
 
 class FusionGroupPaddingRNNTest(PaddingRNNTestBase):
     def set_customed_config(self):
-        # Enable fusion_group_pass
         self.build_strategy.enable_auto_fusion = True
 
         # Use CUDA executor
