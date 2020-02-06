@@ -27,7 +27,6 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/data_feed.h"
-#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -45,6 +44,8 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+
+class FleetWrapper;
 
 #define SEC_LOG                                                              \
   VLOG(3) << "[s" << section_id_ << "p" << pipeline_id_ << "t" << thread_id_ \
@@ -178,6 +179,7 @@ class HogwildWorker : public CPUWorkerBase {
   void CreateThreadScope(const ProgramDesc& program);
   std::vector<std::string> op_names_;
   std::vector<OperatorBase*> ops_;
+  bool thread_barrier_;
   // Scope* thread_scope_;
   HogwildWorkerParameter param_;
   std::vector<std::string> skip_ops_;

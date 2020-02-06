@@ -36,32 +36,37 @@ struct SimpleOpTypeSetTeller : public Teller {
   }
 
  private:
-  std::unordered_set<std::string> teller_set{{"mul",
-                                              "conv2d",
-                                              "pool2d",
-                                              "relu",
-                                              "softmax",
-                                              "sigmoid",
-                                              "depthwise_conv2d",
-                                              "batch_norm",
-                                              "concat",
-                                              "tanh",
-                                              "pad",
-                                              "elementwise_add",
-                                              "elementwise_mul",
-                                              "dropout",
-                                              "prelu",
-                                              "conv2d_transpose",
-                                              "leaky_relu",
-                                              "fc",
-                                              "shuffle_channel",
-                                              "swish",
-                                              "split"}};
-
   // use this set for no calib int8.
   std::unordered_set<std::string> int8_teller_set{
       {"mul", "conv2d", "pool2d", "relu", "depthwise_conv2d", "softmax",
        "batch_norm", "elementwise_add", "leaky_relu", "fc"}};
+  std::unordered_set<std::string> teller_set{{
+      "mul",
+      "conv2d",
+      "pool2d",
+      "relu",
+      "softmax",
+      "sigmoid",
+      "depthwise_conv2d",
+      "batch_norm",
+      "concat",
+      "tanh",
+      "pad",
+      "elementwise_add",
+      "elementwise_mul",
+      "dropout",
+      "prelu",
+      "conv2d_transpose",
+      "leaky_relu",
+      "fc",
+      "shuffle_channel",
+      "swish",
+      "split",
+      "instance_norm",
+      "gelu",
+      "layer_norm",
+      "multihead_matmul",
+  }};
 };
 
 bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc,

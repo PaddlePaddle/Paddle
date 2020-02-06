@@ -87,6 +87,18 @@ class VarBase {
 
   const std::shared_ptr<VarBase>& GradVarBase() const { return grad_var_; }
 
+  void ClearGradVarBase() { grad_var_ = nullptr; }
+
+  const std::shared_ptr<VarBase>& MutableGradVarBase() {
+    if (grad_var_ == nullptr) {
+      grad_var_ = std::make_shared<VarBase>(false, GradVarName());
+      // NOTE(zhiqiu): we should keep grad_var_'s stop_gradient property same as
+      // fwd varbase
+      grad_var_->SetOverridedStopGradient(overrided_stop_gradient_);
+    }
+    return grad_var_;
+  }
+
   const framework::Variable& GradVar() const {
     PADDLE_ENFORCE_NOT_NULL(grad_var_, "Gradient of %s does not exist", name_);
     return grad_var_->var_;
@@ -151,6 +163,7 @@ class VarBase {
     }
     return rlt;
   }
+
   void ClearGradOps() { grad_ops_.clear(); }
 
   const std::string& Name() const { return name_; }
@@ -175,7 +188,25 @@ class VarBase {
     }
   }
 
-  framework::proto::VarType::Type DataType() const { return data_type_; }
+  framework::proto::VarType::Type DataType() const {
+    const framework::Tensor* tensor = nullptr;
+    if (var_.IsInitialized()) {
+      if (type_ == framework::proto::VarType::LOD_TENSOR) {
+        tensor = &(var_.Get<framework::LoDTensor>());
+      } else if (type_ == framework::proto::VarType::SELECTED_ROWS) {
+        tensor = &(var_.Get<framework::SelectedRows>().value());
+      } else {
+        VLOG(6) << "Variable " << name_ << " is not initialized";
+        return data_type_;
+      }
+    }
+    if (tensor && tensor->IsInitialized()) {
+      return tensor->type();
+    } else {
+      VLOG(6) << "The tensor of variable " << name_ << " is not initialized";
+      return data_type_;
+    }
+  }
 
   void ClearGradient();
 

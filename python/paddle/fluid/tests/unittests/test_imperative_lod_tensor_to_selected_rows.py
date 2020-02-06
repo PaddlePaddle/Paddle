@@ -29,20 +29,18 @@ from utils import DyGraphProgramDescTracerTestHelper
 
 class SimpleNet(fluid.Layer):
     def __init__(self,
-                 name_scope,
                  hidden_size,
                  vocab_size,
                  num_steps=20,
                  init_scale=0.1,
                  is_sparse=False,
                  dtype='float32'):
-        super(SimpleNet, self).__init__(name_scope)
+        super(SimpleNet, self).__init__()
         self.hidden_size = hidden_size
         self.vocab_size = vocab_size
         self.init_scale = init_scale
         self.num_steps = num_steps
         self.embedding = Embedding(
-            self.full_name(),
             size=[vocab_size, hidden_size],
             dtype=dtype,
             is_sparse=is_sparse,
@@ -61,7 +59,7 @@ class SimpleNet(fluid.Layer):
         x_emb = self.embedding(input)
         projection = fluid.layers.matmul(
             x_emb, fluid.layers.transpose(
-                self.embedding._w, perm=[1, 0]))
+                self.embedding.weight, perm=[1, 0]))
         projection = fluid.layers.elementwise_add(projection, self.softmax_bias)
         projection = fluid.layers.reshape(
             projection, shape=[-1, self.vocab_size])
@@ -100,7 +98,6 @@ class TestDygraphSimpleNet(unittest.TestCase):
                     fluid.default_main_program().random_seed = seed
 
                     simple_net = SimpleNet(
-                        "simple_net",
                         hidden_size=hidden_size,
                         vocab_size=vocab_size,
                         num_steps=num_steps,
@@ -108,7 +105,9 @@ class TestDygraphSimpleNet(unittest.TestCase):
                         is_sparse=is_sparse,
                         dtype=dtype)
 
-                    sgd = SGDOptimizer(learning_rate=1e-3)
+                    sgd = SGDOptimizer(
+                        learning_rate=1e-3,
+                        parameter_list=simple_net.parameters())
                     dy_param_updated = dict()
                     dy_param_init = dict()
                     dy_loss = None
@@ -120,7 +119,7 @@ class TestDygraphSimpleNet(unittest.TestCase):
                     for i in range(batch_num):
                         x_data = np.arange(12).reshape(4, 3).astype('int64')
                         y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
-                        x_data = x_data.reshape((-1, num_steps, 1))
+                        x_data = x_data.reshape((-1, num_steps))
                         y_data = y_data.reshape((-1, 1))
 
                         x = to_variable(x_data)
@@ -132,7 +131,7 @@ class TestDygraphSimpleNet(unittest.TestCase):
                                 dy_param_init[param.name] = param.numpy()
                         dy_loss.backward(backward_strategy)
                         sgd.minimize(dy_loss)
-                        simple_net.clear_gradients()
+                        sgd.clear_gradients()
                         if i == batch_num - 1:
                             for param in simple_net.parameters():
                                 dy_param_updated[param.name] = param.numpy()
@@ -143,7 +142,6 @@ class TestDygraphSimpleNet(unittest.TestCase):
                     fluid.default_main_program().random_seed = seed
 
                     simple_net = SimpleNet(
-                        "simple_net",
                         hidden_size=hidden_size,
                         vocab_size=vocab_size,
                         num_steps=num_steps,
@@ -153,7 +151,7 @@ class TestDygraphSimpleNet(unittest.TestCase):
                     exe = fluid.Executor(place)
                     sgd = SGDOptimizer(learning_rate=1e-3)
                     x = fluid.layers.data(
-                        name="x", shape=[-1, num_steps, 1], dtype='int64')
+                        name="x", shape=[-1, num_steps], dtype='int64')
                     y = fluid.layers.data(name="y", shape=[-1, 1], dtype=dtype)
 
                     static_loss = simple_net(x, y)
@@ -172,7 +170,7 @@ class TestDygraphSimpleNet(unittest.TestCase):
                     for i in range(batch_num):
                         x_data = np.arange(12).reshape(4, 3).astype('int64')
                         y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
-                        x_data = x_data.reshape((-1, num_steps, 1))
+                        x_data = x_data.reshape((-1, num_steps))
                         y_data = y_data.reshape((-1, 1))
                         fetch_list = [static_loss]
                         fetch_list.extend(static_param_name_list)

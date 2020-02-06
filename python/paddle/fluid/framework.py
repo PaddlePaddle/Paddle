@@ -221,6 +221,23 @@ def _current_expected_place():
     return _dygraph_current_expected_place_
 
 
+# TODO(zhiqiu): remove this function.
+def _var_base_to_np(var_base):
+    """	
+    convert VarBase tp numpy	
+    	
+    Args:	
+        var_base(VarBase) : the VarBase to convert	
+    Returns (np.ndarray): the np.ndarray contain the value of VarBase	
+    """
+
+    warnings.warn(
+        "paddle.fluid.framework._var_base_to_np is deprecated, please use var_base.numpy() instead of _var_base_to_np(var_base)."
+    )
+
+    return var_base.numpy()
+
+
 def _cpu_num():
     if "CPU_NUM" not in os.environ.keys():
         if multiprocessing.cpu_count() > 1:
@@ -438,14 +455,14 @@ def name_scope(prefix=None):
     """
     # TODO(panyx0718): Only [0-9a-z].
     # in dygraph we don't need namescope since it will cause mem leak
-    if not in_dygraph_mode():
+    if in_dygraph_mode():
+        yield
+    else:
         assert prefix, "namescope prefix cannot be empty."
         global _name_scope
         _name_scope = _name_scope.child(prefix)
         yield
         _name_scope = _name_scope.parent()
-    else:
-        yield
 
 
 def _full_name_scope():
@@ -551,7 +568,6 @@ def _varbase_creator(type=core.VarDesc.VarType.LOD_TENSOR,
                      dtype=None,
                      persistable=None,
                      **kwargs):
-
     if dtype is not None:
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
@@ -699,10 +715,9 @@ def _getitem_impl_(var, item):
     if (use_strided_slice == True):
         attrs['strides'] = []
     infer_flags = list(1 for i in range(len(slice_axis)))
+
     # starts
-    if not contain_var(slice_start):
-        attrs['starts'] = slice_start
-    else:
+    if contain_var(slice_start):
         inputs['StartsTensorList'] = get_new_list_tensor(slice_start)
         for i, dim in enumerate(slice_start):
             if isinstance(dim, Variable):
@@ -710,10 +725,11 @@ def _getitem_impl_(var, item):
                 infer_flags[i] = -1
             else:
                 attrs['starts'].append(dim)
-    # ends
-    if not contain_var(slice_end):
-        attrs['ends'] = slice_end
     else:
+        attrs['starts'] = slice_start
+
+    # ends
+    if contain_var(slice_end):
         inputs['EndsTensorList'] = get_new_list_tensor(slice_end)
         for i, dim in enumerate(slice_end):
             if isinstance(dim, Variable):
@@ -721,11 +737,12 @@ def _getitem_impl_(var, item):
                 infer_flags[i] = -1
             else:
                 attrs['ends'].append(dim)
+    else:
+        attrs['ends'] = slice_end
+
     # strides
     if use_strided_slice == True:
-        if not contain_var(slice_step):
-            attrs['strides'] = slice_step
-        else:
+        if contain_var(slice_step):
             inputs['StridesTensorList'] = get_new_list_tensor(slice_step)
             for i, dim in enumerate(slice_step):
                 if isinstance(dim, Variable):
@@ -733,6 +750,8 @@ def _getitem_impl_(var, item):
                     infer_flags[i] = -1
                 else:
                     attrs['strides'].append(dim)
+        else:
+            attrs['strides'] = slice_step
     # infer_flags
     attrs['infer_flags'] = infer_flags
 
@@ -943,14 +962,14 @@ class Variable(object):
 
                 import paddle.fluid as fluid
                 from paddle.fluid.dygraph.base import to_variable
-                from paddle.fluid.dygraph import FC
+                from paddle.fluid.dygraph import Linear
                 import numpy as np
 
                 data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
                 with fluid.dygraph.guard():
-                    fc = FC("fc", 64, num_flatten_dims=2)
+                    linear = Linear(32, 64)
                     data = to_variable(data)
-                    x = fc(data)
+                    x = linear(data)
                     y = x.detach()
 
         """
@@ -975,14 +994,14 @@ class Variable(object):
 
                 import paddle.fluid as fluid
                 from paddle.fluid.dygraph.base import to_variable
-                from paddle.fluid.dygraph import FC
+                from paddle.fluid.dygraph import Linear
                 import numpy as np
 
                 data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
                 with fluid.dygraph.guard():
-                    fc = FC("fc", 64, num_flatten_dims=2)
+                    linear = Linear(32, 64)
                     data = to_variable(data)
-                    x = fc(data)
+                    x = linear(data)
                     print(x.numpy())
 
         """
@@ -1004,17 +1023,17 @@ class Variable(object):
 
                 import paddle.fluid as fluid
                 from paddle.fluid.dygraph.base import to_variable
-                from paddle.fluid.dygraph import FC
+                from paddle.fluid.dygraph import Linear
                 import numpy as np
 
-                data = np.ones([3, 32, 32], dtype='float32')
+                data = np.ones([3, 1024], dtype='float32')
                 with fluid.dygraph.guard():
-                    fc = fluid.dygraph.FC("fc", 4)
+                    linear = fluid.dygraph.Linear(1024, 4)
                     t = to_variable(data)
-                    fc(t)  # call with default weight
+                    linear(t)  # call with default weight
                     custom_weight = np.random.randn(1024, 4).astype("float32")
-                    fc.weight.set_value(custom_weight)  # change existing weight
-                    out = fc(t)  # call with different weight
+                    linear.weight.set_value(custom_weight)  # change existing weight
+                    out = linear(t)  # call with different weight
 
         """
         pass
@@ -1074,6 +1093,7 @@ class Variable(object):
                 import paddle.fluid as fluid
                 import numpy as np
 
+                # example1: return ndarray
                 x = np.ones([2, 2], np.float32)
                 with fluid.dygraph.guard():
                     inputs2 = []
@@ -1087,6 +1107,19 @@ class Variable(object):
                     backward_strategy.sort_sum_gradient = True
                     loss2.backward(backward_strategy)
                     print(loss2.gradient())
+
+                # example2: return tuple of ndarray
+                with fluid.dygraph.guard():
+                    embedding = fluid.dygraph.Embedding(
+                        size=[20, 32],
+                        param_attr='emb.w',
+                        is_sparse=True)
+                    x_data = np.arange(12).reshape(4, 3).astype('int64')
+                    x_data = x_data.reshape((-1, 3, 1))
+                    x = fluid.dygraph.base.to_variable(x_data)
+                    out = embedding(x)
+                    out.backward()
+                    print(embedding.weight.gradient())
 
         """
         pass
@@ -1193,18 +1226,18 @@ class Variable(object):
                 value0 = np.arange(26).reshape(2, 13).astype("float32")
                 value1 = np.arange(6).reshape(2, 3).astype("float32")
                 value2 = np.arange(10).reshape(2, 5).astype("float32")
-                fc = fluid.FC("fc1", size=5, dtype="float32")
-                fc2 = fluid.FC("fc2", size=3, dtype="float32")
+                linear = fluid.Linear(13, 5, dtype="float32")
+                linear2 = fluid.Linear(3, 3, dtype="float32")
                 a = fluid.dygraph.to_variable(value0)
                 b = fluid.dygraph.to_variable(value1)
                 c = fluid.dygraph.to_variable(value2)
-                out1 = fc(a)
-                out2 = fc2(b)
+                out1 = linear(a)
+                out2 = linear2(b)
                 out1.stop_gradient = True
                 out = fluid.layers.concat(input=[out1, out2, c], axis=1)
                 out.backward()
 
-                assert (fc._w.gradient() == 0).all()
+                assert (linear.weight.gradient() == 0).all()
                 assert (out1.gradient() == 0).all()
         """
         if in_dygraph_mode():
@@ -1381,6 +1414,10 @@ class Variable(object):
         # TODO(minqiyang): Support lod_level in dygraph mode
         if in_dygraph_mode():
             raise Exception("Dygraph model DO NOT supprt lod")
+
+        if self.type == core.VarDesc.VarType.SELECTED_ROWS:
+            raise Exception("SelectedRows DO NOT supprt lod")
+
         return self.desc.lod_level()
 
     @property
@@ -1797,8 +1834,8 @@ class Operator(object):
                                     "The type of '%s' in operator %s should be "
                                     "one of [basestring(), str, Varibale] in python2, "
                                     "or one of [str, bytes, Variable] in python3."
-                                    "but received : " % (in_proto.name, type),
-                                    arg)
+                                    "but received : %s" %
+                                    (in_proto.name, type, arg))
                         self.desc.set_input(in_proto.name, in_arg_names)
                     else:
                         self.desc.set_input(in_proto.name, [])
@@ -2212,6 +2249,14 @@ class Block(object):
         self.desc._set_forward_block_idx(idx)
 
     @property
+    def backward_block_idx(self):
+        cur_block_idx = self.idx
+        for block in self.program.blocks:
+            if block.forward_block_idx == cur_block_idx:
+                return block.idx
+        return -1
+
+    @property
     def idx(self):
         return self.desc.id
 
@@ -2302,12 +2347,12 @@ class Block(object):
                 if isinstance(item[1], Parameter))
 
     def create_var(self, *args, **kwargs):
-        if not in_dygraph_mode():
+        if in_dygraph_mode():
+            var = _varbase_creator(*args, **kwargs)
+        else:
             var = Variable(block=self, *args, **kwargs)
             if 'initializer' in kwargs:
                 kwargs['initializer'](var, self)
-        else:
-            var = _varbase_creator(*args, **kwargs)
         return var
 
     def has_var(self, name):
@@ -2354,9 +2399,8 @@ class Block(object):
         # NOTE: v is destroyed by C++ after calling _rename_var.
         d = self.desc.find_var(cpt.to_bytes(new_name))
         if var_type == "Parameter":
-            if not in_dygraph_mode():
-                var = Parameter(
-                    self,
+            if in_dygraph_mode():
+                var = ParamBase(
                     d.shape(),
                     d.dtype(),
                     type=orig_var_type,
@@ -2368,7 +2412,8 @@ class Block(object):
                     gradient_clip_attr=gradient_clip_attr,
                     error_clip=error_clip)
             else:
-                var = ParamBase(
+                var = Parameter(
+                    self,
                     d.shape(),
                     d.dtype(),
                     type=orig_var_type,
@@ -2402,10 +2447,10 @@ class Block(object):
     def create_parameter(self, *args, **kwargs):
         global_block = self.program.global_block()
         param = None
-        if not in_dygraph_mode():
-            param = Parameter(global_block, *args, **kwargs)
-        else:
+        if in_dygraph_mode():
             param = ParamBase(*args, **kwargs)
+        else:
+            param = Parameter(global_block, *args, **kwargs)
         if 'initializer' in kwargs:
 
             def _is_inited_by(block, var):
@@ -2428,7 +2473,7 @@ class Block(object):
                                    " is inited by multiple init ops " + str(
                                        init_ops))
             elif init_ops_len == 1:
-                #TODO already inited, do nothing, should log a warning
+                # TODO already inited, do nothing, should log a warning
                 pass
             else:
                 initializer(param, self)
@@ -2645,9 +2690,8 @@ class Block(object):
                                  "same topology")
             assert isinstance(v, Variable)
             new_p = None
-            if not in_dygraph_mode():
-                new_p = Parameter(
-                    block=self,
+            if in_dygraph_mode():
+                new_p = ParamBase(
                     shape=v.shape,
                     dtype=v.dtype,
                     type=v.type,
@@ -2660,7 +2704,8 @@ class Block(object):
                     error_clip=p.error_clip,
                     name=v.name)
             else:
-                new_p = ParamBase(
+                new_p = Parameter(
+                    block=self,
                     shape=v.shape,
                     dtype=v.dtype,
                     type=v.type,
@@ -3334,8 +3379,8 @@ class IrGraph(object):
             op_node(IrOpNode): the operator node that is needed to update input's link.
         """
         assert old_output_node.node in self.graph.nodes() and new_output_node.node in \
-        self.graph.nodes() and op_node.node in self.graph.nodes(), \
-        'The three arguments(old_output_node &new_output_node &op_node) must be in the graph nodes.'
+               self.graph.nodes() and op_node.node in self.graph.nodes(), \
+            'The three arguments(old_output_node &new_output_node &op_node) must be in the graph nodes.'
         old_output_node.remove_input(op_node)
         op_node.remove_output(old_output_node)
         new_output_node.append_input(op_node)
@@ -4439,17 +4484,25 @@ class Program(object):
             None
         """
         if not isinstance(other, Program):
-            raise TypeError("_copy_param_info_from should be invoked with "
+            raise TypeError("_copy_data_info_from should be invoked with "
                             "Program")
 
         if len(self.blocks) != len(other.blocks):
-            raise ValueError("_copy_param_info_from should be invoked with two "
+            raise ValueError("_copy_data_info_from should be invoked with two "
                              "program, with represent the same topology")
-        for var in list(other.global_block().vars.values()):
-            if var.is_data:
-                self.global_block().var(var.name).is_data = True
-            if var.desc.need_check_feed():
-                self.global_block().var(var.name).desc.set_need_check_feed(True)
+
+        # NOTE(zhiqiu): All vars in cloned program exist in original program.
+        # The reverse is not true, due to backward pruning.
+        for i, block in enumerate(other.blocks):
+            for var in list(block.vars.values()):
+                if not self.blocks[i].has_var(var.name):
+                    continue
+                if var.is_data:
+                    self.blocks[i].var(var.name).is_data = True
+                if var.desc.need_check_feed():
+                    self.blocks[i].var(var.name).desc.set_need_check_feed(True)
+                if var.stop_gradient:
+                    self.blocks[i].var(var.name).stop_gradient = True
 
     @dygraph_not_support
     def list_vars(self):
@@ -4473,6 +4526,65 @@ class Program(object):
         for each_block in self.blocks:
             for each_var in list(each_block.vars.values()):
                 yield each_var
+
+    @dygraph_not_support
+    def all_parameters(self):
+        """
+        Get all :ref:`api_guide_parameter_en` from this Program. A list object is returned.
+
+        Returns:
+            list[ :ref:`api_guide_parameter_en` ]: The list contians all parameters in this program.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                program = fluid.default_main_program()
+                data = fluid.data(name='x', shape=[None, 13], dtype='float32')
+                hidden = fluid.layers.fc(input=data, size=10)
+                loss = fluid.layers.mean(hidden)
+                fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+
+                for param in program.all_parameters():
+                    print(param)
+
+                # Here will print all parameters in current program, in this example,
+                # the result is like:
+                #
+                # name: "fc_0.w_0"
+                # type {
+                #   type: LOD_TENSOR
+                #   lod_tensor {
+                #     tensor {
+                #       data_type: FP32
+                #       dims: 13
+                #       dims: 10
+                #     }
+                #   }
+                # }
+                # persistable: true
+                #
+                # name: "fc_0.b_0"
+                # type {
+                # type: LOD_TENSOR
+                # lod_tensor {
+                #     tensor {
+                #       data_type: FP32
+                #       dims: 10
+                #     }
+                #   }
+                # }
+                # persistable: true
+                #
+                # Here print(param) will print out all the properties of a parameter,
+                # including name, type and persistable, you can access to specific
+                # property of a parameter, such as param.name, param.type
+        """
+        parameters = []
+        for each_block in self.blocks:
+            parameters.extend(each_block.all_parameters())
+        return parameters
 
 
 @six.add_metaclass(ParameterMetaClass)
@@ -4500,7 +4612,12 @@ class Parameter(Variable):
             be applied on this parameter.
     """
 
-    def __init__(self, block, shape, dtype, **kwargs):
+    def __init__(self,
+                 block,
+                 shape,
+                 dtype,
+                 type=core.VarDesc.VarType.LOD_TENSOR,
+                 **kwargs):
         if shape is None:
             raise ValueError("The shape of Parameter should not be None")
         if dtype is None:
@@ -4517,7 +4634,13 @@ class Parameter(Variable):
                     % list(shape))
 
         Variable.__init__(
-            self, block, persistable=True, shape=shape, dtype=dtype, **kwargs)
+            self,
+            block,
+            persistable=True,
+            shape=shape,
+            dtype=dtype,
+            type=type,
+            **kwargs)
         self.trainable = kwargs.get('trainable', True)
 
         self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
@@ -4635,9 +4758,7 @@ class ParamBase(core.VarBase):
 
         self.is_distributed = False
 
-        #self.block = default_main_program().global_block()
-
-        _dygraph_tracer().trace_var(name, self)
+        # self.block = default_main_program().global_block()
 
     def __str__(self):
         return self.to_string(True)

@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
+#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/trainer.h"
 
 namespace paddle {
@@ -40,8 +41,8 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
       need_dump_field_ = false;
     }
   }
-  mpi_rank_ = trainer_desc.mpi_rank() / 2;
-  mpi_size_ = trainer_desc.mpi_size() / 2;
+  mpi_rank_ = trainer_desc.mpi_rank();
+  mpi_size_ = trainer_desc.mpi_size();
   dump_file_num_ = trainer_desc.dump_file_num();
   const std::vector<paddle::framework::DataFeed *> readers =
       dataset->GetReaders();

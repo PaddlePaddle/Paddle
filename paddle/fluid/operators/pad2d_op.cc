@@ -345,7 +345,7 @@ class Pad2dCPUKernel : public framework::OpKernel<T> {
     GetPaddings(pads, context);
     auto mode = context.Attr<std::string>("mode");
     auto data_format = context.Attr<std::string>("data_format");
-    T value = context.Attr<T>("pad_value");
+    T value = static_cast<T>(context.Attr<float>("pad_value"));
 
     auto* x = context.Input<Tensor>("X");
     auto in_dims = x->dims();
@@ -661,5 +661,8 @@ REGISTER_OPERATOR(pad2d, ops::Pad2dOp, ops::Pad2dOpMaker,
                   ops::Pad2dOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(pad2d_grad, ops::Pad2dOpGrad,
                   ops::Pad2dOpGradNoNeedBufferVarsInference);
-REGISTER_OP_CPU_KERNEL(pad2d, ops::Pad2dCPUKernel<float>);
-REGISTER_OP_CPU_KERNEL(pad2d_grad, ops::Pad2dGradCPUKernel<float>);
+REGISTER_OP_CPU_KERNEL(pad2d, ops::Pad2dCPUKernel<float>,
+                       ops::Pad2dCPUKernel<double>, ops::Pad2dCPUKernel<int>,
+                       ops::Pad2dCPUKernel<int64_t>);
+REGISTER_OP_CPU_KERNEL(pad2d_grad, ops::Pad2dGradCPUKernel<float>,
+                       ops::Pad2dGradCPUKernel<double>);

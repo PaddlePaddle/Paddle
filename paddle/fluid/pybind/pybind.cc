@@ -22,7 +22,6 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -43,6 +42,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/trainer.h"
+#include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
@@ -62,9 +62,11 @@ limitations under the License. */
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/fleet_wrapper_py.h"
 #include "paddle/fluid/pybind/global_value_getter_setter.h"
+#include "paddle/fluid/pybind/gloo_wrapper_py.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
+#include "paddle/fluid/pybind/pybind_boost_headers.h"
 
 #ifndef _WIN32
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
@@ -282,6 +284,30 @@ static void inline CreateVariableIfNotExit(
   return;
 }
 
+static void AssertStaticGraphAndDygraphGradMakerNoDiff() {
+  std::set<std::string> ops;
+  for (auto &pair : framework::OpInfoMap::Instance().map()) {
+    bool has_static_grad_maker = (pair.second.grad_op_maker_ != nullptr);
+    bool has_dygraph_grad_maker =
+        (pair.second.dygraph_grad_op_maker_ != nullptr);
+    if (has_static_grad_maker ^ has_dygraph_grad_maker) {
+      bool has_kernel =
+          (framework::OperatorWithKernel::AllOpKernels().count(pair.first) > 0);
+      if (has_kernel) {
+        ops.insert(pair.first);
+      } else {
+        VLOG(5) << pair.first << " has no kernels, skip";
+      }
+    }
+  }
+  PADDLE_ENFORCE_EQ(ops.empty(), true,
+                    platform::errors::Unimplemented(
+                        "OperatorWithKernel [%s] have only static graph grad "
+                        "maker or have only dygraph grad maker, which is not "
+                        "allowed",
+                        string::join_strings(ops, ',')));
+}
+
 #ifdef PADDLE_WITH_AVX
 PYBIND11_MODULE(core_avx, m) {
 #else
@@ -292,6 +318,8 @@ PYBIND11_MODULE(core_noavx, m) {
   paddle::platform::CpuTotalPhysicalMemory();
 
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
+
+  AssertStaticGraphAndDygraphGradMakerNoDiff();
 
   m.doc() = "C++ core of PaddlePaddle";
 
@@ -1041,6 +1069,19 @@ All parameter, weight, gradient are variables in Paddle.
     }
     return ret_values;
   });
+  m.def("get_op_attrs_default_value",
+        [](py::bytes byte_name) -> paddle::framework::AttributeMap {
+          std::string op_type = byte_name;
+          paddle::framework::AttributeMap res;
+          auto info = OpInfoMap::Instance().GetNullable(op_type);
+          if (info != nullptr) {
+            if (info->HasOpProtoAndChecker()) {
+              auto op_checker = info->Checker();
+              res = op_checker->GetAttrsDefaultValuesMap();
+            }
+          }
+          return res;
+        });
   m.def(
       "get_grad_op_desc", [](const OpDesc &op_desc,
                              const std::unordered_set<std::string> &no_grad_set,
@@ -1060,10 +1101,28 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("has_grad_op_maker", [](const std::string op_type) {
     return framework::OpInfoMap::Instance().Get(op_type).HasGradOpMaker();
   });
+  m.def("has_non_empty_grad_op_maker", [](const std::string op_type) {
+    return framework::OpInfoMap::Instance()
+        .Get(op_type)
+        .HasNonEmptyGradOpMaker();
+  });
   m.def("has_infer_inplace", [](const std::string op_type) {
     return framework::OpInfoMap::Instance().Get(op_type).HasInferInplace();
   });
-
+  m.def("infer_no_need_buffer_slots",
+        [](const std::string op_type, const framework::VariableNameMap &inputs,
+           const framework::VariableNameMap &outputs,
+           const framework::AttributeMap &attrs) {
+          auto infer_func = framework::OpInfoMap::Instance()
+                                .Get(op_type)
+                                .NoNeedBufferVarsInferer();
+          if (infer_func) {
+            return infer_func(inputs, outputs, attrs);
+          } else {
+            std::unordered_set<std::string> empty = {};
+            return empty;
+          }
+        });
   m.def("prune", [](const ProgramDesc &origin,
                     const std::set<std::string> &feeded_var_names,
                     const std::vector<std::array<size_t, 2>> &targets) {
@@ -1539,6 +1598,8 @@ All parameter, weight, gradient are variables in Paddle.
             self.Set<std::string>(name, new std::string(attr));
           })
       .def("set", [](ir::Pass &self, const std::string &name,
+                     bool val) { self.Set<bool>(name, new bool(val)); })
+      .def("set", [](ir::Pass &self, const std::string &name,
                      int val) { self.Set<const int>(name, new int(val)); })
       .def("set",
            [](ir::Pass &self, const std::string &name,
@@ -1937,6 +1998,26 @@ All parameter, weight, gradient are variables in Paddle.
                         build_strategy.fuse_elewise_add_act_ops = True
                      )DOC")
       .def_property(
+          "fuse_bn_act_ops",
+          [](const BuildStrategy &self) { return self.fuse_bn_act_ops_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy is finlaized."));
+            self.fuse_bn_act_ops_ = b;
+          },
+          R"DOC((bool, optional): fuse_bn_act_ops indicate whether
+                to fuse batch_norm and activation_op,
+                it may make the execution faster. Default is False.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle.fluid as fluid
+                        build_strategy = fluid.BuildStrategy()
+                        build_strategy.fuse_bn_act_ops = True
+                     )DOC")
+      .def_property(
           "fuse_relu_depthwise_conv",
           [](const BuildStrategy &self) {
             return self.fuse_relu_depthwise_conv_;
@@ -2117,15 +2198,18 @@ All parameter, weight, gradient are variables in Paddle.
            &ParallelExecutor::FeedTensorsIntoLocalScopes)
       .def("feed_and_split_tensor_into_local_scopes",
            &ParallelExecutor::FeedAndSplitTensorIntoLocalScopes)
-      .def("run", [](ParallelExecutor &self,
-                     const std::vector<std::string> &fetch_tensors) {
-        pybind11::gil_scoped_release release;
-        return self.Run(fetch_tensors);
-      });
+      .def("run",
+           [](ParallelExecutor &self,
+              const std::vector<std::string> &fetch_tensors) {
+             pybind11::gil_scoped_release release;
+             return self.Run(fetch_tensors);
+           })
+      .def("device_count", &ParallelExecutor::DeviceCount);
 
   BindFleetWrapper(&m);
+  BindGlooWrapper(&m);
   BindBoxHelper(&m);
-#ifndef _WIN32
+#ifdef PADDLE_WITH_NCCL
   BindNCCLWrapper(&m);
 #endif
   BindGraph(&m);

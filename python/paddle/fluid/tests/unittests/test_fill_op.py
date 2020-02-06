@@ -35,7 +35,7 @@ class TestFillOp1(OpTest):
         self.outputs = {'Out': val.astype('float64')}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
 class TestFillOp2(OpTest):
@@ -52,10 +52,10 @@ class TestFillOp2(OpTest):
         self.outputs = {'Out': val.astype('float64')}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
-class TestFillOp3(OpTest):
+class TestFillOp3(unittest.TestCase):
     def check_with_place(self, place, f_cpu):
         scope = core.Scope()
         # create Out Variable

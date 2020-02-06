@@ -20,17 +20,17 @@ import numpy as np
 
 
 class MLP(fluid.Layer):
-    def __init__(self, name_scope):
-        super(MLP, self).__init__(name_scope)
-        self._fc1 = fluid.dygraph.FC(
-            self.full_name(),
+    def __init__(self, input_size):
+        super(MLP, self).__init__()
+        self._linear1 = fluid.dygraph.Linear(
+            input_size,
             3,
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.1)),
             bias_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.1)))
-        self._fc2 = fluid.dygraph.FC(
-            self.full_name(),
+        self._linear2 = fluid.dygraph.Linear(
+            3,
             4,
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.1)),
@@ -38,8 +38,8 @@ class MLP(fluid.Layer):
                 initializer=fluid.initializer.Constant(value=0.1)))
 
     def forward(self, inputs):
-        x = self._fc1(inputs)
-        x = self._fc2(x)
+        x = self._linear1(inputs)
+        x = self._linear2(x)
         x = fluid.layers.reduce_sum(x)
         return x
 
@@ -51,14 +51,14 @@ class TestDygraphDebugString(unittest.TestCase):
         trace_var = 0
         alive_var = 0
         with fluid.dygraph.guard():
-            mlp = MLP("mlp")
+            mlp = MLP(input_size=2)
             for i in range(10):
                 var_inp = fluid.dygraph.base.to_variable(np_inp)
                 out = mlp(var_inp)
                 out.backward()
                 mlp.clear_gradients()
                 unique_name_tmp, trace_var_tmp, alive_var_tmp = fluid.dygraph.base._print_debug_msg(
-                    is_test=True)
+                    mlp.parameters(), is_test=True)
                 if i > 0:
                     self.assertGreaterEqual(unique_name, unique_name_tmp)
                     self.assertGreaterEqual(trace_var, trace_var_tmp)
@@ -68,7 +68,7 @@ class TestDygraphDebugString(unittest.TestCase):
                     trace_var = trace_var_tmp
                     alive_var = alive_var_tmp
                 try:
-                    fluid.dygraph.base._print_debug_msg()
+                    fluid.dygraph.base._print_debug_msg(mlp.parameters())
                 except Exception as e:
                     raise RuntimeError(
                         "No Exception is accepted in _print_debug_msg, but we got: {}".
