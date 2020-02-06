@@ -38,13 +38,13 @@ void TensorRTEngine::Execute(int batch_size, std::vector<void *> *buffers,
   const std::thread::id tid = std::this_thread::get_id();
   batch_size_ = batch_size;
   if (infer_context_.find(tid) == infer_context_.end()) {
+    std::unique_lock<std::mutex> lock(mutex_);
     PADDLE_ENFORCE_NOT_NULL(
         infer_engine_,
         "You should build engine first and then set the context.");
     infer_context_[tid].reset(infer_engine_->createExecutionContext());
   }
   infer_context_[tid]->enqueue(batch_size, buffers->data(), stream, nullptr);
-  cudaStreamSynchronize(stream);
   SetRuntimeBatch(batch_size);
 }
 
