@@ -114,22 +114,22 @@ IntType CeilOrFloor(IntType x, IntType deviser) {
                                               "but received is:%d",
                                               x));
 
-  const IntType rounded_toward_zero = x / deviser;
-  const IntType intermediate_product = rounded_toward_zero * deviser;
+  const IntType round_to_zero = x / deviser;
+  const IntType inte_result = round_to_zero * deviser;
 
   if (ceil) {
-    const bool needs_adjustment =
-        (rounded_toward_zero >= 0) && (deviser > 0 && x > intermediate_product);
-    const IntType adjustment = static_cast<IntType>(needs_adjustment);
-    const IntType ceil_of_ratio = rounded_toward_zero + adjustment;
-    return ceil_of_ratio;
+    const bool do_adjustment =
+        (round_to_zero >= 0) && (deviser > 0 && x > inte_result);
+    const IntType adjustment = static_cast<IntType>(do_adjustment);
+    const IntType ceil_val = round_to_zero + adjustment;
+    return ceil_val;
   } else {
-    const bool needs_adjustment =
-        (rounded_toward_zero <= 0) && (deviser > 0 && x < intermediate_product);
+    const bool do_adjustment =
+        (round_to_zero <= 0) && (deviser > 0 && x < inte_result);
 
-    const IntType adjustment = static_cast<IntType>(needs_adjustment);
-    const IntType floor_of_ratio = rounded_toward_zero - adjustment;
-    return floor_of_ratio;
+    const IntType adjustment = static_cast<IntType>(do_adjustment);
+    const IntType floor_val = round_to_zero - adjustment;
+    return floor_val;
   }
 }
 
