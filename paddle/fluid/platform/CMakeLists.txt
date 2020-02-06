@@ -1,6 +1,6 @@
 proto_library(profiler_proto SRCS profiler.proto DEPS framework_proto simple_threadpool)
 proto_library(error_codes_proto SRCS error_codes.proto)
-
+proto_library(cuda_error_proto SRCS cuda_error.proto)
 
 if (WITH_PYTHON)
   py_proto_compile(profiler_py_proto SRCS profiler.proto)
@@ -38,7 +38,7 @@ ENDIF()
 cc_library(cpu_info SRCS cpu_info.cc DEPS ${CPU_INFO_DEPS})
 cc_test(cpu_info_test SRCS cpu_info_test.cc DEPS cpu_info)
 
-nv_library(gpu_info SRCS gpu_info.cc DEPS gflags glog enforce)
+nv_library(gpu_info SRCS gpu_info.cc DEPS gflags glog enforce cuda_error_proto)
 
 cc_library(place SRCS place.cc DEPS enforce boost)
 cc_test(place_test SRCS place_test.cc DEPS place glog gflags)
