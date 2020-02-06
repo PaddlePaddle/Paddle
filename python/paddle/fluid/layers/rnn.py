@@ -89,7 +89,8 @@ class RNNCell(object):
                            batch_ref,
                            shape=None,
                            dtype=None,
-                           init_value=0):
+                           init_value=0,
+                           batch_dim_idx=0):
         """
         Generate initialized states according to provided shape, data type and
         value.
@@ -108,6 +109,8 @@ class RNNCell(object):
                 property `cell.state_shape` is not available, float32 will be used
                 as the data type. The default value is None.
             init_value: A float value used to initialize states.
+            batch_dim_idx: An integer indicating which dimension of the tensor in
+                inputs represents batch size.  The default value is 0.
         
         Returns:
             Variable: tensor variable[s] packed in the same structure provided \
@@ -159,7 +162,8 @@ class RNNCell(object):
                 input=batch_ref,
                 shape=shape.shape,
                 dtype=dtype,
-                value=init_value), states_shapes, states_dtypes)
+                value=init_value,
+                input_dim_idx=batch_dim_idx), states_shapes, states_dtypes)
         return init_states
 
     @property
@@ -455,7 +459,8 @@ def rnn(cell,
         return x
 
     if initial_states is None:
-        initial_states = cell.get_initial_states(batch_ref=inputs)
+        initial_states = cell.get_initial_states(
+            batch_ref=inputs, batch_dim_idx=1 if time_major else 0)
     initial_states = map_structure(_switch_grad, initial_states)
 
     if not time_major:
