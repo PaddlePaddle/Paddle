@@ -1218,7 +1218,7 @@ def append_backward(loss,
             p_g_list3 = fluid.backward.append_backward(loss=avg_loss, parameter_list=all_weights_name)
             # output: [(embedding_0.w_0, embedding_0.w_0@GRAD), (my_fc.w_0, my_fc.w_0@GRAD)]
 
-            # no_grad_set can be set of Variable that means grad will be cut off from these Variable.
+            # no_grad_set can be set of Variables that means grad will be cut off from these Variables.
             p_g_list4 = fluid.backward.append_backward(loss=avg_loss, no_grad_set=set([x_emb]))
             # output: [(my_fc.w_0, my_fc.w_0@GRAD), (my_fc.b_0, my_fc.b_0@GRAD)]
 
