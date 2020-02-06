@@ -38,8 +38,8 @@ class SequenceEraseOp : public framework::OperatorWithKernel {
     // the level specified by input RandTable.
     // We cannot get X's detail lod and RankTable's level in this function, so
     // leave this work to the detail kernel implementation.
-    if (!context->IsRuntime()) {
-      context->SetLoDLevel("Out", context->GetLoDLevel("X"));
+    if (!ctx->IsRuntime()) {
+      ctx->SetLoDLevel("Out", ctx->GetLoDLevel("X"));
     }
   }
 };
