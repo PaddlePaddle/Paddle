@@ -12,6 +12,7 @@ limitations under the License. */
 #pragma once
 #include <algorithm>
 #include <limits>
+#include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
@@ -139,6 +140,8 @@ class CPUROIAlignOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<framework::Tensor>("X");
     auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
+    auto* rois_lod = ctx.Input<framework::Tensor>("RoisLod");
+
     auto* out = ctx.Output<framework::Tensor>("Out");
     auto pooled_height = ctx.Attr<int>("pooled_height");
     auto pooled_width = ctx.Attr<int>("pooled_width");
@@ -163,22 +166,37 @@ class CPUROIAlignOpKernel : public framework::OpKernel<T> {
     roi_batch_id_list.Resize({rois_num});
     int* roi_batch_id_data =
         roi_batch_id_list.mutable_data<int>(ctx.GetPlace());
-
-    auto lod = rois->lod();
-    PADDLE_ENFORCE_EQ(
-        lod.empty(), false,
-        "Input(ROIs) Tensor of ROIAlignOp does not contain LoD information.");
-    auto rois_lod = lod.back();
-    int rois_batch_size = rois_lod.size() - 1;
-    PADDLE_ENFORCE_EQ(
-        rois_batch_size, batch_size,
-        "The rois_batch_size and imgs batch_size must be the same.");
-    int rois_num_with_lod = rois_lod[rois_batch_size];
-    PADDLE_ENFORCE_EQ(rois_num, rois_num_with_lod,
-                      "The rois_num from input and lod must be the same.");
-    for (int n = 0; n < rois_batch_size; ++n) {
-      for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
-        roi_batch_id_data[i] = n;
+    int rois_batch_size = rois_lod->numel();
+    if (rois_batch_size > 0) {
+      PADDLE_ENFORCE_EQ(
+          rois_batch_size - 1, batch_size,
+          "The rois_batch_size and imgs batch_size must be the same.");
+      auto cplace = platform::CPUPlace();
+      std::vector<int64_t> rois_lod_(rois_batch_size);
+      memory::Copy(cplace, rois_lod_.data(), cplace, rois_lod->data<int64_t>(),
+                   sizeof(int64_t) * rois_batch_size);
+      for (int n = 0; n < rois_batch_size - 1; ++n) {
+        for (int i = rois_lod_[n]; i < rois_lod_[n + 1]; ++i) {
+          roi_batch_id_data[i] = n;
+        }
+      }
+    } else {
+      auto lod = rois->lod();
+      PADDLE_ENFORCE_EQ(
+          lod.empty(), false,
+          "Input(ROIs) Tensor of ROIAlignOp does not contain LoD information.");
+      auto rois_lod = lod.back();
+      int rois_batch_size = rois_lod.size() - 1;
+      PADDLE_ENFORCE_EQ(
+          rois_batch_size, batch_size,
+          "The rois_batch_size and imgs batch_size must be the same.");
+      int rois_num_with_lod = rois_lod[rois_batch_size];
+      PADDLE_ENFORCE_EQ(rois_num, rois_num_with_lod,
+                        "The rois_num from input and lod must be the same.");
+      for (int n = 0; n < rois_batch_size; ++n) {
+        for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
+          roi_batch_id_data[i] = n;
+        }
       }
     }
     T* output_data = out->mutable_data<T>(ctx.GetPlace());
@@ -249,6 +267,7 @@ class CPUROIAlignGradOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<framework::Tensor>("X");
     auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
+    auto* rois_lod = ctx.Input<framework::Tensor>("RoisLod");
     auto* out_grad =
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* in_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
@@ -272,11 +291,24 @@ class CPUROIAlignGradOpKernel : public framework::OpKernel<T> {
     int* roi_batch_id_data =
         roi_batch_id_list.mutable_data<int>(ctx.GetPlace());
 
-    auto rois_lod = rois->lod().back();
-    int rois_batch_size = rois_lod.size() - 1;
-    for (int n = 0; n < rois_batch_size; ++n) {
-      for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
-        roi_batch_id_data[i] = n;
+    int rois_batch_size = rois_lod->numel();
+    if (rois_batch_size > 0) {
+      auto cplace = platform::CPUPlace();
+      std::vector<int64_t> rois_lod_(rois_batch_size);
+      memory::Copy(cplace, rois_lod_.data(), cplace, rois_lod->data<int64_t>(),
+                   sizeof(int64_t) * rois_batch_size);
+      for (int n = 0; n < rois_batch_size - 1; ++n) {
+        for (int i = rois_lod_[n]; i < rois_lod_[n + 1]; ++i) {
+          roi_batch_id_data[i] = n;
+        }
+      }
+    } else {
+      auto rois_lod = rois->lod().back();
+      int rois_batch_size = rois_lod.size() - 1;
+      for (int n = 0; n < rois_batch_size; ++n) {
+        for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
+          roi_batch_id_data[i] = n;
+        }
       }
     }
     in_grad->mutable_data<T>(ctx.GetPlace());

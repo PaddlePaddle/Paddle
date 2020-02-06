@@ -6282,7 +6282,12 @@ def label_smooth(label,
 
 
 @templatedoc()
-def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
+def roi_pool(input,
+             rois,
+             rois_lod=None,
+             pooled_height=1,
+             pooled_width=1,
+             spatial_scale=1.0):
     """
     This operator implements the roi_pooling layer. 
     Region of interest pooling (also known as RoI pooling) is to perform max pooling on inputs of nonuniform sizes to obtain fixed-size feature maps (e.g. 7*7).
@@ -6298,6 +6303,7 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
     Args:
         input (Variable): Input feature, 4D-Tensor with the shape of [N,C,H,W], where N is the batch size, C is the input channel, H is Height, W is weight. The data type is float32 or float64.
         rois (Variable): ROIs (Regions of Interest) to pool over. 2D-LoDTensor with the shape of [num_rois,4], the lod level is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is the top left coordinates, and (x2, y2) is the bottom right coordinates.
+        rois_lod (Variable): The lod info of rois. Default: None
         pooled_height (int, optional): The pooled output height, data type is int32. Default: 1
         pooled_width (int, optional): The pooled output height, data type is int32. Default: 1
         spatial_scale (float, optional): Multiplicative spatial scale factor to translate ROI coords from their input scale to the scale used when pooling. Default: 1.0
@@ -6323,10 +6329,12 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
     
         x = fluid.data(name='input', shape=[None,1,4,4], dtype=DATATYPE)
         rois = fluid.data(name='roi', shape=[None,4], dtype=DATATYPE)
-    
+        rois_lod = fluid.data(name='rois_lod', shape=[None], dtype=DATATYPE) 
+
         pool_out = fluid.layers.roi_pool(
                 input=x,
                 rois=rois,
+                rois_lod=rois_lod,
                 pooled_height=1,
                 pooled_width=1,
                 spatial_scale=1.0)
@@ -6343,7 +6351,8 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
     helper.append_op(
         type="roi_pool",
         inputs={"X": input,
-                "ROIs": rois},
+                "ROIs": rois,
+                "RoisLod": rois_lod},
         outputs={"Out": pool_out,
                  "Argmax": argmaxes},
         attrs={
@@ -6357,6 +6366,7 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
 @templatedoc()
 def roi_align(input,
               rois,
+              rois_lod=None,
               pooled_height=1,
               pooled_width=1,
               spatial_scale=1.0,
@@ -6371,7 +6381,8 @@ def roi_align(input,
             a 2-D LoDTensor of shape (num_rois, 4), the lod level is 1. The 
             data type is float32 or float64. Given as [[x1, y1, x2, y2], ...], 
             (x1, y1) is the top left coordinates, and (x2, y2) is the bottom
-            right coordinates. 
+            right coordinates.
+        rois_lod (Variable): The lod info of rois. Default: None
         pooled_height (int32, optional): ${pooled_height_comment} Default: 1
         pooled_width (int32, optional): ${pooled_width_comment} Default: 1
         spatial_scale (float32, optional): ${spatial_scale_comment} Default: 1.0
@@ -6394,8 +6405,10 @@ def roi_align(input,
                 name='data', shape=[None, 256, 32, 32], dtype='float32')
             rois = fluid.data(
                 name='rois', shape=[None, 4], dtype='float32')
+            rois_lod = fluid.data(name='rois_lod', shape=[None], dtype=DATATYPE)
             align_out = fluid.layers.roi_align(input=x,
                                                rois=rois,
+                                               rois_lod=rois_lod,
                                                pooled_height=7,
                                                pooled_width=7,
                                                spatial_scale=0.5,
@@ -6407,7 +6420,8 @@ def roi_align(input,
     helper.append_op(
         type="roi_align",
         inputs={"X": input,
-                "ROIs": rois},
+                "ROIs": rois,
+                "RoisLod": rois_lod},
         outputs={"Out": align_out},
         attrs={
             "pooled_height": pooled_height,
