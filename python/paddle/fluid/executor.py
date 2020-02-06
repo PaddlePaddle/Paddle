@@ -685,7 +685,8 @@ class Executor(object):
             fetch_var_name='fetch',
             scope=None,
             return_numpy=True,
-            use_program_cache=False):
+            use_program_cache=False,
+            use_prune=False):
         """
         Run the specified :code:`Program` or :code:`CompiledProgram`. It should be noted that the executor
         will execute all the operators in :code:`Program` or :code:`CompiledProgram` without pruning some
@@ -775,7 +776,8 @@ class Executor(object):
                 fetch_var_name=fetch_var_name,
                 scope=scope,
                 return_numpy=return_numpy,
-                use_program_cache=use_program_cache)
+                use_program_cache=use_program_cache,
+                use_prune=use_prune)
         except Exception as e:
             if not isinstance(e, core.EOFException):
                 warnings.warn(
@@ -783,7 +785,8 @@ class Executor(object):
             six.reraise(*sys.exc_info())
 
     def _run_impl(self, program, feed, fetch_list, feed_var_name,
-                  fetch_var_name, scope, return_numpy, use_program_cache):
+                  fetch_var_name, scope, return_numpy, use_program_cache,
+                  use_prune):
         if self._closed:
             raise RuntimeError("Attempted to use a closed Executor")
 
@@ -816,6 +819,22 @@ class Executor(object):
         else:
             fetch_list = []
 
+        if use_prune:
+            targets = fetch_list.copy()
+            # get all optimize op 
+            op_maker = core.op_proto_and_checker_maker
+            OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
+            for idx, op in enumerate(program.global_block().ops):
+                op_maker = core.op_proto_and_checker_maker
+                op_role = op.desc.attr(op_maker.kOpRoleAttrName())
+                if op_role == int(OPTIMIZE):
+                    targets.append(op)
+
+            pruned_prog = program._prune(targets=targets)
+            print('program', program)
+            print('pruned_program', pruned_prog)
+            program = pruned_prog
+
         compiled = isinstance(program, compiler.CompiledProgram)
 
         # For backward compatibility, run directly.
@@ -828,7 +847,8 @@ class Executor(object):
                 fetch_var_name=fetch_var_name,
                 scope=scope,
                 return_numpy=return_numpy,
-                use_program_cache=use_program_cache)
+                use_program_cache=use_program_cache,
+                use_prune=use_prune)
 
         program._compile(scope, self.place)
         if program._is_inference:
@@ -843,7 +863,8 @@ class Executor(object):
                 return_numpy=return_numpy)
 
     def _run_program(self, program, feed, fetch_list, feed_var_name,
-                     fetch_var_name, scope, return_numpy, use_program_cache):
+                     fetch_var_name, scope, return_numpy, use_program_cache,
+                     use_prune):
 
         if feed is None:
             feed = {}
