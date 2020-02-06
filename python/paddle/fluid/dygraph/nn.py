@@ -1192,7 +1192,7 @@ class Dropout(layers.Layer):
                  seed=None,
                  dropout_implementation="downgrade_in_infer",
                  is_test=False):
-        super(Dropout).__init__()
+        super(Dropout, self).__init__()
         self.dropout_prob = dropout_prob
         self.seed = seed
         self.dropout_implementation = dropout_implementation
