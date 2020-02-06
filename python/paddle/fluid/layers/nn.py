@@ -13929,7 +13929,10 @@ def tdm_sampler(input,
     leaf_node_nums = len(tree_travel_list)
     travel_shape = [leaf_node_nums, layer_nums]
     travel = helper.create_parameter(
-        attr=tree_travel_attr, shape=travel_shape, dtype='int32')
+        attr=tree_travel_attr,
+        shape=travel_shape,
+        dtype='int32',
+        default_initializer=Constant(0))
     travel.stop_gradient = True
 
     node_nums = 0
@@ -13940,7 +13943,10 @@ def tdm_sampler(input,
     layer_shape = [node_nums, 1]
 
     layer = helper.create_parameter(
-        attr=tree_layer_attr, shape=layer_shape, dtype='int32')
+        attr=tree_layer_attr,
+        shape=layer_shape,
+        dtype='int32',
+        default_initializer=Constant(0))
     layer.stop_gradient = True
 
     out = helper.create_variable_for_type_inference(dtype=dtype)
