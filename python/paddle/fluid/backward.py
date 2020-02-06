@@ -1157,7 +1157,7 @@ def append_backward(loss,
                                should be ignored. All variables with
                                `stop_gradient=True` from all blocks will
                                be automatically added into this set.
-                               If this parameter is not None, the names in this set will be added to the default set.
+                               If this parameter is not None, the Variables or Variable.names in this set will be added to the default set.
                                Default: None.
         callbacks(list[callable object], optional): List of callback functions.
                                                The callbacks are used for
@@ -1660,7 +1660,7 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
             be created for them.
         no_grad_set (set[string|Variable]|None): Set of Variables or Variable.names in the :ref:`api_guide_Block_en` 0 whose gradients
             should be ignored. All variables with `stop_gradient=True` from all blocks will
-            be automatically added into this set. If this parameter is not None, the names
+            be automatically added into this set. If this parameter is not None, the Variables or Variable.names
             in this set will be added to the default set. Default: None.
 
     Return:
