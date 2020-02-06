@@ -721,6 +721,45 @@ void ParseMemEvents(const std::vector<std::vector<MemEvent>> &events) {
   PrintMemProfiler(annotation_report, 55, 18);
 }
 
+void DealWithShowName() {
+  std::unordered_map<std::string, int> prefix_name;
+  std::vector<std::string> op_out_name;
+  for (auto it = g_all_event_lists.begin(); it != g_all_event_lists.end();
+       ++it) {
+    for (auto &block : (*it)->event_blocks) {
+      for (auto &r : block) {
+        auto event_name = r.name();
+        size_t start = event_name.find('%', 0);
+        size_t end = event_name.find('%', start + 1);
+        std::string prefix_str = event_name.substr(0, start);
+        while (start != std::string::npos && end != std::string::npos) {
+          auto search_str = event_name.substr(start, end - start + 1);
+          auto it = find(op_out_name.begin(), op_out_name.end(), search_str);
+          std::string replace_str;
+          bool prefix_find = true;
+          if (prefix_name.find(prefix_str) == prefix_name.end()) {
+            prefix_find = false;
+            prefix_name[prefix_str] = 0;
+          }
+
+          if (it == op_out_name.end()) {
+            if (prefix_find)
+              prefix_name[prefix_str] = prefix_name[prefix_str] + 1;
+            op_out_name.push_back(search_str);
+          }
+          replace_str = std::to_string(prefix_name[prefix_str]);
+          event_name.replace(start, end - start + 1, replace_str);
+          start = start + 1;
+          start = event_name.find('%', start);
+          end = event_name.find('%', start + 1);
+          prefix_str = event_name.substr(0, start);
+        }
+        r.set_name(event_name);
+      }
+    }
+  }
+}
+
 void DisableProfiler(EventSortingKey sorted_key,
                      const std::string &profile_path) {
   SynchronizeAllDevice();
@@ -730,33 +769,7 @@ void DisableProfiler(EventSortingKey sorted_key,
   if (g_state == ProfilerState::kDisabled) return;
   // Mark the profiling stop.
   Mark("_stop_profiler_");
-  std::vector<std::string> op_name;
-  for (auto it = g_all_event_lists.begin(); it != g_all_event_lists.end();
-       ++it) {
-    for (auto &block : (*it)->event_blocks) {
-      for (auto &r : block) {
-        auto event_name = r.name();
-        size_t start = event_name.find('%', 0);
-        size_t end = event_name.find('%', start + 1);
-        while (start != std::string::npos && end != std::string::npos) {
-          auto search_str = event_name.substr(start, end - start + 1);
-          auto it = find(op_name.begin(), op_name.end(), search_str);
-          std::string replace_str;
-          if (it != op_name.end()) {
-            replace_str = std::to_string(std::distance(op_name.begin(), it));
-          } else {
-            replace_str = std::to_string(op_name.size());
-            op_name.push_back(search_str);
-          }
-          event_name.replace(start, end - start + 1, replace_str);
-          start = start + 1;
-          start = event_name.find('%', start);
-          end = event_name.find('%', start + 1);
-        }
-        r.set_name(event_name);
-      }
-    }
-  }
+  DealWithShowName();
 
   DeviceTracer *tracer = GetDeviceTracer();
   if (tracer->IsEnabled()) {
