@@ -94,8 +94,9 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
       x_dims, x_dims.size());
 
   const int64_t C =
-      (data_layout == DataLayout::kNCHW ? x_dims[1]
-                                        : x_dims[x_dims.size() - 1]);
+      ((this->IsMKLDNNType() == true) || (data_layout == DataLayout::kNCHW)
+           ? x_dims[1]
+           : x_dims[x_dims.size() - 1]);
 
   auto scale_dim = ctx->GetInputDim("Scale");
   auto bias_dim = ctx->GetInputDim("Bias");
@@ -167,6 +168,31 @@ framework::OpKernelType BatchNormOp::GetExpectedKernelType(
 
   return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
                                  library);
+}
+
+framework::OpKernelType BatchNormOp::GetKernelTypeForVar(
+    const std::string &var_name, const Tensor &tensor,
+    const framework::OpKernelType &expected_kernel_type) const {
+#ifdef PADDLE_WITH_MKLDNN
+  // Only input require reshaping, weights and
+  // bias are having shape in NCHW order
+  if ((var_name == "X") &&
+      (expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
+      (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+    auto attrs = Attrs();
+    auto ar = paddle::framework::AttrReader(attrs);
+    const std::string data_layout = ar.Get<std::string>("data_layout");
+    auto dl = framework::StringToDataLayout(data_layout);
+    // Some models may have intentionally set "AnyLayout" for pool
+    // op. Treat this as NCHW (default data_format value)
+    if (dl != framework::DataLayout::kAnyLayout) {
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(), dl);
+    }
+  }
+#endif
+  return framework::OpKernelType(expected_kernel_type.data_type_,
+                                 tensor.place(), tensor.layout());
 }
 
 void BatchNormOpMaker::Make() {
@@ -417,11 +443,17 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
 
   // check output
   PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")), "");
-  if (ctx->HasOutput(framework::GradVarName("Scale"))) {
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Bias")),
-                   "Output(Scale@GRAD) and Output(Bias@GRAD) should not be "
-                   "null at same time");
-  }
+
+  const bool has_scale_grad = ctx->HasOutput(framework::GradVarName("Scale"));
+  const bool has_bias_grad = ctx->HasOutput(framework::GradVarName("Bias"));
+
+  PADDLE_ENFORCE_EQ((has_scale_grad == has_bias_grad), true,
+                    platform::errors::InvalidArgument(
+                        "Output(Scale@GRAD) and Output(Bias@GRAD) must be null "
+                        "or not be null at same time. But now, "
+                        "has Scale@Grad=[%d], has Bias@GRAD=[%d]",
+                        has_scale_grad, has_bias_grad));
+
   const bool use_global_stats = ctx->Attrs().Get<bool>("use_global_stats");
   if (use_global_stats) {
     PADDLE_ENFORCE(!ctx->Attrs().Get<bool>("use_mkldnn"),
@@ -432,11 +464,15 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
   const auto x_dims = ctx->GetInputDim("X");
   const DataLayout data_layout = framework::StringToDataLayout(
       ctx->Attrs().Get<std::string>("data_layout"));
-  const int C = (data_layout == DataLayout::kNCHW ? x_dims[1]
-                                                  : x_dims[x_dims.size() - 1]);
+
+  const int C =
+      ((this->IsMKLDNNType() == true) || (data_layout == DataLayout::kNCHW)
+           ? x_dims[1]
+           : x_dims[x_dims.size() - 1]);
 
   ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
-  if (ctx->HasOutput(framework::GradVarName("Scale"))) {
+  // has_scale_grad == has_bias_grad, judge has_scale_grad is enough
+  if (has_scale_grad) {
     ctx->SetOutputDim(framework::GradVarName("Scale"), {C});
     ctx->SetOutputDim(framework::GradVarName("Bias"), {C});
   }
@@ -475,6 +511,31 @@ framework::OpKernelType BatchNormGradOp::GetExpectedKernelType(
       library);
 }
 
+framework::OpKernelType BatchNormGradOp::GetKernelTypeForVar(
+    const std::string &var_name, const Tensor &tensor,
+    const framework::OpKernelType &expected_kernel_type) const {
+#ifdef PADDLE_WITH_MKLDNN
+  // Only input require reshaping, weights and
+  // bias are having shape in NCHW order
+  if (((var_name == "X") || (var_name == framework::GradVarName("Y"))) &&
+      (expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
+      (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+    auto attrs = Attrs();
+    auto ar = paddle::framework::AttrReader(attrs);
+    const std::string data_layout = ar.Get<std::string>("data_layout");
+    auto dl = framework::StringToDataLayout(data_layout);
+    // Some models may have intentionally set "AnyLayout" for pool
+    // op. Treat this as NCHW (default data_format value)
+    if (dl != framework::DataLayout::kAnyLayout) {
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(), dl);
+    }
+  }
+#endif
+  return framework::OpKernelType(expected_kernel_type.data_type_,
+                                 tensor.place(), tensor.layout());
+}
+
 template <typename T>
 class BatchNormGradKernel<platform::CPUDeviceContext, T>
     : public framework::OpKernel<T> {
@@ -488,9 +549,17 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     const auto *saved_inv_variance = ctx.Input<Tensor>("SavedVariance");
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
     const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
+    const bool is_test = ctx.Attr<bool>("is_test");
     const float epsilon = ctx.Attr<float>("epsilon");
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
+
+    PADDLE_ENFORCE_EQ(
+        is_test, false,
+        platform::errors::InvalidArgument(
+            "`is_test = True` CANNOT be used in train program. If "
+            "you want to use global status in pre_train model, "
+            "please set `use_global_stats = True`"));
 
     // Get the size for each dimension.
     // NCHW [batch_size, in_channels, in_height, in_width]
@@ -522,7 +591,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
       EigenVectorArrayMap<T> inv_var_tmp(running_inv_var_data, C);
       ConstEigenVectorArrayMap<T> var_arr(running_variance->data<T>(), C);
 
-      inv_var_tmp = (var_arr + epsilon).sqrt().inverse().eval();
+      inv_var_tmp = (var_arr + epsilon).sqrt().inverse();
       inv_var_data = running_inv_var_data;
     }
 

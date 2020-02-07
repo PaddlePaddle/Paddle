@@ -15,6 +15,7 @@ limitations under the License. */
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <numeric>
 
 #include "paddle/fluid/inference/tests/api/trt_test_helper.h"
 
@@ -44,6 +45,15 @@ TEST(quant_int8, resnet50) {
   input_t->copy_from_cpu(input);
 
   ASSERT_TRUE(predictor->ZeroCopyRun());
+
+  std::vector<float> out_data;
+  auto output_names = predictor->GetOutputNames();
+  auto output_t = predictor->GetOutputTensor(output_names[0]);
+  std::vector<int> output_shape = output_t->shape();
+  int out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
+                                std::multiplies<int>());
+  out_data.resize(out_num);
+  output_t->copy_to_cpu(out_data.data());
 }
 
 }  // namespace inference

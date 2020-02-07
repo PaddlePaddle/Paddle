@@ -39,7 +39,7 @@ def max_pool2D_forward_naive(x,
                              ceil_mode=False,
                              exclusive=True,
                              adaptive=False,
-                             data_type=np.float32):
+                             data_type=np.float64):
     N, C, H, W = x.shape
     if global_pool == 1:
         ksize = [H, W]
@@ -79,7 +79,7 @@ def avg_pool2D_forward_naive(x,
                              ceil_mode=False,
                              exclusive=True,
                              adaptive=False,
-                             data_type=np.float32):
+                             data_type=np.float64):
     N, C, H, W = x.shape
     if global_pool == 1:
         ksize = [H, W]
@@ -320,7 +320,7 @@ class TestPool2D_Op(OpTest):
         self.use_cudnn = False
 
     def init_data_type(self):
-        self.dtype = np.float32
+        self.dtype = np.float64
 
     def init_pool_type(self):
         self.pool_type = "avg"
@@ -985,7 +985,7 @@ create_test_cudnn_padding_SAME_class(TestCase1_strides)
 
 
 # ----- test API
-class TestPool2dAPI(OpTest):
+class TestPool2dAPI(unittest.TestCase):
     def test_api(self):
         x_NHWC = np.random.random([2, 5, 5, 3]).astype("float32")
         x_NCHW = np.random.random([2, 3, 5, 5]).astype("float32")
@@ -1204,7 +1204,7 @@ class TestPool2dAPI(OpTest):
                 data_format="NHWC"))
 
 
-class TestPool2dAPI_Error(OpTest):
+class TestPool2dAPI_Error(unittest.TestCase):
     def test_api(self):
         input_NHWC = fluid.layers.data(
             name="input_NHWC",

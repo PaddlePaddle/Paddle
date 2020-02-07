@@ -124,9 +124,23 @@ class InferNoNeedBufferVarsFN {
     inferer_ = inferer;
   }
 
+  inline bool operator==(std::nullptr_t) const { return inferer_ == nullptr; }
+
+  inline bool operator!=(std::nullptr_t) const { return inferer_ != nullptr; }
+
  private:
   std::shared_ptr<NoNeedBufferVarsInference> inferer_;
 };
+
+static inline bool operator==(std::nullptr_t,
+                              const InferNoNeedBufferVarsFN &other) {
+  return other == nullptr;
+}
+
+static inline bool operator!=(std::nullptr_t,
+                              const InferNoNeedBufferVarsFN &other) {
+  return other != nullptr;
+}
 
 }  // namespace framework
 }  // namespace paddle

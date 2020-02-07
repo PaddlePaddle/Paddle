@@ -21,24 +21,12 @@ import os
 flag_name = os.path.splitext(__file__)[0]
 
 
-def skip_ci(func):
-    on_ci = bool(int(os.environ.get("SKIP_UNSTABLE_CI", '0')))
-
-    def __func__(*args, **kwargs):
-        if on_ci:
-            return
-        return func(*args, **kwargs)
-
-    return __func__
-
-
 class TestDistSeResneXtNCCL(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
         self._use_reader_alloc = False
         self._nccl2_mode = True
 
-    @skip_ci
     def test_dist_train(self):
         import paddle.fluid as fluid
         if fluid.core.is_compiled_with_cuda():
@@ -56,7 +44,6 @@ class TestDistSeResneXtNCCLMP(TestDistBase):
         self._nccl2_mode = True
         self._mp_mode = True
 
-    @skip_ci
     def test_dist_train(self):
         import paddle.fluid as fluid
         if fluid.core.is_compiled_with_cuda():

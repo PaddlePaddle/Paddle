@@ -23,6 +23,7 @@ import os
 import inspect
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import utils
+from ... import unique_name
 
 __all__ = [
     'fused_elemwise_activation',
@@ -33,6 +34,7 @@ __all__ = [
     'fused_embedding_seq_pool',
     'multiclass_nms2',
     'search_pyramid_hash',
+    'shuffle_batch',
 ]
 
 
@@ -118,14 +120,14 @@ def var_conv_2d(input,
     padding. Besides, input.dims[1] should be 1. 
 
     .. code-block:: text
-            
+
             If input_channel is 2 and given row lodTensor and col lodTensor as follows:
                 row.lod = [[5, 4]]
                 col.lod = [[6, 7]]
             input is a lodTensor: 
                 input.lod = [[60, 56]]	# where 60 = input_channel * 5 * 6
                 input.dims = [116, 1]	# where 116 = 60 + 56
-            
+
             If set output_channel is 3, filter_size is [3, 3], stride is [1, 1]:
                 output.lod = [[90, 84]] # where 90 = output_channel * [(5-1)/stride + 1] * [(6-1)/stride + 1]
                 output.dims = [174, 1]  # where 174 = 90 + 84
@@ -378,7 +380,7 @@ def tree_conv(nodes_vector,
               name=None):
     """ 
     ${comment}
-    		
+
     Args:
         nodes_vector(${nodes_vector_type}): ${nodes_vector_comment}
         edge_set(${edge_set_type}): ${edge_set_comment}
@@ -511,7 +513,7 @@ def multiclass_nms2(bboxes,
                     name=None):
     """
     **Multiclass NMS2**
-    
+
     This operator is to do multi-class non maximum suppression (NMS) on
     boxes and scores.
     In the NMS step, this operator greedily selects a subset of detection bounding
@@ -644,6 +646,7 @@ def search_pyramid_hash(input,
                         param_attr_wl=None,
                         param_attr_bl=None,
                         name=None,
+                        distribute_update_vars=None,
                         dtype='float32'):
     """
     **Pyramid hash embedding**
@@ -670,6 +673,8 @@ def search_pyramid_hash(input,
             default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` .
         param_attr_wl(ParamAttr): Specified parameters of white filter.
         param_attr_bl(ParamAttr): Specified parameters of black filter.
+        distribute_update_vars(list[ParamAttr.name]): Decided which params should be updated in distribute training. 
+            Used in Distribute Transpiler to create a trainer/server program.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
         dtype(str): The data type of output variable, float32.
@@ -698,6 +703,22 @@ def search_pyramid_hash(input,
         black_list.stop_gradient = True
         input_vars['BlackList'] = black_list
 
+    distribute_update_vars_str = ""
+    if distribute_update_vars:
+        assert isinstance(distribute_update_vars, list)
+        special_name_list = []
+        if param_attr:
+            special_name_list.append(param_attr.name)
+        if param_attr_wl:
+            special_name_list.append(param_attr_wl.name)
+        if param_attr_bl:
+            special_name_list.append(param_attr_bl.name)
+        for param in distribute_update_vars:
+            if param not in special_name_list:
+                raise ValueError(
+                    "Pyramid Hash layer didn't have parameter {}".format(param))
+        distribute_update_vars_str = ",".join(distribute_update_vars)
+
     res = helper.create_variable_for_type_inference(dtype)
     drop_pos = helper.create_variable_for_type_inference(dtype)
     x_temp_out = helper.create_variable_for_type_inference(dtype)
@@ -719,6 +740,71 @@ def search_pyramid_hash(input,
             'black_list_len': black_list_len,
             'seed': seed,
             'lr': lr,
+            'distribute_update_vars': distribute_update_vars_str
         })
 
     return res
+
+
+def shuffle_batch(x, seed=None):
+    """
+    This layer shuffle input tensor :attr:`x` . Normally, :attr:`x` is 2-D LoDTensor.
+
+    :attr:`x` is a LoDTensor to be shuffled with shape :math:`[N_1, N_2, ..., N_k, D]` . Note that the last dim of input will not be shuffled.
+    :math:`N_1 * N_2 * ... * N_k` numbers of elements with length :math:`D` will be shuffled randomly.
+
+    For Example:
+
+    .. code-block:: text
+
+      Input:
+        x.data = [[1, 2], [3, 4], [5, 6], [7, 8]]
+        x.dims = [4, 2]
+
+      Attrs:
+        seed = 2019
+
+      Output:
+        Out.data =[[7, 8], [1, 2], [3, 4], [5, 6]]
+        Out.dims = [4, 2]
+
+    Args:
+        x (Variable): The input variable. The input variable is a N-D LoDTensor with type int, float32 or float64.
+        seed (None|int|Variable): The start up seed. If set, seed will be set as the start up seed of shuffle engine.
+                If not set(Default), start up seed of shuffle engine will be generated randomly.
+
+    Returns:
+        Variables: The shuffled LoDTensor with the same shape and lod as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name="x", shape=[-1, 4])
+            out = fluid.contrib.layers.shuffle_batch(x)
+    """
+    helper = LayerHelper('shuffle_batch', **locals())
+
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    shuffle_idx = helper.create_variable_for_type_inference(dtype=np.int64)
+    if seed is None and helper.main_program.random_seed != 0:
+        seed = helper.main_program.random_seed
+    if seed is None:
+        seed = np.random.randint(-65536, 65535)
+    op_attrs = {}
+    if isinstance(seed, int):
+        op_attrs["startup_seed"] = seed
+        seed = helper.create_variable(
+            name=unique_name.generate("shuffle_batch_seed"),
+            dtype="int64",
+            persistable=True)
+    helper.append_op(
+        type='shuffle_batch',
+        inputs={'X': x,
+                'Seed': seed},
+        outputs={'Out': out,
+                 'ShuffleIdx': shuffle_idx,
+                 'SeedOut': seed},
+        attrs=op_attrs)
+    return out

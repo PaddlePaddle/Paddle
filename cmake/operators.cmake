@@ -13,7 +13,7 @@ function(op_library TARGET)
     set(CUDNN_FILE)
     set(mkldnn_cc_srcs)
     set(MKLDNN_FILE)
-    set(op_common_deps operator op_registry math_function)
+    set(op_common_deps operator op_registry math_function layer)
     set(options "")
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
@@ -116,7 +116,9 @@ function(op_library TARGET)
     # Define operators that don't need pybind here.
     foreach(manual_pybind_op "compare_op" "logical_op" "nccl_op"
 "tensor_array_read_write_op" "tensorrt_engine_op" "conv_fusion_op"
-"fusion_transpose_flatten_concat_op" "fusion_conv_inception_op" "sync_batch_norm_op" "dgc_op" "fused_fc_elementwise_layernorm_op" "multihead_matmul_op")
+"fusion_transpose_flatten_concat_op" "fusion_conv_inception_op"
+"sync_batch_norm_op" "dgc_op" "fused_fc_elementwise_layernorm_op"
+"multihead_matmul_op" "fusion_group_op" "fused_bn_activation_op")
         if ("${TARGET}" STREQUAL "${manual_pybind_op}")
             set(pybind_flag 1)
         endif()

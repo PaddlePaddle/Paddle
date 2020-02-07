@@ -106,9 +106,10 @@ DECLARE_VALID_DTYPE_TO_PY_ARRAY(float);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(double);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(bool);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(int8_t);
-DECLARE_VALID_DTYPE_TO_PY_ARRAY(uint8_t);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(int16_t);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(int);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(int64_t);
+DECLARE_VALID_DTYPE_TO_PY_ARRAY(uint8_t);
 
 inline std::string TensorDTypeToPyDTypeStr(
     framework::proto::VarType::Type type) {
@@ -218,13 +219,16 @@ void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
     SetTensorFromPyArrayT<double, P>(self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<int8_t>>(array)) {
     SetTensorFromPyArrayT<int8_t, P>(self, array, place, zero_copy);
+  } else if (py::isinstance<py::array_t<int16_t>>(array)) {
+    SetTensorFromPyArrayT<int16_t, P>(self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<uint8_t>>(array)) {
     SetTensorFromPyArrayT<uint8_t, P>(self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<paddle::platform::float16>>(array)) {
     SetTensorFromPyArrayT<paddle::platform::float16, P>(self, array, place,
                                                         zero_copy);
   } else if (py::isinstance<py::array_t<uint16_t>>(array)) {
-    // TODO(cql): temporary keeping uint16, should be depracated later
+    // TODO(cql): temporary keeping uint16, which is used for casting float16
+    // before. It should be depracated later.
     SetTensorFromPyArrayT<paddle::platform::float16, P>(self, array, place,
                                                         zero_copy);
   } else if (py::isinstance<py::array_t<bool>>(array)) {
@@ -234,7 +238,7 @@ void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
         "Incompatible data or style type: tensor.set() supports bool, float16, "
         "float32, "
         "float64, "
-        "int8, int32, int64 and uint8, uint16, but got %s!",
+        "int8, int16, int32, int64 and uint8, uint16, but got %s!",
         array.dtype());
   }
 }
@@ -294,9 +298,9 @@ void _concatCompute(const std::vector<paddle::framework::Tensor> &ins,
   }
 }
 
-void _getSliceinfo(const framework::Tensor &self, py::object obj,
-                   const int64_t dim, int64_t *pstart, int64_t *pstop,
-                   int64_t *pstep, int64_t *pslicelength) {
+inline void _getSliceinfo(const framework::Tensor &self, py::object obj,
+                          const int64_t dim, int64_t *pstart, int64_t *pstop,
+                          int64_t *pstep, int64_t *pslicelength) {
   auto &start = *pstart;
   auto &stop = *pstop;
   auto &step = *pstep;
@@ -435,16 +439,18 @@ inline framework::Tensor *_sliceTensor(const framework::Tensor &self,
       return _sliceAndConcat<float>(self, obj, dim);
     case framework::proto::VarType::FP64:
       return _sliceAndConcat<double>(self, obj, dim);
+    case framework::proto::VarType::INT8:
+      return _sliceAndConcat<int8_t>(self, obj, dim);
+    case framework::proto::VarType::INT16:
+      return _sliceAndConcat<int16_t>(self, obj, dim);
     case framework::proto::VarType::INT32:
       return _sliceAndConcat<int>(self, obj, dim);
     case framework::proto::VarType::INT64:
       return _sliceAndConcat<int64_t>(self, obj, dim);
     case framework::proto::VarType::BOOL:
       return _sliceAndConcat<bool>(self, obj, dim);
-    case framework::proto::VarType::INT16:
-      return _sliceAndConcat<bool>(self, obj, dim);
     case framework::proto::VarType::UINT8:
-      return _sliceAndConcat<bool>(self, obj, dim);
+      return _sliceAndConcat<uint8_t>(self, obj, dim);
     default:
       PADDLE_THROW("Not support type %d", src_type);
   }
@@ -486,7 +492,8 @@ inline framework::Tensor *PySliceTensor(const framework::Tensor &self,
   }
 }
 
-inline py::array TensorToPyArray(const framework::Tensor &tensor) {
+inline py::array TensorToPyArray(const framework::Tensor &tensor,
+                                 bool need_deep_copy = false) {
   if (!tensor.IsInitialized()) {
     return py::array();
   }
@@ -510,9 +517,26 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor) {
   std::string py_dtype_str = details::TensorDTypeToPyDTypeStr(tensor.type());
 
   if (!is_gpu_tensor) {
-    return py::array(py::buffer_info(
-        const_cast<void *>(tensor_buf_ptr), sizeof_dtype, py_dtype_str,
-        static_cast<size_t>(tensor.dims().size()), py_dims, py_strides));
+    if (!need_deep_copy) {
+      return py::array(py::buffer_info(
+          const_cast<void *>(tensor_buf_ptr), sizeof_dtype, py_dtype_str,
+          static_cast<size_t>(tensor.dims().size()), py_dims, py_strides));
+    } else {
+      py::array py_arr(py::dtype(py_dtype_str.c_str()), py_dims, py_strides);
+      PADDLE_ENFORCE_EQ(py_arr.writeable(), true,
+                        platform::errors::InvalidArgument(
+                            "PyArray must be writable, otherwise memory leak "
+                            "or double free would occur"));
+      PADDLE_ENFORCE_EQ(py_arr.owndata(), true,
+                        platform::errors::InvalidArgument(
+                            "PyArray must own data, otherwise memory leak "
+                            "or double free would occur"));
+      platform::CPUPlace place;
+      size_t copy_bytes = sizeof_dtype * numel;
+      paddle::memory::Copy(place, py_arr.mutable_data(), place, tensor_buf_ptr,
+                           copy_bytes);
+      return py_arr;
+    }
   }
 
 #ifdef PADDLE_WITH_CUDA

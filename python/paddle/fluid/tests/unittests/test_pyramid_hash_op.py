@@ -15,6 +15,9 @@
 import unittest
 import numpy as np
 import paddle.fluid as fluid
+import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
+from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
 
 
 class TestPyramidHashOpApi(unittest.TestCase):
@@ -43,6 +46,7 @@ class TestPyramidHashOpApi(unittest.TestCase):
                 name="Filter",
                 learning_rate=0, ),
             param_attr_bl=None,
+            distribute_update_vars=["PyramidHash_emb_0"],
             name=None, )
 
         place = fluid.CPUPlace()

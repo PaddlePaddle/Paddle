@@ -37,7 +37,7 @@ class TestSliceOp(OpTest):
         }
 
     def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
+        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [1, 0, 2]
         self.ends = [3, 3, 4]
         self.axes = [0, 1, 2]
@@ -53,7 +53,7 @@ class TestSliceOp(OpTest):
 
 class TestCase1(TestSliceOp):
     def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
+        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [-3, 0, 2]
         self.ends = [3, 100, -1]
         self.axes = [0, 1, 2]
@@ -63,7 +63,7 @@ class TestCase1(TestSliceOp):
 
 class TestCase2(TestSliceOp):
     def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
+        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [-3, 0, 2]
         self.ends = [3, 100, -1]
         self.axes = [0, 1, 3]
@@ -87,7 +87,7 @@ class TestSliceOp_decs_dim(OpTest):
         }
 
     def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
+        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [1, 0, 2]
         self.ends = [2, 3, 4]
         self.axes = [0, 1, 2]
@@ -104,7 +104,7 @@ class TestSliceOp_decs_dim(OpTest):
 
 class TestSliceOp_decs_dim_2(TestSliceOp_decs_dim):
     def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
+        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [1, 0, 2]
         self.ends = [2, 1, 4]
         self.axes = [0, 1, 2]
@@ -115,7 +115,7 @@ class TestSliceOp_decs_dim_2(TestSliceOp_decs_dim):
 
 class TestSliceOp_decs_dim_3(TestSliceOp_decs_dim):
     def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
+        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [-1, 0, 2]
         self.ends = [1000000, 1, 4]
         self.axes = [0, 1, 2]
@@ -126,7 +126,7 @@ class TestSliceOp_decs_dim_3(TestSliceOp_decs_dim):
 
 class TestSliceOp_decs_dim_4(TestSliceOp_decs_dim):
     def config(self):
-        self.input = np.random.random([3, 4, 5, 7]).astype("float32")
+        self.input = np.random.random([3, 4, 5, 7]).astype("float64")
         self.starts = [0, 1, 2, 3]
         self.ends = [1, 2, 3, 4]
         self.axes = [0, 1, 2, 3]
@@ -137,7 +137,7 @@ class TestSliceOp_decs_dim_4(TestSliceOp_decs_dim):
 
 class TestSliceOp_decs_dim_5(TestSliceOp_decs_dim):
     def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
+        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [-1]
         self.ends = [1000000]
         self.axes = [3]
@@ -148,7 +148,7 @@ class TestSliceOp_decs_dim_5(TestSliceOp_decs_dim):
 
 class TestSliceOp_decs_dim_6(TestSliceOp_decs_dim):
     def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
+        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [0, 1, 2, 3]
         self.ends = [1, 2, 3, 4]
         self.axes = [0, 1, 2, 3]
@@ -179,7 +179,7 @@ class TestSliceOp_starts_ListTensor(OpTest):
         }
 
     def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
+        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [1, 0, 2]
         self.ends = [3, 3, 4]
         self.axes = [0, 1, 2]
@@ -219,7 +219,7 @@ class TestSliceOp_decs_dim_starts_ListTensor(OpTest):
         }
 
     def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
+        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [1, 0, 2]
         self.ends = [2, 3, 4]
         self.axes = [0, 1, 2]
@@ -239,7 +239,7 @@ class TestSliceOp_decs_dim_starts_ListTensor(OpTest):
 class TestSliceOp_decs_dim_5_starts_ListTensor(
         TestSliceOp_decs_dim_starts_ListTensor):
     def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
+        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [-1]
         self.ends = [1000000]
         self.axes = [3]
@@ -271,7 +271,7 @@ class TestSliceOp_decs_dim_starts_OneTensor(OpTest):
         }
 
     def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
+        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [1, 0, 2]
         self.ends = [2, 3, 4]
         self.axes = [0, 1, 2]
@@ -309,7 +309,7 @@ class TestSliceOp_starts_OneTensor_ends_OneTensor(OpTest):
         }
 
     def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
+        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [1, 0, 2]
         self.ends = [3, 3, 4]
         self.axes = [0, 1, 2]
@@ -346,7 +346,7 @@ class TestSliceOp_decs_dim_starts_and_ends_OneTensor(OpTest):
         }
 
     def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
+        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [1, 0, 2]
         self.ends = [2, 1, 4]
         self.axes = [0, 1, 2]
@@ -388,7 +388,7 @@ class TestSliceOp_starts_OneTensor_ends_ListTensor(OpTest):
         }
 
     def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype("float32")
+        self.input = np.random.random([3, 4, 5, 6]).astype("float64")
         self.starts = [1, 0, 2]
         self.ends = [3, 3, 4]
         self.axes = [0, 1, 2]
@@ -458,7 +458,7 @@ class TestFP16_2(OpTest):
 
     def config(self):
         self.dtype = "float16"
-        self.input = np.random.random([3, 4, 5]).astype(self.dtype)
+        self.input = np.random.random([3, 4, 10]).astype(self.dtype)
         self.starts = [0]
         self.ends = [1]
         self.axes = [1]
@@ -483,7 +483,7 @@ class TestFP16_2(OpTest):
 # Test python API
 class TestSliceAPI(unittest.TestCase):
     def test_1(self):
-        input = np.random.random([3, 4, 5, 6]).astype("float32")
+        input = np.random.random([3, 4, 5, 6]).astype("float64")
         minus_1 = fluid.layers.fill_constant([1], "int32", -1)
         minus_3 = fluid.layers.fill_constant([1], "int32", -3)
         starts = fluid.layers.data(
@@ -495,7 +495,7 @@ class TestSliceAPI(unittest.TestCase):
             name="x",
             shape=[3, 4, 5, 6],
             append_batch_size=False,
-            dtype="float32")
+            dtype="float64")
 
         out_1 = fluid.layers.slice(
             x, axes=[0, 1, 2], starts=[-3, 0, 2], ends=[3, 100, -1])

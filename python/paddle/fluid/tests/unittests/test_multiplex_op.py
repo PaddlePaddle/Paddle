@@ -26,10 +26,10 @@ class TestMultiplexOp(OpTest):
         index = np.arange(0, rows).astype('int32')
         np.random.shuffle(index)
         index = np.reshape(index, (rows, 1))
-        ins1 = np.random.random((rows, 10)).astype("float32")
-        ins2 = np.random.random((rows, 10)).astype("float32")
-        ins3 = np.random.random((rows, 10)).astype("float32")
-        ins4 = np.random.random((rows, 10)).astype("float32")
+        ins1 = np.random.random((rows, 25)).astype("float64")
+        ins2 = np.random.random((rows, 25)).astype("float64")
+        ins3 = np.random.random((rows, 25)).astype("float64")
+        ins4 = np.random.random((rows, 25)).astype("float64")
         self.inputs = {
             'Ids': index,
             'X': [('x1', ins1), ('x2', ins2), ('x3', ins3), ('x4', ins4)]

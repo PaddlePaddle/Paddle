@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.test_softmax_op import *
+from paddle.fluid.tests.unittests.test_softmax_op import TestSoftmaxOp, TestSoftmaxOp2, TestSoftmaxOp3, TestSoftmaxOp4, TestSoftmaxOp5, TestSoftmaxOp6
 from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
 
 
@@ -60,7 +60,7 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.use_cudnn:
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5, check_dygraph=False)
+            self.check_output_with_place(place, check_dygraph=False)
         else:
             self.check_output(check_dygraph=False)
 
