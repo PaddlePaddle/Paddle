@@ -546,13 +546,17 @@ class Executor(object):
         # prepend feed operators
         if not has_feed_operators(global_block, feed, feed_var_name):
             for i, name in enumerate(feed):
-                out = global_block.var(name)
-                global_block._prepend_op(
-                    type='feed',
-                    inputs={'X': [feed_var]},
-                    outputs={'Out': [out]},
-                    attrs={'col': i})
-
+                if global_block.has_var(name):
+                    out = global_block.var(name)
+                    global_block._prepend_op(
+                        type='feed',
+                        inputs={'X': [feed_var]},
+                        outputs={'Out': [out]},
+                        attrs={'col': i})
+                else:
+                    warnings.warn(
+                        "The variable %s is not found in program. It is not declared or is pruned."
+                        % name)
         # append fetch_operators
         if not has_fetch_operators(global_block, fetch_list, fetch_var_name):
             for i, var in enumerate(fetch_list):
