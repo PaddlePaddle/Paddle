@@ -400,6 +400,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
         continue;
       }
     } else if (pass->Type() == "set_reader_device_count_pass") {
+      pass->Erase(kPlaces);
       pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
     }
     VLOG(1) << "Start Apply Pass " << pass->Type();

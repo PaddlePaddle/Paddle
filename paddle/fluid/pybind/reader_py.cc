@@ -318,7 +318,6 @@ void BindReader(py::module *module) {
            },
            py::call_guard<py::gil_scoped_release>())
       .def("size", &reader::OrderedMultiDeviceLoDTensorBlockingQueue::Size)
-      .def("capacity", &reader::OrderedMultiDeviceLoDTensorBlockingQueue::Cap)
       .def("close", &reader::OrderedMultiDeviceLoDTensorBlockingQueue::Close)
       .def("kill", &reader::OrderedMultiDeviceLoDTensorBlockingQueue::Kill)
       .def("wait_for_inited",

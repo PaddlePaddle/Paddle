@@ -121,12 +121,6 @@ class OrderedMultiDeviceLoDTensorBlockingQueue {
     return CurQueue()->Push(lod_tensor_vec);
   }
 
-  bool Push(std::vector<framework::LoDTensor>&& lod_tensor_vec) {
-    return CurQueue()->Push(std::move(lod_tensor_vec));
-  }
-
-  inline size_t Cap() const { return capacity_; }
-
   inline size_t Size() const {
     size_t size = 0;
     if (queues_) {
@@ -135,15 +129,6 @@ class OrderedMultiDeviceLoDTensorBlockingQueue {
       }
     }
     return size;
-  }
-
-  inline void ReOpen() {
-    if (queues_) {
-      for (auto& item : *queues_) {
-        item->ReOpen();
-      }
-    }
-    data_index_ = 0;
   }
 
   inline void Close() {
