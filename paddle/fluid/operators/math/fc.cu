@@ -20,18 +20,21 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-template <typename T, bool DoRelu>
-__global__ void InplaceAddReluKernel(const T* bias, T* data, int M, int N) {
-  for (int i = blockIdx.x; i < M; i += gridDim.x) {
-    int index = i * N + threadIdx.x;
-    for (int j = threadIdx.x; j < N; j += blockDim.x) {
-      T tmp = data[index] + bias[j];
-      if (DoRelu) {
-        data[index] = (tmp > 0) ? tmp : 0;
-      } else {
-        data[index] = tmp;
-      }
-      index += blockDim.x;
+template <typename T, bool DoRelu, int BlockDim>
+__global__ void InplaceAddReluKernel(const int N, const T* bias, T* data) {
+  int offset = blockIdx.x * N;
+
+  for (int i = threadIdx.x; i < N; i += BlockDim) {
+    T temp;
+#if __CUDA_ARCH__ >= 350
+    temp = __ldg(data + offset + i) + __ldg(bias + i);
+#else
+    temp = data[offset + i] + bias[i];
+#endif
+    if (DoRelu) {
+      data[offset + i] = static_cast<int>(temp > 0) * temp;
+    } else {
+      data[offset + i] = temp;
     }
   }
 }
@@ -58,14 +61,18 @@ class FCFunctor<platform::CUDADeviceContext, T> {
     int max_threads = context.GetMaxPhysicalThreadCount();
     int num_threads = std::min(kThreadsPerBlock, (((N + 31) >> 5) << 5));
     int num_blocks = std::max(max_threads / num_threads, 1);
+
+    const int threads = 256;
+    const int blocks = M;
+
     if (relu) {
-      InplaceAddReluKernel<
-          T, true><<<num_blocks, num_threads, 0, context.stream()>>>(B, Y, M,
-                                                                     N);
+      InplaceAddReluKernel<T, true,
+                           threads><<<blocks, threads, 0, context.stream()>>>(
+          N, B, Y);
     } else {
-      InplaceAddReluKernel<
-          T, false><<<num_blocks, num_threads, 0, context.stream()>>>(B, Y, M,
-                                                                      N);
+      InplaceAddReluKernel<T, false,
+                           threads><<<blocks, threads, 0, context.stream()>>>(
+          N, B, Y);
     }
   }
 };
