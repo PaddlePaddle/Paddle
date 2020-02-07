@@ -2018,6 +2018,27 @@ All parameter, weight, gradient are variables in Paddle.
                         build_strategy.fuse_bn_act_ops = True
                      )DOC")
       .def_property(
+          "enable_auto_fusion",
+          [](const BuildStrategy &self) { return self.enable_auto_fusion_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy is finlaized."));
+            self.enable_auto_fusion_ = b;
+          },
+          R"DOC((bool, optional): Whether to enable fusing subgraph to a
+                fusion_group. Now we only support fusing subgraph that composed
+                of elementwise-like operators, such as elementwise_add/mul
+                without broadcast and activations.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle.fluid as fluid
+                        build_strategy = fluid.BuildStrategy()
+                        build_strategy.enable_auto_fusion = True
+                    )DOC")
+      .def_property(
           "fuse_relu_depthwise_conv",
           [](const BuildStrategy &self) {
             return self.fuse_relu_depthwise_conv_;
