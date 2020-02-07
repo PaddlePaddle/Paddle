@@ -33,8 +33,31 @@ extern "C" {
 #endif
 
 enum PD_DataType { PD_FLOAT32, PD_INT32, PD_INT64, PD_UINT8, PD_UNKDTYPE };
+int PD_DTypeSize(PD_DataType dtype) {
+  int r = 0;
+  switch (dtype) {
+    case PD_FLOAT32:
+      r = sizeof(float);
+      break;
+    case PD_INT32:
+      r = sizeof(int32_t);
+      break;
+    case PD_INT64:
+      r = sizeof(int64_t);
+      break;
+    case PD_UINT8:
+      r = sizeof(uint8_t);
+      break;
+    default:
+      r = -1;
+  }
+
+  return r;
+}
+
 typedef struct PD_PaddleBuf PD_PaddleBuf;
 typedef struct PD_AnalysisConfig PD_AnalysisConfig;
+typedef struct PD_Predictor PD_Predictor;
 
 typedef struct PD_ZeroCopyData {
   char* name;
@@ -238,6 +261,19 @@ PADDLE_CAPI_EXPORT extern bool PD_ProfileEnabled(
 PADDLE_CAPI_EXPORT extern void PD_SetInValid(PD_AnalysisConfig* config);
 
 PADDLE_CAPI_EXPORT extern bool PD_IsValid(const PD_AnalysisConfig* config);
+
+PADDLE_CAPI_EXPORT extern PD_Predictor* PD_NewPredictor(
+    const PD_AnalysisConfig* config);
+PADDLE_CAPI_EXPORT extern void PD_DeletePredictor(PD_Predictor* predictor);
+PADDLE_CAPI_EXPORT extern int PD_GetInputNum(const PD_Predictor*);
+PADDLE_CAPI_EXPORT extern int PD_GetOutputNum(const PD_Predictor*);
+PADDLE_CAPI_EXPORT extern char* PD_GetInputName(const PD_Predictor*, int);
+PADDLE_CAPI_EXPORT extern char* PD_GetOutputName(const PD_Predictor*, int);
+PADDLE_CAPI_EXPORT extern void PD_SetZeroCopyInputs(
+    PD_Predictor* predictor, const PD_ZeroCopyData* inputs, int n_inputs);
+PADDLE_CAPI_EXPORT extern void PD_GetZeroCopyOutputs(PD_Predictor* predictor,
+                                                     PD_ZeroCopyData** outputs);
+PADDLE_CAPI_EXPORT extern void PD_ZeroCopyRun(PD_Predictor* predictor);
 
 #ifdef __cplusplus
 }  // extern "C"

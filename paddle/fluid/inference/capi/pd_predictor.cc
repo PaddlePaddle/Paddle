@@ -17,12 +17,13 @@
 #include <memory>
 #include <numeric>
 #include <vector>
+#include "paddle/fluid/inference/api/paddle_api.h"
 #include "paddle/fluid/inference/capi/c_api.h"
 #include "paddle/fluid/inference/capi/c_api_internal.h"
 
+using paddle::ConvertToACPrecision;
 using paddle::ConvertToPaddleDType;
 using paddle::ConvertToPDDataType;
-using paddle::ConvertToACPrecision;
 
 namespace {
 #define _DataTypeHelper_(CALLBACK, CPP_TYPE, PD_TYPE) \
@@ -169,4 +170,102 @@ bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
   }
   return true;
 }
+
+PD_Predictor* PD_NewPredictor(const PD_AnalysisConfig* config) {
+  PD_Predictor* predictor = new PD_Predictor;
+  predictor->predictor = paddle::CreatePaddlePredictor(config->config);
+  return predictor;
+}
+
+void PD_DeletePredictor(PD_Predictor* predictor) {
+  if (predictor == nullptr) {
+    delete predictor;
+    predictor = nullptr;
+  }
+}
+
+int PD_GetInputNum(const PD_Predictor* predictor) {
+  return static_cast<int>(predictor->predictor->GetInputNames().size());
+}
+
+int PD_GetOutputNum(const PD_Predictor* predictor) {
+  return static_cast<int>(predictor->predictor->GetOutputNames().size());
+}
+
+int PD_GetInputName(const PD_Predictor* predictor, int n) {
+  return predictor->predictor->GetInputNames()[n];
+}
+
+int PD_GetOutputName(const PD_Predictor* predictor, int n) {
+  return predictor->predictor->GetOutputNames()[n];
+}
+
+void PD_SetZeroCopyInputs(PD_Predictor* predictor,
+                          const PD_ZeroCopyData* inputs, int n_inputs) {
+  for (int i = 0; i < n_inputs; i++) {
+    const auto& input = inputs[i];
+    auto tensor = predictor->predictor->GetInputTensor(input.name);
+    std::vector<int> shape(input.shape, input.shape + input.shape_size);
+    tensor->Reshape(std::move(shape));
+
+    switch (input.dtype) {
+      case PD_FLOAT32:
+        tensor->copy_from_cpu(static_cast<float*>(input.data));
+        break;
+      case PD_INT32:
+        tensor->copy_from_cpu(static_cast<int32_t*>(input.data));
+        break;
+      case PD_INT64:
+        tensor->copy_from_cpu(static_cast<int64_t*>(input.data));
+        break;
+      case PD_UINT8:
+        tensor->copy_from_cpu(static_cast<uint8_t*>(input.data));
+        break;
+      default:
+        CHECK(false) << "Unsupport data type.";
+        break;
+    }
+  }
+}
+
+void PD_GetZeroCopyOutputs(PD_Predictor* predictor, PD_ZeroCopyData** outputs) {
+  CHECK(outputs);
+  auto output_names = predictor->predictor->GetOutputNames();
+  int n_outputs = static_cast<int>(output_names.size());
+  for (int i = 0; i < n_outputs; i++) {
+    auto* output = outputs[i];
+    auto tensor = predictor->predictor->GetOutputTensor(output_names[i]);
+    output->name = &output_names[i][0];
+    output->dtype = ConvertToPDDataType(tensor->type());
+    std::vector<int> shape = tensor->shape();
+    if (output->shape) {
+      delete output->shape;
+    }
+    output->shape = new int[shape.size()];
+    std::copy(shape.begin(), shape.end(), output->shape);
+    int n =
+        std::accumulate(shape.begin(), shape.end(), 1, std::mutiplies<int>());
+    output->data =
+        static_cast<void*>(std::malloc(n * PD_DTypeSize(output->dtype)));
+    switch (tensor->type()) {
+      case paddle::PaddleDType::FLOAT32:
+        tensor->copy_to_cpu(static_cast<float>(output->data));
+        break;
+      case paddle::PaddleDType::INT32:
+        tensor->copy_to_cpu(static_cast<int32_t>(output->data));
+        break;
+      case paddle::PaddleDType::INT64:
+        tensor->copy_to_cpu(static_cast<int64_t>(output->data));
+        break;
+      case paddle::PaddleDType::UINT8:
+        tensor->copy_to_cpu(static_cast<uint8_t>(output->data));
+        break;
+    }
+  }
+}
+
+void PD_ZeroCopyRun(PD_Predictor* predictor) {
+  predictor->predictor->ZeroCopyRun();
+}
+
 }  // extern "C"
