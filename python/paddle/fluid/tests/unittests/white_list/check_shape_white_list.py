@@ -12,24 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-NOT_CHECK_OP_LIST = [
-    # The increment's input must be 1-d and only has one data
-    'increment',
-    # elementwise ops have cases(y_shape: (1) or (1,1)) to test broadcast
-    'elementwise_add',
-    'elementwise_sub',
+NEED_TO_FIX_OP_LIST = [
     'elementwise_mul',
     'elementwise_div',
     'elementwise_max',
     'elementwise_min',
     'elementwise_pow',
     'fused_elemwise_activation',
-]
-
-NEED_TO_FIX_OP_LIST = [
     'bilinear_tensor_product',
     'conv2d_transpose',
-    'deformable_conv',
     'depthwise_conv2d_transpose',
     'grid_sampler',
     'hierarchical_sigmoid',
@@ -44,5 +35,4 @@ NEED_TO_FIX_OP_LIST = [
     'spp',
     'squared_l2_distance',
     'tree_conv',
-    'var_conv_2d',
 ]

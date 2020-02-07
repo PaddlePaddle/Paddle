@@ -65,17 +65,9 @@ static bool IsGradOp(const Node* n) {
          pos == (op_type.length() - suffix.length());
 }
 
-static bool IsEqual(const std::vector<int64_t>& l,
-                    const std::vector<int64_t>& r) {
-  if (l.size() == 0U || r.size() == 0U || l.size() != r.size()) {
-    return false;
-  }
-  for (size_t i = 0; i < l.size(); ++i) {
-    if (l[i] != r[i]) {
-      return false;
-    }
-  }
-  return true;
+static bool IsEqualAndNotEmpty(const std::vector<int64_t>& l,
+                               const std::vector<int64_t>& r) {
+  return l.size() != 0U && r.size() != 0U && l == r;
 }
 
 static bool IsBinaryOp(const Node* n) {
@@ -96,7 +88,7 @@ static bool IsBinaryOp(const Node* n) {
       if (i == 0U) {
         shape_0 = shape_i;
       } else {
-        if (!IsEqual(shape_0, shape_i)) {
+        if (!IsEqualAndNotEmpty(shape_0, shape_i)) {
           return false;
         }
       }

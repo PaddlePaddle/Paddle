@@ -1598,6 +1598,8 @@ All parameter, weight, gradient are variables in Paddle.
             self.Set<std::string>(name, new std::string(attr));
           })
       .def("set", [](ir::Pass &self, const std::string &name,
+                     bool val) { self.Set<bool>(name, new bool(val)); })
+      .def("set", [](ir::Pass &self, const std::string &name,
                      int val) { self.Set<const int>(name, new int(val)); })
       .def("set",
            [](ir::Pass &self, const std::string &name,
@@ -2228,7 +2230,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindFleetWrapper(&m);
   BindGlooWrapper(&m);
   BindBoxHelper(&m);
-#ifndef _WIN32
+#ifdef PADDLE_WITH_NCCL
   BindNCCLWrapper(&m);
 #endif
   BindGraph(&m);

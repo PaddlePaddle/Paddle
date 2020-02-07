@@ -235,7 +235,7 @@ void TestMainImpl(std::string func_name, std::string code_str,
       float* cpu_ptr = cpu_tensors[id].mutable_data<float>(
           cpu_tensors[id].dims(), paddle::platform::CPUPlace());
       for (size_t i = 0; i < cpu_tensors[id].numel(); ++i) {
-        cpu_ptr[i] = float(tmp_cpu_ptr[i]);
+        cpu_ptr[i] = static_cast<float>(tmp_cpu_ptr[i]);
       }
     } else {
       TensorCopySync(gpu_tensors[id], paddle::platform::CPUPlace(),
