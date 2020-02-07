@@ -146,10 +146,6 @@ void AsyncSSAGraphExecutor::StartOffPythonTrainLoop() {
         VLOG(3) << "get exception type = " << exception_holder_.Type();
       }
       VLOG(3) << "thread " << i << " exited!";
-#ifdef PADDLE_WITH_DISTRIBUTE
-      operators::distributed::Communicator::GetInstance()
-          ->BarrierTriggerDecrement();
-#endif
     };
     run_futures_.emplace_back(pool_->enqueue(std::move(call)));
   }
@@ -172,11 +168,12 @@ FeedFetchList AsyncSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
   // init once
   if (run_futures_.size() == 0 && places_.size() > 1) {
+    if (strategy_.distributed_) {
 #ifdef PADDLE_WITH_DISTRIBUTE
-    operators::distributed::Communicator::GetInstance()->BarrierTriggerReset(
-        places_.size());
+      operators::distributed::Communicator::GetInstance()->BarrierTriggerReset(
+          places_.size());
 #endif
-
+    }
     exception_holder_.Clear();
     StartOffPythonTrainLoop();
   }
