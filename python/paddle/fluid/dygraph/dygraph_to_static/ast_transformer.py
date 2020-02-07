@@ -16,12 +16,10 @@ from __future__ import print_function
 
 import ast
 
-from enum import Enum
-
 __all__ = ['DygraphToStaticAst']
 
 
-class NodeVarType(Enum):
+class NodeVarType(object):
     """
     Enum class of python variable types. We have to know some variable types
     during compile time to transfer AST. For example, a string variable and a
