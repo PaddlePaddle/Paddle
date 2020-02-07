@@ -107,6 +107,9 @@ class TestBook(unittest.TestCase):
             print("fetch %s" % str(model.fetch_vars[0]))
             self.assertEqual(expected, actual)
 
+        self.assertRaises(ValueError, fluid.io.load_inference_model, None, exe,
+                          model_str, None)
+
 
 class TestSaveInferenceModel(unittest.TestCase):
     def test_save_inference_model(self):
