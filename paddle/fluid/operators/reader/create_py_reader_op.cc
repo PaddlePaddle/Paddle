@@ -38,8 +38,21 @@ class CreatePyReaderOp : public framework::OperatorBase {
         queue_holder_var,
         "No LoDTensorBlockingQueueHolder variable with name %s found",
         queue_name);
-    auto* queue_holder =
-        queue_holder_var->template GetMutable<LoDTensorBlockingQueueHolder>();
+    std::shared_ptr<LoDTensorBlockingQueue> queue;
+    std::shared_ptr<OrderedMultiDeviceLoDTensorBlockingQueue> ordered_queue;
+    if (queue_holder_var->IsType<LoDTensorBlockingQueueHolder>()) {
+      queue = queue_holder_var->Get<LoDTensorBlockingQueueHolder>().GetQueue();
+    } else if (queue_holder_var
+                   ->IsType<OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {
+      auto* queue_holder =
+          queue_holder_var
+              ->GetMutable<OrderedMultiDeviceLoDTensorBlockingQueueHolder>();
+      auto dev_cnt = Attr<int>("device_count");
+      auto dev_idx = static_cast<size_t>(Attr<int>("device_index"));
+      ordered_queue = queue_holder->GetQueue();
+      ordered_queue->InitOnce(dev_cnt);
+      queue = ordered_queue->GetQueue(dev_idx);
+    }
 
     /* Coverting shape_concat and ranks into DDim of each data.
      shape_concat and ranks are shapes and shape ranks of each data.E.g.
@@ -71,8 +84,20 @@ class CreatePyReaderOp : public framework::OperatorBase {
     for (size_t i = 0; i < need_check_feed_int.size(); ++i) {
       need_check_feed.push_back(static_cast<bool>(need_check_feed_int[i]));
     }
-    out->Reset(std::make_shared<PyReader>(queue_holder->GetQueue(), dims,
-                                          var_types, need_check_feed));
+    auto py_reader =
+        std::make_shared<PyReader>(queue, dims, var_types, need_check_feed);
+    if (ordered_queue) {
+      ordered_queue->AddResetMethod([py_reader] {
+        auto end_readers = py_reader->GetEndPoints();
+        for (auto* reader : end_readers) {
+          reader->Shutdown();
+        }
+        for (auto* reader : end_readers) {
+          reader->Start();
+        }
+      });
+    }
+    out->Reset(py_reader);
   }
 };
 
@@ -81,6 +106,12 @@ class CreatePyReaderOpMaker : public FileReaderMakerBase {
   void Apply() override {
     AddInput("blocking_queue",
              "Name of the `LoDTensorBlockingQueueHolder` variable");
+
+    AddAttr<int>("device_index", "The device index this reader offers data")
+        .SetDefault(0);
+    AddAttr<int>("device_count",
+                 "The total number of devices the reader offers data")
+        .SetDefault(1);
 
     AddComment(R"DOC(
       Create PyReader to support LoDTensor data feeding in Python side.

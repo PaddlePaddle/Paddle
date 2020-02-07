@@ -87,7 +87,8 @@ class DataLoader(object):
                        use_double_buffer=True,
                        iterable=True,
                        return_list=False,
-                       use_multiprocess=False):
+                       use_multiprocess=False,
+                       keep_order=False):
         """
         Create a DataLoader object for loading data from Python generator. 
         Data would be prefetched using Python thread and be pushed
@@ -133,6 +134,15 @@ class DataLoader(object):
                 can be used in the dygraph mode. In the static graph mode,
                 whether this parameter is set or not has no effect.
                 The Default value is False.
+            keep_order (bool): whether to assign the data to CPU cores or GPU 
+                cards in order. Supposing that there are 2 batches and we use 
+                2 GPU cards to run the network. If keep_order=True, GPU 0 would 
+                get batch 0 and GPU 1 would get batch 1 exactly. If 
+                keep_order=False, GPU 0 may get batch 0 or may get batch 1, and 
+                GPU 1 may get the rest of the data, which is uncertain. If 
+                keep_order=True, the framework may do some synchronization to 
+                keep the reading order, which may be slower. The default value 
+                is False.
 
         Returns:
             loader (DataLoader): the created DataLoader object.
@@ -271,12 +281,15 @@ class DataLoader(object):
                         assert relu.shape == [BATCH_SIZE, 784]
         """
         if in_dygraph_mode():
+            # Dygraph only support multiprocess training when using multi GPUs. 
+            # So in each process, we only use 1 GPU card to train the network, 
+            # so `keep_order` would also be True.
             return DygraphGeneratorLoader(feed_list, capacity,
                                           use_double_buffer, iterable,
                                           return_list, use_multiprocess)
         else:
             return GeneratorLoader(feed_list, capacity, use_double_buffer,
-                                   iterable, return_list)
+                                   iterable, return_list, keep_order)
 
     @staticmethod
     def from_dataset(dataset, places, drop_last=True):
@@ -334,6 +347,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
         self._batch_reader = None
         self._places = None
         self._feed_list = feed_list
+        self._keep_order = True
 
         if not capacity:
             raise ValueError("Please give value to capacity.")
@@ -406,7 +420,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
         self._dtypes = []
         self._need_check_feed = []
         self._blocking_queue = core.init_lod_tensor_blocking_queue(
-            core.Variable(), self._capacity)
+            core.Variable(), self._capacity, self._keep_order)
         self._reader = core.create_py_reader(
             self.queue, self._var_names, self._shapes, self._dtypes,
             self._need_check_feed, self._places, self._use_double_buffer)
@@ -614,7 +628,8 @@ class GeneratorLoader(DataLoaderBase):
                  capacity=None,
                  use_double_buffer=True,
                  iterable=True,
-                 return_list=False):
+                 return_list=False,
+                 keep_order=False):
         self._tensor_reader = None
         self._places = None
         self._thread = None
@@ -628,6 +643,7 @@ class GeneratorLoader(DataLoaderBase):
             raise Exception("Feed list must be given under static mode.")
         self._use_double_buffer = use_double_buffer
         self._capacity = capacity
+        self._keep_order = keep_order
         if not self._iterable:
             self._init_non_iterable()
 
@@ -647,8 +663,8 @@ class GeneratorLoader(DataLoaderBase):
         self._need_check_feed = [
             v.desc.need_check_feed() for v in self._feed_list
         ]
-        self._queue = core.init_lod_tensor_blocking_queue(core.Variable(),
-                                                          self._capacity)
+        self._queue = core.init_lod_tensor_blocking_queue(
+            core.Variable(), self._capacity, self._keep_order)
         self._reader = core.create_py_reader(
             self.queue, self._var_names, self._shapes, self._dtypes,
             self._need_check_feed, self._places, self._use_double_buffer)
@@ -675,16 +691,21 @@ class GeneratorLoader(DataLoaderBase):
         double_buffer_name = data_loader_unique_name_generator('double_buffer')
 
         var = global_scope().var(queue_name)
-        self._queue = core.init_lod_tensor_blocking_queue(var, self._capacity)
+        self._queue = core.init_lod_tensor_blocking_queue(var, self._capacity,
+                                                          self._keep_order)
 
-        startup_blk = default_startup_program().current_block()
-        startup_var = startup_blk.create_var(name=reader_name)
+        if self._keep_order:
+            block = default_main_program().current_block()
+        else:
+            block = default_startup_program().current_block()
+
+        reader_var = block.create_var(name=reader_name)
 
         dtype_int = [int(t) for t in dtypes]
-        startup_blk.append_op(
+        block.append_op(
             type='create_py_reader',
             inputs={'blocking_queue': [queue_name]},
-            outputs={'Out': [startup_var]},
+            outputs={'Out': [reader_var]},
             attrs={
                 'shape_concat': shape_concat,
                 'lod_levels': lod_levels,
@@ -693,16 +714,23 @@ class GeneratorLoader(DataLoaderBase):
                 'ranks': ranks
             })
 
-        startup_var.desc.set_dtypes(dtypes)
-        startup_var.persistable = True
+        reader_var.desc.set_dtypes(dtypes)
+        reader_var.persistable = True
+        reader_var.stop_gradient = True
 
-        main_prog_var = _copy_reader_var_(
-            default_main_program().current_block(), startup_var)
+        if self._keep_order:
+            main_prog_var = reader_var
+            reader = main_prog_var
+            reader.reset = self._queue.reset
+        else:
+            main_prog_var = _copy_reader_var_(
+                default_main_program().current_block(), reader_var)
 
-        main_prog_var.stop_gradient = True
-        main_prog_var.persistable = True
+            main_prog_var.stop_gradient = True
+            main_prog_var.persistable = True
 
-        reader = monkey_patch_reader_methods(main_prog_var)
+            reader = monkey_patch_reader_methods(main_prog_var)
+
         if self._use_double_buffer:
             double_buffer_reader = double_buffer(
                 reader, name=double_buffer_name)
@@ -765,14 +793,19 @@ class GeneratorLoader(DataLoaderBase):
                 " to locate the data causes this issue.\n\t* Please consider using "
                 "'fluid.create_lod_tensor' to convert it to a LoD-Tensor."))
 
+        return arr
+
     def _start(self):
         def __thread_main__():
             try:
+                if not self._queue.wait_for_inited():
+                    return
+
                 for tensors in self._tensor_reader():
                     array = core.LoDTensorArray()
                     for item in tensors:
                         if not isinstance(item, core.LoDTensor):
-                            self._check_input_array(item)
+                            item = self._check_input_array(item)
                             tmp = core.LoDTensor()
                             tmp.set(item, core.CPUPlace())
                             item = tmp

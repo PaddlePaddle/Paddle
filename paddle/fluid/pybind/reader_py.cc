@@ -20,20 +20,40 @@
 #include <utility>
 #include <vector>
 #include "Python.h"
+#include "gflags/gflags.h"
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/operators/reader/buffered_reader.h"
+#include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/operators/reader/py_reader.h"
 #include "paddle/fluid/platform/place.h"
 #include "pybind11/stl.h"
+
+DEFINE_bool(reader_queue_speed_test_mode, false,
+            "If set true, the queue.pop will only get data from queue but not "
+            "remove the data from queue for speed testing");
 
 namespace paddle {
 namespace pybind {
 
 namespace py = pybind11;
+namespace reader = operators::reader;
 
+static const std::shared_ptr<reader::LoDTensorBlockingQueue> &GetQueue(
+    const std::shared_ptr<reader::LoDTensorBlockingQueue> &queue, size_t idx) {
+  return queue;
+}
+
+static const std::shared_ptr<reader::LoDTensorBlockingQueue> &GetQueue(
+    const std::shared_ptr<reader::OrderedMultiDeviceLoDTensorBlockingQueue>
+        &queue,
+    size_t idx) {
+  return queue->GetQueue(idx);
+}
+
+template <typename QueueType>
 class MultiDeviceFeedReader {
  public:
   using ResultDictList =
@@ -41,7 +61,7 @@ class MultiDeviceFeedReader {
   using ResultList = std::vector<std::vector<framework::LoDTensor>>;
 
   MultiDeviceFeedReader(
-      const std::shared_ptr<operators::reader::LoDTensorBlockingQueue> &queue,
+      const std::shared_ptr<QueueType> &queue,
       const std::vector<std::string> &names,
       const std::vector<std::vector<int>> &shapes,
       const std::vector<framework::proto::VarType::Type> &dtypes,
@@ -54,12 +74,25 @@ class MultiDeviceFeedReader {
     for (auto &shape : shapes) {
       dims.push_back(framework::make_ddim(shape));
     }
-    std::shared_ptr<framework::ReaderBase> reader(
-        new operators::reader::PyReader(queue, dims, dtypes, need_check_feed));
+
+    auto first_reader = std::make_shared<reader::PyReader>(
+        GetQueue(queue, 0), dims, dtypes, need_check_feed);
+
+    auto create_or_get_reader = [&](size_t idx) {
+      if (idx == 0 ||
+          std::is_same<QueueType, reader::LoDTensorBlockingQueue>::value) {
+        return first_reader;
+      } else {
+        return std::make_shared<reader::PyReader>(GetQueue(queue, idx), dims,
+                                                  dtypes, need_check_feed);
+      }
+    };
 
     readers_.reserve(dst_places.size());
-    for (auto &p : dst_places) {
+    for (size_t i = 0; i < dst_places.size(); ++i) {
+      auto &p = dst_places[i];
       auto *holder = new framework::ReaderHolder();
+      auto reader = create_or_get_reader(i);
       if (use_double_buffer) {
         holder->Reset(
             framework::MakeDecoratedReader<operators::reader::BufferedReader>(
@@ -183,7 +216,7 @@ class MultiDeviceFeedReader {
     PADDLE_ENFORCE_EQ(status, Status::kSuccess);
   }
 
-  std::shared_ptr<operators::reader::LoDTensorBlockingQueue> queue_;
+  std::shared_ptr<QueueType> queue_;
   std::vector<std::string> names_;
   std::unique_ptr<::ThreadPool> pool_;
 
@@ -195,22 +228,18 @@ class MultiDeviceFeedReader {
   std::vector<std::vector<framework::LoDTensor>> ret_;
 };
 
-void BindReader(py::module *module) {
+template <typename QueueType>
+void BindMultiDeviceReader(py::module *module, const char *reader_name) {
   auto &m = *module;
 
-  namespace reader = ::paddle::operators::reader;
-
-  py::class_<framework::ReaderHolder>(m, "Reader", "")
-      .def("start", &framework::ReaderHolder::Start)
-      .def("reset", &framework::ReaderHolder::ResetAll);
-
-  py::class_<MultiDeviceFeedReader>(m, "MultiDeviceFeedReader", "")
-      .def("read_next", &MultiDeviceFeedReader::ReadNext,
+  using ReaderType = MultiDeviceFeedReader<QueueType>;
+  py::class_<ReaderType>(m, reader_name, "")
+      .def("read_next", &ReaderType::ReadNext,
            py::call_guard<py::gil_scoped_release>())
-      .def("read_next_list", &MultiDeviceFeedReader::ReadNextList,
+      .def("read_next_list", &ReaderType::ReadNextList,
            py::call_guard<py::gil_scoped_release>())
       .def("read_next_var_list",
-           [](MultiDeviceFeedReader &self) {
+           [](ReaderType &self) {
              auto result_list = self.ReadNextList();
              auto &tensor_list = result_list[0];
              std::vector<std::shared_ptr<imperative::VarBase>> var_list;
@@ -234,23 +263,105 @@ void BindReader(py::module *module) {
              return var_list;
            },
            py::call_guard<py::gil_scoped_release>())
-      .def("reset", &MultiDeviceFeedReader::Reset,
+      .def("reset", &ReaderType::Reset,
+           py::call_guard<py::gil_scoped_release>());
+}
+
+void BindReader(py::module *module) {
+  auto &m = *module;
+
+  m.def("init_lod_tensor_blocking_queue",
+        [](framework::Variable &var, size_t capacity,
+           bool is_ordered) -> py::object {
+          VLOG(1) << "init_lod_tensor_blocking_queue";
+          if (is_ordered) {
+            auto *holder = var.GetMutable<
+                reader::OrderedMultiDeviceLoDTensorBlockingQueueHolder>();
+            holder->InitOnce(capacity, FLAGS_reader_queue_speed_test_mode);
+            return py::cast(holder->GetQueue());
+          } else {
+            auto *holder =
+                var.GetMutable<reader::LoDTensorBlockingQueueHolder>();
+            holder->InitOnce(capacity, FLAGS_reader_queue_speed_test_mode);
+            return py::cast(holder->GetQueue());
+          }
+        },
+        py::return_value_policy::copy);
+
+  py::class_<framework::ReaderHolder>(m, "Reader", "")
+      .def("start", &framework::ReaderHolder::Start)
+      .def("reset", &framework::ReaderHolder::ResetAll);
+
+  py::class_<reader::LoDTensorBlockingQueue,
+             std::shared_ptr<reader::LoDTensorBlockingQueue>>(
+      m, "LoDTensorBlockingQueue", "")
+      .def("push",
+           [](reader::LoDTensorBlockingQueue &self,
+              const std::vector<framework::LoDTensor> &lod_tensor_vec) {
+             return self.Push(lod_tensor_vec);
+           },
+           py::call_guard<py::gil_scoped_release>())
+      .def("size", &reader::LoDTensorBlockingQueue::Size)
+      .def("capacity", &reader::LoDTensorBlockingQueue::Cap)
+      .def("close", &reader::LoDTensorBlockingQueue::Close)
+      .def("kill", &reader::LoDTensorBlockingQueue::Kill)
+      .def("wait_for_inited", &reader::LoDTensorBlockingQueue::WaitForInited,
            py::call_guard<py::gil_scoped_release>());
 
+  py::class_<reader::OrderedMultiDeviceLoDTensorBlockingQueue,
+             std::shared_ptr<reader::OrderedMultiDeviceLoDTensorBlockingQueue>>(
+      m, "OrderedMultiDeviceLoDTensorBlockingQueue", "")
+      .def("push",
+           [](reader::OrderedMultiDeviceLoDTensorBlockingQueue &self,
+              const std::vector<framework::LoDTensor> &lod_tensor_vec) {
+             return self.Push(lod_tensor_vec);
+           },
+           py::call_guard<py::gil_scoped_release>())
+      .def("size", &reader::OrderedMultiDeviceLoDTensorBlockingQueue::Size)
+      .def("capacity", &reader::OrderedMultiDeviceLoDTensorBlockingQueue::Cap)
+      .def("close", &reader::OrderedMultiDeviceLoDTensorBlockingQueue::Close)
+      .def("kill", &reader::OrderedMultiDeviceLoDTensorBlockingQueue::Kill)
+      .def("wait_for_inited",
+           &reader::OrderedMultiDeviceLoDTensorBlockingQueue::WaitForInited,
+           py::call_guard<py::gil_scoped_release>())
+      .def("reset", &reader::OrderedMultiDeviceLoDTensorBlockingQueue::Reset);
+
+  BindMultiDeviceReader<reader::LoDTensorBlockingQueue>(
+      module, "MultiDeviceFeedReader");
+  BindMultiDeviceReader<reader::OrderedMultiDeviceLoDTensorBlockingQueue>(
+      module, "OrderedMultiDeviceFeedReader");
+
   m.def("create_py_reader",
-        [](const std::shared_ptr<operators::reader::LoDTensorBlockingQueue>
-               &queue,
+        [](const std::shared_ptr<reader::LoDTensorBlockingQueue> &queue,
            const std::vector<std::string> &names,
            const std::vector<std::vector<int>> &shapes,
            const std::vector<framework::proto::VarType::Type> &dtypes,
            const std::vector<bool> &need_check_feed,
            const std::vector<platform::Place> &dst_places,
            bool use_double_buffer) {
-          return new MultiDeviceFeedReader(queue, names, shapes, dtypes,
-                                           need_check_feed, dst_places,
-                                           use_double_buffer);
+          return new MultiDeviceFeedReader<reader::LoDTensorBlockingQueue>(
+              queue, names, shapes, dtypes, need_check_feed, dst_places,
+              use_double_buffer);
         },
         py::return_value_policy::take_ownership);
+
+  m.def(
+      "create_py_reader",
+      [](const std::shared_ptr<reader::OrderedMultiDeviceLoDTensorBlockingQueue>
+             &queue,
+         const std::vector<std::string> &names,
+         const std::vector<std::vector<int>> &shapes,
+         const std::vector<framework::proto::VarType::Type> &dtypes,
+         const std::vector<bool> &need_check_feed,
+         const std::vector<platform::Place> &dst_places,
+         bool use_double_buffer) {
+        queue->InitOnce(dst_places.size());
+        return new MultiDeviceFeedReader<
+            reader::OrderedMultiDeviceLoDTensorBlockingQueue>(
+            queue, names, shapes, dtypes, need_check_feed, dst_places,
+            use_double_buffer);
+      },
+      py::return_value_policy::take_ownership);
 }
 
 }  // namespace pybind

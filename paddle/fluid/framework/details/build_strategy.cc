@@ -66,6 +66,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendPrintGraphPass("graph_viz_pass", "_fused_graph");
 
     AppendMultiDevPass();
+    AppendSetReaderDeviceCountPass();
     AppendMultiGraphOptPasses();
 
     AppendPassToSetMkldnnAttr("mkldnn_placement_pass");
@@ -219,6 +220,10 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     }
     multi_devices_pass->SetNotOwned<const BuildStrategy>("strategy",
                                                          &strategy_);
+  }
+
+  void AppendSetReaderDeviceCountPass() {
+    AppendPass("set_reader_device_count_pass");
   }
 
   void AppendPrintGraphPass(const std::string &pass_name,
@@ -385,6 +390,8 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                    "GPU, skipped.";
         continue;
       }
+    } else if (pass->Type() == "set_reader_device_count_pass") {
+      pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
     }
     VLOG(1) << "Start Apply Pass " << pass->Type();
     graph = pass->Apply(graph);
@@ -421,6 +428,7 @@ USE_PASS(fuse_sgd_op_pass);
 USE_PASS(fuse_momentum_op_pass);
 USE_PASS(fuse_all_reduce_op_pass);
 USE_PASS(runtime_context_cache_pass);
+USE_PASS(set_reader_device_count_pass);
 #ifdef PADDLE_WITH_MKLDNN
 USE_PASS(mkldnn_placement_pass);
 #endif
