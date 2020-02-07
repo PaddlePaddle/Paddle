@@ -34,10 +34,14 @@ struct PD_PaddleBuf {
   paddle::PaddleBuf buf;
 };
 
+struct PD_Predictor {
+  std::unique_Ptr<paddle::PaddlePredictor> predictor;
+}
+
 namespace paddle {
 paddle::PaddleDType ConvertToPaddleDType(PD_DataType dtype);
 
 PD_DataType ConvertToPDDataType(PD_PaddleDType dtype);
 
 PD_ACPrecision ConvertToACPrecision(Precision dtype);
-}
+}  // namespace paddle
