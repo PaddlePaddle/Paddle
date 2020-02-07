@@ -46,7 +46,7 @@ class InferencePassTest(unittest.TestCase):
         random.seed(1)
 
     def _get_place(self):
-        return list(set([False, core.is_compiled_with_cuda()]))
+        return set([False, core.is_compiled_with_cuda()])
 
     def _save_models(self, executor, program):
         outs = executor.run(program=program,
