@@ -30,26 +30,23 @@ from paddle.fluid.core import create_paddle_predictor
 
 class InferencePassTest(unittest.TestCase):
     @classmethod
-    def setUpClass(self):
-        self.main_program = fluid.Program()
-        self.startup_program = fluid.Program()
-        self.feeds = None
-        self.fetch_list = None
+    def setUpClass(cls):
+        cls.main_program = fluid.Program()
+        cls.startup_program = fluid.Program()
+        cls.feeds = None
+        cls.fetch_list = None
 
-        self.enable_mkldnn = False
-        self.enable_trt = False
-        self.trt_parameters = None
-        self.enable_lite = False
-        self.lite_parameters = None
-        self.path = "./inference_pass/"
+        cls.enable_mkldnn = False
+        cls.enable_trt = False
+        cls.trt_parameters = None
+        cls.enable_lite = False
+        cls.lite_parameters = None
+        cls.path = "./inference_pass/"
         np.random.seed(1)
         random.seed(1)
 
     def _get_place(self):
-        use_gpu = [False]
-        if core.is_compiled_with_cuda():
-            use_gpu.append(True)
-        return use_gpu
+        return list(set([False, core.is_compiled_with_cuda()]))
 
     def _save_models(self, executor, program):
         outs = executor.run(program=program,
@@ -74,19 +71,19 @@ class InferencePassTest(unittest.TestCase):
         predictor = create_paddle_predictor(config)
         tensor_shapes = predictor.get_input_tensor_shape()
         names = predictor.get_input_names()
-        for i in range(len(names)):
-            shape = tensor_shapes[names[i]]
+        for i, name in enumerate(names):
+            shape = tensor_shapes[name]
             shape[0] = 1
-            tensor = predictor.get_input_tensor(names[i])
+            tensor = predictor.get_input_tensor(name)
             tensor.copy_from_cpu(list(self.feeds.values())[i])
 
         predictor.zero_copy_run()
 
         output_names = predictor.get_output_names()
-        outs = []
-        for out_name in output_names:
-            output_tensor = predictor.get_output_tensor(out_name)
-            outs.append(output_tensor.copy_to_cpu())
+        outs = [
+            predictor.get_output_tensor(out_name).copy_to_cpu()
+            for out_name in output_names
+        ]
 
         return outs
 
@@ -124,11 +121,11 @@ class InferencePassTest(unittest.TestCase):
         or disable TensorRT, enable MKLDNN or disable MKLDNN 
         are all the same. 
         '''
-        if self.feeds is None:
-            self.assertTrue(False, "The inputs of the model is None. ")
+        self.assertFalse(self.feeds is None,
+                         "The inputs of the model is None. ")
         use_gpu = self._get_place()
-        for i in range(len(use_gpu)):
-            self.check_output_with_option(use_gpu[i], atol)
+        for place_ in use_gpu:
+            self.check_output_with_option(place_, atol)
 
     def check_output_with_option(self, use_gpu, atol=1e-5):
         '''
@@ -136,12 +133,9 @@ class InferencePassTest(unittest.TestCase):
         or disable TensorRT, enable MKLDNN or disable MKLDNN 
         are all the same. 
         '''
-        if use_gpu:
-            executor = fluid.Executor(fluid.CUDAPlace(0))
-            place = "GPU"
-        else:
-            executor = fluid.Executor(fluid.CPUPlace())
-            place = "CPU"
+        place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
+        executor = fluid.Executor(place)
+        device = "GPU" if use_gpu else "CPU"
         executor.run(self.startup_program)
         outs = self._save_models(executor, self.main_program)
 
@@ -152,14 +146,14 @@ class InferencePassTest(unittest.TestCase):
         self.assertTrue(
             len(outs) == len(analysis_outputs),
             "The number of outputs is different between inference and training forward at {}".
-            format(place))
+            format(device))
 
-        for i in six.moves.xrange(len(outs)):
+        for out, analysis_output in zip(outs, analysis_outputs):
             self.assertTrue(
                 np.allclose(
-                    np.array(outs[i]), analysis_outputs[i], atol=atol),
+                    np.array(out), analysis_output, atol=atol),
                 "Output has diff between inference and training forward at {} ".
-                format(place))
+                format(device))
 
         # Check whether the trt results and the GPU results are the same. 
         if use_gpu and self.enable_trt:
@@ -171,10 +165,10 @@ class InferencePassTest(unittest.TestCase):
                 len(tensorrt_outputs) == len(outs),
                 "The number of outputs is different between GPU and TensorRT. ")
 
-            for i in six.moves.xrange(len(outs)):
+            for out, tensorrt_output in zip(outs, tensorrt_outputs):
                 self.assertTrue(
                     np.allclose(
-                        tensorrt_outputs[i], np.array(outs[i]), atol=atol),
+                        np.array(out), tensorrt_output, atol=atol),
                     "Output has diff between GPU and TensorRT. ")
 
         # Check whether the mkldnn results and the CPU results are the same. 
@@ -187,10 +181,10 @@ class InferencePassTest(unittest.TestCase):
                 len(outs) == len(mkldnn_outputs),
                 "The number of outputs is different between CPU and MKLDNN. ")
 
-            for i in six.moves.xrange(len(outs)):
+            for out, mkldnn_output in zip(outs, mkldnn_outputs):
                 self.assertTrue(
                     np.allclose(
-                        np.array(outs[i]), mkldnn_outputs[i], atol=atol),
+                        np.array(out), mkldnn_output, atol=atol),
                     "Output has diff between CPU and MKLDNN. ")
 
     class TensorRTParam:
