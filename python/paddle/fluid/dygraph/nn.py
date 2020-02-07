@@ -1200,7 +1200,12 @@ class Dropout(layers.Layer):
 
     def forward(self, input):
         is_test = self.training if in_dygraph_mode() else self.is_test
-        return F.dropout(input, dropout_prob=self.dropout_prob, is_test=is_test)
+        return F.dropout(
+            input,
+            dropout_prob=self.dropout_prob,
+            is_test=is_test,
+            seed=self.seed,
+            dropout_implementation=self.dropout_implementation)
 
 
 class Embedding(layers.Layer):
