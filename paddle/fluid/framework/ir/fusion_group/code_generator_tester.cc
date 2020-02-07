@@ -198,7 +198,7 @@ void TestMainImpl(std::string func_name, std::string code_str,
             tmp_cpu_tensors[id].mutable_data<paddle::platform::float16>(
                 cpu_tensors[id].dims(), paddle::platform::CPUPlace());
         const float* cpu_ptr = cpu_tensors[id].data<float>();
-        for (size_t i = 0; i < cpu_tensors[id].numel(); ++i) {
+        for (int64_t i = 0; i < cpu_tensors[id].numel(); ++i) {
           tmp_cpu_ptr[i] = paddle::platform::float16(cpu_ptr[i]);
         }
         TensorCopySync(tmp_cpu_tensors[id], place, &gpu_tensors[id]);
@@ -234,7 +234,7 @@ void TestMainImpl(std::string func_name, std::string code_str,
 
       float* cpu_ptr = cpu_tensors[id].mutable_data<float>(
           cpu_tensors[id].dims(), paddle::platform::CPUPlace());
-      for (size_t i = 0; i < cpu_tensors[id].numel(); ++i) {
+      for (int64_t i = 0; i < cpu_tensors[id].numel(); ++i) {
         cpu_ptr[i] = static_cast<float>(tmp_cpu_ptr[i]);
       }
     } else {
