@@ -72,11 +72,31 @@ class Layer(core.Layer):
         self._loaddict_holder = collections.OrderedDict()
 
     def train(self):
+        """
+        Sets this Layer and all its sublayers to training mode.
+        This only effects certain modules like `Dropout` and `BatchNorm`.
+
+        Returns:
+            None
+        """
+        # for static graph
+        framework._dygraph_tracer().train_mode()
+        # for dynamic graph
         self.training = True
         for layer in self.sublayers(include_sublayers=False):
             layer.train()
 
     def eval(self):
+        """
+        Sets this Layer and all its sublayers to evaluation mode.
+        This only effects certain modules like `Dropout` and `BatchNorm`.
+
+        Returns:
+            None
+        """
+        # for static graph
+        framework._dygraph_tracer().eval_mode()
+        # for dynamic graph
         self.training = False
         for layer in self.sublayers(include_sublayers=False):
             layer.eval()

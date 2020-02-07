@@ -20,7 +20,7 @@ from ..layers import utils
 from ..layers import nn as F
 from .. import dygraph_utils
 from . import layers
-from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer, _varbase_creator
+from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer, _varbase_creator, default_main_program
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 from .. import unique_name
@@ -1006,7 +1006,9 @@ class BatchNorm(layers.Layer):
     Parameters:
         num_channels(int): Indicate the number of channels of the input ``Tensor``.
         act(str, optional): Activation to be applied to the output of batch normalizaiton. Default: None.
-        is_test (bool, optional): A flag indicating whether it is in test phrase or not. Default: False.
+        is_test (bool, optional): A flag indicating whether it is in test phrase or not.
+             This flag only has effect on static graph mode. For dygraph mode, please use ``eval()``.
+             Default: False.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
         epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
         param_attr(ParamAttr, optional): The parameter attribute for Parameter `scale`
@@ -1187,25 +1189,105 @@ class BatchNorm(layers.Layer):
 
 
 class Dropout(layers.Layer):
+    """
+   This interface is used to construct a callable object of the ``Dropout`` class.
+   For more details, refer to code examples.
+
+   Drop or keep each element of `x` independently. Dropout is a regularization
+   technique for reducing overfitting by preventing neuron co-adaption during
+   training. The dropout operator randomly sets (according to the given dropout
+   probability) the outputs of some units to zero, while others are remain
+   unchanged.
+
+   dropout op can be removed from the program to make the program more efficient.
+
+   Parameters:
+       dropout_prob (float): Probability of setting units to zero.
+       seed (int, optional): A Python integer used to create random seeds. If this
+                   parameter is set to None, a random seed is used.
+                   NOTE: If an integer seed is given, always the same output
+                   units will be dropped. DO NOT use a fixed seed in training. Default: None.
+       dropout_implementation(string, optional): ['downgrade_in_infer'(default)|'upscale_in_train']
+
+                                       1. downgrade_in_infer(default), downgrade the outcome at inference
+
+                                          - train: out = input * mask
+                                          - inference: out = input * (1.0 - dropout_prob)
+
+                                          (mask is a tensor same shape with input, value is 0 or 1
+                                          ratio of 0 is dropout_prob)
+                                       2. upscale_in_train, upscale the outcome at training time
+
+                                          - train: out = input * mask / ( 1.0 - dropout_prob )
+                                          - inference: out = input
+
+                                          (mask is a tensor same shape with input, value is 0 or 1
+                                          ratio of 0 is dropout_prob)
+       is_test (bool, optional): A flag indicating whether it is in test phrase or not.
+                   This flag only has effect on static graph mode. For dygraph mode, please use ``eval()``.
+                   Default: False.
+
+   Returns:
+       None
+
+   Examples:
+
+       .. code-block:: python
+
+           import paddle.fluid as fluid
+           from paddle.fluid.dygraph.base import to_variable
+           import numpy as np
+
+           x = np.random.random(size=(3, 10, 3, 7)).astype('float32')
+           with fluid.dygraph.guard():
+               x = to_variable(x)
+               m = fluid.dygraph.Dropout(dropout_prob=0.5)
+               droped_train = m(x)
+               # switch to eval mode
+               m.eval()
+               droped_eval = m(x)
+   """
+
     def __init__(self,
                  dropout_prob,
                  seed=None,
                  dropout_implementation="downgrade_in_infer",
                  is_test=False):
         super(Dropout, self).__init__()
-        self.dropout_prob = dropout_prob
-        self.seed = seed
-        self.dropout_implementation = dropout_implementation
-        self.is_test = is_test
+        self._dropout_prob = dropout_prob
+        self._seed = seed
+        self._dropout_implementation = dropout_implementation
+        self._is_test = is_test
 
     def forward(self, input):
-        is_test = self.training if in_dygraph_mode() else self.is_test
-        return F.dropout(
-            input,
-            dropout_prob=self.dropout_prob,
-            is_test=is_test,
-            seed=self.seed,
-            dropout_implementation=self.dropout_implementation)
+        prog = default_main_program()
+        if (self._seed is None or self._seed == 0) and prog.random_seed != 0:
+            self._seed = prog.random_seed
+        attrs = {
+            'dropout_prob': self._dropout_prob,
+            'is_test': not self.training
+            if in_dygraph_mode() else self._is_test,
+            'fix_seed': self._seed is not None,
+            'seed': self._seed if self._seed is not None else 0,
+            'dropout_implementation': self._dropout_implementation,
+        }
+
+        if in_dygraph_mode():
+            inputs = {'X': [input]}
+            outs = core.ops.dropout(inputs, attrs)
+            return outs['Out'][0]
+
+        out = self._helper.create_variable_for_type_inference(dtype=input.dtype)
+        mask = self._helper.create_variable_for_type_inference(
+            dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
+
+        self._helper.append_op(
+            type='dropout',
+            inputs={'X': [input]},
+            outputs={'Out': [out],
+                     'Mask': [mask]},
+            attrs=attrs)
+        return out
 
 
 class Embedding(layers.Layer):

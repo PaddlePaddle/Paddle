@@ -116,14 +116,21 @@ class TestLayer(LayerTest):
                 append_batch_size=False)
             dropout = nn.Dropout(dropout_prob=0.35, seed=1, is_test=False)
             ret = dropout(t)
-            static_ret = self.get_static_graph_result(
-                feed={'data': inp}, fetch_list=[ret])[0]
+            ret2 = fluid.layers.dropout(
+                t, dropout_prob=0.35, seed=1, is_test=False)
+            static_ret, static_ret2 = self.get_static_graph_result(
+                feed={'data': inp}, fetch_list=[ret, ret2])
         with self.dynamic_graph():
             t = base.to_variable(inp)
             dropout = nn.Dropout(dropout_prob=0.35, seed=1, is_test=False)
             dy_ret = dropout(t)
+            dy_ret2 = fluid.layers.dropout(
+                t, dropout_prob=0.35, seed=1, is_test=False)
             dy_ret_value = dy_ret.numpy()
+            dy_ret2_value = dy_ret2.numpy()
 
+        self.assertTrue(np.array_equal(static_ret, static_ret2))
+        self.assertTrue(np.array_equal(dy_ret_value, dy_ret2_value))
         self.assertTrue(np.array_equal(static_ret, dy_ret_value))
 
     def test_linear(self):
