@@ -35,8 +35,8 @@ struct PD_PaddleBuf {
 };
 
 struct PD_Predictor {
-  std::unique_Ptr<paddle::PaddlePredictor> predictor;
-}
+  std::unique_ptr<paddle::PaddlePredictor> predictor;
+};
 
 namespace paddle {
 paddle::PaddleDType ConvertToPaddleDType(PD_DataType dtype);

@@ -56,7 +56,7 @@ func (config *AnalysisConfig) UseGpu() bool {
 }
 
 func (config *AnalysisConfig) GpuDeviceId() int {
-	return C.PD_Gpu(config.c)
+	return C.PD_GpuDeviceId(config.c)
 }
 
 func (config *AnalysisConfig) MemoryPoolInitSizeMb() int {
