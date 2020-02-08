@@ -463,7 +463,8 @@ void BindImperative(py::module *m_ptr) {
       self.GradVarBase()->RegisterBackwardHooks(std::make_shared<imperative::PyCallableObject>(std::make_shared<py::object>(hook)));
       }
       else {
-      PADDLE_THROW("Can not register hook for VarBase who has not GradVar");
+      PADDLE_THROW(platform::errors::PreconditionNotMet("Can not register hook
+      for VarBase who has not GradVar"));
       }
       //return py::object;
       })*/
@@ -480,8 +481,8 @@ void BindImperative(py::module *m_ptr) {
                self.RegisterBackwardHooks(obj, removable_obj->Get_Hooks_Id());
                return removable_obj;
              } else {
-               PADDLE_THROW(
-                   "Can not register hook for VarBase who has not GradVar");
+               PADDLE_THROW(platform::errors::PreconditionNotMet(
+                   "Can not register hook for VarBase who has not GradVar"));
              }
            })
       .def("_grad_name", &imperative::VarBase::GradVarName)

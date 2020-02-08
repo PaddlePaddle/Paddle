@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include <Python.h>
+// #include <Python.h>
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
@@ -36,7 +36,8 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/flags.h"
 #include "paddle/fluid/imperative/type_defs.h"
-#include "paddle/fluid/operators/math/math_function.h"
+// #include "paddle/fluid/operators/math/math_function.h"
+#include <Python.h>
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
 
