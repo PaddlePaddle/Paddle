@@ -18,8 +18,8 @@
 #include <numeric>
 #include <vector>
 #include "paddle/fluid/inference/api/paddle_api.h"
-#include "paddle/fluid/inference/capi/c_api.h"
 #include "paddle/fluid/inference/capi/c_api_internal.h"
+#include "paddle/fluid/inference/capi/paddle_c_api.h"
 
 using paddle::ConvertToACPrecision;
 using paddle::ConvertToPaddleDType;
@@ -192,12 +192,12 @@ int PD_GetOutputNum(const PD_Predictor* predictor) {
   return static_cast<int>(predictor->predictor->GetOutputNames().size());
 }
 
-int PD_GetInputName(const PD_Predictor* predictor, int n) {
-  return predictor->predictor->GetInputNames()[n];
+const char* PD_GetInputName(const PD_Predictor* predictor, int n) {
+  return predictor->predictor->GetInputNames()[n].c_str();
 }
 
-int PD_GetOutputName(const PD_Predictor* predictor, int n) {
-  return predictor->predictor->GetOutputNames()[n];
+const char* PD_GetOutputName(const PD_Predictor* predictor, int n) {
+  return predictor->predictor->GetOutputNames()[n].c_str();
 }
 
 void PD_SetZeroCopyInputs(PD_Predictor* predictor,
@@ -244,21 +244,21 @@ void PD_GetZeroCopyOutputs(PD_Predictor* predictor, PD_ZeroCopyData** outputs) {
     output->shape = new int[shape.size()];
     std::copy(shape.begin(), shape.end(), output->shape);
     int n =
-        std::accumulate(shape.begin(), shape.end(), 1, std::mutiplies<int>());
-    output->data =
-        static_cast<void*>(std::malloc(n * PD_DTypeSize(output->dtype)));
+        std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
+    output->data = static_cast<void*>(std::malloc(
+        n * paddle::PaddleDtypeSize(ConvertToPaddleDType(output->dtype))));
     switch (tensor->type()) {
       case paddle::PaddleDType::FLOAT32:
-        tensor->copy_to_cpu(static_cast<float>(output->data));
+        tensor->copy_to_cpu(static_cast<float*>(output->data));
         break;
       case paddle::PaddleDType::INT32:
-        tensor->copy_to_cpu(static_cast<int32_t>(output->data));
+        tensor->copy_to_cpu(static_cast<int32_t*>(output->data));
         break;
       case paddle::PaddleDType::INT64:
-        tensor->copy_to_cpu(static_cast<int64_t>(output->data));
+        tensor->copy_to_cpu(static_cast<int64_t*>(output->data));
         break;
       case paddle::PaddleDType::UINT8:
-        tensor->copy_to_cpu(static_cast<uint8_t>(output->data));
+        tensor->copy_to_cpu(static_cast<uint8_t*>(output->data));
         break;
     }
   }
