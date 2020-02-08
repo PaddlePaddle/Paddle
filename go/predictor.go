@@ -14,10 +14,40 @@
 
 package paddle
 
-// #include "paddle/fluid/inference/capi/c_api.h"
+// #include "paddle/fluid/inference/capi/paddle_c_api.h"
 import "C"
 
 type Predictor struct {
 	c *C.PD_Predictor
+}
+
+func NewPredictor() *Predictor {
+    c_predictor := C.PD_NewPredictor()
+    config := &Predictor{c: c_predictor}
+    return config
+}
+
+func DeletePredictor(predictor *Predictor) {
+    C.PD_DeletePredictor(predictor.c)
+}
+
+func (predictor *Predictor) InputNum() int {
+    return C.PD_GetInputNum(predictor.c)
+}
+
+func (predictor *Predictor) OutputNum() int {
+    return C.PD_GetOutputNum(predictor.c)
+}
+
+func (predictor *Predictor) InputName(n: int) string {
+    return C.PD_GetInputName(predictor.c, n)
+}
+
+func (predictor *Predictor) OutputName(n: int) string {
+    return C.PD_GetOutputName(predictor.c, n)
+}
+
+func (predictor *Predictor) ZeroCopyRun() {
+    return C.PD_ZeroCopyRun(predictor.c)
 }
 

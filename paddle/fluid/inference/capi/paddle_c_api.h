@@ -38,6 +38,22 @@ typedef struct PD_PaddleBuf PD_PaddleBuf;
 typedef struct PD_AnalysisConfig PD_AnalysisConfig;
 typedef struct PD_Predictor PD_Predictor;
 
+typedef struct PD_Buffer {
+  void* data;
+  size_t length;
+  size_t used_length;
+} PD_Buffer;
+
+typedef struct PD_ZeroCopyTensor {
+  PD_Buffer data;
+  PD_Buffer shape;
+  PD_Buffer lod;
+  PD_DataType dtype;
+  char* name;
+} PD_ZeroCopyTensor;
+
+PADDLE_CAPI_EXPORT extern void PD_InitZeroCopyTensor(PD_ZeroCopyTensor*);
+
 typedef struct PD_ZeroCopyData {
   char* name;
   void* data;
@@ -240,6 +256,7 @@ PADDLE_CAPI_EXPORT extern bool PD_ProfileEnabled(
 PADDLE_CAPI_EXPORT extern void PD_SetInValid(PD_AnalysisConfig* config);
 
 PADDLE_CAPI_EXPORT extern bool PD_IsValid(const PD_AnalysisConfig* config);
+PADDLE_CAPI_EXPORT extern void PD_DisableGlogInfo(PD_AnalysisConfig* config);
 
 PADDLE_CAPI_EXPORT extern PD_Predictor* PD_NewPredictor(
     const PD_AnalysisConfig* config);
@@ -247,11 +264,12 @@ PADDLE_CAPI_EXPORT extern void PD_DeletePredictor(PD_Predictor* predictor);
 PADDLE_CAPI_EXPORT extern int PD_GetInputNum(const PD_Predictor*);
 PADDLE_CAPI_EXPORT extern int PD_GetOutputNum(const PD_Predictor*);
 PADDLE_CAPI_EXPORT extern const char* PD_GetInputName(const PD_Predictor*, int);
-PADDLE_CAPI_EXPORT extern const char* PD_GetOutputName(const PD_Predictor*, int);
-PADDLE_CAPI_EXPORT extern void PD_SetZeroCopyInputs(
-    PD_Predictor* predictor, const PD_ZeroCopyData* inputs, int n_inputs);
-PADDLE_CAPI_EXPORT extern void PD_GetZeroCopyOutputs(PD_Predictor* predictor,
-                                                     PD_ZeroCopyData** outputs);
+PADDLE_CAPI_EXPORT extern const char* PD_GetOutputName(const PD_Predictor*,
+                                                       int);
+PADDLE_CAPI_EXPORT extern void PD_SetZeroCopyInput(
+    PD_Predictor* predictor, const PD_ZeroCopyTensor* tensor);
+PADDLE_CAPI_EXPORT extern void PD_GetZeroCopyOutput(PD_Predictor* predictor,
+                                                    PD_ZeroCopyTensor* tensor);
 PADDLE_CAPI_EXPORT extern void PD_ZeroCopyRun(PD_Predictor* predictor);
 
 #ifdef __cplusplus

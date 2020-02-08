@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <cstring>
 #include <map>
 #include <memory>
 #include <numeric>
@@ -193,74 +194,92 @@ int PD_GetOutputNum(const PD_Predictor* predictor) {
 }
 
 const char* PD_GetInputName(const PD_Predictor* predictor, int n) {
-  return predictor->predictor->GetInputNames()[n].c_str();
+  static std::vector<std::string> names = predictor->predictor->GetInputNames();
+  return names[n].c_str();
 }
 
 const char* PD_GetOutputName(const PD_Predictor* predictor, int n) {
-  return predictor->predictor->GetOutputNames()[n].c_str();
+  static std::vector<std::string> names =
+      predictor->predictor->GetOutputNames();
+  return names[n].c_str();
 }
 
-void PD_SetZeroCopyInputs(PD_Predictor* predictor,
-                          const PD_ZeroCopyData* inputs, int n_inputs) {
-  for (int i = 0; i < n_inputs; i++) {
-    const auto& input = inputs[i];
-    auto tensor = predictor->predictor->GetInputTensor(input.name);
-    std::vector<int> shape(input.shape, input.shape + input.shape_size);
-    tensor->Reshape(std::move(shape));
+void PD_SetZeroCopyInput(PD_Predictor* predictor,
+                         const PD_ZeroCopyTensor* tensor) {
+  auto input = predictor->predictor->GetInputTensor(tensor->name);
+  auto* shape_ptr = reinterpret_cast<int*>(tensor->shape.data);
+  std::vector<int> shape(shape_ptr,
+                         shape_ptr + tensor->shape.used_length / sizeof(int));
+  input->Reshape(std::move(shape));
+  switch (tensor->dtype) {
+    case PD_FLOAT32:
+      input->copy_from_cpu(reinterpret_cast<float*>(tensor->data.data));
+      break;
+    case PD_INT32:
+      input->copy_from_cpu(reinterpret_cast<int32_t*>(tensor->data.data));
+      break;
+    case PD_INT64:
+      input->copy_from_cpu(reinterpret_cast<int64_t*>(tensor->data.data));
+      break;
+    case PD_UINT8:
+      input->copy_from_cpu(reinterpret_cast<uint8_t*>(tensor->data.data));
+      break;
+    default:
+      CHECK(false) << "Unsupport data type.";
+      break;
+  }
 
-    switch (input.dtype) {
-      case PD_FLOAT32:
-        tensor->copy_from_cpu(static_cast<float*>(input.data));
-        break;
-      case PD_INT32:
-        tensor->copy_from_cpu(static_cast<int32_t*>(input.data));
-        break;
-      case PD_INT64:
-        tensor->copy_from_cpu(static_cast<int64_t*>(input.data));
-        break;
-      case PD_UINT8:
-        tensor->copy_from_cpu(static_cast<uint8_t*>(input.data));
-        break;
-      default:
-        CHECK(false) << "Unsupport data type.";
-        break;
-    }
+  if (tensor->lod.used_length) {
+    auto* lod_ptr = reinterpret_cast<size_t*>(tensor->lod.data);
+    std::vector<size_t> lod(lod_ptr, lod_ptr + tensor->lod.used_length);
+    input->SetLoD({std::move(lod)});
   }
 }
 
-void PD_GetZeroCopyOutputs(PD_Predictor* predictor, PD_ZeroCopyData** outputs) {
-  CHECK(outputs);
-  auto output_names = predictor->predictor->GetOutputNames();
-  int n_outputs = static_cast<int>(output_names.size());
-  for (int i = 0; i < n_outputs; i++) {
-    auto* output = outputs[i];
-    auto tensor = predictor->predictor->GetOutputTensor(output_names[i]);
-    output->name = &output_names[i][0];
-    output->dtype = ConvertToPDDataType(tensor->type());
-    std::vector<int> shape = tensor->shape();
-    if (output->shape) {
-      delete output->shape;
+void PD_GetZeroCopyOutput(PD_Predictor* predictor, PD_ZeroCopyTensor* tensor) {
+  auto output = predictor->predictor->GetOutputTensor(tensor->name);
+  tensor->dtype = ConvertToPDDataType(output->type());
+  auto shape = output->shape();
+  int n =
+      std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
+  size_t length = n * paddle::PaddleDtypeSize(output->type());
+  if (tensor->data.length < length) {
+    if (tensor->data.data) {
+      std::free(tensor->data.data);
     }
-    output->shape = new int[shape.size()];
-    std::copy(shape.begin(), shape.end(), output->shape);
-    int n =
-        std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
-    output->data = static_cast<void*>(std::malloc(
-        n * paddle::PaddleDtypeSize(ConvertToPaddleDType(output->dtype))));
-    switch (tensor->type()) {
-      case paddle::PaddleDType::FLOAT32:
-        tensor->copy_to_cpu(static_cast<float*>(output->data));
-        break;
-      case paddle::PaddleDType::INT32:
-        tensor->copy_to_cpu(static_cast<int32_t*>(output->data));
-        break;
-      case paddle::PaddleDType::INT64:
-        tensor->copy_to_cpu(static_cast<int64_t*>(output->data));
-        break;
-      case paddle::PaddleDType::UINT8:
-        tensor->copy_to_cpu(static_cast<uint8_t*>(output->data));
-        break;
+    tensor->data.data = std::malloc(length);
+    tensor->data.length = std::move(length);
+  }
+  tensor->data.used_length = length;
+
+  auto lod = output->lod();
+  tensor->lod.used_length = lod.front().size() * sizeof(size_t);
+  if (tensor->lod.length < lod.front().size()) {
+    if (tensor->lod.data) {
+      std::free(tensor->lod.data);
     }
+
+    tensor->lod.data = std::malloc(lod.front().size() * sizeof(size_t));
+    tensor->lod.length = lod.front().size();
+  }
+  std::copy(lod.front().begin(), lod.front().end(),
+            reinterpret_cast<size_t*>(tensor->lod.data));
+  switch (tensor->dtype) {
+    case PD_FLOAT32:
+      output->copy_to_cpu(reinterpret_cast<float*>(tensor->data.data));
+      break;
+    case PD_INT32:
+      output->copy_to_cpu(reinterpret_cast<int32_t*>(tensor->data.data));
+      break;
+    case PD_INT64:
+      output->copy_to_cpu(reinterpret_cast<int64_t*>(tensor->data.data));
+      break;
+    case PD_UINT8:
+      output->copy_to_cpu(reinterpret_cast<uint8_t*>(tensor->data.data));
+      break;
+    default:
+      CHECK(false) << "Unsupport data type.";
+      break;
   }
 }
 
@@ -268,4 +287,7 @@ void PD_ZeroCopyRun(PD_Predictor* predictor) {
   predictor->predictor->ZeroCopyRun();
 }
 
+void PD_InitZeroCopyTensor(PD_ZeroCopyTensor* tensor) {
+  std::memset(tensor, 0, sizeof(PD_ZeroCopyTensor));
+}
 }  // extern "C"

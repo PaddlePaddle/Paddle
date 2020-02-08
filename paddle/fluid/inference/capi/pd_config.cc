@@ -258,4 +258,8 @@ bool PD_IsValid(const PD_AnalysisConfig* config) {
   PADDLE_ENFORCE_NOT_NULL(config);
   return config->config.is_valid();
 }
+
+void PD_DisableGlogInfo(PD_AnalysisConfig *config) {
+  config->config.DisableGlogInfo();
+}
 }  // extern "C"
