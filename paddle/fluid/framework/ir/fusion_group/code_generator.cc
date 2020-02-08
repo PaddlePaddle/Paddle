@@ -33,7 +33,7 @@ CodeGenerator::CodeGenerator() {
 
 std::string CodeGenerator::Generate(SubGraph* subgraph) {
   std::vector<OperationExpression> expressions = ConvertToExpressions(subgraph);
-  return Generate(subgraph->func_name, expressions);
+  return Generate(subgraph->GetFuncName(), expressions);
 }
 
 static bool HasInput(Node* n, std::string name) {

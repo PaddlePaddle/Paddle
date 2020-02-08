@@ -1522,6 +1522,25 @@ PDNode *patterns::FcDequant::operator()() {
   return dequant_out;
 }
 
+PDNode *patterns::DequantScale::operator()() {
+  // Create Operators
+  auto dequant_op =
+      pattern->NewNode(dequant_op_repr())->assert_is_op("dequantize");
+  auto scale_op = pattern->NewNode(scale_op_repr())->assert_is_op("scale");
+
+  auto dequant_out = pattern->NewNode(dequant_out_repr())
+                         ->AsOutput()
+                         ->assert_is_op_output("dequantize", "Output");
+  auto scale_out = pattern->NewNode(scale_out_repr())
+                       ->AsOutput()
+                       ->assert_is_op_output("scale", "Out");
+
+  dequant_op->LinksTo({dequant_out});
+  scale_op->LinksFrom({dequant_out}).LinksTo({scale_out});
+
+  return scale_out;
+}
+
 PDNode *patterns::PriorBox::operator()() {
   auto prior_box_op =
       pattern->NewNode(prior_box_op_repr())->assert_is_op("prior_box");

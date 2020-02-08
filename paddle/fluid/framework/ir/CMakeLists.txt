@@ -6,7 +6,7 @@ file(APPEND ${pass_file} "\#include \"paddle/fluid/framework/ir/pass.h\"\n")
 add_subdirectory(fuse_optimizer_ops_pass)
 add_subdirectory(memory_optimize_pass)
 add_subdirectory(multi_devices_graph_pass)
-if(NOT APPLE AND NOT WIN32)
+if(NOT APPLE AND NOT WIN32 AND WITH_GPU)
     add_subdirectory(fusion_group)
 endif()
 
