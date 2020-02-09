@@ -1733,10 +1733,10 @@ All parameter, weight, gradient are variables in Paddle.
                 user call exe.run() in python
               )DOC")
       .def_property(
-          "is_distributed",
-          [](const ExecutionStrategy &self) { return self.distributed_; },
-          [](ExecutionStrategy &self, bool is_distributed) {
-            self.distributed_ = is_distributed;
+          "use_thread_barrier",
+          [](const ExecutionStrategy &self) { return self.thread_barrier_; },
+          [](ExecutionStrategy &self, bool use_thread_barrier) {
+            self.thread_barrier_ = use_thread_barrier;
           },
           R"DOC(This config that the this is distributed training with parameter server
               )DOC")
