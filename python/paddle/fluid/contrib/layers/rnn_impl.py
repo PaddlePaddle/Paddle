@@ -291,7 +291,7 @@ def basic_gru(input,
                 layer_bias_attr = copy.deepcopy(bias_attr)
                 layer_bias_attr.name += "_bw_b_" + str(i)
             else:
-                layer_bias_attr = param_attr
+                layer_bias_attr = bias_attr
 
             bw_unit_list.append(
                 BasicGRUUnit(new_name, hidden_size, layer_param_attr,
