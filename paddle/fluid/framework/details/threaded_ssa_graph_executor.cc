@@ -342,7 +342,7 @@ bool ThreadedSSAGraphExecutor::RunOpSync(OpHandleBase *op) {
 void ThreadedSSAGraphExecutor::ExecutionFinal(
     std::vector<OpHandleBase *> *fetch_ops) {
 #ifdef PADDLE_WITH_DISTRIBUTE
-  if (strategy_.distributed_) {
+  if (strategy_.thread_barrier_) {
     operators::distributed::Communicator::GetInstance()
         ->BarrierTriggerDecrement();
   }
