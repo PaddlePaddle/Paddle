@@ -48,8 +48,9 @@ bool HasDependentInput(const OpDesc& op_desc,
   return false;
 }
 
-bool OnlyHasDependentInput(const OpDesc& op_desc,
-                       const std::unordered_set<std::string>& dependent_vars) {
+bool OnlyHasDependentInput(
+    const OpDesc& op_desc,
+    const std::unordered_set<std::string>& dependent_vars) {
   for (auto& var : op_desc.Inputs()) {
     for (auto& argu : var.second) {
       if (dependent_vars.count(argu) == 0) {
