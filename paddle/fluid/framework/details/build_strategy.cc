@@ -165,9 +165,12 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
   void AppendOpFusePasses() {
     AppendPassWithCheck(strategy_.fuse_relu_depthwise_conv_,
                         "fuse_relu_depthwise_conv_pass");
+    AppendPassWithCheck(strategy_.fuse_bn_act_ops_, "fuse_bn_act_pass");
+#ifdef PADDLE_WITH_CUDA
+    AppendPassWithCheck(strategy_.enable_auto_fusion_, "fusion_group_pass");
+#endif
     AppendPassWithCheck(strategy_.fuse_elewise_add_act_ops_,
                         "fuse_elewise_add_act_pass");
-    AppendPassWithCheck(strategy_.fuse_bn_act_ops_, "fuse_bn_act_pass");
     // for single card training, fuse_all_reduce_ops is unnecessary.
     // coalesce_grad_tensor_pass should be before of MultiDevPass.
     AppendPassWithCheck(strategy_.fuse_all_reduce_ops_,
@@ -370,6 +373,12 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                         "GPU, skipped.";
         continue;
       }
+    } else if (pass->Type() == "fusion_group_pass") {
+      pass->Set<bool>("use_gpu", new bool(use_cuda));
+      if (!use_cuda) {
+        LOG(WARNING) << "fusion_group_pass is only supported on GPU, skipped.";
+        continue;
+      }
     } else if (pass->Type() == "fuse_bn_act_pass") {
       if (!use_cuda) {
         LOG(WARNING) << "fuse_bn_act_pass is only supported on "
@@ -426,4 +435,7 @@ USE_PASS(mkldnn_placement_pass);
 #endif
 #ifdef PADDLE_WITH_NGRAPH
 USE_PASS(ngraph_subgraph_pass);
+#endif
+#ifdef PADDLE_WITH_CUDA
+USE_PASS(fusion_group_pass);
 #endif

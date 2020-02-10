@@ -227,7 +227,7 @@ std::vector<fusion_group::OperationExpression> TestMain(
   std::string code_str = code_generator.Generate(subgraph);
   VLOG(3) << code_str;
 
-  TestMainImpl(subgraph->func_name, code_str, cpu_tensors, n, input_ids,
+  TestMainImpl(subgraph->GetFuncName(), code_str, cpu_tensors, n, input_ids,
                output_ids);
 
   // Need to check the accuracy according to expressions.
