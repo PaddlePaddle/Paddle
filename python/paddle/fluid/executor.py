@@ -600,6 +600,79 @@ class Executor(object):
     TODO(panyx0718): Why ParallelExecutor doesn't have close?
     '''
 
+    def _prune_program(self, program, feed=None, fetch_list=None):
+        compiled = isinstance(program, compiler.CompiledProgram)
+        if compiled:
+            if program._program:
+                origin_program = program._program
+            else:
+                warnings.warn(
+                    "The program holds no _program, maybe it is constructed by graph."
+                )
+        else:
+            origin_program = program
+
+        feed_names = list(feed.keys())
+        print(feed_names)
+
+        targets = fetch_list.copy()
+        # get all optimize op 
+        op_maker = core.op_proto_and_checker_maker
+        OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
+        for idx, op in enumerate(origin_program.global_block().ops):
+            op_maker = core.op_proto_and_checker_maker
+            op_role = op.desc.attr(op_maker.kOpRoleAttrName())
+            if op_role == int(OPTIMIZE):
+                targets.append(op)
+
+        pruned_program = origin_program._prune_with_input(feed_names, targets)
+        print('origin_program',
+              [op.type for op in origin_program.global_block().ops])
+        print('pruned_program',
+              [op.type for op in pruned_program.global_block().ops])
+        print('pruned_ops',
+              set([op.type for op in origin_program.global_block().ops]) - set(
+                  [op.type for op in pruned_program.global_block().ops]))
+
+        if compiled:
+            program._program = pruned_program
+            program._graph = core.Graph(pruned_program.desc)
+        else:
+            program = pruned_program
+
+        return program
+
+    def _update_feed(self, program, feed):
+        compiled = isinstance(program, compiler.CompiledProgram)
+        if compiled:
+            if program._program:
+                global_block = program._program.global_block()
+            else:
+                warnings.warn(
+                    "The program holds no _program, maybe it is constructed by graph."
+                )
+        else:
+            global_block = program.global_block()
+
+        if isinstance(feed, dict):
+            for feed_name in list(feed.keys()):
+                if not global_block.has_var(feed_name):
+                    feed.pop(feed_name)
+                    warnings.warn(
+                        "The variable %s is not found in program. It is not declared or is pruned."
+                        % feed_name)
+
+        elif isinstance(feed, list) or isinstance(feed, tuple):
+            for i, each in enumerate(feed):
+                for feed_name in list(each.keys()):
+                    if not global_block.has_var(feed_name):
+                        each.pop(feed_name)
+                        warnings.warn(
+                            "The variable %s is not found in program. It is not declared or is pruned."
+                            % feed_name)
+
+        return feed
+
     def close(self):
         """
         Close the executor. This interface is used for distributed training (PServers mode).
@@ -631,6 +704,7 @@ class Executor(object):
         need_check_feed = program._program is not None
         if need_check_feed:
             global_block = program._program.global_block()
+            print([op.type for op in global_block.ops])
         if isinstance(feed, dict):
             feed_tensor_dict = dict()
             for feed_name in feed:
@@ -824,20 +898,9 @@ class Executor(object):
             fetch_list = []
 
         if use_prune:
-            targets = fetch_list.copy()
-            # get all optimize op 
-            op_maker = core.op_proto_and_checker_maker
-            OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
-            for idx, op in enumerate(program.global_block().ops):
-                op_maker = core.op_proto_and_checker_maker
-                op_role = op.desc.attr(op_maker.kOpRoleAttrName())
-                if op_role == int(OPTIMIZE):
-                    targets.append(op)
-
-            pruned_prog = program._prune(targets=targets)
-            print('program', program)
-            print('pruned_program', pruned_prog)
-            program = pruned_prog
+            pruned_program = self._prune_program(program, feed, fetch_list)
+            feed = self._update_feed(pruned_program, feed)
+            program = pruned_program
 
         compiled = isinstance(program, compiler.CompiledProgram)
 
@@ -855,6 +918,7 @@ class Executor(object):
                 use_prune=use_prune)
 
         program._compile(scope, self.place)
+
         if program._is_inference:
             return self._run_inference(program._executor, feed)
         else:

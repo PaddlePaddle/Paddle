@@ -4089,7 +4089,7 @@ class Program(object):
         Args:
             feeded_var_names(list|str): A list of variable names from where
                 pruning start. If it is set as [], this API works just like _prune()
-            targets(list|Variable|Operator): A list of variables or operators
+            targets(list|Variable|Operator): A list of variables, operators, or variable names
                 need to be pruned
 
         Returns:
@@ -4110,25 +4110,28 @@ class Program(object):
         for t in targets:
             if not isinstance(t, Operator):
                 if isinstance(t, Variable):
-                    # After transpiler processing, the op that output this
-                    # variable maybe has been changed, so t.op is not reliable
-                    # and we need to find the current op that generate this
-                    # variable here.
-                    t.op = None
-                    global_block = self.global_block()
-                    for idx, op in enumerate(global_block.ops):
-                        if t.name in op.output_arg_names:
-                            t.op = op
-                            break
-
-                    t = t.op
-                    if t is None:
-                        raise ValueError(
-                            "The target variable must have an "
-                            "associated operator that generates it.")
+                    name = t.name
+                elif isinstance(t, six.string_types):
+                    name = str(t)
                 else:
+                    print(t, type(t))
                     raise ValueError("All targets of prune() can only be "
                                      "Variable or Operator.")
+                # After transpiler processing, the op that output this
+                # variable maybe has been changed, so t.op is not reliable
+                # and we need to find the current op that generate this
+                # variable here.
+                target_op = None
+                global_block = self.global_block()
+                for idx, op in enumerate(global_block.ops):
+                    if name in op.output_arg_names:
+                        target_op = op
+                        break
+
+                t = target_op
+                if t is None:
+                    raise ValueError("The target variable must have an "
+                                     "associated operator that generates it.")
 
             targets_idx.append([t.block.idx, t.idx])
         res = Program()
