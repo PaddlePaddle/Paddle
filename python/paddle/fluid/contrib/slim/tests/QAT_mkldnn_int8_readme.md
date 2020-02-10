@@ -5,6 +5,7 @@ This document describes how to use [Paddle Slim](https://github.com/PaddlePaddle
 Notes:
 
 * MKL-DNN and MKL are required. The performance gain can only be obtained with AVX512 series CPU servers.
+* INT8 accuracy is best on CPU servers supporting AVX512 VNNI extension.
 
 ## 0. Prerequisite
 You need to install at least PaddlePaddle-1.6 python package `pip install paddlepaddle==1.6`.
@@ -137,7 +138,7 @@ The extracted model can be found in the `/PATH/TO/DOWNLOAD/MODEL/Ernie_qat/float
 ### Commands to reproduce benchmark
 
 #### Image classification
-You can run `qat_int8_image_classification_comparison.py` with the following arguments to reproduce the accuracy result on ResNet50. The difference of command line between the QAT1.0 MKL-DNN and QAT2.0 MKL-DNN is that we use the option `--qat2` to enable QAT2.0 MKL-DNN, and the `--quantized_ops` option to indicate which operators are to be quantized. To perform the QAT2.0 MKL-DNN performance test, the environment variable `OMP_NUM_THREADS=1` and `--batch_size=1` option should be set.
+You can use the `qat_int8_image_classification_comparison.py` script to reproduce the accuracy result on ResNet50. The difference between commands usedin the QAT1.0 MKL-DNN and QAT2.0 MKL-DNN is that for QAT2.0 MKL-DNN two additional options are required: the `--qat2` option to enable QAT2.0 MKL-DNN, and the `--quantized_ops` option with a comma-separated list of operators to be quantized. To perform the QAT2.0 MKL-DNN performance test, the environment variable `OMP_NUM_THREADS=1` and `--batch_size=1` option should be set.
 >*QAT1.0*
 
 - Accuracy benchmark command on QAT1.0 models
@@ -151,21 +152,27 @@ OMP_NUM_THREADS=28 FLAGS_use_mkldnn=true python python/paddle/fluid/contrib/slim
 - Accuracy benchamrk command on QAT2.0 models
 ```bash
 cd /PATH/TO/PADDLE
-OMP_NUM_THREADS=28 FLAGS_use_mkldnn=true python python/paddle/fluid/contrib/slim/tests/qat_int8_image_classification_comparison.py --qat_model=/PATH/TO/DOWNLOAD/MODEL/${MODEL_NAME} --infer_data=$HOME/.cache/paddle/dataset/int8/download/int8_full_val.bin --batch_size=50 --batch_num=1000 --acc_diff_threshold=0.01 --qat2
+OMP_NUM_THREADS=28 FLAGS_use_mkldnn=true python python/paddle/fluid/contrib/slim/tests/qat_int8_image_classification_comparison.py --qat_model=/PATH/TO/DOWNLOAD/MODEL/${MODEL_NAME} --infer_data=$HOME/.cache/paddle/dataset/int8/download/int8_full_val.bin --batch_size=50 --batch_num=1000 --acc_diff_threshold=0.01 --qat2 --quantized_ops="conv2d,pool2d"
 ```
 
 * Performance benchmark command on QAT2.0 models
 
-In order to run performance benchmark, execute:
-```bash
-# 1. Save QAT2.0 INT8 model
-cd /PATH/TO/PADDLE/build
-python ../python/paddle/fluid/contrib/slim/tests/save_qat_model.py --qat_model_path=/PATH/TO/DOWNLOAD/MODEL/${QAT2_MODEL_NAME} --int8_model_save_path=/PATH/TO/${QAT2_MODEL_NAME}_qat_int8 --quantized_ops="conv2d,pool2d"
+In order to run performance benchmark, follow the steps below.
 
-# 2. Run the QAT2.0 C-API for performance benchmark
-cd /PATH/TO/PADDLE/build
-OMP_NUM_THREADS=1 paddle/fluid/inference/tests/api/test_analyzer_qat_image_classification ARGS --enable_fp32=false --with_accuracy_layer=false --int8_model=/PATH/TO/${QAT2_MODEL_NAME}_qat_int8 --infer_data=$HOME/.cache/paddle/dataset/int8/download/int8_full_val.bin --batch_size=1 --paddle_num_threads=1
-```
+1. Save QAT2.0 INT8 model. You can use the script `save_qat_model.py` for this purpose. It also requires the option `--quantized_ops`  to indicate which operators are to be quantized.
+
+   ```bash
+   cd /PATH/TO/PADDLE/build
+   python ../python/paddle/fluid/contrib/slim/tests/save_qat_model.py --qat_model_path=/PATH/TO/DOWNLOAD/MODEL/${QAT2_MODEL_NAME} --int8_model_save_path=/PATH/TO/${QAT2_MODEL_NAME}_qat_int8 --quantized_ops="conv2d,pool2d"
+   ```
+
+2. Run the QAT2.0 C-API test for performance benchmark.
+
+   ```bash
+   cd /PATH/TO/PADDLE/build
+   OMP_NUM_THREADS=1 paddle/fluid/inference/tests/api/test_analyzer_qat_image_classification ARGS --enable_fp32=false --with_accuracy_layer=false --int8_model=/PATH/TO/${QAT2_MODEL_NAME}_qat_int8 --infer_data=$HOME/.cache/paddle/dataset/int8/download/int8_full_val.bin --batch_size=1 --paddle_num_threads=1
+   ```
+
 > Notes: Due to a large amount of images contained in `int8_full_val.bin` dataset (50 000), the accuracy benchmark which includes comparison of unoptimized and optimized QAT model may last long (even several hours). To accelerate the process, it is recommended to set `OMP_NUM_THREADS` to the max number of physical cores available on the server.
 
 #### NLP
@@ -177,37 +184,57 @@ For accuracy benchmarking of the Ernie model, the script `qat_int8_nlp_compariso
 model_dir=/PATH/TO/DOWNLOAD/MODEL/Ernie_qat/float
 dataset_dir=/PATH/TO/DOWNLOAD/NLP/DATASET/Ernie_dataset
 cd /PATH/TO/PADDLE
-OMP_NUM_THREADS=28 FLAGS_use_mkldnn=true python python/paddle/fluid/contrib/slim/tests/qat_int8_nlp_comparison.py --qat_model=${model_dir} --infer_data=${dataset_dir}/1.8w.bs1 --labels=${dataset_dir}/label.xnli.dev --batch_size=50  --acc_diff_threshold=0.01
+OMP_NUM_THREADS=28 FLAGS_use_mkldnn=true python python/paddle/fluid/contrib/slim/tests/qat_int8_nlp_comparison.py --qat_model=${model_dir} --infer_data=${dataset_dir}/1.8w.bs1 --labels=${dataset_dir}/label.xnli.dev --batch_size=50  --acc_diff_threshold=0.01 --quantized_ops="fc,reshape2,transpose2"
 ```
 
 * Performance benchmark commands
 
-To run performance benchmark on the saved Ernie INT8 model, execute:
-```bash
-# 1. Save QAT2.0 INT8 model
-model_dir=/PATH/TO/DOWNLOAD/MODEL/Ernie_qat/float
-save_int8_model_path=/PATH/TO/SAVE/INT8/ERNIE/MODEL
-save_fp32_model_path=/PATH/TO/SAVE/FP32/ERNIE/MODEL
-cd /PATH/TO/PADDLE/build
-python ../python/paddle/fluid/contrib/slim/tests/save_qat_model.py --qat_model_path=${model_dir} --int8_model_save_path=${save_int8_model_path} --quantized_ops="fc,reshape2,transpose2"
+To run performance benchmark on the saved Ernie INT8 model, follow the steps below.
 
-# 2. Checkout the `master` branch of the https://github.com/PaddlePaddle/benchmark repository
-mkdir /PATH/FOR/BENCHMARK
-cd /PATH/FOR/BENCHMARK
-git clone https://github.com/PaddlePaddle/benchmark
-cd benchmark/Inference/c++/ernie
+1. Save QAT2.0 INT8 model:
 
-# 3. Follow the instructions in `/PATH/FOR/BENCHMARK/benchmark/Inference/c++/ernie/README.md` to build the benchmark binary
+   ```bash
+   model_dir=/PATH/TO/DOWNLOAD/MODEL/Ernie_qat/float
+   save_int8_model_path=/PATH/TO/SAVE/INT8/ERNIE/MODEL
+   save_fp32_model_path=/PATH/TO/SAVE/FP32/ERNIE/MODEL
+   cd /PATH/TO/PADDLE/build
+   python ../python/paddle/fluid/contrib/slim/tests/save_qat_model.py --qat_model_path=${model_dir} --int8_model_save_path=${save_int8_model_path} --quantized_ops="fc,reshape2,transpose2"
+   ```
 
-# 4. Adjust the benchmark script `run.sh`
-# Set `MODEL_DIR` to `/PATH/TO/SAVE/INT8/ERNIE/MODEL`
-# Set `DATA_FILE` to `/PATH/TO/DOWNLOAD/NLP/DATASET/Ernie_dataset/1.8w.bs1`
+2. Checkout the `master` branch of the https://github.com/PaddlePaddle/benchmark repository:
 
-# 4. Run benchmark
-# uncomment for GPU:
-# ./run.sh 0
-# uncomment for CPU, use 1 core:
-# ./run.sh
-# uncomment for CPU, use 20 cores:
-# ./run.sh -1 20
-```
+   ```bash
+   mkdir /PATH/FOR/BENCHMARK
+   cd /PATH/FOR/BENCHMARK
+   git clone https://github.com/PaddlePaddle/benchmark
+   cd benchmark/Inference/c++/ernie
+   ```
+
+3. Follow the instructions in `/PATH/FOR/BENCHMARK/benchmark/Inference/c++/ernie/README.md` to build the benchmark binary.
+
+4. Adjust the benchmark script `run.sh`. Update the values of the `MODEL_DIR` and `DATA_FILE` variables:
+
+   ```bash
+   MODEL_DIR=/PATH/TO/SAVE/INT8/ERNIE/MODEL
+   DATA_FILE=/PATH/TO/DOWNLOAD/NLP/DATASET/Ernie_dataset/1.8w.bs1
+   ```
+
+5. Run the benchmark.
+
+   For GPU:
+
+   ```bash
+   ./run.sh 0
+   ```
+
+   For CPU, using 1 core:
+
+   ```bash
+   ./run.sh
+   ```
+
+   For CPU, using 20 cores:
+
+   ```bash
+   ./run.sh -1 20
+   ```
