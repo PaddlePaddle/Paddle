@@ -246,8 +246,7 @@ class MultiSlotDataset : public DatasetImpl<Record> {
   virtual void MergeByInsId();
   virtual void GenerateLocalTablesUnlock(int table_id, int feadim,
                                          int read_thread_num,
-                                         int consume_thread_num,
-                                         int shard_num);
+                                         int consume_thread_num, int shard_num);
   virtual void ClearLocalTables() {
     for (auto& t : local_tables_) {
       t.clear();

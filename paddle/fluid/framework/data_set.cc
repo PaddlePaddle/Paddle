@@ -680,7 +680,8 @@ void MultiSlotDataset::GenerateLocalTablesUnlock(int table_id, int feadim,
       }
     }
   };
-  auto gen_func = [this, &shard_num, &feadim, &local_map_tables, &consume_func](int i) {
+  auto gen_func = [this, &shard_num, &feadim, &local_map_tables,
+                   &consume_func](int i) {
     std::vector<Record> vec_data;
     std::vector<std::vector<uint64_t>> task_keys(shard_num);
     std::vector<std::future<void>> task_futures;
