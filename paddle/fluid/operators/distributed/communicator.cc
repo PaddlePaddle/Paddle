@@ -433,6 +433,7 @@ void GeoSgdCommunicator::Send(const std::vector<std::string> &sparse_var_names,
       }
       GeoSgdDenseParamInit(training_scope_, old_scope_.get(), local_var_name);
     }
+    return;
   }
 
   std::shared_ptr<SparseIdsMap> ids_table = std::make_shared<SparseIdsMap>();

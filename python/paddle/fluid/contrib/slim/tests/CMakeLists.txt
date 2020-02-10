@@ -8,7 +8,7 @@ function(_inference_analysis_python_api_int8_test target model_dir data_dir file
         ARGS --infer_model ${model_dir}/model
              --infer_data ${data_dir}/data.bin
              --int8_model_save_path int8_models/${target}
-             --warmup_batch_size 100
+             --warmup_batch_size ${WARMUP_BATCH_SIZE}
              --batch_size 50)
 endfunction()
 
@@ -18,6 +18,11 @@ endfunction()
 
 function(inference_analysis_python_api_int8_test_mkldnn target model_dir data_dir filename)
     _inference_analysis_python_api_int8_test(${target} ${model_dir} ${data_dir} ${filename} True)
+endfunction()
+
+function(inference_analysis_python_api_int8_test_custom_warmup_batch_size target model_dir data_dir filename warmup_batch_size)
+    set(WARMUP_BATCH_SIZE ${warmup_batch_size})
+    inference_analysis_python_api_int8_test(${target} ${model_dir} ${data_dir} ${filename})
 endfunction()
 
 function(inference_qat_int8_test target model_dir data_dir test_script use_mkldnn)
@@ -58,6 +63,7 @@ if(WIN32)
     list(REMOVE_ITEM TEST_OPS test_light_nas)
     list(REMOVE_ITEM TEST_OPS test_post_training_quantization_mobilenetv1)
     list(REMOVE_ITEM TEST_OPS test_post_training_quantization_resnet50)
+    list(REMOVE_ITEM TEST_OPS test_weight_quantization_mobilenetv1)
 endif()
 
 # int8 image classification python api test
@@ -68,7 +74,7 @@ if(LINUX AND WITH_MKLDNN)
 
   # googlenet int8
   set(INT8_GOOGLENET_MODEL_DIR "${INT8_DATA_DIR}/googlenet")
-  inference_analysis_python_api_int8_test(test_slim_int8_googlenet ${INT8_GOOGLENET_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_INT8_TEST_FILE_PATH})
+  inference_analysis_python_api_int8_test_custom_warmup_batch_size(test_slim_int8_googlenet ${INT8_GOOGLENET_MODEL_DIR} ${INT8_DATA_DIR} ${MKLDNN_INT8_TEST_FILE_PATH} 10)
 
   # mobilenet int8
   set(INT8_MOBILENET_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv1")

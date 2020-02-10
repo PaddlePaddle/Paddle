@@ -13,57 +13,88 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/fusion_group/fusion_group_pass.h"
+#include <memory>
+#include <utility>
 #include <vector>
+#include "paddle/fluid/framework/ir/fusion_group/code_generator.h"
 #include "paddle/fluid/framework/ir/fusion_group/elementwise_group_detector.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/platform/device_code.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
 void FusionGroupPass::ApplyImpl(ir::Graph* graph) const {
-  PADDLE_ENFORCE_NOT_NULL(graph);
-
-  int num_elementwise_groups = DetectFusionGroup(graph, 0);
-  LOG(INFO) << "Detect " << num_elementwise_groups
+  FusePassBase::Init("fusion_group_pass", graph);
+  if (Get<bool>("use_gpu")) {
+    fusion_group::OperationMap::Init();
+    int num_elementwise_groups = DetectFusionGroup(graph, 0);
+    VLOG(3) << "Detect " << num_elementwise_groups
             << " elementwise fusion groups.";
+  }
 }
 
 int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
-  std::vector<fusion_group::SubGraph> subgraphs;
-  std::unordered_set<Node*> all_nodes = graph->Nodes();
-  for (Node* n : all_nodes) {
-    bool is_found = false;
-    for (auto& subgraph : subgraphs) {
-      if (subgraph.Has(n)) {
-        is_found = true;
-        break;
-      }
-    }
-    if (is_found) {
-      continue;
-    }
+  // TODO(liuyiqun): supported different places
+  platform::CUDAPlace place = platform::CUDAPlace(0);
+  int index = platform::DeviceCodePool::Init({place}).size(place);
 
-    fusion_group::SubGraph subgraph;
-    if (type == 0) {
-      fusion_group::ElementwiseGroupDetector detector;
-      int num_operations = detector(n);
-      if (num_operations >= 2) {
-        subgraph = detector.GetSubgraph();
-      }
-    }
+  std::vector<std::vector<Node*>> subgraphs =
+      fusion_group::ElementwiseGroupDetector()(graph);
 
-    if (!subgraph.IsEmpty()) {
-      subgraphs.push_back(subgraph);
+  int num_subgraphs = 0;
+  size_t min_subgraph_size = 2;
+  bool save_intermediate_out = true;
+  for (auto& vec : subgraphs) {
+    if (vec.size() >= min_subgraph_size) {
+      std::string func_name = "fused_elementwise_" + std::to_string(index++);
+      fusion_group::SubGraph subgraph(
+          type, func_name, save_intermediate_out,
+          std::unordered_set<Node*>(vec.begin(), vec.end()));
+      VLOG(3) << "subgraph: {\n"
+              << DebugString(subgraph.SortedNodes()) << "}\n";
+
+      GenerateCode(&subgraph);
+      InsertFusionGroupOp(graph, &subgraph);
+      num_subgraphs++;
     }
   }
+  return num_subgraphs;
+}
 
-  // TODO(liuyiqun): check whether there are intersection between subgraphs
-  for (size_t i = 0; i < subgraphs.size(); ++i) {
-    InsertFusionGroupOp(graph, &subgraphs[i]);
+void FusionGroupPass::GenerateCode(fusion_group::SubGraph* subgraph) const {
+  fusion_group::CodeGenerator code_generator;
+  std::string code_str = code_generator.Generate(subgraph);
+  VLOG(3) << code_str;
+
+  // TODO(liuyiqun): supported different places
+  platform::CUDAPlace place = platform::CUDAPlace(0);
+  std::unique_ptr<platform::CUDADeviceCode> device_code(
+      new platform::CUDADeviceCode(place, subgraph->GetFuncName(), code_str));
+  device_code->Compile();
+
+  platform::DeviceCodePool& pool = platform::DeviceCodePool::Init({place});
+  pool.Set(std::move(device_code));
+}
+
+static int ExtractOpRole(fusion_group::SubGraph* subgraph) {
+  std::unordered_set<int> op_roles;
+  std::string attr_name = OpProtoAndCheckerMaker::OpRoleAttrName();
+  for (auto* n : subgraph->Nodes()) {
+    if (n && n->IsOp() && n->Op()) {
+      if (n->Op()->HasAttr(attr_name)) {
+        op_roles.insert(boost::get<int>(n->Op()->GetAttr(attr_name)));
+      }
+    }
   }
-  return subgraphs.size();
+  if (op_roles.size() == 1U) {
+    return *(op_roles.begin());
+  } else {
+    return static_cast<int>(OpRole::kNotSpecified);
+  }
 }
 
 void FusionGroupPass::InsertFusionGroupOp(
@@ -90,10 +121,12 @@ void FusionGroupPass::InsertFusionGroupOp(
     external_nodes.insert(n);
   }
   op_desc.SetOutput("Outs", output_names);
-  op_desc.SetAttr("type", subgraph->type);
-  op_desc.SetAttr("func_name", subgraph->func_name);
+  op_desc.SetAttr("type", subgraph->GetType());
+  op_desc.SetAttr("func_name", subgraph->GetFuncName());
+  op_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                  ExtractOpRole(subgraph));
 
-  auto fusion_group_node = graph->CreateOpNode(&op_desc);
+  Node* fusion_group_node = graph->CreateOpNode(&op_desc);
   for (auto* in : input_vars_of_subgraph) {
     IR_NODE_LINK_TO(in, fusion_group_node);
   }
@@ -114,4 +147,5 @@ void FusionGroupPass::InsertFusionGroupOp(
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(fusion_group_pass, paddle::framework::ir::FusionGroupPass);
+REGISTER_PASS(fusion_group_pass, paddle::framework::ir::FusionGroupPass)
+    .RequirePassAttr("use_gpu");

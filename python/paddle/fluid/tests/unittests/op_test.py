@@ -34,7 +34,7 @@ from paddle.fluid.framework import Program, OpProtoHolder, Variable
 from testsuite import create_op, set_input, append_input_output, append_loss_ops
 from paddle.fluid import unique_name
 from white_list import op_accuracy_white_list, check_shape_white_list, compile_vs_runtime_white_list, no_check_set_white_list
-from white_list import op_threshold_white_list
+from white_list import op_threshold_white_list, no_grad_set_white_list
 
 
 def _set_use_system_allocator(value=None):
@@ -198,7 +198,7 @@ class OpTest(unittest.TestCase):
             all_op_kernels = core._get_all_register_op_kernels()
             grad_op = op_type + '_grad'
             if grad_op in all_op_kernels.keys():
-                if hasattr(cls, "use_mkldnn") and cls.use_mkldnn == True:
+                if is_mkldnn_op_test():
                     grad_op_kernels = all_op_kernels[grad_op]
                     for grad_op_kernel in grad_op_kernels:
                         if 'MKLDNN' in grad_op_kernel:
@@ -206,6 +206,9 @@ class OpTest(unittest.TestCase):
                 else:
                     return False
             return True
+
+        def is_mkldnn_op_test():
+            return hasattr(cls, "use_mkldnn") and cls.use_mkldnn == True
 
         if not hasattr(cls, "op_type"):
             raise AssertionError(
@@ -226,7 +229,7 @@ class OpTest(unittest.TestCase):
             if cls.dtype in [np.float32, np.float64] \
                 and cls.op_type not in op_accuracy_white_list.NO_FP64_CHECK_GRAD_OP_LIST \
                 and not hasattr(cls, 'exist_fp64_check_grad') \
-                and (not hasattr(cls, "use_mkldnn") or cls.use_mkldnn == False):
+                and not is_mkldnn_op_test():
                 raise AssertionError(
                     "This test of %s op needs check_grad with fp64 precision." %
                     cls.op_type)
@@ -313,8 +316,10 @@ class OpTest(unittest.TestCase):
 
     def _append_ops(self, block):
         self.__class__.op_type = self.op_type  # for ci check, please not delete it for now
-        if hasattr(self, "use_mkldnn"):
-            self.__class__.use_mkldnn = self.use_mkldnn
+        if (hasattr(self, "use_mkldnn") and self.use_mkldnn == True) or \
+            (hasattr(self, "attrs") and "use_mkldnn" in self.attrs and \
+                    self.attrs["use_mkldnn"] == True):
+            self.__class__.use_mkldnn = True
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
         "infer datatype from inputs and outputs for this test case"
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
@@ -1181,8 +1186,10 @@ class OpTest(unittest.TestCase):
                      check_dygraph=True,
                      inplace_atol=None):
         self.__class__.op_type = self.op_type
-        if hasattr(self, "use_mkldnn"):
-            self.__class__.use_mkldnn = self.use_mkldnn
+        if (hasattr(self, "use_mkldnn") and self.use_mkldnn == True) or \
+            (hasattr(self, "attrs") and "use_mkldnn" in self.attrs and \
+                    self.attrs["use_mkldnn"] == True):
+            self.__class__.use_mkldnn = True
         places = self._get_places()
         for place in places:
             res = self.check_output_with_place(place, atol, no_check_set,
@@ -1291,6 +1298,12 @@ class OpTest(unittest.TestCase):
 
         if no_grad_set is None:
             no_grad_set = set()
+        else:
+            if (self.op_type not in no_grad_set_white_list.NEED_TO_FIX_OP_LIST
+                ) and (self.op_type not in
+                       no_grad_set_white_list.NOT_CHECK_OP_LIST):
+                raise AssertionError("no_grad_set must be None, op_type is " +
+                                     self.op_type + " Op.")
 
         if not type(output_names) is list:
             output_names = [output_names]
