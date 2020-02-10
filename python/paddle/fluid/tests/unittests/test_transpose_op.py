@@ -80,6 +80,24 @@ class TestCase4(TestTransposeOp):
         self.axis = (4, 2, 3, 1, 0, 5)
 
 
+class TestCase5(TestTransposeOp):
+    def initTestCase(self):
+        self.shape = (2, 16, 96)
+        self.axis = (0, 2, 1)
+
+
+class TestCase6(TestTransposeOp):
+    def initTestCase(self):
+        self.shape = (2, 10, 12, 16)
+        self.axis = (3, 1, 2, 0)
+
+
+class TestCase7(TestTransposeOp):
+    def initTestCase(self):
+        self.shape = (2, 10, 2, 16)
+        self.axis = (0, 1, 3, 2)
+
+
 class TestTransposeOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
