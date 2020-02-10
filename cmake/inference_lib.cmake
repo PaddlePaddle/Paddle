@@ -143,35 +143,11 @@ endfunction()
 set(inference_lib_deps third_party paddle_fluid paddle_fluid_c paddle_fluid_shared paddle_fluid_c_shared)
 add_custom_target(inference_lib_dist DEPENDS ${inference_lib_deps})
 
-set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/eigen3")
-copy(inference_lib_dist
-        SRCS ${EIGEN_INCLUDE_DIR}/Eigen/Core ${EIGEN_INCLUDE_DIR}/Eigen/src ${EIGEN_INCLUDE_DIR}/unsupported/Eigen
-        DSTS ${dst_dir}/Eigen ${dst_dir}/Eigen ${dst_dir}/unsupported)
-
-set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/boost")
-copy(inference_lib_dist
-        SRCS ${BOOST_INCLUDE_DIR}/boost
-        DSTS ${dst_dir})
 
 set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/threadpool")
 copy(inference_lib_dist
         SRCS ${THREADPOOL_INCLUDE_DIR}/ThreadPool.h
         DSTS ${dst_dir})
-
-set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/dlpack")
-copy(inference_lib_dist
-        SRCS ${DLPACK_INCLUDE_DIR}/dlpack
-        DSTS ${dst_dir})
-
-set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/install/xxhash")
-copy(inference_lib_dist
-        SRCS ${XXHASH_INCLUDE_DIR} ${XXHASH_LIBRARIES}
-        DSTS ${dst_dir} ${dst_dir}/lib)
-
-set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/install/zlib")
-copy(inference_lib_dist
-        SRCS ${ZLIB_INCLUDE_DIR} ${ZLIB_LIBRARIES}
-        DSTS ${dst_dir} ${dst_dir}/lib)
 
 copy(inference_lib_dist
         SRCS ${CMAKE_CURRENT_BINARY_DIR}/CMakeCache.txt
