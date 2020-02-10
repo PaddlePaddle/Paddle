@@ -68,26 +68,6 @@ class TestSliceOpDoubleGradCheck(unittest.TestCase):
             self.func(place)
 
 
-class TestSliceOpDoubleGradCheckCase1(TestSliceOpDoubleGradCheck):
-    def config(self):
-        self.starts = [1]
-        self.ends = [3]
-        self.axes = [0]
-        self.x_arr = np.random.random([3]).astype("float64")
-        self.inputs = layers.create_parameter(
-            dtype="float64", shape=[3], name='x1')
-
-
-class TestSliceOpDoubleGradCheckCase2(TestSliceOpDoubleGradCheck):
-    def config(self):
-        self.starts = [1, -1]
-        self.ends = [3, 3]
-        self.axes = [0, 1]
-        self.x_arr = np.random.random([3, 3]).astype("float64")
-        self.inputs = layers.create_parameter(
-            dtype="float64", shape=[3, 3], name='x2')
-
-
 class TestSliceOpDoubleGradCheckCase3(TestSliceOpDoubleGradCheck):
     def config(self):
         self.starts = [1, -1, 1]
@@ -96,26 +76,6 @@ class TestSliceOpDoubleGradCheckCase3(TestSliceOpDoubleGradCheck):
         self.x_arr = np.random.random([3, 3, 3]).astype("float64")
         self.inputs = layers.create_parameter(
             dtype="float64", shape=[3, 3, 3], name='x3')
-
-
-class TestSliceOpDoubleGradCheckCase4(TestSliceOpDoubleGradCheck):
-    def config(self):
-        self.starts = [1, -1, 1, 1, 1]
-        self.ends = [3] * 5
-        self.axes = [0, 1, 2, 3, 4]
-        self.x_arr = np.random.random([3, 3, 3, 3, 3]).astype("float64")
-        self.inputs = layers.create_parameter(
-            dtype="float64", shape=[3, 3, 3, 3, 3], name='x4')
-
-
-class TestSliceOpDoubleGradCheckCase5(TestSliceOpDoubleGradCheck):
-    def config(self):
-        self.starts = [1, -1, 1, 1, 1, 0]
-        self.ends = [3] * 6
-        self.axes = [0, 1, 2, 3, 4, 5]
-        self.x_arr = np.random.random([3, 3, 3, 3, 3, 3]).astype("float64")
-        self.inputs = layers.create_parameter(
-            dtype="float64", shape=[3, 3, 3, 3, 3, 3], name='x5')
 
 
 class TestReduceMeanWithDimDoubleGradCheck(unittest.TestCase):
