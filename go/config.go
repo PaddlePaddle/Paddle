@@ -14,8 +14,10 @@
 
 package paddle
 
-// #include "paddle/fluid/inference/capi/c_api.h"
+// #include "paddle_c_api.h"
 import "C"
+
+import "runtime"
 
 type AnalysisConfig struct {
 	c *C.PD_AnalysisConfig
@@ -24,7 +26,12 @@ type AnalysisConfig struct {
 func NewAnalysisConfig() *AnalysisConfig {
 	c_config := C.PD_NewAnalysisConfig()
 	config := &AnalysisConfig{c: c_config}
+    runtime.SetFinalizer(config, (*config).finalizer)
 	return config
+}
+
+func (config *AnalysisConfig) finalizer() {
+    C.PD_DeleteAnalysisConfig(config.c)
 }
 
 func (config *AnalysisConfig) SetModel(model, params str) {

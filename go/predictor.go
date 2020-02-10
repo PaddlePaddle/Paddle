@@ -14,8 +14,10 @@
 
 package paddle
 
-// #include "paddle/fluid/inference/capi/paddle_c_api.h"
+// #include "paddle_c_api.h"
 import "C"
+
+import "runtime"
 
 type Predictor struct {
 	c *C.PD_Predictor
@@ -24,7 +26,12 @@ type Predictor struct {
 func NewPredictor() *Predictor {
     c_predictor := C.PD_NewPredictor()
     config := &Predictor{c: c_predictor}
+    runtime.SetFinalizer(config, (*config).finalizer)
     return config
+}
+
+func (predictor *Predictor) finalizer() {
+    C.PD_DeletePredictor(predictor.c)
 }
 
 func DeletePredictor(predictor *Predictor) {
@@ -48,6 +55,6 @@ func (predictor *Predictor) OutputName(n: int) string {
 }
 
 func (predictor *Predictor) ZeroCopyRun() {
-    return C.PD_ZeroCopyRun(predictor.c)
+    C.PD_ZeroCopyRun(predictor.c)
 }
 

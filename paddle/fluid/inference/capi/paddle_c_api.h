@@ -34,6 +34,8 @@ extern "C" {
 
 enum PD_DataType { PD_FLOAT32, PD_INT32, PD_INT64, PD_UINT8, PD_UNKDTYPE };
 
+typedef enum PD_DataType PD_DataType;
+
 typedef struct PD_PaddleBuf PD_PaddleBuf;
 typedef struct PD_AnalysisConfig PD_AnalysisConfig;
 typedef struct PD_Predictor PD_Predictor;
@@ -258,6 +260,8 @@ PADDLE_CAPI_EXPORT extern void PD_SetInValid(PD_AnalysisConfig* config);
 
 PADDLE_CAPI_EXPORT extern bool PD_IsValid(const PD_AnalysisConfig* config);
 PADDLE_CAPI_EXPORT extern void PD_DisableGlogInfo(PD_AnalysisConfig* config);
+PADDLE_CAPI_EXPORT extern void PD_DeletePass(PD_AnalysisConfig* config,
+                                             char* pass_name);
 
 PADDLE_CAPI_EXPORT extern PD_Predictor* PD_NewPredictor(
     const PD_AnalysisConfig* config);
