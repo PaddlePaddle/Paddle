@@ -44,6 +44,7 @@ class TestConv2dMKLDNNOp(TestConv2dOp):
         self.data_format = "NCHW"
         self.use_mkldnn = True
         self._cpu_only = True
+        self.dtype = np.float32
 
     def init_test_case(self):
         self.pad = [0, 0]
@@ -62,6 +63,7 @@ class TestConv2dMKLDNNOp(TestConv2dOp):
         self.fuse_brelu_threshold = 6.0
         self.fuse_residual_connection = False
         self.input_residual_size = None
+
         TestConv2dOp.setUp(self)
 
         output = self.outputs['Output']
@@ -154,6 +156,14 @@ class TestWithStride(TestConv2dMKLDNNOp):
 
 
 class TestWithGroup(TestConv2dMKLDNNOp):
+    def init_test_case(self):
+        self.pad = [0, 0]
+        self.stride = [1, 1]
+        self.input_size = [2, 6, 5, 5]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [6, f_c, 3, 3]
+
     def init_group(self):
         self.groups = 3
 
@@ -161,13 +171,13 @@ class TestWithGroup(TestConv2dMKLDNNOp):
 class TestWith1x1(TestConv2dMKLDNNOp):
     def init_test_case(self):
         TestConv2dMKLDNNOp.init_test_case(self)
-        self.filter_size = [6, 3, 1, 1]
+        self.filter_size = [40, 3, 1, 1]
 
 
 class TestWithInput1x1Filter1x1(TestConv2dMKLDNNOp):
     def init_test_case(self):
         TestConv2dMKLDNNOp.init_test_case(self)
-        self.input_size = [2, 3, 1, 1]  # NCHW
+        self.input_size = [2, 60, 1, 1]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 1, 1]
@@ -179,6 +189,7 @@ class TestWithInput1x1Filter1x1(TestConv2dMKLDNNOp):
 class TestConv2dOp_AsyPadding_MKLDNN(TestConv2dOp_v2):
     def init_kernel_type(self):
         self.use_mkldnn = True
+        self.dtype = np.float32
 
     def init_paddings(self):
         self.pad = [0, 0, 1, 2]
@@ -204,18 +215,6 @@ class TestConv2dOp_Valid_NHWC_MKLDNN(TestConv2dOp_Valid_MKLDNN):
     def init_test_case_2(self):
         N, C, H, W = self.input_size
         self.input_size = [N, H, W, C]
-
-    #TODO(jczaja): Enable once GRAD op is adjusted
-    def test_check_grad(self):
-        pass
-
-    #TODO(jczaja): Enable once GRAD op is adjusted
-    def test_check_grad_no_filter(self):
-        pass
-
-    #TODO(jczaja): Enable once GRAD op is adjusted
-    def test_check_grad_no_input(self):
-        pass
 
 
 class TestConv2dOp_Same_NHWC_MKLDNN(TestConv2dOp_Valid_NHWC_MKLDNN):

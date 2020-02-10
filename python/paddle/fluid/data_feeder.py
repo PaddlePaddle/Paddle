@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 from . import core
-import numpy
+import numpy as np
 import os
 import six
 from six.moves import zip, range, xrange
@@ -47,6 +47,12 @@ def convert_dtype(dtype):
             return 'int64'
         elif dtype == core.VarDesc.VarType.UINT8:
             return 'uint8'
+    elif isinstance(dtype, type):
+        if dtype in [
+                np.bool, np.float16, np.float32, np.float64, np.int8, np.int16,
+                np.int32, np.int64, np.uint8
+        ]:
+            return dtype.__name__
     else:
         if dtype in [
                 'bool', 'float16', 'float32', 'float64', 'int8', 'int16',
@@ -65,13 +71,12 @@ def convert_dtype(dtype):
         "int32, int64, uint8]")
 
 
-def check_type_and_dtype(input,
-                         input_name,
-                         expected_type,
-                         expected_dtype,
-                         op_name,
-                         extra_message=''):
-    check_type(input, input_name, expected_type, op_name, extra_message)
+def check_variable_and_dtype(input,
+                             input_name,
+                             expected_dtype,
+                             op_name,
+                             extra_message=''):
+    check_type(input, input_name, Variable, op_name, extra_message)
     check_dtype(input.dtype, input_name, expected_dtype, op_name, extra_message)
 
 
@@ -136,7 +141,7 @@ class DataToLoDTensorConverter(object):
                     format(self.shape, shape))
 
     def done(self):
-        arr = numpy.array(self.data, dtype=self.dtype)
+        arr = np.array(self.data, dtype=self.dtype)
         if self.shape:
             if len(arr.shape) != len(self.shape):
                 try:

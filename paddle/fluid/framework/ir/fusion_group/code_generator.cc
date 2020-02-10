@@ -33,7 +33,17 @@ CodeGenerator::CodeGenerator() {
 
 std::string CodeGenerator::Generate(SubGraph* subgraph) {
   std::vector<OperationExpression> expressions = ConvertToExpressions(subgraph);
-  return Generate(subgraph->func_name, expressions);
+  return Generate(subgraph->GetFuncName(), expressions);
+}
+
+static bool HasInput(Node* n, std::string name) {
+  PADDLE_ENFORCE_EQ(n && n->IsOp() && n->Op(), true,
+                    platform::errors::InvalidArgument(
+                        "Expected node %p to be an operator node.", n));
+  std::vector<std::string> input_names = n->Op()->InputNames();
+  std::unordered_set<std::string> input_names_set(input_names.begin(),
+                                                  input_names.end());
+  return input_names_set.find(name) != input_names_set.end();
 }
 
 std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
@@ -45,19 +55,20 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
       auto* op = node->Op();
 
       // Input ids should be set in fixed order, like:
-      //  - x, y in forward operations
-      //  - x, y, out, out@GRAD in backward operations
+      //  - X, Y in forward operations
+      //  - X, Y, Out, out@GRAD in backward operations
       std::vector<int> input_ids;
       std::vector<std::string> input_names =
           OperationMap::Instance().Get(op->Type()).input_names;
       for (auto& name : input_names) {
-        // TODO(liuyiqun): support duplicated input.
-        if (op->Input(name).size() >= 1U) {
-          // Some input vars are not used in grad ops, such as
-          // "elementwise_add_grad", where "X", "Y" and "Out" are not used.
-          PADDLE_ENFORCE_NE(var_ids.find(op->Input(name)[0]), var_ids.end(),
-                            "Input(%s) of operation %s should be set.", name,
-                            op->Type());
+        // Some input vars are not used in grad ops, such as
+        // "elementwise_add_grad", where "X", "Y" and "Out" are not used.
+        if (HasInput(node, name) && op->Input(name).size() >= 1U) {
+          // TODO(liuyiqun): support duplicated input.
+          PADDLE_ENFORCE_NE(
+              var_ids.find(op->Input(name)[0]), var_ids.end(),
+              platform::errors::InvalidArgument(
+                  "Input(%s) of operation %s is not set.", name, op->Type()));
           input_ids.push_back(var_ids[op->Input(name)[0]]);
         } else {
           input_ids.push_back(-1);
@@ -69,12 +80,14 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
       std::vector<std::string> output_names =
           OperationMap::Instance().Get(op->Type()).output_names;
       for (auto& name : output_names) {
-        PADDLE_ENFORCE_EQ(op->Output(name).size(), 1U,
-                          "Output(%s) of operation %s should be set.", name,
-                          op->Type());
-        PADDLE_ENFORCE_NE(var_ids.find(op->Output(name)[0]), var_ids.end(),
-                          "Output(%s) of operation %s should be set.", name,
-                          op->Type());
+        PADDLE_ENFORCE_EQ(
+            op->Output(name).size(), 1U,
+            platform::errors::InvalidArgument(
+                "Output(%s) of operation %s is not set.", name, op->Type()));
+        PADDLE_ENFORCE_NE(
+            var_ids.find(op->Output(name)[0]), var_ids.end(),
+            platform::errors::InvalidArgument(
+                "Output(%s) of operation %s is not set.", name, op->Type()));
         output_ids.push_back(var_ids[op->Output(name)[0]]);
       }
       expressions.push_back(
@@ -218,8 +231,9 @@ std::unordered_map<std::string, int> CodeGenerator::EncodeVarNodes(
       }
       PADDLE_ENFORCE_EQ(
           is_found, true,
-          "Subgraph with internal var nodes (%s) is not supported yet.",
-          node->Name());
+          platform::errors::Unimplemented(
+              "Subgraph with internal var nodes (%s) is not supported yet.",
+              node->Name()));
     }
   }
   // Encoding output vars.

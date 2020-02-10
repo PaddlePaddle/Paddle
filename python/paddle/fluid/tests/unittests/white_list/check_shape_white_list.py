@@ -12,13 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-NOT_CHECK_OP_LIST = [
-    # The increment's input must be 1-d and only has one data
-    'increment'
-]
-
 NEED_TO_FIX_OP_LIST = [
-    'sequence_scatter', 'log_loss', 'sequence_topk_avg_pooling', 'matmul',
-    'add_position_encoding', 'margin_rank_loss', 'elementwise_pow',
-    'fused_elemwise_activation', 'mul'
+    'elementwise_mul',
+    'elementwise_div',
+    'elementwise_max',
+    'elementwise_min',
+    'elementwise_pow',
+    'fused_elemwise_activation',
+    'bilinear_tensor_product',
+    'conv2d_transpose',
+    'depthwise_conv2d_transpose',
+    'grid_sampler',
+    'hierarchical_sigmoid',
+    'lstmp',
+    'margin_rank_loss',
+    'matmul',
+    'mul',
+    'row_conv',
+    'scatter',
+    'smooth_l1_loss',
+    'soft_relu',
+    'spp',
+    'squared_l2_distance',
+    'tree_conv',
 ]

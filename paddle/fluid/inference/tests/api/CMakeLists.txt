@@ -47,10 +47,15 @@ function(inference_analysis_api_int8_test_run TARGET_NAME test_binary model_dir 
 	COMMAND ${test_binary}
         ARGS --infer_model=${model_dir}/model
              --infer_data=${data_path}
-             --warmup_batch_size=100
+             --warmup_batch_size=${WARMUP_BATCH_SIZE}
              --batch_size=50
              --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
 	     --iterations=2)
+endfunction()
+
+function(inference_analysis_api_int8_test_run_custom_warmup_batch_size TARGET_NAME test_binary model_dir data_path warmup_batch_size)
+    set(WARMUP_BATCH_SIZE ${warmup_batch_size})
+    inference_analysis_api_int8_test_run(${TARGET_NAME} ${test_binary} ${model_dir} ${data_path})
 endfunction()
 
 function(inference_analysis_api_object_dection_int8_test_run TARGET_NAME test_binary model_dir data_path)
@@ -268,7 +273,7 @@ if(WITH_MKLDNN)
   # googlenet int8
   set(INT8_GOOGLENET_MODEL_DIR "${INT8_DATA_DIR}/googlenet")
   download_int8_data(${INT8_GOOGLENET_MODEL_DIR} "GoogleNet_int8_model.tar.gz" )
-  inference_analysis_api_int8_test_run(test_analyzer_int8_googlenet ${INT8_IMG_CLASS_TEST_APP} ${INT8_GOOGLENET_MODEL_DIR} ${IMAGENET_DATA_PATH})
+  inference_analysis_api_int8_test_run_custom_warmup_batch_size(test_analyzer_int8_googlenet ${INT8_IMG_CLASS_TEST_APP} ${INT8_GOOGLENET_MODEL_DIR} ${IMAGENET_DATA_PATH} 10)
 
   ### Object detection models
   set(PASCALVOC_DATA_PATH "${INT8_DATA_DIR}/pascalvoc_val_head_300.bin")
@@ -305,6 +310,13 @@ if(WITH_MKLDNN)
   download_qat_data(${QAT2_INT8_MobileNet_MODEL_DIR} "MobileNet_qat_perf_int8.tar.gz")
   inference_analysis_api_qat_test_run(test_analyzer_qat_performance_benchmark ${QAT_IMG_CLASS_TEST_APP} ${QAT2_MobileNet_MODEL_DIR}/MobileNet_qat_perf/float ${QAT2_INT8_MobileNet_MODEL_DIR}/MobileNet_qat_perf_int8 ${IMAGENET_DATA_PATH})
 
+  ### Other tests
+ 
+  # MKLDNN quantizer config
+  set(MKLDNN_QUANTIZER_CONFIG_TEST_APP "test_mkldnn_quantizer_config")
+  set(MKLDNN_QUANTIZER_CONFIG_TEST_APP_SRC "mkldnn_quantizer_config_tester.cc")
+  inference_analysis_api_test_build(${MKLDNN_QUANTIZER_CONFIG_TEST_APP} ${MKLDNN_QUANTIZER_CONFIG_TEST_APP_SRC})
+  inference_analysis_test_run(test_mkldnn_quantizer_config COMMAND ${MKLDNN_QUANTIZER_CONFIG_TEST_APP})
 endif()
 
 # bert, max_len=20, embedding_dim=128
@@ -321,6 +333,10 @@ if(WITH_GPU AND TENSORRT_FOUND)
     if (NOT EXISTS ${TEST_SPLIT_CONVERTER_MODEL})
         inference_download_and_uncompress(${TEST_SPLIT_CONVERTER_MODEL} ${INFERENCE_URL}/tensorrt_test "split_converter.tgz")
     endif()
+    set(TEST_INSTANCE_NORM_MODEL "${TRT_MODEL_INSTALL_DIR}/trt_instance_norm_test")
+    if (NOT EXISTS ${TEST_INSTANCE_NORM_MODEL})
+        inference_download_and_uncompress(${TEST_INSTANCE_NORM_MODEL} ${INFERENCE_URL}/tensorrt_test "instance_norm.tgz")
+    endif()
     inference_analysis_test(trt_mobilenet_test SRCS trt_mobilenet_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
@@ -330,6 +346,9 @@ if(WITH_GPU AND TENSORRT_FOUND)
     inference_analysis_test(trt_resnext_test SRCS trt_resnext_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
+    inference_analysis_test(trt_bert_test SRCS trt_bert_test.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+            ARGS --infer_model=${BERT_INSTALL_DIR}/model)
     inference_analysis_test(trt_fc_prelu_test SRCS trt_fc_prelu_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
@@ -339,10 +358,12 @@ if(WITH_GPU AND TENSORRT_FOUND)
     inference_analysis_test(trt_split_converter_test SRCS trt_split_converter_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
             ARGS --infer_model=${TEST_SPLIT_CONVERTER_MODEL}/)
+    inference_analysis_test(trt_instance_norm_test SRCS trt_instance_norm_converter_test.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
+            ARGS --infer_model=${TEST_INSTANCE_NORM_MODEL}/)
     inference_analysis_test(test_analyzer_capi_gpu SRCS analyzer_capi_gpu_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
-
     set(TRT_MODEL_QUANT_RESNET_DIR "${INFERENCE_DEMO_INSTALL_DIR}/quant_small_model")
     if (NOT EXISTS ${TRT_MODEL_QUANT_RESNET_DIR})
         inference_download_and_uncompress(${INFERENCE_DEMO_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "quant_small_model.tar.gz")
@@ -351,6 +372,16 @@ if(WITH_GPU AND TENSORRT_FOUND)
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
             ARGS --infer_model=${TRT_MODEL_QUANT_RESNET_DIR})
 endif()
+
+set(LITE_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/lite")
+download_data(${LITE_MODEL_INSTALL_DIR} "mul_model_fp32.tgz")
+
+inference_analysis_test(lite_mul_model_test SRCS lite_mul_model_test.cc
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+        ARGS --infer_model=${LITE_MODEL_INSTALL_DIR})
+inference_analysis_test(lite_resnet50_test SRCS lite_resnet50_test.cc
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+        ARGS --infer_model=${RESNET50_MODEL_DIR})
 
 inference_analysis_test(test_analyzer_capi SRCS analyzer_capi_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c

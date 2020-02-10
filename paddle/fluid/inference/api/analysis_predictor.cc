@@ -50,10 +50,6 @@
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #endif
 
-#if PADDLE_WITH_ANAKIN
-#include "paddle/fluid/inference/anakin/convert/op_converter.h"
-#endif
-
 namespace paddle {
 
 using inference::Singleton;
@@ -390,7 +386,6 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetEnableMemoryOptim(config_.enable_memory_optim());
   argument_.SetModelFromMemory(config_.model_from_memory_);
   // Analyze inference_program
-  argument_.SetUseAnakin(config_.anakin_engine_enabled());
   argument_.SetPredictorID(predictor_id_);
   argument_.SetOptimCacheDir(config_.opt_cache_dir_);
   if (!config_.model_dir().empty()) {
@@ -417,15 +412,11 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetTensorRtUseCalibMode(config_.trt_use_calib_mode_);
   }
 
-  if (config_.anakin_engine_enabled()) {
-    argument_.SetAnakinMaxBatchSize(config_.anakin_max_batchsize_);
-    argument_.SetAnakinMaxInputShape(config_.anakin_max_input_shape_);
-    argument_.SetAnakinMinSubgraphSize(config_.anakin_min_subgraph_size_);
-    argument_.SetAnakinPrecisionMode(config_.anakin_precision_mode_);
-    argument_.SetAnakinAutoConfigLayout(config_.anakin_auto_config_layout_);
-    argument_.SetAnakinPassesFilter(config_.anakin_passes_filter_);
-    argument_.SetAnakinOpsFilter(config_.anakin_ops_filter_);
-    LOG(INFO) << "Anakin subgraph engine is enabled";
+  if (config_.lite_engine_enabled()) {
+    argument_.SetLitePrecisionMode(config_.lite_precision_mode_);
+    argument_.SetLitePassesFilter(config_.lite_passes_filter_);
+    argument_.SetLiteOpsFilter(config_.lite_ops_filter_);
+    LOG(INFO) << "Lite subgraph engine is enabled";
   }
 
   if (config_.use_mkldnn_) {
@@ -938,34 +929,8 @@ USE_TRT_CONVERTER(conv2d_transpose);
 USE_TRT_CONVERTER(leaky_relu);
 USE_TRT_CONVERTER(shuffle_channel);
 USE_TRT_CONVERTER(swish);
-#endif
-
-#if PADDLE_WITH_ANAKIN
-USE_ANAKIN_CONVERTER(mul);
-USE_ANAKIN_CONVERTER(fc);
-USE_ANAKIN_CONVERTER(conv2d);
-USE_ANAKIN_CONVERTER(conv2d_fusion);
-USE_ANAKIN_CONVERTER(concat);
-USE_ANAKIN_CONVERTER(split);
-USE_ANAKIN_CONVERTER(relu);
-USE_ANAKIN_CONVERTER(sigmoid);
-USE_ANAKIN_CONVERTER(tanh);
-USE_ANAKIN_CONVERTER(pool2d);
-USE_ANAKIN_CONVERTER(elementwise_add);
-USE_ANAKIN_CONVERTER(elementwise_mul);
-USE_ANAKIN_CONVERTER(batch_norm);
-USE_ANAKIN_CONVERTER(flatten);
-USE_ANAKIN_CONVERTER(reshape);
-USE_ANAKIN_CONVERTER(transpose);
-USE_ANAKIN_CONVERTER(softmax);
-USE_ANAKIN_CONVERTER(detection_out);
-USE_ANAKIN_CONVERTER(density_prior_box);
-USE_ANAKIN_CONVERTER(dropout);
-USE_ANAKIN_CONVERTER(sum);
-USE_ANAKIN_CONVERTER(prior_box);
-USE_ANAKIN_CONVERTER(leaky_relu);
-USE_ANAKIN_CONVERTER(affine_channel);
-USE_ANAKIN_CONVERTER(relu6);
-USE_ANAKIN_CONVERTER(swish);
-USE_ANAKIN_CONVERTER(shuffle_channel);
+USE_TRT_CONVERTER(instance_norm);
+USE_TRT_CONVERTER(layer_norm);
+USE_TRT_CONVERTER(gelu);
+USE_TRT_CONVERTER(multihead_matmul);
 #endif

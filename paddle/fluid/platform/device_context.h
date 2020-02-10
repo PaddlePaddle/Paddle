@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_helper.h"
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
-#if !defined(__APPLE__) && !defined(_WIN32)
+#if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
 #include "paddle/fluid/platform/gpu_info.h"
@@ -97,6 +97,12 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return the max physical thread count in the device context */
   int GetMaxPhysicalThreadCount() const;
 
+  /*! \brief  Return the SM count in the device context */
+  int GetSMCount() const;
+
+  /*! \brief  Return the Max thread num of block in the device context */
+  int GetMaxThreadsPerBlock() const;
+
   /*! \brief  Return the max grid dim size in the device context */
   dim3 GetCUDAMaxGridDimSize() const;
 
@@ -138,7 +144,7 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return cuda stream in the device context. */
   cudaStream_t stream() const;
 
-#if !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
   /*! \brief  Return nccl communicators. */
   ncclComm_t nccl_comm() const { return nccl_comm_; }
 
@@ -174,7 +180,7 @@ class CUDADeviceContext : public DeviceContext {
   std::unique_ptr<CublasHandleHolder> cublas_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_tensor_core_handle_;
 
-#if !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
   // NCCL communicator (single process version) for NCCL collective operations.
   // NCCL collective operations provides fast collectives over multiple GPUs
   // both within and across nodes.
@@ -188,6 +194,7 @@ class CUDADeviceContext : public DeviceContext {
   int driver_version_;
   int multi_process_;
   int max_threads_per_mp_;
+  int max_threads_per_block_;
   dim3 max_grid_dim_size_;
 
   // StreamCallbackManager is thread-safe
