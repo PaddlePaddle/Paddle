@@ -1185,7 +1185,7 @@ def dynamic_decode(decoder,
     def _transpose_batch_time(x):
         return nn.transpose(x, [1, 0] + list(range(2, len(x.shape))))
 
-    def _create_array_outof_while(dtype):
+    def _create_array_out_of_while(dtype):
         current_block_idx = default_main_program().current_block_idx
         default_main_program().current_block_idx = default_main_program(
         ).current_block().parent_idx
@@ -1219,7 +1219,7 @@ def dynamic_decode(decoder,
 
         # create tensor array in global block after dtype[s] of outputs can be got
         outputs_arrays = map_structure(
-            lambda x: _create_array_outof_while(x.dtype), outputs)
+            lambda x: _create_array_out_of_while(x.dtype), outputs)
 
         map_structure(
             lambda x, x_array: control_flow.array_write(
