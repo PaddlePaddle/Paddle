@@ -27,6 +27,7 @@ from .base import program_desc_tracing_guard
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
 import copy
+import weakref
 import warnings
 
 __all__ = ['Layer']
@@ -113,7 +114,7 @@ class Layer(core.Layer):
             RemovableHook: a removablehook object that can be used to remove the added hook by calling `removablehook.renove()` .
         """
         removable_hook = RemovableHook(self._forward_hooks)
-        self._forward_hooks[removable_hook.id] = hook
+        self._forward_hooks[removable_hook._hook_id] = hook
         return removable_hook
 
     def register_forward_pre_hook(self, hook):
@@ -126,7 +127,7 @@ class Layer(core.Layer):
             RemovableHook: a removablehook object that can be used to remove the added hook by calling `removablehook.renove()` .
         """
         removable_hook = RemovableHook(self._forward_pre_hooks)
-        self._forward_pre_hooks[removable_hook.id] = hook
+        self._forward_pre_hooks[removable_hook._hook_id] = hook
         return removable_hook
 
     def create_parameter(self,
