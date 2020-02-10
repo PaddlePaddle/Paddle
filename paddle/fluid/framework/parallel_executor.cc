@@ -427,13 +427,14 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   }
 #endif
 
-#ifndef PADDLE_WITH_NCCL
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_NCCL)
   PADDLE_ENFORCE_EQ(
       places.size(), 1,
-      "Your machine has multiple cards, "
-      "but the WITH_NCCL option is not turned on during compilation, "
-      "and you cannot use multi-card training or prediction. "
-      "Please recompile and turn on the WITH_NCCL option.");
+      platform::errors::PermissionDenied(
+          "Your machine has multiple cards, "
+          "but the WITH_NCCL option is not turned on during compilation, "
+          "and you cannot use multi-card training or prediction. "
+          "Please recompile and turn on the WITH_NCCL option."));
 #endif
 
   LOG(INFO) << string::Sprintf(
