@@ -74,7 +74,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
 
         if args.reader == "pyreader":
             self.reader = fluid.io.PyReader(
-                feed_list=self.feeds,
+                feed_list=datas,
                 capacity=64,
                 iterable=False,
                 use_double_buffer=False)

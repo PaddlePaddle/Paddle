@@ -129,9 +129,9 @@ class TestDistCtrHalfAsync2x2(TestFleetBase):
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_rpc_deadline": "30000",  # 5sec to fail fast
             "http_proxy": "",
-            "FLAGS_communicator_send_queue_size": "1",
-            "FLAGS_communicator_max_merge_var_num": "1",
-            "CPU_NUM": "1",
+            "FLAGS_communicator_send_queue_size": "2",
+            "FLAGS_communicator_max_merge_var_num": "2",
+            "CPU_NUM": "2",
             "SAVE_MODEL": "0"
         }
 

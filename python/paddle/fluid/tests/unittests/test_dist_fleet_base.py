@@ -102,7 +102,7 @@ class FleetDistRunnerBase(object):
     def run_pserver(self, args):
         fleet.init(self.build_role(args))
         strategy = self.build_strategy(args)
-        avg_cost = self.net()
+        avg_cost = self.net(args)
         self.build_optimizer(avg_cost, strategy)
 
         fleet.init_server()
