@@ -117,8 +117,8 @@ class Dataset {
   virtual void MergeByInsId() = 0;
   virtual void GenerateLocalTablesUnlock(int table_id, int feadim,
                                          int read_thread_num,
-                                         int consume_thread_num, int shard_num,
-                                         int send_freq) = 0;
+                                         int consume_thread_num,
+                                         int shard_num) = 0;
   virtual void ClearLocalTables() = 0;
   // create preload readers
   virtual void CreatePreLoadReaders() = 0;
@@ -189,8 +189,8 @@ class DatasetImpl : public Dataset {
   virtual void MergeByInsId() {}
   virtual void GenerateLocalTablesUnlock(int table_id, int feadim,
                                          int read_thread_num,
-                                         int consume_thread_num, int shard_num,
-                                         int send_freq) {}
+                                         int consume_thread_num,
+                                         int shard_num) {}
   virtual void ClearLocalTables() {}
   virtual void CreatePreLoadReaders();
   virtual void DestroyPreLoadReaders();
@@ -246,8 +246,8 @@ class MultiSlotDataset : public DatasetImpl<Record> {
   virtual void MergeByInsId();
   virtual void GenerateLocalTablesUnlock(int table_id, int feadim,
                                          int read_thread_num,
-                                         int consume_thread_num, int shard_num,
-                                         int send_freq);
+                                         int consume_thread_num,
+                                         int shard_num);
   virtual void ClearLocalTables() {
     for (auto& t : local_tables_) {
       t.clear();
