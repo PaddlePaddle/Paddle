@@ -158,6 +158,7 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input, Dim3 input_dims,
       }
     } else {
       if (x_j < tile_width) {
+#pragma unroll
         for (int ind_i = x_i; ind_i < (tile_height); ind_i += BlockReadRows) {
           tile_sm[ind_i][x_j] = input[input_ind];
           input_ind += input_inc;
@@ -199,6 +200,7 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input, Dim3 input_dims,
       }
     } else {
       if (x_j < tile_height) {
+#pragma unroll
         for (int ind_i = x_i; ind_i < (tile_width); ind_i += BlockWriteRows) {
           output[output_ind] = tile_sm[x_j][ind_i];
           output_ind += output_inc;
