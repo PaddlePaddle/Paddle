@@ -676,6 +676,7 @@ class TestLayer(LayerTest):
                 append_batch_size=False)
             prelu = nn.PRelu(
                 mode=mode,
+                channel=inp_np.shape[1],
                 input_shape=data_t.shape,
                 param_attr=ParamAttr(initializer=Constant(1.0)))
             out = prelu(data_t)
@@ -685,6 +686,7 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             prelu = nn.PRelu(
                 mode=mode,
+                channel=inp_np.shape[1],
                 input_shape=inp_np.shape,
                 param_attr=ParamAttr(initializer=Constant(1.0)))
             dy_rlt = prelu(base.to_variable(inp_np))
@@ -698,10 +700,12 @@ class TestLayer(LayerTest):
             inp = base.to_variable(inp_np)
             prelu1 = nn.PRelu(
                 mode=mode,
+                channel=inp_np.shape[1],
                 input_shape=inp_np.shape,
                 param_attr=ParamAttr(initializer=Constant(2.0)))
             prelu2 = nn.PRelu(
                 mode=mode,
+                channel=inp_np.shape[1],
                 input_shape=inp_np.shape,
                 param_attr=ParamAttr(initializer=Constant(1.0)))
             dy_rlt1 = prelu1(inp)
@@ -1546,6 +1550,16 @@ class TestLayer(LayerTest):
 
 
 class TestBook(LayerTest):
+    def setUp(self):
+        self.only_static_set = set({"make_word_embedding"})
+        self.not_compare_static_dygraph_set = set({
+            "make_gaussian_random", "make_gaussian_random_batch_size_like",
+            "make_kldiv_loss", "make_prelu",
+            "make_sampled_softmax_with_cross_entropy", "make_sampling_id",
+            "make_uniform_random_batch_size_like"
+        })
+        self.all_close_compare = set({"make_spectral_norm"})
+
     def test_all_layers(self):
         attrs = (getattr(self, name) for name in dir(self))
         methods = filter(inspect.ismethod, attrs)
@@ -1568,9 +1582,12 @@ class TestBook(LayerTest):
                         feed=self._feed_dict,
                         fetch_list=fetch_list,
                         force_to_use_cpu=self._force_to_use_cpu)
+
                 else:
                     assert method.__name__ in ('make_get_places')
                     continue
+            if method.__name__ in self.only_static_set:
+                continue
 
             with self.dynamic_graph(self._force_to_use_cpu):
                 dy_result = method()
@@ -1578,7 +1595,18 @@ class TestBook(LayerTest):
                     dy_result = dy_result[0]
                 dy_result_value = dy_result.numpy()
 
-        self.assertTrue(np.array_equal(static_result[0], dy_result_value))
+            if method.__name__ in self.all_close_compare:
+                self.assertTrue(
+                    np.allclose(
+                        static_result[0], dy_result_value, atol=0, rtol=1e-05),
+                    "Result of function [{}] compare failed".format(
+                        method.__name__))
+                continue
+
+            if method.__name__ not in self.not_compare_static_dygraph_set:
+                self.assertTrue(
+                    np.array_equal(static_result[0], dy_result_value),
+                    "Result of function [{}] not equal".format(method.__name__))
 
     def _get_np_data(self, shape, dtype, append_batch_size=True):
         np.random.seed(self.seed)

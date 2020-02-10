@@ -117,13 +117,11 @@ class MNIST(fluid.dygraph.Layer):
 
 
 class TestMnist(unittest.TestCase):
-    # FIXME(zcd): disable this random failed test temporally.
-    @unittest.skip("should fix this later")
     def test_mnist_fp16(self):
         if not fluid.is_compiled_with_cuda():
             return
         x = np.random.randn(1, 3, 224, 224).astype("float16")
-        y = np.random.randn(1, 1).astype("int64")
+        y = np.random.randint(10, size=[1, 1], dtype="int64")
         with fluid.dygraph.guard(fluid.CUDAPlace(0)):
             model = MNIST(dtype="float16")
             x = fluid.dygraph.to_variable(x)

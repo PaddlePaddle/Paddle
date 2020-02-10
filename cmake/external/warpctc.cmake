@@ -34,7 +34,8 @@ ENDIF()
 
 cache_third_party(extern_warpctc
     REPOSITORY   ${WARPCTC_REPOSITORY}
-    TAG          ${WARPCTC_TAG})
+    TAG          ${WARPCTC_TAG}
+    DIR          WARPCTC_SOURCE_DIR)
 
 ExternalProject_Add(
     extern_warpctc

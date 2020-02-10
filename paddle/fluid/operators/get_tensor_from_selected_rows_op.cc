@@ -24,9 +24,9 @@ class GetTensorFromSelectedRowsOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "GetTensorFromSelectedRowsOp must has input X.");
+                   "GetTensorFromSelectedRowsOp must have input X.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "GetTensorFromSelectedRowsOp must has output Out.");
+                   "GetTensorFromSelectedRowsOp must have output Out.");
     PADDLE_ENFORCE(
         ctx->GetInputsVarType("X").front() ==
             framework::proto::VarType::SELECTED_ROWS,

@@ -349,6 +349,16 @@ void GpuMemsetAsync(void *dst, int value, size_t count, cudaStream_t stream) {
                  error_code, CudaErrorWebsite());
 }
 
+void GpuStreamSync(cudaStream_t stream) {
+  auto error_code = cudaStreamSynchronize(stream);
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      error_code,
+      platform::errors::External(
+          "cudaStreamSynchronize failed in paddle::platform::GpuStreamSync "
+          "error code : %d, %s",
+          error_code, CudaErrorWebsite()));
+}
+
 void RaiseNonOutOfMemoryError(cudaError_t *status) {
   if (*status == cudaErrorMemoryAllocation) {
     *status = cudaSuccess;
@@ -363,5 +373,6 @@ void RaiseNonOutOfMemoryError(cudaError_t *status) {
 
   PADDLE_ENFORCE_CUDA_SUCCESS(*status);
 }
+
 }  // namespace platform
 }  // namespace paddle

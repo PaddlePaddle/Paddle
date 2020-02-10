@@ -35,7 +35,7 @@ namespace fusion_group {
 inline float relu(float x) { return x > 0 ? x : 0.; }
 
 inline float relu_grad_dx(float x, float out, float dout) {
-  return x > 0 ? dout : 0;
+  return out > 0 ? dout : 0;
 }
 
 // sigmoid
@@ -117,7 +117,7 @@ void CheckOutput(const std::vector<OperationExpression>& expressions,
           elementwise_mul(var[input_ids[0]], var[input_ids[1]]);
     } else if (op_type == "relu_grad") {
       var[output_ids[0]] =
-          relu_grad_dx(var[input_ids[0]], 0, var[input_ids[2]]);
+          relu_grad_dx(0, var[input_ids[1]], var[input_ids[2]]);
     } else if (op_type == "sigmoid_grad") {
       var[output_ids[0]] =
           sigmoid_grad_dx(0, var[input_ids[1]], var[input_ids[2]]);
@@ -138,8 +138,7 @@ void CheckOutput(const std::vector<OperationExpression>& expressions,
   for (auto id : output_ids_of_subgraph) {
     float actual = cpu_tensors[id].data<float>()[i];
     float expect = var[id];
-    PADDLE_ENFORCE_LT(fabs(actual - expect), 1.E-05,
-                      "Get %f vs %f (actual vs expect).", actual, expect);
+    EXPECT_LT(fabs(actual - expect), 1.E-05);
   }
 }
 
@@ -150,8 +149,7 @@ void SetupRandomCPUTensor(LoDTensor* tensor) {
   std::uniform_real_distribution<double> uniform_dist(0, 1);
 
   T* ptr = tensor->data<T>();
-  PADDLE_ENFORCE_NOT_NULL(
-      ptr, "Call mutable_data to alloc memory for Tensor first.");
+  EXPECT_NE(ptr, nullptr);
   for (int64_t i = 0; i < tensor->numel(); ++i) {
     ptr[i] = static_cast<T>(uniform_dist(rng)) - static_cast<T>(0.5);
   }
@@ -229,7 +227,7 @@ std::vector<fusion_group::OperationExpression> TestMain(
   std::string code_str = code_generator.Generate(subgraph);
   VLOG(3) << code_str;
 
-  TestMainImpl(subgraph->func_name, code_str, cpu_tensors, n, input_ids,
+  TestMainImpl(subgraph->GetFuncName(), code_str, cpu_tensors, n, input_ids,
                output_ids);
 
   // Need to check the accuracy according to expressions.
@@ -283,7 +281,7 @@ TEST(code_generator, elementwise_grad) {
   // t3 = relu(t2)
   // t2' = relu_grad(t2, t3, t3')
   // t0', t1' = elementwise_mul_grad(t0, t1, t2, t2')
-  fusion_group::OperationExpression exp1("relu_grad", {2, -1, 7}, {6});
+  fusion_group::OperationExpression exp1("relu_grad", {-1, 3, 7}, {6});
   fusion_group::OperationExpression exp2("elementwise_mul_grad", {0, 1, 2, 6},
                                          {4, 5});
   std::vector<fusion_group::OperationExpression> expressions = {exp1, exp2};
@@ -300,7 +298,7 @@ TEST(code_generator, elementwise_grad) {
   //  Op(relu_grad), inputs:{2,3,7}, outputs:{6}
   //  Op(elementwise_mul_grad), inputs:{0,1,2,6}, outputs:{4,5}
   int n = cpu_tensors[0].numel();
-  std::vector<int> input_ids = {0, 1, 2, -1, 7};
+  std::vector<int> input_ids = {0, 1, 2, 3, 7};
   std::vector<int> output_ids = {4, 5, 6};
   TestMain("elementwise_grad_kernel_0", expressions, cpu_tensors, n, input_ids,
            output_ids);
@@ -332,22 +330,25 @@ std::unique_ptr<paddle::framework::ir::Graph> BuildGraph(
   //                      tmp_2@GRAD(13), x2@GRAD(14), x0@GRAD(15),
   //                      x3@GRAD(16), x1@GRAD(17)
   paddle::framework::ir::Layers layers;
-  auto* x0 = layers.data("x0", {16, 32});
+  std::vector<int64_t> shape = {16, 32};
+  auto* x0 = layers.data("x0", shape);
   auto* tmp_0 = layers.sigmoid(x0);
-  tmp_0->SetShape({16, 32});
-  auto* x1 = layers.data("x1", {16, 32});
+  auto* x1 = layers.data("x1", shape);
   auto* tmp_1 = layers.elementwise_mul(tmp_0, x1);
-  tmp_1->SetShape({16, 32});
-  auto* x2 = layers.data("x2", {16, 32});
+  auto* x2 = layers.data("x2", shape);
   auto* tmp_2 = layers.tanh(x2);
-  tmp_2->SetShape({16, 32});
-  auto* x3 = layers.data("x3", {16, 32});
+  auto* x3 = layers.data("x3", shape);
   auto* tmp_3 = layers.elementwise_mul(x3, tmp_2);
-  tmp_3->SetShape({16, 32});
-  layers.elementwise_add(tmp_1, tmp_3);
+  auto* tmp_4 = layers.elementwise_add(tmp_1, tmp_3);
+
+  std::vector<paddle::framework::VarDesc*> elementwise_vars = {
+      tmp_0, tmp_1, tmp_2, tmp_3, tmp_4};
+  for (auto* var : elementwise_vars) {
+    var->SetShape(shape);
+  }
 
   if (backward) {
-    layers.backward();
+    layers.backward({tmp_4});
   }
 
   std::unique_ptr<paddle::framework::ir::Graph> graph(

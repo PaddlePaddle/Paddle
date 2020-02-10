@@ -20,14 +20,13 @@ from .tensor import assign, cast, fill_constant
 from .. import core
 from ..framework import Program, Variable, Operator
 from ..layer_helper import LayerHelper, unique_name
-from ..initializer import force_init_on_cpu
 from .nn import logical_and, logical_not, logical_or
 from .utils import assert_same_structure, map_structure
 import numpy
 import warnings
 import six
 from functools import reduce, partial
-from ..data_feeder import convert_dtype, check_type_and_dtype
+from ..data_feeder import convert_dtype, check_variable_and_dtype
 from ... import compat as cpt
 from ..backward import _infer_var_data_type_shape_
 
@@ -258,9 +257,9 @@ def Print(input,
                data: 3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3, 
                
     '''
-    check_type_and_dtype(input, 'input', Variable,
-                         ['float32', 'float64', 'int32', 'int64', 'bool'],
-                         'fluid.layers.Print')
+    check_variable_and_dtype(input, 'input',
+                             ['float32', 'float64', 'int32', 'int64', 'bool'],
+                             'fluid.layers.Print')
 
     helper = LayerHelper('print' + "_" + input.name, **locals())
     output = helper.create_variable_for_type_inference(input.dtype)
@@ -1344,8 +1343,6 @@ def less_than(x, y, force_cpu=None, cond=None):
     attrs = dict()
     if force_cpu is not None:
         attrs['force_cpu'] = force_cpu
-    elif force_init_on_cpu():
-        attrs['force_cpu'] = force_init_on_cpu()
 
     helper.append_op(
         type='less_than',
@@ -1388,8 +1385,6 @@ def less_equal(x, y, cond=None):
         cond.stop_gradient = True
 
     attrs = dict()
-    if force_init_on_cpu():
-        attrs['force_cpu'] = force_init_on_cpu()
 
     helper.append_op(
         type='less_equal',
@@ -1431,8 +1426,6 @@ def greater_than(x, y, cond=None):
         cond.stop_gradient = True
 
     attrs = dict()
-    if force_init_on_cpu():
-        attrs['force_cpu'] = force_init_on_cpu()
 
     helper.append_op(
         type='greater_than',
@@ -1476,8 +1469,6 @@ def greater_equal(x, y, cond=None):
         cond.stop_gradient = True
 
     attrs = dict()
-    if force_init_on_cpu():
-        attrs['force_cpu'] = force_init_on_cpu()
 
     helper.append_op(
         type='greater_equal',
