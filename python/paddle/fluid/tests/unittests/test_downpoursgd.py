@@ -209,7 +209,7 @@ class TestListenAndServOp(unittest.TestCase):
             main_program._fleet_opt = opt_info
             trainer = DistMultiTrainer()
             trainer._set_program(main_program)
-            device_worker = DownpourSGD()
+            device_worker = DownpourSGDOPT()
             device_worker._set_fleet_desc(fleet_desc)
             trainer._set_device_worker(device_worker)
             trainer._set_fleet_desc(fleet_desc)

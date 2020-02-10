@@ -175,12 +175,6 @@ class DownpourSGD(DeviceWorker):
                 sparse_table.fea_dim = sparse_table.emb_dim + 2
             # TODO(guru4elephant): hard code here, need to improve
             sparse_table.label_var_name = "click"
-            if "local_tables" in opt_info and sparse_table.table_id in opt_info[
-                    "local_tables"]:
-                sparse_table.is_local = True
-            if "async_tables" in opt_info and sparse_table.table_id in opt_info[
-                    "async_tables"]:
-                sparse_table.is_async = True
         if opt_info["stat_var_names"]:
             for i in opt_info["stat_var_names"]:
                 downpour.stat_var_names.extend([i])
@@ -206,7 +200,7 @@ class DownpourSGDOPT(DeviceWorker):
     def __init__(self):
         """
         Init.
-        initialize downpourSGD device worker
+        initialize downpourSGDOPT device worker
         """
         super(DownpourSGDOPT, self).__init__()
 
@@ -281,10 +275,12 @@ class DownpourSGDOPT(DeviceWorker):
                 sparse_table.fea_dim = sparse_table.emb_dim + 2
             # TODO(guru4elephant): hard code here, need to improve
             sparse_table.label_var_name = "click"
-            if sparse_table.table_id in opt_info["local_tables"]:
-                sparse_table.is_local = True
-            if sparse_table.table_id in opt_info["async_tables"]:
-                sparse_table.is_async = True
+        if "local_tables" in opt_info and sparse_table.table_id in opt_info[
+                "local_tables"]:
+            sparse_table.is_local = True
+        if "async_tables" in opt_info and sparse_table.table_id in opt_info[
+                "async_tables"]:
+            sparse_table.is_async = True
         if opt_info["stat_var_names"]:
             for i in opt_info["stat_var_names"]:
                 downpour.stat_var_names.extend([i])
