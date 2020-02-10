@@ -19,6 +19,7 @@ limitations under the License. */
 #include <pybind11/complex.h>
 #include <pybind11/functional.h>
 #include <pybind11/stl.h>
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -39,6 +40,32 @@ namespace paddle {
 namespace pybind {
 
 namespace py = ::pybind11;
+
+class gil_scoped_acquire {
+  PyGILState_STATE state;
+
+ public:
+  gil_scoped_acquire() { state = PyGILState_Ensure(); }
+  ~gil_scoped_acquire() { PyGILState_Release(state); }
+};
+
+// warper for pyobject to avoid imperative module depend on python
+class PyCallableObject {
+ public:
+  PyCallableObject(PyObject *func, PyObject *param)
+      : py_obj_func_(func), py_obj_param_(param) {}
+
+  ~PyCallableObject() {}
+
+  void operator()() {
+    gil_scoped_acquire gil;
+    PyObject_CallFunctionObjArgs(py_obj_func_, py_obj_param_, nullptr);
+  }
+
+ private:
+  PyObject *py_obj_func_;
+  PyObject *py_obj_param_;
+};
 
 class Layer : public imperative::Layer {
  public:
@@ -290,6 +317,19 @@ void BindImperative(py::module *m_ptr) {
         []() { imperative::ThrowErrorIfLoadProcessFailed(); });
 #endif
 
+  py::class_<imperative::RemovablePyCallableObject,
+             std::shared_ptr<imperative::RemovablePyCallableObject>>(
+      m, "RemovablePyCallableObject",
+      R"DOC()DOC")
+      .def("__init__", [](imperative::RemovablePyCallableObject &self,
+                          std::map<int, PyCallableObject> *hooks) {})
+      .def("remove", [](imperative::RemovablePyCallableObject &self) {
+        VLOG(2) << "remove=====================begin " << self.Get_Hooks_Id()
+                << std::endl;
+        self.Remove();
+        VLOG(2) << "remove=====================end" << std::endl;
+      });
+
   py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>>(
       m, "VarBase",
       R"DOC()DOC")
@@ -446,6 +486,34 @@ void BindImperative(py::module *m_ptr) {
              VLOG(3) << "Finish backward";
            },
            py::call_guard<py::gil_scoped_release>())
+      .def("register_hook",
+           [](imperative::VarBase &self, const py::handle &hook) {
+             if (self.HasGradVar()) {
+               PyCallableObject obj =
+                   PyCallableObject(hook.ptr(), py::cast(self).ptr());
+               auto &tmp = self.GetBackwardHooks();
+               VLOG(2) << "========tmp address: " << &(tmp) << std::endl;
+               std::shared_ptr<imperative::RemovablePyCallableObject>
+                   removable_obj =
+                       std::make_shared<imperative::RemovablePyCallableObject>(
+                           (&self.GetBackwardHooks()), self.Get_Hooks_Id());
+               VLOG(2) << "======== address: " << &(self.GetBackwardHooks())
+                       << std::endl;
+               VLOG(2) << "======== address: " << &(self.GetBackwardHooks())
+                       << std::endl;
+               self.RegisterBackwardHooks(obj, removable_obj->Get_Hooks_Id());
+               return removable_obj;
+             } else {
+               PADDLE_THROW(platform::errors::PreconditionNotMet(
+                   "Can not register hook for VarBase who has not GradVar"));
+             }
+           })
+      .def("execute_hooks",
+           [](imperative::VarBase &self) {
+             VLOG(2) << "Start execute_hooks";
+             self.InvokeBackwardHooks();
+             VLOG(2) << "End execute_hooks";
+           })
       .def("_grad_name", &imperative::VarBase::GradVarName)
       .def("_grad_value",
            [](imperative::VarBase &self) {

@@ -56,6 +56,28 @@ class ThreadSafeNameSet {
   mutable std::mutex mtx_;
 };
 
+class RemovablePyCallableObject {
+ public:
+  RemovablePyCallableObject(std::map<int, std::function<void()>>* hooks,
+                            int hooks_id)
+      : hooks_(hooks), hooks_id_(hooks_id) {
+    VLOG(2) << "RemovablePyCallableObject address: " << (hooks_) << std::endl;
+  }
+
+  int Get_Hooks_Id() { return hooks_id_; }
+
+  void Remove() {
+    int a = hooks_->erase(hooks_id_);
+    VLOG(2) << "delete id: " << a << std::endl;
+  }
+
+  ~RemovablePyCallableObject() {}
+
+ private:
+  std::map<int, std::function<void()>>* hooks_;
+  int hooks_id_;
+};
+
 class VarBase {
   DISABLE_COPY_AND_ASSIGN(VarBase);
 
@@ -64,6 +86,7 @@ class VarBase {
   explicit VarBase(bool has_grad, const std::string& name)
       : name_(name),
         grad_var_(has_grad ? new VarBase(false, GradVarName()) : nullptr) {
+    next_hooks_id_ = 0;
     if (IsDebugEnabled()) {
       VLOG(10) << "Construct VarBase: " << name;
       name_set_.Insert(name_);
@@ -213,6 +236,31 @@ class VarBase {
   std::shared_ptr<VarBase> NewVarBase(const platform::Place& dst_place,
                                       const bool blocking) const;
 
+  void RegisterBackwardHooks(const std::function<void()>& func, int id) {
+    // backward_hooks_.emplace_back(func);
+    backward_hooks_[id] = func;
+  }
+
+  int Get_Hooks_Id() {
+    next_hooks_id_++;
+    return next_hooks_id_;
+  }
+
+  void InvokeBackwardHooks() {
+    std::map<int, std::function<void()>>::iterator iter;
+    for (iter = backward_hooks_.begin(); iter != backward_hooks_.end();
+         iter++) {
+      (iter->second)();
+    }
+    // for (const auto& func : backward_hooks_) {
+    //  func();
+    // }
+  }
+
+  std::map<int, std::function<void()>>& GetBackwardHooks() {
+    return backward_hooks_;
+  }
+
  private:
   framework::Variable var_;
   std::string name_;
@@ -222,6 +270,9 @@ class VarBase {
 
   // grad_op indicates which grad_op will this var be used as input
   std::vector<std::weak_ptr<OpBase>> grad_ops_;
+  int next_hooks_id_;
+  // std::vector<std::function<void()>> backward_hooks_;
+  std::map<int, std::function<void()>> backward_hooks_;
   // add this property for users may set stop_gradient themselves and this
   // should override the
   // frameworks setting (-1) unset, (1) true, (0) false
