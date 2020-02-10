@@ -192,6 +192,7 @@ class DistributeTranspilerConfig(object):
 
     # half_async
     half_async = False
+    completely_not_async = False
 
     # Geo-sgd algorithm
     geo_sgd_mode = False
@@ -323,7 +324,7 @@ class DistributeTranspiler(object):
         if self.config.split_method is None:
             self.config.split_method = RoundRobin
 
-        if self.config.sync_mode:
+        if self.config.sync_mode or self.config.completely_not_async:
             self.distributed_mode = DistributedMode.SYNC
         elif self.config.runtime_split_send_recv:
             self.distributed_mode = DistributedMode.ASYNC
