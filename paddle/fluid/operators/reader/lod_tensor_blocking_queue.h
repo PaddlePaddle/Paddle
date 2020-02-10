@@ -32,6 +32,8 @@ class LoDTensorBlockingQueue {
   explicit LoDTensorBlockingQueue(size_t capacity, bool speed_test_mode = false)
       : queue_(capacity, speed_test_mode) {}
 
+  ~LoDTensorBlockingQueue() { VLOG(10) << "Destruct LoDTensorBlockingQueue"; }
+
   bool Push(const std::vector<framework::LoDTensor>& lod_tensor_vec) {
     return queue_.Send(lod_tensor_vec);
   }
@@ -62,7 +64,7 @@ class LoDTensorBlockingQueue {
 
   inline void Kill() { queue_.Kill(); }
 
-  inline bool WaitForInited() { return true; }
+  inline bool WaitForInited(size_t) { return true; }
 
  private:
   BlockingQueue<std::vector<framework::LoDTensor>> queue_;
@@ -74,47 +76,47 @@ class OrderedMultiDeviceLoDTensorBlockingQueue {
                                            bool speed_test_mode = false)
       : capacity_(capacity), speed_test_mode_(speed_test_mode) {}
 
-  inline bool WaitForInited() {
-    std::unique_lock<std::mutex> lock(init_mutex_);
-    cv_.wait(lock, [this] { return queues_ != nullptr || is_closing_; });
-    is_closing_ = false;
-    return queues_ != nullptr;
+  ~OrderedMultiDeviceLoDTensorBlockingQueue() {
+    VLOG(10) << "Destruct OrderedMultiDeviceLoDTensorBlockingQueue";
   }
 
-  inline void InitOnce(size_t dev_cnt) {
-    PADDLE_ENFORCE_GE(dev_cnt, 1, platform::errors::InvalidArgument(
-                                      "Device count to init "
-                                      "OrderedMultiDeviceLoDTensorBlockingQueue"
-                                      " must be larger than 1"));
-    VLOG(3) << "Ordered queue init start";
+  bool WaitForInited(size_t milliseconds) {
+    std::unique_lock<std::mutex> lock(init_mutex_);
+    return cv_.wait_for(lock, std::chrono::milliseconds(milliseconds),
+                        [this] { return !queues_.empty(); });
+  }
+
+  void SetDeviceCount(size_t dev_cnt) {
     {
       std::lock_guard<std::mutex> lock(init_mutex_);
-      if (queues_) {
-        PADDLE_ENFORCE_EQ(queues_->size(), dev_cnt,
+      PADDLE_ENFORCE_GE(dev_cnt, 1,
+                        platform::errors::InvalidArgument(
+                            "Device count to init "
+                            "OrderedMultiDeviceLoDTensorBlockingQueue"
+                            " must be larger than 1"));
+      if (!queues_.empty()) {
+        PADDLE_ENFORCE_EQ(queues_.size(), dev_cnt,
                           platform::errors::InvalidArgument(
-                              "Device count to init queue must be equal"));
-      } else {
-        queues_.reset(
-            new std::vector<std::shared_ptr<LoDTensorBlockingQueue>>(dev_cnt));
-        for (auto& item : *queues_) {
-          auto cap = (capacity_ + dev_cnt - 1) / dev_cnt;
-          item.reset(new LoDTensorBlockingQueue(cap, speed_test_mode_));
-        }
+                              "queues should be only inited once"));
+        return;
+      }
+
+      VLOG(1) << "Init queue with size " << dev_cnt;
+      queues_.resize(dev_cnt);
+      for (auto& item : queues_) {
+        auto cap = (capacity_ + dev_cnt - 1) / dev_cnt;
+        item.reset(new LoDTensorBlockingQueue(cap, speed_test_mode_));
       }
     }
-    VLOG(3) << "Ordered queue init finish";
     cv_.notify_all();
   }
 
   const std::shared_ptr<LoDTensorBlockingQueue>& GetQueue(size_t idx) const {
-    std::lock_guard<std::mutex> lock(init_mutex_);
-    PADDLE_ENFORCE_NOT_NULL(queues_,
-                            platform::errors::NotFound(
-                                "Queues must be inited first before getting"));
+    EnforceIsInited();
     PADDLE_ENFORCE_LT(
-        idx, queues_->size(),
+        idx, queues_.size(),
         platform::errors::OutOfRange("The queue index is out of range"));
-    return (*queues_)[idx];
+    return queues_[idx];
   }
 
   bool Push(const std::vector<framework::LoDTensor>& lod_tensor_vec) {
@@ -123,65 +125,74 @@ class OrderedMultiDeviceLoDTensorBlockingQueue {
 
   inline size_t Size() const {
     size_t size = 0;
-    if (queues_) {
-      for (auto& item : *queues_) {
-        size += item->Size();
-      }
+    for (auto& item : queues_) {
+      size += item->Size();
     }
     return size;
   }
 
   inline void Close() {
-    {
-      std::lock_guard<std::mutex> lock(init_mutex_);
-      if (queues_ == nullptr) {
-        is_closing_ = true;
-      }
-    }
-    cv_.notify_all();
-    if (queues_) {
-      for (auto& item : *queues_) {
-        item->Close();
-      }
-    }
-  }
-
-  inline void Kill() {
-    if (queues_) {
-      for (auto& item : *queues_) {
-        item->Kill();
-      }
-    }
-  }
-
-  inline void Reset() {
-    std::lock_guard<std::mutex> reset_lock(reset_mutex_);
-    for (auto& method : reset_methods_) {
-      method();
+    for (auto& item : queues_) {
+      item->Close();
     }
     data_index_ = 0;
   }
 
-  inline void AddResetMethod(const std::function<void()>& reset_method) {
+  inline void Kill() {
+    for (auto& item : queues_) {
+      item->Kill();
+    }
+  }
+
+  inline void Reset() {
+    {
+      std::lock_guard<std::mutex> reset_lock(reset_mutex_);
+      for (auto& method : reset_methods_) {
+        if (method) method();
+      }
+    }
+
+    auto dev_cnt = queues_.size();
+    for (auto& item : queues_) {
+      auto cap = (capacity_ + dev_cnt - 1) / dev_cnt;
+      item.reset(new LoDTensorBlockingQueue(cap, speed_test_mode_));
+    }
+  }
+
+  inline void SetResetMethod(size_t idx,
+                             const std::function<void()>& reset_method) {
     std::lock_guard<std::mutex> reset_lock(reset_mutex_);
-    reset_methods_.emplace_back(reset_method);
+    EnforceIsInited();
+    if (reset_methods_.size() <= idx) {
+      reset_methods_.resize(idx + 1);
+    }
+    reset_methods_[idx] = reset_method;
   }
 
  private:
   const std::shared_ptr<LoDTensorBlockingQueue>& CurQueue() {
-    return (*queues_)[data_index_.fetch_add(1) % queues_->size()];
+    EnforceIsInited();
+    return queues_[data_index_.fetch_add(1) % queues_.size()];
   }
 
  private:
-  std::unique_ptr<std::vector<std::shared_ptr<LoDTensorBlockingQueue>>> queues_;
+  void EnforceIsInited() const {
+    PADDLE_ENFORCE_EQ(queues_.empty(), false,
+                      platform::errors::NotFound("queue has not been inited"));
+  }
+
+ private:
+  std::vector<std::shared_ptr<LoDTensorBlockingQueue>> queues_;
   mutable std::atomic<uint64_t> data_index_{0};
+
+  size_t dev_cnt_{0};
   const size_t capacity_;
   const bool speed_test_mode_;
+  bool is_closed_{false};
 
   std::vector<std::function<void()>> reset_methods_;
   mutable std::mutex reset_mutex_;
 
-  bool is_closing_{false};
   mutable std::mutex init_mutex_;
   mutable std::condition_variable cv_;
 };

@@ -354,7 +354,7 @@ void BindReader(py::module *module) {
          const std::vector<bool> &need_check_feed,
          const std::vector<platform::Place> &dst_places,
          bool use_double_buffer) {
-        queue->InitOnce(dst_places.size());
+        queue->SetDeviceCount(dst_places.size());
         return new MultiDeviceFeedReader<
             reader::OrderedMultiDeviceLoDTensorBlockingQueue>(
             queue, names, shapes, dtypes, need_check_feed, dst_places,

@@ -16,6 +16,7 @@
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 
 namespace paddle {
 namespace framework {
@@ -29,6 +30,8 @@ class SetReaderDeviceCountPass : public Pass {
   int GetDeviceCount() const;
 
   std::unordered_set<std::string> ReaderOpSet() const;
+
+  const Scope *GlobalScope() const;
 };
 
 int SetReaderDeviceCountPass::GetDeviceCount() const {
@@ -40,9 +43,14 @@ std::unordered_set<std::string> SetReaderDeviceCountPass::ReaderOpSet() const {
   return {"create_py_reader"};
 }
 
+const Scope *SetReaderDeviceCountPass::GlobalScope() const {
+  return Get<const std::vector<Scope *>>(details::kLocalScopes)[0];
+}
+
 void SetReaderDeviceCountPass::ApplyImpl(Graph *graph) const {
   auto dev_cnt = GetDeviceCount();
   auto reader_ops = ReaderOpSet();
+  auto scope = GlobalScope();
   size_t found_op_num = 0;
 
   for (auto &node : graph->Nodes()) {
@@ -60,6 +68,18 @@ void SetReaderDeviceCountPass::ApplyImpl(Graph *graph) const {
 
       op_base_attrs["device_index"] = dev_idx;
       op_base_attrs["device_count"] = dev_cnt;
+
+      auto queue_name = op_handle.GetOp()->Input("blocking_queue");
+      auto var = scope->FindVar(queue_name);
+      PADDLE_ENFORCE_NOT_NULL(
+          var,
+          platform::errors::NotFound("Blocking queue of DataLoader not found"));
+
+      using QueueHolder =
+          operators::reader::OrderedMultiDeviceLoDTensorBlockingQueueHolder;
+      if (var->IsType<QueueHolder>()) {
+        var->GetMutable<QueueHolder>()->GetQueue()->SetDeviceCount(dev_cnt);
+      }
 
       ++found_op_num;
       VLOG(10) << "Found op " << op_desc->Type() << " on device " << dev_idx;

@@ -347,7 +347,6 @@ class DygraphGeneratorLoader(DataLoaderBase):
         self._batch_reader = None
         self._places = None
         self._feed_list = feed_list
-        self._keep_order = True
 
         if not capacity:
             raise ValueError("Please give value to capacity.")
@@ -420,7 +419,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
         self._dtypes = []
         self._need_check_feed = []
         self._blocking_queue = core.init_lod_tensor_blocking_queue(
-            core.Variable(), self._capacity, self._keep_order)
+            core.Variable(), self._capacity, False)
         self._reader = core.create_py_reader(
             self.queue, self._var_names, self._shapes, self._dtypes,
             self._need_check_feed, self._places, self._use_double_buffer)
@@ -635,6 +634,7 @@ class GeneratorLoader(DataLoaderBase):
         self._thread = None
         self._queue = None
         self._feed_list = feed_list
+        self._exited = False
         if not capacity:
             raise ValueError("Please give value to capacity.")
         self._iterable = iterable
@@ -798,8 +798,9 @@ class GeneratorLoader(DataLoaderBase):
     def _start(self):
         def __thread_main__():
             try:
-                if not self._queue.wait_for_inited():
-                    return
+                while not self._queue.wait_for_inited(1):
+                    if self._exited:
+                        return
 
                 for tensors in self._tensor_reader():
                     array = core.LoDTensorArray()
@@ -829,10 +830,12 @@ class GeneratorLoader(DataLoaderBase):
 
     def _reset(self):
         self._queue.close()
+        self._exited = True
         thread = self._thread
         if thread is not None:
             thread.join()
 
+        self._exited = False
         self._reader.reset()
 
     def set_sample_generator(self,

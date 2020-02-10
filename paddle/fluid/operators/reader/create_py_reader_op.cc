@@ -40,6 +40,7 @@ class CreatePyReaderOp : public framework::OperatorBase {
         queue_name);
     std::shared_ptr<LoDTensorBlockingQueue> queue;
     std::shared_ptr<OrderedMultiDeviceLoDTensorBlockingQueue> ordered_queue;
+    int dev_idx = -1;
     if (queue_holder_var->IsType<LoDTensorBlockingQueueHolder>()) {
       queue = queue_holder_var->Get<LoDTensorBlockingQueueHolder>().GetQueue();
     } else if (queue_holder_var
@@ -47,10 +48,9 @@ class CreatePyReaderOp : public framework::OperatorBase {
       auto* queue_holder =
           queue_holder_var
               ->GetMutable<OrderedMultiDeviceLoDTensorBlockingQueueHolder>();
-      auto dev_cnt = Attr<int>("device_count");
-      auto dev_idx = static_cast<size_t>(Attr<int>("device_index"));
+      dev_idx = Attr<int>("device_index");
       ordered_queue = queue_holder->GetQueue();
-      ordered_queue->InitOnce(dev_cnt);
+      ordered_queue->SetDeviceCount(Attr<int>("device_count"));
       queue = ordered_queue->GetQueue(dev_idx);
     }
 
@@ -87,15 +87,7 @@ class CreatePyReaderOp : public framework::OperatorBase {
     auto py_reader =
         std::make_shared<PyReader>(queue, dims, var_types, need_check_feed);
     if (ordered_queue) {
-      ordered_queue->AddResetMethod([py_reader] {
-        auto end_readers = py_reader->GetEndPoints();
-        for (auto* reader : end_readers) {
-          reader->Shutdown();
-        }
-        for (auto* reader : end_readers) {
-          reader->Start();
-        }
-      });
+      ordered_queue->SetResetMethod(dev_idx, [out] { out->Clear(); });
     }
     out->Reset(py_reader);
   }
@@ -109,8 +101,9 @@ class CreatePyReaderOpMaker : public FileReaderMakerBase {
 
     AddAttr<int>("device_index", "The device index this reader offers data")
         .SetDefault(0);
+
     AddAttr<int>("device_count",
-                 "The total number of devices the reader offers data")
+                 "The total device number this reader offers data")
         .SetDefault(1);
 
     AddComment(R"DOC(
