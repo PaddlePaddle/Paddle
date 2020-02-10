@@ -19,10 +19,10 @@ import unittest
 from test_dist_fleet_base import TestFleetBase
 
 
-class TestDistMnistSync2x2(TestFleetBase):
+class TestDistMnistAsyncDataset2x2(TestFleetBase):
     def _setup_config(self):
-        self._mode = "sync"
-        self._reader = "pyreader"
+        self._mode = "async"
+        self._reader = "dataset"
 
     def check_with_place(self,
                          model_file,
@@ -34,7 +34,8 @@ class TestDistMnistSync2x2(TestFleetBase):
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
-            "http_proxy": ""
+            "http_proxy": "",
+            "SAVE_MODEL": "1"
         }
 
         required_envs.update(need_envs)
@@ -50,9 +51,9 @@ class TestDistMnistSync2x2(TestFleetBase):
             "dist_fleet_ctr.py", delta=1e-5, check_error_log=True)
 
 
-class TestDistMnistAsync2x2(TestFleetBase):
+class TestDistCtrHalfAsync2x2(TestFleetBase):
     def _setup_config(self):
-        self._mode = "async"
+        self._mode = "half_async"
         self._reader = "pyreader"
 
     def check_with_place(self,
@@ -64,8 +65,12 @@ class TestDistMnistAsync2x2(TestFleetBase):
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
-            "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
-            "http_proxy": ""
+            "FLAGS_rpc_deadline": "30000",  # 5sec to fail fast
+            "http_proxy": "",
+            "FLAGS_communicator_send_queue_size": "2",
+            "FLAGS_communicator_max_merge_var_num": "2",
+            "CPU_NUM": "2",
+            "SAVE_MODEL": "0"
         }
 
         required_envs.update(need_envs)
