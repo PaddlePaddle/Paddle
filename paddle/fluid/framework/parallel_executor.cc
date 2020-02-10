@@ -247,7 +247,7 @@ class ParallelExecutorPrivate {
 
   std::unordered_map<std::string, bool> is_persistable_;
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
   platform::NCCLCommunicator *nccl_ctxs_{nullptr};
 #endif
   bool own_local_scope_;
@@ -427,6 +427,15 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   }
 #endif
 
+#ifndef PADDLE_WITH_NCCL
+  PADDLE_ENFORCE_EQ(
+      places.size(), 1,
+      "Your machine has multiple cards, "
+      "but the WITH_NCCL option is not turned on during compilation, "
+      "and you cannot use multi-card training or prediction. "
+      "Please recompile and turn on the WITH_NCCL option.");
+#endif
+
   LOG(INFO) << string::Sprintf(
       "The Program will be executed on %s using ParallelExecutor, %lu "
       "cards are used, so %lu programs are executed in parallel.",
@@ -516,7 +525,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   // Step 2. Convert main_program to SSA form and dependency graph. Also, insert
   // ncclOp
   std::vector<ir::Graph *> async_graphs(places.size());
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
   if (member_->build_strategy_.async_mode_) {
     VLOG(3) << "use local async mode";
     graph = member_->build_strategy_.Apply(
