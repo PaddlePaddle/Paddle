@@ -53,6 +53,7 @@ typedef struct PD_ZeroCopyTensor {
 } PD_ZeroCopyTensor;
 
 PADDLE_CAPI_EXPORT extern void PD_InitZeroCopyTensor(PD_ZeroCopyTensor*);
+PADDLE_CAPI_EXPORT extern void PD_DestroyZeroCopyTensor(PD_ZeroCopyTensor*);
 
 typedef struct PD_ZeroCopyData {
   char* name;

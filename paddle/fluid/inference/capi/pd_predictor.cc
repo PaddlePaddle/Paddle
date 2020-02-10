@@ -290,4 +290,18 @@ void PD_ZeroCopyRun(PD_Predictor* predictor) {
 void PD_InitZeroCopyTensor(PD_ZeroCopyTensor* tensor) {
   std::memset(tensor, 0, sizeof(PD_ZeroCopyTensor));
 }
+
+void PD_DestroyZeroCopyTensor(PD_ZeroCopyTensor* tensor) {
+#define __PADDLE_INFER_CAPI_DELETE_PTR(__ptr) \
+  if (__ptr) {                                \
+    std::free(__ptr);                         \
+    __ptr = nullptr;                          \
+  }
+
+  __PADDLE_INFER_CAPI_DELETE_PTR(tensor->data.data);
+  __PADDLE_INFER_CAPI_DELETE_PTR(tensor->shape.data);
+  __PADDLE_INFER_CAPI_DELETE_PTR(tensor->lod.data);
+
+#undef __PADDLE_INFER_CAPI_DELETE_PTR
+}
 }  // extern "C"
