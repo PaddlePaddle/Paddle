@@ -22,6 +22,7 @@ import objgraph
 
 __all__ = [
     'no_grad',
+    'no_grad_guard',
     'guard',
     'to_variable',
 ]
@@ -105,6 +106,42 @@ def _no_grad_(func):
 no_grad = wrap_decorator(_no_grad_)
 # for fluidDoc
 no_grad.__doc__ = _no_grad_.__doc__
+
+
+@signature_safe_contextmanager
+def no_grad_guard():
+    """
+    Create a context which disables dygraph gradient calculation.
+    In this mode, the result of every computation will have `stop_gradient=True`.
+
+    return:
+        None
+
+    Examples:
+
+     .. code-block:: python
+
+        import numpy as np
+        import paddle.fluid as fluid
+
+        data = np.array([[2, 3], [4, 5]]).astype('float32')
+        with fluid.dygraph.guard():
+            l0 = fluid.Linear(2, 2)  # l0.weight._grad_ivar() is None
+            l1 = fluid.Linear(2, 2)
+            with fluid.dygraph.no_grad_guard():
+                # l1.weight.stop_gradient is False
+                tmp = l1.weight * 2  # tmp.stop_gradient is True
+                l1.weight = l1.create_parameter_from(tmp)
+            x = fluid.dygraph.to_variable(data)
+            y = l0(x)
+            o = l1(y)
+            o.backward()
+            # tmp._grad_ivar() is None
+            # l0.weight._grad_ivar() is not None
+
+    """
+    with _switch_tracer_mode_guard_(is_train=False):
+        yield
 
 
 @signature_safe_contextmanager
