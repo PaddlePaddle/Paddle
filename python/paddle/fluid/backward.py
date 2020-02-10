@@ -1038,7 +1038,7 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
                     '''
                     if op_desc.type() not in ['rnn_memory_helper_grad']:
                         ops_to_remove.append(op_idx)
-                    continue
+                        continue
 
         new_vars = set()
         # create new gradient variables
