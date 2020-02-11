@@ -76,8 +76,8 @@ template <typename DeviceContext, typename T>
 class ConcatKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto ins = ctx.MultiInput<framework::Tensor>("X");
-    framework::Tensor* out = ctx.Output<framework::Tensor>("Out");
+    auto ins = ctx.MultiInput<framework::LoDTensor>("X");
+    framework::LoDTensor* out = ctx.Output<framework::LoDTensor>("Out");
     PADDLE_ENFORCE_EQ(ins[0] != nullptr, true, "The input should not be null.");
     auto axis = ctx.Attr<int>("axis");
     bool need_resize_out_dims = false;
@@ -101,6 +101,17 @@ class ConcatKernel : public framework::OpKernel<T> {
     }
     auto place = ctx.GetPlace();
     out->mutable_data<T>(place);
+    if (axis == 0) {
+      auto out_lod = ins[0]->lod();
+      for (size_t i = 1; i < ins.size(); ++i) {
+        auto in_lod = ins[i]->lod();
+        size_t lod_s = out_lod[0][out_lod[0].size() - 1];
+        for (size_t j = 1; j < in_lod[0].size(); j++) {
+          out_lod[0].push_back(lod_s + in_lod[0][j]);
+        }
+      }
+      out->set_lod(out_lod);
+    }
 
     // Sometimes direct copies will be faster, this maybe need deeply analysis.
     if (axis == 0 && ins.size() < 10) {
