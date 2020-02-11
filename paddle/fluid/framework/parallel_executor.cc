@@ -82,6 +82,8 @@ class ParallelExecutorPrivate {
     }
   }
 
+  void SetHasFeed(size_t dev_idx, bool has_feed = true);
+
   ir::Graph *ApplyMemoryOptimizePass(ir::Graph *graph);
 
   inline bool HasGarbageCollectors() const { return !gcs_.empty(); }
@@ -259,6 +261,14 @@ class ParallelExecutorPrivate {
   ir::GarbageCollectorMap gcs_;
 };
 
+void ParallelExecutorPrivate::SetHasFeed(size_t dev_idx, bool has_feed) {
+  auto *exe =
+      dynamic_cast<details::ParallelSSAGraphExecutor *>(executor_.get());
+  if (exe) {
+    exe->SetHasFeed(dev_idx, has_feed);
+  }
+}
+
 ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
   if (FLAGS_use_ngraph) {
     LOG_FIRST_N(WARNING, 1)
@@ -378,6 +388,21 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
   }
   return graph;
 }
+
+class ResetHasFeedGuard {
+ public:
+  explicit ResetHasFeedGuard(ParallelExecutorPrivate *pe_member)
+      : pe_member_(pe_member) {}
+
+  ~ResetHasFeedGuard() {
+    for (size_t i = 0; i < pe_member_->places_.size(); ++i) {
+      pe_member_->SetHasFeed(i, false);
+    }
+  }
+
+ private:
+  ParallelExecutorPrivate *pe_member_;
+};
 
 size_t ParallelExecutor::DeviceCount() const { return member_->places_.size(); }
 
@@ -606,18 +631,34 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
         "Paddle should be compiled with CUDA for ParallelGraph Execution.");
 #endif
   } else {
-    if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
-      VLOG(3) << "use ThreadedSSAGraphExecutor";
-      member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
+    bool has_drop_last_read_op = details::HasDropLastReadOp(*graph);
+    auto possible_inference_graphs =
+        details::TrySeparateToMultipleSingleDeviceGraphs(graph);
+    if (!possible_inference_graphs.empty()) {
+      VLOG(5) << "Use ParallelSSAGraphExecutor in inference phase";
+      auto *pg_exe = new details::ParallelSSAGraphExecutor(
           exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
-          member_->places_, graph));
+          member_->places_, std::move(possible_inference_graphs));
+      if (!has_drop_last_read_op) {
+        VLOG(5) << "Enable partial feed support in inference phase";
+        pg_exe->EnablePartialFeedSupport();
+      }
+      final_graphs = pg_exe->Graphs();
+      member_->executor_.reset(pg_exe);
     } else {
-      VLOG(3) << "use FastThreadedSSAGraphExecutor";
-      member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
-          exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
-          member_->places_, graph));
+      if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
+        VLOG(3) << "use ThreadedSSAGraphExecutor";
+        member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
+            exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
+            member_->places_, graph));
+      } else {
+        VLOG(3) << "use FastThreadedSSAGraphExecutor";
+        member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
+            exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
+            member_->places_, graph));
+      }
+      final_graphs.emplace_back(graph);
     }
-    final_graphs.emplace_back(graph);
   }
 
   VLOG(3) << "use ScopeBufferedSSAGraphExecutor";
@@ -724,6 +765,8 @@ FeedFetchList ParallelExecutor::Run(
 
   platform::RecordBlock b(0);
 
+  ResetHasFeedGuard reset_has_feed_guard(member_);
+
   ir::SkipMemOptVarsGuard guard(&(member_->mem_opt_var_infos_), fetch_tensors,
                                 member_->HasGarbageCollectors());
 
@@ -734,9 +777,8 @@ FeedFetchList ParallelExecutor::Run(
 
 void ParallelExecutor::FeedTensorsIntoLocalScopes(
     const std::vector<std::unordered_map<std::string, LoDTensor>> &tensors) {
-  PADDLE_ENFORCE_EQ(member_->local_scopes_.size(), tensors.size());
-
   for (size_t i = 0; i < tensors.size(); ++i) {
+    member_->SetHasFeed(i);
     auto &map = tensors[i];
     for (auto &pair : map) {
       bool is_persistable = member_->IsPersistable(pair.first);
@@ -757,8 +799,10 @@ void ParallelExecutor::FeedTensorsIntoLocalScopes(
 void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
     const std::unordered_map<std::string, LoDTensor> &tensors) {
   size_t num_places = member_->places_.size();
+  bool has_non_broadcast_var = false;
   for (auto &pair : tensors) {
     bool is_persistable = member_->IsPersistable(pair.first);
+    bool is_broadcast = false;
     VLOG(3) << "Split " << (is_persistable ? "persistable" : "no persistable")
             << " data (" << pair.first << "), dim:" << pair.second.dims()
             << ", place: " << pair.second.place();
@@ -789,6 +833,7 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
           auto &tmp = lod_tensors.back();
           framework::TensorCopy(pair.second, member_->places_.at(i), &tmp);
         }
+        is_broadcast = true;
       }
       if (lod_tensors.size() != num_places) {
         auto error_info = string::Sprintf(
@@ -804,6 +849,10 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
       }
     }
 
+    if (!is_broadcast) {
+      has_non_broadcast_var = true;
+    }
+
     for (size_t j = 0; j < num_places; ++j) {
       auto *feed_scope = is_persistable ? member_->local_scopes_[j]
                                         : member_->local_exec_scopes_[j];
@@ -812,6 +861,15 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
       auto t = feed_var->GetMutable<LoDTensor>();
       t->ShareDataWith(lod_tensors[j]);
       t->set_lod(lod_tensors[j].lod());
+      if (!is_broadcast) {
+        member_->SetHasFeed(j);
+      }
+    }
+  }
+
+  if (!has_non_broadcast_var) {
+    for (size_t j = 0; j < num_places; ++j) {
+      member_->SetHasFeed(j);
     }
   }
 }

@@ -46,10 +46,12 @@ class MultiDeviceFeedReader {
       const std::vector<std::vector<int>> &shapes,
       const std::vector<framework::proto::VarType::Type> &dtypes,
       const std::vector<bool> &need_check_feed,
-      const std::vector<platform::Place> &dst_places, bool use_double_buffer)
+      const std::vector<platform::Place> &dst_places, bool use_double_buffer,
+      bool drop_last)
       : queue_(queue),
         names_(names),
-        pool_(new ::ThreadPool(dst_places.size())) {
+        pool_(new ::ThreadPool(dst_places.size())),
+        drop_last_(drop_last) {
     std::vector<framework::DDim> dims;
     for (auto &shape : shapes) {
       dims.push_back(framework::make_ddim(shape));
@@ -79,6 +81,8 @@ class MultiDeviceFeedReader {
     exceptions_.assign(dst_places.size(), nullptr);
     ReadAsync();
   }
+
+  bool DropLast() const { return drop_last_; }
 
   ResultDictList ReadNext() {
     CheckNextStatus();
@@ -122,24 +126,29 @@ class MultiDeviceFeedReader {
   };
 
   Status WaitFutures(std::exception_ptr *excep) {
-    bool is_success = true;
     *excep = nullptr;
+    size_t success_num = 0;
     for (size_t i = 0; i < futures_.size(); ++i) {
       auto each_status = futures_[i].get();
       if (UNLIKELY(each_status != Status::kSuccess)) {
-        is_success = false;
         if (UNLIKELY(each_status == Status::kException)) {
           PADDLE_ENFORCE_NOT_NULL(exceptions_[i]);
           *excep = exceptions_[i];
           exceptions_[i] = nullptr;
         }
+      } else {
+        ++success_num;
       }
     }
 
     if (UNLIKELY(*excep)) {
       return Status::kException;
+    }
+
+    if (drop_last_) {
+      return success_num == futures_.size() ? Status::kSuccess : Status::kEOF;
     } else {
-      return is_success ? Status::kSuccess : Status::kEOF;
+      return success_num > 0 ? Status::kSuccess : Status::kEOF;
     }
   }
 
@@ -193,6 +202,7 @@ class MultiDeviceFeedReader {
   std::vector<std::exception_ptr> exceptions_;
 
   std::vector<std::vector<framework::LoDTensor>> ret_;
+  bool drop_last_;
 };
 
 void BindReader(py::module *module) {
@@ -245,10 +255,10 @@ void BindReader(py::module *module) {
            const std::vector<framework::proto::VarType::Type> &dtypes,
            const std::vector<bool> &need_check_feed,
            const std::vector<platform::Place> &dst_places,
-           bool use_double_buffer) {
+           bool use_double_buffer, bool drop_last) {
           return new MultiDeviceFeedReader(queue, names, shapes, dtypes,
                                            need_check_feed, dst_places,
-                                           use_double_buffer);
+                                           use_double_buffer, drop_last);
         },
         py::return_value_policy::take_ownership);
 }

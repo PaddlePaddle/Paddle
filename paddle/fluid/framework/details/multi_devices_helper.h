@@ -100,6 +100,11 @@ inline std::vector<std::string> GetOpRoleVarsOrEmpty(const OpDesc &op) {
   return boost::get<std::vector<std::string>>(iter->second);
 }
 
+std::vector<std::unique_ptr<ir::Graph>> TrySeparateToMultipleSingleDeviceGraphs(
+    ir::Graph *graph);
+
+bool HasDropLastReadOp(const ir::Graph &graph);
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

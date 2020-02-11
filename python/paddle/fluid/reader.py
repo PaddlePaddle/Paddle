@@ -87,7 +87,8 @@ class DataLoader(object):
                        use_double_buffer=True,
                        iterable=True,
                        return_list=False,
-                       use_multiprocess=False):
+                       use_multiprocess=False,
+                       drop_last=True):
         """
         Create a DataLoader object for loading data from Python generator. 
         Data would be prefetched using Python thread and be pushed
@@ -276,7 +277,7 @@ class DataLoader(object):
                                           return_list, use_multiprocess)
         else:
             return GeneratorLoader(feed_list, capacity, use_double_buffer,
-                                   iterable, return_list)
+                                   iterable, return_list, drop_last)
 
     @staticmethod
     def from_dataset(dataset, places, drop_last=True):
@@ -409,7 +410,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
             core.Variable(), self._capacity)
         self._reader = core.create_py_reader(
             self.queue, self._var_names, self._shapes, self._dtypes,
-            self._need_check_feed, self._places, self._use_double_buffer)
+            self._need_check_feed, self._places, self._use_double_buffer, True)
 
     def _start(self):
         if self._use_multiprocess:
@@ -614,12 +615,14 @@ class GeneratorLoader(DataLoaderBase):
                  capacity=None,
                  use_double_buffer=True,
                  iterable=True,
-                 return_list=False):
+                 return_list=False,
+                 drop_last=True):
         self._tensor_reader = None
         self._places = None
         self._thread = None
         self._queue = None
         self._feed_list = feed_list
+        self._drop_last = drop_last
         if not capacity:
             raise ValueError("Please give value to capacity.")
         self._iterable = iterable
@@ -651,7 +654,8 @@ class GeneratorLoader(DataLoaderBase):
                                                           self._capacity)
         self._reader = core.create_py_reader(
             self.queue, self._var_names, self._shapes, self._dtypes,
-            self._need_check_feed, self._places, self._use_double_buffer)
+            self._need_check_feed, self._places, self._use_double_buffer,
+            self._drop_last)
 
     def _init_non_iterable(self):
         lod_levels = []
@@ -716,7 +720,8 @@ class GeneratorLoader(DataLoaderBase):
         default_main_program().current_block().append_op(
             type='read',
             inputs={'Reader': [self._reader]},
-            outputs={'Out': self._feed_list})
+            outputs={'Out': self._feed_list},
+            attrs={'drop_last': self._drop_last})
 
     @property
     def queue(self):
