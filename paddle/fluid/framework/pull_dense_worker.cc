@@ -94,7 +94,8 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
             boost::get<platform::CUDAPlace>(place_),
             w,
             platform::CPUPlace(),
-            dense_region[i].data(), sizeof(float) * tensor->numel());
+            dense_region[i].data(), sizeof(float) * tensor->numel(),
+            nullptr);
       }
     }
   }
