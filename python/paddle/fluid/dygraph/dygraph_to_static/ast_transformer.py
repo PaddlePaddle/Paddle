@@ -15,8 +15,14 @@
 from __future__ import print_function
 
 import ast
+from ast_utils import *
+from paddle.fluid import unique_name
 
 __all__ = ['AstNodeWrapper', 'DygraphToStaticAst', 'StaticAnalysisVisitor']
+
+DECORATOR_NAME = 'dygraph_to_static_output'
+TRUE_FUNC_PRFIX = 'true_fn'
+FALSE_FUNC_PRFIX = 'false_fn'
 
 
 class NodeVarType(object):
@@ -105,12 +111,85 @@ class DygraphToStaticAst(ast.NodeTransformer):
     """
 
     def get_static_ast(self, root):
-        # save root for some analysis may need global AST 
+        # save root for some analysis may need global AST
         self.root = root
         self.static_analysis_root = StaticAnalysisVisitor(
             root).get_node_wrapper_root()
+        self.new_func_nodes = []
+        root.node_info = AstNodeWrapper(root)
+        self.static_analysis_root = root
+        self._visit(root)
+
         self.transfer_from_node_type(self.static_analysis_root)
+        print(codegen.to_source(self.static_analysis_root))
+
         return self.static_analysis_root
 
+    def _visit(self, root):
+        # TODO construct a tree whose nodes are AstNodeWrapper
+        # This step also does static node type analysis
+        for node in ast.walk(root):
+            for child in ast.iter_child_nodes(node):
+                node_info = AstNodeWrapper(node)
+                node_info.parent = node
+                child.ast_info = node_info
+
     def transfer_from_node_type(self, node):
-        print("Not implemented")
+        self.visit(node)
+        # TODO: need to be more elegant implement.
+        node.body = self.new_func_nodes + node.body
+
+    def visit_If(self, node):
+        assert isinstance(node, ast.If)
+        self.generic_visit(node)
+        if is_control_flow_if(node.test):
+            pred_node = node.test
+            true_func_node, return_name_ids = wrapper_to_func(
+                node.body, name=unique_name.generate(TRUE_FUNC_PRFIX))
+            false_func_node, _ = wrapper_to_func(
+                node.orelse,
+                name=unique_name.generate(FALSE_FUNC_PRFIX),
+                return_name_ids=return_name_ids)
+            self.new_func_nodes += [true_func_node, false_func_node]
+            # create layers.cond
+            new_node = create_cond_node(return_name_ids, pred_node,
+                                        true_func_node, false_func_node)
+            return new_node
+        else:
+            return node
+
+    def visit_Subscript(self, node):
+        """
+        x.numpy()[i]  --> slice
+        """
+        # layers.api(x_v).numpy()[i] > 10
+        # ==> layers.slice(layers.api(x_v), [i], [i]) > 10
+        need_wrapper = is_numpy_slice(node)
+        self.generic_visit(node)
+        if need_wrapper:
+            node = wrapper_slice(node)
+        return node
+
+        node = ast.Name(id='x_v', ctx=ast.Load())
+        return node
+
+    def visit_Call(self, node):
+        if isinstance(node.func, ast.Attribute):
+            attribute = node.func
+            if attribute.attr == 'numpy':
+                node = attribute.value
+                return node
+        return node
+
+    def visit_Compare(self, node):
+        self.generic_visit(node)
+        return node
+
+    def visit_FunctionDef(self, node):
+        self.generic_visit(node)
+        if hasattr(node, 'decorator_list'):
+            decorator_list = [
+                d for d in node.decorator_list if d.id != DECORATOR_NAME
+            ]
+            node.decorator_list = decorator_list
+        return node
