@@ -110,7 +110,7 @@ class DistMultiTrainer : public MultiTrainer {
   int dump_file_num_;
 };
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 class PipelineTrainer : public TrainerBase {
  public:
   PipelineTrainer() {}
