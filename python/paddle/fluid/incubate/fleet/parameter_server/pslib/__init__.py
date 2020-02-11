@@ -51,6 +51,9 @@ class PSLib(Fleet):
         self._client2client_connect_timeout_ms = connect_timeout_ms
         self._client2client_max_retry = max_retry
 
+    def set_pull_local_thread_num(self, thread_num):
+        self._fleet_ptr.set_pull_local_thread_num(thread_num)
+
     def init_worker(self):
         """
         init_worker(): will be called by user. When a user knows current process is_server(), he/she

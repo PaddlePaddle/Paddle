@@ -428,6 +428,16 @@ class InMemoryDataset(DatasetBase):
         self.merge_by_lineid = True
         self.parse_ins_id = True
 
+    def set_generate_unique_feasigns(self, generate_uni_feasigns, shard_num):
+        self.dataset.set_generate_unique_feasigns(generate_uni_feasigns)
+        self.gen_uni_feasigns = generate_uni_feasigns
+        self.local_shard_num = shard_num
+
+    def generate_local_tables_unlock(self, table_id, fea_dim, read_thread_num,
+                                     consume_thread_num, shard_num):
+        self.dataset.generate_local_tables_unlock(
+            table_id, fea_dim, read_thread_num, consume_thread_num, shard_num)
+
     def load_into_memory(self):
         """
         Load data into memory
