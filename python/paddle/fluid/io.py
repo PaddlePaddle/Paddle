@@ -35,6 +35,7 @@ from paddle.fluid.framework import Program, Parameter, default_main_program, def
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.log_helper import get_logger
 from . import reader
+from . import unique_name
 from .reader import *
 from . import core
 from .. import compat as cpt
@@ -265,17 +266,21 @@ def save_vars(executor,
             fluid.io.save_vars(executor=exe, dirname=param_path, main_program=main_prog, vars=None, predicate = name_has_fc)
             # all variables whose names contain "fc " are saved.
     """
-    save_dirname = os.path.normpath(dirname)
+    save_to_memory = False
+    if dirname is None and filename is None:
+        save_to_memory = True
+
     main_program = _get_valid_program(main_program)
 
     if vars is None:
-        save_vars(
+        return save_vars(
             executor,
             main_program=main_program,
-            dirname=save_dirname,
+            dirname=dirname,
             vars=list(filter(predicate, main_program.list_vars())),
             filename=filename)
     else:
+        params_var_name = unique_name.generate("saved_params")
         # give warning when there is no var in model
         if len(list(vars)) == 0:
             warnings.warn(
@@ -292,33 +297,45 @@ def save_vars(executor,
             if each_var.type == core.VarDesc.VarType.RAW:
                 continue
             new_var = _clone_var_in_block_(save_block, each_var)
-            if filename is None:
-                save_file_path = os.path.join(save_dirname, new_var.name)
-                save_file_path = os.path.normpath(save_file_path)
+            if filename is None and save_to_memory is False:
+                save_file_path = os.path.join(
+                    os.path.normpath(dirname), new_var.name)
                 save_block.append_op(
                     type='save',
                     inputs={'X': [new_var]},
                     outputs={},
-                    attrs={'file_path': save_file_path})
+                    attrs={'file_path': os.path.normpath(save_file_path)})
             else:
                 save_var_map[new_var.name] = new_var
 
-        if filename is not None:
+        if filename is not None or save_to_memory:
             save_var_list = []
             for name in sorted(save_var_map.keys()):
                 save_var_list.append(save_var_map[name])
 
+            save_path = str()
+            if save_to_memory is False:
+                save_path = os.path.join(os.path.normpath(dirname), filename)
+
+            saved_params = save_block.create_var(
+                type=core.VarDesc.VarType.RAW, name=params_var_name)
+            saved_params.desc.set_persistable(True)
             save_block.append_op(
                 type='save_combine',
                 inputs={'X': save_var_list},
-                outputs={},
-                attrs={'file_path': os.path.join(save_dirname, filename)})
+                outputs={'Y': saved_params},
+                attrs={
+                    'file_path': save_path,
+                    'save_to_memory': save_to_memory
+                })
 
         #NOTE(zhiqiu): save op will add variable kLookupTablePath in save_program.desc,
         # which leads to diff on save_program and its desc. Call _sync_with_cpp
         # to keep consistency.
         save_program._sync_with_cpp()
         executor.run(save_program)
+        if save_to_memory:
+            return global_scope().find_var(params_var_name).get_bytes()
 
 
 def save_params(executor, dirname, main_program=None, filename=None):
@@ -381,7 +398,7 @@ def save_params(executor, dirname, main_program=None, filename=None):
             # The parameters weights and bias of the fc layer in the network are going to 
             # be saved in different files in the path "./my_paddle_model" 
     """
-    save_vars(
+    return save_vars(
         executor,
         dirname=dirname,
         main_program=main_program,
@@ -594,10 +611,10 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
             # "./my_paddle_model"
     """
     if main_program and main_program._is_distributed:
-        _save_distributed_persistables(
+        return _save_distributed_persistables(
             executor, dirname=dirname, main_program=main_program)
     else:
-        save_vars(
+        return save_vars(
             executor,
             dirname=dirname,
             main_program=main_program,
