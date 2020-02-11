@@ -40,7 +40,7 @@ class FusionGroupPassTest(PassTest):
         self.num_fused_ops = 1
 
     def test_check_output(self):
-        use_gpu_set = [True]
+        use_gpu_set = []
         if core.is_compiled_with_cuda():
             use_gpu_set.append(True)
         for use_gpu in use_gpu_set:
@@ -69,7 +69,7 @@ class FusionGroupPassTest1(PassTest):
         self.num_fused_ops = 1
 
     def test_check_output(self):
-        use_gpu_set = [True]
+        use_gpu_set = []
         if core.is_compiled_with_cuda():
             use_gpu_set.append(True)
         for use_gpu in use_gpu_set:
@@ -99,7 +99,7 @@ class FusionGroupPassTest2(PassTest):
         self.num_fused_ops = 1
 
     def test_check_output(self):
-        use_gpu_set = [True]
+        use_gpu_set = []
         if core.is_compiled_with_cuda():
             use_gpu_set.append(True)
         for use_gpu in use_gpu_set:
