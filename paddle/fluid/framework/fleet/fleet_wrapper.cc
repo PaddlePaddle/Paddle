@@ -110,7 +110,7 @@ uint64_t FleetWrapper::RunServer() {
 uint64_t FleetWrapper::RunServer(const std::string& ip, uint32_t port) {
 #ifdef PADDLE_WITH_PSLIB
   VLOG(3) << "Going to run server with ip " << ip << " port " << port;
-  auto ret = pslib_ptr_->run_server();
+  auto ret = pslib_ptr_->run_server(ip, port);
   return ret;
 #else
   return 0;
@@ -317,7 +317,7 @@ void FleetWrapper::PushDenseVarsAsync(
           platform::CPUPlace(),
           dense_grad_regions_[i].data(),
           boost::get<platform::CUDAPlace>(place),
-          g_data, sizeof(float) * count);
+          g_data, sizeof(float) * count, nullptr);
       g = dense_grad_regions_[i].data();
     }
     #endif
@@ -439,7 +439,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
               platform::CPUPlace(),
               (*push_values)[fea_idx].data() + offset + slot_offset,
               boost::get<platform::CUDAPlace>(place),
-              g, sizeof(float) * emb_dim);
+              g, sizeof(float) * emb_dim, nullptr);
         }
         #endif
       } else {
@@ -454,7 +454,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
               platform::CPUPlace(),
               (*push_values)[fea_idx].data() + offset + slot_offset,
               boost::get<platform::CUDAPlace>(place),
-              g, sizeof(float) * emb_dim);
+              g, sizeof(float) * emb_dim, nullptr);
         }
         #endif
         (*push_values)[fea_idx][show_index] = 1.0f;
