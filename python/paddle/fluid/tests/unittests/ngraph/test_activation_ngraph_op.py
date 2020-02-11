@@ -21,7 +21,7 @@ from op_test import OpTest, skip_check_grad_ci
 from test_activation_op import TestAbs, TestGelu, TestSigmoid, TestSquare, TestRelu, TestTanh
 
 
-@skip_check_grad_ci(reason="Use float32 in ngraph relu op.")
+#@skip_check_grad_ci(reason="Use float32 in ngraph relu op.")
 class TestNGRAPHReluDim4(TestRelu):
     def setUp(self):
         super(TestNGRAPHReluDim4, self).setUp()
