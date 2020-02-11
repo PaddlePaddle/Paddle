@@ -14,6 +14,9 @@
 
 package paddle
 
+// #cgo CFLAGS: -Ipaddle_c/paddle/include
+// #cgo LDFLAGS: -Lpaddle_c/paddle/lib -lpaddle_fluid_c
+// #include <stdbool.h>
 // #include "paddle_c_api.h"
 import "C"
 
@@ -26,48 +29,48 @@ type AnalysisConfig struct {
 func NewAnalysisConfig() *AnalysisConfig {
 	c_config := C.PD_NewAnalysisConfig()
 	config := &AnalysisConfig{c: c_config}
-    runtime.SetFinalizer(config, (*config).finalizer)
+	runtime.SetFinalizer(config, (*AnalysisConfig).finalize)
 	return config
 }
 
-func (config *AnalysisConfig) finalizer() {
-    C.PD_DeleteAnalysisConfig(config.c)
+func (config *AnalysisConfig) finalize() {
+	C.PD_DeleteAnalysisConfig(config.c)
 }
 
-func (config *AnalysisConfig) SetModel(model, params str) {
-	C.PD_SetModel(config.c, model, params)
+func (config *AnalysisConfig) SetModel(model, params string) {
+	C.PD_SetModel(config.c, C.CString(model), C.CString(params))
 }
 
 func (config *AnalysisConfig) ModelDir() string {
-	return C.PD_ModelDir(config.c)
+	return C.GoString(C.PD_ModelDir(config.c))
 }
 
 func (config *AnalysisConfig) ProgFile() string {
-	return C.PD_ProgFile(config.c)
+	return C.GoString(C.PD_ProgFile(config.c))
 }
 
-func (config *AnalysisConfig) ParamsFile() {
-	return C.PD_ParamsFile(config.c)
+func (config *AnalysisConfig) ParamsFile() string {
+	return C.GoString(C.PD_ParamsFile(config.c))
 }
 
 func (config *AnalysisConfig) EnableUseGpu(memory_pool_init_size_mb uint64, device_id int) {
-	C.PD_EnableUseGpu(config.c, memory_pool_init_size_mb, device_id)
+	C.PD_EnableUseGpu(config.c, C.ulong(memory_pool_init_size_mb), C.int(device_id))
 }
 
-func (config *AnalysisConfig) DisableUseGpu() {
-	C.PD_DisableUseGpu(config.c)
+func (config *AnalysisConfig) DisableGpu() {
+	C.PD_DisableGpu(config.c)
 }
 
 func (config *AnalysisConfig) UseGpu() bool {
-	return C.PD_UseGpu(config.c)
+	return ConvertCBooleanToGo(C.PD_UseGpu(config.c))
 }
 
 func (config *AnalysisConfig) GpuDeviceId() int {
-	return C.PD_GpuDeviceId(config.c)
+	return int(C.PD_GpuDeviceId(config.c))
 }
 
 func (config *AnalysisConfig) MemoryPoolInitSizeMb() int {
-	return C.PD_MemoryPoolInitSizeMb(config.c)
+	return int(C.PD_MemoryPoolInitSizeMb(config.c))
 }
 
 func (config *AnalysisConfig) EnableCudnn() {
@@ -75,41 +78,41 @@ func (config *AnalysisConfig) EnableCudnn() {
 }
 
 func (config *AnalysisConfig) CudnnEnabled() bool {
-	return C.PD_CudnnEnabled(config.c)
+	return ConvertCBooleanToGo(C.PD_CudnnEnabled(config.c))
 }
 
 func (config *AnalysisConfig) SwitchIrOptim(x bool) {
-	C.PD_SwitchIrOptim(config.c, x)
+	C.PD_SwitchIrOptim(config.c, C.bool(x))
 }
 
 func (config *AnalysisConfig) IrOptim() bool {
-	return C.PD_IrOptim(config.c)
+	return ConvertCBooleanToGo(C.PD_IrOptim(config.c))
 }
 
 func (config *AnalysisConfig) SwitchUseFeedFetchOps(x bool) {
-	C.PD_SwitchUseFeedFetchOps(config.c, x)
+	C.PD_SwitchUseFeedFetchOps(config.c, C.bool(x))
 }
 
-func (config *AnalysisConfig) UseFeedFetchOps() bool {
-	return C.PD_UseFeedFetchOps(config.c)
+func (config *AnalysisConfig) UseFeedFetchOpsEnabled() bool {
+	return ConvertCBooleanToGo(C.PD_UseFeedFetchOpsEnabled(config.c))
 }
 
 func (config *AnalysisConfig) SwitchSpecifyInputNames(x bool) {
-	C.PD_SwitchSpecifyInputNames(config.c, x)
+	C.PD_SwitchSpecifyInputNames(config.c, C.bool(x))
 }
 
 func (config *AnalysisConfig) SpecifyInputName() bool {
-	return C.PD_SpecifyInputName(config.c)
+	return ConvertCBooleanToGo(C.PD_SpecifyInputName(config.c))
 }
 
 //func (config *AnalysisConfig) EnableTensorRtEngine(workspace_size int)
 
 func (config *AnalysisConfig) TensorrtEngineEnabled() bool {
-	return C.PD_TensorrtEngineEnabled(config.c)
+	return ConvertCBooleanToGo(C.PD_TensorrtEngineEnabled(config.c))
 }
 
 func (config *AnalysisConfig) SwitchIrDebug(x bool) {
-	C.PD_SwitchIrDebug(config.c, x)
+	C.PD_SwitchIrDebug(config.c, C.bool(x))
 }
 
 func (config *AnalysisConfig) EnableNgraph() {
@@ -117,7 +120,7 @@ func (config *AnalysisConfig) EnableNgraph() {
 }
 
 func (config *AnalysisConfig) NgraphEnabled() bool {
-	return C.PD_NgraphEnabled(config.c)
+	return ConvertCBooleanToGo(C.PD_NgraphEnabled(config.c))
 }
 
 func (config *AnalysisConfig) EnableMkldnn() {
@@ -125,11 +128,11 @@ func (config *AnalysisConfig) EnableMkldnn() {
 }
 
 func (config *AnalysisConfig) SetCpuMathLibraryNumThreads(n int) {
-	C.PD_SetCpuMathLibraryNumThreads(config.c, n)
+	C.PD_SetCpuMathLibraryNumThreads(config.c, C.int(n))
 }
 
 func (config *AnalysisConfig) CpuMathLibraryNumThreads() int {
-	return C.PD_CpuMathLibraryNumThreads(config.c)
+	return int(C.PD_CpuMathLibraryNumThreads(config.c))
 }
 
 func (config *AnalysisConfig) EnableMkldnnQuantizer() {
@@ -137,7 +140,7 @@ func (config *AnalysisConfig) EnableMkldnnQuantizer() {
 }
 
 func (config *AnalysisConfig) MkldnnQuantizerEnabled() bool {
-	return C.PD_MkldnnQuantizerEnabled()
+	return ConvertCBooleanToGo(C.PD_MkldnnQuantizerEnabled(config.c))
 }
 
 // SetModelBuffer
@@ -148,7 +151,7 @@ func (config *AnalysisConfig) EnableMemoryOptim() {
 }
 
 func (config *AnalysisConfig) MemoryOptimEnabled() bool {
-	return C.PD_MemoryOptimEnabled(config.c)
+	return ConvertCBooleanToGo(C.PD_MemoryOptimEnabled(config.c))
 }
 
 func (config *AnalysisConfig) EnableProfile() {
@@ -156,7 +159,7 @@ func (config *AnalysisConfig) EnableProfile() {
 }
 
 func (config *AnalysisConfig) ProfileEnabled() bool {
-	return C.PD_ProfileEnabled(config.c)
+	return ConvertCBooleanToGo(C.PD_ProfileEnabled(config.c))
 }
 
 // SetInValid

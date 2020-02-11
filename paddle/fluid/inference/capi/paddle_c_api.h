@@ -129,6 +129,7 @@ PADDLE_CAPI_EXPORT extern bool PD_PredictorZeroCopyRun(
 
 // AnalysisConfig
 enum Precision { kFloat32 = 0, kInt8, kHalf };
+typedef enum Precision Precision;
 
 PADDLE_CAPI_EXPORT extern PD_AnalysisConfig* PD_NewAnalysisConfig();
 
@@ -137,7 +138,7 @@ PADDLE_CAPI_EXPORT extern void PD_DeleteAnalysisConfig(
 
 PADDLE_CAPI_EXPORT extern void PD_SetModel(PD_AnalysisConfig* config,
                                            const char* model_dir,
-                                           const char* params_path = NULL);
+                                           const char* params_path);
 
 PADDLE_CAPI_EXPORT
 extern void PD_SetProgFile(PD_AnalysisConfig* config, const char* x);
@@ -159,7 +160,7 @@ PADDLE_CAPI_EXPORT extern const char* PD_ParamsFile(
 
 PADDLE_CAPI_EXPORT extern void PD_EnableUseGpu(
     PD_AnalysisConfig* config, uint64_t memory_pool_init_size_mb,
-    int device_id = 0);
+    int device_id);
 
 PADDLE_CAPI_EXPORT extern void PD_DisableGpu(PD_AnalysisConfig* config);
 
@@ -178,27 +179,31 @@ PADDLE_CAPI_EXPORT extern void PD_EnableCUDNN(PD_AnalysisConfig* config);
 PADDLE_CAPI_EXPORT extern bool PD_CudnnEnabled(const PD_AnalysisConfig* config);
 
 PADDLE_CAPI_EXPORT extern void PD_SwitchIrOptim(PD_AnalysisConfig* config,
-                                                bool x = true);
+                                                bool x);
 
 PADDLE_CAPI_EXPORT extern bool PD_IrOptim(const PD_AnalysisConfig* config);
 
 PADDLE_CAPI_EXPORT extern void PD_SwitchUseFeedFetchOps(
-    PD_AnalysisConfig* config, bool x = true);
+    PD_AnalysisConfig* config, bool x);
 
 PADDLE_CAPI_EXPORT extern bool PD_UseFeedFetchOpsEnabled(
     const PD_AnalysisConfig* config);
 
 PADDLE_CAPI_EXPORT extern void PD_SwitchSpecifyInputNames(
-    PD_AnalysisConfig* config, bool x = true);
+    PD_AnalysisConfig* config, bool x);
 
 PADDLE_CAPI_EXPORT extern bool PD_SpecifyInputName(
     const PD_AnalysisConfig* config);
 
+// PADDLE_CAPI_EXPORT extern void PD_EnableTensorRtEngine(
+//    PD_AnalysisConfig* config, int workspace_size = 1 << 20,
+//    int max_batch_size = 1, int min_subgraph_size = 3,
+//    Precision precision = Precision::kFloat32, bool use_static = false,
+//    bool use_calib_mode = false);
 PADDLE_CAPI_EXPORT extern void PD_EnableTensorRtEngine(
-    PD_AnalysisConfig* config, int workspace_size = 1 << 20,
-    int max_batch_size = 1, int min_subgraph_size = 3,
-    Precision precision = Precision::kFloat32, bool use_static = false,
-    bool use_calib_mode = false);
+    PD_AnalysisConfig* config, int workspace_size, int max_batch_size,
+    int min_subgraph_size, Precision precision, bool use_static,
+    bool use_calib_mode);
 
 PADDLE_CAPI_EXPORT extern bool PD_TensorrtEngineEnabled(
     const PD_AnalysisConfig* config);
@@ -210,7 +215,7 @@ typedef struct PD_MaxInputShape {
 } PD_MaxInputShape;
 
 PADDLE_CAPI_EXPORT extern void PD_SwitchIrDebug(PD_AnalysisConfig* config,
-                                                bool x = true);
+                                                bool x);
 
 PADDLE_CAPI_EXPORT extern void PD_EnableNgraph(PD_AnalysisConfig* config);
 
