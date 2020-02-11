@@ -63,7 +63,7 @@ def _print_arguments(args):
     print("------------------------------------------------")
 
 
-def get_local_available_port(port):
+def get_local_available_port():
     from filelock import Timeout, FileLock
     import os
     import time
@@ -73,6 +73,7 @@ def get_local_available_port(port):
     lock_path = "/tmp/paddlepaddle_distributed_launch.lock"
     for step in range(local_start, 7030, 32):
         lock_file = lock_path + "." + str(step)
+        print("try to lock " + lock_file)
         lock = FileLock(lock_file, timeout=1)
         try:
             lock.acquire(timeout=1)
