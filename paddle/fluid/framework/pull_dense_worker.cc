@@ -85,10 +85,16 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
           dwp_param_.program_config(0).pull_dense_table_id(i));
       auto& var_names = dense_value_names_[tid];
       auto& dense_region = dense_regions_[tid];
-      std::cout << dense_region.size() << std::endl;
       for (auto i = 0u; i < var_names.size(); ++i) {
         Variable* var = (*root_scope_).FindVar(var_names[i]);
         LoDTensor* tensor = var->GetMutable<LoDTensor>();
+        std::cout << "var name: " << var_names[i] << " dim: " << tensor->numel() << std::endl;
+        if (!platform::is_cpu_place(tensor.place())) {
+            std::cout << "var name: " << var_names[i] << " dim: " << tensor->numel() << " in gpu " << std::endl;
+        }
+        else {
+            std::cout << "var name: " << var_names[i] << " dim: " << tensor->numel() << " in cpu " << std::endl;
+        }
         float* w = tensor->data<float>();
         memory::Copy(
             boost::get<platform::CUDAPlace>(place_),
