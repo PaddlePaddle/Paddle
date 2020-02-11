@@ -214,7 +214,8 @@ def save_vars(executor,
 
     Args:
         executor(Executor): The executor to run for saving variables.
-        dirname(str): The folder where to save variables.
+        dirname(str, optional): The folder where to save variables.
+                            When you need to save the parameter to the memory, set it to None.
         main_program(Program, optional): The program whose variables will be saved.
                                     If it is None, the default main program will
                                     be used automatically.
@@ -229,7 +230,8 @@ def save_vars(executor,
                                  Default: None
 
     Returns:
-        None
+        str: When saving parameters to a file, returns None.
+             When saving parameters to memory, returns a binary string containing parameters.
 
     Raises:
         TypeError: If `main_program` is not an instance of Program nor None.
@@ -363,7 +365,8 @@ def save_params(executor, dirname, main_program=None, filename=None):
     Args:
         executor(Executor): The executor to run for saving parameters, You can 
                             refer to :ref:`api_guide_executor_en`.
-        dirname(str): The saving directory path.
+        dirname(str, optional): The saving directory path.
+                            When you need to save the parameter to the memory, set it to None.
         main_program(Program, optional): The program whose parameters will be
                                          saved. You can refer to 
                                          :ref:`api_guide_Program_en` for more 
@@ -376,7 +379,8 @@ def save_params(executor, dirname, main_program=None, filename=None):
                                  Default: None
 
     Returns:
-        None
+        str: When saving parameters to a file, returns None.
+             When saving parameters to memory, returns a binary string containing parameters.
 
     Examples:
         .. code-block:: python
@@ -575,7 +579,8 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
         executor(Executor): The executor to run for saving persistable variables.
                             You can refer to :ref:`api_guide_executor_en` for 
                             more details.
-        dirname(str): The saving directory path.
+        dirname(str, optional): The saving directory path.
+                            When you need to save the parameter to the memory, set it to None.
         main_program(Program, optional): The program whose persistbale variables will
                                          be saved. You can refer to 
                                          :ref:`api_guide_Program_en` for more details.
@@ -587,7 +592,8 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
                                  Default: None.
 
     Returns:
-        None
+        str: When saving parameters to a file, returns None.
+             When saving parameters to memory, returns a binary string containing parameters.
 
     Examples:
         .. code-block:: python
