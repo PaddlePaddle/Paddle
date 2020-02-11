@@ -63,6 +63,28 @@ def _print_arguments(args):
     print("------------------------------------------------")
 
 
+def get_local_available_port(port):
+    from filelock import Timeout, FileLock
+    import os
+    import time
+
+    step = 0
+    local_start = 6070
+    lock_path = "/tmp/paddlepaddle_distributed_launch.lock"
+    for step in range(local_start, 7030, 32):
+        lock_file = lock_path + "." + str(step)
+        lock = FileLock(lock_file, timeout=1)
+        try:
+            lock.acquire(timeout=1)
+            return lock, step
+        except:
+            lock.release()
+            time.sleep(1)
+    print("can't find avilable port on this mac! please clean all lock files:" +
+          lock_path + ".*")
+    return None, None
+
+
 def _parse_args():
     """
     Helper function parsing the command line options
@@ -201,6 +223,12 @@ paddlecloud environment.".format(args.cluster_node_ips, node_ips))
                 for x in args.selected_gpus.split(',')
             ]
     selected_gpus_num = len(selected_gpus)
+
+    local_lock = None
+    if not args.use_paddlecloud and num_nodes <= 1:
+        local_lock, port = get_local_available_port()
+        if port is not None:
+            args.started_port = port
 
     if args.use_paddlecloud and num_nodes > 1:
         cloud_paddle_port = os.getenv("PADDLE_PORT", "")
