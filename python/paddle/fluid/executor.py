@@ -601,6 +601,24 @@ class Executor(object):
     '''
 
     def _prune_program(self, program, feed=None, fetch_list=None):
+        """
+        Prune operators and variables which are not needed to generate
+        :code:`fetch_list` and optimize operators. 
+        Prune operators and variables which are needed 
+        to generate variables to be feeded.  
+
+        Notes: This is a very low level API. Users should not use this API
+        directly. 
+
+        Args:
+            program(Program): the origin program
+            feed(list|dict): feed dict or list.
+            fetch_list(list|Variable|Operator): A list of variables or operators
+                need to be fetched
+
+        Returns:
+            Program:  A new, pruned program.
+        """
         compiled = isinstance(program, compiler.CompiledProgram)
         if compiled:
             if program._program:
@@ -643,6 +661,19 @@ class Executor(object):
         return program
 
     def _update_feed(self, program, feed):
+        """
+        Update the feed dict, remove the feed item which is pruned in program.  
+
+        Notes: This is a very low level API. Users should not use this API
+        directly. 
+
+        Args:
+            program(Program): the pruned program.
+            feed(list|dict): feed dict or list.
+
+        Returns:
+            feed:(list|dict)  updated feed.
+        """
         compiled = isinstance(program, compiler.CompiledProgram)
         if compiled:
             if program._program:
@@ -802,6 +833,9 @@ class Executor(object):
                 If the parameter is True, the model may run faster in the following cases:
                 the input program is :code:`fluid.Program`, and the parameters(program, feed variable name
                 and fetch_list variable) of this interface remains unchanged during running.
+                The default is False.
+            use_prune(bool): This parameter indicates whether the input :code:`Program` will be pruned. 
+                If the parameter is True, the program will be pruned accroding to the given feed and fetch_list.
                 The default is False.
                 
         Returns:
