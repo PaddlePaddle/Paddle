@@ -52,6 +52,33 @@ function(inference_qat2_int8_test target model_dir data_dir test_script use_mkld
                  --qat2)
 endfunction()
 
+# set batch_size 10 for UT only (avoid OOM). For whole dataset, use batch_size 20 
+function(inference_qat2_int8_nlp_test target model_dir data_path labels_path quantized_ops)
+    py_test(${target} SRCS "${CMAKE_CURRENT_SOURCE_DIR}/qat_int8_nlp_comparison.py"
+            ENVS FLAGS_OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
+                 OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
+                 FLAGS_use_mkldnn=true
+            ARGS --qat_model ${model_dir}/float
+                 --infer_data ${data_path}
+		 --labels ${labels_path}
+                 --batch_size 10
+                 --batch_num 2
+		 --quantized_ops ${quantized_ops}
+                 --acc_diff_threshold 0.1)
+endfunction()
+
+function(download_qat_data install_dir data_file)
+    if (NOT EXISTS ${install_dir}/${data_file})
+	    inference_download_and_uncompress(${install_dir} ${INFERENCE_URL}/int8 ${data_file})
+    endif()
+endfunction()
+
+function(download_qat_model install_dir data_file)
+    if (NOT EXISTS ${install_dir}/${data_file})
+	    inference_download_and_uncompress(${install_dir} ${INFERENCE_URL}/int8/QAT_models ${data_file})
+    endif()
+endfunction()
+
 function(save_qat_model_test target qat_model_dir fp32_model_save_path int8_model_save_path test_script)
     py_test(${target} SRCS ${test_script}
             ARGS --qat_model_path ${qat_model_dir}
@@ -173,6 +200,22 @@ if(LINUX AND WITH_MKLDNN)
 	endif()
 	# inference_qat_int8_test(test_qat_int8_vgg19_mkldnn ${QAT_VGG19_MODEL_DIR} ${DATASET_DIR} ${MKLDNN_QAT_TEST_FILE_PATH} true)
   
+	### QATv2 for NLP
+
+	set(QAT2_NLP_QUANTIZED_OPS "fc,reshape2,transpose2")
+
+	set(NLP_DATA_ARCHIVE "Ernie_dataset.tar.gz")
+	set(NLP_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie_dataset")
+	set(NLP_DATA_PATH "${NLP_DATA_DIR}/Ernie_dataset/1.8w.bs1")
+	set(NLP_LABLES_PATH "${NLP_DATA_DIR}/Ernie_dataset/label.xnli.dev")
+	download_qat_data(${NLP_DATA_DIR} ${NLP_DATA_ARCHIVE})
+
+	# QAT2 Ernie
+	set(QAT2_ERNIE_MODEL_ARCHIVE "ernie_qat.tar.gz")
+	set(QAT2_ERNIE_MODEL_DIR "${QAT_INSTALL_DIR}/Ernie_qat")
+	download_qat_model(${QAT2_ERNIE_MODEL_DIR} ${QAT2_ERNIE_MODEL_ARCHIVE})
+	inference_qat2_int8_nlp_test(test_qat2_int8_ernie_mkldnn ${QAT2_ERNIE_MODEL_DIR}/Ernie_qat ${NLP_DATA_PATH} ${NLP_LABLES_PATH} ${QAT2_NLP_QUANTIZED_OPS})
+
         set(QAT2_RESNET50_MODEL_DIR "${QAT_DATA_DIR}/ResNet50_qat_perf")
         if (NOT EXISTS ${QAT2_RESNET50_MODEL_DIR})
                 inference_download_and_uncompress(${QAT2_RESNET50_MODEL_DIR} "${QAT_MODELS_BASE_URL}" "ResNet50_qat_perf.tar.gz" )
@@ -190,13 +233,17 @@ if(LINUX AND WITH_MKLDNN)
         set(QAT2_INT8_SAVE_PATH "${QAT_DATA_DIR}/ResNet50_qat2_int8")
         set(QAT2_FP32_SAVE_PATH "${QAT_DATA_DIR}/ResNet50_qat2_fp32")
         set(SAVE_QAT2_MODEL_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/save_qat_model.py")
-        save_qat_model_test(save_qat2_model_resnet50 ${QAT2_RESNET50_MODEL_DIR}/ResNet50_qat_perf/float ${QAT2_FP32_SAVE_PATH} ${QAT2_INT8_SAVE_PATH} ${SAVE_QAT2_MODEL_SCRIPT} true)
+		save_qat_model_test(save_qat2_model_resnet50 ${QAT2_RESNET50_MODEL_DIR}/ResNet50_qat_perf/float ${QAT2_FP32_SAVE_PATH} ${QAT2_INT8_SAVE_PATH} ${SAVE_QAT2_MODEL_SCRIPT} true)
+		
+		set(QAT2_INT8_ERNIE_SAVE_PATH "${QAT_INSTALL_DIR}/Ernie_qat2_int8")
+		set(QAT2_FP32_ERNIE_SAVE_PATH "${QAT_INSTALL_DIR}/Ernie_qat2_fp32")
+		save_qat_model_test(save_qat2_model_ernie ${QAT2_ERNIE_MODEL_DIR}/Ernie_qat/float ${QAT2_FP32_ERNIE_SAVE_PATH} ${QAT2_INT8_ERNIE_SAVE_PATH} ${QAT2_NLP_QUANTIZED_OPS})
 
 endif()
 
 # Since the test for QAT FP32 & INT8 comparison supports only testing on Linux 
 # with MKL-DNN, we remove it here to not test it on other systems.
-list(REMOVE_ITEM TEST_OPS qat_int8_comparison.py)
+list(REMOVE_ITEM TEST_OPS qat_int8_comparison.py, qat_int8_nlp_comparison)
 
 foreach(src ${TEST_OPS})
     py_test(${src} SRCS ${src}.py)
