@@ -143,6 +143,12 @@ endfunction()
 set(inference_lib_deps third_party paddle_fluid paddle_fluid_c paddle_fluid_shared paddle_fluid_c_shared)
 add_custom_target(inference_lib_dist DEPENDS ${inference_lib_deps})
 
+
+set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/threadpool")
+copy(inference_lib_dist
+        SRCS ${THREADPOOL_INCLUDE_DIR}/ThreadPool.h
+        DSTS ${dst_dir})
+
 copy(inference_lib_dist
         SRCS ${CMAKE_CURRENT_BINARY_DIR}/CMakeCache.txt
         DSTS ${FLUID_INFERENCE_INSTALL_DIR})
