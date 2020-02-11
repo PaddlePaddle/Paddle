@@ -98,7 +98,7 @@ class ReferenceCountPassTestHelper {
         ir::PassRegistry::Instance().Get("reference_count_pass");
     ref_cnt_pass->SetNotOwned(ir::kMemOptVarInfoMapList, &mem_opt_var_infos_);
     ref_cnt_pass->SetNotOwned(ir::kLastLiveOpsOfVars, &last_live_ops_of_vars_);
-    ref_cnt_pass->Apply(&graph_);
+    ref_cnt_pass->Apply(&const_cast<ir::Graph &>(executor_->Graph()));
   }
 
   bool IsLastLivedOps(const std::string &name,

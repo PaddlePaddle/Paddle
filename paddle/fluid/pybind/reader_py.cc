@@ -20,6 +20,7 @@
 #include <utility>
 #include <vector>
 #include "Python.h"
+#include "boost/optional.hpp"
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/reader.h"
@@ -40,6 +41,58 @@ namespace pybind {
 
 namespace py = pybind11;
 namespace reader = operators::reader;
+
+// Check whether the tensor shape matches the VarDesc shape
+// Return the different shape if exists
+static boost::optional<std::vector<int64_t>> DiffTensorShapeWithVarDesc(
+    const framework::LoDTensor &tensor, const framework::VarDesc &var_desc,
+    size_t num_places) {
+  auto tensor_shape = tensor.dims();
+  auto desc_shape = var_desc.GetShape();
+
+  int64_t rank = tensor_shape.size();
+
+  if (UNLIKELY(rank == 0)) {
+    if (desc_shape.size() != 0) {  // Tensor rank = 0 but desc does not match
+      return framework::vectorize<int64_t>(tensor_shape);
+    } else {
+      return boost::none;
+    }
+  }
+
+  PADDLE_ENFORCE_GE(tensor_shape[0], 0,
+                    platform::errors::InvalidArgument(
+                        "Tensor shape must not be less than 0"));
+
+  if (!tensor.lod().empty()) {
+    tensor_shape[0] = -1;  // unknown shape
+  } else {
+    int64_t split_size = (tensor_shape[0] + num_places - 1) / num_places;
+    int64_t remainder = (split_size == 0 ? 0 : tensor_shape[0] % split_size);
+    tensor_shape[0] = split_size;
+    if (desc_shape[0] >= 0) {  // need check dim 0
+      if (tensor_shape[0] != desc_shape[0]) {
+        return framework::vectorize<int64_t>(tensor_shape);
+      }
+
+      if (remainder > 0) {
+        tensor_shape[0] = remainder;
+        return framework::vectorize<int64_t>(tensor_shape);
+      }
+    }
+  }
+
+  for (int64_t idx = 1; idx < rank; ++idx) {
+    PADDLE_ENFORCE_GE(tensor_shape[idx], 0,
+                      platform::errors::InvalidArgument(
+                          "Tensor shape must not be less than 0"));
+    if (desc_shape[idx] >= 0 && tensor_shape[idx] != desc_shape[idx]) {
+      return framework::vectorize<int64_t>(tensor_shape);
+    }
+  }
+
+  return boost::none;
+}
 
 static const std::shared_ptr<reader::LoDTensorBlockingQueue> &GetQueue(
     const std::shared_ptr<reader::LoDTensorBlockingQueue> &queue, size_t idx) {
@@ -66,10 +119,12 @@ class MultiDeviceFeedReader {
       const std::vector<std::vector<int>> &shapes,
       const std::vector<framework::proto::VarType::Type> &dtypes,
       const std::vector<bool> &need_check_feed,
-      const std::vector<platform::Place> &dst_places, bool use_double_buffer)
+      const std::vector<platform::Place> &dst_places, bool use_double_buffer,
+      bool drop_last)
       : queue_(queue),
         names_(names),
-        pool_(new ::ThreadPool(dst_places.size())) {
+        pool_(new ::ThreadPool(dst_places.size())),
+        drop_last_(drop_last) {
     std::vector<framework::DDim> dims;
     for (auto &shape : shapes) {
       dims.push_back(framework::make_ddim(shape));
@@ -113,12 +168,16 @@ class MultiDeviceFeedReader {
     ReadAsync();
   }
 
+  bool DropLast() const { return drop_last_; }
+
   ResultDictList ReadNext() {
     CheckNextStatus();
     ResultDictList result(ret_.size());
     for (size_t i = 0; i < ret_.size(); ++i) {
-      for (size_t j = 0; j < names_.size(); ++j) {
-        result[i].emplace(names_[j], std::move(ret_[i][j]));
+      if (!ret_[i].empty()) {
+        for (size_t j = 0; j < names_.size(); ++j) {
+          result[i].emplace(names_[j], std::move(ret_[i][j]));
+        }
       }
     }
     ReadAsync();
@@ -155,24 +214,29 @@ class MultiDeviceFeedReader {
   };
 
   Status WaitFutures(std::exception_ptr *excep) {
-    bool is_success = true;
     *excep = nullptr;
+    size_t success_num = 0;
     for (size_t i = 0; i < futures_.size(); ++i) {
       auto each_status = futures_[i].get();
       if (UNLIKELY(each_status != Status::kSuccess)) {
-        is_success = false;
         if (UNLIKELY(each_status == Status::kException)) {
           PADDLE_ENFORCE_NOT_NULL(exceptions_[i]);
           *excep = exceptions_[i];
           exceptions_[i] = nullptr;
         }
+      } else {
+        ++success_num;
       }
     }
 
     if (UNLIKELY(*excep)) {
       return Status::kException;
+    }
+
+    if (drop_last_) {
+      return success_num == futures_.size() ? Status::kSuccess : Status::kEOF;
     } else {
-      return is_success ? Status::kSuccess : Status::kEOF;
+      return success_num > 0 ? Status::kSuccess : Status::kEOF;
     }
   }
 
@@ -226,6 +290,7 @@ class MultiDeviceFeedReader {
   std::vector<std::exception_ptr> exceptions_;
 
   std::vector<std::vector<framework::LoDTensor>> ret_;
+  bool drop_last_;
 };
 
 template <typename QueueType>
@@ -269,6 +334,17 @@ void BindMultiDeviceReader(py::module *module, const char *reader_name) {
 
 void BindReader(py::module *module) {
   auto &m = *module;
+
+  m.def("diff_tensor_shape", [](const framework::LoDTensor &tensor,
+                                const framework::VarDesc &var_desc,
+                                size_t num_places) -> py::object {
+    auto diff = DiffTensorShapeWithVarDesc(tensor, var_desc, num_places);
+    if (diff) {
+      return py::cast(std::move(diff.get()));
+    } else {
+      return py::cast(nullptr);
+    }
+  });
 
   m.def("init_lod_tensor_blocking_queue",
         [](framework::Variable &var, size_t capacity,
@@ -337,10 +413,10 @@ void BindReader(py::module *module) {
            const std::vector<framework::proto::VarType::Type> &dtypes,
            const std::vector<bool> &need_check_feed,
            const std::vector<platform::Place> &dst_places,
-           bool use_double_buffer) {
+           bool use_double_buffer, bool drop_last) {
           return new MultiDeviceFeedReader<reader::LoDTensorBlockingQueue>(
               queue, names, shapes, dtypes, need_check_feed, dst_places,
-              use_double_buffer);
+              use_double_buffer, drop_last);
         },
         py::return_value_policy::take_ownership);
 
@@ -352,13 +428,13 @@ void BindReader(py::module *module) {
          const std::vector<std::vector<int>> &shapes,
          const std::vector<framework::proto::VarType::Type> &dtypes,
          const std::vector<bool> &need_check_feed,
-         const std::vector<platform::Place> &dst_places,
-         bool use_double_buffer) {
+         const std::vector<platform::Place> &dst_places, bool use_double_buffer,
+         bool drop_last) {
         queue->SetDeviceCount(dst_places.size());
         return new MultiDeviceFeedReader<
             reader::OrderedMultiDeviceLoDTensorBlockingQueue>(
             queue, names, shapes, dtypes, need_check_feed, dst_places,
-            use_double_buffer);
+            use_double_buffer, drop_last);
       },
       py::return_value_policy::take_ownership);
 }

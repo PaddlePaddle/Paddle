@@ -79,6 +79,8 @@ class ParallelExecutor {
 
   FeedFetchList Run(const std::vector<std::string> &fetch_tensors);
 
+  const ir::Graph &Graph() const;
+
  private:
   // broadcast the parameters from the 0th device.
   // trainer_id the trainer index in nccl distributed training.

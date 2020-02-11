@@ -88,6 +88,7 @@ class DataLoader(object):
                        iterable=True,
                        return_list=False,
                        use_multiprocess=False,
+                       drop_last=True,
                        keep_order=False):
         """
         Create a DataLoader object for loading data from Python generator. 
@@ -134,6 +135,9 @@ class DataLoader(object):
                 can be used in the dygraph mode. In the static graph mode,
                 whether this parameter is set or not has no effect.
                 The Default value is False.
+            drop_last (bool): whether to drop the last batches whose number is
+                less than the CPU core/GPU card number. The default value is 
+                True.
             keep_order (bool): whether to assign the data to CPU cores or GPU 
                 cards in order. Supposing that there are 2 batches and we use 
                 2 GPU cards to run the network. If keep_order=True, GPU 0 would 
@@ -289,7 +293,7 @@ class DataLoader(object):
                                           return_list, use_multiprocess)
         else:
             return GeneratorLoader(feed_list, capacity, use_double_buffer,
-                                   iterable, return_list, keep_order)
+                                   iterable, return_list, drop_last, keep_order)
 
     @staticmethod
     def from_dataset(dataset, places, drop_last=True):
@@ -422,7 +426,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
             core.Variable(), self._capacity, False)
         self._reader = core.create_py_reader(
             self.queue, self._var_names, self._shapes, self._dtypes,
-            self._need_check_feed, self._places, self._use_double_buffer)
+            self._need_check_feed, self._places, self._use_double_buffer, True)
 
     def _start(self):
         if self._use_multiprocess:
@@ -628,6 +632,7 @@ class GeneratorLoader(DataLoaderBase):
                  use_double_buffer=True,
                  iterable=True,
                  return_list=False,
+                 drop_last=True,
                  keep_order=False):
         self._tensor_reader = None
         self._places = None
@@ -635,6 +640,8 @@ class GeneratorLoader(DataLoaderBase):
         self._queue = None
         self._feed_list = feed_list
         self._exited = False
+        self._drop_last = drop_last
+        self._keep_order = keep_order
         if not capacity:
             raise ValueError("Please give value to capacity.")
         self._iterable = iterable
@@ -643,7 +650,6 @@ class GeneratorLoader(DataLoaderBase):
             raise Exception("Feed list must be given under static mode.")
         self._use_double_buffer = use_double_buffer
         self._capacity = capacity
-        self._keep_order = keep_order
         if not self._iterable:
             self._init_non_iterable()
 
@@ -667,7 +673,8 @@ class GeneratorLoader(DataLoaderBase):
             core.Variable(), self._capacity, self._keep_order)
         self._reader = core.create_py_reader(
             self.queue, self._var_names, self._shapes, self._dtypes,
-            self._need_check_feed, self._places, self._use_double_buffer)
+            self._need_check_feed, self._places, self._use_double_buffer,
+            self._drop_last)
 
     def _init_non_iterable(self):
         lod_levels = []
@@ -744,7 +751,8 @@ class GeneratorLoader(DataLoaderBase):
         default_main_program().current_block().append_op(
             type='read',
             inputs={'Reader': [self._reader]},
-            outputs={'Out': self._feed_list})
+            outputs={'Out': self._feed_list},
+            attrs={'drop_last': self._drop_last})
 
     @property
     def queue(self):
