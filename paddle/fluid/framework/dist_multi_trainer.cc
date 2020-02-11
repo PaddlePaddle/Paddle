@@ -129,8 +129,8 @@ void DistMultiTrainer::InitOtherEnv(const ProgramDesc &main_program) {
     InitDumpEnv();
   }
   pull_dense_worker_->SetRootScope(root_scope_);
-  pull_dense_worker_->Start();
   pull_dense_worker_->SetPlace(workers_[0]->place());
+  pull_dense_worker_->Start();
   VLOG(3) << "init other env done.";
 }
 
