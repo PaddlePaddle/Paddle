@@ -601,12 +601,13 @@ wlist_ignore = [
     'PRelu.forward', 'Recall.update', 'start_gperf_profiler',
     'TreeConv.forward', 'Conv2D.forward', 'Switch.default', 'elementwise_mod',
     'Precision.update', 'WeightedAverage.eval', 'Conv3D.forward',
-    'Embedding.forward', 'Recall.eval', 'FC.forward', 'While.block'
+    'Embedding.forward', 'Recall.eval', 'FC.forward', 'While.block',
+    'DGCMomentumOptimizer'
 ]
 # only white on CPU
 gpu_not_white = [
     "deformable_conv", "cuda_places", "CUDAPinnedPlace", "CUDAPlace",
-    "cuda_profiler"
+    "cuda_profiler", 'DGCMomentumOptimizer'
 ]
 wlist = wlist_temp + wlist_inneed + wlist_ignore
 
