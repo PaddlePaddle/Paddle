@@ -26,7 +26,7 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
@@ -163,7 +163,7 @@ struct BuildStrategy {
                    const std::string &loss_var_name,
                    const std::vector<Scope *> &local_scopes,
                    const size_t &nranks,
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
                    const bool use_cuda,
                    platform::NCCLCommunicator *nccl_ctxs) const;
 #else
