@@ -31,5 +31,12 @@ AllocationPtr Alloc(const platform::Place &place, size_t size) {
   return allocation::AllocatorFacade::Instance().Alloc(place, size);
 }
 
+#ifndef _WIN32
+std::shared_ptr<Allocation> AllocMapShared(const platform::Place &place,
+                                           size_t size) {
+  return allocation::AllocatorFacade::Instance().AllocMapShared(place, size);
+}
+#endif
+
 }  // namespace memory
 }  // namespace paddle

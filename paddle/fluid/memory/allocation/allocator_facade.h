@@ -44,6 +44,12 @@ class AllocatorFacade {
   // Allocate a unique allocation.
   AllocationPtr Alloc(const platform::Place& place, size_t size);
 
+#ifndef _WIN32
+  // Allocate a map shared allocation used for IPC.
+  std::shared_ptr<Allocation> AllocMapShared(const platform::Place& place,
+                                             size_t size);
+#endif
+
   // TODO(yy): Allocate a Copy-On-Write allocation?
  private:
   AllocatorFacade();

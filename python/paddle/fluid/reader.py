@@ -495,7 +495,16 @@ class DygraphGeneratorLoader(DataLoaderBase):
                     raise ValueError(
                         "Sample in reader is None. Please check whether your dataset is valid."
                     )
-                self._data_queue.put(sample)
+                tensor_list = []
+                for item in sample:
+                    if not isinstance(item, core.LoDTensor):
+                        self._check_input_array(item)
+                        tmp = core.LoDTensor()
+                        tmp.set(item, core.CPUPlace())
+                        tmp._share_memory()
+                        item = tmp
+                    tensor_list.append(item)
+                self._data_queue.put(tensor_list)
             self._data_queue.put(None)
         except KeyboardInterrupt:
             # NOTE: Main process will raise KeyboardInterrupt anyways, ignore it in child process
@@ -513,22 +522,17 @@ class DygraphGeneratorLoader(DataLoaderBase):
                 # still happen when data in queue is corrupted (e.g., due to 
                 # Queue.cancel_join_thread or unexpected exit). So we set a timeout whenever 
                 # we try to get data from `data_queue`
-                sample = self._data_queue.get(timeout=MP_CHECK_TIMEOUT)
+                tensor_list = self._data_queue.get(timeout=MP_CHECK_TIMEOUT)
             except queue.Empty:
                 self._thread_done_event.set()
                 logging.error("The reader has not read data for a long time.")
 
             if not self._thread_done_event.is_set():
-                if sample is not None:
+                if tensor_list is not None:
                     try:
                         array = core.LoDTensorArray()
-                        for item in sample:
-                            if not isinstance(item, core.LoDTensor):
-                                self._check_input_array(item)
-                                tmp = core.LoDTensor()
-                                tmp.set(item, core.CPUPlace())
-                                item = tmp
-                            array.append(item)
+                        for tensor in tensor_list:
+                            array.append(tensor)
                         if not self._blocking_queue.push(array):
                             self._blocking_queue.close()
                     except:

@@ -46,6 +46,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
+#include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
@@ -568,6 +569,9 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("_get_float_element", TensorGetElement<float>)
       .def("_set_double_element", TensorSetElement<double>)
       .def("_get_double_element", TensorGetElement<double>)
+#ifndef _WIN32
+      .def("_share_memory", &Tensor::ShareMemory)
+#endif
       .def("_place", [](Tensor &self) { return self.place(); })
       .def("_dtype", [](Tensor &self) { return self.type(); })
       .def("_share_data_with", &Tensor::ShareDataWith)
@@ -859,7 +863,50 @@ PYBIND11_MODULE(core_noavx, m) {
         }
         dst.set_lod(self.lod());
         return dst;
+#ifdef _WIN32
       });
+#else
+           })
+      .def(py::pickle(
+          [](const LoDTensor &t) {  // __getstate__
+            auto holder = t.Holder();
+            if (!platform::is_cpu_place(holder->place()))
+              throw std::runtime_error(
+                  "LoDTensor is not on CPU."
+                  "Now only LoDTensor on CPU can be serialized.");
+            if (!holder->is_shared())
+              throw std::runtime_error(
+                  "LoDTensor is not on shared memory."
+                  "Now only LoDTensor on shared memory can be serialized.");
+
+            return py::make_tuple(holder->ipc_name(), holder->size(), t.type(),
+                                  vectorize(t.dims()), t.lod());
+          },
+          [](py::tuple t) {  // __setstate__
+            if (t.size() != 5)
+              throw std::runtime_error("Invalid LoDTensor state!");
+
+            // 1. Create a new C++ instance
+            LoDTensor tensor;
+
+            // 2. Rebuild Allocation
+            std::string ipc_name = t[0].cast<std::string>();
+            size_t size = t[1].cast<size_t>();
+            void *shared_ptr =
+                memory::allocation::GetMemoryMapAddr(ipc_name, size);
+            auto shared_holder =
+                std::make_shared<memory::allocation::MemoryMapAllocation>(
+                    shared_ptr, size, ipc_name);
+
+            // 3. Rebuild LoDTensor
+            tensor.ResetHolderWithType(shared_holder,
+                                       t[2].cast<proto::VarType::Type>());
+            tensor.Resize(make_ddim(t[3].cast<std::vector<int>>()));
+            tensor.set_lod(t[4].cast<framework::LoD>());
+
+            return tensor;
+          }));
+#endif
 
   py::class_<SelectedRows>(m, "SelectedRows")
       .def("__init__",
