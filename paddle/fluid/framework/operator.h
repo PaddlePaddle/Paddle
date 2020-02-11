@@ -212,7 +212,7 @@ class OperatorBase {
   void GenerateTemporaryNames();
   void CheckAllInputOutputSet() const;
   virtual void RunImpl(const Scope& scope,
-                       const platform::Place& place) const = 0;
+                       const platform::DeviceContext& dev_ctx) const = 0;
 };
 
 #ifdef PADDLE_WITH_CUDA
@@ -512,7 +512,8 @@ class OperatorWithKernel : public OperatorBase {
   // indicate kernel DataType by input data. By default all input data must be
   // same.
   proto::VarType::Type IndicateDataType(const ExecutionContext& ctx) const;
-  void RunImpl(const Scope& scope, const platform::Place& place) const final;
+  void RunImpl(const Scope& scope,
+               const platform::DeviceContext& dev_ctx) const final;
   void RunImpl(const Scope& scope, const platform::Place& place,
                RuntimeContext* runtime_ctx) const;
 

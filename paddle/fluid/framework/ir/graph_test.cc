@@ -29,7 +29,7 @@ class NOP : public OperatorBase {
 
  private:
   void RunImpl(const Scope &scope,
-               const platform::Place &place) const override {}
+               const platform::DeviceContext &dev_ctx) const override {}
 };
 
 class SumOpMaker : public OpProtoAndCheckerMaker {

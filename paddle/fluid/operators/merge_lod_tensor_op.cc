@@ -128,8 +128,8 @@ class MergeLoDTensorOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
-    RunBase(scope, dev_place);
+               const platform::DeviceContext &dev_ctx) const override {
+    RunBase(scope, dev_ctx.GetPlace());
   }
 };
 
@@ -143,8 +143,8 @@ class MergeLoDTensorInferOp : public MergeLoDTensorOp {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
-    RunBase(scope, dev_place);
+               const platform::DeviceContext &dev_ctx) const override {
+    RunBase(scope, dev_ctx.GetPlace());
     framework::Variable *in_true_var = scope.FindVar(Input("InTrue"));
     framework::Variable *in_false_var = scope.FindVar(Input("InFalse"));
     in_true_var->Clear();

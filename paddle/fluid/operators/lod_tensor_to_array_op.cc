@@ -94,7 +94,7 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
+               const platform::DeviceContext &dev_ctx) const override {
     auto &x = detail::Ref(scope.FindVar(Input("X")), "Cannot find input %s",
                           Input("X"))
                   .Get<framework::LoDTensor>();
@@ -161,7 +161,7 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
     for (auto &out_pair : outputs) {
       functor.AddOutput(&out_pair.second);
     }
-    platform::VisitPlace(place, functor);
+    platform::VisitPlace(dev_ctx.GetPlace(), functor);
   }
 };
 

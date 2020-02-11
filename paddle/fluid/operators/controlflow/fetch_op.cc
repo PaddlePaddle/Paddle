@@ -30,7 +30,7 @@ class FetchOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
+               const platform::DeviceContext &dev_ctx) const override {
     auto fetch_var_name = Input("X");
     auto *fetch_var = scope.FindVar(fetch_var_name);
     PADDLE_ENFORCE(fetch_var != nullptr,

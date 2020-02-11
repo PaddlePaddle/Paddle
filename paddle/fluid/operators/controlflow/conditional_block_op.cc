@@ -36,7 +36,8 @@ class ConditionalBlockOp : public ConditionalOp {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+               const platform::DeviceContext &dev_ctx) const override {
+    const platform::Place &dev_place = dev_ctx.GetPlace();
     bool need_run;
     if (Attr<bool>("is_scalar_condition")) {
       // When is_scalar_condition is True, the conditional variable is a scalar,
@@ -93,7 +94,8 @@ class ConditionalBlockGradOp : public ConditionalOp {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+               const platform::DeviceContext &dev_ctx) const override {
+    const platform::Place &dev_place = dev_ctx.GetPlace();
     bool need_run;
     if (Attr<bool>("is_scalar_condition")) {
       auto xs = this->InputTensors(scope, ConditionalOp::kCondition);

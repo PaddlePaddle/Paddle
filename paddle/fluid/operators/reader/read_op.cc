@@ -93,7 +93,7 @@ class ReadOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& dev_place) const override {
+               const platform::DeviceContext& dev_ctx) const override {
     VLOG(3) << "read op in";
     framework::ReaderHolder* reader =
         detail::Ref(scope.FindVar(Input("Reader")),

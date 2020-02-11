@@ -35,7 +35,8 @@ class RecvOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
+               const platform::DeviceContext &dev_ctx) const override {
+    const platform::Place &place = dev_ctx.GetPlace();
     int do_not_run = Attr<int>("do_not_run");
     if (do_not_run) {
       VLOG(3) << "recv do not run!";

@@ -27,7 +27,7 @@ class CreatePyReaderOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& dev_place) const override {
+               const platform::DeviceContext& dev_ctx) const override {
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
     if (out->Get() != nullptr) return;

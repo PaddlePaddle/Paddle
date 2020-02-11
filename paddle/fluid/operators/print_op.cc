@@ -145,7 +145,8 @@ class PrintOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
+               const platform::DeviceContext &dev_ctx) const override {
+    const platform::Place &place = dev_ctx.GetPlace();
     const auto in_var = scope.FindVar(Input("In"));
     auto out_var = scope.FindVar(Output("Out"));
     PADDLE_ENFORCE_NOT_NULL(in_var, "The input should not be found in scope",

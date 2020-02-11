@@ -64,7 +64,8 @@ class LiteEngineOp : public framework::OperatorBase {
 
  protected:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+               const platform::DeviceContext &dev_ctx) const override {
+    const platform::Place &dev_place = dev_ctx.GetPlace();
     Execute(scope, dev_place);
   }
 

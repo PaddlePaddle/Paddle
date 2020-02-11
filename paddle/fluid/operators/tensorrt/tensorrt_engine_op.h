@@ -118,7 +118,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
   }
 
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+               const platform::DeviceContext &dev_ctx) const override {
+    const platform::Place &dev_place = dev_ctx.GetPlace();
     if (calibration_mode_ == true) {
       RunCalibration(scope, dev_place);
       return;

@@ -33,7 +33,7 @@ class OpWithoutKernelTest : public OperatorBase {
 
  private:
   void RunImpl(const Scope& scope,
-               const platform::Place& place) const override {
+               const platform::DeviceContext& dev_ctx) const override {
     ++op_run_num;
     ASSERT_EQ(static_cast<int>(inputs_.size()), 1);
     ASSERT_EQ(static_cast<int>(outputs_.size()), 1);

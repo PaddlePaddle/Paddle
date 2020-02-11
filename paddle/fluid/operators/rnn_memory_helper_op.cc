@@ -27,7 +27,8 @@ class RNNMemoryHelperOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+               const platform::DeviceContext &dev_ctx) const override {
+    const platform::Place &dev_place = dev_ctx.GetPlace();
     auto mem_var_name = Input("X");
     auto *mem_var = scope.FindVar(mem_var_name);
     PADDLE_ENFORCE(mem_var != nullptr,
@@ -39,9 +40,6 @@ class RNNMemoryHelperOp : public framework::OperatorBase {
     PADDLE_ENFORCE(out_var != nullptr,
                    "Cannot find out_var in scope, out_var_name is %s",
                    out_name);
-
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(dev_place);
 
     auto *out_tensor = out_var->GetMutable<framework::LoDTensor>();
     auto &mem_tensor = mem_var->Get<framework::LoDTensor>();
@@ -85,7 +83,8 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+               const platform::DeviceContext &dev_ctx) const override {
+    const platform::Place &dev_place = dev_ctx.GetPlace();
     auto out_grad_var_name = Input(framework::GradVarName("Out"));
     auto *out_grad_var = scope.FindVar(out_grad_var_name);
 
@@ -95,9 +94,6 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
     PADDLE_ENFORCE(in_grad_var != nullptr,
                    "Cannot find in_grad_var in scope, name is %s",
                    in_grad_var_name);
-
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(dev_place);
 
     if (out_grad_var == nullptr) {
       VLOG(5) << "Using fill constant 0 as starting gradient";

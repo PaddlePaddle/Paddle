@@ -29,7 +29,8 @@ class ShrinkRNNMemoryOp : public ArrayOp {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
+               const platform::DeviceContext &dev_ctx) const override {
+    const platform::Place &place = dev_ctx.GetPlace();
     auto *x_var = scope.FindVar(Input("X"));
     PADDLE_ENFORCE(x_var != nullptr, "Input X must be set");
     auto &x_tensor = x_var->Get<framework::LoDTensor>();
@@ -63,8 +64,7 @@ class ShrinkRNNMemoryOp : public ArrayOp {
 
     if (dst_num_rows != 0) {
       out_tensor.mutable_data(place, x_tensor.type());
-      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      framework::TensorCopy(x_tensor.Slice(0, height), place, *dev_ctx,
+      framework::TensorCopy(x_tensor.Slice(0, height), place, dev_ctx,
                             &out_tensor);
     }
   }
@@ -118,7 +118,8 @@ class ShrinkRNNMemoryGradOp : public ArrayOp {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
+               const platform::DeviceContext &dev_ctx) const override {
+    const platform::Place &place = dev_ctx.GetPlace();
     auto *dout_var = scope.FindVar(Input(framework::GradVarName("Out")));
     auto *dx_var = scope.FindVar(Output(framework::GradVarName("X")));
     PADDLE_ENFORCE(dx_var != nullptr, "Input Gradient should not be nullptr");
@@ -129,10 +130,6 @@ class ShrinkRNNMemoryGradOp : public ArrayOp {
     auto &dx_tensor = *dx_var->GetMutable<framework::LoDTensor>();
     dx_tensor.Resize(x_tensor.dims());
     dx_tensor.mutable_data(x_tensor.place(), x_tensor.type());
-
-    // get device context from pool
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(place);
 
     if (dout_var == nullptr) {  // dx_tensor fill zero
       math::set_constant(dev_ctx, &dx_tensor, 0.0f);

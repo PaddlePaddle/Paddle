@@ -40,8 +40,9 @@ class GetPlacesOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
+               const platform::DeviceContext &dev_ctx) const override {
     bool is_gpu;
+    const platform::Place &place = dev_ctx.GetPlace();
     if (Attr<std::string>("device_type") == "AUTO") {
       is_gpu = platform::is_gpu_place(place);
     } else {

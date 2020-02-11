@@ -27,9 +27,8 @@ class FeedOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
-    // get device context from pool
-    auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+               const platform::DeviceContext &dev_ctx) const override {
+    const platform::Place &place = dev_ctx.GetPlace();
 
     auto feed_var_name = Input("X");
     auto *feed_var = scope.FindVar(feed_var_name);
@@ -57,7 +56,7 @@ class FeedOp : public framework::OperatorBase {
     if (platform::is_same_place(feed_item.place(), place)) {
       out_item->ShareDataWith(feed_item);
     } else {
-      framework::TensorCopy(feed_item, place, *dev_ctx, out_item);
+      framework::TensorCopy(feed_item, place, dev_ctx, out_item);
     }
     out_item->set_lod(feed_item.lod());
   }

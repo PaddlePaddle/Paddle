@@ -77,7 +77,8 @@ class ReorderLoDTensorByRankTableBase : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
+               const platform::DeviceContext &dev_ctx) const override {
+    const platform::Place &place = dev_ctx.GetPlace();
     auto &x =
         detail::Ref(scope.FindVar(Input("X")),
                     "Cannot find input lod tensor variable %s", Input("X"))

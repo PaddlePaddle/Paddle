@@ -167,13 +167,10 @@ RecurrentOp::RecurrentOp(const std::string &type,
     : RecurrentBase(type, inputs, outputs, attrs) {}
 
 void RecurrentOp::RunImpl(const framework::Scope &scope,
-                          const platform::Place &place) const {
+                          const platform::DeviceContext &dev_ctx) const {
+  auto place = dev_ctx.GetPlace();
   bool has_state = Attr<bool>(kHasStates);
   auto seq_len = static_cast<size_t>(this->GetSequenceLength(scope));
-
-  // get device context from pool
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  auto &dev_ctx = *pool.Get(place);
 
   VLOG(3) << "Static RNN input sequence length = " << seq_len;
   StepScopes scopes = CreateStepScopes(dev_ctx, scope, seq_len);
@@ -272,13 +269,10 @@ RecurrentGradOp::RecurrentGradOp(const std::string &type,
     : RecurrentBase(type, inputs, outputs, attrs) {}
 
 void RecurrentGradOp::RunImpl(const framework::Scope &scope,
-                              const platform::Place &place) const {
+                              const platform::DeviceContext &dev_ctx) const {
+  const platform::Place &place = dev_ctx.GetPlace();
   bool has_state = Attr<bool>(kHasStates);
   const size_t seq_len = static_cast<size_t>(GetSequenceLength(scope));
-
-  // get device context from pool
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  auto &dev_ctx = *pool.Get(place);
 
   StepScopes scopes = CreateStepScopes(dev_ctx, scope, seq_len);
   auto reverse = Attr<bool>(kReverse);

@@ -83,7 +83,8 @@ class LoDTensorArray2TensorOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
+               const platform::DeviceContext &dev_ctx) const override {
+    const platform::Place &place = dev_ctx.GetPlace();
     auto axis = Attr<int>("axis");
 
     framework::AttributeMap attrs;
@@ -225,7 +226,8 @@ class LoDTensorArray2TensorGradOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
+               const platform::DeviceContext &dev_ctx) const override {
+    const platform::Place &place = dev_ctx.GetPlace();
     auto axis = Attr<int>("axis");
     framework::AttributeMap attrs;
     attrs["axis"] = axis;

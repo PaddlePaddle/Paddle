@@ -49,7 +49,8 @@ class WhileOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+               const platform::DeviceContext &dev_ctx) const override {
+    const platform::Place &dev_place = dev_ctx.GetPlace();
     PADDLE_ENFORCE_NOT_NULL(scope.FindVar(Input(kCondition)));
 
     auto &cond = scope.FindVar(Input(kCondition))->Get<LoDTensor>();
@@ -160,12 +161,10 @@ class WhileGradOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+               const platform::DeviceContext &dev_ctx) const override {
+    const platform::Place &dev_place = dev_ctx.GetPlace();
     PADDLE_ENFORCE(!Attr<bool>("is_test"),
                    "GradOp is only callable when is_test is false");
-    // get device context from pool
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(dev_place);
     framework::Executor executor(dev_place);
     auto *block = Attr<framework::BlockDesc *>(kStepBlock);
     auto *program = block->Program();

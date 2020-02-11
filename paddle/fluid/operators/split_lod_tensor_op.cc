@@ -36,7 +36,7 @@ class SplitLoDTensorOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+               const platform::DeviceContext &dev_ctx) const override {
     auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
     auto &mask = scope.FindVar(Input("Mask"))->Get<framework::LoDTensor>();
     auto *out_true =
@@ -46,9 +46,6 @@ class SplitLoDTensorOp : public framework::OperatorBase {
     auto level = static_cast<size_t>(Attr<int>("level"));
     auto &x_lod = x.lod();
     auto &mask_dim = mask.dims();
-
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(dev_place);
 
     std::unique_ptr<framework::LoDTensor> cpu_mask{new framework::LoDTensor()};
     if (platform::is_cpu_place(mask.place())) {

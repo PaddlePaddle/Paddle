@@ -28,7 +28,7 @@ class CosineOp : public OperatorBase {
 
  private:
   void RunImpl(const Scope& scope,
-               const platform::Place& place) const override {}
+               const platform::DeviceContext& dev_ctx) const override {}
 };
 
 class CosineOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
@@ -49,7 +49,7 @@ class MyTestOp : public OperatorBase {
 
  private:
   void RunImpl(const Scope& scope,
-               const platform::Place& place) const override {}
+               const platform::DeviceContext& dev_ctx) const override {}
 };
 
 class MyTestOpProtoAndCheckerMaker : public OpProtoAndCheckerMaker {

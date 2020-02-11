@@ -31,7 +31,7 @@ class DefaultIOConverter : public EngineIOConverter {
                           size_t max_size) override {
     PADDLE_ENFORCE(out != nullptr);
     PADDLE_ENFORCE(stream_ != nullptr);
-    const auto& place = in.place();
+    const platform::Place& place = in.place();
     size_t size = in.memory_size();
     PADDLE_ENFORCE_LE(size, max_size);
     if (is_cpu_place(place)) {
@@ -50,7 +50,7 @@ class DefaultIOConverter : public EngineIOConverter {
                           size_t max_size) override {
     PADDLE_ENFORCE(in != nullptr);
     PADDLE_ENFORCE(stream_ != nullptr);
-    const auto& place = out->place();
+    const platform::Place& place = out->place();
     size_t size = out->memory_size();
     PADDLE_ENFORCE_LE(size, max_size);
     if (is_cpu_place(place)) {

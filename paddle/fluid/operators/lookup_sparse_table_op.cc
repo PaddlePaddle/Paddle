@@ -41,7 +41,7 @@ class LookupSparseTableOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+               const platform::DeviceContext &dev_ctx) const override {
     auto out_var = scope.FindVar(Output("Out"));
     auto w_var = scope.FindVar(Input("W"));
     auto ids_var = scope.FindVar(Input("Ids"));

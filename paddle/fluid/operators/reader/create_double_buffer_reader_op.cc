@@ -24,7 +24,8 @@ class CreateDoubleBufferReaderOp : public framework::OperatorBase {
 
  private:
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& dev_place) const override {
+               const platform::DeviceContext& dev_ctx) const override {
+    const platform::Place& dev_place = dev_ctx.GetPlace();
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
     if (out->Get() != nullptr) {

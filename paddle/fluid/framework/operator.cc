@@ -167,8 +167,9 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     }
 
     {
+      const auto& ctx = platform::DeviceContextPool::Instance().Get(place);
       platform::RecordEvent record_event(Type());
-      RunImpl(scope, place);
+      RunImpl(scope, *ctx);
     }
 
     VLOG(3) << place << " " << DebugStringEx(&scope);
@@ -910,7 +911,8 @@ std::vector<KernelConfig>* OperatorWithKernel::GetKernelConfig(
 }
 
 void OperatorWithKernel::RunImpl(const Scope& scope,
-                                 const platform::Place& place) const {
+                                 const platform::DeviceContext& dev_ctx) const {
+  const platform::Place& place = dev_ctx.GetPlace();
   // To reduce the elapsed time of HasAttr, we use bool variable to record the
   // result of HasAttr.
   if (!enable_cache_runtime_context_ && HasAttr(kEnableCacheRuntimeContext))

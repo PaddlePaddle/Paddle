@@ -331,11 +331,10 @@ void ListenAndServOp::CacheVarsType(const std::vector<std::string> &varnames,
 }
 
 void ListenAndServOp::RunImpl(const framework::Scope &scope,
-                              const platform::Place &dev_place) const {
+                              const platform::DeviceContext &dev_ctx) const {
+  const platform::Place &dev_place = dev_ctx.GetPlace();
   // Mark this as PS that it should decide profiling by listening from trainer.
   platform::SetProfileListener();
-  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-  auto &dev_ctx = *pool.Get(dev_place);
   framework::Scope &recv_scope = scope.NewScope();
 
   int distributed_mode = Attr<int>("distributed_mode");

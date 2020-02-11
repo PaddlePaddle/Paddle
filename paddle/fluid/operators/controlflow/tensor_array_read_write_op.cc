@@ -26,7 +26,8 @@ class WriteToArrayOp : public ArrayOp {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
+               const platform::DeviceContext &dev_ctx) const override {
+    const platform::Place &place = dev_ctx.GetPlace();
     auto *x = scope.FindVar(Input("X"));
     if (x == nullptr) return;
     auto &x_tensor = x->Get<framework::LoDTensor>();
@@ -41,10 +42,6 @@ class WriteToArrayOp : public ArrayOp {
     auto *out_tensor = &out->at(offset);
     out_tensor->set_lod(x_tensor.lod());
     if (x_tensor.memory_size() > 0) {
-      platform::DeviceContextPool &pool =
-          platform::DeviceContextPool::Instance();
-      auto &dev_ctx = *pool.Get(place);
-
       TensorCopy(x_tensor, place, dev_ctx, out_tensor);
     } else {
       VLOG(10) << "WARNING: The input tensor 'x_tensor' holds no memory, so "
@@ -136,7 +133,8 @@ class ReadFromArrayOp : public ArrayOp {
 
  private:
   void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
+               const platform::DeviceContext &dev_ctx) const override {
+    const platform::Place &place = dev_ctx.GetPlace();
     auto *x = scope.FindVar(Input("X"));
     PADDLE_ENFORCE(x != nullptr, "X must be set");
     auto &x_array = x->Get<framework::LoDTensorArray>();
@@ -145,9 +143,6 @@ class ReadFromArrayOp : public ArrayOp {
     size_t offset = GetOffset(scope, place);
     if (offset < x_array.size()) {
       auto *out_tensor = out->GetMutable<framework::LoDTensor>();
-      platform::DeviceContextPool &pool =
-          platform::DeviceContextPool::Instance();
-      auto &dev_ctx = *pool.Get(place);
       framework::TensorCopy(x_array[offset], place, dev_ctx, out_tensor);
       out_tensor->set_lod(x_array[offset].lod());
     } else {
