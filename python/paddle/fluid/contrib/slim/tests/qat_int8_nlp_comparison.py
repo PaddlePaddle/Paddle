@@ -128,38 +128,6 @@ class QatInt8NLPComparisonTest(unittest.TestCase):
                 correct += 1
         return correct
 
-    def _prepare_for_fp32_mkldnn(self, graph):
-        ops = graph.all_op_nodes()
-        for op_node in ops:
-            name = op_node.name()
-            if name in ['depthwise_conv2d']:
-                input_var_node = graph._find_node_by_name(
-                    op_node.inputs, op_node.input("Input")[0])
-                weight_var_node = graph._find_node_by_name(
-                    op_node.inputs, op_node.input("Filter")[0])
-                output_var_node = graph._find_node_by_name(
-                    graph.all_var_nodes(), op_node.output("Output")[0])
-                attrs = {
-                    name: op_node.op().attr(name)
-                    for name in op_node.op().attr_names()
-                }
-
-                conv_op_node = graph.create_op_node(
-                    op_type='conv2d',
-                    attrs=attrs,
-                    inputs={
-                        'Input': input_var_node,
-                        'Filter': weight_var_node
-                    },
-                    outputs={'Output': output_var_node})
-
-                graph.link_to(input_var_node, conv_op_node)
-                graph.link_to(weight_var_node, conv_op_node)
-                graph.link_to(conv_op_node, output_var_node)
-                graph.safe_remove_nodes(op_node)
-
-        return graph
-
     def _predict(self,
                  test_reader=None,
                  model_path=None,
@@ -190,15 +158,13 @@ class QatInt8NLPComparisonTest(unittest.TestCase):
                     _core=core,
                     _debug=self._debug)
                 graph = transform_to_mkldnn_int8_pass.apply(graph)
-            else:
-                graph = self._prepare_for_fp32_mkldnn(graph)
 
             inference_program = graph.to_program()
 
             total_correct = 0
             total_samples = 0
             batch_times = []
-            fpses = []
+            ppses = []  # predictions per second
             iters = 0
             infer_start_time = time.time()
             for data in test_reader():
@@ -225,39 +191,41 @@ class QatInt8NLPComparisonTest(unittest.TestCase):
                 total_samples += batch_len
                 total_correct += batch_correct
                 batch_acc = float(batch_correct) / float(batch_len)
-                fps = batch_len / batch_time * 1000
-                fpses.append(fps)
+                pps = batch_len / batch_time * 1000
+                ppses.append(pps)
                 latency = batch_time / batch_len
                 iters += 1
                 appx = ' (warm-up)' if iters <= skip_batch_num else ''
                 _logger.info(
-                    'batch {0}{4}, acc: {1:.4f}, latency: {2:.4f} ms, fps: {3:.2f}'
-                    .format(iters, batch_acc, latency, fps, appx))
+                    'batch {0}{4}, acc: {1:.4f}, latency: {2:.4f} ms, predictions per sec: {3:.2f}'
+                    .format(iters, batch_acc, latency, pps, appx))
 
             # Postprocess benchmark data
             infer_total_time = time.time() - infer_start_time
             batch_latencies = batch_times[skip_batch_num:]
             batch_latency_avg = np.average(batch_latencies)
             latency_avg = batch_latency_avg / batch_size
-            fpses = fpses[skip_batch_num:]
-            fps_avg = np.average(fpses)
+            ppses = ppses[skip_batch_num:]
+            pps_avg = np.average(ppses)
             acc_avg = float(np.sum(total_correct)) / float(total_samples)
             _logger.info('Total inference run time: {:.2f} s'.format(
                 infer_total_time))
 
-            return acc_avg, fps_avg, latency_avg
+            return acc_avg, pps_avg, latency_avg
 
-    def _summarize_performance(self, fp32_fps, fp32_lat, int8_fps, int8_lat):
+    def _summarize_performance(self, fp32_pps, fp32_lat, int8_pps, int8_lat):
         _logger.info('--- Performance summary ---')
-        _logger.info('FP32: avg fps: {0:.2f}, avg latency: {1:.4f} ms'.format(
-            fp32_fps, fp32_lat))
-        _logger.info('INT8: avg fps: {0:.2f}, avg latency: {1:.4f} ms'.format(
-            int8_fps, int8_lat))
+        _logger.info(
+            'FP32: avg predictions per sec: {0:.2f}, avg latency: {1:.4f} ms'.
+            format(fp32_pps, fp32_lat))
+        _logger.info(
+            'INT8: avg predictions per sec: {0:.2f}, avg latency: {1:.4f} ms'.
+            format(int8_pps, int8_lat))
 
     def _compare_accuracy(self, fp32_acc, int8_acc, threshold):
         _logger.info('--- Accuracy summary ---')
         _logger.info(
-            'Accepted accuracy drop threshold: {0}. (condition: (FP32_acc - IN8_acc) <= threshold)'
+            'Accepted accuracy drop threshold: {0}. (condition: (FP32_acc - INT8_acc) <= threshold)'
             .format(threshold))
         _logger.info('FP32: avg accuracy: {0:.6f}'.format(fp32_acc))
         _logger.info('INT8: avg accuracy: {0:.6f}'.format(int8_acc))
@@ -292,7 +260,7 @@ class QatInt8NLPComparisonTest(unittest.TestCase):
         _logger.info('--- QAT FP32 prediction start ---')
         val_reader = paddle.batch(
             self._reader_creator(data_path, labels_path), batch_size=batch_size)
-        fp32_acc, fp32_fps, fp32_lat = self._predict(
+        fp32_acc, fp32_pps, fp32_lat = self._predict(
             val_reader,
             qat_model_path,
             batch_size,
@@ -302,7 +270,7 @@ class QatInt8NLPComparisonTest(unittest.TestCase):
         _logger.info('--- QAT INT8 prediction start ---')
         val_reader = paddle.batch(
             self._reader_creator(data_path, labels_path), batch_size=batch_size)
-        int8_acc, int8_fps, int8_lat = self._predict(
+        int8_acc, int8_pps, int8_lat = self._predict(
             val_reader,
             qat_model_path,
             batch_size,
@@ -310,7 +278,7 @@ class QatInt8NLPComparisonTest(unittest.TestCase):
             skip_batch_num,
             transform_to_int8=True)
 
-        self._summarize_performance(fp32_fps, fp32_lat, int8_fps, int8_lat)
+        self._summarize_performance(fp32_pps, fp32_lat, int8_pps, int8_lat)
         self._compare_accuracy(fp32_acc, int8_acc, acc_diff_threshold)
 
 
