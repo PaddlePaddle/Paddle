@@ -31,7 +31,6 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'depthwise_conv2d', \
     'depthwise_conv2d_transpose', \
     'dropout', \
-    'elementwise_max', \
     'fused_elemwise_activation', \
     'hierarchical_sigmoid', \
     'hinge_loss', \
