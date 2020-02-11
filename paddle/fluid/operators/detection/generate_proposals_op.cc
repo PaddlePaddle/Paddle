@@ -477,7 +477,7 @@ class GenerateProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
               "(LoDTensor), Output proposals with shape (rois_num, 4).");
     AddOutput("RpnRoiProbs",
               "(LoDTensor) Scores of proposals with shape (rois_num, 1).");
-    AddOutput("RpnRoisLod", "(Tensor), rpn rois's lod info");
+    AddOutput("RpnRoisLod", "(Tensor), rpn rois's lod info").AsDispensable();
     AddAttr<int>("pre_nms_topN",
                  "Number of top scoring RPN proposals to keep before "
                  "applying NMS.");

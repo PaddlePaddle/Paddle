@@ -116,7 +116,7 @@ class ROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
              "Where batch_id is the id of the data, "
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates.");
-    AddInput("RoisLod", "(Tensor), The lod info of rois.");
+    AddInput("RoisLod", "(Tensor), The lod info of rois.").AsDispensable();
     AddOutput("Out",
               "(Tensor), "
               "The output of ROIPoolOp is a 4-D tensor with shape "

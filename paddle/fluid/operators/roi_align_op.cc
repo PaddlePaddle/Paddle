@@ -115,7 +115,8 @@ class ROIAlignOpMaker : public framework::OpProtoAndCheckerMaker {
              "(x2, y2) is the bottom right coordinates.");
     AddInput("RoisLod",
              "(Tensor), "
-             "The lod info of rois.");
+             "The lod info of rois.")
+        .AsDispensable();
     AddOutput("Out",
               "(Tensor), "
               "The output of ROIAlignOp is a 4-D tensor with shape "
