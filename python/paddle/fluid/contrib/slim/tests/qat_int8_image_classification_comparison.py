@@ -80,9 +80,6 @@ class QatInt8ImageClassificationComparisonTest(unittest.TestCase):
     Test for accuracy comparison of QAT FP32 and INT8 Image Classification inference.
     """
 
-    #  def __init__(self, debug):
-    #  self._debug = debug
-
     def _reader_creator(self, data_file='data.bin'):
         def reader():
             with open(data_file, 'rb') as fp:

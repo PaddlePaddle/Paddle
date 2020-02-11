@@ -432,7 +432,7 @@ class Qat2Int8MkldnnPass(object):
     def _set_dummy_fc_out_scales(self, graph):
         '''
         For the output tensors of FC that do not have an assigned scale,
-        assign a dummy scale (same scale as input), so tha the quantize pass
+        assign a dummy scale (same scale as input), so that the quantize pass
         won't fail. In the end these scales aren't used, since FCs that
         have an unassigend output scale will have a force_fp32_output attr
         set to True.
