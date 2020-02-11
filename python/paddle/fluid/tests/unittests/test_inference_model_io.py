@@ -28,7 +28,7 @@ import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.framework import Program, program_guard
-from paddle.fluid.io import save_inference_model, load_inference_model
+from paddle.fluid.io import save_inference_model, load_inference_model, save_persistables
 from paddle.fluid.transpiler import memory_optimize
 
 
@@ -77,6 +77,9 @@ class TestBook(unittest.TestCase):
         save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, program)
         save_inference_model(UNI_MODEL_DIR, ["x", "y"], [avg_cost], exe,
                              program, 'model', 'params')
+        main_program = program.clone()._prune_with_input(
+            feeded_var_names=["x", "y"], targets=[avg_cost])
+        params_str = save_persistables(exe, None, main_program, None)
 
         expected = exe.run(program,
                            feed={'x': tensor_x,
@@ -88,8 +91,6 @@ class TestBook(unittest.TestCase):
         model_0 = self.InferModel(load_inference_model(MODEL_DIR, exe))
         with open(os.path.join(UNI_MODEL_DIR, 'model'), "rb") as f:
             model_str = f.read()
-        with open(os.path.join(UNI_MODEL_DIR, 'params'), "rb") as f:
-            params_str = f.read()
         model_1 = self.InferModel(
             load_inference_model(None, exe, model_str, params_str))
 
