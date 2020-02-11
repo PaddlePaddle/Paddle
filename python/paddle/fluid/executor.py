@@ -633,7 +633,7 @@ class Executor(object):
         feed_names = list(feed.keys())
         print(feed_names)
 
-        targets = fetch_list.copy()
+        targets = [item for item in fetch_list]
         # get all optimize op 
         op_maker = core.op_proto_and_checker_maker
         OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
