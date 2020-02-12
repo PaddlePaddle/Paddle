@@ -479,7 +479,7 @@ GetPrimitiveFactory(const MKLDNNDeviceContext& dev_ctx,
                     const Tensor* weights,
                     const mkldnn::engine& mkldnn_engine) {
   const std::string key = platform::CreateKey(
-      platform::ThreadIDasStr(), input->format(),
+      platform::ThreadIDasStr(), input->format(), input->dims()[0],
       framework::vectorize<int>(weights->dims()), ctx.OutputName("Out"));
 
   auto prim_creator =
