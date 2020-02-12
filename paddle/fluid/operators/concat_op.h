@@ -110,7 +110,7 @@ class ConcatKernel : public framework::OpKernel<T> {
         for (size_t j = 0; j < in_lod.size(); j++) {
           size_t lod_s = out_lod[j][out_lod[j].size() - 1];
           for (size_t k = 1; k < in_lod[j].size(); k++) {
-            out_lod[j].insert(out_lod[j].end(), lod_s + in_lod[j][k]);
+            out_lod[j].push_back(lod_s + in_lod[j][k]);
           }
         }
       }
