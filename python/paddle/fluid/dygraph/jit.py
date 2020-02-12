@@ -93,14 +93,14 @@ def _trace(layer,
             outputs = original_outputs
         out_vars = [var for var in outputs]
 
-        program_desc, feed_names, fetch_names = tracer.create_program_desc(
+        program_desc, feed_names, fetch_names, parameters = tracer.create_program_desc(
             var_list, feed_prefix, out_vars, fetch_prefix, tmp_prefix)
         tracer.reset()
 
     with _dygraph_guard(None):
         program = create_program_from_desc(program_desc)
 
-    return original_outputs, program, feed_names, fetch_names
+    return original_outputs, program, feed_names, fetch_names, parameters
 
 
 class TracedLayer(object):
@@ -199,8 +199,8 @@ class TracedLayer(object):
                     # save the static graph model for inference
                     static_layer.save_inference_model(dirname='./saved_infer_model')
         """
-        outs, prog, feed, fetch = _trace(layer, inputs)
-        traced = TracedLayer(prog, layer.parameters(), feed, fetch)
+        outs, prog, feed, fetch, parameters = _trace(layer, inputs)
+        traced = TracedLayer(prog, parameters, feed, fetch)
         return outs, traced
 
     def set_strategy(self, build_strategy=None, exec_strategy=None):
