@@ -17,12 +17,11 @@ from __future__ import print_function
 import ast
 from ast_utils import *
 from paddle.fluid import unique_name
+from collections import defaultdict
 
 __all__ = ['AstNodeWrapper', 'DygraphToStaticAst', 'StaticAnalysisVisitor']
 
 DECORATOR_NAME = 'dygraph_to_static_output'
-TRUE_FUNC_PRFIX = 'true_fn'
-FALSE_FUNC_PRFIX = 'false_fn'
 
 
 class NodeVarType(object):
@@ -115,6 +114,7 @@ class DygraphToStaticAst(ast.NodeTransformer):
         self.root = root
         self.static_analysis_root = StaticAnalysisVisitor(
             root).get_node_wrapper_root()
+        # record all created ast.functionDef in control flow statement
         self.new_func_nodes = []
         root.node_info = AstNodeWrapper(root)
         self.static_analysis_root = root
@@ -144,12 +144,8 @@ class DygraphToStaticAst(ast.NodeTransformer):
         self.generic_visit(node)
         if is_control_flow_if(node.test):
             pred_node = node.test
-            true_func_node, return_name_ids = wrapper_to_func(
-                node.body, name=unique_name.generate(TRUE_FUNC_PRFIX))
-            false_func_node, _ = wrapper_to_func(
-                node.orelse,
-                name=unique_name.generate(FALSE_FUNC_PRFIX),
-                return_name_ids=return_name_ids)
+            true_func_node, false_func_node, return_name_ids = transform_if_else(
+                node, self.root)
             self.new_func_nodes += [true_func_node, false_func_node]
             # create layers.cond
             new_node = create_cond_node(return_name_ids, pred_node,
@@ -162,15 +158,10 @@ class DygraphToStaticAst(ast.NodeTransformer):
         """
         x.numpy()[i]  --> slice
         """
-        # layers.api(x_v).numpy()[i] > 10
-        # ==> layers.slice(layers.api(x_v), [i], [i]) > 10
         need_wrapper = is_numpy_slice(node)
         self.generic_visit(node)
         if need_wrapper:
             node = wrapper_slice(node)
-        return node
-
-        node = ast.Name(id='x_v', ctx=ast.Load())
         return node
 
     def visit_Call(self, node):

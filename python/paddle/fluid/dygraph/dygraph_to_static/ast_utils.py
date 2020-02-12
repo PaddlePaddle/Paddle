@@ -18,6 +18,12 @@ import ast
 import six
 import codegen
 import copy
+from collections import defaultdict
+
+from paddle.fluid import unique_name
+
+TRUE_FUNC_PRFIX = 'true_fn'
+FALSE_FUNC_PRFIX = 'false_fn'
 
 
 def is_control_flow_if(node):
@@ -28,14 +34,22 @@ def is_control_flow_if(node):
     return True
 
 
-def _all_name_ids(nodes, not_name_set=set()):
+def all_name_ids(nodes, not_name_set=None, node_black_list=None):
     if not isinstance(nodes, (list, tuple, set)):
         raise ValueError(
             "nodes must be one of list, tuple, set, but received %s" %
             type(nodes))
+    if not_name_set is None:
+        not_name_set = set()
 
-    name_ids = dict()
+    def update(old_dict, new_dict):
+        for k, v in new_dict.items():
+            old_dict[k].extend(v)
+        # return old_dict
+
+    name_ids = defaultdict(list)
     for node in nodes:
+        if node_black_list and node in node_black_list: continue
         if isinstance(node, ast.AST):
             # In two case, the ast.Name should be filtered.
             # 1. Function name like `my_func` of my_func(x)
@@ -48,42 +62,96 @@ def _all_name_ids(nodes, not_name_set=set()):
             if isinstance(
                     node, ast.Name
             ) and node.id not in name_ids and node.id not in not_name_set:
-                name_ids[node.id] = node.ctx
+                name_ids[node.id].append(node.ctx)
             else:
                 if isinstance(node, ast.Assign):
                     node = copy.copy(node)
                     node._fields = ('value', 'targets')
                 for field, value in ast.iter_fields(node):
                     value = value if isinstance(value, list) else [value]
-                    name_ids = dict(
-                        _all_name_ids(value, not_name_set).items() +
-                        name_ids.items())
+                    update(name_ids,
+                           all_name_ids(value, not_name_set, node_black_list))
     return name_ids
 
 
-def parse_args(var_ids_dict, ctx=ast.Load):
+def parse_args(var_ids_dict, return_ids=None, ctx=ast.Load):
     """
     Find out the ast.Name.id list of input by analyzing node's AST information.
     """
 
     name_ids = [
         var_id for var_id, var_ctx in var_ids_dict.items()
-        if isinstance(var_ctx, ctx)
+        if isinstance(var_ctx[0], ctx)
     ]
+    if return_ids:
+        new_args = set(return_ids) - set(name_ids)
+        name_ids.extend(list(new_args))
+    name_ids.sort()
     args = [ast.Name(id=name_id, ctx=ast.Load()) for name_id in name_ids]
     arguments = ast.arguments(args=args, vararg=None, kwarg=None, defaults=[])
-    return arguments, name_ids
+    return arguments
 
 
-def parse_return(var_ids_dict):
+def parse_return(parent_vars_dict, if_vars_dict, else_vars_dict):
     """
     Find out the ast.Name list of output by analyzing node's AST information.
+    Following conditions should be satisfied while determining whether a variable is a return value:
+    1. the var in parent_ids is modified in if/else node.
+    2. new var is both created in if and else node.
+
+    If different var is modified in if and else node, it should place `None` in return_ids
+    of different node.
+    For example:
+            x, y = 5, 10
+            if x > 4:
+                x = x+1
+                z = x*x
+            else:
+                y = y - 1
+                z = y*y
+
+    The return_ids should be (x, None, z) for `if` node and (None, y, z) for `else` node.
     """
-    name_ids = [
-        var_id for var_id, ctx in var_ids_dict.items()
-        if isinstance(ctx, ast.Store)
-    ]
-    return name_ids
+
+    def _is_return_var(ctxs):
+        for ctx in ctxs:
+            if isinstance(ctx, ast.Store):
+                return True
+        return False
+
+    def _vars_with_store(ids_dict):
+        vars = []
+        for k, ctxs in ids_dict.items():
+            if _is_return_var(ctxs):
+                vars.append(k)
+        return vars
+
+    def _candidate_vars(child_dict, parent_dict):
+        return set([
+            var for var in _vars_with_store(child_dict) if var in parent_dict
+        ])
+
+    # 1. the var in parent_ids is modified in if/else node.
+    if_candidate_vars = _candidate_vars(if_vars_dict, parent_vars_dict)
+    else_candidate_vars = _candidate_vars(else_vars_dict, parent_vars_dict)
+
+    # 2. new var is both created in if and else node.
+    if_new_vars = set([
+        var for var in _vars_with_store(if_vars_dict)
+        if var not in parent_vars_dict
+    ])
+    else_new_vars = set([
+        var for var in _vars_with_store(else_vars_dict)
+        if var not in parent_vars_dict
+    ])
+    new_vars = if_new_vars & else_new_vars
+
+    # generate return_ids of if/else node.
+    modified_vars = if_candidate_vars | else_candidate_vars
+    return_ids = list(modified_vars | new_vars)
+    return_ids.sort()
+
+    return return_ids, list(modified_vars)
 
 
 def generate_name_node(name_ids, ctx=ast.Load()):
@@ -100,32 +168,40 @@ def generate_name_node(name_ids, ctx=ast.Load()):
     return name_node
 
 
-def wrapper_to_func(nodes, name, return_name_ids=None):
+def create_funcDef_node(nodes, name, input_args, return_name_ids):
     """
     Wrapper all statements of nodes into one ast.FunctionDef, which can be
     called by ast.Call.
     """
     nodes = copy.copy(nodes)
-    all_var_names = _all_name_ids(nodes)
-    input_args, _ = parse_args(all_var_names)
-    if not nodes:
-        if return_name_ids:
-            return_name_ids = ['None'] * len(return_name_ids)
-        else:
-            raise ValueError(
-                'nodes and return_name_ids shall not be both None or [], as least one should be specified.'
-            )
-    if not return_name_ids:
-        return_name_ids = parse_return(all_var_names)
     # add return statement
     nodes.append(ast.Return(value=generate_name_node(return_name_ids)))
     func_def_node = ast.FunctionDef(
-        name=name,
-        args=input_args,
-        body=nodes,
-        decorator_list=[], )
+        name=name, args=input_args, body=nodes, decorator_list=[])
     # print(codegen.to_source(func_def_node))
-    return func_def_node, return_name_ids
+    return func_def_node
+
+
+def transform_if_else(node, root):
+    parent_name_ids = all_name_ids([root], node_black_list=[node])
+    if_name_ids = all_name_ids(node.body)
+    else_name_ids = all_name_ids(node.orelse)
+
+    return_name_ids, modified_name_ids = parse_return(
+        parent_name_ids, if_name_ids, else_name_ids)
+
+    true_func_node = create_funcDef_node(
+        node.body,
+        name=unique_name.generate(TRUE_FUNC_PRFIX),
+        input_args=parse_args(if_name_ids, modified_name_ids),
+        return_name_ids=return_name_ids)
+    false_func_node = create_funcDef_node(
+        node.orelse,
+        name=unique_name.generate(FALSE_FUNC_PRFIX),
+        input_args=parse_args(else_name_ids, modified_name_ids),
+        return_name_ids=return_name_ids)
+
+    return true_func_node, false_func_node, return_name_ids
 
 
 def create_cond_node(targets, pred, true_func, false_func):
