@@ -50,7 +50,7 @@ class TestElementwisePowOp_big_shape_2(TestElementwisePowOp):
         self.op_type = "elementwise_pow"
         self.inputs = {
             'X': np.random.uniform(1, 2, [10, 10]).astype("float64"),
-            'Y': np.random.uniform(0.01, 0.1, [10, 10]).astype("float64") * 20
+            'Y': np.random.uniform(0.2, 2, [10, 10]).astype("float64")
         }
         self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
