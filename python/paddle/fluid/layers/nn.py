@@ -10405,6 +10405,7 @@ Examples:
         x = fluid.data(name="x", shape=[3], dtype='float32')
         y = fluid.data(name="y", shape=[3], dtype='float32')
         z = fluid.layers.elementwise_add(x, y)
+        # z = x + y
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -10428,6 +10429,7 @@ Examples:
         x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
         y = fluid.data(name="y", shape=[3,4], dtype='float32')
         z = fluid.layers.elementwise_add(x, y, axis=1)
+        # z = x + y
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -10452,6 +10454,7 @@ Examples:
         x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
         y = fluid.data(name="y", shape=[5], dtype='float32')
         z = fluid.layers.elementwise_add(x, y, axis=3)
+        # z = x + y
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -10486,6 +10489,7 @@ Examples:
         x = fluid.data(name="x", shape=[3], dtype='float32')
         y = fluid.data(name="y", shape=[3], dtype='float32')
         z = fluid.layers.elementwise_div(x, y)
+        # z = x / y
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -10509,6 +10513,7 @@ Examples:
         x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
         y = fluid.data(name="y", shape=[3,4], dtype='float32')
         z = fluid.layers.elementwise_div(x, y, axis=1)
+        # z = x / y
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -10533,6 +10538,7 @@ Examples:
         x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
         y = fluid.data(name="y", shape=[5], dtype='float32')
         z = fluid.layers.elementwise_div(x, y, axis=3)
+        # z = x / y
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -10567,6 +10573,7 @@ Examples:
         x = fluid.data(name="x", shape=[3], dtype='float32')
         y = fluid.data(name="y", shape=[3], dtype='float32')
         z = fluid.layers.elementwise_sub(x, y)
+        # z = x - y
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -10590,6 +10597,7 @@ Examples:
         x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
         y = fluid.data(name="y", shape=[3,4], dtype='float32')
         z = fluid.layers.elementwise_sub(x, y, axis=1)
+        # z = x - y
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -10614,6 +10622,7 @@ Examples:
         x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
         y = fluid.data(name="y", shape=[5], dtype='float32')
         z = fluid.layers.elementwise_sub(x, y, axis=3)
+        # z = x - y
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -10648,6 +10657,7 @@ Examples:
         x = fluid.data(name="x", shape=[3], dtype='float32')
         y = fluid.data(name="y", shape=[3], dtype='float32')
         z = fluid.layers.elementwise_mul(x, y)
+        # z = x * y
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -10671,6 +10681,7 @@ Examples:
         x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
         y = fluid.data(name="y", shape=[3,4], dtype='float32')
         z = fluid.layers.elementwise_mul(x, y, axis=1)
+        # z = x * y
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -10695,6 +10706,7 @@ Examples:
         x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
         y = fluid.data(name="y", shape=[5], dtype='float32')
         z = fluid.layers.elementwise_mul(x, y, axis=3)
+        # z = x * y
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
