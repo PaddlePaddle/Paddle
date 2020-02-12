@@ -279,16 +279,13 @@ class TensorRTEngineOp : public framework::OperatorBase {
             "setted by EnableTensorrtEngine()\n"
             "2. Check whether the model you are running has multiple trt "
             "subgraphs: \n "
-            "\tEg: Like the faster RCNN model, multiple subgraphs can be "
-            "detected using Paddle-TRT. Including the backbone part, as well "
-            "as the detection part.\n"
-            "\tThe runtime batch of the detection part and backbone part might "
-            "be diffent, for the runtime batch of the detection part depends "
-            "on the num of the generated proposals.\n"
-            "\tIf so, you can set the appropriate min_subgrpah_size(large than "
-            "the node num in detection part, less than the node num in "
-            "backbone part) using EnableTensorrtEngine to filter the detection "
-            "part.\n",
+            "\tIf there are multiple trt subgraphs, you need to ensure that "
+            "the first dimension of the input tensor of these subgraphs is "
+            "consistent.\n"
+            "\tIf there are inconsistent subgraphs, you need to filter them by "
+            "setting min_subgraph_size using EnableTensorrtEngine interface.\n"
+            "\tThe min_subgraph_size shouble to be greater than the number of "
+            "nodes in the inconsistent subgraph.\n",
             runtime_batch, max_batch_size_));
     // Execute the engine.
     engine->Execute(runtime_batch, &buffers, stream);
