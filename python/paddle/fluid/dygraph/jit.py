@@ -20,6 +20,7 @@ import inspect
 from ..wrapped_decorator import wrap_decorator
 from .base import program_desc_tracing_guard, switch_to_static_graph
 from .dygraph_to_static import DygraphToStaticAst
+from .dygraph_to_static.ast_utils import ast_to_func
 from .layers import Layer
 from paddle.fluid import core
 from paddle.fluid.framework import Program, Block, Variable, _dygraph_tracer, dygraph_only, _dygraph_guard, _current_expected_place, in_dygraph_mode
@@ -56,12 +57,10 @@ def _dygraph_to_static_output_(dygraph_func):
         dygraph_code = inspect.getsource(dygraph_func)
         root = ast.parse(dygraph_code)
 
-        root = DygraphToStaticAst().get_static_ast(root)
+        root, func_name = DygraphToStaticAst().get_static_ast(root)
+        static_func, file_name = ast_to_func(root, func_name)
 
-        # TODO static_func should a callable from AST, like
-        # static_func = ast_to_func(root)
-        # currently just use dygraph_func
-        static_func = dygraph_func
+        static_func = ast_to_func(root)
         return static_func(*args, **kwargs)
 
     return __impl__

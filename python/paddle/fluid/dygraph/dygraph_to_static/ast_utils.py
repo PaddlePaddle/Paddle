@@ -1,4 +1,4 @@
-#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +18,10 @@ import ast
 import six
 import codegen
 import copy
+import tempfile
+import imp
+import os
+import atexit
 from collections import defaultdict
 
 from paddle.fluid import unique_name
@@ -65,7 +69,8 @@ def get_name_ids(nodes, not_name_set=None, node_black_list=None):
             if isinstance(
                     node, ast.Name
             ) and node.id not in name_ids and node.id not in not_name_set:
-                name_ids[node.id].append(node.ctx)
+                if isinstance(node.ctx, (ast.Store, ast.Load)):
+                    name_ids[node.id].append(node.ctx)
             else:
                 if isinstance(node, ast.Assign):
                     node = copy.copy(node)
@@ -247,3 +252,35 @@ def create_cond_node(return_name_ids, pred, true_func, false_func):
     assign_node = ast.Assign(targets=targets, value=cond_layer)
 
     return assign_node
+
+
+def ast_to_func(ast_root, func_name, delete_on_exit=True):
+    """
+    Transform modified AST of decorated function into python callable object.
+    """
+    source = codegen.to_source(ast_root)
+    if six.PY2:
+        source = source.encode('utf-8')
+        f = tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False)
+    else:
+        f = tempfile.NamedTemporaryFile(
+            mode='w', suffix='.py', delete=False, encoding='utf-8')
+
+    # TODO: more elegent way to transform ast into callable object
+    import_str = "import paddle\n" \
+                 "import paddle.fluid as fluid\n" \
+                 "import paddle.fluid.layers as layers\n"
+    with f:
+        module_name = os.path.basename(f.name[:-3])
+        f.write(import_str)
+        f.write(source)
+
+    if delete_on_exit:
+        atexit.register(lambda: os.remove(f.name))
+    module = imp.load_source(module_name, f.name)
+    if not hasattr(module, func_name):
+        raise ValueError(
+            'Function: %s doesn\'t exist in the Module transformed from AST.' %
+            func_name)
+
+    return getattr(module, func_name), f.name

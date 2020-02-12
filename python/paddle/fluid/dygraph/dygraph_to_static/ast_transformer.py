@@ -1,4 +1,4 @@
-#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -116,13 +116,14 @@ class DygraphToStaticAst(ast.NodeTransformer):
             root).get_node_wrapper_root()
         # record all created ast.functionDef in control flow statement
         self.new_func_nodes = []
+        self.decorate_func_name = None
         root.node_info = AstNodeWrapper(root)
         self.static_analysis_root = root
         self._visit(root)
 
         self.transfer_from_node_type(self.static_analysis_root)
 
-        return self.static_analysis_root
+        return self.static_analysis_root, self.decorate_func_name
 
     def _visit(self, root):
         # TODO construct a tree whose nodes are AstNodeWrapper
@@ -166,6 +167,8 @@ class DygraphToStaticAst(ast.NodeTransformer):
         return node
 
     def visit_FunctionDef(self, node):
+        if self.decorate_func_name is None:
+            self.decorate_func_name = node.name
         self.generic_visit(node)
         if hasattr(node, 'decorator_list'):
             decorator_list = [
