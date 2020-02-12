@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <cstdlib>
+#include <cstring>
 #include <memory>
 #include <vector>
 #include "paddle/fluid/inference/capi/c_api_internal.h"
