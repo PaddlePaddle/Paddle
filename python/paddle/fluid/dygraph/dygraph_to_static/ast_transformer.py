@@ -15,8 +15,10 @@
 from __future__ import print_function
 
 import gast
+from utils import *
 
 __all__ = ['AstNodeWrapper', 'DygraphToStaticAst', 'StaticAnalysisVisitor']
+DECORATOR_NAME = 'dygraph_to_static_output'
 
 
 class NodeVarType(object):
@@ -107,10 +109,87 @@ class DygraphToStaticAst(gast.NodeTransformer):
     def get_static_ast(self, root):
         # save root for some analysis may need global AST 
         self.root = root
+        self.class_node_dict = {}
+        # self._visit(root) # todo: delete it
+
         self.static_analysis_root = StaticAnalysisVisitor(
             root).get_node_wrapper_root()
         self.transfer_from_node_type(self.static_analysis_root)
         return self.static_analysis_root
 
+    def _visit(self, node):
+        # TODO construct a tree whose nodes are AstNodeWrapper
+        # This step also does static node type analysis
+        for each_node in ast.walk(node):
+            for child in ast.iter_child_nodes(each_node):
+                wrapper_child = AstNodeWrapper(child)
+                wrapper_child.parent = each_node
+
     def transfer_from_node_type(self, node):
-        print("Not implemented")
+        ast_node = node.node
+        self.generic_visit(node)
+        self.visit(node)
+
+    def visit_FunctionDef(self, node):
+        self.generic_visit(node)
+
+        if hasattr(node, 'decorator_list'):
+            decorator_list = [
+                d for d in node.decorator_list if d.id != DECORATOR_NAME
+            ]
+            node.decorator_list = decorator_list
+        return node
+
+    def visit_Assign(self, node):
+        if self._update_class_node_dict(node):
+            return None
+
+        value_node = node.value
+        for child_node in ast.walk(value_node):
+            if isinstance(child_node, ast.Call):
+                self._visit_Call(child_node)
+
+        return node
+
+    def visit_Expr(self, node):
+        value_node = node.value
+        for child_node in ast.walk(value_node):
+            if isinstance(child_node, ast.Call):
+                self._visit_Call(child_node)
+
+        return node
+
+    def _is_dygraph_forward(self, func_id):
+
+        return func_id in self.class_node_dict
+
+    def _get_class_node(self, func_id):
+        return self.class_node_dict[func_id]
+
+    def _visit_Call(self, node):
+
+        assert isinstance(node, ast.Call)
+
+        if not isinstance(node.func, ast.Name):
+            return
+
+        func_id = node.func.id
+        if self._is_dygraph_forward(func_id):
+
+            class_node = self._get_class_node(func_id)
+            paddle_class, paddle_args, paddle_keywords = parse_class(class_node)
+            static_node = to_static_ast(node, paddle_class, paddle_args,
+                                        paddle_keywords)
+
+            return static_node
+        else:
+            return node
+
+    def _update_class_node_dict(self, node):
+        assert isinstance(node, ast.Assign)
+
+        if isinstance(node.value, ast.Call):
+            if is_dygraph_class(node.value):
+                self.class_node_dict[node.targets[0].id] = node.value
+                return True
+        return False
