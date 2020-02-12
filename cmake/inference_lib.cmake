@@ -124,31 +124,23 @@ function(copy_part_of_thrid_party TARGET DST)
                 DSTS ${dst_dir} ${dst_dir})
     endif ()
 
-    if (TENSORRT_FOUND)
-        set(dst_dir "${DST}/third_party/install/tensorrt")
-        copy(${TARGET}
-                SRCS ${TENSORRT_INCLUDE_DIR}/Nv*.h ${TENSORRT_LIBRARY_DIR}/*nvinfer*
-                DSTS ${dst_dir}/include ${dst_dir}/lib)
-    endif ()
-
     if (LITE_BINARY_DIR)
         set(dst_dir "${DST}/third_party/install/lite")
         copy(${TARGET}
                 SRCS ${LITE_BINARY_DIR}/inference_lite_lib/*
                 DSTS ${dst_dir})
     endif()
-
-    if (ANAKIN_FOUND)
-        set(dst_dir "${DST}/third_party/install/anakin")
-        copy(${TARGET}
-                SRCS ${ANAKIN_ROOT}/*
-                DSTS ${dst_dir})
-    endif ()
 endfunction()
 
 # inference library for only inference
 set(inference_lib_deps third_party paddle_fluid paddle_fluid_c paddle_fluid_shared paddle_fluid_c_shared)
 add_custom_target(inference_lib_dist DEPENDS ${inference_lib_deps})
+
+
+set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/threadpool")
+copy(inference_lib_dist
+        SRCS ${THREADPOOL_INCLUDE_DIR}/ThreadPool.h
+        DSTS ${dst_dir})
 
 copy(inference_lib_dist
         SRCS ${CMAKE_CURRENT_BINARY_DIR}/CMakeCache.txt
@@ -284,8 +276,7 @@ function(version version_file)
     endif()
     if(TENSORRT_FOUND)
         file(APPEND ${version_file}
-                "WITH_TENSORRT: ${TENSORRT_FOUND}\n"
-                "TENSORRT_ROOT: ${TENSORRT_ROOT}\n")
+                "WITH_TENSORRT: ${TENSORRT_FOUND}\n")
     endif()
     
 endfunction()

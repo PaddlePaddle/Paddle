@@ -21,7 +21,7 @@ from .layer_function_generator import templatedoc
 from ..layer_helper import LayerHelper
 from ..framework import Variable, in_dygraph_mode
 from .. import core
-from ..data_feeder import check_type_and_dtype
+from ..data_feeder import check_variable_and_dtype
 from ..param_attr import ParamAttr
 from ..initializer import NumpyArrayInitializer, Constant
 from .. import core
@@ -245,8 +245,8 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
         outs = core.ops.cross_entropy(inputs, attrs)
         return outs['Y'][0]
 
-    check_type_and_dtype(input, 'input', Variable,
-                         ['float16', 'float32', 'float64'], 'cross_entropy')
+    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
+                             'cross_entropy')
     helper = LayerHelper('cross_entropy', **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
@@ -262,8 +262,8 @@ def cross_entropy2(input, label, ignore_index=kIgnoreIndex):
         outs = core.ops.cross_entropy2(inputs, attrs)
         return outs['Y'][0]
 
-    check_type_and_dtype(input, 'input', Variable,
-                         ['float16', 'float32', 'float64'], 'cross_entropy2')
+    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
+                             'cross_entropy2')
     helper = LayerHelper('cross_entropy2', **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     xshape = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -717,9 +717,8 @@ def nce(input,
                        custom_dist=dist)
     """
     helper = LayerHelper('nce', **locals())
-    check_type_and_dtype(input, 'input', Variable, ['float32', 'float64'],
-                         'nce')
-    check_type_and_dtype(label, 'label', Variable, ['int64'], 'nce')
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'nce')
+    check_variable_and_dtype(label, 'label', ['int64'], 'nce')
 
     dim = input.shape[1]
     num_true_class = label.shape[1]

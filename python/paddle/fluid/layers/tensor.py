@@ -23,7 +23,7 @@ from ..core import VarDesc
 from .. import core
 from .layer_function_generator import templatedoc
 from . import utils
-from ..data_feeder import check_type_and_dtype, check_type, check_dtype, convert_dtype
+from ..data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 import numpy
 import warnings
 
@@ -193,8 +193,8 @@ def cast(x, dtype):
             #  [ 0  4]] int32
     """
     helper = LayerHelper('cast', **locals())
-    check_type_and_dtype(
-        x, 'x', Variable,
+    check_variable_and_dtype(
+        x, 'x',
         ['bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
         'cast')
     out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -269,8 +269,8 @@ def concat(input, axis=0, name=None):
             (type(input)))
         input = [input]
     for id, x in enumerate(input):
-        check_type_and_dtype(
-            x, 'input[' + str(id) + ']', Variable,
+        check_variable_and_dtype(
+            x, 'input[' + str(id) + ']',
             ['float16', 'float32', 'float64', 'int32', 'int64'], 'concat')
     check_type(axis, 'axis', (int, Variable), 'concat')
     inputs = {'X': input}

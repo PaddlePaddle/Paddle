@@ -934,7 +934,7 @@ class FleetUtil(object):
                         feeded_var_names=feeded_var_names,
                         target_vars=target_vars,
                         executor=executor,
-                        main_program=program,
+                        main_program=program.clone(),
                         params_filename="params")
                 else:
                     fluid.io.save_inference_model(
@@ -942,7 +942,7 @@ class FleetUtil(object):
                         feeded_var_names=feeded_var_names,
                         target_vars=target_vars,
                         executor=executor,
-                        main_program=program)
+                        main_program=program.clone())
 
             configs = {
                 "fs.default.name": hadoop_fs_name,

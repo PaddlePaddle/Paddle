@@ -26,7 +26,7 @@ import numpy
 import warnings
 import six
 from functools import reduce, partial
-from ..data_feeder import convert_dtype, check_type_and_dtype
+from ..data_feeder import convert_dtype, check_variable_and_dtype
 from ... import compat as cpt
 from ..backward import _infer_var_data_type_shape_
 
@@ -257,9 +257,9 @@ def Print(input,
                data: 3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3, 
                
     '''
-    check_type_and_dtype(input, 'input', Variable,
-                         ['float32', 'float64', 'int32', 'int64', 'bool'],
-                         'fluid.layers.Print')
+    check_variable_and_dtype(input, 'input',
+                             ['float32', 'float64', 'int32', 'int64', 'bool'],
+                             'fluid.layers.Print')
 
     helper = LayerHelper('print' + "_" + input.name, **locals())
     output = helper.create_variable_for_type_inference(input.dtype)
@@ -1000,15 +1000,12 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
     while_loop_block = While(pre_cond, is_test, name)
     with while_loop_block.block():
         output_vars = body(*loop_vars)
+        map_structure(assign, output_vars, loop_vars)
         if len(loop_vars) == 1:
-            assign(output_vars, loop_vars[0])
             now_cond = cond(output_vars)
         else:
-            for i in range(len(output_vars)):
-                assign(output_vars[i], loop_vars[i])
             now_cond = cond(*output_vars)
         assign(now_cond, pre_cond)
-
     return loop_vars
 
 

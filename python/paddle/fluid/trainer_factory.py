@@ -23,7 +23,7 @@ logging.basicConfig(level=logging.INFO, format=FORMAT)
 local_logger = logging.getLogger(__name__)
 
 from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer
-from .device_worker import Hogwild, DownpourSGD, Section
+from .device_worker import Hogwild, DownpourSGD, Section, DownpourSGDOPT
 from .framework import Variable
 from multiprocessing import Process, Manager
 
@@ -89,6 +89,8 @@ class TrainerFactory(object):
                         "adjust_ins_weight"])
                 if opt_info.get("copy_table") is not None:
                     trainer._set_copy_table_config(opt_info["copy_table"])
+                if opt_info.get("loss_names") is not None:
+                    trainer._set_loss_names(opt_info["loss_names"])
             trainer._set_device_worker(device_worker)
         return trainer
 

@@ -16,7 +16,7 @@ from __future__ import print_function
 import warnings
 from .framework import Variable, in_dygraph_mode
 from .layer_helper import LayerHelper
-from .data_feeder import check_type_and_dtype, check_dtype
+from .data_feeder import check_variable_and_dtype, check_dtype
 
 __all__ = ['one_hot', 'embedding']
 
@@ -233,7 +233,7 @@ def embedding(input,
     """
 
     helper = LayerHelper('embedding', **locals())
-    check_type_and_dtype(input, 'input', Variable, ['int64'], 'fluid.embedding')
+    check_variable_and_dtype(input, 'input', ['int64'], 'fluid.embedding')
     check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'],
                 'fluid.embedding')
     remote_prefetch = is_sparse and (not is_distributed)

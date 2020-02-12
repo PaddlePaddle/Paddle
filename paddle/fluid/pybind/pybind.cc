@@ -68,7 +68,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/ir.h"
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
 
-#ifndef _WIN32
+#ifdef PADDLE_WITH_NCCL
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
 #endif
 #include "paddle/fluid/framework/data_type.h"
@@ -78,7 +78,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/fluid/string/to_string.h"
 #ifdef PADDLE_WITH_CUDA
-#ifndef _WIN32
+#ifdef PADDLE_WITH_NCCL
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 #endif
 #include "paddle/fluid/platform/cuda_profiler.h"
@@ -926,7 +926,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("get_lod_tensor_array",
            [](Variable &self) { return self.GetMutable<LoDTensorArray>(); },
            py::return_value_policy::reference)
-#if (defined(PADDLE_WITH_CUDA) && !defined(_WIN32))
+#if (defined(PADDLE_WITH_NCCL))
       .def("get_communicator",
            [](Variable &self) -> platform::Communicator * {
              return self.GetMutable<platform::Communicator>();
@@ -1174,7 +1174,7 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
                 });;
 // clang-format on
-#if (defined(PADDLE_WITH_CUDA) && !defined(_WIN32))
+#if defined(PADDLE_WITH_NCCL)
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
   py::class_<platform::CUDAPlace>(m, "CUDAPlace", R"DOC(
@@ -2018,6 +2018,27 @@ All parameter, weight, gradient are variables in Paddle.
                         build_strategy.fuse_bn_act_ops = True
                      )DOC")
       .def_property(
+          "enable_auto_fusion",
+          [](const BuildStrategy &self) { return self.enable_auto_fusion_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy is finlaized."));
+            self.enable_auto_fusion_ = b;
+          },
+          R"DOC((bool, optional): Whether to enable fusing subgraph to a
+                fusion_group. Now we only support fusing subgraph that composed
+                of elementwise-like operators, such as elementwise_add/mul
+                without broadcast and activations.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle.fluid as fluid
+                        build_strategy = fluid.BuildStrategy()
+                        build_strategy.enable_auto_fusion = True
+                    )DOC")
+      .def_property(
           "fuse_relu_depthwise_conv",
           [](const BuildStrategy &self) {
             return self.fuse_relu_depthwise_conv_;
@@ -2209,7 +2230,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindFleetWrapper(&m);
   BindGlooWrapper(&m);
   BindBoxHelper(&m);
-#ifndef _WIN32
+#ifdef PADDLE_WITH_NCCL
   BindNCCLWrapper(&m);
 #endif
   BindGraph(&m);
