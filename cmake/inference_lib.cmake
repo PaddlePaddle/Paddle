@@ -124,13 +124,6 @@ function(copy_part_of_thrid_party TARGET DST)
                 DSTS ${dst_dir} ${dst_dir})
     endif ()
 
-    if (TENSORRT_FOUND)
-        set(dst_dir "${DST}/third_party/install/tensorrt")
-        copy(${TARGET}
-                SRCS ${TENSORRT_INCLUDE_DIR}/Nv*.h ${TENSORRT_LIBRARY_DIR}/*nvinfer*
-                DSTS ${dst_dir}/include ${dst_dir}/lib)
-    endif ()
-
     if (LITE_BINARY_DIR)
         set(dst_dir "${DST}/third_party/install/lite")
         copy(${TARGET}
@@ -283,8 +276,7 @@ function(version version_file)
     endif()
     if(TENSORRT_FOUND)
         file(APPEND ${version_file}
-                "WITH_TENSORRT: ${TENSORRT_FOUND}\n"
-                "TENSORRT_ROOT: ${TENSORRT_ROOT}\n")
+                "WITH_TENSORRT: ${TENSORRT_FOUND}\n")
     endif()
     
 endfunction()
