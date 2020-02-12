@@ -144,42 +144,19 @@ def terminate_procs(procs):
             p.terminate()
 
 
-def start_procs(args):
-    """
-    """
-    default_env = os.environ.copy()
-
+def get_job_env():
     current_node_ip = args.node_ip
     node_ips = [x.strip() for x in args.cluster_node_ips.split(',')]
     node_id = node_ips.index(current_node_ip)
+    if under_edl:
+        node_ips, current_node_ip, node_id = get_cloud_env(args)
+
     if args.use_paddlecloud:
-        trainer_nums = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
-        if trainer_nums != 1:
-            #you can automatically get ip info while using paddlecloud multi nodes mode.
-            current_node_ip = os.getenv("POD_IP")
-            assert current_node_ip is not None, "POD_IP should not be None"
-            node_ips = os.getenv("PADDLE_TRAINERS")
-            assert node_ips is not None, "PADDLE_TRAINERS should not be None"
-            node_ips = node_ips.split(",")
-            node_id = os.getenv("PADDLE_TRAINER_ID")
-            assert node_id is not None, "PADDLE_TRAINER_ID should not be None"
-            node_id = int(node_id)
+        node_ips, current_node_ip, node_id = get_cloud_env(args)
+    return node_ips, current_node_ip, node_id
 
-            if args.node_ip != "127.0.0.1" and current_node_ip != args.node_ip:
-                logger.warning(
-                    "Please NOTE: When using paddlecloud, current_node_ip is \
-automatically got from POD_IP. Your input node_ip: {} doesn't equals to \
-current_node_ip: {} from paddlecloud environment."
-                    .format(args.node_ip, current_node_ip))
-            if args.cluster_node_ips != "127.0.0.1" and args.cluster_node_ips != ",".join(
-                    node_ips):
-                logger.warning(
-                    "Please NOTE: When using paddlecloud, cluster_node_ips is \
-automatically got from PADDLE_TRAINERS(multi nodes) or POD_IP(single node).\
-Your input cluster_node_ips: {} doesn't equals to IPs: {} from \
-paddlecloud environment.".format(args.cluster_node_ips, node_ips))
-    num_nodes = len(node_ips)
 
+def get_gpus():
     if args.selected_gpus is None:
         gpus_num = fluid.core.get_cuda_device_count()
         selected_gpus = [str(x) for x in range(0, gpus_num)]
@@ -200,7 +177,23 @@ paddlecloud environment.".format(args.cluster_node_ips, node_ips))
                 cuda_visible_devices_list.index(x.strip())
                 for x in args.selected_gpus.split(',')
             ]
+
+    return selected_gpus
+
+
+def start_procs(args):
+    current_env = copy.copy(os.environ.copy())
+    #paddle broadcast ncclUniqueId use socket, and
+    #proxy maybe make trainers unreachable, so delete them.
+    #if we set them to "", grpc will log error message "bad uri"
+    #so just delete them.
+    current_env.pop("http_proxy", None)
+    current_env.pop("https_proxy", None)
+
+    selected_gpus = get_gpus()
     selected_gpus_num = len(selected_gpus)
+    launcher_endpoints, trainers_endpoints = get_endpoints(selected_gpus)
+    num_nodes = len(launcher_endpoints)
 
     if args.use_paddlecloud and num_nodes > 1:
         cloud_paddle_port = os.getenv("PADDLE_PORT", "")
@@ -225,14 +218,6 @@ paddlecloud environment.".format(args.cluster_node_ips, node_ips))
         print("trainers_endpoints:", trainers_endpoints, ", node_id:", node_id,
               ", current_node_ip:", current_node_ip, ", num_nodes:", num_nodes,
               ", node_ips:", node_ips, ", nranks:", nranks)
-
-    current_env = copy.copy(default_env)
-    #paddle broadcast ncclUniqueId use socket, and
-    #proxy maybe make trainers unreachable, so delete them.
-    #if we set them to "", grpc will log error message "bad uri"
-    #so just delete them.
-    current_env.pop("http_proxy", None)
-    current_env.pop("https_proxy", None)
 
     procs = []
     log_fns = []
