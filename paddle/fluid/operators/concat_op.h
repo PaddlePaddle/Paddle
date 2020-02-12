@@ -101,13 +101,17 @@ class ConcatKernel : public framework::OpKernel<T> {
     }
     auto place = ctx.GetPlace();
     out->mutable_data<T>(place);
-    if (axis == 0) {
+
+    // If axis is 0, the lod of the output is not the same as inputs.
+    if (axis == 0 && ins[0]->lod().size()) {
       auto out_lod = ins[0]->lod();
       for (size_t i = 1; i < ins.size(); ++i) {
         auto in_lod = ins[i]->lod();
-        size_t lod_s = out_lod[0][out_lod[0].size() - 1];
-        for (size_t j = 1; j < in_lod[0].size(); j++) {
-          out_lod[0].push_back(lod_s + in_lod[0][j]);
+        for (size_t j = 0; j < in_lod.size(); j++) {
+          size_t lod_s = out_lod[j][out_lod[j].size() - 1];
+          for (size_t k = 1; k < in_lod[j].size(); k++) {
+            out_lod[j].insert(out_lod[j].end(), lod_s + in_lod[j][k]);
+          }
         }
       }
       out->set_lod(out_lod);
