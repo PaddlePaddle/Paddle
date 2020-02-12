@@ -70,7 +70,7 @@ else
     exit -1
 fi
 
-#test filelock
+#test for random ports
 file_0_0="test_launch_filelock_0_0.log"
 file_1_0="test_launch_filelock_1_0.log"
 rm -rf $file_0_0 $file_0_1
