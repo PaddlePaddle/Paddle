@@ -32,6 +32,7 @@ using paddle::operators::distributed::AsyncCommunicator;
 using paddle::operators::distributed::Communicator;
 using paddle::operators::distributed::GeoSgdCommunicator;
 using paddle::operators::distributed::HalfAsyncCommunicator;
+using paddle::operators::distributed::SyncCommunicator;
 
 namespace paddle {
 namespace pybind {
