@@ -54,16 +54,16 @@ func main() {
     switch dtype {
     case paddle.PaddleDType(paddle.FLOAT32):
         v := value.Interface().([][]float32)
-        print("v: ", v[0][0], v[0][1], "...")
+        println("v: ", v[0][0], v[0][1], "...")
     case paddle.PaddleDType(paddle.UINT8):
         v := value.Interface().([][]uint8)
-        print("v: ", v[0][0], v[0][1], "...")
+        println("v: ", v[0][0], v[0][1], "...")
     case paddle.PaddleDType(paddle.INT32):
         v := value.Interface().([][]int32)
-        print("v: ", v[0][0], v[0][1], "...")
+        println("v: ", v[0][0], v[0][1], "...")
     case paddle.PaddleDType(paddle.INT64):
         v := value.Interface().([][]int64)
-        print("v: ", v[0][0], v[0][1], "...")
+        println("v: ", v[0][0], v[0][1], "...")
     }
     println(shape[0], shape[1])
     println(output.Shape()[0])
