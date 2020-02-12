@@ -44,6 +44,7 @@ import numpy as np
 from .ps_dispatcher import RoundRobin, PSDispatcher
 from .. import core, framework, unique_name, initializer
 from ..annotations import deprecated
+from ..wrapped_decorator import signature_safe_contextmanager
 from ..framework import Program, default_main_program, \
     default_startup_program, Block, Parameter, grad_var_name
 from .details import wait_server_ready, UnionFind, VarStruct, VarsDistributed
@@ -542,6 +543,7 @@ class DistributeTranspiler(object):
         instead="FleetAPI",
         extra_message="WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler"
     )
+    @signature_safe_contextmanager
     def transpile(self,
                   trainer_id,
                   program=None,

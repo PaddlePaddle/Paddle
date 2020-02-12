@@ -32,9 +32,6 @@ def deprecated(since, instead, extra_message=""):
             print(err_msg, file=sys.stderr)
             return func(*args, **kwargs)
 
-        if wrapper.__doc__ == None:
-            wrapper.__doc__ = ""
-
         wrapper.__doc__ += "\n    "
         wrapper.__doc__ += err_msg
         return wrapper
