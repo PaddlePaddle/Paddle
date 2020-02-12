@@ -23,7 +23,7 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-enum EventType { kMark, kPushRange, kPopRange };
+enum class EventType { kMark, kPushRange, kPopRange };
 
 class Event {
  public:

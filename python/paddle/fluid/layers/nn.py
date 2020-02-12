@@ -33,7 +33,7 @@ from . import utils
 from .. import unique_name
 from functools import reduce
 from .. import core
-from ..data_feeder import convert_dtype, check_type_and_dtype, check_type, check_dtype
+from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 
 __all__ = [
     'fc',
@@ -472,8 +472,8 @@ def embedding(input,
     """
 
     helper = LayerHelper('embedding', **locals())
-    check_type_and_dtype(input, 'input', Variable, ['int64'],
-                         'fluid.layers.embedding')
+    check_variable_and_dtype(input, 'input', ['int64'],
+                             'fluid.layers.embedding')
     check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'],
                 'fluid.layers.embedding')
     remote_prefetch = is_sparse and (not is_distributed)
@@ -840,8 +840,8 @@ def dropout(x,
         return outs['Out'][0]
 
     helper = LayerHelper('dropout', **locals())
-    check_type_and_dtype(x, 'x', Variable, ['float16', 'float32', 'float64'],
-                         'dropout')
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'dropout')
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     mask = helper.create_variable_for_type_inference(
@@ -1124,8 +1124,8 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
         return outs['Out'][0]
 
     helper = LayerHelper('softmax', **locals())
-    check_type_and_dtype(input, 'input', Variable,
-                         ['float16', 'float32', 'float64'], 'softmax')
+    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
+                             'softmax')
 
     dtype = helper.input_dtype()
     softmax_out = helper.create_variable_for_type_inference(dtype)
@@ -1280,8 +1280,8 @@ def conv2d(input,
           conv2d = fluid.layers.conv2d(input=data, num_filters=2, filter_size=3, act="relu")
     """
 
-    check_type_and_dtype(input, 'input', Variable,
-                         ['float16', 'float32', 'float64'], 'conv2d')
+    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
+                             'conv2d')
     num_channels = input.shape[1]
     if not isinstance(use_cudnn, bool):
         raise ValueError("Attr(use_cudnn) should be True or False. Received "
@@ -2555,8 +2555,8 @@ def batch_norm(input,
     assert bias_attr is not False, "bias_attr should not be False in batch_norm."
     helper = LayerHelper('batch_norm', **locals())
 
-    check_type_and_dtype(input, 'input', Variable,
-                         ['float16', 'float32', 'float64'], 'batch_norm')
+    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
+                             'batch_norm')
     dtype = helper.input_dtype()
 
     has_reserve_space = False
@@ -3896,8 +3896,8 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
         outs = core.ops.reduce_sum(inputs, attrs)
         return outs['Out'][0]
 
-    check_type_and_dtype(input, 'input', Variable,
-                         ['float32', 'float64', 'int32', 'int64'], 'reduce_sum')
+    check_variable_and_dtype(
+        input, 'input', ['float32', 'float64', 'int32', 'int64'], 'reduce_sum')
     helper = LayerHelper('reduce_sum', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     helper.append_op(
@@ -3971,9 +3971,8 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
         outs = core.ops.reduce_mean(inputs, attrs)
         return outs['Out'][0]
 
-    check_type_and_dtype(input, 'input', Variable,
-                         ['float32', 'float64', 'int32', 'int64'],
-                         'reduce_mean')
+    check_variable_and_dtype(
+        input, 'input', ['float32', 'float64', 'int32', 'int64'], 'reduce_mean')
     helper = LayerHelper('reduce_mean', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     helper.append_op(
@@ -4601,8 +4600,8 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
         for name, val in var_names.items():
-            check_type_and_dtype(val, name, Variable,
-                                 ['float16', 'float32', 'float64'], 'matmul')
+            check_variable_and_dtype(
+                val, name, ['float16', 'float32', 'float64'], 'matmul')
         x_shape = list(x.shape)
         y_shape = list(y.shape)
         if len(x_shape) == 1:
@@ -4962,9 +4961,9 @@ def transpose(x, perm, name=None):
         outs = core.ops.transpose2(inputs, attrs)
         return outs['Out'][0]
 
-    check_type_and_dtype(x, 'x', Variable,
-                         ['float16', 'float32', 'float64', 'int32', 'int64'],
-                         'transpose')
+    check_variable_and_dtype(
+        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'transpose')
     check_type(perm, 'perm', list, 'transpose')
 
     if len(perm) != len(x.shape):
@@ -5589,9 +5588,8 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
         out = outs['Out'][0]
         return dygraph_utils._append_activation_in_dygraph(out, act)
 
-    check_type_and_dtype(x, 'x', Variable,
-                         ['float16', 'float32', 'float64', 'int32', 'int64'],
-                         'reshape')
+    check_variable_and_dtype(
+        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'reshape')
     check_type(shape, 'shape', (list, tuple, Variable), 'reshape')
     check_type(actual_shape, 'actual_shape', (Variable, type(None)), 'reshape')
 
@@ -5719,9 +5717,9 @@ def squeeze(input, axes, name=None):
 
     """
     helper = LayerHelper("squeeze", **locals())
-    check_type_and_dtype(input, 'input', Variable,
-                         ['float32', 'float64', 'int8', 'int32', 'int64'],
-                         'squeeze')
+    check_variable_and_dtype(input, 'input',
+                             ['float32', 'float64', 'int8', 'int32', 'int64'],
+                             'squeeze')
     check_type(axes, 'axes', list, 'squeeze')
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -8228,9 +8226,8 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
 
     """
     helper = LayerHelper('crop_tensor', **locals())
-    check_type_and_dtype(x, 'x', Variable,
-                         ['float32', 'float64', 'int32', 'int64'],
-                         'crop_tensor')
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                             'crop_tensor')
     check_type(shape, 'shape', (list, tuple, Variable), 'crop_tensor')
     check_type(offsets, 'offsets', (list, tuple, Variable, type(None)),
                'crop_tensor')
@@ -8523,8 +8520,7 @@ def elu(x, alpha=1.0, name=None):
                 # [ 1.          15.6       ]]
     """
     helper = LayerHelper('elu', **locals())
-    check_type_and_dtype(x, 'x', Variable, ['float16', 'float32', 'float64'],
-                         'elu')
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'elu')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='elu',
@@ -9342,9 +9338,8 @@ def expand(x, expand_times, name=None):
         outs = core.ops.expand(inputs, attrs)
         return outs['Out'][0]
 
-    check_type_and_dtype(x, 'x', Variable,
-                         ['bool', 'float32', 'float64', 'int32', 'int64'],
-                         'expand')
+    check_variable_and_dtype(
+        x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'expand')
     check_type(expand_times, 'expand_times', (list, tuple, Variable), 'expand')
     if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == True:
         raise ValueError(
@@ -10277,12 +10272,10 @@ def _elementwise_op(helper):
 
     assert x is not None, 'x cannot be None in {}'.format(op_type)
     assert y is not None, 'y cannot be None in {}'.format(op_type)
-    check_type_and_dtype(x, 'x', Variable,
-                         ['float16', 'float32', 'float64', 'int32', 'int64'],
-                         op_type)
-    check_type_and_dtype(y, 'y', Variable,
-                         ['float16', 'float32', 'float64', 'int32', 'int64'],
-                         op_type)
+    check_variable_and_dtype(
+        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], op_type)
+    check_variable_and_dtype(
+        y, 'y', ['float16', 'float32', 'float64', 'int32', 'int64'], op_type)
 
     axis = helper.kwargs.get('axis', -1)
     use_mkldnn = helper.kwargs.get('use_mkldnn', False)
@@ -11338,8 +11331,7 @@ def mean(x, name=None):
         return outs['Out'][0]
 
     helper = LayerHelper("mean", **locals())
-    check_type_and_dtype(x, 'x', Variable, ['float16', 'float32', 'float64'],
-                         'mean')
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'mean')
     if name is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
     else:
@@ -11425,10 +11417,8 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
         return outs['Out'][0]
 
     helper = LayerHelper("mul", **locals())
-    check_type_and_dtype(x, 'x', Variable, ['float16', 'float32', 'float64'],
-                         'mul')
-    check_type_and_dtype(y, 'y', Variable, ['float16', 'float32', 'float64'],
-                         'mul')
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'mul')
+    check_variable_and_dtype(y, 'y', ['float16', 'float32', 'float64'], 'mul')
     if name is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
     else:
