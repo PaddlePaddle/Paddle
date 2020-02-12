@@ -245,12 +245,14 @@ paddlecloud environment.".format(args.cluster_node_ips, node_ips))
         free_ports = find_free_ports(selected_gpus_num)
         if free_ports is not None:
             free_ports = list(free_ports)
-    else:
+
+    if free_ports is None:
         free_ports = [
             x
             for x in range(args.started_port, args.started_port +
                            selected_gpus_num)
         ]
+        print("selectd ports:", free_ports)
 
     trainers_endpoints = ""
     for ip in node_ips:
