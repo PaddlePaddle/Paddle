@@ -1000,15 +1000,12 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
     while_loop_block = While(pre_cond, is_test, name)
     with while_loop_block.block():
         output_vars = body(*loop_vars)
+        map_structure(assign, output_vars, loop_vars)
         if len(loop_vars) == 1:
-            assign(output_vars, loop_vars[0])
             now_cond = cond(output_vars)
         else:
-            for i in range(len(output_vars)):
-                assign(output_vars[i], loop_vars[i])
             now_cond = cond(*output_vars)
         assign(now_cond, pre_cond)
-
     return loop_vars
 
 
