@@ -1764,16 +1764,16 @@ def load_program_state(model_path, var_list=None):
 
     parameter_file_name = model_prefix + ".pdparams"
     if not os.path.exists(parameter_file_name):
-        # model file save by fluid.save not found, try to load model file saved with
+        # model file saved with fluid.save is not found, try to load model file saved with
         # [save_vars, save_params, save_persistables]
         _logger.warning(
             "{} not found, try to load model file saved with [ save_params, save_persistables, save_vars ]".
             format(parameter_file_name))
 
         var_name_list = []
-        if var_list is None and not os.path.isdir(model_path):
+        if var_list is None and os.path.isfile(model_path):
             raise ValueError(
-                "model_path should be a directory when var is not provided")
+                "var_list can not be None when model_path is a file type")
 
         for root, dirs, files in os.walk(model_path, topdown=False):
             for f in files:
