@@ -12,15 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 __all__ = ['TracedLayer', 'dygraph_to_static_output']
 
 import gast
 import inspect
-
+import codegen
 from ..wrapped_decorator import wrap_decorator
 from .base import program_desc_tracing_guard, switch_to_static_graph
 from .dygraph_to_static import DygraphToStaticAst
 from .layers import Layer
+from .dygraph_to_static.utils import ast_to_func
 from paddle.fluid import core
 from paddle.fluid.framework import Program, Block, Variable, _dygraph_tracer, dygraph_only, _dygraph_guard, _current_expected_place, in_dygraph_mode
 from paddle.fluid.executor import Executor, scope_guard
@@ -56,12 +59,14 @@ def _dygraph_to_static_output_(dygraph_func):
         dygraph_code = inspect.getsource(dygraph_func)
         root = gast.parse(dygraph_code)
 
-        root = DygraphToStaticAst().get_static_ast(root)
+        root = DygraphToStaticAst().get_static_ast(root).node
 
         # TODO static_func should a callable from AST, like
         # static_func = ast_to_func(root)
         # currently just use dygraph_func
-        static_func = dygraph_func
+        # static_func = dygraph_func
+
+        static_func = ast_to_func(root, dygraph_func.__name__)
         return static_func(*args, **kwargs)
 
     return __impl__
@@ -105,17 +110,17 @@ def _trace(layer,
 
 class TracedLayer(object):
     """
-    TracedLayer is used to convert a forward dygraph model to a static 
-    graph model. This is mainly used to save the dygraph model for online 
-    inference using C++. Besides, users can also do inference in Python 
-    using the converted static graph model, which usually has better 
-    performance than the original dygraph model.  
+    TracedLayer is used to convert a forward dygraph model to a static
+    graph model. This is mainly used to save the dygraph model for online
+    inference using C++. Besides, users can also do inference in Python
+    using the converted static graph model, which usually has better
+    performance than the original dygraph model.
 
     TracedLayer would run the static graph model using :code:`Executor`
     and :code:`CompiledProgram` . The static graph model would share
     parameters with the dygraph model.
-    
-    All TracedLayer objects should not be created by constructor and should 
+
+    All TracedLayer objects should not be created by constructor and should
     be created by static method :code:`TracedLayer.trace(layer, inputs)` .
 
     The TracedLayer can only be used to convert the data-independent dygraph
@@ -156,7 +161,7 @@ class TracedLayer(object):
     @dygraph_only
     def trace(layer, inputs):
         """
-        This method is the only allowed method to create TracedLayer object. 
+        This method is the only allowed method to create TracedLayer object.
         It would call the :code:`layer(*inputs)` method to run the dygraph
         model and convert it into a static graph model.
 
