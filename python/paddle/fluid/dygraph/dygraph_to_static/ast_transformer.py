@@ -121,7 +121,6 @@ class DygraphToStaticAst(ast.NodeTransformer):
         self._visit(root)
 
         self.transfer_from_node_type(self.static_analysis_root)
-        print(codegen.to_source(self.static_analysis_root))
 
         return self.static_analysis_root
 
@@ -161,7 +160,7 @@ class DygraphToStaticAst(ast.NodeTransformer):
         need_wrapper = is_numpy_slice(node)
         self.generic_visit(node)
         if need_wrapper:
-            node = wrapper_slice(node)
+            node = transform_slice(node)
         return node
 
     def visit_Call(self, node):

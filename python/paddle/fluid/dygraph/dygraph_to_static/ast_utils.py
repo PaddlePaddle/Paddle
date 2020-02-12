@@ -34,7 +34,10 @@ def is_control_flow_if(node):
     return True
 
 
-def all_name_ids(nodes, not_name_set=None, node_black_list=None):
+def get_name_ids(nodes, not_name_set=None, node_black_list=None):
+    """
+    Return all ast.Name.id of python variable in nodes.
+    """
     if not isinstance(nodes, (list, tuple, set)):
         raise ValueError(
             "nodes must be one of list, tuple, set, but received %s" %
@@ -70,7 +73,7 @@ def all_name_ids(nodes, not_name_set=None, node_black_list=None):
                 for field, value in ast.iter_fields(node):
                     value = value if isinstance(value, list) else [value]
                     update(name_ids,
-                           all_name_ids(value, not_name_set, node_black_list))
+                           get_name_ids(value, not_name_set, node_black_list))
     return name_ids
 
 
@@ -183,9 +186,12 @@ def create_funcDef_node(nodes, name, input_args, return_name_ids):
 
 
 def transform_if_else(node, root):
-    parent_name_ids = all_name_ids([root], node_black_list=[node])
-    if_name_ids = all_name_ids(node.body)
-    else_name_ids = all_name_ids(node.orelse)
+    """
+    Transoform ast.If into control flow statement of Paddle static graph.
+    """
+    parent_name_ids = get_name_ids([root], node_black_list=[node])
+    if_name_ids = get_name_ids(node.body)
+    else_name_ids = get_name_ids(node.orelse)
 
     return_name_ids, modified_name_ids = parse_return(
         parent_name_ids, if_name_ids, else_name_ids)
@@ -204,10 +210,10 @@ def transform_if_else(node, root):
     return true_func_node, false_func_node, return_name_ids
 
 
-def create_cond_node(targets, pred, true_func, false_func):
+def create_cond_node(return_name_ids, pred, true_func, false_func):
     """
     Create `fluid.layers.cond(pred, true_fn, false_fn)` to replace
-    original `python if` statement.
+    original `python if/else` statement.
     """
     #TODO: how to determine the statement of api (fluid.layers.cond or layers.cond or f.layers.cond)?
     cond_api = ast.parse('fluid.layers.cond').body[0].value
@@ -237,7 +243,7 @@ def create_cond_node(targets, pred, true_func, false_func):
         keywords=[],
         kwargs=None,
         starargs=None)
-    targets = [generate_name_node(targets, ctx=ast.Store())]
+    targets = [generate_name_node(return_name_ids, ctx=ast.Store())]
     assign_node = ast.Assign(targets=targets, value=cond_layer)
 
     return assign_node
@@ -252,7 +258,7 @@ def is_numpy_slice(node):
     return False
 
 
-def wrapper_slice(node):
+def transform_slice(node):
     """
     Transform `x[i]` into fluid.layer.slice(x, [i], [i])
     """
@@ -270,8 +276,6 @@ def wrapper_slice(node):
         func=slice_api,
         args=[node.value],
         keywords=kargs,
-        starargs=ast.Name(
-            id='args', ctx=ast.Param()),
-        kwargs=ast.Name(
-            id='kwargs', ctx=ast.Param()))
+        starargs=None,
+        kwargs=None)
     return new_call
