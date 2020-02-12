@@ -29,6 +29,7 @@ class ConvBnFusePassMKLDNNTest(InferencePassTest):
                 name="data", shape=[-1, 3, 100, 100], dtype="float32")
             conv_out = fluid.layers.conv2d(
                 data, num_filters=3, filter_size=3, bias_attr=False, act="relu")
+            conv_out = fluid.layers.scale(conv_out, scale=1.0)
 
         self.feeds = {
             "data": np.random.random((1, 3, 100, 100)).astype("float32")
