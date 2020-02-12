@@ -271,7 +271,8 @@ class Normal(Distribution):
 
     Examples:
         .. code-block:: python
-
+          
+          import numpy as np
           from paddle.fluid import layers
           from paddle.fluid.layers import Normal
 
