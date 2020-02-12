@@ -242,6 +242,15 @@ void PD_GetZeroCopyOutput(PD_Predictor* predictor, PD_ZeroCopyTensor* tensor) {
   auto shape = output->shape();
   int n =
       std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
+  if (tensor->shape.length < n * sizeof(int)) {
+    if (tensor->shape.length) {
+      std::free(tensor->shape.data);
+    }
+    tensor->shape.data = std::malloc(n * sizeof(int));
+    tensor->shape.length = n * sizeof(int);
+  }
+  tensor->shape.used_length = n * sizeof(int);
+  std::copy(shape.begin(), shape.end(), static_cast<int *>(tensor->shape.data));
   size_t length = n * paddle::PaddleDtypeSize(output->type());
   if (tensor->data.length < length) {
     if (tensor->data.data) {
