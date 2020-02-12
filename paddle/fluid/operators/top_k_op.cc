@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/top_k_op.h"
-
+#include <memory>
 namespace paddle {
 namespace operators {
 
@@ -110,13 +110,13 @@ class TopkOpGrad : public framework::OperatorWithKernel {
 };
 
 template <typename T>
-class TopkGradOpMaker : public framework::SingleGradOpMaker<T> {
+class TopkGradOpMaker : public framework::SingleGradOpDescMaker<T> {
  public:
-  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
     op->SetType("top_k_grad");
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetInput("X", this->Input("X"));
