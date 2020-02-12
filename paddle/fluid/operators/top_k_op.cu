@@ -585,7 +585,8 @@ class TopkOpGradCUDAKernel : public framework::OpKernel<T> {
                      kBlockDim><<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(
               x_grad_data, indices_data, out_grad_data, row, col, k));
       default:
-        PADDLE_THROW("Error occurs when Assign Grad.");
+        PADDLE_THROW(
+            platform::errors::Unavailable("Error occurs when Assign Grad."));
     }
   }
 };
