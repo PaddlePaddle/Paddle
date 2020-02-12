@@ -46,6 +46,8 @@ import six
 import copy
 from argparse import ArgumentParser, REMAINDER
 import paddle.fluid as fluid
+from contextlib import closing
+import socket
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -63,27 +65,29 @@ def _print_arguments(args):
     print("------------------------------------------------")
 
 
-def get_local_available_port():
-    from filelock import Timeout, FileLock
-    import os
-    import time
+def find_free_ports(num):
+    def __free_port():
+        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
+            s.bind(('', 0))
+            print("socket name: %s" % s.getsockname()[1])
+            return s.getsockname()[1]
 
+    port_set = set()
     step = 0
-    local_start = 6070
-    lock_path = "/tmp/paddlepaddle_distributed_launch.lock"
-    for step in range(local_start, 7030, 32):
-        lock_file = lock_path + "." + str(step)
-        print("try to lock " + lock_file)
-        lock = FileLock(lock_file, timeout=1)
-        try:
-            lock.acquire(timeout=1)
-            return lock, step
-        except:
-            lock.release()
-            time.sleep(1)
-    print("can't find avilable port on this mac! please clean all lock files:" +
-          lock_path + ".*")
-    return None, None
+    while True:
+        port = __free_port()
+        if port not in port_set:
+            port_set.add(port)
+
+        if len(port_set) >= num:
+            return port_set
+
+        step += 1
+        if step > 100:
+            print("can't find avilable port")
+            return None
+
+    return None
 
 
 def _parse_args():
@@ -225,12 +229,6 @@ paddlecloud environment.".format(args.cluster_node_ips, node_ips))
             ]
     selected_gpus_num = len(selected_gpus)
 
-    local_lock = None
-    if not args.use_paddlecloud and num_nodes <= 1:
-        local_lock, port = get_local_available_port()
-        if port is not None:
-            args.started_port = port
-
     if args.use_paddlecloud and num_nodes > 1:
         cloud_paddle_port = os.getenv("PADDLE_PORT", "")
         cloud_paddle_port_num = os.getenv("PADDLE_PORTS_NUM", "")
@@ -241,12 +239,24 @@ paddlecloud environment.".format(args.cluster_node_ips, node_ips))
                 logger.warning("Use Cloud specified port:{}.".format(
                     cloud_paddle_port))
 
+    free_ports = None
+    if not args.use_paddlecloud and num_nodes <= 1:
+        free_ports = find_free_ports(selected_gpus_num)
+        if free_ports is not None:
+            free_ports = list(free_ports)
+    else:
+        free_ports = [
+            x
+            for x in range(args.started_port, args.started_port +
+                           selected_gpus_num)
+        ]
+
     trainers_endpoints = ""
     for ip in node_ips:
-        for i in range(selected_gpus_num):
+        for i in range(0, selected_gpus_num):
             if trainers_endpoints != "":
                 trainers_endpoints += ","
-            trainers_endpoints += "%s:%d" % (ip, args.started_port + i)
+            trainers_endpoints += "%s:%d" % (ip, free_ports[i])
 
     nranks = num_nodes * selected_gpus_num
 
@@ -273,7 +283,7 @@ paddlecloud environment.".format(args.cluster_node_ips, node_ips))
             "FLAGS_selected_gpus": "%s" % selected_gpus[i],
             "PADDLE_TRAINER_ID": "%d" % rank,
             "PADDLE_CURRENT_ENDPOINT":
-            "%s:%d" % (current_node_ip, args.started_port + i),
+            "%s:%d" % (current_node_ip, free_ports[i]),
             "PADDLE_TRAINERS_NUM": "%d" % nranks,
             "PADDLE_TRAINER_ENDPOINTS": trainers_endpoints
         })

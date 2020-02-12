@@ -79,22 +79,3 @@ distributed_args="--selected_gpus=0,1 --log_dir=testlog"
 export PADDLE_LAUNCH_LOG="test_launch_filelock_0"
 CUDA_VISIBLE_DEVICES=0,1 python -m paddle.distributed.launch ${distributed_args} file_lock.py &
 str_0="worker_endpoints:127.0.0.1:6070,127.0.0.1:6071"
-sleep 3s
-
-export PADDLE_LAUNCH_LOG="test_launch_filelock_1"
-CUDA_VISIBLE_DEVICES=0,1 python -m paddle.distributed.launch ${distributed_args} file_lock.py
-str_1="worker_endpoints:127.0.0.1:6102,127.0.0.1:6103"
-
-if grep -q "$str0" "$file_0_0"; then
-    echo "find filelock trainer 0"
-else
-    echo "not find filelock trainer 0"
-    exit -1
-fi
-
-if grep -q "$str_1" "$file_1_0"; then
-    echo "find filelock trainer 1"
-else
-    echo "not find filelock trainer 1"
-    exit -1
-fi
