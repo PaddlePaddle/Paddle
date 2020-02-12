@@ -17,10 +17,12 @@ package paddle
 // #cgo CFLAGS: -Ipaddle_c/paddle/include
 // #cgo LDFLAGS: -Lpaddle_c/paddle/lib -lpaddle_fluid_c
 // #include <stdbool.h>
+// #include <stdlib.h>
 // #include "paddle_c_api.h"
 import "C"
 
 import "runtime"
+import "unsafe"
 
 type AnalysisConfig struct {
 	c *C.PD_AnalysisConfig
@@ -38,7 +40,13 @@ func (config *AnalysisConfig) finalize() {
 }
 
 func (config *AnalysisConfig) SetModel(model, params string) {
-	C.PD_SetModel(config.c, C.CString(model), C.CString(params))
+	//C.printString((*C.char)(unsafe.Pointer(&s[0])))
+	c_model := C.CString(model)
+	defer C.free(unsafe.Pointer(c_model))
+	c_params := C.CString(params)
+	defer C.free(unsafe.Pointer(c_params))
+
+	C.PD_SetModel(config.c, c_model, c_params)
 }
 
 func (config *AnalysisConfig) ModelDir() string {
@@ -160,6 +168,10 @@ func (config *AnalysisConfig) EnableProfile() {
 
 func (config *AnalysisConfig) ProfileEnabled() bool {
 	return ConvertCBooleanToGo(C.PD_ProfileEnabled(config.c))
+}
+
+func (config *AnalysisConfig) DisableGlogInfo() {
+	C.PD_DisableGlogInfo(config.c)
 }
 
 // SetInValid
