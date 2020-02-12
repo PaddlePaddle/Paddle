@@ -98,6 +98,16 @@ class DistributedTranspiler(Fleet):
             self._communicator = Communicator(
                 self.main_program, DistributedMode.HALF_ASYNC, None,
                 trainer_communicator_config.get_communicator_flags())
+
+        elif isinstance(self._transpile_config, SyncStrategy):
+            kwargs = {}
+            kwargs[
+                "pserver_endpoints"] = self._role_maker.get_pserver_endpoints()
+
+            self._communicator = Communicator(
+                self.main_program, DistributedMode.SYNC, kwargs,
+                trainer_communicator_config.get_communicator_flags())
+
         else:
             raise TypeError("Training MODE do not supported")
 

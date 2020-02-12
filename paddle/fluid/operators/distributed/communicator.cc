@@ -1202,7 +1202,14 @@ void HalfAsyncCommunicator::Stop() {
   VLOG(0) << "Communicator stop done";
 }
 
-void SyncCommunicator::BarrierSend() { VLOG(0) << "BarrierSend"; }
+void SyncCommunicator::BarrierSend() {
+  std::stringstream ss;
+  for (auto &ep : pserver_endpoints_) {
+    ss << ep << ",";
+  }
+
+  VLOG(0) << "BarrierSend with " << ss.str();
+}
 
 void SyncCommunicator::BarrierRecv() { VLOG(0) << "BarrierRecv"; }
 

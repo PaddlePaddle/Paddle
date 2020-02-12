@@ -37,6 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/string/split.h"
 
 DECLARE_bool(communicator_is_sgd_optimizer);
 
@@ -329,13 +330,13 @@ class HalfAsyncCommunicator : public Communicator {
   virtual void BarrierSend() {}
   virtual void BarrierRecv() {}
 
- private:
+ protected:
   int max_merge_var_num_;
   int send_wait_times_;
   int thread_pool_size_;
   int send_queue_size_;
 
- private:
+ protected:
   std::unordered_map<std::string,
                      std::shared_ptr<BlockingQueue<std::shared_ptr<Variable>>>>
       send_varname_to_queue_;
@@ -358,11 +359,17 @@ class SyncCommunicator : public HalfAsyncCommunicator {
  public:
   SyncCommunicator() : HalfAsyncCommunicator() {}
   explicit SyncCommunicator(const std::map<std::string, std::string>& envs)
-      : HalfAsyncCommunicator(envs) {}
+      : HalfAsyncCommunicator(envs) {
+    auto pserver_strings = envs.at("pserver_endpoints");
+    pserver_endpoints_ = paddle::string::Split(pserver_strings, ',');
+  }
   ~SyncCommunicator();
   void BarrierSend();
   void BarrierRecv();
-}
+
+ private:
+  std::vector<std::string> pserver_endpoints_{};
+};
 
 class GeoSgdCommunicator : public Communicator {
  public:

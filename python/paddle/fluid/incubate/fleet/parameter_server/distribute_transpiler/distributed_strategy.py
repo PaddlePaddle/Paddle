@@ -178,9 +178,10 @@ class DistributedStrategy(object):
 class SyncStrategy(DistributedStrategy):
     def __init__(self):
         super(SyncStrategy, self).__init__()
-        self._program_config.sync_mode = True
-        self._program_config.runtime_split_send_recv = False
-        self._build_strategy.async_mode = False
+        self._program_config.sync_mode = False
+        self._program_config.runtime_split_send_recv = True
+        self._build_strategy.async_mode = True
+        self._program_config.half_async = True
 
 
 class AsyncStrategy(DistributedStrategy):
