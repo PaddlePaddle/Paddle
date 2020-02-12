@@ -102,8 +102,8 @@ inline void avx_axpy(const T* x, T* y, size_t len, const T alpha) {
   }
 }
 
-template <typename T>
-inline void avx_axpy_noadd(const T* x, T* y, size_t len, const T alpha) {
+inline void avx_axpy_noadd(const float* x, float* y, size_t len,
+                           const float alpha) {
   unsigned int jjj, lll;
   jjj = lll = 0;
 
@@ -116,6 +116,10 @@ inline void avx_axpy_noadd(const T* x, T* y, size_t len, const T alpha) {
   for (; jjj < len; jjj++) {
     y[jjj] = alpha * x[jjj];
   }
+}
+inline void avx_axpy_noadd(const int8_t* x, int8_t* y, size_t len,
+                           const float alpha) {
+  PADDLE_ENFORCE(true, "int8_t input not support");
 }
 
 }  // namespace operators
