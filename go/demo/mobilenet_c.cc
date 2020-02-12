@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
   printf("Output num: %d\n", output_num);
 
   PD_ZeroCopyTensor input;
-  input.name = const_cast<char *>(PD_GetInputName(predictor, 0)); // NOLINT
+  input.name = const_cast<char *>(PD_GetInputName(predictor, 0));  // NOLINT
   input.data.capacity = sizeof(float) * 1 * 3 * 300 * 300;
   input.data.length = input.data.capacity;
   input.data.data = malloc(input.data.capacity);
@@ -38,15 +38,15 @@ int main(int argc, char *argv[]) {
   input.shape.capacity = sizeof(shape);
   input.shape.length = sizeof(shape);
   input.dtype = PD_FLOAT32;
-  ReadData((float *)input.data.data, 1 * 3 * 300 * 300); // NOLINT
-  float *data = (float *)input.data.data; // NOLINT
+  ReadData((float *)input.data.data, 1 * 3 * 300 * 300);  // NOLINT
+  float *data = (float *)input.data.data;                 // NOLINT
   PD_SetZeroCopyInput(predictor, &input);
-  int *shape_ptr = (int *)input.shape.data; // NOLINT
+  int *shape_ptr = (int *)input.shape.data;  // NOLINT
 
   PD_ZeroCopyRun(predictor);
   PD_ZeroCopyTensor output;
   PD_InitZeroCopyTensor(&output);
-  output.name = const_cast<char *>(PD_GetOutputName(predictor, 0)); // NOLINT
+  output.name = const_cast<char *>(PD_GetOutputName(predictor, 0));  // NOLINT
   PD_GetZeroCopyOutput(predictor, &output);
   PD_DestroyZeroCopyTensor(&output);
 
