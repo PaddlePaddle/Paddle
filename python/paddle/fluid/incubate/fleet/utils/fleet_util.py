@@ -23,14 +23,18 @@ import sys
 import time
 import paddle.fluid as fluid
 from paddle.fluid.log_helper import get_logger
-from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet as fleet_pslib
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet as fleet_transpiler
 from . import hdfs
 from .hdfs import *
+import utils
 
 __all__ = ["FleetUtil"]
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
+
+fleet = fleet_pslib
 
 
 class FleetUtil(object):
@@ -45,6 +49,16 @@ class FleetUtil(object):
           fleet_util.rank0_print("my log")
 
     """
+
+    def __init__(self, mode="pslib"):
+        global fleet
+        if mode == "pslib":
+            fleet = fleet_pslib
+        elif mode == "transpiler":
+            fleet = fleet_transpiler
+        else:
+            raise ValueError(
+                "Please choose one mode from [\"pslib\", \"transpiler\"]")
 
     def rank0_print(self, s):
         """
@@ -1535,3 +1549,45 @@ class FleetUtil(object):
                          (print_prefix, auc, bucket_error, mae, rmse,
                           actual_ctr, predicted_ctr, copc, mean_predict_qvalue,
                           total_ins_num))
+
+    def draw_from_program_file(self, model_filename, is_text, output_dir,
+                               output_filename):
+        """draw program from file"""
+        program = utils.load_program(model_filename, is_text)
+        utils.graphviz(program.global_block(), output_dir, output_filename)
+
+    def draw_from_program(self, program, output_dir, output_name):
+        """draw Program"""
+        utils.graphviz(program.global_block(), output_dir, output_name)
+
+    def check_two_programs(self, config):
+        """检查裁剪前后program中vars是否一致"""
+        train_prog = utils.load_program(config.train_prog_path,
+                                        config.is_text_train_program)
+        pruned_prog = utils.load_program(config.pruned_prog_path,
+                                         config.is_text_pruned_program)
+        if config.draw:
+            pruned_dir = os.path.dirname(config.pruned_prog_path)
+            self.draw_from_program(pruned_prog, pruned_dir,
+                                   config.draw_out_name)
+        res = utils.check_pruned_program_vars(train_prog, pruned_prog)
+        if res:
+            _logger.info("check_programs succeed.")
+        else:
+            _logger.info(
+                "check_programs failed. pruned program and train program not match!"
+            )
+        return res
+
+    def check_vars_and_dump(self, config):
+        # 检查saved vars和pruned program是否对应
+        _logger.info("start check_vars_and_dump.")
+        utils.check_saved_vars_try_dump(
+            config.dump_model_dir, config.dump_program_filename,
+            config.is_text_dump_program, config.feed_config,
+            config.fetch_config, config.batch_size, config.save_params_filename)
+        _logger.info("check_vars_and_dump succeed.")
+
+    def parse_program_proto(self, prog_path, is_text, output_dir):
+        program = utils.load_program(prog_path, is_text)
+        utils.parse_program(program, output_dir)

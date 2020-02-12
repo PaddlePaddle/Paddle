@@ -83,6 +83,24 @@ class DistributedStrategy(object):
         self._execute_strategy.num_threads = num_threads
         if num_threads > 1:
             self._build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
+        self.debug_info = None
+
+    def set_debug_info(self, info):
+        self.debug_info = info
+
+    def get_debug_info(self):
+        opt_info = dict()
+        if self.debug_info is not None and isinstance(self.debug_info, dict):
+            opt_info["check_nan_var_names"] = self.debug_info.get(
+                "check_nan_var_names", [])
+            opt_info["dump_slot"] = False
+            opt_info["dump_converter"] = ""
+            opt_info["dump_fields"] = self.debug_info.get("dump_fields", [])
+            opt_info["dump_file_num"] = self.debug_info.get("dump_file_num", 16)
+            opt_info["dump_fields_path"] = self.debug_info.get(
+                "dump_fields_path", "")
+            opt_info["dump_param"] = self.debug_info.get("dump_param", [])
+        return opt_info
 
     def get_program_config(self):
         return self._program_config

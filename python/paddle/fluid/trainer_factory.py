@@ -53,15 +53,8 @@ class TrainerFactory(object):
             device_worker_class = opt_info["device_worker"]
             trainer = globals()[trainer_class]()
             device_worker = globals()[device_worker_class]()
-            if "fleet_desc" in opt_info:
-                device_worker._set_fleet_desc(opt_info["fleet_desc"])
-                trainer._set_fleet_desc(opt_info["fleet_desc"])
-                if opt_info.get("use_cvm") is not None:
-                    trainer._set_use_cvm(opt_info["use_cvm"])
-                if opt_info.get("no_cvm") is not None:
-                    trainer._set_no_cvm(opt_info["no_cvm"])
-                if opt_info.get("scale_datanorm") is not None:
-                    trainer._set_scale_datanorm(opt_info["scale_datanorm"])
+
+            if opt_info is not None:
                 if opt_info.get("dump_slot") is not None:
                     trainer._set_dump_slot(opt_info["dump_slot"])
                 if opt_info.get("mpi_rank") is not None:
@@ -76,16 +69,26 @@ class TrainerFactory(object):
                     trainer._set_dump_file_num(opt_info["dump_file_num"])
                 if opt_info.get("dump_converter") is not None:
                     trainer._set_dump_converter(opt_info["dump_converter"])
+                if opt_info.get("dump_param") is not None:
+                    trainer._set_dump_param(opt_info["dump_param"])
+                if opt_info.get("check_nan_var_names") is not None:
+                    trainer._set_check_nan_var_names(opt_info[
+                        "check_nan_var_names"])
+
+            if "fleet_desc" in opt_info:
+                device_worker._set_fleet_desc(opt_info["fleet_desc"])
+                trainer._set_fleet_desc(opt_info["fleet_desc"])
+                if opt_info.get("use_cvm") is not None:
+                    trainer._set_use_cvm(opt_info["use_cvm"])
+                if opt_info.get("no_cvm") is not None:
+                    trainer._set_no_cvm(opt_info["no_cvm"])
+                if opt_info.get("scale_datanorm") is not None:
+                    trainer._set_scale_datanorm(opt_info["scale_datanorm"])
                 if opt_info.get("adjust_ins_weight") is not None:
                     trainer._set_adjust_ins_weight(opt_info[
                         "adjust_ins_weight"])
                 if opt_info.get("copy_table") is not None:
                     trainer._set_copy_table_config(opt_info["copy_table"])
-                if opt_info.get("check_nan_var_names") is not None:
-                    trainer._set_check_nan_var_names(opt_info[
-                        "check_nan_var_names"])
-                if opt_info.get("dump_param") is not None:
-                    trainer._set_dump_param(opt_info["dump_param"])
             trainer._set_device_worker(device_worker)
         return trainer
 
