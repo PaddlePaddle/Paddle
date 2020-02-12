@@ -2748,7 +2748,7 @@ def generate_proposals(scores,
             represents the differece between predicted box locatoin and
             anchor location. The data type must be float32.
         im_info(Variable): A 2-D Tensor with shape [N, 3] represents origin
-            image information for N batch. Height and width is the input size 
+            image information for N batch. Height and width are the input sizes 
             and scale is the ratio of network input size and original size. 
             The data type must be int32.
         anchors(Variable):   A 4-D Tensor represents the anchors with a layout
@@ -2842,7 +2842,7 @@ def box_clip(input, im_info, name=None):
             the last dimension is 4 and data type is float32 or float64.
         im_info(Variable): The 2-D Tensor with shape [N, 3] with layout 
             (height, width, scale) represeting the information of image. 
-            Height and width is the input size and scale is the ratio of network input
+            Height and width are the input sizes and scale is the ratio of network input
             size and original size. The data type is float32 or float64.
         name(str, optional): For detailed information, please refer 
             to :ref:`api_guide_Name`. Usually name is no need to set and 
