@@ -140,7 +140,6 @@ class CPUROIAlignOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<framework::Tensor>("X");
     auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
-    auto* rois_lod = ctx.Input<framework::Tensor>("RoisLod");
 
     auto* out = ctx.Output<framework::Tensor>("Out");
     auto pooled_height = ctx.Attr<int>("pooled_height");
@@ -166,8 +165,9 @@ class CPUROIAlignOpKernel : public framework::OpKernel<T> {
     roi_batch_id_list.Resize({rois_num});
     int* roi_batch_id_data =
         roi_batch_id_list.mutable_data<int>(ctx.GetPlace());
-    int rois_batch_size = rois_lod->numel();
-    if (rois_batch_size > 0) {
+    if (ctx.HasInput("RoisLod")) {
+      auto* rois_lod = ctx.Input<framework::Tensor>("RoisLod");
+      int rois_batch_size = rois_lod->numel();
       PADDLE_ENFORCE_EQ(
           rois_batch_size - 1, batch_size,
           "The rois_batch_size and imgs batch_size must be the same.");
@@ -267,7 +267,6 @@ class CPUROIAlignGradOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<framework::Tensor>("X");
     auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
-    auto* rois_lod = ctx.Input<framework::Tensor>("RoisLod");
     auto* out_grad =
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* in_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
@@ -291,8 +290,9 @@ class CPUROIAlignGradOpKernel : public framework::OpKernel<T> {
     int* roi_batch_id_data =
         roi_batch_id_list.mutable_data<int>(ctx.GetPlace());
 
-    int rois_batch_size = rois_lod->numel();
-    if (rois_batch_size > 0) {
+    if (ctx.HasInput("RoisLod")) {
+      auto* rois_lod = ctx.Input<framework::Tensor>("RoisLod");
+      int rois_batch_size = rois_lod->numel();
       auto cplace = platform::CPUPlace();
       std::vector<int64_t> rois_lod_(rois_batch_size);
       memory::Copy(cplace, rois_lod_.data(), cplace, rois_lod->data<int64_t>(),

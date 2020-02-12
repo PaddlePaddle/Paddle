@@ -32,14 +32,15 @@ class ROIAlignOp : public framework::OperatorWithKernel {
 
     auto input_dims = ctx->GetInputDim("X");
     auto rois_dims = ctx->GetInputDim("ROIs");
-    auto rois_lod_dims = ctx->GetInputDim("RoisLod");
-
+    if (ctx->HasInput("RoisLod")) {
+      auto rois_lod_dims = ctx->GetInputDim("RoisLod");
+      PADDLE_ENFORCE(rois_lod_dims.size() == 1, "");
+    }
     PADDLE_ENFORCE(input_dims.size() == 4,
                    "The format of input tensor is NCHW.");
     PADDLE_ENFORCE(rois_dims.size() == 2,
                    "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
                    "given as [[x1, y1, x2, y2], ...].");
-    PADDLE_ENFORCE(rois_lod_dims.size() == 1, "");
 
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE(rois_dims[1] == 4,

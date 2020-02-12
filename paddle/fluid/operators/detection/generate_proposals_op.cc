@@ -302,7 +302,6 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
 
     auto *rpn_rois = context.Output<LoDTensor>("RpnRois");
     auto *rpn_roi_probs = context.Output<LoDTensor>("RpnRoiProbs");
-    auto *rpn_rois_lod = context.Output<Tensor>("RpnRoisLod");
 
     int pre_nms_top_n = context.Attr<int>("pre_nms_topN");
     int post_nms_top_n = context.Attr<int>("post_nms_topN");
@@ -369,17 +368,19 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
       lod0.push_back(num_proposals);
       tmp_lod.push_back(num_proposals);
     }
-    rpn_rois_lod->mutable_data<int64_t>({num}, context.GetPlace());
-    int64_t *lod_data = rpn_rois_lod->data<int64_t>();
-    for (int i = 0; i < num; i++) {
-      lod_data[i] = tmp_lod[i];
+    if (context.HasOutput("RpnRoisLod")) {
+      auto *rpn_rois_lod = context.Output<Tensor>("RpnRoisLod");
+      rpn_rois_lod->mutable_data<int64_t>({num}, context.GetPlace());
+      int64_t *lod_data = rpn_rois_lod->data<int64_t>();
+      for (int i = 0; i < num; i++) {
+        lod_data[i] = tmp_lod[i];
+      }
+      rpn_rois_lod->Resize({num, 1});
     }
-
     rpn_rois->set_lod(lod);
     rpn_roi_probs->set_lod(lod);
     rpn_rois->Resize({num_proposals, 4});
     rpn_roi_probs->Resize({num_proposals, 1});
-    rpn_rois_lod->Resize({num, 1});
   }
 
   std::pair<Tensor, Tensor> ProposalForOneImage(

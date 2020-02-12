@@ -129,7 +129,6 @@ class GPUROIPoolOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<Tensor>("X");
     auto* rois = ctx.Input<LoDTensor>("ROIs");
-    auto* rois_lod = ctx.Input<Tensor>("RoisLod");
     auto* out = ctx.Output<Tensor>("Out");
     auto* argmax = ctx.Output<Tensor>("Argmax");
 
@@ -158,8 +157,9 @@ class GPUROIPoolOpKernel : public framework::OpKernel<T> {
     int* roi_batch_id_data = roi_batch_id_list.mutable_data<int>(cplace);
     auto& dev_ctx = ctx.cuda_device_context();
     auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
-    int rois_batch_size = rois_lod->numel();
-    if (rois_batch_size > 0) {
+    if (ctx.HasInput("RoisLod")) {
+      auto* rois_lod = ctx.Input<Tensor>("RoisLod");
+      int rois_batch_size = rois_lod->numel();
       PADDLE_ENFORCE_EQ(
           rois_batch_size - 1, batch_size,
           "The rois_batch_size and imgs batch_size must be the same.");
@@ -230,8 +230,9 @@ class GPUROIPoolGradOpKernel : public framework::OpKernel<T> {
 
       auto& dev_ctx = ctx.cuda_device_context();
       auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
-      int rois_batch_size = rois_lod->numel();
-      if (rois_batch_size > 0) {
+      if (ctx.HasInput("RoisLod")) {
+        auto* rois_lod = ctx.Input<Tensor>("RoisLod");
+        int rois_batch_size = rois_lod->numel();
         std::vector<int64_t> rois_lod_(rois_batch_size);
         memory::Copy(cplace, rois_lod_.data(), gplace,
                      rois_lod->data<int64_t>(),
