@@ -1096,8 +1096,10 @@ void HalfAsyncCommunicator::ConsumeThread() {
 
     VLOG(3) << "run send graph use time "
             << after_run_send_graph - before_run_send_graph;
-    Recv();
 
+    BarrierSend();
+    Recv();
+    BarrierRecv();
     BarrierWeakUp();
   }
   VLOG(0) << "communicator stopped, send thread exit";
@@ -1199,6 +1201,10 @@ void HalfAsyncCommunicator::Stop() {
   }
   VLOG(0) << "Communicator stop done";
 }
+
+void SyncCommunicator::BarrierSend() { VLOG(0) << "BarrierSend"; }
+
+void SyncCommunicator::BarrierRecv() { VLOG(0) << "BarrierRecv"; }
 
 }  // namespace distributed
 }  // namespace operators

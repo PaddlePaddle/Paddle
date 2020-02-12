@@ -191,8 +191,6 @@ class Communicator {
   virtual void Barrier() {}
   virtual void BarrierTriggerDecrement() {}
   virtual void BarrierTriggerReset(int init_counter) {}
-  virtual void BarrierSend() {}
-  virtual void BarrierFetch() {}
 
   virtual void InitImpl(const RpcCtxMap& send_varname_to_ctx,
                         const RpcCtxMap& recv_varname_to_ctx,
@@ -328,6 +326,8 @@ class HalfAsyncCommunicator : public Communicator {
                 Scope* recv_scope) override;
 
   void ConsumeThread();
+  virtual void BarrierSend() {}
+  virtual void BarrierRecv() {}
 
  private:
   int max_merge_var_num_;
@@ -360,6 +360,8 @@ class SyncCommunicator : public HalfAsyncCommunicator {
   explicit SyncCommunicator(const std::map<std::string, std::string>& envs)
       : HalfAsyncCommunicator(envs) {}
   ~SyncCommunicator();
+  void BarrierSend();
+  void BarrierRecv();
 }
 
 class GeoSgdCommunicator : public Communicator {
