@@ -21,13 +21,6 @@ import paddle.fluid.core as core
 
 
 class TestTopkOp(OpTest):
-    def get_places(self):
-        #        places = [core.CPUPlace()]
-        places = []
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-        return places
-
     def setUp(self):
         self.variable_k = False
         self.set_args()
@@ -64,135 +57,8 @@ class TestTopkOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        for place in self.get_places():
-            self.check_grad_with_place(place, set(['X']), 'Out')
+        self.check_grad(set(['X']), 'Out')
 
-
-'''
-class TestTopkOpFp16(TestTopkOp):
-    def init_dtype(self):
-        self.dtype = np.float64
-
-
-class TestTopkOp3d(OpTest):
-    def get_places(self):
-        places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-        return places
-    def setUp(self):
-        self.op_type = "top_k"
-        k = 1
-        input = np.random.random((32, 2, 84)).astype("float64")
-        input_flat_2d = input.reshape(64, 84)
-        output = np.ndarray((64, k))
-        indices = np.ndarray((64, k)).astype("int64")
-        self.inputs = {'X': input}
-        self.attrs = {'k': k}
-
-        for rowid in range(64):
-            row = input_flat_2d[rowid]
-            output[rowid] = np.sort(row)[::-1][:k]
-            indices[rowid] = row.argsort()[::-1][:k]
-
-#        print(input_flat_2d)
-#        print(indices)
-#        print(output)
-        self.outputs = {
-            'Out': output.reshape((32, 2, k)),
-            'Indices': indices.reshape((32, 2, k))
-        }
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        for place in self.get_places():
-            self.check_grad_with_place(place, set(['X']), 'Out')
-
-
-class TestTopkOp1(OpTest):
-    def get_places(self):
-        places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-        return places
-    def setUp(self):
-        self.op_type = "top_k"
-        k = 2
-        m = 2056
-        input = np.random.random(m).astype("float64")
-        output = np.ndarray(k)
-        indices = np.ndarray(k).astype("int64")
-
-        self.inputs = {'X': input}
-        self.attrs = {'k': k}
-
-        row = input
-        output = -np.sort(-row)[:k]
-        indices = (-row).argsort()[:k]
-
-        self.outputs = {'Out': output, 'Indices': indices}
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        for place in self.get_places():
-            self.check_grad_with_place(place, set(['X']), 'Out')
-
-
-class TestTopkOp2(OpTest):
-    def get_places(self):
-        places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-        return places
-    def setUp(self):
-        self.op_type = "top_k"
-        k = 1
-        m = 2056
-        input = np.random.random((m, 8)).astype("float64")
-        output = np.ndarray((m, k))
-        indices = np.ndarray((m, k)).astype("int64")
-
-        self.inputs = {'X': input}
-        self.attrs = {'k': k}
-
-        for rowid in range(m):
-            row = input[rowid]
-            output[rowid] = -np.sort(-row)[:k]
-            indices[rowid] = (-row).argsort()[:k]
-
-        self.outputs = {'Out': output, 'Indices': indices}
-        #print(indices[1958])
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        for place in self.get_places():
-            self.check_grad_with_place(place, set(['X']), 'Out')
-'''
-'''
-class TestTopkOp3(TestTopkOp):
-    def set_args(self):
-        self.row = 2056
-        self.top_k = 3
-
-
-class TestTopkOp4(TestTopkOp):
-    def set_args(self):
-        self.row = 40000
-        self.top_k = 1
-
-
-class TestTopkOp5(TestTopkOp):
-    def set_args(self):
-        self.row = 40000
-        self.top_k = 3
-        self.variable_k = True
-'''
 
 if __name__ == "__main__":
     unittest.main()
