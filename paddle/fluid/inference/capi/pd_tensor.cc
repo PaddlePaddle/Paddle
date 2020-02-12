@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include <algorithm>
-#include <vector>
 #include <memory>
+#include <vector>
 #include "paddle/fluid/inference/capi/c_api_internal.h"
 #include "paddle/fluid/inference/capi/paddle_c_api.h"
 
@@ -79,13 +79,12 @@ int* PD_GetPaddleTensorShape(const PD_Tensor* tensor, int** size) {
   return shape.data();
 }
 
-
 PD_ZeroCopyTensor* PD_NewZeroCopyTensor() {
-  auto *tensor = new PD_ZeroCopyTensor;
+  auto* tensor = new PD_ZeroCopyTensor;
   PD_InitZeroCopyTensor(tensor);
   return tensor;
 }
-void PD_DeleteZeroCopyTensor(PD_ZeroCopyTensor *tensor) {
+void PD_DeleteZeroCopyTensor(PD_ZeroCopyTensor* tensor) {
   if (tensor) {
     PD_DestroyZeroCopyTensor(tensor);
     delete tensor;

@@ -207,31 +207,31 @@ const char* PD_GetOutputName(const PD_Predictor* predictor, int n) {
 void PD_SetZeroCopyInput(PD_Predictor* predictor,
                          const PD_ZeroCopyTensor* tensor) {
   auto input = predictor->predictor->GetInputTensor(tensor->name);
-  auto* shape_ptr = reinterpret_cast<int*>(tensor->shape.data);
+  auto* shape_ptr = static_cast<int*>(tensor->shape.data);
   std::vector<int> shape(shape_ptr,
-                         shape_ptr + tensor->shape.used_length / sizeof(int));
+                         shape_ptr + tensor->shape.length / sizeof(int));
   input->Reshape(std::move(shape));
   switch (tensor->dtype) {
     case PD_FLOAT32:
-      input->copy_from_cpu(reinterpret_cast<float*>(tensor->data.data));
+      input->copy_from_cpu(static_cast<float*>(tensor->data.data));
       break;
     case PD_INT32:
-      input->copy_from_cpu(reinterpret_cast<int32_t*>(tensor->data.data));
+      input->copy_from_cpu(static_cast<int32_t*>(tensor->data.data));
       break;
     case PD_INT64:
-      input->copy_from_cpu(reinterpret_cast<int64_t*>(tensor->data.data));
+      input->copy_from_cpu(static_cast<int64_t*>(tensor->data.data));
       break;
     case PD_UINT8:
-      input->copy_from_cpu(reinterpret_cast<uint8_t*>(tensor->data.data));
+      input->copy_from_cpu(static_cast<uint8_t*>(tensor->data.data));
       break;
     default:
       CHECK(false) << "Unsupport data type.";
       break;
   }
 
-  if (tensor->lod.used_length) {
+  if (tensor->lod.length) {
     auto* lod_ptr = reinterpret_cast<size_t*>(tensor->lod.data);
-    std::vector<size_t> lod(lod_ptr, lod_ptr + tensor->lod.used_length);
+    std::vector<size_t> lod(lod_ptr, lod_ptr + tensor->lod.length);
     input->SetLoD({std::move(lod)});
   }
 }
@@ -241,37 +241,37 @@ void PD_GetZeroCopyOutput(PD_Predictor* predictor, PD_ZeroCopyTensor* tensor) {
   tensor->dtype = ConvertToPDDataType(output->type());
   auto shape = output->shape();
   size_t shape_size = shape.size();
-  if (tensor->shape.length < shape_size * sizeof(int)) {
-    if (tensor->shape.data || tensor->shape.length) {
+  if (tensor->shape.capacity < shape_size * sizeof(int)) {
+    if (tensor->shape.data || tensor->shape.capacity) {
       std::free(tensor->shape.data);
     }
     tensor->shape.data = std::malloc(shape_size * sizeof(int));
-    tensor->shape.length = shape_size * sizeof(int);
+    tensor->shape.capacity = shape_size * sizeof(int);
   }
-  tensor->shape.used_length = shape_size * sizeof(int);
-  std::copy(shape.begin(), shape.end(), static_cast<int *>(tensor->shape.data));
+  tensor->shape.length = shape_size * sizeof(int);
+  std::copy(shape.begin(), shape.end(), static_cast<int*>(tensor->shape.data));
 
   int n =
       std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
   size_t length = n * paddle::PaddleDtypeSize(output->type());
-  if (tensor->data.length < length) {
+  if (tensor->data.capacity < length) {
     if (tensor->data.data) {
       std::free(tensor->data.data);
     }
     tensor->data.data = std::malloc(length);
-    tensor->data.length = std::move(length);
+    tensor->data.capacity = std::move(length);
   }
-  tensor->data.used_length = length;
+  tensor->data.length = length;
 
   auto lod = output->lod();
-  tensor->lod.used_length = lod.front().size() * sizeof(size_t);
-  if (tensor->lod.length < lod.front().size()) {
+  tensor->lod.length = lod.front().size() * sizeof(size_t);
+  if (tensor->lod.capacity < lod.front().size()) {
     if (tensor->lod.data) {
       std::free(tensor->lod.data);
     }
 
     tensor->lod.data = std::malloc(lod.front().size() * sizeof(size_t));
-    tensor->lod.length = lod.front().size();
+    tensor->lod.capacity = lod.front().size() * sizeof(size_t);
   }
   std::copy(lod.front().begin(), lod.front().end(),
             reinterpret_cast<size_t*>(tensor->lod.data));

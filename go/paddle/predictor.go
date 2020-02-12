@@ -105,8 +105,8 @@ func (predictor *Predictor) GetZeroCopyOutput(tensor *ZeroCopyTensor) {
     var shape []int32
 	shape_hdr := (*reflect.SliceHeader)(unsafe.Pointer(&shape))
 	shape_hdr.Data = uintptr(unsafe.Pointer(tensor.c.shape.data))
-	shape_hdr.Len = int(tensor.c.shape.used_length / C.sizeof_int)
-	shape_hdr.Cap = int(tensor.c.shape.used_length / C.sizeof_int)
+	shape_hdr.Len = int(tensor.c.shape.length / C.sizeof_int)
+	shape_hdr.Cap = int(tensor.c.shape.length / C.sizeof_int)
     tensor.Reshape(shape)
 }
 

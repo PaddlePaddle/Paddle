@@ -43,7 +43,7 @@ typedef struct PD_Predictor PD_Predictor;
 typedef struct PD_Buffer {
   void* data;
   size_t length;
-  size_t used_length;
+  size_t capacity;
 } PD_Buffer;
 
 typedef struct PD_ZeroCopyTensor {
@@ -55,10 +55,10 @@ typedef struct PD_ZeroCopyTensor {
 } PD_ZeroCopyTensor;
 
 PADDLE_CAPI_EXPORT extern PD_ZeroCopyTensor* PD_NewZeroCopyTensor();
-PADDLE_CAPI_EXPORT extern void PD_DeleteZeroCopyTensor(PD_ZeroCopyTensor *);
+PADDLE_CAPI_EXPORT extern void PD_DeleteZeroCopyTensor(PD_ZeroCopyTensor*);
 PADDLE_CAPI_EXPORT extern void PD_InitZeroCopyTensor(PD_ZeroCopyTensor*);
 PADDLE_CAPI_EXPORT extern void PD_DestroyZeroCopyTensor(PD_ZeroCopyTensor*);
-PADDLE_CAPI_EXPORT extern void PD_DeleteZeroCopyTensor(PD_ZeroCopyTensor *);
+PADDLE_CAPI_EXPORT extern void PD_DeleteZeroCopyTensor(PD_ZeroCopyTensor*);
 
 typedef struct PD_ZeroCopyData {
   char* name;

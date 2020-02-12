@@ -18,7 +18,7 @@ package paddle
 // #cgo LDFLAGS: -Lpaddle_c/paddle/lib -lpaddle_fluid_c
 // #include <stdbool.h>
 // #include <stdlib.h>
-// #include "paddle_c_api.h"
+// #include <paddle_c_api.h>
 import "C"
 
 import "runtime"
