@@ -153,16 +153,6 @@ class DygraphToStaticAst(ast.NodeTransformer):
         else:
             return node
 
-    def visit_Subscript(self, node):
-        """
-        x.numpy()[i]  --> slice
-        """
-        need_wrapper = is_numpy_slice(node)
-        self.generic_visit(node)
-        if need_wrapper:
-            node = transform_slice(node)
-        return node
-
     def visit_Call(self, node):
         if isinstance(node.func, ast.Attribute):
             attribute = node.func

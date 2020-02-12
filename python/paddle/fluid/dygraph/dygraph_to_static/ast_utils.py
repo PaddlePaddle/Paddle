@@ -247,35 +247,3 @@ def create_cond_node(return_name_ids, pred, true_func, false_func):
     assign_node = ast.Assign(targets=targets, value=cond_layer)
 
     return assign_node
-
-
-def is_numpy_slice(node):
-    assert isinstance(node, ast.Subscript)
-    if isinstance(node.value, ast.Call) and isinstance(node.value.func,
-                                                       ast.Attribute):
-        attribute = node.value.func
-        return attribute.attr == 'numpy'
-    return False
-
-
-def transform_slice(node):
-    """
-    Transform `x[i]` into fluid.layer.slice(x, [i], [i])
-    """
-    if not getattr(node, 'slice', None):
-        return node
-    assert isinstance(node.slice.value, ast.Num)
-    index = ast.List(elts=[node.slice.value], ctx=ast.Load())
-    kargs = [
-        ast.keyword(
-            arg='starts', value=index), ast.keyword(
-                arg='ends', value=index)
-    ]
-    slice_api = ast.parse('fluid.layers.slice').body[0].value
-    new_call = ast.Call(
-        func=slice_api,
-        args=[node.value],
-        keywords=kargs,
-        starargs=None,
-        kwargs=None)
-    return new_call
