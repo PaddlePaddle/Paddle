@@ -1164,8 +1164,6 @@ def save_inference_model(dirname,
             )
             break
 
-    target_var_name_list = [var.name for var in target_vars]
-
     # when a pserver and a trainer running on the same machine, mkdir may conflict
     save_dirname = dirname
     try:
@@ -1187,6 +1185,19 @@ def save_inference_model(dirname,
     # more flexible.
 
     origin_program = main_program.clone()
+
+    # fix the bug that the activation op's output as target will be pruned.
+    # will affect the inference performance.
+    # TODO(Superjomn) add an IR pass to remove 1-scale op.
+    with program_guard(main_program):
+        uniq_target_vars = []
+        for i, var in enumerate(target_vars):
+            if isinstance(var, Variable):
+                var = layers.scale(
+                    var, 1., name="save_infer_model/scale_{}".format(i))
+            uniq_target_vars.append(var)
+        target_vars = uniq_target_vars
+    target_var_name_list = [var.name for var in target_vars]
 
     if export_for_deployment:
         main_program = main_program.clone()
