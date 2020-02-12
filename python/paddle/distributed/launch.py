@@ -252,7 +252,6 @@ paddlecloud environment.".format(args.cluster_node_ips, node_ips))
             for x in range(args.started_port, args.started_port +
                            selected_gpus_num)
         ]
-        print("selectd ports:", free_ports)
 
     trainers_endpoints = ""
     for ip in node_ips:
