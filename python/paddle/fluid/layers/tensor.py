@@ -448,13 +448,13 @@ def assign(input, output=None):
     The OP copies the :attr:`input` to the :attr:`output`.
 
     Parameters:
-        input (Variable|numpy.ndarray): A tensor or numpy ndarray, its data type supports
+        input (Variable|numpy.ndarray): A tensor, numpy ndarray or LoDTensorArray, its data type supports
             float32, float64, int32 and int64.
-        output (Variable, optional): A tensor. If :attr:`output` is None, a new tensor will
-            be created as :attr:`output`. Default: None.
+        output (Variable, optional): A tensor or LoDTensorArray. If :attr:`output` is None, a new tensor or
+            LoDTensorArray will be created as :attr:`output`. Default: None.
 
     Returns:
-        Variable: A tensor with the same shape, data type and value as :attr:`input`.
+        Variable: A tensor or LoDTensorArray with the same shape, data type and value as :attr:`input`.
 
     Examples:
         .. code-block:: python
@@ -466,6 +466,14 @@ def assign(input, output=None):
           fluid.layers.assign(data, result1) # result1 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
           result2 = fluid.layers.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
           result3 = fluid.layers.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+
+          i = fluid.layers.fill_constant(shape=[1], value=0, dtype='int64')
+          array = fluid.layers.array_write(x=data, i=i)
+          result_array1 = fluid.layers.create_array(dtype='float64')
+          fluid.layers.assign(array, result_array1)
+          result_array2 = fluid.layers.assign(array)
+          result4 = fluid.layers.array_read(array=result_array1, i=i) # result4 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          result5 = fluid.layers.array_read(array=result_array2, i=i) # result5 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
     """
     helper = LayerHelper('assign', **locals())
     check_type(input, 'input', (Variable, numpy.ndarray), 'assign')
@@ -474,8 +482,14 @@ def assign(input, output=None):
                     ['float32', 'float64', 'int32', 'int64', 'bool'], 'assign',
                     '(When the type of input in assign is Variable.)')
         if output is None:
-            output = helper.create_variable_for_type_inference(
-                dtype=input.dtype)
+            if input.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+                output = helper.create_variable(
+                    name="{0}.out".format(helper.name),
+                    type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+                    dtype=input.dtype)
+            else:
+                output = helper.create_variable_for_type_inference(
+                    dtype=input.dtype)
         helper.append_op(
             type='assign', inputs={'X': [input]}, outputs={'Out': [output]})
     elif isinstance(input, numpy.ndarray):
