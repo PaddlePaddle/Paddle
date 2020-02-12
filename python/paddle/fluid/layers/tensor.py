@@ -787,6 +787,7 @@ def argmin(x, axis=0):
         inputs={'X': x},
         outputs={'Out': [out]},
         attrs={'axis': axis})
+    out.stop_gradient = True
     return out
 
 
@@ -846,6 +847,7 @@ def argmax(x, axis=0):
         inputs={'X': x},
         outputs={'Out': [out]},
         attrs={'axis': axis})
+    out.stop_gradient = True
     return out
 
 
