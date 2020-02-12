@@ -89,13 +89,18 @@ class TopkOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) should be not null");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Indices"), true,
-                      "Input(Indices) should be not null");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("X"), true,
+        platform::errors::InvalidArgument("Input(X) should be not null"));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Indices"), true,
+        platform::errors::InvalidArgument("Input(Indices) should be not null"));
     PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      "Grad Input(Out) should be not null");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
-                      "Grad Output(X) should be not null");
+                      platform::errors::InvalidArgument(
+                          "Grad Input(Out) should be not null"));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput(framework::GradVarName("X")), true,
+        platform::errors::InvalidArgument("Grad Output(X) should be not null"));
 
     auto x_dims = ctx->GetInputDim("X");
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);

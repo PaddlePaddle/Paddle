@@ -558,8 +558,9 @@ template <typename DeviceContext, typename T>
 class TopkOpGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(context.GetPlace()),
-                   "It must use CUDAPlace.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(context.GetPlace()), true,
+        platform::errors::InvalidArgument("It must use CUDAPlace."));
     auto* x = context.Input<Tensor>("X");
     auto* out_grad = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* indices = context.Input<Tensor>("Indices");
@@ -584,7 +585,7 @@ class TopkOpGradCUDAKernel : public framework::OpKernel<T> {
                      kBlockDim><<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(
               x_grad_data, indices_data, out_grad_data, row, col, k));
       default:
-        PADDLE_THROW("Error");
+        PADDLE_THROW("Error occurs when Assign Grad.");
     }
   }
 };
