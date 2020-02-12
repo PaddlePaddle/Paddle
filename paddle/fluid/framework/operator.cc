@@ -1086,7 +1086,9 @@ void OperatorWithKernel::TransferInplaceVarsBack(
     PADDLE_ENFORCE_NOT_NULL(var, "The var[%s] should not be nullptr.",
                             var_name);
     auto* transformed_tensor = GetLoDTensorOrSelectedRowsValueFromVar(*var);
+    auto original_dims = original_tensor->dims();
     original_tensor->ShareDataWith(*transformed_tensor);
+    original_tensor->Resize(original_dims);
   }
 }
 
@@ -1232,7 +1234,7 @@ Scope* OperatorWithKernel::PrepareData(
 void OperatorWithKernel::ParseInputDataType(
     const ExecutionContext& ctx, const std::string& name,
     proto::VarType::Type* data_type) const {
-  proto::VarType::Type dafault_data_type =
+  proto::VarType::Type default_data_type =
       static_cast<proto::VarType::Type>(-1);
   const std::vector<Variable*> vars = ctx.MultiInputVar(name);
   for (size_t i = 0; i < vars.size(); ++i) {
@@ -1245,6 +1247,13 @@ void OperatorWithKernel::ParseInputDataType(
         t = &var->Get<LoDTensor>();
       } else if (var->IsType<SelectedRows>()) {
         t = &(var->Get<SelectedRows>().value());
+      } else if (var->IsType<LoDTensorArray>()) {
+        auto t_arr = var->Get<LoDTensorArray>();
+        for (size_t j = 0; j < t_arr.size(); j++) {
+          if (t_arr[j].IsInitialized()) {
+            t = &(t_arr[j]);
+          }
+        }
       }
       if (t != nullptr) {
         PADDLE_ENFORCE_EQ(
@@ -1255,7 +1264,7 @@ void OperatorWithKernel::ParseInputDataType(
                 Type(), name, ctx.InputNames(name).at(i)));
         proto::VarType::Type tmp = t->type();
         PADDLE_ENFORCE(
-            tmp == *data_type || *data_type == dafault_data_type,
+            tmp == *data_type || *data_type == default_data_type,
             platform::errors::InvalidArgument(
                 "The DataType of %s Op's duplicable Variable %s must be "
                 "consistent. The current variable type is (%s), but the "
