@@ -3810,12 +3810,12 @@ class RecomputeOptimizer(Optimizer):
 
                 sgd = fluid.optimizer.Adam(learning_rate=0.01)
                 sgd = fluid.optimizer.RecomputeOptimizer(sgd)
+                sgd._set_checkpoints([fc_1, pred])
                 params_grads = sgd.backward(
                     cost,
                     startup_program=None,
                     parameter_list=None,
-                    no_grad_set=None,
-                    checkpoints=[fc_1, pred])
+                    no_grad_set=None)
 
                 program = cost.block.program
                 with framework.program_guard(program, None):
@@ -3917,12 +3917,12 @@ class RecomputeOptimizer(Optimizer):
                 
                 sgd = fluid.optimizer.Adam(learning_rate=0.01)
                 sgd = fluid.optimizer.RecomputeOptimizer(sgd)
+                sgd._set_checkpoints([fc_1, pred])
                 params_grads = sgd.backward(
                     cost,
                     startup_program=None,
                     parameter_list=None,
-                    no_grad_set=None,
-                    checkpoints=[fc_1, pred])
+                    no_grad_set=None)
                 
                 optimize_ops = sgd.apply_optimize(
                     cost, startup_program=None, params_grads=params_grads)
@@ -3952,8 +3952,7 @@ class RecomputeOptimizer(Optimizer):
             loss,
             startup_program=startup_program,
             parameter_list=parameter_list,
-            no_grad_set=no_grad_set,
-            checkpoints=self._checkpoints)
+            no_grad_set=no_grad_set)
 
         if grad_clip:
             # TODO(guru4elephant): should add grad_clip for static graph
