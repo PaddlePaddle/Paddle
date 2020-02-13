@@ -118,6 +118,11 @@ dygraph_class_to_static_api = {
 }
 
 
+def _delete_keywords_from(node, deleted_keywords):
+    assert isinstance(node, ast.Call)
+    node.keywords = [k for k in node.keywords if k.arg not in deleted_keywords]
+
+
 def to_static_api(dygraph_class):
     if dygraph_class in dygraph_class_to_static_api:
         return dygraph_class_to_static_api[dygraph_class]
@@ -127,16 +132,35 @@ def to_static_api(dygraph_class):
             "to static graph at present.")
 
 
+def _add_keywords_to(node, dygraph_api_name):
+    assert isinstance(node, ast.Call)
+    if dygraph_api_name is "Linear":
+        changed = False
+        for ast_keyword in node.keywords:
+            if ast_keyword.arg == "output_dim":
+                ast_keyword.arg = "size"
+                changed = True
+
+        if not changed:
+            # todo: arg and keywords
+            pass
+
+    return
+
+
 def to_static_ast(node, dygraph_class, dygraph_args, dygraph_keywords):
-    static_api = to_static_api(dygraph_class)
+    static_info = to_static_api(dygraph_class)
+    static_api = static_info[STATIC_API]
 
     node.func = ast.Attribute(
         attr=static_api,
         value=ast.Attribute(
             attr='layers', value=ast.Name(
-                ctx=ast.Load(), id='fluid')))
+                ctx=ast.Load(), id='fluid')))  # todo ast.Name for PY3
     node.args.extend(dygraph_args)
     node.keywords.extend(dygraph_keywords)
+    _add_keywords_to(node, dygraph_class)
+    _delete_keywords_from(node, static_info.get(TO_DELETE_ARGS, []))
 
     ast.fix_missing_locations(node)
 
