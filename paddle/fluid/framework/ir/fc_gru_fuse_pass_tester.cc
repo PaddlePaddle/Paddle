@@ -95,9 +95,16 @@ TEST(FCFusePass, basic) {
   int num_fuse_gru_nodes_after = GetNumOpNodes(graph, "fusion_gru");
   VLOG(3) << DebugString(graph);
 
-  PADDLE_ENFORCE_EQ(num_nodes_before, num_nodes_after + 6);
-  PADDLE_ENFORCE_EQ(num_fuse_gru_nodes_after, 2);
-  PADDLE_ENFORCE_EQ(num_gru_nodes_before, num_fuse_gru_nodes_after);
+  PADDLE_ENFORCE_EQ(num_nodes_before, num_nodes_after + 6,
+                    PreconditionNotMet("The number of nodes before and after "
+                                       "the fuse does not meet expectations"));
+  PADDLE_ENFORCE_EQ(num_fuse_gru_nodes_after, 2,
+                    PreconditionNotMet("The number of gru nodes before the "
+                                       "fuse does not meet expectations"));
+  PADDLE_ENFORCE_EQ(num_gru_nodes_before,
+                    num_fuse_gru_nodes_after PreconditionNotMet(
+                        "The number of fusion_gru nodes does not meet "
+                        "expectations after fuse"));
 }
 
 }  // namespace ir
