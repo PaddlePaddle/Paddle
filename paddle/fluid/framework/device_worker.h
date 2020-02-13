@@ -223,10 +223,6 @@ class DownpourWorker : public HogwildWorker {
   void CopyDenseVars();
   virtual void DumpParam(const int batch_id);
 
- private:
-  bool need_to_push_dense_;
-  bool dump_slot_;
-  bool need_to_push_sparse_;
   DownpourWorkerParameter param_;
   // copy table
   CopyTableConfig copy_table_config_;
@@ -253,16 +249,11 @@ class DownpourWorker : public HogwildWorker {
   std::vector<::std::future<int32_t>> push_sparse_status_;
   bool dump_slot_;
   bool need_to_push_dense_;
-  bool need_dump_field_;
-  bool need_dump_param_;
   std::map<uint64_t, std::vector<std::string>> dense_grad_names_;
   float scale_datanorm_;
   std::vector<::std::future<int32_t>> push_dense_status_;
-  std::vector<std::string> dump_fields_;
-  ChannelWriter<std::string> writer_;
   // skipped ops
   std::vector<std::string> skip_ops_;
-  std::vector<std::string> dump_param_;
   // just save the value in param_ for easy access
   std::map<uint64_t, std::string> label_var_name_;
   std::map<uint64_t, std::vector<std::string>> dense_value_names_;
