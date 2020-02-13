@@ -27,6 +27,15 @@ fluid.default_startup_program().random_seed = SEED
 
 
 def dyfunc(input):
+
+    pool2d = fluid.dygraph.Pool2D(
+        pool_size=2, pool_type='avg', pool_stride=1, global_pooling=False)
+    res = pool2d(input)
+    return res
+
+
+def dyfunc_to_variable(x):
+    input = fluid.dygraph.to_variable(x)
     pool2d = fluid.dygraph.Pool2D(
         pool_size=2, pool_type='avg', pool_stride=1, global_pooling=False)
     res = pool2d(input)
