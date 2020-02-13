@@ -196,8 +196,9 @@ class HalfAsyncStrategy(DistributedStrategy):
         super(HalfAsyncStrategy, self).__init__()
         self._program_config.sync_mode = False
         self._program_config.runtime_split_send_recv = True
-        self._build_strategy.async_mode = True
         self._program_config.half_async = True
+        self._build_strategy.async_mode = True
+        self._execute_strategy.use_thread_barrier = True
 
 
 class GeoStrategy(DistributedStrategy):
