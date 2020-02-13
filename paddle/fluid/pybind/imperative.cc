@@ -49,22 +49,47 @@ class gil_scoped_acquire {
   ~gil_scoped_acquire() { PyGILState_Release(state); }
 };
 
+template <typename T>
+static T PyObjectCast(PyObject *obj) {
+  try {
+    return py::cast<T>(py::handle(obj));
+  } catch (py::cast_error &) {
+    PADDLE_THROW("Python object is not type of %s", typeid(T).name());
+  }
+}
+
 // warper for pyobject to avoid imperative module depend on python
 class PyCallableObject {
  public:
-  PyCallableObject(PyObject *func, PyObject *param)
-      : py_obj_func_(func), py_obj_param_(param) {}
+  PyCallableObject(PyObject *func, PyObject *param,
+                   imperative::VarBase *varbase_grad)
+      : py_obj_func_(func), py_obj_param_(param), varbase_grad_(varbase_grad) {}
 
   ~PyCallableObject() {}
 
   void operator()() {
     gil_scoped_acquire gil;
-    PyObject_CallFunctionObjArgs(py_obj_func_, py_obj_param_, nullptr);
+    PyObject *result =
+        PyObject_CallFunctionObjArgs(py_obj_func_, py_obj_param_, nullptr);
+    if (result != NULL) {
+      VLOG(2) << "res has value1, address is: " << result
+              << " old address is: " << py_obj_param_ << std::endl;
+    }
+
+    if (result != Py_None) {
+      VLOG(2) << "res has value2, address is: " << result
+              << " old address is: " << py_obj_param_ << std::endl;
+      std::shared_ptr<imperative::VarBase> result_varbase =
+          PyObjectCast<std::shared_ptr<imperative::VarBase>>(result);
+      auto *varbase_grad_var = varbase_grad_->MutableVar();
+      *varbase_grad_var = std::move(*(result_varbase->MutableVar()));
+    }
   }
 
  private:
   PyObject *py_obj_func_;
   PyObject *py_obj_param_;
+  imperative::VarBase *varbase_grad_;
 };
 
 class Layer : public imperative::Layer {
@@ -176,15 +201,6 @@ static std::string GetTypeName(const imperative::VarBase &var) {
 }
 
 using PyNameVarBaseMap = std::unordered_map<std::string, py::handle>;
-
-template <typename T>
-static T PyObjectCast(PyObject *obj) {
-  try {
-    return py::cast<T>(py::handle(obj));
-  } catch (py::cast_error &) {
-    PADDLE_THROW("Python object is not type of %s", typeid(T).name());
-  }
-}
 
 // NOTE(zjl): py::handle is a very light wrapper of PyObject *.
 // Unlike py::object, py::handle does not change reference count of PyObject *.
@@ -490,7 +506,7 @@ void BindImperative(py::module *m_ptr) {
            [](imperative::VarBase &self, const py::handle &hook) {
              if (self.HasGradVar()) {
                PyCallableObject obj =
-                   PyCallableObject(hook.ptr(), py::cast(self).ptr());
+                   PyCallableObject(hook.ptr(), py::cast(self).ptr(), &(self));
                auto &tmp = self.GetBackwardHooks();
                VLOG(2) << "========tmp address: " << &(tmp) << std::endl;
                std::shared_ptr<imperative::RemovablePyCallableObject>
