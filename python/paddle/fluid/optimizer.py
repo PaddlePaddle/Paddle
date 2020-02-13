@@ -3887,7 +3887,7 @@ class RecomputeOptimizer(Optimizer):
         self._dtype = loss.dtype
         program = loss.block.program
         with program_guard(program, startup_program):
-            params_grads = self._optimzier.backward(
+            params_grads = self._optimizer.backward(
                 loss=loss,
                 parameter_list=parameter_list,
                 no_grad_set=no_grad_set,
