@@ -15,9 +15,7 @@
 from __future__ import print_function
 
 import ast
-from ast_utils import *
-from paddle.fluid import unique_name
-from collections import defaultdict
+from .ast_utils import is_control_flow_if, create_cond_node, transform_if_else
 
 __all__ = ['AstNodeWrapper', 'DygraphToStaticAst', 'StaticAnalysisVisitor']
 
