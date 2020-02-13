@@ -114,15 +114,12 @@ class DygraphToStaticAst(ast.NodeTransformer):
         self.root = root
         self.static_analysis_root = StaticAnalysisVisitor(
             root).get_node_wrapper_root()
+        self.static_analysis_root = root
         # record all created ast.functionDef in control flow statement
         self.new_func_nodes = []
         self.decorate_func_name = None
-        root.node_info = AstNodeWrapper(root)
-        self.static_analysis_root = root
-        self._visit(root)
-
+        # self._visit(root)
         self.transfer_from_node_type(self.static_analysis_root)
-
         return self.static_analysis_root, self.decorate_func_name
 
     def _visit(self, root):

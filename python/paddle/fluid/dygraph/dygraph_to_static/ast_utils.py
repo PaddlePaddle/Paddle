@@ -188,7 +188,6 @@ def create_funcDef_node(nodes, name, input_args, return_name_ids):
     nodes.append(ast.Return(value=generate_name_node(return_name_ids)))
     func_def_node = ast.FunctionDef(
         name=name, args=input_args, body=nodes, decorator_list=[])
-    # print(codegen.to_source(func_def_node))
     return func_def_node
 
 
