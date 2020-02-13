@@ -114,7 +114,8 @@ class OptimizerWithMixedPrecision(object):
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None,
-                 callbacks=None):
+                 callbacks=None,
+                 checkpoints=None):
         """
         Backward propagation or auto differentiation for gradients' computation.
 
@@ -134,8 +135,12 @@ class OptimizerWithMixedPrecision(object):
         rewrite_program(self._train_program, self._amp_lists)
         self._scaled_loss = loss * self._loss_scaling
         self._params_grads = self._optimizer.backward(
-            self._scaled_loss, startup_program, parameter_list, no_grad_set,
-            callbacks)
+            self._scaled_loss,
+            startup_program,
+            parameter_list,
+            no_grad_set,
+            callbacks,
+            checkpoints=checkpoints)
         # Change the op_role_var attr for some ops, so that gradients
         # transferred across GPUs can be FP16.
         update_role_var_grad(self._train_program, self._params_grads)
