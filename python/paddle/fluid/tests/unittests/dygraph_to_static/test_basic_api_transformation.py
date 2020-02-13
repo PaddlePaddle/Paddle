@@ -21,7 +21,7 @@ import inspect
 import ast
 
 from paddle.fluid.dygraph.jit import dygraph_to_static_output
-from paddle.fluid.dygraph.dygraph_to_static.utils import is_dygraph_class
+from paddle.fluid.dygraph.dygraph_to_static.utils import is_dygraph_api
 
 SEED = 2020
 np.random.seed(SEED)
@@ -92,6 +92,35 @@ class TestDygraphBasicAPI(unittest.TestCase):
         self.assertTrue(np.array_equal(static_res, dygraph_res))
 
 
+class TestDygraphBasicAPI2(unittest.TestCase):
+    def setUp(self):
+        self.input = np.random.random((1, 1, 3, 20)).astype('float32')
+        self.dygraph_func = dyfunc_to_variable
+
+    def get_dygraph_output(self):
+        with fluid.dygraph.guard():
+            res = self.dygraph_func(self.input).numpy()
+
+            return res
+
+    def get_static_output(self):
+        main_program = fluid.Program()
+        main_program.random_seed = SEED
+        with fluid.program_guard(main_program):
+            static_out = dygraph_to_static_output(self.dygraph_func)(self.input)
+
+        exe = fluid.Executor(fluid.CPUPlace())
+        static_res = exe.run(main_program, fetch_list=static_out)
+
+        return static_res[0]
+
+    def test_transformed_static_result(self):
+        dygraph_res = self.get_dygraph_output()
+        static_res = self.get_static_output()
+        print(static_res)
+        # self.assertTrue(np.array_equal(static_res, dygraph_res))
+
+
 def _dygraph_fn():
     import paddle.fluid as fluid
     x = np.random.random((1, 3)).astype('float32')
@@ -112,8 +141,8 @@ class TestDygraphAPIRecognition(unittest.TestCase):
         return self.root_ast.body[0].body[2].body[1].value
 
     def test_dygraph_api(self):
-        self.assertTrue(is_dygraph_class(self._get_dygraph_ast_node()) is True)
-        self.assertTrue(is_dygraph_class(self._get_static_ast_node()) is False)
+        self.assertTrue(is_dygraph_api(self._get_dygraph_ast_node()) is True)
+        self.assertTrue(is_dygraph_api(self._get_static_ast_node()) is False)
 
 
 if __name__ == '__main__':
