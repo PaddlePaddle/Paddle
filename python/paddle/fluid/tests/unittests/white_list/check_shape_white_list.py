@@ -30,7 +30,6 @@ NEED_TO_FIX_OP_LIST = [
     'mul',
     'row_conv',
     'scatter',
-    'smooth_l1_loss',
     'soft_relu',
     'spp',
     'squared_l2_distance',

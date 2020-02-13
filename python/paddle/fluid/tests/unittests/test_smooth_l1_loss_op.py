@@ -31,14 +31,19 @@ class TestSmoothL1LossOp1(OpTest):
     def setUp(self):
         self.op_type = "smooth_l1_loss"
         dims = (5, 20)
-        self.inputs = {
-            'X': np.random.random(dims).astype("float32"),
-            'Y': np.random.random(dims).astype("float32")
-        }
         sigma = 3.0
         self.attrs = {'sigma': sigma}
         sigma2 = sigma * sigma
+
+        x_input = np.random.random(dims).astype("float32")
+        y_input = np.random.random(dims).astype("float32")
+        diff_tmp = x_input = y_input
+        # not Continuously differentiable in point x - y = 1.0 / sigma2
+        no_grad_index = np.abs(diff_tmp - 1.0 / sigma2) < 0.05
+        y_input[no_grad_index] = x_input[no_grad_index] + 1.0 / sigma2 + 0.02
+        self.inputs = {'X': x_input, 'Y': y_input}
         diff = self.inputs['X'] - self.inputs['Y']
+        diff[np.abs(diff - 1.0 / sigma2) < 0.05] = 1.0 / sigma2 + 0.02
         loss = np.vectorize(smooth_l1_loss_forward)(diff, sigma2).sum(1)
         loss = loss.reshape((dims[0], 1))
         self.outputs = {
@@ -50,31 +55,38 @@ class TestSmoothL1LossOp1(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.02)
+        self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'], 'Out', max_relative_error=0.03, no_grad_set=set("X"))
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
 
     def test_check_grad_ingore_y(self):
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=0.03, no_grad_set=set('Y'))
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
 
 
 class TestSmoothL1LossOp2(OpTest):
     def setUp(self):
         self.op_type = "smooth_l1_loss"
-        dims = (5, 10)
-        self.inputs = {
-            'X': np.random.random(dims).astype("float32"),
-            'Y': np.random.random(dims).astype("float32"),
-            'InsideWeight': np.random.random(dims).astype("float32"),
-            'OutsideWeight': np.random.random(dims).astype("float32")
-        }
+        dims = (5, 20)
         sigma = 3.0
         self.attrs = {'sigma': sigma}
         sigma2 = sigma * sigma
+
+        x_input = np.random.random(dims).astype("float32")
+        y_input = np.random.random(dims).astype("float32")
+        # not Continuously differentiable in point x - y = 1.0 / sigma2
+        diff_tmp = x_input = y_input
+        no_grad_index = np.abs(diff_tmp - 1.0 / sigma2) < 0.05
+        y_input[no_grad_index] = x_input[no_grad_index] + 1.0 / sigma2 + 0.02
+
+        self.inputs = {
+            'X': x_input,
+            'Y': y_input,
+            'InsideWeight': np.random.random(dims).astype("float32"),
+            'OutsideWeight': np.random.random(dims).astype("float32")
+        }
         diff = self.inputs['X'] - self.inputs['Y']
+        diff[np.abs(diff - 1.0 / sigma2) < 0.05] = 1.0 / sigma2 + 0.02
         diff = diff * self.inputs['InsideWeight']
         loss = np.vectorize(smooth_l1_loss_forward)(diff, sigma2)
         loss = loss * self.inputs['OutsideWeight']
@@ -94,14 +106,12 @@ class TestSmoothL1LossOp2(OpTest):
         self.check_grad(
             ['Y'],
             'Out',
-            max_relative_error=0.03,
             no_grad_set=set(['X', 'InsideWeight', 'OutsideWeight']))
 
     def test_check_grad_ingore_y(self):
         self.check_grad(
             ['X'],
             'Out',
-            max_relative_error=0.03,
             no_grad_set=set(['Y', 'InsideWeight', 'OutsideWeight']))
 
 
