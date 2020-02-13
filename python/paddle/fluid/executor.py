@@ -644,13 +644,6 @@ class Executor(object):
                 targets.append(op)
 
         pruned_program = origin_program._prune_with_input(feed_names, targets)
-        print('origin_program',
-              [op.type for op in origin_program.global_block().ops])
-        print('pruned_program',
-              [op.type for op in pruned_program.global_block().ops])
-        print('pruned_ops',
-              set([op.type for op in origin_program.global_block().ops]) - set(
-                  [op.type for op in pruned_program.global_block().ops]))
 
         if compiled:
             program._program = pruned_program
