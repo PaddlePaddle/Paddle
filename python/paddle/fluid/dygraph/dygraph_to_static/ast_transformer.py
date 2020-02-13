@@ -154,7 +154,10 @@ class DygraphToStaticAst(ast.NodeTransformer):
             attribute = node.func
             if attribute.attr == 'numpy':
                 node = attribute.value
-                return node
+        if not hasattr(node, 'starargs'):
+            setattr(node, 'starargs', None)
+        if not hasattr(node, 'kwargs'):
+            setattr(node, 'kwargs', None)
         return node
 
     def visit_Compare(self, node):
@@ -171,3 +174,7 @@ class DygraphToStaticAst(ast.NodeTransformer):
             ]
             node.decorator_list = decorator_list
         return node
+
+    def visit_arg(self, node):
+        new_node = ast.Name(id=node.arg, ctx=ast.Param())
+        return new_node
