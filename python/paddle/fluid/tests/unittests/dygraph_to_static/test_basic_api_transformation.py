@@ -27,6 +27,11 @@ SEED = 2020
 np.random.seed(SEED)
 fluid.default_main_program().random_seed = SEED
 fluid.default_startup_program().random_seed = SEED
+"""
+def dyfunc(input):
+    res = fluid.layers.pool2d(input, pool_size=2, pool_type='avg', pool_stride=1, global_pooling=False)
+    return res
+"""
 
 
 def dyfunc(input):
@@ -67,6 +72,39 @@ def dyfunc_linear(input):
         bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
             value=0.5)), )
     res = fc(input)
+    return res
+
+
+def dyfunc_bilinear_tensor_product(layer1, layer2):
+    bilinearTensorProduct = fluid.dygraph.nn.BilinearTensorProduct(
+        input1_dim=5,
+        input2_dim=4,
+        output_dim=1000,
+        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+            value=0.99)),
+        bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+            value=0.5)))
+    l1 = fluid.dygraph.base.to_variable(layer1)
+    l2 = fluid.dygraph.base.to_variable(layer2)
+
+    res = bilinearTensorProduct(l1, l2)
+    # res = bilinearTensorProduct(fluid.dygraph.base.to_variable(layer1),
+    #                             fluid.dygraph.base.to_variable(layer2))
+    return res
+
+
+"""
+def dyfunc_prelu(input):
+    res = fluid.layers.prelu(x=input, mode='all', param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(1.0)))
+    return res
+"""
+
+
+def dyfunc_prelu(input):
+    prelu0 = fluid.PRelu(
+        mode='all',
+        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(1.0)))
+    res = prelu0(input=input)
     return res
 
 
@@ -111,71 +149,106 @@ class TestDygraphBasicAPI(unittest.TestCase):
         self.assertTrue(np.array_equal(static_res, dygraph_res))
 
 
-# class TestDygraphBasicAPI_Case1(TestDygraphBasicAPI):
-#     def setUp(self):
-#         self.input = np.random.random((1,3,3,5)).astype('float32')
-#         self.dygraph_func = dyfunc_conv2d
-#
+class TestDygraphBasicAPI_Case1(TestDygraphBasicAPI):
+    def setUp(self):
+        self.input = np.random.random((1, 3, 3, 5)).astype('float32')
+        self.dygraph_func = dyfunc_conv2d
 
 
 class TestDygraphBasicAPI_Case2(TestDygraphBasicAPI):
     def setUp(self):
-        self.input = np.random.random((4, 4, 10)).astype('float32')
+        # todo: add test that input dimension is greater than 2, eg: 3-D or 4-D Tensor
+        # after merge fc
+        self.input = np.random.random((4, 10)).astype('float32')
         self.dygraph_func = dyfunc_linear
 
 
-#
-# class TestDygraphBasicAPI_Case3(unittest.TestCase):
-#     def setUp(self):
-#         self.input = np.random.random((1, 1, 3, 20)).astype('float32')
-#         self.dygraph_func = dyfunc_to_variable
-#
-#     def get_dygraph_output(self):
-#         with fluid.dygraph.guard():
-#             res = self.dygraph_func(self.input).numpy()
-#
-#             return res
-#
-#     def get_static_output(self):
-#         main_program = fluid.Program()
-#         main_program.random_seed = SEED
-#         with fluid.program_guard(main_program):
-#             static_out = dygraph_to_static_output(self.dygraph_func)(self.input)
-#
-#         exe = fluid.Executor(fluid.CPUPlace())
-#         static_res = exe.run(main_program, fetch_list=static_out)
-#
-#         return static_res[0]
-#
-#     def test_transformed_static_result(self):
-#         dygraph_res = self.get_dygraph_output()
-#         static_res = self.get_static_output()
-#         # print(static_res)
-#         self.assertTrue(np.array_equal(static_res, dygraph_res))
-#
-#
-# def _dygraph_fn():
-#     import paddle.fluid as fluid
-#     x = np.random.random((1, 3)).astype('float32')
-#     with fluid.dygraph.guard():
-#         fluid.dygraph.to_variable(x)
-#         np.random.random((1))
-#
-#
-# class TestDygraphAPIRecognition(unittest.TestCase):
-#     def setUp(self):
-#         self.src = inspect.getsource(_dygraph_fn)
-#         self.root_ast = ast.parse(self.src)
-#
-#     def _get_dygraph_ast_node(self):
-#         return self.root_ast.body[0].body[2].body[0].value
-#
-#     def _get_static_ast_node(self):
-#         return self.root_ast.body[0].body[2].body[1].value
-#
-#     def test_dygraph_api(self):
-#         self.assertTrue(is_dygraph_api(self._get_dygraph_ast_node()) is True)
-#         self.assertTrue(is_dygraph_api(self._get_static_ast_node()) is False)
+class TestDygraphBasicAPI_Case3(unittest.TestCase):
+    def setUp(self):
+        self.input = np.random.random((1, 1, 3, 20)).astype('float32')
+        self.dygraph_func = dyfunc_to_variable
+
+    def get_dygraph_output(self):
+        with fluid.dygraph.guard():
+            res = self.dygraph_func(self.input).numpy()
+
+            return res
+
+    def get_static_output(self):
+        main_program = fluid.Program()
+        main_program.random_seed = SEED
+        with fluid.program_guard(main_program):
+            static_out = dygraph_to_static_output(self.dygraph_func)(self.input)
+
+        exe = fluid.Executor(fluid.CPUPlace())
+        static_res = exe.run(main_program, fetch_list=static_out)
+
+        return static_res[0]
+
+    def test_transformed_static_result(self):
+        dygraph_res = self.get_dygraph_output()
+        static_res = self.get_static_output()
+        # print(static_res)
+        self.assertTrue(np.array_equal(static_res, dygraph_res))
+
+
+class TestDygraphBasicAPI_Case4(TestDygraphBasicAPI):
+    def setUp(self):
+        self.layer1 = np.random.random((5, 5)).astype('float32')
+        self.layer2 = np.random.random((5, 4)).astype('float32')
+        self.dygraph_func = dyfunc_bilinear_tensor_product
+
+    def get_dygraph_output(self):
+        with fluid.dygraph.guard():
+            fluid.default_startup_program.random_seed = SEED
+            fluid.default_main_program.random_seed = SEED
+            res = self.dygraph_func(self.layer1, self.layer2).numpy()
+            return res
+
+    def get_static_output(self):
+        startup_program = fluid.Program()
+        startup_program.random_seed = SEED
+        main_program = fluid.Program()
+        main_program.random_seed = SEED
+        with fluid.program_guard(main_program, startup_program):
+            static_out = dygraph_to_static_output(self.dygraph_func)(
+                self.layer1, self.layer2)
+
+        exe = fluid.Executor(fluid.CPUPlace())
+        exe.run(startup_program)
+        static_res = exe.run(main_program, fetch_list=static_out)
+        return static_res[0]
+
+
+class TestDygraphBasicAPI_Case5(TestDygraphBasicAPI):
+    def setUp(self):
+        self.input = np.ones([5, 20, 10, 10]).astype('float32')
+        self.dygraph_func = dyfunc_prelu
+
+
+def _dygraph_fn():
+    import paddle.fluid as fluid
+    x = np.random.random((1, 3)).astype('float32')
+    with fluid.dygraph.guard():
+        fluid.dygraph.to_variable(x)
+        np.random.random((1))
+
+
+class TestDygraphAPIRecognition(unittest.TestCase):
+    def setUp(self):
+        self.src = inspect.getsource(_dygraph_fn)
+        self.root_ast = ast.parse(self.src)
+
+    def _get_dygraph_ast_node(self):
+        return self.root_ast.body[0].body[2].body[0].value
+
+    def _get_static_ast_node(self):
+        return self.root_ast.body[0].body[2].body[1].value
+
+    def test_dygraph_api(self):
+        self.assertTrue(is_dygraph_api(self._get_dygraph_ast_node()) is True)
+        self.assertTrue(is_dygraph_api(self._get_static_ast_node()) is False)
+
 
 if __name__ == '__main__':
     unittest.main()
