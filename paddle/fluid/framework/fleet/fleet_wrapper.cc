@@ -266,15 +266,31 @@ void FleetWrapper::PushDenseParamSync(
     const Scope& scope, const uint64_t table_id,
     const std::vector<std::string>& var_names) {
 #ifdef PADDLE_WITH_PSLIB
-  auto place = platform::CPUPlace();
+  std::vector<float> buf;
   std::vector<paddle::ps::Region> regions;
   for (auto& t : var_names) {
     Variable* var = scope.FindVar(t);
     CHECK(var != nullptr) << "var[" << t << "] not found";
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
-    float* g = tensor->mutable_data<float>(place);
-    paddle::ps::Region reg(g, tensor->numel());
+    float* t_data = tensor->data<float>();
+    float* g = t_data;
+    int count = tensor->numel();
+    #ifdef PADDLE_WITH_CUDA
+    if (!platform::is_cpu_place(tensor->place())) {
+      if (int(buf.size()) < count) {
+        buf.resize(count);
+      }
+      memory::Copy(
+          platform::CPUPlace(),
+          buf.data(),
+          boost::get<platform::CUDAPlace>(tensor->place()),
+          t_data, sizeof(float) * count, nullptr);
+      g = buf.data();
+    }
+    #endif
+    paddle::ps::Region reg(g, count);
     regions.emplace_back(std::move(reg));
+    
   }
   auto push_status = pslib_ptr_->_worker_ptr->push_dense_param(
       regions.data(), regions.size(), table_id);
@@ -353,13 +369,15 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     std::vector<::std::future<int32_t>>* push_sparse_status,
     const int batch_size, const bool use_cvm, const bool dump_slot,
     std::vector<uint64_t>* sparse_push_keys, const bool no_cvm,
-    const paddle::platform::Place& place) {
+    const paddle::platform::Place& place,
+    std::vector<float>& sparse_grad_region) {
 #ifdef PADDLE_WITH_PSLIB
   int offset = 2;
   int slot_offset = 0;
   int grad_dim = emb_dim;
   int show_index = 0;
   int click_index = 1;
+  bool in_cpu = true;
   if (use_cvm) {
     offset = 0;
     grad_dim = emb_dim - 2;
@@ -383,6 +401,8 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
   }
   uint64_t fea_idx = 0u;
   if (!platform::is_cpu_place(place)) {
+    
+    in_cpu = false;
     platform::DeviceContextPool::Instance().Get(place)->Wait();
   }
   for (size_t i = 0;
@@ -412,14 +432,28 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       exit(-1);
     }
     float* g = g_tensor->data<float>();
+    if (!in_cpu) {
+      if (sparse_grad_region.size() < (len * emb_dim)) {
+        sparse_grad_region.resize(len * emb_dim);
+      }
+      #ifdef PADDLE_WITH_CUDA
+      memory::Copy(
+          platform::CPUPlace(),
+          sparse_grad_region.data(),
+          boost::get<platform::CUDAPlace>(place),
+          g, sizeof(float) * emb_dim * len, nullptr);
+      g = sparse_grad_region.data();
+      #endif
 
-    if (scale_sparse_gradient_with_batch_size_ && grad_dim > 0) {
-      int dim = emb_dim + offset;
-      Eigen::Map<
-          Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-          g_mat(g, g_tensor->numel() / dim, dim);
-      g_mat.rightCols(grad_dim) *= batch_size;
     }
+
+    //if (scale_sparse_gradient_with_batch_size_ && grad_dim > 0) {
+    //  int dim = emb_dim + offset;
+    //  Eigen::Map<
+    //      Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+    //      g_mat(g, g_tensor->numel() / dim, dim);
+    //  g_mat.rightCols(grad_dim) *= batch_size;
+    //}
     for (auto id_idx = 0u; id_idx < len; ++id_idx) {
       if (ids[id_idx] == 0) {
         g += emb_dim;
@@ -429,34 +463,12 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       CHECK(fea_idx < (*push_values).size());
 
       if (use_cvm || no_cvm) {
-        if (platform::is_cpu_place(place)) {
-          memcpy((*push_values)[fea_idx].data() + offset + slot_offset, g,
-                 sizeof(float) * emb_dim);
-        }
-        #ifdef PADDLE_WITH_CUDA
-        else {
-          memory::Copy(
-              platform::CPUPlace(),
-              (*push_values)[fea_idx].data() + offset + slot_offset,
-              boost::get<platform::CUDAPlace>(place),
-              g, sizeof(float) * emb_dim, nullptr);
-        }
-        #endif
+        memcpy((*push_values)[fea_idx].data() + offset + slot_offset, g,
+               sizeof(float) * emb_dim);
       } else {
         CHECK(fea_idx < fea_labels.size());
-        if (platform::is_cpu_place(place)) {
-          memcpy((*push_values)[fea_idx].data() + offset + slot_offset, g,
-                 sizeof(float) * emb_dim);
-        }
-        #ifdef PADDLE_WITH_CUDA
-        else {
-          memory::Copy(
-              platform::CPUPlace(),
-              (*push_values)[fea_idx].data() + offset + slot_offset,
-              boost::get<platform::CUDAPlace>(place),
-              g, sizeof(float) * emb_dim, nullptr);
-        }
-        #endif
+        memcpy((*push_values)[fea_idx].data() + offset + slot_offset, g,
+               sizeof(float) * emb_dim);
         (*push_values)[fea_idx][show_index] = 1.0f;
         (*push_values)[fea_idx][click_index] =
             static_cast<float>(fea_labels[fea_idx]);

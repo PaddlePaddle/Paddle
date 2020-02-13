@@ -133,7 +133,8 @@ class DeviceWorker {
     place_ = place;
   }
   virtual void SetReaderPlace(const paddle::platform::Place& place) {
-    device_reader_->SetPlace(place);
+    //device_reader_->SetPlace(place);
+    device_reader_->SetPlace(platform::CPUPlace());
   }
   virtual Scope* GetThreadScope() { return thread_scope_; }
 
@@ -233,6 +234,7 @@ class DownpourWorker : public HogwildWorker {
   std::map<uint64_t, std::vector<std::string>> dense_value_names_;
   std::map<uint64_t, std::vector<std::string>> dense_grad_names_;
   std::vector<std::vector<float>> dense_grad_regions_;
+  std::vector<float> sparse_grad_region_;
   // actually pushed feasign of each table
   std::map<uint64_t, std::vector<uint64_t>> sparse_push_keys_;
 
