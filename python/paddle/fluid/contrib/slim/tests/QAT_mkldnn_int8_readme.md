@@ -134,7 +134,7 @@ OMP_NUM_THREADS=28 FLAGS_use_mkldnn=true python python/paddle/fluid/contrib/slim
 - Accuracy benchamrk command on QAT2.0 models
 ```bash
 cd /PATH/TO/PADDLE
-OMP_NUM_THREADS=28 FLAGS_use_mkldnn=true python python/paddle/fluid/contrib/slim/tests/qat_int8_image_classification_comparison.py --qat_model=/PATH/TO/DOWNLOAD/MODEL/${MODEL_NAME} --infer_data=$HOME/.cache/paddle/dataset/int8/download/int8_full_val.bin --batch_size=50 --batch_num=1000 --acc_diff_threshold=0.01 --qat2 --quantized_ops="conv2d,pool2d"
+OMP_NUM_THREADS=28 FLAGS_use_mkldnn=true python python/paddle/fluid/contrib/slim/tests/qat_int8_image_classification_comparison.py ----qat_model=/PATH/TO/DOWNLOAD/MODEL/${MODEL_NAME}_quant --infer_data=$HOME/.cache/paddle/dataset/int8/download/int8_full_val.bin --batch_size=50 --batch_num=1000 --acc_diff_threshold=0.01 --qat2 --quantized_ops="conv2d,pool2d"
 ```
 
 * Performance benchmark command on QAT2.0 models
