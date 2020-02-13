@@ -23,6 +23,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/place.h"
@@ -104,7 +105,7 @@ struct RecordEvent {
   // Need to distinguish name by op type, block_id, program_id and perhaps
   // different kernel invocations within an op.
   std::string full_name_;
-  RecordRole r_type_{RecordRole::kOrdinary};
+  RecordRole role_{RecordRole::kOrdinary};
 };
 
 class RecordRPCEvent {
@@ -196,6 +197,8 @@ bool ShouldSendProfileState();
 void SetProfileListener();
 int64_t ListenerId();
 
+std::string OpName(const framework::VariableNameMap& name_map,
+                   const std::string& type_name);
 void SetTracerOption(TracerOption option);
 platform::TracerOption GetTracerOption();
 #ifdef PADDLE_WITH_CUDA

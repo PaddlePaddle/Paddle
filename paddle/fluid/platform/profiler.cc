@@ -138,13 +138,13 @@ void PopEvent(const std::string &name) {
   GetEventList().Record(EventType::kPopRange, name, g_thread_id);
 }
 
-RecordEvent::RecordEvent(const std::string &name, const RecordRole r_type)
-    : is_enabled_(false), start_ns_(PosixInNsec()), r_type_(r_type) {
+RecordEvent::RecordEvent(const std::string &name, const RecordRole role)
+    : is_enabled_(false), start_ns_(PosixInNsec()), role_(role) {
   if (g_state == ProfilerState::kDisabled || name.empty()) return;
   if ((g_tracer_option == TracerOption::kOPDetail &&
-       r_type_ != RecordRole::kInnerOP) ||
+       role_ != RecordRole::kInnerOP) ||
       (g_tracer_option == TracerOption::kDefault &&
-       r_type != RecordRole::kOrdinary))
+       role != RecordRole::kOrdinary))
     return;
   // lock is not needed, the code below is thread-safe
   is_enabled_ = true;
@@ -786,6 +786,25 @@ void SetProfileListener() {
   profiler_lister_id = dist6(rng);
 }
 int64_t ListenerId() { return profiler_lister_id; }
+
+std::string OpName(const framework::VariableNameMap &name_map,
+                   const std::string &type_name) {
+  if (platform::GetTracerOption() != platform::TracerOption::kAllOPDetail)
+    return "";
+
+  std::string ret = type_name + "%";
+  for (auto it = name_map.begin(); it != name_map.end(); it++) {
+    auto name_outputs = it->second;
+    if (!name_outputs.empty() &&
+        type_name.length() < name_outputs[0].length()) {
+      ret = ret + name_outputs[0];
+      break;
+    }
+  }
+  ret = ret + "%";
+
+  return ret;
+}
 
 void SetTracerOption(TracerOption option) {
   std::lock_guard<std::mutex> l(profiler_mu);

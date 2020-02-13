@@ -75,24 +75,6 @@ static DDim GetDimsDebug(const Scope& scope, const std::string& name,
     return DDim({-1});
   }
 }
-static std::string GetTypeName(const VariableNameMap& name_map,
-                               const std::string& type_name) {
-  if (platform::GetTracerOption() != platform::TracerOption::kAllOPDetail)
-    return "";
-
-  std::string ret = type_name + "%";
-  for (auto it = name_map.begin(); it != name_map.end(); it++) {
-    auto name_outputs = it->second;
-    if (!name_outputs.empty() &&
-        type_name.length() < name_outputs[0].length()) {
-      ret = ret + name_outputs[0];
-      break;
-    }
-  }
-  ret = ret + "%";
-
-  return ret;
-}
 
 static bool VarInited(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
@@ -189,9 +171,9 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       // in order to record different op type cost time
       // and different op name cost time,we set two event.
       platform::RecordEvent record_event(Type());
-      auto type_name = GetTypeName(outputs_, Type());
+      auto op_name = platform::OpName(outputs_, Type());
       platform::RecordEvent detail_record_event(
-          type_name, platform::RecordRole::kUniqueOP);
+          op_name, platform::RecordRole::kUniqueOP);
       RunImpl(scope, place);
     }
 
