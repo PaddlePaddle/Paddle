@@ -448,7 +448,7 @@ def assign(input, output=None):
     The OP copies the :attr:`input` to the :attr:`output`.
 
     Parameters:
-        input (Variable|numpy.ndarray): A tensor, numpy ndarray or LoDTensorArray, its data type supports
+        input (Variable|numpy.ndarray): A tensor, or LoDTensorArray, or numpy ndarray, its data type supports
             float32, float64, int32 and int64.
         output (Variable, optional): A tensor or LoDTensorArray. If :attr:`output` is None, a new tensor or
             LoDTensorArray will be created as :attr:`output`. Default: None.
@@ -472,8 +472,8 @@ def assign(input, output=None):
           result_array1 = fluid.layers.create_array(dtype='float64')
           fluid.layers.assign(array, result_array1)
           result_array2 = fluid.layers.assign(array)
-          result4 = fluid.layers.array_read(array=result_array1, i=i) # result4 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
-          result5 = fluid.layers.array_read(array=result_array2, i=i) # result5 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          array_elem1 = fluid.layers.array_read(array=result_array1, i=i) # array_elem1 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          array_elem2 = fluid.layers.array_read(array=result_array2, i=i) # array_elem2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
     """
     helper = LayerHelper('assign', **locals())
     check_type(input, 'input', (Variable, numpy.ndarray), 'assign')
