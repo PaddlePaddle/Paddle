@@ -3831,8 +3831,7 @@ class RecomputeOptimizer(Optimizer):
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None,
-                 callbacks=None,
-                 checkpoints=None):
+                 callbacks=None):
         """
         call append_backward with checkpoints.
 
@@ -3866,12 +3865,12 @@ class RecomputeOptimizer(Optimizer):
     
                 sgd = fluid.optimizer.Adam(learning_rate=0.01)
                 sgd = fluid.optimizer.RecomputeOptimizer(sgd)
+                sgd._set_checkpoints([fc_1, pred])
                 params_grads = sgd.backward(
                     cost,
                     startup_program=None,
                     parameter_list=None,
-                    no_grad_set=None,
-                    checkpoints=[fc_1, pred])
+                    no_grad_set=None)
                 print("Finished backward")
         """
 
