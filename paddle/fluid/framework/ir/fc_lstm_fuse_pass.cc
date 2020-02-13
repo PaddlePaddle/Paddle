@@ -156,7 +156,7 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
                    nullptr);
       // Remove unneeded nodes.
       std::unordered_set<const Node*> marked_nodes(
-          {mul, lstm, Cell, BatchGate, BatchCellPreAct});
+          {mul, lstm, BatchGate, BatchCellPreAct});
       GraphSafeRemoveNodes(graph, marked_nodes);
     }
 
