@@ -142,9 +142,9 @@ RecordEvent::RecordEvent(const std::string &name)
     : is_enabled_(false), start_ns_(PosixInNsec()) {
   if (g_state == ProfilerState::kDisabled || name.empty()) return;
   if ((g_tracer_option == TracerOption::kOPDetail &&
-       r_type_ == RecordType::kInnerOP) ||
+       r_type_ == RecordRole::kInnerOP) ||
       (g_tracer_option == TracerOption::kDefault &&
-       r_type_ != RecordType::kOrdinary))
+       r_type_ != RecordRole::kOrdinary))
     return;
   // lock is not needed, the code below is thread-safe
 
@@ -155,13 +155,13 @@ RecordEvent::RecordEvent(const std::string &name)
   name_ = e->name();
 }
 
-RecordEvent::RecordEvent(const std::string &name, const RecordType r_type)
+RecordEvent::RecordEvent(const std::string &name, const RecordRole r_type)
     : is_enabled_(false), start_ns_(PosixInNsec()), r_type_(r_type) {
   if (g_state == ProfilerState::kDisabled || name.empty()) return;
   if ((g_tracer_option == TracerOption::kOPDetail &&
-       r_type_ != RecordType::kInnerOP) ||
+       r_type_ != RecordRole::kInnerOP) ||
       (g_tracer_option == TracerOption::kDefault &&
-       r_type != RecordType::kOrdinary))
+       r_type != RecordRole::kOrdinary))
     return;
   // lock is not needed, the code below is thread-safe
   is_enabled_ = true;

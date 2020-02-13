@@ -185,10 +185,13 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     }
 
     {
+      // TODO(wangchaochaohu) : refine code to use only one RecordEvent)
+      // in order to record different op type cost time
+      // and different op name cost time,we set two event.
       platform::RecordEvent record_event(Type());
       auto type_name = GetTypeName(outputs_, Type());
       platform::RecordEvent detail_record_event(
-          type_name, platform::RecordType::kUniqueOP);
+          type_name, platform::RecordRole::kUniqueOP);
       RunImpl(scope, place);
     }
 
@@ -972,7 +975,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   Scope* transfer_scope = nullptr;
   {
     platform::RecordEvent record_event("prepare_data",
-                                       platform::RecordType::kInnerOP);
+                                       platform::RecordRole::kInnerOP);
     transfer_scope = PrepareData(scope, *kernel_type_, &transfered_inplace_vars,
                                  runtime_ctx);
   }
@@ -986,7 +989,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
   if (!all_kernels_must_compute_runtime_shape_) {
     platform::RecordEvent record_event("infer_shape",
-                                       platform::RecordType::kInnerOP);
+                                       platform::RecordRole::kInnerOP);
     RuntimeInferShapeContext infer_shape_ctx(*this, *runtime_ctx);
     this->InferShape(&infer_shape_ctx);
   }
@@ -999,7 +1002,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // not Scope. Imperative mode only pass inputs and get outputs.
   {
     platform::RecordEvent record_event("compute",
-                                       platform::RecordType::kInnerOP);
+                                       platform::RecordRole::kInnerOP);
     (*kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx,
                                      kernel_configs));
   }
