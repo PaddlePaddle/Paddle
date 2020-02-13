@@ -159,6 +159,10 @@ copy(inference_lib_dist
         SRCS  ${src_dir}/inference/api/paddle_*.h ${paddle_fluid_lib}
         DSTS  ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include ${FLUID_INFERENCE_INSTALL_DIR}/paddle/lib)
 
+copy(inference_lib_dist
+        SRCS  ${CMAKE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h
+        DSTS  ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include/internal)
+
 # CAPI inference library for only inference
 set(FLUID_INFERENCE_C_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_inference_c_install_dir" CACHE STRING
 "A path setting CAPI fluid inference shared")
