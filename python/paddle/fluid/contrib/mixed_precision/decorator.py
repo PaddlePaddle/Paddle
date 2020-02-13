@@ -185,6 +185,29 @@ class OptimizerWithMixedPrecision(object):
 
         return optimize_ops
 
+    def apply_optimize(self, loss, startup_program, params_grads):
+        """
+        Second part of `minimize`, appending optimization operators for
+        given `params_grads` pairs.
+
+        Args:
+            loss (Variable): loss variable to run optimizations.
+            startup_program (Program): startup_program for initializing parameters
+                in `parameter_list`.
+            params_grads (list): list of (param, grad) pair to do optimization.
+
+        Returns:
+            list: A list of operators appended to the current program.
+        """
+        if framework.in_dygraph_mode():
+            raise NotImplementedError(
+                "DyGraph current does not support OptimizerWithMixedPrecision")
+
+        program = loss.block.program
+        with program_guard(program, startup_program):
+            optimize_ops = self.apply_gradients(params_grads)
+        return optimize_ops
+
     def minimize(self,
                  loss,
                  startup_program=None,
@@ -210,7 +233,8 @@ class OptimizerWithMixedPrecision(object):
             parameter_list=parameter_list,
             no_grad_set=no_grad_set)
 
-        optimize_ops = self.apply_gradients(scaled_params_grads)
+        optimize_ops = self.apply_optimize(loss, startup_program,
+                                           scaled_params_grads)
 
         return optimize_ops, scaled_params_grads
 

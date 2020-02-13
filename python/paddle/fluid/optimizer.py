@@ -579,7 +579,8 @@ class Optimizer(object):
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None,
-                 callbacks=None):
+                 callbacks=None,
+                 checkpoints=None):
         """
         The first part of ``minimize``, do auto-diff to append backward operations for
         the current program.
@@ -631,8 +632,12 @@ class Optimizer(object):
                 "Maybe that you should call fluid.layers.mean to process the current loss.".format(
                     loss.shape)
             with program_guard(program, startup_program):
-                params_grads = append_backward(loss, parameter_list,
-                                               act_no_grad_set, callbacks)
+                params_grads = append_backward(
+                    loss,
+                    parameter_list,
+                    act_no_grad_set,
+                    callbacks,
+                    checkpoints=checkpoints)
                 # Note: since we can't use all_reduce_op now,
                 #  dgc_op should be the last op of one grad.
                 self._append_dgc_ops(params_grads)
@@ -3882,10 +3887,10 @@ class RecomputeOptimizer(Optimizer):
         self._dtype = loss.dtype
         program = loss.block.program
         with program_guard(program, startup_program):
-            params_grads = append_backward(
-                loss,
-                parameter_list,
-                no_grad_set,
+            params_grads = self._optimzier.backward(
+                loss=loss,
+                parameter_list=parameter_list,
+                no_grad_set=no_grad_set,
                 checkpoints=self._checkpoints)
         return params_grads
 
