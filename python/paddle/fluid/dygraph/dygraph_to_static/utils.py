@@ -31,7 +31,7 @@ dygraph_class_to_static_api = {
         TO_DELETE_ARGS: ["num_channels", "trainable_statistics", "dtype"]
     },
     "BilinearTensorProduct": {
-        STATIC_API: "bilinear_tensor_prod",
+        STATIC_API: "bilinear_tensor_product",
         TO_DELETE_ARGS: ["input1_dim", "input2_dim", "output_dim", "dtype"]
     },
     "Conv2D": {
@@ -109,7 +109,7 @@ dygraph_class_to_static_api = {
     },
     "PRelu": {
         STATIC_API: "prelu",
-        TO_DELETE_ARGS: ["input_shape", "dtype"]
+        TO_DELETE_ARGS: ["channel", "input_shape", "dtype"]
     },
     "SpectralNorm": {
         STATIC_API: "spectral_norm",
@@ -139,6 +139,28 @@ def _add_keywords_to(node, dygraph_api_name):
         for ast_keyword in node.keywords:
             if ast_keyword.arg == "output_dim":
                 ast_keyword.arg = "size"
+                changed = True
+
+        if not changed:
+            # todo: arg and keywords
+            pass
+
+    if dygraph_api_name is "BilinearTensorProduct":
+        changed = False
+        for ast_keyword in node.keywords:
+            if ast_keyword.arg == "output_dim":
+                ast_keyword.arg = "size"
+                changed = True
+
+        if not changed:
+            # todo: arg and keywords
+            pass
+
+    if dygraph_api_name is "PRelu":
+        changed = False
+        for ast_keyword in node.keywords:
+            if ast_keyword.arg == "input":
+                ast_keyword.arg = "x"
                 changed = True
 
         if not changed:
