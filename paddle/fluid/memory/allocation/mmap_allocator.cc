@@ -34,7 +34,8 @@ void* GetMemoryMapAddr(std::string ipc_name, size_t size) {
   int fd = shm_open(ipc_name.c_str(), O_RDONLY, 0644);
   void* ptr = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
   PADDLE_ENFORCE_NE(ptr, MAP_FAILED,
-                    platform::errors::Unavailable("Memory map failed!"));
+                    platform::errors::Unavailable(
+                        "Memory map failed when rebuild shared memory."));
   close(fd);
   return ptr;
 }
@@ -68,7 +69,8 @@ Allocation* MemoryMapAllocator::AllocateImpl(size_t size) {
 
   void* ptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   PADDLE_ENFORCE_NE(ptr, MAP_FAILED,
-                    platform::errors::Unavailable("Memory map failed!"));
+                    platform::errors::Unavailable(
+                        "Memory map failed when create shared memory."));
   close(fd);
 
   return new Allocation(ptr, size, platform::CPUPlace(), true, ipc_name);
