@@ -23,7 +23,7 @@ logging.basicConfig(level=logging.INFO, format=FORMAT)
 local_logger = logging.getLogger(__name__)
 
 from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer
-from .device_worker import Hogwild, DownpourSGD, Section
+from .device_worker import Hogwild, DownpourSGD, Section, DownpourSGDOPT
 from .framework import Variable
 from multiprocessing import Process, Manager
 
@@ -86,6 +86,8 @@ class TrainerFactory(object):
                         "check_nan_var_names"])
                 if opt_info.get("dump_param") is not None:
                     trainer._set_dump_param(opt_info["dump_param"])
+                if opt_info.get("loss_names") is not None:
+                    trainer._set_loss_names(opt_info["loss_names"])
             trainer._set_device_worker(device_worker)
         return trainer
 

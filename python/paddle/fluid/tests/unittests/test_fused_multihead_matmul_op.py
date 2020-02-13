@@ -47,12 +47,21 @@ class TestFusedMultiheadMatmulOp(OpTest):
         self.config()
         h = self.seq_len
         w = self.head_number * self.size_per_head
-        self.Q = np.random.random((self.batch_size, h, w)).astype("float32")
-        self.K = np.random.random((self.batch_size, h, w)).astype("float32")
-        self.V = np.random.random((self.batch_size, h, w)).astype("float32")
+        self.Input = np.random.random(
+            (self.batch_size, h, w)).astype("float32") - 0.5
+        self.WQ = np.random.random((w, w)).astype("float32")
+        self.KQ = np.random.random((w, w)).astype("float32")
+        self.VQ = np.random.random((w, w)).astype("float32")
+        self.CombinedW = np.hstack((self.WQ, self.KQ, self.VQ)).reshape(
+            (w, 3, w))
+        self.Q = np.dot(self.Input, self.WQ)
+        self.K = np.dot(self.Input, self.KQ)
+        self.V = np.dot(self.Input, self.VQ)
+
         self.BiasQ = np.random.random((1, w)).astype("float32")
         self.BiasK = np.random.random((1, w)).astype("float32")
         self.BiasV = np.random.random((1, w)).astype("float32")
+        self.CombinedB = np.vstack((self.BiasQ, self.BiasK, self.BiasV))
         self.BiasQK = np.random.random(
             (self.batch_size, self.head_number, self.seq_len,
              self.seq_len)).astype("float32")
@@ -84,12 +93,9 @@ class TestFusedMultiheadMatmulOp(OpTest):
         reshape_qkv = np.reshape(transpose_qkv, (self.batch_size, h, w))
 
         self.inputs = {
-            "Q": self.Q,
-            "K": self.K,
-            "V": self.V,
-            "BiasQ": self.BiasQ,
-            "BiasK": self.BiasK,
-            "BiasV": self.BiasV,
+            "Input": self.Input,
+            "W": self.CombinedW,
+            "Bias": self.CombinedB,
             "BiasQK": self.BiasQK
         }
         self.attrs = {

@@ -168,6 +168,12 @@ FeedFetchList AsyncSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
   // init once
   if (run_futures_.size() == 0 && places_.size() > 1) {
+    if (strategy_.thread_barrier_) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+      operators::distributed::Communicator::GetInstance()->BarrierTriggerReset(
+          places_.size());
+#endif
+    }
     exception_holder_.Clear();
     StartOffPythonTrainLoop();
   }
