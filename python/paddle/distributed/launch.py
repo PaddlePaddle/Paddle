@@ -144,6 +144,7 @@ def terminate_procs(procs):
             p.terminate()
 
 
+"""
 def get_job_env():
     current_node_ip = args.node_ip
     node_ips = [x.strip() for x in args.cluster_node_ips.split(',')]
@@ -154,6 +155,7 @@ def get_job_env():
     if args.use_paddlecloud:
         node_ips, current_node_ip, node_id = get_cloud_env(args)
     return node_ips, current_node_ip, node_id
+"""
 
 
 def get_gpus():
@@ -181,57 +183,22 @@ def get_gpus():
     return selected_gpus
 
 
-def start_procs(args):
-    current_env = copy.copy(os.environ.copy())
-    #paddle broadcast ncclUniqueId use socket, and
-    #proxy maybe make trainers unreachable, so delete them.
-    #if we set them to "", grpc will log error message "bad uri"
-    #so just delete them.
-    current_env.pop("http_proxy", None)
-    current_env.pop("https_proxy", None)
+def launch_trainers():
+    pass
 
-    selected_gpus = get_gpus()
-    selected_gpus_num = len(selected_gpus)
-    launcher_endpoints, trainers_endpoints = get_endpoints(selected_gpus)
-    num_nodes = len(launcher_endpoints)
 
-    if args.use_paddlecloud and num_nodes > 1:
-        cloud_paddle_port = os.getenv("PADDLE_PORT", "")
-        cloud_paddle_port_num = os.getenv("PADDLE_PORTS_NUM", "")
-        if cloud_paddle_port != "" and cloud_paddle_port_num != "":
-            cloud_paddle_port_num = int(cloud_paddle_port_num)
-            if cloud_paddle_port_num >= selected_gpus_num:
-                args.started_port = int(cloud_paddle_port)
-                logger.warning("Use Cloud specified port:{}.".format(
-                    cloud_paddle_port))
-
-    trainers_endpoints = ""
-    for ip in node_ips:
-        for i in range(selected_gpus_num):
-            if trainers_endpoints != "":
-                trainers_endpoints += ","
-            trainers_endpoints += "%s:%d" % (ip, args.started_port + i)
-
-    nranks = num_nodes * selected_gpus_num
-
-    if args.print_config:
-        print("trainers_endpoints:", trainers_endpoints, ", node_id:", node_id,
-              ", current_node_ip:", current_node_ip, ", num_nodes:", num_nodes,
-              ", node_ips:", node_ips, ", nranks:", nranks)
-
+def watch_world_trainers(cluster, pod):
     procs = []
     log_fns = []
     cmds = []
     ranks = []
-    for i in range(0, selected_gpus_num):
-        rank = (node_id * selected_gpus_num + i)
+    for t in len(pod.trainers):
         current_env.update({
-            "FLAGS_selected_gpus": "%s" % selected_gpus[i],
-            "PADDLE_TRAINER_ID": "%d" % rank,
-            "PADDLE_CURRENT_ENDPOINT":
-            "%s:%d" % (current_node_ip, args.started_port + i),
-            "PADDLE_TRAINERS_NUM": "%d" % nranks,
-            "PADDLE_TRAINER_ENDPOINTS": trainers_endpoints
+            "FLAGS_selected_gpus": "%s" % t.gpu,
+            "PADDLE_TRAINER_ID": "%d" % t.rank,
+            "PADDLE_CURRENT_ENDPOINT": "%s:%d" % t.endpoint,
+            "PADDLE_TRAINERS_NUM": "%d" % cluster.world_ranks(),
+            "PADDLE_TRAINER_ENDPOINTS": cluster.trainer_endpoints
         })
 
         cmd = [sys.executable, "-u", args.training_script
@@ -263,6 +230,10 @@ def start_procs(args):
                 elif ret != 0:
                     error = True
                     error_rank.append(rank)
+
+            if cluster_world_changed():
+                kill_local_trainers(proc)
+
             time.sleep(1)
 
         if error:
@@ -288,6 +259,31 @@ def start_procs(args):
     finally:
         for fn in log_fns:
             fn.close()
+
+    pass
+
+
+def start_procs(args):
+    current_env = copy.copy(os.environ.copy())
+    #paddle broadcast ncclUniqueId use socket, and
+    #proxy maybe make trainers unreachable, so delete them.
+    #if we set them to "", grpc will log error message "bad uri"
+    #so just delete them.
+    current_env.pop("http_proxy", None)
+    current_env.pop("https_proxy", None)
+
+    get_cluster_from_args(args, selected_gpus)
+    if args.use_paddlecloud and not use_edl:
+        cluster = get_cloud_cluster(cluster, selected_gpus)
+
+    if use_edl:
+        cluster = get_edl_cluster(cluster, selected_gpus)
+    """
+    selected_gpus = get_gpus()
+    selected_gpus_num = len(selected_gpus)
+    launcher_endpoints, trainers_endpoints = get_endpoints(selected_gpus)
+    num_nodes = len(launcher_endpoints)
+    """
 
 
 def launch():

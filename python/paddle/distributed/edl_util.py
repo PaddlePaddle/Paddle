@@ -18,11 +18,11 @@ def get_jobserver():
     return s
 
 
-def parse_pods_response():
+def parse_response_pods(r_pods):
     return pods
 
 
-def get_pods_from_master(master):
+def get_pods_from_master(job_server, job_id):
     return pods
 
 

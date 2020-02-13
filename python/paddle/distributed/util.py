@@ -31,21 +31,37 @@ class Cluster():
     def __ne__(self, cluster):
         return not self.__eq__(cluster)
 
-    def update_train_world(cluster):
+    def update_trainers(cluster):
         self.pods = copy.copy(cluster.pods)
         pass
 
-    def get_rank():
+    def world_rank():
         count = 0
         for pod in self.pods:
             for gpu in pod.gpus:
                 count += 1
-        return 0
+        return count
+
+    def get_trainer_endpoints():
+        pass
 
 
 class JobServer():
     def __init__(self):
         self.endpoint = None
+
+
+class Trainer():
+    def __init__(self):
+        self.gpu = []
+        self.endpoint = []
+        self.rank = []
+
+    def __eq__(self):
+        pass
+
+    def __ne__(self):
+        pass
 
 
 class Pod():
@@ -54,14 +70,16 @@ class Pod():
         self.ip = None
         self.port = None
 
-        self.gpus = []
-        self.trainer_endpoints = []
+        self.trainers = []
 
     def __eq__(pod):
         pass
 
     def __ne__(pod):
-        return not self != pod
+        return not self == pod
 
     def parse_response(res_pods):
         pass
+
+    def rank():
+        return rank
