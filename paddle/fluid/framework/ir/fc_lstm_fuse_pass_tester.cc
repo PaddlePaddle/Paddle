@@ -95,7 +95,7 @@ TEST(FCLSTMFusePass, basic) {
   int num_fusion_lstm_nodes_after = GetNumOpNodes(graph, "fusion_lstm");
   VLOG(3) << DebugString(graph);
 
-  PADDLE_ENFORCE_EQ(num_nodes_before, num_nodes_after - 2,
+  PADDLE_ENFORCE_EQ(num_nodes_before, num_nodes_after - 6,
                     platform::errors::PreconditionNotMet(
                         "The number of nodes before and after "
                         "the fuse does not meet expectations"));
