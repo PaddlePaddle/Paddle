@@ -182,6 +182,7 @@ class SyncStrategy(DistributedStrategy):
         self._program_config.runtime_split_send_recv = True
         self._build_strategy.async_mode = True
         self._program_config.half_async = True
+        self._program_config.completely_not_async = True
 
 
 class AsyncStrategy(DistributedStrategy):
