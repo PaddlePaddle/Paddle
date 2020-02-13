@@ -138,23 +138,6 @@ void PopEvent(const std::string &name) {
   GetEventList().Record(EventType::kPopRange, name, g_thread_id);
 }
 
-RecordEvent::RecordEvent(const std::string &name)
-    : is_enabled_(false), start_ns_(PosixInNsec()) {
-  if (g_state == ProfilerState::kDisabled || name.empty()) return;
-  if ((g_tracer_option == TracerOption::kOPDetail &&
-       r_type_ == RecordRole::kInnerOP) ||
-      (g_tracer_option == TracerOption::kDefault &&
-       r_type_ != RecordRole::kOrdinary))
-    return;
-  // lock is not needed, the code below is thread-safe
-
-  is_enabled_ = true;
-  Event *e = PushEvent(name);
-  // Maybe need the same push/pop behavior.
-  SetCurAnnotation(e);
-  name_ = e->name();
-}
-
 RecordEvent::RecordEvent(const std::string &name, const RecordRole r_type)
     : is_enabled_(false), start_ns_(PosixInNsec()), r_type_(r_type) {
   if (g_state == ProfilerState::kDisabled || name.empty()) return;

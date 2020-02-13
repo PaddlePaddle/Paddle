@@ -92,8 +92,8 @@ Event* PushEvent(const std::string& name);
 void PopEvent(const std::string& name);
 
 struct RecordEvent {
-  explicit RecordEvent(const std::string& name);
-  explicit RecordEvent(const std::string& name, const RecordRole r_type);
+  RecordEvent(const std::string& name,
+              const RecordRole r_type = RecordRole::kOrdinary);
 
   ~RecordEvent();
 
