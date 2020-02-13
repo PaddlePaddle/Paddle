@@ -61,7 +61,9 @@ def get_name_ids(nodes, not_name_set=None, node_black_list=None):
             # In two case, the ast.Name should be filtered.
             # 1. Function name like `my_func` of my_func(x)
             # 2. api prefix like `fluid` of `fluid.layers.mean`
-            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+            if isinstance(node, ast.Return):
+                continue
+            elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
                 not_name_set.add(node.func.id)
             elif isinstance(node, ast.Attribute) and isinstance(node.value,
                                                                 ast.Name):
@@ -159,7 +161,7 @@ def parse_return(parent_vars_dict, if_vars_dict, else_vars_dict):
     return_ids = list(modified_vars | new_vars)
     return_ids.sort()
 
-    return return_ids, list(modified_vars)
+    return return_ids, list(modified_vars - new_vars)
 
 
 def generate_name_node(name_ids, ctx=ast.Load()):

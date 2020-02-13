@@ -17,19 +17,24 @@ from __future__ import print_function
 import unittest
 import textwrap
 import ast
+import inspect
 import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.jit import dygraph_to_static_output
-from paddle.fluid.dygraph.dygraph_to_static.ast_utils import get_name_ids
+from paddle.fluid.dygraph.dygraph_to_static.ast_utils import get_name_ids, ast_to_func
 
 
 class TestGetNameIds(unittest.TestCase):
+    """
+    Test for parsing the ast.Name list from the ast.Nodes
+    """
+
     def setUp(self):
         self.source = """
           def test_fn(x):
-            return x + 1
+            return x+1
         """
-        self.all_name_ids = {'x': [ast.Load()]}
+        self.all_name_ids = {}
 
     def test_get_name_ids(self):
         source = textwrap.dedent(self.source)
@@ -63,8 +68,7 @@ class TestGetNameIds2(TestGetNameIds):
             'x': [ast.Store(), ast.Load(), ast.Load(), ast.Load()],
             'a': [ast.Store(), ast.Load(), ast.Load()],
             'y': [ast.Load(), ast.Load(), ast.Load(), ast.Load()],
-            'z':
-            [ast.Store(), ast.Load(), ast.Store(), ast.Store(), ast.Load()]
+            'z': [ast.Store(), ast.Load(), ast.Store(), ast.Store()]
         }
 
 
@@ -81,34 +85,108 @@ class TestGetNameIds3(TestGetNameIds):
         self.all_name_ids = {
             'x': [ast.Load(), ast.Load(), ast.Load()],
             'y': [ast.Load(), ast.Load()],
-            'z':
-            [ast.Store(), ast.Store(), ast.Load(), ast.Store(), ast.Load()]
+            'z': [ast.Store(), ast.Store(), ast.Load(), ast.Store()]
         }
 
 
-@dygraph_to_static_output
-def dyfunc_with_ifElse(x_v):
-    if x_v.numpy()[0] > 5:
+def dyfunc_with_if_else(x_v):
+    if fluid.layers.mean(x_v).numpy()[0] > 5:
         x_v = x_v - 1
     else:
         x_v = x_v + 1
     return x_v
 
 
-class TestAST2Func(unittest.TestCase):
-    def setUp(self):
-        pass
+def dyfunc_with_if_else2(x):
+    i, j = 0, 0
+    if fluid.layers.reduce_mean(x).numpy()[0] > x.numpy()[i][j]:
+        y = fluid.layers.relu(x)
+    else:
+        x_pow = fluid.layers.pow(x, 2)
+        y = fluid.layers.tanh(x_pow)
+    return y
 
-    def test_run(self):
-        x = np.array([5]).astype('float32')
+
+class TestAST2Func(unittest.TestCase):
+    """
+    TestCase for the transformation from ast.AST into python callable function.
+    """
+
+    def _ast2func(self, func):
+        source = inspect.getsource(func)
+        source = textwrap.dedent(source)
+        ast_root = ast.parse(source)
+        transformed_func, _ = ast_to_func(ast_root, func.__name__)
+        return transformed_func
+
+    def test_ast2func(self):
+        def func(x, y):
+            return x + y
+
+        x, y = 10, 20
+        self.assertEqual(func(x, y), self._ast2func(func)(x, y))
+
+    def test_ast2func_dygraph(self):
+        func = dyfunc_with_if_else
+        x_data = np.random.random([10, 16]).astype('float32')
+        with fluid.dygraph.guard():
+            x_v = fluid.dygraph.to_variable(x_data)
+            true_ret = func(x_v).numpy()
+            test_ret = self._ast2func(func)(x_v).numpy()
+            self.assertTrue((true_ret == test_ret).all())
+
+    def test_ast2func_static(self):
+        def func(x):
+            y = fluid.layers.relu(x)
+            loss = fluid.layers.mean(y)
+            return loss
+
+        x_data = np.random.random([10, 16]).astype('float32')
         main_program = fluid.Program()
         with fluid.program_guard(main_program):
-            x_v = fluid.layers.assign(x)
-            out = dyfunc_with_ifElse(x_v)
+            x_v = fluid.layers.assign(x_data)
+            true_ret = func(x_v)
+            test_ret = self._ast2func(func)(x_v)
+            exe = fluid.Executor(fluid.CPUPlace())
+            ret = exe.run(main_program, fetch_list=[true_ret, test_ret])
+            self.assertTrue((ret[0] == ret[1]).all())
+
+
+class TestDygraphIfElse(unittest.TestCase):
+    """
+    TestCase for the transformation from control flow `if/else`
+    dependent on tensor in Dygraph into Static `fluid.layers.cond`.
+    """
+
+    def setUp(self):
+        self.x = np.random.random([10, 16]).astype('float32')
+        self.dyfunc = dyfunc_with_if_else
+
+    def _run_static(self):
+        main_program = fluid.Program()
+        with fluid.program_guard(main_program):
+            x_v = fluid.layers.assign(self.x)
+            # Transform into static graph
+            out = dygraph_to_static_output(self.dyfunc)(x_v)
             exe = fluid.Executor(fluid.CPUPlace())
             ret = exe.run(main_program, fetch_list=out)
-            self.assertEqual(ret, [6.])
+            return ret
+
+    def _run_dygraph(self):
+        with fluid.dygraph.guard():
+            x_v = fluid.dygraph.to_variable(self.x)
+            ret = self.dyfunc(x_v)
+            return ret.numpy()
+
+    def test_ast_to_func(self):
+        self.assertTrue((self._run_dygraph() == self._run_static()).all())
+
+
+class TestDygraphIfElse2(TestDygraphIfElse):
+    def setUp(self):
+        self.x = np.random.random([10, 16]).astype('float32')
+        self.dyfunc = dyfunc_with_if_else2
 
 
 if __name__ == '__main__':
-    unittest.TestCase()
+    unittest.main()

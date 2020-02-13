@@ -60,7 +60,6 @@ def _dygraph_to_static_output_(dygraph_func):
         root, func_name = DygraphToStaticAst().get_static_ast(root)
         static_func, file_name = ast_to_func(root, func_name)
 
-        static_func = ast_to_func(root)
         return static_func(*args, **kwargs)
 
     return __impl__
