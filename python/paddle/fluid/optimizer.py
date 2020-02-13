@@ -3742,6 +3742,7 @@ class RecomputeOptimizer(Optimizer):
             raise Exception("In dygraph, don't support RecomputeOptimizer.")
         self._optimizer = optimizer
         self._checkpoints = None
+        self._learning_rate = optimizer._learning_rate
 
     def _set_checkpoints(self, checkpoints):
         self._checkpoints = checkpoints
