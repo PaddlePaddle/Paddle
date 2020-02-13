@@ -174,5 +174,16 @@ func (config *AnalysisConfig) DisableGlogInfo() {
 	C.PD_DisableGlogInfo(config.c)
 }
 
-// SetInValid
-// IsValid
+func (config *AnalysisConfig) DeletePass(pass string) {
+    c_pass := C.CString(pass)
+    defer C.free(unsafe.Pointer(c_pass))
+    C.PD_DeletePass(config.c, c_pass)
+}
+
+func (config *AnalysisConfig) SetInValid() {
+    C.PD_SetInValid(config.c)
+}
+
+func (config *AnalysisConfig) IsValid() bool {
+    return ConvertCBooleanToGo(C.PD_IsValid(config.c))
+}
