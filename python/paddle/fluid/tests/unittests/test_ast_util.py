@@ -113,10 +113,10 @@ class TestAST2Func(unittest.TestCase):
     """
 
     def _ast2func(self, func):
-        source = inspect.getsource(func)
-        source = textwrap.dedent(source)
-        ast_root = ast.parse(source)
-        transformed_func, _ = ast_to_func(ast_root, func.__name__)
+        # source = inspect.getsource(func)
+        # source = textwrap.dedent(source)
+        # ast_root = ast.parse(source)
+        transformed_func = dygraph_to_static_output(func)
         return transformed_func
 
     def test_ast2func(self):
