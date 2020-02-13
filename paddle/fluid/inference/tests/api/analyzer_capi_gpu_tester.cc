@@ -37,7 +37,7 @@ TEST(PD_AnalysisConfig, use_gpu) {
   PD_SwitchUseFeedFetchOps(config, false);
   PD_SwitchSpecifyInputNames(config, true);
   PD_SwitchIrDebug(config, true);
-  PD_SetModel(config, model_dir.c_str());
+  PD_SetModel(config, model_dir.c_str(), nullptr);
   PD_SetOptimCacheDir(config, (FLAGS_infer_model + "/OptimCacheDir").c_str());
   const char *model_dir_ = PD_ModelDir(config);
   LOG(INFO) << model_dir_;
