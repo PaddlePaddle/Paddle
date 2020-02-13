@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import ast
 
-__all__ = ['DygraphToStaticAst']
+__all__ = ['AstNodeWrapper', 'DygraphToStaticAst', 'StaticAnalysisVisitor']
 
 
 class NodeVarType(object):
@@ -51,7 +51,52 @@ class AstNodeWrapper(object):
     def __init__(self, node):
         self.node = node
         self.parent = None
+        self.children = []
         self.node_var_type = NodeVarType.UNKNOWN
+
+
+class StaticAnalysisVisitor(object):
+    """
+    A class that does static analysis
+    """
+
+    def __init__(self, ast_root=None):
+        if ast_root is not None:
+            self.run(ast_root)
+
+    def run(self, ast_root):
+        self.node_wrapper_root = None
+        self.ancestor_wrappers = []
+        self.node_to_wrapper_map = {}
+        self.dfs_visit(ast_root)
+
+    def dfs_visit(self, node):
+        # AST reuses some ast.nodes, such as Param node of expr_context
+        if node not in self.node_to_wrapper_map:
+            cur_wrapper = AstNodeWrapper(node)
+            self.node_to_wrapper_map[node] = cur_wrapper
+        else:
+            cur_wrapper = self.node_to_wrapper_map[node]
+
+        if self.node_wrapper_root is None:
+            self.node_wrapper_root = cur_wrapper
+
+        if len(self.ancestor_wrappers) != 0:
+            last_wrapper = self.ancestor_wrappers[-1]
+            last_wrapper.children.append(cur_wrapper)
+            cur_wrapper.parent = last_wrapper
+
+        self.ancestor_wrappers.append(cur_wrapper)
+        for child in ast.iter_child_nodes(node):
+            self.dfs_visit(child)
+        self.ancestor_wrappers.pop()
+        return cur_wrapper.node_var_type
+
+    def get_node_wrapper_root(self):
+        return self.node_wrapper_root
+
+    def get_node_to_wrapper_map(self):
+        return self.node_to_wrapper_map
 
 
 class DygraphToStaticAst(ast.NodeTransformer):
@@ -62,15 +107,10 @@ class DygraphToStaticAst(ast.NodeTransformer):
     def get_static_ast(self, root):
         # save root for some analysis may need global AST 
         self.root = root
-        self.static_analysis_root = AstNodeWrapper(root)
-        self.visit(root)
+        self.static_analysis_root = StaticAnalysisVisitor(
+            root).get_node_wrapper_root()
         self.transfer_from_node_type(self.static_analysis_root)
         return self.static_analysis_root
-
-    def visit(self, node):
-        # TODO construct a tree whose nodes are AstNodeWrapper
-        # This step also does static node type analysis 
-        print("Not implemented")
 
     def transfer_from_node_type(self, node):
         print("Not implemented")
