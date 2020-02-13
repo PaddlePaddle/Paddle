@@ -54,31 +54,32 @@ static T PyObjectCast(PyObject *obj) {
   try {
     return py::cast<T>(py::handle(obj));
   } catch (py::cast_error &) {
-    PADDLE_THROW("Python object is not type of %s", typeid(T).name());
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Python object is not type of %s", typeid(T).name()));
   }
 }
 
 // warper for pyobject to avoid imperative module depend on python
 class PyCallableObject {
  public:
-  PyCallableObject(PyObject *func, PyObject *param,
-                   imperative::VarBase *varbase_grad)
-      : py_obj_func_(func), py_obj_param_(param), varbase_grad_(varbase_grad) {}
+  PyCallableObject(PyObject *func, imperative::VarBase *varbase_grad)
+      : py_obj_func_(func), varbase_grad_(varbase_grad) {}
 
   ~PyCallableObject() {}
 
   void operator()() {
     gil_scoped_acquire gil;
-    PyObject *result =
-        PyObject_CallFunctionObjArgs(py_obj_func_, py_obj_param_, nullptr);
-    if (result != NULL) {
-      VLOG(2) << "res has value1, address is: " << result
-              << " old address is: " << py_obj_param_ << std::endl;
-    }
 
+    std::shared_ptr<imperative::VarBase> varbase_grad_copy =
+        varbase_grad_->NewVarBase(
+            varbase_grad_->Var().Get<framework::LoDTensor>().place(), false);
+    PyObject *result = PyObject_CallFunctionObjArgs(
+        py_obj_func_, py::cast(varbase_grad_copy).ptr(), nullptr);
+    if (result != NULL) {
+      VLOG(9) << "backward_hook function's result is not NULL";
+    }
     if (result != Py_None) {
-      VLOG(2) << "res has value2, address is: " << result
-              << " old address is: " << py_obj_param_ << std::endl;
+      VLOG(9) << "backward_hook function's result is not Py_None";
       std::shared_ptr<imperative::VarBase> result_varbase =
           PyObjectCast<std::shared_ptr<imperative::VarBase>>(result);
       auto *varbase_grad_var = varbase_grad_->MutableVar();
@@ -88,7 +89,6 @@ class PyCallableObject {
 
  private:
   PyObject *py_obj_func_;
-  PyObject *py_obj_param_;
   imperative::VarBase *varbase_grad_;
 };
 
@@ -337,13 +337,14 @@ void BindImperative(py::module *m_ptr) {
              std::shared_ptr<imperative::RemovablePyCallableObject>>(
       m, "RemovablePyCallableObject",
       R"DOC()DOC")
-      .def("__init__", [](imperative::RemovablePyCallableObject &self,
-                          std::map<int, PyCallableObject> *hooks) {})
+      .def("__init__",
+           [](imperative::RemovablePyCallableObject &self,
+              std::map<int, PyCallableObject> *hooks, int hooks_id) {})
       .def("remove", [](imperative::RemovablePyCallableObject &self) {
-        VLOG(2) << "remove=====================begin " << self.Get_Hooks_Id()
-                << std::endl;
+        VLOG(9) << "begin remove backward_hook function, id is: "
+                << self.Get_Hooks_Id();
         self.Remove();
-        VLOG(2) << "remove=====================end" << std::endl;
+        VLOG(9) << "end remove backward_hook function";
       });
 
   py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>>(
@@ -506,18 +507,14 @@ void BindImperative(py::module *m_ptr) {
            [](imperative::VarBase &self, const py::handle &hook) {
              if (self.HasGradVar()) {
                PyCallableObject obj =
-                   PyCallableObject(hook.ptr(), py::cast(self).ptr(), &(self));
-               auto &tmp = self.GetBackwardHooks();
-               VLOG(2) << "========tmp address: " << &(tmp) << std::endl;
+                   PyCallableObject(hook.ptr(), self.GradVarBase().get());
                std::shared_ptr<imperative::RemovablePyCallableObject>
                    removable_obj =
                        std::make_shared<imperative::RemovablePyCallableObject>(
-                           (&self.GetBackwardHooks()), self.Get_Hooks_Id());
-               VLOG(2) << "======== address: " << &(self.GetBackwardHooks())
-                       << std::endl;
-               VLOG(2) << "======== address: " << &(self.GetBackwardHooks())
-                       << std::endl;
-               self.RegisterBackwardHooks(obj, removable_obj->Get_Hooks_Id());
+                           (&(self.GradVarBase()->GetBackwardHooks())),
+                           self.GradVarBase()->Get_Hooks_Id());
+               self.GradVarBase()->RegisterBackwardHooks(
+                   obj, removable_obj->Get_Hooks_Id());
                return removable_obj;
              } else {
                PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -526,9 +523,9 @@ void BindImperative(py::module *m_ptr) {
            })
       .def("execute_hooks",
            [](imperative::VarBase &self) {
-             VLOG(2) << "Start execute_hooks";
+             VLOG(9) << "begin execute backward_hook function";
              self.InvokeBackwardHooks();
-             VLOG(2) << "End execute_hooks";
+             VLOG(9) << "end execute backward_hook function";
            })
       .def("_grad_name", &imperative::VarBase::GradVarName)
       .def("_grad_value",

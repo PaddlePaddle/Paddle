@@ -55,6 +55,7 @@ void PreparedOp::PrepareData(
           }
         }
       }
+      var_base->InvokeBackwardHooks();
     }
   }
 }
