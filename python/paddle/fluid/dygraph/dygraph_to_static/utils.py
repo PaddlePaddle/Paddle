@@ -23,29 +23,98 @@ import tempfile
 import six
 import imp
 
+STATIC_API = "static_api"
+TO_DELETE_ARGS = "to_delete_args"
 dygraph_class_to_static_api = {
-    "BatchNorm": "batch_norm",
-    "BilinearTensorProduct": "bilinear_tensor_prod",
-    "Conv2D": "conv2d",
-    "Conv3D": "conv3d",
-    "Conv2DTranspose": "conv2d_transpose",
-    "Conv3DTranspose": "conv3d_transpose",
-    "CosineDecay": "cosine_decay",
-    "Embedding": "embedding",
-    "ExponentialDecay": "exponential_decay",
+    "BatchNorm": {
+        STATIC_API: "batch_norm",
+        TO_DELETE_ARGS: ["num_channels", "trainable_statistics", "dtype"]
+    },
+    "BilinearTensorProduct": {
+        STATIC_API: "bilinear_tensor_prod",
+        TO_DELETE_ARGS: ["input1_dim", "input2_dim", "output_dim", "dtype"]
+    },
+    "Conv2D": {
+        STATIC_API: "conv2d",
+        TO_DELETE_ARGS: ["num_channels", "dtype"]
+    },
+    "Conv3D": {
+        STATIC_API: "conv3d",
+        TO_DELETE_ARGS: ["num_channels", "dtype"]
+    },
+    "Conv2DTranspose": {
+        STATIC_API: "conv2d_transpose",
+        TO_DELETE_ARGS: ["num_channels", "dtype"]
+    },
+    "Conv3DTranspose": {
+        STATIC_API: "conv3d_transpose",
+        TO_DELETE_ARGS: ["num_channels", "dtype"]
+    },
+    "CosineDecay": {
+        STATIC_API: "cosine_decay",
+        TO_DELETE_ARGS: ["begin", "step", "dtype"]
+    },
+    "Embedding": {
+        STATIC_API: "embedding",
+        TO_DELETE_ARGS: []
+    },
+    "ExponentialDecay": {
+        STATIC_API: "exponential_decay",
+        TO_DELETE_ARGS: ["begin", "step", "dtype"]
+    },
     "FC": "fc",
-    "GroupNorm": "group_norm",
-    "GRUUnit": "gru_unit",
-    "InverseTimeDecay": "inverse_time_decay",
-    "LayerNorm": "layer_norm",
-    "Linear": "fc",
-    "NaturalExpDecay": "natural_exp_decay",
-    "NCE": "nce",
-    "NoamDecay": "noam_decay",
-    "PiecewiseDecay": "piecewise_decay",
-    "PolynomialDecay": "polynomial_decay",
-    "Pool2D": "pool2d",
-    "PRelu": "prelu",
+    "GroupNorm": {
+        STATIC_API: "group_norm",
+        TO_DELETE_ARGS: ["channels", "dtype"]
+    },
+    "GRUUnit": {
+        STATIC_API: "gru_unit",
+        TO_DELETE_ARGS: ["name_scope", "dtype"]
+    },
+    "InverseTimeDecay": {
+        STATIC_API: "inverse_time_decay",
+        TO_DELETE_ARGS: ["begin", "step", "dtype"]
+    },
+    "LayerNorm": {
+        STATIC_API: "layer_norm",
+        TO_DELETE_ARGS: ["normalized_shape", "dtype"]
+    },
+    "Linear": {
+        STATIC_API: "fc",
+        TO_DELETE_ARGS: ["input_dim", "output_dim", "dtype"]
+    },
+    "NaturalExpDecay": {
+        STATIC_API: "natural_exp_decay",
+        TO_DELETE_ARGS: ["begin", "step", "dtype"]
+    },
+    "NCE": {
+        STATIC_API: "nce",
+        TO_DELETE_ARGS: ["dim", "dtype"]
+    },
+    "NoamDecay": {
+        STATIC_API: "noam_decay",
+        TO_DELETE_ARGS: ["begin", "step", "dtype"]
+    },
+    "PiecewiseDecay": {
+        STATIC_API: "piecewise_decay",
+        TO_DELETE_ARGS: ["begin", "step", "dtype"]
+    },
+    "PolynomialDecay": {
+        STATIC_API: "polynomial_decay",
+        TO_DELETE_ARGS: ["begin", "step", "dtype"]
+    },
+    "Pool2D": {
+        STATIC_API: "pool2d",
+        TO_DELETE_ARGS: []
+    },
+    "PRelu": {
+        STATIC_API: "prelu",
+        TO_DELETE_ARGS: ["input_shape", "dtype"]
+    },
+    "SpectralNorm": {
+        STATIC_API: "spectral_norm",
+        TO_DELETE_ARGS: ["weight_shape", "dtype"]
+    },
 }
 
 
