@@ -23,7 +23,7 @@ import tempfile
 import six
 import imp
 
-dygraph_static_api = {
+dygraph_class_to_static_api = {
     "BatchNorm": "batch_norm",
     "BilinearTensorProduct": "bilinear_tensor_prod",
     "Conv2D": "conv2d",
@@ -50,9 +50,8 @@ dygraph_static_api = {
 
 
 def to_static_api(dygraph_class):
-
-    if dygraph_class in dygraph_static_api:
-        return dygraph_static_api[dygraph_class]
+    if dygraph_class in dygraph_class_to_static_api:
+        return dygraph_class_to_static_api[dygraph_class]
     else:
         raise NotImplementedError(
             "Paddle dygraph API {class_name} cannot be converted "
@@ -60,7 +59,6 @@ def to_static_api(dygraph_class):
 
 
 def to_static_ast(node, dygraph_class, dygraph_args, dygraph_keywords):
-
     static_api = to_static_api(dygraph_class)
 
     node.func = ast.Attribute(
@@ -76,17 +74,26 @@ def to_static_ast(node, dygraph_class, dygraph_args, dygraph_keywords):
     return node
 
 
-def _is_paddle_dygraph_class(obj):
+def to_assign_node(ori_node):
+    assert isinstance(ori_node, ast.Call)
+
+    assign_api = ast.parse('fluid.layers.assign').body[0].value
+    ori_node.func = assign_api
+
+    return ori_node
+
+
+def _is_paddle_dygraph_api(obj):
     m = inspect.getmodule(obj)
     return m is not None and m.__name__.startswith("paddle.fluid.dygraph")
 
 
-def is_dygraph_class(node):
+def is_dygraph_api(node):
     assert isinstance(node, ast.Call)
     func_src = codegen.to_source(node.func)
     try:
         import paddle.fluid as fluid
-        return eval("_is_paddle_dygraph_class({})".format(func_src))
+        return eval("_is_paddle_dygraph_api({})".format(func_src))
     except NameError:
         return False
 

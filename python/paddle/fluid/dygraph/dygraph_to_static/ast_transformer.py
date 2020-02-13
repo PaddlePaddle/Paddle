@@ -142,7 +142,19 @@ class DygraphToStaticAst(gast.NodeTransformer):
             node.decorator_list = decorator_list
         return node
 
+    def is_to_variable(self, node):
+        assert isinstance(node, ast.Assign)
+        if isinstance(node.value, ast.Call):
+            if is_dygraph_api(node.value):
+                api_name = node.value.func.attr
+                return api_name is "to_variable"
+        return False
+
     def visit_Assign(self, node):
+        if self.is_to_variable(node):
+            node.value = to_assign_node(node.value)
+            return node
+
         if self._update_class_node_dict(node):
             return None
 
@@ -190,7 +202,7 @@ class DygraphToStaticAst(gast.NodeTransformer):
 
         if isinstance(node.value, ast.Call):
 
-            if is_dygraph_class(node.value):
+            if is_dygraph_api(node.value):
 
                 self.class_node_dict[node.targets[0].id] = node.value
                 return True
