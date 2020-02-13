@@ -1203,22 +1203,21 @@ void HalfAsyncCommunicator::Stop() {
 }
 
 void SyncCommunicator::BarrierSend() {
-    distributed::RPCClient* rpc_client =
-        distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id_));
+  distributed::RPCClient *rpc_client =
+      distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id_);
 
-    std::vector<distributed::VarHandlePtr> rets;
+  std::vector<distributed::VarHandlePtr> rets;
 
-    for (auto &ep : pserver_endpoints_) {
-      rets.push_back(rpc_client->AsyncSendBatchBarrier(ep));
-    }
+  for (auto &ep : pserver_endpoints_) {
+    rets.push_back(rpc_client->AsyncSendBatchBarrier(ep));
+  }
 
-    for (size_t i = 0; i < rets.size(); i++) {
-      PADDLE_ENFORCE_NE(
-          rets[i]->Wait(), 0U,
-          platform::errors::External("internal error in RPCClient"));
-    }
+  for (size_t i = 0; i < rets.size(); i++) {
+    PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, platform::errors::External(
+                                               "internal error in RPCClient"));
+  }
 
-    VLOG(4) << "BarrierSend with SyncCommunicator";
+  VLOG(4) << "BarrierSend with SyncCommunicator";
 }
 
 void SyncCommunicator::BarrierRecv() {
