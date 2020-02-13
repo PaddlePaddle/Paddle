@@ -109,13 +109,17 @@ class DygraphToStaticAst(gast.NodeTransformer):
     def get_static_ast(self, root):
         # save root for some analysis may need global AST 
         self.root = root
+
         self.class_node_dict = {}
         # self._visit(root) # todo: delete it
 
-        self.static_analysis_root = StaticAnalysisVisitor(
-            root).get_node_wrapper_root()
-        self.transfer_from_node_type(self.static_analysis_root)
-        return self.static_analysis_root
+        # self.static_analysis_root = StaticAnalysisVisitor(
+        #     root).get_node_wrapper_root()
+        # self.transfer_from_node_type(self.static_analysis_root)
+        # return self.static_analysis_root
+
+        self.transfer_from_node_type(self.root)
+        return self.root
 
     def _visit(self, node):
         # TODO construct a tree whose nodes are AstNodeWrapper
@@ -126,13 +130,11 @@ class DygraphToStaticAst(gast.NodeTransformer):
                 wrapper_child.parent = each_node
 
     def transfer_from_node_type(self, node):
-        ast_node = node.node
-        self.generic_visit(node)
-        self.visit(node)
+        ast_node = node
+        self.visit(ast_node)
 
     def visit_FunctionDef(self, node):
         self.generic_visit(node)
-
         if hasattr(node, 'decorator_list'):
             decorator_list = [
                 d for d in node.decorator_list if d.id != DECORATOR_NAME
@@ -167,15 +169,12 @@ class DygraphToStaticAst(gast.NodeTransformer):
         return self.class_node_dict[func_id]
 
     def _visit_Call(self, node):
-
         assert isinstance(node, ast.Call)
-
         if not isinstance(node.func, ast.Name):
             return
 
         func_id = node.func.id
         if self._is_dygraph_forward(func_id):
-
             class_node = self._get_class_node(func_id)
             paddle_class, paddle_args, paddle_keywords = parse_class(class_node)
             static_node = to_static_ast(node, paddle_class, paddle_args,
@@ -186,10 +185,13 @@ class DygraphToStaticAst(gast.NodeTransformer):
             return node
 
     def _update_class_node_dict(self, node):
+
         assert isinstance(node, ast.Assign)
 
         if isinstance(node.value, ast.Call):
+
             if is_dygraph_class(node.value):
+
                 self.class_node_dict[node.targets[0].id] = node.value
                 return True
         return False

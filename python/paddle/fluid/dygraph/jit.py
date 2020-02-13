@@ -59,7 +59,7 @@ def _dygraph_to_static_output_(dygraph_func):
         dygraph_code = inspect.getsource(dygraph_func)
         root = gast.parse(dygraph_code)
 
-        root = DygraphToStaticAst().get_static_ast(root).node
+        root = DygraphToStaticAst().get_static_ast(root)
 
         # TODO static_func should a callable from AST, like
         # static_func = ast_to_func(root)

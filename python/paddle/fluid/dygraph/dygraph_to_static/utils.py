@@ -22,11 +22,8 @@ import importlib
 import os
 import sys
 import tempfile
-
 import six
-import copy
 import imp
-from collections import defaultdict
 
 # import paddle.fluid as fluid
 
@@ -92,6 +89,7 @@ def is_dygraph_class(node):
     assert isinstance(node, ast.Call)
     func_src = codegen.to_source(node.func)
     try:
+        import paddle.fluid as fluid
         return eval("_is_paddle_dygraph_class({})".format(func_src))
     except NameError:
         return False
