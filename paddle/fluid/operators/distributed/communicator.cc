@@ -1208,7 +1208,7 @@ void SyncCommunicator::BarrierSend() {
 
     std::vector<distributed::VarHandlePtr> rets;
 
-    for (auto &ep : eps) {
+    for (auto &ep : pserver_endpoints_) {
       rets.push_back(rpc_client->AsyncSendBatchBarrier(ep));
     }
 
@@ -1226,7 +1226,7 @@ void SyncCommunicator::BarrierRecv() {
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id_);
 
   std::vector<distributed::VarHandlePtr> rets;
-  for (auto &ep : eps) {
+  for (auto &ep : pserver_endpoints_) {
     rets.push_back(rpc_client->AsyncSendFetchBarrier(ep));
   }
 
