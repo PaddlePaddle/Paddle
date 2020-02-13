@@ -194,10 +194,10 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 exe.run(startup_program)
                 weight1 = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor())
-                y_np = np.random.random(size=(10, 2)).astype('float32')
+                x_np = np.random.random(size=(10, 2)).astype('float32')
                 label_np = np.random.randint(1, size=(10, 1)).astype('int64')
                 res = exe.run(program,
-                              feed={'x': y_np,
+                              feed={'x': x_np,
                                     'label': label_np},
                               fetch_list=[loss1.name],
                               use_prune=True)
@@ -206,9 +206,9 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
 
                 weight2 = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor())
-                self.assertTrue(np.array_equal(weight1,
-                                               weight2))  # weight changed
-                self.assertIsNone(scope.find_var(x.name))
+                print(weight1, weight2)
+                self.assertFalse(np.array_equal(weight1,
+                                                weight2))  # weight changed
 
     def test_prune_compiled_program(self):
         program = framework.Program()
@@ -243,7 +243,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 self.assertFalse(np.array_equal(weight1,
                                                 weight2))  # weight changed
 
-    def test_prune_feed(self):
+    def test_prune_feed_without_optimize(self):
         program = framework.Program()
         startup_program = framework.Program()
         block = program.global_block()
@@ -252,8 +252,6 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         with fluid.scope_guard(scope):
             with fluid.program_guard(program, startup_program):
                 (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.5)
-                sgd_optimizer.minimize(loss1)
                 exe = fluid.Executor(fluid.CPUPlace())
                 exe.run(startup_program)
                 #compiled_prog = fluid.CompiledProgram(program).with_data_parallel(loss_name=loss1.name, places=fluid.CPUPlace())
@@ -271,8 +269,37 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
 
                 weight2 = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor())
-                self.assertFalse(np.array_equal(weight1,
-                                                weight2))  # weight changed
+                self.assertTrue(np.array_equal(weight1,
+                                               weight2))  # weight unchanged
+
+    def test_prune_feed_with_optimize(self):
+        program = framework.Program()
+        startup_program = framework.Program()
+        block = program.global_block()
+
+        scope = fluid.Scope()
+        with fluid.scope_guard(scope):
+            with fluid.program_guard(program, startup_program):
+                (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
+                sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.5)
+                sgd_optimizer.minimize(loss1)
+                exe = fluid.Executor(fluid.CPUPlace())
+                exe.run(startup_program)
+                #compiled_prog = fluid.CompiledProgram(program).with_data_parallel(loss_name=loss1.name, places=fluid.CPUPlace())
+                weight1 = np.array(
+                    scope.find_var(w_param_attrs.name).get_tensor())
+                x_np = np.random.random(size=(10, 2)).astype('float32')
+                label_np = np.random.randint(1, size=(10, 1)).astype('int64')
+                self.assertRaises(
+                    Exception,
+                    exe.run,
+                    program,
+                    feed={y.name: x_np,
+                          'label': label_np},
+                    fetch_list=[loss1.name],
+                    use_prune=True)
+                self.assertIsNotNone(scope.find_var(loss1.name))
+                self.assertIsNone(scope.find_var(loss2.name))
 
 
 if __name__ == '__main__':
