@@ -20,6 +20,7 @@ from . import fp16_utils
 from .fp16_utils import update_loss_scaling, rewrite_program
 from .fp16_utils import update_role_var_grad
 from .fp16_lists import AutoMixedPrecisionLists
+from ... import framework
 
 __all__ = ["decorate"]
 
@@ -209,7 +210,7 @@ class OptimizerWithMixedPrecision(object):
                 "DyGraph current does not support OptimizerWithMixedPrecision")
 
         program = loss.block.program
-        with program_guard(program, startup_program):
+        with framework.program_guard(program, startup_program):
             optimize_ops = self.apply_gradients(params_grads)
         return optimize_ops
 
