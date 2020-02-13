@@ -198,11 +198,6 @@ PADDLE_CAPI_EXPORT extern void PD_SwitchSpecifyInputNames(
 PADDLE_CAPI_EXPORT extern bool PD_SpecifyInputName(
     const PD_AnalysisConfig* config);
 
-// PADDLE_CAPI_EXPORT extern void PD_EnableTensorRtEngine(
-//    PD_AnalysisConfig* config, int workspace_size = 1 << 20,
-//    int max_batch_size = 1, int min_subgraph_size = 3,
-//    Precision precision = Precision::kFloat32, bool use_static = false,
-//    bool use_calib_mode = false);
 PADDLE_CAPI_EXPORT extern void PD_EnableTensorRtEngine(
     PD_AnalysisConfig* config, int workspace_size, int max_batch_size,
     int min_subgraph_size, Precision precision, bool use_static,
