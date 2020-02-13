@@ -98,8 +98,8 @@ class PartialConcatOpCUDAKernel : public framework::OpKernel<T> {
     auto max_threads = dev_ctx.GetMaxPhysicalThreadCount();
     auto sm_count = max_threads / theory_sm_threads;
     size_t tile_size = 0;
-    dim3 grids;
-    dim3 blocks;
+    int grids;
+    int blocks;
     auto ComputeKernelParameter = [&](size_t length) {
       if (length >= max_threads)
         tile_size = 1024;
@@ -107,8 +107,8 @@ class PartialConcatOpCUDAKernel : public framework::OpKernel<T> {
         tile_size = 512;
       else if (length <= sm_count * 128)
         tile_size = 256;
-      grids = dim3(CEIL_DIV(length, tile_size), 1, 1);
-      blocks = dim3(tile_size, 1, 1);
+      grids = CEIL_DIV(length, tile_size);
+      blocks = tile_size;
     };
 
     auto place = ctx.GetPlace();
@@ -170,8 +170,8 @@ class PartialConcatGradOpCUDAKernel : public framework::OpKernel<T> {
     auto max_threads = dev_ctx.GetMaxPhysicalThreadCount();
     auto sm_count = max_threads / theory_sm_threads;
     size_t tile_size = 0;
-    dim3 grids;
-    dim3 blocks;
+    int grids;
+    int blocks;
     auto ComputeKernelParameter = [&](size_t length) {
       if (length >= max_threads)
         tile_size = 1024;
@@ -179,8 +179,8 @@ class PartialConcatGradOpCUDAKernel : public framework::OpKernel<T> {
         tile_size = 512;
       else if (length <= sm_count * 128)
         tile_size = 256;
-      grids = dim3(CEIL_DIV(length, tile_size), 1, 1);
-      blocks = dim3(tile_size, 1, 1);
+      grids = CEIL_DIV(length, tile_size);
+      blocks = tile_size;
     };
 
     std::vector<const T *> out_data;
