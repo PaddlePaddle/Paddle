@@ -157,6 +157,7 @@ class PipelineTrainer : public TrainerBase {
   // The parameters that should be syncronized between different cards using
   // nccl all-reduce
   std::shared_ptr<std::vector<std::string>> param_need_sync_;
+  std::vector<std::string> persistable_vars_;
   std::vector<std::unique_ptr<SyncFunctor>> sync_functors_;
   std::shared_ptr<platform::NCCLContextMap> nccl_ctx_map_;
 
