@@ -1,6 +1,6 @@
 # SLIM Quantization-aware training (QAT) on INT8 MKL-DNN
 
-This document describes how to use [Paddle Slim](https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/advanced_usage/paddle_slim/paddle_slim.md) to convert a quantization-aware trained model to INT8 MKL-DNN quantized model. In **Release 1.5**, we have released the QAT1.0 MKL-DNN which enabled the INT8 MKL-DNN kernel for QAT trained model within 0.05% accuracy diff on GoogleNet, MobileNet-V1, MobileNet-V2, ResNet-101, ResNet-50, VGG16 and VGG19. In **Release 1.6**, QAT2.0 MKL-DNN, we did the performance optimization based on fake QAT models: ResNet50, ResNet101, Mobilenet-v1, Mobilenet-v2, VGG16 and VGG19 with the minor accuracy drop. Compared with Release 1.5, the QAT2.0 MKL-DNN got better performance gain on inference compared with fake QAT models but got a little bit bigger accuracy diff. In **Release 1.7**, a support for Ernie (NLP) QAT trained model was added to the QAT2.0 MKL-DNN. We provide the accuracy benchmark both for QAT1.0 MKL-DNN and QAT2.0 MKL-DNN, and performance benchmark on QAT2.0 MKL-DNN.  
+This document describes how to use [Paddle Slim](https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/advanced_usage/paddle_slim/paddle_slim.md) to convert a quantization-aware trained model to INT8 MKL-DNN quantized model. In **Release 1.5**, we have released the QAT1.0 MKL-DNN which enabled the INT8 MKL-DNN kernel for QAT trained model within 0.05% accuracy diff on GoogleNet, MobileNet-V1, MobileNet-V2, ResNet-101, ResNet-50, VGG16 and VGG19. In **Release 1.6**, QAT2.0 MKL-DNN, we did the performance optimization based on fake QAT models: ResNet50, ResNet101, Mobilenet-v1, Mobilenet-v2, VGG16 and VGG19 with the minor accuracy drop. Compared with Release 1.5, the QAT2.0 MKL-DNN got better performance gain on inference compared with fake QAT models but got a little bit bigger accuracy diff. In **Release 1.7**, a support for [Ernie (NLP) QAT trained model](https://github.com/PaddlePaddle/benchmark/tree/master/Inference/c%2B%2B/ernie) was added to the QAT2.0 MKL-DNN. We provide the accuracy benchmark both for QAT1.0 MKL-DNN and QAT2.0 MKL-DNN, and performance benchmark on QAT2.0 MKL-DNN.  
 
 Notes:
 
@@ -8,7 +8,7 @@ Notes:
 * INT8 accuracy is best on CPU servers supporting AVX512 VNNI extension.
 
 ## 0. Prerequisite
-You need to install at least PaddlePaddle-1.6 python package `pip install paddlepaddle==1.6`.
+You need to install at least PaddlePaddle-1.7 python package `pip install paddlepaddle==1.7`.
 
 ## 1. How to generate INT8 MKL-DNN QAT model
 You can refer to the unit test in [test_quantization_mkldnn_pass.py](test_quantization_mkldnn_pass.py). Users firstly use PaddleSlim quantization strategy to get a saved fake QAT model by [QuantizationFreezePass](https://github.com/PaddlePaddle/models/tree/develop/PaddleSlim/quant_low_level_api), then use the `QatInt8MkldnnPass` (from QAT1.0 MKL-DNN) to get a graph which can be run with MKL-DNN INT8 kernel. In Paddle Release 1.6, this pass supports `conv2d` and `depthwise_conv2d` ops with channel-wise quantization for weights. Apart from it, another pass called `Qat2Int8MkldnnPass` (from QAT2.0 MKL-DNN) is available for use. In Release 1.6, this pass additionally supports `pool2d` op and allows users to transform their QAT model into a highly performance-optimized INT8 model that is ran using INT8 MKL-DNN kernels. In Release 1.7, a support for `fc`, `reshape2` and `transpose2` ops was added to the pass.
@@ -79,7 +79,7 @@ Notes:
 * FP32 Optimized Throughput (images/s) is from [int8_mkldnn_quantization.md](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/inference/tests/api/int8_mkldnn_quantization.md).
 
 ## 3. How to reproduce the results
-Three steps are needed to reproduce the above-mentioned accuracy and performance results.  Below we explain the steps taking ResNet50 as an example of image classification models, and Ernie as the NLP model.
+Three steps are needed to reproduce the above-mentioned accuracy and performance results.  Below we explain the steps taking ResNet50 as an example of image classification models.
 ### Prepare dataset
 
 #### Image classification
@@ -92,16 +92,6 @@ python paddle/fluid/inference/tests/api/full_ILSVRC2012_val_preprocess.py
 ```
 The converted data binary file is saved by default in `$HOME/.cache/paddle/dataset/int8/download/int8_full_val.bin`
 
-#### NLP
-
-To download the NLP dataset, run:
-
-```bash
-cd /PATH/TO/DOWNLOAD/NLP/DATASET
-wget http://paddle-inference-dist.bj.bcebos.com/int8/Ernie_dataset.tar.gz
-tar -xzvf Ernie_dataset.tar.gz
-```
-The extracted dataset files can be found in the `/PATH/TO/DOWNLOAD/NLP/DATASET/Ernie_dataset` directory.
 ### Prepare model
 
 #### Image classification
@@ -117,6 +107,7 @@ cd /PATH/TO/DOWNLOAD/MODEL/
 # export MODEL_NAME=resnet50
 # export MODEL_FILE_NAME=QAT2_models/${MODEL_NAME}_quant.tar.gz
 wget http://paddle-inference-dist.bj.bcebos.com/int8/${MODEL_FILE_NAME}
+mkdir ${MODEL_NAME} && tar -xvf ResNet50_qat_model.tar.gz -C ${MODEL_NAME}
 ```
 
 Extract the downloaded model to the folder. To verify all the 7 models, you need to set `MODEL_NAME` to one of the following values in command line:
@@ -126,15 +117,6 @@ MODEL_NAME=ResNet50, ResNet101, GoogleNet, MobileNetV1, MobileNetV2, VGG16, VGG1
 QAT2.0 models
 MODEL_NAME=resnet50, resnet101, mobilenetv1, mobilenetv2, vgg16, vgg19
 ```
-#### NLP
-The below commands download and extract the QAT Ernie model.
-```bash
-mkdir -p /PATH/TO/DOWNLOAD/MODEL/
-cd /PATH/TO/DOWNLOAD/MODEL/
-wget http://paddle-inference-dist.bj.bcebos.com/int8/ernie_qat.tar.gz
-tar -xzvf ernie_qat.tar.gz
-```
-The extracted model can be found in the `/PATH/TO/DOWNLOAD/MODEL/Ernie_qat/float/` directory.
 ### Commands to reproduce benchmark
 
 #### Image classification
@@ -174,67 +156,3 @@ In order to run performance benchmark, follow the steps below.
    ```
 
 > Notes: Due to a large amount of images contained in `int8_full_val.bin` dataset (50 000), the accuracy benchmark which includes comparison of unoptimized and optimized QAT model may last long (even several hours). To accelerate the process, it is recommended to set `OMP_NUM_THREADS` to the max number of physical cores available on the server.
-
-#### NLP
-
-* Accuracy benchmark commands
-
-For accuracy benchmarking of the Ernie model, the script `qat_int8_nlp_comparison.py` can be used as follows:
-```bash
-model_dir=/PATH/TO/DOWNLOAD/MODEL/Ernie_qat/float
-dataset_dir=/PATH/TO/DOWNLOAD/NLP/DATASET/Ernie_dataset
-cd /PATH/TO/PADDLE
-OMP_NUM_THREADS=28 FLAGS_use_mkldnn=true python python/paddle/fluid/contrib/slim/tests/qat_int8_nlp_comparison.py --qat_model=${model_dir} --infer_data=${dataset_dir}/1.8w.bs1 --labels=${dataset_dir}/label.xnli.dev --batch_size=50  --acc_diff_threshold=0.01 --quantized_ops="fc,reshape2,transpose2"
-```
-
-* Performance benchmark commands
-
-To run performance benchmark on the saved Ernie INT8 model, follow the steps below.
-
-1. Save QAT2.0 INT8 model:
-
-   ```bash
-   model_dir=/PATH/TO/DOWNLOAD/MODEL/Ernie_qat/float
-   save_int8_model_path=/PATH/TO/SAVE/INT8/ERNIE/MODEL
-   save_fp32_model_path=/PATH/TO/SAVE/FP32/ERNIE/MODEL
-   cd /PATH/TO/PADDLE/build
-   python ../python/paddle/fluid/contrib/slim/tests/save_qat_model.py --qat_model_path=${model_dir} --int8_model_save_path=${save_int8_model_path} --quantized_ops="fc,reshape2,transpose2"
-   ```
-
-2. Checkout the `master` branch of the https://github.com/PaddlePaddle/benchmark repository:
-
-   ```bash
-   mkdir /PATH/FOR/BENCHMARK
-   cd /PATH/FOR/BENCHMARK
-   git clone https://github.com/PaddlePaddle/benchmark
-   cd benchmark/Inference/c++/ernie
-   ```
-
-3. Follow the instructions in `/PATH/FOR/BENCHMARK/benchmark/Inference/c++/ernie/README.md` to build the benchmark binary.
-
-4. Adjust the benchmark script `run.sh`. Update the values of the `MODEL_DIR` and `DATA_FILE` variables:
-
-   ```bash
-   MODEL_DIR=/PATH/TO/SAVE/INT8/ERNIE/MODEL
-   DATA_FILE=/PATH/TO/DOWNLOAD/NLP/DATASET/Ernie_dataset/1.8w.bs1
-   ```
-
-5. Run the benchmark.
-
-   For GPU:
-
-   ```bash
-   ./run.sh 0
-   ```
-
-   For CPU, using 1 core:
-
-   ```bash
-   ./run.sh
-   ```
-
-   For CPU, using 20 cores:
-
-   ```bash
-   ./run.sh -1 20
-   ```
