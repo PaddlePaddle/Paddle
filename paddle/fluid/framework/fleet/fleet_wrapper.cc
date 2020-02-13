@@ -447,13 +447,13 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
 
     }
 
-    //if (scale_sparse_gradient_with_batch_size_ && grad_dim > 0) {
-    //  int dim = emb_dim + offset;
-    //  Eigen::Map<
-    //      Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-    //      g_mat(g, g_tensor->numel() / dim, dim);
-    //  g_mat.rightCols(grad_dim) *= batch_size;
-    //}
+    if (scale_sparse_gradient_with_batch_size_ && grad_dim > 0) {
+      int dim = emb_dim + offset;
+      Eigen::Map<
+          Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+          g_mat(g, g_tensor->numel() / dim, dim);
+      g_mat.rightCols(grad_dim) *= batch_size;
+    }
     for (auto id_idx = 0u; id_idx < len; ++id_idx) {
       if (ids[id_idx] == 0) {
         g += emb_dim;
