@@ -1204,48 +1204,39 @@ void HalfAsyncCommunicator::Stop() {
 
 void SyncCommunicator::BarrierSend() {
     distributed::RPCClient* rpc_client =
-        distributed::RPCClient::GetInstance<RPCCLIENT_T>(0));
-
-    VLOG(3) << "SendBarrierOp sync";
+        distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id_));
 
     std::vector<distributed::VarHandlePtr> rets;
 
     for (auto &ep : eps) {
-      VLOG(3) << "send barrier, ep: " << ep;
       rets.push_back(rpc_client->AsyncSendBatchBarrier(ep));
     }
 
     for (size_t i = 0; i < rets.size(); i++) {
-      PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, "internal error in RPCClient");
+      PADDLE_ENFORCE_NE(
+          rets[i]->Wait(), 0U,
+          platform::errors::External("internal error in RPCClient"));
     }
 
-    std::stringstream ss;
-    for (auto &ep : pserver_endpoints_) {
-      ss << ep << " ";
-    }
-
-    VLOG(0) << "BarrierSend with " << ss.str();
+    VLOG(4) << "BarrierSend with SyncCommunicator";
 }
 
 void SyncCommunicator::BarrierRecv() {
   distributed::RPCClient *rpc_client =
-      distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
+      distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id_);
 
   std::vector<distributed::VarHandlePtr> rets;
   for (auto &ep : eps) {
-    VLOG(3) << "fetch barrier, ep: " << ep;
     rets.push_back(rpc_client->AsyncSendFetchBarrier(ep));
   }
 
   for (size_t i = 0; i < rets.size(); i++) {
-    PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, "internal error in RPCClient");
+    PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, platform::errors::External(
+                                               "internal error in RPCClient"));
   }
 
-  VLOG(0) << "BarrierRecv";
+  VLOG(4) << "BarrierRecv with SyncCommunicator";
 }
-
-SyncCommunicator::~SyncCommunicator() { VLOG(0) << "~SyncCommunicator"; }
-
 }  // namespace distributed
 }  // namespace operators
 }  // namespace paddle

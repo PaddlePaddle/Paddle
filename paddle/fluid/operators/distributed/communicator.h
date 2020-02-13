@@ -360,15 +360,17 @@ class SyncCommunicator : public HalfAsyncCommunicator {
   SyncCommunicator() : HalfAsyncCommunicator() {}
   explicit SyncCommunicator(const std::map<std::string, std::string>& envs)
       : HalfAsyncCommunicator(envs) {
+    trainer_id_ = std::stoi(envs.at("trainer_id"));
     auto pserver_strings = envs.at("pserver_endpoints");
     pserver_endpoints_ = paddle::string::Split(pserver_strings, ',');
   }
-  ~SyncCommunicator();
+  ~SyncCommunicator() {}
   void BarrierSend();
   void BarrierRecv();
 
  private:
   std::vector<std::string> pserver_endpoints_{};
+  int trainer_id_ = 0;
 };
 
 class GeoSgdCommunicator : public Communicator {

@@ -100,6 +100,7 @@ class DistributedTranspiler(Fleet):
             kwargs = {}
             kwargs[
                 "pserver_endpoints"] = self._role_maker.get_pserver_endpoints()
+            kwargs["trainer_id"] = self._role_maker.worker_index()
 
             self._communicator = Communicator(
                 self.main_program, DistributedMode.SYNC, kwargs,
