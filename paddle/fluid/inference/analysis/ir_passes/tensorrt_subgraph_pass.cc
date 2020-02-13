@@ -34,10 +34,13 @@ using framework::ir::Node;
 void analysis::TensorRtSubgraphPass::ApplyImpl(
     framework::ir::Graph *graph) const {
   framework::ir::FusePassBase::Init("tensorrt_subgraph_pass", graph);
-
-  auto teller = [](const framework::ir::Node *node) {
+  auto enable_int8 = Get<bool>("enable_int8");
+  auto use_calib_mode = Get<bool>("use_calib_mode");
+  bool no_calib_int8 = enable_int8 && !(use_calib_mode);
+  auto teller = [&](const framework::ir::Node *node) {
     if (!node->IsOp() || !node->Op()) return false;
-    return tensorrt::OpTeller::Global().Tell(node->Op()->Type(), *node->Op());
+    return tensorrt::OpTeller::Global().Tell(node->Op()->Type(), *node->Op(),
+                                             no_calib_int8);
   };
 
   framework::ir::SubGraphFuser fuser(
