@@ -138,10 +138,28 @@ POD_IP (current node ip address, not needed for local training)
     return parser.parse_args()
 
 
-def terminate_procs(procs):
+def terminate_local_trainers(procs):
     for p in procs:
-        if p.poll() is None:
+        if p.proc.poll() is None:
             p.terminate()
+            p.log_fn.close()
+
+    # wait all process terminiated
+    time.sleep(5)
+
+    alive = False
+    for step in range(0, 100):
+        for p in procs:
+            if p.proc.poll() is not None:
+                os.kill(p.pid, SIGKILL)
+                alive = True
+        if not alive:
+            return
+
+        time.sleep(10)
+
+    print("can't kill all process and exit")
+    exit(1)
 
 
 """
@@ -183,11 +201,16 @@ def get_gpus():
     return selected_gpus
 
 
-def launch_trainers():
-    pass
+class TrainerProc(object):
+    def __init__():
+        self.proc = None
+        self.log_fn = None
+        self.cmd = None
+        self.rank = None
+        self.env = {}
 
 
-def watch_world_trainers(cluster, pod):
+def start_local_trainers():
     procs = []
     log_fns = []
     cmds = []
@@ -216,25 +239,21 @@ def watch_world_trainers(cluster, pod):
         procs.append(proc)
         ranks.append(rank)
 
+
+def watch_local_trainers(procs):
     try:
         alive = True
         error = False
         error_rank = []
         # wait all process finish or one error
-        while alive and not error:
-            alive = False
-            for rank, p in zip(ranks, procs):
-                ret = p.poll()
-                if ret is None:
-                    alive = True
-                elif ret != 0:
-                    error = True
-                    error_rank.append(rank)
-
-            if cluster_world_changed():
-                kill_local_trainers(proc)
-
-            time.sleep(1)
+        alive = False
+        for p in procs:
+            ret = p.proc.poll()
+            if ret is None:
+                alive = True
+            elif ret != 0:
+                error = True
+                error_rank.append(p.rank)
 
         if error:
             terminate_procs(procs)
@@ -256,14 +275,11 @@ def watch_world_trainers(cluster, pod):
             format(nranks, error_rank))
         terminate_procs(procs)
         raise
-    finally:
-        for fn in log_fns:
-            fn.close()
 
-    pass
+    return alive
 
 
-def start_procs(args):
+def launch(args):
     current_env = copy.copy(os.environ.copy())
     #paddle broadcast ncclUniqueId use socket, and
     #proxy maybe make trainers unreachable, so delete them.
@@ -272,26 +288,32 @@ def start_procs(args):
     current_env.pop("http_proxy", None)
     current_env.pop("https_proxy", None)
 
-    get_cluster_from_args(args, selected_gpus)
     if args.use_paddlecloud and not use_edl:
-        cluster = get_cloud_cluster(cluster, selected_gpus)
+        cluster = get_cloud_cluster()
+    elif use_edl:
+        cluster = get_edl_cluster()
+    else:
+        cluster = get_cluster_from_args(args)
 
-    if use_edl:
-        cluster = get_edl_cluster(cluster, selected_gpus)
-    """
-    selected_gpus = get_gpus()
-    selected_gpus_num = len(selected_gpus)
-    launcher_endpoints, trainers_endpoints = get_endpoints(selected_gpus)
-    num_nodes = len(launcher_endpoints)
-    """
+    procs = start_local_trainers(cluster, pod)
+    while True:
+        if use_edl:
+            cluster2 = get_edl_cluster()
+            if cluster != cluster:
+                terminate_local_trainers(procs)
+                barrier_terminate_world_trainers(cluster)
+                procs = start_local_trainers(cluster, pod)
 
+        alive = watch_local_trainers(procs)
 
-def launch():
-    args = _parse_args()
-    if args.print_config:
-        _print_arguments(args)
-    start_procs(args)
+        if not alive:
+            return
+
+        time.sleep(1)
 
 
 if __name__ == "__main__":
-    launch()
+    args = _parse_args()
+    if args.print_config:
+        _print_arguments(args)
+    train(args)

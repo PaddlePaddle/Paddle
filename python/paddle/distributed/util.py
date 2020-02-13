@@ -31,18 +31,18 @@ class Cluster():
     def __ne__(self, cluster):
         return not self.__eq__(cluster)
 
-    def update_trainers(cluster):
+    def update_pods(cluster):
         self.pods = copy.copy(cluster.pods)
         pass
 
-    def world_rank():
+    def world_rank(self):
         count = 0
         for pod in self.pods:
             for gpu in pod.gpus:
                 count += 1
         return count
 
-    def get_trainer_endpoints():
+    def get_trainer_endpoints(self):
         pass
 
 
@@ -63,6 +63,9 @@ class Trainer():
     def __ne__(self):
         pass
 
+    def ranks(self):
+        return self.rank
+
 
 class Pod():
     def __init__(self):
@@ -72,14 +75,18 @@ class Pod():
 
         self.trainers = []
 
-    def __eq__(pod):
+    def __eq__(self, pod):
         pass
 
-    def __ne__(pod):
+    def __ne__(self, pod):
         return not self == pod
 
-    def parse_response(res_pods):
+    def parse_response(self, res_pods):
         pass
 
-    def rank():
-        return rank
+    def ranks(self):
+        r = []
+        for t in self.trainers:
+            r.extend(t.ranks)
+
+        return r

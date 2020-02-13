@@ -26,6 +26,10 @@ def get_pods_from_master(job_server, job_id):
     return pods
 
 
+def barrier_terminate_world_trainers(cluster):
+    pass
+
+
 def get_edl_cluster(job_id):
     cluster = Cluster()
     job_server = get_jobserver()
