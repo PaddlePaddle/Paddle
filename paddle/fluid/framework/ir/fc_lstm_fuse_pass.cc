@@ -148,8 +148,7 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
                    fc_bias);
       // Remove unneeded nodes.
       std::unordered_set<const Node*> marked_nodes(
-          {mul, lstm, elementwise_add, fc_out, mul_out, Cell, BatchGate,
-           BatchCellPreAct});
+          {mul, lstm, elementwise_add, mul_out, BatchGate, BatchCellPreAct});
       GraphSafeRemoveNodes(graph, marked_nodes);
     } else {
       GET_IR_NODE_FROM_SUBGRAPH(fc_out, mul_out, fc_pattern);
