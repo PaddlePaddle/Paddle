@@ -18,14 +18,10 @@ import inspect
 import codegen
 import ast
 import atexit
-import importlib
 import os
-import sys
 import tempfile
 import six
 import imp
-
-# import paddle.fluid as fluid
 
 dygraph_static_api = {
     "BatchNorm": "batch_norm",

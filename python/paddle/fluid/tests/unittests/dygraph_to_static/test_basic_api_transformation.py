@@ -1,4 +1,4 @@
-#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,8 +17,11 @@ from __future__ import print_function
 import numpy as np
 import paddle.fluid as fluid
 import unittest
+import inspect
+import ast
 
 from paddle.fluid.dygraph.jit import dygraph_to_static_output
+from paddle.fluid.dygraph.dygraph_to_static.utils import is_dygraph_class
 
 SEED = 2020
 np.random.seed(SEED)
@@ -27,7 +30,6 @@ fluid.default_startup_program().random_seed = SEED
 
 
 def dyfunc(input):
-
     pool2d = fluid.dygraph.Pool2D(
         pool_size=2, pool_type='avg', pool_stride=1, global_pooling=False)
     res = pool2d(input)
@@ -88,6 +90,30 @@ class TestDygraphBasicAPI(unittest.TestCase):
         dygraph_res = self.get_dygraph_output()
         static_res = self.get_static_output()
         self.assertTrue(np.array_equal(static_res, dygraph_res))
+
+
+def _dygraph_fn():
+    import paddle.fluid as fluid
+    x = np.random.random((1, 3)).astype('float32')
+    with fluid.dygraph.guard():
+        fluid.dygraph.to_variable(x)
+        np.random.random((1))
+
+
+class TestDygraphAPIRecognition(unittest.TestCase):
+    def setUp(self):
+        self.src = inspect.getsource(_dygraph_fn)
+        self.root_ast = ast.parse(self.src)
+
+    def _get_dygraph_ast_node(self):
+        return self.root_ast.body[0].body[2].body[0].value
+
+    def _get_static_ast_node(self):
+        return self.root_ast.body[0].body[2].body[1].value
+
+    def test_dygraph_api(self):
+        self.assertTrue(is_dygraph_class(self._get_dygraph_ast_node()) is True)
+        self.assertTrue(is_dygraph_class(self._get_static_ast_node()) is False)
 
 
 if __name__ == '__main__':
