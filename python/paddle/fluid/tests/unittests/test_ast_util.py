@@ -126,30 +126,30 @@ class TestAST2Func(unittest.TestCase):
         x, y = 10, 20
         self.assertEqual(func(x, y), self._ast2func(func)(x, y))
 
-    def test_ast2func_dygraph(self):
-        func = dyfunc_with_if_else
-        x_data = np.random.random([10, 16]).astype('float32')
-        with fluid.dygraph.guard():
-            x_v = fluid.dygraph.to_variable(x_data)
-            true_ret = func(x_v).numpy()
-            test_ret = self._ast2func(func)(x_v).numpy()
-            self.assertTrue((true_ret == test_ret).all())
-
-    def test_ast2func_static(self):
-        def func(x):
-            y = fluid.layers.relu(x)
-            loss = fluid.layers.mean(y)
-            return loss
-
-        x_data = np.random.random([10, 16]).astype('float32')
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
-            x_v = fluid.layers.assign(x_data)
-            true_ret = func(x_v)
-            test_ret = self._ast2func(func)(x_v)
-            exe = fluid.Executor(fluid.CPUPlace())
-            ret = exe.run(main_program, fetch_list=[true_ret, test_ret])
-            self.assertTrue((ret[0] == ret[1]).all())
+    # def test_ast2func_dygraph(self):
+    #     func = dyfunc_with_if_else
+    #     x_data = np.random.random([10, 16]).astype('float32')
+    #     with fluid.dygraph.guard():
+    #         x_v = fluid.dygraph.to_variable(x_data)
+    #         true_ret = func(x_v).numpy()
+    #         test_ret = self._ast2func(func)(x_v).numpy()
+    #         self.assertTrue((true_ret == test_ret).all())
+    #
+    # def test_ast2func_static(self):
+    #     def func(x):
+    #         y = fluid.layers.relu(x)
+    #         loss = fluid.layers.mean(y)
+    #         return loss
+    #
+    #     x_data = np.random.random([10, 16]).astype('float32')
+    #     main_program = fluid.Program()
+    #     with fluid.program_guard(main_program):
+    #         x_v = fluid.layers.assign(x_data)
+    #         true_ret = func(x_v)
+    #         test_ret = self._ast2func(func)(x_v)
+    #         exe = fluid.Executor(fluid.CPUPlace())
+    #         ret = exe.run(main_program, fetch_list=[true_ret, test_ret])
+    #         self.assertTrue((ret[0] == ret[1]).all())
 
 
 class TestDygraphIfElse(unittest.TestCase):

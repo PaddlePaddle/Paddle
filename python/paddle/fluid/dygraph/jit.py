@@ -16,6 +16,7 @@ __all__ = ['TracedLayer', 'dygraph_to_static_output']
 
 import ast
 import inspect
+import textwrap
 
 from ..wrapped_decorator import wrap_decorator
 from .base import program_desc_tracing_guard, switch_to_static_graph
@@ -55,6 +56,7 @@ def _dygraph_to_static_output_(dygraph_func):
     def __impl__(*args, **kwargs):
         # Get AST from dygraph function
         dygraph_code = inspect.getsource(dygraph_func)
+        dygraph_code = textwrap.dedent(dygraph_code)
         root = ast.parse(dygraph_code)
 
         root, func_name = DygraphToStaticAst().get_static_ast(root)
