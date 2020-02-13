@@ -56,8 +56,8 @@ TEST(PD_AnalysisConfig, use_gpu) {
   PD_SwitchIrOptim(config, true);
   bool ir_optim = PD_IrOptim(config);
   CHECK(ir_optim) << "NO";
-  PD_EnableTensorRtEngine(config, 1 << 20, 1, 3,
-                          AnalysisConfig::Precision::kFloat32, false, false);
+  PD_EnableTensorRtEngine(config, 1 << 20, 1, 3, Precision::kFloat32, false,
+                          false);
   bool trt_enable = PD_TensorrtEngineEnabled(config);
   CHECK(trt_enable) << "NO";
   PD_EnableNgraph(config);
