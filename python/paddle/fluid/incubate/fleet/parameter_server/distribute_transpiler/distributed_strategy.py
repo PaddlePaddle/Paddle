@@ -20,6 +20,7 @@ __all__ = [
 import os
 import paddle.fluid as fluid
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig, ServerRuntimeConfig
+from paddle.fluid.incubate.fleet.utils.texttable import Texttable
 
 
 class TrainerRuntimeConfig(object):
@@ -36,9 +37,6 @@ class TrainerRuntimeConfig(object):
                                           "5")
         self.send_wait_times = os.getenv("FLAGS_communicator_send_wait_times",
                                          "5")
-        self.fake_rpc = os.getenv("FLAGS_communicator_fake_rpc", "0")
-        self.merge_sparse_grad = os.getenv(
-            "FLAGS_communicator_merge_sparse_grad", "1")
         self.is_sgd_optimizer = os.getenv("FLAGS_communicator_is_sgd_optimizer",
                                           "1")
 
@@ -75,14 +73,29 @@ class TrainerRuntimeConfig(object):
 class DistributedStrategy(object):
     def __init__(self):
         self._program_config = DistributeTranspilerConfig()
-        self._trainer_runtime_config = TrainerRuntimeConfig()
-        self._server_runtime_config = ServerRuntimeConfig()
-        self._execute_strategy = fluid.ExecutionStrategy()
-        self._build_strategy = fluid.BuildStrategy()
+        self._trainer_runtime_config = self.__init_trainer_runtime_config()
+        self._server_runtime_config = self.__init_server_runtime_config()
+        self._execute_strategy = self.__init_execution_strategy()
+        self._build_strategy = self.__init_build_strategy()
+
+    def __init_trainer_runtime_config(self):
+        return TrainerRuntimeConfig()
+
+    def __init_server_runtime_config(self):
+        return ServerRuntimeConfig()
+
+    def __init_execution_strategy(self):
+        _execute_strategy = fluid.ExecutionStrategy()
         num_threads = int(os.getenv("CPU_NUM", "1"))
-        self._execute_strategy.num_threads = num_threads
+        _execute_strategy.num_threads = num_threads
+        return _execute_strategy
+
+    def __init_build_strategy(self):
+        _build_strategy = fluid.BuildStrategy()
+        num_threads = int(os.getenv("CPU_NUM", "1"))
         if num_threads > 1:
-            self._build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
+            _build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
+        return _build_strategy
 
     def get_program_config(self):
         return self._program_config
