@@ -49,8 +49,7 @@ struct PairForLayerNormAddFunctor {
 template <typename T, bool DoRelu, int BlockDim>
 __global__ void InplaceAddReluAddLayerNormKernel(const T* y, const T* bias_0,
                                                  const T* bias_1,
-                                                 const T* scale, T* out,
-                                                 T* mean, T* variance, int M,
+                                                 const T* scale, T* out, int M,
                                                  int N, float epsilon) {
   using BlockReduce = cub::BlockReduce<PairForLayerNorm<T>, BlockDim>;
   __shared__ typename BlockReduce::TempStorage temp_storage;
@@ -95,12 +94,6 @@ __global__ void InplaceAddReluAddLayerNormKernel(const T* y, const T* bias_0,
       T variance_i = static_cast<T>(pair.second_ / N - mean_i * mean_i);
       shared_mem[BlockDim] = mean_i;
       shared_mem[BlockDim + 1] = variance_i;
-      if (mean) {
-        mean[blockIdx.x] = mean_i;
-      }
-      if (variance) {
-        variance[blockIdx.x] = variance_i;
-      }
     }
     __syncthreads();
     T mean_i = shared_mem[BlockDim];
@@ -168,8 +161,8 @@ class FusedFCElementwiseLayerNormOpKernel : public framework::OpKernel<T> {
                 T, true,
                 kPowerOfTwoDim><<<std::max(max_threads / kPowerOfTwoDim, 1),
                                   kPowerOfTwoDim, 0, dev_ctx.stream()>>>(
-                y_data, bias_0_data, bias_1_data, scale_data, out_data, nullptr,
-                nullptr, M, N, epsilon));
+                y_data, bias_0_data, bias_1_data, scale_data, out_data, M, N,
+                epsilon));
       }
     } else {
       switch (platform::RoundToPowerOfTwo(N)) {
@@ -178,8 +171,8 @@ class FusedFCElementwiseLayerNormOpKernel : public framework::OpKernel<T> {
                 T, false,
                 kPowerOfTwoDim><<<std::max(max_threads / kPowerOfTwoDim, 1),
                                   kPowerOfTwoDim, 0, dev_ctx.stream()>>>(
-                y_data, bias_0_data, bias_1_data, scale_data, out_data, nullptr,
-                nullptr, M, N, epsilon));
+                y_data, bias_0_data, bias_1_data, scale_data, out_data, M, N,
+                epsilon));
       }
     }
   }

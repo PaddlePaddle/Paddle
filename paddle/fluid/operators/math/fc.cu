@@ -20,6 +20,41 @@ namespace paddle {
 namespace operators {
 namespace math {
 
+template <typename T>
+struct FcTypeTraits;
+
+template <>
+struct FcTypeTraits<float> {
+  typedef float4 Type;
+};
+
+template <>
+struct FcTypeTraits<double> {
+  typedef double4 Type;
+};
+
+template <typename T, bool DoRelu>
+__global__ void bias_relu_v4(const int num, const T* bias, T* data, int K) {
+  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  if (tid < num) {
+    int bias_idx = tid % K;
+    const T bias_ptr = bias[bias_idx];
+    const T in_ptr = data[tid];
+    T packed_val;
+    packed_val.x = in_ptr.x + bias_ptr.x;
+    packed_val.y = in_ptr.y + bias_ptr.y;
+    packed_val.z = in_ptr.z + bias_ptr.z;
+    packed_val.w = in_ptr.w + bias_ptr.w;
+    if (DoRelu) {
+      packed_val.x = fmaxf(0.f, packed_val.x);
+      packed_val.y = fmaxf(0.f, packed_val.y);
+      packed_val.z = fmaxf(0.f, packed_val.z);
+      packed_val.w = fmaxf(0.f, packed_val.w);
+    }
+    data[tid] = packed_val;
+  }
+}
+
 template <typename T, bool DoRelu, int BlockDim>
 __global__ void InplaceAddReluKernel(const int N, const T* bias, T* data) {
   int offset = blockIdx.x * N;
@@ -57,22 +92,35 @@ class FCFunctor<platform::CUDADeviceContext, T> {
       return;
     }
 
-    const int kThreadsPerBlock = 1024;
-    int max_threads = context.GetMaxPhysicalThreadCount();
-    int num_threads = std::min(kThreadsPerBlock, (((N + 31) >> 5) << 5));
-    int num_blocks = std::max(max_threads / num_threads, 1);
-
-    const int threads = 256;
-    const int blocks = M;
-
-    if (relu) {
-      InplaceAddReluKernel<T, true,
-                           threads><<<blocks, threads, 0, context.stream()>>>(
-          N, B, Y);
+    // M * N
+    if (N % 4 == 0) {
+      const int threads = 256;
+      const int num = M * N / 4;
+      const int blocks = (num + threads - 1) / threads;
+      typedef typename FcTypeTraits<T>::Type trans_type;
+      auto* bias_ptr_v4 = reinterpret_cast<const trans_type*>(B);
+      auto* data_ptr_v4 = reinterpret_cast<trans_type*>(Y);
+      if (relu) {
+        bias_relu_v4<trans_type,
+                     true><<<blocks, threads, 0, context.stream()>>>(
+            num, bias_ptr_v4, data_ptr_v4, N / 4);
+      } else {
+        bias_relu_v4<trans_type,
+                     false><<<blocks, threads, 0, context.stream()>>>(
+            num, bias_ptr_v4, data_ptr_v4, N / 4);
+      }
     } else {
-      InplaceAddReluKernel<T, false,
-                           threads><<<blocks, threads, 0, context.stream()>>>(
-          N, B, Y);
+      const int threads = 256;
+      const int blocks = M;
+      if (relu) {
+        InplaceAddReluKernel<T, true,
+                             threads><<<blocks, threads, 0, context.stream()>>>(
+            N, B, Y);
+      } else {
+        InplaceAddReluKernel<T, false,
+                             threads><<<blocks, threads, 0, context.stream()>>>(
+            N, B, Y);
+      }
     }
   }
 };
