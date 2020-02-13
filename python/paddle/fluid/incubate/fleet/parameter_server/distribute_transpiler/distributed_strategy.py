@@ -25,77 +25,46 @@ from paddle.fluid.incubate.fleet.utils.texttable import Texttable
 
 class TrainerRuntimeConfig(object):
     def __init__(self):
-        self.max_merge_var_num = os.getenv(
-            "FLAGS_communicator_max_merge_var_num", "20")
-        self.send_queue_size = os.getenv("FLAGS_communicator_send_queue_size",
-                                         "20")
-        self.independent_recv_thread = os.getenv(
-            "FLAGS_communicator_independent_recv_thread", "1")
-        self.min_send_grad_num_before_recv = os.getenv(
-            "FLAGS_communicator_min_send_grad_num_before_recv", "20")
-        self.thread_pool_size = os.getenv("FLAGS_communicator_thread_pool_size",
-                                          "5")
-        self.send_wait_times = os.getenv("FLAGS_communicator_send_wait_times",
-                                         "5")
-        self.is_sgd_optimizer = os.getenv("FLAGS_communicator_is_sgd_optimizer",
-                                          "1")
-
+        self.runtime_configs = {}
         # not used 
-        self._rpc_deadline = os.getenv("FLAGS_rpc_deadline", "180000")
-        self._rpc_retry_times = os.getenv("FLAGS_rpc_retry_times", "3")
+        self.runtime_configs['rpc_deadline'] = os.getenv("FLAGS_rpc_deadline",
+                                                         "180000")
+        self.runtime_configs['rpc_retry_times'] = os.getenv(
+            "FLAGS_rpc_retry_times", "3")
 
     def get_communicator_flags(self):
-        _communicator_flags = dict()
-        _communicator_flags["communicator_max_merge_var_num"] = str(
-            self.max_merge_var_num)
-        _communicator_flags["communicator_send_queue_size"] = str(
-            self.send_queue_size)
-        _communicator_flags["communicator_independent_recv_thread"] = str(
-            self.independent_recv_thread)
-        _communicator_flags["communicator_min_send_grad_num_before_recv"] = str(
-            self.min_send_grad_num_before_recv)
-        _communicator_flags["communicator_thread_pool_size"] = str(
-            self.thread_pool_size)
-        _communicator_flags["communicator_send_wait_times"] = str(
-            self.send_wait_times)
-        _communicator_flags["communicator_is_sgd_optimizer"] = str(
-            self.is_sgd_optimizer)
-        return _communicator_flags
+        return self.runtime_configs
 
     def __repr__(self):
-        _str = "please check that TrainerRuntimeConfig is as expected:\n"
-        _communicator_flags = self.get_communicator_flags()
-        for key in _communicator_flags:
-            _str += "{}: {}\n".format(key, _communicator_flags[key])
+        table = Texttable()
+        table.set_deco(Texttable.HEADER)
+        table.set_cols_dtype(['t', 't'])
+        table.set_cols_align(["l", "l"])
+
+        rows = []
+        rows.append(["TrainerRuntimeConfig Overview", "Value"])
+        for flag, val in self.get_communicator_flags().items():
+            rows.append([flag, val])
+
+        table.add_rows(rows)
+
+        _str = "\n{}\n".format(table.draw())
         return _str
 
 
 class DistributedStrategy(object):
     def __init__(self):
         self._program_config = DistributeTranspilerConfig()
-        self._trainer_runtime_config = self.__init_trainer_runtime_config()
-        self._server_runtime_config = self.__init_server_runtime_config()
-        self._execute_strategy = self.__init_execution_strategy()
-        self._build_strategy = self.__init_build_strategy()
-
-    def __init_trainer_runtime_config(self):
-        return TrainerRuntimeConfig()
-
-    def __init_server_runtime_config(self):
-        return ServerRuntimeConfig()
-
-    def __init_execution_strategy(self):
-        _execute_strategy = fluid.ExecutionStrategy()
+        self._trainer_runtime_config = TrainerRuntimeConfig()
+        self._server_runtime_config = ServerRuntimeConfig()
         num_threads = int(os.getenv("CPU_NUM", "1"))
-        _execute_strategy.num_threads = num_threads
-        return _execute_strategy
 
-    def __init_build_strategy(self):
-        _build_strategy = fluid.BuildStrategy()
-        num_threads = int(os.getenv("CPU_NUM", "1"))
+        self._execute_strategy = fluid.ExecutionStrategy()
+        self._build_strategy = fluid.BuildStrategy()
+
+        self._execute_strategy.num_threads = num_threads
         if num_threads > 1:
-            _build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
-        return _build_strategy
+            self._build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
 
     def get_program_config(self):
         return self._program_config
@@ -195,6 +164,21 @@ class SyncStrategy(DistributedStrategy):
         self._program_config.runtime_split_send_recv = False
         self._build_strategy.async_mode = False
 
+        num_threads = int(os.getenv("CPU_NUM", "1"))
+
+        self._trainer_runtime_config.runtime_configs[
+            'communicator_max_merge_var_num'] = os.getenv(
+                "FLAGS_communicator_max_merge_var_num", num_threads)
+        self._trainer_runtime_config.runtime_configs[
+            'communicator_send_wait_times'] = os.getenv(
+                "FLAGS_communicator_send_wait_times", "5")
+        self._trainer_runtime_config.runtime_configs[
+            'communicator_thread_pool_size'] = os.getenv(
+                "FLAGS_communicator_thread_pool_size", "10")
+        self._trainer_runtime_config.runtime_configs[
+            'communicator_send_queue_size'] = os.getenv(
+                "FLAGS_communicator_send_queue_size", num_threads)
+
 
 class AsyncStrategy(DistributedStrategy):
     def __init__(self):
@@ -202,6 +186,27 @@ class AsyncStrategy(DistributedStrategy):
         self._program_config.sync_mode = False
         self._program_config.runtime_split_send_recv = True
         self._build_strategy.async_mode = True
+
+        num_threads = int(os.getenv("CPU_NUM", "1"))
+
+        self._trainer_runtime_config.runtime_configs[
+            'communicator_independent_recv_thread'] = os.getenv(
+                "FLAGS_communicator_independent_recv_thread", "0")
+        self._trainer_runtime_config.runtime_configs[
+            'communicator_min_send_grad_num_before_recv'] = os.getenv(
+                "FLAGS_communicator_min_send_grad_num_before_recv", num_threads)
+        self._trainer_runtime_config.runtime_configs[
+            'communicator_thread_pool_size'] = os.getenv(
+                "FLAGS_communicator_thread_pool_size", "10")
+        self._trainer_runtime_config.runtime_configs[
+            'communicator_send_wait_times'] = os.getenv(
+                "FLAGS_communicator_send_wait_times", "5")
+        self._trainer_runtime_config.runtime_configs[
+            'communicator_is_sgd_optimizer'] = os.getenv(
+                "FLAGS_communicator_is_sgd_optimizer", "1")
+        self._trainer_runtime_config.runtime_configs[
+            'communicator_send_queue_size'] = os.getenv(
+                "FLAGS_communicator_send_queue_size", num_threads)
 
 
 class HalfAsyncStrategy(DistributedStrategy):
@@ -213,15 +218,37 @@ class HalfAsyncStrategy(DistributedStrategy):
         self._build_strategy.async_mode = True
         self._execute_strategy.use_thread_barrier = True
 
+        num_threads = int(os.getenv("CPU_NUM", "1"))
+
+        self._trainer_runtime_config.runtime_configs[
+            'communicator_max_merge_var_num'] = os.getenv(
+                "FLAGS_communicator_max_merge_var_num", num_threads)
+        self._trainer_runtime_config.runtime_configs[
+            'communicator_send_wait_times'] = os.getenv(
+                "FLAGS_communicator_send_wait_times", "5")
+        self._trainer_runtime_config.runtime_configs[
+            'communicator_thread_pool_size'] = os.getenv(
+                "FLAGS_communicator_thread_pool_size", "10")
+        self._trainer_runtime_config.runtime_configs[
+            'communicator_send_queue_size'] = os.getenv(
+                "FLAGS_communicator_send_queue_size", num_threads)
+
 
 class GeoStrategy(DistributedStrategy):
     def __init__(self, update_frequency=100):
         super(GeoStrategy, self).__init__()
         self._program_config.sync_mode = False
         self._program_config.runtime_split_send_recv = True
-        self._build_strategy.async_mode = True
         self._program_config.geo_sgd_mode = True
         self._program_config.geo_sgd_need_push_nums = update_frequency
+        self._build_strategy.async_mode = True
+
+        self._trainer_runtime_config.runtime_configs[
+            'communicator_thread_pool_size'] = os.getenv(
+                "FLAGS_communicator_thread_pool_size", "10")
+        self._trainer_runtime_config.runtime_configs[
+            'communicator_send_wait_times'] = os.getenv(
+                "FLAGS_communicator_send_wait_times", "5")
 
 
 class StrategyFactory(object):
