@@ -86,14 +86,16 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
       }
     }
     if (save_to_memory) {
-      PADDLE_ENFORCE(output != nullptr,
-                     "Cannot find variable Y for save_combine_op");
+      PADDLE_ENFORCE_NE(output, nullptr,
+                        platform::errors::InvalidArgument(
+                            "Cannot find variable Y for save_combine_op"));
       *output = ss.str();
     } else {
       MkDirRecursively(DirName(filename).c_str());
       std::ofstream fout(filename, std::ios::binary);
-      PADDLE_ENFORCE(static_cast<bool>(fout), "Cannot open %s to write",
-                     filename);
+      PADDLE_ENFORCE_EQ(
+          static_cast<bool>(fout), true,
+          platform::errors::NotFound("Cannot open %s to write", filename));
       fout << ss.str();
       fout.close();
     }
