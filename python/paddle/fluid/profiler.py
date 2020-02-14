@@ -137,14 +137,15 @@ def start_profiler(state, tracer_option='Default'):
             or 'All'. 'CPU' means only profiling CPU; 'GPU' means profiling
             both CPU and GPU; 'All' means profiling both CPU and GPU, and 
             generates timeline as well.
-        tracer_option (str) : tracer_option can be one of ['Default', 'OPDetail', 'AllOPDetail'], it
+        tracer_option (str) : tracer_option can be one of ['Default', 'OpDetail', 'AllOpDetail'], it
             can control the profile level and print the different level profile result.Default option print 
-            the different OP type profiling result and the OPDetail option print the detail profiling 
-            result of different op type  such as compute and data transform, AllOPDetail option 
-            print the detail profiling result of different op name same as OPDetail.
+            the different Op type profiling result and the OpDetail option print the detail profiling 
+            result of different op type  such as compute and data transform, AllOpDetail option 
+            print the detail profiling result of different op name same as OpDetail.
 
     Raises:
         ValueError: If `state` is not in ['CPU', 'GPU', 'All'].
+        ValueError: If `tracer_option` is not in ['Default', 'OpDetail', 'AllOpDetail']
 
     Examples:
 
@@ -160,7 +161,7 @@ def start_profiler(state, tracer_option='Default'):
                 # except each iteration
             profiler.stop_profiler('total', '/tmp/profile')
             
-            profiler.start_profiler('GPU', "OPDetail")
+            profiler.start_profiler('GPU', "OpDetail")
             for iter in range(10):
                 if iter == 2:
                     profiler.reset_profiler()
@@ -178,15 +179,15 @@ def start_profiler(state, tracer_option='Default'):
     else:
         prof_state = core.ProfilerState.kAll
 
-    if tracer_option not in ['Default', 'OPDetail', 'AllOPDetail']:
+    if tracer_option not in ['Default', 'OpDetail', 'AllOpDetail']:
         raise ValueError(
-            "tracer option must be 'Default', 'OPDetail', 'AllOPDetail'.")
+            "tracer option must be 'Default', 'OpDetail', 'AllOpDetail'.")
     if tracer_option == "Default":
         prof_tracer_option = core.TracerOption.kDefault
-    elif tracer_option == "OPDetail":
-        prof_tracer_option = core.TracerOption.kOPDetail
+    elif tracer_option == "OpDetail":
+        prof_tracer_option = core.TracerOption.kOpDetail
     else:
-        prof_tracer_option = core.TracerOption.kAllOPDetail
+        prof_tracer_option = core.TracerOption.kAllOpDetail
 
     core.set_tracer_option(prof_tracer_option)
     core.enable_profiler(prof_state)
@@ -273,11 +274,11 @@ def profiler(state,
             The `ave` means sorting by the average execution time.
         profile_path (str, optional) : If state == 'All', it will generate timeline,
             and write it into `profile_path`. The default profile_path is `/tmp/profile`. 
-        tracer_option (str) : tracer_option can be one of ['Default', 'OPDetail', 'AllOPDetail'], it
+        tracer_option (str) : tracer_option can be one of ['Default', 'OpDetail', 'AllOpDetail'], it
             can control the profile level and print the different level profile result.Default option print 
-            the different OP type profiling result and the OPDetail option print the detail profiling 
-            result of different op type  such as compute and data transform, AllOPDetail option 
-            print the detail profiling result of different op name same as OPDetail.
+            the different Op type profiling result and the OpDetail option print the detail profiling 
+            result of different op type  such as compute and data transform, AllOpDetail option 
+            print the detail profiling result of different op name same as OpDetail.
 
     Raises:
         ValueError: If `state` is not in ['CPU', 'GPU', 'All']. If `sorted_key` is

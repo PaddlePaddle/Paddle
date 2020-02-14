@@ -141,8 +141,8 @@ void PopEvent(const std::string &name) {
 RecordEvent::RecordEvent(const std::string &name, const RecordRole role)
     : is_enabled_(false), start_ns_(PosixInNsec()), role_(role) {
   if (g_state == ProfilerState::kDisabled || name.empty()) return;
-  if ((g_tracer_option == TracerOption::kOPDetail &&
-       role_ != RecordRole::kInnerOP) ||
+  if ((g_tracer_option == TracerOption::kOpDetail &&
+       role_ != RecordRole::kInnerOp) ||
       (g_tracer_option == TracerOption::kDefault &&
        role != RecordRole::kOrdinary))
     return;
@@ -789,7 +789,7 @@ int64_t ListenerId() { return profiler_lister_id; }
 
 std::string OpName(const framework::VariableNameMap &name_map,
                    const std::string &type_name) {
-  if (platform::GetTracerOption() != platform::TracerOption::kAllOPDetail)
+  if (platform::GetTracerOption() != platform::TracerOption::kAllOpDetail)
     return "";
 
   std::string ret = type_name + "%";

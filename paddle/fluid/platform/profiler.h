@@ -42,15 +42,15 @@ enum ProfilerState {
 
 enum class RecordRole {
   kOrdinary,  // only record op time with op type key
-  kInnerOP,   // record op detail time with op type key
-  kUniqueOP,  // record op detail time with op unique name key
+  kInnerOp,   // record op detail time with op type key
+  kUniqueOp,  // record op detail time with op unique name key
 };
 
 // it is the flag to control to print the profiling result
 enum class TracerOption {
   kDefault,      // print the different op type profiling result
-  kOPDetail,     // print the detail profiling result of different op type
-  kAllOPDetail,  // print the detail profiling result of different op name
+  kOpDetail,     // print the detail profiling result of different op type
+  kAllOpDetail,  // print the detail profiling result of different op name
 };
 
 void Mark(const std::string& name);
