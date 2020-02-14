@@ -43,12 +43,6 @@ not_expected_op_types = ["lookup_table"]
 
 
 def load_program(model_filename, is_text=False):
-    """load program from file
-
-    :param model_filename: model文件
-    :param is_text: model文件是否是human-readable text形式
-    :return:
-    """
     if is_text:
         return load_program_text(model_filename)
     return load_program_binary(model_filename)
@@ -72,13 +66,6 @@ def load_program_text(model_filename):
 
 
 def save_program(program, model_filename='__model__', is_text=False):
-    """
-
-    :param program: program of model
-    :param model_filename: model文件
-    :param is_text: model文件是否保存成human-readable text形式
-    :return:
-    """
     if is_text:
         with open(model_filename, "w") as f:
             f.write(str(program))
@@ -88,12 +75,6 @@ def save_program(program, model_filename='__model__', is_text=False):
 
 
 def check_pruned_program_vars(train_prog, pruned_prog):
-    """检查pruned program中的persistable vars与train program是否相同
-
-    :param train_prog: train program
-    :param pruned_prog: pruned program
-    :return: 两个program是否match
-    """
     is_match = True
 
     pruned_vars = [(v.name, v) for v in pruned_prog.list_vars()
@@ -105,7 +86,6 @@ def check_pruned_program_vars(train_prog, pruned_prog):
 
     for var_name in pruned_vars:
         var = pruned_vars[var_name]
-        # logger.info(var.shape)
         # feed and fetch op is added in pruned program when pruning, not need to be found in train program
         if var.type in feed_fetch_type_list:
             break
@@ -117,8 +97,6 @@ def check_pruned_program_vars(train_prog, pruned_prog):
                 % var_name)
             logger.error(e)
             continue
-        # logger.info(train_prog_var.shape)
-        # logger.info(train_prog_var.dtype)
         if var.shape != train_prog_var.shape or var.dtype != train_prog_var.dtype:
             logger.error(
                 "variable: {} not match. in pruned program shape: {} dtype:{}, in train program shape: {} dtype: {}".
@@ -142,7 +120,6 @@ def graphviz(block, output_dir="", filename='debug'):
 
 
 def program_type_trans(prog_dir, prog_fn, is_text):
-    """转化program文件类型"""
     prog = load_program(os.path.join(prog_dir, prog_fn), is_text)
     prog_out_fn = prog_fn + ".bin" if is_text else prog_fn + ".pbtxt"
     save_program(prog, os.path.join(prog_dir, prog_out_fn), 1 - is_text)
@@ -184,7 +161,6 @@ def load_var(var_name, shape_list, dtype, save_path):
         return outs
 
 
-## for tools check_vars_and_dump begin
 def reader(batch_size, fn, dim):
     data = []
     if isinstance(dim, list) or isinstance(dim, tuple):
@@ -219,12 +195,10 @@ def feed_gen(batch_size, feeded_vars_dims, feeded_vars_filelist):
 def try_load_model_vars(dump_dir, dump_prog_fn, is_text_dump_program,
                         batch_size, feed_config, fetch_config, save_filename,
                         saved_params):
-    """load_inference_model，检查load vars的shape和pruned program是否相同，尝试dump fetch target"""
     place = fluid.CPUPlace()
     exe = fluid.Executor(place)
     scope = fluid.core.Scope()
     with fluid.scope_guard(scope):
-        # load_inference_model需要binary string形式的program file
         if is_text_dump_program:
             dump_prog_fn = program_type_trans(dump_dir, dump_prog_fn,
                                               is_text_dump_program)
@@ -363,10 +337,10 @@ def try_load_model_vars(dump_dir, dump_prog_fn, is_text_dump_program,
         for i, v in enumerate(fetch_list):
             logger.info("fetch_targets name: %s" % v.name)
             logger.info("fetch_targets: {}".format(results[i]))
+        return results
 
 
 def check_not_expected_ops(prog):
-    # 检查program是否含有应该去掉的Op，如lookup_table
     op_types_set = set()
     for op in prog.global_block().ops:
         if op.type in not_expected_op_types and op.type not in op_types_set:
@@ -383,13 +357,6 @@ def check_saved_vars_try_dump(dump_dir,
                               fetch_config,
                               batch_size=1,
                               save_filename=None):
-    """检查saved vars和pruned program中vars是否对应，尝试dump fetch_targets
-
-    :param dump_dir: program和saved params存储路径
-    :param dump_prog_fn: dump program name
-    :param save_filename: 参数存储在一个文件中时需要设置；否则设为None，默认。
-    :return:
-    """
     dump_prog = load_program(
         os.path.join(dump_dir, dump_prog_fn), is_text_dump_program)
     saved_params = [
@@ -398,15 +365,11 @@ def check_saved_vars_try_dump(dump_dir,
     logger.info("persistable vars in dump program: {}".format(
         [v.name for v in saved_params]))
 
-    # 检查program是否含有应该去掉的Op
     check_not_expected_ops(dump_prog)
 
-    try_load_model_vars(dump_dir, dump_prog_fn, is_text_dump_program,
-                        batch_size, feed_config, fetch_config, save_filename,
-                        saved_params)
-
-
-# for check_vars_and_dump tools end
+    return try_load_model_vars(dump_dir, dump_prog_fn, is_text_dump_program,
+                               batch_size, feed_config, fetch_config,
+                               save_filename, saved_params)
 
 
 def parse_program(program, output_dir):

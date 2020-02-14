@@ -79,6 +79,17 @@ class FleetDistRunnerBase(object):
         elif args.mode == "geo":
             self.strategy = StrategyFactory.create_geo_strategy(
                 args.geo_sgd_need_push_nums)
+        self.dump_param = os.getenv("dump_param", "").split(",")
+        self.dump_fields = os.getenv("dump_fields", "").split(",")
+        self.dump_fields_path = os.getenv("dump_fields_path", "")
+        debug = int(os.getenv("Debug", "0"))
+        if debug:
+            self.strategy.set_debug_info({
+                "dump_param": self.dump_param,
+                "dump_fields": self.dump_fields,
+                "dump_fields_path": self.dump_fields_path
+            })
+
         return self.strategy
 
     def build_optimizer(self, avg_cost, strategy):

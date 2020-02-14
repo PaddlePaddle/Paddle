@@ -1561,7 +1561,6 @@ class FleetUtil(object):
         utils.graphviz(program.global_block(), output_dir, output_name)
 
     def check_two_programs(self, config):
-        """检查裁剪前后program中vars是否一致"""
         train_prog = utils.load_program(config.train_prog_path,
                                         config.is_text_train_program)
         pruned_prog = utils.load_program(config.pruned_prog_path,
@@ -1580,14 +1579,36 @@ class FleetUtil(object):
         return res
 
     def check_vars_and_dump(self, config):
-        # 检查saved vars和pruned program是否对应
         _logger.info("start check_vars_and_dump.")
-        utils.check_saved_vars_try_dump(
+        results = utils.check_saved_vars_try_dump(
             config.dump_model_dir, config.dump_program_filename,
             config.is_text_dump_program, config.feed_config,
             config.fetch_config, config.batch_size, config.save_params_filename)
         _logger.info("check_vars_and_dump succeed.")
+        return results
 
     def parse_program_proto(self, prog_path, is_text, output_dir):
+        """
+        Parse program.proto into a more readable format. 
+        This function will generate three files: 
+        output_dir/vars_all.log,
+        output_dir/vars_persistable.log,
+        output_dir/ops.log.
+
+        Args:
+            prog_path(str): proto file path to be parsed.
+            is_text(bool): proto file is human-readale format or not(binary).
+            output_dir(str): output dir.
+
+        Examples:
+            .. code-block:: python
+
+              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              fleet_util = FleetUtil()
+              program_path = "./program.pbtxt"
+              is_text = True
+              output_dir = "/tmp/"
+              fleet_util.parse_program_proto(program_path, is_text, output_dir)
+        """
         program = utils.load_program(prog_path, is_text)
         utils.parse_program(program, output_dir)
