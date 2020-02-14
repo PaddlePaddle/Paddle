@@ -32,11 +32,7 @@ include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}protobuf/include")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}glog/include")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}gflags/include")
 include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}xxhash/include")
-include_directories("${PADDLE_LIB_THIRD_PARTY_PATH}zlib/include")
-include_directories("${PADDLE_LIB}/third_party/boost")
-include_directories("${PADDLE_LIB}/third_party/eigen3")
 
-link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}zlib/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}protobuf/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}glog/lib")
 link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}gflags/lib")
@@ -137,12 +133,12 @@ if (NOT WIN32)
   set(EXTERNAL_LIB "-lrt -ldl -lpthread")
   set(DEPS ${DEPS}
       ${MATH_LIB} ${MKLDNN_LIB} ${NGRAPH_LIB}
-      glog gflags protobuf z xxhash
+      glog gflags protobuf  xxhash
       ${EXTERNAL_LIB})
 else()
   set(DEPS ${DEPS}
       ${MATH_LIB} ${MKLDNN_LIB}
-      glog gflags_static libprotobuf zlibstatic xxhash ${EXTERNAL_LIB})
+      glog gflags_static libprotobuf  xxhash ${EXTERNAL_LIB})
   set(DEPS ${DEPS} libcmt shlwapi.lib)
 endif(NOT WIN32)
 

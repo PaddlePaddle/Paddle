@@ -15,7 +15,8 @@
 INCLUDE(ExternalProject)
 
 SET(MKLDNN_PROJECT        "extern_mkldnn")
-SET(MKLDNN_PREFIX_DIR    ${THIRD_PARTY_PATH}/mkldnn)
+SET(MKLDNN_PREFIX_DIR     ${THIRD_PARTY_PATH}/mkldnn)
+SET(MKLDNN_SOURCE_DIR     ${THIRD_PARTY_PATH}/mkldnn/src/extern_mkldnn)
 SET(MKLDNN_INSTALL_DIR    ${THIRD_PARTY_PATH}/install/mkldnn)
 SET(MKLDNN_INC_DIR        "${MKLDNN_INSTALL_DIR}/include" CACHE PATH "mkldnn include directory." FORCE)
 SET(MKLDNN_REPOSITORY     https://github.com/intel/mkl-dnn.git)
@@ -35,18 +36,36 @@ SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${MKLDNN_INSTALL_DIR}/${LIBDIR
 
 INCLUDE_DIRECTORIES(${MKLDNN_INC_DIR}) # For MKLDNN code to include internal headers.
 
+IF(${CBLAS_PROVIDER} STREQUAL "MKLML")
+    SET(MKLDNN_DEPENDS   ${MKLML_PROJECT})
+    MESSAGE(STATUS "Build MKLDNN with MKLML ${MKLML_ROOT}")
+ELSE()
+    MESSAGE(STATUS "Build MKLDNN without MKLML")
+ENDIF()
+
 IF(NOT WIN32)
     SET(MKLDNN_FLAG "-Wno-error=strict-overflow -Wno-error=unused-result -Wno-error=array-bounds")
     SET(MKLDNN_FLAG "${MKLDNN_FLAG} -Wno-unused-result -Wno-unused-value")
     SET(MKLDNN_CFLAG "${CMAKE_C_FLAGS} ${MKLDNN_FLAG}")
     SET(MKLDNN_CXXFLAG "${CMAKE_CXX_FLAGS} ${MKLDNN_FLAG}")
+
+    IF(${CBLAS_PROVIDER} STREQUAL "MKLML")
+    # Force libmkldnn.so to link libiomp5.so (provided by intel mkl) instead of libgomp.so (provided by gcc),
+    # since core_avx.so links libiomp5.so 
+        set(MKLDNN_SHARED_LINKER_FLAG "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-as-needed -L${MKLML_LIB_DIR} -liomp5")
+        set(FORBID "-fopenmp")
+    ELSE()
+        set(MKLDNN_SHARED_LINKER_FLAG "${CMAKE_SHARED_LINKER_FLAGS}")
+        set(FORBID "")        
+    ENDIF()
 ELSE()
     SET(MKLDNN_CXXFLAG "${CMAKE_CXX_FLAGS} /EHsc")
 ENDIF(NOT WIN32)
 
 cache_third_party(${MKLDNN_PROJECT}
     REPOSITORY    ${MKLDNN_REPOSITORY}
-    TAG           ${MKLDNN_TAG})
+    TAG           ${MKLDNN_TAG}
+    DIR           MKLDNN_SOURCE_DIR)
 
 ExternalProject_Add(
     ${MKLDNN_PROJECT}
@@ -72,6 +91,8 @@ ExternalProject_Add(
                         -DCMAKE_C_FLAGS=${MKLDNN_CFLAG}
                         -DCMAKE_CXX_FLAGS=${MKLDNN_CXXFLAG}
                         -DDNNL_BUILD_TESTS=OFF -DDNNL_BUILD_EXAMPLES=OFF
+                        -DCMAKE_SHARED_LINKER_FLAGS=${MKLDNN_SHARED_LINKER_FLAG}
+                        -DCMAKE_CXX_CREATE_SHARED_LIBRARY_FORBIDDEN_FLAGS=${FORBID}
     CMAKE_CACHE_ARGS    -DCMAKE_INSTALL_PREFIX:PATH=${MKLDNN_INSTALL_DIR}
 )
 if(WIN32)

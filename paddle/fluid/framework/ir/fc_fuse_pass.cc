@@ -165,4 +165,5 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(fc_fuse_pass, paddle::framework::ir::FCFusePass);
+REGISTER_PASS(fc_fuse_pass, paddle::framework::ir::FCFusePass)
+    .RequirePassAttr("use_gpu");

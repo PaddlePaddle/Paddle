@@ -41,13 +41,14 @@ ELSE()
     SET(MKLML_SHARED_IOMP_LIB     ${MKLML_LIB_DIR}/libiomp5.so)
 ENDIF()
 
-SET(MKLML_PROJECT       "extern_mklml")
-MESSAGE(STATUS "MKLML_VER: ${MKLML_VER}, MKLML_URL: ${MKLML_URL}")
-SET(MKLML_PREFIX_DIR    "${THIRD_PARTY_PATH}/mklml")
+SET(MKLML_PROJECT           "extern_mklml")
+MESSAGE(STATUS      "MKLML_VER: ${MKLML_VER}, MKLML_URL: ${MKLML_URL}")
+SET(MKLML_PREFIX_DIR        ${THIRD_PARTY_PATH}/mklml)
+SET(MKLML_SOURCE_DIR        ${THIRD_PARTY_PATH}/mklml/src/extern_mklml)
 
 cache_third_party(${MKLML_PROJECT}
     URL           ${MKLML_URL}
-    DIR           ${MKLML_PREFIX_DIR})
+    DIR           MKLML_SOURCE_DIR)
 
 ExternalProject_Add(
     ${MKLML_PROJECT}

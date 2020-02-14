@@ -189,17 +189,17 @@ cc_library(executor_gc_helper SRCS executor_gc_helper.cc DEPS scope proto_desc o
 if(WITH_DISTRIBUTE)
   cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
-  data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc
+  data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc downpour_worker_opt.cc
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto trainer_desc_proto glog fs shell fleet_wrapper lodtensor_printer
-  lod_rank_table feed_fetch_method sendrecvop_rpc collective_helper ${GLOB_DISTRIBUTE_DEPS}
+  lod_rank_table feed_fetch_method sendrecvop_rpc communicator collective_helper ${GLOB_DISTRIBUTE_DEPS}
   graph_to_program_pass variable_helper data_feed_proto ${NGRAPH_EXE_DEPS} timer)
 set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
 set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 else()
   cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
-  data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc
+  data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc downpour_worker_opt.cc
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto data_feed_proto trainer_desc_proto glog
   lod_rank_table fs shell fleet_wrapper lodtensor_printer feed_fetch_method
@@ -214,6 +214,7 @@ cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         graph build_strategy
         fast_threaded_ssa_graph_executor variable_helper)
 
+cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS executor)
 cc_library(prune SRCS prune.cc DEPS framework_proto boost)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
 cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
@@ -262,14 +263,9 @@ message(STATUS "branch: ${PADDLE_BRANCH}")
 
 configure_file(commit.h.in commit.h)
 
-
 set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer)
-if(WIN32)
-  sep_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
-else(WIN32)
-  cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
-endif(WIN32)
 
+cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
 cc_library(paddle_framework_shared
     SHARED SRCS executor.cc operator.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/c/c_api.cc

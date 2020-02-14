@@ -110,7 +110,7 @@ class TensorRTEngine {
   void Build(const DescType& paddle_model);
 
   void Execute(int batch_size, std::vector<void*>* buffers,
-               cudaStream_t stream);
+               cudaStream_t stream = nullptr);
 
   // Initialize the inference network, so that TensorRT layers can add to this
   // network.
@@ -160,9 +160,9 @@ class TensorRTEngine {
   }
 
   nvinfer1::IExecutionContext* context() {
-    std::unique_lock<std::mutex> lock(mutex_);
     const std::thread::id tid = std::this_thread::get_id();
     if (infer_context_.find(tid) == infer_context_.end()) {
+      std::unique_lock<std::mutex> lock(mutex_);
       PADDLE_ENFORCE_NOT_NULL(
           infer_engine_,
           "You should build engine first and then set the context.");

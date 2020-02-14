@@ -20,14 +20,13 @@ from .tensor import assign, cast, fill_constant
 from .. import core
 from ..framework import Program, Variable, Operator
 from ..layer_helper import LayerHelper, unique_name
-from ..initializer import force_init_on_cpu
 from .nn import logical_and, logical_not, logical_or
 from .utils import assert_same_structure, map_structure
 import numpy
 import warnings
 import six
 from functools import reduce, partial
-from ..data_feeder import convert_dtype, check_type_and_dtype
+from ..data_feeder import convert_dtype, check_variable_and_dtype
 from ... import compat as cpt
 from ..backward import _infer_var_data_type_shape_
 
@@ -258,9 +257,9 @@ def Print(input,
                data: 3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3, 
                
     '''
-    check_type_and_dtype(input, 'input', Variable,
-                         ['float32', 'float64', 'int32', 'int64', 'bool'],
-                         'fluid.layers.Print')
+    check_variable_and_dtype(input, 'input',
+                             ['float32', 'float64', 'int32', 'int64', 'bool'],
+                             'fluid.layers.Print')
 
     helper = LayerHelper('print' + "_" + input.name, **locals())
     output = helper.create_variable_for_type_inference(input.dtype)
@@ -829,6 +828,10 @@ class While(object):
     """
     while loop control flow. Repeat while body until cond is False.
 
+    Note:
+        A new OP :ref:`api_fluid_layers_while_loop` is highly recommended instead of ``While`` if the shape of parameter ``cond`` is [1].
+        OP :ref:`api_fluid_layers_while_loop` is easier to use and is called with less code but does the same thing as ``While`` .
+
     Args:
         cond(Variable): A Tensor whose data type is bool controlling whether to continue looping.
         is_test(bool, optional): A flag indicating whether execution is in test phase. Default value is False.
@@ -927,15 +930,15 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
 
     Args:
         cond(Callable): A callable returning a boolean tensor controlling whether to continue looping.
-        body(Callable): A callable returning a tuple or list of tensors of the same arity (length and structure)
-            and types as ``loops_vars`` .
-        loop_vars(list|tuple): A list or tuple of tensors that is passed to both ``cond`` and ``body`` .
+        body(Callable): A callable returning a tuple or list of tensors and LoDTensorArrays of the same arity
+            (length and structure) and types as ``loops_vars`` .
+        loop_vars(list|tuple): A list or tuple of tensors and LoDTensorArrays that is passed to both ``cond`` and ``body`` .
         is_test(bool, optional): A flag indicating whether execution is in test phase. Default value is False.
         name(str, optional): Normally there is no need for users to set this property. For more information, please
             refer to :ref:`api_guide_Name`. Default is None.
     
     Returns:
-        A list or tuple of tensors which returned by ``body`` .
+        A list or tuple of tensors and LoDTensorArrays which returned by ``body`` .
     
     Returen type:
         list(Variable)|tuple(Variable).
@@ -963,7 +966,6 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
 
             main_program = fluid.default_main_program()
             startup_program = fluid.default_startup_program()
-
             with fluid.program_guard(main_program, startup_program):
                 i = layers.fill_constant(shape=[1], dtype='int64', value=0)     # loop counter
                 ten = layers.fill_constant(shape=[1], dtype='int64', value=10)  # loop length
@@ -997,15 +999,12 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
     while_loop_block = While(pre_cond, is_test, name)
     with while_loop_block.block():
         output_vars = body(*loop_vars)
+        map_structure(assign, output_vars, loop_vars)
         if len(loop_vars) == 1:
-            assign(output_vars, loop_vars[0])
             now_cond = cond(output_vars)
         else:
-            for i in range(len(output_vars)):
-                assign(output_vars[i], loop_vars[i])
             now_cond = cond(*output_vars)
         assign(now_cond, pre_cond)
-
     return loop_vars
 
 
@@ -1340,8 +1339,6 @@ def less_than(x, y, force_cpu=None, cond=None):
     attrs = dict()
     if force_cpu is not None:
         attrs['force_cpu'] = force_cpu
-    elif force_init_on_cpu():
-        attrs['force_cpu'] = force_init_on_cpu()
 
     helper.append_op(
         type='less_than',
@@ -1384,8 +1381,6 @@ def less_equal(x, y, cond=None):
         cond.stop_gradient = True
 
     attrs = dict()
-    if force_init_on_cpu():
-        attrs['force_cpu'] = force_init_on_cpu()
 
     helper.append_op(
         type='less_equal',
@@ -1427,8 +1422,6 @@ def greater_than(x, y, cond=None):
         cond.stop_gradient = True
 
     attrs = dict()
-    if force_init_on_cpu():
-        attrs['force_cpu'] = force_init_on_cpu()
 
     helper.append_op(
         type='greater_than',
@@ -1472,8 +1465,6 @@ def greater_equal(x, y, cond=None):
         cond.stop_gradient = True
 
     attrs = dict()
-    if force_init_on_cpu():
-        attrs['force_cpu'] = force_init_on_cpu()
 
     helper.append_op(
         type='greater_equal',
@@ -2210,6 +2201,10 @@ class Switch(object):
     If there is no case branch that satisfies the condition, 
     only the statement following the default branch is executed.
 
+    Note:
+        A new OP :ref:`api_fluid_layers_case` is highly recommended instead of ``Switch`` if the shape of parameter ``cond`` is [1].
+        OP :ref:`api_fluid_layers_case` is easier to use and is called with less code but does the same thing as ``Switch`` .
+
     Member Functions:
         case(cond): The case branch of Switch whose parameter cond is a scalar Variable of bool type. Only if the cond of the current case branch is True and the cond of the previous case branch is False, the statement after the case branch will be executed, and the statement after the case branch will not be executed.
         
@@ -2354,6 +2349,10 @@ class IfElse(object):
     This class is used to implement IfElse branch control function. IfElse contains two blocks, true_block and false_block. IfElse will put data satisfying True or False conditions into different blocks to run.
 
     Cond is a 2-D Tensor with shape [N, 1] and data type bool, representing the execution conditions of the corresponding part of the input data.
+
+    Note:
+        A new OP :ref:`api_fluid_layers_cond` is highly recommended instead of ``IfElse``. if the shape of parameter ``cond`` is [1].
+        OP :ref:`api_fluid_layers_cond` is easier to use and is called with less code but does the same thing as ``IfElse`` .
 
     IfElse OP is different from other OPs in usage, which may cause some users confusion. Here is a simple example to illustrate this OP.
 

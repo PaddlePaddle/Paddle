@@ -23,7 +23,7 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-enum EventType { kMark, kPushRange, kPopRange };
+enum class EventType { kMark, kPushRange, kPopRange };
 
 class Event {
  public:
@@ -32,8 +32,11 @@ class Event {
   Event(EventType type, std::string name, uint32_t thread_id);
 
   const EventType& type() const;
+  Event* parent() const { return parent_; }
+  void set_parent(Event* parent) { parent_ = parent; }
   std::string name() const { return name_; }
   uint32_t thread_id() const { return thread_id_; }
+  void set_name(std::string name) { name_ = name; }
 
 #ifdef PADDLE_WITH_CUDA
 #ifndef PADDLE_WITH_CUPTI
@@ -47,9 +50,11 @@ class Event {
 
  private:
   EventType type_;
-  std::string name_;
+  std::string name_{};
+  Event* parent_{nullptr};
   uint32_t thread_id_;
   int64_t cpu_ns_;
+  bool visited_status_{false};
 #ifdef PADDLE_WITH_CUDA
 #ifdef PADDLE_WITH_CUPTI
   int64_t gpu_ns_ = 0;

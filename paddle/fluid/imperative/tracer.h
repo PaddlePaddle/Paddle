@@ -87,10 +87,7 @@ class Tracer {
 
   platform::Place ExpectedPlace() const { return expected_place_; }
 
-  template <typename PlaceType>
-  void SetExpectedPlace(PlaceType place) {
-    expected_place_ = place;
-  }
+  void SetExpectedPlace(platform::Place place) { expected_place_ = place; }
 
   bool NoGrad() const { return no_grad_; }
 

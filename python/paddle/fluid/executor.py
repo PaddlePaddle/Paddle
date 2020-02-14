@@ -792,9 +792,15 @@ class Executor(object):
             program = default_main_program()
         if isinstance(program, Program) and \
                         len(program.global_block().ops) == 0:
-            error_info = "The current program is empty."
             if use_default_main_program:
-                error_info += " Maybe you should pass the Program or the CompiledProgram manually."
+                error_info = "Now you are using default_main_program, "\
+                    "but there are no operators in the program to be executed. "\
+                    "Please ensure you create model correctly or you can pass "\
+                    "the Program or the CompiledProgram manually."
+            else:
+                error_info = "There are no operators in the program to be executed. "\
+                    "If you pass Program manually, please use fluid.program_guard "\
+                    "to ensure the current Program is being used."
             warnings.warn(error_info)
 
         if scope is None:
@@ -957,6 +963,7 @@ class Executor(object):
                     program._pipeline_opt)
             else:
                 trainer = TrainerFactory()._create_trainer(program._fleet_opt)
+                trainer._set_thread_barrier(program._is_distributed)
             trainer._set_program(program)
         else:
             if program._pipeline_opt:
