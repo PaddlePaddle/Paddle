@@ -138,4 +138,7 @@ class TestFleetUtils(unittest.TestCase):
 
 if __name__ == '__main__':
     download_files()
+    os.system("ls ./")
+    os.system("ls ./fleet_util_data")
+    os.system("ls ./fleet_util_data_tmp")
     unittest.main()
