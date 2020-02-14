@@ -878,8 +878,9 @@ PYBIND11_MODULE(core_noavx, m) {
               throw std::runtime_error(
                   "LoDTensor is not on shared memory."
                   "Now only LoDTensor on shared memory can be serialized.");
+            int type_idx = static_cast<int>(t.type());
 
-            return py::make_tuple(holder->ipc_name(), holder->size(), t.type(),
+            return py::make_tuple(holder->ipc_name(), holder->size(), type_idx,
                                   vectorize(t.dims()), t.lod());
           },
           [](py::tuple t) {  // __setstate__
@@ -900,7 +901,7 @@ PYBIND11_MODULE(core_noavx, m) {
 
             // 3. Rebuild LoDTensor
             tensor.ResetHolderWithType(shared_holder,
-                                       t[2].cast<proto::VarType::Type>());
+                static_cast<proto::VarType::Type>(t[2].cast<int>()));
             tensor.Resize(make_ddim(t[3].cast<std::vector<int>>()));
             tensor.set_lod(t[4].cast<framework::LoD>());
 
