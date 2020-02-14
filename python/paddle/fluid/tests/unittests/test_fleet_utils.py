@@ -19,24 +19,29 @@ import unittest
 import numpy as np
 import tarfile
 import os
+from paddle.dataset.common import download, DATA_HOME
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 from paddle.fluid.incubate.fleet.utils.fleet_barrier_util import check_all_trainers_ready
 from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
 import paddle.fluid.incubate.fleet.utils.utils as utils
 
-DATA_URL = "https://fleet.bj.bcebos.com/fleet_util_data.tgz"
-DATA_MD5 = "8f49f582aee0821898fb79c8b7bd8a21"
-
-
-def download_files():
-    path = paddle.dataset.common.download(DATA_URL, "fleet_util_data_tmp",
-                                          DATA_MD5)
-    tar = tarfile.open(path, "r:gz")
-    tar.extractall()
-
 
 class TestFleetUtils(unittest.TestCase):
+    proto_data_url = "https://fleet.bj.bcebos.com/fleet_util_data.tgz"
+    proto_data_md5 = "8f49f582aee0821898fb79c8b7bd8a21"
+    module_name = "fleet_util_data"
+
+    def download_files(self):
+        download(self.proto_data_url, self.module_name, self.proto_data_md5)
+        file_name = self.proto_data_url.split('/')[-1]
+        cache_folder = os.path.join(DATA_HOME, self.module_name)
+        file_path = os.path.join(cache_folder, file_name)
+        print('data is downloaded at ' + file_path)
+        tar = tarfile.open(file_path)
+        tar.extractall(cache_folder)
+        return cache_folder
+
     def test_fleet_barrier(self):
         role = role_maker.UserDefinedRoleMaker(
             current_id=0,
@@ -47,9 +52,12 @@ class TestFleetUtils(unittest.TestCase):
         check_all_trainers_ready("/ready_path/", 0)
 
     def test_parse_program_proto(self):
-        parse_program_file_path = "fleet_util_data/pruned_model/pruned_main_program.pbtxt"
+        data_dir = self.download_files()
+        parse_program_file_path = os.path.join(
+            data_dir, "fleet_util_data/pruned_model/pruned_main_program.pbtxt")
         is_text_parse_program = True
-        parse_output_dir = "fleet_util_data/pruned_model"
+        parse_output_dir = os.path.join(data_dir,
+                                        "fleet_util_data/pruned_model")
         fleet_util = FleetUtil()
         fleet_util.parse_program_proto(parse_program_file_path,
                                        is_text_parse_program, parse_output_dir)
@@ -62,6 +70,8 @@ class TestFleetUtils(unittest.TestCase):
         self.assertTrue(os.path.exists(vars_persistable))
 
     def test_check_vars_and_dump(self):
+        data_dir = self.download_files()
+
         class config:
             pass
 
@@ -70,8 +80,8 @@ class TestFleetUtils(unittest.TestCase):
         feed_config.feeded_vars_dims = [682, 1199]
         feed_config.feeded_vars_types = [np.float32, np.float32]
         feed_config.feeded_vars_filelist = [
-            "fleet_util_data/pruned_model/concat_1",
-            "fleet_util_data/pruned_model/concat_2"
+            os.path.join(data_dir, "fleet_util_data/pruned_model/concat_1"),
+            os.path.join(data_dir, "fleet_util_data/pruned_model/concat_2")
         ]
 
         fetch_config = config()
@@ -81,7 +91,8 @@ class TestFleetUtils(unittest.TestCase):
         conf.batch_size = 1
         conf.feed_config = feed_config
         conf.fetch_config = fetch_config
-        conf.dump_model_dir = "fleet_util_data/pruned_model"
+        conf.dump_model_dir = os.path.join(data_dir,
+                                           "fleet_util_data/pruned_model")
         conf.dump_program_filename = "pruned_main_program.pbtxt"
         conf.is_text_dump_program = True
         conf.save_params_filename = None
@@ -97,13 +108,17 @@ class TestFleetUtils(unittest.TestCase):
         self.assertTrue(len(results) == 1)
 
     def test_check_two_programs(self):
+        data_dir = self.download_files()
+
         class config:
             pass
 
         conf = config()
-        conf.train_prog_path = "fleet_util_data/train_program/join_main_program.pbtxt"
+        conf.train_prog_path = os.path.join(
+            data_dir, "fleet_util_data/train_program/join_main_program.pbtxt")
         conf.is_text_train_program = True
-        conf.pruned_prog_path = "fleet_util_data/pruned_model/pruned_main_program.pbtxt"
+        conf.pruned_prog_path = os.path.join(
+            data_dir, "fleet_util_data/pruned_model/pruned_main_program.pbtxt")
         conf.is_text_pruned_program = True
         conf.draw = True
         conf.draw_out_name = "pruned_check"
@@ -112,15 +127,12 @@ class TestFleetUtils(unittest.TestCase):
         self.assertTrue(res)
 
     def test_draw_program(self):
-        download_files()
-        os.system("ls ./")
-        os.system("ls ./fleet_util_data")
-        os.system("ls ./fleet_util_data_tmp")
-
-        program_path = "fleet_util_data/train_program/join_main_program.pbtxt"
+        data_dir = self.download_files()
+        program_path = os.path.join(
+            data_dir, "fleet_util_data/train_program/join_main_program.pbtxt")
         is_text = True
         program = utils.load_program(program_path, is_text)
-        output_dir = "fleet_util_data/train_program"
+        output_dir = os.path.join(data_dir, "fleet_util_data/train_program")
         output_filename_1 = "draw_prog_1"
         output_filename_2 = "draw_prog_2"
         fleet_util = FleetUtil()
@@ -142,8 +154,4 @@ class TestFleetUtils(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    download_files()
-    os.system("ls ./")
-    os.system("ls ./fleet_util_data")
-    os.system("ls ./fleet_util_data_tmp")
     unittest.main()
