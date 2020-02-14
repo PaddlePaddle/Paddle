@@ -27,16 +27,12 @@ import paddle.fluid.incubate.fleet.utils.utils as utils
 
 DATA_URL = "https://fleet.bj.bcebos.com/fleet_util_data.tgz"
 DATA_MD5 = "8f49f582aee0821898fb79c8b7bd8a21"
-DATA_PATH = ""
 
 
 def download_files():
-    global DATA_PATH
-    DATA_PATH = paddle.dataset.common.download(DATA_URL, "fleet_util_data",
-                                               DATA_MD5)
-    tar = tarfile.open(DATA_PATH, "r:gz")
-    DATA_PATH = os.path.dirname(DATA_PATH)
-    tar.extractall(DATA_PATH)
+    path = paddle.dataset.common.download(DATA_URL, "fleet_util_data", DATA_MD5)
+    tar = tarfile.open(path, "r:gz")
+    tar.extractall()
 
 
 class TestFleetUtils(unittest.TestCase):
@@ -50,12 +46,9 @@ class TestFleetUtils(unittest.TestCase):
         check_all_trainers_ready("/ready_path/", 0)
 
     def test_parse_program_proto(self):
-        global DATA_PATH
-        parse_program_file_path = os.path.join(
-            DATA_PATH, "fleet_util_data/pruned_model/pruned_main_program.pbtxt")
+        parse_program_file_path = "fleet_util_data/pruned_model/pruned_main_program.pbtxt"
         is_text_parse_program = True
-        parse_output_dir = os.path.join(DATA_PATH,
-                                        "fleet_util_data/pruned_model")
+        parse_output_dir = "fleet_util_data/pruned_model"
         fleet_util = FleetUtil()
         fleet_util.parse_program_proto(parse_program_file_path,
                                        is_text_parse_program, parse_output_dir)
@@ -68,8 +61,6 @@ class TestFleetUtils(unittest.TestCase):
         self.assertTrue(os.path.exists(vars_persistable))
 
     def test_check_vars_and_dump(self):
-        global DATA_PATH
-
         class config:
             pass
 
@@ -78,8 +69,8 @@ class TestFleetUtils(unittest.TestCase):
         feed_config.feeded_vars_dims = [682, 1199]
         feed_config.feeded_vars_types = [np.float32, np.float32]
         feed_config.feeded_vars_filelist = [
-            os.path.join(DATA_PATH, 'fleet_util_data/pruned_model/concat_1'),
-            os.path.join(DATA_PATH, 'fleet_util_data/pruned_model/concat_2')
+            "fleet_util_data/pruned_model/concat_1",
+            "fleet_util_data/pruned_model/concat_2"
         ]
 
         fetch_config = config()
@@ -89,8 +80,7 @@ class TestFleetUtils(unittest.TestCase):
         conf.batch_size = 1
         conf.feed_config = feed_config
         conf.fetch_config = fetch_config
-        conf.dump_model_dir = os.path.join(DATA_PATH,
-                                           "fleet_util_data/pruned_model")
+        conf.dump_model_dir = "fleet_util_data/pruned_model"
         conf.dump_program_filename = "pruned_main_program.pbtxt"
         conf.is_text_dump_program = True
         conf.save_params_filename = None
@@ -106,17 +96,13 @@ class TestFleetUtils(unittest.TestCase):
         self.assertTrue(len(results) == 1)
 
     def test_check_two_programs(self):
-        global DATA_PATH
-
         class config:
             pass
 
         conf = config()
-        conf.train_prog_path = os.path.join(
-            DATA_PATH, "fleet_util_data/train_program/join_main_program.pbtxt")
+        conf.train_prog_path = "fleet_util_data/train_program/join_main_program.pbtxt"
         conf.is_text_train_program = True
-        conf.pruned_prog_path = os.path.join(
-            DATA_PATH, "fleet_util_data/pruned_model/pruned_main_program.pbtxt")
+        conf.pruned_prog_path = "fleet_util_data/pruned_model/pruned_main_program.pbtxt"
         conf.is_text_pruned_program = True
         conf.draw = True
         conf.draw_out_name = "pruned_check"
@@ -125,12 +111,10 @@ class TestFleetUtils(unittest.TestCase):
         self.assertTrue(res)
 
     def test_draw_program(self):
-        global DATA_PATH
-        program_path = os.path.join(
-            DATA_PATH, "fleet_util_data/train_program/join_main_program.pbtxt")
+        program_path = "fleet_util_data/train_program/join_main_program.pbtxt"
         is_text = True
         program = utils.load_program(program_path, is_text)
-        output_dir = os.path.join(DATA_PATH, "fleet_util_data/train_program")
+        output_dir = "fleet_util_data/train_program"
         output_filename_1 = "draw_prog_1"
         output_filename_2 = "draw_prog_2"
         fleet_util = FleetUtil()
