@@ -164,7 +164,7 @@ class SyncStrategy(DistributedStrategy):
         self._program_config.runtime_split_send_recv = False
         self._build_strategy.async_mode = False
 
-        num_threads = int(os.getenv("CPU_NUM", "1"))
+        num_threads = os.getenv("CPU_NUM", "1")
 
         self._trainer_runtime_config.runtime_configs[
             'communicator_max_merge_var_num'] = os.getenv(
@@ -187,8 +187,11 @@ class AsyncStrategy(DistributedStrategy):
         self._program_config.runtime_split_send_recv = True
         self._build_strategy.async_mode = True
 
-        num_threads = int(os.getenv("CPU_NUM", "1"))
+        num_threads = os.getenv("CPU_NUM", "1")
 
+        self._trainer_runtime_config.runtime_configs[
+            'communicator_max_merge_var_num'] = os.getenv(
+                "FLAGS_communicator_max_merge_var_num", num_threads)
         self._trainer_runtime_config.runtime_configs[
             'communicator_independent_recv_thread'] = os.getenv(
                 "FLAGS_communicator_independent_recv_thread", "0")
@@ -218,7 +221,7 @@ class HalfAsyncStrategy(DistributedStrategy):
         self._build_strategy.async_mode = True
         self._execute_strategy.use_thread_barrier = True
 
-        num_threads = int(os.getenv("CPU_NUM", "1"))
+        num_threads = os.getenv("CPU_NUM", "1")
 
         self._trainer_runtime_config.runtime_configs[
             'communicator_max_merge_var_num'] = os.getenv(
