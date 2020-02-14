@@ -129,7 +129,7 @@ def split(reader, line_count, suffix="%05d.pickle", dumper=pickle.dump):
     """
     you can call the function as:
 
-    split(paddle.dataset.cifar.train10(), line_count=1000,
+    split(paddle.dataset.cigar.train10(), line_count=1000,
         suffix="imikolov-train-%05d.pickle")
 
     the output files as:

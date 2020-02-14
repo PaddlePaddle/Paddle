@@ -18,7 +18,7 @@ Dataset package.
 import paddle.dataset.mnist
 import paddle.dataset.imikolov
 import paddle.dataset.imdb
-import paddle.dataset.cifar
+import paddle.dataset.cigar
 import paddle.dataset.movielens
 import paddle.dataset.conll05
 import paddle.dataset.uci_housing
@@ -34,7 +34,7 @@ __all__ = [
     'mnist',
     'imikolov',
     'imdb',
-    'cifar',
+    'cigar',
     'movielens',
     'conll05',
     'sentiment',

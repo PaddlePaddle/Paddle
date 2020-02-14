@@ -124,7 +124,7 @@ class DataLoader(object):
                 presented as a list. It is only valid when iterable=True. 
                 If return_list=False, the return value on each device would 
                 be a dict of str -> LoDTensor, where the key of the dict is 
-                the name of each feeded variables. If return_list=True, the 
+                the name of each fed variables. If return_list=True, the 
                 return value on each device would be a list(LoDTensor). It is
                 recommended to use return_list=False in static graph mode and
                 use return_list=True in dygraph mode.  
@@ -877,7 +877,7 @@ class PyReader(DataLoaderBase):
             presented as a list. It is only valid when iterable=True. 
             If return_list=False, the return value on each device would 
             be a dict of str -> LoDTensor, where the key of the dict is 
-            the name of each feeded variables. If return_list=True, the 
+            the name of each fed variables. If return_list=True, the 
             return value on each device would be a list(LoDTensor). It is
             recommended to use return_list=False in static graph mode and
             use return_list=True in dygraph mode. 

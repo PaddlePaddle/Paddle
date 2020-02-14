@@ -219,7 +219,7 @@ def save_vars(executor,
     variables that make `predicate(variable) == True`. The first way has a higher priority.
 
     The `dirname` is used to specify the folder where to save variables.
-    If you prefer to save variables in separate files in the `dirname` floder,
+    If you prefer to save variables in separate files in the `dirname` folder,
     do not set `filename`. If you prefer to save all variables in a single file,
     use `filename` to specify it.
 
@@ -435,7 +435,7 @@ def _save_distributed_persistables(executor, dirname, main_program):
 
     def __save_remote_params(executor, dirname, remote_params_map):
         """
-        recive params on pserver through rpc.
+        receive params on pserver through rpc.
         if the params are be sliced, will concat them to one, then save it.
         """
         if not remote_params_map:
@@ -571,7 +571,7 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
                             You can refer to :ref:`api_guide_executor_en` for 
                             more details.
         dirname(str): The saving directory path.
-        main_program(Program, optional): The program whose persistbale variables will
+        main_program(Program, optional): The program whose persistable variables will
                                          be saved. You can refer to 
                                          :ref:`api_guide_Program_en` for more details.
                                          If it is None, the default main program will 
@@ -835,7 +835,7 @@ def load_persistables(executor, dirname, main_program=None, filename=None):
     """
     This API filters out all variables with ``persistable==True`` from the
     given ``main_program`` and then tries to load these variables from the
-    directory ``dirnameme`` or the file ``filename``.
+    directory ``dirname`` or the file ``filename``.
 
     Use the ``dirname`` to specify the directory where persistable variables
     (refer to :ref:`api_guide_model_save_reader_en`) were saved. If variables
@@ -846,7 +846,7 @@ def load_persistables(executor, dirname, main_program=None, filename=None):
         executor(Executor): The executor used for loading persistable variables.
                             See :ref:`api_guide_executor_en` for more details about it.
         dirname(str): The directory path.
-        main_program(Program, optional): The program whose persistbale variables will
+        main_program(Program, optional): The program whose persistable variables will
                                     be loaded. If it is None, the ``default_main_program``
                                     will be used automatically. See :ref:`api_guide_Program_en`
                                     for more about ``Program``.
@@ -1020,7 +1020,7 @@ def append_fetch_ops(inference_program,
 
 
 def save_inference_model(dirname,
-                         feeded_var_names,
+                         fed_var_names,
                          target_vars,
                          executor,
                          main_program=None,
@@ -1043,21 +1043,21 @@ def save_inference_model(dirname,
 
     Args:
         dirname(str): The directory path to save the inference model.
-        feeded_var_names(list[str]): list of string. Names of variables that need to be feeded
+        fed_var_names(list[str]): list of string. Names of variables that need to be fed
                                      data during inference.
         target_vars(list[Variable]): list of Variable. Variables from which we can get 
                                      inference results.
         executor(Executor): The executor that saves the inference model. You can refer 
                             to :ref:`api_guide_executor_en` for more details.
         main_program(Program, optional): The original program, which will be pruned to
-                                         build the inference model. If is setted None,
+                                         build the inference model. If is set None,
                                          the global default :code:`_main_program_` will be used.
                                          Default: None.
         model_filename(str, optional): The name of file to save the inference program
-                                       itself. If is setted None, a default filename
+                                       itself. If is set None, a default filename
                                        :code:`__model__` will be used.
         params_filename(str, optional): The name of file to save all related parameters.
-                                        If it is setted None, parameters will be saved
+                                        If it is set None, parameters will be saved
                                         in separate files .
         export_for_deployment(bool): If True, programs are modified to only support
                                      direct inference deployment. Otherwise,
@@ -1086,7 +1086,7 @@ def save_inference_model(dirname,
 
             path = "./infer_model"
 
-            # User defined network, here a softmax regresssion example
+            # User defined network, here a softmax regession example
             image = fluid.data(name='img', shape=[None, 28, 28], dtype='float32')
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
             feeder = fluid.DataFeeder(feed_list=[image, label], place=fluid.CPUPlace())
@@ -1102,7 +1102,7 @@ def save_inference_model(dirname,
 
             # Save inference model. Note we don't save label and loss in this example
             fluid.io.save_inference_model(dirname=path,
-                                          feeded_var_names=['img'],
+                                          fed_var_names=['img'],
                                           target_vars=[predict],
                                           executor=exe)
 
@@ -1113,14 +1113,14 @@ def save_inference_model(dirname,
             # "./infer_model".
 
     """
-    if isinstance(feeded_var_names, six.string_types):
-        feeded_var_names = [feeded_var_names]
+    if isinstance(fed_var_names, six.string_types):
+        fed_var_names = [fed_var_names]
     elif export_for_deployment:
-        if len(feeded_var_names) > 0:
+        if len(fed_var_names) > 0:
             # TODO(paddle-dev): polish these code blocks
-            if not (bool(feeded_var_names) and all(
+            if not (bool(fed_var_names) and all(
                     isinstance(name, six.string_types)
-                    for name in feeded_var_names)):
+                    for name in fed_var_names)):
                 raise ValueError("'feed_var_names' should be a list of str.")
 
     if isinstance(target_vars, Variable):
@@ -1191,11 +1191,11 @@ def save_inference_model(dirname,
         main_program.desc.flush()
 
         main_program = main_program._prune_with_input(
-            feeded_var_names=feeded_var_names, targets=target_vars)
+            fed_var_names=fed_var_names, targets=target_vars)
         main_program = main_program._inference_optimize(prune_read_op=True)
         fetch_var_names = [v.name for v in target_vars]
 
-        prepend_feed_ops(main_program, feeded_var_names)
+        prepend_feed_ops(main_program, fed_var_names)
         append_fetch_ops(main_program, fetch_var_names)
 
         main_program.desc._set_version()
@@ -1287,7 +1287,7 @@ def load_inference_model(dirname,
 
             # Save the inference model
             path = "./infer_model"
-            fluid.io.save_inference_model(dirname=path, feeded_var_names=['img'],
+            fluid.io.save_inference_model(dirname=path, fed_var_names=['img'],
                          target_vars=[hidden_b], executor=exe, main_program=main_prog)
 
             # Demo one. Not need to set the distributed look up table, because the
@@ -1408,7 +1408,7 @@ def get_parameter_value_by_name(name, executor, program=None):
     Raises:
         TypeError: If given `name` is not an instance of basestring.
         TypeError: If the parameter with the given name doesn't exist.
-        AssertionError: If there is a varibale named `name` in the
+        AssertionError: If there is a variable named `name` in the
                         given program but it is not a Parameter.
 
     Examples:

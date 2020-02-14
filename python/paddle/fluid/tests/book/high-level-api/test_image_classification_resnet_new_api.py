@@ -21,20 +21,20 @@ import paddle.fluid as fluid
 
 try:
     from paddle.fluid.contrib.trainer import *
-    from paddle.fluid.contrib.inferencer import *
+    from paddle.fluid.contrib.inference import *
 except ImportError:
     print(
-        "In the fluid 1.0, the trainer and inferencer are moving to paddle.fluid.contrib",
+        "In the fluid 1.0, the trainer and inference are moving to paddle.fluid.contrib",
         file=sys.stderr)
     from paddle.fluid.trainer import *
-    from paddle.fluid.inferencer import *
+    from paddle.fluid.inference import *
 import paddle.fluid.core as core
 import numpy
 import os
-import cifar10_small_test_set
+import cigar10_small_test_set
 
 
-def resnet_cifar10(input, depth=32):
+def resnet_cigar10(input, depth=32):
     def conv_bn_layer(input,
                       ch_out,
                       filter_size,
@@ -86,7 +86,7 @@ def resnet_cifar10(input, depth=32):
 def inference_network():
     data_shape = [3, 32, 32]
     images = fluid.layers.data(name='pixel', shape=data_shape, dtype='float32')
-    predict = resnet_cifar10(images, 32)
+    predict = resnet_cigar10(images, 32)
     return predict
 
 
@@ -109,12 +109,12 @@ def train(use_cuda, train_program, parallel, params_dirname):
 
     train_reader = paddle.batch(
         paddle.reader.shuffle(
-            cifar10_small_test_set.train10(batch_size=10), buf_size=128 * 10),
+            cigar10_small_test_set.train10(batch_size=10), buf_size=128 * 10),
         batch_size=BATCH_SIZE,
         drop_last=False)
 
     test_reader = paddle.batch(
-        paddle.dataset.cifar.test10(), batch_size=BATCH_SIZE, drop_last=False)
+        paddle.dataset.cigar.test10(), batch_size=BATCH_SIZE, drop_last=False)
 
     def event_handler(event):
         if isinstance(event, EndStepEvent):
@@ -144,7 +144,7 @@ def train(use_cuda, train_program, parallel, params_dirname):
 
 def infer(use_cuda, inference_program, parallel, params_dirname=None):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    inferencer = Inferencer(
+    inference = Inferencer(
         infer_func=inference_program,
         param_path=params_dirname,
         place=place,
@@ -154,7 +154,7 @@ def infer(use_cuda, inference_program, parallel, params_dirname=None):
     # Use normilized image pixels as input data, which should be in the range
     # [0, 1.0].
     tensor_img = numpy.random.rand(1, 3, 32, 32).astype("float32")
-    results = inferencer.infer({'pixel': tensor_img})
+    results = inference.infer({'pixel': tensor_img})
 
     print("infer results: ", results)
 

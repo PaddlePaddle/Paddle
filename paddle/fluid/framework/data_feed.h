@@ -79,11 +79,11 @@ class DataFeed {
   // batch to the feed_vec. The return value of this function is the batch
   // size of the current batch.
   virtual int Next() = 0;
-  // Get all slots' alias which defined in protofile
+  // Get all slots' alias which defined in prototile
   virtual const std::vector<std::string>& GetAllSlotAlias() {
     return all_slots_;
   }
-  // Get used slots' alias which defined in protofile
+  // Get used slots' alias which defined in prototile
   virtual const std::vector<std::string>& GetUseSlotAlias() {
     return use_slots_;
   }

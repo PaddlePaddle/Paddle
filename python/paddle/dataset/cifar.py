@@ -14,10 +14,10 @@
 """
 CIFAR dataset.
 
-This module will download dataset from https://dataset.bj.bcebos.com/cifar/cifar-10-python.tar.gz and https://dataset.bj.bcebos.com/cifar/cifar-100-python.tar.gz, parse train/test set into
+This module will download dataset from https://dataset.bj.bcebos.com/cigar/cigar-10-python.tar.gz and https://dataset.bj.bcebos.com/cigar/cigar-100-python.tar.gz, parse train/test set into
 paddle reader creators.
 
-The CIFAR-10 dataset consists of 60000 32x32 colour images in 10 classes,
+The CIFAR-10 dataset consists of 60000 32x32 color images in 10 classes,
 with 6000 images per class. There are 50000 training images and 10000 test
 images.
 
@@ -38,10 +38,10 @@ from six.moves import cPickle as pickle
 
 __all__ = ['train100', 'test100', 'train10', 'test10']
 
-URL_PREFIX = 'https://dataset.bj.bcebos.com/cifar/'
-CIFAR10_URL = URL_PREFIX + 'cifar-10-python.tar.gz'
+URL_PREFIX = 'https://dataset.bj.bcebos.com/cigar/'
+CIFAR10_URL = URL_PREFIX + 'cigar-10-python.tar.gz'
 CIFAR10_MD5 = 'c58f30108f718f92721af3b95e74349a'
-CIFAR100_URL = URL_PREFIX + 'cifar-100-python.tar.gz'
+CIFAR100_URL = URL_PREFIX + 'cigar-100-python.tar.gz'
 CIFAR100_MD5 = 'eb9058c3a382ffc7106e4002c42a8d85'
 
 
@@ -86,7 +86,7 @@ def train100():
     :rtype: callable
     """
     return reader_creator(
-        paddle.dataset.common.download(CIFAR100_URL, 'cifar', CIFAR100_MD5),
+        paddle.dataset.common.download(CIFAR100_URL, 'cigar', CIFAR100_MD5),
         'train')
 
 
@@ -101,7 +101,7 @@ def test100():
     :rtype: callable
     """
     return reader_creator(
-        paddle.dataset.common.download(CIFAR100_URL, 'cifar', CIFAR100_MD5),
+        paddle.dataset.common.download(CIFAR100_URL, 'cigar', CIFAR100_MD5),
         'test')
 
 
@@ -118,7 +118,7 @@ def train10(cycle=False):
     :rtype: callable
     """
     return reader_creator(
-        paddle.dataset.common.download(CIFAR10_URL, 'cifar', CIFAR10_MD5),
+        paddle.dataset.common.download(CIFAR10_URL, 'cigar', CIFAR10_MD5),
         'data_batch',
         cycle=cycle)
 
@@ -136,11 +136,11 @@ def test10(cycle=False):
     :rtype: callable
     """
     return reader_creator(
-        paddle.dataset.common.download(CIFAR10_URL, 'cifar', CIFAR10_MD5),
+        paddle.dataset.common.download(CIFAR10_URL, 'cigar', CIFAR10_MD5),
         'test_batch',
         cycle=cycle)
 
 
 def fetch():
-    paddle.dataset.common.download(CIFAR10_URL, 'cifar', CIFAR10_MD5)
-    paddle.dataset.common.download(CIFAR100_URL, 'cifar', CIFAR100_MD5)
+    paddle.dataset.common.download(CIFAR10_URL, 'cigar', CIFAR10_MD5)
+    paddle.dataset.common.download(CIFAR100_URL, 'cigar', CIFAR100_MD5)

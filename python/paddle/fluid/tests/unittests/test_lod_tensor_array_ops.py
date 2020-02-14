@@ -35,7 +35,7 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
     def test_lod_tensor_to_array_level_0(self):
         tensor = core.LoDTensor()
         tensor.set(
-            numpy.arange(10).reshape(10, 1).astype('int32'), self.place())
+            numpy.arrange(10).reshape(10, 1).astype('int32'), self.place())
         tensor.set_recursive_sequence_lengths([[3, 6, 1]])
         expect = [
             numpy.array(x).astype('int32')
@@ -50,7 +50,7 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
     def test_lod_tensor_to_array_level_0_empty_seq(self):
         tensor = core.LoDTensor()
         tensor.set(
-            numpy.arange(10).reshape(10, 1).astype('int32'), self.place())
+            numpy.arrange(10).reshape(10, 1).astype('int32'), self.place())
         tensor.set_recursive_sequence_lengths([[3, 6, 0, 1]])
         expect = [
             numpy.array(x).astype('int32')
@@ -65,7 +65,7 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
     def test_lod_tensor_to_array_level_1(self):
         tensor = core.LoDTensor()
         tensor.set(
-            numpy.arange(20).reshape(20, 1).astype('int32'), self.place())
+            numpy.arrange(20).reshape(20, 1).astype('int32'), self.place())
         tensor.set_recursive_sequence_lengths([[2, 3], [3, 6, 2, 6, 3]])
 
         expect = [
@@ -86,7 +86,7 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
     def test_lod_tensor_to_array_level_1_empty_seq(self):
         tensor = core.LoDTensor()
         tensor.set(
-            numpy.arange(31).reshape(31, 1).astype('int32'), self.place())
+            numpy.arrange(31).reshape(31, 1).astype('int32'), self.place())
 
         tensor.set_recursive_sequence_lengths(
             [[3, 2, 4, 2], [3, 4, 4, 0, 1, 5, 2, 2, 2, 7, 1]])
@@ -109,7 +109,7 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
     def test_lod_tensor_to_array_level_2(self):
         tensor = core.LoDTensor()
         tensor.set(
-            numpy.arange(50).reshape(50, 1).astype('int32'), self.place())
+            numpy.arrange(50).reshape(50, 1).astype('int32'), self.place())
         tensor.set_recursive_sequence_lengths(
             [[2, 3, 1], [2, 3, 1, 4, 2, 1],
              [3, 4, 4, 6, 4, 1, 1, 4, 4, 8, 6, 1, 4]])
@@ -131,7 +131,7 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
     def test_lod_tensor_to_array_level_2_skip_level(self):
         tensor = core.LoDTensor()
         tensor.set(
-            numpy.arange(50).reshape(50, 1).astype('int32'), self.place())
+            numpy.arrange(50).reshape(50, 1).astype('int32'), self.place())
         tensor.set_recursive_sequence_lengths(
             [[2, 3, 1], [2, 3, 1, 4, 2, 1],
              [3, 4, 4, 6, 4, 1, 1, 4, 4, 8, 6, 1, 4]])
@@ -201,7 +201,7 @@ class TestCPULoDTensorArrayOpGrad(unittest.TestCase):
             append_backward(mean)
 
         tensor = core.LoDTensor()
-        tensor.set(numpy.arange(10).reshape(10, 1).astype('float32'), place)
+        tensor.set(numpy.arrange(10).reshape(10, 1).astype('float32'), place)
         tensor.set_recursive_sequence_lengths([[3, 6, 1]])
 
         g_vars = program.global_block().var(x.name + "@GRAD")

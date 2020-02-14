@@ -164,8 +164,8 @@ def dimension_is_compatible_with(first, second):
 
     A dimension is compatible with the other if:
     1. The length of the dimensions are same.
-    2. Each non-negative number of the two dimentions are same.
-    3. For negative number or 'None' in a dimention, it means unknown so it
+    2. Each non-negative number of the two dimensions are same.
+    3. For negative number or 'None' in a dimension, it means unknown so it
        is compatible with any number.
 
     Args:
@@ -196,17 +196,17 @@ def dimension_is_compatible_with(first, second):
 def check_feed_shape_type(var, feed, num_places=1):
     """
     Returns True if the variable doesn't require feed check or it is compatible
-    with the shape and have same dtype as the feeded value.
+    with the shape and have same dtype as the fed value.
 
     A dimension is compatible with the other if:
     1. The length of the dimensions are same.
-    2. Each non-negative number of the two dimentions are same.
-    3. For negative number or 'None' in a dimention, it means unknown so it
+    2. Each non-negative number of the two dimensions are same.
+    3. For negative number or 'None' in a dimension, it means unknown so it
        is compatible with any number.
     
     Args:
         var (Variable): the Variable object
-        feed (LoDTensor): the feeded value, which must be a LoDTensor
+        feed (LoDTensor): the fed value, which must be a LoDTensor
         num_places: an integer value indicating the number of places.
             ParallelExecutor will divide data into devices (CPU/GPU) evenly.
     Returns:
@@ -225,8 +225,8 @@ def check_feed_shape_type(var, feed, num_places=1):
                                 num_places) if len(feed.lod()) == 0 else -1
         if not dimension_is_compatible_with(feed_shape, var.shape):
             raise ValueError(
-                'The feeded Variable %r should have dimensions = %d, shape = '
-                '%r, but received feeded shape %r on each device' %
+                'The fed Variable %r should have dimensions = %d, shape = '
+                '%r, but received fed shape %r on each device' %
                 (var.name, len(var.shape), var.shape, feed_shape))
         if not dtype_is_compatible_with(feed._dtype(), var.dtype):
             var_dtype_format = convert_dtype(var.dtype) if isinstance(
@@ -234,7 +234,7 @@ def check_feed_shape_type(var, feed, num_places=1):
             feed_dtype_format = convert_dtype(feed._dtype()) if isinstance(
                 feed._dtype(), core.VarDesc.VarType) else feed._dtype()
             raise ValueError(
-                'The data type of feeded Variable %r must be %r, but received %r'
+                'The data type of fed Variable %r must be %r, but received %r'
                 % (var.name, var_dtype_format, feed_dtype_format))
     return True
 

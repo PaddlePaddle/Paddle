@@ -138,7 +138,7 @@ class PruneStrategy(Strategy):
         """
         Pruning parameters in given axis.
         Args:
-            scope(fluid.core.Scope): The scope storing paramaters to be pruned.
+            scope(fluid.core.Scope): The scope storing parameters to be pruned.
             params(VarWrapper): The parameter to be pruned.
             pruned_idx(list): The index of elements to be pruned.
             pruned_axis(int): The pruning axis.
@@ -262,7 +262,7 @@ class PruneStrategy(Strategy):
         Pruning all the parameters affected by the pruning of given parameter.
         Args:
             graph(GraphWrapper): The graph to be searched.
-            scope(fluid.core.Scope): The scope storing paramaters to be pruned.
+            scope(fluid.core.Scope): The scope storing parameters to be pruned.
             param(VarWrapper): The given parameter.
             place(fluid.Place): The device place of filter parameters.
             ratio(float): The target ratio to be pruned.
@@ -441,7 +441,7 @@ class PruneStrategy(Strategy):
         Pruning the given parameters.
         Args:
             graph(GraphWrapper): The graph to be searched.
-            scope(fluid.core.Scope): The scope storing paramaters to be pruned.
+            scope(fluid.core.Scope): The scope storing parameters to be pruned.
             params(list<str>): A list of parameter names to be pruned.
             ratios(list<float>): A list of ratios to be used to pruning parameters.
             place(fluid.Place): The device place of filter parameters.
@@ -741,12 +741,12 @@ class SensitivePruneStrategy(PruneStrategy):
 
     def _format_sensitivities(self, sensitivities):
         """
-        Print formated sensitivities in debug log level.
+        Print formatted sensitivities in debug log level.
         """
         tb = pt.PrettyTable()
         tb.field_names = ["parameter", "size"] + [
             str(round(i, 2))
-            for i in np.arange(self.delta_rate, 1, self.delta_rate)
+            for i in np.arrange(self.delta_rate, 1, self.delta_rate)
         ]
         for param in sensitivities:
             if len(sensitivities[param]['loss']) == (len(tb.field_names) - 2):

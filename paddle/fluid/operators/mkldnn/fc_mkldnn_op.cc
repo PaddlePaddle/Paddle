@@ -57,7 +57,7 @@ class FCPrimitiveFactory {
     auto in_col_dims = ctx.Attr<int>("in_num_col_dims");
     PADDLE_ENFORCE_LE(in_col_dims, 2,
                       platform::errors::Unimplemented(
-                          "DNNL FC doesn't support in_num_col_dims paramter to "
+                          "DNNL FC doesn't support in_num_col_dims parameter to "
                           "be higher than "
                           "2."));
     if (in_col_dims == 2) {

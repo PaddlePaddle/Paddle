@@ -22,13 +22,13 @@ import paddle.fluid as fluid
 import sys
 try:
     from paddle.fluid.contrib.trainer import *
-    from paddle.fluid.contrib.inferencer import *
+    from paddle.fluid.contrib.inference import *
 except ImportError:
     print(
-        "In the fluid 1.0, the trainer and inferencer are moving to paddle.fluid.contrib",
+        "In the fluid 1.0, the trainer and inference are moving to paddle.fluid.contrib",
         file=sys.stderr)
     from paddle.fluid.trainer import *
-    from paddle.fluid.inferencer import *
+    from paddle.fluid.inference import *
 import paddle.fluid.layers as layers
 import paddle.fluid.nets as nets
 
@@ -218,7 +218,7 @@ def train(use_cuda, train_program, params_dirname):
 
 def infer(use_cuda, inference_program, params_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    inferencer = Inferencer(
+    inference = Inferencer(
         inference_program, param_path=params_dirname, place=place)
 
     # Use the first data from paddle.dataset.movielens.test() as input.
@@ -243,7 +243,7 @@ def infer(use_cuda, inference_program, params_dirname):
         [np.array(
             [1069, 4140, 2923, 710, 988], dtype='int64')], [[5]], place)
 
-    results = inferencer.infer(
+    results = inference.infer(
         {
             'user_id': user_id,
             'gender_id': gender_id,

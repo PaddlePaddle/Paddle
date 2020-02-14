@@ -105,7 +105,7 @@ void TensorRTEngine::FreezeNetwork() {
       for (auto &t : all_t) {
         if (!quant_dynamic_range_.count(t)) {
           VLOG(3)
-              << "We are in trt int8 mode(not calibration), scale not setted"
+              << "We are in trt int8 mode(not calibration), scale not set"
               << " for tensor " << t->getName()
               << ", this might be ok when trt does not need this range";
         }

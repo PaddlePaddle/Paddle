@@ -40,7 +40,7 @@ def cuda_profiler(output_file, output_mode=None, config=None):
     """
     The CUDA profiler.
     
-    This fuctions is used to profile CUDA program by CUDA runtime application
+    This functions is used to profile CUDA program by CUDA runtime application
     programming interface. The profiling result will be written into
     `output_file`. The users can set the output mode by `output_mode` argument 
     and set the nvidia profiling config by `config` argument. 
@@ -279,7 +279,7 @@ def profiler(state, sorted_key=None, profile_path='/tmp/profile'):
 
             #### Examples Results ####
             #### 1) sorted_key = 'total', 'calls', 'max', 'min', 'ave' ####
-            # The only difference in 5 sorted_key results is the following sentense: 
+            # The only difference in 5 sorted_key results is the following sentence: 
             # "Sorted by number of xxx in descending order in the same thread."
             # The reason is that in this example, above 5 columns are already sorted.
             ------------------------->     Profiling Report     <-------------------------

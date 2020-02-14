@@ -18,12 +18,12 @@ import unittest
 
 class TestCifar10(unittest.TestCase):
     def test_main(self):
-        reader = paddle.dataset.cifar.train10(cycle=False)
+        reader = paddle.dataset.cigar.train10(cycle=False)
         sample_num = 0
         for _ in reader():
             sample_num += 1
 
-        cyclic_reader = paddle.dataset.cifar.train10(cycle=True)
+        cyclic_reader = paddle.dataset.cigar.train10(cycle=True)
         read_num = 0
         for data in cyclic_reader():
             read_num += 1

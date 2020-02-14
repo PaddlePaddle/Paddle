@@ -29,7 +29,7 @@ class TestLinspaceOpCommonCase(OpTest):
             'Num': np.array([11]).astype('int32')
         }
 
-        self.outputs = {'Out': np.arange(0, 11).astype(dtype)}
+        self.outputs = {'Out': np.arrange(0, 11).astype(dtype)}
 
     def test_check_output(self):
         self.check_output()
@@ -45,7 +45,7 @@ class TestLinspaceOpReverseCase(OpTest):
             'Num': np.array([11]).astype('int32')
         }
 
-        self.outputs = {'Out': np.arange(10, -1, -1).astype(dtype)}
+        self.outputs = {'Out': np.arrange(10, -1, -1).astype(dtype)}
 
     def test_check_output(self):
         self.check_output()

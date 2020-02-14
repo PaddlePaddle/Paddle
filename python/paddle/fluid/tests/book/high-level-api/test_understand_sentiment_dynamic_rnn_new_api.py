@@ -19,13 +19,13 @@ import paddle.fluid as fluid
 import sys
 try:
     from paddle.fluid.contrib.trainer import *
-    from paddle.fluid.contrib.inferencer import *
+    from paddle.fluid.contrib.inference import *
 except ImportError:
     print(
-        "In the fluid 1.0, the trainer and inferencer are moving to paddle.fluid.contrib",
+        "In the fluid 1.0, the trainer and inference are moving to paddle.fluid.contrib",
         file=sys.stderr)
     from paddle.fluid.trainer import *
-    from paddle.fluid.inferencer import *
+    from paddle.fluid.inference import *
 from functools import partial
 import numpy as np
 
@@ -144,7 +144,7 @@ def infer(use_cuda, inference_program, params_dirname=None):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     word_dict = paddle.dataset.imdb.word_dict()
 
-    inferencer = Inferencer(
+    inference = Inferencer(
         infer_func=partial(inference_program, word_dict),
         param_path=params_dirname,
         place=place)
@@ -164,7 +164,7 @@ def infer(use_cuda, inference_program, params_dirname=None):
     # The range of random integers is [low, high]
     tensor_words = fluid.create_random_int_lodtensor(
         recursive_seq_lens, base_shape, place, low=0, high=len(word_dict) - 1)
-    results = inferencer.infer({'words': tensor_words})
+    results = inference.infer({'words': tensor_words})
     print("infer results: ", results)
 
 

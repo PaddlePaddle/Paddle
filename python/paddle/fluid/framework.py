@@ -458,7 +458,7 @@ def name_scope(prefix=None):
     if in_dygraph_mode():
         yield
     else:
-        assert prefix, "namescope prefix cannot be empty."
+        assert prefix, "namescope prefix canot be empty."
         global _name_scope
         _name_scope = _name_scope.child(prefix)
         yield
@@ -816,7 +816,7 @@ class Variable(object):
     There are many kinds of variables. Each kind of them has its own attributes
     and usages. Please refer to the `framework.proto <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/framework/framework.proto>`_ for details.
 
-    Most of a Variable's member variables can be setted to be None. It mean
+    Most of a Variable's member variables can be set to be None. It mean
     it is not available or will be specified later.
 
     Examples:
@@ -838,7 +838,7 @@ class Variable(object):
             import numpy as np
 
             with fluid.dygraph.guard():
-                new_variable = fluid.dygraph.to_variable(np.arange(10))
+                new_variable = fluid.dygraph.to_variable(np.arrange(10))
 
     """
 
@@ -949,7 +949,7 @@ class Variable(object):
     def detach(self):
         """
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Returns a new Variable, detached from the current graph.
 
@@ -979,7 +979,7 @@ class Variable(object):
     def numpy(self):
         """
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Returns a numpy array shows the value of current :ref:`api_guide_Variable_en`
 
@@ -1011,7 +1011,7 @@ class Variable(object):
     def set_value(self, value):
         """
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Set a new value for this Variable.
 
@@ -1042,7 +1042,7 @@ class Variable(object):
     def backward(self, backward_strategy=None):
         """
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Run backward of current Graph which starts from current Variable
 
@@ -1080,7 +1080,7 @@ class Variable(object):
     def gradient(self):
         """
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Get the Gradient of Current Variable
 
@@ -1114,7 +1114,7 @@ class Variable(object):
                         size=[20, 32],
                         param_attr='emb.w',
                         is_sparse=True)
-                    x_data = np.arange(12).reshape(4, 3).astype('int64')
+                    x_data = np.arrange(12).reshape(4, 3).astype('int64')
                     x_data = x_data.reshape((-1, 3, 1))
                     x = fluid.dygraph.base.to_variable(x_data)
                     out = embedding(x)
@@ -1128,7 +1128,7 @@ class Variable(object):
     def clear_gradient(self):
         """
         **Notes**:
-            **1. This API is ONLY avaliable in Dygraph mode**
+            **1. This API is ONLY available in Dygraph mode**
 
             **2. Use it only Variable has gradient, normally we use this for Parameters since other temporal Variable will be deleted by Python's GC**
 
@@ -1223,9 +1223,9 @@ class Variable(object):
             import numpy as np
 
             with fluid.dygraph.guard():
-                value0 = np.arange(26).reshape(2, 13).astype("float32")
-                value1 = np.arange(6).reshape(2, 3).astype("float32")
-                value2 = np.arange(10).reshape(2, 5).astype("float32")
+                value0 = np.arrange(26).reshape(2, 13).astype("float32")
+                value1 = np.arrange(6).reshape(2, 3).astype("float32")
+                value2 = np.arrange(10).reshape(2, 5).astype("float32")
                 linear = fluid.Linear(13, 5, dtype="float32")
                 linear2 = fluid.Linear(3, 3, dtype="float32")
                 a = fluid.dygraph.to_variable(value0)
@@ -1495,7 +1495,7 @@ class Variable(object):
         if length < 0:
             raise ValueError("length should not be negative")
         if step == 0:
-            raise ValueError("slice step cannot be zero")
+            raise ValueError("slice step canot be zero")
 
         # Find lower and upper bounds for start and stop.
         lower = -1 if step < 0 else 0
@@ -2965,7 +2965,7 @@ class IrVarNode(IrNode):
             shape(list): shape to be set.
         """
         assert self.node.var() is not None, \
-            "The node variable description cannot be None."
+            "The node variable description canot be None."
         self.node.var().set_shape(shape)
 
     def persistable(self):
@@ -2976,7 +2976,7 @@ class IrVarNode(IrNode):
             bool: indicate whether the variable is persistable.
         """
         assert self.node.var() is not None, \
-            "The node variable description cannot be None."
+            "The node variable description canot be None."
         return self.node.var().persistable()
 
     def type(self):
@@ -2987,7 +2987,7 @@ class IrVarNode(IrNode):
             core.VarDesc.VarType: the variable type.
         """
         assert self.node.var() is not None, \
-            "The node variable description cannot be None."
+            "The node variable description canot be None."
         return self.node.var().type()
 
     def dtype(self):
@@ -2998,7 +2998,7 @@ class IrVarNode(IrNode):
             core.VarDesc.VarType: the variable data type.
         """
         assert self.node.var() is not None, \
-            "The node variable description cannot be None."
+            "The node variable description canot be None."
         return self.node.var().dtype()
 
     def shape(self):
@@ -3009,7 +3009,7 @@ class IrVarNode(IrNode):
             list: the variable shape.
         """
         assert self.node.var() is not None, \
-            "The node variable description cannot be None."
+            "The node variable description canot be None."
         return self.node.var().shape()
 
     @property
@@ -3059,7 +3059,7 @@ class IrOpNode(IrNode):
             new_input_name(str): the new input name.
         """
         assert self.node.op() is not None, \
-            "The node operator description cannot be None."
+            "The node operator description canot be None."
         self.node.op()._rename_input(old_input_name, new_input_name)
 
     def rename_output(self, old_output_name, new_output_name):
@@ -3071,7 +3071,7 @@ class IrOpNode(IrNode):
             new_output_name(str): the new output name.
         """
         assert self.node.op() is not None, \
-            "The node operator description cannot be None."
+            "The node operator description canot be None."
         print("op: {}, old: {}, new: {}\n".format(self.node.op().type(
         ), old_output_name, new_output_name))
         self.node.op()._rename_output(old_output_name, new_output_name)
@@ -3087,7 +3087,7 @@ class IrOpNode(IrNode):
             list(str): the argument name list.
         """
         assert self.node.op() is not None, \
-            "The node operator description cannot be None."
+            "The node operator description canot be None."
         return self.node.op().input(name)
 
     def output(self, name):
@@ -3101,7 +3101,7 @@ class IrOpNode(IrNode):
             list(str): the argument name list.
         """
         assert self.node.op() is not None, \
-            "The node operator description cannot be None."
+            "The node operator description canot be None."
         return self.node.op().output(name)
 
     def set_type(self, new_type):
@@ -3112,7 +3112,7 @@ class IrOpNode(IrNode):
             new_type(str): new operator type to be set.
         """
         assert self.node.op() is not None, \
-            "The node operator description cannot be None."
+            "The node operator description canot be None."
         return self.node.op().set_type(new_type)
 
     def set_attr(self, name, val):
@@ -3130,7 +3130,7 @@ class IrOpNode(IrNode):
         Update the value of the op desc's attribute by attribute's name.
         """
         assert self.node.op() is not None, \
-            "The node operator description cannot be None."
+            "The node operator description canot be None."
         desc = self.node.op()
         if isinstance(val, Block):
             desc.set_block_attr(name, val.desc)
@@ -3151,7 +3151,7 @@ class IrOpNode(IrNode):
             list(str): input arguments' names of this op node.
         """
         assert self.node.op() is not None, \
-            "The node operator description cannot be None."
+            "The node operator description canot be None."
         return self.node.op().input_arg_names()
 
     def output_arg_names(self):
@@ -3162,7 +3162,7 @@ class IrOpNode(IrNode):
             list(str): output arguments' names of this op node.
         """
         assert self.node.op() is not None, \
-            "The node operator description cannot be None."
+            "The node operator description canot be None."
         return self.node.op().output_arg_names()
 
     @property
@@ -3318,7 +3318,7 @@ class IrGraph(object):
             op_type(str): the type of the operator node.
             attrs(dict): the attributes of the operator node.
             inputs(dict): the inputs of the operator node.
-            outputs(dict): the outpus of the operator node.
+            outputs(dict): the outputs of the operator node.
 
         Returns:
             IrOpNode: the created operator node.
@@ -3459,7 +3459,7 @@ class IrGraph(object):
         """
         Perform the topology sort operation on the graph.
 
-        Notes: the `graph` cannot contain a circle.
+        Notes: the `graph` canot contain a circle.
 
         Returns:
             list(IrNode): nodes in topology order.
@@ -3805,9 +3805,9 @@ class Program(object):
 
                 prog = fluid.default_main_program()
                 prog_string = prog.to_string(throw_on_error=True, with_details=False)
-                print("program string without detial: {}".format(prog_string))
+                print("program string without detail: {}".format(prog_string))
                 prog_string_with_detail = prog.to_string(throw_on_error=True, with_details=True)
-                print("program string with detial: {}".format(prog_string_with_detail))
+                print("program string with detail: {}".format(prog_string_with_detail))
         """
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
                                                                bool)
@@ -3851,7 +3851,7 @@ class Program(object):
 
         Some operators, e.g., :ref:`api_fluid_layers_batch_norm` , behave differently between
         training and testing. They have an attribute, :code:`is_test`, to
-        control this behaviour. This method will change the :code:`is_test`
+        control this behavior. This method will change the :code:`is_test`
         attribute of them to :code:`True` when :code:`for_test=True`.
 
         * Set for_test to False when we want to clone the program for training.
@@ -4606,7 +4606,7 @@ class Parameter(Variable):
             Default: {'learning_rate': 1.0}
         regularizer(WeightDecayRegularizer): The Regularizer which will
             be applied on the parameter. Default: None
-        gradient_clip_attr(BaseGradientClipAttr): The gradint clip strategy
+        gradient_clip_attr(BaseGradientClipAttr): The gradient clip strategy
             which will be applied on the parameter. Default: None
         do_model_average(bool): True if the model average strategy will
             be applied on this parameter.
@@ -4712,7 +4712,7 @@ class ParamBase(core.VarBase):
             Default: {'learning_rate': 1.0}
         regularizer(WeightDecayRegularizer): The Regularizer which will
             be applied on the ParamBase. Default: None
-        gradient_clip_attr(BaseGradientClipAttr): The gradint clip strategy
+        gradient_clip_attr(BaseGradientClipAttr): The gradient clip strategy
             which will be applied on the ParamBase. Default: None
         do_model_average(bool): True if the model average strategy will
             be applied on this ParamBase.
@@ -5022,7 +5022,7 @@ def load_op_library(lib_filename):
     Load a dynamic library, including custom operators and kernels.
     When library is loaded, ops and kernels registered in the library
     will be available in PaddlePaddle main process.
-    Please note, the type of custom operators cann't have the same type
+    Please note, the type of custom operators can't have the same type
     with the existing operators in the framework.
 
     Args:

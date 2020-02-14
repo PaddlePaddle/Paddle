@@ -40,8 +40,8 @@ class TestRecurrentFeed(unittest.TestCase):
     def test_recurrent_feed(self):
 
         seed = 90
-        original_np1 = np.arange(1, 5).reshape(2, 2).astype("float32")
-        original_np2 = np.arange(5, 9).reshape(2, 2).astype("float32")
+        original_np1 = np.arrange(1, 5).reshape(2, 2).astype("float32")
+        original_np2 = np.arrange(5, 9).reshape(2, 2).astype("float32")
         with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed

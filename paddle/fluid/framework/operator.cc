@@ -648,7 +648,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
     PADDLE_ENFORCE_EQ(
         in_var_list.size(), out_var_list.size(),
         platform::errors::PreconditionNotMet(
-            "Op [%s]: Input var size should be equal with ouput var size",
+            "Op [%s]: Input var size should be equal with output var size",
             op_.Type()));
 
     auto& out_var_names = op_.Outputs(out);
@@ -947,11 +947,11 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   std::vector<KernelConfig>* kernel_configs = GetKernelConfig(*kernel_type_);
 
   // do data transformScope &transfer_scope;
-  std::vector<std::string> transfered_inplace_vars;
+  std::vector<std::string> transferred_inplace_vars;
   Scope* transfer_scope = nullptr;
   {
     platform::RecordEvent record_event("prepare_data_inner_op");
-    transfer_scope = PrepareData(scope, *kernel_type_, &transfered_inplace_vars,
+    transfer_scope = PrepareData(scope, *kernel_type_, &transferred_inplace_vars,
                                  runtime_ctx);
   }
   // exec scope is the scope that kernel actually executed on.
@@ -980,9 +980,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                      kernel_configs));
   }
 
-  if (!transfered_inplace_vars.empty()) {
-    // there is inplace variable has been transfered.
-    TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
+  if (!transferred_inplace_vars.empty()) {
+    // there is inplace variable has been transferred.
+    TransferInplaceVarsBack(scope, transferred_inplace_vars, *transfer_scope);
   }
   if (FLAGS_enable_unused_var_check) {
     // skip op that uses mkldnn because it has different memory reuse strategy.
@@ -1094,7 +1094,7 @@ void OperatorWithKernel::TransferInplaceVarsBack(
 
 Scope* OperatorWithKernel::PrepareData(
     const Scope& scope, const OpKernelType& expected_kernel_key,
-    std::vector<std::string>* transfered_inplace_vars,
+    std::vector<std::string>* transferred_inplace_vars,
     RuntimeContext* ctx) const {
   Scope* new_scope = nullptr;
 
@@ -1176,7 +1176,7 @@ Scope* OperatorWithKernel::PrepareData(
       auto out_var_names = OutputVars(true);
       if (std::find(out_var_names.begin(), out_var_names.end(), var_name) !=
           out_var_names.end()) {
-        transfered_inplace_vars->emplace_back(var_name);
+        transferred_inplace_vars->emplace_back(var_name);
       }
 
       VLOG(3) << "Transform Variable " << var_name << " from "

@@ -148,8 +148,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
     def test_auto_prune(self):
         with fluid.dygraph.guard():
             case1 = AutoPruneLayer0(input_size=5)
-            value1 = np.arange(25).reshape(5, 5).astype("float32")
-            value2 = np.arange(25).reshape(5, 5).astype("float32")
+            value1 = np.arrange(25).reshape(5, 5).astype("float32")
+            value2 = np.arrange(25).reshape(5, 5).astype("float32")
             v1 = fluid.dygraph.to_variable(value1)
             v2 = fluid.dygraph.to_variable(value2)
             loss = case1(v1, v2)
@@ -160,8 +160,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
     def test_auto_prune2(self):
         with fluid.dygraph.guard():
             case2 = AutoPruneLayer1(input_size=5)
-            value1 = np.arange(25).reshape(5, 5).astype("float32")
-            value2 = np.arange(25).reshape(5, 5).astype("float32")
+            value1 = np.arrange(25).reshape(5, 5).astype("float32")
+            value2 = np.arrange(25).reshape(5, 5).astype("float32")
             v1 = fluid.dygraph.to_variable(value1)
             v2 = fluid.dygraph.to_variable(value2)
             loss = case2(v1, v2)
@@ -173,8 +173,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
     def test_auto_prune3(self):
         with fluid.dygraph.guard():
             case3 = AutoPruneLayer3(input_size=784)
-            value1 = np.arange(784).reshape(1, 784).astype("float32")
-            value2 = np.arange(1).reshape(1, 1).astype("int64")
+            value1 = np.arrange(784).reshape(1, 784).astype("float32")
+            value2 = np.arrange(1).reshape(1, 1).astype("int64")
             v1 = fluid.dygraph.to_variable(value1)
             v2 = fluid.dygraph.to_variable(value2)
             loss, part2 = case3(v1, v2, 1)
@@ -185,8 +185,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
     def test_auto_prune4(self):
         with fluid.dygraph.guard():
             case4 = AutoPruneLayer3(input_size=784)
-            value1 = np.arange(784).reshape(1, 784).astype("float32")
-            value2 = np.arange(1).reshape(1, 1).astype("int64")
+            value1 = np.arrange(784).reshape(1, 784).astype("float32")
+            value2 = np.arrange(1).reshape(1, 1).astype("int64")
             v1 = fluid.dygraph.to_variable(value1)
             v2 = fluid.dygraph.to_variable(value2)
             loss, part2 = case4(v1, v2, 1)
@@ -197,8 +197,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
     def test_auto_prune5(self):
         with fluid.dygraph.guard():
             case4 = AutoPruneLayer3(input_size=784)
-            value1 = np.arange(784).reshape(1, 784).astype("float32")
-            value2 = np.arange(1).reshape(1, 1).astype("int64")
+            value1 = np.arrange(784).reshape(1, 784).astype("float32")
+            value2 = np.arrange(1).reshape(1, 1).astype("int64")
             v1 = fluid.dygraph.to_variable(value1)
             v2 = fluid.dygraph.to_variable(value2)
             loss, part1, part2 = case4(v1, v2, 2)
@@ -208,9 +208,9 @@ class TestImperativeAutoPrune(unittest.TestCase):
 
     def test_auto_prune6(self):
         with fluid.dygraph.guard():
-            value0 = np.arange(26).reshape(2, 13).astype("float32")
-            value1 = np.arange(6).reshape(2, 3).astype("float32")
-            value2 = np.arange(10).reshape(2, 5).astype("float32")
+            value0 = np.arrange(26).reshape(2, 13).astype("float32")
+            value1 = np.arrange(6).reshape(2, 3).astype("float32")
+            value2 = np.arrange(10).reshape(2, 5).astype("float32")
             linear = fluid.Linear(13, 5, dtype="float32")
             linear2 = fluid.Linear(3, 3, dtype="float32")
             a = fluid.dygraph.to_variable(value0)
@@ -226,9 +226,9 @@ class TestImperativeAutoPrune(unittest.TestCase):
 
     def test_auto_prune7(self):
         with fluid.dygraph.guard():
-            value0 = np.arange(26).reshape(2, 13).astype("float32")
-            value1 = np.arange(6).reshape(2, 3).astype("float32")
-            value2 = np.arange(10).reshape(2, 5).astype("float32")
+            value0 = np.arrange(26).reshape(2, 13).astype("float32")
+            value1 = np.arrange(6).reshape(2, 3).astype("float32")
+            value2 = np.arrange(10).reshape(2, 5).astype("float32")
             linear = fluid.Linear(13, 5, dtype="float32")
             linear2 = fluid.Linear(3, 3, dtype="float32")
             a = fluid.dygraph.to_variable(value0)
@@ -245,9 +245,9 @@ class TestImperativeAutoPrune(unittest.TestCase):
 
     def test_auto_prune8(self):
         with fluid.dygraph.guard():
-            value0 = np.arange(26).reshape(2, 13).astype("float32")
-            value1 = np.arange(6).reshape(2, 3).astype("float32")
-            value2 = np.arange(10).reshape(2, 5).astype("float32")
+            value0 = np.arrange(26).reshape(2, 13).astype("float32")
+            value1 = np.arrange(6).reshape(2, 3).astype("float32")
+            value2 = np.arrange(10).reshape(2, 5).astype("float32")
             linear = fluid.Linear(13, 5, dtype="float32")
             linear2 = fluid.Linear(5, 3, dtype="float32")
             a = fluid.dygraph.to_variable(value0)
@@ -270,9 +270,9 @@ class TestImperativeAutoPrune(unittest.TestCase):
 
     def test_auto_prune9(self):
         with fluid.dygraph.guard():
-            value0 = np.arange(26).reshape(2, 13).astype("float32")
-            value1 = np.arange(6).reshape(2, 3).astype("float32")
-            value2 = np.arange(10).reshape(2, 5).astype("float32")
+            value0 = np.arrange(26).reshape(2, 13).astype("float32")
+            value1 = np.arrange(6).reshape(2, 3).astype("float32")
+            value2 = np.arrange(10).reshape(2, 5).astype("float32")
             linear = fluid.Linear(13, 5, dtype="float32")
             linear2 = fluid.Linear(5, 3, dtype="float32")
             a = fluid.dygraph.to_variable(value0)
@@ -299,9 +299,9 @@ class TestImperativeAutoPrune(unittest.TestCase):
 
     def test_auto_prune10(self):
         with fluid.dygraph.guard():
-            value0 = np.arange(26).reshape(2, 13).astype("float32")
-            value1 = np.arange(6).reshape(2, 3).astype("float32")
-            value2 = np.arange(10).reshape(2, 5).astype("float32")
+            value0 = np.arrange(26).reshape(2, 13).astype("float32")
+            value1 = np.arrange(6).reshape(2, 3).astype("float32")
+            value2 = np.arrange(10).reshape(2, 5).astype("float32")
             linear = fluid.Linear(13, 5, dtype="float32")
             linear2 = fluid.Linear(3, 3, dtype="float32")
             a = fluid.dygraph.to_variable(value0)
@@ -367,8 +367,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
 
     def test_case2_prune_no_grad_branch(self):
         with fluid.dygraph.guard():
-            value1 = np.arange(784).reshape(1, 784)
-            value2 = np.arange(1).reshape(1, 1)
+            value1 = np.arrange(784).reshape(1, 784)
+            value2 = np.arrange(1).reshape(1, 1)
             v1 = fluid.dygraph.to_variable(value1).astype("float32")
             v2 = fluid.dygraph.to_variable(value2).astype("float32")
             case3 = AutoPruneLayer2(input_size=784)
@@ -379,8 +379,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
 
     def test_case2_prune_no_grad_branch(self):
         with fluid.dygraph.guard():
-            value1 = np.arange(784).reshape(1, 784)
-            value2 = np.arange(1).reshape(1, 1)
+            value1 = np.arrange(784).reshape(1, 784)
+            value2 = np.arrange(1).reshape(1, 1)
             v1 = fluid.dygraph.to_variable(value1).astype("float32")
             v2 = fluid.dygraph.to_variable(value2).astype("float32")
             case3 = AutoPruneLayer2(input_size=784)
@@ -391,7 +391,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
 
     def test_case3_prune_no_grad_branch2(self):
         with fluid.dygraph.guard():
-            value1 = np.arange(1).reshape(1, 1)
+            value1 = np.arrange(1).reshape(1, 1)
             linear = fluid.dygraph.Linear(1, 1, act=None)
             label = fluid.dygraph.to_variable(value1).astype("float32")
             label = linear(label)

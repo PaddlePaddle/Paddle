@@ -147,7 +147,7 @@ def basic_gru(input,
               num_layers=1,
               sequence_length=None,
               dropout_prob=0.0,
-              bidirectional=False,
+              bidirectionalalal=False,
               batch_first=True,
               param_attr=None,
               bias_attr=None,
@@ -156,7 +156,7 @@ def basic_gru(input,
               dtype='float32',
               name='basic_gru'):
     """
-    GRU implementation using basic operator, supports multiple layers and bidirection gru.
+    GRU implementation using basic operator, supports multiple layers and bidirectionalal gru.
 
     .. math::
             u_t & = actGate(W_ux xu_{t} + W_uh h_{t-1} + b_u)
@@ -181,9 +181,9 @@ def basic_gru(input,
         sequence_length (Variabe|None): A Tensor (shape [batch_size]) stores each real length of each instance,
                         This tensor will be convert to a mask to mask the padding ids
                         If it's None means NO padding ids
-        dropout_prob(float|0.0): Dropout prob, dropout ONLY works after rnn output of earch layers, 
+        dropout_prob(float|0.0): Dropout prob, dropout ONLY works after rnn output of each layers, 
                              NOT between time steps
-        bidirectional (bool|False): If it is bidirectional
+        bidirectionalalal (bool|False): If it is bidirectionalalal
         batch_first (bool|True): The shape format of the input and output tensors. If true,
             the shape format should be :attr:`[batch_size, seq_len, hidden_size]`. If false,
             the shape format should be :attr:`[seq_len, batch_size, hidden_size]`. By default
@@ -226,7 +226,7 @@ def basic_gru(input,
             hidden_size = 256
             num_layers = 2
             dropout = 0.5
-            bidirectional = True
+            bidirectionalalal = True
             batch_first = False
 
             input = layers.data( name = "input", shape = [-1, batch_size, input_size], dtype='float32')
@@ -235,7 +235,7 @@ def basic_gru(input,
 
 
             rnn_out, last_hidden = basic_gru( input, pre_hidden, hidden_size, num_layers = num_layers, \
-                    sequence_length = sequence_length, dropout_prob=dropout, bidirectional = bidirectional, \
+                    sequence_length = sequence_length, dropout_prob=dropout, bidirectionalalal = bidirectionalalal, \
                     batch_first = batch_first)
 
     """
@@ -247,7 +247,7 @@ def basic_gru(input,
         fw_unit_list.append(
             BasicGRUUnit(new_name, hidden_size, param_attr, bias_attr,
                          gate_activation, activation, dtype))
-    if bidirectional:
+    if bidirectionalalal:
         bw_unit_list = []
 
         for i in range(num_layers):
@@ -267,7 +267,7 @@ def basic_gru(input,
         mask = layers.transpose(mask, [1, 0])
 
     direc_num = 1
-    if bidirectional:
+    if bidirectionalalal:
         direc_num = 2
     if init_hidden:
         init_hidden = layers.reshape(
@@ -330,7 +330,7 @@ def basic_gru(input,
     fw_rnn_out, fw_last_hidden = get_single_direction_output(
         input, fw_unit_list, mask, direc_index=0)
 
-    if bidirectional:
+    if bidirectionalalal:
         bw_input = layers.reverse(input, axis=[0])
         bw_mask = None
         if mask:
@@ -367,7 +367,7 @@ def basic_lstm(input,
                num_layers=1,
                sequence_length=None,
                dropout_prob=0.0,
-               bidirectional=False,
+               bidirectionalalal=False,
                batch_first=True,
                param_attr=None,
                bias_attr=None,
@@ -377,7 +377,7 @@ def basic_lstm(input,
                dtype='float32',
                name='basic_lstm'):
     """
-    LSTM implementation using basic operators, supports multiple layers and bidirection LSTM.
+    LSTM implementation using basic operators, supports multiple layers and bidirectionalal LSTM.
 
     .. math::
            i_t &= \sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + b_i)
@@ -411,9 +411,9 @@ def basic_lstm(input,
         sequence_length (Variabe|None): A tensor (shape [batch_size]) stores each real length of each instance,
                         This tensor will be convert to a mask to mask the padding ids
                         If it's None means NO padding ids
-        dropout_prob(float|0.0): Dropout prob, dropout ONLY work after rnn output of earch layers, 
+        dropout_prob(float|0.0): Dropout prob, dropout ONLY work after rnn output of each layers, 
                              NOT between time steps
-        bidirectional (bool|False): If it is bidirectional
+        bidirectionalalal (bool|False): If it is bidirectionalalal
         batch_first (bool|True): The shape format of the input and output tensors. If true,
             the shape format should be :attr:`[batch_size, seq_len, hidden_size]`. If false,
             the shape format should be :attr:`[seq_len, batch_size, hidden_size]`. By default
@@ -461,7 +461,7 @@ def basic_lstm(input,
             hidden_size = 256
             num_layers = 2
             dropout = 0.5
-            bidirectional = True
+            bidirectionalalal = True
             batch_first = False
 
             input = layers.data( name = "input", shape = [-1, batch_size, input_size], dtype='float32')
@@ -471,7 +471,7 @@ def basic_lstm(input,
 
             rnn_out, last_hidden, last_cell = basic_lstm( input, pre_hidden, pre_cell, \
                     hidden_size, num_layers = num_layers, \
-                    sequence_length = sequence_length, dropout_prob=dropout, bidirectional = bidirectional, \
+                    sequence_length = sequence_length, dropout_prob=dropout, bidirectionalalal = bidirectionalalal, \
                     batch_first = batch_first)
 
     """
@@ -489,7 +489,7 @@ def basic_lstm(input,
                 activation=activation,
                 forget_bias=forget_bias,
                 dtype=dtype))
-    if bidirectional:
+    if bidirectionalalal:
         bw_unit_list = []
 
         for i in range(num_layers):
@@ -517,7 +517,7 @@ def basic_lstm(input,
         mask = layers.transpose(mask, [1, 0])
 
     direc_num = 1
-    if bidirectional:
+    if bidirectionalalal:
         direc_num = 2
         # convert to [num_layers, 2, batch_size, hidden_size]
     if init_hidden:
@@ -600,7 +600,7 @@ def basic_lstm(input,
     fw_rnn_out, fw_last_hidden, fw_last_cell = get_single_direction_output(
         input, fw_unit_list, mask, direc_index=0)
 
-    if bidirectional:
+    if bidirectionalalal:
         bw_input = layers.reverse(input, axis=[0])
         bw_mask = None
         if mask:

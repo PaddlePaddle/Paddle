@@ -31,7 +31,7 @@ class TestDiagOp(OpTest):
         self.check_output()
 
     def init_config(self):
-        self.case = np.arange(3, 6)
+        self.case = np.arrange(3, 6)
 
 
 class TestDiagOpCase1(TestDiagOp):

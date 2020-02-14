@@ -760,7 +760,7 @@ inline void formatImpl(std::ostream &out, const char *fmt,
       arg.format(out, fmt, fmtEnd, ntrunc);
     else {
       // The following is a special case with no direct correspondence
-      // between stream formatting and the printf() behaviour.  Simulate
+      // between stream formatting and the printf() behavior.  Simulate
       // it crudely by formatting into a temporary string stream and
       // munging the resulting string.
       std::ostringstream tmpStream;

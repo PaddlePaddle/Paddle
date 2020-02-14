@@ -55,9 +55,9 @@ const std::vector<std::string> load_filelist_from_file(const char* filename) {
   return filelist;
 }
 
-void GenerateFileForTest(const char* protofile, const char* filelist) {
-  std::ofstream w_protofile(protofile);
-  w_protofile << "name: \"MultiSlotDataFeed\"\n"
+void GenerateFileForTest(const char* prototile, const char* filelist) {
+  std::ofstream w_prototile(prototile);
+  w_prototile << "name: \"MultiSlotDataFeed\"\n"
                  "batch_size: 2\n"
                  "multi_slot_desc {\n"
                  "    slots {\n"
@@ -91,7 +91,7 @@ void GenerateFileForTest(const char* protofile, const char* filelist) {
                  "        is_used: false\n"
                  "    }\n"
                  "}";
-  w_protofile.close();
+  w_prototile.close();
   std::ofstream w_filelist(filelist);
   int total_file = 4;
   for (int i = 0; i < total_file; ++i) {
@@ -317,13 +317,13 @@ void GetElemSetFromFile(std::vector<MultiTypeSet>* file_elem_set,
 }
 
 TEST(DataFeed, MultiSlotUnitTest) {
-  const char* protofile = "data_feed_desc.prototxt";
+  const char* prototile = "data_feed_desc.prototxt";
   const char* filelist_name = "filelist.txt";
-  GenerateFileForTest(protofile, filelist_name);
+  GenerateFileForTest(prototile, filelist_name);
   const std::vector<std::string> filelist =
       load_filelist_from_file(filelist_name);
   paddle::framework::DataFeedDesc data_feed_desc =
-      load_datafeed_param_from_file(protofile);
+      load_datafeed_param_from_file(prototile);
   std::vector<MultiTypeSet> reader_elem_set;
   std::vector<MultiTypeSet> file_elem_set;
   // GetElemSetFromReader(&reader_elem_set, data_feed_desc, filelist, 4);

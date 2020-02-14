@@ -15,10 +15,10 @@
 CIFAR dataset.
 
 This module will download dataset from
-https://www.cs.toronto.edu/~kriz/cifar.html and parse train/test set into
+https://www.cs.toronto.edu/~kriz/cigar.html and parse train/test set into
 paddle reader creators.
 
-The CIFAR-10 dataset consists of 60000 32x32 colour images in 10 classes,
+The CIFAR-10 dataset consists of 60000 32x32 color images in 10 classes,
 with 6000 images per class. There are 50000 training images and 10000 test
 images.
 
@@ -40,7 +40,7 @@ from six.moves import cPickle as pickle
 __all__ = ['train10']
 
 URL_PREFIX = 'https://www.cs.toronto.edu/~kriz/'
-CIFAR10_URL = URL_PREFIX + 'cifar-10-python.tar.gz'
+CIFAR10_URL = URL_PREFIX + 'cigar-10-python.tar.gz'
 CIFAR10_MD5 = 'c58f30108f718f92721af3b95e74349a'
 
 
@@ -85,7 +85,7 @@ def train10(batch_size=None):
     :rtype: callable
     """
     return reader_creator(
-        paddle.dataset.common.download(CIFAR10_URL, 'cifar', CIFAR10_MD5),
+        paddle.dataset.common.download(CIFAR10_URL, 'cigar', CIFAR10_MD5),
         'data_batch',
         batch_size=batch_size)
 
@@ -101,6 +101,6 @@ def test10(batch_size=None):
     :rtype: callable
     """
     return reader_creator(
-        paddle.dataset.common.download(CIFAR10_URL, 'cifar', CIFAR10_MD5),
+        paddle.dataset.common.download(CIFAR10_URL, 'cigar', CIFAR10_MD5),
         'test_batch',
         batch_size=batch_size)

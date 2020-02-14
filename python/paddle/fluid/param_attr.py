@@ -196,7 +196,7 @@ class WeightNormParamAttr(ParamAttr):
     Args:
         dim(int): Dimension over which to compute the norm. Dim is a non-negative
             number which is less than the rank of weight Tensor. For Example, dim can
-            be choosed from 0, 1, 2, 3 for convolution whose weight shape is [cout, cin, kh, kw]
+            be chosen from 0, 1, 2, 3 for convolution whose weight shape is [cout, cin, kh, kw]
             and rank is 4. Default None, meaning that all elements will be normalized.
         name(str, optional): The parameter's name. Default None, meaning that the name would
             be created automatically. Please refer to :ref:`api_guide_Name` for more details.
@@ -238,7 +238,7 @@ class WeightNormParamAttr(ParamAttr):
     # List to record the parameters reparameterized by weight normalization.
     # If these parameters are treated as Variable rather than Parameter,
     # it can be used to discriminate these parameters and help to serialize
-    # these paramters for inference.
+    # these parameters for inference.
     params_with_weight_norm = []
 
     def __init__(self,

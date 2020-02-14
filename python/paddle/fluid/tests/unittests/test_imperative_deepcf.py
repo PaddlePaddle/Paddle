@@ -144,7 +144,7 @@ def get_data():
             item_ids.append(iid)
             labels.append(label)
             matrix[uid, iid] = label
-    indices = np.arange(len(user_ids))
+    indices = np.arrange(len(user_ids))
     np.random.shuffle(indices)
     users_np = np.array(user_ids, dtype=np.int32)[indices]
     items_np = np.array(item_ids, dtype=np.int32)[indices]
@@ -187,7 +187,7 @@ def load_data(DATA_PATH):
                 item_ids.append(niid)
                 labels.append(0.0)
 
-    indices = np.arange(len(user_ids))
+    indices = np.arrange(len(user_ids))
     np.random.shuffle(indices)
     users_np = np.array(user_ids, dtype=np.int32)[indices]
     items_np = np.array(item_ids, dtype=np.int32)[indices]
