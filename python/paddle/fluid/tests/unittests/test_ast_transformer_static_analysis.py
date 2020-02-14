@@ -18,14 +18,17 @@ import ast
 import inspect
 import unittest
 
-from paddle.fluid.dygraph.dygraph_to_static import AstNodeWrapper, StaticAnalysisVisitor
+from paddle.fluid.dygraph.dygraph_to_static import AstNodeWrapper, NodeVarType, StaticAnalysisVisitor
 
 
-def func_to_test_1(a, b):
+def func_to_test1(a, b):
     return a + b
 
 
-def func_to_test_2(x):
+result_var_type1 = {}
+
+
+def func_to_test2(x):
     for i in range(10):
         x += i
     m = 3
@@ -35,6 +38,31 @@ def func_to_test_2(x):
         return 0
     else:
         return x
+
+
+result_var_type2 = {'m': NodeVarType.INT}
+
+
+def func_to_test3():
+    a = 1
+    b = 3.0
+    c = a * b
+    d = True + c
+    e = a < b
+    f = a
+
+
+result_var_type3 = {
+    'a': NodeVarType.INT,
+    'b': NodeVarType.FLOAT,
+    'c': NodeVarType.FLOAT,
+    'd': NodeVarType.FLOAT,
+    'e': NodeVarType.BOOLEAN,
+    'f': NodeVarType.INT
+}
+
+test_funcs = [func_to_test1, func_to_test2, func_to_test3]
+result_var_type = [result_var_type1, result_var_type2, result_var_type3]
 
 
 class TestStaticAnalysis(unittest.TestCase):
@@ -52,14 +80,28 @@ class TestStaticAnalysis(unittest.TestCase):
             self._check_wrapper(child, node_to_wrapper_map)
 
     def test_construct_node_wrapper(self):
-        for func in [func_to_test_1, func_to_test_2]:
+        for func in test_funcs:
             test_source_code = inspect.getsource(func)
             ast_root = ast.parse(test_source_code)
-
             visitor = StaticAnalysisVisitor(ast_root)
             wrapper_root = visitor.get_node_wrapper_root()
             node_to_wrapper_map = visitor.get_node_to_wrapper_map()
             self._check_wrapper(wrapper_root, node_to_wrapper_map)
+
+    def test_var_env(self):
+
+        for i in range(3):
+            func = test_funcs[i]
+            var_type = result_var_type[i]
+            test_source_code = inspect.getsource(func)
+            ast_root = ast.parse(test_source_code)
+            visitor = StaticAnalysisVisitor(ast_root)
+            var_env = visitor.get_var_env()
+            scope_var_type = var_env.get_scope_var_type()
+            self.assertEqual(len(scope_var_type), len(var_type))
+            for name in scope_var_type:
+                self.assertTrue(name in var_type)
+                self.assertEqual(scope_var_type[name], var_type[name])
 
 
 if __name__ == '__main__':
