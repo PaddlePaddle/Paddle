@@ -59,7 +59,7 @@ class TestFleetUtils(unittest.TestCase):
         fleet_util = FleetUtil()
         fleet_util.parse_program_proto(parse_program_file_path,
                                        is_text_parse_program, parse_output_dir)
-        ops_log = os.path.join(parse_output_dir, "op.log")
+        ops_log = os.path.join(parse_output_dir, "ops.log")
         vars_log = os.path.join(parse_output_dir, "vars_all.log")
         vars_persistable = os.path.join(parse_output_dir,
                                         "vars_persistable.log")
