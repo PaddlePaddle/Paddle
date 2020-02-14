@@ -62,7 +62,7 @@ class TestDygraphhDataLoader(unittest.TestCase):
     def setUp(self):
         self.batch_size = 8
         self.batch_num = 4
-        self.epoch_num = 2
+        self.epoch_num = 1
         self.capacity = 2
 
     def test_single_process_reader(self):
