@@ -13,8 +13,6 @@
 # limitations under the License.
 
 NEED_TO_FIX_OP_LIST = [
-    'elementwise_mul',
-    'elementwise_div',
     'elementwise_max',
     'elementwise_min',
     'elementwise_pow',
@@ -26,7 +24,6 @@ NEED_TO_FIX_OP_LIST = [
     'hierarchical_sigmoid',
     'lstmp',
     'margin_rank_loss',
-    'matmul',
     'mul',
     'row_conv',
     'scatter',

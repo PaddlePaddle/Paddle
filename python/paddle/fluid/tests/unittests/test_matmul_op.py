@@ -16,16 +16,13 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 
-def generate_compatible_shapes(dim_X, dim_Y, transpose_X, transpose_Y):
+def generate_compatible_shapes(dim_X, dim_Y, transpose_X, transpose_Y, M, N, K):
     BATCH_SIZE = 2
-    M = 3
-    N = 4
-    K = 5
     if (dim_X == 1 and transpose_X) or (dim_Y == 1 and transpose_Y):
         K = 1
     if dim_X == 1:
@@ -75,22 +72,21 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
             dim = [i for i in range(len(Y.shape))]
             dim[-1], dim[len(Y.shape) - 2] = dim[len(Y.shape) - 2], dim[-1]
             Y = np.transpose(Y, tuple(dim))
-
     Out = np.matmul(X, Y)
     if not Out.shape:
         # We do not support 0-dimensional Tensors (scalars). So where
         # np.matmul outputs a scalar, we must convert to a Tensor of
         # shape (1, ) instead.
         # Everywhere else, we are compatible with np.matmul.
-        Out = np.array([Out], dtype="float32")
+        Out = np.array([Out], dtype="float64")
     return Out
 
 
 class Generator(object):
     def setUp(self):
         self.op_type = "matmul"
-        X = np.random.random(self.shape_X).astype("float32")
-        Y = np.random.random(self.shape_Y).astype("float32")
+        X = np.random.random(self.shape_X).astype("float64")
+        Y = np.random.random(self.shape_Y).astype("float64")
         Out = reference_matmul(X, Y, self.transpose_X, self.transpose_Y)
         self.inputs = {'X': X, 'Y': Y}
         self.attrs = {
@@ -147,12 +143,12 @@ def generate_negative_dims(in_shape):
 def test_negative_dims_program(obj):
     for shape_x in generate_negative_dims(obj.shape_X):
         for shape_y in generate_negative_dims(obj.shape_Y):
-            X = np.random.random(obj.shape_X).astype("float32")
-            Y = np.random.random(obj.shape_Y).astype("float32")
+            X = np.random.random(obj.shape_X).astype("float64")
+            Y = np.random.random(obj.shape_Y).astype("float64")
             Ref = reference_matmul(X, Y, obj.transpose_X, obj.transpose_Y)
             with program_guard(Program(), Program()):
-                x = fluid.data(name='x', shape=shape_x, dtype='float32')
-                y = fluid.data(name='y', shape=shape_y, dtype='float32')
+                x = fluid.data(name='x', shape=shape_x, dtype='float64')
+                y = fluid.data(name='y', shape=shape_y, dtype='float64')
                 output = fluid.layers.matmul(x, y, obj.transpose_X,
                                              obj.transpose_Y)
                 obj.assertEqual(len(Ref.shape), len(output.shape))
@@ -171,8 +167,9 @@ def test_negative_dims_program(obj):
 def api_test(dim_x, dim_y, trans_x, trans_y):
     test_name = ('TestMatMulAPI_dimX_{}_dim_Y_{}_transX_{}_transY_{}'.format(
         dim_x, dim_y, trans_x, trans_y))
+    M, N, K = 10, 11, 12
     shape_x, shape_y = generate_compatible_shapes(dim_x, dim_y, trans_x,
-                                                  trans_y)
+                                                  trans_y, M, N, K)
     globals()[test_name] = type(test_name, (unittest.TestCase, ), {
         'shape_X': shape_x,
         'shape_Y': shape_y,
@@ -182,18 +179,28 @@ def api_test(dim_x, dim_y, trans_x, trans_y):
     })
 
 
+skip_check_grad_dim1 = skip_check_grad_ci(
+    reason="when dim==1, shape>100, multiply-accumulatorin matmul make gradient diff too large"
+)
+
+
 # Generate operators cases for all possibilities
 def inject_test(dim_x, dim_y, trans_x, trans_y):
     test_name = ('TestMatMulOp_dimX_{}_dim_Y_{}_transX_{}_transY_{}'.format(
         dim_x, dim_y, trans_x, trans_y))
+    M, N, K = 10, 11, 12
+    if dim_x == 1 or dim_y == 1:
+        M, N, K = 5, 6, 7
     shape_x, shape_y = generate_compatible_shapes(dim_x, dim_y, trans_x,
-                                                  trans_y)
+                                                  trans_y, M, N, K)
     globals()[test_name] = type(test_name, (Generator, OpTest), {
         'shape_X': shape_x,
         'shape_Y': shape_y,
         'transpose_X': trans_x,
         'transpose_Y': trans_y,
     })
+    if dim_x == 1 or dim_y == 1:
+        skip_check_grad_dim1(globals()[test_name])
 
 
 for dim_X in (1, 2, 3):
@@ -206,9 +213,9 @@ for dim_X in (1, 2, 3):
 
 # Test case n-dim
 def generate_compatible_shapes(dim, transpose_X, transpose_Y):
-    M = 2
-    N = 4
-    K = 3
+    M = 5
+    N = 6
+    K = 7
     shape_X = [2 for _ in range(dim - 2)]
     shape_Y = [2 for _ in range(dim - 2)]
 
