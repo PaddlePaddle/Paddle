@@ -34,7 +34,7 @@ void zero_copy_run() {
   PD_SwitchUseFeedFetchOps(config, false);
   PD_SwitchSpecifyInputNames(config, true);
   PD_SwitchIrDebug(config, true);
-  PD_SetModel(config, model_dir.c_str());  //, params_file1.c_str());
+  PD_SetModel(config, model_dir.c_str(), nullptr);
   bool use_feed_fetch = PD_UseFeedFetchOpsEnabled(config);
   CHECK(!use_feed_fetch) << "NO";
   bool specify_input_names = PD_SpecifyInputName(config);

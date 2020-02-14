@@ -258,4 +258,12 @@ bool PD_IsValid(const PD_AnalysisConfig* config) {
   PADDLE_ENFORCE_NOT_NULL(config);
   return config->config.is_valid();
 }
+
+void PD_DisableGlogInfo(PD_AnalysisConfig* config) {
+  config->config.DisableGlogInfo();
+}
+
+void PD_DeletePass(PD_AnalysisConfig* config, char* pass_name) {
+  return config->config.pass_builder()->DeletePass(std::string(pass_name));
+}
 }  // extern "C"
