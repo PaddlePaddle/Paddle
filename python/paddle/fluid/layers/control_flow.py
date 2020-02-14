@@ -963,7 +963,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             def cond(i, ten):
                 return i < ten
 
-            def body(i):
+            def body(i, ten):
                 i = i + 1
                 return [i, ten]
 
@@ -972,10 +972,10 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             with fluid.program_guard(main_program, startup_program):
                 i = layers.fill_constant(shape=[1], dtype='int64', value=0)     # loop counter
                 ten = layers.fill_constant(shape=[1], dtype='int64', value=10)  # loop length
-                out = layers.while_loop(cond, body, [i, ten])
+                i, ten = layers.while_loop(cond, body, [i, ten])
                 
                 exe = fluid.Executor(fluid.CPUPlace())
-                res = exe.run(main_program, feed={}, fetch_list=out)
+                res = exe.run(main_program, feed={}, fetch_list=[i])
                 print(res) # [array([10])]
     """
     helper = LayerHelper('while_loop', **locals())
