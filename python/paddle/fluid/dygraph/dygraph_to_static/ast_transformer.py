@@ -150,10 +150,13 @@ class DygraphToStaticAst(ast.NodeTransformer):
             return node
 
     def visit_Call(self, node):
+        # Remove `numpy()` statement, like `Tensor.numpy()[i]` -> `Tensor[i]`
         if isinstance(node.func, ast.Attribute):
             attribute = node.func
             if attribute.attr == 'numpy':
                 node = attribute.value
+        # In PY3, the fields of ast.Call may don't hold `starargs` and `kwargs`.
+        # They are necessary to transform into source code for codegen.
         if not hasattr(node, 'starargs'):
             setattr(node, 'starargs', None)
         if not hasattr(node, 'kwargs'):
@@ -168,6 +171,7 @@ class DygraphToStaticAst(ast.NodeTransformer):
         if self.decorate_func_name is None:
             self.decorate_func_name = node.name
         self.generic_visit(node)
+        # Remove the decorated name of dygraph_to_static
         if hasattr(node, 'decorator_list'):
             decorator_list = [
                 d for d in node.decorator_list if d.id != DECORATOR_NAME
@@ -176,5 +180,8 @@ class DygraphToStaticAst(ast.NodeTransformer):
         return node
 
     def visit_arg(self, node):
+        # The type of param in ast.FunctionDef is ast.Name in PY2, but ast.arg in PY3.
+        # ast.Name is used uniformly because ast.arg will lead missing parameter while
+        # transformed into source code by codegen.
         new_node = ast.Name(id=node.arg, ctx=ast.Param())
         return new_node
