@@ -438,10 +438,10 @@ class Optimizer(object):
             type=param.type if type is None else type,
             shape=shape,
             belong_to_optimizer=True)
-        self.helper.set_variable_initializer(
-            var,
-            initializer=Constant(
-                value=float(fill_value), force_cpu=force_cpu))
+        optimizer_device = self._get_device_for_optimize_op(param)
+        with device_guard(optimizer_device):
+            self.helper.set_variable_initializer(
+                var, initializer=Constant(value=float(fill_value)))
 
         if framework.in_dygraph_mode():
             if len(self._accumulators_holder) > 0:
@@ -470,7 +470,16 @@ class Optimizer(object):
                             format(name, param.name))
         return self._accumulators[name][param.name]
 
-    def _get_device_for_optimize_op(self, param, target_block):
+    def _get_device_for_optimize_op(self, param, target_block=None):
+        if target_block == None:
+            global_block = framework.default_main_program().global_block()
+            target_block = global_block
+            current_block = framework.default_main_program().current_block()
+            if current_block.idx != global_block.idx:
+                assert current_block.backward_block_idx != -1, \
+                    "current block is not global_block, but it doesn't have backward block."
+                target_block = framework.default_main_program().blocks[
+                    current_block.backward_block_idx]
         param_name = param.name
         ops = target_block.ops
         op_device = None
