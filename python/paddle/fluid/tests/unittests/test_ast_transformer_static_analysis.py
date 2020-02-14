@@ -89,7 +89,6 @@ class TestStaticAnalysis(unittest.TestCase):
             self._check_wrapper(wrapper_root, node_to_wrapper_map)
 
     def test_var_env(self):
-
         for i in range(3):
             func = test_funcs[i]
             var_type = result_var_type[i]

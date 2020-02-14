@@ -13,13 +13,16 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <cstdlib>
+#include <cstring>
+#include <memory>
 #include <vector>
-#include "paddle/fluid/inference/capi/c_api.h"
 #include "paddle/fluid/inference/capi/c_api_internal.h"
+#include "paddle/fluid/inference/capi/paddle_c_api.h"
 
+using paddle::ConvertToACPrecision;
 using paddle::ConvertToPaddleDType;
 using paddle::ConvertToPDDataType;
-using paddle::ConvertToACPrecision;
 
 extern "C" {
 // PaddleTensor
@@ -76,6 +79,37 @@ int* PD_GetPaddleTensorShape(const PD_Tensor* tensor, int** size) {
   int s = shape.size();
   *size = &s;
   return shape.data();
+}
+
+PD_ZeroCopyTensor* PD_NewZeroCopyTensor() {
+  auto* tensor = new PD_ZeroCopyTensor;
+  PD_InitZeroCopyTensor(tensor);
+  return tensor;
+}
+void PD_DeleteZeroCopyTensor(PD_ZeroCopyTensor* tensor) {
+  if (tensor) {
+    PD_DestroyZeroCopyTensor(tensor);
+    delete tensor;
+  }
+  tensor = nullptr;
+}
+
+void PD_InitZeroCopyTensor(PD_ZeroCopyTensor* tensor) {
+  std::memset(tensor, 0, sizeof(PD_ZeroCopyTensor));
+}
+
+void PD_DestroyZeroCopyTensor(PD_ZeroCopyTensor* tensor) {
+#define __PADDLE_INFER_CAPI_DELETE_PTR(__ptr) \
+  if (__ptr) {                                \
+    std::free(__ptr);                         \
+    __ptr = nullptr;                          \
+  }
+
+  __PADDLE_INFER_CAPI_DELETE_PTR(tensor->data.data);
+  __PADDLE_INFER_CAPI_DELETE_PTR(tensor->shape.data);
+  __PADDLE_INFER_CAPI_DELETE_PTR(tensor->lod.data);
+
+#undef __PADDLE_INFER_CAPI_DELETE_PTR
 }
 
 }  // extern "C"
