@@ -46,6 +46,7 @@ class TestFleetUtils(unittest.TestCase):
         check_all_trainers_ready("/ready_path/", 0)
 
     def test_parse_program_proto(self):
+        download_files()
         parse_program_file_path = "fleet_util_data/pruned_model/pruned_main_program.pbtxt"
         is_text_parse_program = True
         parse_output_dir = "fleet_util_data/pruned_model"
@@ -61,6 +62,8 @@ class TestFleetUtils(unittest.TestCase):
         self.assertTrue(os.path.exists(vars_persistable))
 
     def test_check_vars_and_dump(self):
+        download_files()
+
         class config:
             pass
 
@@ -96,6 +99,8 @@ class TestFleetUtils(unittest.TestCase):
         self.assertTrue(len(results) == 1)
 
     def test_check_two_programs(self):
+        download_files()
+
         class config:
             pass
 
@@ -111,6 +116,7 @@ class TestFleetUtils(unittest.TestCase):
         self.assertTrue(res)
 
     def test_draw_program(self):
+        download_files()
         program_path = "fleet_util_data/train_program/join_main_program.pbtxt"
         is_text = True
         program = utils.load_program(program_path, is_text)
@@ -136,5 +142,4 @@ class TestFleetUtils(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    download_files()
     unittest.main()
