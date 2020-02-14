@@ -141,7 +141,7 @@ class TestROIPoolOp(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-class TestROIPoolOutLodOp(TestROIPoolOp):
+class TestROIPoolInLodOp(TestROIPoolOp):
     def set_data(self):
         self.init_test_case()
         self.make_rois()

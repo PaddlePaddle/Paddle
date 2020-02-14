@@ -174,7 +174,7 @@ class TestROIAlignOp(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-class TestROIAlignOutLodOp(OpTest):
+class TestROIAlignInLodOp(TestROIAlignOp):
     def set_data(self):
         self.init_test_case()
         self.make_rois()
