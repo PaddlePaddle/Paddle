@@ -112,6 +112,11 @@ class TestFleetUtils(unittest.TestCase):
         self.assertTrue(res)
 
     def test_draw_program(self):
+        download_files()
+        os.system("ls ./")
+        os.system("ls ./fleet_util_data")
+        os.system("ls ./fleet_util_data_tmp")
+
         program_path = "fleet_util_data/train_program/join_main_program.pbtxt"
         is_text = True
         program = utils.load_program(program_path, is_text)
