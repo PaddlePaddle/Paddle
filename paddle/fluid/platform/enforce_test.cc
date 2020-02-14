@@ -69,7 +69,8 @@ TEST(ENFORCE_EQ, NO_EXTRA_MSG_FAIL) {
   int a = 2;
   bool caught_exception = false;
   try {
-    PADDLE_ENFORCE_EQ(a, 1 + 3);
+    PADDLE_ENFORCE_EQ(a, 1 + 3, paddle::platform::errors::InvalidArgument(
+                                    "the result is not equal correct result."));
   } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
     std::string ex_msg = error.what();
@@ -83,7 +84,8 @@ TEST(ENFORCE_EQ, EXTRA_MSG_FAIL) {
   int a = 2;
   bool caught_exception = false;
   try {
-    PADDLE_ENFORCE_EQ(a, 1 + 3, "%s size not match", "their");
+    PADDLE_ENFORCE_EQ(a, 1 + 3, paddle::platform::errors::InvalidArgument(
+                                    "the result is not equal correct result."));
   } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
     std::string ex_msg = error.what();
