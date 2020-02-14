@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+g_gloo = None
+
 
 def get_jobserver():
     s = JobServer()
@@ -26,8 +28,20 @@ def get_pods_from_master(job_server, job_id):
     return pods
 
 
-def barrier_terminate_world_trainers(cluster):
-    pass
+def barrier_terminate_world_trainers(cluster, pod, timeout, try_num=3):
+    pods_endpoints = cluster.get_pods_endpoints()
+
+    step = 0
+    while True:
+        r = g_gloo.init(cluster.hdfs, pods_endpoints, pods.idx, try_num=try_num)
+        if not r:
+            return False
+
+        r = g_gloo.barrier(timeout)
+        if not r:
+            return False
+
+    return False
 
 
 def get_edl_cluster(job_id):
