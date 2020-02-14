@@ -72,7 +72,7 @@ class Communicator(object):
 
         if mode == DistributedMode.SYNC:
             envs["pserver_endpoints"] = ','.join(kwargs["pserver_endpoints"])
-            envs["trainer_id"] = kwargs["trainer_id"]
+            envs["trainer_id"] = str(kwargs["trainer_id"])
 
         mode_str = None
 
