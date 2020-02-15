@@ -933,7 +933,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         body(Callable): A callable returning a tuple or list of tensors and LoDTensorArrays of the same arity
             (length and structure) and types as ``loops_vars`` .
         loop_vars(list|tuple): A list or tuple of tensors and LoDTensorArrays that is passed to both ``cond`` and ``body`` .
-	    ``cond`` and ``body`` both take as many arguments as there are ``loop_vars`` .
+	    ``cond`` and ``body`` both take as many arguments as ``loop_vars`` .
         is_test(bool, optional): A flag indicating whether execution is in test phase. Default value is False.
         name(str, optional): Normally there is no need for users to set this property. For more information, please
             refer to :ref:`api_guide_Name`. Default is None.
