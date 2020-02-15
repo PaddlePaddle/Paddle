@@ -35,7 +35,7 @@ TEST(LodTensor, PrintLodTensor) {
   tensor2.mutable_data<int64_t>(platform::CPUPlace());
   tensor2.data<int64_t>()[0] = 1;
   tensor2.data<int64_t>()[1] = 2;
-  res = PrintLodTensor(tensor2, -1, 2);
+  res = PrintLodTensor(&tensor2, -1, 2);
   ASSERT_EQ(res, "access violation");
   res = PrintLodTensor(&tensor2, 0, 2);
   ASSERT_EQ(res, "1:2");
