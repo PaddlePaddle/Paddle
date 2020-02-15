@@ -51,6 +51,20 @@ class TestFleetUtils(unittest.TestCase):
         fleet.init(role)
         check_all_trainers_ready("/ready_path/", 0)
 
+    def test_program_type_trans(self):
+        data_dir = self.download_files()
+        program_dir = os.path.join(data_dir, "fleet_util_data/pruned_model")
+        text_program = "pruned_main_program.pbtxt"
+        binary_program = "pruned_main_program.bin"
+        text_to_binary = utils.program_type_trans(program_dir, text_program,
+                                                  True)
+        binary_to_text = utils.program_type_trans(program_dir, binary_program,
+                                                  False)
+        self.assertTrue(
+            os.path.exists(os.path.join(program_dir, text_to_binary)))
+        self.assertTrue(
+            os.path.exists(os.path.join(program_dir, binary_to_text)))
+
     def test_parse_program_proto(self):
         data_dir = self.download_files()
         parse_program_file_path = os.path.join(

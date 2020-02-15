@@ -28,6 +28,12 @@ from paddle.fluid import debugger
 from paddle.fluid.framework import Program
 from paddle.fluid.proto import framework_pb2
 
+__all__ = [
+    "load_program", "save_program", "program_type_trans",
+    "check_saved_vars_try_dump", "parse_program", "check_pruned_program_vars",
+    "graphviz"
+]
+
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -281,7 +287,7 @@ def try_load_model_vars(dump_dir, dump_prog_fn, is_text_dump_program,
             feed_config.feeded_vars_dims[i] = tensor_shape
             var_shape = var.shape[1:]
             if tensor_shape != var_shape:
-                logger.error(
+                raise RuntimeError(
                     "feed variable '{}' shape not match. infer program  shape: {}. feed tensor shape: {}".
                     format(feed_config.feeded_vars_names[i], var_shape,
                            tensor_shape))
@@ -308,7 +314,7 @@ def try_load_model_vars(dump_dir, dump_prog_fn, is_text_dump_program,
                     feed_tensors.append(
                         fluid.create_lod_tensor(t, [[1] * batch_size], place))
                 else:
-                    logger.error(
+                    raise RuntimeError(
                         "vars with lod_level >= 2 is not supported now in this infer program check tool."
                     )
             results = exe.run(inference_program,

@@ -1550,6 +1550,9 @@ class FleetUtil(object):
                           actual_ctr, predicted_ctr, copc, mean_predict_qvalue,
                           total_ins_num))
 
+    def program_type_trans(self, prog_dir, prog_fn, is_text):
+        return utils.program_type_trans(prog_dir, prog_fn, is_text)
+
     def draw_from_program_file(self, model_filename, is_text, output_dir,
                                output_filename):
         """draw program from file"""
