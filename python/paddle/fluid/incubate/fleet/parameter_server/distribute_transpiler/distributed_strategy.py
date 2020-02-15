@@ -93,7 +93,7 @@ class DistributedStrategy(object):
             self._trainer_runtime_config = config
         elif isinstance(config, dict):
             for key, Value in config.items():
-                if self._trainer_runtime_config.runtime_configs.has_key(key):
+                if key in self._trainer_runtime_config.runtime_configs:
                     self._trainer_runtime_config.runtime_configs[key] = Value
                 else:
                     raise ValueError(
