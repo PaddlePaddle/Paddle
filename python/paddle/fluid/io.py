@@ -111,7 +111,7 @@ def is_persistable(var):
 
 
 def is_belong_to_optimizer(var):
-    if not isinstance(var, Parameter) or var.desc.need_check_feed():
+    if not (isinstance(var, Parameter) or var.desc.need_check_feed()):
         return is_persistable(var)
 
     return False
