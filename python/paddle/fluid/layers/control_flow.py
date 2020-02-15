@@ -929,17 +929,17 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
     while_loop is one of the control flows. Repeats while_loop `body` until `cond` returns False.
 
     Args:
-        cond(Callable): A callable returning a boolean tensor controlling whether to continue looping.
-        body(Callable): A callable returning a tuple or list of tensors and LoDTensorArrays of the same arity
-            (length and structure) and types as ``loops_vars`` .
-        loop_vars(list|tuple): A list or tuple of tensors and LoDTensorArrays that is passed to both ``cond`` and ``body`` .
-	    ``cond`` and ``body`` both take as many arguments as ``loop_vars`` .
+        cond(Callable): A callable returning a boolean tensor controlling whether to continue looping. And ``cond`` takes
+	    as many arguments as ``loop_vars`` .
+        body(Callable): A callable returning a tuple or list of tensors or LoDTensorArrays of the same arity
+            (length and structure) and types as ``loops_vars`` . And ``body`` takes as many arguments as ``loop_vars`` .
+        loop_vars(list|tuple): A list or tuple of tensors or LoDTensorArrays that is passed to both ``cond`` and ``body`` .
         is_test(bool, optional): A flag indicating whether execution is in test phase. Default value is False.
         name(str, optional): Normally there is no need for users to set this property. For more information, please
             refer to :ref:`api_guide_Name`. Default is None.
     
     Returns:
-        A list or tuple of tensors and LoDTensorArrays which returned by ``body`` .
+        A list or tuple of tensors or LoDTensorArrays which returned by ``body`` .
     
     Returen type:
         list(Variable)|tuple(Variable).
