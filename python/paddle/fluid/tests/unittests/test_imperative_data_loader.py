@@ -58,7 +58,14 @@ def batch_generator_creator(batch_size, batch_num):
     return __reader__
 
 
-class TestDygraphhDataLoader(unittest.TestCase):
+# NOTE: In the current unittest framework, if three different multi-process
+# unittests are tested under the same class. Occasionally, the multiprocessing.Queue
+# of a unittest is full and empty at the same time. It is unexplainable and
+# may be related to the complexity of multiprocessing lib.
+# So create different classes for each unittest here.
+
+
+class TestDygraphhDataLoaderSingleProcess(unittest.TestCase):
     def setUp(self):
         self.batch_size = 8
         self.batch_num = 4
@@ -80,6 +87,14 @@ class TestDygraphhDataLoader(unittest.TestCase):
                     self.assertEqual(label.shape, [self.batch_size, 1])
                     self.assertEqual(relu.shape, [self.batch_size, 784])
 
+
+class TestDygraphhDataLoaderMultiProcessSampleGenarator(unittest.TestCase):
+    def setUp(self):
+        self.batch_size = 8
+        self.batch_num = 4
+        self.epoch_num = 1
+        self.capacity = 2
+
     def test_sample_genarator(self):
         with fluid.dygraph.guard():
             loader = fluid.io.DataLoader.from_generator(
@@ -95,6 +110,14 @@ class TestDygraphhDataLoader(unittest.TestCase):
                     self.assertEqual(label.shape, [self.batch_size, 1])
                     self.assertEqual(relu.shape, [self.batch_size, 784])
 
+
+class TestDygraphhDataLoaderMultiProcessSampleListGenarator(unittest.TestCase):
+    def setUp(self):
+        self.batch_size = 8
+        self.batch_num = 4
+        self.epoch_num = 1
+        self.capacity = 2
+
     def test_sample_list_generator(self):
         with fluid.dygraph.guard():
             loader = fluid.io.DataLoader.from_generator(
@@ -108,6 +131,14 @@ class TestDygraphhDataLoader(unittest.TestCase):
                     self.assertEqual(image.shape, [self.batch_size, 784])
                     self.assertEqual(label.shape, [self.batch_size, 1])
                     self.assertEqual(relu.shape, [self.batch_size, 784])
+
+
+class TestDygraphhDataLoaderMultiProcessBatchGenarator(unittest.TestCase):
+    def setUp(self):
+        self.batch_size = 8
+        self.batch_num = 4
+        self.epoch_num = 1
+        self.capacity = 2
 
     def test_batch_genarator(self):
         with fluid.dygraph.guard():
