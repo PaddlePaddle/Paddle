@@ -132,7 +132,7 @@ def load_dygraph(model_path, keep_name_table=False):
 
     with open(params_file_path, 'rb') as f:
         para_dict = pickle.load(f) if six.PY2 else pickle.load(
-            f, encoding='bytes')
+            f, encoding='latin1')
 
     if not keep_name_table and "StructuredToParameterName@@" in para_dict:
         del para_dict["StructuredToParameterName@@"]
@@ -141,6 +141,6 @@ def load_dygraph(model_path, keep_name_table=False):
     if os.path.exists(opti_file_path):
         with open(opti_file_path, 'rb') as f:
             opti_dict = pickle.load(f) if six.PY2 else pickle.load(
-                f, encoding='bytes')
+                f, encoding='latin1')
 
     return para_dict, opti_dict
