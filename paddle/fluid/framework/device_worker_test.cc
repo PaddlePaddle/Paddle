@@ -73,9 +73,5 @@ TEST(LodTensor, CheckValidOutput) {
   ASSERT_TRUE(CheckValidOutput(&tensor, 2));
 }
 
-TEST() {
-  // create hogwild device worker
-}
-
 }  // namespace framework
 }  // namespace paddle
