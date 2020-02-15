@@ -43,8 +43,6 @@ import numpy as np
 
 from .ps_dispatcher import RoundRobin, PSDispatcher
 from .. import core, framework, unique_name, initializer
-from ..annotations import deprecated
-from ..wrapped_decorator import signature_safe_contextmanager
 from ..framework import Program, default_main_program, \
     default_startup_program, Block, Parameter, grad_var_name
 from .details import wait_server_ready, UnionFind, VarStruct, VarsDistributed
@@ -538,12 +536,6 @@ class DistributeTranspiler(object):
                 return True
         return False
 
-    @deprecated(
-        since="1.8.0",
-        instead="FleetAPI",
-        extra_message="WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler"
-    )
-    @signature_safe_contextmanager
     def transpile(self,
                   trainer_id,
                   program=None,
@@ -585,6 +577,15 @@ class DistributeTranspiler(object):
                     sync_mode=False,
                     current_endpoint="127.0.0.1:7000")
         """
+
+        err_msg = """
+
+API is deprecated since 2.0.0 Please use FleetAPI instead.
+WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
+
+        """
+        print(print(err_msg, file=sys.stderr))
+
         if program is None:
             program = default_main_program()
         if startup_program is None:
