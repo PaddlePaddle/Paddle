@@ -1002,16 +1002,12 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
     while_loop_block = While(pre_cond, is_test, name)
     with while_loop_block.block():
         output_vars = body(*loop_vars)
-        if len(loop_vars) == 1 and not isinstance(output_vars, (list, tuple)):
-            now_cond = cond(output_vars)
-        else:
-            if not isinstance(
-                    output_vars,
-                (list, tuple)) or len(output_vars) != len(loop_vars):
-                raise ValueError(
-                    "body in while_loop should return the same arity "
-                    "(length and structure) and types as loop_vars")
-            now_cond = cond(*output_vars)
+        if not isinstance(output_vars, (list, tuple)):
+            output_vars = [output_vars]
+        if len(output_vars) != len(loop_vars):
+            raise ValueError("body in while_loop should return the same arity "
+                             "(length and structure) and types as loop_vars")
+        now_cond = cond(*output_vars)
         map_structure(assign, output_vars, loop_vars)
         assign(now_cond, pre_cond)
     return loop_vars
