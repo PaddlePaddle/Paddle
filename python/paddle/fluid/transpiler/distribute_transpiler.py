@@ -584,7 +584,7 @@ API is deprecated since 2.0.0 Please use FleetAPI instead.
 WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
 
         """
-        print(print(err_msg, file=sys.stderr))
+        print(err_msg, file=sys.stderr)
 
         if program is None:
             program = default_main_program()
