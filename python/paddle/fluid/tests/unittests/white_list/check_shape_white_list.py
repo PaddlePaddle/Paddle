@@ -15,9 +15,6 @@
 NEED_TO_FIX_OP_LIST = [
     'elementwise_mul',
     'elementwise_div',
-    'elementwise_max',
-    'elementwise_min',
-    'elementwise_pow',
     'fused_elemwise_activation',
     'bilinear_tensor_product',
     'conv2d_transpose',
