@@ -92,9 +92,9 @@ class DistributedStrategy(object):
         if isinstance(config, TrainerRuntimeConfig):
             self._trainer_runtime_config = config
         elif isinstance(config, dict):
-            for key in config:
-                if hasattr(self._trainer_runtime_config, key):
-                    setattr(self._trainer_runtime_config, key, config[key])
+            for key, Value in config.items():
+                if self._trainer_runtime_config.runtime_configs.has_key(key):
+                    self._trainer_runtime_config.runtime_configs[key] = Value
                 else:
                     raise ValueError(
                         "TrainerRuntimeConfig doesn't have key: {}".format(key))
