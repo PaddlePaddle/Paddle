@@ -84,7 +84,7 @@ class FleetDistRunnerBase(object):
         self.dump_fields_path = os.getenv("dump_fields_path", "")
         debug = int(os.getenv("Debug", "0"))
         if debug:
-            self.strategy.set_debug_info({
+            self.strategy.set_debug_opt({
                 "dump_param": self.dump_param,
                 "dump_fields": self.dump_fields,
                 "dump_fields_path": self.dump_fields_path
