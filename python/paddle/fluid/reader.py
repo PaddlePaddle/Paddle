@@ -527,6 +527,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
                 # Queue.cancel_join_thread or unexpected exit). So we set a timeout whenever 
                 # we try to get data from `data_queue`
                 sample = self._data_queue.get(timeout=QUEUE_GET_TIMEOUT)
+                get_sample_try_time = 0
             except queue.Empty:
                 get_sample_try_time += 1
                 if get_sample_try_time > MAX_GET_FAILED_TIME:

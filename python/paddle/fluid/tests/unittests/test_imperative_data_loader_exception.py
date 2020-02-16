@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import sys
+import time
 import unittest
 import numpy as np
 import paddle.fluid as fluid
@@ -20,10 +21,18 @@ from paddle.fluid import core
 import paddle.compat as cpt
 
 
+def get_random_images_and_labels(image_shape, label_shape):
+    image = np.random.random(size=image_shape).astype('float32')
+    label = np.random.random(size=label_shape).astype('int64')
+    return image, label
+
+
 class TestDygraphhDataLoaderWithException(unittest.TestCase):
     def setUp(self):
+        self.batch_size = 8
         self.batch_num = 4
-        self.capacity = 2
+        self.epoch_num = 1
+        self.capacity = 5
 
     def test_not_capacity(self):
         with fluid.dygraph.guard():
@@ -76,6 +85,30 @@ class TestDygraphhDataLoaderWithException(unittest.TestCase):
                               cpt.get_exception_message(ex))
                 exception = ex
             self.assertIsNotNone(exception)
+
+    def test_multi_process_with_get_timeout(self):
+        def slow_batch_generator_creator(batch_size, batch_num):
+            def __reader__():
+                for _ in range(batch_num):
+                    time.sleep(10)
+                    batch_image, batch_label = get_random_images_and_labels(
+                        [batch_size, 784], [batch_size, 1])
+                    yield batch_image, batch_label
+
+            return __reader__
+
+        with fluid.dygraph.guard():
+            loader = fluid.io.DataLoader.from_generator(
+                capacity=self.capacity, use_multiprocess=True)
+            loader.set_batch_generator(
+                slow_batch_generator_creator(self.batch_size, self.batch_num),
+                places=fluid.CPUPlace())
+            for _ in range(self.epoch_num):
+                for image, label in loader():
+                    relu = fluid.layers.relu(image)
+                    self.assertEqual(image.shape, [self.batch_size, 784])
+                    self.assertEqual(label.shape, [self.batch_size, 1])
+                    self.assertEqual(relu.shape, [self.batch_size, 784])
 
 
 if __name__ == '__main__':
