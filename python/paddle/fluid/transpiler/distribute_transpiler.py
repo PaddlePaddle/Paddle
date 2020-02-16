@@ -577,6 +577,15 @@ class DistributeTranspiler(object):
                     sync_mode=False,
                     current_endpoint="127.0.0.1:7000")
         """
+
+        err_msg = """
+
+API is deprecated since 2.0.0 Please use FleetAPI instead.
+WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
+
+        """
+        print(err_msg, file=sys.stderr)
+
         if program is None:
             program = default_main_program()
         if startup_program is None:
