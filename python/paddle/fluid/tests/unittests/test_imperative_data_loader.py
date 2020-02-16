@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid import core
-import paddle.compat as cpt
 
 
 def get_random_images_and_labels(image_shape, label_shape):
@@ -58,19 +57,12 @@ def batch_generator_creator(batch_size, batch_num):
     return __reader__
 
 
-# NOTE: In the current unittest framework, if three different multi-process
-# unittests are tested under the same class. Occasionally, the multiprocessing.Queue
-# of a unittest is full and empty at the same time. It is unexplainable and
-# may be related to the complexity of multiprocessing lib.
-# So create different classes for each unittest here.
-
-
-class TestDygraphhDataLoaderSingleProcess(unittest.TestCase):
+class TestDygraphhDataLoader(unittest.TestCase):
     def setUp(self):
         self.batch_size = 8
         self.batch_num = 4
-        self.epoch_num = 2
-        self.capacity = 2
+        self.epoch_num = 1
+        self.capacity = 5
 
     def test_single_process_reader(self):
         with fluid.dygraph.guard():
@@ -87,14 +79,6 @@ class TestDygraphhDataLoaderSingleProcess(unittest.TestCase):
                     self.assertEqual(label.shape, [self.batch_size, 1])
                     self.assertEqual(relu.shape, [self.batch_size, 784])
 
-
-class TestDygraphhDataLoaderMultiProcessSampleGenarator(unittest.TestCase):
-    def setUp(self):
-        self.batch_size = 8
-        self.batch_num = 4
-        self.epoch_num = 1
-        self.capacity = 2
-
     def test_sample_genarator(self):
         with fluid.dygraph.guard():
             loader = fluid.io.DataLoader.from_generator(
@@ -110,14 +94,6 @@ class TestDygraphhDataLoaderMultiProcessSampleGenarator(unittest.TestCase):
                     self.assertEqual(label.shape, [self.batch_size, 1])
                     self.assertEqual(relu.shape, [self.batch_size, 784])
 
-
-class TestDygraphhDataLoaderMultiProcessSampleListGenarator(unittest.TestCase):
-    def setUp(self):
-        self.batch_size = 8
-        self.batch_num = 4
-        self.epoch_num = 1
-        self.capacity = 2
-
     def test_sample_list_generator(self):
         with fluid.dygraph.guard():
             loader = fluid.io.DataLoader.from_generator(
@@ -132,14 +108,6 @@ class TestDygraphhDataLoaderMultiProcessSampleListGenarator(unittest.TestCase):
                     self.assertEqual(label.shape, [self.batch_size, 1])
                     self.assertEqual(relu.shape, [self.batch_size, 784])
 
-
-class TestDygraphhDataLoaderMultiProcessBatchGenarator(unittest.TestCase):
-    def setUp(self):
-        self.batch_size = 8
-        self.batch_num = 4
-        self.epoch_num = 1
-        self.capacity = 2
-
     def test_batch_genarator(self):
         with fluid.dygraph.guard():
             loader = fluid.io.DataLoader.from_generator(
@@ -153,64 +121,6 @@ class TestDygraphhDataLoaderMultiProcessBatchGenarator(unittest.TestCase):
                     self.assertEqual(image.shape, [self.batch_size, 784])
                     self.assertEqual(label.shape, [self.batch_size, 1])
                     self.assertEqual(relu.shape, [self.batch_size, 784])
-
-
-class TestDygraphhDataLoaderWithException(unittest.TestCase):
-    def setUp(self):
-        self.batch_num = 4
-        self.capacity = 2
-
-    def test_not_capacity(self):
-        with fluid.dygraph.guard():
-            with self.assertRaisesRegexp(ValueError,
-                                         "Please give value to capacity."):
-                fluid.io.DataLoader.from_generator()
-
-    def test_single_process_with_thread_expection(self):
-        def error_sample_genarator(batch_num):
-            def __reader__():
-                for _ in range(batch_num):
-                    yield [[[1, 2], [1]]]
-
-            return __reader__
-
-        with fluid.dygraph.guard():
-            loader = fluid.io.DataLoader.from_generator(
-                capacity=self.capacity, iterable=False, use_multiprocess=False)
-            loader.set_batch_generator(
-                error_sample_genarator(self.batch_num), places=fluid.CPUPlace())
-            exception = None
-            try:
-                for _ in loader():
-                    print("test_single_process_with_thread_expection")
-            except core.EnforceNotMet as ex:
-                self.assertIn("Blocking queue is killed",
-                              cpt.get_exception_message(ex))
-                exception = ex
-            self.assertIsNotNone(exception)
-
-    def test_multi_process_with_thread_expection(self):
-        def error_sample_genarator(batch_num):
-            def __reader__():
-                for _ in range(batch_num):
-                    yield [[[1, 2], [1]]]
-
-            return __reader__
-
-        with fluid.dygraph.guard():
-            loader = fluid.io.DataLoader.from_generator(
-                capacity=self.capacity, use_multiprocess=True)
-            loader.set_batch_generator(
-                error_sample_genarator(self.batch_num), places=fluid.CPUPlace())
-            exception = None
-            try:
-                for _ in loader():
-                    print("test_multi_process_with_thread_expection")
-            except core.EnforceNotMet as ex:
-                self.assertIn("Blocking queue is killed",
-                              cpt.get_exception_message(ex))
-                exception = ex
-            self.assertIsNotNone(exception)
 
 
 if __name__ == '__main__':
