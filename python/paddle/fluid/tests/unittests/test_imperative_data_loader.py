@@ -34,19 +34,6 @@ def sample_generator_creator(batch_size, batch_num):
     return __reader__
 
 
-def sample_list_generator_creator(batch_size, batch_num):
-    def __reader__():
-        for _ in range(batch_num):
-            sample_list = []
-            for _ in range(batch_size):
-                image, label = get_random_images_and_labels([784], [1])
-                sample_list.append([image, label])
-
-            yield sample_list
-
-    return __reader__
-
-
 def batch_generator_creator(batch_size, batch_num):
     def __reader__():
         for _ in range(batch_num):
@@ -86,20 +73,6 @@ class TestDygraphhDataLoader(unittest.TestCase):
             loader.set_sample_generator(
                 sample_generator_creator(self.batch_size, self.batch_num),
                 batch_size=self.batch_size,
-                places=fluid.CPUPlace())
-            for _ in range(self.epoch_num):
-                for image, label in loader():
-                    relu = fluid.layers.relu(image)
-                    self.assertEqual(image.shape, [self.batch_size, 784])
-                    self.assertEqual(label.shape, [self.batch_size, 1])
-                    self.assertEqual(relu.shape, [self.batch_size, 784])
-
-    def test_sample_list_generator(self):
-        with fluid.dygraph.guard():
-            loader = fluid.io.DataLoader.from_generator(
-                capacity=self.capacity, use_multiprocess=True)
-            loader.set_sample_list_generator(
-                sample_list_generator_creator(self.batch_size, self.batch_num),
                 places=fluid.CPUPlace())
             for _ in range(self.epoch_num):
                 for image, label in loader():
