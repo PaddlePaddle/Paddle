@@ -66,10 +66,11 @@ else()
   cc_test(mixed_vector_test SRCS mixed_vector_test.cc DEPS place memory device_context tensor)
 endif()
 cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto version)
+cc_library(device_worker SRCS device_worker.cc DEPS lod_tensor)
 
 cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor memory)
 nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor)
-cc_test(device_worker_test SRCS device_worker_test.cc DEPS lod_tensor)
+cc_test(device_worker_test SRCS device_worker_test.cc DEPS device_worker)
 
 cc_library(garbage_collector SRCS garbage_collector.cc DEPS device_context memory gflags glog)
 
