@@ -31,10 +31,6 @@ __global__ void AdamKernel(T beta1, T beta2, T epsilon, const T* beta1_pow_,
       sqrt(static_cast<T>(1.0) - beta2_pow) / (static_cast<T>(1.0) - beta1_pow);
 
   int id = blockIdx.x * blockDim.x + threadIdx.x;
-  if (id == 0) {
-    beta1_pow_out[0] = beta1_pow * beta1;
-    beta2_pow_out[0] = beta2_pow * beta2;
-  }
 
   for (; id < ndim; id += gridDim.x * blockDim.x) {
     T p = param[id];
@@ -48,6 +44,11 @@ __global__ void AdamKernel(T beta1, T beta2, T epsilon, const T* beta1_pow_,
     moment1_out[id] = mom1;
     moment2_out[id] = mom2;
     param_out[id] = p;
+  }
+  __syncthreads();
+  if (id == ndim - 1) {
+    beta1_pow_out[0] = beta1_pow * beta1;
+    beta2_pow_out[0] = beta2_pow * beta2;
   }
 }
 
@@ -108,6 +109,18 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
     VLOG(3) << "param.numel(): " << param.numel();
 
     if (grad_var->IsType<framework::LoDTensor>()) {
+      PADDLE_ENFORCE_EQ(beta1_pow_out.numel(), 1,
+                        platform::errors::InvalidArgument(
+                            "beta1 pow output size should be 1, but received "
+                            "value is:%d.",
+                            beta1_pow_out.numel()));
+
+      PADDLE_ENFORCE_EQ(beta2_pow_out.numel(), 1,
+                        platform::errors::InvalidArgument(
+                            "beta2 pow output size should be 1, but received "
+                            "value is:%d.",
+                            beta2_pow_out.numel()));
+
       auto& grad = Ref(ctx.Input<LoDTensor>("Grad"), "Must set Grad");
 
       auto& dev_ctx =
