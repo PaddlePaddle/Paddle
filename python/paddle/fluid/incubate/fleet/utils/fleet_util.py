@@ -27,7 +27,7 @@ from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet as fleet_ps
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet as fleet_transpiler
 from . import hdfs
 from .hdfs import *
-import utils
+from . import utils
 
 __all__ = ["FleetUtil"]
 
