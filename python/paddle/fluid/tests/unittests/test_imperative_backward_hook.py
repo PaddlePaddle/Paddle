@@ -50,21 +50,23 @@ class SimpleNet(fluid.Layer):
         return ret
 
 
-def hook_fn1(grad1):
-    print(2 * grad1)
+call_hook_fn1 = False
+call_hook_fn2 = False
 
 
-def hook_fn2(grad2):
-    print(4 * grad2)
-
-
-def hook_fn3(grad3):
+def hook_fn1(grad3):
+    global call_hook_fn1
+    call_hook_fn1 = True
     grad3 = grad3 * 2
+    # print(grad3)
     return grad3
 
 
-def hook_fn4(grad4):
+def hook_fn2(grad4):
+    global call_hook_fn2
+    call_hook_fn2 = True
     grad4 = grad4 * 4
+    # print(grad4)
     return grad4
 
 
@@ -85,27 +87,54 @@ class TestBackwardHook(unittest.TestCase):
                           remove_hook2, hook1, hook2)
         dy_loss = outs
         dy_loss.backward()
-        print(simple_net.linear1.weight._grad_ivar())
+        linear1_weight_grad = simple_net.linear1.weight._grad_ivar()
+        # print(simple_net.linear1.weight._grad_ivar())
         sgd.minimize(dy_loss)
         sgd.clear_gradients()
+        return linear1_weight_grad
 
     def test_backeard_hook_for_varbase(self):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
 
+        global call_hook_fn1
+        global call_hook_fn2
+
         for place in places:
             with fluid.dygraph.guard(place):
-                self.register_remove_hook(True, True, True, True, hook_fn1,
-                                          hook_fn2)
-                self.register_remove_hook(True, True, True, False, hook_fn1,
-                                          hook_fn2)
-                self.register_remove_hook(True, False, True, False, hook_fn1,
-                                          hook_fn3)
-                self.register_remove_hook(True, True, True, False, hook_fn1,
-                                          hook_fn4)
-                self.register_remove_hook(True, False, True, False, hook_fn4,
-                                          hook_fn1)
+                linear1_weight_grad1 = self.register_remove_hook(
+                    True, True, True, True, hook_fn1, hook_fn2)
+                self.assertFalse(call_hook_fn1)
+                self.assertFalse(call_hook_fn2)
+
+                linear1_weight_grad2 = self.register_remove_hook(
+                    True, True, True, False, hook_fn1, hook_fn2)
+                self.assertFalse(call_hook_fn1)
+                self.assertTrue(call_hook_fn2)
+                self.assertTrue(
+                    np.array_equal((linear1_weight_grad1 * 4).numpy(),
+                                   linear1_weight_grad2.numpy()))
+                call_hook_fn2 = False
+
+                linear1_weight_grad3 = self.register_remove_hook(
+                    True, False, True, False, hook_fn1, hook_fn2)
+                self.assertTrue(call_hook_fn1)
+                self.assertTrue(call_hook_fn2)
+                self.assertTrue(
+                    np.array_equal((linear1_weight_grad1 * 2).numpy(),
+                                   linear1_weight_grad3.numpy()))
+                call_hook_fn1 = False
+                call_hook_fn2 = False
+
+                linear1_weight_grad4 = self.register_remove_hook(
+                    True, False, True, True, hook_fn1, hook_fn2)
+                self.assertTrue(call_hook_fn1)
+                self.assertFalse(call_hook_fn2)
+                self.assertTrue(
+                    np.array_equal((linear1_weight_grad1 * 8).numpy(),
+                                   linear1_weight_grad4.numpy()))
+                call_hook_fn1 = False
 
 
 if __name__ == '__main__':

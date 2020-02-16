@@ -63,9 +63,13 @@ static T PyObjectCast(PyObject *obj) {
 class PyCallableObject {
  public:
   PyCallableObject(PyObject *func, imperative::VarBase *varbase_grad)
-      : py_obj_func_(func), varbase_grad_(varbase_grad) {}
+      : py_obj_func_(func), varbase_grad_(varbase_grad) {
+    VLOG(9) << "Construct PyCallableObject for Var: " << varbase_grad_->Name();
+  }
 
-  ~PyCallableObject() {}
+  ~PyCallableObject() {
+    VLOG(9) << "Destruct PyCallableObject for Var: " << varbase_grad_->Name();
+  }
 
   void operator()() {
     gil_scoped_acquire gil;
@@ -520,7 +524,38 @@ void BindImperative(py::module *m_ptr) {
                PADDLE_THROW(platform::errors::PreconditionNotMet(
                    "Can not register hook for VarBase who has not GradVar"));
              }
-           })
+           },
+           R"DOC(
+
+        Register a backward hook for Variable. The hook will be called every time a gradient will 
+        respect to the Variable is computed. 
+        The hook should not modify its param, but it can optionally return a new gradient 
+        which will change the Variable's value. The hook shold have the following signature:
+
+        hook(grad) -> Variable or None
+
+        Parameters:
+            hook(function): A backward hook to be registered for Variable
+
+        Returns:
+            A callable object that can be used to remove the added hook by calling `remove()` .
+
+        Examples:
+             .. code-block:: python
+
+                import paddle.fluid as fluid
+                import numpy as np
+
+                def hook_fn(g):
+                    g = 2 * g
+                    print g
+                    return g
+
+                with fluid.dygraph.guard():
+                    var = fluid.dygraph.to_variable(np.array([1,2,3,4]))
+                    remove_hook = var.register_hook(hook_fn)
+                    remove_hook.remove()
+      )DOC")
       .def("execute_hooks",
            [](imperative::VarBase &self) {
              VLOG(9) << "begin execute backward_hook function";

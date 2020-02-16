@@ -233,6 +233,7 @@ class VarBase {
 
   void RegisterBackwardHooks(const std::function<void()>& func, int id) {
     backward_hooks_[id] = func;
+    VLOG(9) << "Register Backward Hook for Var: " << Name() << std::endl;
   }
 
   int Get_Hooks_Id() {
@@ -245,6 +246,7 @@ class VarBase {
     for (iter = backward_hooks_.begin(); iter != backward_hooks_.end();
          iter++) {
       (iter->second)();
+      VLOG(9) << "Invoke Backward Hook for Var: " << Name() << std::endl;
     }
   }
 
@@ -262,6 +264,7 @@ class VarBase {
   // grad_op indicates which grad_op will this var be used as input
   std::vector<std::weak_ptr<OpBase>> grad_ops_;
 
+  // add next_hooks_id_ and backward_hooks_ to support backward hook.
   int next_hooks_id_;
   std::map<int, std::function<void()>> backward_hooks_;
   // add this property for users may set stop_gradient themselves and this
