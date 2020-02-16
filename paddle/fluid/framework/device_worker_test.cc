@@ -42,7 +42,7 @@ TEST(LodTensor, PrintLodTensor) {
 
   LoDTensor tensor3;
   tensor3.Resize({2});
-  tensor3.mutable_data<int64_t>(platform::CPUPlace());
+  tensor3.mutable_data<double>(platform::CPUPlace());
   tensor3.data<double>()[0] = 0.1;
   tensor3.data<double>()[1] = 0.2;
   res = PrintLodTensor(&tensor3, 0, 2);
