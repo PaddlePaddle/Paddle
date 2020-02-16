@@ -20,6 +20,7 @@ import numpy as np
 import tarfile
 import tempfile
 import os
+import sys
 from paddle.dataset.common import download, DATA_HOME
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
@@ -63,10 +64,11 @@ class TestFleetUtils(unittest.TestCase):
         program_dir = os.path.join(data_dir, self.pruned_dir)
         text_program = "pruned_main_program.pbtxt"
         binary_program = "pruned_main_program.bin"
-        text_to_binary = utils.program_type_trans(program_dir, text_program,
-                                                  True)
-        binary_to_text = utils.program_type_trans(program_dir, binary_program,
-                                                  False)
+        fleet_util = FleetUtil()
+        text_to_binary = fleet_util.program_type_trans(program_dir,
+                                                       text_program, True)
+        binary_to_text = fleet_util.program_type_trans(program_dir,
+                                                       binary_program, False)
         self.assertTrue(
             os.path.exists(os.path.join(program_dir, text_to_binary)))
         self.assertTrue(
@@ -178,36 +180,43 @@ class TestFleetUtils(unittest.TestCase):
         conf.pruned_prog_path = os.path.join(
             data_dir,
             os.path.join(self.pruned_dir, "pruned_main_program.pbtxt"))
-        conf.draw = True
-        conf.draw_out_name = "pruned_check"
+        if sys.platform == 'win32' or sys.platform == 'sys.platform':
+            conf.draw = False
+        else:
+            conf.draw = True
+            conf.draw_out_name = "pruned_check"
         res = fleet_util.check_two_programs(conf)
         self.assertTrue(res)
 
     def test_draw_program(self):
-        data_dir = self.download_files()
-        program_path = os.path.join(
-            data_dir, os.path.join(self.train_dir, "join_main_program.pbtxt"))
-        is_text = True
-        program = utils.load_program(program_path, is_text)
-        output_dir = os.path.join(data_dir, self.train_dir)
-        output_filename_1 = "draw_prog_1"
-        output_filename_2 = "draw_prog_2"
-        fleet_util = FleetUtil()
-        fleet_util.draw_from_program_file(program_path, is_text, output_dir,
-                                          output_filename_1)
-        fleet_util.draw_from_program(program, output_dir, output_filename_2)
-        self.assertTrue(
-            os.path.exists(
-                os.path.join(output_dir, output_filename_1 + ".dot")))
-        self.assertTrue(
-            os.path.exists(
-                os.path.join(output_dir, output_filename_1 + ".pdf")))
-        self.assertTrue(
-            os.path.exists(
-                os.path.join(output_dir, output_filename_2 + ".dot")))
-        self.assertTrue(
-            os.path.exists(
-                os.path.join(output_dir, output_filename_2 + ".pdf")))
+        if sys.platform == 'win32' or sys.platform == 'sys.platform':
+            pass
+        else:
+            data_dir = self.download_files()
+            program_path = os.path.join(
+                data_dir,
+                os.path.join(self.train_dir, "join_main_program.pbtxt"))
+            is_text = True
+            program = utils.load_program(program_path, is_text)
+            output_dir = os.path.join(data_dir, self.train_dir)
+            output_filename_1 = "draw_prog_1"
+            output_filename_2 = "draw_prog_2"
+            fleet_util = FleetUtil()
+            fleet_util.draw_from_program_file(program_path, is_text, output_dir,
+                                              output_filename_1)
+            fleet_util.draw_from_program(program, output_dir, output_filename_2)
+            self.assertTrue(
+                os.path.exists(
+                    os.path.join(output_dir, output_filename_1 + ".dot")))
+            self.assertTrue(
+                os.path.exists(
+                    os.path.join(output_dir, output_filename_1 + ".pdf")))
+            self.assertTrue(
+                os.path.exists(
+                    os.path.join(output_dir, output_filename_2 + ".dot")))
+            self.assertTrue(
+                os.path.exists(
+                    os.path.join(output_dir, output_filename_2 + ".pdf")))
 
 
 if __name__ == '__main__':
