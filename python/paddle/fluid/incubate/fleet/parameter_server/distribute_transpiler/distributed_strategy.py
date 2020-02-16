@@ -46,7 +46,7 @@ class TrainerRuntimeConfig(object):
         draws += l_format.format("TrainerRuntimeConfig Overview", "Value")
         draws += line + "\n"
 
-        for k, v in flags.items():
+        for k, v in self.get_communicator_flags().items():
             draws += l_format.format(k, v)
 
         draws += border
