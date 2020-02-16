@@ -930,15 +930,15 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
 
     Args:
         cond(Callable): A callable returning a boolean tensor controlling whether to continue looping.
-        body(Callable): A callable returning a tuple or list of tensors of the same arity (length and structure)
-            and types as ``loops_vars`` .
-        loop_vars(list|tuple): A list or tuple of tensors that is passed to both ``cond`` and ``body`` .
+        body(Callable): A callable returning a tuple or list of tensors and LoDTensorArrays of the same arity
+            (length and structure) and types as ``loops_vars`` .
+        loop_vars(list|tuple): A list or tuple of tensors and LoDTensorArrays that is passed to both ``cond`` and ``body`` .
         is_test(bool, optional): A flag indicating whether execution is in test phase. Default value is False.
         name(str, optional): Normally there is no need for users to set this property. For more information, please
             refer to :ref:`api_guide_Name`. Default is None.
     
     Returns:
-        A list or tuple of tensors which returned by ``body`` .
+        A list or tuple of tensors and LoDTensorArrays which returned by ``body`` .
     
     Returen type:
         list(Variable)|tuple(Variable).
@@ -966,7 +966,6 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
 
             main_program = fluid.default_main_program()
             startup_program = fluid.default_startup_program()
-
             with fluid.program_guard(main_program, startup_program):
                 i = layers.fill_constant(shape=[1], dtype='int64', value=0)     # loop counter
                 ten = layers.fill_constant(shape=[1], dtype='int64', value=10)  # loop length
@@ -1000,15 +999,12 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
     while_loop_block = While(pre_cond, is_test, name)
     with while_loop_block.block():
         output_vars = body(*loop_vars)
+        map_structure(assign, output_vars, loop_vars)
         if len(loop_vars) == 1:
-            assign(output_vars, loop_vars[0])
             now_cond = cond(output_vars)
         else:
-            for i in range(len(output_vars)):
-                assign(output_vars[i], loop_vars[i])
             now_cond = cond(*output_vars)
         assign(now_cond, pre_cond)
-
     return loop_vars
 
 

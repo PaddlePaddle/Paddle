@@ -84,22 +84,20 @@ class TestStrategyFactor(unittest.TestCase):
                           build_strategy_illegal)
 
     def test_async_strategy(self):
+        os.environ["CPU_NUM"] = '100'
+
         strategy = StrategyFactory.create_async_strategy()
         self.assertEqual(strategy._program_config.sync_mode, False)
         self.assertEqual(strategy._program_config.runtime_split_send_recv, True)
         self.assertEqual(strategy._build_strategy.async_mode, True)
 
-        # test set_trainer_runtime_config using TrainerRuntimeConfig
-        trainer_runtime_config_class = TrainerRuntimeConfig()
-        trainer_runtime_config_class.send_queue_size = 50
-        print(trainer_runtime_config_class)
-        strategy.set_trainer_runtime_config(trainer_runtime_config_class)
         trainer_runtime_config = strategy.get_trainer_runtime_config()
-        self.assertEqual(trainer_runtime_config.send_queue_size, 50)
+        self.assertEqual(trainer_runtime_config.runtime_configs[
+            'communicator_send_queue_size'], '100')
 
         # test set_trainer_runtime_config using dict
         trainer_runtime_config_dict = dict()
-        trainer_runtime_config_dict['send_queue_size'] = 100
+        trainer_runtime_config_dict['communicator_send_queue_size'] = '20'
         strategy.set_trainer_runtime_config(trainer_runtime_config_dict)
         trainer_runtime_config = strategy.get_trainer_runtime_config()
         trainer_communicator_flags = trainer_runtime_config.get_communicator_flags(
@@ -107,7 +105,7 @@ class TestStrategyFactor(unittest.TestCase):
         self.assertIn('communicator_send_queue_size',
                       trainer_communicator_flags)
         self.assertEqual(
-            trainer_communicator_flags['communicator_send_queue_size'], '100')
+            trainer_communicator_flags['communicator_send_queue_size'], '20')
 
         # test set_trainer_runtime_config exception
         trainer_runtime_config_dict['unknown'] = None
