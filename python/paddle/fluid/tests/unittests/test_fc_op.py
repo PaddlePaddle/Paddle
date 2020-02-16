@@ -18,6 +18,8 @@ from op_test import OpTest
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
+SEED = 2020
+
 
 def fc_refer(matrix, with_bias, with_relu=False):
     in_n, in_c, in_h, in_w = matrix.input.shape
@@ -129,6 +131,34 @@ class TestFCOpWithPadding(TestFCOp):
         self.with_bias = True
         self.with_relu = True
         self.matrix = MatrixGenerate(1, 4, 3, 128, 128, 2)
+
+
+class TestFcAPI(unittest.TestCase):
+    # test for parameter num_flatten_dims=-1
+    def test_api(self):
+        startup_program = Program()
+        main_program = Program()
+        startup_program.random_seed = SEED
+        main_program.random_seed = SEED
+
+        with program_guard(main_program, startup_program):
+            input = np.random.random([2, 2, 25]).astype("float32")
+            x = fluid.layers.data(
+                name="x",
+                shape=[2, 2, 25],
+                append_batch_size=False,
+                dtype="float32")
+
+            out_1 = fluid.layers.fc(input=x, size=1, num_flatten_dims=-1)
+            out_2 = fluid.layers.fc(input=x, size=1, num_flatten_dims=2)
+
+        exe = fluid.Executor(place=fluid.CPUPlace())
+        exe.run(startup_program)
+        res_1, res_2 = exe.run(main_program,
+                               feed={"x": input},
+                               fetch_list=[out_1, out_2])
+
+        assert np.array_equal(res_1, res_2)
 
 
 class TestFCOpError(unittest.TestCase):
