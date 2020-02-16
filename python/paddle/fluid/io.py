@@ -1722,7 +1722,7 @@ def load(program, model_path, executor=None, var_list=None):
                                                    executor._default_executor)
     with open(parameter_file_name, 'rb') as f:
         load_dict = pickle.load(f) if six.PY2 else pickle.load(
-            f, encoding='bytes')
+            f, encoding='latin1')
     for v in parameter_list:
         assert v.name in load_dict, \
             "Can not find [{}] in model file [{}]".format(
@@ -1743,7 +1743,7 @@ def load(program, model_path, executor=None, var_list=None):
 
         with open(opt_file_name, 'rb') as f:
             load_dict = pickle.load(f) if six.PY2 else pickle.load(
-                f, encoding='bytes')
+                f, encoding='latin1')
         for v in optimizer_var_list:
             assert v.name in load_dict, \
                 "Can not find [{}] in model file [{}]".format(
@@ -1783,13 +1783,13 @@ def load_program_state(model_path):
 
     with open(parameter_file_name, 'rb') as f:
         para_dict = pickle.load(f) if six.PY2 else pickle.load(
-            f, encoding='bytes')
+            f, encoding='latin1')
 
     opt_file_name = model_path + ".pdopt"
     if os.path.exists(opt_file_name):
         with open(opt_file_name, 'rb') as f:
             opti_dict = pickle.load(f) if six.PY2 else pickle.load(
-                f, encoding='bytes')
+                f, encoding='latin1')
 
         para_dict.update(opti_dict)
 
