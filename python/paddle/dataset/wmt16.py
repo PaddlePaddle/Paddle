@@ -112,9 +112,9 @@ def reader_creator(tar_file, file_name, src_dict_size, trg_dict_size, src_lang):
         trg_dict = __load_dict(tar_file, trg_dict_size,
                                ("de" if src_lang == "en" else "en"))
 
-        # the indice for start mark, end mark, and unk are the same in source
+        # the index for start mark, end mark, and unk are the same in source
         # language and target language. Here uses the source language
-        # dictionary to determine their indices.
+        # dictionary to determine their indexs.
         start_id = src_dict[START_MARK]
         end_id = src_dict[END_MARK]
         unk_id = src_dict[UNK_MARK]

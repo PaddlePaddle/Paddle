@@ -71,7 +71,7 @@ def parse_args():
     parser.add_argument(
         '--emb_lr_rate', type=float, default=0.5, help='learning rate')
     parser.add_argument(
-        '--step', type=int, default=1, help='gnn propogation steps')
+        '--step', type=int, default=1, help='gnn propagation steps')
     parser.add_argument(
         '--lr_dc', type=float, default=0.1, help='learning rate decay rate')
     parser.add_argument(

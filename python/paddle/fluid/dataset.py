@@ -100,7 +100,7 @@ class DatasetBase(object):
         Args:
             record_candidate_size(int): size of instances candidate to shuffle 
                                         one slot
-            fea_eval(bool): wheather enable fea eval mode to enable slots shuffle.
+            fea_eval(bool): whether enable fea eval mode to enable slots shuffle.
                             default is True.
             
         Examples:
@@ -822,7 +822,7 @@ class BoxPSDataset(InMemoryDataset):
 
     def wait_preload_done(self):
         """
-        Wait async proload done
+        Wait async preload done
         Wait Until Feed Pass Done
         Examples:
             .. code-block:: python

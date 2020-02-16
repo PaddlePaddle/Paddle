@@ -887,7 +887,7 @@ class FleetUtil(object):
             hadoop_fs_name(str): hadoop fs name
             hadoop_fs_ugi(str): hadoop fs ugi
             hadoop_home(str): hadoop home, default is "$HADOOP_HOME"
-            save_combine(bool): whether to save in a file or seperate files,
+            save_combine(bool): whether to save in a file or separate files,
                                 default is True
 
         Examples:
@@ -976,7 +976,7 @@ class FleetUtil(object):
             hadoop_fs_ugi(str): hadoop fs ugi
             hadoop_home(str): hadoop home, default is "$HADOOP_HOME"
             var_names(list): save persistable var names, default is None
-            save_combine(bool): whether to save in a file or seperate files,
+            save_combine(bool): whether to save in a file or separate files,
                                 default is True
 
         Examples:
@@ -1286,7 +1286,7 @@ class FleetUtil(object):
               from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
               fleet_util = FleetUtil()
               metric_list = fleet_util.get_global_metrics(myscope,
-                                                          stat_pos.nane,
+                                                          stat_pos.name,
                                                           stat_neg.name,
                                                           local_sqrerr.name,
                                                           local_abserr.name,
@@ -1473,7 +1473,7 @@ class FleetUtil(object):
               from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
               fleet_util = FleetUtil()
               fleet_util.print_global_metrics(myscope,
-                                              stat_pos.nane,
+                                              stat_pos.name,
                                               stat_neg.name,
                                               local_sqrerr.name,
                                               local_abserr.name,

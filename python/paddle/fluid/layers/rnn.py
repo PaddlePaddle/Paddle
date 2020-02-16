@@ -99,11 +99,11 @@ class RNNCell(object):
             batch_ref: A (possibly nested structure of) tensor variable[s].
                 The first dimension of the tensor will be used as batch size to
                 initialize states.
-            shape: A (possiblely nested structure of) shape[s], where a shape is
+            shape: A (possibly nested structure of) shape[s], where a shape is
                 represented as a list/tuple of integer). -1(for batch size) will
                 beautomatically inserted if shape is not started with it. If None,
                 property `state_shape` will be used. The default value is None.
-            dtype: A (possiblely nested structure of) data type[s]. The structure
+            dtype: A (possibly nested structure of) data type[s]. The structure
                 must be same as that of `shape`, except when all tensors' in states
                 has the same data type, a single data type can be used. If None and
                 property `cell.state_shape` is not available, float32 will be used
@@ -171,7 +171,7 @@ class RNNCell(object):
         """
         Abstract method (property).
         Used to initialize states.
-        A (possiblely nested structure of) shape[s], where a shape is represented
+        A (possibly nested structure of) shape[s], where a shape is represented
         as a list/tuple of integers (-1 for batch size would be automatically
         inserted into a shape if shape is not started with it). 
         Not necessary to be implemented if states are not initialized by
@@ -186,9 +186,9 @@ class RNNCell(object):
         """
         Abstract method (property).
         Used to initialize states.
-        A (possiblely nested structure of) data types[s]. The structure must be
+        A (possibly nested structure of) data types[s]. The structure must be
         same as that of `shape`, except when all tensors' in states has the same
-        data type, a signle data type can be used.
+        data type, a single data type can be used.
         Not necessary to be implemented if states are not initialized
         by `get_initial_states` or the `dtype` argument is provided when using
         `get_initial_states`.
@@ -356,7 +356,7 @@ class LSTMCell(RNNCell):
             inputs(Variable): A tensor with shape `[batch_size, input_size]`,
                 corresponding to :math:`x_t` in the formula. The data type
                 should be float32.
-            states(Variable): A list of containing two tensers, each shaped
+            states(Variable): A list of containing two tensors, each shaped
                 `[batch_size, hidden_size]`, corresponding to :math:`h_{t-1}, c_{t-1}`
                 in the formula. The data type should be float32.
 
@@ -391,7 +391,7 @@ def rnn(cell,
         **kwargs):
     """
     rnn creates a recurrent neural network specified by RNNCell `cell`,
-    which performs :code:`cell.call()` repeatedly until reachs to the maximum
+    which performs :code:`cell.call()` repeatedly until reaches to the maximum
     length of `inputs`.
 
     Parameters:
@@ -408,7 +408,7 @@ def rnn(cell,
         sequence_length(Variable, optional): A tensor with shape `[batch_size]`.
             It stores real length of each instance, thus enables users to extract
             the last valid state when past a batch element's sequence length for
-            correctness. If not provided, the padddings would be treated same as
+            correctness. If not provided, the paddings would be treated same as
             non-padding inputs. Default None.
         time_major(bool, optional): Indicate the data layout of Tensor included
             in `input` and `output` tensors. If `False`, the data layout would
@@ -590,7 +590,7 @@ class Decoder(object):
                 :math:`[time\_step, batch\_size, ...]` , which is done by the caller. 
             final_states(Variable): A (possibly nested structure of) tensor variable[s].
                 It is the `next_states` returned by `decoder.step` at last decoding step,
-                thus has the same structrue, shape and data type with states at any time
+                thus has the same structure, shape and data type with states at any time
                 step.
 
         Returns:
@@ -664,7 +664,7 @@ class BeamSearchDecoder(Decoder):
                 **Note that fluid.embedding should be used here rather than
                 fluid.layers.embedding, since shape of ids is [batch_size, beam_size].
                 when using fluid.layers.embedding, must unsqueeze in embedding_fn.**
-                If not provided, the id to embedding transfomation must be built into
+                If not provided, the id to embedding transformation must be built into
                 `cell.call`. Default None.
             output_fn(optional): A callable to apply to the cell's output prior to
                 calculate scores and select candidate token ids. Default None.
@@ -687,7 +687,7 @@ class BeamSearchDecoder(Decoder):
         `beam_size` times.
 
         Parameters:
-            x(Variable): A tenosr with shape `[batch_size, ...]`. The data type
+            x(Variable): A tensor with shape `[batch_size, ...]`. The data type
                 should be float32, float64, int32, int64 or bool.
             beam_size(int): The beam width used in beam search.
 
@@ -716,7 +716,7 @@ class BeamSearchDecoder(Decoder):
         tensor with shape `[batch_size, beam_size, ...]`. 
 
         Parameters:
-            x(Variable): A tenosr with shape `[batch_size * beam_size, ...]`. The
+            x(Variable): A tensor with shape `[batch_size * beam_size, ...]`. The
                 data type should be float32, float64, int32, int64 or bool.
 
         Returns:
@@ -732,7 +732,7 @@ class BeamSearchDecoder(Decoder):
         tensor with shape `[batch_size * beam_size, ...]`. 
 
         Parameters:
-            x(Variable): A tenosr with shape `[batch_size, beam_size, ...]`. The
+            x(Variable): A tensor with shape `[batch_size, beam_size, ...]`. The
                 data type should be float32, float64, int32, int64 or bool.
 
         Returns:
@@ -793,14 +793,14 @@ class BeamSearchDecoder(Decoder):
                 probs, (finished - 1), axis=0)
         return probs
 
-    def _gather(self, x, indices, batch_size):
+    def _gather(self, x, indexs, batch_size):
         """
-        Gather from the tensor `x` using `indices`.
+        Gather from the tensor `x` using `indexs`.
 
         Parameters:
             x(Variable): A tensor with shape `[batch_size, beam_size, ...]`.
-            indices(Variable): A `int64` tensor with shape `[batch_size, beam_size]`,
-                representing the indices that we use to gather.
+            indexs(Variable): A `int64` tensor with shape `[batch_size, beam_size]`,
+                representing the indexs that we use to gather.
             batch_size(Variable): A tensor with shape `[1]`. Its data type should
                 be int32 or int64.
 
@@ -811,14 +811,14 @@ class BeamSearchDecoder(Decoder):
         # TODO: compatibility of int32 and int64
         batch_size = tensor.cast(
             batch_size,
-            indices.dtype) if batch_size.dtype != indices.dtype else batch_size
+            indexs.dtype) if batch_size.dtype != indexs.dtype else batch_size
         batch_size.stop_gradient = True  # TODO: remove this
         batch_pos = nn.expand(
             nn.unsqueeze(
                 tensor.range(
-                    0, batch_size, 1, dtype=indices.dtype), [1]),
+                    0, batch_size, 1, dtype=indexs.dtype), [1]),
             [1, self.beam_size])
-        topk_coordinates = nn.stack([batch_pos, indices], axis=2)
+        topk_coordinates = nn.stack([batch_pos, indexs], axis=2)
         topk_coordinates.stop_gradient = True
         return nn.gather_nd(x, topk_coordinates)
 
@@ -940,28 +940,28 @@ class BeamSearchDecoder(Decoder):
         scores = log_probs
         scores = nn.reshape(scores, [-1, self.beam_size * self.vocab_size])
         # TODO: add grad for topk then this beam search can be used to train
-        topk_scores, topk_indices = nn.topk(input=scores, k=self.beam_size)
-        beam_indices = nn.elementwise_floordiv(topk_indices,
+        topk_scores, topk_indexs = nn.topk(input=scores, k=self.beam_size)
+        beam_indexs = nn.elementwise_floordiv(topk_indexs,
                                                self.vocab_size_tensor)
-        token_indices = nn.elementwise_mod(topk_indices, self.vocab_size_tensor)
+        token_indexs = nn.elementwise_mod(topk_indexs, self.vocab_size_tensor)
         next_log_probs = self._gather(
             nn.reshape(log_probs, [-1, self.beam_size * self.vocab_size]),
-            topk_indices, self.batch_size)
+            topk_indexs, self.batch_size)
         next_cell_states = map_structure(
-            lambda x: self._gather(x, beam_indices, self.batch_size),
+            lambda x: self._gather(x, beam_indexs, self.batch_size),
             next_cell_states)
-        next_finished = self._gather(beam_state.finished, beam_indices,
+        next_finished = self._gather(beam_state.finished, beam_indexs,
                                      self.batch_size)
-        next_lengths = self._gather(beam_state.lengths, beam_indices,
+        next_lengths = self._gather(beam_state.lengths, beam_indexs,
                                     self.batch_size)
         next_lengths = next_lengths + tensor.cast(
             nn.logical_not(next_finished), beam_state.lengths.dtype)
         next_finished = control_flow.logical_or(
             next_finished,
-            control_flow.equal(token_indices, self.end_token_tensor))
+            control_flow.equal(token_indexs, self.end_token_tensor))
 
-        beam_search_output = self.OutputWrapper(topk_scores, token_indices,
-                                                beam_indices)
+        beam_search_output = self.OutputWrapper(topk_scores, token_indexs,
+                                                beam_indexs)
         beam_search_state = self.StateWrapper(next_cell_states, next_log_probs,
                                               next_finished, next_lengths)
         return beam_search_output, beam_search_state
@@ -1030,7 +1030,7 @@ class BeamSearchDecoder(Decoder):
                 `[time_step, batch_size, ...]`, which is done by the caller. 
             final_states(Variable): A structure(namedtuple) of tensor variables.
                 It is the `next_states` returned by `decoder.step` at last
-                decoding step, thus has the same structrue, shape and data type
+                decoding step, thus has the same structure, shape and data type
                 with states at any time step.
             sequence_lengths(Variable): An `int64` tensor shaped `[batch_size, beam_size]`.
                 It contains sequence lengths for each beam determined during
@@ -1059,7 +1059,7 @@ def dynamic_decode(decoder,
     """
     Dynamic decoding performs :code:`decoder.step()` repeatedly until the returned
     Tensor indicating finished status contains all True values or the number of
-    decoding step reachs to :attr:`max_step_num`.
+    decoding step reaches to :attr:`max_step_num`.
 
     :code:`decoder.initialize()` would be called once before the decoding loop.
     If the `decoder` has implemented `finalize` method, :code:`decoder.finalize()`
@@ -1074,7 +1074,7 @@ def dynamic_decode(decoder,
             Tensor by :code:`decoder.step()` indicating finished status contains
             all True. Default `None`.
         output_time_major(bool, optional): Indicate the data layout of Tensor included
-            in the final outpus(the first returned value of this method). If
+            in the final outputs(the first returned value of this method). If
             attr:`False`, the data layout would be batch major with shape
             `[batch_size, seq_len, ...]`.  If attr:`True`, the data layout would
             be time major with shape `[seq_len, batch_size, ...]`. Default: `False`.
@@ -2080,7 +2080,7 @@ def lstm(input,
         name (str, optional): A name for this layer. If set None, the layer
                          will be named automatically. Default: None.
         default_initializer(Initializer, optional): Where use initializer to initialize the Weight
-                         If set None, defaule initializer will be used. Default: None.
+                         If set None, default initializer will be used. Default: None.
         seed(int, optional): Seed for dropout in LSTM, If it's -1, dropout will use random seed. Default: 1.
 
 
@@ -2365,9 +2365,9 @@ def dynamic_lstmp(input,
         inputs['C0'] = c_0
 
     if cell_clip:
-        assert cell_clip >= 0, "cell_clip should not be negtive."
+        assert cell_clip >= 0, "cell_clip should not be negative."
     if proj_clip:
-        assert proj_clip >= 0, "proj_clip should not be negtive."
+        assert proj_clip >= 0, "proj_clip should not be negative."
 
     helper.append_op(
         type='lstmp',
@@ -2628,7 +2628,7 @@ def gru_unit(input,
     Returns:
         tuple: The tuple contains three Tensor variables with the same data type \
             as ``input`` . They represent the hidden state for next time step ( :math:`h_t` ), \
-            reseted previous hidden state ( :math:`r_t \odot h_{t-1}` ), and the \
+            reset previous hidden state ( :math:`r_t \odot h_{t-1}` ), and the \
             concatenation of :math:`h_t, r_t, \\tilde{h_t}` . And they have shape \
             :math:`[N, D]` , :math:`[N, D]` , :math:`[N, D \times 3]` separately. \
             Usually only the hidden state for next time step ( :math:`h_t` ) is used \
@@ -2716,7 +2716,7 @@ def beam_search(pre_ids,
     scores calculation to perform beam search for one time step. Specifically,
     after ``ids`` and ``scores`` have been produced, it selects the top-K
     ( `k` is ``beam_size`` ) candidate word ids of current step from ``ids``
-    according to the correspongding ``scores``. Additionally, ``pre_id`` and
+    according to the corresponding ``scores``. Additionally, ``pre_id`` and
     ``pre_scores`` are the output of `beam_search` at previous step, they
     are needed for special use to handle ended candidate translations.
 
@@ -2746,11 +2746,11 @@ def beam_search(pre_ids,
             `[batch_size * beam_size, K]`, where `K` supposed to be greater than
             ``beam_size`` and the first dimension size (decrease as samples reach
             to the end) should be same as that of ``pre_ids`` . The data type
-            should be int64. It can be None, which use indice in ``scores`` as
+            should be int64. It can be None, which use index in ``scores`` as
             ids.
         scores(Variable): A LodTensor variable containing the accumulated
             scores corresponding to ``ids`` . Both its shape and lod are same as
-            thoes of ``ids`` . The data type should be float32.
+            those of ``ids`` . The data type should be float32.
         beam_size(int): The beam width used in beam search.
         end_id(int): The id of end token.
         level(int): **It can be ignored and mustn't change currently.**
@@ -2765,7 +2765,7 @@ def beam_search(pre_ids,
             to :ref:`api_guide_Name`. Usually name is no need to set and 
             None by default.
         return_parent_idx(bool, optional): Whether to return an extra Tensor variable
-            in output, which stores the selected ids' parent indice in
+            in output, which stores the selected ids' parent index in
             ``pre_ids`` and can be used to update RNN's states by gather operator.
             Default False.
 
@@ -2774,7 +2774,7 @@ def beam_search(pre_ids,
             representing the selected ids and the corresponding accumulated scores of \
             current step, have the same shape `[batch_size, beam_size]` and lod with 2 levels, \
             and have data types int64 and float32. If ``return_parent_idx`` is True, \
-            an extra Tensor variable preserving the selected ids' parent indice \
+            an extra Tensor variable preserving the selected ids' parent index \
             is included, whose shape is `[batch_size * beam_size]` and data type \
             is int64.
 
@@ -2794,7 +2794,7 @@ def beam_search(pre_ids,
                 name='pre_scores', shape=[None, 1], lod_level=2, dtype='float32')
             probs = fluid.data(
                 name='probs', shape=[None, 10000], dtype='float32')
-            topk_scores, topk_indices = fluid.layers.topk(probs, k=beam_size)
+            topk_scores, topk_indexs = fluid.layers.topk(probs, k=beam_size)
             accu_scores = fluid.layers.elementwise_add(
                 x=fluid.layers.log(x=topk_scores),
                 y=fluid.layers.reshape(pre_scores, shape=[-1]),
@@ -2802,7 +2802,7 @@ def beam_search(pre_ids,
             selected_ids, selected_scores = fluid.layers.beam_search(
                 pre_ids=pre_ids,
                 pre_scores=pre_scores,
-                ids=topk_indices,
+                ids=topk_indexs,
                 scores=accu_scores,
                 beam_size=beam_size,
                 end_id=end_id)
@@ -2883,7 +2883,7 @@ def beam_search_decode(ids, scores, beam_size, end_id, name=None):
 
     Returns:
         tuple: The tuple contains two LodTensor variables. The two LodTensor, \
-            containing the full sequences of ids and the correspongding accumulated \
+            containing the full sequences of ids and the corresponding accumulated \
             scores, have the same shape flattened to 1D and have the same 2 level \
             lod. The lod can be used to get how many predicted sequences each sample \
             has and how many ids each predicted sequence has.
