@@ -36,6 +36,7 @@ class TrainerRuntimeConfig(object):
 
     def __repr__(self):
         raw0, raw1, length = 45, 5, 50
+        h_format = "{:^45s}{:<5s}\n"
         l_format = "{:<45s}{:<5s}\n"
 
         border = "".join(["="] * length)
@@ -43,7 +44,7 @@ class TrainerRuntimeConfig(object):
 
         draws = ""
         draws += border + "\n"
-        draws += l_format.format("TrainerRuntimeConfig Overview", "Value")
+        draws += h_format.format("TrainerRuntimeConfig Overview", "Value")
         draws += line + "\n"
 
         for k, v in self.get_communicator_flags().items():
