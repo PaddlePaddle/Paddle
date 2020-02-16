@@ -200,5 +200,30 @@ class TestHalfAsyncStrategy(unittest.TestCase):
         optimizer = fleet.distributed_optimizer(optimizer, half_async_config)
 
 
+class TestDebugInfo(unittest.TestCase):
+    def test_debug_info(self):
+        x = fluid.layers.data(name='x', shape=[1], dtype='float32')
+        y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+        y_predict = fluid.layers.fc(input=x, size=1, act=None)
+        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        avg_cost = fluid.layers.mean(cost)
+
+        role = role_maker.UserDefinedRoleMaker(
+            current_id=0,
+            role=role_maker.Role.WORKER,
+            worker_num=2,
+            server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"])
+        fleet.init(role)
+
+        optimizer = fluid.optimizer.SGD(0.0001)
+        strategy = StrategyFactory.create_sync_strategy()
+        strategy.set_debug_opt({
+            "dump_param": ["fc_0.tmp_0"],
+            "dump_fields": ["fc_0.tmp_0", "fc_0.tmp_0@GRAD"],
+            "dump_fields_path": "dump_text/"
+        })
+        optimizer = fleet.distributed_optimizer(optimizer, strategy)
+
+
 if __name__ == '__main__':
     unittest.main()

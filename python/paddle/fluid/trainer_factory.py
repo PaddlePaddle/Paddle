@@ -54,6 +54,7 @@ class TrainerFactory(object):
             trainer = globals()[trainer_class]()
             device_worker = globals()[device_worker_class]()
 
+            # for debug tools
             if opt_info is not None:
                 if opt_info.get("dump_slot") is not None:
                     trainer._set_dump_slot(opt_info["dump_slot"])
@@ -71,9 +72,6 @@ class TrainerFactory(object):
                     trainer._set_dump_converter(opt_info["dump_converter"])
                 if opt_info.get("dump_param") is not None:
                     trainer._set_dump_param(opt_info["dump_param"])
-                if opt_info.get("check_nan_var_names") is not None:
-                    trainer._set_check_nan_var_names(opt_info[
-                        "check_nan_var_names"])
 
             if "fleet_desc" in opt_info:
                 device_worker._set_fleet_desc(opt_info["fleet_desc"])
@@ -89,6 +87,9 @@ class TrainerFactory(object):
                         "adjust_ins_weight"])
                 if opt_info.get("copy_table") is not None:
                     trainer._set_copy_table_config(opt_info["copy_table"])
+                if opt_info.get("check_nan_var_names") is not None:
+                    trainer._set_check_nan_var_names(opt_info[
+                        "check_nan_var_names"])
                 if opt_info.get("loss_names") is not None:
                     trainer._set_loss_names(opt_info["loss_names"])
             trainer._set_device_worker(device_worker)

@@ -370,18 +370,20 @@ class TranspilerOptimizer(DistributedOptimizer):
                 self._strategy = strategy
             elif isinstance(strategy, DistributedStrategy):
                 self._strategy = strategy
-                self.opt_info = strategy.get_debug_info()
-                self.opt_info["mpi_rank"] = fleet.worker_index()
-                self.opt_info["mpi_size"] = fleet.worker_num()
-                self.opt_info["trainer"] = "MultiTrainer"
-                self.opt_info["device_worker"] = "Hogwild"
-                fleet._set_opt_info(self.opt_info)
             else:
                 raise TypeError(
                     "In {} mode, strategy must be an instance of DistributeTranspilerConfig, SyncStrategy, HalfAsyncStrategy, AsyncStrategy, or GeoStrategy".
                     format(fleet._mode))
         else:
             self._strategy = StrategyFactory.create_sync_strategy()
+
+        if isinstance(self.strategy, DistributedStrategy):
+            self.opt_info = self.strategy.get_debug_opt()
+            self.opt_info["mpi_rank"] = fleet.worker_index()
+            self.opt_info["mpi_size"] = fleet.worker_num()
+            self.opt_info["trainer"] = "MultiTrainer"
+            self.opt_info["device_worker"] = "Hogwild"
+            fleet._set_opt_info(self.opt_info)
 
     def backward(self,
                  loss,
