@@ -20,7 +20,6 @@ __all__ = [
 import os
 import paddle.fluid as fluid
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig, ServerRuntimeConfig
-from paddle.fluid.incubate.fleet.utils.texttable import Texttable
 
 
 class TrainerRuntimeConfig(object):
@@ -36,19 +35,23 @@ class TrainerRuntimeConfig(object):
         return self.runtime_configs
 
     def __repr__(self):
-        table = Texttable()
-        table.set_deco(Texttable.HEADER)
-        table.set_cols_dtype(['t', 't'])
-        table.set_cols_align(["l", "l"])
+        raw0, raw1, length = 45, 5, 50
+        l_format = "{:<45s}{:<5s}\n"
 
-        rows = []
-        rows.append(["TrainerRuntimeConfig Overview", "Value"])
-        for flag, val in self.get_communicator_flags().items():
-            rows.append([flag, val])
+        border = "".join(["="] * length)
+        line = "".join(["-"] * length)
 
-        table.add_rows(rows)
+        draws = ""
+        draws += border + "\n"
+        draws += l_format.format("TrainerRuntimeConfig Overview", "Value")
+        draws += line + "\n"
 
-        _str = "\n{}\n".format(table.draw())
+        for k, v in flags.items():
+            draws += l_format.format(k, v)
+
+        draws += border
+
+        _str = "\n{}\n".format(draws)
         return _str
 
 
