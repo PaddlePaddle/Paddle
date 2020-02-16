@@ -377,8 +377,8 @@ class TranspilerOptimizer(DistributedOptimizer):
         else:
             self._strategy = StrategyFactory.create_sync_strategy()
 
-        if isinstance(self.strategy, DistributedStrategy):
-            self.opt_info = self.strategy.get_debug_opt()
+        if isinstance(self._strategy, DistributedStrategy):
+            self.opt_info = self._strategy.get_debug_opt()
             self.opt_info["mpi_rank"] = fleet.worker_index()
             self.opt_info["mpi_size"] = fleet.worker_num()
             self.opt_info["trainer"] = "MultiTrainer"
