@@ -90,7 +90,7 @@ class TestDygraphhDataLoaderWithException(unittest.TestCase):
         def slow_batch_generator_creator(batch_size, batch_num):
             def __reader__():
                 for _ in range(batch_num):
-                    time.sleep(65)
+                    time.sleep(80)
                     batch_image, batch_label = get_random_images_and_labels(
                         [batch_size, 784], [batch_size, 1])
                     yield batch_image, batch_label
