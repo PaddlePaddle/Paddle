@@ -40,7 +40,9 @@ class PSLib(Fleet):
         self._client2client_max_retry = 3
 
     def init(self, role_maker=None):
-        super(PSLib, self).init(MPISymetricRoleMaker())
+        if role_maker is None:
+            role_maker = MPISymetricRoleMaker()
+        super(PSLib, self).init(role_maker)
         self._fleet_ptr = fluid.core.Fleet()
 
     def _set_client_communication_config(self, request_timeout_ms,
@@ -48,6 +50,9 @@ class PSLib(Fleet):
         self._client2client_request_timeout_ms = request_timeout_ms
         self._client2client_connect_timeout_ms = connect_timeout_ms
         self._client2client_max_retry = max_retry
+
+    def set_pull_local_thread_num(self, thread_num):
+        self._fleet_ptr.set_pull_local_thread_num(thread_num)
 
     def init_worker(self):
         """
@@ -75,9 +80,10 @@ class PSLib(Fleet):
             # barrier_all for init_server, wait for server starts
             self._role_maker._barrier_all()
             self.all_ips_ = self._role_maker._all_gather(self._local_ip)
+            # worker_index * 2 is for compatible with older versions of pslib
             self._fleet_ptr.init_worker(self._dist_desc_str, self.all_ips_,
                                         self._role_maker._get_size(),
-                                        self._role_maker._get_rank())
+                                        self._role_maker.worker_index() * 2)
             # barrier_all for init_worker
             self._role_maker._barrier_all()
             # prepare for client to client communication
@@ -160,9 +166,16 @@ class PSLib(Fleet):
             else:
                 raise Exception(
                     "You should run DistributedOptimizer.minimize() first")
+            # server_index * 2 is for compatible with older versions of pslib
             self._fleet_ptr.init_server(self._dist_desc_str,
-                                        self._role_maker._get_rank())
-            self._local_ip = self._fleet_ptr.run_server()
+                                        self._role_maker.server_index() * 2)
+            if isinstance(self._role_maker, MPISymetricRoleMaker):
+                self._local_ip = self._fleet_ptr.run_server()
+            else:
+                local_endpoint = self._role_maker.get_local_endpoint()
+                local_endpoint = local_endpoint.split(":")
+                self._local_ip = self._fleet_ptr.run_server(
+                    str(local_endpoint[0]), int(local_endpoint[1]))
 
             # barrier_all for init_server
             self._role_maker._barrier_all()
@@ -632,8 +645,8 @@ class DownpourOptimizer(DistributedOptimizer):
                           parameter_list,
                           no_grad_set,
                           self._strategy)
-        opt_info["mpi_rank"] = fleet._role_maker._get_rank()
-        opt_info["mpi_size"] = fleet._role_maker._get_size()
+        opt_info["mpi_rank"] = fleet.worker_index()
+        opt_info["mpi_size"] = fleet.worker_num()
         fleet._set_opt_info(opt_info)
 
         programs = [loss.block.program for loss in losses]

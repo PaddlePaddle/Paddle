@@ -536,18 +536,18 @@ void BindImperative(py::module *m_ptr) {
           [](imperative::Tracer &self, const py::object &obj) {
             if (py::isinstance<platform::CUDAPlace>(obj)) {
               auto p = obj.cast<platform::CUDAPlace *>();
-              self.SetExpectedPlace<platform::CUDAPlace>(*p);
+              self.SetExpectedPlace(*p);
             } else if (py::isinstance<platform::CPUPlace>(obj)) {
               auto p = obj.cast<platform::CPUPlace *>();
-              self.SetExpectedPlace<platform::CPUPlace>(*p);
+              self.SetExpectedPlace(*p);
             } else if (py::isinstance<platform::CUDAPinnedPlace>(obj)) {
               auto p = obj.cast<platform::CUDAPinnedPlace *>();
-              self.SetExpectedPlace<platform::CUDAPinnedPlace>(*p);
+              self.SetExpectedPlace(*p);
             } else {
-              PADDLE_THROW(
+              PADDLE_THROW(platform::errors::InvalidArgument(
                   "Incompatible Place Type: supports CUDAPlace, CPUPlace, "
-                  "CUDAPinnedPlace, "
-                  "but got Unknown Type!");
+                  "and CUDAPinnedPlace, "
+                  "but got Unknown Type!"));
             }
           })
       .def("_get_program_desc_tracer",
@@ -611,7 +611,7 @@ void BindImperative(py::module *m_ptr) {
                     },
                     [](imperative::ParallelStrategy &self,
                        const std::string &ep) { self.current_endpoint_ = ep; });
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
   py::class_<imperative::NCCLParallelContext> nccl_ctx(m,
                                                        "NCCLParallelContext");
 

@@ -15,7 +15,7 @@
 #include <string>
 #include <utility>
 #include <vector>
-#ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_NCCL
 #include <nccl.h>
 #endif
 
