@@ -308,7 +308,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
             }) for ep in self.pserver_endpoints
         ]
 
-        # step 5. Create delta var of Geo-Sgd & record vars infomation
+        # step 5. Create delta var of Geo-Sgd & record vars information
         for origin_name, splited_vars in self.param_var_mapping.items():
             origin_var = self.origin_program.global_block().var(origin_name)
             self.vars_info[origin_name] = collections.OrderedDict()

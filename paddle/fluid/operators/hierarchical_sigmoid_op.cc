@@ -144,7 +144,7 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsIntermediate();
     AddOutput(
         "W_Out",
-        "(LoDTensor, optinal) using input 'W' as Output to make it mutable"
+        "(LoDTensor, optional) using input 'W' as Output to make it mutable"
         "When we are using prefetch")
         .AsIntermediate();
     AddAttr<AttrType>("num_classes", "(int, optional), The number of classes")
