@@ -13975,7 +13975,8 @@ def tdm_sampler(input,
             end_offset = start_offset + layer_sample_num + int(output_positive)
             layer_samples = slice(
                 out, axes=[1], starts=[start_offset], ends=[end_offset])
-            layer_samples = reshape(layer_samples, [-1, 1])
+            layer_samples = reshape(
+                layer_samples, [-1, layer_sample_num + int(output_positive)])
             layer_samples.stop_gradient = True
             output_list.append(layer_samples)
             start_offset = end_offset
