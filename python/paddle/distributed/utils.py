@@ -58,14 +58,14 @@ class Cluster():
     def pod_nranks(self):
         return len(self.pods)
 
-    def get_trainer_endpoints(self):
+    def get_trainers_endpoints(self):
         r = []
         for pod in self.pods:
             for t in pod.trainers:
                 r.append(t.endpoint)
         return r
 
-    def get_pod_endpints(self):
+    def get_pods_endpints(self):
         r = []
         for pod in self.pods:
             ep = "{}:{}".format(pod.ip, pod.port)
@@ -74,6 +74,13 @@ class Cluster():
             r.append(ep)
 
         return r
+
+    def get_pod(self, pod_id):
+        for pod in self.pods:
+            if pod_id == pod.id:
+                return pod
+
+        return None
 
 
 class JobServer():
@@ -84,8 +91,8 @@ class JobServer():
 class Trainer():
     def __init__(self):
         self.gpu = []
-        self.endpoint = []
-        self.rank = []
+        self.endpoint = None
+        self.rank = None
 
     def __eq__(self):
         pass
@@ -101,14 +108,14 @@ class Pod():
     def __init__(self):
         self.rank = None  # pod_id
         self.id = None  # node rank
-        self.ip = None
+        self.addr = None
         self.port = None
         self.trainers = []
 
     def __eq__(self, pod):
         if self.ranks != pod.rank or \
                 self.id != pod.id or \
-                self.ip != pod.ip or \
+                self.addr != pod.addr or \
                 self.port != pod.port:
             return False
 

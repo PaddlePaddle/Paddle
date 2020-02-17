@@ -11,28 +11,76 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import os
+import requests
+import time
+import sys
 
 
-def is_use_edl():
-    use_edl = os.getenv("PADDLE_RUNING_ENV", "")
-    if use_edl == "PADDLE_EDL":
-        return True
+class Edlenv(object):
+    def __init__(self):
+        self.running_env = os.getenv("PADDLE_RUNING_ENV", "")
+        self.job_server = os.getenv("PADDLE_JOBSERVER")
+        self.job_id = os.getenv("PADDLE_JOB_ID")
+        self.pod_id = os.getenv("PADDLE_POD_ID")
 
-    return False
+    def is_under_edl(self):
+        return self.running_env == "PADDLE_EDL"
 
+    def _parse_response_pods(r_pods):
+        for rank, r_pod in enumerate(r_pods):
+            pod = Pod()
+            pod.rank = rank
+            pod.id = r_pod.pod_id
+            pod.addr = r_pod.addr
+            pod.port = r_pod.pod_port
 
-def get_jobserver():
-    s = JobServer()
-    return s
+            for idx, t_port in enumerate(r_pod.trainer_ports):
+                trainer = Trainer()
+                trainer.endpoint = pod.addr + ":" + t_port
+                trainer.gpu.append(idx)
+                pod.trainers.append(trainer)
 
+        return pods
 
-def parse_response_pods(r_pods):
-    return pods
+    def _get_pods_from_job_server(self):
+        job_id = {'job_id': self.job_id}
+        url = "{}/rest/1.0/get/query_pods".format(self.job_server)
 
+        step = 0
+        pods = {}
+        while True:
+            try:
+                r = requests.get(url, params=job_id)
+                d = r.json()
+                pods = d["job_id"]
+                logger.debug("get pods:{} from job_server:{}".format(
+                    pods, r.job_server))
+                break
+            except:
+                step += 1
+                if step > 10:
+                    logger.error(
+                        "get pods from job_server:{} error, try again!".format(
+                            r.url))
+                    sys.exit(1)
 
-def get_pods_from_master(job_server, job_id):
-    return pods
+                logger.warning("get pods from job_server:{} error, try again!".
+                               format(r.url))
+                time.sleep(3)
+
+        return self._parse_response_pods(pods)
+
+    def get_cluster(self):
+        assert is_under_edl(), "Edlenv only used under edl environments"
+
+        cluster = Cluster()
+        cluster.job_server = self.job_server
+        cluster.job_id = self.job_id
+        cluster.pods = pods
+
+        return cluster
 
 
 def barrier_terminate_world_trainers(cluster, pod, comm, timeout=10, try_num=3):
@@ -49,15 +97,3 @@ def barrier_terminate_world_trainers(cluster, pod, comm, timeout=10, try_num=3):
             return False
 
     return False
-
-
-def get_edl_cluster(job_id):
-    cluster = Cluster()
-    job_server = get_jobserver()
-
-    pods = get_pods_from_master(job_server, job_id)
-
-    cluster.job_server = job_server
-    cluster.pods = pods
-
-    return cluster

@@ -296,13 +296,14 @@ def launch(args):
 
     cluster = None
     comm = None
-    use_edl = edl.is_use_edl()
+    use_edl = edl.is_under_edl()
     if args.use_paddlecloud and not use_edl and trainers_num != 1:
         cluster = cloud.get_cloud_cluster(arges.node_ips, args.node_ip,
                                           args.started_port, selected_gpus)
         logger.info("get cluster from cloud:{}".format(cluster))
     elif use_edl:
-        cluster = edl.get_edl_cluster()
+        edl_env = Edlenv()
+        cluster = edl_env.get_cluster()
         comm = Gloo()
         logger.info("get cluster from edl:{}".format(cluster))
     else:
@@ -313,7 +314,14 @@ def launch(args):
     step = 0
     while True:
         if use_edl:
-            cluster2 = get_edl_cluster()
+            cluster2 = edl_env.get_cluster()
+            pod = cluster2.pod(edl_env.pod_id)
+            if pod is None:  # me is dead
+                logger.info(
+                    "Cluster changed. This pod is not exist so exit(0)! \
+                    New cluster:{}. Old Cluster:{}".format(cluster2, cluster))
+                sys.exit(0)
+
             if cluster2 != cluster:
                 logger.info("Cluster changed. New cluster:{}. Old Cluster:{}".
                             format(cluster2, cluster))
