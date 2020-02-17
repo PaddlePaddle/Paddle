@@ -164,9 +164,9 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
         } else if (std::is_same<T, int64_t>::value) {
           out_data[oi] = (int64_t)out_val_ifempty;
         } else if (std::is_same<T, float>::value) {
-          out_data[oi] = (float)out_val_ifempty;
+          out_data[oi] = static_cast<float>(out_val_ifempty);
         } else if (std::is_same<T, double>::value) {
-          out_data[oi] = (double)out_val_ifempty;
+          out_data[oi] = static_cast<double>(out_val_ifempty);
         }
       }
       loss_weight_data[0] = 0;
