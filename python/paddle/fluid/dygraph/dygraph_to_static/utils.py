@@ -62,7 +62,6 @@ dygraph_class_to_static_api = {
         STATIC_API: "exponential_decay",
         TO_DELETE_ARGS: ["begin", "step", "dtype"]
     },
-    "FC": "fc",
     "GroupNorm": {
         STATIC_API: "group_norm",
         TO_DELETE_ARGS: ["channels", "dtype"]
@@ -87,7 +86,8 @@ dygraph_class_to_static_api = {
         STATIC_API: "natural_exp_decay",
         TO_DELETE_ARGS: ["begin", "step", "dtype"]
     },
-    "NCE": {
+    "NCE":
+    {  # todo: not test
         STATIC_API: "nce",
         TO_DELETE_ARGS: ["dim", "dtype"]
     },
