@@ -269,7 +269,24 @@ class TensorRTEngineOp : public framework::OperatorBase {
       output_index += 1;
     }
 
-    PADDLE_ENFORCE_LE(runtime_batch, max_batch_size_);
+    PADDLE_ENFORCE_LE(
+        runtime_batch, max_batch_size_,
+        platform::errors::InvalidArgument(
+            "The runtime batch size (%d) is greater than the max batch "
+            "size(%d).\n"
+            "There are two possible causes for this problem: \n"
+            "1. Check whether the runtime batch is larger than the max_batch "
+            "setted by EnableTensorrtEngine()\n"
+            "2. Check whether the model you are running has multiple trt "
+            "subgraphs: \n "
+            "\tIf there are multiple trt subgraphs, you need to ensure that "
+            "the first dimension of the input tensor of these subgraphs is "
+            "consistent.\n"
+            "\tIf there are inconsistent subgraphs, you need to filter them by "
+            "setting min_subgraph_size using EnableTensorrtEngine interface.\n"
+            "\tThe min_subgraph_size shouble to be greater than the number of "
+            "nodes in the inconsistent subgraph.\n",
+            runtime_batch, max_batch_size_));
     // Execute the engine.
     engine->Execute(runtime_batch, &buffers, stream);
     cudaStreamSynchronize(stream);
