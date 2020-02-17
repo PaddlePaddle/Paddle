@@ -19,11 +19,11 @@
 #include <stdio.h>
 
 #if defined(_WIN32)
-#ifdef PADDLE_ON_INFERENCE
+#ifdef PADDLE_DLL_INFERENCE
 #define PADDLE_CAPI_EXPORT __declspec(dllexport)
 #else
 #define PADDLE_CAPI_EXPORT __declspec(dllimport)
-#endif  // PADDLE_ON_INFERENCE
+#endif  // PADDLE_DLL_INFERENCE
 #else
 #define PADDLE_CAPI_EXPORT __attribute__((visibility("default")))
 #endif  // _WIN32

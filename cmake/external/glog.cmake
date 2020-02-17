@@ -23,10 +23,16 @@ SET(GLOG_TAG        v0.3.5)
 
 IF(WIN32)
   SET(GLOG_LIBRARIES "${GLOG_INSTALL_DIR}/lib/glog.lib" CACHE FILEPATH "glog library." FORCE)
+  set(GLOG_SHARED_LIB_DLL "${GLOG_INSTALL_DIR}/bin/glog.dll")
   SET(GLOG_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4267 /wd4530")
+  file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/glog/logging.h.in native_glog_src)
+  file(TO_NATIVE_PATH ${GLOG_PREFIX_DIR}/src/extern_glog/src/glog/logging.h.in native_glog_dst)
+  set(GLOG_PATCH_COMMAND copy ${native_glog_src} ${native_glog_dst} /Y)
+  set(BUILD_GLOG_SHARED_LIBS ON)
 ELSE(WIN32)
   SET(GLOG_LIBRARIES "${GLOG_INSTALL_DIR}/lib/libglog.a" CACHE FILEPATH "glog library." FORCE)
   SET(GLOG_CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+  set(BUILD_GLOG_SHARED_LIBS OFF)
 ENDIF(WIN32)
 
 INCLUDE_DIRECTORIES(${GLOG_INCLUDE_DIR})
@@ -45,6 +51,7 @@ ExternalProject_Add(
     PREFIX          ${GLOG_PREFIX_DIR}
     SOURCE_DIR      ${GLOG_SOURCE_DIR}
     UPDATE_COMMAND  ""
+    PATCH_COMMAND   ${GLOG_PATCH_COMMAND}
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                     -DCMAKE_CXX_FLAGS=${GLOG_CMAKE_CXX_FLAGS}
@@ -57,6 +64,7 @@ ExternalProject_Add(
                     -DCMAKE_INSTALL_LIBDIR=${GLOG_INSTALL_DIR}/lib
                     -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                     -DWITH_GFLAGS=ON
+                    -DBUILD_SHARED_LIBS=${BUILD_GLOG_SHARED_LIBS}
                     -Dgflags_DIR=${GFLAGS_INSTALL_DIR}/lib/cmake/gflags
                     -DBUILD_TESTING=OFF
                     -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}

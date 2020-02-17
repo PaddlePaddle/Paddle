@@ -120,7 +120,11 @@ else()
 endif()
 
 if(WITH_STATIC_LIB)
-  set(DEPS ${PADDLE_LIB}/paddle/lib/libpaddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX})
+  if(WIN32)
+    set(DEPS ${PADDLE_LIB}/paddle/lib/paddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX})
+  else()
+    set(DEPS ${PADDLE_LIB}/paddle/lib/libpaddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX})
+  endif()
 else()
   if(WIN32)
     set(DEPS ${PADDLE_LIB}/paddle/lib/paddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX})
@@ -138,7 +142,7 @@ if (NOT WIN32)
 else()
   set(DEPS ${DEPS}
       ${MATH_LIB} ${MKLDNN_LIB}
-      glog gflags_static libprotobuf  xxhash ${EXTERNAL_LIB})
+      glog gflags libprotobuf  xxhash ${EXTERNAL_LIB})
   set(DEPS ${DEPS} libcmt shlwapi.lib)
 endif(NOT WIN32)
 
@@ -183,9 +187,15 @@ if(WIN32)
           COMMAND ${CMAKE_COMMAND} -E copy ${OPENBLAS_LIB_PATH}/lib/openblas.dll ${CMAKE_BINARY_DIR}/Release
     )
   endif()
-  if(NOT WITH_STATIC_LIB)
-    add_custom_command(TARGET ${DEMO_NAME} POST_BUILD
-          COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE_LIB}/paddle/lib/paddle_fluid${CMAKE_SHARED_LIBRARY_SUFFIX} ${CMAKE_BINARY_DIR}/Release
+  add_custom_command(TARGET ${DEMO_NAME} POST_BUILD 
+    COMMAND ${CMAKE_COMMAND} -E copy "${PADDLE_LIB}/paddle/lib/paddle_fluid.dll" ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
     )
-  endif()
+  
+  add_custom_command(TARGET ${DEMO_NAME} POST_BUILD 
+    COMMAND ${CMAKE_COMMAND} -E copy "${PADDLE_LIB_THIRD_PARTY_PATH}gflags/lib/gflags.dll" ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+  )
+
+  add_custom_command(TARGET ${DEMO_NAME} POST_BUILD 
+    COMMAND ${CMAKE_COMMAND} -E copy "${PADDLE_LIB_THIRD_PARTY_PATH}glog/lib/glog.dll" ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+  )
 endif()
