@@ -29,6 +29,7 @@ from paddle.fluid.device_worker import DownpourSGD, DownpourSGDOPT
 from paddle.fluid.incubate.fleet.parameter_server.pslib.node import DownpourWorker
 from google.protobuf import text_format
 import paddle.fluid.incubate.fleet.parameter_server.pslib.ps_pb2 as pslib
+from paddle.fluid.trainer_factory import TrainerFactory
 
 
 class TestListenAndServOp(unittest.TestCase):
@@ -87,12 +88,8 @@ class TestListenAndServOp(unittest.TestCase):
             opt_info["program_id_to_worker"] = {program_id: worker}
 
             main_program._fleet_opt = opt_info
-            trainer = DistMultiTrainer()
+            trainer = TrainerFactory._create_trainer(main_program._fleet_opt)
             trainer._set_program(main_program)
-            device_worker = DownpourSGD()
-            device_worker._set_fleet_desc(fleet_desc)
-            trainer._set_device_worker(device_worker)
-            trainer._set_fleet_desc(fleet_desc)
             trainer._gen_trainer_desc()
             cmd = "rm fleet_desc.prototxt*"
             os.system(cmd)
@@ -147,12 +144,8 @@ class TestListenAndServOp(unittest.TestCase):
             opt_info["program_id_to_worker"] = {program_id: worker}
 
             main_program._fleet_opt = opt_info
-            trainer = DistMultiTrainer()
+            trainer = TrainerFactory._create_trainer(main_program._fleet_opt)
             trainer._set_program(main_program)
-            device_worker = DownpourSGD()
-            device_worker._set_fleet_desc(fleet_desc)
-            trainer._set_device_worker(device_worker)
-            trainer._set_fleet_desc(fleet_desc)
             trainer._gen_trainer_desc()
             cmd = "rm fleet_desc.prototxt*"
             os.system(cmd)
@@ -207,12 +200,8 @@ class TestListenAndServOp(unittest.TestCase):
             opt_info["program_id_to_worker"] = {program_id: worker}
 
             main_program._fleet_opt = opt_info
-            trainer = DistMultiTrainer()
+            trainer = TrainerFactory._create_trainer(main_program._fleet_opt)
             trainer._set_program(main_program)
-            device_worker = DownpourSGDOPT()
-            device_worker._set_fleet_desc(fleet_desc)
-            trainer._set_device_worker(device_worker)
-            trainer._set_fleet_desc(fleet_desc)
             trainer._gen_trainer_desc()
             cmd = "rm fleet_desc.prototxt*"
             os.system(cmd)
