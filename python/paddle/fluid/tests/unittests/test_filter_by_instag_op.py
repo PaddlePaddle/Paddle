@@ -71,10 +71,7 @@ class TestFilterByInstagOp(OpTest):
             'IndexMap': (mmap, mmap_lod)
         }
 
-        self.attrs = {
-            'is_lod': True,
-            'out_val_ifempty': 0   
-        }
+        self.attrs = {'is_lod': True, 'out_val_ifempty': 0}
 
     def test_check_output(self):
         self.check_output()
@@ -119,10 +116,7 @@ class TestFilterByInstagOp2(OpTest):
             'LossWeight': (loss_weight, mmap_lod),
             'IndexMap': (mmap, mmap_lod)
         }
-        self.attrs = {
-            'is_lod': True,
-            'out_val_ifempty': 0
-        }
+        self.attrs = {'is_lod': True, 'out_val_ifempty': 0}
 
     def test_check_output(self):
         self.check_output()
@@ -164,10 +158,7 @@ class TestFilterByInstagOp3(OpTest):
             'LossWeight': (loss_weight, mmap_lod),
             'IndexMap': (mmap, mmap_lod)
         }
-        self.attrs = {
-            'is_lod': True,
-            'out_val_ifempty': 0    
-        }
+        self.attrs = {'is_lod': True, 'out_val_ifempty': 0}
 
     def test_check_output(self):
         self.check_output()
@@ -208,10 +199,7 @@ class TestFilterByInstagOp4(OpTest):
             'LossWeight': (loss_weight, mmap_lod),
             'IndexMap': (mmap, mmap_lod)
         }
-        self.attrs = {
-            'is_lod': False,
-            'out_val_ifempty': 0
-        }
+        self.attrs = {'is_lod': False, 'out_val_ifempty': 0}
 
     def test_check_output(self):
         self.check_output()

@@ -1551,8 +1551,8 @@ class FleetUtil(object):
             "RMSE=%.6f Actural_CTR=%.6f Predicted_CTR=%.6f "
             "COPC=%.6f MEAN Q_VALUE=%.6f Ins number=%s, AUC Ins num=%s" %
             (print_prefix, auc, bucket_error, mae, rmse, actual_ctr,
-            predicted_ctr, copc, mean_predict_qvalue, total_ins_num,
-            total_ins_num_from_auc))
+             predicted_ctr, copc, mean_predict_qvalue, total_ins_num,
+             total_ins_num_from_auc))
 
     def program_type_trans(self, prog_dir, prog_fn, is_text):
         return utils.program_type_trans(prog_dir, prog_fn, is_text)
