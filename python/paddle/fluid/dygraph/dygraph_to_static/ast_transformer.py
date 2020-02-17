@@ -13,8 +13,8 @@
 # limitations under the License.
 
 from __future__ import print_function
-
-import gast
+import codegen
+import ast, astor
 from utils import *
 
 __all__ = ['AstNodeWrapper', 'DygraphToStaticAst', 'StaticAnalysisVisitor']
@@ -89,7 +89,7 @@ class StaticAnalysisVisitor(object):
             cur_wrapper.parent = last_wrapper
 
         self.ancestor_wrappers.append(cur_wrapper)
-        for child in gast.iter_child_nodes(node):
+        for child in ast.iter_child_nodes(node):
             self.dfs_visit(child)
         self.ancestor_wrappers.pop()
         return cur_wrapper.node_var_type
@@ -101,15 +101,14 @@ class StaticAnalysisVisitor(object):
         return self.node_to_wrapper_map
 
 
-class DygraphToStaticAst(gast.NodeTransformer):
+class DygraphToStaticAst(ast.NodeTransformer):
     """
     Main class to transform Dygraph to Static Graph
     """
 
     def get_static_ast(self, root):
-        # save root for some analysis may need global AST 
+        # save root for some analysis may need global AST
         self.root = root
-
         self.class_node_dict = {}
         # self._visit(root) # todo: delete it
 
@@ -117,9 +116,8 @@ class DygraphToStaticAst(gast.NodeTransformer):
         #     root).get_node_wrapper_root()
         # self.transfer_from_node_type(self.static_analysis_root)
         # return self.static_analysis_root
-
         self.transfer_from_node_type(self.root)
-        return self.root
+        return self.root, root.body[0].name
 
     def _visit(self, node):
         # TODO construct a tree whose nodes are AstNodeWrapper
@@ -132,6 +130,17 @@ class DygraphToStaticAst(gast.NodeTransformer):
     def transfer_from_node_type(self, node):
         ast_node = node
         self.visit(ast_node)
+
+    def visit_ClassDef(self, node):
+        self.generic_visit(node)
+        if hasattr(node, 'decorator_list'):
+            decorator_list = [
+                d for d in node.decorator_list if d.id != DECORATOR_NAME
+            ]
+            node.decorator_list = decorator_list
+
+        new_node = def_node_from_class(node)
+        return new_node
 
     def visit_FunctionDef(self, node):
         self.generic_visit(node)
@@ -182,10 +191,9 @@ class DygraphToStaticAst(gast.NodeTransformer):
 
     def _visit_Call(self, node):
         assert isinstance(node, ast.Call)
-        if not isinstance(node.func, ast.Name):
+        if not isinstance(node.func, (ast.Name, ast.Attribute)):
             return
-
-        func_id = node.func.id
+        func_id = astor.to_source(node.func)
         if self._is_dygraph_forward(func_id):
             class_node = self._get_class_node(func_id)
             paddle_class, paddle_args, paddle_keywords = parse_class(class_node)
@@ -203,7 +211,7 @@ class DygraphToStaticAst(gast.NodeTransformer):
         if isinstance(node.value, ast.Call):
 
             if is_dygraph_api(node.value):
-
-                self.class_node_dict[node.targets[0].id] = node.value
+                target_str = astor.to_source(node.targets[0])
+                self.class_node_dict[target_str] = node.value
                 return True
         return False

@@ -62,6 +62,7 @@ dygraph_class_to_static_api = {
         STATIC_API: "exponential_decay",
         TO_DELETE_ARGS: ["begin", "step", "dtype"]
     },
+    "FC": "fc",
     "GroupNorm": {
         STATIC_API: "group_norm",
         TO_DELETE_ARGS: ["channels", "dtype"]
@@ -86,8 +87,7 @@ dygraph_class_to_static_api = {
         STATIC_API: "natural_exp_decay",
         TO_DELETE_ARGS: ["begin", "step", "dtype"]
     },
-    "NCE":
-    {  # todo: not test
+    "NCE": {
         STATIC_API: "nce",
         TO_DELETE_ARGS: ["dim", "dtype"]
     },
@@ -250,3 +250,22 @@ def ast_to_func(ast_root, func_name, delete_on_exit=True):
         "Function: {} doesn't exist in the Module transformed from AST.".format(func_name)
 
     return getattr(module, func_name)
+
+
+def def_node_from_class(class_node):
+    assert isinstance(class_node, ast.ClassDef)
+    new_node = None
+    for child_node in class_node.body:
+        if child_node.name == "forward":
+            new_node = child_node
+    if new_node:
+        # modify func name and delete arg self
+        new_func_name = class_node.name + '_' + new_node.name
+        new_node.name = new_func_name
+
+        arg_list = new_node.args.args
+        new_node.args.args = [arg for arg in arg_list if arg.id != "self"]
+        return new_node
+    else:
+        raise ValueError("Class {class_name} must have function 'forward'".
+                         format(class_node.name))
