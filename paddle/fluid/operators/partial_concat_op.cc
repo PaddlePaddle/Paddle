@@ -25,26 +25,25 @@ class PartialConcatOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_GE(
         ctx->Inputs("X").size(), 1UL,
-        platform::errors::InvalidArgument("Inputs(X) of Partial "
-                                          "ConcatOp should not be empty."));
+        platform::errors::InvalidArgument(
+            "Inputs(X) of Partial ConcatOp should not be empty."));
 
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("Out"), true,
-        platform::errors::InvalidArgument("Output(Out) of Partial "
-                                          "ConcatOp should not be null."));
+        platform::errors::InvalidArgument(
+            "Output(Out) of Partial ConcatOp should not be null."));
 
     auto inputs_dims = ctx->GetInputsDim("X");
-    PADDLE_ENFORCE_EQ(
-        inputs_dims[0].size(), 2,
-        platform::errors::InvalidArgument("Only supports 2-D array "
-                                          "with batch size in the 1st "
-                                          "dimension and data in the 2nd."));
+    PADDLE_ENFORCE_EQ(inputs_dims[0].size(), 2,
+                      platform::errors::InvalidArgument(
+                          "Only supports 2-D array with batch size in the 1st "
+                          "dimension and data in the 2nd."));
 
     const size_t inputs_num = inputs_dims.size();
-    PADDLE_ENFORCE_GT(inputs_num, 0, platform::errors::InvalidArgument(
-                                         "ShapeError: Input tensors "
-                                         "count should > 0. But "
-                                         "recevied inputs' length is 0."));
+    PADDLE_ENFORCE_GT(inputs_num, 0,
+                      platform::errors::InvalidArgument(
+                          "ShapeError: Input tensors count should > 0. But "
+                          "recevied inputs' length is 0."));
     if (inputs_num == 1) {
       VLOG(3) << "Warning: concat op have only one input, may waste memory";
     }
@@ -59,14 +58,12 @@ class PartialConcatOp : public framework::OperatorWithKernel {
         batch_size = inputs_dims[0][0];
         input_len = inputs_dims[0][1];
       } else {
-        PADDLE_ENFORCE_EQ(
-            inputs_dims[i][0], batch_size,
-            platform::errors::InvalidArgument("The batch size "
-                                              "of all inputs must be same"));
-        PADDLE_ENFORCE_EQ(
-            inputs_dims[i][1], input_len,
-            platform::errors::InvalidArgument("The input length "
-                                              "of all inputs must be same"));
+        PADDLE_ENFORCE_EQ(inputs_dims[i][0], batch_size,
+                          platform::errors::InvalidArgument(
+                              "The batch size of all inputs must be same"));
+        PADDLE_ENFORCE_EQ(inputs_dims[i][1], input_len,
+                          platform::errors::InvalidArgument(
+                              "The input length of all inputs must be same"));
       }
     }
 

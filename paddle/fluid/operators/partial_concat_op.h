@@ -46,11 +46,10 @@ class PartialConcatKernel : public framework::OpKernel<T> {
                           "The input of partial concat should not be null."));
 
     auto input_dim = ins[0]->dims();
-    PADDLE_ENFORCE_EQ(
-        input_dim.size(), 2,
-        platform::errors::InvalidArgument("Only supports 2-D array with "
-                                          "batch size in the 1st "
-                                          "dimension and data in the 2nd."));
+    PADDLE_ENFORCE_EQ(input_dim.size(), 2,
+                      platform::errors::InvalidArgument(
+                          "Only supports 2-D array with batch size in the 1st "
+                          "dimension and data in the 2nd."));
     auto in_size = input_dim[1];
 
     // may be negative
