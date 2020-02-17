@@ -88,7 +88,7 @@ class TestListenAndServOp(unittest.TestCase):
             opt_info["program_id_to_worker"] = {program_id: worker}
 
             main_program._fleet_opt = opt_info
-            trainer = TrainerFactory._create_trainer(main_program._fleet_opt)
+            trainer = TrainerFactory()._create_trainer(main_program._fleet_opt)
             trainer._set_program(main_program)
             trainer._gen_trainer_desc()
             cmd = "rm fleet_desc.prototxt*"
@@ -144,7 +144,7 @@ class TestListenAndServOp(unittest.TestCase):
             opt_info["program_id_to_worker"] = {program_id: worker}
 
             main_program._fleet_opt = opt_info
-            trainer = TrainerFactory._create_trainer(main_program._fleet_opt)
+            trainer = TrainerFactory()._create_trainer(main_program._fleet_opt)
             trainer._set_program(main_program)
             trainer._gen_trainer_desc()
             cmd = "rm fleet_desc.prototxt*"
@@ -200,7 +200,7 @@ class TestListenAndServOp(unittest.TestCase):
             opt_info["program_id_to_worker"] = {program_id: worker}
 
             main_program._fleet_opt = opt_info
-            trainer = TrainerFactory._create_trainer(main_program._fleet_opt)
+            trainer = TrainerFactory()._create_trainer(main_program._fleet_opt)
             trainer._set_program(main_program)
             trainer._gen_trainer_desc()
             cmd = "rm fleet_desc.prototxt*"
