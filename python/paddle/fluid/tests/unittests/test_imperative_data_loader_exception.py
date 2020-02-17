@@ -63,7 +63,7 @@ class TestDygraphhDataLoaderWithException(unittest.TestCase):
                 exception = ex
             self.assertIsNotNone(exception)
 
-    def test_multi_process_with_thread_expection(self):
+    def test_multi_process_with_process_expection(self):
         def error_sample_genarator(batch_num):
             def __reader__():
                 for _ in range(batch_num):
@@ -81,7 +81,7 @@ class TestDygraphhDataLoaderWithException(unittest.TestCase):
                 for _ in loader():
                     print("test_multi_process_with_thread_expection")
             except core.EnforceNotMet as ex:
-                self.assertIn("Blocking queue is killed",
+                self.assertIn("FatalError: DataLoader process",
                               cpt.get_exception_message(ex))
                 exception = ex
             self.assertIsNotNone(exception)

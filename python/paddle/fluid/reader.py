@@ -535,7 +535,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
                 # still happen when data in queue is corrupted (e.g., due to 
                 # Queue.cancel_join_thread or unexpected exit). So we set a timeout whenever 
                 # we try to get data from `data_queue`
-                tensor_list = self._data_queue.get(timeout=MP_CHECK_TIMEOUT)
+                tensor_list = self._data_queue.get(timeout=QUEUE_GET_TIMEOUT)
                 get_sample_try_time = 0
             except queue.Empty:
                 get_sample_try_time += 1
