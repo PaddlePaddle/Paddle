@@ -138,9 +138,9 @@ def start_profiler(state, tracer_option='Default'):
             both CPU and GPU; 'All' means profiling both CPU and GPU, and 
             generates timeline as well.
         tracer_option (str) : tracer_option can be one of ['Default', 'OpDetail', 'AllOpDetail'], it
-            can control the profile level and print the different level profile result.Default option print 
+            can control the profile level and print the different level profile result. Default option print 
             the different Op type profiling result and the OpDetail option print the detail profiling 
-            result of different op type  such as compute and data transform, AllOpDetail option 
+            result of different op types such as compute and data transform, AllOpDetail option 
             print the detail profiling result of different op name same as OpDetail.
 
     Raises:
@@ -275,9 +275,9 @@ def profiler(state,
         profile_path (str, optional) : If state == 'All', it will generate timeline,
             and write it into `profile_path`. The default profile_path is `/tmp/profile`. 
         tracer_option (str) : tracer_option can be one of ['Default', 'OpDetail', 'AllOpDetail'], it
-            can control the profile level and print the different level profile result.Default option print 
+            can control the profile level and print the different level profile result. Default option print 
             the different Op type profiling result and the OpDetail option print the detail profiling 
-            result of different op type  such as compute and data transform, AllOpDetail option 
+            result of different op types such as compute and data transform, AllOpDetail option 
             print the detail profiling result of different op name same as OpDetail.
 
     Raises:
