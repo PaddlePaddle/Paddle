@@ -15,11 +15,14 @@ limitations under the License. */
 #pragma once
 #include <vector>
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
 namespace framework {
 using FeedFetchType = LoDTensor;
 using FeedFetchList = std::vector<FeedFetchType>;
+using FetchUnmergedList = std::vector<std::vector<FeedFetchType>>;
+using FetchResultType = boost::variant<FeedFetchList, FetchUnmergedList>;
 
 static const char kFeedOpType[] = "feed";
 static const char kFetchOpType[] = "fetch";

@@ -52,8 +52,8 @@ ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
   CopyOpDeps();
 }
 
-inline FeedFetchList ThreadedSSAGraphExecutor::RunImpl(
-    const std::vector<std::string> &fetch_tensors) {
+inline FetchResultType ThreadedSSAGraphExecutor::RunImpl(
+    const std::vector<std::string> &fetch_tensors, bool merge_result) {
   std::unique_ptr<platform::RecordEvent> event(
       new platform::RecordEvent("ThreadedSSAGraphExecutorPrepare"));
   std::unique_ptr<OpDependentData> op_deps = op_deps_futures_.get();
@@ -70,10 +70,15 @@ inline FeedFetchList ThreadedSSAGraphExecutor::RunImpl(
   // Step 2. Insert FetchOps
   std::vector<OpHandleBase *> fetch_ops;
   std::unordered_set<VarHandleBase *> fetch_dependencies;
-  FeedFetchList fetch_data(fetch_tensors.size());
+  FetchResultType fetch_data;
+  if (merge_result) {
+    fetch_data = FeedFetchList(fetch_tensors.size());
+  } else {
+    fetch_data = FetchUnmergedList(fetch_tensors.size());
+  }
 
   InsertFetchOps(fetch_tensors, &fetch_ops, &fetch_dependencies, &ready_ops,
-                 &pending_ops, &pending_vars, &fetch_data);
+                 &pending_ops, &pending_vars, &fetch_data, merge_result);
 
   exception_holder_.Clear();
   event.reset(nullptr);
@@ -142,12 +147,12 @@ inline FeedFetchList ThreadedSSAGraphExecutor::RunImpl(
   return fetch_data;
 }
 
-FeedFetchList ThreadedSSAGraphExecutor::Run(
-    const std::vector<std::string> &fetch_tensors) {
+FetchResultType ThreadedSSAGraphExecutor::Run(
+    const std::vector<std::string> &fetch_tensors, bool merge_result) {
   for (size_t j = 0; j < strategy_.num_iteration_per_run_ - 1; ++j) {
-    RunImpl({});
+    RunImpl({}, merge_result);
   }
-  return RunImpl(fetch_tensors);
+  return RunImpl(fetch_tensors, merge_result);
 }
 
 void ThreadedSSAGraphExecutor::InsertFetchOps(
@@ -157,7 +162,7 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
     std::unordered_set<OpHandleBase *> *ready_ops,
     std::unordered_map<OpHandleBase *, size_t> *pending_ops,
     std::unordered_set<VarHandleBase *> *pending_vars,
-    FeedFetchList *fetch_data) {
+    FetchResultType *fetch_data, bool merge_result) {
   std::unordered_map<std::string, std::vector<VarHandleBase *>> fetched_vars;
   std::unordered_set<VarHandleBase *> local_ready_vars;
   std::unordered_set<std::string> fetch_tensor_set(fetch_tensors.begin(),
@@ -189,7 +194,7 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
     ir::Node *fetch_node =
         graph_->CreateEmptyNode("fetch", ir::Node::Type::kOperation);
     auto *op = new FetchOpHandle(fetch_node, fetch_data, i, &local_scopes_,
-                                 &local_exec_scopes_);
+                                 &local_exec_scopes_, merge_result);
     fetch_ops->emplace_back(op);
 
     for (auto &p : places_) {

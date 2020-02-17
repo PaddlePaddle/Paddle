@@ -50,7 +50,8 @@ class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
     return underlying_executor_->Graph();
   }
 
-  FeedFetchList Run(const std::vector<std::string>& fetch_tensors) override;
+  FetchResultType Run(const std::vector<std::string>& fetch_tensors,
+                      bool merge_result) override;
 
   void DropLocalExeScopes();
 

@@ -123,25 +123,33 @@ std::vector<ir::Graph *> ParallelSSAGraphExecutor::Graphs() {
   return result;
 }
 
-FeedFetchList ParallelSSAGraphExecutor::Run(
-    const std::vector<std::string> &fetch_tensors) {
-  std::vector<std::future<FeedFetchList>> run_futures;
+FetchResultType ParallelSSAGraphExecutor::Run(
+    const std::vector<std::string> &fetch_tensors, bool merge_result) {
+  std::vector<std::future<FetchResultType>> run_futures;
 
-  std::vector<FeedFetchList> fetch_data;
-  FeedFetchList ret;
-
+  std::vector<FetchResultType> fetch_data;
+  FetchResultType ret;
   fetch_data.reserve(places_.size());
-  ret.reserve(fetch_tensors.size());
+  if (merge_result) {
+    ret = FeedFetchList(fetch_tensors.size());
+  } else {
+    ret = FetchUnmergedList(fetch_tensors.size());
+  }
+
   exception_holder_.Clear();
 
   for (size_t i = 0; i < places_.size(); ++i) {
-    auto call = [this, i, &fetch_tensors]() -> FeedFetchList {
+    auto call = [this, i, merge_result, &fetch_tensors]() -> FetchResultType {
       try {
-        return executors_[i]->Run(fetch_tensors);
+        return executors_[i]->Run(fetch_tensors, merge_result);
       } catch (...) {
         exception_holder_.Catch(std::current_exception());
       }
-      return FeedFetchList();
+      if (merge_result) {
+        return FeedFetchList();
+      } else {
+        return FetchUnmergedList();
+      }
     };
 
     if (pool_) {
@@ -164,14 +172,31 @@ FeedFetchList ParallelSSAGraphExecutor::Run(
     exception_holder_.ReThrow();
   }
 
-  for (size_t fetch_idx = 0; fetch_idx < fetch_tensors.size(); ++fetch_idx) {
-    std::vector<const LoDTensor *> lodtensor_ptrs;
-    lodtensor_ptrs.reserve(local_scopes_.size());
-    for (size_t scope_idx = 0; scope_idx < local_scopes_.size(); ++scope_idx) {
-      lodtensor_ptrs.push_back(&fetch_data.at(scope_idx).at(fetch_idx));
+  if (merge_result) {
+    auto &ret_val = boost::get<FeedFetchList>(ret);
+    for (size_t fetch_idx = 0; fetch_idx < fetch_tensors.size(); ++fetch_idx) {
+      std::vector<const LoDTensor *> lodtensor_ptrs;
+      lodtensor_ptrs.reserve(local_scopes_.size());
+      for (size_t scope_idx = 0; scope_idx < local_scopes_.size();
+           ++scope_idx) {
+        auto &val = boost::get<FeedFetchList>(fetch_data.at(scope_idx));
+        lodtensor_ptrs.push_back(&val.at(fetch_idx));
+      }
+      ret_val.emplace_back();
+      ret_val.back().MergeLoDTensor(lodtensor_ptrs, platform::CPUPlace());
     }
-    ret.emplace_back();
-    ret.back().MergeLoDTensor(lodtensor_ptrs, platform::CPUPlace());
+  } else {
+    auto &ret_val = boost::get<FetchUnmergedList>(ret);
+    for (size_t fetch_idx = 0; fetch_idx < fetch_tensors.size(); ++fetch_idx) {
+      ret_val.emplace_back();
+      for (size_t scope_idx = 0; scope_idx < local_scopes_.size();
+           ++scope_idx) {
+        auto &val = boost::get<FetchUnmergedList>(fetch_data.at(scope_idx));
+        auto pos = ret_val.back().begin();
+        ret_val.back().insert(pos, val.at(fetch_idx).begin(),
+                              val.at(fetch_idx).end());
+      }
+    }
   }
   return ret;
 }

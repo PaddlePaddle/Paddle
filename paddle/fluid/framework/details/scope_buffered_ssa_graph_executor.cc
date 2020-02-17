@@ -41,19 +41,24 @@ ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
   PrepareLocalExeScopes();
 }
 
-FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
-    const std::vector<std::string> &fetch_tensors) {
+FetchResultType ScopeBufferedSSAGraphExecutor::Run(
+    const std::vector<std::string> &fetch_tensors, bool merge_result) {
   if (drop_scope_counter_ == 0) {
     platform::RecordEvent e("InitLocalVars");
     InitVariables();
   }
 
-  std::vector<framework::LoDTensor> fetch_data;
+  FetchResultType fetch_data;
+  if (merge_result) {
+    fetch_data = FeedFetchList(fetch_tensors.size());
+  } else {
+    fetch_data = FetchUnmergedList(fetch_tensors.size());
+  }
   std::exception_ptr eptr = nullptr;
 
   auto exe_run_func = [&]() {
     try {
-      fetch_data = underlying_executor_->Run(fetch_tensors);
+      fetch_data = underlying_executor_->Run(fetch_tensors, merge_result);
     } catch (...) {
       eptr = std::current_exception();
     }

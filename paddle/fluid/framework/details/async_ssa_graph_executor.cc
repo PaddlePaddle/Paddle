@@ -132,14 +132,14 @@ AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
   ProcessGraph(graphs_, local_scopes_[0]);
 }
 
-void AsyncSSAGraphExecutor::StartOffPythonTrainLoop() {
+void AsyncSSAGraphExecutor::StartOffPythonTrainLoop(bool merge_result) {
   VLOG(3) << "StartOffPythonTrainLoop size = " << places_.size();
   for (size_t i = 1; i < places_.size(); ++i) {
-    auto call = [this, i]() -> void {
+    auto call = [this, i, merge_result]() -> void {
       VLOG(3) << "start off python thread " << i;
       try {
         while (true) {
-          executors_[i]->Run({});
+          executors_[i]->Run({}, merge_result);
         }
       } catch (...) {
         exception_holder_.Catch(std::current_exception());
@@ -164,8 +164,8 @@ void AsyncSSAGraphExecutor::HandleException() {
   }
 }
 
-FeedFetchList AsyncSSAGraphExecutor::Run(
-    const std::vector<std::string> &fetch_tensors) {
+FetchResultType AsyncSSAGraphExecutor::Run(
+    const std::vector<std::string> &fetch_tensors, bool merge_result) {
   // init once
   if (run_futures_.size() == 0 && places_.size() > 1) {
     if (strategy_.thread_barrier_) {
@@ -175,32 +175,38 @@ FeedFetchList AsyncSSAGraphExecutor::Run(
 #endif
     }
     exception_holder_.Clear();
-    StartOffPythonTrainLoop();
+    StartOffPythonTrainLoop(merge_result);
   }
 
   if (places_.size() == 1) {
     exception_holder_.Clear();
   }
 
-  FeedFetchList fetch_data;
-  fetch_data.reserve(fetch_tensors.size());
+  FetchResultType fetch_data;
 
   try {
-    fetch_data = executors_[0]->Run(fetch_tensors);
+    fetch_data = executors_[0]->Run(fetch_tensors, merge_result);
   } catch (...) {
     exception_holder_.Catch(std::current_exception());
   }
 
   HandleException();
 
-  FeedFetchList ret;
-  for (size_t fetch_idx = 0; fetch_idx < fetch_tensors.size(); ++fetch_idx) {
-    std::vector<const LoDTensor *> lodtensor_ptrs;
-    lodtensor_ptrs.push_back(&fetch_data.at(fetch_idx));
-    ret.emplace_back();
-    ret.back().MergeLoDTensor(lodtensor_ptrs, platform::CPUPlace());
+  if (merge_result) {
+    FeedFetchList ret;
+    auto &val = boost::get<FeedFetchList>(fetch_data);
+    for (size_t fetch_idx = 0; fetch_idx < fetch_tensors.size(); ++fetch_idx) {
+      std::vector<const LoDTensor *> lodtensor_ptrs;
+      lodtensor_ptrs.push_back(&val.at(fetch_idx));
+      ret.emplace_back();
+      ret.back().MergeLoDTensor(lodtensor_ptrs, platform::CPUPlace());
+    }
+    return ret;
+  } else {
+    LOG(FATAL) << "AsyncSSAGraphExecutor does not support unmerged results to "
+                  "be fetched!";
+    return fetch_data;
   }
-  return ret;
 }
 
 }  // namespace details

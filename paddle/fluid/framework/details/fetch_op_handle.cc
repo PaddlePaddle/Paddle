@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/details/fetch_op_handle.h"
 #include <string>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/platform/profiler.h"
 
@@ -21,14 +22,16 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-FetchOpHandle::FetchOpHandle(ir::Node *node, FeedFetchList *data, size_t offset,
-                             std::vector<Scope *> *local_scopes,
-                             std::vector<Scope *> *local_exec_scopes)
+FetchOpHandle::FetchOpHandle(ir::Node *node, FetchResultType *data,
+                             size_t offset, std::vector<Scope *> *local_scopes,
+                             std::vector<Scope *> *local_exec_scopes,
+                             bool merge_result)
     : OpHandleBase(node),
       data_(data),
       offset_(offset),
       local_scopes_(local_scopes),
-      local_exec_scopes_(local_exec_scopes) {}
+      local_exec_scopes_(local_exec_scopes),
+      merge_result_(merge_result) {}
 
 FetchOpHandle::~FetchOpHandle() {}
 
@@ -37,12 +40,18 @@ void FetchOpHandle::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
 }
 
 void FetchOpHandle::WaitAndMergeCPUTensors() const {
-  std::vector<const LoDTensor *> tensors_ptr;
-  tensors_ptr.reserve(tensors_.size());
-  for (auto &t : tensors_) {
-    tensors_ptr.emplace_back(&t);
+  if (merge_result_) {
+    std::vector<const LoDTensor *> tensors_ptr;
+    tensors_ptr.reserve(tensors_.size());
+    for (auto &t : tensors_) {
+      tensors_ptr.emplace_back(&t);
+    }
+    auto &val = boost::get<FeedFetchList>(*data_);
+    val.at(offset_).MergeLoDTensor(tensors_ptr, platform::CPUPlace());
+  } else {
+    auto &val = boost::get<FetchUnmergedList>(*data_);
+    val.at(offset_) = std::move(tensors_);
   }
-  data_->at(offset_).MergeLoDTensor(tensors_ptr, platform::CPUPlace());
 }
 
 void FetchOpHandle::RunImpl() {
