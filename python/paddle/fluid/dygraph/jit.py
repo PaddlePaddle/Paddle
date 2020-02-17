@@ -14,11 +14,12 @@
 
 from __future__ import print_function
 
-__all__ = ['TracedLayer', 'dygraph_to_static_output']
+__all__ = [
+    'TracedLayer', 'dygraph_to_static_output', '_dygraph_to_static_output_'
+]
 
-import gast
+import ast
 import inspect
-import codegen
 from ..wrapped_decorator import wrap_decorator
 from .base import program_desc_tracing_guard, switch_to_static_graph
 from .dygraph_to_static import DygraphToStaticAst
@@ -55,18 +56,11 @@ def extract_vars(inputs):
 
 def _dygraph_to_static_output_(dygraph_func):
     def __impl__(*args, **kwargs):
-        # Get AST from dygraph function
         dygraph_code = inspect.getsource(dygraph_func)
-        root = gast.parse(dygraph_code)
+        root = ast.parse(dygraph_code)
+        root, func_name = DygraphToStaticAst().get_static_ast(root)
 
-        root = DygraphToStaticAst().get_static_ast(root)
-
-        # TODO static_func should a callable from AST, like
-        # static_func = ast_to_func(root)
-        # currently just use dygraph_func
-        # static_func = dygraph_func
-
-        static_func = ast_to_func(root, dygraph_func.__name__)
+        static_func = ast_to_func(root, func_name)
         return static_func(*args, **kwargs)
 
     return __impl__
