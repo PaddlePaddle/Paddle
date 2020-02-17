@@ -14,7 +14,7 @@
 
 __all__ = ['TracedLayer', 'dygraph_to_static_output']
 
-import gst
+import gast
 import inspect
 import textwrap
 
