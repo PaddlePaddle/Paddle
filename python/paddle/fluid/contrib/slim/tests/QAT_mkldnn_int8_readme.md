@@ -62,7 +62,6 @@ You can refer to the unit test in [test_quantization_mkldnn_pass.py](test_quanti
 |   ResNet50   |         76.62%         |         76.53%         |   -0.09%  |         93.01%         |         92.98%         |   -0.03%  |
 |     VGG16    |         71.74%         |         71.75%         |   +0.01%  |         89.96%         |         89.73%         |   -0.23%  |
 |     VGG19    |         72.30%         |         72.09%         |   -0.21%  |         90.19%         |         90.13%         |   -0.06%  |
-|     Ernie    |         79.76%         |         80.00%         |   +0.24%  |                        |                        |          |
 
 
 >**III. QAT2.0 MKL-DNN C-API Performance on Intel(R) Xeon(R) Gold 6271**
@@ -75,12 +74,24 @@ You can refer to the unit test in [test_quantization_mkldnn_pass.py](test_quanti
 |   ResNet50   |                 13.15                |             49.33             |       3.75       |
 |     VGG16    |                 3.34                 |             10.15             |       3.04       |
 |     VGG19    |                 2.83                 |              8.67             |       3.07       |
-|    Ernie     |                 3.93                 |             10.65             |       2.71       |
 
 Notes:
 
-* Throughput of all toplogies apart from Ernie is given in images/s, while Ernie's throughput is given in sentences/s.
 * FP32 Optimized Throughput (images/s) is from [int8_mkldnn_quantization.md](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/inference/tests/api/int8_mkldnn_quantization.md).
+
+>**IV. Ernie QAT2.0 MKL-DNN Accuracy on Intel(R) Xeon(R) Gold 6271**
+
+|     Model    |  FP32 Accuracy | QAT INT8 Accuracy | Accuracy Diff |
+|:------------:|:----------------------:|:----------------------:|:---------:|
+|   Ernie      |      0.80              |         0.82           |     +0.02 |               
+
+
+>**V. Ernie QAT2.0 MKL-DNN Performance on Intel(R) Xeon(R) Gold 6271**
+
+|     Threads  | FP32 Latency (ms) | QAT INT8 Latency (ms)    | Latency Diff |
+|:------------:|:----------------------:|:-------------------:|:---------:|
+| 1 thread     |        252.131         |         93.8023    |     2.687x   |
+| 20 threads   |        29.1853         |         17.3765    |     1.680x   |
 
 ## 3. How to reproduce the results
 Three steps are needed to reproduce the above-mentioned accuracy and performance results.  Below we explain the steps taking ResNet50 as an example of image classification models. In order to reproduce NLP results, please follow [this guide](https://github.com/PaddlePaddle/benchmark/tree/master/Inference/c%2B%2B/ernie/mkldnn/README.md).
