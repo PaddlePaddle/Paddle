@@ -12598,7 +12598,9 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
         out_list = [out]
     elif isinstance(out, tuple):
         out_list = list(out)
-    elif not isinstance(x, (list, tuple, Variable)):
+    elif isinstance(out, list):
+        out_list = out
+    else:
         raise TypeError(
             'Output must be Variable/list(Variable)/tuple(Variable)')
 
