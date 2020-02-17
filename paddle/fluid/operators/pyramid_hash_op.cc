@@ -458,7 +458,9 @@ REGISTER_OPERATOR(pyramid_hash_grad, ops::PyramidHashOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     pyramid_hash, ops::CPUPyramidHashOPKernel<plt::CPUDeviceContext, float>,
+    ops::CPUPyramidHashOPKernel<plt::CPUDeviceContext, double>,
     ops::CPUPyramidHashOPKernel<plt::CPUDeviceContext, int8_t>);
 REGISTER_OP_CPU_KERNEL(
     pyramid_hash_grad,
-    ops::CPUPyramidHashOPGradKernel<plt::CPUDeviceContext, float>);
+    ops::CPUPyramidHashOPGradKernel<plt::CPUDeviceContext, float>,
+    ops::CPUPyramidHashOPKernel<plt::CPUDeviceContext, double>);
