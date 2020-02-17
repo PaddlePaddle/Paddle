@@ -14,6 +14,9 @@
 
 import functools
 import paddle.fluid as fluid
+import logging
+
+logger = None
 
 
 class Hdfs():
@@ -83,7 +86,8 @@ class Trainer():
 
 class Pod():
     def __init__(self):
-        self.idx = None
+        self.rank = None  # pod_id
+        self.id = None  # node rank
         self.ip = None
         self.port = None
         self.trainers = []
@@ -107,10 +111,14 @@ class Pod():
 
 class Gloo():
     def __init__():
-        #self.__iface = self.__get_default_iface()
         self._prefix = "edl_job"
         self._gloo = fluid.core.Gloo()
 
+        self._endpoints = None
+        self._hdfs = None
+        self._rank = None
+
+    def _clear():
         self._endpoints = None
         self._hdfs = None
         self._rank = None
@@ -123,11 +131,13 @@ class Gloo():
             self._try_num = try_num
 
             iface = self.__get_default_iface()
-            return self.__gloo.init(pod.idx,
+            if not self.__gloo.init(pod.idx,
                                     len(pods_endpoints),
                                     hdfs.hdfs_path.rstrip("/") + "/all",
                                     hdfs.hdfs_name, hdfs.hdfs_ugi, self.__iface,
-                                    self._prefix)
+                                    self._prefix):
+                self._clear()
+                return False
 
         return True
 
@@ -155,6 +165,11 @@ class Gloo():
 
     def barrier(timeout):
         func = functools.partial(self._gloo.barrier, timeout=timeout)
+        return self._loop(func)
+
+    def allgather(input, output, timeout):
+        func = functools.partial(
+            self._gloo.allgather, input=input, output=output, timeout=timeout)
         return self._loop(func)
 
     def __get_default_iface(self):
@@ -190,3 +205,36 @@ class Gloo():
                     if 'broadcast' in ipv4_address:
                         return intf_name
         return "lo"
+
+
+def get_logger(log_level):
+    logger = logging.getLogger()
+
+    # initial log with args.loglevel
+    logger.setLevel(args.log_level)
+    log_handler = logging.StreamHandler()
+    log_format = logging.Formatter(
+        '%(levelname)s %(asctime)s %(filename)s:%(lineno)d] %(message)s')
+    log_handler.setFormatter(log_format)
+    logger.addHandler(log_handler)
+
+
+def get_cluster(node_ips, node_ip, started_port, selected_gpus):
+    cluster = Cluster()
+    trainer_rank = 0
+    for node_rank, ip in enumerate(node_ips):
+        pod = Pod()
+        pod.rank = node_rank
+        pod.ip = ip
+        for gpu in range(len(selected_gpus)):
+            trainer = Trainer()
+            trainer.gpu = gpu
+            trainer.endpoint = "%s:%d" % (ip, paddle_port + i)
+            trainer.rank = trainer_rank
+            trainer_rank += 1
+
+            pod.trainers.append(trainer)
+        cluster.pod.append(pod)
+
+    pod_rank = node_ips.index(node_ip)
+    return cluster, cluster.pods[pod_rank]

@@ -36,7 +36,6 @@ launch a process on each of the given gpu card.
 """
 
 from __future__ import print_function
-import logging
 import sys
 from sys import version
 import subprocess
@@ -47,13 +46,8 @@ import copy
 from argparse import ArgumentParser, REMAINDER
 import paddle.fluid as fluid
 
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-log_handler = logging.StreamHandler()
-log_format = logging.Formatter(
-    '%(levelname)s %(asctime)s %(filename)s:%(lineno)d] %(message)s')
-log_handler.setFormatter(log_format)
-logger.addHandler(log_handler)
+from cloud_util import get_cloud_cluster
+from util import logger, get_logger
 
 
 def _print_arguments(args):
@@ -119,6 +113,12 @@ POD_IP (current node ip address, not needed for local training)
     )
 
     parser.add_argument(
+        "--log_level",
+        type=int,
+        default=20,  # logging.INFO, details are here:https://docs.python.org/3/library/logging.html#levels
+        help="Logging level, default is logging.INFO")
+
+    parser.add_argument(
         "--log_dir",
         type=str,
         help="The path for each process's log.If it's not setted, the log will printed to default pipe."
@@ -162,20 +162,6 @@ def terminate_local_trainers(procs):
     exit(1)
 
 
-"""
-def get_job_env():
-    current_node_ip = args.node_ip
-    node_ips = [x.strip() for x in args.cluster_node_ips.split(',')]
-    node_id = node_ips.index(current_node_ip)
-    if under_edl:
-        node_ips, current_node_ip, node_id = get_cloud_env(args)
-
-    if args.use_paddlecloud:
-        node_ips, current_node_ip, node_id = get_cloud_env(args)
-    return node_ips, current_node_ip, node_id
-"""
-
-
 def get_gpus():
     if args.selected_gpus is None:
         gpus_num = fluid.core.get_cuda_device_count()
@@ -205,16 +191,20 @@ class TrainerProc(object):
     def __init__():
         self.proc = None
         self.log_fn = None
-        self.cmd = None
         self.rank = None
-        self.env = {}
+        self.cmd = None
 
 
-def start_local_trainers():
+def start_local_trainers(pod):
+    current_env = copy.copy(os.environ.copy())
+    #paddle broadcast ncclUniqueId use socket, and
+    #proxy maybe make trainers unreachable, so delete them.
+    #if we set them to "", grpc will log error message "bad uri"
+    #so just delete them.
+    current_env.pop("http_proxy", None)
+    current_env.pop("https_proxy", None)
+
     procs = []
-    log_fns = []
-    cmds = []
-    ranks = []
     for t in len(pod.trainers):
         current_env.update({
             "FLAGS_selected_gpus": "%s" % t.gpu,
@@ -226,18 +216,24 @@ def start_local_trainers():
 
         cmd = [sys.executable, "-u", args.training_script
                ] + args.training_script_args
-        cmds.append(cmd)
 
+        fn = None
         if args.log_dir is not None:
             os.system("mkdir -p {}".format(args.log_dir))
             fn = open("%s/workerlog.%d" % (args.log_dir, i), "w")
-            log_fns.append(fn)
             proc = subprocess.Popen(cmd, env=current_env, stdout=fn, stderr=fn)
         else:
             proc = subprocess.Popen(cmd, env=current_env)
 
-        procs.append(proc)
-        ranks.append(rank)
+        tp = TrainerProc()
+        tp.proc = proc
+        tp.rank = t.rank
+        tp.log_fn = fn
+        tp.cmd = cmd
+
+        procs.append(tp)
+
+    return procs
 
 
 def watch_local_trainers(procs):
@@ -279,41 +275,67 @@ def watch_local_trainers(procs):
     return alive
 
 
-def launch(args):
-    current_env = copy.copy(os.environ.copy())
-    #paddle broadcast ncclUniqueId use socket, and
-    #proxy maybe make trainers unreachable, so delete them.
-    #if we set them to "", grpc will log error message "bad uri"
-    #so just delete them.
-    current_env.pop("http_proxy", None)
-    current_env.pop("https_proxy", None)
+def get_cluster_from_args(args, selected_gpus):
+    node_ips = [x.strip() for x in args.cluster_node_ips.split(',')]
+    node_ip = args.node_ip
+    node_rank = node_ips.index(node_ip)
 
-    if args.use_paddlecloud and not use_edl:
-        cluster = get_cloud_cluster()
+    logger.debug("parsed from args:node_ips:{} node_ip:{} node_rank:{}".format(
+        node_ips, node_ip, node_rank))
+
+    return get_cluster(node_ips, node_ip, args.started_port, selected_gpus)
+
+
+def launch(args):
+    # parse arguments, used for cloud-single-machine and local
+    selected_gpus = get_gpus()
+    trainer_nums = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
+    logger.debug("parsed from args trainerss_num:{} selected_gpus:{}".format(
+        trainers_num, selected_gpus))
+
+    cluster = None
+    if args.use_paddlecloud and not use_edl and trainers_num != 1:
+        cluster = get_cloud_cluster(arges.node_ips, args.node_ip,
+                                    args.started_port, selected_gpus)
+        logger.info("get cluster from cloud:{}".format(cluster))
     elif use_edl:
         cluster = get_edl_cluster()
+        logger.info("get cluster from edl:{}".format(cluster))
     else:
-        cluster = get_cluster_from_args(args)
+        cluster = get_cluster_from_args(args, selected_gpus)
+        logger.info("get cluster from args:{}".format(cluster))
 
     procs = start_local_trainers(cluster, pod)
+    step = 0
     while True:
         if use_edl:
             cluster2 = get_edl_cluster()
-            if cluster != cluster:
+            if cluster2 != cluster:
+                logger.info("Cluster changed. New cluster:{}. Old Cluster:{}".
+                            format(cluster2, cluster))
                 terminate_local_trainers(procs)
-                barrier_terminate_world_trainers(cluster)
+
+                if not barrier_terminate_world_trainers(cluster):
+                    logger.warning("Can't barrier in cluster:{}".format(
+                        cluster))
+                    continue
+
                 procs = start_local_trainers(cluster, pod)
 
         alive = watch_local_trainers(procs)
 
         if not alive:
+            logger.info("Local procs complete, POD info:{}".format(pod))
             return
 
         time.sleep(1)
 
 
 if __name__ == "__main__":
+    get_logger()
+
     args = _parse_args()
     if args.print_config:
         _print_arguments(args)
-    train(args)
+
+    launch(args)
