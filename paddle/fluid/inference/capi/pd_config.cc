@@ -18,12 +18,12 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/fluid/inference/capi/c_api.h"
 #include "paddle/fluid/inference/capi/c_api_internal.h"
+#include "paddle/fluid/inference/capi/paddle_c_api.h"
 
+using paddle::ConvertToACPrecision;
 using paddle::ConvertToPaddleDType;
 using paddle::ConvertToPDDataType;
-using paddle::ConvertToACPrecision;
 
 extern "C" {
 
@@ -257,5 +257,13 @@ void PD_SetInValid(PD_AnalysisConfig* config) {
 bool PD_IsValid(const PD_AnalysisConfig* config) {
   PADDLE_ENFORCE_NOT_NULL(config);
   return config->config.is_valid();
+}
+
+void PD_DisableGlogInfo(PD_AnalysisConfig* config) {
+  config->config.DisableGlogInfo();
+}
+
+void PD_DeletePass(PD_AnalysisConfig* config, char* pass_name) {
+  return config->config.pass_builder()->DeletePass(std::string(pass_name));
 }
 }  // extern "C"
