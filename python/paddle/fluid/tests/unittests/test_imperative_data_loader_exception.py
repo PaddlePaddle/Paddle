@@ -90,7 +90,7 @@ class TestDygraphhDataLoaderWithException(unittest.TestCase):
         def slow_batch_generator_creator(batch_size, batch_num):
             def __reader__():
                 for _ in range(batch_num):
-                    time.sleep(10)
+                    time.sleep(65)
                     batch_image, batch_label = get_random_images_and_labels(
                         [batch_size, 784], [batch_size, 1])
                     yield batch_image, batch_label
@@ -103,12 +103,16 @@ class TestDygraphhDataLoaderWithException(unittest.TestCase):
             loader.set_batch_generator(
                 slow_batch_generator_creator(self.batch_size, self.batch_num),
                 places=fluid.CPUPlace())
-            for _ in range(self.epoch_num):
-                for image, label in loader():
-                    relu = fluid.layers.relu(image)
-                    self.assertEqual(image.shape, [self.batch_size, 784])
-                    self.assertEqual(label.shape, [self.batch_size, 1])
-                    self.assertEqual(relu.shape, [self.batch_size, 784])
+            exception = None
+            try:
+                for _ in range(self.epoch_num):
+                    for image, _ in loader():
+                        fluid.layers.relu(image)
+            except core.EnforceNotMet as ex:
+                self.assertIn("Blocking queue is killed",
+                              cpt.get_exception_message(ex))
+                exception = ex
+            self.assertIsNotNone(exception)
 
 
 if __name__ == '__main__':
