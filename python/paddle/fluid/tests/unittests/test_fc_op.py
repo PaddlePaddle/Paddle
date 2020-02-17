@@ -16,7 +16,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
+from paddle.fluid import Program, program_guard, core
 
 SEED = 2020
 
@@ -133,8 +133,7 @@ class TestFCOpWithPadding(TestFCOp):
         self.matrix = MatrixGenerate(1, 4, 3, 128, 128, 2)
 
 
-class TestFcAPI(unittest.TestCase):
-    # test for parameter num_flatten_dims=-1
+class TestFcOp_NumFlattenDims_NegOne(unittest.TestCase):
     def test_api(self):
         startup_program = Program()
         main_program = Program()
@@ -152,7 +151,9 @@ class TestFcAPI(unittest.TestCase):
             out_1 = fluid.layers.fc(input=x, size=1, num_flatten_dims=-1)
             out_2 = fluid.layers.fc(input=x, size=1, num_flatten_dims=2)
 
-        exe = fluid.Executor(place=fluid.CPUPlace())
+        place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
+        ) else fluid.CUDAPlace(0)
+        exe = fluid.Executor(place=place)
         exe.run(startup_program)
         res_1, res_2 = exe.run(main_program,
                                feed={"x": input},
