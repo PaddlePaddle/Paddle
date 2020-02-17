@@ -158,7 +158,7 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
       std::vector<Vector<size_t>> out_lod_info;
       out_lod_info.push_back(out_lods);
       out->set_lod(out_lod_info);
-      for (size_t oi = 0; oi < out->numel(); ++oi) {
+      for (int64_t oi = 0; oi < out->numel(); ++oi) {
         if (std::is_same<T, int32_t>::value) {
           out_data[oi] = (int32_t)out_val_ifempty;
         } else if (std::is_same<T, int64_t>::value) {
