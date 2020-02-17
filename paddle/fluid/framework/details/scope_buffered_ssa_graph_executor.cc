@@ -49,11 +49,6 @@ FetchResultType ScopeBufferedSSAGraphExecutor::Run(
   }
 
   FetchResultType fetch_data;
-  if (merge_result) {
-    fetch_data = FeedFetchList(fetch_tensors.size());
-  } else {
-    fetch_data = FetchUnmergedList(fetch_tensors.size());
-  }
   std::exception_ptr eptr = nullptr;
 
   auto exe_run_func = [&]() {

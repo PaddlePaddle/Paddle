@@ -131,9 +131,9 @@ FetchResultType ParallelSSAGraphExecutor::Run(
   FetchResultType ret;
   fetch_data.reserve(places_.size());
   if (merge_result) {
-    ret = FeedFetchList(fetch_tensors.size());
+    ret = FeedFetchList();
   } else {
-    ret = FetchUnmergedList(fetch_tensors.size());
+    ret = FetchUnmergedList();
   }
 
   exception_holder_.Clear();
@@ -192,9 +192,11 @@ FetchResultType ParallelSSAGraphExecutor::Run(
       for (size_t scope_idx = 0; scope_idx < local_scopes_.size();
            ++scope_idx) {
         auto &val = boost::get<FetchUnmergedList>(fetch_data.at(scope_idx));
-        auto pos = ret_val.back().begin();
-        ret_val.back().insert(pos, val.at(fetch_idx).begin(),
-                              val.at(fetch_idx).end());
+        PADDLE_ENFORCE_EQ(
+            val.at(fetch_idx).size(), 1,
+            platform::errors::Fatal(
+                "Each place must have only one fetched LoDTensor!"));
+        ret_val.back().emplace_back(val.at(fetch_idx)[0]);
       }
     }
   }
