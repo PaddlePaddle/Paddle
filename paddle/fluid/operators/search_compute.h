@@ -140,7 +140,7 @@ inline void avx_axpy_noadd(const float* x, float* y, size_t len,
 }
 inline void avx_axpy_noadd(const int8_t* x, int8_t* y, size_t len,
                            const float alpha) {
-  PADDLE_ENFORCE(true, "int8_t input not support");
+  PADDLE_THROW("int8_t input not support");
 }
 
 }  // namespace operators
