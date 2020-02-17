@@ -120,7 +120,7 @@ class TestFilterByInstagOp2(OpTest):
             'IndexMap': (mmap, mmap_lod)
         }
         self.attrs = {
-            'is_lod': True, 
+            'is_lod': True,
             'out_val_ifempty': 0
         }
 
