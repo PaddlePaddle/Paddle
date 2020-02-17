@@ -36,7 +36,7 @@ __global__ void RowConvForwardSharedMemory(const T *in, const T *wt,
   int bly = blockDim.y;
   int thx = threadIdx.x;
   int thy = threadIdx.y;
-  int d = blockIdx.x * blx + thx;  // index along input dim
+  int d = blockIdx.x * blx + thx;  // indice along input dim
 
   extern __shared__ T mem[];
   T *sw = mem;
@@ -71,7 +71,7 @@ template <typename T>
 __global__ void RowConvForward(const T *in, const T *wt, int num_sequence,
                                int input_dim, int future_context,
                                const size_t *batch_indices, T *out) {
-  int d = blockIdx.x * blockDim.x + threadIdx.x;  // index along input_dim
+  int d = blockIdx.x * blockDim.x + threadIdx.x;  // indice along input_dim
   int bly = blockDim.y;
   int thy = threadIdx.y;
 
@@ -103,7 +103,7 @@ __global__ void RowConvGradInputSharedMemory(const T *dout, const T *wt,
   int bly = blockDim.y;
   int thx = threadIdx.x;
   int thy = threadIdx.y;
-  int d = blockIdx.x * blx + thx;  // index along input dim
+  int d = blockIdx.x * blx + thx;  // indice along input dim
 
   extern __shared__ T mem[];
   T *sw = mem;
@@ -138,7 +138,7 @@ template <typename T>
 __global__ void RowConvGradInput(const T *dout, const T *wt, int num_sequence,
                                  int input_dim, int future_context,
                                  const size_t *batch_indices, T *din) {
-  int d = blockIdx.x * blockDim.x + threadIdx.x;  // index along input_dim
+  int d = blockIdx.x * blockDim.x + threadIdx.x;  // indice along input_dim
   int bly = blockDim.y;
   int thy = threadIdx.y;
 
@@ -173,7 +173,7 @@ __global__ void RowConvGradFilterImproved(const T *in, const T *dout,
   int thx = threadIdx.x;
   int thy = threadIdx.y;
   int gx = blockIdx.x * blx;
-  int d = gx + thx;  // index along input dim
+  int d = gx + thx;  // indice along input dim
 
   extern __shared__ T mem[];
 
@@ -254,7 +254,7 @@ __global__ void RowConvGradFilter(const T *in, const T *dout, int num_sequence,
   int thx = threadIdx.x;
   int thy = threadIdx.y;
   int gx = blockIdx.x * blx;
-  int d = gx + thx;  // index along input dim
+  int d = gx + thx;  // indice along input dim
   extern __shared__ T mem[];
   T *sh_in = mem;
   T *sh_dout = &mem[block_x * block_y];

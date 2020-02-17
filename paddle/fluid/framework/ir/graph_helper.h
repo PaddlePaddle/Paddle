@@ -41,7 +41,7 @@ bool HasCircle(const Graph &graph);
 // The graph may have the same name node, for example, parameter
 // is the input of operator and it also is the output of optimizer.
 // For the persistable variable, the var_desc of the nodes with
-// the same node name should be equal.
+// the same node name shold be equal.
 bool VarDescIsConsistency(const Graph &graph);
 
 // Find All Circles for debugging,

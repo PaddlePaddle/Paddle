@@ -37,7 +37,7 @@ class SwishPlugin : public PluginTensorRT {
 
   // TRT will call this func when we need to serialize the configuration of
   // tensorrt.
-  // It should not be called by users.
+  // It shold not be called by users.
   void serialize(void *buffer) override {
     SerializeValue(&buffer, getPluginType());
     serializeBase(buffer);
@@ -48,7 +48,7 @@ class SwishPlugin : public PluginTensorRT {
   explicit SwishPlugin(const float beta) : beta_(beta) {}
 
   // It was used for tensorrt deserialization.
-  // It should not be called by users.
+  // It shold not be called by users.
   SwishPlugin(void const *serialData, size_t serialLength) {
     deserializeBase(serialData, serialLength);
     DeserializeValue(&serialData, &serialLength, &beta_);
@@ -60,7 +60,7 @@ class SwishPlugin : public PluginTensorRT {
 
   const char *getPluginType() const override { return "swish_plugin"; }
   int getNbOutputs() const override { return 1; }
-  nvinfer1::Dims getOutputDimensions(int index, const nvinfer1::Dims *inputs,
+  nvinfer1::Dims getOutputDimensions(int indice, const nvinfer1::Dims *inputs,
                                      int nbInputDims) override;
   int enqueue(int batchSize, const void *const *inputs, void **outputs,
               void *workspace, cudaStream_t stream) override;

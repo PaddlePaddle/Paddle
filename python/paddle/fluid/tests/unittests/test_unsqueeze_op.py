@@ -44,7 +44,7 @@ class TestUnsqueezeOp(OpTest):
         self.attrs = {"axes": self.axes}
 
 
-# Correct: Single input index.
+# Correct: Single input indice.
 class TestUnsqueezeOp1(TestUnsqueezeOp):
     def init_test_case(self):
         self.ori_shape = (20, 5)

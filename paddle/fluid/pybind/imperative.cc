@@ -61,7 +61,7 @@ static const platform::Place PyObjectToPlace(const py::object &place_obj) {
     return place_obj.cast<platform::CUDAPinnedPlace>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Place should be one of CPUPlace/CUDAPlace/CUDAPinnedPlace"));
+        "Place shold be one of CPUPlace/CUDAPlace/CUDAPinnedPlace"));
   }
 }
 
@@ -87,7 +87,7 @@ static void InitTensorForVarBase(imperative::VarBase *self,
         tensor, array, boost::get<platform::CUDAPinnedPlace>(place), zero_copy);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Place should be one of CPUPlace/CUDAPlace/CUDAPinnedPlace"));
+        "Place shold be one of CPUPlace/CUDAPlace/CUDAPinnedPlace"));
   }
   self->SetPersistable(persistable);
   self->SetType(framework::proto::VarType::LOD_TENSOR);

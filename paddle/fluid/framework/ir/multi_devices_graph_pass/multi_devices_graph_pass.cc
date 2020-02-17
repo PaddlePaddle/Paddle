@@ -249,7 +249,7 @@ void MultiDevSSAGraphBuilderBase::ApplyImpl(ir::Graph *graph) const {
   PolishGraphToSupportDataHazards(&result);
 
   /*
-   * Only variables should be the leaves of graph.
+   * Only variables shold be the leaves of graph.
    */
   AddOutputToLeafOps(&result);
 
@@ -308,7 +308,7 @@ bool MultiDevSSAGraphBuilderBase::NeedCollectiveForGrad(
     const std::string &grad_name, std::vector<ir::Node *> ops) const {
   // if we have allreduce_op for current gradient variable in the graph,
   // then we don't need to add allreduce_op_handle for this gradient
-  // NOTE: This is for the case that all gradients should add collective ops
+  // NOTE: This is for the case that all gradients shold add collective ops
   for (auto *node : ops) {
     if (node->Op()->Type() != "allreduce") continue;
     for (auto in_name : node->Op()->InputArgumentNames()) {
@@ -621,7 +621,7 @@ int BalanceVarSSAGraphBuilder::GetOpDeviceID(ir::Node *node) const {
 
   PADDLE_ENFORCE_EQ(param_grad.size(), 2U);
   int dev_id = GetVarDeviceID(param_grad[1]);
-  PADDLE_ENFORCE_NE(dev_id, -1, "dev_id should not be -1.[%s, %s, %s]",
+  PADDLE_ENFORCE_NE(dev_id, -1, "dev_id shold not be -1.[%s, %s, %s]",
                     node->Op()->Type(), param_grad[0], param_grad[1]);
   return dev_id;
 }
@@ -904,7 +904,7 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
                  node->Op()->Type());
 
   // Create fetch_barrier op handle to enable output on all devices.
-  // **NOTE** fetch_barrier should output variables list same as recv op does.
+  // **NOTE** fetch_barrier shold output variables list same as recv op does.
   if (node->Op()->Type() == "fetch_barrier") {
     result->Get<GraphOps>(kGraphOps).emplace_back(
         new details::FetchBarrierOpHandle(result->CreateOpNode(node->Op()),
@@ -981,7 +981,7 @@ int DistSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
   } else {
     LOG(ERROR) << "got unexpected dist op: " << node->Op()->Type();
     PADDLE_THROW(
-        "the distribute training related op should be in [split_byref, "
+        "the distribute training related op shold be in [split_byref, "
         "concat].");
   }
 

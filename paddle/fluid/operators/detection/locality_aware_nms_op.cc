@@ -27,11 +27,11 @@ class LocalityAwareNMSOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("BBoxes"), true,
-                      "Input(BBoxes) of MultiClassNMS should not be null.");
+                      "Input(BBoxes) of MultiClassNMS shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("Scores"), true,
-                      "Input(Scores) of MultiClassNMS should not be null.");
+                      "Input(Scores) of MultiClassNMS shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of MultiClassNMS should not be null.");
+                      "Output(Out) of MultiClassNMS shold not be null.");
 
     auto box_dims = ctx->GetInputDim("BBoxes");
     auto score_dims = ctx->GetInputDim("Scores");
@@ -86,37 +86,37 @@ void GetMaxScoreIndexWithLocalityAware(
     int64_t num_boxes, std::vector<std::pair<T, int>>* sorted_indices,
     const T nms_threshold, const bool normalized) {
   std::vector<bool> skip(num_boxes, true);
-  int index = -1;
+  int indice = -1;
   for (int64_t i = 0; i < num_boxes; ++i) {
-    if (index > -1) {
+    if (indice > -1) {
       T overlap = T(0.);
       if (box_size == 4) {
         overlap = JaccardOverlap<T>(bbox_data + i * box_size,
-                                    bbox_data + index * box_size, normalized);
+                                    bbox_data + indice * box_size, normalized);
       }
       // 8: [x1 y1 x2 y2 x3 y3 x4 y4] or 16, 24, 32
       if (box_size == 8 || box_size == 16 || box_size == 24 || box_size == 32) {
         overlap =
-            PolyIoU<T>(bbox_data + i * box_size, bbox_data + index * box_size,
+            PolyIoU<T>(bbox_data + i * box_size, bbox_data + indice * box_size,
                        box_size, normalized);
       }
 
       if (overlap > nms_threshold) {
         PolyWeightedMerge(bbox_data + i * box_size,
-                          bbox_data + index * box_size, scores[i],
-                          scores[index], box_size);
-        scores[index] += scores[i];
+                          bbox_data + indice * box_size, scores[i],
+                          scores[indice], box_size);
+        scores[indice] += scores[i];
       } else {
-        skip[index] = false;
-        index = i;
+        skip[indice] = false;
+        indice = i;
       }
     } else {
-      index = i;
+      indice = i;
     }
   }
 
-  if (index > -1) {
-    skip[index] = false;
+  if (indice > -1) {
+    skip[indice] = false;
   }
   for (int64_t i = 0; i < num_boxes; ++i) {
     if (scores[i] > threshold && skip[i] == false) {
@@ -226,7 +226,7 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
     const T* scores_data = scores->data<T>();
     if (keep_top_k > -1 && num_det > keep_top_k) {
       const T* sdata;
-      std::vector<std::pair<float, std::pair<int, int>>> score_index_pairs;
+      std::vector<std::pair<float, std::pair<int, int>>> score_indice_pairs;
       for (const auto& it : *indices) {
         int label = it.first;
 
@@ -235,20 +235,20 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
         const std::vector<int>& label_indices = it.second;
         for (size_t j = 0; j < label_indices.size(); ++j) {
           int idx = label_indices[j];
-          score_index_pairs.push_back(
+          score_indice_pairs.push_back(
               std::make_pair(sdata[idx], std::make_pair(label, idx)));
         }
       }
       // Keep top k results per image.
-      std::stable_sort(score_index_pairs.begin(), score_index_pairs.end(),
+      std::stable_sort(score_indice_pairs.begin(), score_indice_pairs.end(),
                        SortScorePairDescend<std::pair<int, int>>);
-      score_index_pairs.resize(keep_top_k);
+      score_indice_pairs.resize(keep_top_k);
 
       // Store the new indices.
       std::map<int, std::vector<int>> new_indices;
-      for (size_t j = 0; j < score_index_pairs.size(); ++j) {
-        int label = score_index_pairs[j].second.first;
-        int idx = score_index_pairs[j].second.second;
+      for (size_t j = 0; j < score_indice_pairs.size(); ++j) {
+        int label = score_indice_pairs[j].second.first;
+        int idx = score_indice_pairs[j].second.second;
         new_indices[label].push_back(idx);
       }
 
@@ -383,7 +383,7 @@ class LocalityAwareNMSOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>(
         "background_label",
         "(int, default: -1) "
-        "The index of background label, the background label will be ignored. "
+        "The indice of background label, the background label will be ignored. "
         "If set to -1, then all categories will be considered.")
         .SetDefault(-1);
     AddAttr<float>("score_threshold",

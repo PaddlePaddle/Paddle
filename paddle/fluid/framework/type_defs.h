@@ -37,7 +37,7 @@ using VariableNameMap = std::map<std::string, std::vector<std::string>>;
 // TODO(panyx0718): Replace vector with something like gtl::Vector.
 using VariableValueMap = std::map<std::string, std::vector<Variable*>>;
 
-// The order should be as same as framework.proto
+// The order shold be as same as framework.proto
 using Attribute =
     boost::variant<boost::blank, int, float, std::string, std::vector<int>,
                    std::vector<float>, std::vector<std::string>, bool,

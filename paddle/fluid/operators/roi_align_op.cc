@@ -24,22 +24,22 @@ class ROIAlignOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of ROIAlignOp should not be null.");
+                   "Input(X) of ROIAlignOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("ROIs"),
-                   "Input(ROIs) of ROIAlignOp should not be null.");
+                   "Input(ROIs) of ROIAlignOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of ROIAlignOp should not be null.");
+                   "Output(Out) of ROIAlignOp shold not be null.");
     auto input_dims = ctx->GetInputDim("X");
     auto rois_dims = ctx->GetInputDim("ROIs");
 
     PADDLE_ENFORCE(input_dims.size() == 4,
                    "The format of input tensor is NCHW.");
     PADDLE_ENFORCE(rois_dims.size() == 2,
-                   "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
+                   "ROIs shold be a 2-D LoDTensor of shape (num_rois, 4)"
                    "given as [[x1, y1, x2, y2], ...].");
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE(rois_dims[1] == 4,
-                     "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
+                     "ROIs shold be a 2-D LoDTensor of shape (num_rois, 4)"
                      "given as [[x1, y1, x2, y2], ...].");
     }
     int pooled_height = ctx->Attrs().Get<int>("pooled_height");
@@ -77,9 +77,9 @@ class ROIAlignGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "The GRAD@Out of ROIAlignGradOp should not be null.");
+                   "The GRAD@Out of ROIAlignGradOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName("X")),
-                   "The GRAD@X of ROIAlignGradOp should not be null.");
+                   "The GRAD@X of ROIAlignGradOp shold not be null.");
     ctx->SetOutputsDim(framework::GradVarName("X"), ctx->GetInputsDim("X"));
   }
 
@@ -105,7 +105,7 @@ class ROIAlignOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("ROIs",
              "(LoDTensor), "
              "ROIs (Regions of Interest) to pool over. "
-             "should be a 2-D LoDTensor of shape (num_rois, 4)"
+             "shold be a 2-D LoDTensor of shape (num_rois, 4)"
              "given as [[x1, y1, x2, y2], ...]. "
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates.");

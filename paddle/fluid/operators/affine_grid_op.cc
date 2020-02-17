@@ -43,28 +43,28 @@ class AffineGridOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Theta"),
-                   "Input(Theta) of AffineGridOp should not be null.");
+                   "Input(Theta) of AffineGridOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Output"),
-                   "Output(Output) of AffineGridOp should not be null.");
+                   "Output(Output) of AffineGridOp shold not be null.");
     auto theta_dims = ctx->GetInputDim("Theta");
     PADDLE_ENFORCE(theta_dims.size() == 3,
-                   "AffineGrid's Input(Theta) should be 3-D tensor.");
+                   "AffineGrid's Input(Theta) shold be 3-D tensor.");
 
     auto output_shape = ctx->Attrs().Get<std::vector<int>>("output_shape");
     if (output_shape.size() == 0) {
       PADDLE_ENFORCE(ctx->HasInput("OutputShape"),
-                     "Input(OutputShape) of AffineGridOp should not be null if "
+                     "Input(OutputShape) of AffineGridOp shold not be null if "
                      "attr(output_shape) is not configured.");
       auto output_shape_dims = ctx->GetInputDim("OutputShape");
       PADDLE_ENFORCE(output_shape_dims.size() == 1,
-                     "AffineGrid's Input(OutputShape) should be 1-D tensor.");
+                     "AffineGrid's Input(OutputShape) shold be 1-D tensor.");
     } else {
       PADDLE_ENFORCE(output_shape.size() == 4,
-                     "The size of attr(output_shape) should be 4.");
+                     "The size of attr(output_shape) shold be 4.");
     }
 
-    PADDLE_ENFORCE(theta_dims[1] == 2, "Input(theta) dims[1] should be 2.");
-    PADDLE_ENFORCE(theta_dims[2] == 3, "Input(theta) dims[2] should be 3.");
+    PADDLE_ENFORCE(theta_dims[1] == 2, "Input(theta) dims[1] shold be 2.");
+    PADDLE_ENFORCE(theta_dims[2] == 3, "Input(theta) dims[2] shold be 3.");
     // N * H * W * 2
     ctx->SetOutputDim("Output",
                       framework::make_ddim({theta_dims[0], -1, -1, 2}));
@@ -110,7 +110,7 @@ class AffineGridOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
     It generates a grid of (x,y) coordinates using the parameters of the
     affine transformation that correspond to a set of points where the input
-    feature map should be sampled to produce the transformed output feature map.
+    feature map shold be sampled to produce the transformed output feature map.
 
     Given:
         Theta = [[[x_11, x_12, x_13]

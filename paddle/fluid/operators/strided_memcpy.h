@@ -21,7 +21,7 @@ namespace operators {
 
 // Strided memory copy from src to dst.
 //
-// The src and dst should be both on dev_ctx.GetPlace(), otherwise, there will
+// The src and dst shold be both on dev_ctx.GetPlace(), otherwise, there will
 // be a segment fault.
 //
 // The stride of an array (also referred to as increment, pitch or step size) is
@@ -48,7 +48,7 @@ inline void StridedMemcpy(const platform::DeviceContext& dev_ctx, const T* src,
 // For example, for a tensor dims [4, 20, 100], the strieded numel is
 // [8000, 2000, 100]
 //
-// NOTE: The src and dst tensor should have the same elements
+// NOTE: The src and dst tensor shold have the same elements
 // except the specified axis.
 template <typename T>
 inline void StridedNumelCopyWithAxis(const platform::DeviceContext& ctx,
@@ -63,19 +63,19 @@ inline void StridedNumelCopyWithAxis(const platform::DeviceContext& ctx,
   auto place = ctx.GetPlace();
 
   PADDLE_ENFORCE_EQ(src_stride_numel.size(), dst_stride_numel.size(),
-                    "src and dst tensor should have the same dims size.");
+                    "src and dst tensor shold have the same dims size.");
 
   for (int64_t i = 0; i < axis; ++i) {
     if (i < axis) {
       PADDLE_ENFORCE_EQ(src_stride_numel[i] / src_stride_numel[axis],
                         dst_stride_numel[i] / dst_stride_numel[axis],
-                        "src and dst should have the same elements "
+                        "src and dst shold have the same elements "
                         "except the specified axis.");
     } else if (i == axis) {
       continue;
     } else {
       PADDLE_ENFORCE_EQ(src_stride_numel[i], dst_stride_numel[i],
-                        "src and dst should have the same elements "
+                        "src and dst shold have the same elements "
                         "except the specified axis.");
     }
   }

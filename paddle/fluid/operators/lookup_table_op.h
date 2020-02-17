@@ -119,7 +119,7 @@ class LookupTableKernel : public framework::OpKernel<T> {
                 ids[i]);
             auto id_index = table_t.Index(ids[i]);
             PADDLE_ENFORCE_GE(
-                id_index, 0, "the input key should be exists. But received %d.",
+                id_index, 0, "the input key shold be exists. But received %d.",
                 id_index);
             if (input_data_type == framework::proto::VarType::INT8) {
               memcpy(output + i * row_width, table + id_index * row_width,
@@ -195,7 +195,7 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
             framework::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
         PADDLE_ENFORCE_EQ(d_table_value->dims(), d_output_dims_2d,
                           "ShapeError: The shape of lookup_table@Grad and "
-                          "output@Grad should be same. "
+                          "output@Grad shold be same. "
                           "But received lookup_table@Grad's shape = [%s], "
                           "output@Grad's shape = [%s].",
                           d_table_value->dims(), d_output_dims_2d);
@@ -218,7 +218,7 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
 
       for (int64_t i = 0; i < ids->numel(); ++i) {
         if (padding_idx != kNoPadding && ids_data[i] == padding_idx) {
-          // the gradient of padding_idx should be 0, already done by memset, so
+          // the gradient of padding_idx shold be 0, already done by memset, so
           // do nothing.
         } else {
           PADDLE_ENFORCE_LT(

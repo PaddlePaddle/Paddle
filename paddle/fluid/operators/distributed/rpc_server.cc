@@ -56,7 +56,7 @@ void RPCServer::WaitBarrier(const std::string& rpc_name) {
 
 void RPCServer::IncreaseBatchBarrier(const std::string rpc_name) {
   VLOG(3) << "RPCServer begin IncreaseBatchBarrier " << rpc_name;
-  // barrier msg should make sure that it's in the right cond(send|recv)
+  // barrier msg shold make sure that it's in the right cond(send|recv)
   WaitCond(rpc_name);
   int b = 0;
   std::unique_lock<std::mutex> lock(mutex_);

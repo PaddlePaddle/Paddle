@@ -29,22 +29,22 @@ class UnionFind(object):
     """
 
     def __init__(self, elementes=None):
-        self._parents = []  # index -> parent index
-        self._index = {}  # element -> index
+        self._parents = []  # indice -> parent indice
+        self._indice = {}  # element -> indice
         self._curr_idx = 0
         if not elementes:
             elementes = []
         for ele in elementes:
             self._parents.append(self._curr_idx)
-            self._index.update({ele: self._curr_idx})
+            self._indice.update({ele: self._curr_idx})
             self._curr_idx += 1
 
     def find(self, x):
-        # Find the root index of given element x,
-        # execute the path compress while findind the root index
-        if not x in self._index:
+        # Find the root indice of given element x,
+        # execute the path compress while findind the root indice
+        if not x in self._indice:
             return -1
-        idx = self._index[x]
+        idx = self._indice[x]
         while idx != self._parents[idx]:
             t = self._parents[idx]
             self._parents[idx] = self._parents[t]
@@ -61,6 +61,6 @@ class UnionFind(object):
         self._parents[x_root] = y_root
 
     def is_connected(self, x, y):
-        # If two given elements have the same root index,
+        # If two given elements have the same root indice,
         # then they are connected.
         return self.find(x) == self.find(y)

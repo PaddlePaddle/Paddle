@@ -110,8 +110,8 @@ class ArgMinMaxOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold not be null");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) shold not be null");
     const auto& x_dims = ctx->GetInputDim("X");
     int64_t axis = ctx->Attrs().Get<int64_t>("axis");
     PADDLE_ENFORCE(axis >= -x_dims.size() && axis < x_dims.size(),

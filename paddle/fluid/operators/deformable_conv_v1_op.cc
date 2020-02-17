@@ -74,7 +74,7 @@ Deformable Convolution is a new method based Convolution which feature has offse
 in spatial location.
 
 1. Get offset of each pixel in feature map with convolution layers which number 
-   of channels should be double of weight size.
+   of channels shold be double of weight size.
 
 2. Add offset to pixel to get new location and the new value which are computed 
    directly through bilinear interpolation with four nearest pixel.
@@ -116,16 +116,16 @@ class DeformableConvV1Op : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
                       "Input(Input) of DeformableConvOp "
-                      "should not be null");
+                      "shold not be null");
     PADDLE_ENFORCE_EQ(ctx->HasInput("Offset"), true,
                       "Input(Offset) of DeformableConvOp "
-                      "should not be null");
+                      "shold not be null");
     PADDLE_ENFORCE_EQ(ctx->HasInput("Filter"), true,
                       "Input(Filter) of DeformableConvOp "
-                      "should not be null");
+                      "shold not be null");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Output"), true,
                       "Output(Output) of DeformableConvOp "
-                      "should not be null.");
+                      "shold not be null.");
 
     auto in_dims = ctx->GetInputDim("Input");
     auto filter_dims = ctx->GetInputDim("Filter");
@@ -140,26 +140,26 @@ class DeformableConvV1Op : public framework::OperatorWithKernel {
     int im2col_step = ctx->Attrs().Get<int>("im2col_step");
 
     PADDLE_ENFORCE_EQ(in_dims.size(), 4,
-                      "Conv input should be 4-D tensor, get %u",
+                      "Conv input shold be 4-D tensor, get %u",
                       in_dims.size());
     PADDLE_ENFORCE_EQ(
         in_dims.size(), filter_dims.size(),
-        "Conv input dimension and filter dimension should be the same.");
+        "Conv input dimension and filter dimension shold be the same.");
     PADDLE_ENFORCE_EQ(
         in_dims.size() - strides.size(), 2U,
-        "Conv input dimension and strides dimension should be consistent.");
+        "Conv input dimension and strides dimension shold be consistent.");
     PADDLE_ENFORCE_EQ(paddings.size(), strides.size(),
                       "Conv paddings dimension and Conv strides dimension "
-                      "should be the same.");
+                      "shold be the same.");
 
     PADDLE_ENFORCE_EQ(in_dims[1], filter_dims[1] * groups,
-                      "The number of input channels should be equal to filter "
+                      "The number of input channels shold be equal to filter "
                       "channels * groups.");
     PADDLE_ENFORCE_EQ(
         filter_dims[0] % groups, 0,
-        "The number of output channels should be divided by groups.");
+        "The number of output channels shold be divided by groups.");
     PADDLE_ENFORCE_EQ(filter_dims[0] % deformable_groups, 0,
-                      "The number of output channels should be "
+                      "The number of output channels shold be "
                       "divided by deformable groups.");
 
     if (in_dims[0] > im2col_step) {

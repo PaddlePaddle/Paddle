@@ -71,7 +71,7 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     auto* fpn_rois = ctx.Input<paddle::framework::LoDTensor>("FpnRois");
 
     auto multi_fpn_rois = ctx.MultiOutput<LoDTensor>("MultiFpnRois");
-    auto* restore_index = ctx.Output<Tensor>("RestoreIndex");
+    auto* restore_indice = ctx.Output<Tensor>("RestoreIndex");
 
     const int min_level = ctx.Attr<int>("min_level");
     const int max_level = ctx.Attr<int>("max_level");
@@ -124,15 +124,15 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     dev_ctx.Wait();
     auto place = boost::get<platform::CUDAPlace>(dev_ctx.GetPlace());
 
-    Tensor index_in_t;
-    int* idx_in = index_in_t.mutable_data<int>({roi_num}, dev_ctx.GetPlace());
+    Tensor indice_in_t;
+    int* idx_in = indice_in_t.mutable_data<int>({roi_num}, dev_ctx.GetPlace());
     platform::ForRange<platform::CUDADeviceContext> for_range(dev_ctx, roi_num);
     for_range(RangeInitFunctor{0, 1, idx_in});
 
     Tensor keys_out_t;
     int* keys_out = keys_out_t.mutable_data<int>({roi_num}, dev_ctx.GetPlace());
-    Tensor index_out_t;
-    int* idx_out = index_out_t.mutable_data<int>({roi_num}, dev_ctx.GetPlace());
+    Tensor indice_out_t;
+    int* idx_out = indice_out_t.mutable_data<int>({roi_num}, dev_ctx.GetPlace());
 
     // Determine temporary device storage requirements
     size_t temp_storage_bytes = 0;
@@ -143,14 +143,14 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
     auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
 
     // Run sorting operation
-    // sort target level to get corresponding index
+    // sort target level to get corresponding indice
     cub::DeviceRadixSort::SortPairs<int, int>(
         d_temp_storage->ptr(), temp_storage_bytes, target_lvls_data, keys_out,
         idx_in, idx_out, roi_num);
 
     int* restore_idx_data =
-        restore_index->mutable_data<int>({roi_num, 1}, dev_ctx.GetPlace());
-    // sort current index to get restore index
+        restore_indice->mutable_data<int>({roi_num, 1}, dev_ctx.GetPlace());
+    // sort current indice to get restore indice
     cub::DeviceRadixSort::SortPairs<int, int>(
         d_temp_storage->ptr(), temp_storage_bytes, idx_out, keys_out, idx_in,
         restore_idx_data, roi_num);
@@ -173,7 +173,7 @@ class GPUDistributeFpnProposalsOpKernel : public framework::OpKernel<T> {
 
       int end = start + sub_rois_num;
       if (end > start) {
-        Tensor sub_idx = index_out_t.Slice(start, end);
+        Tensor sub_idx = indice_out_t.Slice(start, end);
         start = end;
         multi_fpn_rois[i]->mutable_data<T>({sub_rois_num, kBoxDim},
                                            dev_ctx.GetPlace());

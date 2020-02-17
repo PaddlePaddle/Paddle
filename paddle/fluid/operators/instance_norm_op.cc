@@ -24,20 +24,20 @@ namespace operators {
 
 void InstanceNormOp::InferShape(framework::InferShapeContext *ctx) const {
   PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                    "Input(X) of Instance Norm Op should not be null.");
+                    "Input(X) of Instance Norm Op shold not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasInput("Scale"), true,
-                    "Input(Scale) of Instance Norm Op should not be null.");
+                    "Input(Scale) of Instance Norm Op shold not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasInput("Bias"), true,
-                    "Input(Bias) of Instance Norm Op should not be null.");
+                    "Input(Bias) of Instance Norm Op shold not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasOutput("Y"), true,
-                    "Output(Y) of Instance Norm Op should not be null.");
+                    "Output(Y) of Instance Norm Op shold not be null.");
 
   PADDLE_ENFORCE_EQ(
       ctx->HasOutput("SavedMean"), true,
-      "Output(SavedMean) of Instance Norm Op should not be null.");
+      "Output(SavedMean) of Instance Norm Op shold not be null.");
   PADDLE_ENFORCE_EQ(
       ctx->HasOutput("SavedVariance"), true,
-      "Output(SavedVariance) of Instance Norm Op should not be null.");
+      "Output(SavedVariance) of Instance Norm Op shold not be null.");
 
   const auto x_dims = ctx->GetInputDim("X");
   PADDLE_ENFORCE_GE(x_dims.size(), 2,
@@ -72,16 +72,16 @@ framework::OpKernelType InstanceNormOp::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
   auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
   // By default, the type of the scale, bias, mean,
-  // and var tensors should both be float. (For float or float16 input tensor)
+  // and var tensors shold both be float. (For float or float16 input tensor)
   // or double (For double input tensor).
   auto in_param_type = framework::proto::VarType::FP32;
   if (input_data_type == framework::proto::VarType::FP64) {
     in_param_type = framework::proto::VarType::FP64;
   }
   PADDLE_ENFORCE_EQ(in_param_type, ctx.Input<Tensor>("Scale")->type(),
-                    "Scale input should be of float type");
+                    "Scale input shold be of float type");
   PADDLE_ENFORCE_EQ(in_param_type, ctx.Input<Tensor>("Bias")->type(),
-                    "Bias input should be of float type");
+                    "Bias input shold be of float type");
 
   return framework::OpKernelType(input_data_type, ctx.GetPlace());
 }
@@ -91,7 +91,7 @@ void InstanceNormOpMaker::Make() {
       .SetDefault(1e-5)
       .AddCustomChecker([](const float &epsilon) {
         PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 0.001f, true,
-                          "'epsilon' should be between 0.0 and 0.001.");
+                          "'epsilon' shold be between 0.0 and 0.001.");
       });
   AddInput("X", "The input tensor");
   AddInput("Scale",
@@ -193,23 +193,23 @@ class InstanceNormKernel<platform::CPUDeviceContext, T>
 };
 
 void InstanceNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
-  PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) should not be null");
+  PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) shold not be null");
   PADDLE_ENFORCE_EQ(ctx->HasInput("Scale"), true,
-                    "Input(scale) should not be null");
+                    "Input(scale) shold not be null");
 
   PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Y")), true,
-                    "Input(Y@GRAD) should not be null");
+                    "Input(Y@GRAD) shold not be null");
   PADDLE_ENFORCE_EQ(ctx->HasInput("SavedMean"), true,
-                    "Input(SavedMean) should not be null");
+                    "Input(SavedMean) shold not be null");
   PADDLE_ENFORCE_EQ(ctx->HasInput("SavedVariance"), true,
-                    "Input(SavedVariance) should not be null");
+                    "Input(SavedVariance) shold not be null");
 
   // check output
   PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
-                    "Output(x@GRAD) should not be null");
+                    "Output(x@GRAD) shold not be null");
   if (ctx->HasOutput(framework::GradVarName("Scale"))) {
     PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("Bias")), true,
-                      "Output(Scale@GRAD) and Output(Bias@GRAD) should not be "
+                      "Output(Scale@GRAD) and Output(Bias@GRAD) shold not be "
                       "null at the same time");
   }
   const auto x_dims = ctx->GetInputDim("X");
@@ -333,21 +333,21 @@ class InstanceNormGradKernel<platform::CPUDeviceContext, T>
 
 void InstanceNormDoubleGradOp::InferShape(
     framework::InferShapeContext *ctx) const {
-  PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) should not be null");
+  PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) shold not be null");
   PADDLE_ENFORCE_EQ(ctx->HasInput("Scale"), true,
-                    "Input(Scale) should not be null.");
+                    "Input(Scale) shold not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasInput("SavedMean"), true,
-                    "Input(SavedMean) should not be null");
+                    "Input(SavedMean) shold not be null");
   PADDLE_ENFORCE_EQ(ctx->HasInput("SavedVariance"), true,
-                    "Input(SavedVariance) should not be null");
+                    "Input(SavedVariance) shold not be null");
   PADDLE_ENFORCE_EQ(ctx->HasInput("DDX"), true,
-                    "Input(DDX) should not be null.");
+                    "Input(DDX) shold not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasInput("DY"), true,
-                    "Input(Y@GRAD) should not be null");
+                    "Input(Y@GRAD) shold not be null");
 
   // check output
   PADDLE_ENFORCE_EQ(ctx->HasOutput("DX"), true,
-                    "Output(DX) should not be null");
+                    "Output(DX) shold not be null");
 
   const auto x_dims = ctx->GetInputDim("X");
   const int C = x_dims[1];

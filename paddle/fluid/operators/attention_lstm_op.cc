@@ -55,17 +55,17 @@ void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
   const int D = w_dims[1] / 4;
   PADDLE_ENFORCE_EQ(w_dims.size(), 2, "Input(LSTMWeight)'s rank must be 2.");
   PADDLE_ENFORCE_EQ(w_dims[0], D + M,
-                    "LSTMWeight dims should be (%d + %d) * %d.", D, M, 4 * D);
+                    "LSTMWeight dims shold be (%d + %d) * %d.", D, M, 4 * D);
 
   auto b_dims = ctx->GetInputDim("LSTMBias");
   PADDLE_ENFORCE_EQ(b_dims.size(), 2, "Input(LSTMBias)'s rank must be 2.");
-  PADDLE_ENFORCE_EQ(b_dims[0], 1, "LSTMBias dims should be 1 x %d.", 4 * D);
-  PADDLE_ENFORCE_EQ(b_dims[1], 4 * D, "LSTMBias dims should be 1 x %d.", 4 * D);
+  PADDLE_ENFORCE_EQ(b_dims[0], 1, "LSTMBias dims shold be 1 x %d.", 4 * D);
+  PADDLE_ENFORCE_EQ(b_dims[1], 4 * D, "LSTMBias dims shold be 1 x %d.", 4 * D);
 
   auto c_dims = ctx->GetInputDim("C0");
   PADDLE_ENFORCE_EQ(c_dims.size(), 2, "Input(C0)'s rank must be 2.");
   if (ctx->IsRuntime()) {
-    PADDLE_ENFORCE_EQ(c_dims[1], D, "C0 dims should be N x %d.", D);
+    PADDLE_ENFORCE_EQ(c_dims[1], D, "C0 dims shold be N x %d.", D);
   }
 
   if (ctx->HasInput("H0")) {
@@ -75,7 +75,7 @@ void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
         (framework::product(c_dims) > 0 && framework::product(h_dims) > 0)) {
       PADDLE_ENFORCE(h_dims == c_dims,
                      "The dimension of Input(H0) and Input(C0) "
-                     "should be the same.");
+                     "shold be the same.");
     }
   }
 
@@ -109,7 +109,7 @@ void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
     auto dims = ctx->GetInputDim("AttentionScalarBias");
     PADDLE_ENFORCE(
         ctx->HasInput("AttentionScalar"),
-        "AttentionScalar should not be null when have AttentionScalarBias.");
+        "AttentionScalar shold not be null when have AttentionScalarBias.");
     PADDLE_ENFORCE_EQ(dims.size(), 2,
                       "Input(AttentionScalarBias)'s rank must be 2.");
     PADDLE_ENFORCE_EQ(dims[0], 1, "AttentionScalarBias shapes must be 1 * 1.");
@@ -122,7 +122,7 @@ void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
   ctx->SetOutputDim("AttentionedX", {x_dims[0], 1});
   ctx->SetOutputDim("LSTMX", {1, M});
   ctx->SetOutputDim("LSTMOUT", {1, 4 * D});
-  // AttentionFCOut should be reshape as (maxseqlen,1) in runtime
+  // AttentionFCOut shold be reshape as (maxseqlen,1) in runtime
   ctx->ShareLoD("X", "Hidden");
   ctx->ShareLoD("X", "Cell");
 }
@@ -173,7 +173,7 @@ void AttentionLSTMOpMaker::Make() {
            " - Weight = {W_forget, W_input, W_output, W_cell}");
   AddInput("LSTMBias",
            "(Tensor) the combined bias of LSTM, shape (1x4D)."
-           "Note: we should add the bias of hidden and context accorindg to "
+           "Note: we shold add the bias of hidden and context accorindg to "
            "the same gate: "
            "{B_forget, B_input, B_output, B_cell}");
   AddOutput("Hidden",
@@ -285,7 +285,7 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
     auto* lstm_x = ctx.Output<Tensor>("LSTMX");
     auto* lstm_out = ctx.Output<Tensor>("LSTMOUT");
 
-    // some shape should be reshape here since infershape can not get lod info
+    // some shape shold be reshape here since infershape can not get lod info
     auto x_lod = x->lod();
     const int N = x_lod[0].size() - 1;  // batch size
     auto x_dims = x->dims();            // T x M
@@ -302,7 +302,7 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
       max_seq_len = max_seq_len < len ? len : max_seq_len;
     }
     PADDLE_ENFORCE_EQ(x_lod.size(), 1UL, "Input(X)'s lod size must be 1.");
-    PADDLE_ENFORCE_EQ(c0->dims()[0], N, "C0 dims should be %d x %d.", N, D);
+    PADDLE_ENFORCE_EQ(c0->dims()[0], N, "C0 dims shold be %d x %d.", N, D);
     fc_out->Resize({max_seq_len, 1});
 
     std::function<void(const int, const T *, T *)> act_gate, act_cell, act_cand;

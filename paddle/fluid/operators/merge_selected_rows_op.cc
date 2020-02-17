@@ -23,15 +23,15 @@ class MergeSelectedRowsOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of MergeSelectedRowsOp should not be null.");
+                   "Input(X) of MergeSelectedRowsOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of MergeSelectedRowsOp should not be null.");
+                   "Output(Out) of MergeSelectedRowsOp shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("X").front(),
                       framework::proto::VarType::SELECTED_ROWS,
-                      "Input X only should be SelectedRows.");
+                      "Input X only shold be SelectedRows.");
     PADDLE_ENFORCE_EQ(ctx->GetOutputsVarType("Out").front(),
                       framework::proto::VarType::SELECTED_ROWS,
-                      "Output Y only should be SelectedRows.");
+                      "Output Y only shold be SelectedRows.");
 
     ctx->ShareDim("X", /*->*/ "Out");
   }

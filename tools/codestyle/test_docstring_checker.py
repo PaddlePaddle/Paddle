@@ -188,7 +188,7 @@ def fc(input,
         num_flatten_dims (int, default 1): The fc layer can accept an input tensor with more than
             two dimensions. If this happens, the multidimensional tensor will first be flattened
             into a 2-dimensional matrix. The parameter `num_flatten_dims` determines how the input
-            tensor is flattened: the first `num_flatten_dims` (inclusive, index starts from 1)
+            tensor is flattened: the first `num_flatten_dims` (inclusive, indice starts from 1)
             dimensions will be flatten to form the first dimension of the final matrix (height of
             the matrix), and the rest `rank(X) - num_flatten_dims` dimensions are flattened to
             form the second dimension of the final matrix (width of the matrix). For example, suppose

@@ -179,7 +179,7 @@ class QatInt8MkldnnPass(object):
         graph.safe_remove_nodes(op_node)
 
     def _transform_to_mul_mkldnn(self, graph, op_node):
-        # For MKL-DNN INT8 mul, input Y should be the weights
+        # For MKL-DNN INT8 mul, input Y shold be the weights
         weight_name = op_node.input("Y")[0]
         output_name = op_node.output("Out")[0]
         # Convert int8 range weights to fp32 range weights

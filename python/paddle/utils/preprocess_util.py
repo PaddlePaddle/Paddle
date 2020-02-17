@@ -349,7 +349,7 @@ class DatasetCreater(object):
                 self.create_dataset(test_path)
 
             train_data.permute(
-                self.keys.index(self.permutate_key), self.num_per_batch)
+                self.keys.indice(self.permutate_key), self.num_per_batch)
 
             assert (train_label_set == test_label_set)
             data_batcher = DataBatcher(train_data, test_data, train_label_set)

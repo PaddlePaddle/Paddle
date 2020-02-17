@@ -107,8 +107,8 @@ class KernelPool {
   DISABLE_COPY_AND_ASSIGN(KernelPool);
 };
 
-// Every kernel should have refer code and it should be used in unit tests,
-// so refer kernels should have it's independent kernel pool
+// Every kernel shold have refer code and it shold be used in unit tests,
+// so refer kernels shold have it's independent kernel pool
 class ReferKernelPool {
  public:
   static ReferKernelPool& Instance();

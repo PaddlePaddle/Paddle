@@ -58,8 +58,8 @@ class TestLoDTensorArrayConcat(unittest.TestCase):
 
         y_out = block.create_var(name="Out")
         y_out.persistable = True
-        y_out_index = block.create_var(name="OutIndex")
-        y_out_index.persistable = True
+        y_out_indice = block.create_var(name="OutIndex")
+        y_out_indice.persistable = True
 
         y_grad_arr = block.create_var(
             name='Out@GRAD', dtype='float32', shape=[11])
@@ -72,7 +72,7 @@ class TestLoDTensorArrayConcat(unittest.TestCase):
             type=self.op_type,
             inputs={"X": input_arr},
             outputs={"Out": y_out,
-                     "OutIndex": y_out_index},
+                     "OutIndex": y_out_indice},
             attrs=self.attrs)
 
         out_grad = block.create_var(
@@ -100,7 +100,7 @@ class TestLoDTensorArrayConcat(unittest.TestCase):
 
         exe = fluid.Executor(fluid.CPUPlace())
         out = exe.run(program, fetch_list=fetch_list, scope=scope)
-        #print ("index: ", numpy.array(out[1]))
+        #print ("indice: ", numpy.array(out[1]))
 
         # test forward
         tensor_res = numpy.array(out[0])
@@ -171,11 +171,11 @@ class TestLoDTensorArrayStack(unittest.TestCase):
             for i, x in enumerate(self.inputs):
                 x = fluid.layers.assign(x)
                 fluid.layers.array_write(x, idx + i, array)
-            output, output_index = fluid.layers.tensor_array_to_tensor(
+            output, output_indice = fluid.layers.tensor_array_to_tensor(
                 input=array, **self.attrs)
             loss = fluid.layers.reduce_sum(output)
             fluid.backward.append_backward(loss)
-        self.output_vars = [output, output_index]
+        self.output_vars = [output, output_indice]
 
     def run_check(self, executor, scope):
         executor.run(self.program, scope=scope)
@@ -211,9 +211,9 @@ class TestTensorArrayToTensorAPI(unittest.TestCase):
         array = fluid.layers.create_array(dtype='float32')
         fluid.layers.array_write(x0, i, array)
         fluid.layers.array_write(x1, i + 1, array)
-        output, output_index = fluid.layers.tensor_array_to_tensor(
+        output, output_indice = fluid.layers.tensor_array_to_tensor(
             input=array, axis=1, use_stack=True)
-        output, output_index = fluid.layers.tensor_array_to_tensor(
+        output, output_indice = fluid.layers.tensor_array_to_tensor(
             input=array, axis=1, use_stack=False)
 
 

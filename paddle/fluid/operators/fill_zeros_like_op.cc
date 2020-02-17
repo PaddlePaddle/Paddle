@@ -23,9 +23,9 @@ class FillZerosLikeOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of FillZerosLikeOp should not be null.");
+                   "Input(X) of FillZerosLikeOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of FillZerosLikeOp should not be null.");
+                   "Output(Out) of FillZerosLikeOp shold not be null.");
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Out");
   }

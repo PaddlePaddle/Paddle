@@ -44,12 +44,12 @@ __device__ int upper_bound(T const* vals, int n, T const& key) {
 }
 
 nvinfer1::Dims SplitPlugin::getOutputDimensions(
-    int index, const nvinfer1::Dims* input_dims, int num_inputs) {
+    int indice, const nvinfer1::Dims* input_dims, int num_inputs) {
   PADDLE_ENFORCE_EQ(num_inputs, 1);
-  PADDLE_ENFORCE_LT(index, this->getNbOutputs());
+  PADDLE_ENFORCE_LT(indice, this->getNbOutputs());
 
   nvinfer1::Dims output_dims = input_dims[0];
-  output_dims.d[axis_] = output_length_.at(index);
+  output_dims.d[axis_] = output_length_.at(indice);
   return output_dims;
 }
 

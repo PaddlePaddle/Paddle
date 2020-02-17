@@ -277,7 +277,7 @@ def add_relu_func(x, y, x_bcast, y_bcast, mode=0):
     # Because we set delta = 0.005 in calculating numeric gradient,
     # if x is too small, such as 0.002, x_neg will be -0.003
     # x_pos will be 0.007, so the numeric gradient is inaccurate.
-    # we should avoid this
+    # we shold avoid this
     if mode == 0:
         y[np.abs(y) < 0.005] = 0.02
         y_bcast[np.abs(y_bcast) < 0.005] = 0.02

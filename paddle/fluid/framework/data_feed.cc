@@ -62,7 +62,7 @@ void RecordCandidateList::ReInit() {
 void RecordCandidateList::AddAndGet(const Record& record,
                                     RecordCandidate* result) {
   _mutex.lock();
-  size_t index = 0;
+  size_t indice = 0;
   ++_total_size;
   auto fleet_ptr = FleetWrapper::GetInstance();
   if (!_full) {
@@ -70,13 +70,13 @@ void RecordCandidateList::AddAndGet(const Record& record,
     _full = (_cur_size == _capacity);
   } else {
     CHECK(_cur_size == _capacity);
-    index = fleet_ptr->LocalRandomEngine()() % _total_size;
-    if (index < _capacity) {
-      _candidate_list[index] = record;
+    indice = fleet_ptr->LocalRandomEngine()() % _total_size;
+    if (indice < _capacity) {
+      _candidate_list[indice] = record;
     }
   }
-  index = fleet_ptr->LocalRandomEngine()() % _cur_size;
-  *result = _candidate_list[index];
+  indice = fleet_ptr->LocalRandomEngine()() % _cur_size;
+  *result = _candidate_list[indice];
   _mutex.unlock();
 }
 
@@ -115,10 +115,10 @@ bool DataFeed::PickOneFile(std::string* filename) {
   PADDLE_ENFORCE_NOT_NULL(
       mutex_for_pick_file_,
       platform::errors::PreconditionNotMet(
-          "You should call SetFileListMutex before PickOneFile"));
+          "You shold call SetFileListMutex before PickOneFile"));
   PADDLE_ENFORCE_NOT_NULL(
       file_idx_, platform::errors::PreconditionNotMet(
-                     "You should call SetFileListIndex before PickOneFile"));
+                     "You shold call SetFileListIndex before PickOneFile"));
   std::unique_lock<std::mutex> lock(*mutex_for_pick_file_);
   if (*file_idx_ == filelist_.size()) {
     VLOG(3) << "DataFeed::PickOneFile no more file to pick";
@@ -201,16 +201,16 @@ template <typename T>
 int PrivateQueueDataFeed<T>::Next() {
 #ifdef _LINUX
   CheckStart();
-  int index = 0;
+  int indice = 0;
   T ins_vec;
-  while (index < default_batch_size_) {
+  while (indice < default_batch_size_) {
     T instance;
     if (!queue_->Get(instance)) {
       break;
     }
-    AddInstanceToInsVec(&ins_vec, instance, index++);
+    AddInstanceToInsVec(&ins_vec, instance, indice++);
   }
-  batch_size_ = index;
+  batch_size_ = indice;
   if (batch_size_ != 0) {
     PutToFeedVec(ins_vec);
   }
@@ -260,20 +260,20 @@ int InMemoryDataFeed<T>::Next() {
   VLOG(3) << "output_channel_ size=" << output_channel_->Size()
           << ", consume_channel_ size=" << consume_channel_->Size()
           << ", thread_id=" << thread_id_;
-  int index = 0;
+  int indice = 0;
   T instance;
   std::vector<T> ins_vec;
   ins_vec.reserve(this->default_batch_size_);
-  while (index < this->default_batch_size_) {
+  while (indice < this->default_batch_size_) {
     if (output_channel_->Size() == 0) {
       break;
     }
     output_channel_->Get(instance);
     ins_vec.push_back(instance);
-    ++index;
+    ++indice;
     consume_channel_->Put(std::move(instance));
   }
-  this->batch_size_ = index;
+  this->batch_size_ = indice;
   VLOG(3) << "batch_size_=" << this->batch_size_
           << ", thread_id=" << thread_id_;
   if (this->batch_size_ != 0) {
@@ -374,18 +374,18 @@ void MultiSlotDataFeed::Init(
   size_t all_slot_num = multi_slot_desc.slots_size();
   all_slots_.resize(all_slot_num);
   all_slots_type_.resize(all_slot_num);
-  use_slots_index_.resize(all_slot_num);
+  use_slots_indice_.resize(all_slot_num);
   total_dims_without_inductive_.resize(all_slot_num);
-  inductive_shape_index_.resize(all_slot_num);
+  inductive_shape_indice_.resize(all_slot_num);
   use_slots_.clear();
   use_slots_is_dense_.clear();
   for (size_t i = 0; i < all_slot_num; ++i) {
     const auto& slot = multi_slot_desc.slots(i);
     all_slots_[i] = slot.name();
     all_slots_type_[i] = slot.type();
-    use_slots_index_[i] = slot.is_used() ? use_slots_.size() : -1;
+    use_slots_indice_[i] = slot.is_used() ? use_slots_.size() : -1;
     total_dims_without_inductive_[i] = 1;
-    inductive_shape_index_[i] = -1;
+    inductive_shape_indice_[i] = -1;
     if (slot.is_used()) {
       use_slots_.push_back(all_slots_[i]);
       use_slots_is_dense_.push_back(slot.is_dense());
@@ -396,7 +396,7 @@ void MultiSlotDataFeed::Init(
             total_dims_without_inductive_[i] *= slot.shape(j);
           }
           if (slot.shape(j) == -1) {
-            inductive_shape_index_[i] = j;
+            inductive_shape_indice_[i] = j;
           }
         }
       }
@@ -525,7 +525,7 @@ bool MultiSlotDataFeed::CheckFile(const char* filename) {
     // task of Hadoop has only one field, it will add a '\t' at the end
     // of the line by default, and you can use this option to avoid it:
     // `-D mapred.textoutputformat.ignoreseparator=true`), which does
-    // not affect the correctness of the data. Therefore, it should be
+    // not affect the correctness of the data. Therefore, it shold be
     // judged that the data is not normal when the end of each line of
     // data contains characters which are not spaces.
     while (endptr - str != len) {
@@ -560,8 +560,8 @@ bool MultiSlotDataFeed::ParseOneInstanceFromPipe(
     // VLOG(3) << line;
     char* endptr = const_cast<char*>(str);
     int pos = 0;
-    for (size_t i = 0; i < use_slots_index_.size(); ++i) {
-      int idx = use_slots_index_[i];
+    for (size_t i = 0; i < use_slots_indice_.size(); ++i) {
+      int idx = use_slots_indice_[i];
       int num = strtol(&str[pos], &endptr, 10);
       PADDLE_ENFORCE_NE(
           num, 0,
@@ -611,8 +611,8 @@ bool MultiSlotDataFeed::ParseOneInstance(std::vector<MultiSlotType>* instance) {
     const char* str = line.c_str();
     char* endptr = const_cast<char*>(str);
     int pos = 0;
-    for (size_t i = 0; i < use_slots_index_.size(); ++i) {
-      int idx = use_slots_index_[i];
+    for (size_t i = 0; i < use_slots_indice_.size(); ++i) {
+      int idx = use_slots_indice_[i];
       int num = strtol(&str[pos], &endptr, 10);
       PADDLE_ENFORCE(
           num,
@@ -651,9 +651,9 @@ bool MultiSlotDataFeed::ParseOneInstance(std::vector<MultiSlotType>* instance) {
 
 void MultiSlotDataFeed::AddInstanceToInsVec(
     std::vector<MultiSlotType>* ins_vec,
-    const std::vector<MultiSlotType>& instance, int index) {
+    const std::vector<MultiSlotType>& instance, int indice) {
 #ifdef _LINUX
-  if (index == 0) {
+  if (indice == 0) {
     ins_vec->resize(instance.size());
     for (size_t i = 0; i < instance.size(); ++i) {
       (*ins_vec)[i].Init(instance[i].GetType());
@@ -695,8 +695,8 @@ void MultiSlotDataFeed::PutToFeedVec(
     LoD data_lod{offset};
     feed_vec_[i]->set_lod(data_lod);
     if (use_slots_is_dense_[i]) {
-      if (inductive_shape_index_[i] != -1) {
-        use_slots_shape_[i][inductive_shape_index_[i]] =
+      if (inductive_shape_indice_[i] != -1) {
+        use_slots_shape_[i][inductive_shape_indice_[i]] =
             total_instance / total_dims_without_inductive_[i];
       }
       feed_vec_[i]->Resize(framework::make_ddim(use_slots_shape_[i]));
@@ -719,18 +719,18 @@ void MultiSlotInMemoryDataFeed::Init(
   size_t all_slot_num = multi_slot_desc.slots_size();
   all_slots_.resize(all_slot_num);
   all_slots_type_.resize(all_slot_num);
-  use_slots_index_.resize(all_slot_num);
+  use_slots_indice_.resize(all_slot_num);
   total_dims_without_inductive_.resize(all_slot_num);
-  inductive_shape_index_.resize(all_slot_num);
+  inductive_shape_indice_.resize(all_slot_num);
   use_slots_.clear();
   use_slots_is_dense_.clear();
   for (size_t i = 0; i < all_slot_num; ++i) {
     const auto& slot = multi_slot_desc.slots(i);
     all_slots_[i] = slot.name();
     all_slots_type_[i] = slot.type();
-    use_slots_index_[i] = slot.is_used() ? use_slots_.size() : -1;
+    use_slots_indice_[i] = slot.is_used() ? use_slots_.size() : -1;
     total_dims_without_inductive_[i] = 1;
-    inductive_shape_index_[i] = -1;
+    inductive_shape_indice_[i] = -1;
     if (slot.is_used()) {
       use_slots_.push_back(all_slots_[i]);
       use_slots_is_dense_.push_back(slot.is_dense());
@@ -741,7 +741,7 @@ void MultiSlotInMemoryDataFeed::Init(
             total_dims_without_inductive_[i] *= slot.shape(j);
           }
           if (slot.shape(j) == -1) {
-            inductive_shape_index_[i] = j;
+            inductive_shape_indice_[i] = j;
           }
         }
       }
@@ -792,8 +792,8 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
       pos += len + 1;
       VLOG(3) << "content " << instance->content_;
     }
-    for (size_t i = 0; i < use_slots_index_.size(); ++i) {
-      int idx = use_slots_index_[i];
+    for (size_t i = 0; i < use_slots_indice_.size(); ++i) {
+      int idx = use_slots_indice_[i];
       int num = strtol(&str[pos], &endptr, 10);
       PADDLE_ENFORCE(
           num,
@@ -856,8 +856,8 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstance(Record* instance) {
     const char* str = line.c_str();
     char* endptr = const_cast<char*>(str);
     int pos = 0;
-    for (size_t i = 0; i < use_slots_index_.size(); ++i) {
-      int idx = use_slots_index_[i];
+    for (size_t i = 0; i < use_slots_indice_.size(); ++i) {
+      int idx = use_slots_indice_[i];
       int num = strtol(&str[pos], &endptr, 10);
       PADDLE_ENFORCE(
           num,
@@ -975,8 +975,8 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
     LoD data_lod{slot_offset};
     feed_vec_[i]->set_lod(data_lod);
     if (use_slots_is_dense_[i]) {
-      if (inductive_shape_index_[i] != -1) {
-        use_slots_shape_[i][inductive_shape_index_[i]] =
+      if (inductive_shape_indice_[i] != -1) {
+        use_slots_shape_[i][inductive_shape_indice_[i]] =
             total_instance / total_dims_without_inductive_[i];
       }
       feed_vec_[i]->Resize(framework::make_ddim(use_slots_shape_[i]));
@@ -1058,15 +1058,15 @@ void PrivateInstantDataFeed<T>::Init(const DataFeedDesc& data_feed_desc) {
   size_t all_slot_num = multi_slot_desc.slots_size();
   all_slots_.resize(all_slot_num);
   all_slots_type_.resize(all_slot_num);
-  use_slots_index_.resize(all_slot_num);
-  multi_inductive_shape_index_.resize(all_slot_num);
+  use_slots_indice_.resize(all_slot_num);
+  multi_inductive_shape_indice_.resize(all_slot_num);
   use_slots_.clear();
   use_slots_is_dense_.clear();
   for (size_t i = 0; i < all_slot_num; ++i) {
     const auto& slot = multi_slot_desc.slots(i);
     all_slots_[i] = slot.name();
     all_slots_type_[i] = slot.type();
-    use_slots_index_[i] = slot.is_used() ? use_slots_.size() : -1;
+    use_slots_indice_[i] = slot.is_used() ? use_slots_.size() : -1;
     if (slot.is_used()) {
       use_slots_.push_back(all_slots_[i]);
       use_slots_is_dense_.push_back(slot.is_dense());
@@ -1074,7 +1074,7 @@ void PrivateInstantDataFeed<T>::Init(const DataFeedDesc& data_feed_desc) {
       if (slot.is_dense()) {
         for (int j = 0; j < slot.shape_size(); ++j) {
           if (slot.shape(j) == -1) {
-            multi_inductive_shape_index_[i].push_back(j);
+            multi_inductive_shape_indice_[i].push_back(j);
           }
         }
       }
@@ -1129,8 +1129,8 @@ bool MultiSlotFileInstantDataFeed::ParseOneMiniBatch() {
 
   batch_size_ = 0;
   while (batch_size_ < default_batch_size_ && offset_ < end_) {
-    for (size_t i = 0; i < use_slots_index_.size(); ++i) {
-      int idx = use_slots_index_[i];
+    for (size_t i = 0; i < use_slots_indice_.size(); ++i) {
+      int idx = use_slots_indice_[i];
       char type = all_slots_type_[i][0];
 
       uint16_t num = *reinterpret_cast<uint16_t*>(buffer_ + offset_);
@@ -1143,7 +1143,7 @@ bool MultiSlotFileInstantDataFeed::ParseOneMiniBatch() {
       offset_ += sizeof(uint16_t);
 
       if (idx != -1) {
-        int inductive_size = multi_inductive_shape_index_[i].size();
+        int inductive_size = multi_inductive_shape_indice_[i].size();
         if (UNLIKELY(batch_size_ == 0)) {
           ins_vec_[idx].Init(all_slots_type_[i], default_batch_size_ * num);
           ins_vec_[idx].InitOffset(default_batch_size_);
@@ -1151,7 +1151,7 @@ bool MultiSlotFileInstantDataFeed::ParseOneMiniBatch() {
               reinterpret_cast<uint64_t*>(buffer_ + offset_);
           for (int inductive_id = 0; inductive_id < inductive_size;
                ++inductive_id) {
-            use_slots_shape_[i][multi_inductive_shape_index_[i][inductive_id]] =
+            use_slots_shape_[i][multi_inductive_shape_indice_[i][inductive_id]] =
                 static_cast<int>(*(inductive_shape + inductive_id));
           }
         }

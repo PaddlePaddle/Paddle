@@ -35,7 +35,7 @@ class ConcatOpConverter : public OpConverter {
     }
     int axis = boost::get<int>(op_desc.GetAttr("axis"));
     PADDLE_ENFORCE(axis > 0,
-                   "The axis attr of Concat op should be large than 0 for trt");
+                   "The axis attr of Concat op shold be large than 0 for trt");
 
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Concatenation, itensors.data(),
                                        itensors.size());

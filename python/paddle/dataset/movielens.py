@@ -50,8 +50,8 @@ class MovieInfo(object):
     Movie id, title and categories information are stored in MovieInfo.
     """
 
-    def __init__(self, index, categories, title):
-        self.index = int(index)
+    def __init__(self, indice, categories, title):
+        self.indice = int(indice)
         self.categories = categories
         self.title = title
 
@@ -60,13 +60,13 @@ class MovieInfo(object):
         Get information from a movie.
         """
         return [
-            self.index, [CATEGORIES_DICT[c] for c in self.categories],
+            self.indice, [CATEGORIES_DICT[c] for c in self.categories],
             [MOVIE_TITLE_DICT[w.lower()] for w in self.title.split()]
         ]
 
     def __str__(self):
         return "<MovieInfo id(%d), title(%s), categories(%s)>" % (
-            self.index, self.title, self.categories)
+            self.indice, self.title, self.categories)
 
     def __repr__(self):
         return self.__str__()
@@ -77,21 +77,21 @@ class UserInfo(object):
     User id, gender, age, and job information are stored in UserInfo.
     """
 
-    def __init__(self, index, gender, age, job_id):
-        self.index = int(index)
+    def __init__(self, indice, gender, age, job_id):
+        self.indice = int(indice)
         self.is_male = gender == 'M'
-        self.age = age_table.index(int(age))
+        self.age = age_table.indice(int(age))
         self.job_id = int(job_id)
 
     def value(self):
         """
         Get information from a user.
         """
-        return [self.index, 0 if self.is_male else 1, self.age, self.job_id]
+        return [self.indice, 0 if self.is_male else 1, self.age, self.job_id]
 
     def __str__(self):
         return "<UserInfo id(%d), gender(%s), age(%d), job(%d)>" % (
-            self.index, "M"
+            self.indice, "M"
             if self.is_male else "F", age_table[self.age], self.job_id)
 
     def __repr__(self):
@@ -124,7 +124,7 @@ def __initialize_meta_info__():
                             categories_set.add(c)
                         title = pattern.match(title).group(1)
                         MOVIE_INFO[int(movie_id)] = MovieInfo(
-                            index=movie_id, categories=categories, title=title)
+                            indice=movie_id, categories=categories, title=title)
                         for w in title.split():
                             title_word_set.add(w.lower())
 
@@ -145,7 +145,7 @@ def __initialize_meta_info__():
                         line = cpt.to_text(line, encoding='latin')
                         uid, gender, age, job, _ = line.strip().split("::")
                         USER_INFO[int(uid)] = UserInfo(
-                            index=uid, gender=gender, age=age, job_id=job)
+                            indice=uid, gender=gender, age=age, job_id=job)
     return fn
 
 
@@ -183,8 +183,8 @@ def get_movie_title_dict():
     return MOVIE_TITLE_DICT
 
 
-def __max_index_info__(a, b):
-    if a.index > b.index:
+def __max_indice_info__(a, b):
+    if a.indice > b.indice:
         return a
     else:
         return b
@@ -195,7 +195,7 @@ def max_movie_id():
     Get the maximum value of movie id.
     """
     __initialize_meta_info__()
-    return six.moves.reduce(__max_index_info__, list(MOVIE_INFO.values())).index
+    return six.moves.reduce(__max_indice_info__, list(MOVIE_INFO.values())).indice
 
 
 def max_user_id():
@@ -203,7 +203,7 @@ def max_user_id():
     Get the maximum value of user id.
     """
     __initialize_meta_info__()
-    return six.moves.reduce(__max_index_info__, list(USER_INFO.values())).index
+    return six.moves.reduce(__max_indice_info__, list(USER_INFO.values())).indice
 
 
 def __max_job_id_impl__(a, b):

@@ -38,23 +38,23 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
 
   auto wx_dims = ctx->GetInputDim("WeightX");
   PADDLE_ENFORCE_EQ(wx_dims.size(), 2,
-                    "The rank of Input(WeightX) should be 2.");
+                    "The rank of Input(WeightX) shold be 2.");
   PADDLE_ENFORCE_EQ(wx_dims[0], x_dims[1],
                     "The first dimension of Input(WeightX) "
-                    "should be %d.",
+                    "shold be %d.",
                     x_dims[1]);
 
   int frame_size = wx_dims[1] / 3;
   auto wh_dims = ctx->GetInputDim("WeightH");
   PADDLE_ENFORCE_EQ(wh_dims.size(), 2,
-                    "The rank of Input(WeightH) should be 2.");
+                    "The rank of Input(WeightH) shold be 2.");
   PADDLE_ENFORCE_EQ(wh_dims[0], frame_size,
                     "The first dimension of Input(WeightH) "
-                    "should be %d.",
+                    "shold be %d.",
                     frame_size);
   PADDLE_ENFORCE_EQ(wh_dims[1], 3 * frame_size,
                     "The second dimension of Input(WeightH) "
-                    "should be 3 * %d.",
+                    "shold be 3 * %d.",
                     frame_size);
 
   if (ctx->HasInput("H0")) {
@@ -64,9 +64,9 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
   }
   if (ctx->HasInput("Bias")) {
     auto b_dims = ctx->GetInputDim("Bias");
-    PADDLE_ENFORCE_EQ(b_dims.size(), 2, "The rank of Input(Bias) should be 2.");
+    PADDLE_ENFORCE_EQ(b_dims.size(), 2, "The rank of Input(Bias) shold be 2.");
     PADDLE_ENFORCE_EQ(b_dims[0], 1,
-                      "The first dimension of Input(Bias) should be 1.");
+                      "The first dimension of Input(Bias) shold be 1.");
     PADDLE_ENFORCE_EQ(b_dims[1], frame_size * 3,
                       "The shape of Bias must be [1, frame_size * 3].");
   }
@@ -120,7 +120,7 @@ void FusionGRUOpMaker::Make() {
   AddInput("Bias",
            "(Tensor, optional) (1 x 3D)."
            "Almost same as GRUOp."
-           "Note: if have FC bias it should be added on this bias.")
+           "Note: if have FC bias it shold be added on this bias.")
       .AsDispensable();
   AddOutput("ReorderedH0", "(Tensor) (N x D), which N is the min-batch size.")
       .AsIntermediate();

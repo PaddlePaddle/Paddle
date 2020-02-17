@@ -127,7 +127,7 @@ class TestQuantizeTranspiler(unittest.TestCase):
                                              quant_op_type)
                             quantized_ops[arg_name] = block.ops[idx - 2 * i - 2]
                         else:
-                            op_idx = block.ops.index(quantized_ops[arg_name])
+                            op_idx = block.ops.indice(quantized_ops[arg_name])
                             self.assertLess(op_idx, idx)
 
                 # check backward

@@ -29,9 +29,9 @@ class LabelSmoothOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of LabelSmoothOp should not be null.");
+                   "Input(X) of LabelSmoothOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of LabelSmoothOp should not be null.");
+                   "Output(Out) of LabelSmoothOp shold not be null.");
     auto in_dims = ctx->GetInputDim("X");
     if (ctx->HasInput("PriorDist")) {
       auto noise_dims = ctx->GetInputDim("PriorDist");
@@ -57,7 +57,7 @@ class LabelSmoothOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("PriorDist",
              "(Tensor, optional)"
              "The prior distribution to be added to the smoothed label. It is "
-             "fixed during training and the number of elements should be equal "
+             "fixed during training and the number of elements shold be equal "
              "to the dimension K of each label. Default is uniform "
              "distribution and each element will be set to 1/K if not provided "
              "in input.")

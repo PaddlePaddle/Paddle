@@ -54,17 +54,17 @@ class CPUPSROIPoolOpKernel : public framework::OpKernel<T> {
     int rois_batch_size = rois_lod.size() - 1;
     PADDLE_ENFORCE_EQ(
         rois_batch_size, batch_size,
-        "the rois_batch_size and input(X) batch_size should be the same.");
+        "the rois_batch_size and input(X) batch_size shold be the same.");
     int rois_num_with_lod = rois_lod[rois_batch_size];
     PADDLE_ENFORCE_EQ(rois_num_with_lod, rois_num,
                       "the rois_num from input and lod must be the same");
 
     PADDLE_ENFORCE_EQ(input_channels,
                       output_channels * pooled_height * pooled_width,
-                      "the channels of input X should equal the product of "
+                      "the channels of input X shold equal the product of "
                       "output_channels x pooled_height x pooled_width");
 
-    // calculate batch id index for each roi according to LoD
+    // calculate batch id indice for each roi according to LoD
     for (int n = 0; n < rois_batch_size; ++n) {
       for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
         rois_batch_id_data[i] = n;
@@ -117,7 +117,7 @@ class CPUPSROIPoolOpKernel : public framework::OpKernel<T> {
             hend = std::min(std::max(hend, 0), height);
             wend = std::min(std::max(wend, 0), width);
 
-            int output_index = out_row_offset + pw;
+            int output_indice = out_row_offset + pw;
             int input_channel = (c * pooled_height + ph) * pooled_width + pw;
             int input_plane_offset =
                 roi_batch_id * in_stride[0] + input_channel * in_stride[1];
@@ -126,12 +126,12 @@ class CPUPSROIPoolOpKernel : public framework::OpKernel<T> {
             bool is_empty = (hend <= hstart) || (wend <= wstart);
             for (int ih = hstart; ih < hend; ++ih) {
               for (int iw = wstart; iw < wend; ++iw) {
-                int input_index = ih * in_stride[2] + iw;
-                out_sum += offset_input_data[input_index];
+                int input_indice = ih * in_stride[2] + iw;
+                out_sum += offset_input_data[input_indice];
               }
             }
             T bin_area = (hend - hstart) * (wend - wstart);
-            output_data[output_index] = is_empty ? 0. : out_sum / bin_area;
+            output_data[output_indice] = is_empty ? 0. : out_sum / bin_area;
           }
         }
       }
@@ -170,7 +170,7 @@ class CPUPSROIPoolGradOpKernel : public framework::OpKernel<T> {
           rois_batch_id_list.mutable_data<int>(ctx.GetPlace());
       auto rois_lod = rois->lod().back();
       int rois_batch_size = rois_lod.size() - 1;
-      // calculate batch id index for each roi according to LoD
+      // calculate batch id indice for each roi according to LoD
       for (int n = 0; n < rois_batch_size; ++n) {
         for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
           rois_batch_id_data[i] = n;
@@ -238,8 +238,8 @@ class CPUPSROIPoolGradOpKernel : public framework::OpKernel<T> {
         T diff_val = is_empty ? 0. : output_grad_data[i] / bin_area;
         for (int ih = hstart; ih < hend; ++ih) {
           for (int iw = wstart; iw < wend; ++iw) {
-            int input_index = ih * width + iw;
-            offset_input_grad_data[input_index] += diff_val;
+            int input_indice = ih * width + iw;
+            offset_input_grad_data[input_indice] += diff_val;
           }
         }
       }

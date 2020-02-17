@@ -32,18 +32,18 @@ class GRUOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(%s) of GRUOp should not be null.", "Input");
+                   "Input(%s) of GRUOp shold not be null.", "Input");
     PADDLE_ENFORCE(ctx->HasInput("Weight"),
-                   "Input(%s) of GRUOp should not be null.", "Weight");
+                   "Input(%s) of GRUOp shold not be null.", "Weight");
     PADDLE_ENFORCE(ctx->HasOutput("BatchGate"),
-                   "Output(%s) of GRUOp should not be null.", "BatchGate");
+                   "Output(%s) of GRUOp shold not be null.", "BatchGate");
     PADDLE_ENFORCE(ctx->HasOutput("BatchResetHiddenPrev"),
-                   "Output(%s) of GRUOp should not be null.",
+                   "Output(%s) of GRUOp shold not be null.",
                    "BatchResetHiddenPrev");
     PADDLE_ENFORCE(ctx->HasOutput("BatchHidden"),
-                   "Output(%s) of GRUOp should not be null.", "BatchHidden");
+                   "Output(%s) of GRUOp shold not be null.", "BatchHidden");
     PADDLE_ENFORCE(ctx->HasOutput("Hidden"),
-                   "Output(%s) of GRUOp should not be null.", "Hidden");
+                   "Output(%s) of GRUOp shold not be null.", "Hidden");
     auto input_dims = ctx->GetInputDim("Input");
     auto weight_dims = ctx->GetInputDim("Weight");
     int input_size = input_dims[1];
@@ -167,20 +167,20 @@ class GRUGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(%s) of GRUGradOp should not be null.", "Input");
+                   "Input(%s) of GRUGradOp shold not be null.", "Input");
     PADDLE_ENFORCE(ctx->HasInput("Weight"),
-                   "Input(%s) of GRUGradOp should not be null.", "Weight");
+                   "Input(%s) of GRUGradOp shold not be null.", "Weight");
     PADDLE_ENFORCE(ctx->HasInput("BatchGate"),
-                   "Input(%s) of GRUGradOp should not be null.", "BatchGate");
+                   "Input(%s) of GRUGradOp shold not be null.", "BatchGate");
     PADDLE_ENFORCE(ctx->HasInput("BatchResetHiddenPrev"),
-                   "Input(%s) of GRUGradOp should not be null.",
+                   "Input(%s) of GRUGradOp shold not be null.",
                    "BatchResetHiddenPrev");
     PADDLE_ENFORCE(ctx->HasInput("BatchHidden"),
-                   "Input(%s) of GRUOp should not be null.", "BatchHidden");
+                   "Input(%s) of GRUOp shold not be null.", "BatchHidden");
     PADDLE_ENFORCE(ctx->HasInput("Hidden"),
-                   "Input(%s) of GRUGradOp should not be null.", "Hidden");
+                   "Input(%s) of GRUGradOp shold not be null.", "Hidden");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Hidden")),
-                   "Input(%s@GRAD) of GRUGradOp should not be null.", "Hidden");
+                   "Input(%s@GRAD) of GRUGradOp shold not be null.", "Hidden");
     auto input_dims = ctx->GetInputDim("Input");
     auto weight_dims = ctx->GetInputDim("Weight");
     int input_size = input_dims[1];

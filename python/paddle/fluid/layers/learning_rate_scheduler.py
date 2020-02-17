@@ -117,7 +117,7 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     >>>     decayed_learning_rate = learning_rate * decay_rate ^ (global_step / decay_steps)
 
     Args:
-        learning_rate(Variable|float): The initial learning rate. It should be a Variable 
+        learning_rate(Variable|float): The initial learning rate. It shold be a Variable 
                                        or a float
         decay_steps(int): The learning rate decay steps. See the decay computation above.
         decay_rate(float): The learning rate decay rate. See the decay computation above.
@@ -173,7 +173,7 @@ def natural_exp_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     >>>     decayed_learning_rate = learning_rate * exp(- decay_rate * floor(global_step / decay_steps))
 
     Args:
-        learning_rate(Variable|float): The initial learning rate. It should be a Variable 
+        learning_rate(Variable|float): The initial learning rate. It shold be a Variable 
                                        or a float
         decay_steps(int): The learning rate decay steps. See the decay computation above.
         decay_rate(float): The learning rate decay rate. See the decay computation above.
@@ -230,7 +230,7 @@ def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     >>>     decayed_learning_rate = learning_rate / (1 + decay_rate * global_step / decay_step)
 
     Args:
-        learning_rate(Variable|float): The initial learning rate. It should be a Variable 
+        learning_rate(Variable|float): The initial learning rate. It shold be a Variable 
                                        or a float
         decay_steps(int): The learning rate decay steps. See the decay computation above.
         decay_rate(float): The learning rate decay rate. See the decay computation above.
@@ -378,7 +378,7 @@ def piecewise_decay(boundaries, values):
     """
     with default_main_program()._lr_schedule_guard():
         if len(values) - len(boundaries) != 1:
-            raise ValueError("len(values) - len(boundaries) should be 1")
+            raise ValueError("len(values) - len(boundaries) shold be 1")
 
         if in_dygraph_mode():
             decay = imperate_lr.PiecewiseDecay(boundaries, values, 0)

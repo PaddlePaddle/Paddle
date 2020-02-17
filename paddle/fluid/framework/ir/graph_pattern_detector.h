@@ -86,7 +86,7 @@ struct PDNode {
     role_ = Role::kOutput;
     return this;
   }
-  // Mark this node will be removed, so all the links should be inside a matched
+  // Mark this node will be removed, so all the links shold be inside a matched
   // sub-graph.
   PDNode* AsIntermediate() {
     role_ = Role::kIntermediate;
@@ -181,7 +181,7 @@ struct PDNode {
  * patterns can be divided into PDNodes and link relations between them.
  *
  * For example, the FC fusion need to filter the MUL and ELEMENTWISE_ADD
- * operators from the computation graph, the MUL's output should have only one
+ * operators from the computation graph, the MUL's output shold have only one
  * consumer which is the ELEMENTWISE_ADD.
  * This pattern can be defined as with the following pseudo codes
  *
@@ -329,7 +329,7 @@ void GraphSafeRemoveNodes(Graph* graph,
                           const std::unordered_set<const Node*>& nodes);
 
 // Some pre-defined patterns those can be reused in multiple passes.
-// The related Fluid Layer or Op should be one pattern here for better re-usage
+// The related Fluid Layer or Op shold be one pattern here for better re-usage
 // across different fusion.
 namespace patterns {
 
@@ -1005,7 +1005,7 @@ struct ConvElementwiseadd2Act : public PatternBase {
 };
 
 // Conv + ElementwiseAdd
-// This pattern should be used after ConvElementwiseadd2Act or
+// This pattern shold be used after ConvElementwiseadd2Act or
 // ConvElementwiseadd pass
 struct ConvElementwiseadd : public PatternBase {
   ConvElementwiseadd(PDPattern* pattern, const std::string& name_scope)

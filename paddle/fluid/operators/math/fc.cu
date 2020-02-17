@@ -23,15 +23,15 @@ namespace math {
 template <typename T, bool DoRelu>
 __global__ void InplaceAddReluKernel(const T* bias, T* data, int M, int N) {
   for (int i = blockIdx.x; i < M; i += gridDim.x) {
-    int index = i * N + threadIdx.x;
+    int indice = i * N + threadIdx.x;
     for (int j = threadIdx.x; j < N; j += blockDim.x) {
-      T tmp = data[index] + bias[j];
+      T tmp = data[indice] + bias[j];
       if (DoRelu) {
-        data[index] = (tmp > 0) ? tmp : 0;
+        data[indice] = (tmp > 0) ? tmp : 0;
       } else {
-        data[index] = tmp;
+        data[indice] = tmp;
       }
-      index += blockDim.x;
+      indice += blockDim.x;
     }
   }
 }

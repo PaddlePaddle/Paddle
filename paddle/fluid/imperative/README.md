@@ -116,7 +116,7 @@ Lazy execution of pushed C++ operations.
 ## Device Placement
 
 * Operator executes on the inputs' device.
-* All inputs should live on the same device.
+* All inputs shold live on the same device.
 * use `Var.to()` to explicitly move var to a device.
 
 ## Save/Load Models

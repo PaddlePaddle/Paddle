@@ -27,9 +27,9 @@ class HashOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of HashOp should not be null.");
+                   "Input(X) of HashOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of HashOp should not be null.");
+                   "Output(Out) of HashOp shold not be null.");
 
     auto dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(dims.size(), 2UL,

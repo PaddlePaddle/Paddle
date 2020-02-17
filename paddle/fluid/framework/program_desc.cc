@@ -129,7 +129,7 @@ void ProgramDesc::InitFromProto() {
 
 const std::vector<std::string> ProgramDesc::GetFeedTargetNames() {
   auto &global_block = Block(0);
-  // The order of feed_target_names must follow the index specified in `col`.
+  // The order of feed_target_names must follow the indice specified in `col`.
   // since feed operator's order doesn't necessary follow 'col'.
   std::vector<std::string> feed_target_names;
   for (auto *op : global_block.AllOps()) {
@@ -146,7 +146,7 @@ const std::vector<std::string> ProgramDesc::GetFeedTargetNames() {
 
 const std::vector<std::string> ProgramDesc::GetFetchTargetNames() {
   auto &global_block = Block(0);
-  // The order of fetch_target_names must follow the index specified in `col`.
+  // The order of fetch_target_names must follow the indice specified in `col`.
   // since fetch operator's order doesn't necessary follow 'col'.
   std::vector<std::string> fetch_target_names;
   for (auto *op : global_block.AllOps()) {
@@ -163,15 +163,15 @@ const std::vector<std::string> ProgramDesc::GetFetchTargetNames() {
 
 void ProgramDesc::SetFeedHolderName(const std::string &feed_holder_name) {
   auto *global_block = MutableBlock(0);
-  int index = 0;
+  int indice = 0;
   for (auto *op : global_block->AllOps()) {
     if (op->Type() == kFeedOpType) {
       // Unify the input's name of all feed_ops to feed_holder_name
       global_block->RemoveVar(op->Input("X")[0]);
       op->SetInput("X", {feed_holder_name});
-      op->SetAttr("col", {index});
+      op->SetAttr("col", {indice});
       op->CheckAttrs();
-      index++;
+      indice++;
     }
   }
 
@@ -182,15 +182,15 @@ void ProgramDesc::SetFeedHolderName(const std::string &feed_holder_name) {
 
 void ProgramDesc::SetFetchHolderName(const std::string &fetch_holder_name) {
   auto *global_block = MutableBlock(0);
-  int index = 0;
+  int indice = 0;
   for (auto *op : global_block->AllOps()) {
     if (op->Type() == kFetchOpType) {
       // Unify the output's name of all fetch_ops to fetch_holder_name
       global_block->RemoveVar(op->Output("Out")[0]);
       op->SetOutput("Out", {fetch_holder_name});
-      op->SetAttr("col", {index});
+      op->SetAttr("col", {indice});
       op->CheckAttrs();
-      index++;
+      indice++;
     }
   }
 

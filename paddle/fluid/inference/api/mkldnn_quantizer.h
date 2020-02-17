@@ -37,7 +37,7 @@ namespace paddle {
 
 /*
  * Map variable name to tensor of scaling factors scaling it to MAX=1.0.
- * bool denotes whether quantization of the variable should be done to unsigned
+ * bool denotes whether quantization of the variable shold be done to unsigned
  * type.
  */
 using VarQuantScale =

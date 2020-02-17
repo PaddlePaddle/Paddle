@@ -35,41 +35,41 @@ class MultiheadMatMulOpConverter : public OpConverter {
     auto* BiasQK = engine_->GetITensor(op_desc.Input("BiasQK").front());
     PADDLE_ENFORCE_EQ(op_desc.Input("Q").size(), 1,
                       platform::errors::InvalidArgument(
-                          "size of input Q of multihead_matmul should be 1"));
+                          "size of input Q of multihead_matmul shold be 1"));
     PADDLE_ENFORCE_EQ(op_desc.Input("K").size(), 1,
                       platform::errors::InvalidArgument(
-                          "size of input K of multihead_matmul should be 1"));
+                          "size of input K of multihead_matmul shold be 1"));
     PADDLE_ENFORCE_EQ(op_desc.Input("V").size(), 1,
                       platform::errors::InvalidArgument(
-                          "size of input V of multihead_matmul should be 1"));
+                          "size of input V of multihead_matmul shold be 1"));
     PADDLE_ENFORCE_EQ(
         op_desc.Input("BiasQK").size(), 1,
         platform::errors::InvalidArgument(
-            "size of input BiasQK of multihead_matmul should be 1"));
+            "size of input BiasQK of multihead_matmul shold be 1"));
     PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1,
                       platform::errors::InvalidArgument(
-                          "size of output of multihead_matmul should be 1"));
+                          "size of output of multihead_matmul shold be 1"));
     PADDLE_ENFORCE_NOT_NULL(
         BiasQ, platform::errors::InvalidArgument(
-                   "param BiasQ of multihead_matmul should not be null"));
+                   "param BiasQ of multihead_matmul shold not be null"));
     PADDLE_ENFORCE_NOT_NULL(
         BiasK, platform::errors::InvalidArgument(
-                   "param BiasK of multihead_matmul should not be null"));
+                   "param BiasK of multihead_matmul shold not be null"));
     PADDLE_ENFORCE_NOT_NULL(
         BiasV, platform::errors::InvalidArgument(
-                   "param BiasV of multihead_matmul should not be null"));
+                   "param BiasV of multihead_matmul shold not be null"));
     PADDLE_ENFORCE_EQ(
         BiasQK->getDimensions().nbDims, 3,
         platform::errors::InvalidArgument(
-            "dims size of input BiasQK of multihead_matmul should be 3"));
+            "dims size of input BiasQK of multihead_matmul shold be 3"));
     PADDLE_ENFORCE_EQ(
         op_desc.HasAttr("alpha"), true,
         platform::errors::PreconditionNotMet(
-            "attribute alpha of multihead_matmul should not be empty"));
+            "attribute alpha of multihead_matmul shold not be empty"));
     PADDLE_ENFORCE_EQ(
         op_desc.HasAttr("head_number"), true,
         platform::errors::PreconditionNotMet(
-            "attribute head_number of multihead_matmul should not be empty"));
+            "attribute head_number of multihead_matmul shold not be empty"));
 
     // Declare attributes
     const bool transpose_q =

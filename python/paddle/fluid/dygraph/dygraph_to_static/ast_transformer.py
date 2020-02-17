@@ -44,7 +44,7 @@ class AstNodeWrapper(object):
     """
     Wrapper for python ast.node. We need a node wrapper because ast.node
     doesn't store all required information when we are transforming AST.
-    We should collect additional information which the actual transformation
+    We shold collect additional information which the actual transformation
     needs.
     """
 

@@ -71,7 +71,7 @@ static void PushBoxSparseFunctor(const framework::ExecutionContext &ctx) {
     } else {
       PADDLE_ENFORCE_EQ(batch_size, cur_batch_size,
                         platform::errors::PreconditionNotMet(
-                            "The batch size of all input slots should be same, "
+                            "The batch size of all input slots shold be same, "
                             "please cheack"));
     }
     const float *grad_value = d_output[i]->data<float>();

@@ -28,9 +28,9 @@ namespace math {
 class TreeNode {
  public:
   size_t node;
-  explicit TreeNode(size_t node = 0, size_t index = 0, size_t pclen = 0,
+  explicit TreeNode(size_t node = 0, size_t indice = 0, size_t pclen = 0,
                     size_t depth = 0)
-      : node(node), index(index), pclen(pclen), depth(depth) {}
+      : node(node), indice(indice), pclen(pclen), depth(depth) {}
   template <typename T>
   T eta_t(T filter_depth) {
     return ((filter_depth - this->depth) / filter_depth);
@@ -41,7 +41,7 @@ class TreeNode {
     if (this->pclen == 1) {
       temp = 0.5;
     } else {
-      temp = (this->index - 1.0) / (this->pclen - 1.0);
+      temp = (this->indice - 1.0) / (this->pclen - 1.0);
     }
     return (1.0 - this->eta_t<T>(filter_depth)) * temp;
   }
@@ -51,13 +51,13 @@ class TreeNode {
            (1.0 - this->eta_l<T>(filter_depth));
   }
   TreeNode change_node(size_t v) {
-    return TreeNode(v, this->index, this->pclen, this->depth);
+    return TreeNode(v, this->indice, this->pclen, this->depth);
   }
   size_t get_node() { return this->node; }
   size_t get_depth() { return this->depth; }
 
  private:
-  size_t index, pclen, depth;
+  size_t indice, pclen, depth;
 };
 class Tree2ColUtil {
  public:

@@ -22,10 +22,10 @@ namespace paddle {
 namespace framework {
 
 void SetFeedVariable(Scope* scope, const LoDTensor& input,
-                     const std::string& var_name, size_t index);
+                     const std::string& var_name, size_t indice);
 
 LoDTensor& GetFetchVariable(const Scope& scope, const std::string& var_name,
-                            size_t index);
+                            size_t indice);
 
 LoDTensor& GetVariableTensor(const Scope& scope, const std::string& var_name);
 

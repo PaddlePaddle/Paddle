@@ -54,7 +54,7 @@ class StructurePruner(Pruner):
 
     def cal_pruned_idx(self, name, param, ratio, axis=None):
         """
-        Calculate the index to be pruned on axis by given pruning ratio.
+        Calculate the indice to be pruned on axis by given pruning ratio.
         Args:
             name(str): The name of parameter to be pruned.
             param(np.array): The data of parameter to be pruned.
@@ -63,12 +63,12 @@ class StructurePruner(Pruner):
                        If it is None, the value in self.pruning_axis will be used.
                        default: None.
         Returns:
-            list<int>: The indexes to be pruned on axis.
+            list<int>: The indicees to be pruned on axis.
         """
         criterion = self.criterions[
             name] if name in self.criterions else self.criterions['*']
         if axis is None:
-            assert self.pruning_axis is not None, "pruning_axis should set if axis is None."
+            assert self.pruning_axis is not None, "pruning_axis shold set if axis is None."
             axis = self.pruning_axis[
                 name] if name in self.pruning_axis else self.pruning_axis['*']
         prune_num = int(round(param.shape[axis] * ratio))
@@ -80,10 +80,10 @@ class StructurePruner(Pruner):
 
     def prune_tensor(self, tensor, pruned_idx, pruned_axis, lazy=False):
         """
-        Pruning a array by indexes on given axis.
+        Pruning a array by indicees on given axis.
         Args:
             tensor(numpy.array): The target array to be pruned.
-            pruned_idx(list<int>): The indexes to be pruned.
+            pruned_idx(list<int>): The indicees to be pruned.
             pruned_axis(int): The axis of given array to be pruned on. 
             lazy(bool): True means setting the pruned elements to zero.
                         False means remove the pruned elements from memory.

@@ -29,15 +29,15 @@ using LoD = framework::LoD;
 
 void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                    "X(Input) of MatchMatrix should not be null.");
+                    "X(Input) of MatchMatrix shold not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasInput("Y"), true,
-                    "Y(Input) of MatchMatrix should not be null.");
+                    "Y(Input) of MatchMatrix shold not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true,
-                    "W(Input) of MatchMatrix should not be null.");
+                    "W(Input) of MatchMatrix shold not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                    "Out(Output) of MatchMatrix should not be null.");
+                    "Out(Output) of MatchMatrix shold not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasOutput("Tmp"), true,
-                    "Tmp(Output) of MatchMatrix should not be null.");
+                    "Tmp(Output) of MatchMatrix shold not be null.");
 
   auto x_dims = ctx->GetInputDim("X");
   PADDLE_ENFORCE_EQ(x_dims.size(), 2,
@@ -48,7 +48,7 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
                     "The rank of Input(Y) can't be less than 2.");
 
   auto w_dims = ctx->GetInputDim("W");
-  PADDLE_ENFORCE_EQ(w_dims.size(), 3UL, "W should be 3-D tensor");
+  PADDLE_ENFORCE_EQ(w_dims.size(), 3UL, "W shold be 3-D tensor");
 
   int dim_t = ctx->Attrs().Get<int>("dim_t");
   PADDLE_ENFORCE_EQ(w_dims[0], x_dims[1],
@@ -116,13 +116,13 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
 void MatchMatrixTensorOpGrad::InferShape(
     framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                    "Input(X) of SequencePadGradOp should not be null.");
+                    "Input(X) of SequencePadGradOp shold not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasInput("Y"), true,
-                    "Input(Y) of SequencePadGradOp should not be null.");
+                    "Input(Y) of SequencePadGradOp shold not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true,
-                    "Input(W) of SequencePadGradOp should not be null.");
+                    "Input(W) of SequencePadGradOp shold not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                    "Input(Out@GRAD) of SequencePadGradOp should not be null.");
+                    "Input(Out@GRAD) of SequencePadGradOp shold not be null.");
 
   if (ctx->HasOutput(framework::GradVarName("X"))) {
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
@@ -140,10 +140,10 @@ void MatchMatrixTensorOpGrad::InferShape(
 void MatchMatrixTensorOpMaker::Make() {
   AddInput("X",
            "X (LoDTensor, default LoDTensor<float>) Input variable which "
-           "should contain lod information.");
+           "shold contain lod information.");
   AddInput("Y",
            "Y (LoDTensor, default LoDTensor<float>) Input variable which "
-           "should contain lod information.");
+           "shold contain lod information.");
   AddInput("W", "W (Tensor), The weight of X and Y.");
   AddAttr<int>("dim_t", "the dim of W").SetDefault(1);
   AddOutput("Out",

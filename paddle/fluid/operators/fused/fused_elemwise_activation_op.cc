@@ -78,13 +78,13 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(
         ctx->HasInput("X"),
-        "Input(X) of FusedElemwiseActivationOp op should not be null.");
+        "Input(X) of FusedElemwiseActivationOp op shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasInput("Y"),
-        "Input(Y) of FusedElemwiseActivationOp op should not be null.");
+        "Input(Y) of FusedElemwiseActivationOp op shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasOutput("Out"),
-        "Output(Out) of FusedElemwiseActivationOp op should not be null.");
+        "Output(Out) of FusedElemwiseActivationOp op shold not be null.");
 
     auto x_dim = ctx->GetInputDim("X");
     auto y_dim = ctx->GetInputDim("Y");
@@ -99,7 +99,7 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
     if (ctx->Attrs().Get<bool>("save_intermediate_out")) {
       PADDLE_ENFORCE(ctx->HasOutput("IntermediateOut"),
                      "Output(IntermediateOut) of FusedElemwiseActivationOp "
-                     "should not be null.");
+                     "shold not be null.");
 
       if (IsUnaryCompound(
               ctx->Attrs().Get<std::vector<std::string>>("functor_list"))) {
@@ -139,7 +139,7 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE_EQ(ctx.Input<framework::Tensor>("X")->type(),
                       ctx.Input<framework::Tensor>("Y")->type(),
-                      "The element's type of input should be the same.");
+                      "The element's type of input shold be the same.");
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
@@ -171,7 +171,7 @@ class FusedElemwiseActivationMaker : public framework::OpProtoAndCheckerMaker {
                   "Whether to save the intermediate_out.")
         .SetDefault(false);
     AddAttr<std::vector<std::string>>("functor_list",
-                                      "The functors that should be fused.")
+                                      "The functors that shold be fused.")
         .AddCustomChecker([&](const std::vector<std::string> &functor_list) {
           PADDLE_ENFORCE(IsSupportedCompound(functor_list));
         });
@@ -192,7 +192,7 @@ There are two cases for this operator:
 
 For case 2 (assume that the shape of $Y$ is a continuous subsequence of $X$ ):
 
-1. Broadcast $Y$ to match the shape of $X$, where $axis$ is the start dimension index
+1. Broadcast $Y$ to match the shape of $X$, where $axis$ is the start dimension indice
    for broadcasting $Y$ onto $X$.
 2. If $axis$ is -1 (default), $axis = rank(X) - rank(Y)$.
 3. The trailing dimensions of size 1 for $Y$ will be ignored for the consideration of
@@ -269,17 +269,17 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@Grad) should not be null");
+                   "Input(Out@Grad) shold not be null");
 
     auto functor_list =
         ctx->Attrs().Get<std::vector<std::string>>("functor_list");
 
     if (ctx->Attrs().Get<bool>("save_intermediate_out")) {
       PADDLE_ENFORCE(ctx->HasInput("IntermediateOut"),
-                     "Input(IntermediateOut) should not be null");
+                     "Input(IntermediateOut) shold not be null");
     } else {
       if (!InputXCanBeAbsent(functor_list)) {
-        PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
+        PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold not be null");
       }
     }
 
@@ -298,7 +298,7 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
                        "Only when BinaryFunctor is elementwise_add, the 'X' "
                        "could be absent.");
 
-        // Node: If "X" is absence, the shape of Y should be a continuous
+        // Node: If "X" is absence, the shape of Y shold be a continuous
         // subsequence of X, otherwise, we could not infer the shape of dx.
 
         ctx->SetOutputDim(x_grad_name,
@@ -308,13 +308,13 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
     }
 
     if (ctx->HasOutput(y_grad_name)) {
-      PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
+      PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) shold not be null");
       ctx->SetOutputDim(y_grad_name, ctx->GetInputDim("Y"));
       ctx->ShareLoD("Y", y_grad_name);
     }
 
     if (ctx->HasOutput(inter_grad_name)) {
-      // For Unary(Binary(X, Y)), IntermediateOut should not be empty.
+      // For Unary(Binary(X, Y)), IntermediateOut shold not be empty.
       if (IsUnaryCompound(functor_list)) {
         ctx->SetOutputDim(inter_grad_name,
                           ctx->GetInputDim(framework::GradVarName("Out")));

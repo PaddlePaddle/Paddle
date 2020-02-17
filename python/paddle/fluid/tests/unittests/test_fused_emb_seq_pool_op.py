@@ -64,16 +64,16 @@ class TestLookupTableOpWithPadding(TestFusedEmbeddingSeqPoolOp):
             ids = np.squeeze(self.ids, axis=2)
             padding_idx = np.random.choice(ids.flatten(), 1)[0]
             output = list()
-            index = 0
+            indice = 0
             for count in self.lod[0]:
-                arr = ids[index:count + index]
+                arr = ids[indice:count + indice]
                 out = np.reshape(self.table[arr.flatten()],
                                  [arr.shape[0], arr.shape[1], self.emb_size])
                 idx = np.argwhere(arr == padding_idx)
                 for item in idx:
                     out[item[0], item[1], :] = np.zeros(self.emb_size)
                 output.append(np.sum(out, 0))
-                index += count
+                indice += count
             self.outputs = {
                 'Out': np.reshape(
                     np.array(output), [len(self.lod[0]), 2 * self.emb_size])

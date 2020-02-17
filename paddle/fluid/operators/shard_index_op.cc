@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/shard_index_op.h"
+#include "paddle/fluid/operators/shard_indice_op.h"
 
 namespace paddle {
 namespace operators {
@@ -22,16 +22,16 @@ class ShardIndexOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of ShardIndexOp should not be null.");
+                   "Input(X) of ShardIndexOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of ShardIndexOp should not be null.");
+                   "Output(Out) of ShardIndexOp shold not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_GE(x_dims.size(), 2,
-                      "Rank of Input(X) should be at least 2.");
+                      "Rank of Input(X) shold be at least 2.");
     if (ctx->IsRuntime() || x_dims[x_dims.size() - 1] > 0) {
       PADDLE_ENFORCE_GE(x_dims[x_dims.size() - 1], 1U,
-                        "Last dimension of Input(X) should be 1.");
+                        "Last dimension of Input(X) shold be 1.");
     }
 
     ctx->SetOutputDim("Out", x_dims);
@@ -52,12 +52,12 @@ class ShardIndexOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "(LoDTensor, LoDTensor<int|int64>) Input variable. Each value "
-             "of X is an index.");
+             "of X is an indice.");
     AddOutput(
         "Out",
         "(Tensor, Tensor<int|int64>) Output tensor with same shape as X. "
         "The tensor consists of sharding representations of values in X.");
-    AddAttr<int>("index_num",
+    AddAttr<int>("indice_num",
                  "A positive integer to specify the range of the input X.");
 
     AddAttr<int>("nshards",
@@ -66,24 +66,24 @@ class ShardIndexOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("ignore_value", "An integer value out of sharded range")
         .SetDefault(-1);
     AddComment(R"DOC(
-This layer creates the sharded index for input. This layers is used in
-model- and data- parallel mixed training generally, in which the index
-data (usually the label) should be recaculated in each trainer according
+This layer creates the sharded indice for input. This layers is used in
+model- and data- parallel mixed training generally, in which the indice
+data (usually the label) shold be recaculated in each trainer according
 to 
 
 .. math::
     
-    assert index_num % nshards == 0
+    assert indice_num % nshards == 0
 
-    shard_size = index_num / nshards
+    shard_size = indice_num / nshards
 
     y = x % shard_size if x / shard_size == shard_id else ignore_value
 
 We take the distributed one-hot representation to show what this layer is
 used for. The distributed one-hot representation is separated into multiple
-shards, and each shard is filling zeros except the one with the index
+shards, and each shard is filling zeros except the one with the indice
 inside. In order to create these sharded representation in each trainer,
-the original index should be recalculated (i.e. sharded) before.
+the original indice shold be recalculated (i.e. sharded) before.
 
 Examples:
 
@@ -91,7 +91,7 @@ Examples:
       X.shape = [4, 1]
       X.data = [[1], [6], [12], [19]]
     
-    suppose index_num = 20 and nshards = 2, then we get shard_size = 10
+    suppose indice_num = 20 and nshards = 2, then we get shard_size = 10
     
     if shard_id == 0, we get the Out:
       Out.shape = [4, 1]
@@ -110,7 +110,7 @@ Examples:
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(shard_index, ops::ShardIndexOp,
+REGISTER_OP_WITHOUT_GRADIENT(shard_indice, ops::ShardIndexOp,
                              ops::ShardIndexOpMaker);
-REGISTER_OP_CPU_KERNEL(shard_index, ops::ShardIndexCPUKernel<int>,
+REGISTER_OP_CPU_KERNEL(shard_indice, ops::ShardIndexCPUKernel<int>,
                        ops::ShardIndexCPUKernel<int64_t>);

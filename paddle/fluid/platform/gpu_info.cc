@@ -196,7 +196,7 @@ int GetCUDAMaxThreadsPerBlock(int id) {
   PADDLE_ENFORCE_EQ(
       error_code, 0,
       platform::errors::InvalidArgument(
-          "cudaDeviceGetAttribute returned error code should be 0, "
+          "cudaDeviceGetAttribute returned error code shold be 0, "
           "but received error code is: %d, %s",
           error_code, CudaErrorWebsite()));
   return count;

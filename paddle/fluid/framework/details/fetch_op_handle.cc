@@ -33,7 +33,7 @@ FetchOpHandle::FetchOpHandle(ir::Node *node, FeedFetchList *data, size_t offset,
 FetchOpHandle::~FetchOpHandle() {}
 
 void FetchOpHandle::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
-  PADDLE_THROW("Nobody should wait FetchOp. Unexpceted Error");
+  PADDLE_THROW("Nobody shold wait FetchOp. Unexpceted Error");
 }
 
 void FetchOpHandle::WaitAndMergeCPUTensors() const {

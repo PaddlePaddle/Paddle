@@ -46,7 +46,7 @@ class SquaredL2NormGradKernel : public framework::OpKernel<T> {
     const framework::Tensor *dOut =
         context.Input<framework::Tensor>(framework::GradVarName("Out"));
     PADDLE_ENFORCE(dOut->numel() == 1,
-                   "Squared L2 Norm Gradient should be scalar");
+                   "Squared L2 Norm Gradient shold be scalar");
     framework::Tensor *dX =
         context.Output<framework::Tensor>(framework::GradVarName("X"));
     dX->mutable_data<T>(context.GetPlace());

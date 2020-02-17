@@ -381,38 +381,38 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
       float eta) const {
     auto *scores_data = scores_slice.data<T>();
 
-    // Sort index
-    Tensor index_t;
-    index_t.Resize({scores_slice.numel()});
-    int *index = index_t.mutable_data<int>(ctx.GetPlace());
+    // Sort indice
+    Tensor indice_t;
+    indice_t.Resize({scores_slice.numel()});
+    int *indice = indice_t.mutable_data<int>(ctx.GetPlace());
     for (int i = 0; i < scores_slice.numel(); ++i) {
-      index[i] = i;
+      indice[i] = i;
     }
     auto compare = [scores_data](const int64_t &i, const int64_t &j) {
       return scores_data[i] > scores_data[j];
     };
 
     if (pre_nms_top_n <= 0 || pre_nms_top_n >= scores_slice.numel()) {
-      std::sort(index, index + scores_slice.numel(), compare);
+      std::sort(indice, indice + scores_slice.numel(), compare);
     } else {
-      std::nth_element(index, index + pre_nms_top_n,
-                       index + scores_slice.numel(), compare);
-      index_t.Resize({pre_nms_top_n});
+      std::nth_element(indice, indice + pre_nms_top_n,
+                       indice + scores_slice.numel(), compare);
+      indice_t.Resize({pre_nms_top_n});
     }
 
     Tensor scores_sel, bbox_sel, anchor_sel, var_sel;
-    scores_sel.mutable_data<T>({index_t.numel(), 1}, ctx.GetPlace());
-    bbox_sel.mutable_data<T>({index_t.numel(), 4}, ctx.GetPlace());
-    anchor_sel.mutable_data<T>({index_t.numel(), 4}, ctx.GetPlace());
-    var_sel.mutable_data<T>({index_t.numel(), 4}, ctx.GetPlace());
+    scores_sel.mutable_data<T>({indice_t.numel(), 1}, ctx.GetPlace());
+    bbox_sel.mutable_data<T>({indice_t.numel(), 4}, ctx.GetPlace());
+    anchor_sel.mutable_data<T>({indice_t.numel(), 4}, ctx.GetPlace());
+    var_sel.mutable_data<T>({indice_t.numel(), 4}, ctx.GetPlace());
 
-    CPUGather<T>(ctx, scores_slice, index_t, &scores_sel);
-    CPUGather<T>(ctx, bbox_deltas_slice, index_t, &bbox_sel);
-    CPUGather<T>(ctx, anchors, index_t, &anchor_sel);
-    CPUGather<T>(ctx, variances, index_t, &var_sel);
+    CPUGather<T>(ctx, scores_slice, indice_t, &scores_sel);
+    CPUGather<T>(ctx, bbox_deltas_slice, indice_t, &bbox_sel);
+    CPUGather<T>(ctx, anchors, indice_t, &anchor_sel);
+    CPUGather<T>(ctx, variances, indice_t, &var_sel);
 
     Tensor proposals;
-    proposals.mutable_data<T>({index_t.numel(), 4}, ctx.GetPlace());
+    proposals.mutable_data<T>({indice_t.numel(), 4}, ctx.GetPlace());
     BoxCoder<T>(ctx, &anchor_sel, &bbox_sel, &var_sel, &proposals);
 
     ClipTiledBoxes<T>(ctx, im_info_slice, &proposals);

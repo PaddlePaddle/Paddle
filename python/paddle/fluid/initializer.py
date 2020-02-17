@@ -38,7 +38,7 @@ def force_init_on_cpu():
     The flag of whether force to init variables on CPU.
 
     Returns:
-        bool: the state if we should force init on CPU.
+        bool: the state if we shold force init on CPU.
 
     Examples:
 
@@ -80,7 +80,7 @@ class Initializer(object):
 
     Defines the common interface of variable initializers.
     They add operations to the init program that are used
-    to initialize variables. Users should not use this class
+    to initialize variables. Users shold not use this class
     directly, but need to use one of its implementations.
     """
 
@@ -156,7 +156,7 @@ class ConstantInitializer(Initializer):
         Args:
             var: Variable that needs to be initialized
             block: The block in which initialization ops
-                   should be added
+                   shold be added
 
         Returns:
             the initialization op
@@ -178,7 +178,7 @@ class ConstantInitializer(Initializer):
             out_dtype = var.dtype
             out_var = var
 
-        # Initialization Ops should be prepended and not appended
+        # Initialization Ops shold be prepended and not appended
         op = block._prepend_op(
             type="fill_constant",
             outputs={"Out": out_var},
@@ -256,14 +256,14 @@ class UniformInitializer(Initializer):
         Args:
             var: Variable that needs to be initialized
             block: The block in which initialization ops
-                   should be added
+                   shold be added
 
         Returns:
             the initialization op
         """
         assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
-        # Initialization Ops should be prepended and not appended
+        # Initialization Ops shold be prepended and not appended
         if self._seed == 0:
             self._seed = block.program.random_seed
 
@@ -343,14 +343,14 @@ class NormalInitializer(Initializer):
         Args:
             var: Variable that needs to be initialized
             block: The block in which initialization ops
-                   should be added
+                   shold be added
 
         Returns:
             the initialization op
         """
         assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
-        # Initialization Ops should be prepended and not appended
+        # Initialization Ops shold be prepended and not appended
         if self._seed == 0:
             self._seed = block.program.random_seed
 
@@ -425,14 +425,14 @@ class TruncatedNormalInitializer(Initializer):
         Args:
             var: Variable that needs to be initialized
             block: The block in which initialization ops
-                   should be added
+                   shold be added
 
         Returns:
             the initialization op
         """
         assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
-        # Initialization Ops should be prepended and not appended
+        # Initialization Ops shold be prepended and not appended
         if self._seed == 0:
             self._seed = block.program.random_seed
 
@@ -534,7 +534,7 @@ class XavierInitializer(Initializer):
         Args:
             var: Variable that needs to be initialized
             block: The block in which initialization ops
-                   should be added
+                   shold be added
 
         Returns:
             the initialization op
@@ -662,7 +662,7 @@ class MSRAInitializer(Initializer):
         Args:
             var: Variable that needs to be initialized
             block: The block in which initialization ops
-                   should be added
+                   shold be added
 
         Returns:
             the initialization op
@@ -786,7 +786,7 @@ class BilinearInitializer(Initializer):
 
         Args:
             var (Variable): Variable that needs to be initialized.
-            block (Block): The block in which initialization ops should
+            block (Block): The block in which initialization ops shold
                            be added.
 
         Returns:
@@ -896,7 +896,7 @@ class NumpyArrayInitializer(Initializer):
         Args:
             var: Variable that needs to be initialized
             block: The block in which initialization ops
-                   should be added
+                   shold be added
 
         Returns:
             the initialization op
@@ -920,7 +920,7 @@ class NumpyArrayInitializer(Initializer):
             out_dtype = var.dtype
             np_value = self._value
 
-        # Initialization Ops should be prepended and not appended
+        # Initialization Ops shold be prepended and not appended
         if out_dtype == VarDesc.VarType.FP32:
             value_name = "fp32_values"
             values = [float(v) for v in np_value.flat]

@@ -56,9 +56,9 @@ int InstanceNormPlugin::initialize() {
 }
 
 nvinfer1::Dims InstanceNormPlugin::getOutputDimensions(
-    int index, const nvinfer1::Dims *inputDims, int nbInputs) {
+    int indice, const nvinfer1::Dims *inputDims, int nbInputs) {
   assert(nbInputs == 1);
-  assert(index < this->getNbOutputs());
+  assert(indice < this->getNbOutputs());
   nvinfer1::Dims const &input_dims = inputDims[0];
   nvinfer1::Dims output_dims = input_dims;
   return output_dims;
@@ -71,7 +71,7 @@ int InstanceNormPlugin::enqueue(int batch_size, const void *const *inputs,
 
   PADDLE_ENFORCE_EQ(input_dims.nbDims, 3,
                     platform::errors::InvalidArgument(
-                        "Input Dims should be 3 (except the batch), got %d",
+                        "Input Dims shold be 3 (except the batch), got %d",
                         input_dims.nbDims));
   int n = batch_size;
   int c = input_dims.d[0];

@@ -45,7 +45,7 @@ std::mutex profiler_mu;
 // The profiler state, the initial value is ProfilerState::kDisabled
 static ProfilerState g_state = ProfilerState::kDisabled;
 // The thread local event list only can be accessed by the specific thread
-// The thread index of each thread
+// The thread indice of each thread
 static thread_local int32_t g_thread_id;
 // The g_next_thread_id is a global counter for threads, by the g_thread_id and
 // g_next_thread_id, we can know how many threads have created EventList.
@@ -520,18 +520,18 @@ void SetEvent(bool merge_thread, Event analyze_event, size_t *max_name_width,
                                 cpu_time,   gpu_time,   0.};
         event_items->push_back(event_item);
       } else {
-        int index = event_idx->at(event_name);
-        event_items->at(index).calls += 1;
+        int indice = event_idx->at(event_name);
+        event_items->at(indice).calls += 1;
         // total time
-        event_items->at(index).total_time += event_time;
+        event_items->at(indice).total_time += event_time;
         // min time
-        event_items->at(index).min_time =
-            std::min(event_time, event_items->at(index).min_time);
+        event_items->at(indice).min_time =
+            std::min(event_time, event_items->at(indice).min_time);
         // max time
-        event_items->at(index).max_time =
-            std::max(event_time, event_items->at(index).max_time);
-        event_items->at(index).gpu_time += gpu_time;
-        event_items->at(index).cpu_time += cpu_time;
+        event_items->at(indice).max_time =
+            std::max(event_time, event_items->at(indice).max_time);
+        event_items->at(indice).gpu_time += gpu_time;
+        event_items->at(indice).cpu_time += cpu_time;
       }
 
       // remove the push marker from the list
@@ -588,7 +588,7 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
     }
 
     auto table_size = event_items.size();
-    std::vector<int> child_index(table_size, 0);
+    std::vector<int> child_indice(table_size, 0);
     for (size_t j = 0; j < table_size; ++j) {
       std::string fname = event_items[j].name;
       std::string grad_name = event_items[j].name + "_grad";
@@ -602,13 +602,13 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
         if (condition) {
           sub_child_map.insert(
               std::pair<std::string, EventItem>(fname, event_items[k]));
-          child_index[k] = 1;
+          child_indice[k] = 1;
         }
       }
     }
 
     for (size_t j = 0; j < table_size; ++j) {
-      if (child_index[j] == 0) {
+      if (child_indice[j] == 0) {
         main_event_items.push_back(event_items[j]);
         total += event_items[j].total_time;
       }

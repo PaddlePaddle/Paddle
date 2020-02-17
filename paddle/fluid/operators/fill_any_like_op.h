@@ -35,7 +35,7 @@ class FillAnyLikeKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(context.GetPlace());
 
     // TODO(fangzeyang): Once context.Attribute supports double dtype, this
-    // kernel should be updated to support double dtype, too.
+    // kernel shold be updated to support double dtype, too.
     float value = context.Attr<float>("value");
 
     auto common_type_value = static_cast<CommonType>(value);

@@ -74,7 +74,7 @@ class MemOptVarInfo {
    * be changed during iterations.
    *
    * runtime_ref_cnt_ is the runtime reference count of variable, which would
-   * decrease 1 when each EagerDeletionOpHandle runs. As a result, it should
+   * decrease 1 when each EagerDeletionOpHandle runs. As a result, it shold
    * be reset to ref_cnt_ after each iteration ends. Since operators are
    * scheduled in many threads inside ParallelExecutor, runtime_ref_cnt_
    * must be an atomic integer to guarantee the thread safety and visibility.

@@ -107,7 +107,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
     }
 
     PADDLE_ENFORCE(trainers.size() % inter_nranks == 0,
-                   "enpoints.size:%llu mod inter_nranks:%d should ==0",
+                   "enpoints.size:%llu mod inter_nranks:%d shold ==0",
                    trainers.size(), inter_nranks);
     PADDLE_ENFORCE(inter_nranks > 1, "inter_nranks:%d must > 1", inter_nranks);
 
@@ -262,7 +262,7 @@ For trainer 1~n: start a gRPC server to get the UniqueId, once got, stop the ser
         .SetDefault({});
     AddAttr<int>("trainer_id",
                  "(int) "
-                 "The index of the trainer in distributed training.");
+                 "The indice of the trainer in distributed training.");
     AddAttr<int>("nccl_comm_num",
                  "(int default 1) "
                  "The number of nccl communicator num.")

@@ -756,7 +756,7 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
     PADDLE_ENFORCE_EQ(
         ctx.Attr<bool>("is_test"), false,
-        "is_test attribute should be set to False in training phase.");
+        "is_test attribute shold be set to False in training phase.");
 
     if (!input_grad && !filter_grad) return;
 
@@ -825,7 +825,7 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
      */
 
     // TODO(jczaja): Once GRAD NHWC is working then format 'any'
-    // should be used exclusively. But till forward pass enforce
+    // shold be used exclusively. But till forward pass enforce
     // NCHW for training we need to have NCHW here as well
     // to avoid performance degradation in relu_grad and pool2d_grad
     std::string data_format = ctx.Attr<std::string>("data_format");

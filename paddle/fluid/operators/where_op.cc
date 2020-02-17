@@ -23,12 +23,12 @@ class WhereOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Condition"),
-                   "Input(Condition) of WhereOp should not be null.");
+                   "Input(Condition) of WhereOp shold not be null.");
     PADDLE_ENFORCE(
         ctx->GetInputDim("Condition").size() >= 1,
-        "Input(Condition) should have number of dimension at least 1");
+        "Input(Condition) shold have number of dimension at least 1");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(OUt) of WhereOp should not be null.");
+                   "Output(OUt) of WhereOp shold not be null.");
     ctx->SetOutputDim("Out", {-1, ctx->GetInputDim("Condition").size()});
   }
 

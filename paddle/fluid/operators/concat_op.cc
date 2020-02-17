@@ -31,16 +31,16 @@ class ConcatOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_GE(ctx->Inputs("X").size(), 1UL,
-                      "Inputs(X) of ConcatOp should not be empty.");
+                      "Inputs(X) of ConcatOp shold not be empty.");
 
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of ConcatOp should not be null.");
+                      "Output(Out) of ConcatOp shold not be null.");
 
     auto inputs_dims = ctx->GetInputsDim("X");
 
     const size_t inputs_num = inputs_dims.size();
     PADDLE_ENFORCE_GT(inputs_num, 0,
-                      "ShapeError: Input tensors count should > 0. But "
+                      "ShapeError: Input tensors count shold > 0. But "
                       "recevied inputs' length is 0.");
     if (inputs_num == 1) {
       VLOG(3) << "Warning: concat op have only one input, may waste memory";
@@ -125,7 +125,7 @@ class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddAttr<bool>("use_quantizer",
                   "(bool, default false) "
-                  "Set to true for operators that should be quantized and use "
+                  "Set to true for operators that shold be quantized and use "
                   "int8 kernel. "
                   "Only used on CPU.")
         .SetDefault(false);

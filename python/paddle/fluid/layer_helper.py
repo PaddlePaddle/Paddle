@@ -143,7 +143,7 @@ class LayerHelper(LayerHelperBase):
         if isinstance(act, six.string_types):
             act = {'type': act}
         else:
-            raise TypeError(str(act) + " should be unicode or str")
+            raise TypeError(str(act) + " shold be unicode or str")
 
         if 'use_cudnn' in self.kwargs and self.kwargs.get('use_cudnn'):
             act['use_cudnn'] = self.kwargs.get('use_cudnn')
@@ -159,7 +159,7 @@ class LayerHelper(LayerHelperBase):
             attrs=act)
         return tmp
 
-    #TODO (jiabin): should we remove this since it has never be used
+    #TODO (jiabin): shold we remove this since it has never be used
     def _get_default_initializer(self, dtype):
         if dtype is None or dtype_is_floating(dtype) is True:
             return Xavier()

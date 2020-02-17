@@ -91,23 +91,23 @@ __device__ __forceinline__ int SelectTopBeam(
           Insert(top_beam_local, tmp, beam_size);
         }
       } else {
-        int index = offset * seq_width + tid_of_seq;
+        int indice = offset * seq_width + tid_of_seq;
         if (!IsAccumulated) {
           float pre_score = pre_scores[offset];
           for (int i = tid_of_seq; i < seq_width; i += num_used_threads) {
-            float score = pre_score + __logf(scores[index]);
-            int id = ids ? static_cast<int>(ids[index]) : i;
+            float score = pre_score + __logf(scores[indice]);
+            int id = ids ? static_cast<int>(ids[indice]) : i;
             Triple tmp(offset, id, score);
             Insert(top_beam_local, tmp, beam_size);
-            index += num_used_threads;
+            indice += num_used_threads;
           }
         } else {
           for (int i = tid_of_seq; i < seq_width; i += num_used_threads) {
-            int id = ids ? static_cast<int>(ids[index]) : i;
-            float score = scores[index];
+            int id = ids ? static_cast<int>(ids[indice]) : i;
+            float score = scores[indice];
             Triple tmp(offset, id, score);
             Insert(top_beam_local, tmp, beam_size);
-            index += num_used_threads;
+            indice += num_used_threads;
           }
         }
       }
@@ -123,20 +123,20 @@ __device__ __forceinline__ int SelectTopBeam(
       // If num_used_threads is a odd number, merge local top_beam of thread 0
       // and num_used_threads - 1
       if (tid_of_seq == 0) {
-        int index_in_sh = (num_used_threads - 1 + tid) * beam_size;
+        int indice_in_sh = (num_used_threads - 1 + tid) * beam_size;
         for (int i = 0; i < beam_size; i++) {
-          Insert(top_beam_local, top_beam[index_in_sh], beam_size);
-          index_in_sh++;
+          Insert(top_beam_local, top_beam[indice_in_sh], beam_size);
+          indice_in_sh++;
         }
       }
     }
 
     num_used_threads = num_used_threads >> 1;
     if (tid_of_seq < num_used_threads) {
-      int index_in_sh = (num_used_threads + tid) * beam_size;
+      int indice_in_sh = (num_used_threads + tid) * beam_size;
       for (int i = 0; i < beam_size; i++) {
-        Insert(top_beam_local, top_beam[index_in_sh], beam_size);
-        index_in_sh++;
+        Insert(top_beam_local, top_beam[indice_in_sh], beam_size);
+        indice_in_sh++;
       }
     }
   }
@@ -175,22 +175,22 @@ __device__ __forceinline__ void WriteBack(
     const int seq_offset_start, const int seq_offset_end,
     const int selected_seq_start, const int selected_seq_length) {
   const int tid = threadIdx.x;  // use 1 thread only for each sequence
-  int global_index = selected_seq_start;
+  int global_indice = selected_seq_start;
   for (int global_offset = seq_offset_start; global_offset < seq_offset_end;
        ++global_offset) {
-    for (int local_index = 0; local_index < selected_seq_length;
-         ++local_index) {
-      if (top_beam_local[local_index].offset == global_offset) {
-        selected_ids[global_index] =
-            static_cast<int64_t>(top_beam_local[local_index].id);
-        selected_scores[global_index] = top_beam_local[local_index].score;
+    for (int local_indice = 0; local_indice < selected_seq_length;
+         ++local_indice) {
+      if (top_beam_local[local_indice].offset == global_offset) {
+        selected_ids[global_indice] =
+            static_cast<int64_t>(top_beam_local[local_indice].id);
+        selected_scores[global_indice] = top_beam_local[local_indice].score;
         if (ReturnParentIdx) {
-          parent_idx[global_index] = static_cast<int>(global_offset);
+          parent_idx[global_indice] = static_cast<int>(global_offset);
         }
-        global_index++;
+        global_indice++;
       }
     }
-    selected_offsets[global_offset + 1] = static_cast<size_t>(global_index);
+    selected_offsets[global_offset + 1] = static_cast<size_t>(global_indice);
   }
 }
 

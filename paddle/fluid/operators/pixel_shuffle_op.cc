@@ -21,16 +21,16 @@ class PixelShuffleOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of PixelShuffleOp should not be null.");
+                   "Input(X) of PixelShuffleOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of PixelShuffleOp should not be null.");
+                   "Output(Out) of PixelShuffleOp shold not be null.");
 
     auto input_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE(input_dims.size() == 4, "The layout of input is NCHW.");
     auto upscale_factor = ctx->Attrs().Get<int>("upscale_factor");
 
     PADDLE_ENFORCE(input_dims[1] % (upscale_factor * upscale_factor) == 0,
-                   "Upscale_factor should devide the number of channel");
+                   "Upscale_factor shold devide the number of channel");
 
     auto output_dims = input_dims;
     output_dims[0] = input_dims[0];
@@ -57,7 +57,7 @@ class PixelShuffleOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1)
         .AddCustomChecker([](const int& upscale_factor) {
           PADDLE_ENFORCE_GE(upscale_factor, 1,
-                            "upscale_factor should be larger than 0.");
+                            "upscale_factor shold be larger than 0.");
         });
 
     AddComment(R"DOC(
@@ -98,9 +98,9 @@ class PixelShuffleGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@Grad) should not be null");
+                   "Input(Out@Grad) shold not be null");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Output(X@Grad) should not be null");
+                   "Output(X@Grad) shold not be null");
 
     auto do_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     PADDLE_ENFORCE(do_dims.size() == 4, "The layout of input is NCHW.");

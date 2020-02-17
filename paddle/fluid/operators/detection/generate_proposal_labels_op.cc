@@ -39,30 +39,30 @@ class GenerateProposalLabelsOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("RpnRois"),
-                   "Input(RpnRois) shouldn't be null.");
+                   "Input(RpnRois) sholdn't be null.");
     PADDLE_ENFORCE(ctx->HasInput("GtClasses"),
-                   "Input(GtClasses) shouldn't be null.");
+                   "Input(GtClasses) sholdn't be null.");
     PADDLE_ENFORCE(ctx->HasInput("IsCrowd"),
-                   "Input(IsCrowd) shouldn't be null.");
+                   "Input(IsCrowd) sholdn't be null.");
     PADDLE_ENFORCE(ctx->HasInput("GtBoxes"),
-                   "Input(GtBoxes) shouldn't be null.");
-    PADDLE_ENFORCE(ctx->HasInput("ImInfo"), "Input(ImInfo) shouldn't be null.");
+                   "Input(GtBoxes) sholdn't be null.");
+    PADDLE_ENFORCE(ctx->HasInput("ImInfo"), "Input(ImInfo) sholdn't be null.");
 
     PADDLE_ENFORCE(
         ctx->HasOutput("Rois"),
-        "Output(Rois) of GenerateProposalLabelsOp should not be null");
+        "Output(Rois) of GenerateProposalLabelsOp shold not be null");
     PADDLE_ENFORCE(
         ctx->HasOutput("LabelsInt32"),
-        "Output(LabelsInt32) of GenerateProposalLabelsOp should not be null");
+        "Output(LabelsInt32) of GenerateProposalLabelsOp shold not be null");
     PADDLE_ENFORCE(
         ctx->HasOutput("BboxTargets"),
-        "Output(BboxTargets) of GenerateProposalLabelsOp should not be null");
+        "Output(BboxTargets) of GenerateProposalLabelsOp shold not be null");
     PADDLE_ENFORCE(ctx->HasOutput("BboxInsideWeights"),
                    "Output(BboxInsideWeights) of GenerateProposalLabelsOp "
-                   "should not be null");
+                   "shold not be null");
     PADDLE_ENFORCE(ctx->HasOutput("BboxOutsideWeights"),
                    "Output(BboxOutsideWeights) of GenerateProposalLabelsOp "
-                   "should not be null");
+                   "shold not be null");
 
     auto rpn_rois_dims = ctx->GetInputDim("RpnRois");
     auto gt_boxes_dims = ctx->GetInputDim("GtBoxes");
@@ -135,7 +135,7 @@ std::vector<std::vector<int>> SampleFgBgGt(
       continue;
     }
     if (max_overlap >= fg_thresh) {
-      // fg mapped gt label index
+      // fg mapped gt label indice
       for (int64_t j = 0; j < col; ++j) {
         T val = proposal_to_gt_overlaps[i * col + j];
         auto diff = std::abs(max_overlap - val);
@@ -289,7 +289,7 @@ std::vector<Tensor> SampleRoisForOneImage(
     }
   }
   BboxOverlaps<T>(boxes, gt_boxes, &proposal_to_gt_overlaps);
-  // Generate proposal index
+  // Generate proposal indice
   std::vector<std::vector<int>> fg_bg_gt =
       SampleFgBgGt<T>(context, &proposal_to_gt_overlaps, is_crowd,
                       batch_size_per_im, fg_fraction, fg_thresh, bg_thresh_hi,
@@ -530,12 +530,12 @@ class GenerateProposalLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
         "BboxInsideWeights",
         "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4 * "
         "class_nums], "
-        "each element indicates whether a box should contribute to loss.");
+        "each element indicates whether a box shold contribute to loss.");
     AddOutput(
         "BboxOutsideWeights",
         "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4 * "
         "class_nums], "
-        "each element indicates whether a box should contribute to loss.");
+        "each element indicates whether a box shold contribute to loss.");
 
     AddAttr<int>("batch_size_per_im", "Batch size of rois per images.");
     AddAttr<float>("fg_fraction",

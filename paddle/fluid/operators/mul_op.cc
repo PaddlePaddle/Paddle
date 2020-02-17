@@ -34,13 +34,13 @@ class MulOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("X"), true,
-        platform::errors::NotFound("Input(X) of MulOp should not be null."));
+        platform::errors::NotFound("Input(X) of MulOp shold not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Y"), true,
-        platform::errors::NotFound("Input(Y) of MulOp should not be null."));
+        platform::errors::NotFound("Input(Y) of MulOp shold not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("Out"), true,
-        platform::errors::NotFound("Output(Out) of MulOp should not be null."));
+        platform::errors::NotFound("Output(Out) of MulOp shold not be null."));
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
@@ -63,14 +63,14 @@ class MulOp : public framework::OperatorWithKernel {
         x_dims.size(), x_num_col_dims,
         platform::errors::InvalidArgument(
             "The input tensor X's dimensions of MulOp "
-            "should be larger than x_num_col_dims. But received X's "
+            "shold be larger than x_num_col_dims. But received X's "
             "dimensions = %d, X's shape = [%s], x_num_col_dims = %d.",
             x_dims.size(), x_dims, x_num_col_dims));
     PADDLE_ENFORCE_GT(
         y_dims.size(), y_num_col_dims,
         platform::errors::InvalidArgument(
             "The input tensor Y's dimensions of MulOp "
-            "should be larger than y_num_col_dims. But received Y's "
+            "shold be larger than y_num_col_dims. But received Y's "
             "dimensions = %d, Y's shape = [%s], y_num_col_dims = %d.",
             y_dims.size(), y_dims, y_num_col_dims));
 
@@ -218,10 +218,10 @@ class MulGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold not be null");
+    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) shold not be null");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
+                   "Input(Out@GRAD) shold not be null");
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
 
@@ -261,9 +261,9 @@ class MulDoubleGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("DOut"), "Input(DOut) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold not be null");
+    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) shold not be null");
+    PADDLE_ENFORCE(ctx->HasInput("DOut"), "Input(DOut) shold not be null");
 
     if (ctx->HasOutput("DDOut") &&
         (ctx->HasInput("DDX") || (ctx->HasInput("DDY")))) {

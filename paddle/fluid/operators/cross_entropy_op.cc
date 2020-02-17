@@ -25,12 +25,12 @@ class CrossEntropyOpBase : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) should be not null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) shold be not null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("Label"), true,
-                      "Input(Label) should be not null.");
+                      "Input(Label) shold be not null.");
 
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Y"), true,
-                      "Output(Y) should be not null.");
+                      "Output(Y) shold be not null.");
 
     auto x_dims = ctx->GetInputDim("X");
     auto label_dims = ctx->GetInputDim("Label");
@@ -66,7 +66,7 @@ class CrossEntropyOpBase : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_EQ(
             x_dims[rank - 1], label_dims[rank - 1],
             "ShapeError: If Attr(soft_label) == true, the last dimension of "
-            "Input(X) and Input(Label) should be equal. But received: the"
+            "Input(X) and Input(Label) shold be equal. But received: the"
             "last dimension of Input(X) is [%d], the shape of Input(X) is [%s],"
             "the last dimension of Input(Label) is [%d], the shape of "
             "Input(Label)"
@@ -78,13 +78,13 @@ class CrossEntropyOpBase : public framework::OperatorWithKernel {
       if (rank == label_dims.size()) {
         PADDLE_ENFORCE_EQ(
             label_dims[rank - 1], 1UL,
-            "ShapeError: the last dimension of Input(Label) should be 1."
+            "ShapeError: the last dimension of Input(Label) shold be 1."
             "But received: the last dimension of Input(Label) is [%d],"
             "the last dimension is [%d]",
             label_dims[rank - 1], rank - 1);
       } else {
         PADDLE_ENFORCE_EQ(rank, label_dims.size() + 1,
-                          "ShapeError: The rank of Input(X) should be equal to "
+                          "ShapeError: The rank of Input(X) shold be equal to "
                           "Input(Label) plus 1."
                           "But received: The dimension of Input(X) is [%d], "
                           "the shape of Input(X) is [%s],"
@@ -123,18 +123,18 @@ class CrossEntropyGradientOpBase : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const {
     PADDLE_ENFORCE_EQ(ctx->HasInput("Label"), true,
-                      "Input(Label) should be not null.");
+                      "Input(Label) shold be not null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Y")), true,
                       "Input(Y@GRAD) shoudl be not null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
-                      "Output(X@GRAD) should be not null.");
+                      "Output(X@GRAD) shold be not null.");
 
     auto x_dims = GetXDim(ctx);
     auto label_dims = ctx->GetInputDim("Label");
     auto dy_dims = ctx->GetInputDim(framework::GradVarName("Y"));
     int rank = x_dims.size();
     PADDLE_ENFORCE_EQ(dy_dims.size(), label_dims.size(),
-                      "Input(Y@Grad) and Input(Y) should have the same rank.");
+                      "Input(Y@Grad) and Input(Y) shold have the same rank.");
 
     bool check = true;
     if ((!ctx->IsRuntime()) &&
@@ -145,7 +145,7 @@ class CrossEntropyGradientOpBase : public framework::OperatorWithKernel {
     if (check) {
       PADDLE_ENFORCE_EQ(framework::slice_ddim(x_dims, 0, rank - 1),
                         framework::slice_ddim(dy_dims, 0, rank - 1),
-                        "The Input(X) and Input(Y@Grad) should have the same "
+                        "The Input(X) and Input(Y@Grad) shold have the same "
                         "shape except the last dimension.");
     }
 
@@ -205,7 +205,7 @@ class CrossEntropyOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false), a flag indicating whether to "
                   "interpretant the given labels as soft labels.")
         .SetDefault(false);
-    AddAttr<int>("ignore_index",
+    AddAttr<int>("ignore_indice",
                  "(int, default -100), Specifies a target value that is"
                  "ignored and does not contribute to the input gradient."
                  "Only valid if soft_label is set to False")
@@ -222,7 +222,7 @@ of flattened matrixs.
 It supports both standard cross-entropy and soft-label cross-entropy loss
 computation.
 1) One-hot cross-entropy:
-    soft_label = false, Label[i, 0] indicates the class index for sample i:
+    soft_label = false, Label[i, 0] indicates the class indice for sample i:
 
                 $Y[i] = -\log(X[i, Label[i]])$
 
@@ -252,7 +252,7 @@ class CrossEntropyGradientOp : public CrossEntropyGradientOpBase {
   using CrossEntropyGradientOpBase::CrossEntropyGradientOpBase;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) should be not null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) shold be not null.");
     CrossEntropyGradientOpBase::InferShape(ctx);
   }
 };
@@ -283,10 +283,10 @@ class CrossEntropyOp2 : public CrossEntropyOpBase {
     CrossEntropyOpBase::InferShape(ctx);
 
     PADDLE_ENFORCE_EQ(ctx->HasOutput("XShape"), true,
-                      "Output(XShape) should be not null.");
+                      "Output(XShape) shold be not null.");
 
     PADDLE_ENFORCE_EQ(ctx->HasOutput("MatchX"), true,
-                      "Output(MatchX) should be not null.");
+                      "Output(MatchX) shold be not null.");
     auto x_dims = ctx->GetInputDim("X");
     auto x_dims_vec = framework::vectorize(x_dims);
     x_dims_vec.push_back(0);
@@ -343,7 +343,7 @@ class CrossEntropyOpMaker2 : public framework::OpProtoAndCheckerMaker {
     AddOutput("XShape", "Temporaily variable to save shape and LoD of X.");
     AddOutput("MatchX",
               "X value that matches label, used for gradient computation.");
-    AddAttr<int>("ignore_index",
+    AddAttr<int>("ignore_indice",
                  "(int, default -100), Specifies a target value that is"
                  "ignored and does not contribute to the input gradient."
                  "Only valid if soft_label is set to False")

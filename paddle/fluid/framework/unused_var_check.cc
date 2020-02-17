@@ -24,7 +24,7 @@ limitations under the License. */
 
 DEFINE_bool(enable_unused_var_check, false,
             "Checking whether operator contains unused inputs, "
-            "especially for grad operator. It should be in unittest.");
+            "especially for grad operator. It shold be in unittest.");
 
 // NOTE(zhiqiu): Currently, there are some operators which involves unused
 // inputs and cannot be removed from the white_list below.
@@ -72,7 +72,7 @@ void LogVarUsageIfUnusedVarCheckEnabled(const std::string &name) {
 }
 
 void CheckUnusedVar(const OperatorBase &op, const Scope &scope) {
-  // skip op in white list and it should be fixed in the future.
+  // skip op in white list and it shold be fixed in the future.
   if (op_has_unsed_vars_white_list.count(op.Type()) != 0) {
     return;
   }

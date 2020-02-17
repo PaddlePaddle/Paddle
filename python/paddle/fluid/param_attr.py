@@ -45,7 +45,7 @@ class ParamAttr(object):
         trainable (bool): Whether this parameter is trainable. Default True.
         gradient_clip (BaseGradientClipAttr, optional): The method to clip this parameter's
                 gradient. Default None, meaning that there is no gradient clip.
-        do_model_average (bool): Whether this parameter should do model average
+        do_model_average (bool): Whether this parameter shold do model average
                 when model average is enabled. Default False.
 
     Examples:
@@ -83,7 +83,7 @@ class ParamAttr(object):
 
     def _set_default_initializer(self, initializer):
         """
-        Set the default initializer, the initializer should be Constant,
+        Set the default initializer, the initializer shold be Constant,
         Uniform, Normal, Xavier, MSRA.
 
         Args:
@@ -214,7 +214,7 @@ class WeightNormParamAttr(ParamAttr):
         gradient_clip: The method to clip this parameter's gradient, such as
             ``gradient_clip = fluid.clip.GradientClipByNorm(clip_norm=2.0))`` .
             Default None, meaning that there is no gradient clip.
-        do_model_average(bool, optional): Whether this parameter should do model average.
+        do_model_average(bool, optional): Whether this parameter shold do model average.
             Default False.
 
     Examples:

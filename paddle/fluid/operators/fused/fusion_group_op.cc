@@ -44,7 +44,7 @@ class FusionGroupOp : public framework::OperatorWithKernel {
       for (size_t i = 1; i < num_ins; ++i) {
         PADDLE_ENFORCE_EQ(x_dims[0], x_dims[i],
                           platform::errors::InvalidArgument(
-                              "All the inputs' dims should be the same."));
+                              "All the inputs' dims shold be the same."));
       }
       std::vector<framework::DDim> out_dims;
       for (size_t j = 0; j < num_outs; ++j) {
@@ -78,7 +78,7 @@ fusion_group Operator.
 It is used to execute a generated CUDA kernel which fuse the computation of
 multiple operators into one. It supports several types:
 0, fused computation of elementwise operations in which all the dims of inputs
-    and outputs should be exactly the same.
+    and outputs shold be exactly the same.
 )DOC");
   }
 };

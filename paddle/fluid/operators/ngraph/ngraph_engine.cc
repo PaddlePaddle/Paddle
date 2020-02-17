@@ -112,9 +112,9 @@ static std::vector<std::vector<int>> NgraphOpIntervals(
     ++right;
   }
 
-  int index = right;
-  while (index < size && ops->at(index)->Type() == framework::kFetchOpType) {
-    ++index;
+  int indice = right;
+  while (indice < size && ops->at(indice)->Type() == framework::kFetchOpType) {
+    ++indice;
   }
 
   if (left == size || ops->at(left)->Type() == framework::kFetchOpType) {
@@ -528,17 +528,17 @@ void NgraphEngine::Run(const framework::Scope& scope,
   if (is_inference_ && t_in_cache_.find(func_cache_key_) != t_in_cache_.end()) {
     p_t_in = &(t_in_cache_[func_cache_key_]);
     for (size_t i = 0; i < p_var_in_updates->size(); ++i) {
-      int index = p_var_in_updates->at(i);
-      auto vi = p_var_in->at(index);
-      auto sp = m_parameters[index]->get_shape();
-      auto ng_type = m_parameters[index]->get_element_type();
+      int indice = p_var_in_updates->at(i);
+      auto vi = p_var_in->at(indice);
+      auto sp = m_parameters[indice]->get_shape();
+      auto ng_type = m_parameters[indice]->get_element_type();
       std::shared_ptr<ngraph::runtime::Tensor> ti;
       auto* var = scope.FindVar(vi);
       if (var && var->IsType<framework::LoDTensor>()) {
         auto* tensor_pd = GetMutableLoDTensorOrSelectedRowsValueFromVar(var);
         void* pd_arr = tensor_pd->mutable_data(place, ng2pd_type_map[ng_type]);
         ti = ng_backend->create_tensor(ng_type, sp, pd_arr);
-        (*p_t_in)[index] = ti;
+        (*p_t_in)[indice] = ti;
       } else {
         PADDLE_THROW("Cannot find var or tensor with var name %s", vi);
       }

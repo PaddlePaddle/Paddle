@@ -69,11 +69,11 @@ class _ClipGradFunctor {
 template <typename DeviceContext, typename T>
 inline void ReorderInitState(const DeviceContext& ctx,
                              const framework::Tensor& src,
-                             framework::Vector<size_t> index,
-                             framework::Tensor* dst, bool indexed_src) {
+                             framework::Vector<size_t> indice,
+                             framework::Tensor* dst, bool indiceed_src) {
   math::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
   dst->mutable_data<T>(src.dims(), ctx.GetPlace());
-  row_shuffle(ctx, src, index, dst, indexed_src);
+  row_shuffle(ctx, src, indice, dst, indiceed_src);
 }
 
 template <typename DeviceContext, typename T>

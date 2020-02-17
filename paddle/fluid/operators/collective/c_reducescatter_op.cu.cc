@@ -39,7 +39,7 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(out_dims[0] % nranks, 0,
                       platform::errors::InvalidArgument(
                           "The input tensor X's "
-                          "dim[0] (%d) should be divisible by nranks(%d)",
+                          "dim[0] (%d) shold be divisible by nranks(%d)",
                           out_dims[0], nranks));
     out_dims[0] = out_dims[0] / nranks;
     out->mutable_data<T>(out_dims, place);
@@ -61,7 +61,7 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
         send_buff, recv_buff, recv_numel, static_cast<ncclDataType_t>(dtype),
         ncclSum, comm->comm(), stream));
 #else
-    PADDLE_THROW("PaddlePaddle should compile with GPU.");
+    PADDLE_THROW("PaddlePaddle shold compile with GPU.");
 #endif
   }
 };

@@ -142,14 +142,14 @@ class TestDGCOp(unittest.TestCase):
 
         self.assertEqual(k, int(g_array_size * 0.25))
 
-        index = encode_grad_out[0:k].view(dtype=np.int32)
+        indice = encode_grad_out[0:k].view(dtype=np.int32)
         value = encode_grad_out[k:2 * k]
 
         acl = 1e-7
 
         for i in range(0, k):
-            self.assertAlmostEqual(u_out[index[i]], 0.0)
-            self.assertAlmostEqual(v_out[index[i]], 0.0)
+            self.assertAlmostEqual(u_out[indice[i]], 0.0)
+            self.assertAlmostEqual(v_out[indice[i]], 0.0)
 
         a_min = np.amin(value)
         dangling = [x for x in v_out if x > a_min]

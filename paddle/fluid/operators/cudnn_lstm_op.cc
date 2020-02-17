@@ -25,22 +25,22 @@ class CudnnLSTMOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(Input) of LSTM should not be null.");
+                   "Input(Input) of LSTM shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("W"),
-                   "Input(Weight) of LSTM should not be null.");
+                   "Input(Weight) of LSTM shold not be null.");
 
     PADDLE_ENFORCE(ctx->HasInput("InitH"),
-                   "Input(init_h) of LSTM should not be null.");
+                   "Input(init_h) of LSTM shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("InitC"),
-                   "Input(init_c) of LSTM should not be null.");
+                   "Input(init_c) of LSTM shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Cache"),
-                   "Input(Cache) of LSTM should not be null.");
+                   "Input(Cache) of LSTM shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of LSTM should not be null.");
+                   "Output(Out) of LSTM shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("last_h"),
-                   "Output(last_h) of LSTM should not be null.");
+                   "Output(last_h) of LSTM shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("last_c"),
-                   "Output(last_c) of LSTM should not be null.");
+                   "Output(last_c) of LSTM shold not be null.");
 
     auto in_dims = ctx->GetInputDim("Input");
     PADDLE_ENFORCE_EQ(in_dims.size(), 3, "Input(X)'s rank must be 3.");
@@ -173,15 +173,15 @@ class CudnnLSTMGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(Input) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("W"), "Input(W) of LSTM should not be null.");
+                   "Input(Input) of LSTM shold not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("W"), "Input(W) of LSTM shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Cache"),
-                   "Input(last_c) of LSTM should not be null.");
+                   "Input(last_c) of LSTM shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("InitH"),
-                   "Input(init_h) of LSTM should not be null.");
+                   "Input(init_h) of LSTM shold not be null.");
 
     PADDLE_ENFORCE(ctx->HasInput("InitC"),
-                   "Input(init_c) of LSTM should not be null.");
+                   "Input(init_c) of LSTM shold not be null.");
 
     auto SetOutGradDim = [&ctx](const std::string& name) {
       auto g_name = framework::GradVarName(name);

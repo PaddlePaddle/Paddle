@@ -33,30 +33,30 @@ class TestSimilarityFocusOp(OpTest):
         }
         self.attrs = {
             'axis': 1,
-            'indexes': [0],
+            'indicees': [0],
         }
 
         output = None
         for batch in range(batch_size):
             res = np.zeros((1, y_dim, z_dim)).astype("float32").reshape(-1)
-            for index in self.attrs['indexes']:
-                channel = self.inputs['X'][batch, index, :, :].reshape(-1).copy(
+            for indice in self.attrs['indicees']:
+                channel = self.inputs['X'][batch, indice, :, :].reshape(-1).copy(
                 )
                 tag1 = [0 for i in range(y_dim)]
                 tag2 = [0 for i in range(z_dim)]
                 cnt = 0
                 for i in range(channel.size):
-                    index = channel.argmax()
-                    idx1 = index // z_dim
-                    idx2 = index % z_dim
+                    indice = channel.argmax()
+                    idx1 = indice // z_dim
+                    idx2 = indice % z_dim
                     if tag1[idx1] + tag2[idx2] == 0:
                         tag1[idx1] = 1
                         tag2[idx2] = 1
-                        res[index] = 1
+                        res[indice] = 1
                         cnt += 1
                         if cnt == min(y_dim, z_dim):
                             break
-                    channel[index] = -1
+                    channel[indice] = -1
             res = res.reshape(1, y_dim, z_dim).repeat([x_dim], axis=0)
             res = res.reshape(1, x_dim, y_dim, z_dim)
             if output is not None:
@@ -80,30 +80,30 @@ class TestSimilarityFocusOp_axis1(OpTest):
         }
         self.attrs = {
             'axis': 1,
-            'indexes': [0, 3],
+            'indicees': [0, 3],
         }
 
         output = None
         for batch in range(batch_size):
             res = np.zeros((1, y_dim, z_dim)).astype("float32").reshape(-1)
-            for index in self.attrs['indexes']:
-                channel = self.inputs['X'][batch, index, :, :].reshape(-1).copy(
+            for indice in self.attrs['indicees']:
+                channel = self.inputs['X'][batch, indice, :, :].reshape(-1).copy(
                 )
                 tag1 = [0 for i in range(y_dim)]
                 tag2 = [0 for i in range(z_dim)]
                 cnt = 0
                 for i in range(channel.size):
-                    index = channel.argmax()
-                    idx1 = index // z_dim
-                    idx2 = index % z_dim
+                    indice = channel.argmax()
+                    idx1 = indice // z_dim
+                    idx2 = indice % z_dim
                     if tag1[idx1] + tag2[idx2] == 0:
                         tag1[idx1] = 1
                         tag2[idx2] = 1
-                        res[index] = 1
+                        res[indice] = 1
                         cnt += 1
                         if cnt == min(y_dim, z_dim):
                             break
-                    channel[index] = -1
+                    channel[indice] = -1
             res = res.reshape(1, y_dim, z_dim)
             res = res.repeat([x_dim], axis=0)
             res = res.reshape(1, x_dim, y_dim, z_dim)
@@ -128,30 +128,30 @@ class TestSimilarityFocusOp_axis2(OpTest):
         }
         self.attrs = {
             'axis': 2,
-            'indexes': [0, 3, 5],
+            'indicees': [0, 3, 5],
         }
 
         output = None
         for batch in range(batch_size):
             res = np.zeros((x_dim, 1, z_dim)).astype("float32").reshape(-1)
-            for index in self.attrs['indexes']:
-                channel = self.inputs['X'][batch, :, index, :].reshape(-1).copy(
+            for indice in self.attrs['indicees']:
+                channel = self.inputs['X'][batch, :, indice, :].reshape(-1).copy(
                 )
                 tag1 = [0 for i in range(x_dim)]
                 tag2 = [0 for i in range(z_dim)]
                 cnt = 0
                 for i in range(channel.size):
-                    index = channel.argmax()
-                    idx1 = index // z_dim
-                    idx2 = index % z_dim
+                    indice = channel.argmax()
+                    idx1 = indice // z_dim
+                    idx2 = indice % z_dim
                     if tag1[idx1] + tag2[idx2] == 0:
                         tag1[idx1] = 1
                         tag2[idx2] = 1
-                        res[index] = 1
+                        res[indice] = 1
                         cnt += 1
                         if cnt == min(x_dim, z_dim):
                             break
-                    channel[index] = -1
+                    channel[indice] = -1
             res = res.reshape(x_dim, 1, z_dim)
             res = res.repeat([y_dim], axis=1)
             res = res.reshape(1, x_dim, y_dim, z_dim)
@@ -176,30 +176,30 @@ class TestSimilarityFocusOp_axis3(OpTest):
         }
         self.attrs = {
             'axis': 3,
-            'indexes': [0, 2, 7, 9],
+            'indicees': [0, 2, 7, 9],
         }
 
         output = None
         for batch in range(batch_size):
             res = np.zeros((x_dim, y_dim, 1)).astype("float32").reshape(-1)
-            for index in self.attrs['indexes']:
-                channel = self.inputs['X'][batch, :, :, index].reshape(-1).copy(
+            for indice in self.attrs['indicees']:
+                channel = self.inputs['X'][batch, :, :, indice].reshape(-1).copy(
                 )
                 tag1 = [0 for i in range(x_dim)]
                 tag2 = [0 for i in range(y_dim)]
                 cnt = 0
                 for i in range(channel.size):
-                    index = channel.argmax()
-                    idx1 = index // y_dim
-                    idx2 = index % y_dim
+                    indice = channel.argmax()
+                    idx1 = indice // y_dim
+                    idx2 = indice % y_dim
                     if tag1[idx1] + tag2[idx2] == 0:
                         tag1[idx1] = 1
                         tag2[idx2] = 1
-                        res[index] = 1
+                        res[indice] = 1
                         cnt += 1
                         if cnt == min(x_dim, y_dim):
                             break
-                    channel[index] = -1
+                    channel[indice] = -1
             res = res.reshape(x_dim, y_dim, 1)
             res = res.repeat([z_dim], axis=2)
             res = res.reshape(1, x_dim, y_dim, z_dim)

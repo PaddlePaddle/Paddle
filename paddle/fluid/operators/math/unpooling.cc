@@ -36,9 +36,9 @@ class Unpool2dMaxFunctor<platform::CPUDeviceContext, T> {
     for (int b = 0; b < batch_size; ++b) {
       for (int c = 0; c < output_channels; ++c) {
         for (int i = 0; i < input_feasize; ++i) {
-          int index = indices_data[i];
-          PADDLE_ENFORCE(index < output_feasize, "err index in unpooling!");
-          output_data[index] = input_data[i];
+          int indice = indices_data[i];
+          PADDLE_ENFORCE(indice < output_feasize, "err indice in unpooling!");
+          output_data[indice] = input_data[i];
         }
         input_data += input_feasize;
         indices_data += input_feasize;
@@ -71,9 +71,9 @@ class Unpool2dMaxGradFunctor<platform::CPUDeviceContext, T> {
     for (int b = 0; b < batch_size; ++b) {
       for (int c = 0; c < output_channels; ++c) {
         for (int i = 0; i < input_feasize; ++i) {
-          int index = indices_data[i];
-          PADDLE_ENFORCE(index < output_feasize, "err index in unpooling!");
-          input_grad_data[i] = output_grad_data[index];
+          int indice = indices_data[i];
+          PADDLE_ENFORCE(indice < output_feasize, "err indice in unpooling!");
+          input_grad_data[i] = output_grad_data[indice];
         }
         input_grad_data += input_feasize;
         indices_data += input_feasize;

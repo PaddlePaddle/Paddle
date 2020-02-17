@@ -50,7 +50,7 @@ DatasetImpl<T>::DatasetImpl() {
   parse_ins_id_ = false;
   parse_content_ = false;
   preload_thread_num_ = 0;
-  global_index_ = 0;
+  global_indice_ = 0;
 }
 
 // set filelist, file_idx_ will reset to zero.
@@ -166,7 +166,7 @@ void DatasetImpl<T>::CreateChannel() {
   }
 }
 
-// if sent message between workers, should first call this function
+// if sent message between workers, shold first call this function
 template <typename T>
 void DatasetImpl<T>::RegisterClientToClientMsgHandler() {
   auto fleet_ptr = FleetWrapper::GetInstance();
@@ -338,14 +338,14 @@ void DatasetImpl<T>::GlobalShuffle(int thread_num) {
         ars[client_id] << t;
       }
       std::vector<std::future<int32_t>> total_status;
-      std::vector<int> send_index(this->trainer_num_);
+      std::vector<int> send_indice(this->trainer_num_);
       for (int i = 0; i < this->trainer_num_; ++i) {
-        send_index[i] = i;
+        send_indice[i] = i;
       }
-      std::shuffle(send_index.begin(), send_index.end(),
+      std::shuffle(send_indice.begin(), send_indice.end(),
                    fleet_ptr->LocalRandomEngine());
-      for (int index = 0; index < this->trainer_num_; ++index) {
-        int i = send_index[index];
+      for (int indice = 0; indice < this->trainer_num_; ++indice) {
+        int i = send_indice[indice];
         if (ars[i].Length() == 0) {
           continue;
         }
@@ -442,7 +442,7 @@ void DatasetImpl<T>::DynamicAdjustChannelNum(int channel_num) {
   total_data_channel->SetBlockSize(total_data_channel->Size() / channel_num +
                                    1);
   // will discard the remaining instances,
-  // TODO(hutuxian): should add a config here to choose how to deal with
+  // TODO(hutuxian): shold add a config here to choose how to deal with
   // remaining instances
   if (static_cast<int>(input_channel_->Size()) >= channel_num) {
     input_channel_->SetBlockSize(input_channel_->Size() / channel_num);
@@ -496,9 +496,9 @@ void DatasetImpl<T>::CreateReaders() {
   VLOG(3) << "thread num in Dataset: " << thread_num_;
   VLOG(3) << "Filelist size in Dataset: " << filelist_.size();
   VLOG(3) << "channel num in Dataset: " << channel_num_;
-  CHECK(thread_num_ > 0) << "thread num should > 0";
-  CHECK(channel_num_ > 0) << "channel num should > 0";
-  CHECK(channel_num_ <= thread_num_) << "channel num should <= thread num";
+  CHECK(thread_num_ > 0) << "thread num shold > 0";
+  CHECK(channel_num_ > 0) << "channel num shold > 0";
+  CHECK(channel_num_ <= thread_num_) << "channel num shold <= thread num";
   VLOG(3) << "readers size: " << readers_.size();
   if (readers_.size() != 0) {
     VLOG(3) << "readers_.size() = " << readers_.size()
@@ -558,7 +558,7 @@ void DatasetImpl<T>::CreatePreLoadReaders() {
   if (preload_thread_num_ == 0) {
     preload_thread_num_ = thread_num_;
   }
-  CHECK(preload_thread_num_ > 0) << "thread num should > 0";
+  CHECK(preload_thread_num_ > 0) << "thread num shold > 0";
   CHECK(input_channel_ != nullptr);
   preload_readers_.clear();
   for (int i = 0; i < preload_thread_num_; ++i) {
@@ -627,15 +627,15 @@ int DatasetImpl<T>::ReceiveFromClient(int msg_type, int client_id,
   // not use random because it doesn't perform well here.
   // to make sure each channel get data equally, we just put data to
   // channel one by one.
-  // int64_t index = fleet_ptr->LocalRandomEngine()() % channel_num_;
-  int64_t index = 0;
+  // int64_t indice = fleet_ptr->LocalRandomEngine()() % channel_num_;
+  int64_t indice = 0;
   {
-    std::unique_lock<std::mutex> lk(global_index_mutex_);
-    index = global_index_++;
+    std::unique_lock<std::mutex> lk(global_indice_mutex_);
+    indice = global_indice_++;
   }
-  index = index % channel_num_;
-  VLOG(3) << "ramdom index=" << index;
-  multi_output_channel_[index]->Write(std::move(data));
+  indice = indice % channel_num_;
+  VLOG(3) << "ramdom indice=" << indice;
+  multi_output_channel_[indice]->Write(std::move(data));
 
   data.clear();
   data.shrink_to_fit();
@@ -982,11 +982,11 @@ void MultiSlotDataset::SlotsShuffle(
   platform::Timer timeline;
   timeline.Start();
   auto multi_slot_desc = data_feed_desc_.multi_slot_desc();
-  std::set<uint16_t> index_slots;
+  std::set<uint16_t> indice_slots;
   for (int i = 0; i < multi_slot_desc.slots_size(); ++i) {
     std::string cur_slot = multi_slot_desc.slots(i).name();
     if (slots_to_replace.find(cur_slot) != slots_to_replace.end()) {
-      index_slots.insert(i);
+      indice_slots.insert(i);
     }
   }
   if (slots_shuffle_original_data_.size() == 0) {
@@ -1066,11 +1066,11 @@ void MultiSlotDataset::SlotsShuffle(
     }
   }
   CHECK(input_channel_->Size() == 0)
-      << "input channel should be empty before slots shuffle";
+      << "input channel shold be empty before slots shuffle";
   std::vector<Record> random_data;
   random_data.clear();
   // get slots shuffled random_data
-  GetRandomData(index_slots, &random_data);
+  GetRandomData(indice_slots, &random_data);
   input_channel_->Open();
   input_channel_->Write(std::move(random_data));
   random_data.clear();

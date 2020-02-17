@@ -35,15 +35,15 @@ void BuildGatherNode(
   auto x = platform::GetInputNode(op, "X", ngb_node_map);
   PADDLE_ENFORCE_NOT_NULL(x);
 
-  auto index = platform::GetInputNode(op, "Index", ngb_node_map);
-  auto& index_shape = index->get_shape();
-  PADDLE_ENFORCE(index_shape.size() == 1 ||
-                 (index_shape.size() == 2 && index_shape[1] == 1));
-  if (index_shape.size() == 2) {
-    index = platform::NgReshaper(index, ngraph::Shape{index_shape[0]});
+  auto indice = platform::GetInputNode(op, "Index", ngb_node_map);
+  auto& indice_shape = indice->get_shape();
+  PADDLE_ENFORCE(indice_shape.size() == 1 ||
+                 (indice_shape.size() == 2 && indice_shape[1] == 1));
+  if (indice_shape.size() == 2) {
+    indice = platform::NgReshaper(indice, ngraph::Shape{indice_shape[0]});
   }
 
-  auto out = std::make_shared<ngraph::op::Gather>(x, index);
+  auto out = std::make_shared<ngraph::op::Gather>(x, indice);
 
   paddle::platform::SetOutputNode(op, "Out", out, ngb_node_map);
 }
@@ -56,17 +56,17 @@ void BuildGatherGradNode(
   PADDLE_ENFORCE_NOT_NULL(dout);
   auto x = platform::GetInputNode(op, "X", ngb_node_map);
 
-  auto index = platform::GetInputNode(op, "Index", ngb_node_map);
-  auto& index_shape = index->get_shape();
-  PADDLE_ENFORCE(index_shape.size() == 1 ||
-                 (index_shape.size() == 2 && index_shape[1] == 1));
-  if (index_shape.size() == 2) {
-    index = platform::NgReshaper(index, ngraph::Shape{index_shape[0]});
+  auto indice = platform::GetInputNode(op, "Index", ngb_node_map);
+  auto& indice_shape = indice->get_shape();
+  PADDLE_ENFORCE(indice_shape.size() == 1 ||
+                 (indice_shape.size() == 2 && indice_shape[1] == 1));
+  if (indice_shape.size() == 2) {
+    indice = platform::NgReshaper(indice, ngraph::Shape{indice_shape[0]});
   }
 
   std::shared_ptr<ngraph::Node> x0 = paddle::platform::CreateConstant(
       dout->get_element_type(), x->get_shape(), {0});
-  auto dx = std::make_shared<ngraph::op::ScatterAdd>(x0, index, dout);
+  auto dx = std::make_shared<ngraph::op::ScatterAdd>(x0, indice, dout);
   paddle::platform::SetOutputNode(op, "X@GRAD", dx, ngb_node_map);
 }
 }  // namespace ngraphs

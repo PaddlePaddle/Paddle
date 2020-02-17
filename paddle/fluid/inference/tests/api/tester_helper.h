@@ -458,7 +458,7 @@ void TestMultiThreadPrediction(
 
   for (int tid = 0; tid < num_threads; ++tid) {
     threads.emplace_back([&, tid]() {
-      // Each thread should have local inputs and outputs.
+      // Each thread shold have local inputs and outputs.
       // The inputs of each thread are all the same.
       std::vector<std::vector<PaddleTensor>> outputs_tid;
       auto &predictor = predictors[tid];
@@ -492,14 +492,14 @@ void SummarizeAccuracy(float avg_acc_fp32, float avg_acc_int8,
   PADDLE_ENFORCE_LE(
       compared_idx, 2,
       platform::errors::InvalidArgument(
-          "The compared_idx should be <= 2. But received compared_idx = %d. "
+          "The compared_idx shold be <= 2. But received compared_idx = %d. "
           "For top1 accuracy, set compared_idx = 1; For top5 accuracy or mean "
           "Average Precision (mAP), set compared_idx = 2.",
           compared_idx));
   PADDLE_ENFORCE_GE(
       compared_idx, 1,
       platform::errors::InvalidArgument(
-          "The compared_idx should be >= 1. But received compared_idx = %d. "
+          "The compared_idx shold be >= 1. But received compared_idx = %d. "
           "For top1 accuracy, set compared_idx = 1; For top5 accuracy or mean "
           "Average Precision (mAP), set compared_idx = 2.",
           compared_idx));
@@ -535,7 +535,7 @@ float CompareAccuracyOne(
   PADDLE_ENFORCE_GT(output_slots.size(), 0,
                     platform::errors::InvalidArgument(
                         "The accuracy vector is empty. The accuracy vector "
-                        "size should be bigger than 0"));
+                        "size shold be bigger than 0"));
 
   float total_accs{0};
 

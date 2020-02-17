@@ -35,7 +35,7 @@ class NCCLBroadcastOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "The place of ExecutionContext should be CUDAPlace.");
+                   "The place of ExecutionContext shold be CUDAPlace.");
 
 #if defined(PADDLE_WITH_NCCL)
     int dev_id = boost::get<platform::CUDAPlace>(ctx.GetPlace()).device;
@@ -66,7 +66,7 @@ class NCCLBroadcastOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE(cudaStreamSynchronize(stream));
     }
 #else
-    PADDLE_THROW("PaddlePaddle should compile with GPU.");
+    PADDLE_THROW("PaddlePaddle shold compile with GPU.");
 #endif
   }
 };

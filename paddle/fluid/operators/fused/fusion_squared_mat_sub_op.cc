@@ -23,27 +23,27 @@ namespace operators {
 void FusionSquaredMatSubOp::InferShape(
     framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE(ctx->HasInput("X"),
-                 "Input(X) of FusionSquaredMatSubOp should not be null.");
+                 "Input(X) of FusionSquaredMatSubOp shold not be null.");
   PADDLE_ENFORCE(ctx->HasInput("Y"),
-                 "Input(Y) of FusionSquaredMatSubOp should not be null.");
+                 "Input(Y) of FusionSquaredMatSubOp shold not be null.");
   PADDLE_ENFORCE(
       ctx->HasOutput("SquaredX"),
-      "Output(SquaredX) of FusionSquaredMatSubOp should not be null.");
+      "Output(SquaredX) of FusionSquaredMatSubOp shold not be null.");
   PADDLE_ENFORCE(
       ctx->HasOutput("SquaredY"),
-      "Output(SquaredY) of FusionSquaredMatSubOp should not be null.");
+      "Output(SquaredY) of FusionSquaredMatSubOp shold not be null.");
   PADDLE_ENFORCE(
       ctx->HasOutput("SquaredXY"),
-      "Output(SquaredXY) of FusionSquaredMatSubOp should not be null.");
+      "Output(SquaredXY) of FusionSquaredMatSubOp shold not be null.");
   PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                 "Output(Out) of FusionSquaredMatSubOp should not be null.");
+                 "Output(Out) of FusionSquaredMatSubOp shold not be null.");
 
   auto x_dims = ctx->GetInputDim("X");
   auto y_dims = ctx->GetInputDim("Y");
   PADDLE_ENFORCE_EQ(x_dims.size(), y_dims.size(),
-                    "Input tensors dims size should be equal.");
-  PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input tensors should be a Matrix.");
-  PADDLE_ENFORCE_EQ(x_dims[1], y_dims[0], "Inputs Matrix should be multiply.");
+                    "Input tensors dims size shold be equal.");
+  PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input tensors shold be a Matrix.");
+  PADDLE_ENFORCE_EQ(x_dims[1], y_dims[0], "Inputs Matrix shold be multiply.");
 
   ctx->SetOutputDim("SquaredX", x_dims);
   ctx->SetOutputDim("SquaredY", y_dims);

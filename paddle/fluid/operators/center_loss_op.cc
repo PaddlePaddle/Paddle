@@ -28,24 +28,24 @@ class CenterLossOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of CenterLoss should not be null.");
+                   "Input(X) of CenterLoss shold not be null.");
     auto x_dims = ctx->GetInputDim("X");
 
     PADDLE_ENFORCE(ctx->HasInput("CenterUpdateRate"),
-                   "Input(CenterUpdateRate) of CenterLoss should not be null.");
+                   "Input(CenterUpdateRate) of CenterLoss shold not be null.");
 
     PADDLE_ENFORCE(ctx->HasInput("Label"),
-                   "Input(Label) of CenterLoss should not be null.");
+                   "Input(Label) of CenterLoss shold not be null.");
 
     PADDLE_ENFORCE(ctx->HasInput("Centers"),
-                   "Input(Centers) of CenterLoss should not be null.");
+                   "Input(Centers) of CenterLoss shold not be null.");
 
     PADDLE_ENFORCE(
         ctx->HasOutput("SampleCenterDiff"),
-        "Output(SampleCenterDiff) of CenterLoss should not be null.");
+        "Output(SampleCenterDiff) of CenterLoss shold not be null.");
 
     PADDLE_ENFORCE(ctx->HasOutput("Loss"),
-                   "Output(Loss) of CenterLoss should not be null.");
+                   "Output(Loss) of CenterLoss shold not be null.");
 
     PADDLE_ENFORCE(
         ctx->HasOutput("CentersOut"),
@@ -100,11 +100,11 @@ class CenterLossGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("SampleCenterDiff"),
-                   "Input(SampleCenterDiff) should not be null");
+                   "Input(SampleCenterDiff) shold not be null");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Loss")),
-                   "Input(Loss) should not be null");
+                   "Input(Loss) shold not be null");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Output(X) should not be null");
+                   "Output(X) shold not be null");
 
     auto x_dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");

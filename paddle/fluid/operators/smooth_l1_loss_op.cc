@@ -23,8 +23,8 @@ class SmoothL1LossOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) shold not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
@@ -37,7 +37,7 @@ class SmoothL1LossOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(x_dims, y_dims);
     }
     PADDLE_ENFORCE_GE(x_dims.size(), 2,
-                      "The tensor rank of Input(X) should not be less than 2.");
+                      "The tensor rank of Input(X) shold not be less than 2.");
     if (ctx->HasInput("InsideWeight")) {
       PADDLE_ENFORCE(ctx->HasInput("OutsideWeight"),
                      "If weights are provided, must specify both "
@@ -81,13 +81,13 @@ class SmoothL1LossOpMaker : public framework::OpProtoAndCheckerMaker {
              "The target value of smooth l1 loss op with same shape as X.");
     AddInput("InsideWeight",
              "(Tensor, default Tensor<float>) A tensor with rank at least 2. "
-             "This input is optional and should have same shape with X. "
+             "This input is optional and shold have same shape with X. "
              "If provided, the result of (X - Y) will be multiplied "
              "by this tensor element by element.")
         .AsDispensable();
     AddInput("OutsideWeight",
              "(Tensor, default Tensor<float>) A tensor with rank at least 2. "
-             "This input is optional and should have same shape with X. "
+             "This input is optional and shold have same shape with X. "
              "If provided, the out smooth l1 loss will be multiplied by this "
              "tensor element by element.")
         .AsDispensable();
@@ -134,7 +134,7 @@ class SmoothL1LossGradOp : public framework::OperatorWithKernel {
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
 
     PADDLE_ENFORCE_GE(out_dims.size(), 2,
-                      "The tensor rank of Input(Out@Grad) should be 2.");
+                      "The tensor rank of Input(Out@Grad) shold be 2.");
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(out_dims[0], in_dims[0],
                         "The 1st dimension of Input(Out@Grad) must be "

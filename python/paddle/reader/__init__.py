@@ -35,10 +35,10 @@ items. It can be any function with no parameter that creates a iterable
 
     iterable = data_reader()
 
-Element produced from the iterable should be a **single** entry of data,
+Element produced from the iterable shold be a **single** entry of data,
 **not** a mini batch. That entry of data could be a single item, or a tuple of
 items.
-Item should be of supported type (e.g., numpy array or list/tuple of float 
+Item shold be of supported type (e.g., numpy array or list/tuple of float 
 or int).
 
 An example implementation for single item data reader creator:

@@ -75,7 +75,7 @@ class SelectedRows {
   void set_rows(const Vector<int64_t>& rows) { rows_ = rows; }
 
   /*
-   * @brief Get the index of key in rows
+   * @brief Get the indice of key in rows
    *
    * @return -1 if the key does not exists.
    */
@@ -100,31 +100,31 @@ class SelectedRows {
    * parameters
    * for distribute lookup table.
    *
-   * @return a list of pair which contains the non-exists key and the index in
+   * @return a list of pair which contains the non-exists key and the indice in
    * the value
    */
   void Get(const framework::Tensor& ids, framework::Tensor* value,
            bool auto_grown = false, bool is_test = false);
 
   /*
-   * @brief Get the index of the key from id_to_index_ map. If the key not
+   * @brief Get the indice of the key from id_to_indice_ map. If the key not
    * exist,
-   * add the key into id_to_index_.
+   * add the key into id_to_indice_.
    *
    * Note!!! this interface is only used when selected_rows is used as
    * parameters
    * for distribute lookup table.
    *
-   * @return index of the key.
+   * @return indice of the key.
    */
   int64_t AutoGrownIndex(int64_t key, bool auto_grown, bool is_test = false);
 
   /*
-   * @brief Get the index of the key from id_to_index_ map.
+   * @brief Get the indice of the key from id_to_indice_ map.
    */
   inline int64_t GetIndexFromId(int64_t key) {
-    auto iter = id_to_index_.find(key);
-    if (iter == id_to_index_.end()) {
+    auto iter = id_to_indice_.find(key);
+    if (iter == id_to_indice_.end()) {
       return -1;
     } else {
       return iter->second;
@@ -147,7 +147,7 @@ class SelectedRows {
   // SelectedRows add a Tensor, will the duplicate rows be handled.
   Vector<int64_t> rows_;
   std::unordered_map<int64_t, int64_t>
-      id_to_index_;  // should not be used when rows_ has duplicate member
+      id_to_indice_;  // shold not be used when rows_ has duplicate member
   std::unique_ptr<Tensor> value_{nullptr};
   int64_t height_;  // height indicates the underline tensor's height
   std::unique_ptr<RWLock> rwlock_{nullptr};

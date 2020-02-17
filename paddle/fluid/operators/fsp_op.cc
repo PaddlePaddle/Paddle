@@ -23,10 +23,10 @@ class FSPOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of FSPOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) of FSPOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of FSPOp shold not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) of FSPOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of FSPOp should not be null.");
+                   "Output(Out) of FSPOp shold not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
@@ -39,7 +39,7 @@ class FSPOp : public framework::OperatorWithKernel {
         "The Input(Y) must have shape [batch_size, channel, height, width].");
     PADDLE_ENFORCE(
         (x_dims[2] == y_dims[2]) && (x_dims[3] == y_dims[3]),
-        "The Input(X) and Input(Y) should have the same height and width.");
+        "The Input(X) and Input(Y) shold have the same height and width.");
 
     ctx->SetOutputDim("Out", {x_dims[0], x_dims[1], y_dims[1]});
     ctx->ShareLoD("X", "Out");
@@ -91,10 +91,10 @@ class FSPOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold not be null");
+    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) shold not be null");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
+                   "Input(Out@GRAD) shold not be null");
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
     auto x_grad_name = framework::GradVarName("X");

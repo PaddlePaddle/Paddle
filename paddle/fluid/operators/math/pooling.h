@@ -69,7 +69,7 @@ class AvgPoolGrad {
   }
 };
 
-/* used for adaptive pool to calculate start and end index of each divided grid
+/* used for adaptive pool to calculate start and end indice of each divided grid
  */
 HOSTDEVICE inline int AdaptStartIndex(int ph, int input_size, int output_size) {
   return static_cast<int>(
@@ -91,7 +91,7 @@ HOSTDEVICE inline int AdaptEndIndex(int ph, int input_size, int output_size) {
  * feature.
  *
  * In max pooling, it is possible that the pooling region has multiple maximum
- * elements. In this case, we should compute the gradient of the first maximum
+ * elements. In this case, we shold compute the gradient of the first maximum
  * element.
  * This is different from average pooling. So we rewrite the max_pool_grad:
  * MaxPool2dGradFunctor, MaxPool3dGradFunctor.
@@ -228,9 +228,9 @@ class MaxPool3dGradFunctor {
 };
 
 /*
- * \brief Getting max pooling results and corresponding max index, and
+ * \brief Getting max pooling results and corresponding max indice, and
  * calculating gradient.
- * In up-sampling-pooling, it is necessary to know max element index.
+ * In up-sampling-pooling, it is necessary to know max element indice.
  * In pool2d, all tensors are in NCHW format. In pool3d, all tensors are in
  * NCDHW format.
  */

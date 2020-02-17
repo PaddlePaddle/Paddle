@@ -41,11 +41,11 @@ template <typename T>
 void ExpectEQ(const T* target, const T* refer, size_t n) {
   if (std::is_floating_point<T>::value) {
     for (size_t i = 0; i < n; ++i) {
-      EXPECT_NEAR(target[i], refer[i], FLAGS_acc) << " at index : " << i;
+      EXPECT_NEAR(target[i], refer[i], FLAGS_acc) << " at indice : " << i;
     }
   } else {
     for (size_t i = 0; i < n; ++i) {
-      EXPECT_EQ(target[i], refer[i]) << " at index : " << i;
+      EXPECT_EQ(target[i], refer[i]) << " at indice : " << i;
     }
   }
 }
@@ -652,10 +652,10 @@ void TestKernelEmbSeqPool() {
             EXPECT_TRUE(tgt != nullptr);
             EXPECT_EQ(table.size(), static_cast<size_t>(attr.table_height *
                                                         attr.table_width));
-            EXPECT_EQ(idx.size(), static_cast<size_t>(attr.index_height *
-                                                      attr.index_width));
+            EXPECT_EQ(idx.size(), static_cast<size_t>(attr.indice_height *
+                                                      attr.indice_width));
             EXPECT_EQ(oref.size(),
-                      static_cast<size_t>(attr.table_width * attr.index_width));
+                      static_cast<size_t>(attr.table_width * attr.indice_width));
             const T* table_data = table.data();
             const int64_t* idx_data = idx.data();
             const T* oref_data = oref.data();
@@ -884,7 +884,7 @@ void TestKernelSgd() {
         std::copy(param.begin(), param.end(), inp.begin());
         T* inp_data = inp.data();
         ref(&lr, inp_data, grad_data, rows_data, inp_data, &attr);
-        // only the selected rows should be equal
+        // only the selected rows shold be equal
         for (int i = 0; i < rows_size; ++i) {
           ExpectEQ<T>(inp_data + rows[i] * grad_w, out_data + rows[i] * grad_w,
                       grad_w);
@@ -910,7 +910,7 @@ void TestKernelSgd() {
           std::vector<T> out(oref.size());
           T* o_data = out.data();
           tgt(&lr, param_data, grad_data, rows_data, o_data, &attr);
-          // only the selected rows should be equal
+          // only the selected rows shold be equal
           for (size_t i = 0; i < rows.size(); ++i) {
             ExpectEQ<T>(o_data + rows[i] * attr.grad_width,
                         oref_data + rows[i] * attr.grad_width, attr.grad_width);

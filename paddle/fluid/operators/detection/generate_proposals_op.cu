@@ -52,14 +52,14 @@ struct RangeInitFunctor {
 template <typename T>
 static void SortDescending(const platform::CUDADeviceContext &ctx,
                            const Tensor &value, Tensor *value_out,
-                           Tensor *index_out) {
+                           Tensor *indice_out) {
   int num = static_cast<int>(value.numel());
-  Tensor index_in_t;
-  int *idx_in = index_in_t.mutable_data<int>({num}, ctx.GetPlace());
+  Tensor indice_in_t;
+  int *idx_in = indice_in_t.mutable_data<int>({num}, ctx.GetPlace());
   platform::ForRange<platform::CUDADeviceContext> for_range(ctx, num);
   for_range(RangeInitFunctor{0, 1, idx_in});
 
-  int *idx_out = index_out->mutable_data<int>({num}, ctx.GetPlace());
+  int *idx_out = indice_out->mutable_data<int>({num}, ctx.GetPlace());
 
   const T *keys_in = value.data<T>();
   T *keys_out = value_out->mutable_data<T>({num}, ctx.GetPlace());
@@ -83,24 +83,24 @@ struct BoxDecodeAndClipFunctor {
   const T *anchor;
   const T *deltas;
   const T *var;
-  const int *index;
+  const int *indice;
   const T *im_info;
 
   T *proposals;
 
   BoxDecodeAndClipFunctor(const T *anchor, const T *deltas, const T *var,
-                          const int *index, const T *im_info, T *proposals)
+                          const int *indice, const T *im_info, T *proposals)
       : anchor(anchor),
         deltas(deltas),
         var(var),
-        index(index),
+        indice(indice),
         im_info(im_info),
         proposals(proposals) {}
 
   T bbox_clip_default{static_cast<T>(kBBoxClipDefault)};
 
   __device__ void operator()(size_t i) {
-    int k = index[i] * 4;
+    int k = indice[i] * 4;
     T axmin = anchor[k];
     T aymin = anchor[k + 1];
     T axmax = anchor[k + 2];
@@ -154,10 +154,10 @@ static __global__ void FilterBBoxes(const T *bboxes, const T *im_info,
   T im_scale = im_info[2];
 
   int cnt = 0;
-  __shared__ int keep_index[BlockSize];
+  __shared__ int keep_indice[BlockSize];
 
   CUDA_1D_KERNEL_LOOP(i, num) {
-    keep_index[threadIdx.x] = -1;
+    keep_indice[threadIdx.x] = -1;
     __syncthreads();
 
     int k = i * 4;
@@ -175,14 +175,14 @@ static __global__ void FilterBBoxes(const T *bboxes, const T *im_info,
     T h_s = (ymax - ymin) / im_scale + 1.;
 
     if (w_s >= min_size && h_s >= min_size && cx <= im_w && cy <= im_h) {
-      keep_index[threadIdx.x] = i;
+      keep_indice[threadIdx.x] = i;
     }
     __syncthreads();
     if (threadIdx.x == 0) {
       int size = (num - i) < BlockSize ? num - i : BlockSize;
       for (int j = 0; j < size; ++j) {
-        if (keep_index[j] > -1) {
-          keep[cnt++] = keep_index[j];
+        if (keep_indice[j] > -1) {
+          keep[cnt++] = keep_indice[j];
         }
       }
     }
@@ -298,13 +298,13 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
     int pre_nms_top_n, int post_nms_top_n, float nms_thresh, float min_size,
     float eta) {
   // 1. pre nms
-  Tensor scores_sort, index_sort;
-  SortDescending<T>(ctx, scores, &scores_sort, &index_sort);
+  Tensor scores_sort, indice_sort;
+  SortDescending<T>(ctx, scores, &scores_sort, &indice_sort);
   int num = scores.numel();
   int pre_nms_num = (pre_nms_top_n <= 0 || pre_nms_top_n > num) ? scores.numel()
                                                                 : pre_nms_top_n;
   scores_sort.Resize({pre_nms_num, 1});
-  index_sort.Resize({pre_nms_num, 1});
+  indice_sort.Resize({pre_nms_num, 1});
 
   // 2. box decode and clipping
   Tensor proposals;
@@ -314,30 +314,30 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
     platform::ForRange<platform::CUDADeviceContext> for_range(ctx, pre_nms_num);
     for_range(BoxDecodeAndClipFunctor<T>{
         anchors.data<T>(), bbox_deltas.data<T>(), variances.data<T>(),
-        index_sort.data<int>(), im_info.data<T>(), proposals.data<T>()});
+        indice_sort.data<int>(), im_info.data<T>(), proposals.data<T>()});
   }
 
   // 3. filter
-  Tensor keep_index, keep_num_t;
-  keep_index.mutable_data<int>({pre_nms_num}, ctx.GetPlace());
+  Tensor keep_indice, keep_num_t;
+  keep_indice.mutable_data<int>({pre_nms_num}, ctx.GetPlace());
   keep_num_t.mutable_data<int>({1}, ctx.GetPlace());
   min_size = std::max(min_size, 1.0f);
   auto stream = ctx.stream();
   FilterBBoxes<T, 512><<<1, 512, 0, stream>>>(
       proposals.data<T>(), im_info.data<T>(), min_size, pre_nms_num,
-      keep_num_t.data<int>(), keep_index.data<int>());
+      keep_num_t.data<int>(), keep_indice.data<int>());
   int keep_num;
   const auto gpu_place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
   memory::Copy(platform::CPUPlace(), &keep_num, gpu_place,
                keep_num_t.data<int>(), sizeof(int), ctx.stream());
   ctx.Wait();
-  keep_index.Resize({keep_num});
+  keep_indice.Resize({keep_num});
 
   Tensor scores_filter, proposals_filter;
   proposals_filter.mutable_data<T>({keep_num, 4}, ctx.GetPlace());
   scores_filter.mutable_data<T>({keep_num, 1}, ctx.GetPlace());
-  GPUGather<T>(ctx, proposals, keep_index, &proposals_filter);
-  GPUGather<T>(ctx, scores_sort, keep_index, &scores_filter);
+  GPUGather<T>(ctx, proposals, keep_indice, &proposals_filter);
+  GPUGather<T>(ctx, scores_sort, keep_indice, &scores_filter);
 
   if (nms_thresh <= 0) {
     return std::make_pair(proposals_filter, scores_filter);
@@ -345,7 +345,7 @@ static std::pair<Tensor, Tensor> ProposalForOneImage(
 
   // 4. nms
   Tensor keep_nms;
-  NMS<T>(ctx, proposals_filter, keep_index, nms_thresh, &keep_nms);
+  NMS<T>(ctx, proposals_filter, keep_indice, nms_thresh, &keep_nms);
   if (post_nms_top_n > 0 && post_nms_top_n < keep_nms.numel()) {
     keep_nms.Resize({post_nms_top_n});
   }

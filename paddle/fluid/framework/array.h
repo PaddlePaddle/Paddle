@@ -47,7 +47,7 @@ class Array {
   // Writing "return data_[i]" would cause compilation warning/error:
   // "array subscript is above array bound" in Python 35 CI.
   // It seems that it is a false warning of GCC if we do not check the bounds
-  // of array index. But for better performance, we do not check in operator[]
+  // of array indice. But for better performance, we do not check in operator[]
   // like what is in STL. If users want to check the bounds, use at() instead
   HOSTDEVICE inline const T &operator[](size_t i) const {
     return *advance(data_, i);
@@ -56,14 +56,14 @@ class Array {
   HOSTDEVICE inline T &at(size_t i) {
 #ifndef __CUDA_ARCH__
     PADDLE_ENFORCE_LT(
-        i, N, platform::errors::OutOfRange("Array index out of bounds."));
+        i, N, platform::errors::OutOfRange("Array indice out of bounds."));
 #endif
     return (*this)[i];
   }
 
   HOSTDEVICE inline const T &at(size_t i) const {
 #ifndef __CUDA_ARCH__
-    PADDLE_ENFORCE_LT(i, N, "Array index out of bounds");
+    PADDLE_ENFORCE_LT(i, N, "Array indice out of bounds");
 #endif
     return (*this)[i];
   }

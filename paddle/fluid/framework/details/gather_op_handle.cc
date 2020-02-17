@@ -32,13 +32,13 @@ void GatherOpHandle::RunImpl() {
 
   PADDLE_ENFORCE_EQ(
       in_var_handles.size(), places_.size(),
-      "The number of output should equal to the number of places.");
+      "The number of output shold equal to the number of places.");
 
   VarHandle *out_var_handle;
   {
     auto out_var_handles = DynamicCast<VarHandle>(this->Outputs());
     PADDLE_ENFORCE_EQ(out_var_handles.size(), 1,
-                      "The number of output should be one.");
+                      "The number of output shold be one.");
     out_var_handle = out_var_handles.front();
   }
 

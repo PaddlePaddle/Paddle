@@ -42,7 +42,7 @@ Piece::Piece(const char* s) : data_(s) { size_ = (s == NULL) ? 0 : strlen(s); }
 Piece::Piece(const std::string& s) : data_(s.data()), size_(s.size()) {}
 
 char Piece::operator[](size_t n) const {
-  if (n >= len()) throw std::invalid_argument("index out of Piece length");
+  if (n >= len()) throw std::invalid_argument("indice out of Piece length");
   return data_[n];
 }
 

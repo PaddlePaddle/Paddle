@@ -30,7 +30,7 @@ class SequenceScatterOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "(Tensor) The source input of sequence scatter op");
     AddInput("Ids",
-             "(LoDTensor) The index input of sequence scatter op where X"
+             "(LoDTensor) The indice input of sequence scatter op where X"
              " will be  updated, must be a LoDTensor");
     AddInput("Updates",
              "(LoDTensor) The values to scatter to the input tensor "
@@ -75,13 +75,13 @@ class SequenceScatterOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     // Enforce has inputs and outputs
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SequenceScatterOp should not be null.");
+                   "Input(X) of SequenceScatterOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Ids"),
-                   "Input(Ids) of SequenceScatterOp should not be null.");
+                   "Input(Ids) of SequenceScatterOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Updates"),
-                   "Input(Updates) of SequenceScatterOp should not be null.");
+                   "Input(Updates) of SequenceScatterOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SequenceScatterOp should not be null.");
+                   "Output(Out) of SequenceScatterOp shold not be null.");
 
     // Set output dim the same as input
     auto ref_dims = ctx->GetInputDim("X");
@@ -90,7 +90,7 @@ class SequenceScatterOp : public framework::OperatorWithKernel {
     // Enforce the Updates and Ids are the same shape
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Updates")[0],
                       ctx->GetInputDim("Ids")[0],
-                      "Updates and Ids should have same shape.");
+                      "Updates and Ids shold have same shape.");
 
     // Enforce LoD of ids and updates be the same
     if (ctx->IsRuntime()) {

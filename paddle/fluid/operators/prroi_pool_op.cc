@@ -34,11 +34,11 @@ class PRROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("ROIs",
              "(LoDTensor), "
              "ROIs (Regions of Interest) to pool over. "
-             "should be a 2-D LoDTensor of shape (num_rois, 4) "
+             "shold be a 2-D LoDTensor of shape (num_rois, 4) "
              "given as [(x1, y1, x2, y2), ...]. "
              "where (x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates. "
-             "The roi batch index can be calculated from LoD.");
+             "The roi batch indice can be calculated from LoD.");
     AddInput("BatchRoINums",
              "(Tensor), "
              "1-D tensor with shape [N], the number of"
@@ -81,13 +81,13 @@ class PRROIPoolOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
                       platform::errors::NotFound(
-                          "Input(X) of op(PRROIPool) should not be null."));
+                          "Input(X) of op(PRROIPool) shold not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasInput("ROIs"), true,
                       platform::errors::NotFound(
-                          "Input(ROIs) of op(PRROIPool) should not be null."));
+                          "Input(ROIs) of op(PRROIPool) shold not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
                       platform::errors::NotFound(
-                          "Output(Out) of op(PRROIPool) should not be null."));
+                          "Output(Out) of op(PRROIPool) shold not be null."));
     auto input_dims = ctx->GetInputDim("X");
     auto rois_dims = ctx->GetInputDim("ROIs");
 
@@ -97,12 +97,12 @@ class PRROIPoolOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         rois_dims.size(), 2,
         platform::errors::InvalidArgument(
-            "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
+            "ROIs shold be a 2-D LoDTensor of shape (num_rois, 4) "
             "given as [(x1, y1, x2, y2), ...]"));
     PADDLE_ENFORCE_EQ(
         rois_dims[1], 4,
         platform::errors::InvalidArgument(
-            "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
+            "ROIs shold be a 2-D LoDTensor of shape (num_rois, 4) "
             "given as [(x1, y1, x2, y2), ...]"));
     int pooled_height = ctx->Attrs().Get<int>("pooled_height");
     int pooled_width = ctx->Attrs().Get<int>("pooled_width");
@@ -125,10 +125,10 @@ class PRROIPoolOp : public framework::OperatorWithKernel {
     out_dims[3] = pooled_width;
 
     if (ctx->HasInput("BatchRoINums")) {
-      auto rois_batch_index = ctx->GetInputDim("BatchRoINums");
-      PADDLE_ENFORCE_EQ(rois_batch_index[0], input_dims[0],
+      auto rois_batch_indice = ctx->GetInputDim("BatchRoINums");
+      PADDLE_ENFORCE_EQ(rois_batch_indice[0], input_dims[0],
                         platform::errors::InvalidArgument(
-                            "The length of BatchRoINums should equal to  "
+                            "The length of BatchRoINums shold equal to  "
                             "first dim of inputs(X)"));
     }
     ctx->SetOutputDim("Out", out_dims);
@@ -149,9 +149,9 @@ class PRROIPoolGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      "The gradient of Out should not be null.");
+                      "The gradient of Out shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
-                      "The gradient of X should not be null.");
+                      "The gradient of X shold not be null.");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
     ctx->SetOutputDim(framework::GradVarName("ROIs"), ctx->GetInputDim("ROIs"));
   }

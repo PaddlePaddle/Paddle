@@ -23,10 +23,10 @@ class CAllGatherOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold not be null");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) shold not be null.");
     int nranks = ctx->Attrs().Get<int>("nranks");
-    PADDLE_ENFORCE_GE(nranks, 2, "nranks should be >=2");
+    PADDLE_ENFORCE_GE(nranks, 2, "nranks shold be >=2");
     framework::DDim dim = ctx->GetInputDim("X");
     dim[0] = dim[0] * nranks;
     if (dim[0] < 0) dim[0] = -1;

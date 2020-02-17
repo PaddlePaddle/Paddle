@@ -19,10 +19,10 @@ namespace paddle {
 namespace memory {
 namespace detail {
 
-void MemoryBlock::Init(MetadataCache* cache, Type t, size_t index, size_t size,
+void MemoryBlock::Init(MetadataCache* cache, Type t, size_t indice, size_t size,
                        void* left_buddy, void* right_buddy) {
   cache->Save(
-      this, MemoryBlock::Desc(t, index, size - sizeof(MemoryBlock::Desc), size,
+      this, MemoryBlock::Desc(t, indice, size - sizeof(MemoryBlock::Desc), size,
                               static_cast<MemoryBlock*>(left_buddy),
                               static_cast<MemoryBlock*>(right_buddy)));
 }
@@ -55,7 +55,7 @@ void MemoryBlock::Split(MetadataCache* cache, size_t size) {
   auto new_block_right_buddy = desc->right_buddy;
 
   cache->Save(static_cast<MemoryBlock*>(right_partition),
-              MemoryBlock::Desc(FREE_CHUNK, desc->index,
+              MemoryBlock::Desc(FREE_CHUNK, desc->indice,
                                 remaining_size - sizeof(MemoryBlock::Desc),
                                 remaining_size, this, new_block_right_buddy));
 

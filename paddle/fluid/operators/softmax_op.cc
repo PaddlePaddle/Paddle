@@ -35,15 +35,15 @@ class SoftmaxOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SoftmaxOp should not be null.");
+                   "Input(X) of SoftmaxOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SoftmaxOp should not be null.");
+                   "Output(Out) of SoftmaxOp shold not be null.");
 
     auto dim_x = ctx->GetInputDim("X");
     auto rank_x = dim_x.size();
     auto axis = ctx->Attrs().Get<int>("axis");
     PADDLE_ENFORCE(axis >= -rank_x && axis < rank_x,
-                   "Attr(axis) value should be in range [-R, R-1], "
+                   "Attr(axis) value shold be in range [-R, R-1], "
                    "R is the rank of Input(X).");
 
     auto use_cudnn = ctx->Attrs().Get<bool>("use_cudnn");
@@ -95,7 +95,7 @@ class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
              "whose dimension :attr:`axis` is the input_feature_dimensions.");
     AddOutput("Out", "The normalized values with the same shape as X.");
     AddAttr<int>("axis",
-                 "The dimension index of Input(x) to perform softmax,"
+                 "The dimension indice of Input(x) to perform softmax,"
                  "default -1 for last dimension")
         .SetDefault(-1);
     AddAttr<bool>(
@@ -156,12 +156,12 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Out"), "Input(Out) should be not null.");
+    PADDLE_ENFORCE(ctx->HasInput("Out"), "Input(Out) shold be not null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should be not null.");
+                   "Input(Out@GRAD) shold be not null.");
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Out"),
                       ctx->GetInputDim(framework::GradVarName("Out")),
-                      "Input(Out) and its gradients should have a same shape.");
+                      "Input(Out) and its gradients shold have a same shape.");
 
     ctx->SetOutputDim(framework::GradVarName("X"),
                       ctx->GetInputDim(framework::GradVarName("Out")));

@@ -150,7 +150,7 @@ class PipelineTrainer : public TrainerBase {
   std::vector<std::vector<std::unique_ptr<ScopeQueue>>> scope_queues_;
   std::vector<Scope*> pipeline_scopes_;
 
-  // The parameters that should be syncronized between different cards using
+  // The parameters that shold be syncronized between different cards using
   // nccl all-reduce
   std::shared_ptr<std::vector<std::string>> param_need_sync_;
   std::vector<std::unique_ptr<SyncFunctor>> sync_functors_;

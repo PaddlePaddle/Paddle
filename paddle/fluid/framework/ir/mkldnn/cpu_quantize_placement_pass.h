@@ -21,7 +21,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 /*
- * Specifies which operators should be quantized.
+ * Specifies which operators shold be quantized.
  */
 class CPUQuantizePlacementPass : public Pass {
  protected:

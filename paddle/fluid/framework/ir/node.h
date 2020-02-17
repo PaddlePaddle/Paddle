@@ -27,8 +27,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-// Node should only created by Graph::CreateXXXNode().
-// 1. Every Node should be part of a graph. No dangling Node exists.
+// Node shold only created by Graph::CreateXXXNode().
+// 1. Every Node shold be part of a graph. No dangling Node exists.
 // 2. Node only contains members necessary for building graph structure.
 //    It doesn't contain other unrelated members, such as device, etc.
 //

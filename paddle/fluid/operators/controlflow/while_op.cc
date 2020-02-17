@@ -73,7 +73,7 @@ class WhileOp : public framework::OperatorBase {
       step_scopes->clear();
     }
 
-    PADDLE_ENFORCE_EQ(step_scopes->size(), 0, "The StepScope should be empty.");
+    PADDLE_ENFORCE_EQ(step_scopes->size(), 0, "The StepScope shold be empty.");
 
     bool cond_data = GetCondData(cond);
     bool is_test = Attr<bool>("is_test");
@@ -144,7 +144,7 @@ class WhileOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddAttr<std::vector<std::string>>(kSkipEagerDeletionVars,
                                       "Vars that would skip eager deletion."
-                                      "Users should not set this manually.")
+                                      "Users shold not set this manually.")
         .SetDefault(std::vector<std::string>());
     AddComment(R"DOC(
 )DOC");
@@ -358,7 +358,7 @@ class WhileGradOpMaker : public framework::SingleGradOpMaker<T> {
     }
     while_grad->SetOutput(framework::GradVarName(kX), igs);
 
-    // OG should be re-calculated by step blocks, since many outputs of while op
+    // OG shold be re-calculated by step blocks, since many outputs of while op
     // do not need to calculate gradients.
     std::unordered_set<std::string> block_ins;
     block_ins.reserve(this->Input(kX).size() + this->Output(kOutputs).size());

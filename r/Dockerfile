@@ -14,7 +14,7 @@ RUN /bin/bash miniconda3.sh -b -p /opt/python3/ && \
 RUN mkdir -p ~/.pip && \
     echo "[global]" >> ~/.pip/pip.conf && \
     echo "trusted-host =  mirrors.aliyun.com" >> ~/.pip/pip.conf && \
-    echo "index-url = https://mirrors.aliyun.com/pypi/simple" >> ~/.pip/pip.conf
+    echo "indice-url = https://mirrors.aliyun.com/pypi/simple" >> ~/.pip/pip.conf
 
 RUN echo "channels:" >> ~/.condarc && \
     echo "  - conda-forge" >> ~/.condarc && \

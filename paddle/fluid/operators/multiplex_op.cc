@@ -26,19 +26,19 @@ class MultiplexOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Ids"), "Input(Ids) shouldn't be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Ids"), "Input(Ids) sholdn't be null.");
     PADDLE_ENFORCE(!ctx->Inputs("X").empty(),
-                   "MultiInput(X) shouldn't be empty.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) shouldn't be null.");
+                   "MultiInput(X) sholdn't be empty.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) sholdn't be null.");
     auto ids_dim = ctx->GetInputDim("Ids");
     PADDLE_ENFORCE(
         ids_dim.size() == 2 && ids_dim[1] == 1,
-        "The index tensor must be a vector with size batchSize x 1.");
+        "The indice tensor must be a vector with size batchSize x 1.");
 
     auto ins_dims = ctx->GetInputsDim("X");
     auto num_ins = ins_dims.size();
     PADDLE_ENFORCE(num_ins > 1,
-                   "multiplex operator should have more than "
+                   "multiplex operator shold have more than "
                    "one candidate input tensors.");
 
     auto in_dim = ins_dims[0];
@@ -65,7 +65,7 @@ class MultiplexOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Ids",
-             "Tensor<int32>, index variable which is a 2-D tensor with shape "
+             "Tensor<int32>, indice variable which is a 2-D tensor with shape "
              "[M, 1] where M is the batch size.");
     AddInput("X",
              "A list of variables to gather from. All variables have the same "
@@ -73,27 +73,27 @@ class MultiplexOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDuplicable();
     AddOutput("Out", "The output tensor of multiplex operator.");
     AddComment(R"DOC(
-Referring to the given index variable, this layer selects rows from the
+Referring to the given indice variable, this layer selects rows from the
 input variables to construct a multiplex variable. Assuming that there are
 :math:`m` input variables and :math:`I_i` represents the i-th input
 variable and :math:`i` is in [0, :math:`m`). All input variables are
 tensors with same shape [:math:`d_0`, :math:`d_1`, ..., :math:`d_R`].
-Please note that rank of the input tensor should be at least 2. Each input
+Please note that rank of the input tensor shold be at least 2. Each input
 variable will be treated as a 2-D matrix with shape [:math:`M`, :math:`N`]
 where :math:`M` for :math:`d_0` and :math:`N` for :math:`d_1` * :math:`d_2`
 * ... * :math:`d_R`. Let :math:`I_i[j]` be the j-th row of the i-th input
-variable. The given index variable should be a 2-D tensor with shape
-[:math:`M`, 1]. Let `ID[i]` be the i-th index value of the index variable.
+variable. The given indice variable shold be a 2-D tensor with shape
+[:math:`M`, 1]. Let `ID[i]` be the i-th indice value of the indice variable.
 Then the output variable will be a tensor with shape [:math:`d_0`,
 :math:`d_1`, ..., :math:`d_R`]. If we treat the output tensor as a 2-D
 matrix with shape [:math:`M`, :math:`N`] and let :math:`O[i]` be the i-th
 row of the matrix, then `O[i]` is equal to :math:`I_{ID[i]}[i]`.
 
-* Ids: the index tensor.
+* Ids: the indice tensor.
 
 * X[0 : N - 1]: the candidate tensors for output (N >= 2).
 
-* For each index i from 0 to batchSize - 1, the output is the i-th row of the
+* For each indice i from 0 to batchSize - 1, the output is the i-th row of the
 the (Ids[i])-th tensor.
 
 For i-th row of the output tensor:
@@ -115,9 +115,9 @@ class MultiplexGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     auto dxs = ctx->Outputs(framework::GradVarName("X"));
-    PADDLE_ENFORCE(!dxs.empty(), "Output(X@Grad) should not be null.");
+    PADDLE_ENFORCE(!dxs.empty(), "Output(X@Grad) shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null.");
+                   "Input(Out@GRAD) shold not be null.");
     auto dout_dim = ctx->GetInputDim(framework::GradVarName("Out"));
     ctx->SetOutputsDim(framework::GradVarName("X"),
                        std::vector<framework::DDim>(dxs.size(), dout_dim));

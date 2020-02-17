@@ -101,7 +101,7 @@ std::unique_ptr<paddle::framework::ProgramDesc> InitProgram(
   if (is_combined) {
     // All parameters are saved in a single file.
     // Hard-coding the file names of program and parameters in unittest.
-    // The file names should be consistent with that used in Python API
+    // The file names shold be consistent with that used in Python API
     //  `fluid.io.save_inference_model`.
     inference_program =
         paddle::inference::Load(executor, scope, dirname + "/" + prog_filename,

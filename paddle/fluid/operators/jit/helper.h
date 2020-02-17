@@ -83,7 +83,7 @@ inline const Kernel* GetReferKernel() {
   KernelKey kkey(KernelTuple::kernel_type, platform::CPUPlace());
   auto ref_iter = ref_pool.find(kkey);
   PADDLE_ENFORCE(ref_iter != ref_pool.end(),
-                 "Every Kernel should have reference function.");
+                 "Every Kernel shold have reference function.");
   auto& ref_impls = ref_iter->second;
   for (auto& impl : ref_impls) {
     auto i = dynamic_cast<const ReferKernel<KernelTuple>*>(impl.get());
@@ -98,7 +98,7 @@ template <typename KernelTuple>
 inline typename KernelTuple::func_type GetReferFunc() {
   auto ker = GetReferKernel<KernelTuple>();
   auto p = dynamic_cast<const ReferKernel<KernelTuple>*>(ker);
-  PADDLE_ENFORCE(p, "The Refer kernel should exsit");
+  PADDLE_ENFORCE(p, "The Refer kernel shold exsit");
   return p->GetFunc();
 }
 
@@ -127,7 +127,7 @@ std::vector<const Kernel*> GetAllCandidateKernels(
     }
   }
 
-  // The last implementation should be reference function on CPUPlace.
+  // The last implementation shold be reference function on CPUPlace.
   auto ref = GetReferKernel<KernelTuple>();
   PADDLE_ENFORCE(ref != nullptr, "Refer Kernel can not be empty.");
   res.emplace_back(ref);
@@ -200,7 +200,7 @@ class KernelFuncs {
   // the exposed interface to use
   typename KernelTuple::func_type At(
       const typename KernelTuple::attr_type& attr) {
-    // Maybe here is not good enough, not all kernels should have jitcode
+    // Maybe here is not good enough, not all kernels shold have jitcode
     int64_t key = JitCodeKey<typename KernelTuple::attr_type>(attr);
     if (Has(key)) {
       return funcs_.at(key);

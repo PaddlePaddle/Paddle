@@ -63,7 +63,7 @@ class HingeLossOpMaker : public framework::OpProtoAndCheckerMaker {
 HingeLoss Operator.
 
 Let x be a logit (prediction) and y be the actual label. The logit can
-take any values from (-inf, inf), but the labels should be either -1 or 1.
+take any values from (-inf, inf), but the labels shold be either -1 or 1.
 Then, the hinge loss is computed as follows:
 
 $$
@@ -82,13 +82,13 @@ class HingeLossGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Logits"),
-                   "Input(Logits) should not be null.");
+                   "Input(Logits) shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Labels"),
-                   "Input(Labels) should not be null.");
+                   "Input(Labels) shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Loss")),
-                   "Input(Loss@GRAD) should not be null.");
+                   "Input(Loss@GRAD) shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Logits")),
-                   "Input(Logits@GRAD) should not be null.");
+                   "Input(Logits@GRAD) shold not be null.");
 
     auto pred_dims = ctx->GetInputDim("Logits");
     auto loss_grad_dims = ctx->GetInputDim(framework::GradVarName("Loss"));

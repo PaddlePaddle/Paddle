@@ -42,7 +42,7 @@ class SplitPlugin : public PluginTensorRT {
 
   const char *getPluginType() const override { return "split_plugin"; }
   int getNbOutputs() const override { return output_length_.size(); }
-  nvinfer1::Dims getOutputDimensions(int index,
+  nvinfer1::Dims getOutputDimensions(int indice,
                                      const nvinfer1::Dims *input_dims,
                                      int num_inputs) override;
 

@@ -37,7 +37,7 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_GT(
         static_cast<int>(out_var_names.size()), 0,
-        "The number of output variables should be greater than 0.");
+        "The number of output variables shold be greater than 0.");
     if (!model_from_memory) {
       std::ifstream fin(filename, std::ios::binary);
       PADDLE_ENFORCE(static_cast<bool>(fin),

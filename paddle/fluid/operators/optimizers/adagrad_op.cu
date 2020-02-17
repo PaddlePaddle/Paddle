@@ -42,8 +42,8 @@ __global__ void MergeGradKernel(const T* grad, const int64_t* grad_rows,
 
   grad += ty * row_numel;
   grad_merge += grad_merge_idx * row_numel;
-  for (int index = tid; index < row_numel; index += block_size) {
-    paddle::platform::CudaAtomicAdd(grad_merge + index, grad[index]);
+  for (int indice = tid; indice < row_numel; indice += block_size) {
+    paddle::platform::CudaAtomicAdd(grad_merge + indice, grad[indice]);
   }
 }
 
@@ -59,12 +59,12 @@ __global__ void SparseAdagradFunctorKernel(const T* grad, const int64_t* rows,
   param += rows[ty] * row_numel;
   moment += rows[ty] * row_numel;
 
-  for (int index = tid; index < row_numel; index += block_size) {
-    // Since index in rows of SelectedRows can be duplicate, we have to use
+  for (int indice = tid; indice < row_numel; indice += block_size) {
+    // Since indice in rows of SelectedRows can be duplicate, we have to use
     // Atomic Operation to avoid concurrent write error.
-    paddle::platform::CudaAtomicAdd(param + index,
-                                    -1.0 * learning_rate[0] * grad[index] /
-                                        (sqrt(moment[index]) + epsilon));
+    paddle::platform::CudaAtomicAdd(param + indice,
+                                    -1.0 * learning_rate[0] * grad[indice] /
+                                        (sqrt(moment[indice]) + epsilon));
   }
 }
 }  // namespace

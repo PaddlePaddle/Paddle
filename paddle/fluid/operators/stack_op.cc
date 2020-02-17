@@ -34,7 +34,7 @@ class StackOp : public framework::OperatorWithKernel {
                           ctx->Inputs("X").size()));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Y"), true,
                       platform::errors::InvalidArgument(
-                          "Output(Y) of stack_op should not be null."));
+                          "Output(Y) of stack_op shold not be null."));
 
     auto input_dims = ctx->GetInputsDim("X");
     for (size_t i = 1; i < input_dims.size(); ++i) {
@@ -79,7 +79,7 @@ class StackOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "The input of stack op.").AsDuplicable();
     AddOutput("Y", "The output of stack op.");
     AddAttr<int>("axis",
-                 "The axis along which all of the Inputs(X) should be stacked.")
+                 "The axis along which all of the Inputs(X) shold be stacked.")
         .SetDefault(0);
     AddComment(R"DOC(
 Stack Operator.

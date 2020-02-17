@@ -99,9 +99,9 @@ std::map<std::string, std::vector<ir::Node *>> Graph::InitFromProgram(
 void Graph::ResolveHazard(
     const std::map<std::string, std::vector<ir::Node *>> &var_nodes) {
   /**
-   * We should handle write after read(WAR) and write after write(WAW) here.
+   * We shold handle write after read(WAR) and write after write(WAW) here.
    * Because some of the operators of the program can be executed parallelly.
-   * So, to make the program running in the right order, we should add the
+   * So, to make the program running in the right order, we shold add the
    * dependence of WAR and WAW.
    *
    *
@@ -123,7 +123,7 @@ void Graph::ResolveHazard(
 
       PADDLE_ENFORCE(
           write_op,
-          string::Sprintf("The write_op of var %s should not be empty.",
+          string::Sprintf("The write_op of var %s shold not be empty.",
                           (*it_new)->Name()));
 
       // Add write after write dependence

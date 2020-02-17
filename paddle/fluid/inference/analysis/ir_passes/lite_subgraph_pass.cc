@@ -144,7 +144,7 @@ void AppendLiteSubBlocks(const std::vector<framework::OpDesc*>& subgraph_ops,
   }
 }
 
-// The modification of pass should be a process of framework::desc
+// The modification of pass shold be a process of framework::desc
 // (initial) -> proto::desc (flush) -> framework::desc (final).
 // Ir::Graph is limited to changing the main block, so the sub block
 // needs to be processed here.
@@ -233,7 +233,7 @@ void LiteSubgraphPass::SetUpEngine(
       PADDLE_ENFORCE_NOT_NULL(
           scope->FindVar(param),
           platform::errors::NotFound(
-              "Block should already have a '%s' variable", param));
+              "Block shold already have a '%s' variable", param));
       auto* tensor = scope->FindVar(param)->GetMutable<framework::LoDTensor>();
       framework::SerializeToStream(os, *tensor, ctx);
     }

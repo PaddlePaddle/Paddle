@@ -30,13 +30,13 @@ class StridedSliceOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
-                      "Input (Input) of slice op should not be null.");
+                      "Input (Input) of slice op shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output (Out) of slice op should not be null.");
+                      "Output (Out) of slice op shold not be null.");
 
     auto in_dims = ctx->GetInputDim("Input");
     PADDLE_ENFORCE_LT(in_dims.size(), 7,
-                      "The rank of input should be less than 7.");
+                      "The rank of input shold be less than 7.");
     auto starts = ctx->Attrs().Get<std::vector<int>>("starts");
     auto ends = ctx->Attrs().Get<std::vector<int>>("ends");
     auto strides = ctx->Attrs().Get<std::vector<int>>("strides");
@@ -101,7 +101,7 @@ class StridedSliceOp : public framework::OperatorWithKernel {
       for (size_t i = 0; i < decrease_axis.size(); ++i) {
         if (ctx->IsRuntime() && infer_flags[i] != -1) {
           PADDLE_ENFORCE_EQ(out_dims[decrease_axis[i]], 1,
-                            "decrease dim should be 1");
+                            "decrease dim shold be 1");
         }
         out_dims[decrease_axis[i]] = 0;
       }
@@ -219,9 +219,9 @@ class StridedSliceOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true, "Input should not be null");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true, "Input shold not be null");
     PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      "Input(Out@GRAD) should not be null");
+                      "Input(Out@GRAD) shold not be null");
     auto x_dims = ctx->GetInputDim("Input");
     auto x_grad_name = framework::GradVarName("Input");
     if (ctx->HasOutput(x_grad_name)) {

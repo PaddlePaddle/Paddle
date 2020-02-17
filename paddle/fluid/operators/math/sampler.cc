@@ -48,7 +48,7 @@ int64_t LogUniformSampler::Sample() const {
   // https://wanghaoshuang.github.io/2017/11/Log-uniform-distribution-sampler/
   const int64_t value =
       static_cast<int64_t>(exp((*dist_)(*random_engine_) * log_range_)) - 1;
-  // Mathematically, value should be <= range_, but might not be due to some
+  // Mathematically, value shold be <= range_, but might not be due to some
   // floating point roundoff, so we mod by range_.
   return value % range_;
 }
@@ -75,19 +75,19 @@ CustomSampler::CustomSampler(int64_t range, const float *probabilities,
 }
 
 int64_t CustomSampler::Sample() const {
-  auto index = (*int_dist_)(*random_engine_);
+  auto indice = (*int_dist_)(*random_engine_);
   auto p = (*real_dist_)(*random_engine_);
-  if (p > alias_probs_[index]) {
-    int alias = alias_[index];
+  if (p > alias_probs_[indice]) {
+    int alias = alias_[indice];
 
     if (alias == exceptional_val) {
       LOG(WARNING) << "WARNING: CustomSampler get alias " << exceptional_val;
-      return index;
+      return indice;
     }
 
     return alias;
   } else {
-    return index;
+    return indice;
   }
 }
 

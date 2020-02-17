@@ -103,7 +103,7 @@ Step 2: row-wise operation to calculate logDiffMaxSum_i
 Step 3: calculate tmp_i_j, and finally get softmax_i_j and cross\_entropy_i
 To save memory, we can share memory among max_i, logDiffMaxSum_i and
 cross\_entropy_i.
-In this way, the 3 steps should be changed to:
+In this way, the 3 steps shold be changed to:
 Step 1 (RowReductionForMax): row-wise operation to calculate max_i
 Step 2 (RowReductionForDiffMaxSum): calculate immediate result of softmax'_i_j =
 x_i_j - max_i, and row-wise operation to calculate logDiffMaxSum_i

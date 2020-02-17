@@ -122,7 +122,7 @@ class GrpcByteBufferSource
 
  private:
   std::vector<::grpc::Slice> slices_;
-  size_t cur_;       // Current slice index.
+  size_t cur_;       // Current slice indice.
   int left_;         // Number of bytes in slices_[cur_] left to yield.
   const char* ptr_;  // Address of next byte in slices_[cur_] to yield.
   ::google::protobuf::int64 byte_count_;

@@ -69,7 +69,7 @@ static int64_t GetMemorySize(
 // Split all variables in the graph into LoDTensor and Non-LoDTensor (e.g.
 // SelectedRows, LoDTensorArray)
 // Since partial GC is based on static analysis of memory size of each variable
-// So we should skip SelectedRows and LoDTensorArray here
+// So we shold skip SelectedRows and LoDTensorArray here
 static void SplitIntoLoDTensorAndNonLoDTensorVars(
     const OpToVarNameSetMap &m, const details::GraphVars &vars,
     OpToVarNameSetMap *lod_tensors, OpToVarNameSetMap *other_vars) {
@@ -101,7 +101,7 @@ struct GCVarInfo {
   int64_t memory_size_;  // memory size
   details::ComputationOpHandle
       *op_;           // op after which the variable could be deleted
-  size_t scope_idx_;  // scope index where the variable locates
+  size_t scope_idx_;  // scope indice where the variable locates
 
   int64_t AbsMemorySize() const { return std::abs(memory_size_); }
 };

@@ -82,7 +82,7 @@ inline void UpdatePaddingAndDilation(std::vector<T>* paddings,
   } else {
     PADDLE_ENFORCE_EQ(
         data_dims.size() * 2, paddings->size(),
-        "Paddings size should be the same or twice as the input data size.");
+        "Paddings size shold be the same or twice as the input data size.");
   }
 
   // when padding_algorithm is "VALID" or "SAME"

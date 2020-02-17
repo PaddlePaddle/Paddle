@@ -42,14 +42,14 @@ class AddPositionEncodingKernel : public framework::OpKernel<T> {
     if (x_lod.empty()) {
       PADDLE_ENFORCE(
           x_dim.size() == 3UL,
-          "The input X of Add Position Encoding should be 3-D Tensor!");
+          "The input X of Add Position Encoding shold be 3-D Tensor!");
       batch_size = x_dim[0];
       max_seq_len = x_dim[1];
       enc_size = x_dim[2];
     } else {
       PADDLE_ENFORCE(
           x_dim.size() == 2UL,
-          "The input X of Add Position Encoding should be 2-D LoDTensor!");
+          "The input X of Add Position Encoding shold be 2-D LoDTensor!");
       PADDLE_ENFORCE(
           x_lod.size() == 1UL,
           "The Add Position Encoding Op only supports lod_level == 1!");

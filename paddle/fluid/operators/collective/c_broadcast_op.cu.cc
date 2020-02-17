@@ -69,7 +69,7 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
     out->Resize(x->dims());
     out->set_lod(x->lod());
 #else
-    PADDLE_THROW("PaddlePaddle should compile with GPU.");
+    PADDLE_THROW("PaddlePaddle shold compile with GPU.");
 #endif
   }
 };

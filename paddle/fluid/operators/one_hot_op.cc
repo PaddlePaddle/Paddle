@@ -25,16 +25,16 @@ class OneHotOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of OneHotOp should not be null.");
+                   "Input(X) of OneHotOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of OneHotOp should not be null.");
+                   "Output(Out) of OneHotOp shold not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_GE(x_dims.size(), 2,
-                      "Rank of Input(X) should be at least 2.");
+                      "Rank of Input(X) shold be at least 2.");
     if (ctx->IsRuntime() || x_dims[x_dims.size() - 1] > 0) {
       PADDLE_ENFORCE_GE(x_dims[x_dims.size() - 1], 1U,
-                        "Last dimension of Input(X) should be 1.");
+                        "Last dimension of Input(X) shold be 1.");
     }
 
     framework::DDim out_dims(x_dims);
@@ -72,7 +72,7 @@ class OneHotOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "(LoDTensor, LoDTensor<int>) Input variable with rank at least 2. "
-             "The last dimension of X should be 1. Each value of X is an index "
+             "The last dimension of X shold be 1. Each value of X is an indice "
              "to indicate the position.");
     AddInput("depth_tensor", "(Tensor, Tensor<int>), Length of one-hot vector")
         .AsDispensable();
@@ -94,7 +94,7 @@ class OneHotOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddComment(R"DOC(
 One Hot Operator. This operator creates the one-hot representations for input
-index values. The following example will help to explain the function of this
+indice values. The following example will help to explain the function of this
 operator:
 
 X is a LoDTensor:

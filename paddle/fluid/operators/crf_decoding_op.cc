@@ -78,7 +78,7 @@ The output of this operator changes according to whether Input(Label) is given:
 
 The crf_decoding operator returns a row vector with shape [N x 1]/[B x S], here 
 the shape depends on the inputs are LoDTensors or common tensors, whose values
-range from 0 to maximum tag number - 1, Each element indicates an index of a
+range from 0 to maximum tag number - 1, Each element indicates an indice of a
 predicted tag.
 )DOC");
   }
@@ -90,32 +90,32 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("Emission"), true,
-                      "Input(Emission) should be not null.");
+                      "Input(Emission) shold be not null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("Transition"), true,
-                      "Input(Transition) should be not null.");
+                      "Input(Transition) shold be not null.");
 
     PADDLE_ENFORCE_EQ(ctx->HasOutput("ViterbiPath"), true,
-                      "Output(ViterbiPath) should be not null.");
+                      "Output(ViterbiPath) shold be not null.");
 
     auto emission_dims = ctx->GetInputDim("Emission");
     bool has_length = ctx->HasInput("Length");
 
     if (has_length) {
       PADDLE_ENFORCE_EQ(emission_dims.size(), 3,
-                        "The Input(Emission) should be a 3-D tensor.");
+                        "The Input(Emission) shold be a 3-D tensor.");
     } else {
       PADDLE_ENFORCE_EQ(emission_dims.size(), 2,
-                        "The Input(Emission) should be a 2-D tensor.");
+                        "The Input(Emission) shold be a 2-D tensor.");
     }
     PADDLE_ENFORCE_NE(emission_dims[0], 0,
                       "An empty mini-batch is not allowed.");
 
     auto transition_dims = ctx->GetInputDim("Transition");
     PADDLE_ENFORCE_EQ(transition_dims.size(), 2UL,
-                      "The Input(Transition) should be a 2-D tensor.");
+                      "The Input(Transition) shold be a 2-D tensor.");
     PADDLE_ENFORCE_EQ(
         transition_dims[0] - 2, transition_dims[1],
-        "An invalid dimension for the Input(Transition), which should "
+        "An invalid dimension for the Input(Transition), which shold "
         "be a 2-D tensor with shape [(D + 2) x D].");
     if (ctx->IsRuntime() || (emission_dims[emission_dims.size() - 1] > 0 &&
                              transition_dims[transition_dims.size() - 1] > 0)) {
@@ -123,7 +123,7 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
           emission_dims[emission_dims.size() - 1],
           transition_dims[transition_dims.size() - 1],
           "The last dimension of the Input(Emission) and the Input(Transition) "
-          "should be equal to the tag number.");
+          "shold be equal to the tag number.");
     }
     if (ctx->HasInput("Label")) {
       auto label_dims = ctx->GetInputDim("Label");
@@ -132,20 +132,20 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
             (label_dims.size() == 3UL && label_dims[2] == 1) ||
                 label_dims.size() == 2UL,
             true,
-            "The Input(Label) should be a 3-D tensor with last dimension "
+            "The Input(Label) shold be a 3-D tensor with last dimension "
             "fixed to 1 or a 2-D tensor in padding mode.");
       } else {
         PADDLE_ENFORCE_EQ((label_dims.size() == 2UL && label_dims[1] == 1) ||
                               label_dims.size() == 1UL,
                           true,
-                          "The Input(Label) should be a 2-D tensor with last "
+                          "The Input(Label) shold be a 2-D tensor with last "
                           "dimension fixed to 1 or a 1-D tensor.");
       }
       if (ctx->IsRuntime() || (emission_dims[0] > 0 && label_dims[0] > 0)) {
         PADDLE_ENFORCE_EQ(
             emission_dims[0], label_dims[0],
             "The first dimension of Input(Emission) and Input(Label) "
-            "should be the same.");
+            "shold be the same.");
       }
     }
 

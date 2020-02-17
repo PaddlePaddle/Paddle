@@ -169,11 +169,11 @@ def basic_gru(input,
 
     Args:
         input (Variable): GRU input tensor, 
-                       if batch_first = False, shape should be ( seq_len x batch_size x input_size )  
-                       if batch_first = True, shape should be ( batch_size x seq_len x hidden_size )
+                       if batch_first = False, shape shold be ( seq_len x batch_size x input_size )  
+                       if batch_first = True, shape shold be ( batch_size x seq_len x hidden_size )
         init_hidden(Variable|None): The initial hidden state of the GRU
                        This is a tensor with shape ( num_layers x batch_size x hidden_size)
-                       if is_bidirec = True, shape should be ( num_layers*2 x batch_size x hidden_size)
+                       if is_bidirec = True, shape shold be ( num_layers*2 x batch_size x hidden_size)
                        and can be reshaped to tensor with ( num_layers x 2 x batch_size x hidden_size) to use.
                        If it's None, it will be set to all 0.
         hidden_size (int): Hidden size of the GRU
@@ -185,8 +185,8 @@ def basic_gru(input,
                              NOT between time steps
         bidirectional (bool|False): If it is bidirectional
         batch_first (bool|True): The shape format of the input and output tensors. If true,
-            the shape format should be :attr:`[batch_size, seq_len, hidden_size]`. If false,
-            the shape format should be :attr:`[seq_len, batch_size, hidden_size]`. By default
+            the shape format shold be :attr:`[batch_size, seq_len, hidden_size]`. If false,
+            the shape format shold be :attr:`[seq_len, batch_size, hidden_size]`. By default
             this function accepts input and emits output in batch-major form to be consistent
             with most of data format, though a bit less efficient because of extra transposes.
         param_attr(ParamAttr|None): The parameter attribute for the learnable
@@ -394,16 +394,16 @@ def basic_lstm(input,
 
     Args:
         input (Variable): lstm input tensor, 
-                       if batch_first = False, shape should be ( seq_len x batch_size x input_size )  
-                       if batch_first = True, shape should be ( batch_size x seq_len x hidden_size )
+                       if batch_first = False, shape shold be ( seq_len x batch_size x input_size )  
+                       if batch_first = True, shape shold be ( batch_size x seq_len x hidden_size )
         init_hidden(Variable|None): The initial hidden state of the LSTM
                        This is a tensor with shape ( num_layers x batch_size x hidden_size)
-                       if is_bidirec = True, shape should be ( num_layers*2 x batch_size x hidden_size)
+                       if is_bidirec = True, shape shold be ( num_layers*2 x batch_size x hidden_size)
                        and can be reshaped to a tensor with shape ( num_layers x 2 x batch_size x hidden_size) to use.
                        If it's None, it will be set to all 0.
         init_cell(Variable|None): The initial hidden state of the LSTM
                        This is a tensor with shape ( num_layers x batch_size x hidden_size)
-                       if is_bidirec = True, shape should be ( num_layers*2 x batch_size x hidden_size)
+                       if is_bidirec = True, shape shold be ( num_layers*2 x batch_size x hidden_size)
                        and can be reshaped to a tensor with shape ( num_layers x 2 x batch_size x hidden_size) to use.
                        If it's None, it will be set to all 0.
         hidden_size (int): Hidden size of the LSTM
@@ -415,8 +415,8 @@ def basic_lstm(input,
                              NOT between time steps
         bidirectional (bool|False): If it is bidirectional
         batch_first (bool|True): The shape format of the input and output tensors. If true,
-            the shape format should be :attr:`[batch_size, seq_len, hidden_size]`. If false,
-            the shape format should be :attr:`[seq_len, batch_size, hidden_size]`. By default
+            the shape format shold be :attr:`[batch_size, seq_len, hidden_size]`. If false,
+            the shape format shold be :attr:`[seq_len, batch_size, hidden_size]`. By default
             this function accepts input and emits output in batch-major form to be consistent
             with most of data format, though a bit less efficient because of extra transposes.
         param_attr(ParamAttr|None): The parameter attribute for the learnable

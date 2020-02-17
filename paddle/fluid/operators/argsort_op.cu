@@ -106,7 +106,7 @@ void ArgFullSort(const platform::CUDADeviceContext& ctx, const Tensor* input,
   int maxGridDimX = ctx.GetCUDAMaxGridDimSize().x;
   // actually, int num_rows < max_grid_size
   int grid_size = num_rows < maxGridDimX ? num_rows : maxGridDimX;
-  // Init a index array
+  // Init a indice array
   FillIndex<<<grid_size, block_size, 0, cu_stream>>>(
       input_indices.data<IndType>(), num_rows, num_cols);
 

@@ -60,7 +60,7 @@ class BufferSharedCrossOpMemoryReusePass : public MemoryReusePass {
   // including `ops_`, `op_to_idx_`, `deps_`
   void BuildOpDependencyMap() const;
 
-  // Get op index inside `ops_`, used to find dependency inside `deps_`
+  // Get op indice inside `ops_`, used to find dependency inside `deps_`
   size_t OpIndex(const ComputationOpHandle *op) const;
 
   size_t ResolveDependencyBetween(
@@ -78,11 +78,11 @@ class BufferSharedCrossOpMemoryReusePass : public MemoryReusePass {
  private:
   mutable Graph *graph_;
 
-  // All ops in the graph, grouped by scope index
+  // All ops in the graph, grouped by scope indice
   mutable std::vector<std::vector<ComputationOpHandle *>> ops_;
 
-  // Index of each op in `ops_`, grouped by scope index.
-  // Index of each op is the index inside `deps_`.
+  // Index of each op in `ops_`, grouped by scope indice.
+  // Index of each op is the indice inside `deps_`.
   mutable std::vector<std::unordered_map<const ComputationOpHandle *, size_t>>
       op_to_idx_;
 
@@ -136,12 +136,12 @@ std::vector<OpHandleBase *> BufferSharedCrossOpMemoryReusePass::SortOp(
  *   extra edge to resolve data hazard.
  *
  *
- * If Case 2 occurs, what we should do to resolve data hazard?
+ * If Case 2 occurs, what we shold do to resolve data hazard?
  *
  *  - Step 1: add a dep var between reused_op and share_tensor_buffer_op,
  *            that is: reused_op -> dep_var -> share_tensor_buffer_op.
  *
- *  - Step 2: Update deps_, all preceding ops of reused_op should be
+ *  - Step 2: Update deps_, all preceding ops of reused_op shold be
  *            preceding ops of op.
  */
 void BufferSharedCrossOpMemoryReusePass::RunOnScopeIdx(size_t idx) const {
@@ -209,7 +209,7 @@ void BufferSharedCrossOpMemoryReusePass::RunOnScopeIdx(size_t idx) const {
         bool success = this->TryReuseVar(*var_iter, out_var);
         if (!success) continue;
 
-        // If memory reuse is successful, we should do some post-processing.
+        // If memory reuse is successful, we shold do some post-processing.
         ++reuse_num;
         auto &prev_ops = original_var_to_ops.at(*var_iter);
 
@@ -236,7 +236,7 @@ void BufferSharedCrossOpMemoryReusePass::RunOnScopeIdx(size_t idx) const {
       }
     }
 
-    // After all output args have been transversed, we should check whether
+    // After all output args have been transversed, we shold check whether
     // there is new unlived var after `op` runs.
     for (auto op_iter = var_to_ops.begin(); op_iter != var_to_ops.end();) {
       // erase op from `var_to_ops` first
@@ -287,7 +287,7 @@ size_t BufferSharedCrossOpMemoryReusePass::ResolveDependencyBetween(
       op->AddInput(dep_var);
     }
 
-    // All preceding ops of `prev_op` should be preceding ops of `op`
+    // All preceding ops of `prev_op` shold be preceding ops of `op`
     size_t prev_op_idx = OpIndex(prev_op);
     for (size_t i = 0; i < deps[prev_op_idx].size(); ++i) {
       if (deps[prev_op_idx][i] != NodeDependency::kAfter) {
@@ -298,7 +298,7 @@ size_t BufferSharedCrossOpMemoryReusePass::ResolveDependencyBetween(
       deps[op_idx][i] = NodeDependency::kAfter;
     }
 
-    // All pending ops of `op` should be pending ops of `prev_op`.
+    // All pending ops of `op` shold be pending ops of `prev_op`.
     for (size_t i = 0; i < deps[op_idx].size(); ++i) {
       if (deps[op_idx][i] != NodeDependency::kBefore) {
         continue;
@@ -333,7 +333,7 @@ void BufferSharedCrossOpMemoryReusePass::BuildOpDependencyMap() const {
 
   // BFS to fill `preceding_ops`
   graph_view.BreadthFirstVisit([&](OpHandleBase *cur_op) {
-    // All preceding ops of cur_op should be:
+    // All preceding ops of cur_op shold be:
     //  - preceding ops of cur_op, that is connected to cur_op directely
     //  - all preceding ops of `direct preceding ops of cur_op`
     auto &all_preceding_ops_of_cur_op = preceding_ops[cur_op];

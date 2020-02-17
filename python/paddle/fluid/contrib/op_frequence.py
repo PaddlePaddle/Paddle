@@ -44,7 +44,7 @@ def op_freq_statistic(program):
     """
 
     if not isinstance(program, Program):
-        raise TypeError("The input type should be Porgram."
+        raise TypeError("The input type shold be Porgram."
                         "But you passed in %s" % (type(program)))
 
     uni_op_freq = OrderedDict()

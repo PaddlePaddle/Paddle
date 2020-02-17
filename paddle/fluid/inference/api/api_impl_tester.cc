@@ -129,7 +129,7 @@ void MainImageClassification(bool use_gpu) {
 
   framework::LoDTensor input;
   // Use normilized image pixels as input data,
-  // which should be in the range [0.0, 1.0].
+  // which shold be in the range [0.0, 1.0].
   feed_target_shapes[0][0] = batch_size;
   framework::DDim input_dims = framework::make_ddim(feed_target_shapes[0]);
   SetupTensor<float>(&input, input_dims, static_cast<float>(0),

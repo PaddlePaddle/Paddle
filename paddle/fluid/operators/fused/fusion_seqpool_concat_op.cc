@@ -23,24 +23,24 @@ namespace operators {
 void FusionSeqPoolConcatOp::InferShape(
     framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_GE(ctx->Inputs("X").size(), 1UL,
-                    "Inputs(X) of FusionSeqPoolConcatOp should not be empty.");
+                    "Inputs(X) of FusionSeqPoolConcatOp shold not be empty.");
   PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                 "Output(Out) of FusionSeqPoolConcatOp should not be null.");
+                 "Output(Out) of FusionSeqPoolConcatOp shold not be null.");
   int axis = ctx->Attrs().Get<int>("axis");
   PADDLE_ENFORCE_EQ(axis, 1,
                     "FusionSeqPoolConcatOp only supports concat axis=1 yet.");
 
   auto ins_dims = ctx->GetInputsDim("X");
   const size_t n = ins_dims.size();
-  PADDLE_ENFORCE_GT(n, 0UL, "Input tensors count should > 0.");
+  PADDLE_ENFORCE_GT(n, 0UL, "Input tensors count shold > 0.");
   if (n == 1) {
     LOG(WARNING) << "Only have one input, may waste memory";
   }
 
-  // The output height should be confirmed in Compute,
+  // The output height shold be confirmed in Compute,
   // since input lod is not accessible here.
   PADDLE_ENFORCE_EQ(ins_dims[0].size(), 2,
-                    "The dims size of first input should be 2.");
+                    "The dims size of first input shold be 2.");
   ctx->SetOutputDim("Out", {-1, ins_dims[0][axis] * static_cast<int>(n)});
 
   if (!ctx->IsRuntime()) {
@@ -96,7 +96,7 @@ class FusionSeqPoolConcatKernel : public framework::OpKernel<T> {
 
     int w = ins[0]->numel() / x0_dims[0];
     PADDLE_ENFORCE_EQ(y_dims[1] % w, 0,
-                      "The output of dims[1] should be dividable of w");
+                      "The output of dims[1] shold be dividable of w");
     jit::seq_pool_attr_t attr(w, jit::SeqPoolType::kSum);
     if (pooltype == "AVERAGE") {
       attr.type = jit::SeqPoolType::kAvg;
@@ -114,9 +114,9 @@ class FusionSeqPoolConcatKernel : public framework::OpKernel<T> {
       const T* src = ins[i]->data<T>();
       T* dst = y_data + i * w;
       PADDLE_ENFORCE_EQ(static_cast<int>(ins[i]->numel() / x_dims[0]), w,
-                        "Width of all inputs should be equal.");
+                        "Width of all inputs shold be equal.");
       PADDLE_ENFORCE_EQ(x_lod.size(), bs + 1,
-                        "Batchsize of all inputs should be equal.");
+                        "Batchsize of all inputs shold be equal.");
       for (size_t j = 0; j < bs; ++j) {
         attr.h = static_cast<int>(x_lod[j + 1] - x_lod[j]);
         seqpool(src, dst, &attr);

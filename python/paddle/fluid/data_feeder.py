@@ -266,7 +266,7 @@ class DataFeeder(object):
             if isinstance(each_var, six.string_types):
                 each_var = program.block(0).var(each_var)
             if not isinstance(each_var, Variable):
-                raise TypeError("Feed list should contain a list of variable")
+                raise TypeError("Feed list shold contain a list of variable")
             self.feed_dtypes.append(each_var.dtype)
             self.feed_names.append(each_var.name)
             self.feed_lod_level.append(each_var.lod_level)
@@ -343,7 +343,7 @@ class DataFeeder(object):
 
         Parameters:
             iterable (list|tuple): list of user-defined python generators. The element 
-                number should match the :code:`num_places`.
+                number shold match the :code:`num_places`.
             num_places (int, optional): the number of devices. If not provided (None), 
                 all available devices on the machine will be used. Default None.
 
@@ -352,7 +352,7 @@ class DataFeeder(object):
             the total number of dicts will be generated matches with the :code:`num_places`
 
         .. note::        
-            The number of devices - :code:`num_places` should equal to the generator (element of :code:`iterable` ) number
+            The number of devices - :code:`num_places` shold equal to the generator (element of :code:`iterable` ) number
 
         Example:
             ..  code-block:: python

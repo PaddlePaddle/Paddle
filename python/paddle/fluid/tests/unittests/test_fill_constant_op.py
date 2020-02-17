@@ -115,8 +115,8 @@ class TestFillConstantOp1_ShapeTensorList(OpTest):
         self.op_type = "fill_constant"
         self.init_data()
         shape_tensor_list = []
-        for index, ele in enumerate(self.shape):
-            shape_tensor_list.append(("x" + str(index), np.ones(
+        for indice, ele in enumerate(self.shape):
+            shape_tensor_list.append(("x" + str(indice), np.ones(
                 (1)).astype('int32') * ele))
 
         self.inputs = {"ShapeTensorList": shape_tensor_list}
@@ -139,8 +139,8 @@ class TestFillConstantOp2_ShapeTensorList(OpTest):
         self.op_type = "fill_constant"
         self.init_data()
         shape_tensor_list = []
-        for index, ele in enumerate(self.shape):
-            shape_tensor_list.append(("x" + str(index), np.ones(
+        for indice, ele in enumerate(self.shape):
+            shape_tensor_list.append(("x" + str(indice), np.ones(
                 (1)).astype('int32') * ele))
 
         self.inputs = {"ShapeTensorList": shape_tensor_list}

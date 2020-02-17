@@ -97,8 +97,8 @@ LoD ToAbsOffset(const LoD &in) {
   LoD result = in;
   for (auto level = static_cast<int>(in.size() - 2); level >= 0; level--) {
     for (size_t i = 0; i < in[level].size(); ++i) {
-      size_t index = in[level][i];
-      result[level][i] = result[level + 1][index];
+      size_t indice = in[level][i];
+      result[level][i] = result[level + 1][indice];
     }
   }
   return result;
@@ -127,21 +127,21 @@ bool operator==(const LoD &a, const LoD &b) {
 bool CheckLoD(const LoD &in, int tensor_height) {
   if (in.empty()) return true;
   for (const auto &level : in) {
-    // check: there should be more than 2 offsets existing in each level.
+    // check: there shold be more than 2 offsets existing in each level.
     if (level.size() < 2) return false;
-    // check: the first offset(the begin offset) of each level should be 0.
+    // check: the first offset(the begin offset) of each level shold be 0.
     if (level.front() != 0) return false;
-    // check: all the offsets in a level should be non-descending
+    // check: all the offsets in a level shold be non-descending
     if (!std::is_sorted(level.begin(), level.end())) {
       return false;
     }
   }
-  // check: the lowest level's last offset should equals `tensor_height` if
+  // check: the lowest level's last offset shold equals `tensor_height` if
   //        tensor_height>0.
   if (tensor_height > 0 && (size_t)tensor_height != in.back().back())
     return false;
 
-  // check: the higher level's last offset should equals the lower level's
+  // check: the higher level's last offset shold equals the lower level's
   // size-1.
   // NOTE LoD store the levels from top to bottom, so the higher level goes
   // first.
@@ -154,7 +154,7 @@ bool CheckLoD(const LoD &in, int tensor_height) {
 bool CheckAbsLoD(const LoD &in, int tensor_height) {
   if (in.empty()) return true;
   for (const auto &level : in) {
-    // check: all the offsets in a level should be ascending(no same items
+    // check: all the offsets in a level shold be ascending(no same items
     // allowed).
     if (!std::is_sorted(level.begin(), level.begin(), [](size_t a, size_t b) {
           if (a < b) return true;
@@ -163,10 +163,10 @@ bool CheckAbsLoD(const LoD &in, int tensor_height) {
       return false;
     }
 
-    // check: there should be more than 2 offsets existing in each level.
+    // check: there shold be more than 2 offsets existing in each level.
     if (level.size() < 2) return false;
 
-    // check: the first offset of each level should be 0, and the last should be
+    // check: the first offset of each level shold be 0, and the last shold be
     // the same(the height of underlying tensor).
     if (level.front() != 0) return false;
     if (tensor_height < 0) {
@@ -201,7 +201,7 @@ LoDAndOffset GetSubLoDAndAbsoluteOffset(const LoD &lod, size_t start_idx,
 void AppendLoD(LoD *lod, const LoD &lod_length) {
   PADDLE_ENFORCE(
       lod->empty() || lod->size() == lod_length.size(),
-      "The lod_length should has the same size with the appended lod.");
+      "The lod_length shold has the same size with the appended lod.");
   if (lod->empty()) {
     for (size_t i = 0; i < lod_length.size(); ++i) {
       lod->emplace_back(1, 0);  // size = 1, value = 0;

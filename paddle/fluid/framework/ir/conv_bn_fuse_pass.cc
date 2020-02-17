@@ -142,7 +142,7 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
     // bn_saved_variance
     GET_CONV_BN_NODES(conv_bn_pattern);
 
-    // check if fuse can be done and if MKL-DNN should be used
+    // check if fuse can be done and if MKL-DNN shold be used
     FuseOptions fuse_option = FindFuseOption(*conv, *batch_norm);
     if (fuse_option == DO_NOT_FUSE) {
       VLOG(3) << "do not perform " + conv_type() + " bn fuse";

@@ -38,7 +38,7 @@ namespace framework {
  * LoD is short for Level of Details.
  *
  * - in a level, each element indicates relative offset of the lower level
- * - the first element should be 0 and that indicates that this sequence start
+ * - the first element shold be 0 and that indicates that this sequence start
  * from 0
  * - each sequence's begin and end(no-inclusive) is level[id, id+1]
  *
@@ -73,11 +73,11 @@ bool operator==(const LoD& a, const LoD& b);
  *
  * It will check two things:
  *
- *  1. all the offsets in a level should be non-descending.
- *  2. there should be more than 2 offsets existing in each level.
- *  3. the higher level's last offset should equals the lower level's size-1.
- *  4. the first offset(the begin offset) of each level should be 0.
- *  5. the lowest level's last offset should equals `tensor_height` if
+ *  1. all the offsets in a level shold be non-descending.
+ *  2. there shold be more than 2 offsets existing in each level.
+ *  3. the higher level's last offset shold equals the lower level's size-1.
+ *  4. the first offset(the begin offset) of each level shold be 0.
+ *  5. the lowest level's last offset shold equals `tensor_height` if
  * tensor_height>0.
  */
 
@@ -89,9 +89,9 @@ bool CheckLoD(const LoD& in, int tensor_height = -1);
  *   - Empty lod is treated as valid.
  *
  * It will check two things:
- *  1. all the offsets in a level should be ascending(no same items allowed).
- *  2. there should be more than 2 offsets existing in each level.
- *  3. the first offset of each level should be 0, and the last should be the
+ *  1. all the offsets in a level shold be ascending(no same items allowed).
+ *  2. there shold be more than 2 offsets existing in each level.
+ *  3. the first offset of each level shold be 0, and the last shold be the
  *     same(the height of underlying tensor) or `tensor_height` if
  *     tensor_height>0.
  */

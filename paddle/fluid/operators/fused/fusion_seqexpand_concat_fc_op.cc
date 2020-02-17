@@ -26,16 +26,16 @@ void FusionSeqExpandConcatFCOp::InferShape(
     framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_GT(
       ctx->Inputs("X").size(), 1UL,
-      "Inputs(X) of FusionSeqExpandConcatFCOp should larger than 1.");
+      "Inputs(X) of FusionSeqExpandConcatFCOp shold larger than 1.");
   PADDLE_ENFORCE(
       ctx->HasInput("FCWeight"),
-      "Input(FCWeight) of FusionSeqExpandConcatFCOp should not be null.");
+      "Input(FCWeight) of FusionSeqExpandConcatFCOp shold not be null.");
   PADDLE_ENFORCE(
       ctx->HasOutput("Out"),
-      "Output(Out) of FusionSeqExpandConcatFCOp should not be null.");
+      "Output(Out) of FusionSeqExpandConcatFCOp shold not be null.");
   PADDLE_ENFORCE(
       ctx->HasOutput("FCOut"),
-      "Output(FCOut) of FusionSeqExpandConcatFCOp should not be null.");
+      "Output(FCOut) of FusionSeqExpandConcatFCOp shold not be null.");
 
   auto ins_dims = ctx->GetInputsDim("X");
   auto w_dims = ctx->GetInputDim("FCWeight");  // (M0+M1+M2+..) x D
@@ -46,11 +46,11 @@ void FusionSeqExpandConcatFCOp::InferShape(
     sum += ins_dims[i][1];
   }
   PADDLE_ENFORCE_EQ(sum, w_dims[0],
-                    "FC height should be sum of all inputs width.");
+                    "FC height shold be sum of all inputs width.");
   if (ctx->HasInput("FCBias")) {
     auto b_dims = ctx->GetInputDim("FCBias");
     PADDLE_ENFORCE(b_dims.size() == 1 || b_dims.size() == 2,
-                   "b_dims should be 1 or 2, get %d", b_dims.size());
+                   "b_dims shold be 1 or 2, get %d", b_dims.size());
     if (b_dims.size() == 1) {
       PADDLE_ENFORCE_EQ(b_dims[0], D, "FCBias shapes must be %d.", D);
     } else {
@@ -60,7 +60,7 @@ void FusionSeqExpandConcatFCOp::InferShape(
   }
 
   ctx->SetOutputDim("Out", {ins_dims[0][0], D});
-  // fcout should be reshape when run since can not get lod in infershape
+  // fcout shold be reshape when run since can not get lod in infershape
   // explicit share the ref lod
   ctx->ShareLoD("X", "Out", 0);
 }
@@ -74,7 +74,7 @@ framework::OpKernelType FusionSeqExpandConcatFCOp::GetExpectedKernelType(
 void FusionSeqExpandConcatFCOpMaker::Make() {
   AddInput("X",
            "(LoDTensor) input LodDTensors, the first one must be have ref lod "
-           "for sequence expand, and the rest input should have same lod.")
+           "for sequence expand, and the rest input shold have same lod.")
       .AsDuplicable();
   AddInput("FCWeight", "(Tensor) the weights of fc.");
   AddInput("FCBias", "(Tensor, optional) the bias of fc.").AsDispensable();
@@ -93,17 +93,17 @@ void FusionSeqExpandConcatFCOpMaker::Make() {
   AddComment(R"DOC(
 Fusion Sequence expand + concat + fc Operator.
 
-All below conditions should be meet:
+All below conditions shold be meet:
 
-The ref_level of seq_expand should be 0.
+The ref_level of seq_expand shold be 0.
 
 The ref lod of seq_expand level is the first input of concat.
 
-The other inputs should have same lod and same batch size of ref lod.
+The other inputs shold have same lod and same batch size of ref lod.
 
-The seq len of other inputs should be 1.
+The seq len of other inputs shold be 1.
 
-The concat axis should be 1.
+The concat axis shold be 1.
 
 )DOC");
 }
@@ -131,20 +131,20 @@ class FusionSeqExpandConcatFCOpKernel : public framework::OpKernel<T> {
     const int M1 = in1_dims[1];
     const int D = w_dims[1];
 
-    // some check and fcout should be reshape here
+    // some check and fcout shold be reshape here
     // since infershape can not get lod info
     PADDLE_ENFORCE_EQ(ref_lod.size(), 1UL, "Only support input lod size is 1.");
     PADDLE_ENFORCE_EQ(in1_lod.size(), 1UL, "Only support input lod size is 1.");
     PADDLE_ENFORCE_EQ(static_cast<int>(in1_lod[0].size() - 1), N,
-                      "Batch size of all inputs should be equal.");
+                      "Batch size of all inputs shold be equal.");
     PADDLE_ENFORCE_EQ(static_cast<int>(in1_lod[0][N]), N,
-                      "Seq_length of other inputs should be 1.");
-    PADDLE_ENFORCE_EQ(in1_dims[0], N, "input height should be batch size.");
+                      "Seq_length of other inputs shold be 1.");
+    PADDLE_ENFORCE_EQ(in1_dims[0], N, "input height shold be batch size.");
     for (size_t i = 2; i < ins.size(); ++i) {
       PADDLE_ENFORCE_EQ(ins[i]->dims()[0], N,
-                        "All other inputs height should be equal");
+                        "All other inputs height shold be equal");
       PADDLE_ENFORCE_EQ(ins[i]->lod(), in1_lod,
-                        "All other inputs should have same lod");
+                        "All other inputs shold have same lod");
     }
     fc_out->Resize({N, D});
 

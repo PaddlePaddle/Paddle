@@ -29,9 +29,9 @@ template <typename T>
 __global__ void FilterGradAddupCUDAKernel(const int nthreads, const int n,
                                           const int height, const int width,
                                           const T* dweight_3d, T* filter_grad) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int indice = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
-  for (size_t i = index; i < nthreads; i += offset) {
+  for (size_t i = indice; i < nthreads; i += offset) {
     filter_grad[i] = filter_grad[i] + dweight_3d[i];
   }
 }

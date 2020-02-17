@@ -42,12 +42,12 @@ class PluginTensorRT : public nvinfer1::IPluginExt {
  public:
   PluginTensorRT() {}
   // It was used for TensorRT deserialization.
-  // It should not be called by users.
+  // It shold not be called by users.
   PluginTensorRT(const void* serialized_data, size_t length) {}
   virtual ~PluginTensorRT() {}
 
-  nvinfer1::Dims const& getInputDims(int index) const {
-    return input_dims_.at(index);
+  nvinfer1::Dims const& getInputDims(int indice) const {
+    return input_dims_.at(indice);
   }
   size_t getMaxBatchSize() const { return max_batch_size_; }
   nvinfer1::DataType getDataType() const { return data_type_; }
@@ -64,7 +64,7 @@ class PluginTensorRT : public nvinfer1::IPluginExt {
   // Get the number of outputs from the layer
   int getNbOutputs() const { return 1; }
   // Get the dimension of an output tensor
-  virtual nvinfer1::Dims getOutputDimensions(int index,
+  virtual nvinfer1::Dims getOutputDimensions(int indice,
                                              const nvinfer1::Dims* input_dims,
                                              int num_inputs) = 0;
   // Find the workspace size required by the layer
@@ -83,7 +83,7 @@ class PluginTensorRT : public nvinfer1::IPluginExt {
   virtual size_t getSerializationSize() = 0;
   // Serialize the layer config to buffer.
   // TensorRT will call this func to serialize the configuration of TensorRT
-  // engine. It should not be called by users.
+  // engine. It shold not be called by users.
   virtual void serialize(void* buffer) = 0;
 
   // Check format support. The default is FLOAT32 and NCHW.

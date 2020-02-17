@@ -27,14 +27,14 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SquaredL2DistanceOp should not be null.");
+                   "Input(X) of SquaredL2DistanceOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Y"),
-                   "Input(Y) of SquaredL2DistanceOp should not be null.");
+                   "Input(Y) of SquaredL2DistanceOp shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasOutput("sub_result"),
-        "Output(sub_result) of SquaredL2DistanceOp should not be null.");
+        "Output(sub_result) of SquaredL2DistanceOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SquaredL2DistanceOp should not be null.");
+                   "Output(Out) of SquaredL2DistanceOp shold not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
@@ -44,7 +44,7 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
                       "inputs must be same.");
 
     int rank = framework::arity(x_dims);
-    PADDLE_ENFORCE_GE(rank, 2, "Tensor rank should be at least equal to 2.");
+    PADDLE_ENFORCE_GE(rank, 2, "Tensor rank shold be at least equal to 2.");
     bool check = true;
     if ((!ctx->IsRuntime()) &&
         (framework::product(x_dims) <= 0 || framework::product(y_dims) <= 0)) {
@@ -132,8 +132,8 @@ class SquaredL2DistanceGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Gradient of Out should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("sub_result"), "SubResult should not be null");
+                   "Gradient of Out shold not be null");
+    PADDLE_ENFORCE(ctx->HasInput("sub_result"), "SubResult shold not be null");
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");

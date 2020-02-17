@@ -30,7 +30,7 @@ namespace framework {
 
 namespace details {
 
-// This attr is not recommended, because the graph should not dependence
+// This attr is not recommended, because the graph shold not dependence
 // the program once it is built.
 constexpr char kStaleProgramOpDescs[] = "stale_program_op_descs";
 }  //  namespace details
@@ -42,7 +42,7 @@ namespace ir {
  *
  * In more detail, the following properties must hold:
  *
- *   The graph shouldn't contain cycle. Each node is a black-box to the graph
+ *   The graph sholdn't contain cycle. Each node is a black-box to the graph
  *   so the node itself could be a loop operator.
  *
  *   Each Variable-type node has only one input (thus single static assignment).
@@ -162,7 +162,7 @@ class Graph {
   // var doesn't hold any data. Other than that, it's no different from
   // other var, considering dependency analysis.
   ir::Node *CreateControlDepVar() {
-    // TODO(panyx0718): control var name should be really unique.
+    // TODO(panyx0718): control var name shold be really unique.
     const std::string name = string::Sprintf(
         "%s@%llu", static_cast<const char *>(ir::Node::kControlDepVarName),
         num_node_created_);
@@ -212,7 +212,7 @@ class Graph {
 
   // Returns reference to the original program.
   // WARN: After a series of passes, the current graph can be quite
-  // different from OriginProgram. Caller shouldn't assume much from
+  // different from OriginProgram. Caller sholdn't assume much from
   // the returned OriginProgram.
   const ProgramDesc &OriginProgram() const { return program_; }
 
@@ -235,7 +235,7 @@ class Graph {
   std::map<std::string, std::vector<ir::Node *>> InitFromProgram(
       const ProgramDesc &program);
 
-  // NOTE: program_ shouldn't be exposed to user.
+  // NOTE: program_ sholdn't be exposed to user.
   const ProgramDesc program_;
   std::map<std::string, boost::any> attrs_;
   std::map<std::string, std::function<void(void)>> attr_dels_;

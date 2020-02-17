@@ -23,12 +23,12 @@ from op_test import OpTest
 import paddle.fluid as fluid
 
 
-def adaptive_start_index(index, input_size, output_size):
-    return int(np.floor(index * input_size / output_size))
+def adaptive_start_indice(indice, input_size, output_size):
+    return int(np.floor(indice * input_size / output_size))
 
 
-def adaptive_end_index(index, input_size, output_size):
-    return int(np.ceil((index + 1) * input_size / output_size))
+def adaptive_end_indice(indice, input_size, output_size):
+    return int(np.ceil((indice + 1) * input_size / output_size))
 
 
 def pool3D_forward_naive(x,
@@ -114,24 +114,24 @@ def pool3D_forward_naive(x,
         else np.zeros((N, D_out, H_out, W_out, C))
     for k in range(D_out):
         if adaptive:
-            d_start = adaptive_start_index(k, D, ksize[0])
-            d_end = adaptive_end_index(k, D, ksize[0])
+            d_start = adaptive_start_indice(k, D, ksize[0])
+            d_end = adaptive_end_indice(k, D, ksize[0])
         else:
             d_start = np.max((k * strides[0] - pad_d_forth, 0))
             d_end = np.min((k * strides[0] + ksize[0] - pad_d_forth, D))
 
         for i in range(H_out):
             if adaptive:
-                h_start = adaptive_start_index(i, H, ksize[1])
-                h_end = adaptive_end_index(i, H, ksize[1])
+                h_start = adaptive_start_indice(i, H, ksize[1])
+                h_end = adaptive_end_indice(i, H, ksize[1])
             else:
                 h_start = np.max((i * strides[1] - pad_h_up, 0))
                 h_end = np.min((i * strides[1] + ksize[1] - pad_h_up, H))
 
             for j in range(W_out):
                 if adaptive:
-                    w_start = adaptive_start_index(j, W, ksize[2])
-                    w_end = adaptive_end_index(j, W, ksize[2])
+                    w_start = adaptive_start_indice(j, W, ksize[2])
+                    w_end = adaptive_end_indice(j, W, ksize[2])
                 else:
                     w_start = np.max((j * strides[2] - pad_w_left, 0))
                     w_end = np.min((j * strides[2] + ksize[2] - pad_w_left, W))

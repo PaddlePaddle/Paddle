@@ -57,29 +57,29 @@ __global__ void InplaceAddReluAddLayerNormKernel(const T* y, const T* bias_0,
   __shared__ T shared_mem[BlockDim + 2];
 
   for (int i = blockIdx.x; i < M; i += gridDim.x) {
-    int index = i * N + threadIdx.x;
+    int indice = i * N + threadIdx.x;
 
     // The fisrt BlockDim elements will be saved to shared memory.
-    int save_index = threadIdx.x;
+    int save_indice = threadIdx.x;
     T* save_ptr = shared_mem;
 
     double sum_i = 0;
     double square_sum_i = 0;
     for (int j = threadIdx.x; j < N; j += blockDim.x) {
-      T tmp_0 = out[index];
+      T tmp_0 = out[indice];
       // Add bias
       T tmp_1 = bias_0 ? tmp_0 + bias_0[j] : tmp_0;
       // Relu
       T tmp_2 = DoRelu ? Relu(tmp_1) : tmp_1;
       // elementwise_add
-      T tmp_3 = tmp_2 + y[index];
+      T tmp_3 = tmp_2 + y[indice];
 
       // Save
-      save_ptr[save_index] = tmp_3;
+      save_ptr[save_indice] = tmp_3;
       save_ptr = out;
 
-      index += blockDim.x;
-      save_index = index;
+      indice += blockDim.x;
+      save_indice = indice;
 
       // For layer_norm, reduce to calculate mean and std
       sum_i += tmp_3;
@@ -106,20 +106,20 @@ __global__ void InplaceAddReluAddLayerNormKernel(const T* y, const T* bias_0,
     T mean_i = shared_mem[BlockDim];
     T std_i = static_cast<T>(RealSqrt(shared_mem[BlockDim + 1] + epsilon));
 
-    index = i * N + threadIdx.x;
+    indice = i * N + threadIdx.x;
     // First BlockDim elements loading from shared memory.
-    save_index = threadIdx.x;
+    save_indice = threadIdx.x;
     save_ptr = shared_mem;
 
     // For layer_norm, calculate out
     for (int j = threadIdx.x; j < N; j += blockDim.x) {
-      T tmp_0 = (save_ptr[save_index] - mean_i) / std_i;
+      T tmp_0 = (save_ptr[save_indice] - mean_i) / std_i;
       T tmp_1 = scale ? scale[j] * tmp_0 : tmp_0;
-      out[index] = bias_1 ? tmp_1 + bias_1[j] : tmp_1;
+      out[indice] = bias_1 ? tmp_1 + bias_1[j] : tmp_1;
 
       save_ptr = out;
-      index += blockDim.x;
-      save_index = index;
+      indice += blockDim.x;
+      save_indice = indice;
     }
   }
 }

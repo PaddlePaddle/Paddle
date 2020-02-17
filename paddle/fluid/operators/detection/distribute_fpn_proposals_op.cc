@@ -23,10 +23,10 @@ class DistributeFpnProposalsOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("FpnRois"),
-                   "Input(FpnRois) shouldn't be null");
+                   "Input(FpnRois) sholdn't be null");
     PADDLE_ENFORCE_GE(
         ctx->Outputs("MultiFpnRois").size(), 1UL,
-        "Outputs(MultiFpnRois) of DistributeOp should not be empty");
+        "Outputs(MultiFpnRois) of DistributeOp shold not be empty");
     size_t min_level = static_cast<size_t>(ctx->Attrs().Get<int>("min_level"));
     size_t max_level = static_cast<size_t>(ctx->Attrs().Get<int>("max_level"));
     PADDLE_ENFORCE_GE(max_level, min_level,
@@ -76,7 +76,7 @@ class DistributeFpnProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
 This operator distribute all proposals into different fpn level,
  with respect to scale of the proposals, the referring scale and
  the referring level. Besides, to restore the order of proposals,
-we return an array which indicate the original index of rois in
+we return an array which indicate the original indice of rois in
  current proposals.
 )DOC");
   }

@@ -165,7 +165,7 @@ MemoryReusePass::InsertShareTensorBufferOpHandleToGraph(
       op->GetPlace(),
       platform::DeviceContextPool::Instance().Get(op->GetPlace()));
 
-  // Inputs of `buffer_share_op` should be all inputs of `op`
+  // Inputs of `buffer_share_op` shold be all inputs of `op`
   for (auto *in_var : op->Inputs()) {
     buffer_share_op->AddInput(in_var);
   }

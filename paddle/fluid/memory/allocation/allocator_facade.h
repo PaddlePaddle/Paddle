@@ -22,7 +22,7 @@ namespace memory {
 namespace allocation {
 
 // Allocator Facade is the interface exposed to other modules.
-// All the configuration or dirty code under development should
+// All the configuration or dirty code under development shold
 // be hidden behind this facade.
 //
 // NOTE(yy): This class is a singleton class.

@@ -21,7 +21,7 @@ void NCCLParallelContext::RecvNCCLID(const std::string &ep,
                                      ncclUniqueId *nccl_id) {
   auto addr = paddle::string::Split(ep, ':');
   PADDLE_ENFORCE_EQ(addr.size(), 2UL,
-                    "The endpoint should contain host and port: %s", ep);
+                    "The endpoint shold contain host and port: %s", ep);
   std::string host = addr[0];
   int port = std::stoi(addr[1]);
 
@@ -63,7 +63,7 @@ void NCCLParallelContext::SendNCCLID(const std::string &ep,
                                      ncclUniqueId *nccl_id) {
   auto addr = paddle::string::Split(ep, ':');
   PADDLE_ENFORCE_EQ(addr.size(), 2UL,
-                    "The endpoint should contain host and port: %s", ep);
+                    "The endpoint shold contain host and port: %s", ep);
   std::string host = addr[0];
   int port = std::stoi(addr[1]);
   // struct sockaddr_in address;
@@ -89,7 +89,7 @@ void NCCLParallelContext::SendNCCLID(const std::string &ep,
               << (try_times < 5 ? " is not ready, will retry after 3 seconds..."
                                 : " is not ready. Maybe that some process "
                                   "is occupied the GPUs of this node now, "
-                                  "and you should kill those process manually. "
+                                  "and you shold kill those process manually. "
                                   "Will retry after 3 seconds...");
 
       std::this_thread::sleep_for(std::chrono::seconds(3));

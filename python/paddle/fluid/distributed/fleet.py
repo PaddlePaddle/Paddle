@@ -41,7 +41,7 @@ class Fleet(object):
             self.dist_desc_ = opt_info["fleet_desc"]
         else:
             print(
-                "You should run distributed optimization to get opt_info first")
+                "You shold run distributed optimization to get opt_info first")
             sys.exit(-1)
         self.fleet_.init_server(self.dist_desc_str_)
         ip = self.fleet_.start_server()
@@ -58,7 +58,7 @@ class Fleet(object):
             self.dist_desc_ = opt_info["fleet_desc"]
         else:
             print(
-                "You should run distributed optimization to get opt_info first")
+                "You shold run distributed optimization to get opt_info first")
             sys.exit(-1)
         self.instance_.barrier_all()
         ips = self.instance.gather_ips()

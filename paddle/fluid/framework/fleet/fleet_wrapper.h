@@ -163,11 +163,11 @@ class FleetWrapper {
   */
 
   // init server
-  void InitServer(const std::string& dist_desc, int index);
+  void InitServer(const std::string& dist_desc, int indice);
   // init trainer
   void InitWorker(const std::string& dist_desc,
                   const std::vector<uint64_t>& host_sign_list, int node_num,
-                  int index);
+                  int indice);
   // stop server
   void StopServer();
   // finalize worker to make worker can be stop

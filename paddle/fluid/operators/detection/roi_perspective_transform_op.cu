@@ -24,11 +24,11 @@ using paddle::platform::float16;
 namespace paddle {
 namespace operators {
 
-// CUDA: index helpers
-#define idx4_4(index, d1, d2, d3, d4) (index % d4)
-#define idx4_3(index, d1, d2, d3, d4) ((index / d4) % d3)
-#define idx4_2(index, d1, d2, d3, d4) ((index / d4 / d3) % d2)
-#define idx4_1(index, d1, d2, d3, d4) ((index / d4 / d3 / d2) % d1)
+// CUDA: indice helpers
+#define idx4_4(indice, d1, d2, d3, d4) (indice % d4)
+#define idx4_3(indice, d1, d2, d3, d4) ((indice / d4) % d3)
+#define idx4_2(indice, d1, d2, d3, d4) ((indice / d4 / d3) % d2)
+#define idx4_1(indice, d1, d2, d3, d4) ((indice / d4 / d3 / d2) % d1)
 
 #define CUDA_1D_KERNEL_LOOP(i, n)                              \
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
@@ -284,15 +284,15 @@ __global__ void RoiTransformKernel(const float* input_data,
                                    int* mask, T* transform_matrix) {
   int output_size =
       num_rois * transformed_height * transformed_width * channels;
-  CUDA_1D_KERNEL_LOOP(index, output_size) {
+  CUDA_1D_KERNEL_LOOP(indice, output_size) {
     // (n, c, out_h, out_w) is an element in the transformed output
-    int out_w = idx4_4(index, num_rois, channels, transformed_height,
+    int out_w = idx4_4(indice, num_rois, channels, transformed_height,
                        transformed_width);
-    int out_h = idx4_3(index, num_rois, channels, transformed_height,
+    int out_h = idx4_3(indice, num_rois, channels, transformed_height,
                        transformed_width);
-    int c = idx4_2(index, num_rois, channels, transformed_height,
+    int c = idx4_2(indice, num_rois, channels, transformed_height,
                    transformed_width);
-    int n = idx4_1(index, num_rois, channels, transformed_height,
+    int n = idx4_1(indice, num_rois, channels, transformed_height,
                    transformed_width);
 
     auto bottom_rois = rois_data + n * 8;
@@ -322,20 +322,20 @@ __global__ void RoiTransformKernel(const float* input_data,
           GT_E<T>(-0.5, in_h) ||
           GT_E<T>(in_h, static_cast<T>(in_height - 0.5))) {
         // Skip if source coords is not in input image
-        output_data[index] = 0.0;
+        output_data[indice] = 0.0;
         mask[(n * transformed_height + out_h) * transformed_width + out_w] = 0;
       } else {
         // Perform bilinear interpolation
         int in_n = roi2image_data[n];
         bilinear_interpolate<T>(input_data, channels, in_width, in_height, in_n,
-                                c, in_w, in_h, output_data + index, index,
+                                c, in_w, in_h, output_data + indice, indice,
                                 out2in_idx, out2in_w);
         mask[(n * transformed_height + out_h) * transformed_width + out_w] = 1;
       }
 
     } else {
       // Skip if source coords is not in quad
-      output_data[index] = 0.0;
+      output_data[indice] = 0.0;
       mask[(n * transformed_height + out_h) * transformed_width + out_w] = 0;
     }
   }
@@ -463,12 +463,12 @@ __global__ void RoiTransformGradKernel(int out_size, const int* out2in_idx_data,
                                        const T* out2in_w_data,
                                        const T* out_grad_data,
                                        T* in_grad_data) {
-  CUDA_1D_KERNEL_LOOP(index, out_size * 4) {
-    int in_idx = out2in_idx_data[index];
+  CUDA_1D_KERNEL_LOOP(indice, out_size * 4) {
+    int in_idx = out2in_idx_data[indice];
     if (in_idx >= 0) {
-      int out_idx = index / 4;
+      int out_idx = indice / 4;
       atomicAdd(in_grad_data + in_idx,
-                out_grad_data[out_idx] * out2in_w_data[index]);
+                out_grad_data[out_idx] * out2in_w_data[indice]);
     }
   }
 }

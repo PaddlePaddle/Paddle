@@ -82,7 +82,7 @@ void BeamSearchDecoder<T>::ConvertSentenceVectorToLodTensor(
     LoDTensor* score_tensor, bool reverse, bool sort_by_score) const {
   size_t src_num = sentence_vector_list.size();
 
-  PADDLE_ENFORCE_NE(src_num, 0, "src_num should not be 0");
+  PADDLE_ENFORCE_NE(src_num, 0, "src_num shold not be 0");
 
   std::vector<size_t> source_level_lod = {0};
   std::vector<size_t> sentence_level_lod = {0};
@@ -144,9 +144,9 @@ void BeamSearchDecoder<T>::Backtrace(const LoDTensorArray& step_ids,
                                      const LoDTensorArray& step_scores,
                                      LoDTensor* id_tensor,
                                      LoDTensor* score_tensor) const {
-  PADDLE_ENFORCE(!step_ids.empty(), "step num should be larger than 0");
+  PADDLE_ENFORCE(!step_ids.empty(), "step num shold be larger than 0");
   PADDLE_ENFORCE_EQ(step_ids.size(), step_scores.size(),
-                    "step_ids and step_scores should be the same");
+                    "step_ids and step_scores shold be the same");
   const size_t step_num = step_ids.size();
   const size_t src_num = step_ids.at(0).lod().at(kSourceLevel).size() - 1;
   std::vector<SentenceVector<T>> sentence_vector_list(

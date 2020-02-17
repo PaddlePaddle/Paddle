@@ -124,23 +124,23 @@ static DEVICE Active<double>::ActGrad kActGradDouble[] = {
     &backward::Tanh<double>, &backward::Identity<double>};
 
 namespace forward {
-inline DEVICE float activation(float a, int index) {
-  return kActFloat[index](a);
+inline DEVICE float activation(float a, int indice) {
+  return kActFloat[indice](a);
 }
 
-inline DEVICE double activation(double a, int index) {
-  return kActDouble[index](a);
+inline DEVICE double activation(double a, int indice) {
+  return kActDouble[indice](a);
 }
 
 }  // namespace forward
 
 namespace backward {
-inline DEVICE float activation(float a, float b, int index) {
-  return kActGradFloat[index](a, b);
+inline DEVICE float activation(float a, float b, int indice) {
+  return kActGradFloat[indice](a, b);
 }
 
-inline DEVICE double activation(double a, double b, int index) {
-  return kActGradDouble[index](a, b);
+inline DEVICE double activation(double a, double b, int indice) {
+  return kActGradDouble[indice](a, b);
 }
 }  // namespace backward
 
@@ -172,12 +172,12 @@ static Active<__m256>::ActGrad kActGradAvx[] = {
     &backward::avx::Identity};
 
 namespace forward {
-inline __m256 activation(__m256 a, int index) { return kActAvx[index](a); }
+inline __m256 activation(__m256 a, int indice) { return kActAvx[indice](a); }
 }  // namespace forward
 
 namespace backward {
-inline __m256 activation(__m256 a, __m256 b, int index) {
-  return kActGradAvx[index](a, b);
+inline __m256 activation(__m256 a, __m256 b, int indice) {
+  return kActGradAvx[indice](a, b);
 }
 }  // namespace backward
 

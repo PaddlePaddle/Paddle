@@ -107,7 +107,7 @@ while True:
     subprocess.check_output(['git checkout %s' % pick], shell=True)
 
     # Clean builds and compile.
-    # We assume mainline commits should always compile.
+    # We assume mainline commits shold always compile.
     os.chdir(args.build_dir)
     sys.stdout.write('eval commit %d/%d: %s\n' % (pick_idx, len(commits), pick))
     # Link error can happen without complete clean up.

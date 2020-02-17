@@ -76,7 +76,7 @@ static bool IsBinaryOp(const Node* n) {
       return false;
     }
 
-    // The shape of all inputs should be the same.
+    // The shape of all inputs shold be the same.
     std::vector<int64_t> shape_0;
     for (size_t i = 0; i < n->inputs.size(); ++i) {
       auto* in_i = n->inputs[i];

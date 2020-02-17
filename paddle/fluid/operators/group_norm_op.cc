@@ -31,13 +31,13 @@ class GroupNormOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of GroupNormOp should not be null.");
+                   "Input(X) of GroupNormOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Y"),
-                   "Output(Y) of GroupNormOp should not be null.");
+                   "Output(Y) of GroupNormOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Mean"),
-                   "Output(Mean) of GroupNormOp should not be null.");
+                   "Output(Mean) of GroupNormOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Variance"),
-                   "Output(Variance) of GroupNormOp should not be null.");
+                   "Output(Variance) of GroupNormOp shold not be null.");
     auto x_dim = ctx->GetInputDim("X");
     const std::string data_layout_str =
         ctx->Attrs().Get<std::string>("data_layout");
@@ -63,7 +63,7 @@ class GroupNormOp : public framework::OperatorWithKernel {
     if (ctx->HasInput("Scale")) {
       PADDLE_ENFORCE_EQ(
           ctx->GetInputDim("Scale").size(), 1UL,
-          "ShapeError: the Input(Scale) of Op(group_norm) should be 1-D "
+          "ShapeError: the Input(Scale) of Op(group_norm) shold be 1-D "
           "Tensor. "
           "But received: %u-D Tensor, the shape of Input(Scale) is [%s].",
           ctx->GetInputDim("Scale").size(), ctx->GetInputDim("Scale"));
@@ -79,7 +79,7 @@ class GroupNormOp : public framework::OperatorWithKernel {
     if (ctx->HasInput("Bias")) {
       PADDLE_ENFORCE_EQ(
           ctx->GetInputDim("Bias").size(), 1UL,
-          "ShapeError: the Input(Bias) of Op(group_norm) should be 1-D Tensor. "
+          "ShapeError: the Input(Bias) of Op(group_norm) shold be 1-D Tensor. "
           "But received: %u-D Tensor, the shape of Input(Bias) is [%s].",
           ctx->GetInputDim("Bias").size(), ctx->GetInputDim("Bias"));
       PADDLE_ENFORCE_EQ(
@@ -120,11 +120,11 @@ class GroupNormOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1e-5)
         .AddCustomChecker([](const float &epsilon) {
           PADDLE_ENFORCE(epsilon >= 0.0f && epsilon <= 1.0f,
-                         "'epsilon' should be between 0.0 and 1.0.");
+                         "'epsilon' shold be between 0.0 and 1.0.");
         });
     AddAttr<int>("groups", "The number of groups that divided from channels.")
         .AddCustomChecker([](const int &groups) {
-          PADDLE_ENFORCE_GT(groups, 0, "'groups' should be greater than zero.");
+          PADDLE_ENFORCE_GT(groups, 0, "'groups' shold be greater than zero.");
         });
     AddAttr<std::string>("data_layout",
                          "An optional string from: \"NHWC\", \"NCHW\". ")
@@ -144,11 +144,11 @@ class GroupNormGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     // check input
     PADDLE_ENFORCE(ctx->HasInput("Y"),
-                   "Input(Y) of GroupNormOp should not be null.");
+                   "Input(Y) of GroupNormOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Variance"),
-                   "Input(Variance) of GroupNormOp should not be null.");
+                   "Input(Variance) of GroupNormOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Y")),
-                   "Input(Y@GRAD) of GroupNormOp should not be null.");
+                   "Input(Y@GRAD) of GroupNormOp shold not be null.");
 
     // check output
     if (ctx->HasOutput(framework::GradVarName("X"))) {

@@ -38,7 +38,7 @@ Merge multi LoDTensor's into one according to Ids's shard num.
 split_ids_op -> prefetch_op -> merge_ids_op
 
 
-merge_ids_op should be used after split_ids_op and prefetch_op, split_ids_op
+merge_ids_op shold be used after split_ids_op and prefetch_op, split_ids_op
  will split input Ids into multiple tensors according to Id's shard number.
 prefetch_op will send them to parameter server to prefetch embedding value
 back. During split, the order of ids is disordered. In merge_ids_op we use

@@ -165,26 +165,26 @@ TEST(BuddyAllocator, FractionRefillPool) {
   int* p0 = TestBuddyAllocator(&buddy_allocator, max_chunk_size - 1000,
                                /* use_system_allocator = */ false,
                                /* free_ptr = */ false);
-  // Max chunk size should be same during allocation
+  // Max chunk size shold be same during allocation
   EXPECT_EQ(max_chunk_size, buddy_allocator.GetMaxChunkSize());
 
   size_t alloc =
       platform::GpuAvailableMemToAlloc() * FLAGS_fraction_of_gpu_memory_to_use;
-  // Exceed pool trigger refilling size of fraction of avaiable gpu, and should
+  // Exceed pool trigger refilling size of fraction of avaiable gpu, and shold
   // be able to alloc 60% of the remaining GPU
   int* p1 = TestBuddyAllocator(&buddy_allocator, alloc,
                                /* use_system_allocator = */ false,
                                /* free_ptr = */ false);
-  // Max chunk size should be same during allocation
+  // Max chunk size shold be same during allocation
   EXPECT_EQ(max_chunk_size, buddy_allocator.GetMaxChunkSize());
 
   alloc =
       platform::GpuAvailableMemToAlloc() * FLAGS_fraction_of_gpu_memory_to_use;
-  // Exceed pool trigger refilling size of fraction of avaiable gpu, and should
+  // Exceed pool trigger refilling size of fraction of avaiable gpu, and shold
   // be able to alloc 60% of the remaining GPU
   TestBuddyAllocator(&buddy_allocator, alloc,
                      /* use_system_allocator = */ false);
-  // Max chunk size should be same during allocation
+  // Max chunk size shold be same during allocation
   EXPECT_EQ(max_chunk_size, buddy_allocator.GetMaxChunkSize());
 
   buddy_allocator.Free(p0);
@@ -205,7 +205,7 @@ TEST(BuddyAllocator, AllocFromAvailable) {
   cudaError_t result = cudaMalloc(&p, available >> 1);
   EXPECT_TRUE(result == cudaSuccess);
 
-  // BuddyAllocator should be able to alloc the remaining GPU
+  // BuddyAllocator shold be able to alloc the remaining GPU
   BuddyAllocator buddy_allocator(
       std::unique_ptr<SystemAllocator>(new GPUAllocator(TEST_GPU_ID)),
       platform::GpuMinChunkSize(), platform::GpuMaxChunkSize());
@@ -228,7 +228,7 @@ TEST(BuddyAllocator, AllocFromAvailableWhenFractionIsOne) {
   void* p = nullptr;
   EXPECT_TRUE(cudaMalloc(&p, static_cast<size_t>(3) << 30) == cudaSuccess);
 
-  // BuddyAllocator should be able to alloc the remaining GPU
+  // BuddyAllocator shold be able to alloc the remaining GPU
   BuddyAllocator buddy_allocator(
       std::unique_ptr<SystemAllocator>(new GPUAllocator(TEST_GPU_ID)),
       platform::GpuMinChunkSize(), platform::GpuMaxChunkSize());

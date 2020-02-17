@@ -24,22 +24,22 @@ class BoxDecoderAndAssignOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(
         ctx->HasInput("PriorBox"),
-        "Input(PriorBox) of BoxDecoderAndAssignOp should not be null.");
+        "Input(PriorBox) of BoxDecoderAndAssignOp shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasInput("PriorBoxVar"),
-        "Input(PriorBoxVar) of BoxDecoderAndAssignOp should not be null.");
+        "Input(PriorBoxVar) of BoxDecoderAndAssignOp shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasInput("TargetBox"),
-        "Input(TargetBox) of BoxDecoderAndAssignOp should not be null.");
+        "Input(TargetBox) of BoxDecoderAndAssignOp shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasInput("BoxScore"),
-        "Input(BoxScore) of BoxDecoderAndAssignOp should not be null.");
+        "Input(BoxScore) of BoxDecoderAndAssignOp shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasOutput("DecodeBox"),
-        "Output(DecodeBox) of BoxDecoderAndAssignOp should not be null.");
+        "Output(DecodeBox) of BoxDecoderAndAssignOp shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasOutput("OutputAssignBox"),
-        "Output(OutputAssignBox) of BoxDecoderAndAssignOp should not be null.");
+        "Output(OutputAssignBox) of BoxDecoderAndAssignOp shold not be null.");
 
     auto prior_box_dims = ctx->GetInputDim("PriorBox");
     auto prior_box_var_dims = ctx->GetInputDim("PriorBoxVar");
@@ -60,10 +60,10 @@ class BoxDecoderAndAssignOp : public framework::OperatorWithKernel {
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(prior_box_dims[0], target_box_dims[0],
                         "The first dim of prior_box and target_box is roi nums "
-                        "and should be same!");
+                        "and shold be same!");
       PADDLE_ENFORCE_EQ(prior_box_dims[0], box_score_dims[0],
                         "The first dim of prior_box and box_score is roi nums "
-                        "and should be same!");
+                        "and shold be same!");
       PADDLE_ENFORCE_EQ(
           target_box_dims[1], box_score_dims[1] * prior_box_dims[1],
           "The shape of target_box is [N, classnum * 4], The shape "

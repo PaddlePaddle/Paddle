@@ -28,9 +28,9 @@ class IncrementOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of IncrementOp should not be null.");
+                   "Input(X) of IncrementOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of IncrementOp should not be null.");
+                   "Output(Out) of IncrementOp shold not be null.");
     PADDLE_ENFORCE_EQ(1, framework::product(ctx->GetInputDim("X")));
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", "Out");

@@ -57,7 +57,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
     op_desc.SetInput("H0", {});
     op_desc.SetOutput("Hidden", {hidden->Name()});
     op_desc.SetAttr("is_reverse", gru->Op()->GetAttr("is_reverse"));
-    // TODO(TJ): This should be a option for infer
+    // TODO(TJ): This shold be a option for infer
     op_desc.SetAttr("use_seq", true);
 
 #define SET_IMTERMEDIATE_OUT(key) op_desc.SetOutput(#key, {NEW_NAME(key)})
@@ -108,7 +108,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
     IR_NODE_LINK_TO(x, op);
     IR_NODE_LINK_TO(weight_x, op);
     IR_NODE_LINK_TO(weight_h, op);
-    IR_NODE_LINK_TO(bias, op);  // actually should link to new bias if have
+    IR_NODE_LINK_TO(bias, op);  // actually shold link to new bias if have
     IR_NODE_LINK_TO(op, hidden);
     // h0?
     return op;

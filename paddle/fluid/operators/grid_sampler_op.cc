@@ -29,30 +29,30 @@ class GridSampleOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of GridSampleOp should not be null.");
+                   "Input(X) of GridSampleOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Grid"),
-                   "Input(Grid) of GridSampleOp should not be null.");
+                   "Input(Grid) of GridSampleOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Output"),
-                   "Output(Output) of GridSampleOp should not be null.");
+                   "Output(Output) of GridSampleOp shold not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
     auto grid_dims = ctx->GetInputDim("Grid");
     PADDLE_ENFORCE(x_dims.size() == 4,
-                   "Input(X) of GridSampleOp should be 4-D Tensor.");
+                   "Input(X) of GridSampleOp shold be 4-D Tensor.");
     PADDLE_ENFORCE(grid_dims.size() == 4,
-                   "Input(Grid) of GridSampleOp should be 4-D Tensor.");
+                   "Input(Grid) of GridSampleOp shold be 4-D Tensor.");
     if (ctx->IsRuntime() || grid_dims[3] > 0) {
-      PADDLE_ENFORCE(grid_dims[3] == 2, "Input(Grid) dims[3] should be 2.");
+      PADDLE_ENFORCE(grid_dims[3] == 2, "Input(Grid) dims[3] shold be 2.");
     }
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(grid_dims[0], x_dims[0],
-                        "Input(X) and Input(Grid) dims[0] should be equal.");
+                        "Input(X) and Input(Grid) dims[0] shold be equal.");
       PADDLE_ENFORCE_EQ(
           grid_dims[1], x_dims[2],
-          "Input(X) dims[2] and Input(Grid) dims[1] should be equal.");
+          "Input(X) dims[2] and Input(Grid) dims[1] shold be equal.");
       PADDLE_ENFORCE_EQ(
           grid_dims[2], x_dims[3],
-          "Input(X) dims[3] and Input(Grid) dims[2] should be equal.");
+          "Input(X) dims[3] and Input(Grid) dims[2] shold be equal.");
     }
 
     ctx->SetOutputDim("Output", x_dims);

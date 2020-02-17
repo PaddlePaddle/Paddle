@@ -54,9 +54,9 @@ class ExpandAsOpMaker : public framework::OpProtoAndCheckerMaker {
               "the corresponding value given by Attr(expand_times).");
     AddInput("target_tensor", "Expand tensor's shape for each dimension.");
     AddComment(R"DOC(
-Expand as operator tiles the input by given times number. You should set times
+Expand as operator tiles the input by given times number. You shold set times
 number for each dimension by providing tensor 'expend_tensor'. The rank of X
-should be in [1, 6]. Please note that size of 'expend_tensor' must be the same
+shold be in [1, 6]. Please note that size of 'expend_tensor' must be the same
 with X's rank. Following is a using case:
 Input(X) is a 3-D tensor with shape [2, 3, 1]:
         [

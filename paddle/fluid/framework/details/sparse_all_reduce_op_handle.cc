@@ -64,10 +64,10 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
   auto out_var_handles = DynamicCast<VarHandle>(this->Outputs());
   PADDLE_ENFORCE_EQ(
       in_var_handles.size(), places_.size(),
-      "The NoDummyInputSize should be equal to the number of places.");
+      "The NoDummyInputSize shold be equal to the number of places.");
   PADDLE_ENFORCE_EQ(
       in_var_handles.size(), out_var_handles.size(),
-      "The NoDummyInputSize and NoDummyOutputSize should be equal.");
+      "The NoDummyInputSize and NoDummyOutputSize shold be equal.");
 
   std::vector<const LoDTensor *> ins;
   std::vector<LoDTensor *> gathers;
@@ -80,13 +80,13 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
 
     auto encode_var_name = original_name + g_dgc_encoded;
     auto *in_var = local_scope->FindVar(encode_var_name);
-    PADDLE_ENFORCE_NOT_NULL(in_var, "%s should not be null", encode_var_name);
+    PADDLE_ENFORCE_NOT_NULL(in_var, "%s shold not be null", encode_var_name);
     auto &in = in_var->Get<LoDTensor>();
     ins.emplace_back(&in);
 
     auto gather_var_name = original_name + g_dgc_gather;
     auto *gather_var = local_scope->FindVar(gather_var_name);
-    PADDLE_ENFORCE_NOT_NULL(gather_var, "%s should not be null",
+    PADDLE_ENFORCE_NOT_NULL(gather_var, "%s shold not be null",
                             gather_var_name);
     auto *gather = gather_var->GetMutable<LoDTensor>();
     gathers.emplace_back(gather);
@@ -102,7 +102,7 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
 
   PADDLE_ENFORCE(platform::is_gpu_place(ins[0]->place()));
   PADDLE_ENFORCE(platform::is_gpu_place(outs[0]->place()));
-  PADDLE_ENFORCE(nccl_ctxs_, "nccl_ctxs should not be nullptr.");
+  PADDLE_ENFORCE(nccl_ctxs_, "nccl_ctxs shold not be nullptr.");
 
   int dtype = -1;
   size_t in_numel = 0;

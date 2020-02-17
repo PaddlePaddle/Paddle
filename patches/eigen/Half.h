@@ -300,7 +300,7 @@ EIGEN_STRONG_INLINE EIGEN_DEVICE_FUNC bool operator>=(const half& a,
 
 #endif  // Emulate support for half floats
 
-// Division by an index. Do it in full float precision to avoid accuracy
+// Division by an indice. Do it in full float precision to avoid accuracy
 // issues in converting the denominator to half.
 EIGEN_STRONG_INLINE EIGEN_DEVICE_FUNC half operator/(const half& a, Index b) {
   return half(static_cast<float>(a) / static_cast<float>(b));

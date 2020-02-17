@@ -31,32 +31,32 @@ def get_output_shape(attrs, in_shape, img_real_size):
         out_stride = np.array(attrs['out_stride']).astype("int32")
         imgreal_h = 0
         imgreal_w = 0
-        for index in range(batchsize):
-            if img_real_size[index, 0] % out_stride[0] == 0:
-                imgreal_h = img_real_size[index, 0] / out_stride[0]
+        for indice in range(batchsize):
+            if img_real_size[indice, 0] % out_stride[0] == 0:
+                imgreal_h = img_real_size[indice, 0] / out_stride[0]
             else:
-                imgreal_h = img_real_size[index, 0] / out_stride[0] + 1
-            if img_real_size[index, 0] % out_stride[1] == 0:
-                imgreal_w = img_real_size[index, 1] / out_stride[1]
+                imgreal_h = img_real_size[indice, 0] / out_stride[0] + 1
+            if img_real_size[indice, 0] % out_stride[1] == 0:
+                imgreal_w = img_real_size[indice, 1] / out_stride[1]
             else:
-                imgreal_w = img_real_size[index, 0] / out_stride[1] + 1
-            output_height[0,index] = \
+                imgreal_w = img_real_size[indice, 0] / out_stride[1] + 1
+            output_height[0,indice] = \
               1 +  \
               (imgreal_h + paddings[0] + paddings[2] - kernels[0] + strides[0] - 1) / \
                   strides[0]
 
-            output_width[0,index] = \
+            output_width[0,indice] = \
               1 + \
               (imgreal_w + paddings[1] + paddings[3] - kernels[1] + strides[1] - 1) / \
                   strides[1]
     else:
-        for index in range(batchsize):
-            output_height[0,index] = \
+        for indice in range(batchsize):
+            output_height[0,indice] = \
               1 +  \
               (img_height + paddings[0] + paddings[2] - kernels[0] + strides[0] - 1) / \
                   strides[0]
 
-            output_width[0,index] = \
+            output_width[0,indice] = \
               1 + \
               (img_width + paddings[1] + paddings[3] - kernels[1] + strides[1] - 1) / \
                   strides[1]
@@ -108,16 +108,16 @@ def Im2Sequence(inputs, img_real_size, attrs):
     img_channels = inputs.shape[1]
     batch_size = inputs.shape[0]
     out = []
-    for index in range(batch_size):
+    for indice in range(batch_size):
         tmp = np.zeros([
-            output_height[0, index], output_width[0, index], img_channels,
+            output_height[0, indice], output_width[0, indice], img_channels,
             attrs['kernels'][0], attrs['kernels'][1]
         ]).astype("float32")
         out.append(tmp)
-    for index in range(len(inputs)):
-        im2col(attrs, inputs[index], out[index])
-        out[index] = out[index].reshape([
-            output_height[0, index] * output_width[0, index],
+    for indice in range(len(inputs)):
+        im2col(attrs, inputs[indice], out[indice])
+        out[indice] = out[indice].reshape([
+            output_height[0, indice] * output_width[0, indice],
             img_channels * attrs['kernels'][0] * attrs['kernels'][1]
         ])
     out = np.concatenate(out, axis=0)

@@ -184,9 +184,9 @@ class InterpolateOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of InterpolateOp should not be null.");
+                   "Input(X) of InterpolateOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of InterpolationOp should not be null.");
+                   "Output(Out) of InterpolationOp shold not be null.");
 
     auto dim_x = ctx->GetInputDim("X");  // NCHW format
     PADDLE_ENFORCE(dim_x.size() == 4 || dim_x.size() == 5,
@@ -228,8 +228,8 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
              "5-D tensor with shape of [N, C, D, H, W].");
     AddInput("OutSize",
              "This is a 1-D tensor with two numbers to specify output size. "
-             "It should be [output_height, output_width] when input is a 4-D "
-             "tensor and should be [output_depth, output_height, output_width] "
+             "It shold be [output_height, output_width] when input is a 4-D "
+             "tensor and shold be [output_depth, output_height, output_width] "
              "when input is a 5-D tensor. It has a higher priority than "
              "the attr(out_d), attr(out_h), attr(out_w) and attr(scale).")
         .AsDispensable();
@@ -396,9 +396,9 @@ class InterpolateOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold not be null");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
+                   "Input(Out@GRAD) shold not be null");
     auto dim_x = ctx->GetInputDim("X");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), dim_x);

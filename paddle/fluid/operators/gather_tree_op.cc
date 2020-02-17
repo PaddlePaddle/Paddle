@@ -23,11 +23,11 @@ class GatherTreeOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Ids"),
-                   "Input(Ids) of GatherTreeOp should not be null.");
+                   "Input(Ids) of GatherTreeOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Parents"),
-                   "Input(Parents) of GatherTreeOp should not be null.");
+                   "Input(Parents) of GatherTreeOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of GatherTreeOp should not be null.");
+                   "Output(Out) of GatherTreeOp shold not be null.");
 
     auto ids_dims = ctx->GetInputDim("Ids");
     auto parents_dims = ctx->GetInputDim("Parents");

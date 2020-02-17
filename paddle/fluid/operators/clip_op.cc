@@ -24,13 +24,13 @@ class ClipOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of ClipOp should not be null.");
+                   "Input(X) of ClipOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of ClipOp should not be null.");
+                   "Output(Out) of ClipOp shold not be null.");
     auto x_dims = ctx->GetInputDim("X");
     auto max = ctx->Attrs().Get<float>("max");
     auto min = ctx->Attrs().Get<float>("min");
-    PADDLE_ENFORCE_LT(min, max, "max should be greater than min.");
+    PADDLE_ENFORCE_LT(min, max, "max shold be greater than min.");
     ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
   }
@@ -41,7 +41,7 @@ class ClipOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "Tensor, the input of clip op, data type should be float32 or "
+             "Tensor, the input of clip op, data type shold be float32 or "
              "float64.");
     AddOutput(
         "Out",
@@ -68,9 +68,9 @@ class ClipOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold not be null");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
+                   "Input(Out@GRAD) shold not be null");
     auto x_dims = ctx->GetInputDim("X");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), x_dims);

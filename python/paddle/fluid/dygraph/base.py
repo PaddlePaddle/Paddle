@@ -49,7 +49,7 @@ def program_desc_tracing_guard(enable):
         tracer._enable_program_desc_tracing = original_val
 
 
-# This function should be removed in V1.6, because it can easily lead to cyclic dependencies.
+# This function shold be removed in V1.6, because it can easily lead to cyclic dependencies.
 def enabled():
     # Internal use only
     return framework.in_dygraph_mode()

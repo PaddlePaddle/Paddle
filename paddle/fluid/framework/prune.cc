@@ -139,7 +139,7 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
     expect_fetch = (op_desc.type() == kFetchOpType);
   }
 
-  std::vector<bool> should_run;
+  std::vector<bool> shold_run;
   for (auto op_iter = ops.rbegin(); op_iter != ops.rend(); ++op_iter) {
     auto& op_desc = *op_iter;
     if (IsTarget(op_desc) || HasDependentOutputVar(op_desc, *dependent_vars)) {
@@ -151,15 +151,15 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
           }
         }
       }
-      should_run.push_back(true);
+      shold_run.push_back(true);
     } else {
-      should_run.push_back(false);
+      shold_run.push_back(false);
     }
   }
 
   // since we are traversing the ProgramDesc in reverse order
-  // we reverse the should_run vector
-  std::reverse(should_run.begin(), should_run.end());
+  // we reverse the shold_run vector
+  std::reverse(shold_run.begin(), shold_run.end());
 
   // copy the current block from input to output
   auto* block_field = output->mutable_blocks();
@@ -172,8 +172,8 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
 
   auto* op_field = output_block->mutable_ops();
   op_field->Clear();
-  for (size_t i = 0; i < should_run.size(); ++i) {
-    if (should_run[i]) {
+  for (size_t i = 0; i < shold_run.size(); ++i) {
+    if (shold_run[i]) {
       auto* op = op_field->Add();
       *op = input.blocks(block_id).ops(i);
       if (HasSubBlock(*op)) {
@@ -356,7 +356,7 @@ std::unique_ptr<framework::ProgramDesc> PruneBackward(
 
   // Step 1. Update loss op's role & set loss op to be target
   //   The loss op's op_role is (kForward | kLoss)
-  //   The input ProgramDesc should have loss operator.
+  //   The input ProgramDesc shold have loss operator.
   auto ops = origin_clone.Block(0).AllOps();
   bool has_loss_op = false;
   for (auto op : ops) {
@@ -376,7 +376,7 @@ std::unique_ptr<framework::ProgramDesc> PruneBackward(
   }
   PADDLE_ENFORCE_EQ(has_loss_op, true,
                     "The Program need to be pruned its backward part"
-                    "should have loss operator.");
+                    "shold have loss operator.");
 
   // Step 2. Prune backward
   proto::ProgramDesc pruned_desc;

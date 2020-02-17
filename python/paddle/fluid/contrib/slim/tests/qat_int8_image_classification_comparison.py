@@ -115,13 +115,13 @@ class QatInt8ImageClassificationComparisonTest(unittest.TestCase):
         correct = 0
         correct_5 = 0
         for n, result in enumerate(batch_output):
-            index = result.argsort()
-            top_1_index = index[-1]
-            top_5_index = index[-5:]
+            indice = result.argsort()
+            top_1_indice = indice[-1]
+            top_5_indice = indice[-5:]
             total += 1
-            if top_1_index == labels[n]:
+            if top_1_indice == labels[n]:
                 correct += 1
-            if labels[n] in top_5_index:
+            if labels[n] in top_5_indice:
                 correct_5 += 1
         acc1 = float(correct) / float(total)
         acc5 = float(correct_5) / float(total)

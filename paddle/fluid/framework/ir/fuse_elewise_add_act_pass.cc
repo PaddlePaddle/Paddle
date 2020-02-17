@@ -254,10 +254,10 @@ void FuseElewiseAddActPass::RemoveIntermediateOut(Graph *graph) const {
       auto intermediate_out_args = cur_node->Op()->Output("IntermediateOut");
       PADDLE_ENFORCE(
           save_intermediate_out && !intermediate_out_args.empty(),
-          "The %s should save the intermediate_out in the fusing stage.",
+          "The %s shold save the intermediate_out in the fusing stage.",
           cur_node->Name());
 
-      // If the intermediate_out's output is empty, it should be removed.
+      // If the intermediate_out's output is empty, it shold be removed.
       auto cur_node_outputs = cur_node->outputs;
       for (auto &out : cur_node_outputs) {
         if (out->Name() == intermediate_out_args[0]) {
@@ -273,10 +273,10 @@ void FuseElewiseAddActPass::RemoveIntermediateOut(Graph *graph) const {
           cur_node->Op()->Output(GradVarName("IntermediateOut"));
       PADDLE_ENFORCE(
           !intermediate_out_grad_args.empty(),
-          "The %s should save the intermediate_out in the fusing stage.",
+          "The %s shold save the intermediate_out in the fusing stage.",
           cur_node->Name());
       auto cur_node_outputs = cur_node->outputs;
-      // If the intermediate_out_g's output is empty, it should be removed.
+      // If the intermediate_out_g's output is empty, it shold be removed.
       for (auto &out : cur_node_outputs) {
         if (out->Name() == intermediate_out_grad_args[0] &&
             out->outputs.empty()) {

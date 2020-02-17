@@ -31,20 +31,20 @@ using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 template <typename DeviceContext, typename T>
 class CopyMatrixRowsFunctor {
  public:
-  // If is_src_index is true,
-  // copy the indexed rows of input src to the output dst.
-  // If is_src_index is false,
-  // copy the input src to the indexed rows of output dst.
-  // The indexed rows are based on the input index.
+  // If is_src_indice is true,
+  // copy the indiceed rows of input src to the output dst.
+  // If is_src_indice is false,
+  // copy the input src to the indiceed rows of output dst.
+  // The indiceed rows are based on the input indice.
   void operator()(const DeviceContext& context, const framework::Tensor& src,
-                  framework::Vector<size_t> index_lod, framework::Tensor* dst,
-                  bool is_src_index);
+                  framework::Vector<size_t> indice_lod, framework::Tensor* dst,
+                  bool is_src_indice);
 };
 
 template <typename DeviceContext, typename T>
 class LoDTensor2BatchFunctor {
   // Calculate the length of each sequence and
-  // sort sequence index by the length.
+  // sort sequence indice by the length.
   // example:  sequences = {s0, s1, s2}
   //           s0: 0 0 0 0, s1: 1 1 1 1 1, s2: 2 2 2
   //           seq_info[3] = {(4, 5, 1), (0, 4, 0), (9, 3, 2)}
@@ -65,11 +65,11 @@ class LoDTensor2BatchFunctor {
     if (!is_cal_batch_lod) {
       auto lods = batch->lod();
       PADDLE_ENFORCE_GT(lods.size(), 2UL,
-                        "The LoD of LoDTensor should inlcude at least 2-level "
+                        "The LoD of LoDTensor shold inlcude at least 2-level "
                         "sequence information.");
       PADDLE_ENFORCE_EQ(
           lods[1].size(), static_cast<size_t>(lod_tensor.dims()[0]),
-          "The LoD information should be consistent with the dims.");
+          "The LoD information shold be consistent with the dims.");
       CopyMatrixRowsFunctor<DeviceContext, T> to_batch;
       to_batch(context, lod_tensor, lods[1], batch, true);
       return;
@@ -120,7 +120,7 @@ class LoDTensor2BatchFunctor {
     // batch_lods[0] is the start positions for batch LoDTensor
     size_t max_seqlen = seq_info[0].length;
     batch_lods[0].resize(max_seqlen + 1);
-    // batch_lods[1] is the raw index in the input LoDTensor
+    // batch_lods[1] is the raw indice in the input LoDTensor
     batch_lods[1].resize(static_cast<size_t>(lod_tensor.dims()[0]));
     // batch_lods[2] is the sort order for the input LoDTensor.
     batch_lods[2].resize(seq_info.size());
@@ -162,11 +162,11 @@ class Batch2LoDTensorFunctor {
                   framework::LoDTensor* lod_tensor) const {
     auto in_lod = batch.lod();
     PADDLE_ENFORCE_GT(in_lod.size(), 2UL,
-                      "The LoD of LoDTensor should inlcude at least 2-level "
+                      "The LoD of LoDTensor shold inlcude at least 2-level "
                       "sequence information.");
     PADDLE_ENFORCE_EQ(
         in_lod[1].size(), static_cast<size_t>(lod_tensor->dims()[0]),
-        "The LoD information should be consistent with the dims.");
+        "The LoD information shold be consistent with the dims.");
     CopyMatrixRowsFunctor<DeviceContext, T> to_seq;
     to_seq(context, batch, in_lod[1], lod_tensor, false);
   }

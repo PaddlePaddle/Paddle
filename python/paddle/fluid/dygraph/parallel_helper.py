@@ -33,7 +33,7 @@ def _set_parallel_ctx(nccl_parallel_context):
 def _init_parallel_ctx():
     global __parallel_ctx__clz__
     assert __parallel_ctx__clz__ is not None, \
-        "ParallelContext should be initialized."
+        "ParallelContext shold be initialized."
     __parallel_ctx__clz__.init()
 
 

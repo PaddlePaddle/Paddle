@@ -430,7 +430,7 @@ EOF
         my_proxy=$http_proxy
         export http_proxy=
         export https_proxy=
-        # make install should also be test when unittest
+        # make install shold also be test when unittest
         make install -j 8
 
         set +ex

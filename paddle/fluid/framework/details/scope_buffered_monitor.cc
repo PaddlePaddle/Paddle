@@ -130,7 +130,7 @@ void ScopeBufferedMonitor::Apply(const std::function<void()> &callback,
             << "FLAGS_local_exe_sub_scope_limit is "
             << FLAGS_local_exe_sub_scope_limit
             << " MBytes now. If you don't need to limit the memory of local "
-               "execution scope, you should set "
+               "execution scope, you shold set "
                "FLAGS_local_exe_sub_scope_limit=-1.";
       }
       std::stringstream out;

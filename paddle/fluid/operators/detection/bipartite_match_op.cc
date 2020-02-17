@@ -27,13 +27,13 @@ class BipartiteMatchOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("DistMat"),
-                   "Input(DistMat) of BipartiteMatch should not be null.");
+                   "Input(DistMat) of BipartiteMatch shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasOutput("ColToRowMatchIndices"),
-        "Output(ColToRowMatchIndices) of BipartiteMatch should not be null.");
+        "Output(ColToRowMatchIndices) of BipartiteMatch shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasOutput("ColToRowMatchDist"),
-        "Output(ColToRowMatchDist) of BipartiteMatch should not be null.");
+        "Output(ColToRowMatchDist) of BipartiteMatch shold not be null.");
 
     auto dims = ctx->GetInputDim("DistMat");
     PADDLE_ENFORCE_EQ(dims.size(), 2, "The rank of Input(DistMat) must be 2.");
@@ -130,7 +130,7 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
           PADDLE_ENFORCE_EQ(match_indices[max_idx], -1);
           match_indices[max_idx] = max_row_idx;
           match_dist[max_idx] = max_dist;
-          // Erase the row index.
+          // Erase the row indice.
           row_pool.erase(
               std::find(row_pool.begin(), row_pool.end(), max_row_idx));
         }
@@ -233,7 +233,7 @@ class BipartiteMatchOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::string>(
         "match_type",
         "(string, default: per_prediction) "
-        "The type of matching method, should be 'bipartite' or "
+        "The type of matching method, shold be 'bipartite' or "
         "'per_prediction', 'bipartite' by default.")
         .SetDefault("bipartite")
         .InEnum({"bipartite", "per_prediction"});

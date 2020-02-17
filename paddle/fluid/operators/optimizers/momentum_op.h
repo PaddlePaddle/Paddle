@@ -41,23 +41,23 @@ class MomentumOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Param"),
-                   "Input(param) of Momentum should not be null.");
+                   "Input(param) of Momentum shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Grad"),
-                   "Input(grad) of Momentum should not be null.");
+                   "Input(grad) of Momentum shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Velocity"),
-                   "Input(velocity) of Momentum should not be null.");
+                   "Input(velocity) of Momentum shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("LearningRate"),
-                   "Input(LearningRate) of Momentum should not be null.");
+                   "Input(LearningRate) of Momentum shold not be null.");
     PADDLE_ENFORCE(
         ctx->GetInputsVarType("Param").front() ==
             framework::proto::VarType::LOD_TENSOR,
-        "The input var's type should be LoDTensor, but the received is %s",
+        "The input var's type shold be LoDTensor, but the received is %s",
         ctx->Inputs("Param").front(), ctx->GetInputsVarType("Param").front());
 
     PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
-                   "Output(ParamOut) of Momentum should not be null.");
+                   "Output(ParamOut) of Momentum shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("VelocityOut"),
-                   "Output(VelocityOut) of Momentum should not be null.");
+                   "Output(VelocityOut) of Momentum shold not be null.");
 
     auto lr_dims = ctx->GetInputDim("LearningRate");
     PADDLE_ENFORCE_NE(framework::product(lr_dims), 0,
@@ -66,17 +66,17 @@ class MomentumOp : public framework::OperatorWithKernel {
                       "if you put exe.run(startup_program) "
                       "after optimizer.minimize function.");
     PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
-                      "Learning_rate should be a scalar");
+                      "Learning_rate shold be a scalar");
 
     auto param_dim = ctx->GetInputDim("Param");
     if (ctx->GetInputsVarType("Grad")[0] ==
         framework::proto::VarType::LOD_TENSOR) {
       PADDLE_ENFORCE_EQ(
           param_dim, ctx->GetInputDim("Grad"),
-          "Param and Grad input of MomentumOp should have the same dimension.");
+          "Param and Grad input of MomentumOp shold have the same dimension.");
       PADDLE_ENFORCE_EQ(
           param_dim, ctx->GetInputDim("Velocity"),
-          "Param and Velocity of MomentumOp should have the same dimension.");
+          "Param and Velocity of MomentumOp shold have the same dimension.");
     }
 
     ctx->SetOutputDim("ParamOut", param_dim);

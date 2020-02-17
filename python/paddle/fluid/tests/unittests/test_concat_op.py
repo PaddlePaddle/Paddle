@@ -160,7 +160,7 @@ create_test_fp16(TestConcatOp5)
 class TestConcatOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            # The input type of concat_op should be list.
+            # The input type of concat_op shold be list.
             x1 = fluid.layers.data(shape=[4], dtype='int32', name='x1')
             fluid.layers.concat(x1)
             # The item in input must be Variable.
@@ -177,7 +177,7 @@ class TestConcatOpError(unittest.TestCase):
             x7 = fluid.layers.data(shape=[4], dtype='float16', name='x7')
             fluid.layers.concat([x6, x7])
 
-            # The type of axis in concat_op should be int or Variable.
+            # The type of axis in concat_op shold be int or Variable.
             def test_axis_type():
                 fluid.layers.concat([x6, x7], 3.2)
 

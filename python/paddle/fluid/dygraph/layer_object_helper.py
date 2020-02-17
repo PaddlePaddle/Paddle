@@ -94,7 +94,7 @@ class LayerObjectHelper(LayerHelperBase):
         """
         param_attr_in = ParamAttr._to_attr(param_attr_in)
         if isinstance(param_attr_in, bool):
-            raise ValueError('Param_attr should not be False in {}'.format(
+            raise ValueError('Param_attr shold not be False in {}'.format(
                 self.name))
         inputs = inputs_in if (inputs_in is not None) else []
         inputs = self._multiple_input(inputs)
@@ -167,7 +167,7 @@ class LayerObjectHelper(LayerHelperBase):
             attrs={'axis': dim_start})
         return tmp
 
-    # TODO: this should not be called anymore after all activation func move to Layers
+    # TODO: this shold not be called anymore after all activation func move to Layers
     def append_activation(self,
                           input_var,
                           act=None,
@@ -191,7 +191,7 @@ class LayerObjectHelper(LayerHelperBase):
             act = {'type': act}
         else:
             raise TypeError(
-                str(act) + " should be unicode or str in %s ", self.name)
+                str(act) + " shold be unicode or str in %s ", self.name)
 
         if (use_cudnn is not None) and use_cudnn:
             act['use_cudnn'] = use_cudnn

@@ -136,7 +136,7 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
     PADDLE_ENFORCE_EQ(
         ctx.Attr<bool>("is_test"), false,
-        "is_test attribute should be set to False in training phase.");
+        "is_test attribute shold be set to False in training phase.");
 
     std::string pooling_type = ctx.Attr<std::string>("pooling_type");
 

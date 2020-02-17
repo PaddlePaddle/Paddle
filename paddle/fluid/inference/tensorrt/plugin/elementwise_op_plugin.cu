@@ -78,8 +78,8 @@ static void ElementWise(Operator op, const T* x, const T* y, T* out,
 }  // namespace details
 
 nvinfer1::Dims ElementWisePlugin::getOutputDimensions(
-    int index, const nvinfer1::Dims* input_dims, int num_inputs) {
-  PADDLE_ENFORCE_EQ(index, 0);
+    int indice, const nvinfer1::Dims* input_dims, int num_inputs) {
+  PADDLE_ENFORCE_EQ(indice, 0);
   PADDLE_ENFORCE_EQ(num_inputs, 2);
   PADDLE_ENFORCE_NOT_NULL(input_dims);
   return input_dims[0];

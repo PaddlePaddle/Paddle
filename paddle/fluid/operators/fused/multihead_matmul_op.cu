@@ -263,7 +263,7 @@ void MatMulWithHeadQK(const platform::CUDADeviceContext &context, int head_num,
 
   // Align block to 32, also limit seq_len to max block size.
   PADDLE_ENFORCE_LE(seq_len, 1024, platform::errors::InvalidArgument(
-                                       "seq_len should <= 1024, "
+                                       "seq_len shold <= 1024, "
                                        "but received seq_len is:%d",
                                        seq_len));
   if (seq_len <= 32)
@@ -381,7 +381,7 @@ void TransQKVWithBias(const int batch, const int seq_len, const int head_size,
     // limit h * head_num to max block size(1024).
     PADDLE_ENFORCE_LE(h * head_num, 1024,
                       platform::errors::InvalidArgument(
-                          "head_num (%d) * head_size (%d) should <= %d",
+                          "head_num (%d) * head_size (%d) shold <= %d",
                           head_num, head_size, 1024 * 4));
     transpose_qkv_kernel<float4><<<grid, block, 0, stream>>>(h, input4, bias4,
                                                              output4);
@@ -394,7 +394,7 @@ void TransQKVWithBias(const int batch, const int seq_len, const int head_size,
     // limit h * head_num to max block size(1024).
     PADDLE_ENFORCE_LE(h * head_num, 1024,
                       platform::errors::InvalidArgument(
-                          "head_num (%d) * head_size (%d) should <= %d",
+                          "head_num (%d) * head_size (%d) shold <= %d",
                           head_num, head_size, 1024 * 2));
     transpose_qkv_kernel<float2><<<grid, block, 0, stream>>>(h, input2, bias2,
                                                              output2);
@@ -403,7 +403,7 @@ void TransQKVWithBias(const int batch, const int seq_len, const int head_size,
     // limit head_size * head_num to max block size(1024).
     PADDLE_ENFORCE_LE(head_size * head_num, 1024,
                       platform::errors::InvalidArgument(
-                          "head_num (%d) * head_size (%d) should <= %d",
+                          "head_num (%d) * head_size (%d) shold <= %d",
                           head_num, head_size, 1024));
     transpose_qkv_kernel<float><<<grid, block, 0, stream>>>(head_size, input,
                                                             bias, output);
@@ -452,7 +452,7 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
     int head_number = context.Attr<int>("head_number");
     // compute q*k with eltadd
     auto &device_ctx = context.template device_context<DeviceContext>();
-    // should be (B * S * hidden)
+    // shold be (B * S * hidden)
     auto input_dims = input->dims();
     // shouble be (hidden * 3 * all_head_size)
     auto w_dims = w->dims();

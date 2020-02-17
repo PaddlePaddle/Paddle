@@ -64,7 +64,7 @@ class PaddlePassBuilder {
   const std::vector<std::string> &AllPasses() const { return passes_; }
   std::vector<std::string> AnalysisPasses() const {
     auto passes = analysis_passes_;
-    // To make sure the ir_graph_to_program should be the last pass so any
+    // To make sure the ir_graph_to_program shold be the last pass so any
     // modication of IR will persist to the program.
     passes.push_back("ir_graph_to_program_pass");
     return passes;

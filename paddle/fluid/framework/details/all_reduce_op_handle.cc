@@ -62,10 +62,10 @@ void AllReduceOpHandle::AllReduceImpl(
   size_t num_places = places_.size();
   PADDLE_ENFORCE_EQ(
       in_var_handles.size(), num_places,
-      "The NoDummyInputSize should be equal to the number of places.");
+      "The NoDummyInputSize shold be equal to the number of places.");
   PADDLE_ENFORCE_EQ(
       in_var_handles.size(), out_var_handles.size(),
-      "The NoDummyInputSize and NoDummyOutputSize should be equal.");
+      "The NoDummyInputSize and NoDummyOutputSize shold be equal.");
   PADDLE_ENFORCE_EQ(local_exec_scopes_.size(), num_places);
 
   std::vector<const void *> lod_tensor_data;
@@ -103,7 +103,7 @@ void AllReduceOpHandle::AllReduceImpl(
              << ", out_name:" << out_var_handles[i]->name();
 
     PADDLE_ENFORCE_EQ(in_var_handles[i]->name(), out_var_handles[i]->name(),
-                      "The name of input and output should be equal.");
+                      "The name of input and output shold be equal.");
   }
 
   std::vector<std::string> grad_var_names;
@@ -122,7 +122,7 @@ void AllReduceOpHandle::AllReduceFunc(
     const std::vector<std::string> &out_var_names) {
   if (is_gpu_place(places[0])) {
 #if defined(PADDLE_WITH_NCCL)
-    PADDLE_ENFORCE_NOT_NULL(nccl_ctxs_, "nccl_ctxs should not be nullptr.");
+    PADDLE_ENFORCE_NOT_NULL(nccl_ctxs_, "nccl_ctxs shold not be nullptr.");
     ncclDataType_t nccl_dtype = platform::ToNCCLDataType(dtype);
     std::vector<std::function<void()>> all_reduce_calls;
     for (size_t i = 0; i < local_exec_scopes_.size(); ++i) {

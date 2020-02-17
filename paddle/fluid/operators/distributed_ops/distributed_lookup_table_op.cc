@@ -28,11 +28,11 @@ class DistributedLookupTableOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInputs("Ids"),
-                   "Input(Ids) of LookupTableOp should not be null.");
+                   "Input(Ids) of LookupTableOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("W"),
-                   "Input(W) of LookupTableOp should not be null.");
+                   "Input(W) of LookupTableOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutputs("Outputs"),
-                   "Output(Outs) of LookupTableOp should not be null.");
+                   "Output(Outs) of LookupTableOp shold not be null.");
 
     auto ids_dims = ctx->GetInputsDim("Ids");
     auto table_dims = ctx->GetInputDim("W");
@@ -104,7 +104,7 @@ class DistributedLookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Ids",
-             "(LoDTensor) Ids's type should be LoDTensor"
+             "(LoDTensor) Ids's type shold be LoDTensor"
              "THe ids to be looked up in W.")
         .AsDuplicable();
 

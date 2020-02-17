@@ -43,7 +43,7 @@ class DeleteVarOpInfoMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "The input of delete op").AsDuplicable();
     AddComment(R"DOC(
 Delete Operator.
-It should not be configured by users directly.
+It shold not be configured by users directly.
 )DOC");
   }
 };

@@ -27,10 +27,10 @@ class SigmoidFocalLossOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("FgNum"), "Input(FgNum) should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) shold not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("FgNum"), "Input(FgNum) shold not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) shold not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
     auto labels_dims = ctx->GetInputDim("Label");
@@ -54,7 +54,7 @@ class SigmoidFocalLossOp : public framework::OperatorWithKernel {
     }
 
     PADDLE_ENFORCE_EQ(labels_dims[rank - 1], 1UL,
-                      "The last dimension of input(Label) should be 1.");
+                      "The last dimension of input(Label) shold be 1.");
 
     ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -74,13 +74,13 @@ class SigmoidFocalLossGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("FgNum"), "Input(FgNum) should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) shold not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("FgNum"), "Input(FgNum) shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null.");
+                   "Input(Out@GRAD) shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Output(X@GRAD) should not be null.");
+                   "Output(X@GRAD) shold not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
     auto labels_dims = ctx->GetInputDim("Label");
@@ -103,7 +103,7 @@ class SigmoidFocalLossGradOp : public framework::OperatorWithKernel {
                         "Input(X) and Input(Label) shall have the same shape.");
 
       PADDLE_ENFORCE_EQ(labels_dims[rank - 1], 1UL,
-                        "The last dimension of input(Label) should be 1.");
+                        "The last dimension of input(Label) shold be 1.");
 
       PADDLE_ENFORCE_EQ(
           framework::slice_ddim(x_dims, 0, rank),

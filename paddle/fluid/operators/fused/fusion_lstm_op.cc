@@ -40,49 +40,49 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
 
   if (ctx->HasInput("H0")) {
     PADDLE_ENFORCE(ctx->HasInput("C0"),
-                   "Input(Cell) and Input(Hidden) of LSTM should not "
+                   "Input(Cell) and Input(Hidden) of LSTM shold not "
                    "be null at the same time.");
     auto h_dims = ctx->GetInputDim("H0");
     auto c_dims = ctx->GetInputDim("C0");
     PADDLE_ENFORCE(h_dims == c_dims,
                    "The dimension of Input(H0) and Input(C0) "
-                   "should be the same.");
+                   "shold be the same.");
   }
 
   auto wx_dims = ctx->GetInputDim("WeightX");
   PADDLE_ENFORCE_EQ(wx_dims.size(), 2,
-                    "The rank of Input(WeightX) should be 2.");
+                    "The rank of Input(WeightX) shold be 2.");
   PADDLE_ENFORCE_EQ(wx_dims[0], x_dims[1],
                     "The first dimension of Input(WeightX) "
-                    "should be %d.",
+                    "shold be %d.",
                     x_dims[1]);
 
   int frame_size = wx_dims[1] / 4;
   auto wh_dims = ctx->GetInputDim("WeightH");
   PADDLE_ENFORCE_EQ(wh_dims.size(), 2,
-                    "The rank of Input(WeightH) should be 2.");
+                    "The rank of Input(WeightH) shold be 2.");
   PADDLE_ENFORCE_EQ(wh_dims[0], frame_size,
                     "The first dimension of Input(WeightH) "
-                    "should be %d.",
+                    "shold be %d.",
                     frame_size);
   PADDLE_ENFORCE_EQ(wh_dims[1], 4 * frame_size,
                     "The second dimension of Input(WeightH) "
-                    "should be 4 * %d.",
+                    "shold be 4 * %d.",
                     frame_size);
 
   auto b_dims = ctx->GetInputDim("Bias");
-  PADDLE_ENFORCE_EQ(b_dims.size(), 2, "The rank of Input(Bias) should be 2.");
+  PADDLE_ENFORCE_EQ(b_dims.size(), 2, "The rank of Input(Bias) shold be 2.");
   PADDLE_ENFORCE_EQ(b_dims[0], 1,
-                    "The first dimension of Input(Bias) should be 1.");
+                    "The first dimension of Input(Bias) shold be 1.");
   if (ctx->Attrs().Get<bool>("use_peepholes")) {
     PADDLE_ENFORCE_EQ(b_dims[1], 7 * frame_size,
-                      "The second dimension of Input(Bias) should be "
+                      "The second dimension of Input(Bias) shold be "
                       "7 * %d if enable peepholes connection",
                       frame_size);
     ctx->SetOutputDim("CheckedCell", {2, frame_size});
   } else {
     PADDLE_ENFORCE_EQ(b_dims[1], 4 * frame_size,
-                      "The second dimension of Input(Bias) should be "
+                      "The second dimension of Input(Bias) shold be "
                       "4 * %d if disable peepholes",
                       frame_size);
   }
@@ -138,7 +138,7 @@ void FusionLSTMOpMaker::Make() {
            " - Weight = {W_ch, W_ih, W_fh, W_oh}");
   AddInput("Bias",
            "(Tensor) the learnable weights. Almost same as LSTMOp"
-           "Note: we should add the fc bias into this (1x4D) in bias."
+           "Note: we shold add the fc bias into this (1x4D) in bias."
            "input-hidden bias weight and peephole connections weight if "
            "setting `use_peepholes` True. "
            "1. `use_peepholes = False` "

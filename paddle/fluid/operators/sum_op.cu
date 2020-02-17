@@ -141,7 +141,7 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
   }
 
   std::vector<const T *> in_data;
-  std::vector<int> selectrow_index;
+  std::vector<int> selectrow_indice;
   int64_t lod_length = 0;
   bool dst_write = false;
   for (int i = start; i < in_num; ++i) {
@@ -152,17 +152,17 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
         in_data.emplace_back(in_i.data<T>());
       }
     } else if (in_vars[i]->IsType<framework::SelectedRows>()) {
-      selectrow_index.push_back(i);
+      selectrow_indice.push_back(i);
     }
   }
 
   // compute select rows seperately.
-  if (!selectrow_index.empty()) {
+  if (!selectrow_indice.empty()) {
     std::vector<const T *> sr_in_out_data;
     size_t rows = 0;
     int64_t length = 0;
-    for (auto index : selectrow_index) {
-      auto &sr = in_vars[index]->Get<framework::SelectedRows>();
+    for (auto indice : selectrow_indice) {
+      auto &sr = in_vars[indice]->Get<framework::SelectedRows>();
       auto &sr_value = sr.value();
       auto &sr_rows = sr.rows();
 

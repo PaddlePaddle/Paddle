@@ -44,11 +44,11 @@ PDNode* BuildSeqPoolConcatPattern(PDPattern* pattern,
         x && x->IsOp() && x->Op()->Type() == "sequence_pool" &&
         x->Op()->HasAttr("pooltype") &&
         boost::get<std::string>(x->Op()->GetAttr("pooltype")) == type &&
-        x->outputs.size() == 2;  // seqpool should only have 2 outputs
+        x->outputs.size() == 2;  // seqpool shold only have 2 outputs
     bool satisfied_all = this_is_seqpool_op;
     if (this_is_seqpool_op) {
       // Only one output of seqpool_op is nth_input_var of concat,
-      // the other one should be unused empty var.
+      // the other one shold be unused empty var.
       if (is_nth_input_var_of_concat(x->outputs[0], idx)) {
         satisfied_all = satisfied_all && x->outputs[1]->IsVar() &&
                         x->outputs[1]->outputs.empty();

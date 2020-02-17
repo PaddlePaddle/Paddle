@@ -41,12 +41,12 @@ __global__ void SparseSGDFunctorKernel(const T* selected_rows,
   for (int64_t i = blockIdx.x; i < limit; i += gridDim.x) {
     const T* selected_rows_ptr = selected_rows + i * row_numel;
     T* tensor_out_ptr = tensor_out + rows[i] * row_numel;
-    for (int64_t index = threadIdx.x; index < row_numel; index += blockDim.x) {
-      // Since index in rows of SelectedRows can be duplicate, we have to use
+    for (int64_t indice = threadIdx.x; indice < row_numel; indice += blockDim.x) {
+      // Since indice in rows of SelectedRows can be duplicate, we have to use
       // Atomic Operation to avoid concurrent write error.
       paddle::platform::CudaAtomicAdd(
-          tensor_out_ptr + index,
-          -static_cast<T>(1.0) * learning_rate[0] * selected_rows_ptr[index]);
+          tensor_out_ptr + indice,
+          -static_cast<T>(1.0) * learning_rate[0] * selected_rows_ptr[indice]);
     }
   }
 }
@@ -59,7 +59,7 @@ class SGDOpKernel<platform::CUDADeviceContext, T>
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* param_var = ctx.InputVar("Param");
     PADDLE_ENFORCE(param_var->IsType<framework::LoDTensor>(),
-                   "The Var(%s)'s type should be LoDTensor, "
+                   "The Var(%s)'s type shold be LoDTensor, "
                    "but the received is %s",
                    ctx.InputNames("Param").front(),
                    framework::ToTypeName(param_var->Type()));

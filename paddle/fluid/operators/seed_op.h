@@ -27,7 +27,7 @@ class CPUSeedKernel : public framework::OpKernel<T> {
     auto* out_data = out->mutable_data<T>(context.GetPlace());
     int user_seed = context.Attr<int>("seed");
 
-    // NOTE: fixed seed should only be used in unittest or for debug.
+    // NOTE: fixed seed shold only be used in unittest or for debug.
     // Guarantee to use random seed in training.
     std::random_device rnd;
     int seed;

@@ -81,7 +81,7 @@ class TrainTaskConfig(object):
     # If provided, continue training from the checkpoint.
     ckpt_path = None
     # the parameter to initialize the learning rate scheduler.
-    # It should be provided if use checkpoints, since the checkpoint doesn't
+    # It shold be provided if use checkpoints, since the checkpoint doesn't
     # include the training step counter currently.
     start_step = 0
 
@@ -127,11 +127,11 @@ class ModelHyperParams(object):
     src_vocab_size = 10000
     # size of target word dictionay
     trg_vocab_size = 10000
-    # index for <bos> token
+    # indice for <bos> token
     bos_idx = 0
-    # index for <eos> token
+    # indice for <eos> token
     eos_idx = 1
-    # index for <unk> token
+    # indice for <unk> token
     unk_idx = 2
     # max length of sequences deciding the size of position encoding table.
     # Start from 1 and count start and end tokens in.
@@ -155,7 +155,7 @@ class ModelHyperParams(object):
     # random seed used in dropout for CE.
     dropout_seed = None
     # the flag indicating whether to share embedding and softmax weights.
-    # vocabularies in source and target should be same for weight sharing.
+    # vocabularies in source and target shold be same for weight sharing.
     weight_sharing = True
 
 
@@ -972,7 +972,7 @@ def multi_head_attention(queries,
     """
     if not (len(queries.shape) == len(keys.shape) == len(values.shape) == 3):
         raise ValueError(
-            "Inputs: queries, keys and values should all be 3-D tensors.")
+            "Inputs: queries, keys and values shold all be 3-D tensors.")
 
     def __compute_qkv(queries, keys, values, n_head, d_key, d_value):
         """
@@ -1022,7 +1022,7 @@ def multi_head_attention(queries,
         """
         if len(x.shape) == 3: return x
         if len(x.shape) != 4:
-            raise ValueError("Input(x) should be a 4-D Tensor.")
+            raise ValueError("Input(x) shold be a 4-D Tensor.")
 
         trans_x = layers.transpose(x, perm=[0, 2, 1, 3])
         # The value 0 in shape attr means copying the corresponding dimension
@@ -1343,7 +1343,7 @@ def transformer(
         label_smooth_eps, ):
     if weight_sharing:
         assert src_vocab_size == src_vocab_size, (
-            "Vocabularies in source and target should be same for weight sharing."
+            "Vocabularies in source and target shold be same for weight sharing."
         )
     enc_inputs = make_all_inputs(encoder_data_input_fields)
 
@@ -1376,8 +1376,8 @@ def transformer(
         dec_inputs,
         enc_output, )
 
-    # Padding index do not contribute to the total loss. The weights is used to
-    # cancel padding index in calculating the loss.
+    # Padding indice do not contribute to the total loss. The weights is used to
+    # cancel padding indice in calculating the loss.
     label, weights = make_all_inputs(label_data_input_fields)
     if label_smooth_eps:
         label = layers.label_smooth(

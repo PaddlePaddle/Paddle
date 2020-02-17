@@ -25,32 +25,32 @@ class FTRLOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Param"),
-                   "Input(Param) of FTRL should not be null.");
+                   "Input(Param) of FTRL shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("SquaredAccumulator"),
-                   "Input(SquaredAccumulator) of FTRL should not be null.");
+                   "Input(SquaredAccumulator) of FTRL shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("LinearAccumulator"),
-                   "Input(LinearAccumulator) of FTRL should not be null.");
+                   "Input(LinearAccumulator) of FTRL shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Grad"),
-                   "Input(Grad) of FTRL should not be null.");
+                   "Input(Grad) of FTRL shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("LearningRate"),
-                   "Input(LearningRate) of FTRL should not be null.");
+                   "Input(LearningRate) of FTRL shold not be null.");
     PADDLE_ENFORCE(
         ctx->GetInputsVarType("Param").front() ==
             framework::proto::VarType::LOD_TENSOR,
-        "The input var's type should be LoDTensor, but the received is %s",
+        "The input var's type shold be LoDTensor, but the received is %s",
         ctx->Inputs("Param").front(), ctx->GetInputsVarType("Param").front());
     PADDLE_ENFORCE(
         ctx->GetInputsVarType("Grad").front() ==
             framework::proto::VarType::LOD_TENSOR,
-        "The input var's type should be LoDTensor, but the received is %s",
+        "The input var's type shold be LoDTensor, but the received is %s",
         ctx->Inputs("Grad").front(), ctx->GetInputsVarType("Grad").front());
 
     PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
-                   "Output(ParamOut) of FTRL should not be null.");
+                   "Output(ParamOut) of FTRL shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("SquaredAccumOut"),
-                   "Output(SquaredAccumOut) of FTRL should not be null.");
+                   "Output(SquaredAccumOut) of FTRL shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("LinearAccumOut"),
-                   "Output(LinearAccumOut) of FTRL should not be null.");
+                   "Output(LinearAccumOut) of FTRL shold not be null.");
 
     auto param_dim = ctx->GetInputDim("Param");
     PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("Grad"),
@@ -63,7 +63,7 @@ class FTRLOp : public framework::OperatorWithKernel {
                       "if you put exe.run(startup_program) "
                       "after optimizer.minimize function.");
     PADDLE_ENFORCE_EQ(framework::product(lr_dim), 1,
-                      "Learning Rate should be a scalar.");
+                      "Learning Rate shold be a scalar.");
 
     ctx->SetOutputDim("ParamOut", param_dim);
     ctx->SetOutputDim("SquaredAccumOut", param_dim);
@@ -94,7 +94,7 @@ class FTRLOpMaker : public framework::OpProtoAndCheckerMaker {
              "Input gradient of the parameter.");
     AddInput("LearningRate",
              "(Tensor, default Tensor<float>) "
-             "The learning rate should be a tensor of size 1.");
+             "The learning rate shold be a tensor of size 1.");
 
     AddOutput("ParamOut", "(Tensor) Output updated parameter value.");
     AddOutput("SquaredAccumOut",

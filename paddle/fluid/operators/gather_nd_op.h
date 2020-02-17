@@ -31,25 +31,25 @@ class GatherNdOpKernel : public framework::OpKernel<T> {
                       "This kernel only runs on CPU.");
 
     auto *x = ctx.Input<Tensor>("X");
-    auto *index = ctx.Input<Tensor>("Index");
+    auto *indice = ctx.Input<Tensor>("Index");
     auto *output = ctx.Output<Tensor>("Out");
 
     output->mutable_data<T>(ctx.GetPlace());
     if (x->numel() == 0) return;
 
-    const auto &index_type = index->type();
-    bool index_type_match = index_type == framework::proto::VarType::INT32 ||
-                            index_type == framework::proto::VarType::INT64;
+    const auto &indice_type = indice->type();
+    bool indice_type_match = indice_type == framework::proto::VarType::INT32 ||
+                            indice_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(
-        index_type_match, true,
+        indice_type_match, true,
         "Index holds the wrong type, it holds %s, but desires to be %s or %s",
-        paddle::framework::DataTypeToString(index_type),
+        paddle::framework::DataTypeToString(indice_type),
         paddle::framework::DataTypeToString(framework::proto::VarType::INT32),
         paddle::framework::DataTypeToString(framework::proto::VarType::INT64));
-    if (index_type == framework::proto::VarType::INT32) {
-      CPUGatherNd<T, int>(ctx.device_context(), *x, *index, output);
-    } else if (index_type == framework::proto::VarType::INT64) {
-      CPUGatherNd<T, int64_t>(ctx.device_context(), *x, *index, output);
+    if (indice_type == framework::proto::VarType::INT32) {
+      CPUGatherNd<T, int>(ctx.device_context(), *x, *indice, output);
+    } else if (indice_type == framework::proto::VarType::INT64) {
+      CPUGatherNd<T, int64_t>(ctx.device_context(), *x, *indice, output);
     }
   }
 };
@@ -60,7 +60,7 @@ class GatherNdGradOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
                       "This kernel only runs on CPU.");
-    auto *index = ctx.Input<Tensor>("Index");
+    auto *indice = ctx.Input<Tensor>("Index");
     auto *dX = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *dO = ctx.Input<Tensor>(framework::GradVarName("Out"));
     dX->mutable_data<T>(ctx.GetPlace());
@@ -70,19 +70,19 @@ class GatherNdGradOpKernel : public framework::OpKernel<T> {
     dxt.device(place) = dxt.constant(static_cast<T>(0));
     if (dO->numel() == 0) return;
 
-    const auto &index_type = index->type();
-    bool index_type_match = index_type == framework::proto::VarType::INT32 ||
-                            index_type == framework::proto::VarType::INT64;
+    const auto &indice_type = indice->type();
+    bool indice_type_match = indice_type == framework::proto::VarType::INT32 ||
+                            indice_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(
-        index_type_match, true,
+        indice_type_match, true,
         "Index holds the wrong type, it holds %s, but desires to be %s or %s",
-        paddle::framework::DataTypeToString(index_type),
+        paddle::framework::DataTypeToString(indice_type),
         paddle::framework::DataTypeToString(framework::proto::VarType::INT32),
         paddle::framework::DataTypeToString(framework::proto::VarType::INT64));
-    if (index_type == framework::proto::VarType::INT32) {
-      ScatterNdAdd<T, int32_t>(ctx, *dO, *index, dX);
-    } else if (index_type == framework::proto::VarType::INT64) {
-      ScatterNdAdd<T, int64_t>(ctx, *dO, *index, dX);
+    if (indice_type == framework::proto::VarType::INT32) {
+      ScatterNdAdd<T, int32_t>(ctx, *dO, *indice, dX);
+    } else if (indice_type == framework::proto::VarType::INT64) {
+      ScatterNdAdd<T, int64_t>(ctx, *dO, *indice, dX);
     }
   }
 };

@@ -261,7 +261,7 @@ TEST(Analyzer_bert, transfer_scope_cache) {
   }
   // Since paddle::framework::global_transfer_scope_cache() and
   // paddle::framework::global_transfer_data_cache() are thread_local,
-  // their pointer should be different among different thread id.
+  // their pointer shold be different among different thread id.
   PADDLE_ENFORCE(global_transfer_scope_cache.size(), threads_num);
   PADDLE_ENFORCE(global_transfer_data_cache.size(), threads_num);
 }

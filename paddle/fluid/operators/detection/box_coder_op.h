@@ -190,12 +190,12 @@ class BoxCoderKernel : public framework::OpKernel<T> {
     }
     if (prior_box_var) {
       PADDLE_ENFORCE(variance.empty(),
-                     "Input 'PriorBoxVar' and attribute 'variance' should not"
+                     "Input 'PriorBoxVar' and attribute 'variance' shold not"
                      "be used at the same time.");
     }
     if (!(variance.empty())) {
       PADDLE_ENFORCE(static_cast<int>(variance.size()) == 4,
-                     "Size of attribute 'variance' should be 4");
+                     "Size of attribute 'variance' shold be 4");
     }
     auto code_type = GetBoxCodeType(context.Attr<std::string>("code_type"));
     bool normalized = context.Attr<bool>("box_normalized");

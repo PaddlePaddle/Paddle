@@ -117,8 +117,8 @@ inline void GetBroadcastDimsArrays(const framework::DDim &x_dims,
                                    int *x_dims_array, int *y_dims_array,
                                    int *out_dims_array, const int max_dim,
                                    const int axis) {
-  PADDLE_ENFORCE_GE(axis, 0, "Axis should be in range [0, %d)", axis);
-  PADDLE_ENFORCE_LT(axis, max_dim, "Axis should be in range [0, %d)", axis);
+  PADDLE_ENFORCE_GE(axis, 0, "Axis shold be in range [0, %d)", axis);
+  PADDLE_ENFORCE_LT(axis, max_dim, "Axis shold be in range [0, %d)", axis);
   if (x_dims.size() > y_dims.size()) {
     std::fill(y_dims_array, y_dims_array + axis, 1);
     if (axis + y_dims.size() < max_dim) {
@@ -1158,8 +1158,8 @@ void ElemwiseGradComputeWithBroadcast(
   }
 
   axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
-  PADDLE_ENFORCE_GE(axis, 0, "Axis should be in range [0, %d)", axis);
-  PADDLE_ENFORCE_LT(axis, max_dim, "Axis should be in range [0, %d)", axis);
+  PADDLE_ENFORCE_GE(axis, 0, "Axis shold be in range [0, %d)", axis);
+  PADDLE_ENFORCE_LT(axis, max_dim, "Axis shold be in range [0, %d)", axis);
 
   int pre, n, post, is_run_common_broadcast, axis_trim = 0;
   if (is_xsize_larger) {
@@ -1225,8 +1225,8 @@ void CommonElementwiseBroadcastForward(
     int axis, const bool is_xsize_larger = true) {
   int max_dim = std::max(x_dims.size(), y_dims.size());
   axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
-  PADDLE_ENFORCE_GE(axis, 0, "Axis should be in range [0, %d)", axis);
-  PADDLE_ENFORCE_LT(axis, max_dim, "Axis should be in range [0, %d)", axis);
+  PADDLE_ENFORCE_GE(axis, 0, "Axis shold be in range [0, %d)", axis);
+  PADDLE_ENFORCE_LT(axis, max_dim, "Axis shold be in range [0, %d)", axis);
   std::vector<int> x_dims_array(max_dim);
   std::vector<int> y_dims_array(max_dim);
   std::vector<int> out_dims_array(max_dim);
@@ -1315,8 +1315,8 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
   }
 
   axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
-  PADDLE_ENFORCE_GE(axis, 0, "Axis should be in range [0, %d)", axis);
-  PADDLE_ENFORCE_LT(axis, max_dim, "Axis should be in range [0, %d)", axis);
+  PADDLE_ENFORCE_GE(axis, 0, "Axis shold be in range [0, %d)", axis);
+  PADDLE_ENFORCE_LT(axis, max_dim, "Axis shold be in range [0, %d)", axis);
 
   int pre, n, post, is_run_common_broadcast, axis_trim = 0;
   if (is_xsize_larger) {
@@ -2190,7 +2190,7 @@ void FusedElemwiseAndActGradComputeEx(
   const framework::DDim &x_dim = x->dims();
   const framework::DDim &y_dim = y->dims();
   if (UseIntermediateOut) {
-    PADDLE_ENFORCE(intermediate_out, "intermediate_out should not be nullptr");
+    PADDLE_ENFORCE(intermediate_out, "intermediate_out shold not be nullptr");
   }
   if (x_dim == y_dim) {
     FusedElemwiseAndActGradComputeNoBroadcast<
@@ -2210,7 +2210,7 @@ void FusedElemwiseAndActGradComputeEx(
 
     // z = f1(x, f2(y))
     // z = f1(f2(x, y))
-    if (bcast_y) {  // Y should be broadcast.
+    if (bcast_y) {  // Y shold be broadcast.
       FusedElemwiseAndActGradComputeWithBroadcast<
           DeviceContext, T, DX_OP, DY_OP, DIntermediate_OP, UseIntermediateOut,
           true /*BcastY*/, SameShapeOfIntermediateOutAndOut>(
@@ -2237,7 +2237,7 @@ void FusedElemwiseAndActComputeEx(const framework::ExecutionContext &ctx,
   if (KeepIntermediateOut) {
     PADDLE_ENFORCE(intermediate_out,
                    "The save_intermediate_out is opened, "
-                   "intermediate_out should not be nullptr.");
+                   "intermediate_out shold not be nullptr.");
   }
 
   const framework::DDim &x_dim = x.dims();
@@ -2252,14 +2252,14 @@ void FusedElemwiseAndActComputeEx(const framework::ExecutionContext &ctx,
     bool bcast_y = x.numel() >= y.numel();
     // z = f1(x, f2(y))
     // z = f1(f2(x, y))
-    if (bcast_y) {  // Y should be broadcast.
+    if (bcast_y) {  // Y shold be broadcast.
       // In this case,
-      // for 'f2(y)', the shape of intermediate_out should be equal to the
+      // for 'f2(y)', the shape of intermediate_out shold be equal to the
       // shape
       // of Y.
-      // for 'f2(x, y)', the shape of intermediate_out should be equal to the
+      // for 'f2(x, y)', the shape of intermediate_out shold be equal to the
       // shape of Out.
-      // the shape of Out should be equal to the shape of X.
+      // the shape of Out shold be equal to the shape of X.
       FusedElemwiseAndActComputeWithBroadcast<
           DeviceContext, T, CompoundFunctor, true /*BcastY*/,
           KeepIntermediateOut, SameShapeOfIntermediateOutAndOut>(
@@ -2267,12 +2267,12 @@ void FusedElemwiseAndActComputeEx(const framework::ExecutionContext &ctx,
           intermediate_out);
     } else {
       // In this case,
-      // for 'f2(y)', the shape of intermediate_out should be equal to the
+      // for 'f2(y)', the shape of intermediate_out shold be equal to the
       // shape
       // of Out.
-      // for 'f2(x, y)', the shape of intermediate_out should be equal to the
+      // for 'f2(x, y)', the shape of intermediate_out shold be equal to the
       // shape of Out.
-      // the shape of Out should be equal to the shape of Y.
+      // the shape of Out shold be equal to the shape of Y.
       FusedElemwiseAndActComputeWithBroadcast<
           DeviceContext, T, CompoundFunctor, false /*BcastY*/,
           KeepIntermediateOut, SameShapeOfIntermediateOutAndOut>(

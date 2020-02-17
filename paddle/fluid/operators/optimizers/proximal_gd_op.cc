@@ -25,14 +25,14 @@ class ProximalGDOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Param"),
-                   "Input(Param) of ProximalGDOp should not be null.");
+                   "Input(Param) of ProximalGDOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Grad"),
-                   "Input(Grad) of ProximalGDOp should not be null.");
+                   "Input(Grad) of ProximalGDOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("LearningRate"),
-                   "Input(LearningRate) of ProximalGDOp should not be null.");
+                   "Input(LearningRate) of ProximalGDOp shold not be null.");
 
     PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
-                   "Output(ParamOut) of ProximalGDOp should not be null.");
+                   "Output(ParamOut) of ProximalGDOp shold not be null.");
 
     auto param_dim = ctx->GetInputDim("Param");
     PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("Grad"),
@@ -40,7 +40,7 @@ class ProximalGDOp : public framework::OperatorWithKernel {
 
     auto lr_dim = ctx->GetInputDim("LearningRate");
     PADDLE_ENFORCE_EQ(framework::product(lr_dim), 1,
-                      "Learning Rate should be a scalar.");
+                      "Learning Rate shold be a scalar.");
 
     ctx->SetOutputDim("ParamOut", param_dim);
   }
@@ -62,7 +62,7 @@ class ProximalGDOpMaker : public framework::OpProtoAndCheckerMaker {
              "Input gradient of the parameter.");
     AddInput("LearningRate",
              "(Tensor, default Tensor<float>) "
-             "The learning rate should be a tensor of size 1.");
+             "The learning rate shold be a tensor of size 1.");
 
     AddOutput("ParamOut", "(Tensor) Output updated parameter value.");
 

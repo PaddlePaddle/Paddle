@@ -21,7 +21,7 @@ import unittest
 
 def train_simulator(test_batch_size=10):
     if test_batch_size <= 0:
-        raise ValueError("batch_size should be a positive integeral value, "
+        raise ValueError("batch_size shold be a positive integeral value, "
                          "but got batch_size={}".format(test_batch_size))
 
     x = fluid.layers.data(name='x', shape=[13], dtype='float32')

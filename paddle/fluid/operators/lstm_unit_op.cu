@@ -42,20 +42,20 @@ template <typename T>
 __global__ void LSTMUnitKernel(const int nthreads, const int dim,
                                const T* C_prev, const T* X, T* C, T* H,
                                const T forget_bias) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
-    const int n = index / dim;
-    const int d = index % dim;
+  CUDA_1D_KERNEL_LOOP(indice, nthreads) {
+    const int n = indice / dim;
+    const int d = indice % dim;
 
     const T* X_offset = X + 4 * dim * n;
     const T i = cuda_sigmoid(X_offset[d]);
     const T f = cuda_sigmoid(X_offset[1 * dim + d] + forget_bias);
     const T o = cuda_sigmoid(X_offset[2 * dim + d]);
     const T g = cuda_tanh(X_offset[3 * dim + d]);
-    const T c_prev = C_prev[index];
+    const T c_prev = C_prev[indice];
     const T c = f * c_prev + i * g;
-    C[index] = c;
+    C[indice] = c;
     const T tanh_c = cuda_tanh(c);
-    H[index] = o * tanh_c;
+    H[indice] = o * tanh_c;
   }
 }
 
@@ -65,11 +65,11 @@ __global__ void LSTMUnitGradientKernel(const int nthreads, const int dim,
                                        const T* C_diff, const T* H_diff,
                                        T* C_prev_diff, T* X_diff,
                                        const T forget_bias) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
-    const int n = index / dim;
-    const int d = index % dim;
+  CUDA_1D_KERNEL_LOOP(indice, nthreads) {
+    const int n = indice / dim;
+    const int d = indice % dim;
     const T* X_offset = X + 4 * dim * n;
-    T* c_prev_diff = C_prev_diff + index;
+    T* c_prev_diff = C_prev_diff + indice;
     T* X_diff_offset = X_diff + 4 * dim * n;
     T* i_diff = X_diff_offset + d;
     T* f_diff = X_diff_offset + 1 * dim + d;
@@ -80,15 +80,15 @@ __global__ void LSTMUnitGradientKernel(const int nthreads, const int dim,
     const T f = cuda_sigmoid(X_offset[1 * dim + d] + forget_bias);
     const T o = cuda_sigmoid(X_offset[2 * dim + d]);
     const T g = cuda_tanh(X_offset[3 * dim + d]);
-    const T c_prev = C_prev[index];
-    const T c = C[index];
+    const T c_prev = C_prev[indice];
+    const T c = C[indice];
     const T tanh_c = cuda_tanh(c);
     const T c_term_diff =
-        C_diff[index] + H_diff[index] * o * (1 - tanh_c * tanh_c);
+        C_diff[indice] + H_diff[indice] * o * (1 - tanh_c * tanh_c);
     *c_prev_diff = c_term_diff * f;
     *i_diff = c_term_diff * g * i * (1 - i);
     *f_diff = c_term_diff * c_prev * f * (1 - f);
-    *o_diff = H_diff[index] * tanh_c * o * (1 - o);
+    *o_diff = H_diff[indice] * tanh_c * o * (1 - o);
     *g_diff = c_term_diff * i * (1 - g * g);
   }
 }

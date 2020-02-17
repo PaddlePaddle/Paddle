@@ -56,16 +56,16 @@ class TestRandom(TestUniqueOp):
     def init_config(self):
         self.inputs = {'X': np.random.randint(0, 100, (150, ), dtype='int64')}
         self.attrs = {'dtype': int(core.VarDesc.VarType.INT64)}
-        np_unique, np_index, reverse_index = np.unique(self.inputs['X'], True,
+        np_unique, np_indice, reverse_indice = np.unique(self.inputs['X'], True,
                                                        True)
-        np_tuple = [(np_unique[i], np_index[i]) for i in range(len(np_unique))]
+        np_tuple = [(np_unique[i], np_indice[i]) for i in range(len(np_unique))]
         np_tuple.sort(key=lambda x: x[1])
         target_out = np.array([i[0] for i in np_tuple], dtype='int64')
-        target_index = np.array(
-            [list(target_out).index(i) for i in self.inputs['X']],
+        target_indice = np.array(
+            [list(target_out).indice(i) for i in self.inputs['X']],
             dtype='int64')
 
-        self.outputs = {'Out': target_out, 'Index': target_index}
+        self.outputs = {'Out': target_out, 'Index': target_indice}
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -93,16 +93,16 @@ class TestRandomGPU(TestUniqueOp):
     def init_config(self):
         self.inputs = {'X': np.random.randint(0, 100, (150, ), dtype='int64')}
         self.attrs = {'dtype': int(core.VarDesc.VarType.INT64)}
-        np_unique, np_index, reverse_index = np.unique(self.inputs['X'], True,
+        np_unique, np_indice, reverse_indice = np.unique(self.inputs['X'], True,
                                                        True)
-        np_tuple = [(np_unique[i], np_index[i]) for i in range(len(np_unique))]
+        np_tuple = [(np_unique[i], np_indice[i]) for i in range(len(np_unique))]
         np_tuple.sort(key=lambda x: x[1])
         target_out = np.array([i[0] for i in np_tuple], dtype='int64')
-        target_index = np.array(
-            [list(target_out).index(i) for i in self.inputs['X']],
+        target_indice = np.array(
+            [list(target_out).indice(i) for i in self.inputs['X']],
             dtype='int64')
 
-        self.outputs = {'Out': target_out, 'Index': target_index}
+        self.outputs = {'Out': target_out, 'Index': target_indice}
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():

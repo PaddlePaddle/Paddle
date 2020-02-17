@@ -58,7 +58,7 @@ class UnStackOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "The input of unstack op.");
     AddOutput("Y", "The output of unstack op.").AsDuplicable();
-    AddAttr<int>("axis", "The axis along which Input(X) should be unstacked.")
+    AddAttr<int>("axis", "The axis along which Input(X) shold be unstacked.")
         .SetDefault(0);
     AddAttr<int>("num", "The number of outputs(Y).").GreaterThan(0);
     AddComment(R"DOC(

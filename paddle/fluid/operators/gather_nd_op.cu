@@ -27,24 +27,24 @@ class GatherNdOpCUDAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
                       "This kernel only runs on GPU device.");
     auto *x = ctx.Input<Tensor>("X");
-    auto *index = ctx.Input<Tensor>("Index");
+    auto *indice = ctx.Input<Tensor>("Index");
     auto *output = ctx.Output<Tensor>("Out");
 
     output->mutable_data<T>(ctx.GetPlace());
     if (x->numel() == 0) return;
-    const auto &index_type = index->type();
-    bool index_type_match = index_type == framework::proto::VarType::INT32 ||
-                            index_type == framework::proto::VarType::INT64;
+    const auto &indice_type = indice->type();
+    bool indice_type_match = indice_type == framework::proto::VarType::INT32 ||
+                            indice_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(
-        index_type_match, true,
+        indice_type_match, true,
         "Index holds the wrong type, it holds %s, but desires to be %s or %s",
-        paddle::framework::DataTypeToString(index_type),
+        paddle::framework::DataTypeToString(indice_type),
         paddle::framework::DataTypeToString(framework::proto::VarType::INT32),
         paddle::framework::DataTypeToString(framework::proto::VarType::INT64));
-    if (index_type == framework::proto::VarType::INT32) {
-      GPUGatherNd<DeviceContext, T, int>(ctx, *x, *index, output);
-    } else if (index_type == framework::proto::VarType::INT64) {
-      GPUGatherNd<DeviceContext, T, int64_t>(ctx, *x, *index, output);
+    if (indice_type == framework::proto::VarType::INT32) {
+      GPUGatherNd<DeviceContext, T, int>(ctx, *x, *indice, output);
+    } else if (indice_type == framework::proto::VarType::INT64) {
+      GPUGatherNd<DeviceContext, T, int64_t>(ctx, *x, *indice, output);
     }
   }
 };
@@ -55,7 +55,7 @@ class GatherNdGradOpCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
                       "This kernel only runs on GPU device.");
-    auto *index = ctx.Input<Tensor>("Index");
+    auto *indice = ctx.Input<Tensor>("Index");
     auto *dX = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *dO = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
@@ -66,21 +66,21 @@ class GatherNdGradOpCUDAKernel : public framework::OpKernel<T> {
     dxt.device(place) = dxt.constant(static_cast<T>(0));
     if (dO->numel() == 0) return;
 
-    const auto &index_type = index->type();
-    bool index_type_match = index_type == framework::proto::VarType::INT32 ||
-                            index_type == framework::proto::VarType::INT64;
+    const auto &indice_type = indice->type();
+    bool indice_type_match = indice_type == framework::proto::VarType::INT32 ||
+                            indice_type == framework::proto::VarType::INT64;
 
     PADDLE_ENFORCE_EQ(
-        index_type_match, true,
+        indice_type_match, true,
         "Index holds the wrong type, it holds %s, but desires to be %s or %s",
-        paddle::framework::DataTypeToString(index_type),
+        paddle::framework::DataTypeToString(indice_type),
         paddle::framework::DataTypeToString(framework::proto::VarType::INT32),
         paddle::framework::DataTypeToString(framework::proto::VarType::INT64));
 
-    if (index_type == framework::proto::VarType::INT32) {
-      GPUScatterNdAdd<DeviceContext, T, int>(ctx, *dO, *index, dX);
-    } else if (index_type == framework::proto::VarType::INT64) {
-      GPUScatterNdAdd<DeviceContext, T, int64_t>(ctx, *dO, *index, dX);
+    if (indice_type == framework::proto::VarType::INT32) {
+      GPUScatterNdAdd<DeviceContext, T, int>(ctx, *dO, *indice, dX);
+    } else if (indice_type == framework::proto::VarType::INT64) {
+      GPUScatterNdAdd<DeviceContext, T, int64_t>(ctx, *dO, *indice, dX);
     }
   }
 };

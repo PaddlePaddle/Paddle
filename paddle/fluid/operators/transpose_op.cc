@@ -31,8 +31,8 @@ class TransposeOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold not be null");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) shold not be null");
     auto x_dims = ctx->GetInputDim("X");
     std::vector<int> axis = ctx->Attrs().Get<std::vector<int>>("axis");
     size_t x_rank = x_dims.size();
@@ -40,7 +40,7 @@ class TransposeOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_EQ(x_rank, axis_size,
                       "ShapeError: The input tensor's dimension "
-                      "should be equal to the axis's size. "
+                      "shold be equal to the axis's size. "
                       "But received input tensor's dimension is %d, "
                       "axis's size is %d",
                       x_rank, axis_size);
@@ -49,7 +49,7 @@ class TransposeOp : public framework::OperatorWithKernel {
     for (size_t i = 0; i < axis_size; i++) {
       PADDLE_ENFORCE(
           axis[i] < static_cast<int>(axis_size) && ++count[axis[i]] == 1,
-          "ValueError: Each element of Attribute axis should "
+          "ValueError: Each element of Attribute axis shold "
           "be a unique value range from 0 to (dims - 1), "
           "where the dims is the axis's size, "
           "unique value means this axis value can appear only once. "
@@ -93,7 +93,7 @@ class TransposeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor)The output tensor.");
     AddAttr<std::vector<int>>(
         "axis",
-        "(vector<int>) A list of values, and the size of the list should be "
+        "(vector<int>) A list of values, and the size of the list shold be "
         "the same with the input tensor rank. This operator permutes the input "
         "tensor's axes according to the values given.");
     AddAttr<bool>("use_mkldnn",
@@ -109,7 +109,7 @@ class TransposeOpMaker : public framework::OpProtoAndCheckerMaker {
     /* int8 parameters */
     AddAttr<bool>("use_quantizer",
                   "(bool, default false) "
-                  "Set to true for operators that should be quantized and use "
+                  "Set to true for operators that shold be quantized and use "
                   "int8 kernel. "
                   "Only used on CPU.")
         .SetDefault(false);
@@ -149,9 +149,9 @@ class TransposeOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold not be null");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
+                   "Input(Out@GRAD) shold not be null");
     auto x_dims = ctx->GetInputDim("X");
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
     if (ctx->HasOutput(framework::GradVarName("X"))) {
@@ -194,7 +194,7 @@ class Transpose2Op : public TransposeOp {
   void InferShape(framework::InferShapeContext *ctx) const override {
     TransposeOp::InferShape(ctx);
     PADDLE_ENFORCE(ctx->HasOutput("XShape"),
-                   "Output(XShape) should not be null");
+                   "Output(XShape) shold not be null");
     const auto &in_dims = ctx->GetInputDim("X");
     std::vector<int64_t> x_shape_dim(in_dims.size() + 1);
     x_shape_dim[0] = 0;
@@ -261,9 +261,9 @@ class Transpose2OpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("XShape"), "Input(XShape) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("XShape"), "Input(XShape) shold not be null");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
+                   "Input(Out@GRAD) shold not be null");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       auto xshape_dim = ctx->GetInputDim("XShape");
       auto x_shape_dim =

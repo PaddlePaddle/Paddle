@@ -77,7 +77,7 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_GT(size, (diag_num - 1) * (diag_step + 1),
                         "ShapeError: the diagonal's elements is equal (num-1) "
                         "* (step-1) with num %d, step %d,"
-                        "It should be smaller than %d, but received %d",
+                        "It shold be smaller than %d, but received %d",
                         diag_num, diag_step, (diag_num - 1) * (diag_step + 1),
                         size);
       for (int64_t i = 0; i < diag_num; ++i) {
@@ -94,7 +94,7 @@ class UniformRandomOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of UniformRandomOp should not be null.");
+                      "Output(Out) of UniformRandomOp shold not be null.");
 
     PADDLE_ENFORCE_LT(ctx->Attrs().Get<float>("min"),
                       ctx->Attrs().Get<float>("max"),
@@ -176,7 +176,7 @@ class UniformRandomOpMaker : public framework::OpProtoAndCheckerMaker {
              "uniform_random "
              "according to "
              "this given shape. It means that it has a higher priority than "
-             "the shape attribute, while the shape attribute still should be "
+             "the shape attribute, while the shape attribute still shold be "
              "set correctly to guarantee shape inference in compile time.")
         .AsDispensable();
     AddInput("ShapeTensorList",

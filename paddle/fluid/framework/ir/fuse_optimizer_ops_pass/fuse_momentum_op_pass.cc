@@ -67,7 +67,7 @@ class FuseMomentumOpPass : public FuseOptimizerOpPass {
     momentum_desc.SetInput(kParam, {fused_vars_name.at(kParam)});
     momentum_desc.SetInput(kGrad, {fused_vars_name.at(kGrad)});
     momentum_desc.SetInput("Velocity", {fused_vars_name.at("Velocity")});
-    // TODO(zcd): The LearningRate should be equal.
+    // TODO(zcd): The LearningRate shold be equal.
     momentum_desc.SetInput(kLearningRate,
                            momentum_ops[0]->Op()->Input(kLearningRate));
 

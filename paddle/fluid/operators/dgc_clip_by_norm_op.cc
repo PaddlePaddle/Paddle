@@ -24,7 +24,7 @@ class DGCClipByNormOp : public ClipByNormOp {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("current_step"),
-                   "current_step should be set.");
+                   "current_step shold be set.");
 
     return ClipByNormOp::InferShape(ctx);
   }

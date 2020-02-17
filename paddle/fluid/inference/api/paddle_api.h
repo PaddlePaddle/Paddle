@@ -47,14 +47,14 @@ enum PaddleDType {
  *
  * The PaddleBuf holds a buffer for data input or output. The memory can be
  * allocated by user or by PaddleBuf itself, but in any case, the PaddleBuf
- * should be reused for better performance.
+ * shold be reused for better performance.
  *
  * For user allocated memory, the following API can be used:
  * - PaddleBuf(void* data, size_t length) to set an external memory by
  * specifying the memory address and length.
  * - Reset(void* data, size_t length) to reset the PaddleBuf with an external
  *memory.
- * ATTENTION, for user allocated memory, deallocation should be done by users
+ * ATTENTION, for user allocated memory, deallocation shold be done by users
  *externally after the program finished. The PaddleBuf won't do any allocation
  *or deallocation.
  *
@@ -149,7 +149,7 @@ class ZeroCopyTensor {
  public:
   void Reshape(const std::vector<int>& shape);
 
-  /** Get the memory in CPU or GPU with specific data type, should Reshape first
+  /** Get the memory in CPU or GPU with specific data type, shold Reshape first
    * to tell the data size.
    * One can directly call this data to feed the data.
    * This is for writing the input tensor.
@@ -209,8 +209,8 @@ class PaddlePredictor {
   PaddlePredictor& operator=(const PaddlePredictor&) = delete;
 
   /** Predict an record.
-   * The caller should be responsible for allocating and releasing the memory of
-   * `inputs`. `inputs` should be available until Run returns. Caller should be
+   * The caller shold be responsible for allocating and releasing the memory of
+   * `inputs`. `inputs` shold be available until Run returns. Caller shold be
    * responsible for the output tensor's buffer, either allocated or passed from
    * outside.
    */
@@ -262,14 +262,14 @@ class PaddlePredictor {
    *
    * This will save the IO copy for transfering inputs and outputs to predictor
    * workspace and get some performance improvement.
-   * To use it, one should call the `AnalysisConfig.SwitchUseFeedFetchOp(true)`
+   * To use it, one shold call the `AnalysisConfig.SwitchUseFeedFetchOp(true)`
    * and then use the `GetInputTensor` and `GetOutputTensor` to directly write
    * or read the input/output tensors.
    */
   virtual bool ZeroCopyRun() { return false; }
 
   /** Clone a predictor that share the model weights, the Cloned predictor
-   * should be thread-safe.
+   * shold be thread-safe.
    */
   virtual std::unique_ptr<PaddlePredictor> Clone() = 0;
 
@@ -339,7 +339,7 @@ struct NativeConfig : public PaddlePredictor::Config {
  *
  * FOR EXTENSION DEVELOPER:
  * Different predictors are designated by config type. Similar configs can be
- * merged, but there shouldn't be a huge config containing different fields for
+ * merged, but there sholdn't be a huge config containing different fields for
  * more than one kind of predictors.
  */
 template <typename ConfigT>

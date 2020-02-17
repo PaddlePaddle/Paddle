@@ -148,7 +148,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
     int axis = boost::get<int>(op_desc.GetAttr("axis"));
     auto output_name = op_desc.Output("Out")[0];
     if (CheckDims(dims_x, dims_y)) {
-      // The two input tensor should have the same dims
+      // The two input tensor shold have the same dims
       VLOG(3) << "Convert a fluid elementwise op to TensorRT IElementWiseLayer";
       nvinfer1::IElementWiseLayer* elet_layer = TRT_ENGINE_ADD_LAYER(
           engine_, ElementWise, *const_cast<nvinfer1::ITensor*>(X),

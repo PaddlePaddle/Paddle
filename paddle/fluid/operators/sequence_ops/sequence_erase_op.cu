@@ -26,11 +26,11 @@ template <typename T>
 __global__ void LabelErasedIdx(const T* in_dat, const int64_t in_len,
                                const int* tokens, const size_t tokens_len,
                                size_t* num_erased) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
-  if (index < in_len) {
+  int indice = blockIdx.x * blockDim.x + threadIdx.x;
+  if (indice < in_len) {
     for (size_t i = 0; i < tokens_len; ++i) {
-      if (in_dat[index] == tokens[i]) {
-        num_erased[index + 1] = 1;
+      if (in_dat[indice] == tokens[i]) {
+        num_erased[indice + 1] = 1;
         break;
       }
     }
@@ -39,19 +39,19 @@ __global__ void LabelErasedIdx(const T* in_dat, const int64_t in_len,
 
 __global__ void GetOutLod(const size_t* num_erased, const size_t* in_lod,
                           const size_t lod_len, size_t* out_lod0) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
-  if (index < lod_len) {
-    out_lod0[index] = in_lod[index] - num_erased[in_lod[index]];
+  int indice = blockIdx.x * blockDim.x + threadIdx.x;
+  if (indice < lod_len) {
+    out_lod0[indice] = in_lod[indice] - num_erased[in_lod[indice]];
   }
 }
 
 template <typename T>
 __global__ void SetOutput(const T* in_dat, const int64_t in_len,
                           const size_t* num_erased, T* out_dat) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
-  if (index < in_len) {
-    if (num_erased[index] == num_erased[index + 1]) {
-      out_dat[index - num_erased[index]] = in_dat[index];
+  int indice = blockIdx.x * blockDim.x + threadIdx.x;
+  if (indice < in_len) {
+    if (num_erased[indice] == num_erased[indice + 1]) {
+      out_dat[indice - num_erased[indice]] = in_dat[indice];
     }
   }
 }

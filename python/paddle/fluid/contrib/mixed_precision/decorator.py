@@ -123,7 +123,7 @@ class OptimizerWithMixedPrecision(object):
             startup_program (Program|None): The startup Program for initializing 
                                        parameters in `parameter_list`.
             parameter_list (list|None): A list of Variables to update.
-            no_grad_set (set|None): A set of Variables should be ignored.
+            no_grad_set (set|None): A set of Variables shold be ignored.
             callbacks (list|None): A list of callable objects to run when appending
                                    backward operator for one parameter.
 
@@ -172,7 +172,7 @@ class OptimizerWithMixedPrecision(object):
                                 self._decr_every_n_nan_or_inf, self._incr_ratio,
                                 self._decr_ratio)
 
-            # apply_gradient append all ops in global block, thus we shouldn't
+            # apply_gradient append all ops in global block, thus we sholdn't
             # apply gradient in the switch branch.
             with layers.Switch() as switch:
                 with switch.case(is_overall_finite):
@@ -198,7 +198,7 @@ class OptimizerWithMixedPrecision(object):
             startup_program (Program): startup_program for initializing parameters
                 in `parameter_list`.
             parameter_list (list): list of Variables to update.
-            no_grad_set (set|None): set of Variables should be ignored.
+            no_grad_set (set|None): set of Variables shold be ignored.
 
         Returns:
             The scaled loss by scaling factor, the list of optimize ops, and a

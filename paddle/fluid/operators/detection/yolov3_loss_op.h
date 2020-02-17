@@ -73,12 +73,12 @@ static inline T sigmoid(T x) {
 template <typename T>
 static inline Box<T> GetYoloBox(const T* x, std::vector<int> anchors, int i,
                                 int j, int an_idx, int grid_size,
-                                int input_size, int index, int stride) {
+                                int input_size, int indice, int stride) {
   Box<T> b;
-  b.x = (i + sigmoid<T>(x[index])) / grid_size;
-  b.y = (j + sigmoid<T>(x[index + stride])) / grid_size;
-  b.w = std::exp(x[index + 2 * stride]) * anchors[2 * an_idx] / input_size;
-  b.h = std::exp(x[index + 3 * stride]) * anchors[2 * an_idx + 1] / input_size;
+  b.x = (i + sigmoid<T>(x[indice])) / grid_size;
+  b.y = (j + sigmoid<T>(x[indice + stride])) / grid_size;
+  b.w = std::exp(x[indice + 2 * stride]) * anchors[2 * an_idx] / input_size;
+  b.h = std::exp(x[indice + 3 * stride]) * anchors[2 * an_idx + 1] / input_size;
   return b;
 }
 
@@ -157,25 +157,25 @@ static void CalcBoxLocationLossGrad(T* input_grad, const T loss, const T* input,
 }
 
 template <typename T>
-static inline void CalcLabelLoss(T* loss, const T* input, const int index,
+static inline void CalcLabelLoss(T* loss, const T* input, const int indice,
                                  const int label, const int class_num,
                                  const int stride, const T pos, const T neg,
                                  T score) {
   for (int i = 0; i < class_num; i++) {
-    T pred = input[index + i * stride];
+    T pred = input[indice + i * stride];
     loss[0] += SigmoidCrossEntropy<T>(pred, (i == label) ? pos : neg) * score;
   }
 }
 
 template <typename T>
 static inline void CalcLabelLossGrad(T* input_grad, const T loss,
-                                     const T* input, const int index,
+                                     const T* input, const int indice,
                                      const int label, const int class_num,
                                      const int stride, const T pos, const T neg,
                                      T score) {
   for (int i = 0; i < class_num; i++) {
-    T pred = input[index + i * stride];
-    input_grad[index + i * stride] =
+    T pred = input[indice + i * stride];
+    input_grad[indice + i * stride] =
         SigmoidCrossEntropyGrad<T>(pred, (i == label) ? pos : neg) * score *
         loss;
   }
@@ -345,7 +345,7 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
               int obj_idx = (i * mask_num + j) * stride + k * w + l;
               obj_mask_data[obj_idx] = static_cast<T>(-1);
             }
-            // all losses should be calculated if best IoU
+            // all losses shold be calculated if best IoU
             // is bigger then truth thresh, but currently,
             // truth thresh is an unreachable value as 1.0.
           }
@@ -365,7 +365,7 @@ class Yolov3LossKernel : public framework::OpKernel<T> {
         T best_iou = 0.0;
         int best_n = 0;
         // each gt box find a best match anchor box as positive sample,
-        // for positive sample, all losses should be calculated, and for
+        // for positive sample, all losses shold be calculated, and for
         // other samples, only objectness loss is required.
         for (int an_idx = 0; an_idx < an_num; an_idx++) {
           Box<T> an_box;

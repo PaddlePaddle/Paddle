@@ -66,18 +66,18 @@ class PaddlePSInstance(object):
             self._comm = self.dh.comm.Split(self._node_type)
         pass
 
-    def get_worker_index(self):
+    def get_worker_indice(self):
         """
-        Return worker index 
+        Return worker indice 
         """
         if self._server_worker_mode == 0:
             return self._rankid == self.server_num
         else:
             return self._rankid / self._proc_per_node
 
-    def get_server_index(self):
+    def get_server_indice(self):
         """
-        Return server index 
+        Return server indice 
         """
         if self._server_worker_mode == 0:
             return self.rank_id
@@ -100,7 +100,7 @@ class PaddlePSInstance(object):
         """
         Return instance is first worker or not
         """
-        return self.is_worker() and 0 == self.get_worker_index()
+        return self.is_worker() and 0 == self.get_worker_indice()
 
     def set_ip(self, ip):
         """

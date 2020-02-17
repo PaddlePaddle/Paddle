@@ -73,7 +73,7 @@ class TestDistMnistDcAsgd(TestDistBase):
 
 
 # FIXME(typhoonzero): enable these tests once we have 4
-# 4 GPUs on CI machine, and the base class should be updated.
+# 4 GPUs on CI machine, and the base class shold be updated.
 #
 # class TestDistMnist2x2ReduceMode(TestDistBase):
 #     def _setup_config(self):

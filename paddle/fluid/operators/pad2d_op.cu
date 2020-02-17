@@ -36,14 +36,14 @@ __global__ void Pad2DConstNCHW(const int nthreads, const T* in_data,
                                const int out_height, const int out_width,
                                const int pad_top, const int pad_left, T value,
                                T* out_data) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
-    int nc = index / out_width;
-    const int out_w = index % out_width;
+  CUDA_1D_KERNEL_LOOP(indice, nthreads) {
+    int nc = indice / out_width;
+    const int out_w = indice % out_width;
     const int out_h = nc % out_height;
     nc /= out_height;
     int in_h = out_h - pad_top;
     int in_w = out_w - pad_left;
-    out_data[index] =
+    out_data[indice] =
         (in_h < 0 || in_w < 0 || in_h >= in_height || in_w >= in_width)
             ? value
             : in_data[(nc * in_height + in_h) * in_width + in_w];
@@ -57,16 +57,16 @@ __global__ void Pad2DConstNHWC(const int nthreads, const T* in_data,
                                const int out_height, const int out_width,
                                const int pad_top, const int pad_left, T value,
                                T* out_data) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
-    int n = index / channels;
-    const int c = index % channels;
+  CUDA_1D_KERNEL_LOOP(indice, nthreads) {
+    int n = indice / channels;
+    const int c = indice % channels;
     const int out_w = n % out_width;
     n /= out_width;
     const int out_h = n % out_height;
     n /= out_height;
     const int in_h = out_h - pad_top;
     const int in_w = out_w - pad_left;
-    out_data[index] =
+    out_data[indice] =
         (in_h < 0 || in_w < 0 || in_h >= in_height || in_w >= in_width)
             ? value
             : in_data[((n * in_height + in_h) * in_width + in_w) * channels +
@@ -81,9 +81,9 @@ __global__ void Pad2DReflectNCHW(const int nthreads, const T* in_data,
                                  const int out_height, const int out_width,
                                  const int pad_top, const int pad_left,
                                  T* out_data) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
-    int nc = index / out_width;
-    const int out_w = index % out_width;
+  CUDA_1D_KERNEL_LOOP(indice, nthreads) {
+    int nc = indice / out_width;
+    const int out_w = indice % out_width;
     const int out_h = nc % out_height;
     nc /= out_height;
     int in_h = out_h - pad_top;
@@ -92,7 +92,7 @@ __global__ void Pad2DReflectNCHW(const int nthreads, const T* in_data,
     in_h = min(in_h, 2 * in_height - in_h - 2);  // reflect by in_height
     in_w = max(in_w, -in_w);                     // reflect by 0
     in_w = min(in_w, 2 * in_width - in_w - 2);   // reflect by in_width
-    out_data[index] = in_data[(nc * in_height + in_h) * in_width + in_w];
+    out_data[indice] = in_data[(nc * in_height + in_h) * in_width + in_w];
   }
 }
 
@@ -103,9 +103,9 @@ __global__ void Pad2DReflectNHWC(const int nthreads, const T* in_data,
                                  const int out_height, const int out_width,
                                  const int pad_top, const int pad_left,
                                  T* out_data) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
-    int n = index / channels;
-    const int c = index % channels;
+  CUDA_1D_KERNEL_LOOP(indice, nthreads) {
+    int n = indice / channels;
+    const int c = indice % channels;
     const int out_w = n % out_width;
     n /= out_width;
     const int out_h = n % out_height;
@@ -116,7 +116,7 @@ __global__ void Pad2DReflectNHWC(const int nthreads, const T* in_data,
     in_h = min(in_h, 2 * in_height - in_h - 2);
     in_w = max(in_w, -in_w);
     in_w = min(in_w, 2 * in_width - in_w - 2);
-    out_data[index] =
+    out_data[indice] =
         in_data[((n * in_height + in_h) * in_width + in_w) * channels + c];
   }
 }
@@ -128,14 +128,14 @@ __global__ void Pad2DEdgeNCHW(const int nthreads, const T* in_data,
                               const int out_height, const int out_width,
                               const int pad_top, const int pad_left,
                               T* out_data) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
-    int nc = index / out_width;
-    const int out_w = index % out_width;
+  CUDA_1D_KERNEL_LOOP(indice, nthreads) {
+    int nc = indice / out_width;
+    const int out_w = indice % out_width;
     const int out_h = nc % out_height;
     nc /= out_height;
     int in_h = min(in_height - 1, max(out_h - pad_top, 0));
     int in_w = min(in_width - 1, max(out_w - pad_left, 0));
-    out_data[index] = in_data[(nc * in_height + in_h) * in_width + in_w];
+    out_data[indice] = in_data[(nc * in_height + in_h) * in_width + in_w];
   }
 }
 
@@ -146,16 +146,16 @@ __global__ void Pad2DEdgeNHWC(const int nthreads, const T* in_data,
                               const int out_height, const int out_width,
                               const int pad_top, const int pad_left,
                               T* out_data) {
-  CUDA_1D_KERNEL_LOOP(index, nthreads) {
-    int n = index / channels;
-    const int c = index % channels;
+  CUDA_1D_KERNEL_LOOP(indice, nthreads) {
+    int n = indice / channels;
+    const int c = indice % channels;
     const int out_w = n % out_width;
     n /= out_width;
     const int out_h = n % out_height;
     n /= out_height;
     int in_h = min(in_height - 1, max(out_h - pad_top, 0));
     int in_w = min(in_width - 1, max(out_w - pad_left, 0));
-    out_data[index] =
+    out_data[indice] =
         in_data[((n * in_height + in_h) * in_width + in_w) * channels + c];
   }
 }
@@ -167,12 +167,12 @@ __global__ void Pad2DGradConstNCHW(const int in_size, T* d_in_data,
                                    const int out_height, const int out_width,
                                    const int pad_top, const int pad_left,
                                    const T* d_out_data) {
-  CUDA_1D_KERNEL_LOOP(in_index, in_size) {
-    int nc = in_index / in_width;
-    const int out_w = in_index % in_width + pad_left;
+  CUDA_1D_KERNEL_LOOP(in_indice, in_size) {
+    int nc = in_indice / in_width;
+    const int out_w = in_indice % in_width + pad_left;
     const int out_h = nc % in_height + pad_top;
     nc /= in_height;
-    d_in_data[in_index] =
+    d_in_data[in_indice] =
         d_out_data[(nc * out_height + out_h) * out_width + out_w];
   }
 }
@@ -184,14 +184,14 @@ __global__ void Pad2DGradConstNHWC(const int in_size, T* d_in_data,
                                    const int out_height, const int out_width,
                                    const int pad_top, const int pad_left,
                                    const T* d_out_data) {
-  CUDA_1D_KERNEL_LOOP(in_index, in_size) {
-    int n = in_index / channels;
-    const int c = in_index % channels;
+  CUDA_1D_KERNEL_LOOP(in_indice, in_size) {
+    int n = in_indice / channels;
+    const int c = in_indice % channels;
     const int out_w = n % in_width + pad_left;
     n /= in_width;
     const int out_h = n % in_height + pad_top;
     n /= in_height;
-    d_in_data[in_index] =
+    d_in_data[in_indice] =
         d_out_data[((n * out_height + out_h) * out_width + out_w) * channels +
                    c];
   }
@@ -204,9 +204,9 @@ __global__ void Pad2DGradReflectNCHW(const int out_size, T* d_in_data,
                                      const int out_height, const int out_width,
                                      const int pad_top, const int pad_left,
                                      const T* d_out_data) {
-  CUDA_1D_KERNEL_LOOP(out_index, out_size) {
-    int nc = out_index / out_width;
-    const int out_w = out_index % out_width;
+  CUDA_1D_KERNEL_LOOP(out_indice, out_size) {
+    int nc = out_indice / out_width;
+    const int out_w = out_indice % out_width;
     const int out_h = nc % out_height;
     nc /= out_height;
     int in_h = out_h - pad_top;
@@ -217,7 +217,7 @@ __global__ void Pad2DGradReflectNCHW(const int out_size, T* d_in_data,
     in_w = min(in_w, 2 * in_width - in_w - 2);
     platform::CudaAtomicAdd(
         &d_in_data[(nc * in_height + in_h) * in_width + in_w],
-        d_out_data[out_index]);
+        d_out_data[out_indice]);
   }
 }
 
@@ -228,9 +228,9 @@ __global__ void Pad2DGradReflectNHWC(const int out_size, T* d_in_data,
                                      const int out_height, const int out_width,
                                      const int pad_top, const int pad_left,
                                      const T* d_out_data) {
-  CUDA_1D_KERNEL_LOOP(out_index, out_size) {
-    const int c = out_index % channels;
-    int n = out_index / channels;
+  CUDA_1D_KERNEL_LOOP(out_indice, out_size) {
+    const int c = out_indice % channels;
+    int n = out_indice / channels;
     const int out_w = n % out_width;
     n /= out_width;
     const int out_h = n % out_height;
@@ -243,7 +243,7 @@ __global__ void Pad2DGradReflectNHWC(const int out_size, T* d_in_data,
     in_w = min(in_w, in_width * 2 - in_w - 2);
     platform::CudaAtomicAdd(
         &d_in_data[((n * in_height + in_h) * in_width + in_w) * channels + c],
-        d_out_data[out_index]);
+        d_out_data[out_indice]);
   }
 }
 
@@ -254,16 +254,16 @@ __global__ void Pad2DGradEdgeNCHW(const int out_size, T* d_in_data,
                                   const int out_height, const int out_width,
                                   const int pad_top, const int pad_left,
                                   const T* d_out_data) {
-  CUDA_1D_KERNEL_LOOP(out_index, out_size) {
-    int nc = out_index / out_width;
-    const int out_w = out_index % out_width;
+  CUDA_1D_KERNEL_LOOP(out_indice, out_size) {
+    int nc = out_indice / out_width;
+    const int out_w = out_indice % out_width;
     const int out_h = nc % out_height;
     nc /= out_height;
     const int in_h = min(in_height - 1, max(out_h - pad_top, 0));
     const int in_w = min(in_width - 1, max(out_w - pad_left, 0));
     platform::CudaAtomicAdd(
         &d_in_data[(nc * in_height + in_h) * in_width + in_w],
-        d_out_data[out_index]);
+        d_out_data[out_indice]);
   }
 }
 
@@ -274,9 +274,9 @@ __global__ void Pad2DGradEdgeNHWC(const int out_size, T* d_in_data,
                                   const int out_height, const int out_width,
                                   const int pad_top, const int pad_left,
                                   const T* d_out_data) {
-  CUDA_1D_KERNEL_LOOP(out_index, out_size) {
-    const int c = out_index % channels;
-    int n = out_index / channels;
+  CUDA_1D_KERNEL_LOOP(out_indice, out_size) {
+    const int c = out_indice % channels;
+    int n = out_indice / channels;
     const int out_w = n % out_width;
     n /= out_width;
     const int out_h = n % out_height;
@@ -285,7 +285,7 @@ __global__ void Pad2DGradEdgeNHWC(const int out_size, T* d_in_data,
     const int in_w = min(in_width - 1, max(out_w - pad_left, 0));
     platform::CudaAtomicAdd(
         &d_in_data[((n * in_height + in_h) * in_width + in_w) * channels + c],
-        d_out_data[out_index]);
+        d_out_data[out_indice]);
   }
 }
 

@@ -23,15 +23,15 @@ class MeanIoUOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Predictions"),
-                   "Input (Predictions) of MeanIoU op should not be null.");
+                   "Input (Predictions) of MeanIoU op shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Labels"),
-                   "Input (labels) of MeanIoU op should not be null.");
+                   "Input (labels) of MeanIoU op shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("OutMeanIou"),
-                   "Output (OutMeanIou) of MeanIoU op should not be null.");
+                   "Output (OutMeanIou) of MeanIoU op shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("OutWrong"),
-                   "Output (OutWrong) of MeanIoU op should not be null.");
+                   "Output (OutWrong) of MeanIoU op shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("OutCorrect"),
-                   "Output (OutWrong) of MeanIoU op should not be null.");
+                   "Output (OutWrong) of MeanIoU op shold not be null.");
 
     int64_t num_classes =
         static_cast<int64_t>(ctx->Attrs().Get<int>("num_classes"));
@@ -55,11 +55,11 @@ class MeanIoUOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("Predictions",
              "(Tensor), A Tensor of prediction results for semantic labels"
-             " with type int32 or int64. The rank should be greater than 1.");
+             " with type int32 or int64. The rank shold be greater than 1.");
     AddInput(
         "Labels",
         "(Tensor), A Tensor of ground truth labels with type int32 or int64."
-        "Its shape should be the same as Input(Predictions).");
+        "Its shape shold be the same as Input(Predictions).");
     AddInput("InWrongs",
              "(vector<Tensor>), A list of Tensor with shape "
              "[num_classes]. They are used to collect wrong number among "
@@ -74,7 +74,7 @@ class MeanIoUOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDuplicable()
         .AsDispensable();
     AddInput("InMeanIou",
-             "(vector<Tensor>), A list of Tensor that Output(mean_iou) should "
+             "(vector<Tensor>), A list of Tensor that Output(mean_iou) shold "
              "be added to. Empty list is also valid here.")
         .AsDuplicable()
         .AsDispensable();

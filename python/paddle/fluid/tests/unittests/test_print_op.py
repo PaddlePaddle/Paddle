@@ -116,7 +116,7 @@ class TestPrintOpBackward(unittest.TestCase):
             fluid.optimizer.Adam().minimize(loss)
 
         print_ops = [op for op in main.blocks[0].ops if op.type == u'print']
-        assert len(print_ops) == 2, "The number of print op should be 2"
+        assert len(print_ops) == 2, "The number of print op shold be 2"
 
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
         exe = fluid.Executor(place)

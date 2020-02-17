@@ -25,37 +25,37 @@ class AdadeltaOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Param"),
-                   "Input(Param) of AdadeltaOp should not be null.");
+                   "Input(Param) of AdadeltaOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Grad"),
-                   "Input(Grad) of AdadeltaOp should not be null.");
+                   "Input(Grad) of AdadeltaOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("AvgSquaredGrad"),
-                   "Input(AvgSquaredGrad) of AdadeltaOp should not be null.");
+                   "Input(AvgSquaredGrad) of AdadeltaOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("AvgSquaredUpdate"),
-                   "Input(AvgSquaredUpdate) of AdadeltaOp should not be null.");
+                   "Input(AvgSquaredUpdate) of AdadeltaOp shold not be null.");
     PADDLE_ENFORCE(
         ctx->GetInputsVarType("Param").front() ==
             framework::proto::VarType::LOD_TENSOR,
-        "The input var's type should be LoDTensor, but the received is %s",
+        "The input var's type shold be LoDTensor, but the received is %s",
         ctx->Inputs("Param").front(), ctx->GetInputsVarType("Param").front());
     PADDLE_ENFORCE(
         ctx->GetInputsVarType("Grad").front() ==
             framework::proto::VarType::LOD_TENSOR,
-        "The input var's type should be LoDTensor, but the received is %s",
+        "The input var's type shold be LoDTensor, but the received is %s",
         ctx->Inputs("Grad").front(), ctx->GetInputsVarType("Grad").front());
 
     PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
-                   "Output(ParamOut) of AdadeltaOp should not be null.");
+                   "Output(ParamOut) of AdadeltaOp shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasOutput("AvgSquaredGradOut"),
-        "Output(AvgSquaredGradOut) of AdadeltaOp should not be null.");
+        "Output(AvgSquaredGradOut) of AdadeltaOp shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasOutput("AvgSquaredUpdateOut"),
-        "Output(AvgSquaredUpdateOut) of AdadeltaOp should not be null.");
+        "Output(AvgSquaredUpdateOut) of AdadeltaOp shold not be null.");
 
     auto param_dim = ctx->GetInputDim("Param");
     PADDLE_ENFORCE_EQ(
         param_dim, ctx->GetInputDim("Grad"),
-        "param and grad input of AdadeltaOp should have same dimension");
+        "param and grad input of AdadeltaOp shold have same dimension");
     PADDLE_ENFORCE_NE(framework::product(ctx->GetInputDim("AvgSquaredGrad")), 0,
                       "Maybe the Input variable AvgSquaredGrad has not "
                       "been initialized. You may need to confirm if you put "
@@ -63,10 +63,10 @@ class AdadeltaOp : public framework::OperatorWithKernel {
                       "function.");
     PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("AvgSquaredGrad"),
                       "Param and AvgSquaredGrad input of AdadeltaOp "
-                      "should have same dimension");
+                      "shold have same dimension");
     PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("AvgSquaredUpdate"),
                       "Param and AvgSquaredUpdate input of AdadeltaOp "
-                      "should have same dimension");
+                      "shold have same dimension");
 
     ctx->SetOutputDim("ParamOut", param_dim);
     ctx->SetOutputDim("AvgSquaredGradOut", param_dim);

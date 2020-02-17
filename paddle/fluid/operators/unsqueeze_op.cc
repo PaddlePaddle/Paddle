@@ -27,16 +27,16 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of Unsqueeze operator should not be null.");
+                      "Input(X) of Unsqueeze operator shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of Unsqueeze operator should not be null.");
+                      "Output(Out) of Unsqueeze operator shold not be null.");
 
     const auto &axes = ctx->Attrs().Get<std::vector<int>>("axes");
     const auto &x_dims = ctx->GetInputDim("X");
     // Validity Check: input tensor dims (<6).
     PADDLE_ENFORCE_LE(x_dims.size(), 6,
                       "Invalid dimensions, the rank of Input(X) "
-                      "should be in the range of [1, 6] (Eigen limit)");
+                      "shold be in the range of [1, 6] (Eigen limit)");
     if (!axes.empty()) {
       auto out_dims = GetOutputShape(axes, x_dims);
       ctx->SetOutputDim("Out", out_dims);
@@ -49,7 +49,7 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
       auto AxesTensorList = ctx->Inputs("AxesTensorList");
       int output_size = x_dims.size() + static_cast<int>(AxesTensorList.size());
       PADDLE_ENFORCE_LE(output_size, 6,
-                        "The output tensor's rank should be less than 6.");
+                        "The output tensor's rank shold be less than 6.");
       std::vector<int> vec_out_dims(output_size, -1);
       ctx->SetOutputDim("Out", framework::make_ddim(vec_out_dims));
     } else if (ctx->HasInput("AxesTensor")) {
@@ -66,7 +66,7 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
                         axes_dims);
       int output_size = x_dims.size() + static_cast<int>(axes_dims[0]);
       PADDLE_ENFORCE_LE(output_size, 6,
-                        "The output tensor's rank should be less than 6.");
+                        "The output tensor's rank shold be less than 6.");
       std::vector<int> vec_out_dims(output_size, -1);
       ctx->SetOutputDim("Out", framework::make_ddim(vec_out_dims));
     }
@@ -80,7 +80,7 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
 
     // Validity Check: rank range.
     PADDLE_ENFORCE_LE(output_size, 6,
-                      "The output tensor's rank should be less than 6.");
+                      "The output tensor's rank shold be less than 6.");
 
     for (int axis : unsqz_dims) {
       int cur = axis < 0 ? axis + cur_output_size + 1 : axis;
@@ -151,12 +151,12 @@ class UnsqueezeOpMaker : public framework::OpProtoAndCheckerMaker {
         .AddCustomChecker([](const std::vector<int> &axes) {
           // Validity Check: axes dims (<6).
           PADDLE_ENFORCE_LT(static_cast<int>(axes.size()), 6,
-                            "Invalid dimensions, dynamic dimensions should be "
+                            "Invalid dimensions, dynamic dimensions shold be "
                             "within [1, 6] dimensions (Eigen limit).");
           // Validity Check: the range of unsqueeze axis.
           for (int axis : axes) {
             PADDLE_ENFORCE_LT(axis, 6,
-                              "Invalid dimensions, input axis should be"
+                              "Invalid dimensions, input axis shold be"
                               " within [1, 6] dimensions (Eigen limit).");
           }
         });
@@ -221,7 +221,7 @@ class Unsqueeze2Op : public UnsqueezeOp {
 
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("XShape"), true,
-        "Output(XShape) of Unsqueeze operator should not be null.");
+        "Output(XShape) of Unsqueeze operator shold not be null.");
     std::vector<int64_t> xshape_dims(x_dims.size() + 1);
     xshape_dims[0] = 0;
     for (int i = 0; i < x_dims.size(); ++i) {
@@ -264,9 +264,9 @@ class Unsqueeze2GradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE_EQ(context->HasInput("XShape"), true,
-                      "Input(XShape) shouldn't be null.");
+                      "Input(XShape) sholdn't be null.");
     PADDLE_ENFORCE_EQ(context->HasInput(framework::GradVarName("Out")), true,
-                      "Input(Out@GRAD) shouldn't be null.");
+                      "Input(Out@GRAD) sholdn't be null.");
     auto xshape_dims = context->GetInputDim("XShape");
     auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
     context->SetOutputDim(framework::GradVarName("X"), x_dims);

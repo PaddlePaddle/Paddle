@@ -173,13 +173,13 @@ std::string DownpourWorker::PrintLodTensor(LoDTensor* tensor, int64_t start,
 }
 
 std::pair<int64_t, int64_t> DownpourWorker::GetTensorBound(LoDTensor* tensor,
-                                                           int index) {
+                                                           int indice) {
   auto& dims = tensor->dims();
   if (tensor->lod().size() != 0) {
     auto& lod = tensor->lod()[0];
-    return {lod[index] * dims[1], lod[index + 1] * dims[1]};
+    return {lod[indice] * dims[1], lod[indice + 1] * dims[1]};
   } else {
-    return {index * dims[1], (index + 1) * dims[1]};
+    return {indice * dims[1], (indice + 1) * dims[1]};
   }
 }
 
@@ -236,7 +236,7 @@ void DownpourWorker::CollectLabelInfo(size_t table_idx) {
   LoDTensor* tensor = var->GetMutable<LoDTensor>();
   int64_t* label_ptr = tensor->data<int64_t>();
 
-  size_t global_index = 0;
+  size_t global_indice = 0;
   for (size_t i = 0; i < sparse_key_names_[table_id].size(); ++i) {
     VLOG(3) << "sparse_key_names_[" << i
             << "]: " << sparse_key_names_[table_id][i];
@@ -260,17 +260,17 @@ void DownpourWorker::CollectLabelInfo(size_t table_idx) {
     // tensor->lod()[0].size() == batch_size + 1
     for (auto lod_idx = 1u; lod_idx < tensor->lod()[0].size(); ++lod_idx) {
       for (; fea_idx < tensor->lod()[0][lod_idx]; ++fea_idx) {
-        // should be skipped feasign defined in protobuf
+        // shold be skipped feasign defined in protobuf
         if (ids[fea_idx] == 0u) {
           continue;
         }
-        feature_label[global_index++] =
+        feature_label[global_indice++] =
             static_cast<float>(label_ptr[lod_idx - 1]);
       }
     }
   }
-  CHECK(global_index == feature.size())
-      << "expect fea info size:" << feature.size() << " real:" << global_index;
+  CHECK(global_indice == feature.size())
+      << "expect fea info size:" << feature.size() << " real:" << global_indice;
 }
 
 void DownpourWorker::FillSparseValue(size_t table_idx) {
@@ -317,43 +317,43 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
     if (is_nid) {
       nid_show_.clear();
     }
-    int nid_ins_index = 0;
+    int nid_ins_indice = 0;
 
-    for (int index = 0; index < len; ++index) {
+    for (int indice = 0; indice < len; ++indice) {
       if (use_cvm_ || no_cvm_) {
-        if (ids[index] == 0u) {
-          memcpy(ptr + table.emb_dim() * index, init_value.data(),
+        if (ids[indice] == 0u) {
+          memcpy(ptr + table.emb_dim() * indice, init_value.data(),
                  sizeof(float) * table.emb_dim());
           if (is_nid) {
             nid_show_.push_back(-1);
-            ++nid_ins_index;
+            ++nid_ins_indice;
           }
           continue;
         }
-        memcpy(ptr + table.emb_dim() * index, fea_value[fea_idx].data(),
+        memcpy(ptr + table.emb_dim() * indice, fea_value[fea_idx].data(),
                sizeof(float) * table.emb_dim());
         if (is_nid &&
-            static_cast<size_t>(index) == tensor->lod()[0][nid_ins_index]) {
+            static_cast<size_t>(indice) == tensor->lod()[0][nid_ins_indice]) {
           nid_show_.push_back(fea_value[fea_idx][0]);
-          ++nid_ins_index;
+          ++nid_ins_indice;
         }
         fea_idx++;
       } else {
-        if (ids[index] == 0u) {
-          memcpy(ptr + table.emb_dim() * index, init_value.data() + 2,
+        if (ids[indice] == 0u) {
+          memcpy(ptr + table.emb_dim() * indice, init_value.data() + 2,
                  sizeof(float) * table.emb_dim());
           if (is_nid) {
             nid_show_.push_back(-1);
-            ++nid_ins_index;
+            ++nid_ins_indice;
           }
           continue;
         }
-        memcpy(ptr + table.emb_dim() * index, fea_value[fea_idx].data() + 2,
+        memcpy(ptr + table.emb_dim() * indice, fea_value[fea_idx].data() + 2,
                sizeof(float) * table.emb_dim());
         if (is_nid &&
-            static_cast<size_t>(index) == tensor->lod()[0][nid_ins_index]) {
+            static_cast<size_t>(indice) == tensor->lod()[0][nid_ins_indice]) {
           nid_show_.push_back(fea_value[fea_idx][0]);
-          ++nid_ins_index;
+          ++nid_ins_indice;
         }
         fea_idx++;
       }
@@ -399,14 +399,14 @@ void DownpourWorker::AdjustInsWeight() {
   float* ins_weights = ins_weight_tensor->data<float>();
   size_t len = ins_weight_tensor->numel();  // len = batch size
   // here we assume nid_show slot only has one feasign in each instance
-  CHECK(len == nid_show_.size()) << "ins_weight size should be equal to "
+  CHECK(len == nid_show_.size()) << "ins_weight size shold be equal to "
                                  << "nid_show size, " << len << " vs "
                                  << nid_show_.size();
   float nid_adjw_threshold = adjust_ins_weight_config_.nid_adjw_threshold();
   float nid_adjw_ratio = adjust_ins_weight_config_.nid_adjw_ratio();
   int64_t nid_adjw_num = 0;
   double nid_adjw_weight = 0.0;
-  size_t ins_index = 0;
+  size_t ins_indice = 0;
   for (size_t i = 0; i < len; ++i) {
     float nid_show = nid_show_[i];
     VLOG(3) << "nid_show " << nid_show;
@@ -424,12 +424,12 @@ void DownpourWorker::AdjustInsWeight() {
       nid_adjw_weight += ins_weight;
       // choose large ins weight
       VLOG(3) << "ins weight new " << ins_weight << ", ins weight origin "
-              << ins_weights[ins_index];
-      if (ins_weight > ins_weights[ins_index]) {
-        VLOG(3) << "ins " << ins_index << " weight changes to " << ins_weight;
-        ins_weights[ins_index] = ins_weight;
+              << ins_weights[ins_indice];
+      if (ins_weight > ins_weights[ins_indice]) {
+        VLOG(3) << "ins " << ins_indice << " weight changes to " << ins_weight;
+        ins_weights[ins_indice] = ins_weight;
       }
-      ++ins_index;
+      ++ins_indice;
     }
   }
   VLOG(3) << "nid adjw info: total_adjw_num: " << nid_adjw_num
@@ -767,7 +767,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
     ++batch_cnt;
 
     if (thread_id_ == 0) {
-      // should be configured here
+      // shold be configured here
       if (batch_cnt > 0 && batch_cnt % 100 == 0) {
         double op_sum_time = 0;
         std::unordered_map<std::string, double> op_to_time;
@@ -941,7 +941,7 @@ void DownpourWorker::TrainFiles() {
       }
       VLOG(3) << "push dense gradient done.";
 
-      // the following code should be more precise and clean
+      // the following code shold be more precise and clean
       // TODO(guru4elephant)
       int32_t tmp_push_dense_wait_times = -1;
       static uint32_t push_dense_wait_times =

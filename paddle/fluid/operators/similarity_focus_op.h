@@ -35,7 +35,7 @@ class SimilarityFocusKernel : public framework::OpKernel<T> {
     const T* x_data = x->data<T>();
 
     int axis = context.Attr<int>("axis");
-    std::vector<int> indexes = context.Attr<std::vector<int>>("indexes");
+    std::vector<int> indicees = context.Attr<std::vector<int>>("indicees");
 
     int64_t batch_size = x->dims()[0];
     int64_t dim[4];
@@ -43,11 +43,11 @@ class SimilarityFocusKernel : public framework::OpKernel<T> {
       dim[i] = x->dims()[i];
     }
 
-    if (indexes.size() < 1) {
+    if (indicees.size() < 1) {
       PADDLE_THROW("Indexes' size can not be 0.");
     }
-    for (auto index : indexes) {
-      if (dim[axis] < index) {
+    for (auto indice : indicees) {
+      if (dim[axis] < indice) {
         PADDLE_THROW("Index exceeds tensor shape limit.");
       }
     }
@@ -66,7 +66,7 @@ class SimilarityFocusKernel : public framework::OpKernel<T> {
       return x.first > y.first;
     };
 
-    int64_t (*compute_index)(int64_t*, int, int, int, int) = [](
+    int64_t (*compute_indice)(int64_t*, int, int, int, int) = [](
         int64_t* dim, int d1, int d2, int d3, int d4) {
       return d1 * dim[1] * dim[2] * dim[3] + d2 * dim[2] * dim[3] +
              d3 * dim[3] + d4;
@@ -74,12 +74,12 @@ class SimilarityFocusKernel : public framework::OpKernel<T> {
 
     memset(out_data, 0, sizeof(T) * batch_size * dim[1] * dim[2] * dim[3]);
     for (int i = 0; i < batch_size; ++i) {
-      for (auto index : indexes) {
+      for (auto indice : indicees) {
         if (axis == 1) {
           for (int j = 0; j < dim[2]; ++j) {
             for (int k = 0; k < dim[3]; ++k) {
               array[j * dim[3] + k] = std::make_pair(
-                  x_data[compute_index(dim, i, index, j, k)], j * dim[3] + k);
+                  x_data[compute_indice(dim, i, indice, j, k)], j * dim[3] + k);
             }
           }
 
@@ -96,7 +96,7 @@ class SimilarityFocusKernel : public framework::OpKernel<T> {
             tag2[idx2] = true;
             tag3[idx3] = true;
             for (int j = 0; j < dim[1]; ++j) {
-              out_data[compute_index(dim, i, j, idx2, idx3)] = 1;
+              out_data[compute_indice(dim, i, j, idx2, idx3)] = 1;
             }
             if (tag_num == std::min(dim[2], dim[3])) {
               break;
@@ -106,7 +106,7 @@ class SimilarityFocusKernel : public framework::OpKernel<T> {
           for (int j = 0; j < dim[1]; ++j) {
             for (int k = 0; k < dim[3]; ++k) {
               array[j * dim[3] + k] = std::make_pair(
-                  x_data[compute_index(dim, i, j, index, k)], j * dim[3] + k);
+                  x_data[compute_indice(dim, i, j, indice, k)], j * dim[3] + k);
             }
           }
 
@@ -123,7 +123,7 @@ class SimilarityFocusKernel : public framework::OpKernel<T> {
             tag1[idx1] = true;
             tag3[idx3] = true;
             for (int j = 0; j < dim[2]; ++j) {
-              out_data[compute_index(dim, i, idx1, j, idx3)] = 1;
+              out_data[compute_indice(dim, i, idx1, j, idx3)] = 1;
             }
             if (tag_num == std::min(dim[1], dim[3])) {
               break;
@@ -133,7 +133,7 @@ class SimilarityFocusKernel : public framework::OpKernel<T> {
           for (int j = 0; j < dim[1]; ++j) {
             for (int k = 0; k < dim[2]; ++k) {
               array[j * dim[2] + k] = std::make_pair(
-                  x_data[compute_index(dim, i, j, k, index)], j * dim[2] + k);
+                  x_data[compute_indice(dim, i, j, k, indice)], j * dim[2] + k);
             }
           }
 
@@ -150,7 +150,7 @@ class SimilarityFocusKernel : public framework::OpKernel<T> {
             tag1[idx1] = true;
             tag2[idx2] = true;
             for (int j = 0; j < dim[3]; ++j) {
-              out_data[compute_index(dim, i, idx1, idx2, j)] = 1;
+              out_data[compute_indice(dim, i, idx1, idx2, j)] = 1;
             }
             if (tag_num == std::min(dim[1], dim[2])) {
               break;

@@ -40,7 +40,7 @@ void FusionGroupPass::ApplyImpl(ir::Graph* graph) const {
 int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
   // TODO(liuyiqun): supported different places
   platform::CUDAPlace place = platform::CUDAPlace(0);
-  int index = platform::DeviceCodePool::Init({place}).size(place);
+  int indice = platform::DeviceCodePool::Init({place}).size(place);
 
   std::vector<std::vector<Node*>> subgraphs =
       fusion_group::ElementwiseGroupDetector()(graph);
@@ -50,7 +50,7 @@ int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
   bool save_intermediate_out = true;
   for (auto& vec : subgraphs) {
     if (vec.size() >= min_subgraph_size) {
-      std::string func_name = "fused_elementwise_" + std::to_string(index++);
+      std::string func_name = "fused_elementwise_" + std::to_string(indice++);
       fusion_group::SubGraph subgraph(
           type, func_name, save_intermediate_out,
           std::unordered_set<Node*>(vec.begin(), vec.end()));

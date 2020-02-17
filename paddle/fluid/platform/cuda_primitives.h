@@ -42,7 +42,7 @@ USE_CUDA_ATOMIC(Add, unsigned long long int);  // NOLINT
 CUDA_ATOMIC_WRAPPER(Add, int64_t) {
   // Here, we check long long int must be int64_t.
   static_assert(sizeof(int64_t) == sizeof(long long int),  // NOLINT
-                "long long should be int64");
+                "long long shold be int64");
   return CudaAtomicAdd(
       reinterpret_cast<unsigned long long int *>(address),  // NOLINT
       static_cast<unsigned long long int>(val));            // NOLINT
@@ -74,7 +74,7 @@ CUDA_ATOMIC_WRAPPER(Add, double) {
 // do the atomicCAS. According to the value store at high 16 bits
 // or low 16 bits, then do a different sum and CAS.
 // Given most warp-threads will failed on the atomicCAS, so this
-// implemented should be avoided in high concurrency. It's will be
+// implemented shold be avoided in high concurrency. It's will be
 // slower than the way convert value into 32bits and do a full atomicCAS.
 
 // convert the value into float and do the add arithmetic.

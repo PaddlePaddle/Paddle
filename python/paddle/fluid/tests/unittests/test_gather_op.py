@@ -26,7 +26,7 @@ class TestGatherOp(OpTest):
         xnp = np.random.random(self.x_shape).astype(self.x_type)
         self.inputs = {
             'X': xnp,
-            'Index': np.array(self.index).astype(self.index_type)
+            'Index': np.array(self.indice).astype(self.indice_type)
         }
         self.outputs = {'Out': self.inputs["X"][self.inputs["Index"]]}
 
@@ -42,8 +42,8 @@ class TestGatherOp(OpTest):
         """
         self.x_shape = (10, 20)
         self.x_type = "float64"
-        self.index = [1, 3, 5]
-        self.index_type = "int32"
+        self.indice = [1, 3, 5]
+        self.indice_type = "int32"
 
 
 class TestCase1(TestGatherOp):
@@ -53,19 +53,19 @@ class TestCase1(TestGatherOp):
         """
         self.x_shape = (100)
         self.x_type = "float64"
-        self.index = [1, 3, 5]
-        self.index_type = "int32"
+        self.indice = [1, 3, 5]
+        self.indice_type = "int32"
 
 
 class TestCase2(TestGatherOp):
     def config(self):
         """
-        For int64_t index type
+        For int64_t indice type
         """
         self.x_shape = (100)
         self.x_type = "float64"
-        self.index = [1, 3, 5]
-        self.index_type = "int64"
+        self.indice = [1, 3, 5]
+        self.indice_type = "int64"
 
 
 class TestCase3(TestGatherOp):
@@ -75,8 +75,8 @@ class TestCase3(TestGatherOp):
         """
         self.x_shape = (10, 20)
         self.x_type = "float64"
-        self.index = [1, 3, 5]
-        self.index_type = "int64"
+        self.indice = [1, 3, 5]
+        self.indice_type = "int64"
 
 
 class TestCase4(TestGatherOp):
@@ -84,8 +84,8 @@ class TestCase4(TestGatherOp):
         self.x_shape = (10, 20)
         self.attrs = {'overwrite': False}
         self.x_type = "double"
-        self.index = [1, 1]
-        self.index_type = "int32"
+        self.indice = [1, 1]
+        self.indice_type = "int32"
 
 
 class TestCase5(TestGatherOp):
@@ -93,8 +93,8 @@ class TestCase5(TestGatherOp):
         self.x_shape = (10, 20)
         self.attrs = {'overwrite': False}
         self.x_type = "float64"
-        self.index = [1, 1, 3]
-        self.index_type = "int32"
+        self.indice = [1, 1, 3]
+        self.indice_type = "int32"
 
 
 class TestCase6(TestGatherOp):
@@ -102,8 +102,8 @@ class TestCase6(TestGatherOp):
         self.x_shape = (10, 20)
         self.attrs = {'overwrite': True}
         self.x_type = "float64"
-        self.index = [1, 3]
-        self.index_type = "int32"
+        self.indice = [1, 3]
+        self.indice_type = "int32"
 
 
 if __name__ == "__main__":

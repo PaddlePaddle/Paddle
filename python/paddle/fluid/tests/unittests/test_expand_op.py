@@ -79,8 +79,8 @@ class TestExpandOpRank1_tensor_attr(OpTest):
         self.op_type = "expand"
         self.init_data()
         expand_times_tensor = []
-        for index, ele in enumerate(self.expand_times):
-            expand_times_tensor.append(("x" + str(index), np.ones(
+        for indice, ele in enumerate(self.expand_times):
+            expand_times_tensor.append(("x" + str(indice), np.ones(
                 (1)).astype('int32') * ele))
 
         self.inputs = {

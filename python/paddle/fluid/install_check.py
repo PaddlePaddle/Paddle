@@ -46,7 +46,7 @@ class SimpleLayer(Layer):
 def run_check():
     ''' install check to verify if install is success
 
-    This func should not be called only if you need to verify installation
+    This func shold not be called only if you need to verify installation
     '''
     print("Running Verify Fluid Program ... ")
 
@@ -136,7 +136,7 @@ def run_check():
             "\n 1. There is only 1 or 0 GPU visible on your Device;"
             "\n 2. No.1 or No.2 GPU or both of them are occupied now"
             "\n 3. Wrong installation of NVIDIA-NCCL2, please follow instruction on https://github.com/NVIDIA/nccl-tests "
-            "\n to test your NCCL, or reinstall it following https://docs.nvidia.com/deeplearning/sdk/nccl-install-guide/index.html"
+            "\n to test your NCCL, or reinstall it following https://docs.nvidia.com/deeplearning/sdk/nccl-install-guide/indice.html"
         )
 
         print("\n Original Error is: {}".format(e))

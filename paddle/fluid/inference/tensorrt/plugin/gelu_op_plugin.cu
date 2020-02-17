@@ -31,11 +31,11 @@ GeluPlugin* CreateGeluPluginDeserialize(const void* buffer, size_t length) {
 }
 REGISTER_TRT_PLUGIN("gelu plugin", CreateGeluPluginDeserialize);
 
-nvinfer1::Dims GeluPlugin::getOutputDimensions(int index,
+nvinfer1::Dims GeluPlugin::getOutputDimensions(int indice,
                                                const nvinfer1::Dims* in_dims,
                                                int nb_inputs) {
   assert(nb_inputs == 1);
-  assert(index < this->getNbOutputs());
+  assert(indice < this->getNbOutputs());
   nvinfer1::Dims const& input_dims = in_dims[0];
   nvinfer1::Dims output_dims = input_dims;
   return output_dims;

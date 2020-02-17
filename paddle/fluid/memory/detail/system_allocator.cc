@@ -62,19 +62,19 @@ void* AlignedMalloc(size_t size) {
   return p;
 }
 
-void* CPUAllocator::Alloc(size_t* index, size_t size) {
+void* CPUAllocator::Alloc(size_t* indice, size_t size) {
   // According to http://www.cplusplus.com/reference/cstdlib/malloc/,
   // malloc might not return nullptr if size is zero, but the returned
   // pointer shall not be dereferenced -- so we make it nullptr.
   if (size <= 0) return nullptr;
 
-  *index = 0;  // unlock memory
+  *indice = 0;  // unlock memory
 
   void* p = AlignedMalloc(size);
 
   if (p != nullptr) {
     if (FLAGS_use_pinned_memory) {
-      *index = 1;
+      *indice = 1;
 #ifdef _WIN32
       VirtualLock(p, size);
 #else
@@ -86,8 +86,8 @@ void* CPUAllocator::Alloc(size_t* index, size_t size) {
   return p;
 }
 
-void CPUAllocator::Free(void* p, size_t size, size_t index) {
-  if (p != nullptr && index == 1) {
+void CPUAllocator::Free(void* p, size_t size, size_t indice) {
+  if (p != nullptr && indice == 1) {
 #ifdef _WIN32
     VirtualUnlock(p, size);
 #else
@@ -105,7 +105,7 @@ bool CPUAllocator::UseGpu() const { return false; }
 
 #ifdef PADDLE_WITH_CUDA
 
-void* GPUAllocator::Alloc(size_t* index, size_t size) {
+void* GPUAllocator::Alloc(size_t* indice, size_t size) {
   // CUDA documentation doesn't explain if cudaMalloc returns nullptr
   // if size is 0.  We just make sure it does.
   if (size <= 0) return nullptr;
@@ -116,7 +116,7 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
   cudaError_t result = cudaMalloc(&p, size);
 
   if (result == cudaSuccess) {
-    *index = 0;
+    *indice = 0;
     gpu_alloc_size_ += size;
     return p;
   } else {
@@ -125,7 +125,7 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
     /**
      * NOTE(zjl): Sometimes cudaMemGetInfo would raise OOM error
      * if there is very little GPU memory left. In this case, we
-     * should consider the available GPU memory to be 0, and throw
+     * shold consider the available GPU memory to be 0, and throw
      * exception inside this function instead of throwing exception
      * inside cudaMemGetInfo.
      */
@@ -152,9 +152,9 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
   }
 }
 
-void GPUAllocator::Free(void* p, size_t size, size_t index) {
+void GPUAllocator::Free(void* p, size_t size, size_t indice) {
   cudaError_t err;
-  PADDLE_ENFORCE_EQ(index, 0);
+  PADDLE_ENFORCE_EQ(indice, 0);
   PADDLE_ENFORCE_GE(gpu_alloc_size_, size);
   gpu_alloc_size_ -= size;
   err = cudaFree(p);
@@ -173,7 +173,7 @@ bool GPUAllocator::UseGpu() const { return true; }
 
 // PINNED memory allows direct DMA transfers by the GPU to and from system
 // memory. It’s locked to a physical address.
-void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
+void* CUDAPinnedAllocator::Alloc(size_t* indice, size_t size) {
   if (size <= 0) return nullptr;
 
   // NOTE: here, we use CUDAPinnedMaxAllocSize as the maximum memory size
@@ -194,7 +194,7 @@ void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
   cudaError_t result = cudaHostAlloc(&p, size, cudaHostAllocPortable);
 
   if (result == cudaSuccess) {
-    *index = 1;  // PINNED memory
+    *indice = 1;  // PINNED memory
     cuda_pinnd_alloc_size_ += size;
     return p;
   } else {
@@ -205,9 +205,9 @@ void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
   return nullptr;
 }
 
-void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
+void CUDAPinnedAllocator::Free(void* p, size_t size, size_t indice) {
   cudaError_t err;
-  PADDLE_ENFORCE_EQ(index, 1);
+  PADDLE_ENFORCE_EQ(indice, 1);
 
   PADDLE_ENFORCE_GE(cuda_pinnd_alloc_size_, size);
   cuda_pinnd_alloc_size_ -= size;

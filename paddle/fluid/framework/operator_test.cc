@@ -545,11 +545,11 @@ class GetLoDLevelTest : public OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInputs("X"), true,
-                      "Input(X) should not be null.");
+                      "Input(X) shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) should not be null.");
+                      "Output(Out) shold not be null.");
     PADDLE_ENFORCE_GT(ctx->GetLoDLevel("X"), 0,
-                      "The LoD level Input(X) should be larger than 0.");
+                      "The LoD level Input(X) shold be larger than 0.");
   }
 };
 
@@ -560,9 +560,9 @@ class SetLoDLevelTest : public OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInputs("X"), true,
-                      "Input(X) should not be null.");
+                      "Input(X) shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) should not be null.");
+                      "Output(Out) shold not be null.");
     ctx->SetLoDLevel("Out", 1);
   }
 };
@@ -615,7 +615,7 @@ void SetGetLoDLevelTestMain(std::string op_type) {
       (op_type == "get_lod_level_test") ? "GetLoDLevel" : "SetLoDLevel";
   err_str +=
       " is only used in compile time. The calculation of output's actual lod "
-      "is different among operators so that should be set in the runtime "
+      "is different among operators so that shold be set in the runtime "
       "kernel.";
   try {
     op->Run(scope, place);
@@ -715,7 +715,7 @@ TEST(OpWithUnusedVar, all) {
   y->mutable_data<float>(cpu_place);
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
-  // should throw exception
+  // shold throw exception
   ASSERT_THROW(op->Run(scope, cpu_place), paddle::platform::EnforceNotMet);
   FLAGS_enable_unused_var_check = false;
 }
@@ -740,7 +740,7 @@ TEST(OpWithoutUnusedVar, all) {
   y->mutable_data<float>(cpu_place);
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
-  // should not throw exception
+  // shold not throw exception
   ASSERT_NO_THROW(op->Run(scope, cpu_place));
   FLAGS_enable_unused_var_check = false;
 }

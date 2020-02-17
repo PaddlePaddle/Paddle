@@ -27,22 +27,22 @@ template <typename T>
 struct MaxPoolFunctor {
   HOSTDEVICE void operator()(const T* input, const T pad_value,
                              const size_t start, const size_t end,
-                             const size_t item_dim, T* output, int* index) {
+                             const size_t item_dim, T* output, int* indice) {
     for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
       T max_val = static_cast<T>(-FLT_MAX);
-      int max_index = -1;
+      int max_indice = -1;
       if (start == end) {
         output[tid] = pad_value;
-        index[tid] = -1;
+        indice[tid] = -1;
       } else {
         for (int i = start; i < end; ++i) {
           if (max_val < input[item_dim * i + tid]) {
             max_val = input[item_dim * i + tid];
-            max_index = i;
+            max_indice = i;
           }
         }
         output[tid] = max_val;
-        index[tid] = max_index;
+        indice[tid] = max_indice;
       }
     }
   }
@@ -52,7 +52,7 @@ template <typename T>
 struct AvgPoolFunctor {
   HOSTDEVICE void operator()(const T* input, const T pad_value,
                              const size_t start, const size_t end,
-                             const size_t item_dim, T* output, int* index) {
+                             const size_t item_dim, T* output, int* indice) {
     for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
       if (start == end) {
         output[tid] = pad_value;
@@ -72,7 +72,7 @@ template <typename T>
 struct SumPoolFunctor {
   HOSTDEVICE void operator()(const T* input, const T pad_value,
                              const size_t start, const size_t end,
-                             const size_t item_dim, T* output, int* index) {
+                             const size_t item_dim, T* output, int* indice) {
     for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
       if (start == end) {
         output[tid] = pad_value;
@@ -91,7 +91,7 @@ template <typename T>
 struct SqrtPoolFunctor {
   HOSTDEVICE void operator()(const T* input, const T pad_value,
                              const size_t start, const size_t end,
-                             const size_t item_dim, T* output, int* index) {
+                             const size_t item_dim, T* output, int* indice) {
     for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
       if (start == end) {
         output[tid] = pad_value;
@@ -111,7 +111,7 @@ template <typename T>
 struct LastPoolFunctor {
   HOSTDEVICE void operator()(const T* input, const T pad_value,
                              const size_t start, const size_t end,
-                             const size_t item_dim, T* output, int* index) {
+                             const size_t item_dim, T* output, int* indice) {
     for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
       if (start == end) {
         output[tid] = pad_value;
@@ -126,7 +126,7 @@ template <typename T>
 struct FirstPoolFunctor {
   HOSTDEVICE void operator()(const T* input, const T pad_value,
                              const size_t start, const size_t end,
-                             const size_t item_dim, T* output, int* index) {
+                             const size_t item_dim, T* output, int* indice) {
     for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
       if (start == end) {
         output[tid] = pad_value;
@@ -142,17 +142,17 @@ __global__ void sequence_pool_kernel(Range_OP op, const T* input,
                                      const T pad_value, const size_t* lod,
                                      const size_t lod_size,
                                      const size_t item_dim, T* output,
-                                     int* index) {
+                                     int* indice) {
   int bid = blockIdx.x;
   if (bid >= lod_size - 1) return;
   size_t start = lod[bid];
   size_t end = lod[bid + 1];
-  int* index_offset = nullptr;
-  if (index != nullptr) {
-    index_offset = &index[bid * item_dim];
+  int* indice_offset = nullptr;
+  if (indice != nullptr) {
+    indice_offset = &indice[bid * item_dim];
   }
   op(input, pad_value, start, end, item_dim, &output[bid * item_dim],
-     index_offset);
+     indice_offset);
 }
 
 template <typename T>
@@ -162,7 +162,7 @@ class SequencePoolFunctor<platform::CUDADeviceContext, T> {
                   const std::string pooltype, T pad_value,
                   const framework::LoDTensor& input,
                   framework::LoDTensor* output, bool is_test,
-                  framework::Tensor* index = nullptr) {
+                  framework::Tensor* indice = nullptr) {
     auto lod_level = input.lod().size();
     auto& lod = input.lod()[lod_level - 1];
     const size_t item_dim = output->numel() / output->dims()[0];
@@ -173,7 +173,7 @@ class SequencePoolFunctor<platform::CUDADeviceContext, T> {
           T, MaxPoolFunctor<T>><<<grid, threads, 0, context.stream()>>>(
           MaxPoolFunctor<T>(), input.data<T>(), pad_value,
           lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
-          output->mutable_data<T>(context.GetPlace()), index->data<int>());
+          output->mutable_data<T>(context.GetPlace()), indice->data<int>());
     } else if (pooltype == "AVERAGE") {
       sequence_pool_kernel<
           T, AvgPoolFunctor<T>><<<grid, threads, 0, context.stream()>>>(
@@ -214,10 +214,10 @@ template <typename T>
 struct MaxPoolGradFunctor {
   HOSTDEVICE void operator()(const T* out_grad, const size_t start,
                              const size_t end, const size_t item_dim,
-                             T* in_grad, const int* index) {
+                             T* in_grad, const int* indice) {
     for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
       for (int i = start; i < end; ++i) {
-        if (i == index[tid]) {
+        if (i == indice[tid]) {
           in_grad[item_dim * i + tid] = out_grad[tid];
         } else {
           in_grad[item_dim * i + tid] = static_cast<T>(0);
@@ -231,7 +231,7 @@ template <typename T>
 struct AvgPoolGradFunctor {
   HOSTDEVICE void operator()(const T* out_grad, const size_t start,
                              const size_t end, const size_t item_dim,
-                             T* in_grad, const int* index) {
+                             T* in_grad, const int* indice) {
     for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
       for (int i = start; i < end; ++i) {
         in_grad[item_dim * i + tid] = out_grad[tid] / (end - start);
@@ -244,7 +244,7 @@ template <typename T>
 struct SumPoolGradFunctor {
   HOSTDEVICE void operator()(const T* out_grad, const size_t start,
                              const size_t end, const size_t item_dim,
-                             T* in_grad, const int* index) {
+                             T* in_grad, const int* indice) {
     for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
       for (int i = start; i < end; ++i) {
         in_grad[item_dim * i + tid] = out_grad[tid];
@@ -257,7 +257,7 @@ template <typename T>
 struct SqrtPoolGradFunctor {
   HOSTDEVICE void operator()(const T* out_grad, const size_t start,
                              const size_t end, const size_t item_dim,
-                             T* in_grad, const int* index) {
+                             T* in_grad, const int* indice) {
     for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
       for (int i = start; i < end; ++i) {
         in_grad[item_dim * i + tid] =
@@ -271,7 +271,7 @@ template <typename T>
 struct LastPoolGradFunctor {
   HOSTDEVICE void operator()(const T* out_grad, const size_t start,
                              const size_t end, const size_t item_dim,
-                             T* in_grad, const int* index) {
+                             T* in_grad, const int* indice) {
     for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
       for (int i = start; i < end; ++i) {
         if (i == end - 1) {
@@ -288,7 +288,7 @@ template <typename T>
 struct FirstPoolGradFunctor {
   HOSTDEVICE void operator()(const T* out_grad, const size_t start,
                              const size_t end, const size_t item_dim,
-                             T* in_grad, const int* index) {
+                             T* in_grad, const int* indice) {
     for (int tid = threadIdx.x; tid < item_dim; tid += blockDim.x) {
       for (int i = start; i < end; ++i) {
         if (i == start) {
@@ -306,16 +306,16 @@ __global__ void sequence_pool_grad_kernel(Range_OP op, const T* out_grad,
                                           const size_t* lod,
                                           const size_t lod_size,
                                           const size_t item_dim, T* in_grad,
-                                          const int* index) {
+                                          const int* indice) {
   int bid = blockIdx.x;
   if (bid >= lod_size - 1) return;
   size_t start = lod[bid];
   size_t end = lod[bid + 1];
-  const int* index_offset = nullptr;
-  if (index != nullptr) {
-    index_offset = &index[bid * item_dim];
+  const int* indice_offset = nullptr;
+  if (indice != nullptr) {
+    indice_offset = &indice[bid * item_dim];
   }
-  op(&out_grad[bid * item_dim], start, end, item_dim, in_grad, index_offset);
+  op(&out_grad[bid * item_dim], start, end, item_dim, in_grad, indice_offset);
 }
 
 template <typename T>
@@ -325,8 +325,8 @@ class SequencePoolGradFunctor<platform::CUDADeviceContext, T> {
                   const std::string pooltype,
                   const framework::LoDTensor& out_grad,
                   framework::LoDTensor* in_grad,
-                  /* max pool has index */
-                  const framework::Tensor* index = nullptr) {
+                  /* max pool has indice */
+                  const framework::Tensor* indice = nullptr) {
     auto lod_level = in_grad->lod().size();
     auto& lod = in_grad->lod()[lod_level - 1];
     const size_t item_dim = in_grad->numel() / in_grad->dims()[0];
@@ -337,7 +337,7 @@ class SequencePoolGradFunctor<platform::CUDADeviceContext, T> {
           T, MaxPoolGradFunctor<T>><<<grid, threads, 0, context.stream()>>>(
           MaxPoolGradFunctor<T>(), out_grad.data<T>(),
           lod.CUDAData(context.GetPlace()), lod.size(), item_dim,
-          in_grad->mutable_data<T>(context.GetPlace()), index->data<int>());
+          in_grad->mutable_data<T>(context.GetPlace()), indice->data<int>());
     } else if (pooltype == "AVERAGE") {
       sequence_pool_grad_kernel<
           T, AvgPoolGradFunctor<T>><<<grid, threads, 0, context.stream()>>>(

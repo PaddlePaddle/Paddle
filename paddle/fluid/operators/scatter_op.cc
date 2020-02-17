@@ -25,23 +25,23 @@ class ScatterOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of ScatterOp should not be null.");
+                   "Input(X) of ScatterOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Ids"),
-                   "Input(Ids) of ScatterOp should not be null.");
+                   "Input(Ids) of ScatterOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Updates"),
-                   "Input(Updates) of ScatterOp should not be null.");
+                   "Input(Updates) of ScatterOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of ScatterOp should not be null.");
+                   "Output(Out) of ScatterOp shold not be null.");
 
     auto updates_dims = ctx->GetInputDim("Updates");
     auto ref_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Ids").size(), 1,
-                      "Update Ids should be 1-D.");
+                      "Update Ids shold be 1-D.");
     PADDLE_ENFORCE_EQ(ref_dims.size(), updates_dims.size(),
-                      "Xerence and Updates should have the same shape size");
+                      "Xerence and Updates shold have the same shape size");
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("Updates")[0],
                       ctx->GetInputDim("Ids")[0],
-                      "Updates and Ids should have same batch-size.");
+                      "Updates and Ids shold have same batch-size.");
     ctx->SetOutputDim("Out", ref_dims);
   }
 
@@ -82,15 +82,15 @@ class ScatterOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "The source input of scatter op");
-    AddInput("Ids", "The index input of scatter op where X will be updated");
+    AddInput("Ids", "The indice input of scatter op where X will be updated");
     AddInput("Updates", "The updated value of scatter op");
     AddOutput("Out", "The output of scatter op");
     AddAttr<bool>("overwrite",
                   "(bool, default: True) "
-                  "The mode that updating the output when has same index,"
+                  "The mode that updating the output when has same indice,"
                   "If True, use the overwrite mode to update the output"
-                  "of the same index, if False, use the accumulate mode to"
-                  "update the output of the same index,Default value is True."
+                  "of the same indice, if False, use the accumulate mode to"
+                  "update the output of the same indice,Default value is True."
                   "You can set overwrite=False to implement scatter_add.")
         .SetDefault(true);
     AddComment(R"DOC(

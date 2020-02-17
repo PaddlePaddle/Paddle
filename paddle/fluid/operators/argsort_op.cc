@@ -24,11 +24,11 @@ class ArgsortOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of ArgsortOp should not be null.");
+                   "Input(X) of ArgsortOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of ArgsortOp should not be null.");
+                   "Output(Out) of ArgsortOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Indices"),
-                   "Output(Indices) of ArgsortOp should not be null.");
+                   "Output(Indices) of ArgsortOp shold not be null.");
 
     auto in_dims = ctx->GetInputDim("X");
     int axis = ctx->Attrs().Get<int>("axis");

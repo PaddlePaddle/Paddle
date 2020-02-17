@@ -169,17 +169,17 @@ class LRNOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of LRNOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of LRNOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of LRNOp should not be null.");
+                   "Output(Out) of LRNOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("MidOut"),
-                   "MidOut(Out) of LRNOp should not be null.");
+                   "MidOut(Out) of LRNOp shold not be null.");
 
     auto x_dim = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_EQ(x_dim.size(), 4, "Input(X)'rank of LRNOp should be 4.");
+    PADDLE_ENFORCE_EQ(x_dim.size(), 4, "Input(X)'rank of LRNOp shold be 4.");
 
     int n = ctx->Attrs().Get<int>("n");
-    PADDLE_ENFORCE(n > 0 && n % 2 == 1, "n should be positive odd value");
+    PADDLE_ENFORCE(n > 0 && n % 2 == 1, "n shold be positive odd value");
 
     ctx->SetOutputDim("Out", x_dim);
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -317,10 +317,10 @@ class LRNOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("MidOut"), "Input(MidOut) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold not be null");
+    PADDLE_ENFORCE(ctx->HasInput("MidOut"), "Input(MidOut) shold not be null");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
+                   "Input(Out@GRAD) shold not be null");
 
     auto x_dims = ctx->GetInputDim("X");
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);

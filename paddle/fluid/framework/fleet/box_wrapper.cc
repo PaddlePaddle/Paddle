@@ -156,7 +156,7 @@ void BoxWrapper::PullSparse(const paddle::platform::Place& place,
 
     VLOG(3) << "Begin call PullSparseCPU in BoxPS";
     pull_boxps_timer.Start();
-    // TODO(hutuxian): should use boxps::FeatureValue in the future
+    // TODO(hutuxian): shold use boxps::FeatureValue in the future
     int ret = boxps_ptr_->PullSparseCPU(total_keys, total_values_gpu,
                                         static_cast<int>(total_length));
     PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(

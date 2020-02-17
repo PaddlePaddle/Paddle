@@ -23,14 +23,14 @@ class TargetAssignOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of TargetAssignOp should not be null");
+                   "Input(X) of TargetAssignOp shold not be null");
     PADDLE_ENFORCE(ctx->HasInput("MatchIndices"),
-                   "Input(MatchIndices) of TargetAssignOp should not be null");
+                   "Input(MatchIndices) of TargetAssignOp shold not be null");
 
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of TargetAssignOp should not be null.");
+                   "Output(Out) of TargetAssignOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("OutWeight"),
-                   "Output(OutWeight) of TargetAssignOp should not be null.");
+                   "Output(OutWeight) of TargetAssignOp shold not be null.");
 
     auto in_dims = ctx->GetInputDim("X");
     auto mi_dims = ctx->GetInputDim("MatchIndices");

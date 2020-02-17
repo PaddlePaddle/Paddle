@@ -23,7 +23,7 @@ namespace framework {
 namespace ir {
 
 /*
- * Specifies which operators should use cuDNN.
+ * Specifies which operators shold use cuDNN.
  */
 class CUDNNPlacementPass : public PlacementPassBase {
  private:

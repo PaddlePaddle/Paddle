@@ -83,7 +83,7 @@ class DataNormOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     // By default, the type of the scale, bias, mean,
-    // and var tensors should both be float. (For float or float16 input tensor)
+    // and var tensors shold both be float. (For float or float16 input tensor)
     // or double (For double input tensor).
     auto dn_param_type = framework::proto::VarType::FP32;
     if (input_data_type == framework::proto::VarType::FP64) {
@@ -91,13 +91,13 @@ class DataNormOp : public framework::OperatorWithKernel {
     }
     PADDLE_ENFORCE_EQ(dn_param_type,
                       OperatorWithKernel::IndicateVarDataType(ctx, "BatchSize"),
-                      "BatchSize input should be of float type");
+                      "BatchSize input shold be of float type");
     PADDLE_ENFORCE_EQ(dn_param_type,
                       OperatorWithKernel::IndicateVarDataType(ctx, "BatchSum"),
-                      "BatchSum input should be of float type");
+                      "BatchSum input shold be of float type");
     PADDLE_ENFORCE_EQ(dn_param_type, OperatorWithKernel::IndicateVarDataType(
                                          ctx, "BatchSquareSum"),
-                      "BatchSquareSum input should be of float type");
+                      "BatchSquareSum input shold be of float type");
 
     // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
     framework::LibraryType library = framework::LibraryType::kPlain;
@@ -123,7 +123,7 @@ class DataNormOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1e-4)
         .AddCustomChecker([](const float &epsilon) {
           PADDLE_ENFORCE(epsilon >= 0.0f && epsilon <= 0.001f,
-                         "'epsilon' should be between 0.0 and 0.001.");
+                         "'epsilon' shold be between 0.0 and 0.001.");
         });
     AddAttr<int>("slot_dim",
                  "(int, default -1) Dimension of one slot if set, "
@@ -182,7 +182,7 @@ class DataNormKernel<platform::CPUDeviceContext, T>
 
     const auto *x = ctx.Input<Tensor>("X");
     const auto &x_dims = x->dims();
-    PADDLE_ENFORCE(x_dims.size() == 2, "The Input dim size should be 2");
+    PADDLE_ENFORCE(x_dims.size() == 2, "The Input dim size shold be 2");
     const int N = x_dims[0];
     const int C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]
@@ -263,15 +263,15 @@ class DataNormGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("BatchSize"), true,
         platform::errors::NotFound(
-            "Output(BatchSize) of DataNormGradOp should not be null."));
+            "Output(BatchSize) of DataNormGradOp shold not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("BatchSum"), true,
         platform::errors::NotFound(
-            "Output(BatchSum) of DataNormGradOp should not be null."));
+            "Output(BatchSum) of DataNormGradOp shold not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("BatchSquareSum"), true,
         platform::errors::NotFound(
-            "Output(BatchSquareSum) of DataNormGradOp should not be null."));
+            "Output(BatchSquareSum) of DataNormGradOp shold not be null."));
     PADDLE_ENFORCE(ctx->HasInput("Means"), "");
     PADDLE_ENFORCE(ctx->HasInput("Scales"), "");
 
@@ -348,7 +348,7 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
     // Get the size for each dimension.
     // NCHW [batch_size, in_channels, in_height, in_width]
     const auto &x_dims = x->dims();
-    PADDLE_ENFORCE(x_dims.size() == 2, "The Input dim size should be 2");
+    PADDLE_ENFORCE(x_dims.size() == 2, "The Input dim size shold be 2");
     const int N = x_dims[0];
     const int C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]

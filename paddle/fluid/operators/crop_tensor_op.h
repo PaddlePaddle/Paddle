@@ -35,7 +35,7 @@ inline std::vector<int> get_new_data(
     auto tensor = list_new_tensor[i];
     PADDLE_ENFORCE_EQ(
         tensor->dims(), framework::make_ddim({1}),
-        "The tensor's shape in list of Op(crop_tensor) should be [1].");
+        "The tensor's shape in list of Op(crop_tensor) shold be [1].");
     if (platform::is_gpu_place(tensor->place())) {
       framework::Tensor temp;
       TensorCopySync(*tensor, platform::CPUPlace(), &temp);
@@ -56,7 +56,7 @@ static framework::DDim ValidateShape(const std::vector<int> shape,
   auto shape_size = shape.size();
   PADDLE_ENFORCE_EQ(
       in_dim_size, shape_size,
-      "Attr(shape)'s size of Op(crop_tensor) should be equal "
+      "Attr(shape)'s size of Op(crop_tensor) shold be equal "
       "to that of input Tensor. "
       "Please check the Attr(shape)'s size of Op(fluid.layers.crop_tensor).");
   std::vector<int64_t> output_shape(shape.size(), 0);
@@ -64,7 +64,7 @@ static framework::DDim ValidateShape(const std::vector<int> shape,
     if (shape[i] <= 0 && in_dims[i] > 0) {
       PADDLE_ENFORCE_NE(
           shape[i], 0,
-          "The element in Attr(shape) of Op(crop_tensor) should not be zero.");
+          "The element in Attr(shape) of Op(crop_tensor) shold not be zero.");
       PADDLE_ENFORCE_EQ(shape[i], -1,
                         "When the element in Attr(shape) of Op(crop_tensor) is "
                         "negative, only -1 is supported.");
@@ -84,7 +84,7 @@ static std::vector<int> GetShape(const framework::ExecutionContext& ctx) {
   if (list_new_shape_tensor.size() > 0) {
     // have offsets tensor list
     PADDLE_ENFORCE_EQ(list_new_shape_tensor.size(), rank,
-                      "Input(ShapeTensor)'s length of Op(crop_tensor) should "
+                      "Input(ShapeTensor)'s length of Op(crop_tensor) shold "
                       "be equal to dimension size of input tensor.");
     res = get_new_data(list_new_shape_tensor);
 
@@ -122,13 +122,13 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
   if (ctx.HasInput("Offsets")) {
     PADDLE_ENFORCE_EQ(
         ctx.Attr<std::vector<int>>("offsets").empty(), true,
-        "Input 'Offsets' and attribute 'offsets' should not be used "
+        "Input 'Offsets' and attribute 'offsets' shold not be used "
         "at the same time.");
     const auto* offsets_tensor = ctx.Input<Tensor>("Offsets");
     PADDLE_ENFORCE_EQ(offsets_tensor->dims().size(), 1);
     PADDLE_ENFORCE_EQ(
         rank, offsets_tensor->dims()[0],
-        "Offsets size should be equal to dimension size of input tensor.");
+        "Offsets size shold be equal to dimension size of input tensor.");
     const int* offsets_data;
     framework::Tensor cpu_tmp_tensor;
     if (platform::is_cpu_place(offsets_tensor->place())) {
@@ -143,7 +143,7 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
     res = ctx.Attr<std::vector<int>>("offsets");
     PADDLE_ENFORCE_EQ(
         rank, static_cast<int>(res.size()),
-        "Offsets size should be equal to dimension size of input tensor.");
+        "Offsets size shold be equal to dimension size of input tensor.");
   }
   return res;
 }
@@ -171,7 +171,7 @@ void CropTensorFunction(const framework::ExecutionContext& context) {
     PADDLE_ENFORCE_LE(
         offsets[i] + shape[i], x_dims[i],
         "The sum of the Attr(offsets) and Attr(shape) of Op(crop_tensor) "
-        "should be less than or equal to corresponding input dimension size.");
+        "shold be less than or equal to corresponding input dimension size.");
   }
 
   auto x_tensor = EigenTensor<T, D>::From(*x);

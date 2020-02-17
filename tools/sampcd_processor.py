@@ -220,7 +220,7 @@ def single_defcom_extract(start_from, srcls, is_class_begin=False):
 
     i = start_from
     fcombody = ""  # def comment body
-    comstart = -1  # the starting line index of comment mark "'''" or """"""
+    comstart = -1  # the starting line indice of comment mark "'''" or """"""
     # if it is not -1, it indicates the loop is in the comment body
     comstyle = 0  # comment mark style ,comments quoted with ''' is coded as 1
     # comments quoted with """ is coded as 2
@@ -434,7 +434,7 @@ def test(file_list):
 Important constant lists:
 
     filenames : the modules pending for check .
-    wlist : a list of API that should not trigger the example check .
+    wlist : a list of API that shold not trigger the example check .
             It is composed of wlist_temp + wlist_inneed + wlist_ignore.
     srcfile: the source .py code file
 '''

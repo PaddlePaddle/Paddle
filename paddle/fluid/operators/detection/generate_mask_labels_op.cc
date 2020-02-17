@@ -40,26 +40,26 @@ class GenerateMaskLabelsOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("ImInfo"), "Input(ImInfo) shouldn't be null.");
+    PADDLE_ENFORCE(ctx->HasInput("ImInfo"), "Input(ImInfo) sholdn't be null.");
     PADDLE_ENFORCE(ctx->HasInput("GtClasses"),
-                   "Input(GtClasses) shouldn't be null.");
+                   "Input(GtClasses) sholdn't be null.");
     PADDLE_ENFORCE(ctx->HasInput("IsCrowd"),
-                   "Input(IsCrowd) shouldn't be null.");
+                   "Input(IsCrowd) sholdn't be null.");
     PADDLE_ENFORCE(ctx->HasInput("GtSegms"),
-                   "Input(GtSegms) shouldn't be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Rois"), "Input(Rois) shouldn't be null.");
+                   "Input(GtSegms) sholdn't be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Rois"), "Input(Rois) sholdn't be null.");
     PADDLE_ENFORCE(ctx->HasInput("LabelsInt32"),
-                   "Input(LabelsInt32) shouldn't be null.");
+                   "Input(LabelsInt32) sholdn't be null.");
 
     PADDLE_ENFORCE(
         ctx->HasOutput("MaskRois"),
-        "Output(MaskRois) of GenerateMaskLabelsOp should not be null");
+        "Output(MaskRois) of GenerateMaskLabelsOp shold not be null");
     PADDLE_ENFORCE(
         ctx->HasOutput("RoiHasMaskInt32"),
-        "Output(RoiHasMaskInt32) of GenerateMaskLabelsOp should not be null");
+        "Output(RoiHasMaskInt32) of GenerateMaskLabelsOp shold not be null");
     PADDLE_ENFORCE(
         ctx->HasOutput("MaskInt32"),
-        "Output(MaskInt32) of GenerateMaskLabelsOp should not be null");
+        "Output(MaskInt32) of GenerateMaskLabelsOp shold not be null");
 
     auto im_info_dims = ctx->GetInputDim("ImInfo");
     auto gt_segms_dims = ctx->GetInputDim("GtSegms");
@@ -199,7 +199,7 @@ std::vector<Tensor> SampleMaskForOneImage(
     overlaps_bbfg_bbpolys.mutable_data<T>({fg_num, gt_num}, ctx.GetPlace());
     BboxOverlaps<T>(rois_fg, boxes_from_polys, &overlaps_bbfg_bbpolys);
 
-    // Map from each fg rois to the index of the mask with highest overlap
+    // Map from each fg rois to the indice of the mask with highest overlap
     // (measured by bbox overlap)
     T* overlaps_bbfg_bbpolys_data = overlaps_bbfg_bbpolys.data<T>();
     std::vector<int> fg_masks_inds;
@@ -411,7 +411,7 @@ class GenerateMaskLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
         "each element is a bounding box with [xmin, ymin, xmax, ymax] format.");
     AddOutput("RoiHasMaskInt32",
               "(LoDTensor), This output is a 2D LoDTensor with shape [P, 1], "
-              "each element represents the output mask rois index with regard "
+              "each element represents the output mask rois indice with regard "
               "to input rois");
     AddOutput("MaskInt32",
               "(LoDTensor), This output is a 4D LoDTensor with shape [P, Q], "

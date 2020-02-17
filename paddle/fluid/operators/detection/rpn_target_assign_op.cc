@@ -32,29 +32,29 @@ class RpnTargetAssignOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Anchor"),
-                   "Input(Anchor) of RpnTargetAssignOp should not be null");
+                   "Input(Anchor) of RpnTargetAssignOp shold not be null");
     PADDLE_ENFORCE(ctx->HasInput("GtBoxes"),
-                   "Input(GtBoxes) of RpnTargetAssignOp should not be null");
+                   "Input(GtBoxes) of RpnTargetAssignOp shold not be null");
     PADDLE_ENFORCE(ctx->HasInput("IsCrowd"),
-                   "Input(Anchor) of RpnTargetAssignOp should not be null");
+                   "Input(Anchor) of RpnTargetAssignOp shold not be null");
     PADDLE_ENFORCE(ctx->HasInput("ImInfo"),
-                   "Input(ImInfo) of RpnTargetAssignOp should not be null");
+                   "Input(ImInfo) of RpnTargetAssignOp shold not be null");
 
     PADDLE_ENFORCE(
         ctx->HasOutput("LocationIndex"),
-        "Output(LocationIndex) of RpnTargetAssignOp should not be null");
+        "Output(LocationIndex) of RpnTargetAssignOp shold not be null");
     PADDLE_ENFORCE(
         ctx->HasOutput("ScoreIndex"),
-        "Output(ScoreIndex) of RpnTargetAssignOp should not be null");
+        "Output(ScoreIndex) of RpnTargetAssignOp shold not be null");
     PADDLE_ENFORCE(
         ctx->HasOutput("TargetLabel"),
-        "Output(TargetLabel) of RpnTargetAssignOp should not be null");
+        "Output(TargetLabel) of RpnTargetAssignOp shold not be null");
     PADDLE_ENFORCE(
         ctx->HasOutput("TargetBBox"),
-        "Output(TargetBBox) of RpnTargetAssignOp should not be null");
+        "Output(TargetBBox) of RpnTargetAssignOp shold not be null");
     PADDLE_ENFORCE(
         ctx->HasOutput("BBoxInsideWeight"),
-        "Output(BBoxInsideWeight) of RpnTargetAssignOp should not be null");
+        "Output(BBoxInsideWeight) of RpnTargetAssignOp shold not be null");
 
     auto anchor_dims = ctx->GetInputDim("Anchor");
     auto gt_boxes_dims = ctx->GetInputDim("GtBoxes");
@@ -97,13 +97,13 @@ std::vector<Tensor> FilterStraddleAnchor(
   int anchor_num = anchor->dims()[0];
   auto* anchor_data = anchor->data<T>();
   if (rpn_straddle_thresh >= 0) {
-    int index;
+    int indice;
     for (int i = 0; i < anchor_num; ++i) {
-      index = i * 4;
-      if ((anchor_data[index + 0] >= -rpn_straddle_thresh) &&
-          (anchor_data[index + 1] >= -rpn_straddle_thresh) &&
-          (anchor_data[index + 2] < im_width + rpn_straddle_thresh) &&
-          (anchor_data[index + 3] < im_height + rpn_straddle_thresh)) {
+      indice = i * 4;
+      if ((anchor_data[indice + 0] >= -rpn_straddle_thresh) &&
+          (anchor_data[indice + 1] >= -rpn_straddle_thresh) &&
+          (anchor_data[indice + 2] < im_width + rpn_straddle_thresh) &&
+          (anchor_data[indice + 3] < im_height + rpn_straddle_thresh)) {
         inds_inside.emplace_back(i);
       }
     }
@@ -316,24 +316,24 @@ std::vector<Tensor> SampleRpnFgBgGt(const platform::CPUDeviceContext& ctx,
   for (int i = 0; i < fg_fake_num; ++i) {
     gt_inds.emplace_back(argmax[fg_fake[i]]);
   }
-  Tensor loc_index_t, score_index_t, tgt_lbl_t, gt_inds_t, bbox_inside_weight_t;
-  int* loc_index_data = loc_index_t.mutable_data<int>({fg_fake_num}, place);
-  int* score_index_data =
-      score_index_t.mutable_data<int>({fg_num + bg_num}, place);
+  Tensor loc_indice_t, score_indice_t, tgt_lbl_t, gt_inds_t, bbox_inside_weight_t;
+  int* loc_indice_data = loc_indice_t.mutable_data<int>({fg_fake_num}, place);
+  int* score_indice_data =
+      score_indice_t.mutable_data<int>({fg_num + bg_num}, place);
   int* tgt_lbl_data = tgt_lbl_t.mutable_data<int>({fg_num + bg_num}, place);
   int* gt_inds_data = gt_inds_t.mutable_data<int>({fg_fake_num}, place);
   T* bbox_inside_weight_data =
       bbox_inside_weight_t.mutable_data<T>({fg_fake_num, 4}, place);
-  std::copy(fg_fake.begin(), fg_fake.end(), loc_index_data);
-  std::copy(fg_inds.begin(), fg_inds.end(), score_index_data);
-  std::copy(bg_inds.begin(), bg_inds.end(), score_index_data + fg_num);
+  std::copy(fg_fake.begin(), fg_fake.end(), loc_indice_data);
+  std::copy(fg_inds.begin(), fg_inds.end(), score_indice_data);
+  std::copy(bg_inds.begin(), bg_inds.end(), score_indice_data + fg_num);
   std::copy(tgt_lbl.begin(), tgt_lbl.end(), tgt_lbl_data);
   std::copy(gt_inds.begin(), gt_inds.end(), gt_inds_data);
   std::copy(bbox_inside_weight.begin(), bbox_inside_weight.end(),
             bbox_inside_weight_data);
   std::vector<Tensor> loc_score_tgtlbl_gt;
-  loc_score_tgtlbl_gt.emplace_back(loc_index_t);
-  loc_score_tgtlbl_gt.emplace_back(score_index_t);
+  loc_score_tgtlbl_gt.emplace_back(loc_indice_t);
+  loc_score_tgtlbl_gt.emplace_back(score_indice_t);
   loc_score_tgtlbl_gt.emplace_back(tgt_lbl_t);
   loc_score_tgtlbl_gt.emplace_back(gt_inds_t);
   loc_score_tgtlbl_gt.emplace_back(bbox_inside_weight_t);
@@ -350,8 +350,8 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
     auto* is_crowd = context.Input<LoDTensor>("IsCrowd");
     auto* im_info = context.Input<LoDTensor>("ImInfo");
 
-    auto* loc_index = context.Output<LoDTensor>("LocationIndex");
-    auto* score_index = context.Output<LoDTensor>("ScoreIndex");
+    auto* loc_indice = context.Output<LoDTensor>("LocationIndex");
+    auto* score_indice = context.Output<LoDTensor>("ScoreIndex");
     auto* tgt_bbox = context.Output<LoDTensor>("TargetBBox");
     auto* tgt_lbl = context.Output<LoDTensor>("TargetLabel");
     auto* bbox_inside_weight = context.Output<LoDTensor>("BBoxInsideWeight");
@@ -373,8 +373,8 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
     int64_t max_num = batch_num * rpn_batch_size_per_im;
     auto place = context.GetPlace();
 
-    loc_index->mutable_data<int>({max_num}, place);
-    score_index->mutable_data<int>({max_num}, place);
+    loc_indice->mutable_data<int>({max_num}, place);
+    score_indice->mutable_data<int>({max_num}, place);
     tgt_bbox->mutable_data<T>({max_num, 4}, place);
     tgt_lbl->mutable_data<int>({max_num, 1}, place);
     bbox_inside_weight->mutable_data<T>({max_num, 4}, place);
@@ -427,31 +427,31 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
           rpn_positive_overlap, rpn_negative_overlap, rpn_fg_fraction, engine,
           use_random);
 
-      Tensor sampled_loc_index = loc_score_tgtlbl_gt[0];
-      Tensor sampled_score_index = loc_score_tgtlbl_gt[1];
+      Tensor sampled_loc_indice = loc_score_tgtlbl_gt[0];
+      Tensor sampled_score_indice = loc_score_tgtlbl_gt[1];
       Tensor sampled_tgtlbl = loc_score_tgtlbl_gt[2];
-      Tensor sampled_gt_index = loc_score_tgtlbl_gt[3];
+      Tensor sampled_gt_indice = loc_score_tgtlbl_gt[3];
       Tensor sampled_bbox_inside_weight = loc_score_tgtlbl_gt[4];
 
-      int loc_num = sampled_loc_index.dims()[0];
-      int score_num = sampled_score_index.dims()[0];
+      int loc_num = sampled_loc_indice.dims()[0];
+      int score_num = sampled_score_indice.dims()[0];
       // unmap to all anchor
-      Tensor sampled_loc_index_unmap, sampled_score_index_unmap;
-      sampled_loc_index_unmap.mutable_data<int>({loc_num}, place);
-      sampled_score_index_unmap.mutable_data<int>({score_num}, place);
-      Gather<int>(inds_inside.data<int>(), 1, sampled_loc_index.data<int>(),
-                  loc_num, sampled_loc_index_unmap.data<int>());
-      Gather<int>(inds_inside.data<int>(), 1, sampled_score_index.data<int>(),
-                  score_num, sampled_score_index_unmap.data<int>());
+      Tensor sampled_loc_indice_unmap, sampled_score_indice_unmap;
+      sampled_loc_indice_unmap.mutable_data<int>({loc_num}, place);
+      sampled_score_indice_unmap.mutable_data<int>({score_num}, place);
+      Gather<int>(inds_inside.data<int>(), 1, sampled_loc_indice.data<int>(),
+                  loc_num, sampled_loc_indice_unmap.data<int>());
+      Gather<int>(inds_inside.data<int>(), 1, sampled_score_indice.data<int>(),
+                  score_num, sampled_score_indice_unmap.data<int>());
 
       // get target bbox deltas
       Tensor sampled_anchor, sampled_gt, sampled_tgt_bbox;
       auto* sampled_anchor_data =
           sampled_anchor.mutable_data<T>({loc_num, 4}, place);
       auto* sampled_gt_data = sampled_gt.mutable_data<T>({loc_num, 4}, place);
-      Gather<T>(anchor->data<T>(), 4, sampled_loc_index_unmap.data<int>(),
+      Gather<T>(anchor->data<T>(), 4, sampled_loc_indice_unmap.data<int>(),
                 loc_num, sampled_anchor_data);
-      Gather<T>(ncrowd_gt_boxes.data<T>(), 4, sampled_gt_index.data<int>(),
+      Gather<T>(ncrowd_gt_boxes.data<T>(), 4, sampled_gt_indice.data<int>(),
                 loc_num, sampled_gt_data);
       sampled_tgt_bbox.mutable_data<T>({loc_num, 4}, place);
       BoxToDelta<T>(loc_num, sampled_anchor, sampled_gt, nullptr, false,
@@ -459,15 +459,15 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
 
       // Add anchor offset
       int anchor_offset = i * anchor_num;
-      auto sampled_loc_index_unmap_et =
-          framework::EigenTensor<int, 1>::From(sampled_loc_index_unmap);
-      sampled_loc_index_unmap_et = sampled_loc_index_unmap_et + anchor_offset;
-      auto sampled_score_index_unmap_et =
-          framework::EigenTensor<int, 1>::From(sampled_score_index_unmap);
-      sampled_score_index_unmap_et =
-          sampled_score_index_unmap_et + anchor_offset;
-      AppendRpns<int>(loc_index, total_loc_num, &sampled_loc_index_unmap);
-      AppendRpns<int>(score_index, total_score_num, &sampled_score_index_unmap);
+      auto sampled_loc_indice_unmap_et =
+          framework::EigenTensor<int, 1>::From(sampled_loc_indice_unmap);
+      sampled_loc_indice_unmap_et = sampled_loc_indice_unmap_et + anchor_offset;
+      auto sampled_score_indice_unmap_et =
+          framework::EigenTensor<int, 1>::From(sampled_score_indice_unmap);
+      sampled_score_indice_unmap_et =
+          sampled_score_indice_unmap_et + anchor_offset;
+      AppendRpns<int>(loc_indice, total_loc_num, &sampled_loc_indice_unmap);
+      AppendRpns<int>(score_indice, total_score_num, &sampled_score_indice_unmap);
       AppendRpns<T>(tgt_bbox, total_loc_num * 4, &sampled_tgt_bbox);
       AppendRpns<int>(tgt_lbl, total_score_num, &sampled_tgtlbl);
       AppendRpns<T>(bbox_inside_weight, total_loc_num * 4,
@@ -484,13 +484,13 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
 
     lod_loc.emplace_back(lod0_loc);
     loc_score.emplace_back(lod0_score);
-    loc_index->set_lod(lod_loc);
-    score_index->set_lod(loc_score);
+    loc_indice->set_lod(lod_loc);
+    score_indice->set_lod(loc_score);
     tgt_bbox->set_lod(lod_loc);
     tgt_lbl->set_lod(loc_score);
     bbox_inside_weight->set_lod(lod_loc);
-    loc_index->Resize({total_loc_num});
-    score_index->Resize({total_score_num});
+    loc_indice->Resize({total_loc_num});
+    score_indice->Resize({total_score_num});
     tgt_bbox->Resize({total_loc_num, 4});
     tgt_lbl->Resize({total_score_num, 1});
     bbox_inside_weight->Resize({total_loc_num, 4});
@@ -540,12 +540,12 @@ class RpnTargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(true);
     AddOutput(
         "LocationIndex",
-        "(Tensor), The indexes of foreground anchors in all RPN anchors, the "
+        "(Tensor), The indicees of foreground anchors in all RPN anchors, the "
         "shape of the LocationIndex is [F], F depends on the value of input "
         "tensor and attributes.");
     AddOutput(
         "ScoreIndex",
-        "(Tensor), The indexes of foreground and background anchors in all "
+        "(Tensor), The indicees of foreground and background anchors in all "
         "RPN anchors(The rest anchors are ignored). The shape of the "
         "ScoreIndex is [F + B], F and B are sampled foreground and background "
         " number.");
@@ -565,9 +565,9 @@ anchors, to assign classification and regression targets to each prediction.
 The ScoreIndex and LocationIndex will be generated according to the anchor-groundtruth IOU.
 The rest anchors would not contibute to the RPN training loss
 
-ScoreIndex is composed of foreground anchor indexes(positive labels) and
-background anchor indexes(negative labels). LocationIndex is exactly same
-as the foreground anchor indexes since we can not assign regression target to 
+ScoreIndex is composed of foreground anchor indicees(positive labels) and
+background anchor indicees(negative labels). LocationIndex is exactly same
+as the foreground anchor indicees since we can not assign regression target to 
 the background anchors.
 
 The classification targets(TargetLabel) is a binary class label (of being
@@ -611,12 +611,12 @@ class RetinanetTargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0.4);
     AddOutput(
         "LocationIndex",
-        "(Tensor), The indexes of foreground anchors in all anchors, the "
+        "(Tensor), The indicees of foreground anchors in all anchors, the "
         "shape of the LocationIndex is [F], F depends on the value of input "
         "tensor and attributes.");
     AddOutput(
         "ScoreIndex",
-        "(Tensor), The indexes of foreground and background anchors in all "
+        "(Tensor), The indicees of foreground and background anchors in all "
         "RPN anchors(The rest anchors are ignored). The shape of the "
         "ScoreIndex is [F + B], F and B are foreground and background "
         " number.");
@@ -667,37 +667,37 @@ class RetinanetTargetAssignOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(
         ctx->HasInput("Anchor"),
-        "Input(Anchor) of RetinanetTargetAssignOp should not be null");
+        "Input(Anchor) of RetinanetTargetAssignOp shold not be null");
     PADDLE_ENFORCE(
         ctx->HasInput("GtBoxes"),
-        "Input(GtBoxes) of RetinanetTargetAssignOp should not be null");
+        "Input(GtBoxes) of RetinanetTargetAssignOp shold not be null");
     PADDLE_ENFORCE(
         ctx->HasInput("GtLabels"),
-        "Input(GtLabels) of RetinanetTargetAssignOp should not be null");
+        "Input(GtLabels) of RetinanetTargetAssignOp shold not be null");
     PADDLE_ENFORCE(
         ctx->HasInput("IsCrowd"),
-        "Input(Anchor) of RetinanetTargetAssignOp should not be null");
+        "Input(Anchor) of RetinanetTargetAssignOp shold not be null");
     PADDLE_ENFORCE(
         ctx->HasInput("ImInfo"),
-        "Input(ImInfo) of RetinanetTargetAssignOp should not be null");
+        "Input(ImInfo) of RetinanetTargetAssignOp shold not be null");
 
     PADDLE_ENFORCE(
         ctx->HasOutput("LocationIndex"),
-        "Output(LocationIndex) of RetinanetTargetAssignOp should not be null");
+        "Output(LocationIndex) of RetinanetTargetAssignOp shold not be null");
     PADDLE_ENFORCE(
         ctx->HasOutput("ScoreIndex"),
-        "Output(ScoreIndex) of RetinanetTargetAssignOp should not be null");
+        "Output(ScoreIndex) of RetinanetTargetAssignOp shold not be null");
     PADDLE_ENFORCE(
         ctx->HasOutput("TargetLabel"),
-        "Output(TargetLabel) of RetinanetTargetAssignOp should not be null");
+        "Output(TargetLabel) of RetinanetTargetAssignOp shold not be null");
     PADDLE_ENFORCE(
         ctx->HasOutput("TargetBBox"),
-        "Output(TargetBBox) of RetinanetTargetAssignOp should not be null");
+        "Output(TargetBBox) of RetinanetTargetAssignOp shold not be null");
     PADDLE_ENFORCE(ctx->HasOutput("BBoxInsideWeight"),
-                   "Output(BBoxInsideWeight) of RetinanetTargetAssignOp should "
+                   "Output(BBoxInsideWeight) of RetinanetTargetAssignOp shold "
                    "not be null");
     PADDLE_ENFORCE(ctx->HasOutput("ForegroundNumber"),
-                   "Output(ForegroundNumber) of RetinanetTargetAssignOp should "
+                   "Output(ForegroundNumber) of RetinanetTargetAssignOp shold "
                    "not be null");
 
     auto anchor_dims = ctx->GetInputDim("Anchor");
@@ -816,27 +816,27 @@ std::vector<Tensor> GetAllFgBgGt(const platform::CPUDeviceContext& ctx,
     gt_inds.emplace_back(argmax[fg_fake[i]]);
   }
 
-  Tensor loc_index_t, score_index_t, tgt_lbl_t, gt_inds_t, bbox_inside_weight_t;
+  Tensor loc_indice_t, score_indice_t, tgt_lbl_t, gt_inds_t, bbox_inside_weight_t;
   Tensor fg_num_t;
-  int* loc_index_data = loc_index_t.mutable_data<int>({fg_fake_num}, place);
-  int* score_index_data =
-      score_index_t.mutable_data<int>({fg_num + bg_num}, place);
+  int* loc_indice_data = loc_indice_t.mutable_data<int>({fg_fake_num}, place);
+  int* score_indice_data =
+      score_indice_t.mutable_data<int>({fg_num + bg_num}, place);
   int* tgt_lbl_data = tgt_lbl_t.mutable_data<int>({fg_num + bg_num}, place);
   int* gt_inds_data = gt_inds_t.mutable_data<int>({fg_fake_num}, place);
   int* fg_num_data = fg_num_t.mutable_data<int>({1}, place);
   T* bbox_inside_weight_data =
       bbox_inside_weight_t.mutable_data<T>({fg_fake_num, 4}, place);
-  std::copy(fg_fake.begin(), fg_fake.end(), loc_index_data);
-  std::copy(fg_inds.begin(), fg_inds.end(), score_index_data);
-  std::copy(bg_inds.begin(), bg_inds.end(), score_index_data + fg_num);
+  std::copy(fg_fake.begin(), fg_fake.end(), loc_indice_data);
+  std::copy(fg_inds.begin(), fg_inds.end(), score_indice_data);
+  std::copy(bg_inds.begin(), bg_inds.end(), score_indice_data + fg_num);
   std::copy(tgt_lbl.begin(), tgt_lbl.end(), tgt_lbl_data);
   std::copy(gt_inds.begin(), gt_inds.end(), gt_inds_data);
   std::copy(bbox_inside_weight.begin(), bbox_inside_weight.end(),
             bbox_inside_weight_data);
   fg_num_data[0] = fg_fake.size() + 1;
   std::vector<Tensor> loc_score_tgtlbl_gt;
-  loc_score_tgtlbl_gt.emplace_back(loc_index_t);
-  loc_score_tgtlbl_gt.emplace_back(score_index_t);
+  loc_score_tgtlbl_gt.emplace_back(loc_indice_t);
+  loc_score_tgtlbl_gt.emplace_back(score_indice_t);
   loc_score_tgtlbl_gt.emplace_back(tgt_lbl_t);
   loc_score_tgtlbl_gt.emplace_back(gt_inds_t);
   loc_score_tgtlbl_gt.emplace_back(bbox_inside_weight_t);
@@ -855,8 +855,8 @@ class RetinanetTargetAssignKernel : public framework::OpKernel<T> {
     auto* is_crowd = context.Input<LoDTensor>("IsCrowd");
     auto* im_info = context.Input<LoDTensor>("ImInfo");
 
-    auto* loc_index = context.Output<LoDTensor>("LocationIndex");
-    auto* score_index = context.Output<LoDTensor>("ScoreIndex");
+    auto* loc_indice = context.Output<LoDTensor>("LocationIndex");
+    auto* score_indice = context.Output<LoDTensor>("ScoreIndex");
     auto* tgt_bbox = context.Output<LoDTensor>("TargetBBox");
     auto* tgt_lbl = context.Output<LoDTensor>("TargetLabel");
     auto* bbox_inside_weight = context.Output<LoDTensor>("BBoxInsideWeight");
@@ -878,8 +878,8 @@ class RetinanetTargetAssignKernel : public framework::OpKernel<T> {
     int64_t max_num = batch_num * anchor_num;
     auto place = context.GetPlace();
 
-    loc_index->mutable_data<int>({max_num}, place);
-    score_index->mutable_data<int>({max_num}, place);
+    loc_indice->mutable_data<int>({max_num}, place);
+    score_indice->mutable_data<int>({max_num}, place);
     tgt_bbox->mutable_data<T>({max_num, 4}, place);
     tgt_lbl->mutable_data<int>({max_num, 1}, place);
     bbox_inside_weight->mutable_data<T>({max_num, 4}, place);
@@ -940,32 +940,32 @@ class RetinanetTargetAssignKernel : public framework::OpKernel<T> {
           GetAllFgBgGt<T>(dev_ctx, anchor_by_gt_overlap, ncrowd_gt_labels,
                           positive_overlap, negative_overlap, engine);
 
-      Tensor sampled_loc_index = loc_score_tgtlbl_gt[0];
-      Tensor sampled_score_index = loc_score_tgtlbl_gt[1];
+      Tensor sampled_loc_indice = loc_score_tgtlbl_gt[0];
+      Tensor sampled_score_indice = loc_score_tgtlbl_gt[1];
       Tensor sampled_tgtlbl = loc_score_tgtlbl_gt[2];
-      Tensor sampled_gt_index = loc_score_tgtlbl_gt[3];
+      Tensor sampled_gt_indice = loc_score_tgtlbl_gt[3];
       Tensor sampled_bbox_inside_weight = loc_score_tgtlbl_gt[4];
       Tensor sampled_fg_num = loc_score_tgtlbl_gt[5];
 
-      int loc_num = sampled_loc_index.dims()[0];
-      int score_num = sampled_score_index.dims()[0];
+      int loc_num = sampled_loc_indice.dims()[0];
+      int score_num = sampled_score_indice.dims()[0];
       // unmap to all anchor
-      Tensor sampled_loc_index_unmap, sampled_score_index_unmap;
-      sampled_loc_index_unmap.mutable_data<int>({loc_num}, place);
-      sampled_score_index_unmap.mutable_data<int>({score_num}, place);
-      Gather<int>(inds_inside.data<int>(), 1, sampled_loc_index.data<int>(),
-                  loc_num, sampled_loc_index_unmap.data<int>());
-      Gather<int>(inds_inside.data<int>(), 1, sampled_score_index.data<int>(),
-                  score_num, sampled_score_index_unmap.data<int>());
+      Tensor sampled_loc_indice_unmap, sampled_score_indice_unmap;
+      sampled_loc_indice_unmap.mutable_data<int>({loc_num}, place);
+      sampled_score_indice_unmap.mutable_data<int>({score_num}, place);
+      Gather<int>(inds_inside.data<int>(), 1, sampled_loc_indice.data<int>(),
+                  loc_num, sampled_loc_indice_unmap.data<int>());
+      Gather<int>(inds_inside.data<int>(), 1, sampled_score_indice.data<int>(),
+                  score_num, sampled_score_indice_unmap.data<int>());
 
       // get target bbox deltas
       Tensor sampled_anchor, sampled_gt, sampled_tgt_bbox;
       auto* sampled_anchor_data =
           sampled_anchor.mutable_data<T>({loc_num, 4}, place);
       auto* sampled_gt_data = sampled_gt.mutable_data<T>({loc_num, 4}, place);
-      Gather<T>(anchor->data<T>(), 4, sampled_loc_index_unmap.data<int>(),
+      Gather<T>(anchor->data<T>(), 4, sampled_loc_indice_unmap.data<int>(),
                 loc_num, sampled_anchor_data);
-      Gather<T>(ncrowd_gt_boxes.data<T>(), 4, sampled_gt_index.data<int>(),
+      Gather<T>(ncrowd_gt_boxes.data<T>(), 4, sampled_gt_indice.data<int>(),
                 loc_num, sampled_gt_data);
       sampled_tgt_bbox.mutable_data<T>({loc_num, 4}, place);
       BoxToDelta<T>(loc_num, sampled_anchor, sampled_gt, nullptr, false,
@@ -973,15 +973,15 @@ class RetinanetTargetAssignKernel : public framework::OpKernel<T> {
 
       // Add anchor offset
       int anchor_offset = i * anchor_num;
-      auto sampled_loc_index_unmap_et =
-          framework::EigenTensor<int, 1>::From(sampled_loc_index_unmap);
-      sampled_loc_index_unmap_et = sampled_loc_index_unmap_et + anchor_offset;
-      auto sampled_score_index_unmap_et =
-          framework::EigenTensor<int, 1>::From(sampled_score_index_unmap);
-      sampled_score_index_unmap_et =
-          sampled_score_index_unmap_et + anchor_offset;
-      AppendRpns<int>(loc_index, total_loc_num, &sampled_loc_index_unmap);
-      AppendRpns<int>(score_index, total_score_num, &sampled_score_index_unmap);
+      auto sampled_loc_indice_unmap_et =
+          framework::EigenTensor<int, 1>::From(sampled_loc_indice_unmap);
+      sampled_loc_indice_unmap_et = sampled_loc_indice_unmap_et + anchor_offset;
+      auto sampled_score_indice_unmap_et =
+          framework::EigenTensor<int, 1>::From(sampled_score_indice_unmap);
+      sampled_score_indice_unmap_et =
+          sampled_score_indice_unmap_et + anchor_offset;
+      AppendRpns<int>(loc_indice, total_loc_num, &sampled_loc_indice_unmap);
+      AppendRpns<int>(score_indice, total_score_num, &sampled_score_indice_unmap);
       AppendRpns<T>(tgt_bbox, total_loc_num * 4, &sampled_tgt_bbox);
       AppendRpns<int>(tgt_lbl, total_score_num, &sampled_tgtlbl);
       AppendRpns<T>(bbox_inside_weight, total_loc_num * 4,
@@ -1003,14 +1003,14 @@ class RetinanetTargetAssignKernel : public framework::OpKernel<T> {
     lod_loc.emplace_back(lod0_loc);
     loc_score.emplace_back(lod0_score);
     lod_fg.emplace_back(lod0_fg);
-    loc_index->set_lod(lod_loc);
-    score_index->set_lod(loc_score);
+    loc_indice->set_lod(lod_loc);
+    score_indice->set_lod(loc_score);
     tgt_bbox->set_lod(lod_loc);
     tgt_lbl->set_lod(loc_score);
     bbox_inside_weight->set_lod(lod_loc);
     fg_num->set_lod(lod_fg);
-    loc_index->Resize({total_loc_num});
-    score_index->Resize({total_score_num});
+    loc_indice->Resize({total_loc_num});
+    score_indice->Resize({total_score_num});
     tgt_bbox->Resize({total_loc_num, 4});
     tgt_lbl->Resize({total_score_num, 1});
     bbox_inside_weight->Resize({total_loc_num, 4});

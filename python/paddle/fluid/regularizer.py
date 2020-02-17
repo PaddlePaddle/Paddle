@@ -105,7 +105,7 @@ class WeightDecayRegularizer(object):
     Weight-decay regularizers are added only during the backward
     pass for faster regularization. They add operations to the network
     that correspond to gradient of the regularization function.
-    Users should not use this class directly, but need to use one
+    Users shold not use this class directly, but need to use one
     of its implementations
     """
 

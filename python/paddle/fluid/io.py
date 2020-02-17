@@ -197,11 +197,11 @@ def _get_valid_program(main_program):
     elif isinstance(main_program, CompiledProgram):
         main_program = main_program._program
         if main_program is None:
-            raise TypeError("program should be as Program type or None")
+            raise TypeError("program shold be as Program type or None")
         warnings.warn(
             "The input is a CompiledProgram, this is not recommended.")
     if not isinstance(main_program, Program):
-        raise TypeError("program should be as Program type or None")
+        raise TypeError("program shold be as Program type or None")
     return main_program
 
 
@@ -459,11 +459,11 @@ def _save_distributed_persistables(executor, dirname, main_program):
                 slice = optimizer.slice
                 endpoint = optimizer.endpoint
 
-                index = block_id if is_slice else idx
-                slices[index] = slice
-                slice_varnames[index] = "{}.slice.{}".format(slice.name, idx)
-                remote_varnames[index] = slice.name
-                endpoints[index] = endpoint
+                indice = block_id if is_slice else idx
+                slices[indice] = slice
+                slice_varnames[indice] = "{}.slice.{}".format(slice.name, idx)
+                remote_varnames[indice] = slice.name
+                endpoints[indice] = endpoint
 
             slice_shapes = []
             for slice in slices:
@@ -519,7 +519,7 @@ def _save_distributed_persistables(executor, dirname, main_program):
         return is_valid
 
     if not isinstance(main_program, Program):
-        raise TypeError("'main_program' should be an instance of Program.")
+        raise TypeError("'main_program' shold be an instance of Program.")
 
     if not main_program._is_distributed:
         raise ValueError(
@@ -705,7 +705,7 @@ def load_vars(executor,
         if main_program is None:
             main_program = default_main_program()
         if not isinstance(main_program, Program):
-            raise TypeError("program's type should be Program")
+            raise TypeError("program's type shold be Program")
 
         load_vars(
             executor,
@@ -721,7 +721,7 @@ def load_vars(executor,
             main_program = default_main_program()
 
         if not isinstance(main_program, Program):
-            raise TypeError("program should be as Program type or None")
+            raise TypeError("program shold be as Program type or None")
 
         # save origin param shape
         orig_para_shape = {}
@@ -885,7 +885,7 @@ def load_persistables(executor, dirname, main_program=None, filename=None):
 def _load_distributed_persistables(executor, dirname, main_program=None):
     """
     customized load_persistables for distributed training.
-    it should be used on parameter server,
+    it shold be used on parameter server,
 
     Args:
         executor(Executor): The executor to run for saving parameters.
@@ -964,7 +964,7 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
         executor.run(load_prog)
 
     if not isinstance(main_program, Program):
-        raise TypeError("'main_program' should be an instance of Program.")
+        raise TypeError("'main_program' shold be an instance of Program.")
 
     if not main_program._is_distributed:
         raise ValueError(
@@ -1121,14 +1121,14 @@ def save_inference_model(dirname,
             if not (bool(feeded_var_names) and all(
                     isinstance(name, six.string_types)
                     for name in feeded_var_names)):
-                raise ValueError("'feed_var_names' should be a list of str.")
+                raise ValueError("'feed_var_names' shold be a list of str.")
 
     if isinstance(target_vars, Variable):
         target_vars = [target_vars]
     elif export_for_deployment:
         if not (bool(target_vars) and
                 all(isinstance(var, Variable) for var in target_vars)):
-            raise ValueError("'target_vars' should be a list of Variable.")
+            raise ValueError("'target_vars' shold be a list of Variable.")
 
     main_program = _get_valid_program(main_program)
 
@@ -1179,14 +1179,14 @@ def save_inference_model(dirname,
     if export_for_deployment:
         main_program = main_program.clone()
         global_block = main_program.global_block()
-        need_to_remove_op_index = []
+        need_to_remove_op_indice = []
         for i, op in enumerate(global_block.ops):
             op.desc.set_is_target(False)
             if op.type == "feed" or op.type == "fetch":
-                need_to_remove_op_index.append(i)
+                need_to_remove_op_indice.append(i)
 
-        for index in need_to_remove_op_index[::-1]:
-            global_block._remove_op(index)
+        for indice in need_to_remove_op_indice[::-1]:
+            global_block._remove_op(indice)
 
         main_program.desc.flush()
 
@@ -1300,7 +1300,7 @@ def load_inference_model(dirname,
                           fetch_list=fetch_targets)
 
             # Demo two. If the training uses a distributed look up table, the pserver
-            # endpoints list should be supported when loading the inference model.
+            # endpoints list shold be supported when loading the inference model.
             # The below is just an example.
             endpoints = ["127.0.0.1:2023","127.0.0.1:2024"]
             [dist_inference_program, dist_feed_target_names, dist_fetch_targets] = (

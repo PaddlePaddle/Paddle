@@ -28,19 +28,19 @@ class PReluOp : public framework::OperatorWithKernel {
 
     auto x_dim = ctx->GetInputDim("X");
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of PreluOp should not be null");
+                   "Input(X) of PreluOp shold not be null");
     PADDLE_ENFORCE(ctx->HasInput("Alpha"),
-                   "Input(Alpha) of PreluOp should not be null");
+                   "Input(Alpha) of PreluOp shold not be null");
 
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of PreluOp should not be null");
+                   "Output(Out) of PreluOp shold not be null");
     if (mode == "all") {
       PADDLE_ENFORCE(product(ctx->GetInputDim("Alpha")) == 1,
                      "For mode 'all', size of weight Alpha must be one.");
     } else if (mode == "channel") {
       PADDLE_ENFORCE(product(ctx->GetInputDim("Alpha")) == x_dim[1],
                      "For channel-wise mode, size of weight Alpha must be "
-                     "equal to the number of channels, should be %d",
+                     "equal to the number of channels, shold be %d",
                      x_dim[1]);
     } else if (mode == "element") {
       auto alpha_dim = ctx->GetInputDim("Alpha");
@@ -110,7 +110,7 @@ class PReluGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
+                   "Input(Out@GRAD) shold not be null");
     auto x_grad_name = framework::GradVarName("X");
     auto alpha_grad_name = framework::GradVarName("Alpha");
 

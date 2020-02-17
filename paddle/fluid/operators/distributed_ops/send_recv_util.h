@@ -42,7 +42,7 @@ inline bool NeedSend(const framework::Scope& scope,
     return var->Get<framework::SelectedRows>().rows().size() > 0UL;
   } else {
     PADDLE_THROW(
-        "Variable type in send side should be in "
+        "Variable type in send side shold be in "
         "[LodTensor, SelectedRows]");
   }
   return false;

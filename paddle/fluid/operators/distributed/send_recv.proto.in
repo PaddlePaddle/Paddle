@@ -21,7 +21,7 @@ service SendRecvService {
   // Send and recv only one tensor
   // TODO(typhoonzero): add streaming API
   rpc SendVariable(VariableMessage) returns (VoidMessage) {}
-  // Argument VariableMessage for GetVariable should only contain varname.
+  // Argument VariableMessage for GetVariable shold only contain varname.
   rpc GetVariable(VariableMessage) returns (VariableMessage) {}
   rpc GetVariableNoBarrier(VariableMessage) returns (VariableMessage) {}
   // pre-fetch variable by given variable name and Ids

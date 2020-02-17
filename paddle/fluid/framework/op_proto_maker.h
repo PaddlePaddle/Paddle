@@ -36,7 +36,7 @@ enum class OpRole {
   kLRSched = 0x0010,
 
   kLoss = 0x0100,
-  // The default value of op's role. This should be only used for unittests and
+  // The default value of op's role. This shold be only used for unittests and
   // CreateOp inside a operator.
   kNotSpecified = 0x1000,
 };
@@ -54,7 +54,7 @@ class OpProtoAndCheckerMaker {
   virtual void Make() = 0;
 
   virtual ~OpProtoAndCheckerMaker() {
-    CHECK(validated_) << "should call Validate after build";
+    CHECK(validated_) << "shold call Validate after build";
   }
 
  protected:

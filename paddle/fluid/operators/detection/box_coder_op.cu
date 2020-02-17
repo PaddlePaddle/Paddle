@@ -144,14 +144,14 @@ class BoxCoderCUDAKernel : public framework::OpKernel<T> {
     auto prior_box_var_size = 0;
     if (prior_box_var) {
       PADDLE_ENFORCE(variance.empty(),
-                     "Input 'PriorBoxVar' and attribute 'variance' should not"
+                     "Input 'PriorBoxVar' and attribute 'variance' shold not"
                      "be used at the same time.");
       prior_box_var_data = prior_box_var->data<T>();
       prior_box_var_size = prior_box_var->dims().size();
     }
     if (!(variance.empty())) {
       PADDLE_ENFORCE(static_cast<int>(variance.size()) == 4,
-                     "Size of attribute 'variance' should be 4");
+                     "Size of attribute 'variance' shold be 4");
     }
 
     if (target_box->lod().size()) {

@@ -22,13 +22,13 @@ class YoloBoxOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of YoloBoxOp should not be null.");
+                   "Input(X) of YoloBoxOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("ImgSize"),
-                   "Input(ImgSize) of YoloBoxOp should not be null.");
+                   "Input(ImgSize) of YoloBoxOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Boxes"),
-                   "Output(Boxes) of YoloBoxOp should not be null.");
+                   "Output(Boxes) of YoloBoxOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Scores"),
-                   "Output(Scores) of YoloBoxOp should not be null.");
+                   "Output(Scores) of YoloBoxOp shold not be null.");
 
     auto dim_x = ctx->GetInputDim("X");
     auto dim_imgsize = ctx->GetInputDim("ImgSize");
@@ -36,26 +36,26 @@ class YoloBoxOp : public framework::OperatorWithKernel {
     int anchor_num = anchors.size() / 2;
     auto class_num = ctx->Attrs().Get<int>("class_num");
 
-    PADDLE_ENFORCE_EQ(dim_x.size(), 4, "Input(X) should be a 4-D tensor.");
+    PADDLE_ENFORCE_EQ(dim_x.size(), 4, "Input(X) shold be a 4-D tensor.");
     PADDLE_ENFORCE_EQ(
         dim_x[1], anchor_num * (5 + class_num),
-        "Input(X) dim[1] should be equal to (anchor_mask_number * (5 "
+        "Input(X) dim[1] shold be equal to (anchor_mask_number * (5 "
         "+ class_num)).");
     PADDLE_ENFORCE_EQ(dim_imgsize.size(), 2,
-                      "Input(ImgSize) should be a 2-D tensor.");
+                      "Input(ImgSize) shold be a 2-D tensor.");
     if ((dim_imgsize[0] > 0 && dim_x[0] > 0) || ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(
           dim_imgsize[0], dim_x[0],
           platform::errors::InvalidArgument(
-              "Input(ImgSize) dim[0] and Input(X) dim[0] should be same."));
+              "Input(ImgSize) dim[0] and Input(X) dim[0] shold be same."));
     }
-    PADDLE_ENFORCE_EQ(dim_imgsize[1], 2, "Input(ImgSize) dim[1] should be 2.");
+    PADDLE_ENFORCE_EQ(dim_imgsize[1], 2, "Input(ImgSize) dim[1] shold be 2.");
     PADDLE_ENFORCE_GT(anchors.size(), 0,
-                      "Attr(anchors) length should be greater than 0.");
+                      "Attr(anchors) length shold be greater than 0.");
     PADDLE_ENFORCE_EQ(anchors.size() % 2, 0,
-                      "Attr(anchors) length should be even integer.");
+                      "Attr(anchors) length shold be even integer.");
     PADDLE_ENFORCE_GT(class_num, 0,
-                      "Attr(class_num) should be an integer greater than 0.");
+                      "Attr(class_num) shold be an integer greater than 0.");
 
     int box_num = dim_x[2] * dim_x[3] * anchor_num;
     std::vector<int64_t> dim_boxes({dim_x[0], box_num, 4});
@@ -80,7 +80,7 @@ class YoloBoxOpMaker : public framework::OpProtoAndCheckerMaker {
              "The input tensor of YoloBox operator is a 4-D tensor with "
              "shape of [N, C, H, W]. The second dimension(C) stores "
              "box locations, confidence score and classification one-hot "
-             "keys of each anchor box. Generally, X should be the output "
+             "keys of each anchor box. Generally, X shold be the output "
              "of YOLOv3 network.");
     AddInput("ImgSize",
              "The image size tensor of YoloBox operator, "
@@ -105,12 +105,12 @@ class YoloBoxOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(std::vector<int>{});
     AddAttr<int>("downsample_ratio",
                  "The downsample ratio from network input to YoloBox operator "
-                 "input, so 32, 16, 8 should be set for the first, second, "
+                 "input, so 32, 16, 8 shold be set for the first, second, "
                  "and thrid YoloBox operators.")
         .SetDefault(32);
     AddAttr<float>("conf_thresh",
                    "The confidence scores threshold of detection boxes. "
-                   "Boxes with confidence scores under threshold should "
+                   "Boxes with confidence scores under threshold shold "
                    "be ignored.")
         .SetDefault(0.01);
     AddAttr<bool>("clip_bbox",
@@ -121,17 +121,17 @@ class YoloBoxOpMaker : public framework::OpProtoAndCheckerMaker {
          This operator generates YOLO detection boxes from output of YOLOv3 network.
          
          The output of previous network is in shape [N, C, H, W], while H and W
-         should be the same, H and W specify the grid size, each grid point predict 
+         shold be the same, H and W specify the grid size, each grid point predict 
          given number boxes, this given number, which following will be represented as S,
          is specified by the number of anchors. In the second dimension(the channel
-         dimension), C should be equal to S * (5 + class_num), class_num is the object 
+         dimension), C shold be equal to S * (5 + class_num), class_num is the object 
          category number of source dataset(such as 80 in coco dataset), so the 
          second(channel) dimension, apart from 4 box location coordinates x, y, w, h, 
          also includes confidence score of the box and class one-hot key of each anchor 
          box.
 
          Assume the 4 location coordinates are :math:`t_x, t_y, t_w, t_h`, the box 
-         predictions should be as follows:
+         predictions shold be as follows:
 
          $$
          b_x = \\sigma(t_x) + c_x
@@ -153,7 +153,7 @@ class YoloBoxOpMaker : public framework::OpProtoAndCheckerMaker {
          represents the confidence score of each prediction box, and the logistic
          regression value of the last :attr:`class_num` channels of each anchor prediction 
          boxes represents the classifcation scores. Boxes with confidence scores less than
-         :attr:`conf_thresh` should be ignored, and box final scores is the product of 
+         :attr:`conf_thresh` shold be ignored, and box final scores is the product of 
          confidence scores and classification scores.
 
          $$

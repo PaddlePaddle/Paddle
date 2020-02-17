@@ -39,16 +39,16 @@ class ElementwiseOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of elementwise op should not be null.");
+                      "Input(X) of elementwise op shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("Y"), true,
-                      "Input(Y) of elementwise op should not be null.");
+                      "Input(Y) of elementwise op shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of elementwise op should not be null.");
+                      "Output(Out) of elementwise op shold not be null.");
 
     PADDLE_ENFORCE(
         ctx->GetInputsVarType("Y").front() ==
             framework::proto::VarType::LOD_TENSOR,
-        "The input var's type should be LoDTensor, but the received is %s [%s]",
+        "The input var's type shold be LoDTensor, but the received is %s [%s]",
         ctx->GetInputsVarType("Y").front(), ctx->Inputs("Y").front());
 
     if (ctx->GetInputsVarType("X").front() ==
@@ -130,7 +130,7 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("axis",
                  "(int, default -1). If X.dimension != Y.dimension,"
                  "Y.dimension must be a subsequence of x.dimension. And axis "
-                 "is the start dimension index "
+                 "is the start dimension indice "
                  "for broadcasting Y onto X. ")
         .SetDefault(-1)
         .EqualGreaterThan(-1);
@@ -183,7 +183,7 @@ There are two cases for this operator:
 
 For case 2:
 
-1. Broadcast $Y$ to match the shape of $X$, where $axis$ is the start dimension index
+1. Broadcast $Y$ to match the shape of $X$, where $axis$ is the start dimension indice
    for broadcasting $Y$ onto $X$.
 2. If $axis$ is -1 (default), $axis = rank(X) - rank(Y)$.
 3. The trailing dimensions of size 1 for $Y$ will be ignored for the consideration of
@@ -212,9 +212,9 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     auto out_grad_name = framework::GradVarName("Out");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Y"), true, "Input(Y) should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Y"), true, "Input(Y) shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput(out_grad_name), true,
-                      "Input(Out@GRAD) should not be null.");
+                      "Input(Out@GRAD) shold not be null.");
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
     if (ctx->HasOutput(x_grad_name)) {
@@ -307,11 +307,11 @@ class ElementwiseOpDoubleGradWithoutDXDY
     framework::proto::VarType::Type input_data_type;
     if (ctx.HasInput("DDX") == false) {
       PADDLE_ENFORCE_EQ(ctx.HasInput("DDY"), true,
-                        "Input(DDY) should not be null");
+                        "Input(DDY) shold not be null");
       input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DDY");
     } else if (ctx.HasInput("DDY") == false) {
       PADDLE_ENFORCE_EQ(ctx.HasInput("DDX"), true,
-                        "Input(DDX) should not be null");
+                        "Input(DDX) shold not be null");
       input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DDX");
     } else {
       input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DDX");

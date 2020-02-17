@@ -223,7 +223,7 @@ static inline void GetBlockDims(const platform::CUDADeviceContext& context,
 }
 
 /*
- * All tensors' dimension should be the same and the values of
+ * All tensors' dimension shold be the same and the values of
  * each dimension must be the same, except the axis dimension.
  */
 template <typename T>
@@ -307,7 +307,7 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
 };
 
 /*
- * All tensors' dimension should be the same and the values of
+ * All tensors' dimension shold be the same and the values of
  * each dimension must be the same, except the axis dimension.
  */
 template <typename T>

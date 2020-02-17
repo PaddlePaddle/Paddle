@@ -216,14 +216,14 @@ def infer(use_cuda, save_dirname=None):
 
         # Setup input by creating LoDTensor to represent sequence of words.
         # Here each word is the basic element of the LoDTensor and the shape of
-        # each word (base_shape) should be [1] since it is simply an index to
+        # each word (base_shape) shold be [1] since it is simply an indice to
         # look up for the corresponding word vector.
         # Suppose the recursive_sequence_lengths info is set to [[4, 6]],
         # which has only one level of detail. Then the created LoDTensor will have only
         # one higher level structure (sequence of words, or sentence) than the basic
         # element (word). Hence the LoDTensor will hold data for two sentences of
         # length 4 and 6, respectively.
-        # Note that recursive_sequence_lengths should be a list of lists.
+        # Note that recursive_sequence_lengths shold be a list of lists.
         recursive_seq_lens = [[4, 6]]
         base_shape = [1]
         # The range of random integers is [low, high]

@@ -64,15 +64,15 @@ std::string trim_spaces(const std::string& str) {
 inline int str_to_float(const char* str, float* v) {
   const char* head = str;
   char* cursor = NULL;
-  int index = 0;
+  int indice = 0;
   while (*(head += count_spaces(head)) != 0) {
-    v[index++] = std::strtof(head, &cursor);
+    v[indice++] = std::strtof(head, &cursor);
     if (head == cursor) {
       break;
     }
     head = cursor;
   }
-  return index;
+  return indice;
 }
 
 // A helper class for reading lines from file.

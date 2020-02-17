@@ -99,7 +99,7 @@ class SGDOpKernel<platform::CPUDeviceContext, T>
     } else if (param_var->IsType<framework::SelectedRows>()) {
       PADDLE_ENFORCE(grad_var->IsType<framework::SelectedRows>(),
                      "when param "
-                     "is SelectedRows, gradient should also be SelectedRows");
+                     "is SelectedRows, gradient shold also be SelectedRows");
       const auto &param = param_var->Get<framework::SelectedRows>();
       auto *param_out = ctx.Output<framework::SelectedRows>("ParamOut");
       const auto &grad = grad_var->Get<framework::SelectedRows>();
@@ -117,7 +117,7 @@ class SGDOpKernel<platform::CPUDeviceContext, T>
               << " grad rows: " << grad.rows().size()
               << " grad memory rows: " << grad.value().dims()[0];
       PADDLE_ENFORCE_EQ(param_row_width, grad_row_width,
-                        "param_row should have the same size with grad_row");
+                        "param_row shold have the same size with grad_row");
 
       const auto *lr = learning_rate->data<T>();
       const auto *grad_data = grad.value().data<T>();
@@ -125,7 +125,7 @@ class SGDOpKernel<platform::CPUDeviceContext, T>
       for (size_t i = 0; i < grad.rows().size(); i++) {
         int64_t id_index = param_out->AutoGrownIndex(grad.rows()[i], false);
         PADDLE_ENFORCE_GE(id_index, static_cast<int64_t>(0),
-                          "id should be in the table");
+                          "id shold be in the table");
         for (int64_t j = 0; j < grad_row_width; j++) {
           out_data[id_index * grad_row_width + j] -=
               lr[0] * grad_data[i * grad_row_width + j];

@@ -98,10 +98,10 @@ class CustomReaderInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(!ctx->IsRuntime(),
-                   "'CustomReaderInferShape' should only be invoked during "
+                   "'CustomReaderInferShape' shold only be invoked during "
                    "compile time.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "The output decorated reader should not be null.");
+                   "The output decorated reader shold not be null.");
     const auto* sub_block =
         ctx->Attrs().Get<framework::BlockDesc*>("sub_block");
     const auto sink_var_names =
@@ -155,7 +155,7 @@ void CustomReader::ReadNextImpl(std::vector<framework::LoDTensor>* out) {
                  "underlying_outs(%d) are not consistent. Each feeding element "
                  "must have its own source variable.",
                  source_var_names_.size(), underlying_outs.size());
-  // The scope for CustomReader's sub-block should be independent and shouldn't
+  // The scope for CustomReader's sub-block shold be independent and sholdn't
   // be any other computation scope's child. Otherwise, data preprocessing and
   // compution cannot be concurrent.
   framework::Scope* exe_scope = &scope_.NewScope();

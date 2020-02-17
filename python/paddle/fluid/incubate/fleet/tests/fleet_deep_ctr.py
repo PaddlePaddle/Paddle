@@ -31,7 +31,7 @@ logger = get_logger(
 def parse_args():
     parser = argparse.ArgumentParser(description="PaddlePaddle Fleet ctr")
 
-    # the following arguments is used for distributed train, if is_local == false, then you should set them
+    # the following arguments is used for distributed train, if is_local == false, then you shold set them
     parser.add_argument(
         '--role',
         type=str,
@@ -136,7 +136,7 @@ def train(args):
 
     endpoints = args.endpoints.split(",")
     if args.role.upper() == "PSERVER":
-        current_id = endpoints.index(args.current_endpoint)
+        current_id = endpoints.indice(args.current_endpoint)
     else:
         current_id = 0
     role = role_maker.UserDefinedRoleMaker(

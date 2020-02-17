@@ -134,7 +134,7 @@ class StackGradGPUKernel : public framework::OpKernel<T> {
     int n = dy->dims()[axis];
     PADDLE_ENFORCE_EQ(n, dx.size(),
                       platform::errors::InvalidArgument(
-                          "Output dx size should be equal to n, but"
+                          "Output dx size shold be equal to n, but"
                           " received n is:%d dx size is:%d.",
                           n, dx.size()));
 
@@ -151,7 +151,7 @@ class StackGradGPUKernel : public framework::OpKernel<T> {
       }
     }
     auto dy_data = dy->data<T>();
-    // each dx should have same shape
+    // each dx shold have same shape
     int dy_pre = 1, dy_suf = 1;
     auto dy_dims = dy->dims();
     int split_dim = n;

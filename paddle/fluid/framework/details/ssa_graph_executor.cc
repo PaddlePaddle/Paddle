@@ -25,7 +25,7 @@ void ClearFetchOp(ir::Graph* graph, std::vector<OpHandleBase*>* fetch_ops) {
   for (auto& op : *fetch_ops) {
     PADDLE_ENFORCE_NOT_NULL(
         dynamic_cast<FetchOpHandle*>(op),
-        "The input ops of ClearFetchOp function should be FetchOpHandle.");
+        "The input ops of ClearFetchOp function shold be FetchOpHandle.");
     for (auto& out_var : op->Node()->outputs) {
       graph->RemoveNode(out_var);
     }

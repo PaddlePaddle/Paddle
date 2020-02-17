@@ -78,7 +78,7 @@ class ConcatKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto ins = ctx.MultiInput<framework::Tensor>("X");
     framework::Tensor* out = ctx.Output<framework::Tensor>("Out");
-    PADDLE_ENFORCE_EQ(ins[0] != nullptr, true, "The input should not be null.");
+    PADDLE_ENFORCE_EQ(ins[0] != nullptr, true, "The input shold not be null.");
     auto axis = ctx.Attr<int>("axis");
     bool need_resize_out_dims = false;
     if (ctx.HasInput("AxisTensor")) {
@@ -152,7 +152,7 @@ class ConcatGradKernel : public framework::OpKernel<T> {
         }
       }
     }
-    PADDLE_ENFORCE_EQ(ins[0] != nullptr, true, "The input should not be null.");
+    PADDLE_ENFORCE_EQ(ins[0] != nullptr, true, "The input shold not be null.");
 
     auto axis = ctx.Attr<int>("axis");
     if (ctx.HasInput("AxisTensor")) {

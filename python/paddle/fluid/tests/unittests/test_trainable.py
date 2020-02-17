@@ -47,7 +47,7 @@ class TestTrainable(unittest.TestCase):
             loss = model()
             optimizer.minimize(loss)
 
-            # The number of adam should be one.
+            # The number of adam shold be one.
             ops = Counter([op.type for op in main.global_block().ops])
             for op in op_count:
                 if op_count[op] == 0:
@@ -63,7 +63,7 @@ class TestTrainable(unittest.TestCase):
         img, label = init_data(batch_size, img_shape=[784], label_range=9)
         feed_dict = {'image': img, 'label': label}
         # Note that, because the Weight of FC is not trainable and the x is stop_gradient,
-        # so the 'mul_grad' should not be appended.
+        # so the 'mul_grad' shold not be appended.
         self.check_trainable(
             test_trainable,
             feed_dict,

@@ -25,11 +25,11 @@ namespace framework {
 
 template <typename T, int Size, T DefaultValue>
 struct DeviceArray {
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE const T& operator[](int index) const {
-    return data[index];
+  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE const T& operator[](int indice) const {
+    return data[indice];
   }
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE T& operator[](int index) {
-    return data[index];
+  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE T& operator[](int indice) {
+    return data[indice];
   }
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE DeviceArray() {
     for (int i = 0; i < Size; i++) {
@@ -80,37 +80,37 @@ struct Index3 : DeviceArray<int, 3, 0> {
       : Base(a0, a1, a2) {}
 };
 
-// Flat index with real dimension
-EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE int FlatTensorIndex(const Index3& index,
+// Flat indice with real dimension
+EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE int FlatTensorIndex(const Index3& indice,
                                                           const Dim3& dims) {
-  int flat_index = index[0];
+  int flat_indice = indice[0];
   for (int i = 1; i < 3; i++) {
-    flat_index = flat_index * dims[i] + index[i];
+    flat_indice = flat_indice * dims[i] + indice[i];
   }
-  return flat_index;
+  return flat_indice;
 }
 
-// Convert index to tensor index with dimension.
+// Convert indice to tensor indice with dimension.
 EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE Index3
-ConvertTensorIndex(int index, const Dim3& dims) {
-  Index3 tensor_index;
+ConvertTensorIndex(int indice, const Dim3& dims) {
+  Index3 tensor_indice;
   for (int i = 2; i >= 0; i--) {
-    int new_index = index / dims[i];
-    tensor_index[i] = index - dims[i] * new_index;
-    index = new_index;
+    int new_indice = indice / dims[i];
+    tensor_indice[i] = indice - dims[i] * new_indice;
+    indice = new_indice;
   }
-  return tensor_index;
+  return tensor_indice;
 }
 
 template <typename IntType, bool ceil>
 IntType CeilOrFloor(IntType x, IntType deviser) {
   PADDLE_ENFORCE_GT(deviser, 0, platform::errors::InvalidArgument(
-                                    "deviser should be greater than 0, "
+                                    "deviser shold be greater than 0, "
                                     "but received is:%d",
                                     deviser));
 
   PADDLE_ENFORCE_GT(
-      x, 0, platform::errors::InvalidArgument("input should be greater than 0, "
+      x, 0, platform::errors::InvalidArgument("input shold be greater than 0, "
                                               "but received is:%d",
                                               x));
 

@@ -69,7 +69,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendMultiGraphOptPasses();
 
     AppendPassToSetMkldnnAttr("mkldnn_placement_pass");
-    // runtime_context_cache pass should be the last pass to enable the attr of
+    // runtime_context_cache pass shold be the last pass to enable the attr of
     // all original and fused operators. But no operators can be enabled this
     // attr if putting it after MultiDevPass.
     AppendPassWithCheck(strategy_.cache_runtime_context_,
@@ -175,7 +175,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendPassWithCheck(strategy_.fuse_elewise_add_act_ops_,
                         "fuse_elewise_add_act_pass");
     // for single card training, fuse_all_reduce_ops is unnecessary.
-    // coalesce_grad_tensor_pass should be before of MultiDevPass.
+    // coalesce_grad_tensor_pass shold be before of MultiDevPass.
     AppendPassWithCheck(strategy_.fuse_all_reduce_ops_,
                         "coalesce_grad_tensor_pass");
     // Fuse all the optimization operators.
@@ -258,7 +258,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
           << "mkldnn_enabled_op_types specify the operator type list to "
              "use MKLDNN acceleration. It is null in default, means "
              "that all the operators supported by MKLDNN will be "
-             "accelerated. And it should not be set when "
+             "accelerated. And it shold not be set when "
              "FLAGS_use_mkldnn=false.";
     }
 #else

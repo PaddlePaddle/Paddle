@@ -60,7 +60,7 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
   for (size_t i = 0; i < list_new_shape_tensor.size(); ++i) {
     auto tensor = list_new_shape_tensor[i];
     PADDLE_ENFORCE_EQ(tensor->dims(), framework::make_ddim({1}),
-                      "shape of dim tensor should be [1]");
+                      "shape of dim tensor shold be [1]");
 
     if (tensor->type() == framework::proto::VarType::INT32) {
       if (platform::is_gpu_place(tensor->place())) {

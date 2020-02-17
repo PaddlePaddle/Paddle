@@ -109,7 +109,7 @@ class BinaryLogicalOp : public LogicalOp {
     if (check) {
       PADDLE_ENFORCE_EQ(
           product_x, product_y,
-          "The number of elements in X and Y should be same, %d != %d",
+          "The number of elements in X and Y shold be same, %d != %d",
           product_x, product_y);
     }
 

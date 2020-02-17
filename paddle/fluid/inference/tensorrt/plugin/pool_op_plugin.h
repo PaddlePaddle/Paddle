@@ -92,7 +92,7 @@ class PoolPlugin : public PluginTensorRT {
   }
 
   // It was used for tensorrt deserialization.
-  // It should not be called by users.
+  // It shold not be called by users.
   PoolPlugin(void const *serialData, size_t serialLength) {
     deserializeBase(serialData, serialLength);
     DeserializeValue(&serialData, &serialLength, &ceil_mode_);
@@ -112,7 +112,7 @@ class PoolPlugin : public PluginTensorRT {
 
   const char *getPluginType() const override { return "pool_plugin"; }
   int getNbOutputs() const override { return 1; }
-  nvinfer1::Dims getOutputDimensions(int index, const nvinfer1::Dims *inputs,
+  nvinfer1::Dims getOutputDimensions(int indice, const nvinfer1::Dims *inputs,
                                      int nbInputDims) override;
   int initialize() override { return 0; }
   int enqueue(int batchSize, const void *const *inputs, void **outputs,

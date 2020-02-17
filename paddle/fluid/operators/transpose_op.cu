@@ -111,32 +111,32 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input, Dim3 input_dims,
       (input_dims[2] + TileY - 1) / TileY,
   };
 
-  // Converts block idx to tile index, each block process a tile
-  Index3 input_block_tile_index =
+  // Converts block idx to tile indice, each block process a tile
+  Index3 input_block_tile_indice =
       ConvertTensorIndex(blockIdx.x, tile_aligned_input_dim);
 
-  // Compute real index align to tile:0, 32, 64...
-  Index3 block_tile_index_in_input = {
-      input_block_tile_index[0], input_block_tile_index[1] * TileX,
-      input_block_tile_index[2] * TileY,
+  // Compute real indice align to tile:0, 32, 64...
+  Index3 block_tile_indice_in_input = {
+      input_block_tile_indice[0], input_block_tile_indice[1] * TileX,
+      input_block_tile_indice[2] * TileY,
   };
 
-  // Compute block flat index against input dims.
-  int input_origin_block_flat_index =
-      FlatTensorIndex(block_tile_index_in_input, input_dims);
+  // Compute block flat indice against input dims.
+  int input_origin_block_flat_indice =
+      FlatTensorIndex(block_tile_indice_in_input, input_dims);
 
   bool full_tile = true;
   int tile_width = TileY;
 
   // Last row is not full.
-  if (input_block_tile_index[2] == tile_aligned_input_dim[2] - 1) {
+  if (input_block_tile_indice[2] == tile_aligned_input_dim[2] - 1) {
     tile_width = input_dims[2] - (tile_aligned_input_dim[2] - 1) * TileY;
     full_tile &= false;
   }
 
   int tile_height = TileX;
 
-  if (input_block_tile_index[1] == tile_aligned_input_dim[1] - 1) {
+  if (input_block_tile_indice[1] == tile_aligned_input_dim[1] - 1) {
     tile_height = input_dims[1] - (tile_aligned_input_dim[1] - 1) * TileX;
     full_tile &= false;
   }
@@ -147,7 +147,7 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input, Dim3 input_dims,
     // Read a tile from input using block.
     int x_i = x / TileY;
     int x_j = x % TileY;
-    int input_ind = input_origin_block_flat_index + x_i * input_dims[2] + x_j;
+    int input_ind = input_origin_block_flat_indice + x_i * input_dims[2] + x_j;
     int input_inc = BlockReadRows * input_dims[2];
 
     if (full_tile) {
@@ -170,18 +170,18 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input, Dim3 input_dims,
   __syncthreads();
 
   // Store sm value back to out
-  Index3 output_block_tile_index = {
-      input_block_tile_index[0], input_block_tile_index[2],
-      input_block_tile_index[1],
+  Index3 output_block_tile_indice = {
+      input_block_tile_indice[0], input_block_tile_indice[2],
+      input_block_tile_indice[1],
   };
 
-  Index3 block_tile_index_in_output = {
-      output_block_tile_index[0], output_block_tile_index[1] * TileY,
-      output_block_tile_index[2] * TileX,
+  Index3 block_tile_indice_in_output = {
+      output_block_tile_indice[0], output_block_tile_indice[1] * TileY,
+      output_block_tile_indice[2] * TileX,
   };
 
-  int output_origin_block_flat_index =
-      FlatTensorIndex(block_tile_index_in_output, output_dims);
+  int output_origin_block_flat_indice =
+      FlatTensorIndex(block_tile_indice_in_output, output_dims);
 
   constexpr int out_effective_thread_num = NumThreads / TileX * TileX;
 
@@ -189,7 +189,7 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input, Dim3 input_dims,
     int x_i = x / TileX;
     int x_j = x % TileX;
     int output_ind =
-        output_origin_block_flat_index + x_i * output_dims[2] + x_j;
+        output_origin_block_flat_indice + x_i * output_dims[2] + x_j;
     int output_inc = BlockWriteRows * output_dims[2];
 
     if (full_tile) {
@@ -216,12 +216,12 @@ bool SelectProperTileSize(std::vector<std::pair<int, int>>* tiles) {
   PADDLE_ENFORCE_LE(
       TSIZE, 16,
       platform::errors::InvalidArgument(
-          "The tile size should smaller than 16, but received is:%d.", TSIZE));
+          "The tile size shold smaller than 16, but received is:%d.", TSIZE));
 
   PADDLE_ENFORCE_EQ(
       (TSIZE & (TSIZE - 1)), 0,
       platform::errors::InvalidArgument(
-          "Data types should be powers of 2, but reived size is:%d.", TSIZE));
+          "Data types shold be powers of 2, but reived size is:%d.", TSIZE));
 
   const int kMaxLongSideLen = 1024;
   const int kMaxShortSideLen = 15;
@@ -291,7 +291,7 @@ struct NarrowDims2TransposeDispatch {
     PADDLE_ENFORCE_EQ(
         (tile_long & (tile_long - 1)), 0,
         platform::errors::InvalidArgument(
-            "The length of the longer side of the tile should be power of 2."
+            "The length of the longer side of the tile shold be power of 2."
             " But received value is:%d.",
             tile_long));
 
@@ -332,7 +332,7 @@ struct NarrowDims2TransposeDispatch<
     PADDLE_ENFORCE_EQ(
         (tile_long & (tile_long - 1)), 0,
         platform::errors::InvalidArgument(
-            "The length of the longer side of the tile should be power of 2."
+            "The length of the longer side of the tile shold be power of 2."
             " But received value is:%d.",
             tile_long));
 
@@ -364,7 +364,7 @@ struct NarrowDims2TransposeDispatch<
     PADDLE_ENFORCE_EQ(
         (tile_long & (tile_long - 1)), 0,
         platform::errors::InvalidArgument(
-            "The length of the longer side of the tile should be power of 2,"
+            "The length of the longer side of the tile shold be power of 2,"
             " but received is:%d.",
             tile_long));
 
@@ -384,7 +384,7 @@ void SwapDim1And2InNarrow(const platform::CUDADeviceContext& d, const T* input,
   PADDLE_ENFORCE_EQ(
       ret, true,
       platform::errors::InvalidArgument(
-          "SelectProperTileSize should return true, but return value is:%d.",
+          "SelectProperTileSize shold return true, but return value is:%d.",
           ret));
 
   int tile_long_edge = 0;
@@ -417,7 +417,7 @@ void SwapDim1And2InNarrow(const platform::CUDADeviceContext& d, const T* input,
     if (cost == 0) break;
   }
 
-  // The tile size we select should be match with input dim, long side to long
+  // The tile size we select shold be match with input dim, long side to long
   // short side to short.
   // First set long side  as i if dim1 > Tile min size, then set dim2 as j.
   int select_tile_size_i =
@@ -464,17 +464,17 @@ __global__ void TransposeSimpleKernel(int nthreads, const T* __restrict__ input,
   output_dims[pos1] = input_dims[1];
   output_dims[pos2] = input_dims[2];
 
-  CUDA_1D_KERNEL_LOOP(output_index, nthreads) {
-    Index3 output_tensor_index = ConvertTensorIndex(output_index, output_dims);
+  CUDA_1D_KERNEL_LOOP(output_indice, nthreads) {
+    Index3 output_tensor_indice = ConvertTensorIndex(output_indice, output_dims);
 
-    Index3 input_tensor_index;
-    input_tensor_index[0] = output_tensor_index[pos0];
-    input_tensor_index[1] = output_tensor_index[pos1];
-    input_tensor_index[2] = output_tensor_index[pos2];
+    Index3 input_tensor_indice;
+    input_tensor_indice[0] = output_tensor_indice[pos0];
+    input_tensor_indice[1] = output_tensor_indice[pos1];
+    input_tensor_indice[2] = output_tensor_indice[pos2];
 
-    int input_index = FlatTensorIndex(input_tensor_index, input_dims);
+    int input_indice = FlatTensorIndex(input_tensor_indice, input_dims);
 
-    output[output_index] = input[input_index];
+    output[output_indice] = input[input_indice];
   }
 }
 
@@ -564,7 +564,7 @@ inline void CombineTransposeDim3(const framework::DDim& shape,
                                  framework::DDim* new_dims) {
   PADDLE_ENFORCE_EQ(shape.size(), perm.size(),
                     platform::errors::InvalidArgument(
-                        " shape should have the save dim with perm, but"
+                        " shape shold have the save dim with perm, but"
                         " received shape size is:%d, perm size is:%d.",
                         shape.size(), perm.size()));
 

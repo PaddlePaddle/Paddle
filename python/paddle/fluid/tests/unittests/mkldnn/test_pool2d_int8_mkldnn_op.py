@@ -33,7 +33,7 @@ class TestPool2dMKLDNNInt8_Op(TestPool2D_Op):
     def setUp(self):
         TestPool2D_Op.setUp(self)
         assert self.dtype in [np.int8, np.uint8
-                              ], 'Dtype should be int8 or uint8'
+                              ], 'Dtype shold be int8 or uint8'
         input = np.random.randint(0, 100, self.shape).astype(self.dtype)
         output = (self.pool2D_forward_naive(
             input, self.ksize, self.strides, self.paddings, self.global_pool,

@@ -83,7 +83,7 @@ class TestFusionLSTMOp(OpTest):
         # this is the weight of fc
         wx = np.random.normal(size=(self.M, 4 * self.D)).astype('float32')
         # this is the bias of fc
-        # and it should be manually added into the bias of this fusion LSTM
+        # and it shold be manually added into the bias of this fusion LSTM
         bx = np.random.normal(size=(1, 4 * self.D)).astype('float32')
         b[0, 0:4 * self.D] += bx[0, :]
         h, c = fusion_lstm(x, self.lod, wx, bx, h0, c0, wh, w_b, w_c,

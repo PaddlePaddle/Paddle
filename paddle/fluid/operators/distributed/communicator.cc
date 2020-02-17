@@ -316,7 +316,7 @@ void AsyncCommunicator::Send(const std::vector<std::string> &var_names,
   auto *grad_var = scope.FindVar(var_name);
   PADDLE_ENFORCE_EQ(
       grad_var->IsInitialized(), true,
-      platform::errors::InvalidArgument("grad var should be inited"));
+      platform::errors::InvalidArgument("grad var shold be inited"));
 
   auto tmp_grad_var = std::make_shared<Variable>();
   framework::CopyVariable(*grad_var, tmp_grad_var.get());
@@ -549,10 +549,10 @@ std::unordered_set<int64_t> GeoSgdCommunicator::SparseIdsMerge(
           << " splited var: " << splited_var_name;
   auto before_run_ids_merge_ = GetCurrentUS();
   auto origin_var_name = DeltaVarToVar(var_name);
-  auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
+  auto splited_var_indice = GetSplitedVarIndex(var_name, splited_var_name);
   std::unordered_set<int64_t> ids_set;
   for (auto ids_map : ids_send_vec) {
-    for (auto id : ids_map[origin_var_name][splited_var_index]) {
+    for (auto id : ids_map[origin_var_name][splited_var_indice]) {
       ids_set.insert(id);
     }
   }
@@ -569,10 +569,10 @@ void GeoSgdCommunicator::SendUpdateDenseVars(
   // calc var_old += var_delta
   // var_name: param.delta
   auto origin_var_name = DeltaVarToVar(var_name);
-  auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
+  auto splited_var_indice = GetSplitedVarIndex(var_name, splited_var_name);
   VLOG(4) << "Dense var: " << var_name
           << " 's splited var: " << splited_var_name
-          << " splited var index: " << splited_var_index;
+          << " splited var indice: " << splited_var_indice;
   auto before_run_send_dense = GetCurrentUS();
   auto cpu_ctx = paddle::platform::CPUDeviceContext();
 
@@ -590,9 +590,9 @@ void GeoSgdCommunicator::SendUpdateDenseVars(
 
   size_t out_num = send_varname_to_ctx_[var_name].height_sections.size();
   if (out_num > 1) {
-    section = send_varname_to_ctx_[var_name].height_sections[splited_var_index];
+    section = send_varname_to_ctx_[var_name].height_sections[splited_var_indice];
     dims[0] = section;
-    begin_loc = absolute_section_[origin_var_name][splited_var_index];
+    begin_loc = absolute_section_[origin_var_name][splited_var_indice];
     dimension = total_element / vars_first_dimension_[origin_var_name];
     total_element = section * dimension;
     VLOG(4) << "Dense splited var: " << splited_var_name
@@ -645,7 +645,7 @@ void GeoSgdCommunicator::SendUpdateDenseVars(
           << after_run_send_dense - before_run_send_dense;
 
   auto before_send_dense = GetCurrentUS();
-  RpcSend(var_name, splited_var_name, splited_var_index);
+  RpcSend(var_name, splited_var_name, splited_var_indice);
   auto after_send_dense = GetCurrentUS();
   VLOG(4) << "send " << splited_var_name << " use time "
           << after_send_dense - before_send_dense;
@@ -706,19 +706,19 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
   VLOG(4) << "run send update sparse var " << splited_var_name << " use time "
           << after_run_send_sparse - before_run_send_sparse;
 
-  auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
+  auto splited_var_indice = GetSplitedVarIndex(var_name, splited_var_name);
   std::vector<int64_t> send_rows;
   send_rows.reserve(new_rows.size());
   for (auto idx : new_rows) {
     send_rows.push_back(idx -
-                        absolute_section_[origin_var_name][splited_var_index]);
+                        absolute_section_[origin_var_name][splited_var_indice]);
   }
   var_z_select_rows->set_rows(send_rows);
   var_z_select_rows->set_height(
-      send_varname_to_ctx_[var_name].height_sections[splited_var_index]);
+      send_varname_to_ctx_[var_name].height_sections[splited_var_indice]);
 
   auto before_send_sparse = GetCurrentUS();
-  RpcSend(var_name, splited_var_name, splited_var_index);
+  RpcSend(var_name, splited_var_name, splited_var_indice);
   auto after_send_sparse = GetCurrentUS();
   VLOG(4) << "send " << splited_var_name << " has nums " << new_rows.size()
           << " use time " << after_send_sparse - before_send_sparse;
@@ -733,14 +733,14 @@ void GeoSgdCommunicator::RecvUpdateDenseVars(
   // step1: recv dense var from pserver
   auto origin_var_name = DeltaVarToVar(var_name);
   auto origin_splited_var_name = DeltaVarToVar(splited_var_name);
-  auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
+  auto splited_var_indice = GetSplitedVarIndex(var_name, splited_var_name);
   auto cpu_ctx = paddle::platform::CPUDeviceContext();
 
   auto before_run_recv = GetCurrentUS();
   VLOG(4) << "Dense recv origin_var_name: " << origin_var_name
           << " origin_splited_var_name: " << origin_splited_var_name
-          << " splited_var_index: " << splited_var_index;
-  RpcRecv(origin_var_name, origin_splited_var_name, splited_var_index);
+          << " splited_var_indice: " << splited_var_indice;
+  RpcRecv(origin_var_name, origin_splited_var_name, splited_var_indice);
   auto after_run_recv = GetCurrentUS();
   VLOG(4) << "recv var " << origin_splited_var_name << " use time "
           << after_run_recv - before_run_recv;
@@ -764,7 +764,7 @@ void GeoSgdCommunicator::RecvUpdateDenseVars(
   size_t out_num = recv_varname_to_ctx_[origin_var_name].height_sections.size();
   if (out_num > 1) {
     section = dims[0];
-    begin_loc = absolute_section_[origin_var_name][splited_var_index];
+    begin_loc = absolute_section_[origin_var_name][splited_var_indice];
     dimension = total_element / section;
     VLOG(4) << "Dense splited var: " << splited_var_name
             << " section: " << section << " dimension: " << dimension
@@ -828,12 +828,12 @@ void GeoSgdCommunicator::RecvUpdateDenseVars(
 void GeoSgdCommunicator::RecvUpdateSparseVars(
     const std::string &var_name, const std::string &splited_var_name) {
   // step 1: recv splited var from pserver
-  auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
+  auto splited_var_indice = GetSplitedVarIndex(var_name, splited_var_name);
   auto origin_var_name = DeltaVarToVar(var_name);
   auto origin_splited_var_name = DeltaVarToVar(splited_var_name);
 
   auto before_run_recv = GetCurrentUS();
-  RpcRecv(origin_var_name, origin_splited_var_name, splited_var_index);
+  RpcRecv(origin_var_name, origin_splited_var_name, splited_var_indice);
   auto after_run_recv = GetCurrentUS();
   VLOG(4) << "recv var " << origin_splited_var_name << " use time "
           << after_run_recv - before_run_recv;
@@ -858,7 +858,7 @@ void GeoSgdCommunicator::RecvUpdateSparseVars(
 
   for (auto ids : var_z_slr->rows()) {
     new_rows.push_back(ids +
-                       absolute_section_[origin_var_name][splited_var_index]);
+                       absolute_section_[origin_var_name][splited_var_indice]);
   }
 
   auto *new_value = var_z_slr->mutable_value();
@@ -919,10 +919,10 @@ void GeoSgdCommunicator::GeoSgdDenseParamInit(framework::Scope *scope_x,
 
 void GeoSgdCommunicator::RpcSend(const std::string &origin_var_name,
                                  const std::string &splited_var_name,
-                                 const size_t &splited_var_index) {
+                                 const size_t &splited_var_indice) {
   auto trainer_id = send_varname_to_ctx_[origin_var_name].trainer_id;
   auto endpoint =
-      send_varname_to_ctx_[origin_var_name].epmap[splited_var_index];
+      send_varname_to_ctx_[origin_var_name].epmap[splited_var_indice];
 
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto &cpu_ctx_send = *pool.Get(platform::CPUPlace());
@@ -935,9 +935,9 @@ void GeoSgdCommunicator::RpcSend(const std::string &origin_var_name,
 
 void GeoSgdCommunicator::RpcRecv(const std::string &var_name,
                                  const std::string &splited_var_name,
-                                 const size_t &splited_var_index) {
+                                 const size_t &splited_var_indice) {
   auto train_id = recv_varname_to_ctx_[var_name].trainer_id;
-  auto endpoint = recv_varname_to_ctx_[var_name].epmap[splited_var_index];
+  auto endpoint = recv_varname_to_ctx_[var_name].epmap[splited_var_indice];
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto &cpu_ctx_recv = *pool.Get(platform::CPUPlace());
   distributed::RPCClient *rpc_client =
@@ -1115,7 +1115,7 @@ void HalfAsyncCommunicator::Send(const std::vector<std::string> &var_names,
   auto *grad_var = scope.FindVar(var_name);
   PADDLE_ENFORCE_EQ(
       grad_var->IsInitialized(), true,
-      platform::errors::InvalidArgument("grad var should is not initialized."));
+      platform::errors::InvalidArgument("grad var shold is not initialized."));
   auto tmp_grad_var = std::make_shared<Variable>();
   framework::CopyVariable(*grad_var, tmp_grad_var.get());
   auto &queue = send_varname_to_queue_.at(var_name);

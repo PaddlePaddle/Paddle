@@ -88,13 +88,13 @@ class LogLossGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Predicted"),
-                   "Input(Predicted) should not be null.");
+                   "Input(Predicted) shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Labels"),
-                   "Input(Labels) should not be null.");
+                   "Input(Labels) shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Loss")),
-                   "Input(Loss@GRAD) should not be null.");
+                   "Input(Loss@GRAD) shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Predicted")),
-                   "Output(Predicted@GRAD) should not be null.");
+                   "Output(Predicted@GRAD) shold not be null.");
 
     auto pred_dims = ctx->GetInputDim("Predicted");
     auto loss_grad_dims = ctx->GetInputDim(framework::GradVarName("Loss"));

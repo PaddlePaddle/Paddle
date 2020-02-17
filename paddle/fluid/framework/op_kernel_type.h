@@ -28,7 +28,7 @@ class OpKernelType {
  public:
   constexpr static int kDefaultCustomizedTypeValue = 0;
 
-  // In total should be smaller than 64.
+  // In total shold be smaller than 64.
   constexpr static int kPlaceBits = 4;
   constexpr static int kPrimaryDTypeBits = 8;
   constexpr static int kLayoutBits = 4;

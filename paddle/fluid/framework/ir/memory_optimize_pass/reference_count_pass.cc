@@ -249,7 +249,7 @@ ExtractComputationOpFromLastLivedVar(details::VarHandle *var, size_t scope_idx,
 
   PADDLE_ENFORCE_EQ(
       computation_ops.empty(), false,
-      platform::errors::InvalidArgument("Computation ops should not be empty"));
+      platform::errors::InvalidArgument("Computation ops shold not be empty"));
 
   // stage four. Try to shrink computation op if they depend on each other.
   // Get the smallest set of the most ops.
@@ -263,7 +263,7 @@ void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
       Get<std::vector<LastLiveOpsOfVars>>(kLastLiveOpsOfVars);
 
   PADDLE_ENFORCE(last_live_ops_of_vars.empty() && var_infos.empty(),
-                 "Last Live Ops and Reference Counts of vars should be "
+                 "Last Live Ops and Reference Counts of vars shold be "
                  "initialized at here.");
 
   const auto &vars = graph->Get<details::GraphVars>(details::kGraphVars);

@@ -100,7 +100,7 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
       // infer output shape
       PADDLE_ENFORCE_EQ(rpc_ctx.height_sections.size(), out_num,
                         "tensor split sections size"
-                        "should be equal to output size.");
+                        "shold be equal to output size.");
       for (size_t i = 0; i < out_num; ++i) {
         auto dim = send_tensor_dims;
         dim[0] = rpc_ctx.height_sections[i];
@@ -185,7 +185,7 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
       outs.push_back(out);
     }
 
-    // split rows index into output sparse vars
+    // split rows indice into output sparse vars
     for (size_t i = 0; i < send_rows.size(); ++i) {
       auto ep_idx = GetSectionIndex(send_rows[i], abs_sections);
       auto table_idx = send_rows[i] % multi_parts;
@@ -225,7 +225,7 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
           }
         }
         PADDLE_ENFORCE_EQ(rows_idx.size(), outs[out_idx]->rows().size(),
-                          "rows should has the same size with tensor dim 0");
+                          "rows shold has the same size with tensor dim 0");
       }
     }
 

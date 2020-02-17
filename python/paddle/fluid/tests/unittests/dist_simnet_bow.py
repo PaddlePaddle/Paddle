@@ -191,7 +191,7 @@ def get_one_data(file_list):
         with open(file, "r") as fin:
             for i in fin:
                 contents.append(i.strip())
-            for index, q in enumerate(contents):
+            for indice, q in enumerate(contents):
                 try:
                     one_data = [[int(j) for j in i.split(" ")]
                                 for i in q.split(";")[:-1]]

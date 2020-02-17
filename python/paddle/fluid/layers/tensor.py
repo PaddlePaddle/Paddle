@@ -265,7 +265,7 @@ def concat(input, axis=0, name=None):
 
     if not isinstance(input, list):
         warnings.warn(
-            "The type of input in concat should be list, but received %s." %
+            "The type of input in concat shold be list, but received %s." %
             (type(input)))
         input = [input]
     for id, x in enumerate(input):
@@ -315,7 +315,7 @@ def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
                 output.data = [[0.6, 0.1, 0.3, 1.3, 2.3, 2.1],
                                [0.5, 0.3, 0.2, 1.8, 2.5, 2.4]]
 
-                output_index.data = [3, 1, 2]
+                output_indice.data = [3, 1, 2]
 
         Case 2:
 
@@ -339,7 +339,7 @@ def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
                                 [0.2, 1.8]
                                 [2.5, 2.4]]]
 
-                output_index.data = [2, 2, 2]
+                output_indice.data = [2, 2, 2]
 
     Args:
         input(Variable): A LodTensorArray variable.
@@ -366,19 +366,19 @@ def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
             array = fluid.layers.create_array(dtype='float32')
             fluid.layers.array_write(x0, i, array)
             fluid.layers.array_write(x1, i + 1, array)
-            output, output_index = fluid.layers.tensor_array_to_tensor(input=array)
+            output, output_indice = fluid.layers.tensor_array_to_tensor(input=array)
     """
     helper = LayerHelper('tensor_array_to_tensor', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    out_index = helper.create_variable_for_type_inference(dtype="int32")
+    out_indice = helper.create_variable_for_type_inference(dtype="int32")
     helper.append_op(
         type='tensor_array_to_tensor',
         inputs={'X': input},
         outputs={'Out': [out],
-                 'OutIndex': [out_index]},
+                 'OutIndex': [out_indice]},
         attrs={'axis': axis,
                'use_stack': use_stack})
-    return out, out_index
+    return out, out_indice
 
 
 def sums(input, out=None):
@@ -519,12 +519,12 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
     Args:
         shape(list|tuple|Variable): Shape of the Tensor to be created.
                 The data type is ``int32`` or ``int64`` . If ``shape`` is a list or tuple,
-                the elements of it should be integers or Tensors with shape [1].
-                If ``shape`` is an Variable, it should be an 1-D Tensor .
+                the elements of it shold be integers or Tensors with shape [1].
+                If ``shape`` is an Variable, it shold be an 1-D Tensor .
         dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output tensor which can
             be float16, float32, float64, int32, int64.
         value(float): The constant value used to initialize the Tensor to be created.
-        force_cpu(True): data should be on CPU if it's true, default value is False.
+        force_cpu(True): data shold be on CPU if it's true, default value is False.
         out(Variable, optional): Optional output which can be any created 
             Variable that meets the requirements to store the result of operation.
             if out is None, a new Varibale will be create to store the result.
@@ -686,7 +686,7 @@ def fill_constant_batch_size_like(input,
             The default value is 0.
         output_dim_idx(int): Used to specify which dimension of Tensor is created to be set
             the value of batch_size of input Tensor. The default value is 0.
-        force_cpu(bool): data should be on CPU if it's true, default value is False.
+        force_cpu(bool): data shold be on CPU if it's true, default value is False.
 
     Returns:
         Variable: Tensor which will be created according to dtype.
@@ -847,7 +847,7 @@ def argmax(x, axis=0):
 def argsort(input, axis=-1, descending=False, name=None):
     """
     This OP sorts the input along the given axis, and returns sorted output
-    data Varibale and its corresponding index Variable with the same shape as
+    data Varibale and its corresponding indice Variable with the same shape as
     :attr:`input`.
 
     Args:
@@ -952,7 +952,7 @@ def ones(shape, dtype, force_cpu=False):
           data = fluid.layers.ones(shape=[2, 4], dtype='float32') # [[1., 1., 1., 1.], [1., 1., 1., 1.]]
     """
     assert isinstance(shape, list) or isinstance(
-        shape, tuple), "The shape's type should be list or tuple."
+        shape, tuple), "The shape's type shold be list or tuple."
     assert reduce(lambda x, y: x * y,
                   shape) > 0, "The shape is invalid: %s." % (str(shape))
     return fill_constant(value=1.0, **locals())
@@ -1317,8 +1317,8 @@ def diag(diagonal):
     This OP creates a square matrix which has diagonal values specified by input :attr:`diagonal`.
 
     Args:
-        diagonal(Variable|numpy.ndarray): The input tensor should be 1D tensor, the input shape is :math:`[ N]` , \
-            specifying diagonal values by this input tensor. The input data type should be float32, float64, int32, int64.
+        diagonal(Variable|numpy.ndarray): The input tensor shold be 1D tensor, the input shape is :math:`[ N]` , \
+            specifying diagonal values by this input tensor. The input data type shold be float32, float64, int32, int64.
 
     Returns:
         Variable, the output data type is the same as input data type.: The tensor variable storing the square matrix, \
@@ -1366,7 +1366,7 @@ def eye(num_rows, num_columns=None, batch_shape=None, dtype='float32'):
         batch_shape(list(int)): If provided, the returned tensor will have a leading
                                 batch size of this shape.
         dtype(string): The data type of the returned tensor.
-                       It should be int32, int64, float16, float32, float64.
+                       It shold be int32, int64, float16, float32, float64.
 
     Returns:
         Variable: An identity Tensor or LoDTensor of shape batch_shape + [num_rows, num_columns].
@@ -1392,10 +1392,10 @@ def eye(num_rows, num_columns=None, batch_shape=None, dtype='float32'):
 
     helper = LayerHelper("eye", **locals())
     if not isinstance(num_rows, int) or num_rows < 0:
-        raise TypeError("num_rows should be a non-negative int")
+        raise TypeError("num_rows shold be a non-negative int")
     if num_columns is not None:
         if not isinstance(num_columns, int) or num_columns < 0:
-            raise TypeError("num_columns should be a non-negative int")
+            raise TypeError("num_columns shold be a non-negative int")
     else:
         num_columns = num_rows
     out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -1414,11 +1414,11 @@ def eye(num_rows, num_columns=None, batch_shape=None, dtype='float32'):
 
     if batch_shape is not None:
         if not isinstance(batch_shape, list):
-            raise TypeError("batch_shape should be a list")
+            raise TypeError("batch_shape shold be a list")
         from .nn import stack
         for batch_val in reversed(batch_shape):
             if batch_val <= 0:
-                raise TypeError("batch_shape should be a positive int list")
+                raise TypeError("batch_shape shold be a positive int list")
             else:
                 stack_vars = [out for _ in numpy.arange(batch_val)]
                 out = stack(stack_vars, axis=0)

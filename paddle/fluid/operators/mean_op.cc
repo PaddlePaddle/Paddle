@@ -26,9 +26,9 @@ class MeanOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of MeanOp should not be null.");
+                   "Input(X) of MeanOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of MeanOp should not be null.");
+                   "Output(Out) of MeanOp shold not be null.");
     ctx->SetOutputDim("Out", {1});
   }
 };

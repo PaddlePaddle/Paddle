@@ -97,13 +97,13 @@ def network(batch_size, items_num, hidden_size, step, rate):
         shape=[batch_size, -1, 1],
         dtype="int64",
         append_batch_size=False)  #[bs, uniq_max, 1]
-    seq_index = layers.data(
-        name="seq_index",
+    seq_indice = layers.data(
+        name="seq_indice",
         shape=[batch_size, -1],
         dtype="int64",
         append_batch_size=False)  #[-1(seq_max)*batch_size, 1]
-    last_index = layers.data(
-        name="last_index",
+    last_indice = layers.data(
+        name="last_indice",
         shape=[batch_size],
         dtype="int64",
         append_batch_size=False)  #[batch_size, 1]
@@ -137,7 +137,7 @@ def network(batch_size, items_num, hidden_size, step, rate):
             initializer=fluid.initializer.Uniform(
                 low=-stdv, high=stdv)),
         size=[items_num, hidden_size])  #[batch_size, uniq_max, h]
-    data_feed = [items, seq_index, last_index, adj_in, adj_out, mask, label]
+    data_feed = [items, seq_indice, last_indice, adj_in, adj_out, mask, label]
 
     pre_state = items_emb
     for i in range(step):
@@ -183,9 +183,9 @@ def network(batch_size, items_num, hidden_size, step, rate):
             size=3 * hidden_size)
 
     final_state = pre_state
-    seq_index = layers.reshape(seq_index, shape=[-1])
-    seq = layers.gather(final_state, seq_index)  #[batch_size*-1(seq_max), h]
-    last = layers.gather(final_state, last_index)  #[batch_size, h]
+    seq_indice = layers.reshape(seq_indice, shape=[-1])
+    seq = layers.gather(final_state, seq_indice)  #[batch_size*-1(seq_max), h]
+    last = layers.gather(final_state, last_indice)  #[batch_size, h]
 
     seq = layers.reshape(
         seq, shape=[batch_size, -1, hidden_size])  #[batch_size, -1(seq_max), h]
@@ -353,7 +353,7 @@ def train():
         save_dir = model_path + "/epoch_" + str(i)
         fetch_vars = [loss, acc]
         feed_list = [
-            "items", "seq_index", "last_index", "adj_in", "adj_out", "mask",
+            "items", "seq_indice", "last_indice", "adj_in", "adj_out", "mask",
             "label"
         ]
         fluid.io.save_inference_model(save_dir, feed_list, fetch_vars, exe)
@@ -380,7 +380,7 @@ class Data():
         for e in cur_batch:
             max_uniq_len = max(max_uniq_len, len(np.unique(e[0])))
 
-        items, adj_in, adj_out, seq_index, last_index = [], [], [], [], []
+        items, adj_in, adj_out, seq_indice, last_indice = [], [], [], [], []
         mask, label = [], []
 
         id = 0
@@ -404,9 +404,9 @@ class Data():
             u_deg_out[np.where(u_deg_out == 0)] = 1
             adj_out.append(np.divide(adj.transpose(), u_deg_out).transpose())
 
-            seq_index.append(
+            seq_indice.append(
                 [np.where(node == i)[0][0] + id * max_uniq_len for i in e[0]])
-            last_index.append(
+            last_indice.append(
                 np.where(node == e[0][last_id[id]])[0][0] + id * max_uniq_len)
             label.append(e[1] - 1)
             mask.append([[1] * (last_id[id] + 1) + [0] *
@@ -414,9 +414,9 @@ class Data():
             id += 1
 
         items = np.array(items).astype("uint64").reshape((batch_size, -1, 1))
-        seq_index = np.array(seq_index).astype("uint64").reshape(
+        seq_indice = np.array(seq_indice).astype("uint64").reshape(
             (batch_size, -1))
-        last_index = np.array(last_index).astype("uint64").reshape(
+        last_indice = np.array(last_indice).astype("uint64").reshape(
             (batch_size, 1))
         adj_in = np.array(adj_in).astype("float32").reshape(
             (batch_size, max_uniq_len, max_uniq_len))
@@ -425,7 +425,7 @@ class Data():
         mask = np.array(mask).astype("float32").reshape((batch_size, -1, 1))
         label = np.array(label).astype("uint64").reshape((batch_size, 1))
         return list(
-            zip(items, seq_index, last_index, adj_in, adj_out, mask, label))
+            zip(items, seq_indice, last_indice, adj_in, adj_out, mask, label))
 
     def reader(self, batch_size, batch_group_size, train=True):
         if self.shuffle:
@@ -461,15 +461,15 @@ def read_config(path):
 induce_map = {0: [0], 1: [0], 2: [], 3: [0, 1], 4: [0, 1], 5: [0], 6: []}
 
 
-def binary_print(slot, fout, index):
+def binary_print(slot, fout, indice):
     shape_array = slot.shape
     num = 1
     for e in shape_array:
         num *= e
-    num += len(induce_map[index])
+    num += len(induce_map[indice])
     num = np.uint16(num)
     num.tofile(fout)
-    for e in induce_map[index]:
+    for e in induce_map[indice]:
         tmp_shape = np.uint64(shape_array[e])
         tmp_shape.tofile(fout)
     slot.tofile(fout)
@@ -477,13 +477,13 @@ def binary_print(slot, fout, index):
 
 def make_binary_data():
     data_reader = Data('./data/diginetica/train.txt', True)
-    index = 0
+    indice = 0
     id = -1
     filename = None
     fout = None
     binary = True
     for data in data_reader.reader(batch_size, 20 * batch_size, True):
-        if index % (batch_size * 900) == 0:
+        if indice % (batch_size * 900) == 0:
             id += 1
             if not binary:
                 filename = "./gnn_data_text/" + str(id)
@@ -500,7 +500,7 @@ def make_binary_data():
                     binary_print(slot, fout, i)
                 else:
                     text_print(slot, fout, i)
-        index += batch_size
+        indice += batch_size
 
 
 if __name__ == "__main__":

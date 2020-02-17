@@ -29,7 +29,7 @@ using LoD = framework::LoD;
 void VarConv2dOpMaker::Make() {
   AddInput("X",
            "X (LoDTensor, default LoDTensor<float>) Input variable which "
-           "should contain lod information.");
+           "shold contain lod information.");
   AddInput("ROW", "(LoDTensor) the row variable provides lod information");
   AddInput("COLUMN",
            "(LoDTensor) the column variable provides lod information");
@@ -83,16 +83,16 @@ void VarConv2dOP::InferShape(framework::InferShapeContext* ctx) const {
 
   auto w_dims = ctx->GetInputDim("W");
 
-  PADDLE_ENFORCE_EQ(w_dims.size(), 2, "W should be 2-D tensor");
+  PADDLE_ENFORCE_EQ(w_dims.size(), 2, "W shold be 2-D tensor");
   int output_channel = ctx->Attrs().Get<int>("OutputChannel");
   int input_channel = ctx->Attrs().Get<int>("InputChannel");
   int kernel_h = ctx->Attrs().Get<int>("KernelH");
   int kernel_w = ctx->Attrs().Get<int>("KernelW");
   PADDLE_ENFORCE_EQ(w_dims[0], output_channel,
-                    "W dim[0] should be equal to OutputChannel");
+                    "W dim[0] shold be equal to OutputChannel");
   PADDLE_ENFORCE_EQ(
       w_dims[1], input_channel * kernel_h * kernel_w,
-      "W dim[1] should be equal to InputChannel * StrideH * StrideW");
+      "W dim[1] shold be equal to InputChannel * StrideH * StrideW");
 
   if (ctx->IsRuntime()) {
     framework::Variable* x_var =

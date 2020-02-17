@@ -38,7 +38,7 @@ struct GpuLaunchParamConfig {
 inline GpuLaunchParamConfig GetGpuLaunchConfig1D(
     const platform::CUDADeviceContext& context, int element_count) {
   PADDLE_ENFORCE_GT(element_count, 0, platform::errors::InvalidArgument(
-                                          "element count should greater than 0,"
+                                          "element count shold greater than 0,"
                                           " but received value is:%d",
                                           element_count));
 
@@ -47,7 +47,7 @@ inline GpuLaunchParamConfig GetGpuLaunchConfig1D(
   int max_pyhsical_threads = context.GetMaxPhysicalThreadCount();
   int sm = context.GetSMCount();
 
-  // Compute pyhsical threads we need, should small than max sm threads
+  // Compute pyhsical threads we need, shold small than max sm threads
   const int physical_thread_count =
       std::min(max_pyhsical_threads, theory_thread_count);
 
@@ -68,11 +68,11 @@ inline GpuLaunchParamConfig GetGpuLaunchConfig1D(
 inline GpuLaunchParamConfig GetGpuLaunchConfig2D(
     const platform::CUDADeviceContext& context, int xdim, int ydim) {
   PADDLE_ENFORCE_GT(xdim, 0, platform::errors::InvalidArgument(
-                                 "x dim number should greater than 0,"
+                                 "x dim number shold greater than 0,"
                                  " but received value is:%d",
                                  xdim));
   PADDLE_ENFORCE_GT(ydim, 0, platform::errors::InvalidArgument(
-                                 "y dim number should greater than 0,"
+                                 "y dim number shold greater than 0,"
                                  " but received value is:%d",
                                  ydim));
 

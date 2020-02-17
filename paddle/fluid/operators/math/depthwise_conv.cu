@@ -89,10 +89,10 @@ __device__ __inline__ void KernelDepthwiseConvNCHW(
       weight_offset++;
     }
   }
-  int index = batch * output_channels * output_height * output_width +
+  int indice = batch * output_channels * output_height * output_width +
               c_out * output_height * output_width + h_out * output_width +
               w_out;
-  output_data[index] = value;
+  output_data[indice] = value;
 }
 
 // A Cuda kernel to compute the depthwise convolution forward pass
@@ -141,10 +141,10 @@ __device__ __inline__ void KernelDepthwiseConvNHWC(
       weight_offset++;
     }
   }
-  int index = batch * output_channels * output_height * output_width +
+  int indice = batch * output_channels * output_height * output_width +
               h_out * output_width * output_channels + w_out * output_channels +
               c_out;
-  output_data[index] = value;
+  output_data[indice] = value;
 }
 
 template <typename T, int c_filter, bool fuse_relu_before_conv>
@@ -204,17 +204,17 @@ __device__ __inline__ void KernelDepthwiseConvCFilter(
           }
         }
       }
-      int index;
+      int indice;
       if (data_layout != DataLayout::kNHWC) {
-        index = ((batch * gridDim.x + c_out) * output_height + h_out) *
+        indice = ((batch * gridDim.x + c_out) * output_height + h_out) *
                     output_width +
                 w_out;
       } else {
-        index = ((batch * output_height + h_out) * output_width + w_out) *
+        indice = ((batch * output_height + h_out) * output_width + w_out) *
                     gridDim.x +
                 c_out;
       }
-      output_data[index] = value;
+      output_data[indice] = value;
     }
   }
 }
@@ -291,20 +291,20 @@ __device__ __inline__ void KernelDepthwiseConvInputGrad(
       int w_out_end = w_in + padding_width;
 
       T value = 0;
-      int index;
+      int indice;
       if (data_layout != DataLayout::kNHWC) {
-        index =
+        indice =
             ((batch * gridDim.x + c_in) * input_height + h_in) * input_width +
             w_in;
       } else {
-        index =
+        indice =
             ((batch * input_height + h_in) * input_width + w_in) * gridDim.x +
             c_in;
       }
 
       if (fuse_relu_before_conv) {
-        if (input_data[index] <= 0) {
-          input_grad_data[index] = 0;
+        if (input_data[indice] <= 0) {
+          input_grad_data[indice] = 0;
           continue;
         }
       }
@@ -342,7 +342,7 @@ __device__ __inline__ void KernelDepthwiseConvInputGrad(
           }
         }
       }
-      input_grad_data[index] = value;
+      input_grad_data[indice] = value;
     }
   }
 }
@@ -374,19 +374,19 @@ __device__ __inline__ void KernelDepthwiseConvInputGradCFilter(
       int w_out_start = w_in - (c_filter - 1) * dilate_width + padding_width;
 
       T value = 0;
-      int index;
+      int indice;
       if (data_layout != DataLayout::kNHWC) {
-        index =
+        indice =
             ((batch * gridDim.x + c_in) * input_height + h_in) * input_width +
             w_in;
       } else {
-        index =
+        indice =
             ((batch * input_height + h_in) * input_width + w_in) * gridDim.x +
             c_in;
       }
       if (fuse_relu_before_conv) {
-        if (input_data[index] <= 0) {
-          input_grad_data[index] = 0;
+        if (input_data[indice] <= 0) {
+          input_grad_data[indice] = 0;
           continue;
         }
       }
@@ -423,7 +423,7 @@ __device__ __inline__ void KernelDepthwiseConvInputGradCFilter(
           }
         }
       }
-      input_grad_data[index] = value;
+      input_grad_data[indice] = value;
     }
   }
 }

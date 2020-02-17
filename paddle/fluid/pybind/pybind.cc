@@ -167,7 +167,7 @@ static PyObject *GetPythonAttribute(PyObject *obj, const char *attr_name) {
   // attribute exists before calling PyObject_GetAttrString.
   //
   // Caution: PyObject_GetAttrString would increase reference count of PyObject.
-  // Developer should call Py_DECREF manually after the attribute is not used.
+  // Developer shold call Py_DECREF manually after the attribute is not used.
   if (PyObject_HasAttrString(obj, attr_name)) {
     return PyObject_GetAttrString(obj, attr_name);
   } else {
@@ -228,7 +228,7 @@ static std::vector<std::string> inline GetNameList(
       Py_DECREF(py_name);
     }
   } else {
-    PADDLE_THROW("Set parameter should be a list");
+    PADDLE_THROW("Set parameter shold be a list");
   }
 
   return vec_res;
@@ -278,7 +278,7 @@ static void inline CreateVariableIfNotExit(
       }
     }
   } else {
-    PADDLE_THROW("Set parameter should be a list");
+    PADDLE_THROW("Set parameter shold be a list");
   }
 
   return;
@@ -885,7 +885,7 @@ PYBIND11_MODULE(core_noavx, m) {
         self.set_rows(new_rows);
 #endif
            })
-      .def("sync_index", [](SelectedRows &instance) { instance.SyncIndex(); })
+      .def("sync_indice", [](SelectedRows &instance) { instance.SyncIndex(); })
       .def("rows", [](SelectedRows &self) {
         auto rows = self.rows();
         std::vector<int64_t> new_rows;
@@ -1054,7 +1054,7 @@ All parameter, weight, gradient are variables in Paddle.
         py::return_value_policy::reference);
 
   //! @note: Be careful! PyBind will return std::string as an unicode, not
-  //! Python str. If you want a str object, you should cast them in Python.
+  //! Python str. If you want a str object, you shold cast them in Python.
   m.def("get_all_op_protos", []() -> std::vector<py::bytes> {
     std::vector<py::bytes> ret_values;
     for (auto &iter : OpInfoMap::Instance().map()) {
@@ -1277,7 +1277,7 @@ All parameter, weight, gradient are variables in Paddle.
     The host operating system will not paging and exchanging the memory.
     It can be accessed through direct memory access technology to speed up the copy of data between the host and GPU.
     For more information on CUDA data transfer and `pinned memory`,
-    please refer to `official document <https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#pinned-memory>`_ .
+    please refer to `official document <https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/indice.html#pinned-memory>`_ .
 
     Examples:
         .. code-block:: python
@@ -1480,7 +1480,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("items", [](framework::LoDRankTable &table) {
         std::vector<std::pair<size_t, size_t>> res;
         for (auto &item : table.items()) {
-          res.push_back({item.index, item.length});
+          res.push_back({item.indice, item.length});
         }
         return res;
       });
@@ -1719,7 +1719,7 @@ All parameter, weight, gradient are variables in Paddle.
                     1. If you fetch data when calling the 'run', the ParallelExecutor
                        will clean up the temp variables at the end of the current iteration.
                     2. In some NLP model, it may cause the GPU memory is insufficient,
-                       in this case, you should reduce `num_iteration_per_drop_scope`.
+                       in this case, you shold reduce `num_iteration_per_drop_scope`.
               )DOC")
       .def_property(
           "num_iteration_per_run",
@@ -1807,7 +1807,7 @@ All parameter, weight, gradient are variables in Paddle.
           R"DOC((fluid.BuildStrategy.ReduceStrategy, optional): there are two reduce
                 strategies in ParallelExecutor, AllReduce and Reduce. If you want
                 that all the parameters' optimization are done on all devices independently,
-                you should choose AllReduce; otherwise, if you choose Reduce, all the parameters'
+                you shold choose AllReduce; otherwise, if you choose Reduce, all the parameters'
                 optimization will be evenly distributed to different devices, and then
                 broadcast the optimized parameter to other devices.
                 Default is 'AllReduce'.
@@ -1849,7 +1849,7 @@ All parameter, weight, gradient are variables in Paddle.
                         # NOTE: If you use CPU to run the program, you need
                         # to specify the CPU_NUM, otherwise, fluid will use
                         # all the number of the logic core as the CPU_NUM,
-                        # in that case, the batch size of the input should be
+                        # in that case, the batch size of the input shold be
                         # greater than CPU_NUM, if not, the process will be
                         # failed by an exception.
                         if not use_cuda:
@@ -2204,7 +2204,7 @@ All parameter, weight, gradient are variables in Paddle.
              return self.CreatePassesFromStrategy(true);
            },
            R"DOC(Allow user to customized passes. Normally model-specific
-                optimization passes should be defined in this way. BuildStrategy
+                optimization passes shold be defined in this way. BuildStrategy
                 cannot be updated after being finalized.)DOC");
 
   pe.def(py::init<const std::vector<platform::Place> &,

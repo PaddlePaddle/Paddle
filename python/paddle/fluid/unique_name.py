@@ -112,7 +112,7 @@ def generate(key):
 # increase in a way like `conv_0.tmp`, `conv_1.tmp`, .... 
 # Not find a better way to fix this bug in dygraph mode. In TF,
 # variable name is meaningless in eager execution mode, and in
-# PyTorch, there is no variable name at all. Maybe we should
+# PyTorch, there is no variable name at all. Maybe we shold
 # discard variable name in dygraph mode.
 #
 # Another concern is that save/load interfaces. Usually, user

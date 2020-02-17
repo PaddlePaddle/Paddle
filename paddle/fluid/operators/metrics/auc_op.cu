@@ -30,9 +30,9 @@ using LoDTensor = framework::LoDTensor;
 __global__ void ClearObsoleteDataKernel(int64_t *pos, int64_t *neg,
                                         const int bucket_length,
                                         const int slide_steps) {
-  int cur_step_index =
+  int cur_step_indice =
       static_cast<int>(pos[(slide_steps + 1) * bucket_length]) % slide_steps;
-  int cur_step_begin = cur_step_index * bucket_length;
+  int cur_step_begin = cur_step_indice * bucket_length;
   int sum_step_begin = slide_steps * bucket_length;
   CUDA_KERNEL_LOOP(i, bucket_length) {
     pos[sum_step_begin + i] -= pos[cur_step_begin + i];
@@ -44,9 +44,9 @@ __global__ void ClearObsoleteDataKernel(int64_t *pos, int64_t *neg,
 __global__ void UpdateSumDataKernel(int64_t *pos, int64_t *neg,
                                     const int bucket_length,
                                     const int slide_steps) {
-  int cur_step_index =
+  int cur_step_indice =
       static_cast<int>(pos[(slide_steps + 1) * bucket_length]) % slide_steps;
-  int cur_step_begin = cur_step_index * bucket_length;
+  int cur_step_begin = cur_step_indice * bucket_length;
   int sum_step_begin = slide_steps * bucket_length;
   CUDA_KERNEL_LOOP(i, bucket_length) {
     pos[sum_step_begin + i] += pos[cur_step_begin + i];
@@ -62,10 +62,10 @@ __global__ void AddDataKernel(const int64_t *label_data, const T *pred_data,
                               const int slide_steps) {
   int cur_step_begin = 0;
   if (slide_steps > 0) {
-    int cur_step_index =
+    int cur_step_indice =
         static_cast<int>(pos[(slide_steps + 1) * (1 + num_thresholds)]) %
         slide_steps;
-    cur_step_begin = cur_step_index * (1 + num_thresholds);
+    cur_step_begin = cur_step_indice * (1 + num_thresholds);
   }
   CUDA_KERNEL_LOOP(i, numel) {
     auto predict_data = pred_data[i * inference_width + (inference_width - 1)];
@@ -185,12 +185,12 @@ class AucCUDAKernel : public framework::OpKernel<T> {
           origin_stat_pos, origin_stat_neg, batch_size, slide_steps);
       return;
     }
-    // the last number of origin_stat_pos store the index should be used in
+    // the last number of origin_stat_pos store the indice shold be used in
     // current step
-    int cur_step_index =
+    int cur_step_indice =
         static_cast<int>(origin_stat_pos[(slide_steps + 1) * bucket_length]) %
         slide_steps;
-    int cur_step_begin = cur_step_index * bucket_length;
+    int cur_step_begin = cur_step_indice * bucket_length;
     int sum_step_begin = slide_steps * bucket_length;
 
     ClearObsoleteDataKernel<<<(bucket_length + PADDLE_CUDA_NUM_THREADS - 1) /

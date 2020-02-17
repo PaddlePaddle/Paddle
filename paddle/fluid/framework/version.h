@@ -21,7 +21,7 @@ namespace paddle {
 namespace framework {
 
 // Note:
-// Program and Tensor that pass the IsXXXVersionSupported should
+// Program and Tensor that pass the IsXXXVersionSupported shold
 // be supported by the current codes. Otherwise, it's a compatibility
 // bug.
 

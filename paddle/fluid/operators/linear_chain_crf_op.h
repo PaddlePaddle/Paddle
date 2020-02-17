@@ -26,7 +26,7 @@ static inline T NormalizeL1(T* x, size_t len) {
   for (size_t i = 0; i < len; ++i) sum += x[i];
   // (This comment is from the old LinearChainCRFLayer.)
   // Right now, we just bet that sum won't be zero. If this really happens, we
-  // will figure out what should be done then.
+  // will figure out what shold be done then.
   PADDLE_ENFORCE(sum,
                  "The unnormalized probabilities of all possible unfinished "
                  "sequences must be greater than 0.");
@@ -111,7 +111,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     // Resize the output tensor to its correct dimension.
     ll->Resize({seq_num, 1});
     ll->mutable_data<T>(platform::CPUPlace());
-    // Now, all the inputs and outputs should be on the CPU memory.
+    // Now, all the inputs and outputs shold be on the CPU memory.
     Tensor emission_row_max;
     emission_row_max.mutable_data<T>(
         framework::make_ddim({static_cast<int64_t>(batch_size), 1}),
@@ -267,7 +267,7 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
       transition_grad->mutable_data<T>(platform::CPUPlace());
       math::set_constant(ctx.device_context(), transition_grad, 0.);
     }
-    // Now, all the inputs and outputs should be on the CPU memory.
+    // Now, all the inputs and outputs shold be on the CPU memory.
     auto emission_dims = emission_exps->dims();
     // Beta is the memo table used in dynamic programming to calculate the
     // backwark vectors. For a backward vector i (the i-th row of beta), it

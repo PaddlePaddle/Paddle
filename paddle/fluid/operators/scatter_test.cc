@@ -22,18 +22,18 @@ limitations under the License. */
 
 TEST(scatter, ScatterUpdate) {
   paddle::framework::Tensor src;
-  paddle::framework::Tensor index;
+  paddle::framework::Tensor indice;
   paddle::framework::Tensor output;
 
   auto* p_src = src.mutable_data<float>(paddle::framework::make_ddim({1, 4}),
                                         paddle::platform::CPUPlace());
-  auto* p_index = index.mutable_data<int>(paddle::framework::make_ddim({1}),
+  auto* p_indice = indice.mutable_data<int>(paddle::framework::make_ddim({1}),
                                           paddle::platform::CPUPlace());
 
   for (size_t i = 0; i < 4; ++i) {
     p_src[i] = static_cast<float>(i);
   }
-  p_index[0] = 1;
+  p_indice[0] = 1;
 
   auto* p_output = output.mutable_data<float>(
       paddle::framework::make_ddim({4, 4}), paddle::platform::CPUPlace());
@@ -44,7 +44,7 @@ TEST(scatter, ScatterUpdate) {
 
   auto* cpu_place = new paddle::platform::CPUPlace();
   paddle::platform::CPUDeviceContext ctx(*cpu_place);
-  paddle::operators::ScatterAssign<float>(ctx, src, index, &output);
+  paddle::operators::ScatterAssign<float>(ctx, src, indice, &output);
 
   for (size_t i = 0; i < 4; ++i) EXPECT_EQ(p_output[i], 0.0f);
   for (size_t i = 0; i < 4; ++i) EXPECT_EQ(output.data<float>()[i], 0.0f);

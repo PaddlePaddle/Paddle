@@ -58,13 +58,13 @@ class ConditionalOp : public framework::OperatorBase {
   bool ScalarCondition(
       const std::vector<const framework::LoDTensor *> &ips) const {
     if (!(ips.size() == 1UL && ips[0]->IsInitialized())) {
-      PADDLE_THROW("should have one initialized input as condition");
+      PADDLE_THROW("shold have one initialized input as condition");
     }
 
     PADDLE_ENFORCE(ips[0]->type() == framework::proto::VarType::BOOL &&
                        ips[0]->numel() == 1,
-                   "condition input's data type should be bool, "
-                   "numel should be 1, actual numel is %d",
+                   "condition input's data type shold be bool, "
+                   "numel shold be 1, actual numel is %d",
                    ips[0]->numel());
     bool res = false;
     if (platform::is_gpu_place(ips[0]->place())) {

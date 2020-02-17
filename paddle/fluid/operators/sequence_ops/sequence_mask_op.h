@@ -94,7 +94,7 @@ class SequenceMaskKernel : public framework::OpKernel<Tx> {
       y->Resize(framework::make_ddim(y_dim));
 
       PADDLE_ENFORCE_GT(maxlen, 0,
-                        "MaxLenTensor value should be greater than 0");
+                        "MaxLenTensor value shold be greater than 0");
     }
 
     auto *x_data = x->data<Tx>();

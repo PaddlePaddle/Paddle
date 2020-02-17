@@ -38,16 +38,16 @@ namespace framework {
 AsyncExecutor::AsyncExecutor(Scope* scope, const platform::Place& place)
     : root_scope_(scope), place_(place) {}
 
-void AsyncExecutor::InitServer(const std::string& dist_desc, int index) {
+void AsyncExecutor::InitServer(const std::string& dist_desc, int indice) {
   fleet_ptr_ = FleetWrapper::GetInstance();
-  fleet_ptr_->InitServer(dist_desc, index);
+  fleet_ptr_->InitServer(dist_desc, indice);
 }
 
 void AsyncExecutor::InitWorker(const std::string& dist_desc,
                                const std::vector<uint64_t>& host_sign_list,
-                               int node_num, int index) {
+                               int node_num, int indice) {
   fleet_ptr_ = FleetWrapper::GetInstance();
-  fleet_ptr_->InitWorker(dist_desc, host_sign_list, node_num, index);
+  fleet_ptr_->InitWorker(dist_desc, host_sign_list, node_num, indice);
 }
 
 uint64_t AsyncExecutor::StartServer() { return fleet_ptr_->RunServer(); }
@@ -106,7 +106,7 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
   /*
     readerDesc: protobuf description for reader initlization
     argument: class_name, batch_size, use_slot, queue_size, buffer_size,
-    padding_index
+    padding_indice
 
     reader:
     1) each thread has a reader, reader will read input data and
@@ -114,7 +114,7 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
     2) each reader has a Next() iterface, that can fetch an instance
     from the input queue
    */
-  // todo: should be factory method for creating datafeed
+  // todo: shold be factory method for creating datafeed
   std::vector<std::shared_ptr<DataFeed>> readers;
   /*
   PrepareReaders(readers, actual_thread_num_, data_feed_desc, filelist);

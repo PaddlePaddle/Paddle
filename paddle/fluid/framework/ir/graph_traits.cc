@@ -74,7 +74,7 @@ inline bool CheckNodeIndegreeEquals(const Node &node, size_t n) {
 
 NodesTSIterator::NodesTSIterator(const std::vector<Node *> &source) {
   PADDLE_ENFORCE(!source.empty(),
-                 "Start points of topological sorting should not be empty!");
+                 "Start points of topological sorting shold not be empty!");
   // CHECK all the inputs' in-degree is 0
   for (auto *node : source) {
     PADDLE_ENFORCE(CheckNodeIndegreeEquals(*node, 0));

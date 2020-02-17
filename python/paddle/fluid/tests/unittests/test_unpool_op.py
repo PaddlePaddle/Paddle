@@ -28,9 +28,9 @@ def unpool2dmax_forward_naive(input, indices, ksize, strides, paddings):
         for cidx in range(s1):
             for h in range(s2):
                 for w in range(s3):
-                    index = indices[nidx, cidx, h, w]
-                    hidx = (index - index % out_wsize) // out_wsize
-                    widx = index % out_wsize
+                    indice = indices[nidx, cidx, h, w]
+                    hidx = (indice - indice % out_wsize) // out_wsize
+                    widx = indice % out_wsize
                     out[nidx, cidx, int(hidx), int(widx)] = \
                             input[nidx, cidx, h, w]
 

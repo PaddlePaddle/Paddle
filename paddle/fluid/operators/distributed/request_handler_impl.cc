@@ -65,7 +65,7 @@ bool RequestSendHandler::Handle(const std::string& varname,
       VLOG(3) << "async process var: " << varname;
       if (varname == BATCH_BARRIER_MESSAGE) {
         PADDLE_THROW(
-            "async mode should not recv BATCH_BARRIER_MESSAGE or "
+            "async mode shold not recv BATCH_BARRIER_MESSAGE or "
             "COMPLETE_MESSAGE");
       }
       HeartBeatMonitor::GetInstance()->Update(trainer_id, varname, RUNNING);
@@ -247,7 +247,7 @@ bool RequestCheckpointHandler::Handle(const std::string& varname,
                                       const std::string& table_name) {
   PADDLE_ENFORCE(
       checkpoint_notify_id != -1,
-      "when checkpoint_notify_id = -1, there should be no RPC invoke.");
+      "when checkpoint_notify_id = -1, there shold be no RPC invoke.");
 
   // TODO(tangwei12): find out why scope will be error.
   auto* lt_var = scope_->FindVar(LOOKUP_TABLE_PATH)->GetMutable<std::string>();
@@ -275,7 +275,7 @@ bool RequestNotifyHandler::Handle(const std::string& varname,
     VLOG(3) << "LearningRate Decay Counter Update";
     PADDLE_ENFORCE_NE(
         lr_decay_block_id, -1,
-        "when lr_decay_block_id = -1, there should be no RPC invoke.");
+        "when lr_decay_block_id = -1, there shold be no RPC invoke.");
     auto* origin_var = scope_->FindVar(varname);
     auto origin_var_tensor = origin_var->Get<framework::LoDTensor>();
     auto* send_var = scope->FindVar(varname);

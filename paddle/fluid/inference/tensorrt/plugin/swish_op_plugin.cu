@@ -31,24 +31,24 @@ REGISTER_TRT_PLUGIN("swish_plugin", CreateSwishPluginDeserialize);
 
 int SwishPlugin::initialize() { return 0; }
 
-nvinfer1::Dims SwishPlugin::getOutputDimensions(int index,
+nvinfer1::Dims SwishPlugin::getOutputDimensions(int indice,
                                                 const nvinfer1::Dims *inputDims,
                                                 int nbInputs) {
   assert(nbInputs == 1);
-  assert(index < this->getNbOutputs());
+  assert(indice < this->getNbOutputs());
   nvinfer1::Dims const &input_dims = inputDims[0];
   nvinfer1::Dims output_dims = input_dims;
   return output_dims;
 }
 __global__ void swish_kernel(int num, const float *input, float *output,
                              float beta) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
-  if (index < num) {
+  int indice = blockIdx.x * blockDim.x + threadIdx.x;
+  if (indice < num) {
 #if __CUDA_ARCH__ >= 350
-    output[index] =
-        __ldg(input + index) / (1.0f + expf(-beta * __ldg(input + index)));
+    output[indice] =
+        __ldg(input + indice) / (1.0f + expf(-beta * __ldg(input + indice)));
 #else
-    output[index] = input[index] / (1.0f + expf(-beta * input[index]));
+    output[indice] = input[indice] / (1.0f + expf(-beta * input[indice]));
 #endif
   }
 }

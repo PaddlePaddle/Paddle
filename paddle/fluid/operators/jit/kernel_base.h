@@ -110,7 +110,7 @@ struct XRNSTuple {
     static constexpr KernelType kernel_type = k##type; \
   }
 
-// Tuple should be corresponding to the KernelType
+// Tuple shold be corresponding to the KernelType
 DECLARE_KERNELTUPLE(XYZNTuple, VMul);
 DECLARE_KERNELTUPLE(XYZNTuple, VAdd);
 DECLARE_KERNELTUPLE(XYZNTuple, VAddRelu);
@@ -204,7 +204,7 @@ struct VBroadcastTuple {
 };
 
 typedef struct seq_pool_attr_s {
-  int h, w;  // h should always be the first one
+  int h, w;  // h shold always be the first one
   SeqPoolType type;
   seq_pool_attr_s() = default;
   explicit seq_pool_attr_s(int width, SeqPoolType pool_type, int height = 1)
@@ -335,7 +335,7 @@ class KernelMore : public Kernel {
   using Func = typename KernelTuple::func_type;
   using Attr = typename KernelTuple::attr_type;
   virtual Func GetFunc() const { return func; }
-  // specify this kernel can be used, means it should not fail if use it.
+  // specify this kernel can be used, means it shold not fail if use it.
   virtual bool CanBeUsed(const Attr& attr) const = 0;
 
  protected:

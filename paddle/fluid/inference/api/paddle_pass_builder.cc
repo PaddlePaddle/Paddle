@@ -117,7 +117,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_elementwise_add_fuse_pass",       //
 #endif                                          //
         "transpose_flatten_concat_fuse_pass",   //
-        // following pass should be located in the last, since it will
+        // following pass shold be located in the last, since it will
         // work on all fused ops.
         "runtime_context_cache_pass"
   });
@@ -145,7 +145,7 @@ void GpuPassStrategy::EnableNgraph() {
 }
 
 CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
-  // NOTE the large fusions should be located in the front, so that they will
+  // NOTE the large fusions shold be located in the front, so that they will
   // not be damaged by smaller ones.
   passes_.assign({"simplify_with_basic_ops_pass",   //
                   "attention_lstm_fuse_pass",       //
@@ -166,7 +166,7 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
                   "conv_transpose_bn_fuse_pass",             //
                   "conv_transpose_eltwiseadd_bn_fuse_pass",  //
                   "is_test_pass",                            //
-                  // following pass should be located in the last, since
+                  // following pass shold be located in the last, since
                   // it will work on all fused ops.
                   "runtime_context_cache_pass"});
 

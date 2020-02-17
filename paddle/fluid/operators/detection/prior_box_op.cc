@@ -27,9 +27,9 @@ class PriorBoxOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(Input) of PriorBoxOp should not be null.");
+                   "Input(Input) of PriorBoxOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Image"),
-                   "Input(Image) of PriorBoxOp should not be null.");
+                   "Input(Image) of PriorBoxOp shold not be null.");
 
     auto image_dims = ctx->GetInputDim("Image");
     auto input_dims = ctx->GetInputDim("Input");
@@ -156,13 +156,13 @@ class PriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
                    "Prior boxes step across width, 0.0 for auto calculation.")
         .SetDefault(0.0)
         .AddCustomChecker([](const float& step_w) {
-          PADDLE_ENFORCE_GE(step_w, 0.0, "step_w should be larger than 0.");
+          PADDLE_ENFORCE_GE(step_w, 0.0, "step_w shold be larger than 0.");
         });
     AddAttr<float>("step_h",
                    "Prior boxes step across height, 0.0 for auto calculation.")
         .SetDefault(0.0)
         .AddCustomChecker([](const float& step_h) {
-          PADDLE_ENFORCE_GE(step_h, 0.0, "step_h should be larger than 0.");
+          PADDLE_ENFORCE_GE(step_h, 0.0, "step_h shold be larger than 0.");
         });
 
     AddAttr<float>("offset",
@@ -181,7 +181,7 @@ class PriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddAttr<bool>("use_quantizer",
                   "(bool, default false) "
-                  "Set to true for operators that should be quantized and use "
+                  "Set to true for operators that shold be quantized and use "
                   "int8 kernel. "
                   "Only used on CPU.")
         .SetDefault(false);

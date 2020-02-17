@@ -42,7 +42,7 @@ def tokenize(pattern):
     """
 
     with tarfile.open(paddle.dataset.common.download(URL, 'imdb', MD5)) as tarf:
-        # Note that we should use tarfile.next(), which does
+        # Note that we shold use tarfile.next(), which does
         # sequential access of member files, other than
         # tarfile.extractfile, which does random access and might
         # destroy hard disks.
@@ -66,7 +66,7 @@ def build_dict(pattern, cutoff):
         for word in doc:
             word_freq[word] += 1
 
-    # Not sure if we should prune less-frequent words here.
+    # Not sure if we shold prune less-frequent words here.
     word_freq = [x for x in six.iteritems(word_freq) if x[1] > cutoff]
 
     dictionary = sorted(word_freq, key=lambda x: (-x[1], x[0]))

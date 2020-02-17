@@ -118,7 +118,7 @@ class TestBasicModel(TranspilerTest):
 
         trainer, trainer_startup = self.get_trainer()
 
-        # splited var blocks should be in startup program
+        # splited var blocks shold be in startup program
         self.assertTrue("fc_w.block0" in trainer_startup.global_block().vars)
         self.assertTrue("fc_w.block1" in trainer_startup.global_block().vars)
         self.assertTrue("fc_w" in trainer_startup.global_block().vars)
@@ -152,7 +152,7 @@ class TestBasicModel(TranspilerTest):
         # the variable #fc_w will be split into two blocks
         fc_w_var = startup.global_block().var("fc_w.block1")
         self.assertEqual(fc_w_var.shape, (500, 1000))
-        # all parameters should be optimized on pserver
+        # all parameters shold be optimized on pserver
 
         pserver_params = []
         for prog in [pserver, pserver2]:
@@ -203,7 +203,7 @@ class TestBasicModelWithLargeBlockSize(TranspilerTest):
         # the variable #fc_w will be split into two blocks
         fc_w_var = startup2.global_block().var("fc_w")
         self.assertEqual(fc_w_var.shape, (1000, 1000))
-        # all parameters should be optimized on pserver
+        # all parameters shold be optimized on pserver
 
         pserver_params = []
         for prog in [pserver, pserver2]:

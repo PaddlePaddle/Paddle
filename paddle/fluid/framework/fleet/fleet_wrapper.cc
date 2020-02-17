@@ -55,13 +55,13 @@ void FleetWrapper::SetClient2ClientConfig(int request_timeout_ms,
   client2client_max_retry_ = max_retry;
 }
 
-void FleetWrapper::InitServer(const std::string& dist_desc, int index) {
+void FleetWrapper::InitServer(const std::string& dist_desc, int indice) {
 #ifdef PADDLE_WITH_PSLIB
   if (!is_initialized_) {
     VLOG(3) << "Going to init server";
     pslib_ptr_ = std::shared_ptr<paddle::distributed::PSlib>(
         new paddle::distributed::PSlib());
-    pslib_ptr_->init_server(dist_desc, index);
+    pslib_ptr_->init_server(dist_desc, indice);
     is_initialized_ = true;
   } else {
     VLOG(3) << "Server can be initialized only once";
@@ -71,7 +71,7 @@ void FleetWrapper::InitServer(const std::string& dist_desc, int index) {
 
 void FleetWrapper::InitWorker(const std::string& dist_desc,
                               const std::vector<uint64_t>& host_sign_list,
-                              int node_num, int index) {
+                              int node_num, int indice) {
 #ifdef PADDLE_WITH_PSLIB
   if (!is_initialized_) {
     VLOG(3) << "Going to init worker";
@@ -79,7 +79,7 @@ void FleetWrapper::InitWorker(const std::string& dist_desc,
         new paddle::distributed::PSlib());
     pslib_ptr_->init_worker(dist_desc,
                             const_cast<uint64_t*>(host_sign_list.data()),
-                            node_num, index);
+                            node_num, indice);
     is_initialized_ = true;
   } else {
     VLOG(3) << "Worker can be initialized only once";
@@ -310,8 +310,8 @@ void FleetWrapper::PullSparseVarsSync(
   fea_keys->clear();
   fea_keys->resize(0);
   fea_keys->reserve(MAX_FEASIGN_NUM);
-  for (size_t var_index = 0; var_index < var_names.size(); ++var_index) {
-    const std::string& name = var_names[var_index];
+  for (size_t var_indice = 0; var_indice < var_names.size(); ++var_indice) {
+    const std::string& name = var_names[var_indice];
     Variable* var = scope.FindVar(name);
     if (var == nullptr) {
       continue;
@@ -322,7 +322,7 @@ void FleetWrapper::PullSparseVarsSync(
     size_t len = tensor->numel();
 
     // skip slots which do not have embedding
-    const std::string& emb_name = var_emb_names[var_index];
+    const std::string& emb_name = var_emb_names[var_indice];
     Variable* emb_var = scope.FindVar(emb_name);
     if (emb_var == nullptr) {
       continue;
@@ -473,8 +473,8 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
   int offset = 2;
   int slot_offset = 0;
   int grad_dim = emb_dim;
-  int show_index = 0;
-  int click_index = 1;
+  int show_indice = 0;
+  int click_indice = 1;
   if (use_cvm) {
     offset = 0;
     grad_dim = emb_dim - 2;
@@ -485,8 +485,8 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
   }
   if (dump_slot) {
     slot_offset = 1;
-    show_index = 1;
-    click_index = 2;
+    show_indice = 1;
+    click_indice = 2;
   }
   CHECK_GE(grad_dim, 0);
 
@@ -547,8 +547,8 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
         CHECK(fea_idx < fea_labels.size());
         memcpy((*push_values)[fea_idx].data() + offset + slot_offset, g,
                sizeof(float) * emb_dim);
-        (*push_values)[fea_idx][show_index] = 1.0f;
-        (*push_values)[fea_idx][click_index] =
+        (*push_values)[fea_idx][show_indice] = 1.0f;
+        (*push_values)[fea_idx][click_indice] =
             static_cast<float>(fea_labels[fea_idx]);
       }
       if (dump_slot) {

@@ -31,10 +31,10 @@ void BroadcastOpHandle::RunImpl() {
   auto out_var_handles = DynamicCast<VarHandle>(outputs_);
 
   PADDLE_ENFORCE_EQ(in_var_handles.size(), 1UL,
-                    "The number of input should be one.");
+                    "The number of input shold be one.");
   PADDLE_ENFORCE_EQ(
       out_var_handles.size(), places_.size(),
-      "The number of output should equal to the number of places.");
+      "The number of output shold equal to the number of places.");
 
   VarHandle *in_var_handle = in_var_handles[0];
 

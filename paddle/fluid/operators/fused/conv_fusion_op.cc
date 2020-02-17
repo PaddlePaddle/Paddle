@@ -66,9 +66,9 @@ class Conv2DFusionOp : public operators::ConvOp {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
-                      "Input(Input) of ConvOp should not be null.");
+                      "Input(Input) of ConvOp shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("Filter"), true,
-                      "Input(Filter) of ConvOp should not be null.");
+                      "Input(Filter) of ConvOp shold not be null.");
     auto in_dims = ctx->GetInputDim("Input");
     auto filter_dims = ctx->GetInputDim("Filter");
 
@@ -85,14 +85,14 @@ class Conv2DFusionOp : public operators::ConvOp {
 
     PADDLE_ENFORCE_EQ(
         in_dims.size() == 4 || in_dims.size() == 5, true,
-        "ShapeError: Conv_fusion input should be 4-D or 5-D tensor. But "
+        "ShapeError: Conv_fusion input shold be 4-D or 5-D tensor. But "
         "received: %u-D Tensor,"
         "the shape of Conv_fusion input is [%s]",
         in_dims.size(), in_dims);
 
     PADDLE_ENFORCE_EQ(in_dims.size(), filter_dims.size(),
                       "ShapeError: Conv_fusion input dimension and filter "
-                      "dimension should be the "
+                      "dimension shold be the "
                       "equal."
                       "But received: the shape of Conv_fusion input is [%s], "
                       "input dimension of Conv_fusion "
@@ -118,7 +118,7 @@ class Conv2DFusionOp : public operators::ConvOp {
 
     PADDLE_ENFORCE_EQ(
         input_channels, filter_dims[1] * groups,
-        "ShapeError: The number of input channels should be equal to filter "
+        "ShapeError: The number of input channels shold be equal to filter "
         "channels * groups. But received: the input channels is [%d], the shape"
         "of input is [%s], the filter channel is [%d], the shape of filter is "
         "[%s],"
@@ -126,7 +126,7 @@ class Conv2DFusionOp : public operators::ConvOp {
         in_dims[1], in_dims, filter_dims[1], filter_dims, groups);
     PADDLE_ENFORCE_EQ(
         filter_dims[0] % groups, 0,
-        "ShapeError: The number of output channels should be divided by groups."
+        "ShapeError: The number of output channels shold be divided by groups."
         "But received: the output channels is [%d], the shape of filter is [%s]"
         "(the first dimension of filter is output channel), the groups is [%d]",
         filter_dims[0], filter_dims, groups);
@@ -152,14 +152,14 @@ class Conv2DFusionOp : public operators::ConvOp {
     }
 
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Output"), true,
-                      "Output(Output) of ConvOp should not be null.");
+                      "Output(Output) of ConvOp shold not be null.");
     ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
 
     std::vector<int> channels =
         ctx->Attrs().Get<std::vector<int>>("split_channels");
     if (channels.size()) {
       PADDLE_ENFORCE_EQ(ctx->HasOutputs("Outputs"), true,
-                        "Output(Outputs) of ConvOp should not be null.");
+                        "Output(Outputs) of ConvOp shold not be null.");
       std::vector<framework::DDim> oshapes;
       oshapes.reserve(channels.size());
       for (size_t i = 0; i < channels.size(); ++i) {

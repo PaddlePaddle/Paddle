@@ -58,7 +58,7 @@ class TrainTaskConfig(object):
     # If provided, continue training from the checkpoint.
     ckpt_path = None
     # the parameter to initialize the learning rate scheduler.
-    # It should be provided if use checkpoints, since the checkpoint doesn't
+    # It shold be provided if use checkpoints, since the checkpoint doesn't
     # include the training step counter currently.
     start_step = 0
     # the frequency to save trained models.
@@ -89,11 +89,11 @@ class ModelHyperParams(object):
     src_vocab_size = 10000
     # size of target word dictionay
     trg_vocab_size = 10000
-    # index for <bos> token
+    # indice for <bos> token
     bos_idx = 0
-    # index for <eos> token
+    # indice for <eos> token
     eos_idx = 1
-    # index for <unk> token
+    # indice for <unk> token
     unk_idx = 2
     # max length of sequences deciding the size of position encoding table.
     max_length = 4
@@ -122,7 +122,7 @@ class ModelHyperParams(object):
     # random seed used in dropout for CE.
     dropout_seed = None
     # the flag indicating whether to share embedding and softmax weights.
-    # vocabularies in source and target should be same for weight sharing.
+    # vocabularies in source and target shold be same for weight sharing.
     weight_sharing = True
 
 
@@ -458,7 +458,7 @@ class MultiHeadAttentionLayer(Layer):
 
         # combine heads
         if len(out.shape) != 4:
-            raise ValueError("Input(x) should be a 4-D Tensor.")
+            raise ValueError("Input(x) shold be a 4-D Tensor.")
         trans_x = fluid.layers.transpose(out, perm=[0, 2, 1, 3])
         final_out = fluid.layers.reshape(
             x=trans_x,
@@ -881,7 +881,7 @@ class TransFormer(Layer):
         self._trg_vocab_size = trg_vocab_size
         if weight_sharing:
             assert src_vocab_size == trg_vocab_size, (
-                "Vocabularies in source and target should be same for weight sharing."
+                "Vocabularies in source and target shold be same for weight sharing."
             )
         self._wrap_encoder_layer = WrapEncoderLayer(
             src_vocab_size,

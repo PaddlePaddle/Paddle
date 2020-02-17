@@ -24,19 +24,19 @@ namespace operators {
 void FusionSeqConvEltAddReluOp::InferShape(
     framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE(ctx->HasInput("X"),
-                 "Input(X) of FusionSeqConvEltAddReluOp should not be null.");
+                 "Input(X) of FusionSeqConvEltAddReluOp shold not be null.");
   PADDLE_ENFORCE(
       ctx->HasInput("Filter"),
-      "Input(Filter) of FusionSeqConvEltAddReluOp should not be null.");
+      "Input(Filter) of FusionSeqConvEltAddReluOp shold not be null.");
   PADDLE_ENFORCE(
       ctx->HasInput("Bias"),
-      "Input(Bias) of FusionSeqConvEltAddReluOp should not be null.");
+      "Input(Bias) of FusionSeqConvEltAddReluOp shold not be null.");
   PADDLE_ENFORCE(
       ctx->HasOutput("Out"),
-      "Output(Out) of FusionSeqConvEltAddReluOp should not be null.");
+      "Output(Out) of FusionSeqConvEltAddReluOp shold not be null.");
   PADDLE_ENFORCE(
       ctx->HasOutput("ColMat"),
-      "Output(ColMat) of FusionSeqConvEltAddReluOp should not be null.");
+      "Output(ColMat) of FusionSeqConvEltAddReluOp shold not be null.");
 
   auto x_dims = ctx->GetInputDim("X");
   auto w_dims = ctx->GetInputDim("Filter");
@@ -45,14 +45,14 @@ void FusionSeqConvEltAddReluOp::InferShape(
       ctx->Attrs().Get<int>("contextStride") == 1,
       "Currently, FusionSeqConvEltAddReluOp only supports contextStride=1.");
   PADDLE_ENFORCE(x_dims.size() == 2 && w_dims.size() == 2,
-                 "Input(X, Filter) should be 2-D tensor.");
+                 "Input(X, Filter) shold be 2-D tensor.");
   PADDLE_ENFORCE(x_dims.size() == 2 && w_dims.size() == 2,
-                 "Input(X, Filter) should be 2-D tensor.");
+                 "Input(X, Filter) shold be 2-D tensor.");
   PADDLE_ENFORCE(w_dims[0] == context_length * x_dims[1],
-                 "Filter's height should be context_length * "
+                 "Filter's height shold be context_length * "
                  "input_hidden_size .");
   PADDLE_ENFORCE_GT(context_length + ctx->Attrs().Get<int>("contextStart"), 0,
-                    "contextStart size should be smaller than contextLength.");
+                    "contextStart size shold be smaller than contextLength.");
 
   ctx->SetOutputDim("Out", {x_dims[0], w_dims[1]});
   ctx->SetOutputDim("ColMat", {x_dims[0], w_dims[0]});
@@ -71,7 +71,7 @@ void FusionSeqConvEltAddReluOpMaker::Make() {
            "variable-time length input sequence. The underlying tensor in "
            "this LoDTensor is a matrix with shape (T X M), where T is the "
            "total time steps in this mini-batch, M is the dim size of x.");
-  // PaddingData only support false yet, should be ensured at pass.
+  // PaddingData only support false yet, shold be ensured at pass.
   AddInput("Filter",
            "(Tensor) same as the input(Filter) of sequence conv op is an "
            "learnable parameter."
@@ -131,7 +131,7 @@ class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
     auto x_dims = x->dims();
     auto w_dims = w->dims();
     PADDLE_ENFORCE_EQ(b->numel(), w_dims[1],
-                      "bias size should be equal to output feature size.");
+                      "bias size shold be equal to output feature size.");
     PADDLE_ENFORCE_EQ(x_lod.size(), 1UL,
                       "Only support one level sequence now.");
 

@@ -77,7 +77,7 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     roi_batch_id_list.Resize({total_roi_num});
     int* roi_batch_id_data =
         roi_batch_id_list.mutable_data<int>(platform::CPUPlace());
-    int index = 0;
+    int indice = 0;
     int lod_size;
     auto place = boost::get<platform::CUDAPlace>(dev_ctx.GetPlace());
 
@@ -88,7 +88,7 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
       lod_size = roi_lod.size() - 1;
       for (size_t n = 0; n < lod_size; ++n) {
         for (size_t j = roi_lod[n]; j < roi_lod[n + 1]; ++j) {
-          roi_batch_id_data[index++] = n;
+          roi_batch_id_data[indice++] = n;
         }
       }
 
@@ -107,9 +107,9 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     framework::TensorCopy(roi_batch_id_list, dev_ctx.GetPlace(),
                           &roi_batch_id_list_gpu);
 
-    Tensor index_in_t;
+    Tensor indice_in_t;
     int* idx_in =
-        index_in_t.mutable_data<int>({total_roi_num}, dev_ctx.GetPlace());
+        indice_in_t.mutable_data<int>({total_roi_num}, dev_ctx.GetPlace());
     platform::ForRange<platform::CUDADeviceContext> for_range_total(
         dev_ctx, total_roi_num);
     for_range_total(RangeInitFunctor{0, 1, idx_in});
@@ -117,9 +117,9 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     Tensor keys_out_t;
     T* keys_out =
         keys_out_t.mutable_data<T>({total_roi_num}, dev_ctx.GetPlace());
-    Tensor index_out_t;
+    Tensor indice_out_t;
     int* idx_out =
-        index_out_t.mutable_data<int>({total_roi_num}, dev_ctx.GetPlace());
+        indice_out_t.mutable_data<int>({total_roi_num}, dev_ctx.GetPlace());
 
     // Determine temporary device storage requirements
     size_t temp_storage_bytes = 0;
@@ -130,22 +130,22 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     auto d_temp_storage = memory::Alloc(place, temp_storage_bytes);
 
     // Run sorting operation
-    // sort score to get corresponding index
+    // sort score to get corresponding indice
     cub::DeviceRadixSort::SortPairsDescending<T, int>(
         d_temp_storage->ptr(), temp_storage_bytes, concat_scores.data<T>(),
         keys_out, idx_in, idx_out, total_roi_num);
-    index_out_t.Resize({real_post_num});
+    indice_out_t.Resize({real_post_num});
     Tensor sorted_rois;
     sorted_rois.mutable_data<T>({real_post_num, kBBoxSize}, dev_ctx.GetPlace());
     Tensor sorted_batch_id;
     sorted_batch_id.mutable_data<int>({real_post_num}, dev_ctx.GetPlace());
-    GPUGather<T>(dev_ctx, concat_rois, index_out_t, &sorted_rois);
-    GPUGather<int>(dev_ctx, roi_batch_id_list_gpu, index_out_t,
+    GPUGather<T>(dev_ctx, concat_rois, indice_out_t, &sorted_rois);
+    GPUGather<int>(dev_ctx, roi_batch_id_list_gpu, indice_out_t,
                    &sorted_batch_id);
 
-    Tensor batch_index_t;
+    Tensor batch_indice_t;
     int* batch_idx_in =
-        batch_index_t.mutable_data<int>({real_post_num}, dev_ctx.GetPlace());
+        batch_indice_t.mutable_data<int>({real_post_num}, dev_ctx.GetPlace());
     platform::ForRange<platform::CUDADeviceContext> for_range_post(
         dev_ctx, real_post_num);
     for_range_post(RangeInitFunctor{0, 1, batch_idx_in});
@@ -157,17 +157,17 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     temp_storage_bytes = 0;
     cub::DeviceRadixSort::SortPairs<int, int>(
         nullptr, temp_storage_bytes, sorted_batch_id.data<int>(), out_id_data,
-        batch_idx_in, index_out_t.data<int>(), real_post_num);
+        batch_idx_in, indice_out_t.data<int>(), real_post_num);
     // Allocate temporary storage
     d_temp_storage = memory::Alloc(place, temp_storage_bytes);
 
     // Run sorting operation
-    // sort batch_id to get corresponding index
+    // sort batch_id to get corresponding indice
     cub::DeviceRadixSort::SortPairs<int, int>(
         d_temp_storage->ptr(), temp_storage_bytes, sorted_batch_id.data<int>(),
-        out_id_data, batch_idx_in, index_out_t.data<int>(), real_post_num);
+        out_id_data, batch_idx_in, indice_out_t.data<int>(), real_post_num);
 
-    GPUGather<T>(dev_ctx, sorted_rois, index_out_t, fpn_rois);
+    GPUGather<T>(dev_ctx, sorted_rois, indice_out_t, fpn_rois);
 
     Tensor length_lod;
     int* length_lod_data =

@@ -169,7 +169,7 @@ struct is_convertible {
 };
 
 // Format the value by casting to type fmtT.  This default implementation
-// should never be called.
+// shold never be called.
 template <typename T, typename fmtT,
           bool convertible = is_convertible<T, fmtT>::value>
 struct formatValueAsType {
@@ -844,7 +844,7 @@ class FormatListN<0> : public FormatList {
 /// Make type-agnostic format list from list of template arguments.
 ///
 /// The exact return type of this function is an implementation detail and
-/// shouldn't be relied upon.  Instead it should be stored as a FormatListRef:
+/// sholdn't be relied upon.  Instead it shold be stored as a FormatListRef:
 ///
 ///   FormatListRef formatList = makeFormatList( /*...*/ );
 template <typename... Args>

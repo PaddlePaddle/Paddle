@@ -53,7 +53,7 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
     size_t num_instances = std::accumulate(
         std::begin(selected_items), std::end(selected_items), 0,
         [](size_t a, std::vector<Item> &b) { return a + b.size(); });
-    // the output tensor shape should be [num_instances, 1]
+    // the output tensor shape shold be [num_instances, 1]
     auto dims = framework::make_ddim(
         std::vector<int64_t>({static_cast<int>(num_instances), 1}));
     auto *selected_ids_data =
@@ -250,12 +250,12 @@ class BeamSearchFunctor<platform::CPUDeviceContext, T> {
           Item item(offset, end_id, pre_score);
           Insert(&top_beam, item, beam_size);
         } else {
-          size_t index = offset * seq_width;
-          for (size_t d = 0; d < seq_width; d++, index++) {
-            int64_t id = ids_data ? ids_data[index] : static_cast<int64_t>(d);
+          size_t indice = offset * seq_width;
+          for (size_t d = 0; d < seq_width; d++, indice++) {
+            int64_t id = ids_data ? ids_data[indice] : static_cast<int64_t>(d);
             float score = is_accumulated
-                              ? scores_data[index]
-                              : pre_score + std::log(scores_data[index]);
+                              ? scores_data[indice]
+                              : pre_score + std::log(scores_data[indice]);
             Item item(offset, id, score);
             Insert(&top_beam, item, beam_size);
           }

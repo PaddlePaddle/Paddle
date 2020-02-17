@@ -23,46 +23,46 @@ class RmspropOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Param"),
-                   "Input(Param) of RmspropOp should not be null.");
+                   "Input(Param) of RmspropOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("MeanSquare"),
-                   "Input(MeanSquare) of RmspropOp should not be null.");
+                   "Input(MeanSquare) of RmspropOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("LearningRate"),
-                   "Input(LearningRate) of RmspropOp should not be null.");
+                   "Input(LearningRate) of RmspropOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Grad"),
-                   "Input(Grad) of RmspropOp should not be null.");
+                   "Input(Grad) of RmspropOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Moment"),
-                   "Input(Moment) of RmspropOp should not be null.");
+                   "Input(Moment) of RmspropOp shold not be null.");
     PADDLE_ENFORCE(
         ctx->GetInputsVarType("Param").front() ==
             framework::proto::VarType::LOD_TENSOR,
-        "The input var's type should be LoDTensor, but the received is %s",
+        "The input var's type shold be LoDTensor, but the received is %s",
         ctx->Inputs("Param").front(), ctx->GetInputsVarType("Param").front());
 
     PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
-                   "Output(param_out) of RmspropOp should not be null.");
+                   "Output(param_out) of RmspropOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("MomentOut"),
-                   "Output(MomentOut) of RmspropOp should not be null.");
+                   "Output(MomentOut) of RmspropOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("MeanSquareOut"),
-                   "Output(MeanSquareOut) of RmspropOp should not be null.");
+                   "Output(MeanSquareOut) of RmspropOp shold not be null.");
     if (ctx->Attrs().Get<bool>("centered")) {
       PADDLE_ENFORCE(ctx->HasOutput("MeanGradOut"),
-                     "Output(MeanGradOut) of RmspropOp should not be null.");
+                     "Output(MeanGradOut) of RmspropOp shold not be null.");
     }
 
     auto param_dim = ctx->GetInputDim("Param");
     PADDLE_ENFORCE_EQ(
         param_dim, ctx->GetInputDim("Grad"),
-        "Param and grad input of RmspropOp should have the same dimension.");
+        "Param and grad input of RmspropOp shold have the same dimension.");
     PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("Moment"),
                       "Param and Momentum input of RmspropOp "
-                      "should have the same dimension.");
+                      "shold have the same dimension.");
     PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("MeanSquare"),
                       "Param and Momentum input of RmspropOp "
-                      "should have the same dimension.");
+                      "shold have the same dimension.");
 
     auto lr_dim = ctx->GetInputDim("LearningRate");
     PADDLE_ENFORCE_EQ(framework::product(lr_dim), 1,
-                      "Learning Rate should be a scalar.");
+                      "Learning Rate shold be a scalar.");
 
     ctx->SetOutputDim("ParamOut", param_dim);
     ctx->SetOutputDim("MomentOut", param_dim);
@@ -88,7 +88,7 @@ class RmspropOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddInput("LearningRate",
              "(Tensor, default Tensor<float>) "
-             "The learning rate should be a tensor of size 1.");
+             "The learning rate shold be a tensor of size 1.");
     AddInput("Grad",
              "(Tensor, default Tensor<float>) "
              "Input gradient of the parameter.");

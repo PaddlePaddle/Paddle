@@ -46,7 +46,7 @@ class TestFeedData(unittest.TestCase):
 
     def _get_feed_batch_size(self, use_cuda, use_parallel_executor):
         """
-        Returns actual feeded data size. We should multiple the number of
+        Returns actual feeded data size. We shold multiple the number of
         devices when it is using ParallelExecutor
         """
         return self.data_batch_size * self._get_device_count(
@@ -100,7 +100,7 @@ class TestFeedData(unittest.TestCase):
                                                         use_parallel_executor)
                 self.assertEqual(
                     str(shape_mismatch_err.exception),
-                    "The feeded Variable %r should have dimensions = %r, "
+                    "The feeded Variable %r shold have dimensions = %r, "
                     "shape = %r, but received feeded shape %r on each device" %
                     (u'data', len(in_shape_tuple), in_shape_tuple,
                      error_shape_list))

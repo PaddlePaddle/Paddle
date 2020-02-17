@@ -63,7 +63,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
     return;
   }
 
-  // There should not have no-ctr-var between the opt_nodes that link the
+  // There shold not have no-ctr-var between the opt_nodes that link the
   // op_node
   // of opt_nodes.
   if (HasVarDepsBetweenOps(topo_nodes, opt_nodes)) {
@@ -90,7 +90,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
   auto &fused_var_set = result.Get<details::FusedVars>(details::kFusedVars);
   const std::string prefix(details::kFusedVarNamePrefix);
   for (auto &var_name : aux_var_names) {
-    // NOTE: the fused_var_name should be unique.
+    // NOTE: the fused_var_name shold be unique.
     auto fused_var_name = prefix + "_" + fuse_op_type + "_" + var_name + "_" +
                           aux_var_map[var_name][0];
     VLOG(6) << var_name << ": " << fused_var_name;
@@ -110,7 +110,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
         result.Get<details::ParamsAndGrads>(details::kParamsAndDenseGrads);
     PADDLE_ENFORCE_LE(
         params_and_dense_grads.size(), aux_var_map.at(kGrad).size(),
-        "The number of dense gradients should be little than optimizer ops.");
+        "The number of dense gradients shold be little than optimizer ops.");
 
     std::unordered_set<std::string> opt_grad_set(aux_var_map.at(kGrad).size());
     for (auto &p_g : params_and_dense_grads) {
@@ -131,12 +131,12 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
     if (new_grad_idx.size() == 0) {
       if (!result.Has(details::kFusedGrads)) {
         PADDLE_THROW(
-            "The coalesce_grad_tensor_pass should "
+            "The coalesce_grad_tensor_pass shold "
             "be called before this pass.");
       }
       auto &fused_grad = result.Get<details::FusedGrads>(details::kFusedGrads);
       PADDLE_ENFORCE_NE(fused_grad.size(), 0,
-                        "The fused gradient should not be empty.");
+                        "The fused gradient shold not be empty.");
       if (fused_grad.size() > 1) {
         // Note(chenweihang): Because the dtype of those gradients is not
         //   unified,so the number of fused gradients is more than one,
@@ -331,7 +331,7 @@ void FuseOptimizerOpPass::FuseGradientsToContinuousSpace(
       result->GetOrInit<details::PinnedVars>(details::kPinnedVars);
 
   auto vars_info = GetVarInfo(*result);
-  // The Gradients should not be reused during memory optimization.
+  // The Gradients shold not be reused during memory optimization.
   for (auto &grad_var_name : grads) {
     auto iter = vars_info.find(grad_var_name);
     PADDLE_ENFORCE_EQ(iter != vars_info.end(), true,
@@ -342,7 +342,7 @@ void FuseOptimizerOpPass::FuseGradientsToContinuousSpace(
                             "The gradient var node is null.");
     PADDLE_ENFORCE_EQ(
         IsLoDTensorType(iter->second.front()->Var()->GetType()), true,
-        "Currently the gradient type only should be LoDTensor when "
+        "Currently the gradient type only shold be LoDTensor when "
         "fusing optimizer ops.");
     for (auto var : iter->second) {
       pinned_var_set.insert(var->Var()->Name());

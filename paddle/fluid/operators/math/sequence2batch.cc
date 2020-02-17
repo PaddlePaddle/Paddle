@@ -23,9 +23,9 @@ class CopyMatrixRowsFunctor<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& src,
-                  framework::Vector<size_t> index_lod, framework::Tensor* dst,
-                  bool is_src_index) {
-    size_t* index = index_lod.data();
+                  framework::Vector<size_t> indice_lod, framework::Tensor* dst,
+                  bool is_src_indice) {
+    size_t* indice = indice_lod.data();
     auto src_dims = src.dims();
     auto dst_dims = dst->dims();
     PADDLE_ENFORCE_EQ(src_dims.size(), 2UL,
@@ -39,13 +39,13 @@ class CopyMatrixRowsFunctor<platform::CPUDeviceContext, T> {
     auto* src_data = src.data<T>();
     auto* dst_data = dst->data<T>();
     const int sz = width * sizeof(T);
-    if (is_src_index) {
+    if (is_src_indice) {
       for (int i = 0; i < height; ++i) {
-        memcpy(dst_data + i * width, src_data + index[i] * width, sz);
+        memcpy(dst_data + i * width, src_data + indice[i] * width, sz);
       }
     } else {
       for (int i = 0; i < height; ++i) {
-        memcpy(dst_data + index[i] * width, src_data + i * width, sz);
+        memcpy(dst_data + indice[i] * width, src_data + i * width, sz);
       }
     }
   }

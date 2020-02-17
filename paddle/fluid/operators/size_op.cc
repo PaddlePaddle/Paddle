@@ -24,9 +24,9 @@ class SizeOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input (Input) of Size op should not be null.");
+                   "Input (Input) of Size op shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output (Out) of Size op should not be null.");
+                   "Output (Out) of Size op shold not be null.");
     ctx->SetOutputDim("Out", {1});
   }
 };

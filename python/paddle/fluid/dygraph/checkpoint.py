@@ -98,7 +98,7 @@ def load_dygraph(model_path, keep_name_table=False):
     Load parameter state_dict from disk.
 
     Args:
-        model_path(str) : The file prefix store the state_dict. (The path should Not contain suffix '.pdparams') 
+        model_path(str) : The file prefix store the state_dict. (The path shold Not contain suffix '.pdparams') 
         keep_name_table(bool, optional) : Whether keep structed name to parameter name conversion table in output dict. 
                                           Default : False
 

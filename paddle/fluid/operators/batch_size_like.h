@@ -27,9 +27,9 @@ class BatchSizeLikeOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(Input) of %s should not be null.", Type());
+                   "Input(Input) of %s shold not be null.", Type());
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of %s should not be null.", Type());
+                   "Output(Out) of %s shold not be null.", Type());
 
     auto &shape = ctx->Attrs().Get<std::vector<int>>("shape");
     PADDLE_ENFORCE_GT(shape.size(), 0);
@@ -62,10 +62,10 @@ class BatchSizeLikeOpMaker : public framework::OpProtoAndCheckerMaker {
               "with the specified value");
     AddAttr<std::vector<int>>("shape", "The shape of the output");
     AddAttr<int>("input_dim_idx",
-                 "default 0. The index of input's batch size dimension")
+                 "default 0. The indice of input's batch size dimension")
         .SetDefault(0);
     AddAttr<int>("output_dim_idx",
-                 "default 0. The index of output's batch size dimension")
+                 "default 0. The indice of output's batch size dimension")
         .SetDefault(0);
     Apply();
   }

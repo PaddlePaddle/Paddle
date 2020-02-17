@@ -48,7 +48,7 @@ class CSyncCalcStreamOp : public framework::OperatorBase {
       LOG(FATAL) << "Fail to sync cuda stream: " << cudaGetErrorString(e_sync);
     }
 #else
-    PADDLE_THROW("PaddlePaddle should compile with GPU.");
+    PADDLE_THROW("PaddlePaddle shold compile with GPU.");
 #endif
   }
 };

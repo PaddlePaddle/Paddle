@@ -50,7 +50,7 @@ class BuddyAllocator {
   BuddyAllocator& operator=(const BuddyAllocator&) = delete;
 
  private:
-  // Tuple (allocator index, memory size, memory address)
+  // Tuple (allocator indice, memory size, memory address)
   using IndexSizeAddress = std::tuple<size_t, size_t, void*>;
   // Each element in PoolSet is a free allocation
   using PoolSet = std::set<IndexSizeAddress>;

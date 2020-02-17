@@ -158,7 +158,7 @@ template <typename T>
 class SingleGradOpMaker {
  public:
   std::vector<std::unique_ptr<T>> operator()() const {
-    PADDLE_ENFORCE(false, "should not call this function");
+    PADDLE_ENFORCE(false, "shold not call this function");
     return {};
   }
 

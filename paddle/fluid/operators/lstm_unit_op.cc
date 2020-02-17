@@ -23,13 +23,13 @@ class LstmUnitOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of LSTM should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of LSTM shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("C_prev"),
-                   "Input(C_prev) of LSTM should not be null.");
+                   "Input(C_prev) of LSTM shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("C"),
-                   "Output(C) of LSTM should not be null.");
+                   "Output(C) of LSTM shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("H"),
-                   "Output(H) of LSTM should not be null.");
+                   "Output(H) of LSTM shold not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
     auto c_prev_dims = ctx->GetInputDim("C_prev");
@@ -39,7 +39,7 @@ class LstmUnitOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(x_dims[0], c_prev_dims[0],
                         "Batch size of inputs and states must be equal");
       PADDLE_ENFORCE_EQ(x_dims[1], c_prev_dims[1] * 4,
-                        "Dimension of FC should equal to prev state * 4");
+                        "Dimension of FC shold equal to prev state * 4");
     }
 
     int b_size = c_prev_dims[0];  // batch size
@@ -86,9 +86,9 @@ class LstmUnitGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("C")),
-                   "Input(C@GRAD) should not be null");
+                   "Input(C@GRAD) shold not be null");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("H")),
-                   "Input(H@GRAD) should not be null");
+                   "Input(H@GRAD) shold not be null");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
     ctx->SetOutputDim(framework::GradVarName("C_prev"),
                       ctx->GetInputDim("C_prev"));

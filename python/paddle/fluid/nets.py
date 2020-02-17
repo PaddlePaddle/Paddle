@@ -388,15 +388,15 @@ def scaled_dot_product_attention(queries,
         queries (Variable): A 3-D Tensor with shape :math:`[N, L_q, d_k \\times h]` ,
             where :math:`N` stands for batch size, :math:`L_q` for the sequence length
             of query, :math:`d_k \\times h` for the feature size of query, :math:`h` for
-            head number. The data type should be float32 or float64.
+            head number. The data type shold be float32 or float64.
         keys (Variable): A 3-D Tensor with shape :math:`[N, L_k, d_k \\times h]` ,
             where :math:`N` stands for batch size, :math:`L_k` for the sequence length
             of key, :math:`d_k \\times h` for the feature size of key, :math:`h` for head
-            number. The data type should be the same as ``queries`` .
+            number. The data type shold be the same as ``queries`` .
         values (Variable): A 3-D Tensor with shape :math:`[N, L_k, d_v \\times h]` ,
             where :math:`N` stands for batch size, :math:`L_k` for the sequence length
             of key, :math:`d_v \\times h` for the feature size of value, :math:`h` for head
-            number. The data type should be the same as ``queries`` .
+            number. The data type shold be the same as ``queries`` .
         num_heads (int, optional): Indicate the number of head. If the number
             is 1, linear projection would not be performed on inputs. Default: 1.
         dropout_rate (float, optional): The rate to drop the attention weight.
@@ -410,9 +410,9 @@ def scaled_dot_product_attention(queries,
             Multi-Head Attention.
 
     Raises:
-        ValueError: Inputs queries, keys and values should all be 3-D tensors.
-        ValueError: The hidden size of queries and keys should be the same.
-        ValueError: The max sequence length in query batch and in key batch should be the same.
+        ValueError: Inputs queries, keys and values shold all be 3-D tensors.
+        ValueError: The hidden size of queries and keys shold be the same.
+        ValueError: The max sequence length in query batch and in key batch shold be the same.
         ValueError: he hidden size of keys must be divisible by the number of attention heads.
         ValueError: he hidden size of values must be divisible by the number of attention heads.
 
@@ -429,15 +429,15 @@ def scaled_dot_product_attention(queries,
     """
     if not (len(queries.shape) == len(keys.shape) == len(values.shape) == 3):
         raise ValueError(
-            "Inputs queries, keys and values should all be 3-D tensors.")
+            "Inputs queries, keys and values shold all be 3-D tensors.")
 
     if queries.shape[-1] != keys.shape[-1]:
         raise ValueError(
-            "The hidden size of queries and keys should be the same.")
+            "The hidden size of queries and keys shold be the same.")
     if keys.shape[-2] != values.shape[-2]:
         raise ValueError(
             "The max sequence length in query batch and in key batch "
-            "should be the same.")
+            "shold be the same.")
     if keys.shape[-1] % num_heads != 0:
         raise ValueError("The hidden size of keys (%d) must be divisible "
                          "by the number of attention heads (%d)." %
@@ -516,7 +516,7 @@ def scaled_dot_product_attention(queries,
 
         if len(x.shape) == 3: return x
         if len(x.shape) != 4:
-            raise ValueError("Input(x) should be a 4-D Tensor.")
+            raise ValueError("Input(x) shold be a 4-D Tensor.")
 
         trans_x = layers.transpose(x, perm=[0, 2, 1, 3])
         return layers.reshape(

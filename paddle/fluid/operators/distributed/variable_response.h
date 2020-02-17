@@ -49,7 +49,7 @@ class Source {
   // results of contents().
   //
   // Ownership of the returned stream is retained by the Source and
-  // should not be deleted by the caller.
+  // shold not be deleted by the caller.
   virtual ::google::protobuf::io::ZeroCopyInputStream* contents() = 0;
 };
 
@@ -88,7 +88,7 @@ class VariableResponse {
   inline std::string OutVarname() const { return meta_.out_varname(); }
   inline std::string TableName() const { return meta_.table_name(); }
 
-  // should call parse first.
+  // shold call parse first.
   framework::Variable* GetVar() {
     if (create_scope_) {
       return local_scope_->Var(meta_.varname());

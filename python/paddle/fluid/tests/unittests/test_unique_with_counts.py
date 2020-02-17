@@ -61,21 +61,21 @@ class TestRandom(TestUniqueWithCountsOp):
         input_data = np.random.randint(0, 100, (2000, ), dtype='int64')
         self.inputs = {'X': input_data}
         self.attrs = {'dtype': int(core.VarDesc.VarType.INT64)}
-        np_unique, np_index, reverse_index = np.unique(self.inputs['X'], True,
+        np_unique, np_indice, reverse_indice = np.unique(self.inputs['X'], True,
                                                        True)
-        np_tuple = [(np_unique[i], np_index[i]) for i in range(len(np_unique))]
+        np_tuple = [(np_unique[i], np_indice[i]) for i in range(len(np_unique))]
         np_tuple.sort(key=lambda x: x[1])
         target_out = np.array([i[0] for i in np_tuple], dtype='int64')
-        target_index = np.array(
-            [list(target_out).index(i) for i in self.inputs['X']],
+        target_indice = np.array(
+            [list(target_out).indice(i) for i in self.inputs['X']],
             dtype='int64')
         count = [0 for i in range(len(np_unique))]
-        for i in range(target_index.shape[0]):
-            count[target_index[i]] += 1
+        for i in range(target_indice.shape[0]):
+            count[target_indice[i]] += 1
         target_count = np.array(count, dtype='int64')
         self.outputs = {
             'Out': target_out,
-            'Index': target_index,
+            'Index': target_indice,
             'Count': target_count
         }
 
@@ -108,21 +108,21 @@ class TestRandomGPU(TestUniqueWithCountsOp):
         input_data = np.random.randint(0, 100, (2000, ), dtype='int64')
         self.inputs = {'X': input_data}
         self.attrs = {'dtype': int(core.VarDesc.VarType.INT64)}
-        np_unique, np_index, reverse_index = np.unique(self.inputs['X'], True,
+        np_unique, np_indice, reverse_indice = np.unique(self.inputs['X'], True,
                                                        True)
-        np_tuple = [(np_unique[i], np_index[i]) for i in range(len(np_unique))]
+        np_tuple = [(np_unique[i], np_indice[i]) for i in range(len(np_unique))]
         np_tuple.sort(key=lambda x: x[1])
         target_out = np.array([i[0] for i in np_tuple], dtype='int64')
-        target_index = np.array(
-            [list(target_out).index(i) for i in self.inputs['X']],
+        target_indice = np.array(
+            [list(target_out).indice(i) for i in self.inputs['X']],
             dtype='int64')
         count = [0 for i in range(len(np_unique))]
-        for i in range(target_index.shape[0]):
-            count[target_index[i]] += 1
+        for i in range(target_indice.shape[0]):
+            count[target_indice[i]] += 1
         target_count = np.array(count, dtype='int64')
         self.outputs = {
             'Out': target_out,
-            'Index': target_index,
+            'Index': target_indice,
             'Count': target_count
         }
 

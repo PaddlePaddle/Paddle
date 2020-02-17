@@ -70,14 +70,14 @@ class CreateCTRReaderOpMaker : public FileReaderMakerBase {
                                       "The list of files that need to read");
     AddAttr<std::vector<int>>(
         "dense_slot_index",
-        "the dense slots id that should be extract from file")
+        "the dense slots id that shold be extract from file")
         .SetDefault({});
     AddAttr<std::vector<int>>(
         "sparse_slot_index",
-        "the sparse slots id that should be extract from file")
+        "the sparse slots id that shold be extract from file")
         .SetDefault({});
     AddAttr<std::vector<std::string>>("sparse_slots",
-                                      "the sparse slots id that should be "
+                                      "the sparse slots id that shold be "
                                       "extract from file, used when file "
                                       "format is svm");
 

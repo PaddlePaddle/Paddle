@@ -41,7 +41,7 @@ lookup_table_dir = "__lookup_table__"
 
 def __insert_lookup_sparse_table_op(main_program, idx, ids, w, out):
     main_program.global_block()._insert_op(
-        index=idx,
+        indice=idx,
         type="lookup_sparse_table",
         inputs={"Ids": [ids],
                 "W": [w]},
@@ -474,14 +474,14 @@ def get_inference_model(main_program, feeded_var_names, target_vars):
     main_program = main_program.clone()
     global_block = main_program.global_block()
 
-    need_to_remove_op_index = []
+    need_to_remove_op_indice = []
     for i, op in enumerate(global_block.ops):
         op.desc.set_is_target(False)
         if op.type == "feed" or op.type == "fetch":
-            need_to_remove_op_index.append(i)
+            need_to_remove_op_indice.append(i)
 
-    for index in need_to_remove_op_index[::-1]:
-        global_block._remove_op(index)
+    for indice in need_to_remove_op_indice[::-1]:
+        global_block._remove_op(indice)
 
     main_program.desc.flush()
 

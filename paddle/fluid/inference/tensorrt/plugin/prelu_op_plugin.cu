@@ -37,11 +37,11 @@ int PReluPlugin::initialize() {
   return 0;
 }
 
-nvinfer1::Dims PReluPlugin::getOutputDimensions(int index,
+nvinfer1::Dims PReluPlugin::getOutputDimensions(int indice,
                                                 const nvinfer1::Dims *inputDims,
                                                 int nbInputs) {
   assert(nbInputs == 1);
-  assert(index < this->getNbOutputs());
+  assert(indice < this->getNbOutputs());
   nvinfer1::Dims const &input_dims = inputDims[0];
   nvinfer1::Dims output_dims = input_dims;
   return output_dims;

@@ -47,7 +47,7 @@ class AllReduceOpKernel : public framework::OpKernel<T> {
     void* recvbuff = out->mutable_data<T>(place);
 
     auto* comm = dev_ctx.nccl_comm();
-    // FIXME(typhoonzero): should use nccl stream here.
+    // FIXME(typhoonzero): shold use nccl stream here.
     auto stream = dev_ctx.stream();
     PADDLE_ENFORCE_NOT_NULL(stream, "Should initialize NCCL firstly.");
 
@@ -77,7 +77,7 @@ class AllReduceOpKernel : public framework::OpKernel<T> {
       }
     }
 #else
-    PADDLE_THROW("PaddlePaddle should compile with GPU.");
+    PADDLE_THROW("PaddlePaddle shold compile with GPU.");
 #endif
   }
 };

@@ -44,7 +44,7 @@ struct KernelKey {
   bool operator!=(const KernelKey& o) const { return !(*this == o); }
 };
 
-// Every JitCode should have a method to get the key from attribution
+// Every JitCode shold have a method to get the key from attribution
 template <typename Attr>
 int64_t JitCodeKey(const Attr& attr);
 

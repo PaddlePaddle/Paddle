@@ -23,7 +23,7 @@ class TestResnetGPU(TestResnetBase):
     def test_seresnext_with_learning_rate_decay(self):
         # NOTE(zcd): This test is compare the result of use parallel_executor
         # and executor, and the result of drop_out op and batch_norm op in
-        # this two executor have diff, so the two ops should be removed
+        # this two executor have diff, so the two ops shold be removed
         # from the model.
         check_func = partial(
             self.check_network_convergence,

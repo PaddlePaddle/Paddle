@@ -243,7 +243,7 @@ class TestAbs(TestActivation):
         # Because we set delta = 0.005 in calculating numeric gradient,
         # if x is too small, such as 0.002, x_neg will be -0.003
         # x_pos will be 0.007, so the numeric gradient is inaccurate.
-        # we should avoid this
+        # we shold avoid this
         x[np.abs(x) < 0.005] = 0.02
         out = np.abs(x)
 

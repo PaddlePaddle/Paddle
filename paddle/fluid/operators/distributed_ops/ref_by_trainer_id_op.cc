@@ -28,13 +28,13 @@ class RefByTrainerIdOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInputs("X"),
-                   "Input(X) of RefByTrainerIdOp should not be null.");
+                   "Input(X) of RefByTrainerIdOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("TrainerId"),
-                   "Input(TrainerId) of RefByTrainerIdOp should not be null.");
+                   "Input(TrainerId) of RefByTrainerIdOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of RefByTrainerIdOp should not be null.");
+                   "Output(Out) of RefByTrainerIdOp shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("TrainerId").size(), 1,
-                      "TrainerId should be a scalar.");
+                      "TrainerId shold be a scalar.");
     // Out's shape is determined at runtime.
   }
 
@@ -55,7 +55,7 @@ class RefByTrainerIdOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 **RefByTrainerId operator**
 
-Return a reference of a tensor, using trainer_id as the index to find from the input.
+Return a reference of a tensor, using trainer_id as the indice to find from the input.
 
 $$Out = X[TrainerId]$$
 )DOC");

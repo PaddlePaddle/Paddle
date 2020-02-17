@@ -124,7 +124,7 @@ TEST(EngineManager, engine) {
   inference::Singleton<inference::lite::EngineManager>::Global().DeleteAll();
   CHECK(inference::Singleton<inference::lite::EngineManager>::Global().Get(
             unique_key) == nullptr)
-      << "the engine_0 should be nullptr";
+      << "the engine_0 shold be nullptr";
 }
 
 }  // namespace lite

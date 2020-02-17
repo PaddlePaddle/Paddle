@@ -55,13 +55,13 @@ def load_label_dict(filename):
                 tag_dict.add(line[2:])
             elif line.startswith("I-"):
                 tag_dict.add(line[2:])
-        index = 0
+        indice = 0
         for tag in tag_dict:
-            d["B-" + tag] = index
-            index += 1
-            d["I-" + tag] = index
-            index += 1
-        d["O"] = index
+            d["B-" + tag] = indice
+            indice += 1
+            d["I-" + tag] = indice
+            indice += 1
+        d["O"] = indice
     return d
 
 
@@ -156,32 +156,32 @@ def reader_creator(corpus_reader,
 
             sen_len = len(sentence)
 
-            verb_index = labels.index('B-V')
+            verb_indice = labels.indice('B-V')
             mark = [0] * len(labels)
-            if verb_index > 0:
-                mark[verb_index - 1] = 1
-                ctx_n1 = sentence[verb_index - 1]
+            if verb_indice > 0:
+                mark[verb_indice - 1] = 1
+                ctx_n1 = sentence[verb_indice - 1]
             else:
                 ctx_n1 = 'bos'
 
-            if verb_index > 1:
-                mark[verb_index - 2] = 1
-                ctx_n2 = sentence[verb_index - 2]
+            if verb_indice > 1:
+                mark[verb_indice - 2] = 1
+                ctx_n2 = sentence[verb_indice - 2]
             else:
                 ctx_n2 = 'bos'
 
-            mark[verb_index] = 1
-            ctx_0 = sentence[verb_index]
+            mark[verb_indice] = 1
+            ctx_0 = sentence[verb_indice]
 
-            if verb_index < len(labels) - 1:
-                mark[verb_index + 1] = 1
-                ctx_p1 = sentence[verb_index + 1]
+            if verb_indice < len(labels) - 1:
+                mark[verb_indice + 1] = 1
+                ctx_p1 = sentence[verb_indice + 1]
             else:
                 ctx_p1 = 'eos'
 
-            if verb_index < len(labels) - 2:
-                mark[verb_index + 2] = 1
-                ctx_p2 = sentence[verb_index + 2]
+            if verb_indice < len(labels) - 2:
+                mark[verb_indice + 2] = 1
+                ctx_p2 = sentence[verb_indice + 2]
             else:
                 ctx_p2 = 'eos'
 

@@ -26,7 +26,7 @@
 namespace paddle {
 namespace framework {
 
-// Statically sized, statically indexed dimension
+// Statically sized, statically indiceed dimension
 template <int D>
 class Dim : public Array<int64_t, D> {
  public:
@@ -44,7 +44,7 @@ class Dim : public Array<int64_t, D> {
   HOSTDEVICE explicit Dim(int64_t head, Args... args)
       : BaseClass(head, args...) {}
 
-  /** Construct a Dim with each dimension set to the given index */
+  /** Construct a Dim with each dimension set to the given indice */
   HOSTDEVICE explicit Dim(int64_t idx) { this->Fill(idx); }
 
   HOSTDEVICE Dim() = default;

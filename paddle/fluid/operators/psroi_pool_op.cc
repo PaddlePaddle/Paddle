@@ -34,11 +34,11 @@ class PSROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("ROIs",
              "LoDTensor, "
              "ROIs (Regions of Interest) to pool over. "
-             "should be a 2-D LoDTensor of shape (num_rois, 4) "
+             "shold be a 2-D LoDTensor of shape (num_rois, 4) "
              "given as [(x1, y1, x2, y2), ...]. "
              "where (x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates. "
-             "The roi batch index can be calculated from LoD.");
+             "The roi batch indice can be calculated from LoD.");
     AddOutput("Out",
               "Tensor, "
               "the output of PSROIPoolOp is a 4-D Tensor with shape "
@@ -48,7 +48,7 @@ class PSROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
         "output_channels",
         "(int), "
         "the number of channels of the output feature map. "
-        "For a task of C classes of objects, output_channels should be "
+        "For a task of C classes of objects, output_channels shold be "
         "(C + 1) for classification only.");
     AddAttr<float>("spatial_scale",
                    "(float, default 1.0), "
@@ -65,7 +65,7 @@ class PSROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
                  "the pooled output width.")
         .SetDefault(1);
     AddComment(R"Doc(
-**PSROIPool Operator,** `rois` **of this op should be a LoDTensor**
+**PSROIPool Operator,** `rois` **of this op shold be a LoDTensor**
 
 Position sensitive region of interest pooling (also known as PSROIPooling) is to perform
 position-sensitive average pooling on regions of interest specified by input, takes as 
@@ -82,21 +82,21 @@ class PSROIPoolOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of PSROIPoolOp should not be null.");
+                   "Input(X) of PSROIPoolOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("ROIs"),
-                   "Input(ROIs) of PSROIPoolOp should not be null.");
+                   "Input(ROIs) of PSROIPoolOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of PSROIPoolOp should not be null.");
+                   "Output(Out) of PSROIPoolOp shold not be null.");
     auto input_dims = ctx->GetInputDim("X");
     auto rois_dims = ctx->GetInputDim("ROIs");
 
     PADDLE_ENFORCE(input_dims.size() == 4,
                    "The format of input tensor is NCHW");
     PADDLE_ENFORCE(rois_dims.size() == 2,
-                   "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
+                   "ROIs shold be a 2-D LoDTensor of shape (num_rois, 4) "
                    "given as [(x1, y1, x2, y2), ...]");
     PADDLE_ENFORCE(rois_dims[1] == 4,
-                   "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
+                   "ROIs shold be a 2-D LoDTensor of shape (num_rois, 4) "
                    "given as [(x1, y1, x2, y2), ...]");
 
     int pooled_height = ctx->Attrs().Get<int>("pooled_height");
@@ -106,7 +106,7 @@ class PSROIPoolOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE(
         input_dims[1] == output_channels * pooled_height * pooled_width,
-        "the channel of X(%d) should be equal to the product of "
+        "the channel of X(%d) shold be equal to the product of "
         "output_channels(%d), pooled_height(%d) and pooled_width(%d)",
         input_dims[1], output_channels, pooled_height, pooled_width);
 
@@ -143,9 +143,9 @@ class PSROIPoolGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "The gradient of Out should not be null.");
+                   "The gradient of Out shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "The gradient of X should not be null.");
+                   "The gradient of X shold not be null.");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 

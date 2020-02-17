@@ -91,8 +91,8 @@ class JitKernelRegistrar {
     return 0;                                                                  \
   }
 
-// kernel_type: should be in paddle::operators::jit::KernelType
-// place_type: should be one of CPUPlace and GPUPlace in paddle::platform
+// kernel_type: shold be in paddle::operators::jit::KernelType
+// place_type: shold be one of CPUPlace and GPUPlace in paddle::platform
 #define REGISTER_KERNEL_MORE(kernel_type, impl_type, place_type, ...)         \
   STATIC_ASSERT_JITKERNEL_GLOBAL_NAMESPACE(                                   \
       __reg_jitkernel_##kernel_type##_##impl_type##_##place_type,             \

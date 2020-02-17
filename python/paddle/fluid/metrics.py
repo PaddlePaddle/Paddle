@@ -235,13 +235,13 @@ class CompositeMetric(MetricBase):
     def add_metric(self, metric):
         """
         Add a new metric to container. Noted that the argument list 
-        of the added one should be consistent with existed ones.  
+        of the added one shold be consistent with existed ones.  
 
         Args:
             metric(MetricBase): a instance of MetricBase
         """
         if not isinstance(metric, MetricBase):
-            raise ValueError("SubMetric should be inherit from MetricBase.")
+            raise ValueError("SubMetric shold be inherit from MetricBase.")
         self._metrics.append(metric)
 
     def update(self, preds, labels):
@@ -249,8 +249,8 @@ class CompositeMetric(MetricBase):
         Update the metrics of this container.
 
         Args:
-            preds(numpy.array): predicted results of current mini-batch, the shape and dtype of which should meet the requirements of the corresponded metric.
-            labels(numpy.array): ground truth of current mini-batch, the shape and dtype of which should meet the requirements of the corresponded metric. 
+            preds(numpy.array): predicted results of current mini-batch, the shape and dtype of which shold meet the requirements of the corresponded metric.
+            labels(numpy.array): ground truth of current mini-batch, the shape and dtype of which shold meet the requirements of the corresponded metric. 
         """
         for m in self._metrics:
             m.update(preds, labels)
@@ -319,7 +319,7 @@ class Precision(MetricBase):
                                 the output of two-class sigmoid function. 
                                 Shape: [batch_size, 1]. Dtype: 'float64' or 'float32'.
             labels(numpy.ndarray): ground truth (labels) of current mini-batch, 
-                                 the shape should keep the same as preds. 
+                                 the shape shold keep the same as preds. 
                                  Shape: [batch_size, 1], Dtype: 'int32' or 'int64'.
         """
         if not _is_numpy_(preds):
@@ -402,7 +402,7 @@ class Recall(MetricBase):
                               the output of two-class sigmoid function. 
                               Shape: [batch_size, 1]. Dtype: 'float64' or 'float32'.
             labels(numpy.array): ground truth (labels) of current mini-batch, 
-                               the shape should keep the same as preds. 
+                               the shape shold keep the same as preds. 
                                Shape: [batch_size, 1], Dtype: 'int32' or 'int64'.
         """
         if not _is_numpy_(preds):
@@ -824,7 +824,7 @@ class DetectionMAP(object):
         input (Variable): LoDTensor, The detection results, which is a LoDTensor with shape
             [M, 6]. The layout is [label, confidence, xmin, ymin, xmax, ymax].
             The data type is float32 or float64.
-        gt_label (Variable): LoDTensor, The ground truth label index, which is a LoDTensor
+        gt_label (Variable): LoDTensor, The ground truth label indice, which is a LoDTensor
             with shape [N, 1].The data type is float32 or float64.
         gt_box (Variable): LoDTensor, The ground truth bounding box (bbox), which is a
             LoDTensor with shape [N, 4]. The layout is [xmin, ymin, xmax, ymax].
@@ -834,7 +834,7 @@ class DetectionMAP(object):
             it means all the ground truth labels are not difficult bbox.The
             data type is int.
         class_num (int): The class number.
-        background_label (int): The index of background label, the background
+        background_label (int): The indice of background label, the background
             label will be ignored. If set to -1, then all categories will be
             considered, 0 by default.
         overlap_threshold (float): The threshold for deciding true/false

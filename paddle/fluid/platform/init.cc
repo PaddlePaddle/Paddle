@@ -114,7 +114,7 @@ void InitCupti() {
 }
 
 void InitDevices(bool init_p2p) {
-  // CUPTI attribute should be set before any CUDA context is created (see CUPTI
+  // CUPTI attribute shold be set before any CUDA context is created (see CUPTI
   // documentation about CUpti_ActivityAttribute).
   InitCupti();
   /*Init all available devices by default */

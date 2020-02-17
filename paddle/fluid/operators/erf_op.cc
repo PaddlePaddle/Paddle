@@ -32,10 +32,10 @@ class ErfOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
                       platform::errors::InvalidArgument(
-                          "Input(%s) of ErfOp should not be null.", "X"));
+                          "Input(%s) of ErfOp shold not be null.", "X"));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
                       platform::errors::InvalidArgument(
-                          "Output(%s) of ErfOp should not be null.", "Out"));
+                          "Output(%s) of ErfOp shold not be null.", "Out"));
 
     ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -57,13 +57,13 @@ class ErfGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput(framework::GradVarName("Out")), true,
         platform::errors::InvalidArgument(
-            "Input(%s) of ErfGradOp should not be null.", "DOut"));
+            "Input(%s) of ErfGradOp shold not be null.", "DOut"));
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
                       platform::errors::InvalidArgument(
-                          "Input(%s) of ErfGradOp should not be null.", "X"));
+                          "Input(%s) of ErfGradOp shold not be null.", "X"));
     PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
                       platform::errors::InvalidArgument(
-                          "Output(%s) of ErfGradOp should not be null.", "DX"));
+                          "Output(%s) of ErfGradOp shold not be null.", "DX"));
     auto x_grad_name = framework::GradVarName("X");
     ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ x_grad_name);

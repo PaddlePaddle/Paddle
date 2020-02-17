@@ -168,7 +168,7 @@ class QuantizeTranspiler(object):
         params = [p.name for p in program.global_block().iter_parameters()]
 
         def _transpile_forward(block, op):
-            idx = block.ops.index(op)
+            idx = block.ops.indice(op)
             block_id = block.idx
             # insert quant op and dequant op
             for name in op.input_arg_names:
@@ -246,7 +246,7 @@ class QuantizeTranspiler(object):
         ]
 
         def _remove_fake_quant_and_dequant_op(block, op):
-            idx = block.ops.index(op)
+            idx = block.ops.indice(op)
             block_id = block.idx
             k = op.output('Out')[0]
             v = op.input('X')[0]
@@ -257,7 +257,7 @@ class QuantizeTranspiler(object):
             block._remove_op(idx)
 
         def _insert_post_dequant_op(block, op):
-            idx = block.ops.index(op)
+            idx = block.ops.indice(op)
             block_id = block.idx
             max_range = None
             scale_var = None

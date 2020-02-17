@@ -185,7 +185,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx).stream();
 
     PADDLE_ENFORCE_EQ(input_names_.empty(), false,
-                      "should pass at least one input");
+                      "shold pass at least one input");
 
     std::vector<std::string> output_maps =
         Attr<std::vector<std::string>>("output_name_mapping");
@@ -236,19 +236,19 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
       runtime_batch = t_shape[0];
 
-      const int bind_index = engine->engine()->getBindingIndex(x.c_str());
-      PADDLE_ENFORCE(bind_index < num_bindings,
-                     "The bind index should be less than num_bindings");
-      buffers[bind_index] = static_cast<void *>(t.data<float>());
+      const int bind_indice = engine->engine()->getBindingIndex(x.c_str());
+      PADDLE_ENFORCE(bind_indice < num_bindings,
+                     "The bind indice shold be less than num_bindings");
+      buffers[bind_indice] = static_cast<void *>(t.data<float>());
     }
 
     // Bind output tensor to TRT.
-    int output_index = 0;
+    int output_indice = 0;
     VLOG(4) << "TensorRT Engine Op Outputs:";
     for (const auto &y : Outputs("Ys")) {
-      const int bind_index =
-          engine->engine()->getBindingIndex(output_maps[output_index].c_str());
-      auto dims = engine->engine()->getBindingDimensions(bind_index);
+      const int bind_indice =
+          engine->engine()->getBindingIndex(output_maps[output_indice].c_str());
+      auto dims = engine->engine()->getBindingDimensions(bind_indice);
       // Use the output ITensor's dims to reshape the Fluid Tensor.
       // The ITensor doesn't contain the batch size dim.
       std::vector<int> ddim;
@@ -261,12 +261,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
       auto *fluid_t = fluid_v->GetMutable<framework::LoDTensor>();
       fluid_t->Resize(framework::make_ddim(ddim));
 
-      PADDLE_ENFORCE(bind_index < num_bindings,
-                     "The bind index should be less than num_bindings");
-      buffers[bind_index] = static_cast<void *>(fluid_t->mutable_data<float>(
+      PADDLE_ENFORCE(bind_indice < num_bindings,
+                     "The bind indice shold be less than num_bindings");
+      buffers[bind_indice] = static_cast<void *>(fluid_t->mutable_data<float>(
           boost::get<platform::CUDAPlace>(dev_place)));
 
-      output_index += 1;
+      output_indice += 1;
     }
 
     PADDLE_ENFORCE_LE(runtime_batch, max_batch_size_);

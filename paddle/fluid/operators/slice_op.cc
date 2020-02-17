@@ -29,14 +29,14 @@ class SliceOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
-                      "Input (Input) of slice op should not be null.");
+                      "Input (Input) of slice op shold not be null.");
 
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output (Out) of slice op should not be null.");
+                      "Output (Out) of slice op shold not be null.");
 
     auto in_dims = ctx->GetInputDim("Input");
     PADDLE_ENFORCE_LT(in_dims.size(), 7,
-                      "The rank of input should be less than 7.");
+                      "The rank of input shold be less than 7.");
     framework::DDim out_dims(in_dims);
 
     auto axes = ctx->Attrs().Get<std::vector<int>>("axes");
@@ -79,7 +79,7 @@ class SliceOp : public framework::OperatorWithKernel {
     int dim_value, start, end;
     for (size_t i = 0; i < axes.size(); ++i) {
       PADDLE_ENFORCE_LT(static_cast<int>(axes[i]), in_dims.size(),
-                        "The index of dimension in axes must be less "
+                        "The indice of dimension in axes must be less "
                         "than the size of input shape.");
       if (infer_flags[i] == -1) {
         out_dims[axes[i]] = -1;
@@ -92,7 +92,7 @@ class SliceOp : public framework::OperatorWithKernel {
           start = std::max(start, 0);
           end = std::max(end, 0);
           end = std::min(end, dim_value);
-          PADDLE_ENFORCE_GT(end, start, "end should greater than start");
+          PADDLE_ENFORCE_GT(end, start, "end shold greater than start");
           out_dims[axes[i]] = end - start;
         }
       }
@@ -103,7 +103,7 @@ class SliceOp : public framework::OperatorWithKernel {
       for (size_t i = 0; i < decrease_axis.size(); ++i) {
         if (ctx->IsRuntime() && infer_flags[i] != -1) {
           PADDLE_ENFORCE_EQ(out_dims[decrease_axis[i]], 1,
-                            "decrease dim should be 1");
+                            "decrease dim shold be 1");
         }
         out_dims[decrease_axis[i]] = 0;
       }
@@ -195,7 +195,7 @@ class SliceOpMaker : public framework::OpProtoAndCheckerMaker {
 Slice Operator.
 
 Produces a slice of the input tensor along multiple axes. Similar to numpy:
-https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
+https://docs.scipy.org/doc/numpy/reference/arrays.indiceing.html
 Slice uses `axes`, `starts` and `ends` attributes to specify the start and
 end dimension for each axis in the list of axes, it uses this information
 to slice the input data tensor. If a negative value is passed for any of
@@ -233,9 +233,9 @@ class SliceOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true, "Input should not be null");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true, "Input shold not be null");
     PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      "Input(Out@GRAD) should not be null");
+                      "Input(Out@GRAD) shold not be null");
     auto x_dims = ctx->GetInputDim("Input");
     auto x_grad_name = framework::GradVarName("Input");
     if (ctx->HasOutput(x_grad_name)) {

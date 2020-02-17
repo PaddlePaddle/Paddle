@@ -90,11 +90,11 @@ class ClipByNormOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of ClipByNormOp should not be null.");
+                   "Input(X) of ClipByNormOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of ClipByNormOp should not be null.");
+                   "Output(Out) of ClipByNormOp shold not be null.");
     auto max_norm = ctx->Attrs().Get<float>("max_norm");
-    PADDLE_ENFORCE_GT(max_norm, 0, "max_norm should be greater than 0.");
+    PADDLE_ENFORCE_GT(max_norm, 0, "max_norm shold be greater than 0.");
     auto x_dims = ctx->GetInputDim("X");
     ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", /*->*/ "Out");

@@ -28,13 +28,13 @@ HOSTDEVICE inline T sigmoid(T x) {
 template <typename T>
 HOSTDEVICE inline void GetYoloBox(T* box, const T* x, const int* anchors, int i,
                                   int j, int an_idx, int grid_size,
-                                  int input_size, int index, int stride,
+                                  int input_size, int indice, int stride,
                                   int img_height, int img_width) {
-  box[0] = (i + sigmoid<T>(x[index])) * img_width / grid_size;
-  box[1] = (j + sigmoid<T>(x[index + stride])) * img_height / grid_size;
-  box[2] = std::exp(x[index + 2 * stride]) * anchors[2 * an_idx] * img_width /
+  box[0] = (i + sigmoid<T>(x[indice])) * img_width / grid_size;
+  box[1] = (j + sigmoid<T>(x[indice + stride])) * img_height / grid_size;
+  box[2] = std::exp(x[indice + 2 * stride]) * anchors[2 * an_idx] * img_width /
            input_size;
-  box[3] = std::exp(x[index + 3 * stride]) * anchors[2 * an_idx + 1] *
+  box[3] = std::exp(x[indice + 3 * stride]) * anchors[2 * an_idx + 1] *
            img_height / input_size;
 }
 

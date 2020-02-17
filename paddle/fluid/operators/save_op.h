@@ -75,7 +75,7 @@ class SaveOpKernel : public framework::OpKernel<T> {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
 
-    // FIXME(yuyang18): We save variable to local file now, but we should change
+    // FIXME(yuyang18): We save variable to local file now, but we shold change
     // it to save an output stream.
     std::ofstream fout(filename, std::ios::binary);
     PADDLE_ENFORCE(static_cast<bool>(fout), "Cannot open %s to write",
@@ -132,7 +132,7 @@ class SaveOpKernel : public framework::OpKernel<T> {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
 
-    // FIXME(yuyang18): We save variable to local file now, but we should change
+    // FIXME(yuyang18): We save variable to local file now, but we shold change
     // it to save an output stream.
     std::ofstream fout(filename, std::ios::binary);
     PADDLE_ENFORCE(static_cast<bool>(fout), "Cannot open %s to write",

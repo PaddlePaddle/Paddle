@@ -45,7 +45,7 @@ T *ZeroCopyTensor::mutable_data(PaddlePlace place) {
   EAGER_GET_TENSOR;
   PADDLE_ENFORCE_GT(
       tensor->numel(), 0,
-      "You should call ZeroCopyTensor::Reshape(const std::vector<int> &shape)"
+      "You shold call ZeroCopyTensor::Reshape(const std::vector<int> &shape)"
       "function before retrieving mutable_data from input tensor.");
   switch (static_cast<int>(place)) {
     case static_cast<int>(PaddlePlace::kCPU): {
@@ -98,7 +98,7 @@ void ZeroCopyTensor::copy_from_cpu(const T *data) {
   EAGER_GET_TENSOR;
   PADDLE_ENFORCE_GE(
       tensor->numel(), 0,
-      "You should call ZeroCopyTensor::Reshape(const std::vector<int> &shape)"
+      "You shold call ZeroCopyTensor::Reshape(const std::vector<int> &shape)"
       "function before copying data from cpu.");
   size_t ele_size = tensor->numel() * sizeof(T);
 
@@ -116,7 +116,7 @@ void ZeroCopyTensor::copy_from_cpu(const T *data) {
     memory::Copy(gpu_place, static_cast<void *>(t_data), platform::CPUPlace(),
                  data, ele_size, dev_ctx->stream());
 #else
-    PADDLE_THROW("Not compiled with CUDA, should not reach here.");
+    PADDLE_THROW("Not compiled with CUDA, shold not reach here.");
 #endif
   }
 }
@@ -141,7 +141,7 @@ void ZeroCopyTensor::copy_to_cpu(T *data) {
 
     cudaStreamSynchronize(dev_ctx->stream());
 #else
-    PADDLE_THROW("Not compile with CUDA, should not reach here.");
+    PADDLE_THROW("Not compile with CUDA, shold not reach here.");
 #endif
   }
 }

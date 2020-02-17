@@ -23,7 +23,7 @@ Steps to transpile pserver:
 1. create new program for parameter server.
 2. create params variables that assigned to current server instance.
 3. create a sub-block in the server side program
-4. append sum ops that should run on current server instance.
+4. append sum ops that shold run on current server instance.
 5. add listen_and_serv op
 """
 import sys

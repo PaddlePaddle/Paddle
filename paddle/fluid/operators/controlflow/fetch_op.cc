@@ -95,7 +95,7 @@ class FetchOpInfoMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Fetch Operator.
 
-It should not be configured by users directly.
+It shold not be configured by users directly.
 
 )DOC");
   }

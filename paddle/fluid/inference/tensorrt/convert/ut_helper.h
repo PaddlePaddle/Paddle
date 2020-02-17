@@ -127,7 +127,7 @@ class TRTConvertValidation {
                bool is_param = false) {
     // Init Fluid tensor.
     std::vector<int> dim_vec(dims.d, dims.d + dims.nbDims);
-    // There is no batchsize in ITensor's shape, but We should add it to
+    // There is no batchsize in ITensor's shape, but We shold add it to
     // tensor's shape of fluid. If the variable is not parameter and the
     // if_add_batch_ flag is true, add the max batchsize to dim_vec.
     if (is_param != true && if_add_batch_ == true)
@@ -150,7 +150,7 @@ class TRTConvertValidation {
 
   // We use the set 'neglected_output' here, because some Ops like batch norm,
   // the outputs specified in the op des are only used during training,
-  // so we should neglect those output during inference.
+  // so we shold neglect those output during inference.
   void Execute(int batch_size,
                std::unordered_set<std::string> neglected_output = {}) {
     // Execute Fluid Op
@@ -185,8 +185,8 @@ class TRTConvertValidation {
     for (const std::string& name : input_output_names) {
       auto* var = scope_.FindVar(name);
       auto* tensor = var->GetMutable<framework::LoDTensor>();
-      const int bind_index = engine_->engine()->getBindingIndex(name.c_str());
-      buffers[bind_index] =
+      const int bind_indice = engine_->engine()->getBindingIndex(name.c_str());
+      buffers[bind_indice] =
           static_cast<void*>(tensor->mutable_data<float>(place_));
     }
 
@@ -195,7 +195,7 @@ class TRTConvertValidation {
     cudaStreamSynchronize(stream_);
 
     ASSERT_FALSE(op_desc_->OutputArgumentNames().empty());
-    int index = 0;
+    int indice = 0;
     for (const auto& output : op_desc_->OutputArgumentNames()) {
       if (neglected_output.count(output)) continue;
       std::vector<float> trt_out;
@@ -203,7 +203,7 @@ class TRTConvertValidation {
       auto* tensor = var->GetMutable<framework::LoDTensor>();
       framework::TensorToVector(*tensor, ctx, &trt_out);
 
-      size_t fluid_out_size = fluid_outs[index].size();
+      size_t fluid_out_size = fluid_outs[indice].size();
       if (if_add_batch_ == true) {
         fluid_out_size =
             batch_size * (framework::product(tensor->dims()) / max_batch_size_);
@@ -211,9 +211,9 @@ class TRTConvertValidation {
 
       for (size_t i = 0; i < fluid_out_size; i++) {
         // Loose the threshold for CI in different machine model.
-        EXPECT_LT(std::abs(fluid_outs[index][i] - trt_out[i]), 2e-5);
+        EXPECT_LT(std::abs(fluid_outs[indice][i] - trt_out[i]), 2e-5);
       }
-      index += 1;
+      indice += 1;
     }
   }
 

@@ -32,11 +32,11 @@ namespace operators {
 
 void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
-                    "Input(Input) of ConvOp should not be null.");
+                    "Input(Input) of ConvOp shold not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasInput("Filter"), true,
-                    "Input(Filter) of ConvOp should not be null.");
+                    "Input(Filter) of ConvOp shold not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasOutput("Output"), true,
-                    "Output(Output) of ConvOp should not be null.");
+                    "Output(Output) of ConvOp shold not be null.");
 
   auto in_dims = ctx->GetInputDim("Input");
   auto filter_dims = ctx->GetInputDim("Filter");
@@ -56,14 +56,14 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
 
   PADDLE_ENFORCE_EQ(
       in_dims.size() == 4 || in_dims.size() == 5, true,
-      "ShapeError: the input of Op(conv) should be 4-D or 5-D Tensor. But "
+      "ShapeError: the input of Op(conv) shold be 4-D or 5-D Tensor. But "
       "received: %u-D Tensor, the shape of input is [%s].",
       in_dims.size(), in_dims);
 
   PADDLE_ENFORCE_EQ(
       in_dims.size(), filter_dims.size(),
       "ShapeError: the input's dimension size and filter's dimension size of "
-      "Op(conv) should be equal. But received: the shape of input is [%s], "
+      "Op(conv) shold be equal. But received: the shape of input is [%s], "
       "the dimension size of input is [%d], the shape of filter is [%s],  "
       "the dimension size of filter is [%d].",
       in_dims, in_dims.size(), filter_dims, filter_dims.size());
@@ -84,7 +84,7 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
 
   PADDLE_ENFORCE_EQ(
       input_channels, filter_dims[1] * groups,
-      "ShapeError: The number of input channels should be equal to filter "
+      "ShapeError: The number of input channels shold be equal to filter "
       "channels * groups for Op(conv). But received: the input's channels is "
       "[%d], the shape "
       "of input is [%s], the filter's channel is [%d], the shape of filter is "
@@ -94,7 +94,7 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
       data_format);
   PADDLE_ENFORCE_EQ(
       filter_dims[0] % groups, 0,
-      "ShapeError: The number of output channels of Op(conv) should be divided "
+      "ShapeError: The number of output channels of Op(conv) shold be divided "
       "by groups. "
       "But received: the output channels is [%d], the shape of filter is [%s] "
       "(the first dimension of filter is output channel), the groups is [%d].",
@@ -169,7 +169,7 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
       input_data_type != framework::proto::VarType::UINT8) {
     auto filter_data_type = ctx.Input<Tensor>("Filter")->type();
     PADDLE_ENFORCE_EQ(input_data_type, filter_data_type,
-                      "input and filter data type should be consistent");
+                      "input and filter data type shold be consistent");
   }
   if (input_data_type == framework::proto::VarType::FP16) {
     PADDLE_ENFORCE_EQ(library, framework::LibraryType::kCUDNN,
@@ -181,7 +181,7 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
 #ifdef PADDLE_WITH_CUDA
   std::vector<framework::KernelConfig>& configs = kernel_configs_map_[type];
   // TODO(dangqingqing): Currently conv_fusion_op use cudnn but sets use_cudnn
-  // to false. It should be fixed and then here should only create if library
+  // to false. It shold be fixed and then here shold only create if library
   // is kCUDNN.
   if (configs.empty()) {
     std::shared_ptr<framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t>> p(
@@ -290,7 +290,7 @@ void Conv2DOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>("use_quantizer",
                 "(bool, default false) "
-                "Set to true for operators that should be quantized and use "
+                "Set to true for operators that shold be quantized and use "
                 "int8 kernel. "
                 "Only used on CPU.")
       .SetDefault(false);
@@ -349,7 +349,7 @@ void Conv2DOpMaker::Make() {
                "workspace is a section of GPU memory which will be "
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
-               "better hardware. This size should be chosen carefully.")
+               "better hardware. This size shold be chosen carefully.")
       .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB());
   AddAttr<bool>("exhaustive_search",
                 "(bool, default false) cuDNN has many algorithm to calculation "
@@ -486,7 +486,7 @@ void Conv3DOpMaker::Make() {
                "workspace is a section of GPU memory which will be "
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
-               "better hardware. This size should be chosen carefully.")
+               "better hardware. This size shold be chosen carefully.")
       .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB());
   AddAttr<bool>("exhaustive_search",
                 "(bool, default false) cuDNN has many algorithm to calculation "

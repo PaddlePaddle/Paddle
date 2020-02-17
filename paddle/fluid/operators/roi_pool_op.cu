@@ -36,9 +36,9 @@ __global__ void GPUROIPoolForward(
     const float spatial_scale, const int channels, const int height,
     const int width, const int pooled_height, const int pooled_width,
     int* roi_batch_id_data, T* output_data, int64_t* argmax_data) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int indice = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
-  for (size_t i = index; i < nthreads; i += offset) {
+  for (size_t i = indice; i < nthreads; i += offset) {
     int pw = i % pooled_width;
     int ph = (i / pooled_width) % pooled_height;
     int c = (i / pooled_width / pooled_height) % channels;
@@ -78,10 +78,10 @@ __global__ void GPUROIPoolForward(
         input_data + (roi_batch_ind * channels + c) * height * width;
     for (int h = hstart; h < hend; ++h) {
       for (int w = wstart; w < wend; ++w) {
-        int input_data_index = h * width + w;
-        if (offset_input_data[input_data_index] > maxval) {
-          maxval = offset_input_data[input_data_index];
-          maxidx = input_data_index;
+        int input_data_indice = h * width + w;
+        if (offset_input_data[input_data_indice] > maxval) {
+          maxval = offset_input_data[input_data_indice];
+          maxidx = input_data_indice;
         }
       }
     }
@@ -99,9 +99,9 @@ __global__ void GPUROIPoolBackward(
     const int channels, const int height, const int width,
     const int pooled_height, const int pooled_width, int* roi_batch_id_data,
     T* input_grad) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int indice = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
-  for (int i = index; i < nthreads; i += offset) {
+  for (int i = indice; i < nthreads; i += offset) {
     int pw = i % pooled_width;
     int ph = (i / pooled_width) % pooled_height;
     int c = (i / pooled_width / pooled_height) % channels;

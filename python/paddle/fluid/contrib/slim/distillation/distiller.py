@@ -36,7 +36,7 @@ class L2Distiller(object):
         Args:
             student_feature_map(str): The name of feature map from student network.
             teacher_feature_map(str): The name of feature map from teacher network.
-                                      It's shape should be the same with student network.
+                                      It's shape shold be the same with student network.
             distillation_loss_weight(float): The weight of the l2-loss.
         """
         self.student_feature_map = student_feature_map
@@ -71,7 +71,7 @@ class L2DistillerPass(object):
         Args:
             student_feature_map(str): The name of feature map from student network.
             teacher_feature_map(str): The name of feature map from teacher network.
-                                      It's shape should be the same with student network.
+                                      It's shape shold be the same with student network.
             distillation_loss_weight(float): The weight of the l2-loss.
         """
         self.student_feature_map = student_feature_map
@@ -110,12 +110,12 @@ class FSPDistiller(object):
         """
         Args:
             student_pairs(list<tuple>): Each tuple, with two variable names, in student_pairs indicates
-                                        a section in student network. The variables in a tuple should
+                                        a section in student network. The variables in a tuple shold
                                         have the same feature map size.
             teacher_pairs(list<tuple>): Each tuple, with two variable names, in teacher_pairs indicates
-                                        a section in teacher network. The variables in a tuple should
+                                        a section in teacher network. The variables in a tuple shold
                                         have the same feature map size. Varibale named teacher_pairs[i][j]
-                                        should has the save channel number with that of variable named 
+                                        shold has the save channel number with that of variable named 
                                         student_pairs[i][j].
 
             distillation_loss_weight(float): The weight of the fsp-loss. default: 1.
@@ -148,12 +148,12 @@ class FSPDistillerPass(object):
         """
         Args:
             s_pairs(list<tuple>): Each tuple, with two variable names, in student_pairs indicates
-                                        a section in student network. The variables in a tuple should
+                                        a section in student network. The variables in a tuple shold
                                         have the same feature map size.
             t_pairs(list<tuple>): Each tuple, with two variable names, in teacher_pairs indicates
-                                        a section in teacher network. The variables in a tuple should
+                                        a section in teacher network. The variables in a tuple shold
                                         have the same feature map size. Varibale named teacher_pairs[i][j]
-                                        should has the save channel number with that of variable named 
+                                        shold has the save channel number with that of variable named 
                                         student_pairs[i][j].
 
             distillation_loss_weight(float): The weight of the fsp-loss. default: 1.
@@ -208,7 +208,7 @@ class SoftLabelDistiller(object):
         Args:
             student_feature_map(str): The name of feature map from student network.
             teacher_feature_map(str): The name of feature map from teacher network.
-                                      It's shape should be the same with student network.
+                                      It's shape shold be the same with student network.
             student_temperature(float): Temperature used to divide student_feature_map before softmax_with_cross_entropy. default: 1.0
             teacher_temperature(float): Temperature used to divide teacher_feature_map before softmax_with_cross_entropy. default: 1.0
             distillation_loss_weight(float): The weight of the l2-loss.
@@ -247,7 +247,7 @@ class SoftLabelDistillerPass(object):
         Args:
             student_feature_map(str): The name of feature map from student network.
             teacher_feature_map(str): The name of feature map from teacher network.
-                                      It's shape should be the same with student network.
+                                      It's shape shold be the same with student network.
             student_temperature(float): Temperature used to divide student_feature_map before softmax_with_cross_entropy.
             teacher_temperature(float): Temperature used to divide teacher_feature_map before softmax_with_cross_entropy.
             distillation_loss_weight(float): The weight of the l2-loss.

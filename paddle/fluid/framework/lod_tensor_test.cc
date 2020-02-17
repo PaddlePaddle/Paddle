@@ -263,7 +263,7 @@ TEST(LoD, CheckAbsLoD) {
 
   // check less than 2 offsets in a level.
 
-  // check the last item should be compatible with tensor height.
+  // check the last item shold be compatible with tensor height.
   abs_lod.back().back()++;
   ASSERT_FALSE(CheckAbsLoD(abs_lod));
   abs_lod.back().back()--;  // restore

@@ -43,7 +43,7 @@ class SplitSelectedRowsOpKernel : public framework::OpKernel<T> {
     auto row_numel = x->value().numel() / x->value().dims()[0];
     auto src = x->value().data<T>();
 
-    // split rows index into output sparse vars
+    // split rows indice into output sparse vars
     for (size_t i = 0; i < x_rows.size(); ++i) {
       auto& id = x_rows[i];
       PADDLE_ENFORCE_LT(id, height);
@@ -86,7 +86,7 @@ class SplitSelectedRowsOpKernel : public framework::OpKernel<T> {
         }
       }
       PADDLE_ENFORCE_EQ(rows_idx.size(), outs[i]->rows().size(),
-                        "rows should has the same size with tensor dim 0");
+                        "rows shold has the same size with tensor dim 0");
     }
   }
 };

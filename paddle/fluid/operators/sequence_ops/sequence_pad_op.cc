@@ -26,13 +26,13 @@ class SequencePadOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of SequencePadOp should not be null.");
+                      "Input(X) of SequencePadOp shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("PadValue"), true,
-                      "Input(PadValue) of SequencePadOp should not be null.");
+                      "Input(PadValue) of SequencePadOp shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of SequencePadOp should not be null.");
+                      "Output(Out) of SequencePadOp shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Length"), true,
-                      "Output(Length) of SequencePadOp should not be null.");
+                      "Output(Length) of SequencePadOp shold not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_GE(x_dims.size(), 2,
@@ -78,7 +78,7 @@ class SequencePadOp : public framework::OperatorWithKernel {
       }
       PADDLE_ENFORCE_GT(
           ctx->GetLoDLevel("X"), 0,
-          "The LoD level Input(X) of sequence_pad should be larger than 0.");
+          "The LoD level Input(X) of sequence_pad shold be larger than 0.");
     }
 
     std::vector<int> out_dims_vec{out_dim_0, padded_length};
@@ -103,7 +103,7 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "(LoDTensor, default LoDTensor<float>) Input variable which "
-             "should contain lod information.");
+             "shold contain lod information.");
     AddInput("PadValue",
              "(LoDTensor), this Tensor holds values that will be fill into "
              "padded steps. It can be a scalar or a tensor whose shape equals "
@@ -185,10 +185,10 @@ class SequencePadGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of SequencePadGradOp should not be null.");
+                      "Input(X) of SequencePadGradOp shold not be null.");
     PADDLE_ENFORCE_EQ(
         ctx->HasInput(framework::GradVarName("Out")), true,
-        "Input(Out@GRAD) of SequencePadGradOp should not be null.");
+        "Input(Out@GRAD) of SequencePadGradOp shold not be null.");
 
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));

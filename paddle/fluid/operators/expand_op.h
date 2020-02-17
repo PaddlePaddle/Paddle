@@ -145,7 +145,7 @@ class ExpandGradKernel : public framework::OpKernel<T> {
     auto x_dims = in0->dims();
     // 1. reshape_dims_vec is the broadcast parameter.
     // 2. reduce_dims_vec is the dimension parameter to compute gradients. For
-    //    each dimension expanded, the gradients should be summed to original
+    //    each dimension expanded, the gradients shold be summed to original
     //    size.
     std::vector<int> reshape_dims_vec;
     std::vector<int> reduce_dims_vec;

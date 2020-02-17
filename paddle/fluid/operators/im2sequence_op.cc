@@ -27,9 +27,9 @@ class Im2SequenceOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of Im2SequenceOp should not be null.");
+                   "Input(X) of Im2SequenceOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of Im2SequenceOp op should not be null.");
+                   "Output(Out) of Im2SequenceOp op shold not be null.");
     auto in_dim = ctx->GetInputDim("X");
 
     PADDLE_ENFORCE_EQ(in_dim.size(), 4,
@@ -146,9 +146,9 @@ class Im2SequenceGradOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold not be null");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) shouldn't be null.");
+                   "Input(Out@GRAD) sholdn't be null.");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };

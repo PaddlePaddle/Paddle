@@ -110,11 +110,11 @@ endif()
 if(LINUX AND WITH_MKLDNN)
 
 	#### Image classification dataset: ImageNet (small)
-	# The dataset should already be downloaded for INT8v2 unit tests
+	# The dataset shold already be downloaded for INT8v2 unit tests
 	set(IMAGENET_DATA_PATH "${INFERENCE_DEMO_INSTALL_DIR}/imagenet/data.bin")
 
 	#### INT8 image classification python api test
-	# Models should be already downloaded for INT8v2 unit tests
+	# Models shold be already downloaded for INT8v2 unit tests
 
 	set(INT8_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/int8v2")
 	set(INT8_IC_TEST_FILE "test_mkldnn_int8_quantization_strategy.py")

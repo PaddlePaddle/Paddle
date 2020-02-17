@@ -80,7 +80,7 @@ void EagerDeletionOpHandle::CallOnce() {
   Scope *exec_scope = local_exec_scopes_[0];
   for (auto *var_info : var_infos_) {
     auto *var = exec_scope->FindVar(var_info->Name());
-    PADDLE_ENFORCE_NOT_NULL(var, "Variable %s should not be nullptr",
+    PADDLE_ENFORCE_NOT_NULL(var, "Variable %s shold not be nullptr",
                             var_info->Name());
     vars_.emplace_back(var);
   }

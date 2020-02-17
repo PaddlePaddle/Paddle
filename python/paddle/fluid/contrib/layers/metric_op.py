@@ -32,19 +32,19 @@ def ctr_metric_bundle(input, label):
     ctr related metric layer
 
     This function help compute the ctr related metrics: RMSE, MAE, predicted_ctr, q_value.
-    To compute the final values of these metrics, we should do following computations using
+    To compute the final values of these metrics, we shold do following computations using
     total instance number:
     MAE = local_abserr / instance number
     RMSE = sqrt(local_sqrerr / instance number)
     predicted_ctr = local_prob / instance number
     q = local_q / instance number
-    Note that if you are doing distribute job, you should all reduce these metrics and instance
+    Note that if you are doing distribute job, you shold all reduce these metrics and instance
     number first
 
     Args:
         input(Variable): A floating-point 2D Variable, values are in the range
                          [0, 1]. Each row is sorted in descending order. This
-                         input should be the output of topk. Typically, this
+                         input shold be the output of topk. Typically, this
                          Variable indicates the probability of each label.
         label(Variable): A 2D int Variable indicating the label of the training
                          data. The height is batch size and width is always 1.

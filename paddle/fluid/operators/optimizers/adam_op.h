@@ -411,7 +411,7 @@ class AdamOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* param_var = ctx.InputVar("Param");
     PADDLE_ENFORCE(param_var->IsType<framework::LoDTensor>(),
-                   "The Var(%s)'s type should be LoDTensor, "
+                   "The Var(%s)'s type shold be LoDTensor, "
                    "but the received is %s",
                    ctx.InputNames("Param").front(),
                    framework::ToTypeName(param_var->Type()));
@@ -577,7 +577,7 @@ class AdamOpKernel : public framework::OpKernel<T> {
           std::unordered_map<size_t, int> row_id_to_grad_row_offset;
           size_t param_row_count = param.numel() / row_numel;
           if (param_row_count < 1000) {
-            VLOG(1) << "param_row_count should be larger then 1000 to use "
+            VLOG(1) << "param_row_count shold be larger then 1000 to use "
                        "multi thread, currently "
                     << param_row_count;
           }

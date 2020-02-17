@@ -125,7 +125,7 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     // will add "input_scale", "weight_scale" which are extracted from
     // fake_quant op and fake_dequant op to mul op, and then delete the
     // fake_quant op and fake_dequant op in the graph. If the mul op has the
-    // scale info, we should add those to the fused fc.
+    // scale info, we shold add those to the fused fc.
     auto* mul_op_desc = mul->Op();
     if (mul_op_desc->HasAttr("enable_int8")) {
       desc.SetAttr("enable_int8", mul_op_desc->GetAttr("enable_int8"));

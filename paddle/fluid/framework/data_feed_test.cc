@@ -165,7 +165,7 @@ void GetElemSetFromReader(std::vector<MultiTypeSet>* reader_elem_set,
       }
       readers[idx]->Start();
       while (readers[idx]->Next()) {
-        int index = 0;
+        int indice = 0;
         for (int k = 0; k < multi_slot_desc.slots_size(); ++k) {
           const auto& slot = multi_slot_desc.slots(k);
           if (!slot.is_used()) {
@@ -181,7 +181,7 @@ void GetElemSetFromReader(std::vector<MultiTypeSet>* reader_elem_set,
               for (int i = 0; i < batch_size; ++i) {
                 for (int j = 0; j < dim; ++j) {
                   std::lock_guard<std::mutex> lock(mu);
-                  (*reader_elem_set)[index].AddValue(
+                  (*reader_elem_set)[indice].AddValue(
                       (uint64_t)data[i * dim + j]);
                 }
               }
@@ -192,7 +192,7 @@ void GetElemSetFromReader(std::vector<MultiTypeSet>* reader_elem_set,
               for (int i = 0; i < batch_size; ++i) {
                 for (int j = 0; j < dim; ++j) {
                   std::lock_guard<std::mutex> lock(mu);
-                  (*reader_elem_set)[index].AddValue(data[i * dim + j]);
+                  (*reader_elem_set)[indice].AddValue(data[i * dim + j]);
                 }
               }
             } else {
@@ -205,7 +205,7 @@ void GetElemSetFromReader(std::vector<MultiTypeSet>* reader_elem_set,
                 std::pair<size_t, size_t> element = tens->lod_element(0, i);
                 for (size_t j = element.first; j < element.second; ++j) {
                   std::lock_guard<std::mutex> lock(mu);
-                  (*reader_elem_set)[index].AddValue((uint64_t)data[j]);
+                  (*reader_elem_set)[indice].AddValue((uint64_t)data[j]);
                 }
               }
             } else if (slot.type() == "float") {
@@ -214,14 +214,14 @@ void GetElemSetFromReader(std::vector<MultiTypeSet>* reader_elem_set,
                 std::pair<size_t, size_t> element = tens->lod_element(0, i);
                 for (size_t j = element.first; j < element.second; ++j) {
                   std::lock_guard<std::mutex> lock(mu);
-                  (*reader_elem_set)[index].AddValue(data[j]);
+                  (*reader_elem_set)[indice].AddValue(data[j]);
                 }
               }
             } else {
               PADDLE_THROW("Error type in proto file.");
             }
           }  // end sparse branch
-          ++index;
+          ++indice;
         }  // end slots loop
       }    // end while Next()
     }));   // end anonymous function
@@ -275,7 +275,7 @@ void GetElemSetFromFile(std::vector<MultiTypeSet>* file_elem_set,
     PADDLE_ENFORCE(fin.good(), "Can not open %s.", file.c_str());
     while (1) {
       bool end_flag = false;
-      int index = 0;
+      int indice = 0;
       for (auto i = 0; i < data_feed_desc.multi_slot_desc().slots_size(); ++i) {
         int num;
         if (fin >> num) {
@@ -286,7 +286,7 @@ void GetElemSetFromFile(std::vector<MultiTypeSet>* file_elem_set,
               uint64_t feasign;
               fin >> feasign;
               if (slot.is_used()) {
-                (*file_elem_set)[index].AddValue(feasign);
+                (*file_elem_set)[indice].AddValue(feasign);
               }
             }
           } else if (type == "float") {
@@ -294,14 +294,14 @@ void GetElemSetFromFile(std::vector<MultiTypeSet>* file_elem_set,
               float feasign;
               fin >> feasign;
               if (slot.is_used()) {
-                (*file_elem_set)[index].AddValue(feasign);
+                (*file_elem_set)[indice].AddValue(feasign);
               }
             }
           } else {
             PADDLE_THROW("Error type in proto file.");
           }
           if (slot.is_used()) {
-            ++index;
+            ++indice;
           }
         } else {
           end_flag = true;

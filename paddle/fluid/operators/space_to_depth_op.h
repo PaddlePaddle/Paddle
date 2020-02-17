@@ -36,24 +36,24 @@ class space_to_depth_compute {
         forward_(forward),
         out_(out) {}
 
-  HOSTDEVICE void operator()(int64_t in_index) {
+  HOSTDEVICE void operator()(int64_t in_indice) {
     int64_t out_c = c_ / (blocksize_ * blocksize_);
-    // calculate each dim position with index of tensor
-    int64_t b = in_index / (c_ * h_ * w_);
-    int64_t k = (in_index % (c_ * h_ * w_)) / (h_ * w_);
-    int64_t j = ((in_index % (c_ * h_ * w_)) % (h_ * w_)) / w_;
-    int64_t i = ((in_index % (c_ * h_ * w_)) % (h_ * w_)) % w_;
+    // calculate each dim position with indice of tensor
+    int64_t b = in_indice / (c_ * h_ * w_);
+    int64_t k = (in_indice % (c_ * h_ * w_)) / (h_ * w_);
+    int64_t j = ((in_indice % (c_ * h_ * w_)) % (h_ * w_)) / w_;
+    int64_t i = ((in_indice % (c_ * h_ * w_)) % (h_ * w_)) % w_;
 
     int64_t c2 = k % out_c;
     int64_t offset = k / out_c;
     int64_t w2 = i * blocksize_ + offset % blocksize_;
     int64_t h2 = j * blocksize_ + offset / blocksize_;
-    int64_t out_index =
+    int64_t out_indice =
         w2 + w_ * blocksize_ * (h2 + h_ * blocksize_ * (c2 + out_c * b));
     if (forward_)
-      out_[out_index] = x_[in_index];
+      out_[out_indice] = x_[in_indice];
     else
-      out_[in_index] = x_[out_index];
+      out_[in_indice] = x_[out_indice];
   }
 
  private:

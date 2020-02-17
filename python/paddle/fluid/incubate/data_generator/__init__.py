@@ -22,7 +22,7 @@ class DataGenerator(object):
     """
     DataGenerator is a general Base class for user to inherit
     A user who wants to define his/her own python processing logic
-    with paddle.fluid.dataset should inherit this class.
+    with paddle.fluid.dataset shold inherit this class.
     """
 
     def __init__(self):
@@ -268,7 +268,7 @@ class MultiSlotStringDataGenerator(DataGenerator):
                 "the output of process() must be in list or tuple type"
                 "Examples: [('words', ['1926', '08', '17']), ('label', ['1'])]")
         output = ""
-        for index, item in enumerate(line):
+        for indice, item in enumerate(line):
             name, elements = item
             if output:
                 output += " "
@@ -344,7 +344,7 @@ class MultiSlotDataGenerator(DataGenerator):
             if len(line) != len(self._proto_info):
                 raise ValueError(
                     "the complete field set of two given line are inconsistent.")
-            for index, item in enumerate(line):
+            for indice, item in enumerate(line):
                 name, elements = item
                 if not isinstance(name, str):
                     raise ValueError("name%s must be in str type" % type(name))
@@ -355,17 +355,17 @@ class MultiSlotDataGenerator(DataGenerator):
                     raise ValueError(
                         "the elements of each field can not be empty, you need padding it in process()."
                     )
-                if name != self._proto_info[index][0]:
+                if name != self._proto_info[indice][0]:
                     raise ValueError(
                         "the field name of two given line are not match: require<%s>, get<%s>."
-                        % (self._proto_info[index][0], name))
+                        % (self._proto_info[indice][0], name))
                 if output:
                     output += " "
                 output += str(len(elements))
                 for elem in elements:
-                    if self._proto_info[index][1] != "float":
+                    if self._proto_info[indice][1] != "float":
                         if isinstance(elem, float):
-                            self._proto_info[index] = (name, "float")
+                            self._proto_info[indice] = (name, "float")
                         elif not isinstance(elem, int) and not isinstance(elem,
                                                                           long):
                             raise ValueError(

@@ -45,7 +45,7 @@ class L1NormGradKernel : public framework::OpKernel<T> {
     const framework::Tensor *x = context.Input<framework::Tensor>("X");
     const framework::Tensor *d_out =
         context.Input<framework::Tensor>(framework::GradVarName("Out"));
-    PADDLE_ENFORCE(d_out->numel() == 1, "L1 Norm Gradient should be scalar");
+    PADDLE_ENFORCE(d_out->numel() == 1, "L1 Norm Gradient shold be scalar");
     framework::Tensor *dx =
         context.Output<framework::Tensor>(framework::GradVarName("X"));
     dx->mutable_data<T>(context.GetPlace());

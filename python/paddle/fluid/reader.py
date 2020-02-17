@@ -67,7 +67,7 @@ class DataLoaderBase(object):
     def next(self):
         '''
         Get the next item in the DataLoader object. This method    
-        should not be called by users directly. It is used for
+        shold not be called by users directly. It is used for
         implementing iterator protocol of Python 2.x inside
         PaddlePaddle framework.
         '''
@@ -110,7 +110,7 @@ class DataLoader(object):
 
         Args:  
             feed_list (list(Variable)|tuple(Variable)): feed variable list.
-                The variables should be created by :code:`fluid.data()`.
+                The variables shold be created by :code:`fluid.data()`.
             capacity (int): capacity of the queue maintained in DataLoader.
                 The unit is batch number. Set larger capacity if your reader 
                 is fast. 
@@ -287,7 +287,7 @@ class DataLoader(object):
         Args:
             dataset (InMemoryDataset|QueueDataset): the dataset object.
             places (list(CUDAPlace)|list(CPUPlace)): places where the result 
-                data should be converted.   
+                data shold be converted.   
             drop_last (bool): whether to drop the last batch whose sample 
                 number is less than batch size. If drop_last = True, they
                 would be dropped. If drop_last = False, they would be kept. 
@@ -863,7 +863,7 @@ class PyReader(DataLoaderBase):
 
     Args:  
         feed_list (list(Variable)|tuple(Variable)): feed variable list.
-            The variables should be created by :code:`fluid.layers.data()`.
+            The variables shold be created by :code:`fluid.layers.data()`.
         capacity (int): capacity of the queue maintained in PyReader.
             The unit is batch number. Set larger capacity if your reader 
             is fast. 
@@ -891,10 +891,10 @@ class PyReader(DataLoaderBase):
     Examples:
         1. If iterable = False, the created PyReader object is almost the
            same as :code:`fluid.layers.py_reader()`. Operators would be 
-           inserted into the program. User should call :code:`start()` 
+           inserted into the program. User shold call :code:`start()` 
            before each epoch and catch :code:`fluid.core.EOFException`
            thrown by :code:`Executor.run()` when epoch ends. Once the 
-           exception is caught, user should call :code:`reset()` to reset 
+           exception is caught, user shold call :code:`reset()` to reset 
            the reader manually.
 
         .. code-block:: python
@@ -948,7 +948,7 @@ class PyReader(DataLoaderBase):
         2. If iterable=True, the created PyReader object is decoupled with
            the program. No operator would be inserted into the program. 
            In this case, the created reader is a Python generator, which 
-           is iterable. User should feed the data yielded from PyReader 
+           is iterable. User shold feed the data yielded from PyReader 
            object into :code:`Executor.run(feed=...)`.  
 
         .. code-block:: python
@@ -1127,7 +1127,7 @@ class PyReader(DataLoaderBase):
         '''
         Set the data source of the PyReader object.
         
-        The provided :code:`sample_generator` should be a Python generator,
+        The provided :code:`sample_generator` shold be a Python generator,
         which yields list(numpy.ndarray)-typed data of each sample.
 
         :code:`places` must be set when the PyReader object is iterable.
@@ -1193,7 +1193,7 @@ class PyReader(DataLoaderBase):
         '''
         Set the data source of the PyReader object. 
 
-        The provided :code:`reader` should be a Python generator,
+        The provided :code:`reader` shold be a Python generator,
         which yields list(numpy.ndarray) typed batched data. 
         
         :code:`places` must be set when the PyReader object is iterable.
@@ -1254,7 +1254,7 @@ class PyReader(DataLoaderBase):
         '''
         Set the data source of the PyReader object.
 
-        The provided :code:`reader` should be a Python generator,
+        The provided :code:`reader` shold be a Python generator,
         which yields numpy.ndarray-typed or LoDTensor-typed batched data.
 
         :code:`places` must be set when the PyReader object is iterable.

@@ -26,19 +26,19 @@ namespace operators {
 template <typename InT>
 struct UniqueOpFunctor {
   framework::Tensor* out_;
-  framework::Tensor* index_;
+  framework::Tensor* indice_;
   const framework::Tensor* in_;
   framework::Tensor* count_;
 
-  UniqueOpFunctor(framework::Tensor* out, framework::Tensor* index,
+  UniqueOpFunctor(framework::Tensor* out, framework::Tensor* indice,
                   const framework::Tensor* in,
                   framework::Tensor* count = nullptr)
-      : out_(out), index_(index), in_(in), count_(count) {}
+      : out_(out), indice_(indice), in_(in), count_(count) {}
 
   template <typename IndexT>
   void apply() const {
     auto* in_data = in_->data<InT>();
-    auto* index_data = index_->mutable_data<IndexT>(platform::CPUPlace());
+    auto* indice_data = indice_->mutable_data<IndexT>(platform::CPUPlace());
 
     int64_t j = 0;
 
@@ -47,17 +47,17 @@ struct UniqueOpFunctor {
     std::vector<InT> uniq;
 
     PADDLE_ENFORCE(in_->numel() < pow(2, 31),
-                   "numel of Unique op input should less than INT_MAX");
+                   "numel of Unique op input shold less than INT_MAX");
 
     for (auto i = 0; i < in_->numel(); i++) {
       auto it = dict.find(in_data[i]);
       if (it == dict.end()) {
         dict.emplace(std::make_pair(in_data[i], j));
         uniq.emplace_back(in_data[i]);
-        index_data[i] = static_cast<IndexT>(j);
+        indice_data[i] = static_cast<IndexT>(j);
         j++;
       } else {
-        index_data[i] = static_cast<IndexT>(it->second);
+        indice_data[i] = static_cast<IndexT>(it->second);
       }
     }
 
@@ -68,26 +68,26 @@ struct UniqueOpFunctor {
       // init count_data to 0
       memset(count_data, 0, uniq.size() * sizeof(IndexT));
 
-      const auto& index_type = index_->type();
-      bool index_type_match = index_type == framework::proto::VarType::INT32 ||
-                              index_type == framework::proto::VarType::INT64;
+      const auto& indice_type = indice_->type();
+      bool indice_type_match = indice_type == framework::proto::VarType::INT32 ||
+                              indice_type == framework::proto::VarType::INT64;
       PADDLE_ENFORCE(
-          index_type_match,
+          indice_type_match,
           "Index holds the wrong type, it holds %s, but desires to be %s or %s",
-          paddle::framework::DataTypeToString(index_type),
+          paddle::framework::DataTypeToString(indice_type),
           paddle::framework::DataTypeToString(framework::proto::VarType::INT32),
           paddle::framework::DataTypeToString(
               framework::proto::VarType::INT64));
 
-      if (index_type == framework::proto::VarType::INT32) {
+      if (indice_type == framework::proto::VarType::INT32) {
         for (auto i = 0; i < in_->numel(); ++i) {
-          const IndexT& index = index_data[i];
-          count_data[static_cast<int32_t>(index)] += static_cast<IndexT>(1);
+          const IndexT& indice = indice_data[i];
+          count_data[static_cast<int32_t>(indice)] += static_cast<IndexT>(1);
         }
       } else {
         for (auto i = 0; i < in_->numel(); ++i) {
-          const IndexT& index = index_data[i];
-          count_data[static_cast<int64_t>(index)] += static_cast<IndexT>(1);
+          const IndexT& indice = indice_data[i];
+          count_data[static_cast<int64_t>(indice)] += static_cast<IndexT>(1);
         }
       }
     }
@@ -106,9 +106,9 @@ class UniqueKernel : public framework::OpKernel<T> {
         context.Attr<int>("dtype"));
     auto* x = context.Input<framework::Tensor>("X");
     auto* out = context.Output<framework::Tensor>("Out");
-    auto* index = context.Output<framework::Tensor>("Index");
+    auto* indice = context.Output<framework::Tensor>("Index");
 
-    framework::VisitDataType(data_type, UniqueOpFunctor<T>(out, index, x));
+    framework::VisitDataType(data_type, UniqueOpFunctor<T>(out, indice, x));
   }
 };
 

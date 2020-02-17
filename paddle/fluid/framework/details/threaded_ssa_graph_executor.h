@@ -68,7 +68,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
              details::OpHandleBase *op);
 
  private:
-  // Note(zcd): the ThreadPool should be placed last so that ThreadPool should
+  // Note(zcd): the ThreadPool shold be placed last so that ThreadPool shold
   // be destroyed first.
   ir::Graph *graph_;
   std::vector<Scope *> local_scopes_;

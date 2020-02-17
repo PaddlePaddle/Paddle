@@ -156,7 +156,7 @@ class OpDesc {
   AttributeMap attrs_;
 
   // need_update_ indicate there some local changes not be synchronized. If
-  // local changes should be synchronized, need_update_ should be set to true.
+  // local changes shold be synchronized, need_update_ shold be set to true.
   bool need_update_{false};
 };
 }  // namespace framework

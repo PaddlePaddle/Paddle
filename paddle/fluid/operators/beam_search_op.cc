@@ -27,7 +27,7 @@ class BeamSearchOpMaker : public framework::OpProtoAndCheckerMaker {
     // inputs and outputs stored in proto
     AddInput("pre_ids",
              "(LoDTensor) The LoDTensor containing the selected ids at the "
-             "previous step. It should be a tensor with shape (batch_size, 1) "
+             "previous step. It shold be a tensor with shape (batch_size, 1) "
              "and lod `[[0, 1, ... , batch_size], [0, 1, ..., batch_size]]` at "
              "the first step.");
     AddInput("pre_scores",
@@ -35,7 +35,7 @@ class BeamSearchOpMaker : public framework::OpProtoAndCheckerMaker {
              "scores corresponding to the selected ids at the previous step.");
     AddInput("ids",
              "(LoDTensor) The LoDTensor containing the candidates ids. Its "
-             "shape should be (batch_size * beam_size, W). If not set, it will "
+             "shape shold be (batch_size * beam_size, W). If not set, it will "
              "be calculated out according to Input(scores) in this operator.")
         .AsDispensable();
     AddInput("scores",
@@ -52,7 +52,7 @@ class BeamSearchOpMaker : public framework::OpProtoAndCheckerMaker {
               "A LoDTensor containing the accumulated scores corresponding to "
               "Output(selected_ids).");
     AddOutput("parent_idx",
-              "A Tensor preserving the selected_ids' parent index in pre_ids.")
+              "A Tensor preserving the selected_ids' parent indice in pre_ids.")
         .AsDispensable();
 
     // Attributes stored in AttributeMap
@@ -74,8 +74,8 @@ are the output of beam_search at previous step, they are needed for special use
 to handle ended candidate translations. The paths linking prefixes and selected
 candidates are organized and reserved in lod.
 
-Note that the Input(scores) passed in should be accumulated scores, and
-length penalty should be done with extra operators before calculating the
+Note that the Input(scores) passed in shold be accumulated scores, and
+length penalty shold be done with extra operators before calculating the
 accumulated scores if needed, also suggest finding top-K before it and
 using the top-K candidates following.
 )DOC");

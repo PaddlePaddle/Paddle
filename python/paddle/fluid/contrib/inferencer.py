@@ -96,7 +96,7 @@ class Inferencer(object):
         """
         if not isinstance(inputs, dict):
             raise ValueError(
-                "inputs should be a map of {'input_name': input_var}")
+                "inputs shold be a map of {'input_name': input_var}")
 
         with self._prog_and_scope_guard():
             results = self.exe.run(feed=inputs,

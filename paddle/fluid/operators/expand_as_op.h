@@ -77,7 +77,7 @@ class ExpandAsKernel : public framework::OpKernel<T> {
     auto x_dims = in0->dims();
     auto y_dims = target_tensor->dims();
     for (int i = 0; i < y_dims.size(); ++i) {
-      PADDLE_ENFORCE_NE(x_dims[i], 0, "X(input) should not have 0 dim");
+      PADDLE_ENFORCE_NE(x_dims[i], 0, "X(input) shold not have 0 dim");
       bcast_dims[i] = y_dims[i] / x_dims[i];
       bcast_dims_remainder += y_dims[i] % x_dims[i];
     }

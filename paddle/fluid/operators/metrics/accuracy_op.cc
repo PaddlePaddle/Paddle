@@ -23,17 +23,17 @@ class AccuracyOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Out"),
-                   "Input (Out) of accuracy op should not be null.");
+                   "Input (Out) of accuracy op shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Indices"),
-                   "Input (Indices) of accuracy op should not be null.");
+                   "Input (Indices) of accuracy op shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Label"),
-                   "Input (Label) of accuracy op should not be null.");
+                   "Input (Label) of accuracy op shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Accuracy"),
-                   "Output (Accuracy) of AccuracyOp should not be null.");
+                   "Output (Accuracy) of AccuracyOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Correct"),
-                   "Output (Correct) of AccuracyOp should not be null.");
+                   "Output (Correct) of AccuracyOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Total"),
-                   "Output (Total) of AccuracyOp should not be null.");
+                   "Output (Total) of AccuracyOp shold not be null.");
 
     auto inference_dim = ctx->GetInputDim("Out");
     auto label_dim = ctx->GetInputDim("Label");

@@ -39,7 +39,7 @@ class LoDResetKernel : public framework::OpKernel<T> {
         auto y_lod = lod_t->lod();
         auto last_level = y_lod[y_lod.size() - 1];
         PADDLE_ENFORCE_EQ((int64_t)(last_level.back()), in->dims()[0],
-                          "Last value of `Y`'s last level LoD should be equal "
+                          "Last value of `Y`'s last level LoD shold be equal "
                           "to the first dimension of `X`");
         out->set_lod(y_lod);
         return;  // early return, since lod already set
@@ -57,15 +57,15 @@ class LoDResetKernel : public framework::OpKernel<T> {
     }
 
     PADDLE_ENFORCE_GT(level0.size(), 1UL,
-                      "Size of target LoD should be greater than 1.");
+                      "Size of target LoD shold be greater than 1.");
     PADDLE_ENFORCE_EQ(level0[0], 0,
-                      "Target LoD should be a vector starting from 0.");
+                      "Target LoD shold be a vector starting from 0.");
     PADDLE_ENFORCE_EQ(level0.back(), in->dims()[0],
-                      "Target LoD should be a vector end with the "
+                      "Target LoD shold be a vector end with the "
                       "first dimension of Input(X).");
     for (size_t i = 0; i < level0.size() - 1; ++i) {
       PADDLE_ENFORCE(level0[i + 1] >= level0[i],
-                     "Target LoD should be an ascending vector.");
+                     "Target LoD shold be an ascending vector.");
     }
 
     // cast level0 to size_t

@@ -34,7 +34,7 @@ class PyramidHashOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "X (Tensor, MUST be Tensor<!!!_int32_!!!>) Input variable which "
-             "should contain lod information.");
+             "shold contain lod information.");
     AddInput("W", "W (Tensor)");
     AddInput("WhiteList", "WhiteList (Tensor)");
     AddInput("BlackList", "BlackList (Tensor)");
@@ -62,7 +62,7 @@ class PyramidHashOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::string>(
         "distribute_update_vars",
         "['PyramidHash_emb_0','Filter']"
-        "Decided which params should be updated in distribute training. "
+        "Decided which params shold be updated in distribute training. "
         "Used in Distribute Transpiler to create a trainer/server program.")
         .SetDefault("");
     AddOutput("Out", "Out (Tensor, default Tensor<float>) Output variable");
@@ -84,52 +84,52 @@ class PyramidHashOP : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "X(Input) should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true, "W(Input) should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "X(Input) shold not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true, "W(Input) shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Out(Output) should not be null.");
+                      "Out(Output) shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("DropPos"), true,
-                      "DropPos(TMP Output) should not be null.");
+                      "DropPos(TMP Output) shold not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2, "The rank of X(Input) should be 2.");
+    PADDLE_ENFORCE_EQ(x_dims.size(), 2, "The rank of X(Input) shold be 2.");
 
     auto w_dims = ctx->GetInputDim("W");
-    PADDLE_ENFORCE_EQ(w_dims.size(), 2, "W should be 2-D tensor");
+    PADDLE_ENFORCE_EQ(w_dims.size(), 2, "W shold be 2-D tensor");
 
     int space_len = ctx->Attrs().Get<int>("space_len");
     int rand_len = ctx->Attrs().Get<int>("rand_len");
 
     PADDLE_ENFORCE_EQ(w_dims[0], space_len + rand_len,
-                      "w_dims[0] should be equal to (space_len + rand_len)");
-    PADDLE_ENFORCE_EQ(w_dims[1], 1, "w_dims[1] should be equal to 1");
+                      "w_dims[0] shold be equal to (space_len + rand_len)");
+    PADDLE_ENFORCE_EQ(w_dims[1], 1, "w_dims[1] shold be equal to 1");
 
     int num_emb = ctx->Attrs().Get<int>("num_emb");
     PADDLE_ENFORCE_EQ(num_emb % rand_len, 0,
-                      "random length should mod embedding size");
+                      "random length shold mod embedding size");
 
     int white_list_len = ctx->Attrs().Get<int>("white_list_len");
     if (white_list_len > 0) {
       PADDLE_ENFORCE_EQ(
           ctx->HasInput("WhiteList"), true,
-          "WhiteList(Input) should not be null when white_list_len > 0");
+          "WhiteList(Input) shold not be null when white_list_len > 0");
       auto wl_dims = ctx->GetInputDim("WhiteList");
-      PADDLE_ENFORCE_EQ(wl_dims.size(), 2, "WhiteList should be 2-D tensor");
+      PADDLE_ENFORCE_EQ(wl_dims.size(), 2, "WhiteList shold be 2-D tensor");
       PADDLE_ENFORCE_EQ(wl_dims[0], white_list_len,
-                        "wl_dims[0] should be equal to white_list_len");
-      PADDLE_ENFORCE_EQ(wl_dims[1], 1, "wl_dims[1] should be equal to 1");
+                        "wl_dims[0] shold be equal to white_list_len");
+      PADDLE_ENFORCE_EQ(wl_dims[1], 1, "wl_dims[1] shold be equal to 1");
     }
 
     int black_list_len = ctx->Attrs().Get<int>("black_list_len");
     if (black_list_len > 0) {
       PADDLE_ENFORCE_EQ(
           ctx->HasInput("BlackList"), true,
-          "BlackList(Input) should not be null when black_list_len > 0");
+          "BlackList(Input) shold not be null when black_list_len > 0");
       auto bl_dims = ctx->GetInputDim("BlackList");
-      PADDLE_ENFORCE_EQ(bl_dims.size(), 2, "BlackList should be 2-D tensor");
+      PADDLE_ENFORCE_EQ(bl_dims.size(), 2, "BlackList shold be 2-D tensor");
       PADDLE_ENFORCE_EQ(bl_dims[0], black_list_len,
-                        "bl_dims[0] should be equal to black_list_len");
-      PADDLE_ENFORCE_EQ(bl_dims[1], 1, "bl_dims[1] should be equal to 1");
+                        "bl_dims[0] shold be equal to black_list_len");
+      PADDLE_ENFORCE_EQ(bl_dims[1], 1, "bl_dims[1] shold be equal to 1");
     }
 
     if (ctx->IsRuntime()) {
@@ -153,7 +153,7 @@ class PyramidHashOP : public framework::OperatorWithKernel {
 template <typename DeviceContext, typename T>
 class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
  public:
-  bool should_use_term(math::bloomfilter* _filter,
+  bool shold_use_term(math::bloomfilter* _filter,
                        math::bloomfilter* _black_filter, const T* word_repr,
                        int len) const {
     return (!_filter ||
@@ -250,7 +250,7 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
       } else {
         for (int ilayer = 1; ilayer < _pyramid_layer && ilayer < w; ++ilayer) {
           for (int l = 0; l < w - ilayer; ++l) {
-            if (should_use_term(_filter, _black_filter,
+            if (shold_use_term(_filter, _black_filter,
                                 (const T*)(bottom_data + offset[i] + l),
                                 ilayer + 1)) {
               if (_is_training != 0) {
@@ -334,15 +334,15 @@ class PyramidHashOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true, "Input(W) should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) shold not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true, "Input(W) shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("DropPos"), true,
-                      "Input(DropPos) should not be null.");
+                      "Input(DropPos) shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("X_Temp_Out"), true,
-                      "Input(X_Temp_Out) should not be null.");
+                      "Input(X_Temp_Out) shold not be null.");
     PADDLE_ENFORCE_EQ(
         ctx->HasInput(framework::GradVarName("Out")), true,
-        "Input(Out@GRAD) of PyramidHashGradOp should not be null.");
+        "Input(Out@GRAD) of PyramidHashGradOp shold not be null.");
   }
 
  protected:

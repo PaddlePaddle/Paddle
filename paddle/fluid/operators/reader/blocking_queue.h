@@ -27,7 +27,7 @@ namespace reader {
 template <typename T>
 class BlockingQueue {
   // BlockingQueue is for buffered reading and is supposed to use only the
-  // reader package. It is true that we could and we should have been using
+  // reader package. It is true that we could and we shold have been using
   // framework::Channel, but which has currently a deadlock bug. BlockingQueue
   // is a workaround and a simplified version of framework::Channel as it
   // doesn't support GPU and it implements on buffered blocking queue.

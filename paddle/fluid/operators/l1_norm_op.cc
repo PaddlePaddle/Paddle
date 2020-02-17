@@ -25,8 +25,8 @@ class L1NormOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should be not null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold be not null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) shold be not null.");
 
     ctx->SetOutputDim("Out", {1});
   }
@@ -37,11 +37,11 @@ class L1NormGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold be not null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should be not null.");
+                   "Input(Out@GRAD) shold be not null.");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Output(X@GRAD) should be not null.");
+                   "Output(X@GRAD) shold be not null.");
 
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }

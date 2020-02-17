@@ -22,7 +22,7 @@ try:
 
 except ImportError:
     import sys
-    sys.stderr.write('''Warning with import paddle: you should not
+    sys.stderr.write('''Warning with import paddle: you shold not
      import paddle from the source directory; please install paddlepaddle*.whl firstly.'''
                      )
 

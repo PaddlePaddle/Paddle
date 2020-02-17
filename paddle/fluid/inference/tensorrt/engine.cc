@@ -41,7 +41,7 @@ void TensorRTEngine::Execute(int batch_size, std::vector<void *> *buffers,
     std::unique_lock<std::mutex> lock(mutex_);
     PADDLE_ENFORCE_NOT_NULL(
         infer_engine_,
-        "You should build engine first and then set the context.");
+        "You shold build engine first and then set the context.");
     infer_context_[tid].reset(infer_engine_->createExecutionContext());
   }
   infer_context_[tid]->enqueue(batch_size, buffers->data(), stream, nullptr);
@@ -143,7 +143,7 @@ nvinfer1::ITensor *TensorRTEngine::DeclareInput(const std::string &name,
   PADDLE_ENFORCE_EQ(0, buffer_sizes_.count(name), "duplicate input name %s",
                     name);
 
-  PADDLE_ENFORCE(infer_network_ != nullptr, "should initnetwork first");
+  PADDLE_ENFORCE(infer_network_ != nullptr, "shold initnetwork first");
   auto *input = infer_network_->addInput(name.c_str(), dtype, dims);
   PADDLE_ENFORCE(input, "infer network add input %s failed", name);
   buffer_sizes_[name] = kDataTypeSize[static_cast<int>(dtype)] *
@@ -228,8 +228,8 @@ float *TensorRTEngine::GetWeightCPUData(const std::string &name,
   name_suffix_counter += 1;
 
   if (enable_int8) {
-    // when the op is fc, scale's size should be 1
-    // when the op is conv, scale's size should be w_dims[0]
+    // when the op is fc, scale's size shold be 1
+    // when the op is conv, scale's size shold be w_dims[0]
     bool valid_scale_size =
         (scale.size() == 1 || scale.size() == static_cast<size_t>(w_dims[0]));
     PADDLE_ENFORCE(valid_scale_size, "TRT int8 quant: invalid scale size");
@@ -239,7 +239,7 @@ float *TensorRTEngine::GetWeightCPUData(const std::string &name,
       } else {
         PADDLE_ENFORCE(w_dims.size() == 4,
                        "TRT int8 quant : We only use the channel quant for "
-                       "conv op, so the weight dims should be 4.");
+                       "conv op, so the weight dims shold be 4.");
         int inner_size = w_dims[1] * w_dims[2] * w_dims[3];
         weight_data[i] *= (scale[i / inner_size] / 127);
       }

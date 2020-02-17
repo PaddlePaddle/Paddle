@@ -626,7 +626,7 @@ The hard version of swish(https://arxiv.org/pdf/1905.02244.pdf).
 
 $out = \frac{x * (min(max(0, x+offset), threshold))}{scale}$
 
-The threshold and scale should be positive. The offset can be either positive or negative.
+The threshold and scale shold be positive. The offset can be either positive or negative.
 The default parameters are set according to the above reference.
 It is recommended to use the defaults for this activation.
 

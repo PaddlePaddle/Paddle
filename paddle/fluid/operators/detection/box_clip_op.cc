@@ -22,9 +22,9 @@ class BoxClipOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(Input) of BoxClipOp should not be null.");
+                   "Input(Input) of BoxClipOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("ImInfo"),
-                   "Input(ImInfo) of BoxClipOp should not be null.");
+                   "Input(ImInfo) of BoxClipOp shold not be null.");
 
     auto input_box_dims = ctx->GetInputDim("Input");
     auto im_info_dims = ctx->GetInputDim("ImInfo");

@@ -148,7 +148,7 @@ class DownpourSGD(object):
         worker_skipped_ops = ["lookup_table", "lookup_table_grad"]
         ps_param.trainer_param.skip_op.extend(worker_skipped_ops)
 
-        # all fleet operations should be defined in operators in the future
+        # all fleet operations shold be defined in operators in the future
         # we want to return an object here containing:
         # 1) worker execution strategy
         # 2) pserver execution strategy

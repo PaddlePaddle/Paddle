@@ -40,8 +40,8 @@ __global__ void ConvShiftForward(const T *x, const T *y, int x_width,
   extern __shared__ T mem[];
 
   int tx = threadIdx.x;
-  int i = blockIdx.x * blockDim.x + tx;  // global x index
-  int k = blockIdx.y;                    // batch index
+  int i = blockIdx.x * blockDim.x + tx;  // global x indice
+  int k = blockIdx.y;                    // batch indice
 
   // Check if we are in a boundary block with fewer x's to process than
   // blockDim.x.
@@ -83,13 +83,13 @@ template <typename T>
 __global__ void ConvShiftGradX(const T *dout, const T *y, int x_width,
                                int y_width, int y_half_width, int batch_size,
                                T *dx) {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;  // x index
-  int j = blockIdx.y;                             // y index
-  int k = blockIdx.z;                             // batch index
+  int i = blockIdx.x * blockDim.x + threadIdx.x;  // x indice
+  int j = blockIdx.y;                             // y indice
+  int k = blockIdx.z;                             // batch indice
 
   if (i < x_width) {
-    int index = (i + j - y_half_width + x_width) % x_width;
-    atomicAdd(&dx[k * x_width + index],
+    int indice = (i + j - y_half_width + x_width) % x_width;
+    atomicAdd(&dx[k * x_width + indice],
               dout[k * x_width + i] * y[k * y_width + j]);
   }
 }
@@ -98,14 +98,14 @@ __global__ void ConvShiftGradX(const T *dout, const T *y, int x_width,
 template <typename T>
 __global__ void ConvShiftDy(const T *x, const T *dout, int x_width, int y_width,
                             int y_half_width, int batch_size, T *dy) {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;  // x index
-  int j = blockIdx.y;                             // y index
-  int k = blockIdx.z;                             // batch index
+  int i = blockIdx.x * blockDim.x + threadIdx.x;  // x indice
+  int j = blockIdx.y;                             // y indice
+  int k = blockIdx.z;                             // batch indice
 
   if (i < x_width) {
-    int index = (i + j - y_half_width + x_width) % x_width;
+    int indice = (i + j - y_half_width + x_width) % x_width;
     atomicAdd(&dy[k * y_width + j],
-              x[k * x_width + index] * dout[k * x_width + i]);
+              x[k * x_width + indice] * dout[k * x_width + i]);
   }
 }
 }  // namespace

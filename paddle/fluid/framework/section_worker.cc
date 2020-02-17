@@ -29,7 +29,7 @@ std::vector<Scope*> SyncFunctor::pipeline_scopes_;
 
 SyncFunctor::SyncFunctor(int rank_id, int rank_num, int sync_steps)
     : rank_id_(rank_id), rank_num_(rank_num), sync_steps_(sync_steps) {
-  PADDLE_ENFORCE(rank_num > 1, "rank_num should larger than 1");
+  PADDLE_ENFORCE(rank_num > 1, "rank_num shold larger than 1");
   counter_ = 0;
   sync_signal_ = 0;
   uint8_t* ptr = reinterpret_cast<uint8_t*>(&sync_signal_);

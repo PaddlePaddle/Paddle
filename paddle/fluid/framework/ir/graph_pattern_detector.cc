@@ -44,7 +44,7 @@ PDNode *PDPattern::NewNode(const std::string &name) {
     PADDLE_ENFORCE_EQ(
         node_map_.count(name), 0UL,
         platform::errors::PreconditionNotMet(
-            "PDNode's name should be unique, get duplicate [%s]", name));
+            "PDNode's name shold be unique, get duplicate [%s]", name));
   }
 
   nodes_.emplace_back(new PDNode(this, name));
@@ -58,7 +58,7 @@ PDNode *PDPattern::NewNode(PDNode::teller_t &&teller, const std::string &name) {
     PADDLE_ENFORCE_EQ(
         node_map_.count(name), 0UL,
         platform::errors::PreconditionNotMet(
-            "PDNode's name should be unique, get duplicate [%s]", name));
+            "PDNode's name shold be unique, get duplicate [%s]", name));
   }
 
   nodes_.emplace_back(new PDNode(std::move(teller), this, name));

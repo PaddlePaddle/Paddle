@@ -31,7 +31,7 @@ class TrainerDesc(object):
             text_format.Parse(f.read(), self.proto_desc)
         '''
         # Workaround for relative import in protobuf under python3
-        # TODO: should be fixed
+        # TODO: shold be fixed
         cur_path = path.dirname(__file__)
         sys.path.append(cur_path)
         sys.path.append(cur_path + "/proto")

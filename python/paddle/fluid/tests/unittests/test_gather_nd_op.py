@@ -48,11 +48,11 @@ class TestGatherNdOpWithLowIndex(OpTest):
     def setUp(self):
         self.op_type = "gather_nd"
         xnp = np.random.uniform(0, 100, (10, 10)).astype("float64")
-        index = np.array([[1], [2]]).astype("int64")
+        indice = np.array([[1], [2]]).astype("int64")
 
-        self.inputs = {'X': xnp, 'Index': index}
+        self.inputs = {'X': xnp, 'Index': indice}
 
-        self.outputs = {'Out': xnp[tuple(index.T)]}  #[[14, 25, 1], [76, 22, 3]]
+        self.outputs = {'Out': xnp[tuple(indice.T)]}  #[[14, 25, 1], [76, 22, 3]]
 
     def test_check_output(self):
         self.check_output()
@@ -69,10 +69,10 @@ class TestGatherNdOpWithSameIndexAsX(OpTest):
     def setUp(self):
         self.op_type = "gather_nd"
         xnp = np.random.uniform(0, 100, (10, 10)).astype("float64")
-        index = np.array([[1, 1], [2, 1]]).astype("int64")
+        indice = np.array([[1, 1], [2, 1]]).astype("int64")
 
-        self.inputs = {'X': xnp, 'Index': index}
-        self.outputs = {'Out': xnp[tuple(index.T)]}  #[25, 22]
+        self.inputs = {'X': xnp, 'Index': indice}
+        self.outputs = {'Out': xnp[tuple(indice.T)]}  #[25, 22]
 
     def test_check_output(self):
         self.check_output()
@@ -90,10 +90,10 @@ class TestGatherNdOpWithHighRankSame(OpTest):
         self.op_type = "gather_nd"
         shape = (20, 9, 8, 1, 31)
         xnp = np.random.rand(*shape).astype("float64")
-        index = np.vstack([np.random.randint(0, s, size=150) for s in shape]).T
+        indice = np.vstack([np.random.randint(0, s, size=150) for s in shape]).T
 
-        self.inputs = {'X': xnp, 'Index': index.astype("int32")}
-        self.outputs = {'Out': xnp[tuple(index.T)]}
+        self.inputs = {'X': xnp, 'Index': indice.astype("int32")}
+        self.outputs = {'Out': xnp[tuple(indice.T)]}
 
     def test_check_output(self):
         self.check_output()
@@ -111,11 +111,11 @@ class TestGatherNdOpWithHighRankDiff(OpTest):
         self.op_type = "gather_nd"
         shape = (20, 9, 8, 1, 31)
         xnp = np.random.rand(*shape).astype("float64")
-        index = np.vstack([np.random.randint(0, s, size=1000) for s in shape]).T
-        index_re = index.reshape([10, 5, 20, 5])
+        indice = np.vstack([np.random.randint(0, s, size=1000) for s in shape]).T
+        indice_re = indice.reshape([10, 5, 20, 5])
 
-        self.inputs = {'X': xnp, 'Index': index_re.astype("int32")}
-        self.outputs = {'Out': xnp[tuple(index.T)].reshape([10, 5, 20])}
+        self.inputs = {'X': xnp, 'Index': indice_re.astype("int32")}
+        self.outputs = {'Out': xnp[tuple(indice.T)].reshape([10, 5, 20])}
 
     def test_check_output(self):
         self.check_output()
@@ -129,18 +129,18 @@ class TestGatherNdOpAPI(unittest.TestCase):
     def test_case1(self):
         x1 = fluid.layers.data(
             name='x1', shape=[30, 40, 50, 60], dtype='float32')
-        index1 = fluid.layers.data(name='index1', shape=[2, 4], dtype='int32')
-        output1 = fluid.layers.gather_nd(x1, index1)
+        indice1 = fluid.layers.data(name='indice1', shape=[2, 4], dtype='int32')
+        output1 = fluid.layers.gather_nd(x1, indice1)
 
     def test_case2(self):
         x2 = fluid.layers.data(name='x2', shape=[30, 40, 50], dtype='float32')
-        index2 = fluid.layers.data(name='index2', shape=[2, 2], dtype='int64')
-        output2 = fluid.layers.gather_nd(x2, index2)
+        indice2 = fluid.layers.data(name='indice2', shape=[2, 2], dtype='int64')
+        output2 = fluid.layers.gather_nd(x2, indice2)
 
     def test_case3(self):
         x3 = fluid.layers.data(name='x3', shape=[3, 4, 5], dtype='float32')
-        index3 = fluid.layers.data(name='index3', shape=[2, 1], dtype='int32')
-        output3 = fluid.layers.gather_nd(x3, index3, name="gather_nd_layer")
+        indice3 = fluid.layers.data(name='indice3', shape=[2, 1], dtype='int32')
+        output3 = fluid.layers.gather_nd(x3, indice3, name="gather_nd_layer")
 
 
 #Test Raise Index Error
@@ -150,12 +150,12 @@ class TestGatherNdOpRaise(unittest.TestCase):
             try:
                 x = fluid.layers.data(
                     name='x', shape=[3, 4, 5], dtype='float32')
-                index = fluid.layers.data(
-                    name='index', shape=[2, 10], dtype='int32')
-                output = fluid.layers.gather_nd(x, index)
+                indice = fluid.layers.data(
+                    name='indice', shape=[2, 10], dtype='int32')
+                output = fluid.layers.gather_nd(x, indice)
             except Exception as e:
                 t = \
-                "Input(Index).shape[-1] should be no greater than Input(X).rank"
+                "Input(Index).shape[-1] shold be no greater than Input(X).rank"
                 if t in str(e):
                     raise IndexError
 

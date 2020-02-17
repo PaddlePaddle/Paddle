@@ -553,10 +553,10 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
   }
   PADDLE_ENFORCE_GT(
       out_h, 0,
-      "out_h in Attr(out_shape) of Op(interpolate) should be greater than 0.");
+      "out_h in Attr(out_shape) of Op(interpolate) shold be greater than 0.");
   PADDLE_ENFORCE_GT(
       out_w, 0,
-      "out_w in Attr(out_shape) of Op(interpolate) should be greater than 0.");
+      "out_w in Attr(out_shape) of Op(interpolate) shold be greater than 0.");
 
   framework::DDim dim_out;
   if (data_layout == DataLayout::kNCHW) {
@@ -656,13 +656,13 @@ static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx,
   }
   PADDLE_ENFORCE_GT(
       out_d, 0,
-      "out_d in Attr(out_shape) of Op(interpolate) should be greater than 0.");
+      "out_d in Attr(out_shape) of Op(interpolate) shold be greater than 0.");
   PADDLE_ENFORCE_GT(
       out_h, 0,
-      "out_h in Attr(out_shape) of Op(interpolate) should be greater than 0.");
+      "out_h in Attr(out_shape) of Op(interpolate) shold be greater than 0.");
   PADDLE_ENFORCE_GT(
       out_w, 0,
-      "out_w in Attr(out_shape) of Op(interpolate) should be greater than 0.");
+      "out_w in Attr(out_shape) of Op(interpolate) shold be greater than 0.");
 
   framework::DDim dim_out;
   if (data_layout == DataLayout::kNCHW) {

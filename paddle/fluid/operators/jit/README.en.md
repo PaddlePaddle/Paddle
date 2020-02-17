@@ -36,15 +36,15 @@ PaddlePaddle/Paddle/paddle/fluid/
 
 All basical definations of jit kernels are addressed in `paddle/fluid/operators/jit` including these three key folders `refer`, `gen`, `more`. There is only one unique name for each kernel while may have seraval implementations with same functionality.
 
-- `refer`: Each kernel must have one reference implementation on CPU, and it should only focus on the correctness and should not depends on any third-party libraries.
-- `gen`: The code generated should be kept here. They should be designed focusing on the best performance, which depends on Xbyak.
-- `more`: All other implementations should be kept in this folder with one directory corresponding to one library kind or method kind, such as mkl, mkldnn, openblas or intrinsic code. Each implementation should have it advantage. 
+- `refer`: Each kernel must have one reference implementation on CPU, and it shold only focus on the correctness and shold not depends on any third-party libraries.
+- `gen`: The code generated shold be kept here. They shold be designed focusing on the best performance, which depends on Xbyak.
+- `more`: All other implementations shold be kept in this folder with one directory corresponding to one library kind or method kind, such as mkl, mkldnn, openblas or intrinsic code. Each implementation shold have it advantage. 
 
 ## How to use
 
 We present these methods to get the functions:
-- `GetAllCandidateFuncs`. It can return all the implementations supported. All of the implementations can get the same result. You can do some runtime benchmark to choose which should actually be used.
-- `GetDefaultBestFunc`. It only return one default function pointer, which is tuning offline with some genenal configures and attributes. This should cover most situations.
+- `GetAllCandidateFuncs`. It can return all the implementations supported. All of the implementations can get the same result. You can do some runtime benchmark to choose which shold actually be used.
+- `GetDefaultBestFunc`. It only return one default function pointer, which is tuning offline with some genenal configures and attributes. This shold cover most situations.
 - `KernelFuncs::Cache()`. It can get the default functions and save it for next time with the same attribute. 
 - `GetReferFunc`. It can only get the reference code in CPU, and all the others implementations have same logic with this reference code.
 
@@ -76,19 +76,19 @@ All kernels are inlcuded in `paddle/fluid/operators/jit/kernels.h`, which is aut
 ## Solid Test
 
 - Unit Test
-    All functions should be compared with the corresponding reference functions, including data tyep `float` and `double`.
+    All functions shold be compared with the corresponding reference functions, including data tyep `float` and `double`.
 - Benchmark
-    All functions should be tested, and make sure the `jit::GetDefaultBestFunc` function obtain the best performance with all attributes.
+    All functions shold be tested, and make sure the `jit::GetDefaultBestFunc` function obtain the best performance with all attributes.
 
 # How to add new kernel
 
 ## Required
 
 1. Add `your_key` at `KernelType`.
-2. Add your new `KernelTuple` which must include `your_key`. It should be a combination of the data type, attribute type and function type. You can refer `SeqPoolTuple`.
+2. Add your new `KernelTuple` which must include `your_key`. It shold be a combination of the data type, attribute type and function type. You can refer `SeqPoolTuple`.
 3. Add reference function of `your_key`. 
 Note:
-    - this should be run on CPU and do not depend on any third-party.
+    - this shold be run on CPU and do not depend on any third-party.
     - Add `USE_JITKERNEL_REFER(your_key)` in `refer/CmakeLists.txt` to make sure this code can be used.
 4. Add unit test in `test.cc`, and verfiy at least `float` and `double`.
 Test more data type for some special functions if necessary, for example `int8`.
@@ -98,6 +98,6 @@ Test more data type for some special functions if necessary, for example `int8`.
 
 Add more implementations of `your_kery` for performance enhancement.
 
-1. Add functions based on generated code in `gen`. It should be derived from `JitCode` and should have correpsonding creator from `JitCodeCreator` which will be registered on the `your_key`.
-2. If new attribute type is added, you should specialize `JitCodeKey` of this type.
+1. Add functions based on generated code in `gen`. It shold be derived from `JitCode` and shold have correpsonding creator from `JitCodeCreator` which will be registered on the `your_key`.
+2. If new attribute type is added, you shold specialize `JitCodeKey` of this type.
 3. Add more functions in `more`，you can use any third party you wish, like mkl, mkldnn or intrinsic code to reach the best performance.

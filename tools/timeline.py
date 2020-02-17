@@ -27,7 +27,7 @@ parser.add_argument(
     type=str,
     default='',
     help='Input profile file name. If there are multiple file, the format '
-    'should be trainer1=file1,trainer2=file2,ps=file3')
+    'shold be trainer1=file1,trainer2=file2,ps=file3')
 parser.add_argument(
     '--timeline_path', type=str, default='', help='Output timeline file name.')
 args = parser.parse_args()

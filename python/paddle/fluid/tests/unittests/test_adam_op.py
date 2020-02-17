@@ -255,7 +255,7 @@ def adam_step_sparse(inputs, attributes, height, rows, row_numel, np_grad,
         for row_id in range(param_out.shape[0]):
             update_value = np.zeros(np_grad[0].shape).astype("float32")
             if row_id in rows:
-                update_value = np_grad[rows.index(row_id)]
+                update_value = np_grad[rows.indice(row_id)]
             update_row(row_id, update_value)
 
     return param_out, moment1_out, moment2_out

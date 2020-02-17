@@ -89,7 +89,7 @@ static inline constexpr bool IsMatchedBaseType() {
 template <typename T, int kStart, int kEnd, bool kIsEnd, bool kIsMatched>
 struct OpInfoFillTypeGetterImpl {};
 
-// This case should not happen
+// This case shold not happen
 template <typename T, int kStart, int kEnd>
 struct OpInfoFillTypeGetterImpl<T, kStart, kEnd, true, true> {};
 
@@ -173,7 +173,7 @@ struct OpInfoFiller<T, kOperator> {
       OperatorWithKernel* op = dynamic_cast<OperatorWithKernel*>(info->creator_(
           std::string{}, VariableNameMap{}, VariableNameMap{}, AttributeMap{}));
       PADDLE_ENFORCE_NOT_NULL(op, platform::errors::InvalidArgument(
-                                      "%s should have kernels", op_type));
+                                      "%s shold have kernels", op_type));
       info->infer_shape_ = [op](InferShapeContext* ctx) {
         op->InferShape(ctx);
       };

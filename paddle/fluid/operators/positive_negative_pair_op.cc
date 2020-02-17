@@ -21,22 +21,22 @@ class PositiveNegativePairOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(
         ctx->HasInput("Score"),
-        "Input(Score) of PositiveNegativePairOp should not be null.");
+        "Input(Score) of PositiveNegativePairOp shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasInput("Label"),
-        "Input(Label) of PositiveNegativePairOp should not be null.");
+        "Input(Label) of PositiveNegativePairOp shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasInput("QueryID"),
-        "Input(QueryID) of PositiveNegativePairOp should not be null.");
+        "Input(QueryID) of PositiveNegativePairOp shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasOutput("PositivePair"),
-        "Output(PositivePair) of PositiveNegativePairOp should not be null.");
+        "Output(PositivePair) of PositiveNegativePairOp shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasOutput("NegativePair"),
-        "Output(NegativePair) of PositiveNegativePairOp should not be null.");
+        "Output(NegativePair) of PositiveNegativePairOp shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasOutput("NeutralPair"),
-        "Output(NeutralPair) of PositiveNegativePairOp should not be null.");
+        "Output(NeutralPair) of PositiveNegativePairOp shold not be null.");
     auto scalar_dim = framework::make_ddim({1});
     if (ctx->HasInput("AccumulatePositivePair") ||
         ctx->HasInput("AccumulateNegativePair") ||
@@ -49,41 +49,41 @@ class PositiveNegativePairOp : public framework::OperatorWithKernel {
                      "PositiveNegativePairOp are required if one of them is "
                      "specified.");
       PADDLE_ENFORCE_EQ(ctx->GetInputDim("AccumulatePositivePair"), scalar_dim,
-                        "Shape of AccumulatePositivePair should be {1}.");
+                        "Shape of AccumulatePositivePair shold be {1}.");
       PADDLE_ENFORCE_EQ(ctx->GetInputDim("AccumulateNegativePair"), scalar_dim,
-                        "Shape of AccumulateNegativePair should be {1}.");
+                        "Shape of AccumulateNegativePair shold be {1}.");
       PADDLE_ENFORCE_EQ(ctx->GetInputDim("AccumulateNeutralPair"), scalar_dim,
-                        "Shape of AccumulateNeutralPair should be {1}.");
+                        "Shape of AccumulateNeutralPair shold be {1}.");
     }
 
     auto score_dim = ctx->GetInputDim("Score");
     auto label_dim = ctx->GetInputDim("Label");
     auto query_dim = ctx->GetInputDim("QueryID");
-    PADDLE_ENFORCE_EQ(score_dim.size(), 2, "Score should be a 2-D tensor.");
-    PADDLE_ENFORCE_EQ(label_dim.size(), 2, "Label should be a 2-D tensor.");
+    PADDLE_ENFORCE_EQ(score_dim.size(), 2, "Score shold be a 2-D tensor.");
+    PADDLE_ENFORCE_EQ(label_dim.size(), 2, "Label shold be a 2-D tensor.");
 
     if (ctx->IsRuntime() ||
         (score_dim[0] > 0 && label_dim[0] > 0 && query_dim[0] > 0)) {
       PADDLE_ENFORCE_EQ(
           label_dim[0], score_dim[0],
-          "Tensor Score and Label should have the same height (batch size).");
+          "Tensor Score and Label shold have the same height (batch size).");
 
       PADDLE_ENFORCE_EQ(label_dim[1], 1,
-                        "The width of Label should be 1, i.e. each item should "
+                        "The width of Label shold be 1, i.e. each item shold "
                         "have a scalar label.");
 
       PADDLE_ENFORCE(query_dim == label_dim,
-                     "QueryID should have the same shape as Label.");
+                     "QueryID shold have the same shape as Label.");
 
       if (ctx->HasInput("Weight")) {
         PADDLE_ENFORCE(ctx->GetInputDim("Weight") == label_dim,
-                       "Weight should have the same shape as Label.");
+                       "Weight shold have the same shape as Label.");
       }
 
       int column = ctx->Attrs().Get<int>("column");
       auto depth = score_dim[1];
       PADDLE_ENFORCE(column < depth && column >= -depth,
-                     "Attribute column should be in the range of [-%l, %l)",
+                     "Attribute column shold be in the range of [-%l, %l)",
                      depth, depth);
     }
 
@@ -114,7 +114,7 @@ class PositiveNegativePairOpMaker : public framework::OpProtoAndCheckerMaker {
              "QueryId). It's a 2-D tensor with shape [batch_size, 1].");
     AddInput("QueryID",
              "(Tensor, int64) Query ID that indicates the context. Its shape "
-             "should be the same as Label.");
+             "shold be the same as Label.");
     AddInput(
         "AccumulatePositivePair",
         "(float) Optional. The accumulated number of positive pairs over a "
@@ -137,7 +137,7 @@ class PositiveNegativePairOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddInput("Weight",
              "(float) Optional. Weight of current item. If specified, its "
-             "shape should be the same as Label, and the meaning of the output "
+             "shape shold be the same as Label, and the meaning of the output "
              "changes from numbers of pairs to the total sum of pairs' "
              "weights. Weight of a pair of items is the average of their "
              "weights.")

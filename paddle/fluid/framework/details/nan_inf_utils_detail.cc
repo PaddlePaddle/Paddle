@@ -148,7 +148,7 @@ static void PrintNanInf(const T* value, const size_t numel, int print_num,
     }
 
     if (count < static_cast<size_t>(print_num)) {
-      printf("numel:%lu index:%lu value:%f\n", static_cast<uint64_t>(numel),
+      printf("numel:%lu indice:%lu value:%f\n", static_cast<uint64_t>(numel),
              static_cast<uint64_t>(i), static_cast<float>(value[i]));
     }
   }

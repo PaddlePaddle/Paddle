@@ -23,14 +23,14 @@ class DiagOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Diagonal"),
-                   "Input(Diagonal) of DiagOp should not be null.");
+                   "Input(Diagonal) of DiagOp shold not be null.");
 
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of DiagOp should not be null.");
+                   "Output(Out) of DiagOp shold not be null.");
 
     auto s_dims = ctx->GetInputDim("Diagonal");
     PADDLE_ENFORCE(s_dims.size() == 1,
-                   "The rank of Input(Diagonal) should only be 1.");
+                   "The rank of Input(Diagonal) shold only be 1.");
 
     ctx->SetOutputDim("Out", {s_dims[0], s_dims[0]});
   }

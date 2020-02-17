@@ -25,11 +25,11 @@ class FusedEmbeddingSeqPoolOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("W"),
-                   "Input W of FusedEmbeddingSeqPoolOp should not be null.");
+                   "Input W of FusedEmbeddingSeqPoolOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Ids"),
-                   "Input Ids of FusedEmbeddingSeqPoolOp should not be null.");
+                   "Input Ids of FusedEmbeddingSeqPoolOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output of FusedEmbeddingSeqPoolOp should not be null.");
+                   "Output of FusedEmbeddingSeqPoolOp shold not be null.");
 
     auto table_dims = ctx->GetInputDim("W");
     auto ids_dims = ctx->GetInputDim("Ids");
@@ -50,7 +50,7 @@ class FusedEmbeddingSeqPoolOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ids_desc->GetLoDLevel(), 1);
 
     // in compile time, the shape from Ids -> output
-    // should be [-1, 1] -> [-1, embedding_size]
+    // shold be [-1, 1] -> [-1, embedding_size]
     ctx->SetOutputDim("Out", framework::make_ddim({-1, last_dim}));
   }
 
@@ -107,7 +107,7 @@ This operator is used to perform lookups on the parameter W,
 then computes the weighted sum of the lookups results for each row
 and concatenated into a dense tensor.
 
-The input Ids should carry the LoD (Level of Details) information.
+The input Ids shold carry the LoD (Level of Details) information.
 And the output will change the LoD information with input Ids.
 
 )DOC");

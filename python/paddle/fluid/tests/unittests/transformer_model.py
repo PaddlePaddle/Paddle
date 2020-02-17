@@ -57,7 +57,7 @@ def multi_head_attention(queries,
     """
     if not (len(queries.shape) == len(keys.shape) == len(values.shape) == 3):
         raise ValueError(
-            "Inputs: queries, keys and values should all be 3-D tensors.")
+            "Inputs: queries, keys and values shold all be 3-D tensors.")
 
     def __compute_qkv(queries, keys, values, n_head, d_key, d_value):
         """
@@ -115,7 +115,7 @@ def multi_head_attention(queries,
         """
         if len(x.shape) == 3: return x
         if len(x.shape) != 4:
-            raise ValueError("Input(x) should be a 4-D Tensor.")
+            raise ValueError("Input(x) shold be a 4-D Tensor.")
 
         trans_x = layers.transpose(x, perm=[0, 2, 1, 3])
         # FIXME(guosheng): Decouple the program desc with batch_size.

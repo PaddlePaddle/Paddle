@@ -90,7 +90,7 @@ struct BuildStrategy {
   bool fuse_elewise_add_act_ops_{false};
   bool enable_auto_fusion_{false};
   // Fuse_all_optimizer_ops and fuse_all_reduce_ops require that gradients
-  // should not be sparse types
+  // shold not be sparse types
   boost::optional<bool> fuse_all_optimizer_ops_{false};
   boost::optional<bool> fuse_all_reduce_ops_{boost::none};
   // fuse_relu_depthwise_conv can fuse the `relu ->
@@ -107,7 +107,7 @@ struct BuildStrategy {
   // mkldnn_enabled_op_types specify the operator type list to
   // use MKLDNN acceleration. It is null in default, means
   // that all the operators supported by MKLDNN will be
-  // accelerated. And it should not be set when
+  // accelerated. And it shold not be set when
   // FLAGS_use_mkldnn=false
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
 
@@ -142,7 +142,7 @@ struct BuildStrategy {
 
   // NOTE:
   // Before you add new options, think if it's a general strategy that works
-  // with other strategy. If not, the strategy should be created through
+  // with other strategy. If not, the strategy shold be created through
   // CreatePassesFromStrategy and the pass can be managed separately.
 
   // User normally doesn't need to call this API.

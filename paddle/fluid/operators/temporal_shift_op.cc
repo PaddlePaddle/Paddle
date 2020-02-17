@@ -27,26 +27,26 @@ class TemporalShiftOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of TemporalShiftOp should not be null.");
+                      "Input(X) of TemporalShiftOp shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of TemporalShiftOp should not be null.");
+                      "Output(Out) of TemporalShiftOp shold not be null.");
 
     auto dim_x = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(dim_x.size(), 4,
-                      "Input(X) rank should be 4 in shape of [N*T, C, H, W].");
+                      "Input(X) rank shold be 4 in shape of [N*T, C, H, W].");
 
     int seg_num = ctx->Attrs().Get<int>("seg_num");
     float shift_ratio = ctx->Attrs().Get<float>("shift_ratio");
-    PADDLE_ENFORCE_GT(seg_num, 0, "Attr(seg_num) should be greater than 0.");
+    PADDLE_ENFORCE_GT(seg_num, 0, "Attr(seg_num) shold be greater than 0.");
     PADDLE_ENFORCE_GT(shift_ratio, 0.,
-                      "Attr(shift_ratio) should be greater than 0");
+                      "Attr(shift_ratio) shold be greater than 0");
     PADDLE_ENFORCE_LT(shift_ratio, 0.5,
-                      "Attr(shift_ratio) should be less than 0.5");
+                      "Attr(shift_ratio) shold be less than 0.5");
 
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(
           dim_x[0] % seg_num, 0,
-          "Input(X) dims[0] should be divided exactly by Attr(seg_num).");
+          "Input(X) dims[0] shold be divided exactly by Attr(seg_num).");
     }
 
     ctx->SetOutputDim("Out", dim_x);
@@ -76,21 +76,21 @@ class TemporalShiftOpMaker : public framework::OpProtoAndCheckerMaker {
               "This is a 4-D tensor in the same shape with Input(X).");
 
     AddAttr<int>("seg_num",
-                 "The temporal segment number, this should be a positive "
+                 "The temporal segment number, this shold be a positive "
                  "integer.");
     AddAttr<float>(
         "shift_ratio",
         "The shift ratio of the channels, the first :attr:`shift_ratio` part "
         "of channels will be shifted by -1 along the temporal dimension, "
         "and the second :attr:`shift_ratio` part of channels will be shifted "
-        "by 1 along the temporal dimension. :attr:`shift_ratio` should be in "
+        "by 1 along the temporal dimension. :attr:`shift_ratio` shold be in "
         "range [0, 0.5]. Default 0.25.")
         .SetDefault(0.25);
 
     AddComment(R"DOC(
           This operator calculates the temporal shifting features for Input(X).
 
-          Input(X) should be in shape of [N*T, C, H, W], while N is the batch
+          Input(X) shold be in shape of [N*T, C, H, W], while N is the batch
           size, T is the temporal segment number specified by :attr:`seg_num`, 
           C is the channel number, H and W is the height and width of features.
 

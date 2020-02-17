@@ -26,20 +26,20 @@ class DetectionMAPOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("DetectRes"),
-                   "Input(DetectRes) of DetectionMAPOp should not be null.");
+                   "Input(DetectRes) of DetectionMAPOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Label"),
-                   "Input(Label) of DetectionMAPOp should not be null.");
+                   "Input(Label) of DetectionMAPOp shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasOutput("AccumPosCount"),
-        "Output(AccumPosCount) of DetectionMAPOp should not be null.");
+        "Output(AccumPosCount) of DetectionMAPOp shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasOutput("AccumTruePos"),
-        "Output(AccumTruePos) of DetectionMAPOp should not be null.");
+        "Output(AccumTruePos) of DetectionMAPOp shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasOutput("AccumFalsePos"),
-        "Output(AccumFalsePos) of DetectionMAPOp should not be null.");
+        "Output(AccumFalsePos) of DetectionMAPOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("MAP"),
-                   "Output(MAP) of DetectionMAPOp should not be null.");
+                   "Output(MAP) of DetectionMAPOp shold not be null.");
 
     auto det_dims = ctx->GetInputDim("DetectRes");
     PADDLE_ENFORCE_EQ(det_dims.size(), 2UL,
@@ -58,11 +58,11 @@ class DetectionMAPOp : public framework::OperatorWithKernel {
 
     if (ctx->HasInput("PosCount")) {
       PADDLE_ENFORCE(ctx->HasInput("TruePos"),
-                     "Input(TruePos) of DetectionMAPOp should not be null when "
+                     "Input(TruePos) of DetectionMAPOp shold not be null when "
                      "Input(TruePos) is not null.");
       PADDLE_ENFORCE(
           ctx->HasInput("FalsePos"),
-          "Input(FalsePos) of DetectionMAPOp should not be null when "
+          "Input(FalsePos) of DetectionMAPOp shold not be null when "
           "Input(FalsePos) is not null.");
     }
 
@@ -151,7 +151,7 @@ class DetectionMAPOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>(
         "background_label",
         "(int, default: 0) "
-        "The index of background label, the background label will be ignored. "
+        "The indice of background label, the background label will be ignored. "
         "If set to -1, then all categories will be considered.")
         .SetDefault(0);
     AddAttr<float>(
@@ -171,7 +171,7 @@ class DetectionMAPOpMaker : public framework::OpProtoAndCheckerMaker {
         .InEnum({"integral", "11point"})
         .AddCustomChecker([](const std::string& ap_type) {
           PADDLE_ENFORCE_NE(GetAPType(ap_type), APType::kNone,
-                            "The ap_type should be 'integral' or '11point.");
+                            "The ap_type shold be 'integral' or '11point.");
         });
     AddComment(R"DOC(
 Detection mAP evaluate operator.

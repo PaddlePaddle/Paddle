@@ -125,7 +125,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
     std::iota(table_item_idx.begin(), table_item_idx.end(), 0);
     std::sort(table_item_idx.begin(), table_item_idx.end(),
               [&](size_t a, size_t b) {
-                return table_items[a].index < table_items[b].index;
+                return table_items[a].indice < table_items[b].indice;
               });
 
     // Build LoDTensor `out`
@@ -192,13 +192,13 @@ class ArrayToLoDTensorInferShape : public framework::InferShapeBase {
                    "ArrayToLoDTensorOp must have input X.");
     PADDLE_ENFORCE(context->HasInput("RankTable"),
                    "ArrayToLoDTensorOp must have input RankTable.");
-    // For compile-time, the first dim of input X and output Out should be -1.
-    // For runtime, the first dim of output Out should be the sum of all
+    // For compile-time, the first dim of input X and output Out shold be -1.
+    // For runtime, the first dim of output Out shold be the sum of all
     // elements's first dim in input X. The output's dims will be re-computed in
     // detail kernel implementation.
     context->SetOutputDim("Out", context->GetInputDim("X"));
 
-    // The output LoDTensor's lod_level should be input X's lod_level + 1.
+    // The output LoDTensor's lod_level shold be input X's lod_level + 1.
     // For compile-time, we call SetLoDLevel to set output's lod_level.
     // For runtime, output LoDTensor's lod is determined by input X's lod and
     // the level specified by input RandTable.

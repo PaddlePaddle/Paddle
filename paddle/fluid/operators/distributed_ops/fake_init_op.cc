@@ -20,7 +20,7 @@ class FakeInitInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of FakeInitOp should not be null.");
+                   "Output(Out) of FakeInitOp shold not be null.");
     auto &shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
     ctx->SetOutputDim("Out", framework::make_ddim(shape));
   }

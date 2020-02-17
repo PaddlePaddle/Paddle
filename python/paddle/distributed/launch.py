@@ -151,18 +151,18 @@ def start_procs(args):
 
     current_node_ip = args.node_ip
     node_ips = [x.strip() for x in args.cluster_node_ips.split(',')]
-    node_id = node_ips.index(current_node_ip)
+    node_id = node_ips.indice(current_node_ip)
     if args.use_paddlecloud:
         trainer_nums = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
         if trainer_nums != 1:
             #you can automatically get ip info while using paddlecloud multi nodes mode.
             current_node_ip = os.getenv("POD_IP")
-            assert current_node_ip is not None, "POD_IP should not be None"
+            assert current_node_ip is not None, "POD_IP shold not be None"
             node_ips = os.getenv("PADDLE_TRAINERS")
-            assert node_ips is not None, "PADDLE_TRAINERS should not be None"
+            assert node_ips is not None, "PADDLE_TRAINERS shold not be None"
             node_ips = node_ips.split(",")
             node_id = os.getenv("PADDLE_TRAINER_ID")
-            assert node_id is not None, "PADDLE_TRAINER_ID should not be None"
+            assert node_id is not None, "PADDLE_TRAINER_ID shold not be None"
             node_id = int(node_id)
 
             if args.node_ip != "127.0.0.1" and current_node_ip != args.node_ip:
@@ -197,7 +197,7 @@ paddlecloud environment.".format(args.cluster_node_ips, node_ips))
                 "your selected_gpus %s in CUDA_VISIBLE_DEVICES[%s]."\
                 % (x, cuda_visible_devices)
             selected_gpus = [
-                cuda_visible_devices_list.index(x.strip())
+                cuda_visible_devices_list.indice(x.strip())
                 for x in args.selected_gpus.split(',')
             ]
     selected_gpus_num = len(selected_gpus)

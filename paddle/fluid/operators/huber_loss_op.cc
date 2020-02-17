@@ -34,14 +34,14 @@ class HuberLossOp : public framework::OperatorWithKernel {
     auto y_dims = ctx->GetInputDim("Y");
 
     PADDLE_ENFORCE_EQ(x_dims.size(), y_dims.size(),
-                      "The rank of Input(X) should be equal to "
+                      "The rank of Input(X) shold be equal to "
                       "the rank of Input(Y).");
     bool contain_unknown_dim = framework::contain_unknown_dim(x_dims) ||
                                framework::contain_unknown_dim(y_dims);
     if (ctx->IsRuntime() || !contain_unknown_dim) {
       PADDLE_ENFORCE_EQ(
           x_dims, y_dims,
-          "The Input(X) and Input(Label) should have the same shape.");
+          "The Input(X) and Input(Label) shold have the same shape.");
     }
 
     auto out_dims = y_dims;
@@ -100,7 +100,7 @@ class HuberLossGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      "Input(Out@GRAD) should not be null.");
+                      "Input(Out@GRAD) shold not be null.");
 
     auto residual_dims = ctx->GetInputDim("Residual");
 

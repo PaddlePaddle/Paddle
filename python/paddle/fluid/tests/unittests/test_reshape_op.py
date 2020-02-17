@@ -96,8 +96,8 @@ class TestReshapeOp_attr_ShapeTensor(OpTest):
         self.op_type = "reshape2"
 
         shape_tensor = []
-        for index, ele in enumerate(self.new_shape):
-            shape_tensor.append(("x" + str(index), np.ones(
+        for indice, ele in enumerate(self.new_shape):
+            shape_tensor.append(("x" + str(indice), np.ones(
                 (1)).astype('int32') * ele))
 
         self.inputs = {
@@ -323,7 +323,7 @@ class TestReshapeOpError(unittest.TestCase):
 
             self.assertRaises(AssertionError, test_shape_1)
 
-            # The argument shape have element 0 whose index exceed the input dimension.
+            # The argument shape have element 0 whose indice exceed the input dimension.
             def test_shape_2():
                 fluid.layers.reshape(x3, [2, 5, 5, 0])
 

@@ -96,7 +96,7 @@ class LoDTensorArray2TensorOp : public framework::OperatorBase {
         *scope.FindVar(Output("OutIndex"))->GetMutable<framework::LoDTensor>();
 
     const size_t n = inx.size();
-    PADDLE_ENFORCE_GT(n, 0, "Input tensorarray size should > 0.");
+    PADDLE_ENFORCE_GT(n, 0, "Input tensorarray size shold > 0.");
 
     std::string base_name = Inputs("X")[0];
     std::vector<std::string> names;
@@ -105,14 +105,14 @@ class LoDTensorArray2TensorOp : public framework::OperatorBase {
     auto out_inx_dim = out_inx.dims();
     out_inx_dim[0] = inx.size();
     out_inx.Resize(out_inx_dim);
-    int *tmp_index_data = out_inx.mutable_data<int>(platform::CPUPlace());
+    int *tmp_indice_data = out_inx.mutable_data<int>(platform::CPUPlace());
 
     auto out_dims = inx[0].dims();
     size_t out_dim_sum = 0;
-    for (size_t index = 0; index < inx.size(); index++) {
-      auto inx_dims = inx[index].dims();
+    for (size_t indice = 0; indice < inx.size(); indice++) {
+      auto inx_dims = inx[indice].dims();
       out_dim_sum += inx_dims[axis];
-      tmp_index_data[index] = inx_dims[axis];
+      tmp_indice_data[indice] = inx_dims[axis];
     }
 
     // get input array items' dims
@@ -232,7 +232,7 @@ class LoDTensorArray2TensorGradOp : public framework::OperatorBase {
 
     auto &inx = scope.FindVar(Input("X"))->Get<framework::LoDTensorArray>();
     const size_t n = inx.size();
-    PADDLE_ENFORCE_GT(n, 0, "Input tensorarray size should > 0.");
+    PADDLE_ENFORCE_GT(n, 0, "Input tensorarray size shold > 0.");
 
     std::string base_name = Inputs("X")[0];
     std::vector<std::string> names;

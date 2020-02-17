@@ -71,9 +71,9 @@ def center_loss(input,
         Out = \\frac{1}{2}(X - Y)^2
 
     Args:
-        input (Variable): a 2-D tensor with shape[N x M]. Its dtype should be float32 or float64.
+        input (Variable): a 2-D tensor with shape[N x M]. Its dtype shold be float32 or float64.
         label (Variable): the groud truth which is a 2-D tensor
-                         with shape[N x 1],where N is the batch size. Its dtype should be int32.
+                         with shape[N x 1],where N is the batch size. Its dtype shold be int32.
         num_classes (int): the number of classification categories.
         alpha (float|Variable): learning rate of centers.
         param_attr (ParamAttr): Attribute initializer of centers. 
@@ -185,7 +185,7 @@ def bpr_loss(input, label, name=None):
     return out
 
 
-def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
+def cross_entropy(input, label, soft_label=False, ignore_indice=kIgnoreIndex):
     """
     This operator computes the cross entropy between input and label. It
     supports both hard-label and and soft-label cross entropy computation.
@@ -195,7 +195,7 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
 
         .. math::
 
-           output[i_1, i_2, ..., i_k]=-log(input[i_1, i_2, ..., i_k, j]), label[i_1, i_2, ..., i_k] = j, j != ignore\_index
+           output[i_1, i_2, ..., i_k]=-log(input[i_1, i_2, ..., i_k, j]), label[i_1, i_2, ..., i_k] = j, j != ignore\_indice
 
     2. Soft-label cross entropy: if soft_label=True,  :math:`label[i_1, i_2, ..., i_k, j]`
        is the soft label of each sample corresponding to the j-th class.
@@ -207,16 +207,16 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
     Args:
         input (Variable): a multidimensional Tensor with shape
                 :math:`[N_1, N_2, ..., N_k, D]`, where the last dimension D is
-                the class number. The data type should be float32 or float64.
+                the class number. The data type shold be float32 or float64.
         label (Variable): label value corresponding to input. If
-                soft_label=False, the dimension of label should be :math:`[N_1, N_2, ..., N_k]`
-                or :math:`[N_1, N_2, ..., N_k, 1]` , and its data type should be int64,
+                soft_label=False, the dimension of label shold be :math:`[N_1, N_2, ..., N_k]`
+                or :math:`[N_1, N_2, ..., N_k, 1]` , and its data type shold be int64,
                 and the value must be inside [0, D). If soft_label=True, the shape,
-                data type of label should be the same with input, and the sum of
-                soft label value of each sample should be 1.
+                data type of label shold be the same with input, and the sum of
+                soft label value of each sample shold be 1.
         soft_label (bool): indicate whether label is soft. Default False, meaning that
                 the label is hard. If soft_label=True, the label is soft.
-        ignore_index (int): specify an ignorable label value. The ignored label would be
+        ignore_indice (int): specify an ignorable label value. The ignored label would be
                 omitted when computing. If it is a negative integer, no label would
                 be ignored. Only valid when soft_label=False. Default -100.
 
@@ -236,10 +236,10 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
             cost = fluid.layers.cross_entropy(input=predict, label=label)
     """
     if not soft_label:
-        return cross_entropy2(input, label, ignore_index)
+        return cross_entropy2(input, label, ignore_indice)
 
     inputs = {'X': [input], 'Label': [label]}
-    attrs = {"soft_label": soft_label, "ignore_index": ignore_index}
+    attrs = {"soft_label": soft_label, "ignore_indice": ignore_indice}
 
     if in_dygraph_mode():
         outs = core.ops.cross_entropy(inputs, attrs)
@@ -254,9 +254,9 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
     return out
 
 
-def cross_entropy2(input, label, ignore_index=kIgnoreIndex):
+def cross_entropy2(input, label, ignore_indice=kIgnoreIndex):
     inputs = {'X': [input], 'Label': [label]}
-    attrs = {'ignore_index': ignore_index}
+    attrs = {'ignore_indice': ignore_indice}
 
     if in_dygraph_mode():
         outs = core.ops.cross_entropy2(inputs, attrs)
@@ -290,8 +290,8 @@ def square_error_cost(input, label):
         Out = (input - label)^2
 
     Parameters:
-        input (Variable): Input tensor, the data type should be float32.
-        label (Variable): Label tensor, the data type should be float32.
+        input (Variable): Input tensor, the data type shold be float32.
+        label (Variable): Label tensor, the data type shold be float32.
 
     Returns:
         The tensor variable storing the element-wise squared error \
@@ -371,23 +371,23 @@ def edit_distance(input,
 
     The input is a LoDTensor or Tensor.
     If it is a LoDTensor, The separation is specified by the LoD information.
-    If it is a Tensor, The input_length and label_length should be supported.
+    If it is a Tensor, The input_length and label_length shold be supported.
 
-    The `batch_size` of labels should be same as `input`.
+    The `batch_size` of labels shold be same as `input`.
 
     The output include the edit distance value between every pair of input and related label, and the number of sequence.
     If Attr(normalized) is true,
     the edit distance value will be divided by the length of label.
 
     Parameters:
-        input(Variable): The input variable which is a tensor or LoDTensor, its rank should be equal to 2 and its data type should be int64.
-        label(Variable): The label variable which is a tensor or LoDTensor, its rank should be equal to 2 and its data type should be int64.
+        input(Variable): The input variable which is a tensor or LoDTensor, its rank shold be equal to 2 and its data type shold be int64.
+        label(Variable): The label variable which is a tensor or LoDTensor, its rank shold be equal to 2 and its data type shold be int64.
         normalized(bool, default True): Indicated whether to normalize the edit distance.
         ignored_tokens(list<int>, default None): Tokens that will be removed before
                                      calculating edit distance.
-        input_length(Variable): The length for each sequence in `input` if it's of Tensor type, it should have shape `(batch_size, )` and its data type should be int64.
-        label_length(Variable): The length for each sequence in `label` if it's of Tensor type, it should have shape `(batch_size, )` and its data type should be int64.
-        NOTE: To be avoid unexpected result, the value of every elements in input_length and label_length should be equal to the value of the second dimension of input and label. For example, The input: [[1,2,3,4],[5,6,7,8],[9,10,11,12]], the shape of input is [3,4] and the input_length should be [4,4,4]
+        input_length(Variable): The length for each sequence in `input` if it's of Tensor type, it shold have shape `(batch_size, )` and its data type shold be int64.
+        label_length(Variable): The length for each sequence in `label` if it's of Tensor type, it shold have shape `(batch_size, )` and its data type shold be int64.
+        NOTE: To be avoid unexpected result, the value of every elements in input_length and label_length shold be equal to the value of the second dimension of input and label. For example, The input: [[1,2,3,4],[5,6,7,8],[9,10,11,12]], the shape of input is [3,4] and the input_length shold be [4,4,4]
         NOTE: This Api is different from fluid.metrics.EditDistance
 
     Returns:
@@ -517,7 +517,7 @@ def warpctc(input,
          of all labels' length. When it is a 3-D Tensor, its shape is 
          `[batch_size, max_label_length]`, where `max_label_length` is the longest
          length of label sequence. Data type must be int32.
-       blank (int, default 0): The blank label index of Connectionist
+       blank (int, default 0): The blank label indice of Connectionist
          Temporal Classification (CTC) loss, which is in the
          half-opened interval `[0, num_classes + 1)`. The data type must be int32. 
        norm_by_times(bool, default false): Whether to normalize the gradients
@@ -525,9 +525,9 @@ def warpctc(input,
          There is no need to normalize the gradients if warpctc layer was
          followed by a mean_op.
        input_length(Variable): The length for each input sequence if it is 
-         of Tensor type, it should have shape `[batch_size]` and dtype int64.
+         of Tensor type, it shold have shape `[batch_size]` and dtype int64.
        label_length(Variable): The length for each label sequence if it is
-         of Tensor type, it should have shape `[batch_size]` and dtype int64.
+         of Tensor type, it shold have shape `[batch_size]` and dtype int64.
 
     Returns:
         Variable: The Connectionist Temporal Classification (CTC) loss,
@@ -866,11 +866,11 @@ def hsigmoid(input,
     Network Language Model <http://www.iro.umontreal.ca/~lisa/pointeurs/hierarchical-nnlm-aistats05.pdf>`. For the custom
     tree, you need to set :attr:`is_custom` to True, and do the following steps (take the language model as an example):
 
-    1. Using a custom word dict to build a binary tree, each leaf node should be an word in the word dict.
+    1. Using a custom word dict to build a binary tree, each leaf node shold be an word in the word dict.
     2. Creating a dict map word_id -> path that from the word to the root node, we call it path_table.
     3. Creating a dict map word_id -> code of path that from the word to the root node, we call it path_code.
        Code means the label of each binary classifier, 1 indicate true, 0 indicate false.
-    4. Now, each word should has its path and code along the path, you can pass a batch of path and code related
+    4. Now, each word shold has its path and code along the path, you can pass a batch of path and code related
        to the same batch of inputs.
 
     Parameters:
@@ -880,8 +880,8 @@ def hsigmoid(input,
             and data type is int64.
         num_classes (int): The number of classes or the size of word dict, must be greater than 2.
             If the default tree is used (:attr:`is_custom` is set to False), :attr:`num_classes`
-            should not be None. If the custom tree is used (:attr:`is_custom` is set to True),
-            :attr:`num_classes` should be the number of non-leaf nodes, which indicates the num of
+            shold not be None. If the custom tree is used (:attr:`is_custom` is set to True),
+            :attr:`num_classes` shold be the number of non-leaf nodes, which indicates the num of
             classes using by the binary classifier.
         param_attr (ParamAttr, optional): The parameter attribute for the learnable parameters/weights
             of hsigmoid. If it is set to None or one attribute of ParamAttr, hsigmoid will create a
@@ -895,13 +895,13 @@ def hsigmoid(input,
             please refer to :ref:`api_guide_Name`. Default: None.
         path_table (Variable, optional): A tensor that stores each batch of samples' path from leaf to root
             node, its shape is [N, L] and data type is int64, where L is the length of path. For each sample i,
-            path_table[i] is a np.array like structure and each element in this array is the indexes in parent
+            path_table[i] is a np.array like structure and each element in this array is the indicees in parent
             nodes' weight matrix. Default: None.
         path_code (Variable, optional): A tensor that stores each batch of samples' code of path from leaf
             to root node, its shape is [N, L] and data type is int64, which is the same as :attr:`path_table`.
             Each code of path is consisted with the code of nodes from leaf to root node. Default: None.
         is_custom (bool, optional): Whether use custom binary tree. If it's True, :attr:`path_table`,
-            :attr:`path_code` and :attr:`num_classes` should be set, otherwise :attr:`num_classes` should
+            :attr:`path_code` and :attr:`num_classes` shold be set, otherwise :attr:`num_classes` shold
             be set. Default: False.
         is_sparse (bool, optional): Whether use sparse updating instead of dense updating, if it's True, the
             gradient of W and input will be sparse. Default: False.
@@ -934,20 +934,20 @@ def hsigmoid(input,
             "num_classes must not be less than 2 with default tree")
 
     if (not is_custom) and (is_sparse):
-        print("Sparse mode should not be used without custom tree")
+        print("Sparse mode shold not be used without custom tree")
         is_sparse = False
 
     if (not is_custom) and ((path_table is not None) or
                             (path_code is not None)):
         raise ValueError(
-            "only num_classes should be passed without custom tree")
+            "only num_classes shold be passed without custom tree")
 
     if (is_custom) and (path_code is None):
-        raise ValueError("path_code should not be None with custom tree")
+        raise ValueError("path_code shold not be None with custom tree")
     elif (is_custom) and (path_table is None):
-        raise ValueError("path_table should not be None with custom tree")
+        raise ValueError("path_table shold not be None with custom tree")
     elif (is_custom) and (num_classes is None):
-        raise ValueError("num_classes should not be None with custom tree")
+        raise ValueError("num_classes shold not be None with custom tree")
     else:
         pass
 
@@ -1022,7 +1022,7 @@ def sampled_softmax_with_cross_entropy(logits,
     row of the sampled tensor, after which cross-entropy loss is computed. 
 
     Because this operator performs a softmax on logits internally, it expects
-    unscaled logits. This operator should not be used with the output of
+    unscaled logits. This operator shold not be used with the output of
     softmax operator since that would produce incorrect results.
     
     For examples with T true labels (T >= 1), we assume that each true label has
@@ -1037,7 +1037,7 @@ def sampled_softmax_with_cross_entropy(logits,
     remove_accidental_hits is True, if a sample[i, j] accidentally hits true 
     labels, then the corresponding sampled_logits[i, j] is minus by 1e20 to 
     make its softmax result close to zero. Then sampled logits are subtracted by
-    logQ(y|x), these sampled logits and re-indexed labels are used to compute 
+    logQ(y|x), these sampled logits and re-indiceed labels are used to compute 
     a softmax with cross entropy.
 
     Args:
@@ -1046,7 +1046,7 @@ def sampled_softmax_with_cross_entropy(logits,
         label (Variable): The ground truth which is a 2-D tensor. Label is a 
             Tensor<int64> with shape [N x T], where T is the number of true 
             labels per example. 
-        num_samples (int): The number for each example, num_samples should be 
+        num_samples (int): The number for each example, num_samples shold be 
             less than the number of class.
         num_true(int): The number of target classes per training example.
         remove_accidental_hits (bool): A flag indicating whether to remove 
@@ -1131,7 +1131,7 @@ def sampled_softmax_with_cross_entropy(logits,
                  'Loss': loss},
         attrs={
             'soft_label': True,
-            'ignore_index': False,
+            'ignore_indice': False,
             'numeric_stable_mode': False
         })
     return loss / num_true
@@ -1140,7 +1140,7 @@ def sampled_softmax_with_cross_entropy(logits,
 def softmax_with_cross_entropy(logits,
                                label,
                                soft_label=False,
-                               ignore_index=kIgnoreIndex,
+                               ignore_indice=kIgnoreIndex,
                                numeric_stable_mode=True,
                                return_softmax=False,
                                axis=-1):
@@ -1150,7 +1150,7 @@ def softmax_with_cross_entropy(logits,
     to provide a more numerically stable gradient.
 
     Because this operator performs a softmax on logits internally, it expects
-    unscaled logits. This operator should not be used with the output of
+    unscaled logits. This operator shold not be used with the output of
     softmax operator since that would produce incorrect results.
 
     When the attribute :attr:`soft_label` is set :attr:`False`, this operators 
@@ -1196,7 +1196,7 @@ def softmax_with_cross_entropy(logits,
             in the same shape with :attr:`logits` expect shape in dimension :attr:`axis` as 1.
         soft_label (bool, optional): A flag to indicate whether to interpretant the given
             labels as soft labels. Default False.
-        ignore_index (int, optional): Specifies a target value that is ignored and does
+        ignore_indice (int, optional): Specifies a target value that is ignored and does
                                       not contribute to the input gradient. Only valid
                                       if :attr:`soft_label` is set to :attr:`False`. 
                                       Default: kIgnoreIndex(-100).
@@ -1210,8 +1210,8 @@ def softmax_with_cross_entropy(logits,
                                               stable algorithm. Default: True.
         return_softmax (bool, optional): A flag indicating whether to return the softmax
                                          along with the cross entropy loss. Default: False.
-        axis (int, optional): The index of dimension to perform softmax calculations. It 
-                              should be in range :math:`[-1, rank - 1]`, while :math:`rank`
+        axis (int, optional): The indice of dimension to perform softmax calculations. It 
+                              shold be in range :math:`[-1, rank - 1]`, while :math:`rank`
                               is the rank of input :attr:`logits`. Default: -1.
 
     Returns:
@@ -1235,7 +1235,7 @@ def softmax_with_cross_entropy(logits,
     """
     attrs = {
         'soft_label': soft_label,
-        'ignore_index': ignore_index,
+        'ignore_indice': ignore_indice,
         'numeric_stable_mode': numeric_stable_mode,
         'axis': axis
     }
@@ -1312,13 +1312,13 @@ def rank_loss(label, left, right, name=None):
     helper = LayerHelper('rank_loss', **locals())
 
     if not (isinstance(label, Variable)):
-        raise ValueError("The label should be a Variable")
+        raise ValueError("The label shold be a Variable")
 
     if not (isinstance(left, Variable)):
-        raise ValueError("The left should be a Variable")
+        raise ValueError("The left shold be a Variable")
 
     if not (isinstance(right, Variable)):
-        raise ValueError("The right should be a Variable")
+        raise ValueError("The right shold be a Variable")
 
     out = helper.create_variable_for_type_inference("float32")
 
@@ -1368,11 +1368,11 @@ def margin_rank_loss(label, left, right, margin=0.1, name=None):
     """
     helper = LayerHelper('margin_rank_loss', **locals())
     if not isinstance(label, Variable):
-        raise ValueError("The label should be a Variable.")
+        raise ValueError("The label shold be a Variable.")
     if not isinstance(left, Variable):
-        raise ValueError("The left should be a Variable.")
+        raise ValueError("The left shold be a Variable.")
     if not isinstance(right, Variable):
-        raise ValueError("The right should be a Variable.")
+        raise ValueError("The right shold be a Variable.")
     out = helper.create_variable_for_type_inference(left.dtype)
     act = helper.create_variable_for_type_inference(left.dtype)
     helper.append_op(
@@ -1389,7 +1389,7 @@ def margin_rank_loss(label, left, right, margin=0.1, name=None):
 @templatedoc()
 def sigmoid_cross_entropy_with_logits(x,
                                       label,
-                                      ignore_index=kIgnoreIndex,
+                                      ignore_indice=kIgnoreIndex,
                                       name=None,
                                       normalize=False):
     """
@@ -1398,12 +1398,12 @@ def sigmoid_cross_entropy_with_logits(x,
     Args:
         x(${x_type}): ${x_comment}
         label(${label_type}): ${label_comment}
-        ignore_index(int): ${ignore_index_comment}
+        ignore_indice(int): ${ignore_indice_comment}
         name(str|None): The default value is None.  Normally there is
             no need for user to set this property.  For more information,
             please refer to :ref:`api_guide_Name`
         normalize(bool): If true, divide the output by the number of
-            targets != ignore_index.
+            targets != ignore_indice.
 
     Returns:
         out(${out_type}): ${out_comment}
@@ -1419,7 +1419,7 @@ def sigmoid_cross_entropy_with_logits(x,
             loss = fluid.layers.sigmoid_cross_entropy_with_logits(
                 x=input,
                 label=label,
-                ignore_index=-1,
+                ignore_indice=-1,
                 normalize=True) # or False
             # loss = fluid.layers.reduce_sum(loss) # summation of loss
     """
@@ -1436,7 +1436,7 @@ def sigmoid_cross_entropy_with_logits(x,
         type="sigmoid_cross_entropy_with_logits",
         inputs={"X": x,
                 "Label": label},
-        attrs={"ignore_index": ignore_index,
+        attrs={"ignore_indice": ignore_indice,
                'normalize': normalize},
         outputs={"Out": out})
     return out
@@ -1511,9 +1511,9 @@ def huber_loss(input, label, delta):
 
 
     Args:
-        input (Variable): Predicted data, 2D-Tensor with the shape of [batch_size, 1]. The data type should be float32 or float64.
-        label (Variable): Ground truth label, 2D-Tensor with the shape of [batch_size, 1]. The data type should be float32 or float64.
-        delta (float): The threshold for Huber loss, which is used to control the balance between the linear error and square error. The data type should be float32.
+        input (Variable): Predicted data, 2D-Tensor with the shape of [batch_size, 1]. The data type shold be float32 or float64.
+        label (Variable): Ground truth label, 2D-Tensor with the shape of [batch_size, 1]. The data type shold be float32 or float64.
+        delta (float): The threshold for Huber loss, which is used to control the balance between the linear error and square error. The data type shold be float32.
 
     Returns:
         Variable: The huber loss, a tensor with the same shape and data type as input.
@@ -1664,8 +1664,8 @@ def mse_loss(input, label):
         Out = MEAN((input - label)^2)
 
     Parameters: 
-        input (Variable): Input tensor, the data type should be float32.
-        label (Variable): Label tensor, the data type should be float32.
+        input (Variable): Input tensor, the data type shold be float32.
+        label (Variable): Label tensor, the data type shold be float32.
 
     Returns:
         Variable: The tensor variable storing the mean square error difference of input and label.

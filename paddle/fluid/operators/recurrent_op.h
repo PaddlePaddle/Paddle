@@ -95,7 +95,7 @@ class RecurrentBase : public framework::OperatorBase {
  protected:
   // Get SequenceLength from Scope
   //   The sequence length is got from input tensor. The input tensor's
-  //   dimension should be [SEQ_LEN, ..., ...]. The first of the tensor's shape
+  //   dimension shold be [SEQ_LEN, ..., ...]. The first of the tensor's shape
   //   is SEQ_LEN. The second of the tensor's shape could be the batch size or
   //   nested sequence length.
   int64_t GetSequenceLength(const framework::Scope &scope) const;

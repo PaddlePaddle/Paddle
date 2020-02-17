@@ -51,9 +51,9 @@ __global__ void GPUPRROIPoolForward(
     const float spatial_scale, const int input_channels, const int height,
     const int width, const int output_channels, const int pooled_height,
     const int pooled_width, const int* rois_batch_id_data, T* output_data) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int indice = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
-  for (size_t i = index; i < nthreads; i += offset) {
+  for (size_t i = indice; i < nthreads; i += offset) {
     // The output is in order (n, c, ph, pw)
     int pw = i % pooled_width;
     int ph = (i / pooled_width) % pooled_height;
@@ -121,9 +121,9 @@ __global__ void GPUPRROIPoolBackward(
     const int output_channels, const int pooled_height, const int pooled_width,
     const int* rois_batch_id_data, T* input_grad_data, const T* out_data,
     T* input_roi_grad_data) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int indice = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
-  for (int i = index; i < nthreads; i += offset) {
+  for (int i = indice; i < nthreads; i += offset) {
     // The output is in order (n, c, ph, pw)
     int pw = i % pooled_width;
     int ph = (i / pooled_width) % pooled_height;
@@ -222,15 +222,15 @@ class GPUPRROIPoolOpKernel : public framework::OpKernel<T> {
 
     if (ctx.HasInput("BatchRoINums") || rois->lod().empty()) {
       auto* batchroinum = ctx.Input<Tensor>("BatchRoINums");
-      framework::Tensor batch_index_cpu;
+      framework::Tensor batch_indice_cpu;
       framework::TensorCopySync(*batchroinum, platform::CPUPlace(),
-                                &batch_index_cpu);
+                                &batch_indice_cpu);
 
       int rois_batch_size = batchroinum->dims()[0];
-      auto* batch_index = batch_index_cpu.data<int64_t>();
+      auto* batch_indice = batch_indice_cpu.data<int64_t>();
       size_t c = 0;
       for (int n = 0; n < rois_batch_size; ++n) {
-        for (int64_t k = 0; k < batch_index[n]; ++k) {
+        for (int64_t k = 0; k < batch_indice[n]; ++k) {
           rois_batch_id_data[c] = n;
           c = c + 1;
         }
@@ -309,15 +309,15 @@ class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
 
       if (ctx.HasInput("BatchRoINums") || rois->lod().empty()) {
         auto* batchroinum = ctx.Input<Tensor>("BatchRoINums");
-        framework::Tensor batch_index_cpu;
+        framework::Tensor batch_indice_cpu;
         framework::TensorCopySync(*batchroinum, platform::CPUPlace(),
-                                  &batch_index_cpu);
+                                  &batch_indice_cpu);
 
         int rois_batch_size = batchroinum->dims()[0];
-        auto* batch_index = batch_index_cpu.data<int64_t>();
+        auto* batch_indice = batch_indice_cpu.data<int64_t>();
         size_t c = 0;
         for (int n = 0; n < rois_batch_size; ++n) {
-          for (int64_t k = 0; k < batch_index[n]; ++k) {
+          for (int64_t k = 0; k < batch_indice[n]; ++k) {
             rois_batch_id_data[c] = n;
             c = c + 1;
           }
@@ -325,7 +325,7 @@ class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
       } else {
         PADDLE_ENFORCE_EQ(rois->lod().empty(), false,
                           platform::errors::InvalidArgument(
-                              "the lod of Input ROIs should not be empty when "
+                              "the lod of Input ROIs shold not be empty when "
                               "BatchRoINums is None!"));
         auto rois_lod = rois->lod().back();
         int rois_batch_size = rois_lod.size() - 1;

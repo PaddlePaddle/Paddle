@@ -78,7 +78,7 @@ We provide [English](http://www.paddlepaddle.org.cn/documentation/docs/en/1.6/be
   
 - [Advanced User Guides](https://www.paddlepaddle.org.cn/documentation/docs/en/advanced_usage/index_en.html)
 
-  So far you have already been familiar with Fluid. And the next expectation should be building a more efficient model or inventing your original Operator. 
+  So far you have already been familiar with Fluid. And the next expectation shold be building a more efficient model or inventing your original Operator. 
 
 
 - [API Reference](https://www.paddlepaddle.org.cn/documentation/docs/en/api/index_en.html)

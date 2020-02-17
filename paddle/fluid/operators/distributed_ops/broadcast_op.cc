@@ -27,9 +27,9 @@ class BroadcastOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of BroadcastOp should not be null.");
+                   "Input(X) of BroadcastOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Output) of ConvOp should not be null.");
+                   "Output(Output) of ConvOp shold not be null.");
   }
 };
 

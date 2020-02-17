@@ -61,7 +61,7 @@ void OpHandleBase::InitCUDA() {
     }
   } else {
     PADDLE_ENFORCE_EQ(dev_ctxes_.size(), 1UL,
-                      "%s should have only one dev_ctx.", Name());
+                      "%s shold have only one dev_ctx.", Name());
     auto &place = dev_ctxes_.begin()->first;
     int dev_id = boost::get<platform::CUDAPlace>(place).device;
     for (auto &out_var : outputs_) {

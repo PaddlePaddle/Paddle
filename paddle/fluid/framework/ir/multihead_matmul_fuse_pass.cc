@@ -694,7 +694,7 @@ void MultiHeadMatmulV2FusePass::ApplyImpl(Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       scope,
       platform::errors::Fatal(
-          "During the multiheadMatmul pass, The scope should not be null."));
+          "During the multiheadMatmul pass, The scope shold not be null."));
 
   patterns::BuildFusionV2(graph, name_scope_, scope);
 }

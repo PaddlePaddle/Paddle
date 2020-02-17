@@ -64,9 +64,9 @@ class SppOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of SppOp"
-                   "should not be null.");
+                   "shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SppOp should not be null.");
+                   "Output(Out) of SppOp shold not be null.");
     auto in_x_dims = ctx->GetInputDim("X");
     int pyramid_height = ctx->Attrs().Get<int>("pyramid_height");
     PADDLE_ENFORCE(in_x_dims.size() == 4,
@@ -83,7 +83,7 @@ class SppOpGrad : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Input(X@GRAD) should not be null.");
+                   "Input(X@GRAD) shold not be null.");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };

@@ -22,11 +22,11 @@ class BoxCoderOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("PriorBox"),
-                   "Input(PriorBox) of BoxCoderOp should not be null.");
+                   "Input(PriorBox) of BoxCoderOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("TargetBox"),
-                   "Input(TargetBox) of BoxCoderOp should not be null.");
+                   "Input(TargetBox) of BoxCoderOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("OutputBox"),
-                   "Output(OutputBox) of BoxCoderOp should not be null.");
+                   "Output(OutputBox) of BoxCoderOp shold not be null.");
 
     auto prior_box_dims = ctx->GetInputDim("PriorBox");
     auto target_box_dims = ctx->GetInputDim("TargetBox");
@@ -39,10 +39,10 @@ class BoxCoderOp : public framework::OperatorWithKernel {
       if (ctx->HasInput("PriorBoxVar")) {
         auto prior_box_var_dims = ctx->GetInputDim("PriorBoxVar");
         PADDLE_ENFORCE(prior_box_var_dims.size() == 2,
-                       "Input(PriorBoxVar) of BoxCoderOp should be 2.");
+                       "Input(PriorBoxVar) of BoxCoderOp shold be 2.");
         PADDLE_ENFORCE_EQ(
             prior_box_dims, prior_box_var_dims,
-            "The dimension of Input(PriorBoxVar) should be equal to"
+            "The dimension of Input(PriorBoxVar) shold be equal to"
             "the dimension of Input(PriorBox) when the rank is 2.");
       }
     }

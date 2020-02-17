@@ -62,8 +62,8 @@ class WriteToArrayOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(LoDTensor) the tensor will be written to tensor array");
     AddInput(
         "I",
-        "(Tensor) the subscript index in tensor array. The number of element "
-        "should be 1");
+        "(Tensor) the subscript indice in tensor array. The number of element "
+        "shold be 1");
     AddOutput("Out", "(TensorArray) the tensor array will be written");
     AddComment(R"DOC(
 WriteToArray Operator.
@@ -82,10 +82,10 @@ $$A[i] = T$$
 class WriteToArrayInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInput("I"), "Must set the subscript index");
+    PADDLE_ENFORCE(context->HasInput("I"), "Must set the subscript indice");
     if (context->IsRuntime()) {
       PADDLE_ENFORCE_EQ(framework::product(context->GetInputDim("I")), 1,
-                        "The number of element of subscript index must be 1");
+                        "The number of element of subscript indice must be 1");
     }
     if (!context->HasInput("X")) {
       return;
@@ -178,8 +178,8 @@ class ReadFromArrayProtoMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "(TensorArray) the array will be read from.");
     AddInput("I",
-             "(Tensor) the subscript index in tensor array. The number of "
-             "element should be 1");
+             "(Tensor) the subscript indice in tensor array. The number of "
+             "element shold be 1");
     AddInput("X_W",
              "(Tensor) the writed tensor when used as the grad op of "
              "write_to_array. We use this to fill zero gradient.")

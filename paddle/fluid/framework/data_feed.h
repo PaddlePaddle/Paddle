@@ -109,7 +109,7 @@ class DataFeed {
   virtual void SetFileListMutex(std::mutex* mutex) {
     mutex_for_pick_file_ = mutex;
   }
-  virtual void SetFileListIndex(size_t* file_index) { file_idx_ = file_index; }
+  virtual void SetFileListIndex(size_t* file_indice) { file_idx_ = file_indice; }
   virtual const std::vector<std::string>& GetInsIdVec() const {
     return ins_id_vec_;
   }
@@ -153,12 +153,12 @@ class DataFeed {
   std::vector<std::string> all_slots_;
   std::vector<std::string> all_slots_type_;
   std::vector<std::vector<int>> use_slots_shape_;
-  std::vector<int> inductive_shape_index_;
+  std::vector<int> inductive_shape_indice_;
   std::vector<int> total_dims_without_inductive_;
   // For the inductive shape passed within data
-  std::vector<std::vector<int>> multi_inductive_shape_index_;
+  std::vector<std::vector<int>> multi_inductive_shape_indice_;
   std::vector<int>
-      use_slots_index_;  // -1: not used; >=0: the index of use_slots_
+      use_slots_indice_;  // -1: not used; >=0: the indice of use_slots_
 
   // The data read by DataFeed will be stored here
   std::vector<LoDTensor*> feed_vec_;
@@ -199,7 +199,7 @@ class PrivateQueueDataFeed : public DataFeed {
   virtual bool ParseOneInstanceFromPipe(T* instance) = 0;
   // This function is used to put instance to vec_ins
   virtual void AddInstanceToInsVec(T* vec_ins, const T& instance,
-                                   int index) = 0;
+                                   int indice) = 0;
   // This function is used to put ins_vec to feed_vec
   virtual void PutToFeedVec(const T& ins_vec) = 0;
 
@@ -541,7 +541,7 @@ class MultiSlotDataFeed
   virtual void ReadThread();
   virtual void AddInstanceToInsVec(std::vector<MultiSlotType>* vec_ins,
                                    const std::vector<MultiSlotType>& instance,
-                                   int index);
+                                   int indice);
   virtual bool ParseOneInstance(std::vector<MultiSlotType>* instance);
   virtual bool ParseOneInstanceFromPipe(std::vector<MultiSlotType>* instance);
   virtual void PutToFeedVec(const std::vector<MultiSlotType>& ins_vec);

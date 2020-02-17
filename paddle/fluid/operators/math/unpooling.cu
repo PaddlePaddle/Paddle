@@ -29,19 +29,19 @@ __global__ void KernelUnpool2dMax(const int nthreads, const T* input_data,
   int in_c_stride = input_height * input_width;
   int out_n_stride = output_height * output_width * channels;
   int out_c_stride = output_height * output_width;
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int indice = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
-  for (int i = index; i < nthreads; i += offset) {
+  for (int i = indice; i < nthreads; i += offset) {
     int bidx = i / in_n_stride;
     int boffset = i % in_n_stride;
     int cidx = boffset / in_c_stride;
     int out_offset = bidx * out_n_stride + cidx * out_c_stride;
-    int out_index = indices_data[i];
-    PADDLE_ENFORCE(out_index < out_c_stride,
-                   "out_index < out_c_stride. Expected %ld < %ld, but got "
+    int out_indice = indices_data[i];
+    PADDLE_ENFORCE(out_indice < out_c_stride,
+                   "out_indice < out_c_stride. Expected %ld < %ld, but got "
                    "%ld >= %ld. Please check input value.",
-                   out_index, out_c_stride, out_index, out_c_stride);
-    output_data[out_offset + out_index] = input_data[i];
+                   out_indice, out_c_stride, out_indice, out_c_stride);
+    output_data[out_offset + out_indice] = input_data[i];
   }
 }
 template <typename T>
@@ -54,19 +54,19 @@ __global__ void KernelUnpool2dMaxGrad(
   int in_c_stride = input_height * input_width;
   int out_n_stride = output_height * output_width * channels;
   int out_c_stride = output_height * output_width;
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int indice = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
-  for (int i = index; i < nthreads; i += offset) {
+  for (int i = indice; i < nthreads; i += offset) {
     int bidx = i / in_n_stride;
     int boffset = i % in_n_stride;
     int cidx = boffset / in_c_stride;
     int out_offset = bidx * out_n_stride + cidx * out_c_stride;
-    int out_index = indices_data[i];
-    PADDLE_ENFORCE(out_index < out_c_stride,
-                   "out_index < out_c_stride. Expected %ld < %ld, but got "
+    int out_indice = indices_data[i];
+    PADDLE_ENFORCE(out_indice < out_c_stride,
+                   "out_indice < out_c_stride. Expected %ld < %ld, but got "
                    "%ld >= %ld. Please check input value.",
-                   out_index, out_c_stride, out_index, out_c_stride);
-    input_grad[i] = output_grad[out_offset + out_index];
+                   out_indice, out_c_stride, out_indice, out_c_stride);
+    input_grad[i] = output_grad[out_offset + out_indice];
   }
 }
 /*

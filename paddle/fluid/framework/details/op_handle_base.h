@@ -35,7 +35,7 @@ namespace details {
 class OpHandleBase {
  public:
   /**
-   * NOTE(zjl): Some op should have higher priority than others.
+   * NOTE(zjl): Some op shold have higher priority than others.
    * The higher priority op would run first without switching
    * threads in Executor.
    */

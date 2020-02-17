@@ -55,7 +55,7 @@ class TestDygraphFramework(unittest.TestCase):
             try:
                 out.backward()
                 raise AssertionError(
-                    "backward should not be usable in static graph mode")
+                    "backward shold not be usable in static graph mode")
             except AssertionError as e:
                 self.assertTrue((e is not None))
 

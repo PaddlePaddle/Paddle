@@ -27,30 +27,30 @@ class GatherNdOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of GatherNdOp should not be null.");
+                      "Input(X) of GatherNdOp shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("Index"), true,
-                      "Input(Index) of GatherNdOp should not be null.");
+                      "Input(Index) of GatherNdOp shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of GatherNdOp should not be null.");
+                      "Output(Out) of GatherNdOp shold not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
     auto x_dims_size = x_dims.size();
-    auto index_dims = ctx->GetInputDim("Index");
-    auto index_dims_size = index_dims.size();
+    auto indice_dims = ctx->GetInputDim("Index");
+    auto indice_dims_size = indice_dims.size();
 
     PADDLE_ENFORCE_LE(
-        index_dims[index_dims_size - 1], x_dims_size,
-        "Input(Index).shape[-1] should be no greater than Input(X).rank");
-    PADDLE_ENFORCE_GE(index_dims_size, 2UL,
-                      "The rank of Input(Index) should be greater than 1");
+        indice_dims[indice_dims_size - 1], x_dims_size,
+        "Input(Index).shape[-1] shold be no greater than Input(X).rank");
+    PADDLE_ENFORCE_GE(indice_dims_size, 2UL,
+                      "The rank of Input(Index) shold be greater than 1");
 
     std::vector<int64_t> result_dims;
     // The result dims is
     //   Index.shape[:-1] + X.shape[Index.shape[-1]:]
-    for (int i = 0; i < index_dims_size - 1; ++i) {
-      result_dims.emplace_back(index_dims[i]);
+    for (int i = 0; i < indice_dims_size - 1; ++i) {
+      result_dims.emplace_back(indice_dims[i]);
     }
-    for (int i = index_dims[index_dims_size - 1]; i < x_dims_size; ++i) {
+    for (int i = indice_dims[indice_dims_size - 1]; i < x_dims_size; ++i) {
       result_dims.emplace_back(x_dims[i]);
     }
 
@@ -93,13 +93,13 @@ class GatherNdOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "The source input of gather_nd op");
-    AddInput("Index", "The index input of gather_nd op");
+    AddInput("Index", "The indice input of gather_nd op");
     AddOutput("Out", "The output of gather_nd op");
     AddComment(R"DOC(
     Gather_Nd Operator.
 
     This function is actually a high-dimensional extension of gather 
-    and supports for simultaneous indexing by multiple axes. Out is 
+    and supports for simultaneous indiceing by multiple axes. Out is 
     obtained by gathering slices from X into a tensor with shape 
     Index.shape[:-1] + X.shape[Index.shape[-1]:].
 

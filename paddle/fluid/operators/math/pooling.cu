@@ -31,19 +31,19 @@ __global__ void KernelPool2D(const int nthreads, const T* input_data,
                              const int padding_width, PoolProcess pool_process,
                              bool exclusive, bool adaptive, T* output_data,
                              bool channel_last = false) {
-  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
-       index += blockDim.x * gridDim.x) {
+  for (int indice = blockIdx.x * blockDim.x + threadIdx.x; indice < nthreads;
+       indice += blockDim.x * gridDim.x) {
     int pw, ph, c, batch_idx;
     if (!channel_last) { /*NCHW*/
-      pw = index % output_width;
-      ph = (index / output_width) % output_height;
-      c = (index / output_width / output_height) % channels;
-      batch_idx = index / output_width / output_height / channels;
+      pw = indice % output_width;
+      ph = (indice / output_width) % output_height;
+      c = (indice / output_width / output_height) % channels;
+      batch_idx = indice / output_width / output_height / channels;
     } else { /*NHWC*/
-      c = index % channels;
-      pw = (index / channels) % output_width;
-      ph = (index / channels / output_width) % output_height;
-      batch_idx = index / channels / output_width / output_height;
+      c = indice % channels;
+      pw = (indice / channels) % output_width;
+      ph = (indice / channels / output_width) % output_height;
+      batch_idx = indice / channels / output_width / output_height;
     }
 
     int hstart, hend;
@@ -80,7 +80,7 @@ __global__ void KernelPool2D(const int nthreads, const T* input_data,
     int pool_size = (exclusive || adaptive) ? (hend - hstart) * (wend - wstart)
                                             : ksize_height * ksize_width;
     pool_process.finalize(static_cast<T>(pool_size), &ele);
-    output_data[index] = ele;
+    output_data[indice] = ele;
   }
 }
 template <typename PoolProcess, typename T>
@@ -92,20 +92,20 @@ __global__ void KernelPool2DGrad(
     const int stride_width, const int padding_height, const int padding_width,
     PoolProcess pool_process, bool exclusive, bool adaptive, T* input_grad,
     bool channel_last = false) {
-  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
-       index += blockDim.x * gridDim.x) {
+  for (int indice = blockIdx.x * blockDim.x + threadIdx.x; indice < nthreads;
+       indice += blockDim.x * gridDim.x) {
     int w_offset, h_offset, offsetC, batch_idx;
     if (!channel_last) { /* NCHW */
-      w_offset = index % input_width + padding_width;
-      h_offset = (index / input_width) % input_height + padding_height;
-      offsetC = (index / input_width / input_height) % channels;
-      batch_idx = index / input_width / input_height / channels;
+      w_offset = indice % input_width + padding_width;
+      h_offset = (indice / input_width) % input_height + padding_height;
+      offsetC = (indice / input_width / input_height) % channels;
+      batch_idx = indice / input_width / input_height / channels;
     } else { /* NHWC */
-      offsetC = index % channels;
-      w_offset = (index / channels) % input_width + padding_width;
+      offsetC = indice % channels;
+      w_offset = (indice / channels) % input_width + padding_width;
       h_offset =
-          (index / channels / input_width) % input_height + padding_height;
-      batch_idx = index / channels / input_width / input_height;
+          (indice / channels / input_width) % input_height + padding_height;
+      batch_idx = indice / channels / input_width / input_height;
     }
 
     int phstart, phend;
@@ -128,7 +128,7 @@ __global__ void KernelPool2DGrad(
       pwend = min(w_offset / stride_width + 1, output_width);
     }
     T gradient = 0;
-    T input = input_data[index];
+    T input = input_data[indice];
 
     int output_stride;
     if (!channel_last) {
@@ -167,7 +167,7 @@ __global__ void KernelPool2DGrad(
                              static_cast<T>(1.0 / pool_size), &gradient);
       }
     }
-    input_grad[index] = gradient;
+    input_grad[indice] = gradient;
   }
 }
 
@@ -179,19 +179,19 @@ __global__ void KernelMaxPool2DGrad(
     const int ksize_height, const int ksize_width, const int stride_height,
     const int stride_width, const int padding_height, const int padding_width,
     T* input_grad, bool channel_last = false) {
-  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
-       index += blockDim.x * gridDim.x) {
+  for (int indice = blockIdx.x * blockDim.x + threadIdx.x; indice < nthreads;
+       indice += blockDim.x * gridDim.x) {
     int pw, ph, c, batch_idx;
     if (!channel_last) { /* NCHW */
-      pw = index % output_width;
-      ph = (index / output_width) % output_height;
-      c = (index / output_width / output_height) % channels;
-      batch_idx = index / output_width / output_height / channels;
+      pw = indice % output_width;
+      ph = (indice / output_width) % output_height;
+      c = (indice / output_width / output_height) % channels;
+      batch_idx = indice / output_width / output_height / channels;
     } else { /* NHWC */
-      c = index % channels;
-      pw = (index / channels) % output_width;
-      ph = (index / channels / output_width) % output_height;
-      batch_idx = index / channels / output_width / output_height;
+      c = indice % channels;
+      pw = (indice / channels) % output_width;
+      ph = (indice / channels / output_width) % output_height;
+      batch_idx = indice / channels / output_width / output_height;
     }
     int hstart = ph * stride_height - padding_height;
     int hend = min(hstart + ksize_height, input_height);
@@ -210,7 +210,7 @@ __global__ void KernelMaxPool2DGrad(
     input_data += input_stride;
     input_grad += input_stride;
 
-    T ele = output_data[index];
+    T ele = output_data[indice];
     int maxIndex = -1;
     bool stop = false;
     for (int h = hstart; h < hend && !stop; ++h) {
@@ -226,7 +226,7 @@ __global__ void KernelMaxPool2DGrad(
 
     if (maxIndex != -1) {
       // atomic add
-      platform::CudaAtomicAdd(input_grad + maxIndex, output_grad[index]);
+      platform::CudaAtomicAdd(input_grad + maxIndex, output_grad[indice]);
     }
   }
 }
@@ -581,23 +581,23 @@ __global__ void KernelPool3D(
     const int padding_depth, const int padding_height, const int padding_width,
     PoolProcess pool_process, bool exclusive, bool adaptive, T* output_data,
     bool channel_last = false) {
-  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
-       index += blockDim.x * gridDim.x) {
+  for (int indice = blockIdx.x * blockDim.x + threadIdx.x; indice < nthreads;
+       indice += blockDim.x * gridDim.x) {
     int pw, ph, pd, c, batch_idx;
     if (!channel_last) {
-      pw = index % output_width;
-      ph = (index / output_width) % output_height;
-      pd = (index / output_width / output_height) % output_depth;
-      c = (index / output_width / output_height / output_depth) % channels;
+      pw = indice % output_width;
+      ph = (indice / output_width) % output_height;
+      pd = (indice / output_width / output_height) % output_depth;
+      c = (indice / output_width / output_height / output_depth) % channels;
       batch_idx =
-          index / output_width / output_height / output_depth / channels;
+          indice / output_width / output_height / output_depth / channels;
     } else {
-      c = index % channels;
-      pw = (index / channels) % output_width;
-      ph = (index / channels / output_width) % output_height;
-      pd = (index / channels / output_width / output_height) % output_depth;
+      c = indice % channels;
+      pw = (indice / channels) % output_width;
+      ph = (indice / channels / output_width) % output_height;
+      pd = (indice / channels / output_width / output_height) % output_depth;
       batch_idx =
-          index / channels / output_width / output_height / output_depth;
+          indice / channels / output_width / output_height / output_depth;
     }
 
     int dstart, dend;
@@ -650,7 +650,7 @@ __global__ void KernelPool3D(
                         ? (dend - dstart) * (hend - hstart) * (wend - wstart)
                         : ksize_depth * ksize_height * ksize_width;
     pool_process.finalize(static_cast<T>(pool_size), &ele);
-    output_data[index] = ele;
+    output_data[indice] = ele;
   }
 }
 
@@ -664,25 +664,25 @@ __global__ void KernelPool3DGrad(
     const int stride_height, const int stride_width, const int padding_depth,
     const int padding_height, const int padding_width, PoolProcess pool_process,
     bool exclusive, bool adaptive, T* input_grad, bool channel_last = false) {
-  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
-       index += blockDim.x * gridDim.x) {
+  for (int indice = blockIdx.x * blockDim.x + threadIdx.x; indice < nthreads;
+       indice += blockDim.x * gridDim.x) {
     int w_offset, h_offset, d_offset, offsetC, batch_idx;
     if (!channel_last) { /* "NCDHW" */
-      w_offset = index % input_width + padding_width;
-      h_offset = (index / input_width) % input_height + padding_height;
+      w_offset = indice % input_width + padding_width;
+      h_offset = (indice / input_width) % input_height + padding_height;
       d_offset =
-          (index / input_width / input_height) % input_depth + padding_depth;
-      offsetC = (index / input_width / input_height / input_depth) % channels;
-      batch_idx = index / input_width / input_height / input_depth / channels;
+          (indice / input_width / input_height) % input_depth + padding_depth;
+      offsetC = (indice / input_width / input_height / input_depth) % channels;
+      batch_idx = indice / input_width / input_height / input_depth / channels;
 
     } else { /* "NDHWC" */
-      offsetC = index % channels;
-      w_offset = (index / channels) % input_width + padding_width;
+      offsetC = indice % channels;
+      w_offset = (indice / channels) % input_width + padding_width;
       h_offset =
-          (index / channels / input_width) % input_height + padding_height;
-      d_offset = (index / channels / input_width / input_height) % input_depth +
+          (indice / channels / input_width) % input_height + padding_height;
+      d_offset = (indice / channels / input_width / input_height) % input_depth +
                  padding_depth;
-      batch_idx = index / channels / input_width / input_height / input_depth;
+      batch_idx = indice / channels / input_width / input_height / input_depth;
     }
 
     int pdstart, pdend;
@@ -714,7 +714,7 @@ __global__ void KernelPool3DGrad(
     }
 
     T gradient = 0;
-    T input = input_data[index];
+    T input = input_data[indice];
 
     int output_stride;
     if (!channel_last) {
@@ -767,7 +767,7 @@ __global__ void KernelPool3DGrad(
         }
       }
     }
-    input_grad[index] = gradient;
+    input_grad[indice] = gradient;
   }
 }
 
@@ -781,24 +781,24 @@ __global__ void KernelMaxPool3DGrad(
     const int stride_height, const int stride_width, const int padding_depth,
     const int padding_height, const int padding_width, T* input_grad,
     bool channel_last = false) {
-  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
-       index += blockDim.x * gridDim.x) {
+  for (int indice = blockIdx.x * blockDim.x + threadIdx.x; indice < nthreads;
+       indice += blockDim.x * gridDim.x) {
     int pw, ph, pd, c, batch_idx;
 
     if (!channel_last) { /*NCDHW*/
-      pw = index % output_width;
-      ph = (index / output_width) % output_height;
-      pd = (index / output_width / output_height) % output_depth;
-      c = (index / output_width / output_height / output_depth) % channels;
+      pw = indice % output_width;
+      ph = (indice / output_width) % output_height;
+      pd = (indice / output_width / output_height) % output_depth;
+      c = (indice / output_width / output_height / output_depth) % channels;
       batch_idx =
-          index / output_width / output_height / output_depth / channels;
+          indice / output_width / output_height / output_depth / channels;
     } else { /*NDHWC*/
-      c = index % channels;
-      pw = (index / channels) % output_width;
-      ph = (index / channels / output_width) % output_height;
-      pd = (index / channels / output_width / output_height) % output_depth;
+      c = indice % channels;
+      pw = (indice / channels) % output_width;
+      ph = (indice / channels / output_width) % output_height;
+      pd = (indice / channels / output_width / output_height) % output_depth;
       batch_idx =
-          index / channels / output_width / output_height / output_depth;
+          indice / channels / output_width / output_height / output_depth;
     }
 
     int dstart = pd * stride_depth - padding_depth;
@@ -813,7 +813,7 @@ __global__ void KernelMaxPool3DGrad(
     hstart = max(hstart, 0);
     wstart = max(wstart, 0);
 
-    T ele = output_data[index];
+    T ele = output_data[indice];
     bool stop = false;
     int maxIdx = -1;
 
@@ -843,7 +843,7 @@ __global__ void KernelMaxPool3DGrad(
     }
     if (maxIdx != -1) {
       // atomic add
-      platform::CudaAtomicAdd(input_grad + maxIdx, output_grad[index]);
+      platform::CudaAtomicAdd(input_grad + maxIdx, output_grad[indice]);
     }
   }
 }
@@ -1204,12 +1204,12 @@ __global__ void KernelMaxPool2dWithIdx(
     const int output_width, const int ksize_height, const int ksize_width,
     const int stride_height, const int stride_width, const int padding_height,
     const int padding_width, bool adaptive, T1* output_data, T2* mask_data) {
-  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
-       index += blockDim.x * gridDim.x) {
-    int pw = index % output_width;
-    int ph = (index / output_width) % output_height;
-    int c = (index / output_width / output_height) % channels;
-    int batch_idx = index / output_width / output_height / channels;
+  for (int indice = blockIdx.x * blockDim.x + threadIdx.x; indice < nthreads;
+       indice += blockDim.x * gridDim.x) {
+    int pw = indice % output_width;
+    int ph = (indice / output_width) % output_height;
+    int c = (indice / output_width / output_height) % channels;
+    int batch_idx = indice / output_width / output_height / channels;
 
     int hstart, hend;
     int wstart, wend;
@@ -1231,18 +1231,18 @@ __global__ void KernelMaxPool2dWithIdx(
 
     input_data += (batch_idx * channels + c) * input_height * input_width;
     T1 ele = -FLT_MAX;
-    int max_index = -1;
+    int max_indice = -1;
     for (int h = hstart; h < hend; ++h) {
       for (int w = wstart; w < wend; ++w) {
-        int input_index = h * input_width + w;
-        if (ele < input_data[input_index]) {
-          max_index = input_index;
-          ele = input_data[input_index];
+        int input_indice = h * input_width + w;
+        if (ele < input_data[input_indice]) {
+          max_indice = input_indice;
+          ele = input_data[input_indice];
         }
       }
     }
-    output_data[index] = ele;
-    mask_data[index] = max_index;
+    output_data[indice] = ele;
+    mask_data[indice] = max_indice;
   }
 }
 
@@ -1254,12 +1254,12 @@ __global__ void KernelMaxPool2DWithIdxGrad(
     const int ksize_width, const int stride_height, const int stride_width,
     const int padding_height, const int padding_width, bool adaptive,
     T1* input_grad) {
-  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
-       index += blockDim.x * gridDim.x) {
-    int w_offset = index % input_width;
-    int h_offset = (index / input_width) % input_height;
-    int offsetC = (index / input_width / input_height) % channels;
-    int batch_idx = index / input_width / input_height / channels;
+  for (int indice = blockIdx.x * blockDim.x + threadIdx.x; indice < nthreads;
+       indice += blockDim.x * gridDim.x) {
+    int w_offset = indice % input_width;
+    int h_offset = (indice / input_width) % input_height;
+    int offsetC = (indice / input_width / input_height) % channels;
+    int batch_idx = indice / input_width / input_height / channels;
 
     int phstart, phend;
     int pwstart, pwend;
@@ -1297,7 +1297,7 @@ __global__ void KernelMaxPool2DWithIdxGrad(
           gradient += output_grad[ph * output_width + pw];
       }
     }
-    input_grad[index] = gradient;
+    input_grad[indice] = gradient;
   }
 }
 
@@ -1407,14 +1407,14 @@ __global__ void KernelMaxPool3DWithIdx(
     const int stride_depth, const int stride_height, const int stride_width,
     const int padding_depth, const int padding_height, const int padding_width,
     bool adaptive, T1* output_data, T2* mask_data) {
-  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
-       index += blockDim.x * gridDim.x) {
-    int pw = index % output_width;
-    int ph = (index / output_width) % output_height;
-    int pd = (index / output_width / output_height) % output_depth;
-    int c = (index / output_width / output_height / output_depth) % channels;
+  for (int indice = blockIdx.x * blockDim.x + threadIdx.x; indice < nthreads;
+       indice += blockDim.x * gridDim.x) {
+    int pw = indice % output_width;
+    int ph = (indice / output_width) % output_height;
+    int pd = (indice / output_width / output_height) % output_depth;
+    int c = (indice / output_width / output_height / output_depth) % channels;
     int batch_idx =
-        index / output_width / output_height / output_depth / channels;
+        indice / output_width / output_height / output_depth / channels;
 
     int dstart, dend;
     int hstart, hend;
@@ -1441,7 +1441,7 @@ __global__ void KernelMaxPool3DWithIdx(
     }
 
     T1 ele = -FLT_MAX;
-    int max_index = -1;
+    int max_indice = -1;
     input_data +=
         (batch_idx * channels + c) * input_depth * input_height * input_width;
 
@@ -1449,14 +1449,14 @@ __global__ void KernelMaxPool3DWithIdx(
       for (int h = hstart; h < hend; ++h) {
         for (int w = wstart; w < wend; ++w) {
           if (ele < input_data[(d * input_height + h) * input_width + w]) {
-            max_index = (d * input_height + h) * input_width + w;
-            ele = input_data[max_index];
+            max_indice = (d * input_height + h) * input_width + w;
+            ele = input_data[max_indice];
           }
         }
       }
     }
-    output_data[index] = ele;
-    mask_data[index] = max_index;
+    output_data[indice] = ele;
+    mask_data[indice] = max_indice;
   }
 }
 
@@ -1469,13 +1469,13 @@ __global__ void KernelMaxPool3DWithIdxGrad(
     const int ksize_width, const int stride_depth, const int stride_height,
     const int stride_width, const int padding_depth, const int padding_height,
     const int padding_width, bool adaptive, T1* input_grad) {
-  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
-       index += blockDim.x * gridDim.x) {
-    int w_offset = index % input_width;
-    int h_offset = (index / input_width) % input_height;
-    int d_offset = (index / input_width / input_height) % input_depth;
-    int offsetC = (index / input_width / input_height / input_depth) % channels;
-    int batch_idx = index / input_width / input_height / input_depth / channels;
+  for (int indice = blockIdx.x * blockDim.x + threadIdx.x; indice < nthreads;
+       indice += blockDim.x * gridDim.x) {
+    int w_offset = indice % input_width;
+    int h_offset = (indice / input_width) % input_height;
+    int d_offset = (indice / input_width / input_height) % input_depth;
+    int offsetC = (indice / input_width / input_height / input_depth) % channels;
+    int batch_idx = indice / input_width / input_height / input_depth / channels;
 
     int pdstart, pdend;
     int phstart, phend;
@@ -1527,7 +1527,7 @@ __global__ void KernelMaxPool3DWithIdxGrad(
         }
       }
     }
-    input_grad[index] = gradient;
+    input_grad[indice] = gradient;
   }
 }
 

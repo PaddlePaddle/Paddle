@@ -226,7 +226,7 @@ def monkey_patch_variable():
                 self = other_var
                 other_var = tmp
 
-            # NOTE(zhiqiu): the output of compare operator should be bool.
+            # NOTE(zhiqiu): the output of compare operator shold be bool.
             if method_name in compare_ops:
                 out = create_new_tmp_var(current_block(self), dtype="bool")
             else:

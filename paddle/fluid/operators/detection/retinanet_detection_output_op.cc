@@ -27,25 +27,25 @@ class RetinanetDetectionOutputOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_GE(
         ctx->Inputs("BBoxes").size(), 1UL,
-        "Input(BBoxes) of RetinanetDetectionOutput should not be null.");
+        "Input(BBoxes) of RetinanetDetectionOutput shold not be null.");
     PADDLE_ENFORCE_GE(
         ctx->Inputs("Scores").size(), 1UL,
-        "Input(Scores) of RetinanetDetectionOutput should not be null.");
+        "Input(Scores) of RetinanetDetectionOutput shold not be null.");
     PADDLE_ENFORCE_GE(
         ctx->Inputs("Anchors").size(), 1UL,
-        "Input(Anchors) of RetinanetDetectionOutput should not be null.");
+        "Input(Anchors) of RetinanetDetectionOutput shold not be null.");
     PADDLE_ENFORCE_EQ(
         ctx->Inputs("BBoxes").size(), ctx->Inputs("Scores").size(),
-        "Input tensors(BBoxes and Scores) should have the same size.");
+        "Input tensors(BBoxes and Scores) shold have the same size.");
     PADDLE_ENFORCE_EQ(
         ctx->Inputs("BBoxes").size(), ctx->Inputs("Anchors").size(),
-        "Input tensors(BBoxes and Anchors) should have the same size.");
+        "Input tensors(BBoxes and Anchors) shold have the same size.");
     PADDLE_ENFORCE(
         ctx->HasInput("ImInfo"),
-        "Input(ImInfo) of RetinanetDetectionOutput should not be null");
+        "Input(ImInfo) of RetinanetDetectionOutput shold not be null");
     PADDLE_ENFORCE(
         ctx->HasOutput("Out"),
-        "Output(Out) of RetinanetDetectionOutput should not be null.");
+        "Output(Out) of RetinanetDetectionOutput shold not be null.");
 
     auto bboxes_dims = ctx->GetInputsDim("BBoxes");
     auto scores_dims = ctx->GetInputsDim("Scores");
@@ -53,11 +53,11 @@ class RetinanetDetectionOutputOp : public framework::OperatorWithKernel {
     auto im_info_dims = ctx->GetInputDim("ImInfo");
 
     const size_t b_n = bboxes_dims.size();
-    PADDLE_ENFORCE_GT(b_n, 0, "Input bbox tensors count should > 0.");
+    PADDLE_ENFORCE_GT(b_n, 0, "Input bbox tensors count shold > 0.");
     const size_t s_n = scores_dims.size();
-    PADDLE_ENFORCE_GT(s_n, 0, "Input score tensors count should > 0.");
+    PADDLE_ENFORCE_GT(s_n, 0, "Input score tensors count shold > 0.");
     const size_t a_n = anchors_dims.size();
-    PADDLE_ENFORCE_GT(a_n, 0, "Input anchor tensors count should > 0.");
+    PADDLE_ENFORCE_GT(a_n, 0, "Input anchor tensors count shold > 0.");
 
     auto bbox_dims = bboxes_dims[0];
     auto score_dims = scores_dims[0];

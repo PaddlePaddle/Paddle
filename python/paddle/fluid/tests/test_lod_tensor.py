@@ -42,8 +42,8 @@ class TestLoDTensor(unittest.TestCase):
         tensor.set(np.random.random([9, 1]), fluid.CPUPlace())
         self.assertFalse(tensor.has_valid_recursive_sequence_lengths())
 
-        # Each level's sum should be equal to the number of items in the next level
-        # Moreover, last level's sum should be equal to the tensor height
+        # Each level's sum shold be equal to the number of items in the next level
+        # Moreover, last level's sum shold be equal to the tensor height
         recursive_seq_lens = [[2, 3], [1, 3, 1, 2, 2]]
         tensor.set_recursive_sequence_lengths(recursive_seq_lens)
         self.assertEqual(tensor.recursive_sequence_lengths(),

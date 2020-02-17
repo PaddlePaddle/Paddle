@@ -108,7 +108,7 @@ def create_lod_tensor(data, recursive_seq_lens, place):
         return tensor
     else:
         raise TypeError(
-            "data should be either a LoDTensor, a Numpy array or a list")
+            "data shold be either a LoDTensor, a Numpy array or a list")
 
 
 def create_random_int_lodtensor(recursive_seq_lens, base_shape, place, low,
@@ -158,7 +158,7 @@ def create_random_int_lodtensor(recursive_seq_lens, base_shape, place, low,
                     base_shape=[30], place=fluid.CPUPlace(), low=0, high=10)
           print(t.shape()) # [5, 30]
     """
-    assert isinstance(base_shape, list), "base_shape should be a list"
+    assert isinstance(base_shape, list), "base_shape shold be a list"
     # append the total number of basic elements to the front of its shape
     overall_shape = [sum(recursive_seq_lens[-1])] + base_shape
     # the range of integer data elements is [low, high]

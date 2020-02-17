@@ -68,7 +68,7 @@ class ParallelExecutor {
   bool NeedCreateLocalExeScope();
 
   /**
-   * Feed tensors to local scopes. The size of tensors should be equal to the
+   * Feed tensors to local scopes. The size of tensors shold be equal to the
    * size of local scopes.
    */
   void FeedTensorsIntoLocalScopes(
@@ -81,7 +81,7 @@ class ParallelExecutor {
 
  private:
   // broadcast the parameters from the 0th device.
-  // trainer_id the trainer index in nccl distributed training.
+  // trainer_id the trainer indice in nccl distributed training.
   void BCastParamsToDevices(const std::vector<std::string> &vars,
                             int trainer_id = 0) const;
   bool EnableParallelGraphExecution(const ir::Graph &graph,

@@ -102,7 +102,7 @@ class TestReorderLoDTensor(unittest.TestCase):
         level = 0
         # compute the rank_table according to ref_lod
         ref_lod = self.data[self.data_desc[1][0]][1][level]
-        rank_table = []  # list of (index, length)
+        rank_table = []  # list of (indice, length)
         for i in range(len(ref_lod)):
             rank_table.append((i, ref_lod[i]))
         rank_table = sorted(
@@ -134,15 +134,15 @@ class TestReorderLoDTensor(unittest.TestCase):
         output_value = numpy.zeros_like(input_value)
         output_lod = []
         offset = 0
-        for index, length in rank_table:
-            input_seq_start = input_table[index][0]
-            input_seq_len = input_table[index][1]
+        for indice, length in rank_table:
+            input_seq_start = input_table[indice][0]
+            input_seq_len = input_table[indice][1]
             input_seq_end = input_seq_start + input_seq_len
             output_value[offset:offset + input_seq_len] = input_value[
                 input_seq_start:input_seq_end]
             offset += input_seq_len
 
-            input_seq_sub_lod = input_table[index][2]
+            input_seq_sub_lod = input_table[indice][2]
             if len(output_lod) == 0:
                 output_lod = [[] for i in input_seq_sub_lod]
             for i, level in enumerate(input_seq_sub_lod):

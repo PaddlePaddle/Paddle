@@ -242,8 +242,8 @@ def infer(use_cuda, save_dirname=None):
         [inference_program, feed_target_names,
          fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
 
-        # The input's dimension of conv should be 4-D or 5-D.
-        # Use normilized image pixels as input data, which should be in the range [0, 1.0].
+        # The input's dimension of conv shold be 4-D or 5-D.
+        # Use normilized image pixels as input data, which shold be in the range [0, 1.0].
         batch_size = 1
         tensor_img = numpy.random.rand(batch_size, 3, 32, 32).astype("float32")
 

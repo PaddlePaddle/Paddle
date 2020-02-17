@@ -58,10 +58,10 @@ class PolygonBoxTransformOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(
         ctx->HasInput("Input"),
-        "Input (Input) of polygon_box transform op should not be null.");
+        "Input (Input) of polygon_box transform op shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasOutput("Output"),
-        "Output (Output) of polygon_box transform op should not be null.");
+        "Output (Output) of polygon_box transform op shold not be null.");
 
     auto in_dim = ctx->GetInputDim("Input");
 

@@ -302,10 +302,10 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
         continue;
       }
       PADDLE_ENFORCE_EQ(input_width, input->value().dims()[1],
-                        "all input should have same "
+                        "all input shold have same "
                         "dimension except for the first one");
       PADDLE_ENFORCE_EQ(input_height, input->height(),
-                        "all input should have same height");
+                        "all input shold have same height");
       row_num += input->rows().size();
       merged_row_set.insert(input->rows().begin(), input->rows().end());
     }
@@ -421,10 +421,10 @@ struct MergeAverage<platform::CPUDeviceContext, T> {
         continue;
       }
       PADDLE_ENFORCE_EQ(input_width, input->value().dims()[1],
-                        "all input should have same "
+                        "all input shold have same "
                         "dimension except for the first one");
       PADDLE_ENFORCE_EQ(input_height, input->height(),
-                        "all input should have same height");
+                        "all input shold have same height");
       row_num += input->rows().size();
       merged_row_set.insert(input->rows().begin(), input->rows().end());
     }

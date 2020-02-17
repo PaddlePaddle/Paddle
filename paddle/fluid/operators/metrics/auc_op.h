@@ -110,12 +110,12 @@ class AucKernel : public framework::OpKernel<T> {
       }
       return;
     }
-    // the last number of origin_stat_pos store the index should be used in
+    // the last number of origin_stat_pos store the indice shold be used in
     // current step
-    int cur_step_index =
+    int cur_step_indice =
         static_cast<int>(origin_stat_pos[(slide_steps + 1) * bucket_length]) %
         slide_steps;
-    int cur_step_begin = cur_step_index * bucket_length;
+    int cur_step_begin = cur_step_indice * bucket_length;
     int sum_step_begin = slide_steps * bucket_length;
     for (int i = 0; i < bucket_length; ++i) {
       origin_stat_pos[sum_step_begin + i] -=

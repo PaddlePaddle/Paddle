@@ -23,11 +23,11 @@ class TopkOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of TopkOp should not be null.");
+                   "Input(X) of TopkOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of TopkOp should not be null.");
+                   "Output(Out) of TopkOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Indices"),
-                   "Output(Indices) of TopkOp should not be null.");
+                   "Output(Indices) of TopkOp shold not be null.");
 
     auto input_dims = ctx->GetInputDim("X");
     const int k = static_cast<int>(ctx->Attrs().Get<int>("k"));
@@ -79,7 +79,7 @@ Top K operator
 
 If the input is a vector (1d tensor), this operator finds the k largest 
 entries in the vector and outputs their values and indices as vectors. 
-Thus values[j] is the j-th largest entry in input, and its index is indices[j].
+Thus values[j] is the j-th largest entry in input, and its indice is indices[j].
 
 For matrices, this operator computes the top k entries in each row. )DOC");
     AddAttr<int>("k",

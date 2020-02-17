@@ -59,10 +59,10 @@ class PrecisionRecallKernel : public framework::OpKernel<T> {
       size_t label = labels_data[i];
 
       PADDLE_ENFORCE(idx >= 0 && idx < cls_num,
-                     "Class index of each instance should be in "
+                     "Class indice of each instance shold be in "
                      "[0, class_number).");
       PADDLE_ENFORCE(label >= 0 && label < cls_num,
-                     "Label of each instance should be in [0, class_number).");
+                     "Label of each instance shold be in [0, class_number).");
 
       T w = weights_data ? weights_data[i] : 1.0;
       if (idx == label) {

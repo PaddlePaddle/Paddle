@@ -36,8 +36,8 @@ class CPUInplaceTestWithFuseOptimizationOps(InplaceTestBase):
     def test_multi_card_fetch_var(self):
         self.check_multi_card_fetch_var()
 
-    # TODO(zcd): should check why this test failed.
-    @unittest.skip("should fix this later.")
+    # TODO(zcd): shold check why this test failed.
+    @unittest.skip("shold fix this later.")
     def test_single_card_fetch_var(self):
         self.check_single_card_fetch_var()
 

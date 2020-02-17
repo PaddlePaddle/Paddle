@@ -177,11 +177,11 @@ class FakeQuantizeAbsMaxOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of FakeQuantizeOp should not be null.");
+                   "Input(X) of FakeQuantizeOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of FakeQuantizeOp should not be null.");
+                   "Output(Out) of FakeQuantizeOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("OutScale"),
-                   "Output(Scale) of FakeQuantizeOp should not be null.");
+                   "Output(Scale) of FakeQuantizeOp shold not be null.");
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->SetOutputDim("OutScale", {1});
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -208,7 +208,7 @@ class FakeQuantizeAbsMaxOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(8)
         .AddCustomChecker([](const int& bit_length) {
           PADDLE_ENFORCE(bit_length >= 1 && bit_length <= 16,
-                         "'bit_length' should be between 1 and 16.");
+                         "'bit_length' shold be between 1 and 16.");
         });
     AddComment(R"DOC(
 FakeQuantize operator
@@ -227,13 +227,13 @@ class FakeChannelWiseQuantizeAbsMaxOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of FakeChannelWiseQuantizeOp should not be null.");
+                   "Input(X) of FakeChannelWiseQuantizeOp shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasOutput("Out"),
-        "Output(Out) of FakeChannelWiseQuantizeOp should not be null.");
+        "Output(Out) of FakeChannelWiseQuantizeOp shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasOutput("OutScale"),
-        "Output(Scale) of FakeChannelWiseQuantizeOp should not be null.");
+        "Output(Scale) of FakeChannelWiseQuantizeOp shold not be null.");
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->SetOutputDim("OutScale", {ctx->GetInputDim("X")[0]});
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -260,7 +260,7 @@ class FakeChannelWiseQuantizeAbsMaxOpMaker
         .SetDefault(8)
         .AddCustomChecker([](const int& bit_length) {
           PADDLE_ENFORCE(bit_length >= 1 && bit_length <= 16,
-                         "'bit_length' should be between 1 and 16.");
+                         "'bit_length' shold be between 1 and 16.");
         });
     AddComment(R"DOC(
 The scale of FakeChannelWiseQuantize operator is a vector.
@@ -285,13 +285,13 @@ class FakeQuantizeRangeAbsMaxOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of FakeQuantizeRangeAbsMaxOp should not be null.");
+                   "Input(X) of FakeQuantizeRangeAbsMaxOp shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasOutput("Out"),
-        "Output(Out) of FakeQuantizeRangeAbsMaxOp should not be null.");
+        "Output(Out) of FakeQuantizeRangeAbsMaxOp shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasOutput("OutScale"),
-        "Output(OutScale) of FakeQuantizeRangeAbsMaxOp should not be null");
+        "Output(OutScale) of FakeQuantizeRangeAbsMaxOp shold not be null");
     if (ctx->HasOutput("OutScales")) {
       int window_size = ctx->Attrs().Get<int>("window_size");
       ctx->SetOutputDim("OutScales", {window_size});
@@ -326,7 +326,7 @@ class FakeQuantizeRangeAbsMaxOpMaker
         .SetDefault(8)
         .AddCustomChecker([](const int& bit_length) {
           PADDLE_ENFORCE(bit_length >= 1 && bit_length <= 16,
-                         "'bit_length' should be between 1 and 16.");
+                         "'bit_length' shold be between 1 and 16.");
         });
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
@@ -355,14 +355,14 @@ class FakeQuantOrWithDequantMovingAverageAbsMaxOp
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of FakeQuantOrWithDequantMovingAverageAbsMaxOp "
-                   "should not be null.");
+                   "shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of FakeQuantOrWithDequantMovingAverageAbsMaxOp "
-                   "should not be null.");
+                   "shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasOutput("OutScale"),
         "Output(OutScale) of FakeQuantOrWithDequantMovingAverageAbsMaxOp "
-        "should not be null");
+        "shold not be null");
     if (ctx->HasOutput("OutState")) {
       ctx->SetOutputDim("OutState", {1});
     }
@@ -401,7 +401,7 @@ class FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker
         .SetDefault(8)
         .AddCustomChecker([](const int& bit_length) {
           PADDLE_ENFORCE(bit_length >= 1 && bit_length <= 16,
-                         "'bit_length' should be between 1 and 16.");
+                         "'bit_length' shold be between 1 and 16.");
         });
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
@@ -432,13 +432,13 @@ class MovingAverageAbsMaxScaleOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(
         ctx->HasInput("X"),
-        "Input(X) of MovingAverageAbsMaxScaleOp should not be null.");
+        "Input(X) of MovingAverageAbsMaxScaleOp shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasOutput("Out"),
-        "Output(Out) of MovingAverageAbsMaxScaleOp should not be null.");
+        "Output(Out) of MovingAverageAbsMaxScaleOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("OutScale"),
                    "Output(OutScale) of MovingAverageAbsMaxScaleOp"
-                   "should not be null");
+                   "shold not be null");
     if (ctx->HasOutput("OutState")) {
       ctx->SetOutputDim("OutState", {1});
     }

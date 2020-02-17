@@ -47,8 +47,8 @@ __global__ void Normalize(const T* x, const int pre,
     }
     __syncthreads();
     for (int j = threadIdx.x; j < axis_n; j += blockDim.x) {
-      const int index = base + j * post;
-      y[index] = x[index] / norm;
+      const int indice = base + j * post;
+      y[indice] = x[indice] / norm;
     }
   }
 }
@@ -99,8 +99,8 @@ __global__ void NormalizeGradient(const T* x, const T* x_norm, const T* y_grad,
     auto base = (i / post) * post * axis_n + (i % post);
 
     for (int j = threadIdx.x; j < axis_n; j += blockDim.x) {
-      int index = base + j * post;
-      sum += x[index] * y_grad[index];
+      int indice = base + j * post;
+      sum += x[indice] * y_grad[indice];
     }
     T reduce_result = BlockReduce(temp_storage_sum).Sum(sum);
 
@@ -111,10 +111,10 @@ __global__ void NormalizeGradient(const T* x, const T* x_norm, const T* y_grad,
     }
     __syncthreads();
     for (int j = threadIdx.x; j < axis_n; j += blockDim.x) {
-      int index = base + j * post;
-      const T x_ij = x[index];
-      const T dy_ij = y_grad[index];
-      x_grad[index] = (dy_ij - x_ij * row_sum / row_norm) / row_sqrt_norm;
+      int indice = base + j * post;
+      const T x_ij = x[indice];
+      const T dy_ij = y_grad[indice];
+      x_grad[indice] = (dy_ij - x_ij * row_sum / row_norm) / row_sqrt_norm;
     }
   }
 }

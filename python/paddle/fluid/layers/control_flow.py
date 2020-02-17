@@ -232,7 +232,7 @@ def Print(input,
 
     NOTES:
         The input and output are two different variables, and in the
-        following process, you should use the output variable but not the input,
+        following process, you shold use the output variable but not the input,
         otherwise, the print layer doesn't have backward.
 
     Examples:
@@ -547,7 +547,7 @@ class StaticRNN(object):
 
         Args:
             x(Variable): The input sequence, the shape of x
-                should be [seq_len, ...].
+                shold be [seq_len, ...].
 
         Returns:
             Variable: The current time step data in the input sequence.
@@ -703,14 +703,14 @@ class StaticRNN(object):
         Args:
             mem(Variable): the memory variable.
             var(Variable): the plain variable generated in RNN block, used to update memory.
-                           var and mem should have same dims and data type.
+                           var and mem shold have same dims and data type.
 
         Returns:
             None
 
         """
         if not isinstance(mem, Variable) or not isinstance(var, Variable):
-            raise TypeError("update memory should take variables")
+            raise TypeError("update memory shold take variables")
         self.memories[mem.name].mem = var
 
     def _parent_block(self):
@@ -774,7 +774,7 @@ class StaticRNN(object):
         for _, mem in six.iteritems(self.memories):
             boot_memories.append(mem.init)
             pre_memories.append(mem.pre_mem.name)
-            assert mem.mem is not None, "%s should be updated in every step." % (
+            assert mem.mem is not None, "%s shold be updated in every step." % (
                 mem.init.name)
             mem_var = rnn_block.var(mem.mem.name)
             assert isinstance(mem_var, Variable)
@@ -868,10 +868,10 @@ class While(object):
         self.helper = LayerHelper("while", name=name)
         self.status = While.BEFORE_WHILE_BLOCK
         if not isinstance(cond, Variable):
-            raise TypeError("condition should be a variable")
+            raise TypeError("condition shold be a variable")
         assert isinstance(cond, Variable)
         if cond.dtype != core.VarDesc.VarType.BOOL:
-            raise TypeError("condition should be a boolean variable")
+            raise TypeError("condition shold be a boolean variable")
         if reduce(lambda a, b: a * b, cond.shape, 1) != 1:
             raise TypeError(
                 "condition expected shape as [], but given shape as {0}.".
@@ -978,22 +978,22 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
     helper = LayerHelper('while_loop', **locals())
 
     if not callable(cond):
-        raise TypeError("cond in while_loop should be callable")
+        raise TypeError("cond in while_loop shold be callable")
     if not callable(body):
-        raise TypeError("body in while_loop should be callable")
+        raise TypeError("body in while_loop shold be callable")
     if not isinstance(loop_vars, (list, tuple)):
-        raise TypeError("loop_vars in while_loop should be a list or tuple")
+        raise TypeError("loop_vars in while_loop shold be a list or tuple")
     if len(loop_vars) == 0:
-        raise ValueError("loop_vars in while_loop should not be empty")
+        raise ValueError("loop_vars in while_loop shold not be empty")
 
     pre_cond = cond(*loop_vars)
     if not isinstance(pre_cond, Variable):
-        raise TypeError("cond in while_loop should return a variable")
+        raise TypeError("cond in while_loop shold return a variable")
     if pre_cond.dtype != core.VarDesc.VarType.BOOL:
-        raise TypeError("cond in while_loop should return a boolean variable")
+        raise TypeError("cond in while_loop shold return a boolean variable")
     if reduce(lambda a, b: a * b, pre_cond.shape, 1) != 1:
         raise TypeError(
-            "the shape of the variable returned by cond should be [],"
+            "the shape of the variable returned by cond shold be [],"
             "but given shape as {0}.".format(list(pre_cond.shape)))
 
     while_loop_block = While(pre_cond, is_test, name)
@@ -1012,9 +1012,9 @@ def lod_rank_table(x, level=0):
     """
     LoD Rank Table Operator. Given an input variable **x** and a level number
     of LoD, this layer creates a LodRankTable object. A LoDRankTable object
-    contains a list of bi-element tuples. Each tuple consists of an index and
+    contains a list of bi-element tuples. Each tuple consists of an indice and
     a length, both of which are int type. Refering to specified level of LoD,
-    the index is the sequence index number and the length represents the
+    the indice is the sequence indice number and the length represents the
     sequence length. Please note that the list is ranked in descending order by
     the length. The following is an example:
 
@@ -1103,7 +1103,7 @@ def lod_tensor_to_array(x, table):
     PaddlePaddle. The generated LoDTensorArray of this function can be further read
     or written by `read_from_array()` and `write_to_array()` operators. However,
     this function is generally an internal component of PaddlePaddle `DynamicRNN`.
-    Users should not use it directly.
+    Users shold not use it directly.
 
     Args:
         x (Variable|list): The LoDTensor to be converted to a LoDTensorArray.
@@ -1177,7 +1177,7 @@ def increment(x, value=1.0, in_place=True):
         x (Variable): A tensor that must always contain only one element, its data type supports
             float32, float64, int32 and int64.
         value (float, optional): The amount to increment the data of :attr:`x`. Default: 1.0.
-        in_place (bool, optional): Whether the OP should be performed in-place. Default: True.
+        in_place (bool, optional): Whether the OP shold be performed in-place. Default: True.
 
     Returns:
         Variable: The elementwise-incremented tensor with the same shape and data type as :attr:`x`.
@@ -1355,11 +1355,11 @@ def less_equal(x, y, cond=None):
     This OP returns the truth value of :math:`x <= y` elementwise, which is equivalent function to the overloaded operator `<=`.
 
     Args:
-        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
-        y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        x(Variable): First input to compare which is N-D tensor. The input data type shold be float32, float64, int32, int64. 
+        y(Variable): Second input to compare which is N-D tensor. The input data type shold be float32, float64, int32, int64.
         cond(Variable, optional): If is :attr:`None`, the op will create a variable as output tensor, the input shape and data type of \
             this tensor is the same as input :attr:`x`. If is not :attr:`None`, the op will set the variable as output tensor, the input shape \
-            and data type of this tensor should be the same as input :attr:`x`. Default value is :attr:`None`.
+            and data type of this tensor shold be the same as input :attr:`x`. Default value is :attr:`None`.
 
     Returns:
         Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x`.
@@ -1397,11 +1397,11 @@ def greater_than(x, y, cond=None):
     This OP returns the truth value of :math:`x > y` elementwise, which is equivalent function to the overloaded operator `>`.
 
     Args:
-        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
-        y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        x(Variable): First input to compare which is N-D tensor. The input data type shold be float32, float64, int32, int64. 
+        y(Variable): Second input to compare which is N-D tensor. The input data type shold be float32, float64, int32, int64.
         cond(Variable, optional): If is :attr:`None`, the op will create a variable as output tensor, the shape and data type of this \
             tensor is the same as input :attr:`x` . If is not :attr:`None`, the op will set the variable as output tensor, the shape and data type \
-            of this tensor should be the same as input :attr:`x` . Default value is :attr:`None`.
+            of this tensor shold be the same as input :attr:`x` . Default value is :attr:`None`.
 
     Returns:
         Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x` .
@@ -1438,8 +1438,8 @@ def greater_equal(x, y, cond=None):
     This OP returns the truth value of :math:`x >= y` elementwise, which is equivalent function to the overloaded operator `>=`.
 
     Args:
-        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
-        y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        x(Variable): First input to compare which is N-D tensor. The input data type shold be float32, float64, int32, int64. 
+        y(Variable): Second input to compare which is N-D tensor. The input data type shold be float32, float64, int32, int64.
         cond(Variable, optional): If is :attr:`None` , the op will create a variable as output tensor, the shape and data type of this \
             tensor is the same as input :attr:`x`. If is not :attr:`None` , the op will set the variable as output tensor, the shape and data \
             type of this tensor is the same as input :attr:`x`. Default value is :attr:`None`.
@@ -1518,11 +1518,11 @@ def not_equal(x, y, cond=None):
     This OP returns the truth value of :math:`x != y` elementwise, which is equivalent function to the overloaded operator `!=`.
 
     Args:
-        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
-        y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        x(Variable): First input to compare which is N-D tensor. The input data type shold be float32, float64, int32, int64. 
+        y(Variable): Second input to compare which is N-D tensor. The input data type shold be float32, float64, int32, int64.
         cond(Variable, optional): If is :attr:`None`, the op will create a variable as output tensor, the shape and data type of this \
              tensor is the same as input :attr:`x`. If is not :attr:`None`, the op will set the variable as output tensor, the shape and data \
-             type of this tensor should be the same as input :attr:`x`. Default value is :attr:`None`.
+             type of this tensor shold be the same as input :attr:`x`. Default value is :attr:`None`.
 
     Returns:
         Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x`.
@@ -1612,7 +1612,7 @@ def array_read(array, i):
     if not isinstance(
             array,
             Variable) or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
-        raise TypeError("array should be tensor array vairable")
+        raise TypeError("array shold be tensor array vairable")
     out = helper.create_variable_for_type_inference(dtype=array.dtype)
     helper.append_op(
         type='read_from_array',
@@ -1717,12 +1717,12 @@ class ConditionalBlockGuard(BlockGuard):
     ConditionalBlockGuard is derived from BlockGuard. It is dedicated for
     holding a ConditionalBlock, and helping users entering and exiting the
     ConditionalBlock via Python's 'with' keyword. However, ConditionalBlockGuard
-    is generally an internal component of IfElse, users should not use it directly.
+    is generally an internal component of IfElse, users shold not use it directly.
     """
 
     def __init__(self, block):
         if not isinstance(block, ConditionalBlock):
-            raise TypeError("block should be conditional block")
+            raise TypeError("block shold be conditional block")
         super(ConditionalBlockGuard, self).__init__(block.helper.main_program)
         self.block = block
 
@@ -1765,7 +1765,7 @@ class ConditionalBlock(object):
     def __init__(self, inputs, is_scalar_condition=False, name=None):
         for each_input in inputs:
             if not isinstance(each_input, Variable):
-                raise TypeError("Each input should be variable")
+                raise TypeError("Each input shold be variable")
         self.inputs = inputs
         self.is_scalar_condition = is_scalar_condition
         self.helper = LayerHelper('conditional_block', name=name)
@@ -1910,7 +1910,7 @@ def copy_var_to_parent_block(var, layer_helper):
         return None
     prog = layer_helper.main_program
     parent_idx = prog.current_block().parent_idx
-    assert parent_idx >= 0, "Got wrong parent block index when assigning var to parent scope in control_flow"
+    assert parent_idx >= 0, "Got wrong parent block indice when assigning var to parent scope in control_flow"
     parent_block = prog.block(parent_idx)
 
     parent_block_var = parent_block.create_var(
@@ -1926,7 +1926,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
     ``None`` if do nothing and this API will treat the callable simply returns
     ``None`` in this case.
 
-    ``true_fn`` and ``false_fn`` should return same nest structure of tensors
+    ``true_fn`` and ``false_fn`` shold return same nest structure of tensors
     or both return ``None`` if user doens't like to return anything. A nest
     structure of tensors in PaddlePaddle is tensor(s), or tuple of tensors, or
     list of tensors.
@@ -1952,7 +1952,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
         No matter whether ``a < b`` , ``c = a * b`` will run.
 
     Args:
-        pred(Variable): A boolean tensor whose numel should be 1. The boolean
+        pred(Variable): A boolean tensor whose numel shold be 1. The boolean
             value determines whether to return the result of ``true_fn`` or
             ``false_fn`` .
         true_fn(callable, optional): A callable to be performed if ``pred`` is
@@ -2172,9 +2172,9 @@ def case(pred_fn_pairs, default=None, name=None):
                     " be callable.".format(pred.name))
 
         if default is None:
-            default_index = len(pred_fn_pairs) - 1  # pick the last one
-            default = pred_fn_pairs[default_index][1]
-            pred_fn_pairs = pred_fn_pairs[:default_index]
+            default_indice = len(pred_fn_pairs) - 1  # pick the last one
+            default = pred_fn_pairs[default_indice][1]
+            pred_fn_pairs = pred_fn_pairs[:default_indice]
         elif not callable(default):
             raise TypeError("The default in Op(case) must be callable.")
 
@@ -2267,7 +2267,7 @@ class Switch(object):
 
     def case(self, condition):
         if not self.inside_scope:
-            raise ValueError("case should be called inside with")
+            raise ValueError("case shold be called inside with")
 
         if len(self.pre_not_conditions) == 0:
             cond_block = ConditionalBlock([condition], is_scalar_condition=True)
@@ -2289,7 +2289,7 @@ class Switch(object):
     def default(self):
         pre_cond_num = len(self.pre_not_conditions)
         if pre_cond_num == 0:
-            raise ValueError("there should be at least one condition")
+            raise ValueError("there shold be at least one condition")
         cond_block = ConditionalBlock(
             [self.pre_not_conditions[pre_cond_num - 1]],
             is_scalar_condition=True)
@@ -2483,7 +2483,7 @@ class IfElse(object):
         parent_block = self._parent_block()
         for each_out in outs:
             if not isinstance(each_out, Variable):
-                raise TypeError("Each output should be a variable")
+                raise TypeError("Each output shold be a variable")
             # create outside tensor
             outside_out = parent_block.create_var(
                 name=unique_name.generate_with_ignorable_key("_".join(
@@ -2522,7 +2522,7 @@ class IfElse(object):
 
 class DynamicRNN(object):
     """
-    **Note: the input of this class should be LoDTensor which holds the
+    **Note: the input of this class shold be LoDTensor which holds the
     information of variable-length sequences. If the input is fixed-length Tensor,
     please use StaticRNN (fluid.layers.** :ref:`api_fluid_layers_StaticRNN` **) for
     better performance.**
@@ -2610,11 +2610,11 @@ class DynamicRNN(object):
         This function is used to set sequence x as DynamicRNN's input.
         The maximum sequence length in x determines the number of time steps
         the RNN unit will be executed. DynamicRNN can take multiple inputs.
-        When all inputs' :code:`lod_level` are 1, all inputs should hold the
+        When all inputs' :code:`lod_level` are 1, all inputs shold hold the
         same LoD. When :code:`x.lod_level >= 2` , the input sequence will be
         unfold along specified level, and the slice of each time step is a
         LoDTensor whose lod_level is :code:`x.lod_level - level - 1` .
-        In this case, the specified LoD level of multiple inputs should be the same.
+        In this case, the specified LoD level of multiple inputs shold be the same.
 
         - Case 1:
 
@@ -2653,12 +2653,12 @@ class DynamicRNN(object):
 
         Args:
             x (Variable): The input LoDTensor which holds information of a
-                minibatch of variable-length sequences and should meet :code:`x.lod_level >= 1` .
-                When RNN has multiple inputs, the first dimension should match
+                minibatch of variable-length sequences and shold meet :code:`x.lod_level >= 1` .
+                When RNN has multiple inputs, the first dimension shold match
                 across all inputs, but other shape components may differ.
                 Optional data types are: bool, float16, float32, float64, int8, int16, int32, int64, uint8.
             level (int, optional): The level of lod used to split steps.
-                It should be in range :math:`[0, x.lod\_level)` . The default value is 0.
+                It shold be in range :math:`[0, x.lod\_level)` . The default value is 0.
 
         Returns:
             Variable: The current time step in the input sequence. If there are :code:`num_sequences` \
@@ -2816,7 +2816,7 @@ class DynamicRNN(object):
 
 
         Args:
-            x (Variable): The static input LoDTensor which should hold the same number of sequences
+            x (Variable): The static input LoDTensor which shold hold the same number of sequences
                 as RNN's input (the input LoDTensor set by :code:`step_input()` ). If the LoD is None,
                 the input x will be treated as a minibatch with :code:`x.shape[0]` sequences of length 1.
                 Optional data types are: bool, float16, float32, float64, int8, int16, int32, int64, uint8.
@@ -2953,7 +2953,7 @@ class DynamicRNN(object):
 
         Args:
             init (Variable, optional): LoDTensor used to initialize the memory.
-                If init is not None, it should hold the same number of sequences
+                If init is not None, it shold hold the same number of sequences
                 as RNN's input (the input LoDTensor set by :code:`step_input()` )
                 and the memory will be initialized to it. If init's LoD is None,
                 it will be treated as a minibatch with :code:`init.shape[0]` sequences
@@ -2966,7 +2966,7 @@ class DynamicRNN(object):
             value (float, optional): When init is None, it is used as initialized value
                 of memory. The default value is 0.0.
             need_reorder (bool, optional): When init is not None, it determines whether
-                the memory needs to reorder like the RNN's input sequences. It should be
+                the memory needs to reorder like the RNN's input sequences. It shold be
                 set to True when the initialized memory depends on the order of input samples.
                 The default value is False.
             dtype (str|numpy.dtype, optional): When init is None, it is used to set the
@@ -3074,7 +3074,7 @@ class DynamicRNN(object):
         else:
             if len(self.input_array) == 0:
                 raise ValueError(
-                    "step_input should be invoked before memory(shape=..., value=...)"
+                    "step_input shold be invoked before memory(shape=..., value=...)"
                 )
             parent_block = self._parent_block_()
             init = parent_block.create_var(
@@ -3105,7 +3105,7 @@ class DynamicRNN(object):
         Args:
             ex_mem (Variable): The memory data of previous time step.
             new_mem (Variable): The new memory data produced in current time step.
-                The shape and data type of ex_mem and new_mem should be the same.
+                The shape and data type of ex_mem and new_mem shold be the same.
 
         Returns:
             None
@@ -3187,24 +3187,24 @@ class DynamicRNN(object):
                 method))
 
 
-def switch_case(branch_index, branch_fns, default=None, name=None):
+def switch_case(branch_indice, branch_fns, default=None, name=None):
     '''
     This operator is like a C++ switch/case statement.
 
     Args:
-        branch_index(Variable): A Tensor with shape [1] to specify which branch to execute. The data type is ``int32``, ``int64`` or ``uint8``.
-        branch_fns(dict|list|tuple): If it's a list or tuple, the elements in it could be pairs of (int, callable) or simple callables whose actual index will be used as the index of callable. If it's a dict, its key is a python integer and the value is a callable. All callables return the same structure of Tensors.
+        branch_indice(Variable): A Tensor with shape [1] to specify which branch to execute. The data type is ``int32``, ``int64`` or ``uint8``.
+        branch_fns(dict|list|tuple): If it's a list or tuple, the elements in it could be pairs of (int, callable) or simple callables whose actual indice will be used as the indice of callable. If it's a dict, its key is a python integer and the value is a callable. All callables return the same structure of Tensors.
         default(callable, optional): Callable that returns a structure of Tensors.
         name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable|list(Variable): Tensors returned by the callable specified by ``branch_index`` in ``branch_fns``,
-        or Tensors returned by ``default`` if ``default`` is not None and no index matches in ``branch_fns``,
-        or Tensors returned by the callable with the max index in ``branch_fns`` if ``default`` is None and no index matches in ``branch_fns``.
+        Variable|list(Variable): Tensors returned by the callable specified by ``branch_indice`` in ``branch_fns``,
+        or Tensors returned by ``default`` if ``default`` is not None and no indice matches in ``branch_fns``,
+        or Tensors returned by the callable with the max indice in ``branch_fns`` if ``default`` is None and no indice matches in ``branch_fns``.
 
     Raises:
-        TypeError: If the type of ``branch_index`` is not Variable.
-        TypeError: If the data type of ``branch_index`` is not ``int32``, ``int64`` or ``uint8``.
+        TypeError: If the type of ``branch_indice`` is not Variable.
+        TypeError: If the data type of ``branch_indice`` is not ``int32``, ``int64`` or ``uint8``.
         TypeError: If the type of ``branch_fns`` is not dict, list or tuple.
         TypeError: If the elements of ``branch_fns`` is not 2-tuple.
         TypeError: If the first element of 2-tuple in ``branch_fns`` is not integer.
@@ -3230,22 +3230,22 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
             main_program = fluid.default_startup_program()
             startup_program = fluid.default_main_program()
             with fluid.program_guard(main_program, startup_program):
-                index_1 = layers.fill_constant(shape=[1], dtype='int32', value=1)
-                index_2 = layers.fill_constant(shape=[1], dtype='int32', value=2)
+                indice_1 = layers.fill_constant(shape=[1], dtype='int32', value=1)
+                indice_2 = layers.fill_constant(shape=[1], dtype='int32', value=2)
 
                 out_1 = layers.switch_case(
-                    branch_index=index_1,
+                    branch_indice=indice_1,
                     branch_fns={1: fn_1, 2: fn_2},
                     default=fn_3)
 
                 out_2 = layers.switch_case(
-                    branch_index=index_2,
+                    branch_indice=indice_2,
                     branch_fns=[(1, fn_1), (2, fn_2)],
                     default=fn_3)
 
-                # Argument default is None and no index matches. fn_3 will be called because of the max index 7.
+                # Argument default is None and no indice matches. fn_3 will be called because of the max indice 7.
                 out_3 = layers.switch_case(
-                    branch_index=index_2,
+                    branch_indice=indice_2,
                     branch_fns=[(0, fn_1), (4, fn_2), (7, fn_3)])
 
                 exe = fluid.Executor(fluid.CPUPlace())
@@ -3257,20 +3257,20 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
     '''
     helper = LayerHelper('switch_case', **locals())
 
-    def _check_args(branch_index, branch_fns, default):
-        if not isinstance(branch_index, Variable):
+    def _check_args(branch_indice, branch_fns, default):
+        if not isinstance(branch_indice, Variable):
             raise TypeError(
-                _error_message("The type", "branch_index", "switch_case",
-                               "Variable", type(branch_index)))
+                _error_message("The type", "branch_indice", "switch_case",
+                               "Variable", type(branch_indice)))
 
-        if convert_dtype(branch_index.dtype) not in ["uint8", "int32", "int64"]:
+        if convert_dtype(branch_indice.dtype) not in ["uint8", "int32", "int64"]:
             raise TypeError(
-                _error_message("The data type", "branch_index", "switch_case",
+                _error_message("The data type", "branch_indice", "switch_case",
                                "uint8, int32 or int64",
-                               convert_dtype(branch_index.dtype)))
+                               convert_dtype(branch_indice.dtype)))
 
-        if convert_dtype(branch_index.dtype) != "int64":
-            branch_index = cast(branch_index, "int64")
+        if convert_dtype(branch_indice.dtype) != "int64":
+            branch_indice = cast(branch_indice, "int64")
 
         if not isinstance(branch_fns, (list, tuple, dict)):
             raise TypeError(
@@ -3284,19 +3284,19 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
             callable(fn) for fn in branch_fns) else branch_fns
 
         keys_of_fns = []
-        for index_fn_pair in branch_fns:
-            if not isinstance(index_fn_pair, tuple):
+        for indice_fn_pair in branch_fns:
+            if not isinstance(indice_fn_pair, tuple):
                 raise TypeError(
                     _error_message("The elements' type", "branch_fns",
                                    "switch_case", "tuple", type(branch_fns)))
 
-            if len(index_fn_pair) != 2:
+            if len(indice_fn_pair) != 2:
                 raise TypeError(
                     _error_message("The tuple's size", "branch_fns",
                                    "switch_case", "2",
-                                   str(len(index_fn_pair)) + "-tuple"))
+                                   str(len(indice_fn_pair)) + "-tuple"))
 
-            key, fn = index_fn_pair
+            key, fn = indice_fn_pair
 
             if not isinstance(key, int):
                 raise TypeError(
@@ -3323,14 +3323,14 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
             raise TypeError("The default in Op(case) must be callable.")
 
         pred_fn_pairs = []
-        for index, fn in branch_fns:
-            new_index = fill_constant(shape=[1], dtype="int64", value=index)
-            pred = equal(branch_index, new_index)
+        for indice, fn in branch_fns:
+            new_indice = fill_constant(shape=[1], dtype="int64", value=indice)
+            pred = equal(branch_indice, new_indice)
             pred_fn_pairs.append((pred, fn))
 
         return pred_fn_pairs, default
 
-    pred_fn_pairs, default = _check_args(branch_index, branch_fns, default)
+    pred_fn_pairs, default = _check_args(branch_indice, branch_fns, default)
     false_fn = default
     for pred, true_fn in pred_fn_pairs:
         false_fn = partial(cond, pred=pred, true_fn=true_fn, false_fn=false_fn)

@@ -63,7 +63,7 @@ static void AddSkipVars(const OpVariant &op, const Container &skip_vars) {
 }
 
 // Find all ops and grad ops with given type name. The ops and grad ops
-// may locate in different blocks so we should traverse all blocks in the
+// may locate in different blocks so we shold traverse all blocks in the
 // program and find them out
 static void FindAllOpAndGradOp(const framework::ProgramDesc &program,
                                OpAndGradOpPair *op_and_grad_op,

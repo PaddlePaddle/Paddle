@@ -263,11 +263,11 @@ def infer(use_cuda, save_dirname=None):
         # Use the first data from paddle.dataset.movielens.test() as input
         assert feed_target_names[0] == "user_id"
         # Use create_lod_tensor(data, recursive_sequence_lengths, place) API
-        # to generate LoD Tensor where `data` is a list of sequences of index
+        # to generate LoD Tensor where `data` is a list of sequences of indice
         # numbers, `recursive_sequence_lengths` is the length-based level of detail
         # (lod) info associated with `data`.
         # For example, data = [[10, 2, 3], [2, 3]] means that it contains
-        # two sequences of indexes, of length 3 and 2, respectively.
+        # two sequences of indicees, of length 3 and 2, respectively.
         # Correspondingly, recursive_sequence_lengths = [[3, 2]] contains one
         # level of detail info, indicating that `data` consists of two sequences
         # of length 3 and 2, respectively.

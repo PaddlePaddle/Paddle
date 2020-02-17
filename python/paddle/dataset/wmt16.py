@@ -112,9 +112,9 @@ def reader_creator(tar_file, file_name, src_dict_size, trg_dict_size, src_lang):
         trg_dict = __load_dict(tar_file, trg_dict_size,
                                ("de" if src_lang == "en" else "en"))
 
-        # the index for start mark, end mark, and unk are the same in source
+        # the indice for start mark, end mark, and unk are the same in source
         # language and target language. Here uses the source language
-        # dictionary to determine their indexs.
+        # dictionary to determine their indices.
         start_id = src_dict[START_MARK]
         end_id = src_dict[END_MARK]
         unk_id = src_dict[UNK_MARK]
@@ -149,8 +149,8 @@ def train(src_dict_size, trg_dict_size, src_lang="en"):
     WMT16 train set reader.
 
     This function returns the reader for train data. Each sample the reader
-    returns is made up of three fields: the source language word index sequence,
-    target language word index sequence and next word index sequence.
+    returns is made up of three fields: the source language word indice sequence,
+    target language word indice sequence and next word indice sequence.
 
 
     NOTE:
@@ -198,8 +198,8 @@ def test(src_dict_size, trg_dict_size, src_lang="en"):
     WMT16 test set reader.
 
     This function returns the reader for test data. Each sample the reader
-    returns is made up of three fields: the source language word index sequence,
-    target language word index sequence and next word index sequence.
+    returns is made up of three fields: the source language word indice sequence,
+    target language word indice sequence and next word indice sequence.
 
     NOTE:
     The original like for test data is:
@@ -247,8 +247,8 @@ def validation(src_dict_size, trg_dict_size, src_lang="en"):
     WMT16 validation set reader.
 
     This function returns the reader for validation data. Each sample the reader
-    returns is made up of three fields: the source language word index sequence,
-    target language word index sequence and next word index sequence.
+    returns is made up of three fields: the source language word indice sequence,
+    target language word indice sequence and next word indice sequence.
 
     NOTE:
     The original like for validation data is:
@@ -299,9 +299,9 @@ def get_dict(lang, dict_size, reverse=False):
                       and "de" for Germany.
         dict_size(int): Size of the specified language dictionary.
         reverse(bool): If reverse is set to False, the returned python
-                       dictionary will use word as key and use index as value.
+                       dictionary will use word as key and use indice as value.
                        If reverse is set to True, the returned python
-                       dictionary will use index as key and word as value.
+                       dictionary will use indice as key and word as value.
 
     Returns:
         dict: The word dictionary for the specific language.

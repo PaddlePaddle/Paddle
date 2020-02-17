@@ -124,15 +124,15 @@ class FleetDistRunnerBase(object):
 
     def net(self, args, batch_size=4, lr=0.01):
         raise NotImplementedError(
-            "get_model should be implemented by child classes.")
+            "get_model shold be implemented by child classes.")
 
     def do_dataset_training(self, fleet):
         raise NotImplementedError(
-            "do_dataset_training should be implemented by child classes.")
+            "do_dataset_training shold be implemented by child classes.")
 
     def do_pyreader_training(self, fleet):
         raise NotImplementedError(
-            "do_pyreader_training should be implemented by child classes.")
+            "do_pyreader_training shold be implemented by child classes.")
 
 
 class TestFleetBase(unittest.TestCase):
@@ -142,7 +142,7 @@ class TestFleetBase(unittest.TestCase):
     """
 
     def _setup_config(self):
-        raise NotImplementedError("tests should have _setup_config implemented")
+        raise NotImplementedError("tests shold have _setup_config implemented")
 
     def setUp(self):
         self._mode = "sync"

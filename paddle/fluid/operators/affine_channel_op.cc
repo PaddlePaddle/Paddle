@@ -62,13 +62,13 @@ class AffineChannelOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of AffineChannelOp should not be null.");
+                   "Input(X) of AffineChannelOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Scale"),
-                   "Input(Scale) of AffineChannelOp should not be null.");
+                   "Input(Scale) of AffineChannelOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Bias"),
-                   "Input(Bias) of AffineChannelOp should not be null.");
+                   "Input(Bias) of AffineChannelOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of AffineChannelOp should not be null.");
+                   "Output(Out) of AffineChannelOp shold not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
     auto scale_dims = ctx->GetInputDim("Scale");
@@ -99,18 +99,18 @@ class AffineChannelOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null.");
+                   "Input(Out@GRAD) shold not be null.");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       PADDLE_ENFORCE(ctx->HasInput("Scale"),
-                     "Input(Scale) should not be null.");
+                     "Input(Scale) shold not be null.");
       ctx->SetOutputDim(framework::GradVarName("X"),
                         ctx->GetInputDim(framework::GradVarName("Out")));
     }
     if (ctx->HasOutput(framework::GradVarName("Scale"))) {
       // Scale@GRAD and Bias@GRAD must exist at the same time.
       PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Bias")),
-                     "Output(Scale@GRAD) should not be null.");
-      PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
+                     "Output(Scale@GRAD) shold not be null.");
+      PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold not be null.");
       ctx->SetOutputDim(framework::GradVarName("Scale"),
                         ctx->GetInputDim("Scale"));
       ctx->SetOutputDim(framework::GradVarName("Bias"),

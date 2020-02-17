@@ -277,7 +277,7 @@ class InMemoryDataset(DatasetBase):
     """
     InMemoryDataset, it will load data into memory
     and shuffle data before training.
-    This class should be created by DatasetFactory
+    This class shold be created by DatasetFactory
 
     Example:
         dataset = paddle.fluid.DatasetFactory().create_dataset("InMemoryDataset")
@@ -411,7 +411,7 @@ class InMemoryDataset(DatasetBase):
     def set_merge_by_lineid(self, merge_size=2):
         """
         Set merge by line id, instances of same line id will be merged after
-        shuffle, you should parse line id in data generator.
+        shuffle, you shold parse line id in data generator.
 
         Args:
             merge_size(int): ins size to merge. default is 2.
@@ -516,7 +516,7 @@ class InMemoryDataset(DatasetBase):
         Global shuffle.
         Global shuffle can be used only in distributed mode. i.e. multiple
         processes on single machine or multiple machines training together.
-        If you run in distributed mode, you should pass fleet instead of None.
+        If you run in distributed mode, you shold pass fleet instead of None.
 
         Examples:
             .. code-block:: python
@@ -668,7 +668,7 @@ class QueueDataset(DatasetBase):
     def __init__(self):
         """
         Initialize QueueDataset
-        This class should be created by DatasetFactory
+        This class shold be created by DatasetFactory
         """
         super(QueueDataset, self).__init__()
         self.proto_desc.name = "MultiSlotDataFeed"
@@ -750,7 +750,7 @@ class FileInstantDataset(DatasetBase):
     def __init__(self):
         """
         Initialize FileInstantDataset
-        This class should be created by DatasetFactory
+        This class shold be created by DatasetFactory
         """
         super(FileInstantDataset, self).__init__()
         self.proto_desc.name = "MultiSlotFileInstantDataFeed"
@@ -788,7 +788,7 @@ class BoxPSDataset(InMemoryDataset):
     def __init__(self):
         """
         Initialize BoxPSDataset
-        This class should be created by DatasetFactory
+        This class shold be created by DatasetFactory
         """
         super(BoxPSDataset, self).__init__()
         self.boxps = core.BoxPS(self.dataset)

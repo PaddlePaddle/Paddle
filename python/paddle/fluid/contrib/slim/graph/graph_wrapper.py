@@ -315,7 +315,7 @@ class GraphWrapper(object):
             new_var = self.program.global_block()._clone_variable(
                 var, force_persistable=False)
             new_var.stop_gradient = var.stop_gradient
-            # TODO: parameters should be cloned
+            # TODO: parameters shold be cloned
         for op in graph.ops():
             op = op._op
             inputs = {}
@@ -400,7 +400,7 @@ class GraphWrapper(object):
             optimizer: The optimizer used to generate training graph.
             place: The place to run the graph.
             scope: The scope used to run the graph. Some new variable will be added into this scope.
-            no_grad_var_names(list<str>): Names of variables that should be ignored while computing gradients. default: [].
+            no_grad_var_names(list<str>): Names of variables that shold be ignored while computing gradients. default: [].
         Returns:
             (GraphWrapper): The wrapper of new graph with backward ops and optimization ops. 
         """

@@ -27,7 +27,7 @@ class SoftmaxWithCrossEntropyOpMaker
   void Make() override {
     AddInput("Logits",
              "(Tensor, default: Tensor<float>), The input tensor of unscaled "
-             "log probabilities, whose dimension :attr:`axis` should be scaled "
+             "log probabilities, whose dimension :attr:`axis` shold be scaled "
              "by softmax.");
     AddInput(
         "Label",
@@ -78,7 +78,7 @@ tensor, after which cross-entropy loss is computed. This provides a more
 numerically stable gradient.
 
 Because this operator performs a softmax on logits internally, it expects
-unscaled logits. This operator should not be used with the output of
+unscaled logits. This operator shold not be used with the output of
 softmax operator since that would produce incorrect results.
 
 When the attribute soft_label is set false, this operators expects mutually
@@ -109,19 +109,19 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Logits"),
-                   "Input(Logits) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
+                   "Input(Logits) shold be not null.");
+    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) shold be not null.");
 
     PADDLE_ENFORCE(ctx->HasOutput("Softmax"),
-                   "Output(Softmax) should be not null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Loss"), "Output(Loss) should be not null.");
+                   "Output(Softmax) shold be not null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Loss"), "Output(Loss) shold be not null.");
 
     auto axis = ctx->Attrs().Get<int>("axis");
     auto logits_dims = ctx->GetInputDim("Logits");
     auto labels_dims = ctx->GetInputDim("Label");
     auto logits_rank = logits_dims.size();
     PADDLE_ENFORCE(axis >= -logits_rank && axis < logits_rank,
-                   "Attr(axis) value should be in range [-R, R-1], "
+                   "Attr(axis) value shold be in range [-R, R-1], "
                    "R is the rank of Input(Logits).");
 
     axis = CanonicalAxis(axis, logits_rank);
@@ -130,7 +130,7 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
         if (ctx->IsRuntime() || (logits_dims[i] > 0 && labels_dims[i] > 0)) {
           PADDLE_ENFORCE_EQ(
               logits_dims[i], labels_dims[i],
-              "Input(Logits) and Input(Label) should in same shape in "
+              "Input(Logits) and Input(Label) shold in same shape in "
               "dimensions except axis.");
         }
       }
@@ -149,13 +149,13 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
           (logits_dims[axis] > 0 && labels_dims[axis] > 0)) {
         PADDLE_ENFORCE_EQ(logits_dims[axis], labels_dims[axis],
                           "If Attr(soft_label) == true, the axis dimension of "
-                          "Input(X) and Input(Label) should be equal.");
+                          "Input(X) and Input(Label) shold be equal.");
       }
     } else {
       if (ctx->IsRuntime() || labels_dims[axis] > 0) {
         PADDLE_ENFORCE_EQ(labels_dims[axis], 1UL,
                           "If Attr(soft_label) == false, the axis dimension of "
-                          "Input(Label) should be 1.");
+                          "Input(Label) shold be 1.");
       }
     }
 
@@ -183,19 +183,19 @@ class SoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Loss")),
-                   "Input(Loss@Grad) should not be null.");
+                   "Input(Loss@Grad) shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Softmax"),
-                   "Input(Softmax) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
+                   "Input(Softmax) shold be not null.");
+    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) shold be not null.");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Logits")),
-                   "Output(Logits@Grad) should be not null.");
+                   "Output(Logits@Grad) shold be not null.");
 
     auto axis = ctx->Attrs().Get<int>("axis");
     auto softmax_dims = ctx->GetInputDim("Softmax");
     auto labels_dims = ctx->GetInputDim("Label");
     auto softmax_rank = softmax_dims.size();
     PADDLE_ENFORCE(axis >= -softmax_rank && axis < softmax_rank,
-                   "Attr(axis) value should be in range [-R, R-1], "
+                   "Attr(axis) value shold be in range [-R, R-1], "
                    "R is the rank of Input(Logits).");
 
     axis = CanonicalAxis(axis, softmax_rank);
@@ -204,7 +204,7 @@ class SoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
         if (ctx->IsRuntime() || (softmax_dims[i] > 0 && labels_dims[i] > 0)) {
           PADDLE_ENFORCE_EQ(
               softmax_dims[i], labels_dims[i],
-              "Input(Logits) and Input(Label) should in same shape in "
+              "Input(Logits) and Input(Label) shold in same shape in "
               "dimensions except axis.");
         }
       }
@@ -216,13 +216,13 @@ class SoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
           (softmax_dims[axis] > 0 && labels_dims[axis] > 0)) {
         PADDLE_ENFORCE_EQ(softmax_dims[axis], labels_dims[axis],
                           "If Attr(soft_label) == true, the axis dimension of "
-                          "Input(X) and Input(Label) should be equal.");
+                          "Input(X) and Input(Label) shold be equal.");
       }
     } else {
       if (ctx->IsRuntime() || labels_dims[axis] > 0) {
         PADDLE_ENFORCE_EQ(labels_dims[axis], 1UL,
                           "If Attr(soft_label) == false, the axis dimension of "
-                          "Input(Label) should be 1.");
+                          "Input(Label) shold be 1.");
       }
     }
 

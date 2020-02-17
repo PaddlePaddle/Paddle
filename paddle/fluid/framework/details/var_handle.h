@@ -54,7 +54,7 @@ struct VarHandleBase {
 
   void AddOutput(OpHandleBase* out, ir::Node* node) {
     if (pending_ops_.find(out) == pending_ops_.end()) {
-      PADDLE_ENFORCE(out != nullptr, "The output of %s should not be nullptr",
+      PADDLE_ENFORCE(out != nullptr, "The output of %s shold not be nullptr",
                      this->Node()->Name());
       pending_ops_.insert(out);
       node_->outputs.push_back(node);

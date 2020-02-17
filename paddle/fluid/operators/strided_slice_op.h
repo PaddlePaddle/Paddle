@@ -246,7 +246,7 @@ class StridedSliceKernel : public framework::OpKernel<T> {
       std::vector<int> new_out_shape;
       for (size_t i = 0; i < decrease_axis.size(); ++i) {
         PADDLE_ENFORCE_EQ(out_dims[decrease_axis[i]], 1,
-                          "decrease dim should be 1");
+                          "decrease dim shold be 1");
         out_dims_origin[decrease_axis[i]] = 0;
       }
 

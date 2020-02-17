@@ -111,20 +111,20 @@ class CPUROIPoolOpKernel : public framework::OpKernel<T> {
             wstart = std::min(std::max(wstart + roi_start_w, 0), width);
             wend = std::min(std::max(wend + roi_start_w, 0), width);
 
-            const int pool_index = ph * pooled_width + pw;
+            const int pool_indice = ph * pooled_width + pw;
 
             // Define an empty pooling region to be zero
             bool is_empty = (hend <= hstart) || (wend <= wstart);
-            output_data[pool_index] =
+            output_data[pool_indice] =
                 is_empty ? 0 : -std::numeric_limits<T>::max();
-            argmax_data[pool_index] = -1;
+            argmax_data[pool_indice] = -1;
 
             for (int h = hstart; h < hend; ++h) {
               for (int w = wstart; w < wend; ++w) {
-                const int index = h * width + w;
-                if (batch_data[index] > output_data[pool_index]) {
-                  output_data[pool_index] = batch_data[index];
-                  argmax_data[pool_index] = index;
+                const int indice = h * width + w;
+                if (batch_data[indice] > output_data[pool_indice]) {
+                  output_data[pool_indice] = batch_data[indice];
+                  argmax_data[pool_indice] = indice;
                 }
               }
             }
@@ -192,10 +192,10 @@ class CPUROIPoolGradOpKernel : public framework::OpKernel<T> {
         for (int c = 0; c < channels; ++c) {
           for (int ph = 0; ph < pooled_height; ++ph) {
             for (int pw = 0; pw < pooled_width; ++pw) {
-              int pool_index = ph * pooled_width + pw;
-              if (argmax_data[pool_index] >= 0) {
-                auto index = argmax_data[pool_index];
-                batch_grad_data[index] += out_grad_data[pool_index];
+              int pool_indice = ph * pooled_width + pw;
+              if (argmax_data[pool_indice] >= 0) {
+                auto indice = argmax_data[pool_indice];
+                batch_grad_data[indice] += out_grad_data[pool_indice];
               }
             }
           }

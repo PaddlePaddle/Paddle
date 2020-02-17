@@ -18,15 +18,15 @@ namespace operators {
 namespace math {
 
 template <typename T, int BlockDimX, int BlockDimY, int GridDimX>
-__global__ void CopyMatrixRowsKernel(const T* src, T* dst, const size_t* index,
+__global__ void CopyMatrixRowsKernel(const T* src, T* dst, const size_t* indice,
                                      int64_t height, int64_t width,
-                                     bool is_src_index) {
+                                     bool is_src_indice) {
   int idx = threadIdx.x;
   int idy = threadIdx.y;
   int id = blockIdx.x + idy * GridDimX;
   while (id < height) {
-    int src_idx = is_src_index ? index[id] : id;
-    int dst_idx = is_src_index ? id : index[id];
+    int src_idx = is_src_indice ? indice[id] : id;
+    int dst_idx = is_src_indice ? id : indice[id];
     const T* src_data = src + src_idx * width;
     T* dst_data = dst + dst_idx * width;
     for (int i = idx; i < width; i += BlockDimX) {
@@ -41,8 +41,8 @@ class CopyMatrixRowsFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& src,
-                  framework::Vector<size_t> index_lod, framework::Tensor* dst,
-                  bool is_src_index) {
+                  framework::Vector<size_t> indice_lod, framework::Tensor* dst,
+                  bool is_src_indice) {
     auto src_dims = src.dims();
     auto dst_dims = dst->dims();
     PADDLE_ENFORCE_EQ(src_dims.size(), 2,
@@ -60,8 +60,8 @@ class CopyMatrixRowsFunctor<platform::CUDADeviceContext, T> {
     dim3 grid(8, 1);
     auto stream = context.stream();
     CopyMatrixRowsKernel<T, 128, 8, 8><<<grid, threads, 0, stream>>>(
-        src_data, dst_data, index_lod.CUDAData(context.GetPlace()), height,
-        width, is_src_index);
+        src_data, dst_data, indice_lod.CUDAData(context.GetPlace()), height,
+        width, is_src_indice);
   }
 };
 

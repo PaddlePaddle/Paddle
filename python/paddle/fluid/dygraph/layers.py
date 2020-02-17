@@ -320,7 +320,7 @@ class Layer(core.Layer):
         raise NotImplementedError
 
     def backward(self, *inputs):
-        raise ValueError("Layer shouldn't implement backward")
+        raise ValueError("Layer sholdn't implement backward")
 
     def add_sublayer(self, name, sublayer):
         """Adds a sub Layer instance.
@@ -380,7 +380,7 @@ class Layer(core.Layer):
             params = self.__dict__.get('_parameters', None)
             if params is None:
                 raise ValueError(
-                    "super(YourLayer, self).__init__() should be called first")
+                    "super(YourLayer, self).__init__() shold be called first")
             if len(self._loaddict_holder) > 0:
                 assert value.name in self._loaddict_holder, "Parameter not found, Can't not find [ {} ] in stat_dict".format(
                     value.name)
@@ -393,7 +393,7 @@ class Layer(core.Layer):
             layers = self.__dict__.get('_sub_layers', None)
             if layers is None:
                 raise ValueError(
-                    "super(YourLayer, self).__init__() should be called first")
+                    "super(YourLayer, self).__init__() shold be called first")
 
             _remove_if_exist(self.__dict__, self._parameters)
             layers[name] = value

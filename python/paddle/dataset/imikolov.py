@@ -66,7 +66,7 @@ def build_dict(min_word_freq=50):
         testf = tf.extractfile(test_filename)
         word_freq = word_count(testf, word_count(trainf))
         if '<unk>' in word_freq:
-            # remove <unk> for now, since we will set it as last index
+            # remove <unk> for now, since we will set it as last indice
             del word_freq['<unk>']
 
         word_freq = [

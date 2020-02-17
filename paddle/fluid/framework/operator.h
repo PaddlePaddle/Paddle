@@ -73,7 +73,7 @@ constexpr char kNewGradSuffix[] = "@NEWGRAD@";
 /// this Op's execution to save the elapsed time.
 constexpr char kEnableCacheRuntimeContext[] = "@ENABLE_CACHE_RUNTIME_CONTEXT@";
 
-/// If an Op has this attribute, all its kernels should calculate output
+/// If an Op has this attribute, all its kernels shold calculate output
 /// variable's shape in the corresponding Compute() function. And
 /// OperatorWithKernel::RunImpl() would skip call this Op's InferShape()
 /// function in its runtime for speedup.
@@ -125,7 +125,7 @@ class RuntimeContext {
 /**
  * OperatorBase has the basic elements that Net will call to do computation.
  * Only CreateOperator from OpRegistry will new Operator directly. User
- * should always construct a proto message OpDesc and call
+ * shold always construct a proto message OpDesc and call
  * OpRegistry::CreateOp(op_desc) to get an Operator instance.
  */
 class OperatorBase {
@@ -136,7 +136,7 @@ class OperatorBase {
   virtual ~OperatorBase() {}
 
   /// Executor will call this interface function to Run an op.
-  //  The implementation should be written at RunImpl
+  //  The implementation shold be written at RunImpl
   void Run(const Scope& scope, const platform::Place& place);
 
   // FIXME(typhoonzero): this is only used for recv_op to stop event_loop.
@@ -154,7 +154,7 @@ class OperatorBase {
   template <typename T>
   inline const T& Attr(const std::string& name) const {
     PADDLE_ENFORCE(attrs_.find(name) != attrs_.end(),
-                   "%s should be in AttributeMap", name);
+                   "%s shold be in AttributeMap", name);
     return boost::get<T>(attrs_.at(name));
   }
   const AttributeMap& Attrs() const { return attrs_; }
@@ -445,7 +445,7 @@ class OpKernelBase {
    * ExecutionContext is the only parameter of Kernel Run function.
    * Run will get input/output variables, state such as momentum and
    * device resource such as CUDA stream, cublas handle, etc. from
-   * ExecutionContext. User should construct it before run the Operator.
+   * ExecutionContext. User shold construct it before run the Operator.
    */
 
   virtual void Compute(const ExecutionContext& context) const = 0;

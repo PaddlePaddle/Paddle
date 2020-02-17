@@ -28,15 +28,15 @@ class CropOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of CropOp should not be null.");
+                   "Input(X) of CropOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of CropOp should not be null.");
+                   "Output(Out) of CropOp shold not be null.");
     auto x_dim = ctx->GetInputDim("X");
     if (!ctx->HasInput("Y")) {
       auto shape = ctx->Attrs().Get<std::vector<int>>("shape");
       PADDLE_ENFORCE_EQ(
           int64_t(shape.size()), x_dim.size(),
-          "Shape size should be equal to dimension size of input tensor.");
+          "Shape size shold be equal to dimension size of input tensor.");
       std::vector<int64_t> tensor_shape(shape.size());
       for (size_t i = 0; i < shape.size(); ++i) {
         tensor_shape[i] = static_cast<int64_t>(shape[i]);
@@ -64,7 +64,7 @@ class CropOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "The input of pad op. "
-             "The input should be a k-D tensor(k > 0 and k < 7).");
+             "The input shold be a k-D tensor(k > 0 and k < 7).");
     AddInput("Y",
              "The input used as reference for cropping, "
              "which is of the same dimensions as X.")
@@ -79,12 +79,12 @@ class CropOpMaker : public framework::OpProtoAndCheckerMaker {
               "which is of the same dimensions as X.");
     AddAttr<std::vector<int>>("offsets",
                               "A list<int> describing offsets to be cropped. "
-                              "The size of offsets list should be the same as "
+                              "The size of offsets list shold be the same as "
                               "the dimension size of input X.")
         .SetDefault(std::vector<int>());
     AddAttr<std::vector<int>>("shape",
                               "A list<int> describing the shape of output. "
-                              "The size of shape list should be the same as "
+                              "The size of shape list shold be the same as "
                               "the dimension size of input X.")
         .SetDefault(std::vector<int>());
     AddComment(R"DOC(
@@ -105,13 +105,13 @@ not empty.
 
 There are two ways to set shape:
 1. reference input: crop input X into the same shape as reference input.
-                    The dimension of reference input should
+                    The dimension of reference input shold
                     be the same as the dimension of input X.
 2. shape list: crop input X into the shape described by a list<int>.
-               The size of shape list should be the same as
+               The size of shape list shold be the same as
                the dimension size of input X.
 
-The input should be a k-D tensor(k > 0 and k < 7). As an example:
+The input shold be a k-D tensor(k > 0 and k < 7). As an example:
 
 Case 1:
 Given
@@ -163,9 +163,9 @@ class CropOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold not be null");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
+                   "Input(Out@GRAD) shold not be null");
     auto x_dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {

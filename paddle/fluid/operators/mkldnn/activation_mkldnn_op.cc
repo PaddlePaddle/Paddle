@@ -56,7 +56,7 @@ class MKLDNNActivationGradKernel
 
     PADDLE_ENFORCE_EQ(
         ctx.Attr<bool>("is_test"), false,
-        "is_test attribute should be set to False in training phase.");
+        "is_test attribute shold be set to False in training phase.");
 
     Functor functor;
     functor(ctx);
@@ -117,7 +117,7 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
 
   auto diff_dst_tz = framework::vectorize<int64_t>(diff_y->dims());
 
-  // diff_dst and src dims should be the same
+  // diff_dst and src dims shold be the same
   auto src_format =
       diff_dst_tz.size() == 2 ? MKLDNNMemoryFormat::nc : x->format();
 

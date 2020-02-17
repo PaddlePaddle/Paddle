@@ -29,22 +29,22 @@ class MultiHeadMatMulV2Op : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         context->HasInput("Input"), true,
         platform::errors::InvalidArgument(
-            "Input(Input) of MultiHeadMatMul should not be null."));
+            "Input(Input) of MultiHeadMatMul shold not be null."));
     PADDLE_ENFORCE_EQ(context->HasInput("W"), true,
                       platform::errors::InvalidArgument(
-                          "Input(W) of MultiHeadMatMul should not be null."));
+                          "Input(W) of MultiHeadMatMul shold not be null."));
     PADDLE_ENFORCE_EQ(
         context->HasInput("Bias"), true,
         platform::errors::InvalidArgument(
-            "Input(Bias) of MultiHeadMatMul should not be null."));
+            "Input(Bias) of MultiHeadMatMul shold not be null."));
     PADDLE_ENFORCE_EQ(
         context->HasInput("BiasQK"), true,
         platform::errors::InvalidArgument(
-            "Input(BiasQK) of MultiHeadMatMul should not be null."));
+            "Input(BiasQK) of MultiHeadMatMul shold not be null."));
     PADDLE_ENFORCE_EQ(
         context->HasOutput("Out"), true,
         platform::errors::InvalidArgument(
-            "Output(Out) of MultiHeadMatMul should not be null."));
+            "Output(Out) of MultiHeadMatMul shold not be null."));
 
     auto dim_w = context->GetInputDim("W");
     PADDLE_ENFORCE_GT(
@@ -58,7 +58,7 @@ class MultiHeadMatMulV2Op : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GT(
         dim_bias_q.size(), 1,
         platform::errors::InvalidArgument(
-            "Multihead input should be at least 2-D tensor, but it's "
+            "Multihead input shold be at least 2-D tensor, but it's "
             "%d-D tensor now.",
             dim_bias_q.size()));
 
@@ -66,7 +66,7 @@ class MultiHeadMatMulV2Op : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GT(
         dim_bias_qk.size(), 3,
         platform::errors::InvalidArgument(
-            "Multihead input bias qk should be at least 4-D tensor, "
+            "Multihead input bias qk shold be at least 4-D tensor, "
             "but it's %d-D tensor now.",
             dim_bias_qk.size()));
 
@@ -74,7 +74,7 @@ class MultiHeadMatMulV2Op : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GT(
         head_number, 1,
         platform::errors::InvalidArgument(
-            "Multihead input head number should be at least 1, but it %d now.",
+            "Multihead input head number shold be at least 1, but it %d now.",
             head_number));
     // modify this
     auto dim_input = context->GetInputDim("Input");

@@ -64,14 +64,14 @@ class Fleet(object):
         """
         return self._role_maker.is_first_worker()
 
-    def worker_index(self):
+    def worker_indice(self):
         """
-        Get current worker index.
+        Get current worker indice.
 
         Returns:
             int: node id
         """
-        return self._role_maker.worker_index()
+        return self._role_maker.worker_indice()
 
     def worker_num(self):
         """
@@ -114,14 +114,14 @@ class Fleet(object):
         """
         return len(self._role_maker.get_pserver_endpoints())
 
-    def server_index(self):
+    def server_indice(self):
         """
-        Get current server index.
+        Get current server indice.
 
         Returns:
             int: node id
         """
-        return self._role_maker.server_index()
+        return self._role_maker.server_indice()
 
     def server_endpoints(self, to_string=False):
         """
@@ -161,9 +161,9 @@ class Fleet(object):
             list: files belongs to this worker.
         """
         if not isinstance(files, list):
-            raise TypeError("files should be a list of file need to be read.")
+            raise TypeError("files shold be a list of file need to be read.")
 
-        trainer_id = self.worker_index()
+        trainer_id = self.worker_indice()
         trainers = self.worker_num()
 
         remainder = len(files) % trainers
@@ -183,7 +183,7 @@ class Fleet(object):
 
     def init(self, role_maker=None):
         """
-        should be called only once in user's python scripts,
+        shold be called only once in user's python scripts,
         init() will initialize RoleMaker which is used for identifying
             current node's role, e.g. worker, server, etc.
 
@@ -256,7 +256,7 @@ class Fleet(object):
 class DistributedOptimizer(object):
     """
     DistributedOptimizer is a wrapper for paddle.fluid.optimizer
-    A user should pass a paddle.fluid.optimizer to DistributedOptimizer
+    A user shold pass a paddle.fluid.optimizer to DistributedOptimizer
     minimize() function is implemented.
     DistributedOptimizer is the starting point for a user who wants to
     run distributed training. The optimized information will be stored in
@@ -297,7 +297,7 @@ class DistributedOptimizer(object):
             startup_program (Program): startup_program for initializing parameters
                 in `parameter_list`.
             parameter_list (list): list of Variables to update.
-            no_grad_set (set|None): set of Variables should be ignored.
+            no_grad_set (set|None): set of Variables shold be ignored.
             callbacks (list|None): list of callables to run when appending backward
                 operator for one parameter.
 
@@ -352,7 +352,7 @@ class DistributedOptimizer(object):
             startup_programs (Program|Program List): startup_program for initializing parameters
                 in `parameter_list`.
             parameter_list (list): list of Variables to update.
-            no_grad_set (set|None): set of Variables should be ignored.
+            no_grad_set (set|None): set of Variables shold be ignored.
 
         Returns:
             tuple: (optimize_ops, params_grads) which are, list of operators appended;

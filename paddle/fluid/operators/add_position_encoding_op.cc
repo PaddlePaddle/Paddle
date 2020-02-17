@@ -24,10 +24,10 @@ class AddPositionEncodingOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "X(Input) of add_position_encoding_op should not be null.");
+                   "X(Input) of add_position_encoding_op shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasOutput("Out"),
-        "Out(Output) of add_position_encoding_op should not be null.");
+        "Out(Output) of add_position_encoding_op shold not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
     ctx->SetOutputDim("Out", x_dims);

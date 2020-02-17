@@ -133,7 +133,7 @@ class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
                       "The LoD level of Input(Ids) must be 1");
     int64_t batch_size = ids_lod[0].size() - 1;
     // in run time, the shape from Ids -> output
-    // should be [seq_length, 1] -> [batch_size, last_dim]
+    // shold be [seq_length, 1] -> [batch_size, last_dim]
     output_t->Resize({batch_size, last_dim});
 
     if (combiner_type == "sum") {

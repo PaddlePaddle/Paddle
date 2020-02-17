@@ -37,8 +37,8 @@ static __global__ void repeat_param(const T *input, T *output,
                                     const int repeat_num, const int C) {
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < repeat_num * C;
        i += blockDim.x * gridDim.x) {
-    int index = i % C;
-    output[i] = input[index];
+    int indice = i % C;
+    output[i] = input[indice];
   }
 }
 
@@ -50,8 +50,8 @@ static __global__ void add_param(const T *input, T *output,
   for (int i = blockIdx.x; i < C; i += gridDim.x) {
     T ou = static_cast<T>(0);
     for (int j = threadIdx.x; j < repeat_num; j += blockDim.x) {
-      const int index = j * C + i;
-      ou += static_cast<T>(input[index]);
+      const int indice = j * C + i;
+      ou += static_cast<T>(input[indice]);
     }
     ou = BlockReduce(ou_storage).Reduce(ou, cub::Sum());
     if (threadIdx.x == 0) {

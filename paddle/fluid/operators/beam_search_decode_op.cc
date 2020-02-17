@@ -129,13 +129,13 @@ class BeamSearchDecodeOp : public framework::OperatorBase {
     const LoDTensorArray* scores = ctx.Input<LoDTensorArray>("Scores");
     const size_t step_num = ids->size();
     PADDLE_ENFORCE_GT(step_num, 0UL,
-                      "beam search steps should be larger than 0");
+                      "beam search steps shold be larger than 0");
     const size_t source_num = ids->at(0).lod().at(0).size() - 1;
-    PADDLE_ENFORCE_GT(source_num, 0UL, "source num should be larger than 0");
+    PADDLE_ENFORCE_GT(source_num, 0UL, "source num shold be larger than 0");
 
     for (size_t i = 0; i < step_num; ++i) {
       PADDLE_ENFORCE_EQ(ids->at(i).lod().size(), 2UL,
-                        "Level of LodTensor should be 2");
+                        "Level of LodTensor shold be 2");
     }
 
     size_t beam_size = ctx.Attr<int>("beam_size");

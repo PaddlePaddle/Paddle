@@ -29,11 +29,11 @@ class SequenceConvOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SequenceConvOp should not be null.");
+                   "Input(X) of SequenceConvOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Filter"),
-                   "Input(Filter) of SequenceConvOp should not be null.");
+                   "Input(Filter) of SequenceConvOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SequenceConvOp should not be null.");
+                   "Output(Out) of SequenceConvOp shold not be null.");
 
     int context_length = ctx->Attrs().Get<int>("contextLength");
     int context_start = ctx->Attrs().Get<int>("contextStart");
@@ -43,15 +43,15 @@ class SequenceConvOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->Attrs().Get<int>("contextStride") == 1,
                    "Currently, SequenceConvOp only supports contextStride=1.");
     PADDLE_ENFORCE(in_dims.size() == 2 && filter_dims.size() == 2,
-                   "Input(X, Filter) should be 2-D tensor.");
+                   "Input(X, Filter) shold be 2-D tensor.");
     PADDLE_ENFORCE(filter_dims[0] == context_length * in_dims[1],
-                   "Filter's height should be context_length * "
+                   "Filter's height shold be context_length * "
                    "input_hidden_size .");
 
     if (ctx->Attrs().Get<bool>("paddingTrainable")) {
       PADDLE_ENFORCE(
           ctx->HasInput("PaddingData"),
-          "Input(PaddingData) of SequenceConvOp should not be null.");
+          "Input(PaddingData) of SequenceConvOp shold not be null.");
       framework::DDim padding_dim = ctx->GetInputDim("PaddingData");
       int up_pad = std::max(0, -context_start);
       int down_pad = std::max(0, context_start + context_length - 1);
@@ -61,10 +61,10 @@ class SequenceConvOp : public framework::OperatorWithKernel {
       if (context_start == 0 && context_length == 1) {
         PADDLE_THROW(
             "If context_start is 0 and context_length is 1, paddingTrainable "
-            "should be false.");
+            "shold be false.");
       }
       PADDLE_ENFORCE(padding_dim.size() == 2,
-                     "Input(PaddingData) should be 2-D tensor.");
+                     "Input(PaddingData) shold be 2-D tensor.");
       PADDLE_ENFORCE(
           padding_dim[0] == total_pad && padding_dim[1] == input_width,
           "Input(PaddingData)'s shape is not consistent with 'context_start' "
@@ -84,8 +84,8 @@ class SequenceConvGradOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Gradient of output(Out) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("X"), "The input(X) should not be null.");
+                   "Gradient of output(Out) shold not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "The input(X) shold not be null.");
 
     if (ctx->Attrs().Get<bool>("paddingTrainable") &&
         ctx->HasOutput(framework::GradVarName("PaddingData"))) {

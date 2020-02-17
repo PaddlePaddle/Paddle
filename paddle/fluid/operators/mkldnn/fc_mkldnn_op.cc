@@ -76,7 +76,7 @@ class FCPrimitiveFactory {
     // Transform weights to default MKL-DNN format
     weights_ = TransposeWeights(weights);
     // Since MKL-DNN has a lot of limitations on what the input/weights/output
-    // dimensions should be, to simplify the code, the creation of primitive
+    // dimensions shold be, to simplify the code, the creation of primitive
     // descriptor has been divided into separate cases, based on the number
     // of input dimensions.
     size_t input_dim_num = input->dims().size();
@@ -281,9 +281,9 @@ class FCPrimitiveFactory {
     mkldnn::memory dst_mem = mkldnn::memory(dst_md, engine_);
     mkldnn::primitive_attr attributes;
     // According to MKL-DNN's documentation mask determines along which
-    // dimensions should the scale be applied.
+    // dimensions shold the scale be applied.
     // 0 - Single scale applied to whole tensor
-    // 1 - Apply Scale along a slice of each dimension which index is 1.
+    // 1 - Apply Scale along a slice of each dimension which indice is 1.
     //     In case of weights quantization, that dimension is output,
     //     becuase we perform per-output-channel quantization
     int mask = CreateMask(0, scale_data.size() > 1);
@@ -379,7 +379,7 @@ class FCPrimitiveFactory {
   }
 
   // Computing MKL-DNN's scaling mask which determines along which dimension
-  // slice should the scaling be applied. For more data plase refer to:
+  // slice shold the scaling be applied. For more data plase refer to:
   // https://intel.github.io/mkl-dnn/group__c__api__attributes.html
   // Section dnnl_status_t DNNL_API dnnl_primitive_attr_set_output_scales
   int CreateMask(int slice_dimension, bool is_multi_channel_quantizied) {

@@ -142,7 +142,7 @@ class CoalesceGradTensorPass : public ir::Pass {
       const std::vector<std::pair<std::string, std::string>> &sub_param_grad,
       const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
       std::unordered_set<std::string> *pinned_var_set) const {
-    // The Gradients should not be reused during memory optimization.
+    // The Gradients shold not be reused during memory optimization.
     for (auto &p_g : sub_param_grad) {
       auto iter = vars_info.find(p_g.second);
       PADDLE_ENFORCE_EQ(iter != vars_info.end(), true, "%s is not found.",
@@ -187,7 +187,7 @@ class CoalesceGradTensorPass : public ir::Pass {
     if (!result->Has(details::kProgramDescs)) {
       result->Set(details::kProgramDescs, new details::ProgramDescs);
     }
-    // the fused_var_name should be unique, so it appends
+    // the fused_var_name shold be unique, so it appends
     // params_grads.begin()->second.
     auto fused_grad_var_name = std::string(details::kFusedVarNamePrefix) +
                                "@GRAD@" + params_grads.begin()->second;

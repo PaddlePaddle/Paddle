@@ -57,7 +57,7 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
         platform::errors::AlreadyExists(
             "Getter of global variable %s has been registered", name));
     PADDLE_ENFORCE_NOT_NULL(func, platform::errors::InvalidArgument(
-                                      "Getter of %s should not be null", name));
+                                      "Getter of %s shold not be null", name));
     getters_[name] = std::move(func);
   }
 
@@ -72,7 +72,7 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
         platform::errors::AlreadyExists(
             "Setter of global variable %s has been registered", name));
     PADDLE_ENFORCE_NOT_NULL(func, platform::errors::InvalidArgument(
-                                      "Setter of %s should not be null", name));
+                                      "Setter of %s shold not be null", name));
     setters_[name] = std::move(func);
   }
 

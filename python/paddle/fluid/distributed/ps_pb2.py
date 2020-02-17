@@ -43,9 +43,9 @@ _TABLETYPE = _descriptor.EnumDescriptor(
     file=DESCRIPTOR,
     values=[
         _descriptor.EnumValueDescriptor(
-            name='PS_SPARSE_TABLE', index=0, number=0, options=None, type=None),
+            name='PS_SPARSE_TABLE', indice=0, number=0, options=None, type=None),
         _descriptor.EnumValueDescriptor(
-            name='PS_DENSE_TABLE', index=1, number=1, options=None, type=None),
+            name='PS_DENSE_TABLE', indice=1, number=1, options=None, type=None),
     ],
     containing_type=None,
     options=None,
@@ -62,74 +62,74 @@ _PSCMDID = _descriptor.EnumDescriptor(
     values=[
         _descriptor.EnumValueDescriptor(
             name='PS_PULL_DENSE_TABLE',
-            index=0,
+            indice=0,
             number=0,
             options=None,
             type=None),
         _descriptor.EnumValueDescriptor(
             name='PS_PUSH_DENSE_TABLE',
-            index=1,
+            indice=1,
             number=1,
             options=None,
             type=None),
         _descriptor.EnumValueDescriptor(
             name='PS_PULL_SPARSE_TABLE',
-            index=2,
+            indice=2,
             number=2,
             options=None,
             type=None),
         _descriptor.EnumValueDescriptor(
             name='PS_PUSH_SPARSE_TABLE',
-            index=3,
+            indice=3,
             number=3,
             options=None,
             type=None),
         _descriptor.EnumValueDescriptor(
-            name='PS_SHRINK_TABLE', index=4, number=4, options=None, type=None),
+            name='PS_SHRINK_TABLE', indice=4, number=4, options=None, type=None),
         _descriptor.EnumValueDescriptor(
             name='PS_SAVE_ONE_TABLE',
-            index=5,
+            indice=5,
             number=5,
             options=None,
             type=None),
         _descriptor.EnumValueDescriptor(
             name='PS_SAVE_ALL_TABLE',
-            index=6,
+            indice=6,
             number=6,
             options=None,
             type=None),
         _descriptor.EnumValueDescriptor(
             name='PS_LOAD_ONE_TABLE',
-            index=7,
+            indice=7,
             number=7,
             options=None,
             type=None),
         _descriptor.EnumValueDescriptor(
             name='PS_LOAD_ALL_TABLE',
-            index=8,
+            indice=8,
             number=8,
             options=None,
             type=None),
         _descriptor.EnumValueDescriptor(
             name='PS_CLEAR_ONE_TABLE',
-            index=9,
+            indice=9,
             number=9,
             options=None,
             type=None),
         _descriptor.EnumValueDescriptor(
             name='PS_CLEAR_ALL_TABLE',
-            index=10,
+            indice=10,
             number=10,
             options=None,
             type=None),
         _descriptor.EnumValueDescriptor(
             name='PS_PUSH_DENSE_PARAM',
-            index=11,
+            indice=11,
             number=11,
             options=None,
             type=None),
         _descriptor.EnumValueDescriptor(
-            name='PS_STOP_SERVER', index=12, number=12, options=None,
+            name='PS_STOP_SERVER', indice=12, number=12, options=None,
             type=None),
     ],
     containing_type=None,
@@ -162,9 +162,9 @@ _FSCLIENTPARAMETER_FSAPITYPE = _descriptor.EnumDescriptor(
     file=DESCRIPTOR,
     values=[
         _descriptor.EnumValueDescriptor(
-            name='HDFS', index=0, number=0, options=None, type=None),
+            name='HDFS', indice=0, number=0, options=None, type=None),
         _descriptor.EnumValueDescriptor(
-            name='AFS', index=1, number=1, options=None, type=None),
+            name='AFS', indice=1, number=1, options=None, type=None),
     ],
     containing_type=None,
     options=None,
@@ -182,7 +182,7 @@ _PSPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='worker_class',
             full_name='paddle.PSParameter.worker_class',
-            index=0,
+            indice=0,
             number=1,
             type=9,
             cpp_type=9,
@@ -198,7 +198,7 @@ _PSPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='server_class',
             full_name='paddle.PSParameter.server_class',
-            index=1,
+            indice=1,
             number=2,
             type=9,
             cpp_type=9,
@@ -214,7 +214,7 @@ _PSPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='instance_class',
             full_name='paddle.PSParameter.instance_class',
-            index=2,
+            indice=2,
             number=3,
             type=9,
             cpp_type=9,
@@ -230,7 +230,7 @@ _PSPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='worker_param',
             full_name='paddle.PSParameter.worker_param',
-            index=3,
+            indice=3,
             number=101,
             type=11,
             cpp_type=10,
@@ -246,7 +246,7 @@ _PSPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='server_param',
             full_name='paddle.PSParameter.server_param',
-            index=4,
+            indice=4,
             number=102,
             type=11,
             cpp_type=10,
@@ -262,7 +262,7 @@ _PSPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='trainer_param',
             full_name='paddle.PSParameter.trainer_param',
-            index=5,
+            indice=5,
             number=301,
             type=11,
             cpp_type=10,
@@ -278,7 +278,7 @@ _PSPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='fs_client_param',
             full_name='paddle.PSParameter.fs_client_param',
-            index=6,
+            indice=6,
             number=501,
             type=11,
             cpp_type=10,
@@ -313,7 +313,7 @@ _WORKERPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='downpour_worker_param',
             full_name='paddle.WorkerParameter.downpour_worker_param',
-            index=0,
+            indice=0,
             number=1,
             type=11,
             cpp_type=10,
@@ -348,7 +348,7 @@ _SERVERPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='downpour_server_param',
             full_name='paddle.ServerParameter.downpour_server_param',
-            index=0,
+            indice=0,
             number=1,
             type=11,
             cpp_type=10,
@@ -383,7 +383,7 @@ _DOWNPOURWORKERPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='downpour_table_param',
             full_name='paddle.DownpourWorkerParameter.downpour_table_param',
-            index=0,
+            indice=0,
             number=1,
             type=11,
             cpp_type=10,
@@ -418,7 +418,7 @@ _DOWNPOURTRAINERPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='dense_table',
             full_name='paddle.DownpourTrainerParameter.dense_table',
-            index=0,
+            indice=0,
             number=1,
             type=11,
             cpp_type=10,
@@ -434,7 +434,7 @@ _DOWNPOURTRAINERPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='sparse_table',
             full_name='paddle.DownpourTrainerParameter.sparse_table',
-            index=1,
+            indice=1,
             number=2,
             type=11,
             cpp_type=10,
@@ -450,7 +450,7 @@ _DOWNPOURTRAINERPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='push_sparse_per_batch',
             full_name='paddle.DownpourTrainerParameter.push_sparse_per_batch',
-            index=2,
+            indice=2,
             number=3,
             type=5,
             cpp_type=1,
@@ -466,7 +466,7 @@ _DOWNPOURTRAINERPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='push_dense_per_batch',
             full_name='paddle.DownpourTrainerParameter.push_dense_per_batch',
-            index=3,
+            indice=3,
             number=4,
             type=5,
             cpp_type=1,
@@ -482,7 +482,7 @@ _DOWNPOURTRAINERPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='skip_op',
             full_name='paddle.DownpourTrainerParameter.skip_op',
-            index=4,
+            indice=4,
             number=5,
             type=9,
             cpp_type=9,
@@ -498,7 +498,7 @@ _DOWNPOURTRAINERPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='program_config',
             full_name='paddle.DownpourTrainerParameter.program_config',
-            index=5,
+            indice=5,
             number=6,
             type=11,
             cpp_type=10,
@@ -533,7 +533,7 @@ _PROGRAMCONFIG = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='program_id',
             full_name='paddle.ProgramConfig.program_id',
-            index=0,
+            indice=0,
             number=1,
             type=9,
             cpp_type=9,
@@ -549,7 +549,7 @@ _PROGRAMCONFIG = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='push_sparse_table_id',
             full_name='paddle.ProgramConfig.push_sparse_table_id',
-            index=1,
+            indice=1,
             number=2,
             type=5,
             cpp_type=1,
@@ -565,7 +565,7 @@ _PROGRAMCONFIG = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='push_dense_table_id',
             full_name='paddle.ProgramConfig.push_dense_table_id',
-            index=2,
+            indice=2,
             number=3,
             type=5,
             cpp_type=1,
@@ -581,7 +581,7 @@ _PROGRAMCONFIG = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='pull_sparse_table_id',
             full_name='paddle.ProgramConfig.pull_sparse_table_id',
-            index=3,
+            indice=3,
             number=4,
             type=5,
             cpp_type=1,
@@ -597,7 +597,7 @@ _PROGRAMCONFIG = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='pull_dense_table_id',
             full_name='paddle.ProgramConfig.pull_dense_table_id',
-            index=4,
+            indice=4,
             number=5,
             type=5,
             cpp_type=1,
@@ -632,7 +632,7 @@ _DENSETABLEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='table_id',
             full_name='paddle.DenseTableParameter.table_id',
-            index=0,
+            indice=0,
             number=1,
             type=5,
             cpp_type=1,
@@ -648,7 +648,7 @@ _DENSETABLEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='dense_variable_name',
             full_name='paddle.DenseTableParameter.dense_variable_name',
-            index=1,
+            indice=1,
             number=2,
             type=9,
             cpp_type=9,
@@ -664,7 +664,7 @@ _DENSETABLEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='dense_gradient_variable_name',
             full_name='paddle.DenseTableParameter.dense_gradient_variable_name',
-            index=2,
+            indice=2,
             number=3,
             type=9,
             cpp_type=9,
@@ -680,7 +680,7 @@ _DENSETABLEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='fea_dim',
             full_name='paddle.DenseTableParameter.fea_dim',
-            index=3,
+            indice=3,
             number=4,
             type=5,
             cpp_type=1,
@@ -715,7 +715,7 @@ _SPARSETABLEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='table_id',
             full_name='paddle.SparseTableParameter.table_id',
-            index=0,
+            indice=0,
             number=1,
             type=5,
             cpp_type=1,
@@ -731,7 +731,7 @@ _SPARSETABLEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='feature_dim',
             full_name='paddle.SparseTableParameter.feature_dim',
-            index=1,
+            indice=1,
             number=2,
             type=5,
             cpp_type=1,
@@ -747,7 +747,7 @@ _SPARSETABLEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='slot_key',
             full_name='paddle.SparseTableParameter.slot_key',
-            index=2,
+            indice=2,
             number=3,
             type=9,
             cpp_type=9,
@@ -763,7 +763,7 @@ _SPARSETABLEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='slot_value',
             full_name='paddle.SparseTableParameter.slot_value',
-            index=3,
+            indice=3,
             number=4,
             type=9,
             cpp_type=9,
@@ -779,7 +779,7 @@ _SPARSETABLEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='slot_gradient',
             full_name='paddle.SparseTableParameter.slot_gradient',
-            index=4,
+            indice=4,
             number=5,
             type=9,
             cpp_type=9,
@@ -814,7 +814,7 @@ _DOWNPOURSERVERPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='downpour_table_param',
             full_name='paddle.DownpourServerParameter.downpour_table_param',
-            index=0,
+            indice=0,
             number=1,
             type=11,
             cpp_type=10,
@@ -830,7 +830,7 @@ _DOWNPOURSERVERPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='service_param',
             full_name='paddle.DownpourServerParameter.service_param',
-            index=1,
+            indice=1,
             number=2,
             type=11,
             cpp_type=10,
@@ -865,7 +865,7 @@ _SERVERSERVICEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='server_class',
             full_name='paddle.ServerServiceParameter.server_class',
-            index=0,
+            indice=0,
             number=1,
             type=9,
             cpp_type=9,
@@ -881,7 +881,7 @@ _SERVERSERVICEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='client_class',
             full_name='paddle.ServerServiceParameter.client_class',
-            index=1,
+            indice=1,
             number=2,
             type=9,
             cpp_type=9,
@@ -897,7 +897,7 @@ _SERVERSERVICEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='service_class',
             full_name='paddle.ServerServiceParameter.service_class',
-            index=2,
+            indice=2,
             number=3,
             type=9,
             cpp_type=9,
@@ -913,7 +913,7 @@ _SERVERSERVICEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='start_server_port',
             full_name='paddle.ServerServiceParameter.start_server_port',
-            index=3,
+            indice=3,
             number=4,
             type=13,
             cpp_type=3,
@@ -929,7 +929,7 @@ _SERVERSERVICEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='server_thread_num',
             full_name='paddle.ServerServiceParameter.server_thread_num',
-            index=4,
+            indice=4,
             number=5,
             type=13,
             cpp_type=3,
@@ -964,7 +964,7 @@ _TABLEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='table_id',
             full_name='paddle.TableParameter.table_id',
-            index=0,
+            indice=0,
             number=1,
             type=4,
             cpp_type=4,
@@ -980,7 +980,7 @@ _TABLEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='table_class',
             full_name='paddle.TableParameter.table_class',
-            index=1,
+            indice=1,
             number=2,
             type=9,
             cpp_type=9,
@@ -996,7 +996,7 @@ _TABLEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='shared_num',
             full_name='paddle.TableParameter.shared_num',
-            index=2,
+            indice=2,
             number=3,
             type=4,
             cpp_type=4,
@@ -1012,7 +1012,7 @@ _TABLEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='accessor',
             full_name='paddle.TableParameter.accessor',
-            index=3,
+            indice=3,
             number=4,
             type=11,
             cpp_type=10,
@@ -1028,7 +1028,7 @@ _TABLEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='type',
             full_name='paddle.TableParameter.type',
-            index=4,
+            indice=4,
             number=5,
             type=14,
             cpp_type=8,
@@ -1044,7 +1044,7 @@ _TABLEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='compress_in_save',
             full_name='paddle.TableParameter.compress_in_save',
-            index=5,
+            indice=5,
             number=6,
             type=8,
             cpp_type=7,
@@ -1079,7 +1079,7 @@ _TABLEACCESSORPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='accessor_class',
             full_name='paddle.TableAccessorParameter.accessor_class',
-            index=0,
+            indice=0,
             number=1,
             type=9,
             cpp_type=9,
@@ -1095,7 +1095,7 @@ _TABLEACCESSORPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='sparse_sgd_param',
             full_name='paddle.TableAccessorParameter.sparse_sgd_param',
-            index=1,
+            indice=1,
             number=2,
             type=11,
             cpp_type=10,
@@ -1111,7 +1111,7 @@ _TABLEACCESSORPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='dense_sgd_param',
             full_name='paddle.TableAccessorParameter.dense_sgd_param',
-            index=2,
+            indice=2,
             number=3,
             type=11,
             cpp_type=10,
@@ -1127,7 +1127,7 @@ _TABLEACCESSORPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='fea_dim',
             full_name='paddle.TableAccessorParameter.fea_dim',
-            index=3,
+            indice=3,
             number=4,
             type=13,
             cpp_type=3,
@@ -1143,7 +1143,7 @@ _TABLEACCESSORPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='embedx_dim',
             full_name='paddle.TableAccessorParameter.embedx_dim',
-            index=4,
+            indice=4,
             number=5,
             type=13,
             cpp_type=3,
@@ -1159,7 +1159,7 @@ _TABLEACCESSORPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='embedx_threshold',
             full_name='paddle.TableAccessorParameter.embedx_threshold',
-            index=5,
+            indice=5,
             number=6,
             type=13,
             cpp_type=3,
@@ -1175,7 +1175,7 @@ _TABLEACCESSORPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='downpour_accessor_param',
             full_name='paddle.TableAccessorParameter.downpour_accessor_param',
-            index=6,
+            indice=6,
             number=7,
             type=11,
             cpp_type=10,
@@ -1191,7 +1191,7 @@ _TABLEACCESSORPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='table_accessor_save_param',
             full_name='paddle.TableAccessorParameter.table_accessor_save_param',
-            index=7,
+            indice=7,
             number=8,
             type=11,
             cpp_type=10,
@@ -1226,7 +1226,7 @@ _DOWNPOURTABLEACCESSORPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='nonclk_coeff',
             full_name='paddle.DownpourTableAccessorParameter.nonclk_coeff',
-            index=0,
+            indice=0,
             number=1,
             type=2,
             cpp_type=6,
@@ -1242,7 +1242,7 @@ _DOWNPOURTABLEACCESSORPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='click_coeff',
             full_name='paddle.DownpourTableAccessorParameter.click_coeff',
-            index=1,
+            indice=1,
             number=2,
             type=2,
             cpp_type=6,
@@ -1258,7 +1258,7 @@ _DOWNPOURTABLEACCESSORPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='base_threshold',
             full_name='paddle.DownpourTableAccessorParameter.base_threshold',
-            index=2,
+            indice=2,
             number=3,
             type=2,
             cpp_type=6,
@@ -1274,7 +1274,7 @@ _DOWNPOURTABLEACCESSORPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='delta_threshold',
             full_name='paddle.DownpourTableAccessorParameter.delta_threshold',
-            index=3,
+            indice=3,
             number=4,
             type=2,
             cpp_type=6,
@@ -1290,7 +1290,7 @@ _DOWNPOURTABLEACCESSORPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='delta_keep_days',
             full_name='paddle.DownpourTableAccessorParameter.delta_keep_days',
-            index=4,
+            indice=4,
             number=5,
             type=2,
             cpp_type=6,
@@ -1306,7 +1306,7 @@ _DOWNPOURTABLEACCESSORPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='show_click_decay_rate',
             full_name='paddle.DownpourTableAccessorParameter.show_click_decay_rate',
-            index=5,
+            indice=5,
             number=6,
             type=2,
             cpp_type=6,
@@ -1322,7 +1322,7 @@ _DOWNPOURTABLEACCESSORPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='delete_threshold',
             full_name='paddle.DownpourTableAccessorParameter.delete_threshold',
-            index=6,
+            indice=6,
             number=7,
             type=2,
             cpp_type=6,
@@ -1357,7 +1357,7 @@ _TABLEACCESSORSAVEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='param',
             full_name='paddle.TableAccessorSaveParameter.param',
-            index=0,
+            indice=0,
             number=1,
             type=13,
             cpp_type=3,
@@ -1373,7 +1373,7 @@ _TABLEACCESSORSAVEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='converter',
             full_name='paddle.TableAccessorSaveParameter.converter',
-            index=1,
+            indice=1,
             number=2,
             type=9,
             cpp_type=9,
@@ -1389,7 +1389,7 @@ _TABLEACCESSORSAVEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='deconverter',
             full_name='paddle.TableAccessorSaveParameter.deconverter',
-            index=2,
+            indice=2,
             number=3,
             type=9,
             cpp_type=9,
@@ -1424,7 +1424,7 @@ _PSREQUESTMESSAGE = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='cmd_id',
             full_name='paddle.PsRequestMessage.cmd_id',
-            index=0,
+            indice=0,
             number=1,
             type=13,
             cpp_type=3,
@@ -1440,7 +1440,7 @@ _PSREQUESTMESSAGE = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='table_id',
             full_name='paddle.PsRequestMessage.table_id',
-            index=1,
+            indice=1,
             number=2,
             type=13,
             cpp_type=3,
@@ -1456,7 +1456,7 @@ _PSREQUESTMESSAGE = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='params',
             full_name='paddle.PsRequestMessage.params',
-            index=2,
+            indice=2,
             number=3,
             type=12,
             cpp_type=9,
@@ -1472,7 +1472,7 @@ _PSREQUESTMESSAGE = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='client_id',
             full_name='paddle.PsRequestMessage.client_id',
-            index=3,
+            indice=3,
             number=4,
             type=5,
             cpp_type=1,
@@ -1488,7 +1488,7 @@ _PSREQUESTMESSAGE = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='data',
             full_name='paddle.PsRequestMessage.data',
-            index=4,
+            indice=4,
             number=5,
             type=12,
             cpp_type=9,
@@ -1523,7 +1523,7 @@ _SPARSESGDRULEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='learning_rate',
             full_name='paddle.SparseSGDRuleParameter.learning_rate',
-            index=0,
+            indice=0,
             number=1,
             type=1,
             cpp_type=5,
@@ -1539,7 +1539,7 @@ _SPARSESGDRULEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='initial_g2sum',
             full_name='paddle.SparseSGDRuleParameter.initial_g2sum',
-            index=1,
+            indice=1,
             number=2,
             type=1,
             cpp_type=5,
@@ -1555,7 +1555,7 @@ _SPARSESGDRULEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='initial_range',
             full_name='paddle.SparseSGDRuleParameter.initial_range',
-            index=2,
+            indice=2,
             number=3,
             type=1,
             cpp_type=5,
@@ -1571,7 +1571,7 @@ _SPARSESGDRULEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='weight_bounds',
             full_name='paddle.SparseSGDRuleParameter.weight_bounds',
-            index=3,
+            indice=3,
             number=4,
             type=2,
             cpp_type=6,
@@ -1606,7 +1606,7 @@ _DENSESGDRULEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='name',
             full_name='paddle.DenseSGDRuleParameter.name',
-            index=0,
+            indice=0,
             number=1,
             type=9,
             cpp_type=9,
@@ -1622,7 +1622,7 @@ _DENSESGDRULEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='adam',
             full_name='paddle.DenseSGDRuleParameter.adam',
-            index=1,
+            indice=1,
             number=2,
             type=11,
             cpp_type=10,
@@ -1638,7 +1638,7 @@ _DENSESGDRULEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='naive',
             full_name='paddle.DenseSGDRuleParameter.naive',
-            index=2,
+            indice=2,
             number=3,
             type=11,
             cpp_type=10,
@@ -1654,7 +1654,7 @@ _DENSESGDRULEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='summary',
             full_name='paddle.DenseSGDRuleParameter.summary',
-            index=3,
+            indice=3,
             number=4,
             type=11,
             cpp_type=10,
@@ -1670,7 +1670,7 @@ _DENSESGDRULEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='moving_average',
             full_name='paddle.DenseSGDRuleParameter.moving_average',
-            index=4,
+            indice=4,
             number=5,
             type=11,
             cpp_type=10,
@@ -1705,7 +1705,7 @@ _ADAMSGDPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='learning_rate',
             full_name='paddle.AdamSGDParameter.learning_rate',
-            index=0,
+            indice=0,
             number=1,
             type=1,
             cpp_type=5,
@@ -1721,7 +1721,7 @@ _ADAMSGDPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='avg_decay_rate',
             full_name='paddle.AdamSGDParameter.avg_decay_rate',
-            index=1,
+            indice=1,
             number=2,
             type=1,
             cpp_type=5,
@@ -1737,7 +1737,7 @@ _ADAMSGDPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='ada_decay_rate',
             full_name='paddle.AdamSGDParameter.ada_decay_rate',
-            index=2,
+            indice=2,
             number=3,
             type=1,
             cpp_type=5,
@@ -1753,7 +1753,7 @@ _ADAMSGDPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='ada_epsilon',
             full_name='paddle.AdamSGDParameter.ada_epsilon',
-            index=3,
+            indice=3,
             number=4,
             type=1,
             cpp_type=5,
@@ -1769,7 +1769,7 @@ _ADAMSGDPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='mom_decay_rate',
             full_name='paddle.AdamSGDParameter.mom_decay_rate',
-            index=4,
+            indice=4,
             number=5,
             type=1,
             cpp_type=5,
@@ -1804,7 +1804,7 @@ _NAIVESGDPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='learning_rate',
             full_name='paddle.NaiveSGDParameter.learning_rate',
-            index=0,
+            indice=0,
             number=1,
             type=1,
             cpp_type=5,
@@ -1820,7 +1820,7 @@ _NAIVESGDPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='avg_decay_rate',
             full_name='paddle.NaiveSGDParameter.avg_decay_rate',
-            index=1,
+            indice=1,
             number=2,
             type=1,
             cpp_type=5,
@@ -1855,7 +1855,7 @@ _SUMMARYSGDPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='summary_decay_rate',
             full_name='paddle.SummarySGDParameter.summary_decay_rate',
-            index=0,
+            indice=0,
             number=1,
             type=1,
             cpp_type=5,
@@ -1890,7 +1890,7 @@ _MOVINGAVERAGERULEPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='momentum',
             full_name='paddle.MovingAverageRuleParameter.momentum',
-            index=0,
+            indice=0,
             number=1,
             type=1,
             cpp_type=5,
@@ -1925,7 +1925,7 @@ _PSRESPONSEMESSAGE = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='err_code',
             full_name='paddle.PsResponseMessage.err_code',
-            index=0,
+            indice=0,
             number=1,
             type=5,
             cpp_type=1,
@@ -1941,7 +1941,7 @@ _PSRESPONSEMESSAGE = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='err_msg',
             full_name='paddle.PsResponseMessage.err_msg',
-            index=1,
+            indice=1,
             number=2,
             type=9,
             cpp_type=9,
@@ -1957,7 +1957,7 @@ _PSRESPONSEMESSAGE = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='data',
             full_name='paddle.PsResponseMessage.data',
-            index=2,
+            indice=2,
             number=3,
             type=12,
             cpp_type=9,
@@ -1992,7 +1992,7 @@ _FSCLIENTPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='fs_type',
             full_name='paddle.FsClientParameter.fs_type',
-            index=0,
+            indice=0,
             number=1,
             type=14,
             cpp_type=8,
@@ -2008,7 +2008,7 @@ _FSCLIENTPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='uri',
             full_name='paddle.FsClientParameter.uri',
-            index=1,
+            indice=1,
             number=2,
             type=9,
             cpp_type=9,
@@ -2024,7 +2024,7 @@ _FSCLIENTPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='user',
             full_name='paddle.FsClientParameter.user',
-            index=2,
+            indice=2,
             number=3,
             type=9,
             cpp_type=9,
@@ -2040,7 +2040,7 @@ _FSCLIENTPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='passwd',
             full_name='paddle.FsClientParameter.passwd',
-            index=3,
+            indice=3,
             number=4,
             type=9,
             cpp_type=9,
@@ -2056,7 +2056,7 @@ _FSCLIENTPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='buffer_size',
             full_name='paddle.FsClientParameter.buffer_size',
-            index=4,
+            indice=4,
             number=5,
             type=5,
             cpp_type=1,
@@ -2072,7 +2072,7 @@ _FSCLIENTPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='hadoop_bin',
             full_name='paddle.FsClientParameter.hadoop_bin',
-            index=5,
+            indice=5,
             number=51,
             type=9,
             cpp_type=9,
@@ -2088,7 +2088,7 @@ _FSCLIENTPARAMETER = _descriptor.Descriptor(
         _descriptor.FieldDescriptor(
             name='afs_conf',
             full_name='paddle.FsClientParameter.afs_conf',
-            index=6,
+            indice=6,
             number=101,
             type=9,
             cpp_type=9,

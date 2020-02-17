@@ -101,7 +101,7 @@ void ConvAffineChannelFusePass::ApplyImpl(ir::Graph* graph) const {
 
     GET_CONV_BN_NODES(conv_ac_pattern);
 
-    // check if fuse can be done and if MKL-DNN should be used
+    // check if fuse can be done and if MKL-DNN shold be used
     FuseOptions fuse_option = FindFuseOption(*conv, *affine_channel);
     if (fuse_option == DO_NOT_FUSE) {
       VLOG(3) << "do not perform conv+affinechannel fuse";

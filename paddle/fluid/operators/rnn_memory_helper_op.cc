@@ -54,9 +54,9 @@ class RNNMemoryHelperOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of rnn_memory_helper op should not be null.");
+                   "Input(X) of rnn_memory_helper op shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output of rnn_memory_helper op should not be null.");
+                   "Output of rnn_memory_helper op shold not be null.");
     ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
   }
@@ -144,10 +144,10 @@ class RNNMemoryHelperGradOpShapeInference : public framework::InferShapeBase {
   void operator()(framework::InferShapeContext *ctx) const override {
     auto x_grad_name = framework::GradVarName("X");
     PADDLE_ENFORCE(ctx->HasOutput(x_grad_name),
-                   "Gradient of Input(X) in rnn_memory_helper_grad of should "
+                   "Gradient of Input(X) in rnn_memory_helper_grad of shold "
                    "not be null.");
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of rnn_memory_helper_grad of should not be null.");
+                   "Input(X) of rnn_memory_helper_grad of shold not be null.");
     ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ x_grad_name);
   }

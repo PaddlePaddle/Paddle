@@ -26,18 +26,18 @@ class GRUUnitOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(%s) of GRUUnitOp should not be null.", "Input");
+                   "Input(%s) of GRUUnitOp shold not be null.", "Input");
     PADDLE_ENFORCE(ctx->HasInput("HiddenPrev"),
-                   "Input(%s) of GRUUnitOp should not be null.", "HiddenPrev");
+                   "Input(%s) of GRUUnitOp shold not be null.", "HiddenPrev");
     PADDLE_ENFORCE(ctx->HasInput("Weight"),
-                   "Input(%s) of GRUUnitOp should not be null.", "Weight");
+                   "Input(%s) of GRUUnitOp shold not be null.", "Weight");
     PADDLE_ENFORCE(ctx->HasOutput("Gate"),
-                   "Output(%s) of GRUUnitOp should not be null.", "Gate");
+                   "Output(%s) of GRUUnitOp shold not be null.", "Gate");
     PADDLE_ENFORCE(ctx->HasOutput("ResetHiddenPrev"),
-                   "Output(%s) of GRUUnitOp should not be null.",
+                   "Output(%s) of GRUUnitOp shold not be null.",
                    "ResetHiddenPrev");
     PADDLE_ENFORCE(ctx->HasOutput("Hidden"),
-                   "Output(%s) of GRUUnitOp should not be null.", "Hidden");
+                   "Output(%s) of GRUUnitOp shold not be null.", "Hidden");
     auto input_dims = ctx->GetInputDim("Input");
     auto hidden_prev_dims = ctx->GetInputDim("HiddenPrev");
     auto weight_dims = ctx->GetInputDim("Weight");
@@ -144,19 +144,19 @@ class GRUUnitGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(%s) of GRUUnitGradOp should not be null.", "Input");
+                   "Input(%s) of GRUUnitGradOp shold not be null.", "Input");
     PADDLE_ENFORCE(ctx->HasInput("HiddenPrev"),
-                   "Input(%s) of GRUUnitGradOp should not be null.",
+                   "Input(%s) of GRUUnitGradOp shold not be null.",
                    "HiddenPrev");
     PADDLE_ENFORCE(ctx->HasInput("Weight"),
-                   "Input(%s) of GRUUnitGradOp should not be null.", "Weight");
+                   "Input(%s) of GRUUnitGradOp shold not be null.", "Weight");
     PADDLE_ENFORCE(ctx->HasInput("Gate"),
-                   "Input(%s) of GRUUnitGradOp should not be null.", "Gate");
+                   "Input(%s) of GRUUnitGradOp shold not be null.", "Gate");
     PADDLE_ENFORCE(ctx->HasInput("ResetHiddenPrev"),
-                   "Input(%s) of GRUUnitGradOp should not be null.",
+                   "Input(%s) of GRUUnitGradOp shold not be null.",
                    "ResetHiddenPrev");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Hidden")),
-                   "Input(%s@GRAD) of GRUUnitGradOp should not be null.",
+                   "Input(%s@GRAD) of GRUUnitGradOp shold not be null.",
                    "Hidden");
     auto input_dims = ctx->GetInputDim("Input");
     auto hidden_prev_dims = ctx->GetInputDim("HiddenPrev");

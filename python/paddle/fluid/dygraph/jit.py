@@ -58,7 +58,7 @@ def _dygraph_to_static_output_(dygraph_func):
 
         root = DygraphToStaticAst().get_static_ast(root)
 
-        # TODO static_func should a callable from AST, like
+        # TODO static_func shold a callable from AST, like
         # static_func = ast_to_func(root)
         # currently just use dygraph_func
         static_func = dygraph_func
@@ -115,11 +115,11 @@ class TracedLayer(object):
     and :code:`CompiledProgram` . The static graph model would share
     parameters with the dygraph model.
     
-    All TracedLayer objects should not be created by constructor and should 
+    All TracedLayer objects shold not be created by constructor and shold 
     be created by static method :code:`TracedLayer.trace(layer, inputs)` .
 
     The TracedLayer can only be used to convert the data-independent dygraph
-    model into the static graph model, which means the dygraph model should
+    model into the static graph model, which means the dygraph model shold
     be independent with the tensor data and shape.
     """
 
@@ -261,7 +261,7 @@ class TracedLayer(object):
 
     def _build_feed(self, inputs):
         assert isinstance(inputs, (list, tuple)), \
-            "Inputs should be a list or tuple of variables"
+            "Inputs shold be a list or tuple of variables"
         assert len(inputs) == len(self._feed_names)
         feed_dict = {}
         if in_dygraph_mode():

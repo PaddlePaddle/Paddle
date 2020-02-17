@@ -54,7 +54,7 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
     if (node && node->IsOp() && node->Op()) {
       auto* op = node->Op();
 
-      // Input ids should be set in fixed order, like:
+      // Input ids shold be set in fixed order, like:
       //  - X, Y in forward operations
       //  - X, Y, Out, out@GRAD in backward operations
       std::vector<int> input_ids;
@@ -74,7 +74,7 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
           input_ids.push_back(-1);
         }
       }
-      // Output ids should be set in fixed order, like:
+      // Output ids shold be set in fixed order, like:
       //  - dx, dy in backward operations
       std::vector<int> output_ids;
       std::vector<std::string> output_names =
@@ -155,13 +155,13 @@ std::string CodeGenerator::EmitParameters(const std::set<int>& input_ids,
     }
   }
 
-  size_t index = 0;
+  size_t indice = 0;
   for (auto id : output_ids) {
     ret << dtype << "* " << ArgName(id);
-    if (index != output_ids.size() - 1) {
+    if (indice != output_ids.size() - 1) {
       ret << ", ";
     }
-    index++;
+    indice++;
   }
 
   return ret.str();

@@ -66,7 +66,7 @@ class TestDistRunnerBase(object):
                   single_device=False,
                   use_dgc=False):
         raise NotImplementedError(
-            "get_model should be implemented by child classes.")
+            "get_model shold be implemented by child classes.")
 
     @staticmethod
     def get_transpiler(trainer_id,
@@ -100,7 +100,7 @@ class TestDistRunnerBase(object):
     def run_pserver(self, args):
         self.lr = args.lr
         self.get_model(batch_size=args.batch_size)
-        # NOTE: pserver should not call memory optimize
+        # NOTE: pserver shold not call memory optimize
 
         t = self.get_transpiler(
             trainer_id=args.trainer_id,
@@ -335,7 +335,7 @@ class TestDistRunnerBase(object):
             build_stra.trainer_id = 0
 
         if args.use_dgc:
-            # fuse_all_reduce_ops require that gradients should not be sparse types
+            # fuse_all_reduce_ops require that gradients shold not be sparse types
             build_stra.fuse_all_reduce_ops = False
 
         print_to_err(type(self).__name__, "begin to compile with data parallel")
@@ -380,11 +380,11 @@ class TestDistRunnerBase(object):
 class TestParallelDyGraphRunnerBase(object):
     def get_model(self):
         raise NotImplementedError(
-            "get_model should be implemented by child classes.")
+            "get_model shold be implemented by child classes.")
 
     def run_one_loop(self, model, opt, data):
         raise NotImplementedError(
-            "train_one_loop should be implemented by the child classes.")
+            "train_one_loop shold be implemented by the child classes.")
 
     def run_trainer(self, args):
 
@@ -509,7 +509,7 @@ from contextlib import closing
 
 class TestDistBase(unittest.TestCase):
     def _setup_config(self):
-        raise NotImplementedError("tests should have _setup_config implemented")
+        raise NotImplementedError("tests shold have _setup_config implemented")
 
     def _after_setup_config(self):
         if self._enforce_place == "CPU":
@@ -909,7 +909,7 @@ class TestDistBase(unittest.TestCase):
         return pickle.loads(outs[0]), pickle.loads(outs[1])
 
     def _get_required_envs(self, check_error_log=False, need_envs={}):
-        # TODO(typhoonzero): should auto adapt GPU count on the machine.
+        # TODO(typhoonzero): shold auto adapt GPU count on the machine.
         required_envs = {
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),

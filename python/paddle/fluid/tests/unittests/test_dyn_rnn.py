@@ -57,7 +57,7 @@ class TestDynamicRNN(unittest.TestCase):
                 rnn_out_seq = fetch_outs[1]
                 if not is_nested:
                     # Check for lod set in runtime. When lod_level is 1,
-                    # the lod of DynamicRNN's output should be the same as input.
+                    # the lod of DynamicRNN's output shold be the same as input.
                     self.assertEqual(rnn_in_seq.lod(), rnn_out_seq.lod())
 
                 loss_i = numpy.array(fetch_outs[2])
@@ -71,7 +71,7 @@ class TestDynamicRNN(unittest.TestCase):
                 loss_0 = loss_i
 
         if max_iters > 10:
-            # loss should be small after 10 mini-batch
+            # loss shold be small after 10 mini-batch
             self.assertLess(loss_i[0], loss_0[0])
 
     def test_plain_while_op(self):
@@ -204,7 +204,7 @@ class TestDynamicRNN(unittest.TestCase):
             drnn0 = fluid.layers.DynamicRNN()
             with drnn0.block():
                 in_0 = drnn0.step_input(sentence)
-                assert in_0.lod_level == 1, "the lod level of in_ should be 1"
+                assert in_0.lod_level == 1, "the lod level of in_ shold be 1"
                 sentence_emb = fluid.layers.embedding(
                     input=in_0, size=[len(word_dict), 32], dtype='float32')
                 out_0 = fluid.layers.fc(input=sentence_emb,
@@ -214,7 +214,7 @@ class TestDynamicRNN(unittest.TestCase):
                 drnn1 = fluid.layers.DynamicRNN()
                 with drnn1.block():
                     in_1 = drnn1.step_input(out_0)
-                    assert in_1.lod_level == 0, "the lod level of in_1 should be 0"
+                    assert in_1.lod_level == 0, "the lod level of in_1 shold be 0"
                     out_1 = fluid.layers.fc(input=[in_1], size=100, act='tanh')
                     drnn1.output(out_1)
 

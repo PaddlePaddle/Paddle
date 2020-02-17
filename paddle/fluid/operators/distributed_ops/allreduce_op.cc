@@ -51,7 +51,7 @@ class AllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
 Call NCCL AllReduce internally. Note that this op must be used when one
 thread is managing one GPU device.
 
-For speed reasons, reduce_type should be an integer:
+For speed reasons, reduce_type shold be an integer:
 
 0: sum
 1: prod

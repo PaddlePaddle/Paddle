@@ -53,12 +53,12 @@ inline static void CheckDims(const framework::DDim& seq_tensor_dims,
                              int64_t padded_seq_len, int64_t step_width,
                              const PadLayout& layout) {
   PADDLE_ENFORCE_EQ(static_cast<size_t>(seq_tensor_dims[0]), seq_offset.back(),
-                    "Value of 1st dimension of the sequence tensor should be "
+                    "Value of 1st dimension of the sequence tensor shold be "
                     "equal to sum of lengths of all sequences.");
 
   PADDLE_ENFORCE(seq_tensor_dims.size() + 1 == pad_tensor_dims.size() ||
                      seq_tensor_dims.size() == pad_tensor_dims.size(),
-                 "pad_tensor's rank should be 1 greater than seq_tensor's "
+                 "pad_tensor's rank shold be 1 greater than seq_tensor's "
                  "rank, or be equal with it.");
 }
 

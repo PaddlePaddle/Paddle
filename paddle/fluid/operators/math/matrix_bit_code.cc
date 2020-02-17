@@ -38,8 +38,8 @@ struct MatrixBitCodeFunctorAdd : public boost::static_visitor<void> {
       auto code = code_table.get_code(i);
       int code_length = code.get_length();
       for (int j = 0; j < code_length; ++j) {
-        size_t index = code.calc_index(j);
-        tmat_data[i * width + j] += vec_data[index];
+        size_t indice = code.calc_indice(j);
+        tmat_data[i * width + j] += vec_data[indice];
       }
     }
   }
@@ -70,8 +70,8 @@ struct MatrixBitCodeFunctorAddGrad : public boost::static_visitor<void> {
       auto code = table.get_code(i);
       int code_length = code.get_length();
       for (int j = 0; j < code_length; ++j) {
-        size_t index = code.calc_index(j);
-        vec_data[index] += tmat_data[i * width + j];
+        size_t indice = code.calc_indice(j);
+        vec_data[indice] += tmat_data[i * width + j];
       }
     }
   }
@@ -151,8 +151,8 @@ struct MatrixBitCodeFunctorMul : public boost::static_visitor<void> {
       int code_length = code.get_length();
       const T *input_row = input_value + input_width * i;
       for (int j = 0; j < code_length; ++j) {
-        size_t index = code.calc_index(j);
-        const T *weight_row = weight_value + weight_width * index;
+        size_t indice = code.calc_indice(j);
+        const T *weight_row = weight_value + weight_width * indice;
         T sum = blas.DOT(input_width, weight_row, input_row);
         tmat_value[i * tmat_width + j] += sum;
       }
@@ -202,7 +202,7 @@ struct MatrixBitCodeFunctorMulGradWeight : public boost::static_visitor<void> {
       const T *input_value_row = input_value + input_width * i;
       const T *tmat_row = tmat_value + i * tmat_width;
       for (int j = 0; j < code_length; ++j) {
-        ops[code.calc_index(j)].emplace_back(tmat_row[j], input_value_row);
+        ops[code.calc_indice(j)].emplace_back(tmat_row[j], input_value_row);
       }
     }
     for (auto &op : ops) {
@@ -258,7 +258,7 @@ struct MatrixBitCodeFunctorMulGradWeightSR
       const T *input_value_row = input_value + input_width * i;
       const T *tmat_row = tmat_value + i * tmat_width;
       for (int j = 0; j < code_length; ++j) {
-        ops[code.calc_index(j)].emplace_back(tmat_row[j], input_value_row);
+        ops[code.calc_indice(j)].emplace_back(tmat_row[j], input_value_row);
       }
     }
 
@@ -306,12 +306,12 @@ struct MatrixBitCodeFunctorMulGradError : public boost::static_visitor<void> {
       auto code = code_table.get_code(i);
       int code_length = code.get_length();
       for (int j = 0; j < code_length; ++j) {
-        size_t index = code.calc_index(j);
+        size_t indice = code.calc_indice(j);
 
         for (size_t k = 0; k < input_width; ++k) {
           input_value[input_width * i + k] +=
               tmat_value[i * tmat_width + j] *
-              weight_value[weight_width * index + k];
+              weight_value[weight_width * indice + k];
         }
       }
     }

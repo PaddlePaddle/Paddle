@@ -26,11 +26,11 @@ class SequenceUnpadOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of SequenceUnpadOp should not be null.");
+                      "Input(X) of SequenceUnpadOp shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("Length"), true,
-                      "Input(Length) of SequenceUnpadOp should not be null.");
+                      "Input(Length) of SequenceUnpadOp shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of SequenceUnpadOp should not be null.");
+                      "Output(Out) of SequenceUnpadOp shold not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_GE(x_dims.size(), 2,
@@ -38,10 +38,10 @@ class SequenceUnpadOp : public framework::OperatorWithKernel {
 
     auto len_dims = ctx->GetInputDim("Length");
     PADDLE_ENFORCE_EQ(len_dims.size(), 1,
-                      "The shape of Input(Length) should be [batch_size].");
+                      "The shape of Input(Length) shold be [batch_size].");
     PADDLE_ENFORCE_EQ(
         len_dims[0], x_dims[0],
-        "Input(X) and Input(Length) should have the same first dimension.");
+        "Input(X) and Input(Length) shold have the same first dimension.");
 
     int64_t out_dim_0 = -1;
     if (ctx->IsRuntime()) {
@@ -116,10 +116,10 @@ class SequenceUnpadGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of SequenceUnpadGradOp should not be null.");
+                      "Input(X) of SequenceUnpadGradOp shold not be null.");
     PADDLE_ENFORCE_EQ(
         ctx->HasInput(framework::GradVarName("Out")), true,
-        "Input(Out@GRAD) of SequenceUnpadGradOp should not be null.");
+        "Input(Out@GRAD) of SequenceUnpadGradOp shold not be null.");
 
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));

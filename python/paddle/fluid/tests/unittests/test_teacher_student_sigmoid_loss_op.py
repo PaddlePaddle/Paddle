@@ -38,8 +38,8 @@ class TestTeacherStudentSigmoidLossOp(OpTest):
             .astype("float64")
         }
         outs = []
-        for index, label in enumerate(self.inputs["Label"]):
-            x = self.inputs["X"][index]
+        for indice, label in enumerate(self.inputs["Label"]):
+            x = self.inputs["X"][indice]
             if label < -1.0:
                 outs.append(max(x, 0.0) + log(1.0 + exp(-abs(x))))
             elif label < 0.0:

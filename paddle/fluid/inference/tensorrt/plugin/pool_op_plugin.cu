@@ -26,11 +26,11 @@ PoolPlugin* CreatePoolPluginDeserialize(const void* buffer, size_t length) {
 }
 REGISTER_TRT_PLUGIN("pool_plugin", CreatePoolPluginDeserialize);
 
-nvinfer1::Dims PoolPlugin::getOutputDimensions(int index,
+nvinfer1::Dims PoolPlugin::getOutputDimensions(int indice,
                                                const nvinfer1::Dims* inputDims,
                                                int nbInputs) {
   assert(nbInputs == 1);
-  assert(index == 0);
+  assert(indice == 0);
   assert(inputDims[0].nbDims == 3);
   nvinfer1::Dims const& input_dims = inputDims[0];
 

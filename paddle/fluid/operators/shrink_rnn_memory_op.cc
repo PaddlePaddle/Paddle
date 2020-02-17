@@ -76,8 +76,8 @@ class ShrinkRNNMemoryOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(LoDTensor) The RNN step memory to be shrank.");
     AddInput("RankTable", "(LoDRankTable) The lod_rank_table of dynamic RNN.");
     AddInput("I",
-             "(LoDTensor) The step index. The RNN step memory 'X' will be "
-             "shrank to match the size of the input of the index'th step.");
+             "(LoDTensor) The step indice. The RNN step memory 'X' will be "
+             "shrank to match the size of the input of the indice'th step.");
     AddOutput("Out", "(LoDTensor) The shrank RNN step memory.");
     AddComment(R"DOC(
 This operator is used to shrink output batch of memory defined in dynamic RNN.
@@ -121,7 +121,7 @@ class ShrinkRNNMemoryGradOp : public ArrayOp {
                const platform::Place &place) const override {
     auto *dout_var = scope.FindVar(Input(framework::GradVarName("Out")));
     auto *dx_var = scope.FindVar(Output(framework::GradVarName("X")));
-    PADDLE_ENFORCE(dx_var != nullptr, "Input Gradient should not be nullptr");
+    PADDLE_ENFORCE(dx_var != nullptr, "Input Gradient shold not be nullptr");
     auto *x_var = scope.FindVar(Input("X"));
     PADDLE_ENFORCE(x_var != nullptr);
 

@@ -44,7 +44,7 @@ class AnalysisPass {
   virtual std::string description() const { return "No DOC"; }
 
  protected:
-  // User should implement these.
+  // User shold implement these.
   virtual void RunImpl(Argument* argument) = 0;
 };
 

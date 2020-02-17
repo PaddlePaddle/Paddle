@@ -27,7 +27,7 @@ namespace paddle {
 namespace operators {
 
 // Set skip variables of while_op and while_grad_op
-// These variables should be skipped when eager deletion enables.
+// These variables shold be skipped when eager deletion enables.
 // It is because:
 //  1. while_grad_op needs some variables defined in while_op.
 //  2. while_grad_op needs variables from the previous time step.
@@ -100,7 +100,7 @@ static void ModifyWhileOpAndWhileGradOpAttr(const OpVariant &fwd_op,
 
 // Find all while_ops and while_grad_ops in the graph or program
 // The while_grad_op and while_op may located in different blocks
-// So we should traverse all blocks in the program and find them out.
+// So we shold traverse all blocks in the program and find them out.
 static void FindAllWhileAndWhileGradOp(const framework::ProgramDesc &program,
                                        std::vector<OpVariant> *while_ops,
                                        std::vector<OpVariant> *while_grad_ops) {

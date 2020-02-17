@@ -42,9 +42,9 @@ class SequenceConcatOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE(context->HasInputs("X"),
-                   "Input(X) of Sequence Concat Op should not be null.");
+                   "Input(X) of Sequence Concat Op shold not be null.");
     PADDLE_ENFORCE(context->HasOutput("Out"),
-                   "Output(Out) of Sequence Concat Op should not be null.");
+                   "Output(Out) of Sequence Concat Op shold not be null.");
 
     PADDLE_ENFORCE_GT(context->Inputs("X").size(), 1,
                       "The number of input sequences is at least two.");

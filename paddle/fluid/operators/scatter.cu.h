@@ -31,9 +31,9 @@ using Tensor = framework::Tensor;
        i += blockDim.x * gridDim.x)
 template <typename T, typename IndexT = int>
 __global__ void ScatterInitCUDAKernel(const IndexT* indices, T* output,
-                                      size_t index_size, size_t slice_size,
+                                      size_t indice_size, size_t slice_size,
                                       bool overwrite) {
-  CUDA_1D_KERNEL_LOOP(i, index_size * slice_size) {
+  CUDA_1D_KERNEL_LOOP(i, indice_size * slice_size) {
     int indices_i = i / slice_size;
     int slice_i = i - indices_i * slice_size;  // offset inside the slice
     IndexT scatter_i = indices[indices_i];
@@ -44,9 +44,9 @@ __global__ void ScatterInitCUDAKernel(const IndexT* indices, T* output,
 
 template <typename T, typename IndexT = int>
 __global__ void ScatterCUDAKernel(const T* params, const IndexT* indices,
-                                  T* output, size_t index_size,
+                                  T* output, size_t indice_size,
                                   size_t slice_size, bool overwrite) {
-  CUDA_1D_KERNEL_LOOP(i, index_size * slice_size) {
+  CUDA_1D_KERNEL_LOOP(i, indice_size * slice_size) {
     int indices_i = i / slice_size;
     int slice_i = i - indices_i * slice_size;  // offset inside the slice
     IndexT scatter_i = indices[indices_i];
@@ -70,8 +70,8 @@ __global__ void ScatterNdCUDAKernel(const T* update, const IndexT* indices,
     IndexT gather_i = 0;
     int64_t temp = slice_size;
     for (int64_t j = end_size - 1; j >= 0; --j) {
-      IndexT index_value = indices[indices_i * end_size + j];
-      gather_i += (index_value * temp);
+      IndexT indice_value = indices[indices_i * end_size + j];
+      gather_i += (indice_value * temp);
       temp *= output_dims[j];
     }
     IndexT output_i = gather_i + slice_i;
@@ -82,43 +82,43 @@ __global__ void ScatterNdCUDAKernel(const T* update, const IndexT* indices,
 /**
  * A thin wrapper on gpu tensor
  * Return a new updated tensor from source tensor, scatter-assigned according to
- * index
+ * indice
  * input[src]: type-T source Tensor
- * input[index]: type-IndexT index Tensor (1-D)
+ * input[indice]: type-IndexT indice Tensor (1-D)
  * return: output tensor
  */
 template <typename T, typename IndexT = int>
 void GPUScatterAssign(const framework::ExecutionContext& context,
-                      const Tensor& src, const Tensor& index, Tensor* output,
+                      const Tensor& src, const Tensor& indice, Tensor* output,
                       bool overwrite = true) {
-  // check index of shape 1-D
+  // check indice of shape 1-D
   const auto& ctx = context.device_context();
-  if (index.dims().size() == 2) {
-    PADDLE_ENFORCE_EQ(index.dims()[1], 1,
-                      "index.dims()[1] should be 1 when index.dims().size() == "
+  if (indice.dims().size() == 2) {
+    PADDLE_ENFORCE_EQ(indice.dims()[1], 1,
+                      "indice.dims()[1] shold be 1 when indice.dims().size() == "
                       "2 in scatter_op.");
   } else {
-    PADDLE_ENFORCE_EQ(index.dims().size(), 1,
-                      "index.dims().size() should be 1 or 2 in scatter_op.");
+    PADDLE_ENFORCE_EQ(indice.dims().size(), 1,
+                      "indice.dims().size() shold be 1 or 2 in scatter_op.");
   }
-  int index_size = index.dims()[0];
+  int indice_size = indice.dims()[0];
 
   auto src_dims = src.dims();
   framework::DDim output_dims(src_dims);
-  output_dims[0] = index_size;
+  output_dims[0] = indice_size;
 
   // slice size
   int slice_size = 1;
   for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
 
   const T* p_src = src.data<T>();
-  const IndexT* p_index = index.data<IndexT>();
+  const IndexT* p_indice = indice.data<IndexT>();
   T* p_output = output->data<T>();
   const size_t& slice_bytes = slice_size * sizeof(T);
 
   // set block and grid num
   int block = 512;
-  int n = slice_size * index_size;
+  int n = slice_size * indice_size;
   int grid = (n + block - 1) / block;
 
   // if not overwrite mode, init data
@@ -126,33 +126,33 @@ void GPUScatterAssign(const framework::ExecutionContext& context,
     ScatterInitCUDAKernel<T, IndexT><<<
         grid, block, 0,
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
-        p_index, p_output, index_size, slice_size, overwrite);
+        p_indice, p_output, indice_size, slice_size, overwrite);
   }
 
   ScatterCUDAKernel<T, IndexT><<<
       grid, block, 0,
       reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
-      p_src, p_index, p_output, index_size, slice_size, overwrite);
+      p_src, p_indice, p_output, indice_size, slice_size, overwrite);
 }
 
 template <typename DeviceContext, typename T, typename IndexT = int>
 void GPUScatterNdAdd(const framework::ExecutionContext& context,
-                     const Tensor& update, const Tensor& index,
+                     const Tensor& update, const Tensor& indice,
                      Tensor* output) {
-  auto index_dims = index.dims();
-  auto index_dims_size = index_dims.size();
+  auto indice_dims = indice.dims();
+  auto indice_dims_size = indice_dims.size();
 
   auto output_dims = output->dims();
   auto output_dims_size = output_dims.size();
 
   const T* p_update = update.data<T>();
-  const IndexT* p_index = index.data<IndexT>();
+  const IndexT* p_indice = indice.data<IndexT>();
   T* p_output = output->data<T>();
 
   // final dim
-  int64_t end_size = index_dims[index_dims_size - 1];
+  int64_t end_size = indice_dims[indice_dims_size - 1];
   // remain dim
-  auto remain_ddim = framework::slice_ddim(index_dims, 0, index_dims_size - 1);
+  auto remain_ddim = framework::slice_ddim(indice_dims, 0, indice_dims_size - 1);
   int64_t remain_numel = framework::product(remain_ddim);
   // slice size
   int64_t slice_size = 1;
@@ -184,7 +184,7 @@ void GPUScatterNdAdd(const framework::ExecutionContext& context,
   ScatterNdCUDAKernel<T, IndexT><<<
       grid, block, 0,
       reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream()>>>(
-      p_update, p_index, p_output, g_output_dims, remain_numel, slice_size,
+      p_update, p_indice, p_output, g_output_dims, remain_numel, slice_size,
       end_size);
 }
 

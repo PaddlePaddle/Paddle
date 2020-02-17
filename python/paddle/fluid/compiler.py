@@ -58,8 +58,8 @@ def _prune_feed_ops(program):
     pop_idx = []
     for i, op in enumerate(program.global_block().ops):
         if op.type == "feed": pop_idx.append(i)
-    for index in pop_idx[::-1]:
-        program.global_block()._remove_op(index)
+    for indice in pop_idx[::-1]:
+        program.global_block()._remove_op(indice)
 
 
 def _has_optimize_op(block):
@@ -225,7 +225,7 @@ class CompiledProgram(object):
               # NOTE: If you use CPU to run the program, you need
               # to specify the CPU_NUM, otherwise, fluid will use
               # all the number of the logic core as the CPU_NUM,
-              # in that case, the batch size of the input should be
+              # in that case, the batch size of the input shold be
               # greater than CPU_NUM, if not, the process will be
               # failed by an exception.
               if not use_cuda:
@@ -254,8 +254,8 @@ class CompiledProgram(object):
         self._is_data_parallel = True
         # FIXME(zcd): Currently, the build_strategy can be set during creating
         # CompiledProgram or calling with_data_parallel, and it may be confusing,
-        # but in the long run, we should set up build_strategy only when creating
-        # CompiledProgram, and exec_strategy should be deprecated.
+        # but in the long run, we shold set up build_strategy only when creating
+        # CompiledProgram, and exec_strategy shold be deprecated.
         if build_strategy is not None: self._build_strategy = build_strategy
         self._exec_strategy = exec_strategy
         self._loss_name = loss_name
@@ -263,7 +263,7 @@ class CompiledProgram(object):
         self._places = places
 
         if _has_backward_op(self._graph):
-            assert self._loss_name is not None, "The loss_name should be set here."
+            assert self._loss_name is not None, "The loss_name shold be set here."
 
         if self._places is not None:
             if not isinstance(self._places, (list, tuple)):
@@ -313,7 +313,7 @@ class CompiledProgram(object):
             self._local_scopes = []
 
         assert isinstance(places, tuple) or isinstance(places, list), \
-            "Currently , The places type only should be list or tuple, \n" \
+            "Currently , The places type only shold be list or tuple, \n" \
             "but the input type is {}.".format(type(places))
 
         if self._build_strategy is None:
@@ -334,10 +334,10 @@ class CompiledProgram(object):
 
         if self._build_strategy.num_trainers > 1:
             assert self._is_data_parallel, \
-                "If you use multi-trainer to train the model, you should use "\
+                "If you use multi-trainer to train the model, you shold use "\
                 "the data parallel model, i.e. calling with_data_parallel function."
 
-        # TODO(wuyi): trainer endpoings should be passed in through
+        # TODO(wuyi): trainer endpoings shold be passed in through
         # build_strategy, not program.xxx.
         # TODO(gongwb): let user to set them once.
         if self._program and self._build_strategy.num_trainers > 1 and \
@@ -365,7 +365,7 @@ class CompiledProgram(object):
         places = list(map(_place_obj, places))
 
         # ParallelExecutor would broadcast all the parameters during initializing.
-        # The parameters of each process should be in the same ordered for the data-parallelism
+        # The parameters of each process shold be in the same ordered for the data-parallelism
         # distributed training to keep the broadcast correct.
         self._persistable_vars = list(set(self._persistable_vars))
         self._persistable_vars.sort()

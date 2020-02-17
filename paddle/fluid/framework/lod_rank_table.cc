@@ -29,9 +29,9 @@ void LoDRankTable::Reset(const LoD& lod, size_t level) {
   auto& vec = lod[level];
   for (size_t i = 0; i < vec.size() - 1; ++i) {
     TableItem item;
-    item.index = i;
+    item.indice = i;
     item.length = vec[i + 1] - vec[i];
-    VLOG(10) << "Add item to rank table " << item.index << " " << item.length;
+    VLOG(10) << "Add item to rank table " << item.indice << " " << item.length;
     items_.emplace_back(item);
   }
   // NOTE(yuyang18):
@@ -51,7 +51,7 @@ std::ostream& operator<<(std::ostream& out,
                          const framework::LoDRankTable& table) {
   out << "NumOfSequence " << table.items().size() << "\n";
   for (auto& each_item : table.items()) {
-    out << "\tSeq #" << each_item.index << ", Len=" << each_item.length << "\n";
+    out << "\tSeq #" << each_item.indice << ", Len=" << each_item.length << "\n";
   }
   return out;
 }

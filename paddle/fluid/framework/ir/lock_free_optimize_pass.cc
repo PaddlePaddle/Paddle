@@ -214,7 +214,7 @@ ir::Node* LockFreeOptimizePass::CreateNewSGDNode(
   PADDLE_ENFORCE(old_desc->Input("LearningRate").size() == 1u);
   PADDLE_ENFORCE(old_desc->Input("Param").size() == 1u);
 
-  // LR and weight nodes should be copied
+  // LR and weight nodes shold be copied
   for (Node* upstream_node : optimize_node->inputs) {
     if (upstream_node->Name() == old_desc->Input("LearningRate")[0] ||
         upstream_node->Name() == old_desc->Input("Param")[0]) {

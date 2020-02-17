@@ -141,7 +141,7 @@ def auc(input,
     Args:
         input(Variable): A floating-point 2D Variable, values are in the range
                          [0, 1]. Each row is sorted in descending order. This
-                         input should be the output of topk. Typically, this
+                         input shold be the output of topk. Typically, this
                          Variable indicates the probability of each label.
                          A LoDTensor or Tensor with type float32,float64.
         label(Variable): A 2D int Variable indicating the label of the training
@@ -192,7 +192,7 @@ def auc(input,
     # we create slide_step+1 buckets, the first slide_steps buckets store 
     # historical batch-level values, and the last bucket stores the sum values of 
     # previous slide_step buckets.
-    # The index of bucket that the newest batch will use is determined by batch_id mod slide_steps,
+    # The indice of bucket that the newest batch will use is determined by batch_id mod slide_steps,
     # and batch_id is store in the last posision of following variable
     batch_stat_pos = helper.create_global_variable(
         persistable=True,

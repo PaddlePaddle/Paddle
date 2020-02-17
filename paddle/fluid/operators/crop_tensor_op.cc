@@ -28,9 +28,9 @@ class CropTensorOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of Op(crop_tensor) should not be null.");
+                      "Input(X) of Op(crop_tensor) shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of Op(crop_tensor) should not be null.");
+                      "Output(Out) of Op(crop_tensor) shold not be null.");
     auto x_dim = ctx->GetInputDim("X");
     auto shape = ctx->Attrs().Get<std::vector<int>>("shape");
     auto offsets = ctx->Attrs().Get<std::vector<int>>("offsets");
@@ -81,7 +81,7 @@ class CropTensorOp : public framework::OperatorWithKernel {
       return;
     }
     PADDLE_ENFORCE_EQ(int64_t(shape.size()), x_dim.size(),
-                      "Attr(shape)'size of Op(crop_tensor) should be equal to "
+                      "Attr(shape)'size of Op(crop_tensor) shold be equal to "
                       "dimension size of input tensor.");
     std::vector<int64_t> out_shape(shape.size(), -1);
     for (size_t i = 0; i < shape.size(); ++i) {
@@ -121,7 +121,7 @@ class CropTensorOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "The input of pad op. "
-             "The input should be a k-D tensor(k > 0 and k < 7).");
+             "The input shold be a k-D tensor(k > 0 and k < 7).");
     AddInput("Shape",
              "The input used to describe shape of output, which is a "
              "1-D vector whose size equals to the rank of input 'X'. The "
@@ -153,12 +153,12 @@ class CropTensorOpMaker : public framework::OpProtoAndCheckerMaker {
               "which is of the same dimensions as X.");
     AddAttr<std::vector<int>>("offsets",
                               "A list<int> describing offsets to be cropped. "
-                              "The size of offsets list should be the same as "
+                              "The size of offsets list shold be the same as "
                               "the dimension size of input X.")
         .SetDefault(std::vector<int>());
     AddAttr<std::vector<int>>("shape",
                               "A list<int> describing the shape of output. "
-                              "The size of shape list should be the same as "
+                              "The size of shape list shold be the same as "
                               "the dimension size of input X.")
         .SetDefault(std::vector<int>());
     AddComment(R"DOC(
@@ -167,7 +167,7 @@ CropTensor Operator.
 Crop input into output, as specified by offsets and shape.
 
 There are three ways to set the offsets:
-1. Input 'OffsetsTensor: It is a tensor list. It should be set as a list that 
+1. Input 'OffsetsTensor: It is a tensor list. It shold be set as a list that 
                          contains tensor variable in python configure script. 
                          This way is suitable for dynamic offsets.
 2. Input 'Offsets': It is a variable and can be output of other operators. 
@@ -180,16 +180,16 @@ if input 'OffsetsTensor' or 'Offset' is configured and meanwhile the attribute '
 not empty.
 
 There are three ways to set shape:
-1. Input 'ShapeTensor': It is a tensor list. It should be set as a list that contains
+1. Input 'ShapeTensor': It is a tensor list. It shold be set as a list that contains
                         tensor variable in python configure script. This way is suitable 
                         for dynamic shape.
 2. Input 'Shape': It is a Variable and can be output of other operators. This way is suitable 
                   for dynamic shape.
 2. Attribute 'shape': crop input X into the shape described by a list<int>. The size of shape 
-                      list should be the same as the dimension size of input X. This way is 
+                      list shold be the same as the dimension size of input X. This way is 
                       suitable for fixed shape.
 
-The input should be a k-D tensor(k > 0 and k < 7). As an example:
+The input shold be a k-D tensor(k > 0 and k < 7). As an example:
 
 Case 1:
 Given
@@ -243,9 +243,9 @@ class CropTensorOpGrad : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of Op(crop_tensor) should not be null.");
+                      "Input(X) of Op(crop_tensor) shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      "Input(Out@GRAD) of Op(crop_tensor) should not be null.");
+                      "Input(Out@GRAD) of Op(crop_tensor) shold not be null.");
     auto x_dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {

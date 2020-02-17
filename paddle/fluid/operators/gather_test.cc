@@ -23,32 +23,32 @@ limitations under the License. */
 
 TEST(Gather, GatherData) {
   paddle::framework::Tensor* src = new paddle::framework::Tensor();
-  paddle::framework::Tensor* index = new paddle::framework::Tensor();
+  paddle::framework::Tensor* indice = new paddle::framework::Tensor();
   paddle::framework::Tensor* output = new paddle::framework::Tensor();
 
   int* p_src = nullptr;
-  int* p_index = nullptr;
+  int* p_indice = nullptr;
   p_src = src->mutable_data<int>(paddle::framework::make_ddim({3, 4}),
                                  paddle::platform::CPUPlace());
-  p_index = index->mutable_data<int>(paddle::framework::make_ddim({2}),
+  p_indice = indice->mutable_data<int>(paddle::framework::make_ddim({2}),
                                      paddle::platform::CPUPlace());
 
   for (int i = 0; i < 12; ++i) p_src[i] = i;
-  p_index[0] = 1;
-  p_index[1] = 0;
+  p_indice[0] = 1;
+  p_indice[1] = 0;
 
   int* p_output = output->mutable_data<int>(
       paddle::framework::make_ddim({2, 4}), paddle::platform::CPUPlace());
 
   auto* cpu_place = new paddle::platform::CPUPlace();
   paddle::platform::CPUDeviceContext ctx(*cpu_place);
-  paddle::operators::CPUGather<int>(ctx, *src, *index, output);
+  paddle::operators::CPUGather<int>(ctx, *src, *indice, output);
   delete cpu_place;
   cpu_place = NULL;
   for (int i = 0; i < 4; ++i) EXPECT_EQ(p_output[i], i + 4);
   for (int i = 4; i < 8; ++i) EXPECT_EQ(p_output[i], i - 4);
 
   delete src;
-  delete index;
+  delete indice;
   delete output;
 }

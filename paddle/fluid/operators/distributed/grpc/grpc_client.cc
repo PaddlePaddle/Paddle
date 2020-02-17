@@ -109,7 +109,7 @@ VarHandlePtr GRPCClient::AsyncSendVar(const std::string& ep,
 
     if (FLAGS_rpc_retry_times > 0 && retry_times_ < FLAGS_rpc_retry_times) {
       h->Wait();
-      if (h->should_retry) {
+      if (h->shold_retry) {
         VLOG(3) << "rpc call failed, retry times " << retry_times_;
         retry_times_++;
         std::random_device rd;
@@ -226,7 +226,7 @@ VarHandlePtr GRPCClient::_AsyncGetVar(
 
     if (FLAGS_rpc_retry_times > 0 && retry_times_ < FLAGS_rpc_retry_times) {
       h->Wait();
-      if (h->should_retry) {
+      if (h->shold_retry) {
         VLOG(3) << "rpc call failed, retry times " << retry_times_;
         retry_times_++;
         std::random_device rd;
@@ -291,7 +291,7 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
 
     if (FLAGS_rpc_retry_times > 0 && retry_times_ < FLAGS_rpc_retry_times) {
       h->Wait();
-      if (h->should_retry) {
+      if (h->shold_retry) {
         VLOG(3) << "rpc call failed, retry times " << retry_times_;
         retry_times_++;
         std::random_device rd;
@@ -515,8 +515,8 @@ void GRPCClient::Proceed() {
               << " meets grpc error, error_code:" << c->status_.error_code()
               << " error_message:" << c->status_.error_message()
               << " error_details:" << c->status_.error_details()
-              << " should retry!";
-      c->GetVarHandlePtr()->should_retry = true;
+              << " shold retry!";
+      c->GetVarHandlePtr()->shold_retry = true;
       c->Finish(false);
     } else {
       LOG(FATAL) << c->GetVarHandlePtr()->String()

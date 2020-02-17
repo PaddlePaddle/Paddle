@@ -46,15 +46,15 @@ __global__ void Levenshtein(T* dist, const int64_t* x1, const int64_t* x2,
                             const int M, const int N, const int start) {
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
   int offset = N;
-  int index = start + idx * offset;
-  int row = index / (N + 1);
-  int col = index % (N + 1);
+  int indice = start + idx * offset;
+  int row = indice / (N + 1);
+  int col = indice % (N + 1);
   if (row > 0 && col > 0 && row < M + 1 && col < N + 1) {
     int cost = x1[row - 1] == x2[col - 1] ? 0 : 1;
     int dels = dist[(row - 1) * (N + 1) + col] + 1;
     int ins = dist[row * (N + 1) + col - 1] + 1;
     int subs = dist[(row - 1) * (N + 1) + (col - 1)] + cost;
-    dist[index] = min(dels, min(ins, subs));
+    dist[indice] = min(dels, min(ins, subs));
   }
 }
 
@@ -158,7 +158,7 @@ class EditDistanceGPUKernel : public framework::OpKernel<T> {
           int z_n = slice < n + 1 ? 0 : slice - n;
           int size = slice - (z_m + z_n) + 1;  // number of elments in the same
                                                // anti-diagonal line to update
-          // the start index at which computes from
+          // the start indice at which computes from
           int start = slice < n + 1 ? slice : (z_n + 1) * (n + 1) - 1;
           Levenshtein<T><<<1 + (size - 1) / PADDLE_CUDA_NUM_THREADS,
                            PADDLE_CUDA_NUM_THREADS, 0, stream>>>(dist, x1, x2,

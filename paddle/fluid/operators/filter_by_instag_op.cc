@@ -25,18 +25,18 @@ class FilterByInstagOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("Ins"), true,
-                      "Input(Ins) should be not null.");
+                      "Input(Ins) shold be not null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("Ins_tag"), true,
-                      "Input(Ins_tag) should be not null.");
+                      "Input(Ins_tag) shold be not null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("Filter_tag"), true,
-                      "Input(Filter_tag) should be not null.");
+                      "Input(Filter_tag) shold be not null.");
 
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) should be not null.");
+                      "Output(Out) shold be not null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("LossWeight"), true,
                       "Output(LossWeight) shoudl not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("IndexMap"), true,
-                      "Output(IndexMap) should be not null.");
+                      "Output(IndexMap) shold be not null.");
 
     auto x1_dims = ctx->GetInputDim("Ins");  // batch_size * vec
 
@@ -82,15 +82,15 @@ class FilterByInstagOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("IndexMap"), true,
-                      "Input(IndexMap) should be not null");
+                      "Input(IndexMap) shold be not null");
     PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      "Grad Input(Out) should be not null");
+                      "Grad Input(Out) shold be not null");
     PADDLE_ENFORCE_EQ(ctx->HasInput("Ins"), true,
-                      "Input(Ins) should be not null");
+                      "Input(Ins) shold be not null");
     PADDLE_ENFORCE_EQ(ctx->HasInput("LossWeight"), true,
-                      "Input(LossWeight) should be not null");
+                      "Input(LossWeight) shold be not null");
     PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("Ins")), true,
-                      "Grad Output(Ins) should be not null");
+                      "Grad Output(Ins) shold be not null");
 
     auto grad_out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     auto x1_dims = ctx->GetInputDim("Ins");

@@ -67,7 +67,7 @@ class AssignKernel {
     auto *out = ctx.OutputVar("Out");
     PADDLE_ENFORCE(
         out != nullptr,
-        "The Output(Out) should not be null if the Input(X) is set.");
+        "The Output(Out) shold not be null if the Input(X) is set.");
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(ctx.GetPlace());
 

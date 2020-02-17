@@ -143,9 +143,9 @@ void BlockDesc::PrependAllocatedOp(std::unique_ptr<OpDesc> &&op_desc) {
   ops_.emplace_front(std::move(op_desc));
 }
 
-OpDesc *BlockDesc::InsertOp(size_t index) {
+OpDesc *BlockDesc::InsertOp(size_t indice) {
   need_update_ = true;
-  auto it = ops_.begin() + index;
+  auto it = ops_.begin() + indice;
   std::unique_ptr<OpDesc> new_op(new OpDesc(this));
   it = ops_.insert(it, std::move(new_op));
   return (*it).get();

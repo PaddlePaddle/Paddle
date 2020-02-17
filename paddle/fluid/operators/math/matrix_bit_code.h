@@ -34,7 +34,7 @@ namespace paddle {
 namespace operators {
 namespace math {
 /**
- * SimpleCodeTable class should support 3 functions:
+ * SimpleCodeTable class shold support 3 functions:
  *
  * size_t size()
  *   return the number of ids
@@ -45,14 +45,14 @@ namespace math {
  * SimpleCode operator()(size_t i)
  *   return the i-th code. Code class is descriebed below.
  *
- * SimpleCode class should support 3 functions:
+ * SimpleCode class shold support 3 functions:
  *
  * int get_length()
  *   return the length of the code
  *
- * size_t cal_index(int bit)
+ * size_t cal_indice(int bit)
  *   bit ranges from 0 to get_length() - 1
- *   return the index for the (1+bit) level parent
+ *   return the indice for the (1+bit) level parent
  *
  * bool calc_bit(int bit)
  *   return true if the bit level parent is the right child of (1+bit) level
@@ -61,7 +61,7 @@ namespace math {
  */
 
 /**
- * return the 1-based index of the highest bit set
+ * return the 1-based indice of the highest bit set
  *
  * for x > 0:
  * \f[
@@ -105,15 +105,15 @@ class SimpleCode {
   SimpleCode(size_t code, size_t num_classes, const int64_t* ids)
       : c_(static_cast<size_t>(ids[code]) + num_classes) {}
   /**
-   * Here the id of root should be 1 rather than 0, thus the encoding of class c
-   * is `c + num_classes` and all siblings can get the same weight index using
+   * Here the id of root shold be 1 rather than 0, thus the encoding of class c
+   * is `c + num_classes` and all siblings can get the same weight indice using
    * prefixes.
-   * Weight index is the prefixes of encoding, thus leave out the right most
-   * bit in calc_index.
+   * Weight indice is the prefixes of encoding, thus leave out the right most
+   * bit in calc_indice.
    * Binary classification path is the suffixes of encoding, thus leave out the
    * left most bit in calc_bit.
    */
-  size_t calc_index(int bit) const { return (c_ >> (bit + 1)) - 1; }
+  size_t calc_indice(int bit) const { return (c_ >> (bit + 1)) - 1; }
   bool calc_bit(int bit) const { return c_ & (1 << bit); }
   int get_length() const { return FindLastSet(c_) - 1; }
 
@@ -126,21 +126,21 @@ class CustomCode {
  public:
   CustomCode(const framework::Tensor& path_table,
              const framework::Tensor& path_code, const int64_t* ids,
-             int index) {
+             int indice) {
     seq_len_ = path_table.dims()[1];
-    path_table_data_ = path_table.data<T>() + seq_len_ * index;
-    path_code_data_ = path_code.data<T>() + seq_len_ * index;
+    path_table_data_ = path_table.data<T>() + seq_len_ * indice;
+    path_code_data_ = path_code.data<T>() + seq_len_ * indice;
   }
   /**
-   * Here the id of root should be 1 rather than 0, thus the encoding of class c
-   * is `c + num_classes` and all siblings can get the same weight index using
+   * Here the id of root shold be 1 rather than 0, thus the encoding of class c
+   * is `c + num_classes` and all siblings can get the same weight indice using
    * prefixes.
-   * Weight index is the prefixes of encoding, thus leave out the right most
-   * bit in calc_index.
+   * Weight indice is the prefixes of encoding, thus leave out the right most
+   * bit in calc_indice.
    * Binary classification path is the suffixes of encoding, thus leave out the
    * left most bit in calc_bit.
    */
-  size_t calc_index(int bit) const { return path_table_data_[bit]; }
+  size_t calc_indice(int bit) const { return path_table_data_[bit]; }
   bool calc_bit(int bit) const { return path_code_data_[bit]; }
 
   // NOTE: this function is not thread-safe.
@@ -217,12 +217,12 @@ class MatrixBitCodeFunctor {
         ids_(ids),
         code_table_(CustomCodeTable<int64_t>(path_table, path_code, ids)) {}
   /* For j < code_length
-       tmat(i, j) += vec(0, index(i, j))
+       tmat(i, j) += vec(0, indice(i, j))
   */
   void Add(const framework::Tensor& vec, framework::Tensor* tmat);
 
   /* For j < code_length
-       vec(0, index(i, j)) += tmat(i, j)
+       vec(0, indice(i, j)) += tmat(i, j)
   */
   void AddGrad(const framework::Tensor& tmat, framework::Tensor* vec);
 
@@ -236,24 +236,24 @@ class MatrixBitCodeFunctor {
   */
   void Sub(framework::Tensor* tmat);
   /* For j < code_length
-       input.row(i) += tmat(i, j) * weight.row(index(i, j))
+       input.row(i) += tmat(i, j) * weight.row(indice(i, j))
   */
   void Mul(framework::Tensor* tmat, const framework::Tensor& weight,
            const framework::Tensor& input);
 
-  /* For index(i, j) >= 0:
-      weight.row(index(i, j)) += tmat(i, j) * input.row(i)
+  /* For indice(i, j) >= 0:
+      weight.row(indice(i, j)) += tmat(i, j) * input.row(i)
   */
   void MulGradWeight(const framework::Tensor& tmat, framework::Tensor* weight,
                      const framework::Tensor& input);
-  /* For SelectedRows Weight, For index(i, j) >= 0:
-      weight.row(index(i, j)) += tmat(i, j) * input.row(i)
+  /* For SelectedRows Weight, For indice(i, j) >= 0:
+      weight.row(indice(i, j)) += tmat(i, j) * input.row(i)
   */
   void MulGradWeight(const framework::Tensor& tmat,
                      framework::SelectedRows* weight,
                      const framework::Tensor& input);
   /* For j < code_length
-    input.row(i) += tmat(i, j) * weight.row(index(i, j))
+    input.row(i) += tmat(i, j) * weight.row(indice(i, j))
   */
   void MulGradError(const framework::Tensor& tmat,
                     const framework::Tensor& weight, framework::Tensor* input);

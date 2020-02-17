@@ -24,13 +24,13 @@ class SequenceSliceOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SequenceSliceOp should not be null.");
+                   "Input(X) of SequenceSliceOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Offset"),
-                   "Input(Offset) of SequenceSliceOp should not be null.");
+                   "Input(Offset) of SequenceSliceOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Length"),
-                   "Input(Length) of SequenceSliceOp should not be null.");
+                   "Input(Length) of SequenceSliceOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SequenceSliceOp should not be null.");
+                   "Output(Out) of SequenceSliceOp shold not be null.");
     auto input_dims = ctx->GetInputDim("X");
 
     auto offset_dim = ctx->GetInputDim("Offset");
@@ -63,9 +63,9 @@ class SequenceSliceGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "The gradient of Out should not be null.");
+                   "The gradient of Out shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName("X")),
-                   "The gradient of X should not be null.");
+                   "The gradient of X shold not be null.");
     ctx->SetOutputsDim(framework::GradVarName("X"), ctx->GetInputsDim("X"));
   }
 
@@ -111,7 +111,7 @@ It only supports sequence (LoD Tensor with level number is 1).
             b1, b2]
             [e1, e2]]
     LoD(Out) = {{0, 2, 3}}; Dims(Out) = (3, 2)
-NOTE: The first dimension size of input, the size of offset and Length, should be equal. The offset start from 0.
+NOTE: The first dimension size of input, the size of offset and Length, shold be equal. The offset start from 0.
     )DOC");
   }
 };

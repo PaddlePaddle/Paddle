@@ -47,9 +47,9 @@ int PoolOutputSize(int input_size, int filter_size, int padding_1,
 
 void PoolOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                    "X(Input) of Pooling should not be null.");
+                    "X(Input) of Pooling shold not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                    "Out(Output) of Pooling should not be null.");
+                    "Out(Output) of Pooling shold not be null.");
 
   std::string pooling_type = ctx->Attrs().Get<std::string>("pooling_type");
   std::vector<int> ksize = ctx->Attrs().Get<std::vector<int>>("ksize");
@@ -65,7 +65,7 @@ void PoolOp::InferShape(framework::InferShapeContext* ctx) const {
   auto in_x_dims = ctx->GetInputDim("X");
   PADDLE_ENFORCE_EQ(
       in_x_dims.size() == 4 || in_x_dims.size() == 5, true,
-      "ShapeError: the input of Op(pool) should be 4-D or 5-D Tensor. But "
+      "ShapeError: the input of Op(pool) shold be 4-D or 5-D Tensor. But "
       "received: %u-D Tensor and it's shape is [%s].",
       in_x_dims.size(), in_x_dims);
 
@@ -184,7 +184,7 @@ framework::OpKernelType PoolOp::GetKernelTypeForVar(
 void PoolOpGrad::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) must not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
-                    "Input(X@GRAD) should not be null.");
+                    "Input(X@GRAD) shold not be null.");
   ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
 }
 
@@ -308,7 +308,7 @@ void Pool2dOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>("use_quantizer",
                 "(bool) "
-                "Set to true for operators that should be quantized and use "
+                "Set to true for operators that shold be quantized and use "
                 "int8 kernel. "
                 "Only used on CPU. Default False")
       .SetDefault(false);

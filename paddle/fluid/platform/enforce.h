@@ -257,7 +257,7 @@ struct EnforceNotMet : public std::exception {
 #if defined(__CUDA_ARCH__)
 // For cuda, the assertions can affect performance and it is therefore
 // recommended to disable them in production code
-// https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#assertion
+// https://docs.nvidia.com/cuda/cuda-c-programming-guide/indice.html#assertion
 #define PADDLE_ENFORCE(_IS_NOT_ERROR, __FORMAT, ...)                         \
   do {                                                                       \
     if (!(_IS_NOT_ERROR)) {                                                  \
@@ -303,7 +303,7 @@ struct EnforceNotMet : public std::exception {
   do {                                                               \
     if (UNLIKELY(nullptr == (__VAL))) {                              \
       __THROW_ERROR_INTERNAL__(                                      \
-          "%s\n  [Hint: " #__VAL " should not be null.]",            \
+          "%s\n  [Hint: " #__VAL " shold not be null.]",            \
           ::paddle::platform::ErrorSummary(__VA_ARGS__).ToString()); \
     }                                                                \
   } while (0)

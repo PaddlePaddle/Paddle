@@ -29,24 +29,24 @@ class ConvShiftOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should be not null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should be not null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold be not null.");
+    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) shold be not null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) shold be not null.");
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank should be 2.");
-    PADDLE_ENFORCE_EQ(y_dims.size(), 2, "Input(Y)'s rank should be 2.");
+    PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank shold be 2.");
+    PADDLE_ENFORCE_EQ(y_dims.size(), 2, "Input(Y)'s rank shold be 2.");
     if (ctx->IsRuntime() || (x_dims[0] > 0 && y_dims[0] > 0))
       PADDLE_ENFORCE_EQ(x_dims[0], y_dims[0],
-                        "The 1st dimension of Input(X) and Input(Y) should "
+                        "The 1st dimension of Input(X) and Input(Y) shold "
                         "be equal.");
     if (ctx->IsRuntime() || y_dims[1] > 0)
       PADDLE_ENFORCE_EQ(y_dims[1] % 2, 1,
-                        "The 2nd dimension of Input(Y) should be odd.");
+                        "The 2nd dimension of Input(Y) shold be odd.");
     if (ctx->IsRuntime() || (x_dims[1] > 0 && y_dims[1] > 0))
       PADDLE_ENFORCE_LE(y_dims[1], x_dims[1],
-                        "The 2nd dimension of Input(Y) should be less than or "
+                        "The 2nd dimension of Input(Y) shold be less than or "
                         "equal to the 2nd dimension of Input(X).");
     ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -58,10 +58,10 @@ class ConvShiftGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should be not null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold be not null.");
+    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) shold be not null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should be not null.");
+                   "Input(Out@GRAD) shold be not null.");
 
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
@@ -100,7 +100,7 @@ The equation is:
 
 $$Out[i] = \sum_{j=-(N-1)/2}^{(N-1)/2} X_{i+j} * Y_{j}$$
 
-where X's index is computed modulo M, and Y's index is computed modulo N.
+where X's indice is computed modulo M, and Y's indice is computed modulo N.
 
 Both inputs X and Y can carry LoD (Level of Details) information.
 However, the output only shares the LoD information with input X.
@@ -131,8 +131,8 @@ class ConvShiftKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
     for (size_t k = 0; k < batch_size; ++k) {
       for (size_t i = 0; i < x_width; ++i) {
         for (size_t j = 0; j < y_width; ++j) {
-          int index = (i + j - y_half_width + x_width) % x_width;
-          out(k, i) += x(k, index) * y(k, j);
+          int indice = (i + j - y_half_width + x_width) % x_width;
+          out(k, i) += x(k, indice) * y(k, j);
         }
       }
     }
@@ -170,8 +170,8 @@ class ConvShiftGradKernel<platform::CPUPlace, T>
       for (size_t k = 0; k < batch_size; ++k) {
         for (size_t i = 0; i < x_width; ++i) {
           for (size_t j = 0; j < y_width; ++j) {
-            int index = (i + j - y_half_width + x_width) % x_width;
-            dx(k, index) += dout(k, i) * y(k, j);
+            int indice = (i + j - y_half_width + x_width) % x_width;
+            dx(k, indice) += dout(k, i) * y(k, j);
           }
         }
       }
@@ -184,8 +184,8 @@ class ConvShiftGradKernel<platform::CPUPlace, T>
       for (size_t k = 0; k < batch_size; ++k) {
         for (size_t i = 0; i < x_width; ++i) {
           for (size_t j = 0; j < y_width; ++j) {
-            int index = (i + j - y_half_width + x_width) % x_width;
-            dy(k, j) += x(k, index) * dout(k, i);
+            int indice = (i + j - y_half_width + x_width) % x_width;
+            dy(k, j) += x(k, indice) * dout(k, i);
           }
         }
       }

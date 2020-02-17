@@ -52,7 +52,7 @@ class Distribution(object):
         Args:
             value (float, list, numpy.ndarray, Variable)
         Raises
-            ValueError: if one argument is Variable, all arguments should be Variable
+            ValueError: if one argument is Variable, all arguments shold be Variable
         """
         is_variable = False
         is_number = False
@@ -64,7 +64,7 @@ class Distribution(object):
 
         if is_variable and is_number:
             raise ValueError(
-                'if one argument is Variable, all arguments should be Variable')
+                'if one argument is Variable, all arguments shold be Variable')
 
         return is_variable
 

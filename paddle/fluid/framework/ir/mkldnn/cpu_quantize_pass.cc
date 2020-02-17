@@ -183,7 +183,7 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
     GET_IR_NODE_FROM_SUBGRAPH(conv_op, conv_op, conv_pattern);
     auto* conv_op_desc = conv_op->Op();
 
-    // skip if should not be quantized
+    // skip if shold not be quantized
     if (!conv_op_desc->GetAttrIfExists<bool>("use_quantizer")) return;
 
     GET_IR_NODE_FROM_SUBGRAPH(conv_filter, conv_filter, conv_pattern);
@@ -261,7 +261,7 @@ void CPUQuantizePass::QuantizeFc(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(fc, fc, fc_pattern);
     auto* fc_op_desc = fc->Op();
 
-    // skip if should not be quantized
+    // skip if shold not be quantized
     if (fc_op_desc->GetAttrIfExists<bool>("use_quantizer") != true ||
         fc_op_desc->GetAttrIfExists<bool>("use_mkldnn") != true)
       return;
@@ -317,7 +317,7 @@ void CPUQuantizePass::QuantizePool(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(pool_op, pool_op, pool_pattern);
     auto* pool_op_desc = pool_op->Op();
 
-    // skip if should not be quantized
+    // skip if shold not be quantized
     if (!pool_op_desc->GetAttrIfExists<bool>("use_quantizer")) return;
 
     GET_IR_NODE_FROM_SUBGRAPH(pool_input, pool_input, pool_pattern);
@@ -357,7 +357,7 @@ void CPUQuantizePass::QuantizeConcat(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(concat_op, concat_op, concat_pattern);
     auto* concat_op_desc = concat_op->Op();
 
-    // skip if should not be quantized
+    // skip if shold not be quantized
     if (!concat_op_desc->GetAttrIfExists<bool>("use_quantizer")) return;
 
     GET_IR_NODE_FROM_SUBGRAPH(concat_out, concat_out, concat_pattern);
@@ -397,7 +397,7 @@ void CPUQuantizePass::QuantizePriorBox(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(prior_box_op, prior_box_op, prior_box_pattern);
     auto* prior_box_op_desc = prior_box_op->Op();
 
-    // skip if should not be quantized
+    // skip if shold not be quantized
     if (!prior_box_op_desc->GetAttrIfExists<bool>("use_quantizer")) return;
 
     GET_IR_NODE_FROM_SUBGRAPH(prior_box_input, prior_box_input,
@@ -434,7 +434,7 @@ void CPUQuantizePass::QuantizeTranspose(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(transpose_op, transpose_op, transpose_pattern);
     auto* transpose_op_desc = transpose_op->Op();
 
-    // skip if should not be quantized
+    // skip if shold not be quantized
     if (!transpose_op_desc->GetAttrIfExists<bool>("use_quantizer")) {
       return;
     }
@@ -486,7 +486,7 @@ void CPUQuantizePass::QuantizeReshape(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(reshape_op, reshape_op, reshape_pattern);
     auto* reshape_op_desc = reshape_op->Op();
 
-    // skip if should not be quantized
+    // skip if shold not be quantized
     if (!reshape_op_desc->GetAttrIfExists<bool>("use_quantizer")) {
       return;
     }

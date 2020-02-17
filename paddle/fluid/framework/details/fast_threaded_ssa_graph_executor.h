@@ -40,7 +40,7 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
   const ir::Graph &Graph() const override;
 
  private:
-  // Note(zcd): the ThreadPool should be placed last so that ThreadPool should
+  // Note(zcd): the ThreadPool shold be placed last so that ThreadPool shold
   // be destroyed first.
   ExecutionStrategy strategy_;
   std::vector<Scope *> local_scopes_;

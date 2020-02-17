@@ -22,7 +22,7 @@ void TensorArrayBatchCleaner::CollectTensorArrays(framework::Scope *scope) {
   if (flag_) {
     for (auto &var_name : scope->LocalVarNames()) {
       auto *var = scope->FindVar(var_name);
-      // TODO(Superjomn) should avoid the case when a TensorArray is a
+      // TODO(Superjomn) shold avoid the case when a TensorArray is a
       // parameter.
       if (var_name == "feed" || var_name == "fetch") continue;
       if (var->IsType<framework::LoDTensorArray>()) {

@@ -35,7 +35,7 @@ void FusedEmbeddingFCLSTMOp::InferShape(
   PADDLE_ENFORCE(ctx->HasOutput("Cell"),
                  "Assert only one Output(Cell) of LSTM.");
   PADDLE_ENFORCE(ctx->HasInput("Ids"),
-                 "Input(Ids) of LookupTableOp should not be null.");
+                 "Input(Ids) of LookupTableOp shold not be null.");
 
   auto table_dims = ctx->GetInputDim("Embeddings");
   auto ids_dims = ctx->GetInputDim("Ids");
@@ -50,39 +50,39 @@ void FusedEmbeddingFCLSTMOp::InferShape(
 
   if (ctx->HasInput("H0")) {
     PADDLE_ENFORCE(ctx->HasInput("C0"),
-                   "Input(Cell) and Input(Hidden) of LSTM should not "
+                   "Input(Cell) and Input(Hidden) of LSTM shold not "
                    "be null at the same time.");
     auto h_dims = ctx->GetInputDim("H0");
     auto c_dims = ctx->GetInputDim("C0");
     PADDLE_ENFORCE(h_dims == c_dims,
                    "The dimension of Input(H0) and Input(C0) "
-                   "should be the same.");
+                   "shold be the same.");
   }
 
   auto embeddings_dims = ctx->GetInputDim("Embeddings");
   PADDLE_ENFORCE_EQ(embeddings_dims.size(), 2,
-                    "The rank of Input(Embeddings) should be 2.");
+                    "The rank of Input(Embeddings) shold be 2.");
 
   auto wh_dims = ctx->GetInputDim("WeightH");
   int frame_size = wh_dims[1] / 4;
   PADDLE_ENFORCE_EQ(wh_dims.size(), 2,
-                    "The rank of Input(WeightH) should be 2.");
+                    "The rank of Input(WeightH) shold be 2.");
   PADDLE_ENFORCE_EQ(wh_dims[0], frame_size,
                     "The first dimension of Input(WeightH) "
-                    "should be %d.",
+                    "shold be %d.",
                     frame_size);
   PADDLE_ENFORCE_EQ(wh_dims[1], 4 * frame_size,
                     "The second dimension of Input(WeightH) "
-                    "should be 4 * %d.",
+                    "shold be 4 * %d.",
                     frame_size);
 
   auto b_dims = ctx->GetInputDim("Bias");
-  PADDLE_ENFORCE_EQ(b_dims.size(), 2, "The rank of Input(Bias) should be 2.");
+  PADDLE_ENFORCE_EQ(b_dims.size(), 2, "The rank of Input(Bias) shold be 2.");
   PADDLE_ENFORCE_EQ(b_dims[0], 1,
-                    "The first dimension of Input(Bias) should be 1.");
+                    "The first dimension of Input(Bias) shold be 1.");
   PADDLE_ENFORCE_EQ(
       b_dims[1], (ctx->Attrs().Get<bool>("use_peepholes") ? 7 : 4) * frame_size,
-      "The second dimension of Input(Bias) should be "
+      "The second dimension of Input(Bias) shold be "
       "7 * %d if enable peepholes connection or"
       "4 * %d if disable peepholes",
       frame_size, frame_size);
@@ -134,7 +134,7 @@ void FusedEmbeddingFCLSTMOpMaker::Make() {
            " - Weight = {W_ch, W_ih, W_fh, W_oh}");
   AddInput("Bias",
            "(Tensor) the learnable weights. Almost same as LSTMOp"
-           "Note: we should add the fc bias into this (1x4D) in bias."
+           "Note: we shold add the fc bias into this (1x4D) in bias."
            "input-hidden bias weight and peephole connections weight if "
            "setting `use_peepholes` True. "
            "1. `use_peepholes = False` "

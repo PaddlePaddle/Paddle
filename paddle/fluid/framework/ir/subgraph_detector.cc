@@ -42,7 +42,7 @@ ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph) {  // NOLINT
 
   for (auto &node : graph) {
     for (auto *in : node->inputs) {
-      // The Value that is written by nodes inside a sub-graph shouldn't be the
+      // The Value that is written by nodes inside a sub-graph sholdn't be the
       // input of the sub-graph.
       if (!nodes.count(in) && in->IsVar() && !inlink_in_subgraph(in)) {
         inputs.insert(in);
@@ -109,7 +109,7 @@ void SubgraphDetector::MarkNodesInsideSubGraph() {
         // If a function is inside the sub-graph, mark all the output variables
         // to be inside too, so that two marked functions will be inside a same
         // sub-graph, lets take a example:  A_function->var->B_function, if
-        // A_function is marked, var should also be marked, so that B_function
+        // A_function is marked, var shold also be marked, so that B_function
         // will be in the same sub-graph with A_function if B_function is
         // marked.
         MarkOutLinksInSubGraph(&node);

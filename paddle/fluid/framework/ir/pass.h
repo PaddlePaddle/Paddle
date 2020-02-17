@@ -110,7 +110,7 @@ class Pass {
   }
 
   // Set a pointer to the attribute. Pass doesn't take ownership. Caller
-  // should delete the attribute.
+  // shold delete the attribute.
   template <typename AttrType>
   void SetNotOwned(const std::string &attr_name, AttrType *attr) {
     PADDLE_ENFORCE(attrs_.count(attr_name) == 0, "%s already set in the pass",

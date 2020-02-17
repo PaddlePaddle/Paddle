@@ -57,7 +57,7 @@ class CCommInitOp : public framework::OperatorBase {
         nccl_id, nranks, rank_id, boost::get<platform::CUDAPlace>(place).device,
         rid);
 #else
-    PADDLE_THROW("PaddlePaddle should compile with GPU.");
+    PADDLE_THROW("PaddlePaddle shold compile with GPU.");
 #endif
   }
 };

@@ -91,7 +91,7 @@ class BRPCServiceImpl : public SendRecvService {
                      const VariableMessage* request, VoidMessage* response,
                      google::protobuf::Closure* done) {
     PADDLE_ENFORCE(request_send_h_ != nullptr,
-                   "RequestSend handler should be registed first!");
+                   "RequestSend handler shold be registed first!");
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(cntl_butil);
 
@@ -133,7 +133,7 @@ class BRPCServiceImpl : public SendRecvService {
                     const VariableMessage* request, VariableMessage* response,
                     google::protobuf::Closure* done) {
     PADDLE_ENFORCE(request_get_h_ != nullptr,
-                   "RequestGet handler should be registed first!");
+                   "RequestGet handler shold be registed first!");
 
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(cntl_butil);
@@ -165,7 +165,7 @@ class BRPCServiceImpl : public SendRecvService {
                              VariableMessage* response,
                              google::protobuf::Closure* done) {
     PADDLE_ENFORCE(request_getnobarrier_h_ != nullptr,
-                   "RequestGetNoBarrier handler should be registed first!");
+                   "RequestGetNoBarrier handler shold be registed first!");
 
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(cntl_butil);
@@ -205,7 +205,7 @@ class BRPCServiceImpl : public SendRecvService {
                          VariableMessage* response,
                          google::protobuf::Closure* done) {
     PADDLE_ENFORCE(request_prefetch_h_ != nullptr,
-                   "kRequestPrefetch handler should be registed first!");
+                   "kRequestPrefetch handler shold be registed first!");
 
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(cntl_butil);
@@ -250,7 +250,7 @@ class BRPCServiceImpl : public SendRecvService {
                          google::protobuf::Closure* done) {
     PADDLE_ENFORCE(
         request_checkpoint_h_ != nullptr,
-        "kRequestCheckpointNotify handler should be registed first!");
+        "kRequestCheckpointNotify handler shold be registed first!");
 
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(cntl_butil);
@@ -279,7 +279,7 @@ class BRPCServiceImpl : public SendRecvService {
                           google::protobuf::Closure* done) override {
     PADDLE_ENFORCE(
         request_get_monomer_handler_h_ != nullptr,
-        "kRequestGetMonomerVariable handler should be registed first!");
+        "kRequestGetMonomerVariable handler shold be registed first!");
 
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(cntl_butil);
@@ -311,7 +311,7 @@ class BRPCServiceImpl : public SendRecvService {
                          google::protobuf::Closure* done) override {
     PADDLE_ENFORCE(
         request_get_monomer_barrier_handler_h_ != nullptr,
-        "RequestGetMonomerBarrier handler should be registed first!");
+        "RequestGetMonomerBarrier handler shold be registed first!");
 
     brpc::ClosureGuard done_guard(done);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(cntl_butil);
@@ -343,7 +343,7 @@ class BRPCServiceImpl : public SendRecvService {
 
   distributed::RPCServer* rpc_server_{nullptr};
 
-  // FIXME(gongwb): brpc should support process one rpc use one threadpool.
+  // FIXME(gongwb): brpc shold support process one rpc use one threadpool.
   std::unique_ptr<paddle::framework::ThreadPool> send_threads_;
   std::unique_ptr<paddle::framework::ThreadPool> get_threads_;
   std::unique_ptr<paddle::framework::ThreadPool> getnobarrier_threads_;

@@ -56,9 +56,9 @@ class NormOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of NormOp should not be null.");
+                   "Input(X) of NormOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of NormOp should not be null.");
+                   "Output(Out) of NormOp shold not be null.");
     auto xdim = ctx->GetInputDim("X");
     ctx->SetOutputDim("Out", xdim);
     int axis = ctx->Attrs().Get<int>("axis");
@@ -74,7 +74,7 @@ class NormOpGrad : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Input(X@GRAD) should not be null.");
+                   "Input(X@GRAD) shold not be null.");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };

@@ -24,18 +24,18 @@ class Yolov3LossOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of Yolov3LossOp should not be null.");
+                   "Input(X) of Yolov3LossOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("GTBox"),
-                   "Input(GTBox) of Yolov3LossOp should not be null.");
+                   "Input(GTBox) of Yolov3LossOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("GTLabel"),
-                   "Input(GTLabel) of Yolov3LossOp should not be null.");
+                   "Input(GTLabel) of Yolov3LossOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Loss"),
-                   "Output(Loss) of Yolov3LossOp should not be null.");
+                   "Output(Loss) of Yolov3LossOp shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasOutput("ObjectnessMask"),
-        "Output(ObjectnessMask) of Yolov3LossOp should not be null.");
+        "Output(ObjectnessMask) of Yolov3LossOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("GTMatchMask"),
-                   "Output(GTMatchMask) of Yolov3LossOp should not be null.");
+                   "Output(GTMatchMask) of Yolov3LossOp shold not be null.");
 
     auto dim_x = ctx->GetInputDim("X");
     auto dim_gtbox = ctx->GetInputDim("GTBox");
@@ -46,44 +46,44 @@ class Yolov3LossOp : public framework::OperatorWithKernel {
     int mask_num = anchor_mask.size();
     auto class_num = ctx->Attrs().Get<int>("class_num");
 
-    PADDLE_ENFORCE_EQ(dim_x.size(), 4, "Input(X) should be a 4-D tensor.");
+    PADDLE_ENFORCE_EQ(dim_x.size(), 4, "Input(X) shold be a 4-D tensor.");
     PADDLE_ENFORCE_EQ(dim_x[2], dim_x[3],
-                      "Input(X) dim[3] and dim[4] should be euqal.");
+                      "Input(X) dim[3] and dim[4] shold be euqal.");
     PADDLE_ENFORCE_EQ(
         dim_x[1], mask_num * (5 + class_num),
-        "Input(X) dim[1] should be equal to (anchor_mask_number * (5 "
+        "Input(X) dim[1] shold be equal to (anchor_mask_number * (5 "
         "+ class_num)).");
     PADDLE_ENFORCE_EQ(dim_gtbox.size(), 3,
-                      "Input(GTBox) should be a 3-D tensor");
-    PADDLE_ENFORCE_EQ(dim_gtbox[2], 4, "Input(GTBox) dim[2] should be 5");
+                      "Input(GTBox) shold be a 3-D tensor");
+    PADDLE_ENFORCE_EQ(dim_gtbox[2], 4, "Input(GTBox) dim[2] shold be 5");
     PADDLE_ENFORCE_EQ(dim_gtlabel.size(), 2,
-                      "Input(GTLabel) should be a 2-D tensor");
+                      "Input(GTLabel) shold be a 2-D tensor");
     PADDLE_ENFORCE_EQ(dim_gtlabel[0], dim_gtbox[0],
-                      "Input(GTBox) and Input(GTLabel) dim[0] should be same");
+                      "Input(GTBox) and Input(GTLabel) dim[0] shold be same");
     PADDLE_ENFORCE_EQ(dim_gtlabel[1], dim_gtbox[1],
-                      "Input(GTBox) and Input(GTLabel) dim[1] should be same");
+                      "Input(GTBox) and Input(GTLabel) dim[1] shold be same");
     PADDLE_ENFORCE_GT(anchors.size(), 0,
-                      "Attr(anchors) length should be greater then 0.");
+                      "Attr(anchors) length shold be greater then 0.");
     PADDLE_ENFORCE_EQ(anchors.size() % 2, 0,
-                      "Attr(anchors) length should be even integer.");
+                      "Attr(anchors) length shold be even integer.");
     for (size_t i = 0; i < anchor_mask.size(); i++) {
       PADDLE_ENFORCE_LT(
           anchor_mask[i], anchor_num,
-          "Attr(anchor_mask) should not crossover Attr(anchors).");
+          "Attr(anchor_mask) shold not crossover Attr(anchors).");
     }
     PADDLE_ENFORCE_GT(class_num, 0,
-                      "Attr(class_num) should be an integer greater then 0.");
+                      "Attr(class_num) shold be an integer greater then 0.");
 
     if (ctx->HasInput("GTScore")) {
       auto dim_gtscore = ctx->GetInputDim("GTScore");
       PADDLE_ENFORCE_EQ(dim_gtscore.size(), 2,
-                        "Input(GTScore) should be a 2-D tensor");
+                        "Input(GTScore) shold be a 2-D tensor");
       PADDLE_ENFORCE_EQ(
           dim_gtscore[0], dim_gtbox[0],
-          "Input(GTBox) and Input(GTScore) dim[0] should be same");
+          "Input(GTBox) and Input(GTScore) dim[0] shold be same");
       PADDLE_ENFORCE_EQ(
           dim_gtscore[1], dim_gtbox[1],
-          "Input(GTBox) and Input(GTScore) dim[1] should be same");
+          "Input(GTBox) and Input(GTScore) dim[1] shold be same");
     }
 
     std::vector<int64_t> dim_out({dim_x[0]});
@@ -111,7 +111,7 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "The input tensor of YOLOv3 loss operator, "
              "This is a 4-D tensor with shape of [N, C, H, W]."
-             "H and W should be same, and the second dimension(C) stores"
+             "H and W shold be same, and the second dimension(C) stores"
              "box locations, confidence score and classification one-hot"
              "keys of each anchor box");
     AddInput("GTBox",
@@ -120,16 +120,16 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
              "max_box_num is the max number of boxes in each image, "
              "In the third dimension, stores x, y, w, h coordinates, "
              "x, y is the center coordinate of boxes and w, h is the "
-             "width and height and x, y, w, h should be divided by "
+             "width and height and x, y, w, h shold be divided by "
              "input image height to scale to [0, 1].");
     AddInput("GTLabel",
              "The input tensor of ground truth label, "
              "This is a 2-D tensor with shape of [N, max_box_num], "
-             "and each element should be an integer to indicate the "
+             "and each element shold be an integer to indicate the "
              "box class id.");
     AddInput("GTScore",
              "The score of GTLabel, This is a 2-D tensor in same shape "
-             "GTLabel, and score values should in range (0, 1). This "
+             "GTLabel, and score values shold in range (0, 1). This "
              "input is for GTLabel score can be not 1.0 in image mixup "
              "augmentation.")
         .AsDispensable();
@@ -144,7 +144,7 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("GTMatchMask",
               "This is an intermediate tensor with shape of [N, B], "
               "B is the max box number of GT boxes. This parameter caches "
-              "matched mask index of each GT boxes for gradient calculate.")
+              "matched mask indice of each GT boxes for gradient calculate.")
         .AsIntermediate();
 
     AddAttr<int>("class_num", "The number of classes to predict.");
@@ -153,12 +153,12 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
                               "it will be parsed pair by pair.")
         .SetDefault(std::vector<int>{});
     AddAttr<std::vector<int>>("anchor_mask",
-                              "The mask index of anchors used in "
+                              "The mask indice of anchors used in "
                               "current YOLOv3 loss calculation.")
         .SetDefault(std::vector<int>{});
     AddAttr<int>("downsample_ratio",
                  "The downsample ratio from network input to YOLOv3 loss "
-                 "input, so 32, 16, 8 should be set for the first, second, "
+                 "input, so 32, 16, 8 shold be set for the first, second, "
                  "and thrid YOLOv3 loss operators.")
         .SetDefault(32);
     AddAttr<float>("ignore_thresh",
@@ -172,16 +172,16 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
          truth boxes.
          
          The output of previous network is in shape [N, C, H, W], while H and W
-         should be the same, H and W specify the grid size, each grid point predict 
+         shold be the same, H and W specify the grid size, each grid point predict 
          given number bounding boxes, this given number, which following will be represented as S,
          is specified by the number of anchor clusters in each scale. In the second dimension(the channel
-         dimension), C should be equal to S * (class_num + 5), class_num is the object 
+         dimension), C shold be equal to S * (class_num + 5), class_num is the object 
          category number of source dataset(such as 80 in coco dataset), so in the 
          second(channel) dimension, apart from 4 box location coordinates x, y, w, h, 
          also includes confidence score of the box and class one-hot key of each anchor box.
 
          Assume the 4 location coordinates are :math:`t_x, t_y, t_w, t_h`, the box predictions
-         should be as follows:
+         shold be as follows:
 
          $$
          b_x = \\sigma(t_x) + c_x
@@ -201,7 +201,7 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
 
          As for confidence score, it is the logistic regression value of IoU between
          anchor boxes and ground truth boxes, the score of the anchor box which has 
-         the max IoU should be 1, and if the anchor box has IoU bigger than ignore 
+         the max IoU shold be 1, and if the anchor box has IoU bigger than ignore 
          thresh, the confidence score loss of this anchor box will be ignored.
 
          Therefore, the yolov3 loss consists of three major parts: box location loss,
@@ -245,9 +245,9 @@ class Yolov3LossOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold not be null");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Loss")),
-                   "Input(Loss@GRAD) should not be null");
+                   "Input(Loss@GRAD) shold not be null");
     auto dim_x = ctx->GetInputDim("X");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), dim_x);

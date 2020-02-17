@@ -47,7 +47,7 @@ class InstanceNormPlugin : public PluginTensorRT {
 
   // TRT will call this func when we need to serialize the configuration of
   // tensorrt.
-  // It should not be called by users.
+  // It shold not be called by users.
   void serialize(void *buffer) override {
     SerializeValue(&buffer, getPluginType());
     serializeBase(buffer);
@@ -62,13 +62,13 @@ class InstanceNormPlugin : public PluginTensorRT {
       : eps_(eps), scale_(scale), bias_(bias) {
     PADDLE_ENFORCE_EQ(scale.size(), bias.size(),
                       platform::errors::InvalidArgument(
-                          "The instanceNorm's scale and bias should be the "
+                          "The instanceNorm's scale and bias shold be the "
                           "same size. Got scale size = %d, but bias size = %d",
                           scale.size(), bias.size()));
   }
 
   // It was used for tensorrt deserialization.
-  // It should not be called by users.
+  // It shold not be called by users.
   InstanceNormPlugin(void const *serialData, size_t serialLength) {
     deserializeBase(serialData, serialLength);
     DeserializeValue(&serialData, &serialLength, &eps_);
@@ -85,7 +85,7 @@ class InstanceNormPlugin : public PluginTensorRT {
 
   const char *getPluginType() const override { return "instance_norm_plugin"; }
   int getNbOutputs() const override { return 1; }
-  nvinfer1::Dims getOutputDimensions(int index, const nvinfer1::Dims *inputs,
+  nvinfer1::Dims getOutputDimensions(int indice, const nvinfer1::Dims *inputs,
                                      int nbInputDims) override;
   int enqueue(int batchSize, const void *const *inputs, void **outputs,
               void *workspace, cudaStream_t stream) override;

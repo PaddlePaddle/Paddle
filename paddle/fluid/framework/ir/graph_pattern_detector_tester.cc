@@ -175,7 +175,7 @@ TEST(GraphPatternDetector, IntermediateCheck) {
 
   // o2->v2->o3
   // o2->v2->o4
-  // check o2+o3 fuse, should fail because v2 also link to o4.
+  // check o2+o3 fuse, shold fail because v2 also link to o4.
   GraphPatternDetector detector;
   auto* op2 = detector.mutable_pattern()->NewNode(
       [](Node* x) { return x && x->IsOp() && x->Name() == "op2"; }, "op2");

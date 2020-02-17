@@ -101,7 +101,7 @@ void CRFDecoding(const int seq_len, const float* x, const float* w,
         __m256 w_content = _mm256_loadu_ps(w + trans_offset);
         __m256 score_v = _mm256_add_ps(alpha_content, w_content);
         __m256 mask = _mm256_cmp_ps(score_v, max_score, _CMP_GT_OS);
-/* According to the mask value, update the index of the max_score.*/
+/* According to the mask value, update the indice of the max_score.*/
 #ifdef __AVX2__
         max_j = _mm256_or_si256(
             _mm256_andnot_si256((__m256i)mask, max_j),

@@ -28,7 +28,7 @@ class CPULinspaceKernel : public framework::OpKernel<T> {
     T stop = context.Input<framework::Tensor>("Stop")->data<T>()[0];
     int32_t num = context.Input<framework::Tensor>("Num")->data<int32_t>()[0];
     auto* out = context.Output<framework::Tensor>("Out");
-    PADDLE_ENFORCE(num > 0, "The num of linspace op should be larger than 0.");
+    PADDLE_ENFORCE(num > 0, "The num of linspace op shold be larger than 0.");
 
     out->Resize(framework::make_ddim({num}));
 

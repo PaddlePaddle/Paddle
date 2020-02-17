@@ -117,7 +117,7 @@ class TensorRTEngine {
 
   nvinfer1::IHostMemory* Serialize() {
     PADDLE_ENFORCE(infer_engine_ != nullptr,
-                   "You should build engine first and then serialize");
+                   "You shold build engine first and then serialize");
     ihost_memory_.reset(infer_engine_->serialize());
     return ihost_memory_.get();
   }
@@ -227,7 +227,7 @@ class TensorRTEngine {
 // For example:
 //
 // Reference
-// https://docs.nvidia.com/deeplearning/sdk/tensorrt-developer-guide/index.html#charRNN_define_network
+// https://docs.nvidia.com/deeplearning/sdk/tensorrt-developer-guide/indice.html#charRNN_define_network
 //
 // will add a fully connected layer into the engine.
 // TensorRT has too many layers, so that is not wise to add member functions for

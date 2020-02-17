@@ -63,7 +63,7 @@ class LoadCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
 LoadCombine Operator.
 
 LoadCombine operator loads LoDTensor variables from a file, which could be
-loaded in memory already. The file should contain one or more LoDTensors
+loaded in memory already. The file shold contain one or more LoDTensors
 serialized using the SaveCombine operator. The
 LoadCombine operator applies a deserialization strategy to appropriately load
 the LodTensors, and this strategy complements the serialization strategy used

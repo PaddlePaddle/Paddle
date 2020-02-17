@@ -162,7 +162,7 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
           framework::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
       PADDLE_ENFORCE_EQ(d_table_value->dims(), d_output_dims_2d,
                         "ShapeError: The shape of lookup_table@Grad and "
-                        "output@Grad should be same. "
+                        "output@Grad shold be same. "
                         "But received lookup_table@Grad's shape = [%s], "
                         "output@Grad's shape = [%s].",
                         d_table_value->dims(), d_output_dims_2d);

@@ -22,9 +22,9 @@ from op_test import OpTest
 def Levenshtein(hyp, ref):
     """ Compute the Levenshtein distance between two strings.
 
-    :param hyp: hypothesis string in index
+    :param hyp: hypothesis string in indice
     :type hyp: list
-    :param ref: reference string in index
+    :param ref: reference string in indice
     :type ref: list
     """
     m = len(hyp)

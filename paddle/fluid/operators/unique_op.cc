@@ -23,14 +23,14 @@ class UniqueOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of UniqueOp should not be null.");
+                   "Input(X) of UniqueOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of UniqueOp should not be null.");
+                   "Output(Out) of UniqueOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Index"),
-                   "Output(Index) of UniqueOp should not be null.");
+                   "Output(Index) of UniqueOp shold not be null.");
 
     auto in_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE(in_dims.size() == 1, "Input(X) should be a vector.");
+    PADDLE_ENFORCE(in_dims.size() == 1, "Input(X) shold be a vector.");
 
     ctx->SetOutputDim("Out", {-1});
     ctx->SetOutputDim("Index", in_dims);
@@ -48,14 +48,14 @@ class UniqueOp : public framework::OperatorWithKernel {
 class UniqueOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "Input tensor. It should be a 1-D tensor.");
-    AddAttr<int>("dtype", "data type for output index");
+    AddInput("X", "Input tensor. It shold be a 1-D tensor.");
+    AddAttr<int>("dtype", "data type for output indice");
     AddOutput("Out", "A unique subsequence for input tensor.");
     AddOutput("Index",
-              "An index tensor pointing to unique subsequence, which has "
+              "An indice tensor pointing to unique subsequence, which has "
               "identical shape with input tensor and int64 dtype.");
     AddComment(R"DOC(
-    Return a unique subsequence for 1-D input tensor, and an index tensor pointing to this unique subsequence
+    Return a unique subsequence for 1-D input tensor, and an indice tensor pointing to this unique subsequence
 )DOC");
   }
 };

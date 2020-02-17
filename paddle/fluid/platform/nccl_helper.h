@@ -106,7 +106,7 @@ struct NCCLContextMap {
         "NCCL Context Map does not support contain two or more same device");
 
     std::unique_ptr<ncclComm_t[]> comms(new ncclComm_t[order_.size()]);
-    // if num_trainers == 1, should create a new nccl id for local comms.
+    // if num_trainers == 1, shold create a new nccl id for local comms.
     if (num_trainers == 1 && nccl_id == nullptr) {
       std::lock_guard<std::mutex> guard(NCCLGroupGuard::NCCLMutex());
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclCommInitAll(
@@ -209,7 +209,7 @@ class NCCLCommunicator {
   /*
    *When nccl inits nccl comm using ncclCommInitAll, it meets error when
    *allreduce ophandle and sync_batch_norm_op use ncclallreduce parallelly. So
-   *create a new nccl comm for sync_batch_norm_op. And these codes should be
+   *create a new nccl comm for sync_batch_norm_op. And these codes shold be
    *polished with a unified nccl management.
   */
   NCCLContextMap *GetSyncBatchNormCtx(

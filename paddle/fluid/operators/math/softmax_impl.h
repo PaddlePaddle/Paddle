@@ -59,7 +59,7 @@ void SoftmaxEigen(const DeviceContext& context, const int axis_dim,
   Eigen::DSizes<int, 2> one_axis(1, axis_dim);
   Eigen::DSizes<int, 3> batch_axis_remain(batch_size, axis_dim, num_remain);
 
-  // For numerical stability, logits should be shifted by maximum number along
+  // For numerical stability, logits shold be shifted by maximum number along
   // axis, calculate shifted_logits into softmax tensor for memory reuse.
   if (num_remain == 1) {
     // axis == -1, axis and class in same dimension, calculate along
@@ -72,7 +72,7 @@ void SoftmaxEigen(const DeviceContext& context, const int axis_dim,
                                                   .unaryExpr(ValueClip<T>());
   } else {
     // axis != -1, class dimension split into (axis, remain), max and sum
-    // should be calculated along axis dimension
+    // shold be calculated along axis dimension
     softmax.device(*context.eigen_device()) =
         (logits.reshape(batch_axis_remain) -
          logits.reshape(batch_axis_remain)

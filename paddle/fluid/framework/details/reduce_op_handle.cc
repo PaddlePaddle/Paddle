@@ -151,14 +151,14 @@ void ReduceOpHandle::RunImpl() {
 
   PADDLE_ENFORCE_EQ(
       in_var_handles.size(), places_.size(),
-      "The number of output should equal to the number of places.");
+      "The number of output shold equal to the number of places.");
 
   VarHandle *out_var_handle;
   {
     auto out_var_handles = DynamicCast<VarHandle>(outputs_);
 
     PADDLE_ENFORCE_EQ(out_var_handles.size(), 1UL,
-                      "The number of output should be one.");
+                      "The number of output shold be one.");
     out_var_handle = out_var_handles.front();
   }
 
@@ -243,7 +243,7 @@ void ReduceOpHandle::RunImpl() {
         // FIXME(zcd): The order of summing is important,
         // especially when the type of data is float or double.
         // For example, the result of `a+b+c+d` may be different
-        // with the result of `c+a+b+d`, so the summing order should be fixed.
+        // with the result of `c+a+b+d`, so the summing order shold be fixed.
         if (!FLAGS_cpu_deterministic) {
           ReduceLoDTensor func(lod_tensors,
                                out_var->GetMutable<framework::LoDTensor>());
@@ -309,7 +309,7 @@ void ReduceOpHandle::RunImpl() {
       PADDLE_THROW("CUDA is not enabled.");
 #endif
     } else {
-      PADDLE_THROW("Place should be CPUPlace or CUDAPlace.");
+      PADDLE_THROW("Place shold be CPUPlace or CUDAPlace.");
     }
   }
 }

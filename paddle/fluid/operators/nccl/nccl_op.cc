@@ -39,7 +39,7 @@ class NCCLInitOp : public framework::OperatorBase {
                             "Can not find variable '%s' in the scope.", name);
     // A parallel do may not use all the gpus. For example, the batch size is 7
     // in the last batch while we have 8 gpu. In this case, parallel_do will
-    // create 7 parallel scopes, so should ncclInitOp create 7 gpu peers
+    // create 7 parallel scopes, so shold ncclInitOp create 7 gpu peers
     auto &parallel_scopes = scope.FindVar(Input(kParallelScopes))
                                 ->Get<std::vector<framework::Scope *>>();
     std::vector<int> gpus(parallel_scopes.size());
@@ -94,12 +94,12 @@ class NCCLAllReduceOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   " Input(X) of AllReduce op input should not be NULL");
+                   " Input(X) of AllReduce op input shold not be NULL");
     PADDLE_ENFORCE(
         ctx->HasInput("Communicator"),
-        " Input(Communicator) of AllReduce op input should not be NULL");
+        " Input(Communicator) of AllReduce op input shold not be NULL");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   " Output(Out) of AllReduce op output should not be NULL");
+                   " Output(Out) of AllReduce op output shold not be NULL");
     std::string reduction = ctx->Attrs().Get<std::string>("reduction");
     PADDLE_ENFORCE((reduction == "ncclSum" || reduction == "ncclProd" ||
                     reduction == "ncclMin" || reduction == "ncclMax"),
@@ -139,12 +139,12 @@ class NCCLReduceOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   " Input(X) of Reduce op input should not be NULL");
+                   " Input(X) of Reduce op input shold not be NULL");
     PADDLE_ENFORCE(
         ctx->HasInput("Communicator"),
-        " Input(Communicator) of Reduce op input should not be NULL");
+        " Input(Communicator) of Reduce op input shold not be NULL");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   " Input(X) of Reduce op input should not be NULL");
+                   " Input(X) of Reduce op input shold not be NULL");
 
     std::string reduction = ctx->Attrs().Get<std::string>("reduction");
     PADDLE_ENFORCE((reduction == "ncclSum" || reduction == "ncclProd" ||
@@ -190,11 +190,11 @@ class NCCLBcastOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   " Input(X) of Bcast op input should not be NULL");
+                   " Input(X) of Bcast op input shold not be NULL");
     PADDLE_ENFORCE(ctx->HasInput("Communicator"),
-                   " Input(Communicator) of Bcast op input should not be NULL");
+                   " Input(Communicator) of Bcast op input shold not be NULL");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   " Output(Out) of Bcast op output should not be NULL");
+                   " Output(Out) of Bcast op output shold not be NULL");
 
     int root = ctx->Attrs().Get<int>("root");
     PADDLE_ENFORCE(root != platform::kInvalidGPUId, "Bcast root must be set.");

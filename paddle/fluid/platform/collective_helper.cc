@@ -128,7 +128,7 @@ void NCCLCommContext::CreateAllNCCLComms(const std::vector<int>& dev_ids,
 }
 
 void NCCLCommContext::ReleaseNCCLComms() {
-  // CUDADeviceContext maintain the lifetime of nccl_comm_t, so we should not
+  // CUDADeviceContext maintain the lifetime of nccl_comm_t, so we shold not
   // destroy nccl_comm_t explicitly. Please refer to
   // platform::CUDADeviceContext::~CUDADeviceContext()
   for (auto& p : comm_map_) {

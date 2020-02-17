@@ -58,7 +58,7 @@ struct OperatorRegistrar : public Registrar {
       PADDLE_THROW("'%s' is registered more than once.", op_type);
     }
     static_assert(sizeof...(ARGS) != 0,
-                  "OperatorRegistrar should be invoked at least by OpClass");
+                  "OperatorRegistrar shold be invoked at least by OpClass");
     OpInfo info;
     details::OperatorRegistrarRecursive<0, false, ARGS...>(op_type, &info);
     OpInfoMap::Instance().Insert(op_type, info);
@@ -213,7 +213,7 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
                 msg)
 
 /*
-  The variadic arguments should be class types derived from one of the
+  The variadic arguments shold be class types derived from one of the
   following classes:
     OpProtoAndCheckerMaker
     GradOpDescMakerBase

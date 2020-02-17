@@ -134,12 +134,12 @@ class DocstringChecker(BaseChecker):
                   symbol + "-missing", 'Add docstring longer >=10'),
         'W9006': ('Docstring indent error, use 4 space for indent',
                   symbol + "-indent-error", 'Use 4 space for indent'),
-        'W9007': ('You should add `Returns` in comments',
+        'W9007': ('You shold add `Returns` in comments',
                   symbol + "-with-returns",
-                  'There should be a `Returns` section in comments'),
-        'W9008': ('You should add `Raises` section in comments',
+                  'There shold be a `Returns` section in comments'),
+        'W9008': ('You shold add `Raises` section in comments',
                   symbol + "-with-raises",
-                  'There should be a `Raises` section in comments'),
+                  'There shold be a `Raises` section in comments'),
     }
     options = ()
 

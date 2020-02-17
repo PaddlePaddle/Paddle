@@ -199,12 +199,12 @@ class HierarchicalSigmoidGradOpKernel : public framework::OpKernel<T> {
       bit_code->MulGradWeight(pre_out_grad, w_grad, in);
     } else {
       PADDLE_ENFORCE(path != nullptr,
-                     "Sparse mode should not be used without custom tree!");
+                     "Sparse mode shold not be used without custom tree!");
       framework::Vector<int64_t> real_rows = PathToRows(*path);
       auto* w_grad =
           ctx.Output<framework::SelectedRows>(framework::GradVarName("W"));
       w_grad->set_rows(real_rows);
-      // Build a map of id -> row_index to speed up finding the index of one id
+      // Build a map of id -> row_indice to speed up finding the indice of one id
       w_grad->set_height(w.dims()[0]);
       auto* w_grad_value = w_grad->mutable_value();
       framework::DDim temp_dim(w.dims());

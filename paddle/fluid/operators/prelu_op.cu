@@ -75,23 +75,23 @@ __global__ void PReluOpGradKernel(const T* x_ptr, const T* alpha_ptr,
                                   size_t channel_num, size_t plane_size,
                                   size_t spatial_size, size_t numel,
                                   PRELU_MODE mode) {
-  size_t index;
-  CUDA_KERNEL_LOOP(index, numel) {
+  size_t indice;
+  CUDA_KERNEL_LOOP(indice, numel) {
     T scale;
     if (mode == Element) {
-      size_t element_index = index % spatial_size;
-      scale = alpha_ptr[element_index];
+      size_t element_indice = indice % spatial_size;
+      scale = alpha_ptr[element_indice];
     } else if (mode == Channel) {
-      size_t temp = index / plane_size;
-      size_t channel_index = temp % channel_num;
-      scale = alpha_ptr[channel_index];
+      size_t temp = indice / plane_size;
+      size_t channel_indice = temp % channel_num;
+      scale = alpha_ptr[channel_indice];
     } else {
       scale = alpha_ptr[0];
     }
-    T x = x_ptr[index];
-    T dy = dy_ptr[index];
-    if (dx_ptr != nullptr) dx_ptr[index] = (x > 0) ? dy : scale * dy;
-    if (dalpha_ptr != nullptr) dalpha_ptr[index] = (x > 0) ? 0 : x * dy;
+    T x = x_ptr[indice];
+    T dy = dy_ptr[indice];
+    if (dx_ptr != nullptr) dx_ptr[indice] = (x > 0) ? dy : scale * dy;
+    if (dalpha_ptr != nullptr) dalpha_ptr[indice] = (x > 0) ? 0 : x * dy;
   }
 }
 

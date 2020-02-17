@@ -23,10 +23,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/feed_fetch_method.h"
 
 DEFINE_string(model_path, "", "Directory of the inference model.");
-DEFINE_string(data_file, "", "File of input index data.");
+DEFINE_string(data_file, "", "File of input indice data.");
 DEFINE_int32(repeat, 100, "Running the inference program repeat times");
 DEFINE_bool(prepare_vars, true, "Prepare variables before executor");
-DEFINE_int32(num_threads, 1, "Number of threads should be used");
+DEFINE_int32(num_threads, 1, "Number of threads shold be used");
 DECLARE_bool(use_mkldnn);
 DECLARE_int32(paddle_num_threads);
 
@@ -44,7 +44,7 @@ size_t DummyData(std::vector<paddle::framework::LoDTensor>* out) {
   return 1;
 }
 
-// Load the input word index data from file and save into LodTensor.
+// Load the input word indice data from file and save into LodTensor.
 // Return the size of words.
 size_t LoadData(std::vector<paddle::framework::LoDTensor>* out,
                 const std::string& filename) {

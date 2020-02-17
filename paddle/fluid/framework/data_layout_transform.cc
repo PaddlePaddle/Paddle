@@ -26,7 +26,7 @@ namespace framework {
 
 std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to) {
   PADDLE_ENFORCE_NE(from, to,
-                    "layout transform should transform different layout");
+                    "layout transform shold transform different layout");
   if (from == DataLayout::kNCHW && to == DataLayout::kNHWC) {
     return {0, 2, 3, 1};
   } else if (from == DataLayout::kNHWC && to == DataLayout::kNCHW) {
@@ -134,11 +134,11 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
                                     platform::Place place) {
   PADDLE_ENFORCE_NE(in.format(), MKLDNNMemoryFormat::undef,
                     platform::errors::InvalidArgument(
-                        "Input tensor format is invalid. Input tensor should "
+                        "Input tensor format is invalid. Input tensor shold "
                         "have specified memory format."));
   PADDLE_ENFORCE_NE(in.format(), MKLDNNMemoryFormat::any,
                     platform::errors::InvalidArgument(
-                        "Input tensor format is invalid. Input tensor should "
+                        "Input tensor format is invalid. Input tensor shold "
                         "have specified memory format."));
 
   // Set default as NCHW in case not specified

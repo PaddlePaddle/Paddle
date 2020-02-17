@@ -23,17 +23,17 @@ class UniqueWithCountsOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of UniqueWithCountsOp should not be null.");
+                   "Input(X) of UniqueWithCountsOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of UniqueWithCountsOp should not be null.");
+                   "Output(Out) of UniqueWithCountsOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Index"),
-                   "Output(Index) of UniqueWithCountsOp should not be null.");
+                   "Output(Index) of UniqueWithCountsOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Count"),
-                   "Output(Count) of UniqueWithCountsOp should not be null.");
+                   "Output(Count) of UniqueWithCountsOp shold not be null.");
 
     auto in_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE(in_dims.size() == 1,
-                   "The op of fluid.layers.unique_with_counts, Input(X) should "
+                   "The op of fluid.layers.unique_with_counts, Input(X) shold "
                    "be a vector.");
 
     ctx->SetOutputDim("Out", {-1});
@@ -53,17 +53,17 @@ class UniqueWithCountsOp : public framework::OperatorWithKernel {
 class UniqueWithCountsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "Input tensor. It should be a 1-D tensor.");
-    AddAttr<int>("dtype", "data type for output index");
+    AddInput("X", "Input tensor. It shold be a 1-D tensor.");
+    AddAttr<int>("dtype", "data type for output indice");
     AddOutput("Out", "A unique subsequence for input tensor.");
     AddOutput("Index",
-              "An index tensor pointing to unique subsequence, which has "
+              "An indice tensor pointing to unique subsequence, which has "
               "identical shape with input tensor and the data type is set by "
               "the attr `dtype`");
-    AddOutput("Count", "A subsequence for the count of unique index");
+    AddOutput("Count", "A subsequence for the count of unique indice");
     AddComment(R"DOC(
-    Return a unique subsequence for 1-D input tensor, index tensor pointing to this unique subsequence, 
-    and the subsequence for the count of unique index.
+    Return a unique subsequence for 1-D input tensor, indice tensor pointing to this unique subsequence, 
+    and the subsequence for the count of unique indice.
 )DOC");
   }
 };

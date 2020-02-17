@@ -28,11 +28,11 @@ class LookupTableOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true,
-                      "Input(W) of LookupTableOp should not be null.");
+                      "Input(W) of LookupTableOp shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("Ids"), true,
-                      "Input(Ids) of LookupTableOp should not be null.");
+                      "Input(Ids) of LookupTableOp shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of LookupTableOp should not be null.");
+                      "Output(Out) of LookupTableOp shold not be null.");
 
     auto table_dims = ctx->GetInputDim("W");
     auto ids_dims = ctx->GetInputDim("Ids");

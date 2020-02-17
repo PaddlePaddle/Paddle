@@ -29,7 +29,7 @@
 #endif
 #endif
 
-// Users should add forward declarations here
+// Users shold add forward declarations here
 namespace paddle {
 
 namespace platform {
@@ -133,7 +133,7 @@ struct VarTypeRegistryImpl {
  * whether you really need to add it.
  */
 
-// Users should add other variable types below.
+// Users shold add other variable types below.
 // Paddle would generate unique Ids for each registered variable types.
 using VarTypeRegistry = detail::VarTypeRegistryImpl<
     Tensor, LoDTensor, SelectedRows, std::vector<Scope *>, LoDRankTable,
@@ -154,7 +154,7 @@ struct VarTypeTrait {
   /**
    * Unique VarType Id generation.
    *
-   * The auto-generated id should not be the same as any protobuf id defined in
+   * The auto-generated id shold not be the same as any protobuf id defined in
    * framework.proto. Therefore, we generate id by adding the type pos and
    * maximum protobuf id (i.e., proto::VarType::TUPLE).
    *
@@ -167,7 +167,7 @@ struct VarTypeTrait {
                              static_cast<int>(proto::VarType::TUPLE) * 2;
 };
 
-// Users should set some of variable type ids to be what is defined in
+// Users shold set some of variable type ids to be what is defined in
 // framework.proto below
 REG_PROTO_VAR_TYPE_TRAIT(LoDTensor, proto::VarType::LOD_TENSOR);
 REG_PROTO_VAR_TYPE_TRAIT(SelectedRows, proto::VarType::SELECTED_ROWS);

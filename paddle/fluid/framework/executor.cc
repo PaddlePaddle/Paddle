@@ -217,9 +217,9 @@ static bool has_feed_operators(
   for (auto* op : block.AllOps()) {
     if (op->Type() == kFeedOpType) {
       feed_count++;
-      // The input variable's name of feed_op should be feed_holder_name.
+      // The input variable's name of feed_op shold be feed_holder_name.
       PADDLE_ENFORCE_EQ(op->Input("X")[0], feed_holder_name,
-                        "Input to feed op should be '%s'", feed_holder_name);
+                        "Input to feed op shold be '%s'", feed_holder_name);
       std::string feed_target_name = op->Output("Out")[0];
       PADDLE_ENFORCE(
           feed_targets.find(feed_target_name) != feed_targets.end(),
@@ -231,15 +231,15 @@ static bool has_feed_operators(
   if (feed_count > 0) {
     PADDLE_ENFORCE_EQ(
         feed_count, feed_targets.size(),
-        "The number of feed operators should match 'feed_targets'");
+        "The number of feed operators shold match 'feed_targets'");
 
     if (!feed_holder_name.empty()) {
-      // When feed operator are present, so should be feed_holder.
+      // When feed operator are present, so shold be feed_holder.
       auto var = block.FindVar(feed_holder_name);
-      PADDLE_ENFORCE_NOT_NULL(var, "Block should already have a '%s' variable",
+      PADDLE_ENFORCE_NOT_NULL(var, "Block shold already have a '%s' variable",
                               feed_holder_name);
       PADDLE_ENFORCE_EQ(var->GetType(), proto::VarType::FEED_MINIBATCH,
-                        "'%s' variable should be 'FEED_MINIBATCH' type",
+                        "'%s' variable shold be 'FEED_MINIBATCH' type",
                         feed_holder_name);
     }
   }
@@ -261,9 +261,9 @@ static bool has_fetch_operators(
   for (auto* op : block.AllOps()) {
     if (op->Type() == kFetchOpType) {
       fetch_count++;
-      // The output variable's name of fetch_op should be fetch_holder_name.
+      // The output variable's name of fetch_op shold be fetch_holder_name.
       PADDLE_ENFORCE_EQ(op->Output("Out")[0], fetch_holder_name,
-                        "Output of fetch op should be '%s'", fetch_holder_name);
+                        "Output of fetch op shold be '%s'", fetch_holder_name);
       std::string fetch_target_name = op->Input("X")[0];
       PADDLE_ENFORCE(
           fetch_targets.find(fetch_target_name) != fetch_targets.end(),
@@ -275,15 +275,15 @@ static bool has_fetch_operators(
   if (fetch_count > 0) {
     PADDLE_ENFORCE_EQ(
         fetch_count, fetch_targets.size(),
-        "The number of fetch operators should match 'fetch_targets'");
+        "The number of fetch operators shold match 'fetch_targets'");
 
     if (!fetch_holder_name.empty()) {
-      // When fetch operator are present, so should be fetch_holder.
+      // When fetch operator are present, so shold be fetch_holder.
       auto var = block.FindVar(fetch_holder_name);
-      PADDLE_ENFORCE_NOT_NULL(var, "Block should already have a '%s' variable",
+      PADDLE_ENFORCE_NOT_NULL(var, "Block shold already have a '%s' variable",
                               fetch_holder_name);
       PADDLE_ENFORCE_EQ(var->GetType(), proto::VarType::FETCH_LIST,
-                        "'%s' variable should be 'FETCH_LIST' type",
+                        "'%s' variable shold be 'FETCH_LIST' type",
                         fetch_holder_name);
     }
   }
@@ -390,7 +390,7 @@ std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
     bool force_disable_gc) {
   PADDLE_ENFORCE(
       skip_ref_cnt_vars.empty() || skip_ref_cnt_vars.size() == block_ids.size(),
-      "skip_ref_cnt_vars should be either empty or equals to block number %d",
+      "skip_ref_cnt_vars shold be either empty or equals to block number %d",
       block_ids.size());
   std::vector<std::shared_ptr<ExecutorPrepareContext>> result;
   size_t idx = 0;
@@ -459,10 +459,10 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     scope->DeleteScope(local_scope);
   } else {
     if (!keep_kids) {
-      // By default, we should delete all kid scopes after run executor because
+      // By default, we shold delete all kid scopes after run executor because
       // some operators may create local scope when running, such as while_op.
       // But when while_op also create a local executor to run it's sub block,
-      // the sub scopes it created should not be dropped immediately, because
+      // the sub scopes it created shold not be dropped immediately, because
       // while_grad_op will use some variables created during while_op run, so
       // we need to keep the kids and wait for the outer executor to drop them.
 
@@ -481,10 +481,10 @@ void Executor::RunPreparedContext(
 
   PADDLE_ENFORCE(
       has_feed_operators(global_block, *feed_targets, feed_holder_name),
-      "Program in ExecutorPrepareContext should has feed_ops.");
+      "Program in ExecutorPrepareContext shold has feed_ops.");
   PADDLE_ENFORCE(
       has_fetch_operators(global_block, *fetch_targets, fetch_holder_name),
-      "Program in the prepared context should has fetch_ops.");
+      "Program in the prepared context shold has fetch_ops.");
 
   // map the data of feed_targets to feed_holder
   for (auto* op : global_block.AllOps()) {

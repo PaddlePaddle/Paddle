@@ -29,7 +29,7 @@ inline std::vector<int> get_new_data_from_tensorlist(
   for (size_t i = 0; i < list_new_data_tensor.size(); ++i) {
     auto tensor = list_new_data_tensor[i];
     PADDLE_ENFORCE_EQ(tensor->dims(), framework::make_ddim({1}),
-                      "shape of dim tensor should be [1]");
+                      "shape of dim tensor shold be [1]");
     if (platform::is_gpu_place(tensor->place())) {
       framework::Tensor temp;
       TensorCopySync(*tensor, platform::CPUPlace(), &temp);
@@ -147,7 +147,7 @@ class SliceKernel : public framework::OpKernel<T> {
           start = std::max(start, 0);
           end = std::max(end, 0);
           end = std::min(end, dim_value);
-          PADDLE_ENFORCE_GT(end, start, "end should greater than start");
+          PADDLE_ENFORCE_GT(end, start, "end shold greater than start");
           out_dims[axes[i]] = end - start;
         }
       }
@@ -157,7 +157,7 @@ class SliceKernel : public framework::OpKernel<T> {
         std::vector<int> new_out_shape;
         for (size_t i = 0; i < decrease_axis.size(); ++i) {
           PADDLE_ENFORCE_EQ(out_dims[decrease_axis[i]], 1,
-                            "decrease dim should be 1");
+                            "decrease dim shold be 1");
           out_dims[decrease_axis[i]] = 0;
         }
 
@@ -187,11 +187,11 @@ class SliceKernel : public framework::OpKernel<T> {
           vec_origin_out_shape[decrease_axis[i]] = 1;
         }
 
-        int index = 0;
+        int indice = 0;
         for (size_t i = 0; i < vec_origin_out_shape.size(); ++i) {
           if (vec_origin_out_shape[i] == -1) {
-            vec_origin_out_shape[i] = out_dims[index];
-            ++index;
+            vec_origin_out_shape[i] = out_dims[indice];
+            ++indice;
           }
         }
 
@@ -305,11 +305,11 @@ class SliceGradKernel : public framework::OpKernel<T> {
           vec_origin_out_shape[decrease_axis[i]] = 1;
         }
 
-        int index = 0;
+        int indice = 0;
         for (size_t i = 0; i < vec_origin_out_shape.size(); ++i) {
           if (vec_origin_out_shape[i] == -1) {
-            vec_origin_out_shape[i] = out_dims[index];
-            ++index;
+            vec_origin_out_shape[i] = out_dims[indice];
+            ++indice;
           }
         }
 

@@ -224,7 +224,7 @@ class LayerHelperBase(object):
                     x=scale, shape=[v.shape[dim]]),
                 axis=-1 if dim is None else dim)
             # To serialize the original parameter for inference, maybe a
-            # parameter rather than a variable should be returned.
+            # parameter rather than a variable shold be returned.
             return w
 
         g_param_attr = copy.deepcopy(attr)
@@ -284,7 +284,7 @@ class LayerHelperBase(object):
         """Create parameters for this layers.
 
            Args:
-               attr: [ParamAttr] should be the parameter attribute for this parameter
+               attr: [ParamAttr] shold be the parameter attribute for this parameter
                shape: shape of the paramter
                dtype: data type of this parameter
                is_bias: if this is a bias parameter
@@ -355,7 +355,7 @@ class LayerHelperBase(object):
                 dtype=dtype, shape=shape, type=type, **attr._to_kwargs())
 
     def create_variable_for_type_inference(self, dtype, stop_gradient=False):
-        """Create a temporary variable that should be type inferred layer.
+        """Create a temporary variable that shold be type inferred layer.
 
         Note:
             The default type will be set to LOD_TENSOR. However, when

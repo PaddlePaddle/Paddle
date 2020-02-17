@@ -172,7 +172,7 @@ class DeformablePSROIPoolCPUKernel : public framework::OpKernel<T> {
 
     const int num_rois = rois->dims()[0];
     PADDLE_ENFORCE_EQ(num_rois, out->dims()[0],
-                      "number of rois should be same with number of output");
+                      "number of rois shold be same with number of output");
 
     framework::Tensor roi_batch_id_list;
     roi_batch_id_list.Resize({num_rois});
@@ -243,11 +243,11 @@ void DeformablePSROIPoolBackwardAccCPUKernel(
     const int group_height, const int group_width, const int part_height,
     const int part_width, const int num_classes, const int channels_each_class,
     const int batch_size, int* roi_batch_id_data, const LoDTensor* rois) {
-  for (int index = 0; index < count; index++) {
-    int pw = index % pooled_width;
-    int ph = (index / pooled_width) % pooled_height;
-    int ctop = (index / pooled_width / pooled_height) % output_dim;
-    int n = index / pooled_width / pooled_height / output_dim;
+  for (int indice = 0; indice < count; indice++) {
+    int pw = indice % pooled_width;
+    int ph = (indice / pooled_width) % pooled_height;
+    int ctop = (indice / pooled_width / pooled_height) % output_dim;
+    int n = indice / pooled_width / pooled_height / output_dim;
 
     //  location of roi on feature map
     const T* offset_bottom_rois = bottom_rois + n * 4;
@@ -301,11 +301,11 @@ void DeformablePSROIPoolBackwardAccCPUKernel(
     T hstart = static_cast<T>(ph) * bin_size_h + roi_start_h;
     hstart += trans_y * roi_height;
 
-    if (top_count[index] <= 0) {
+    if (top_count[indice] <= 0) {
       continue;
     }
 
-    T diff_val = top_diff[index] / top_count[index];
+    T diff_val = top_diff[indice] / top_count[indice];
     const T* offset_bottom_data =
         bottom_data + roi_batch_ind * channels * height * width;
     int gw = floor(static_cast<T>(pw) * group_width / pooled_width);
@@ -335,22 +335,22 @@ void DeformablePSROIPoolBackwardAccCPUKernel(
         T q01 = (1 - dist_x) * dist_y;
         T q10 = dist_x * (1 - dist_y);
         T q11 = dist_x * dist_y;
-        int bottom_index_base = c * height * width;
+        int bottom_indice_base = c * height * width;
 
         //  compute gradient of input
         if (bottom_data_diff != NULL) {
           T* offset_bottom_data_diff_addr00 =
               bottom_data_diff + roi_batch_ind * channels * height * width +
-              bottom_index_base + y0 * width + x0;
+              bottom_indice_base + y0 * width + x0;
           T* offset_bottom_data_diff_addr01 =
               bottom_data_diff + roi_batch_ind * channels * height * width +
-              bottom_index_base + y1 * width + x0;
+              bottom_indice_base + y1 * width + x0;
           T* offset_bottom_data_diff_addr10 =
               bottom_data_diff + roi_batch_ind * channels * height * width +
-              bottom_index_base + y0 * width + x1;
+              bottom_indice_base + y0 * width + x1;
           T* offset_bottom_data_diff_addr11 =
               bottom_data_diff + roi_batch_ind * channels * height * width +
-              bottom_index_base + y1 * width + x1;
+              bottom_indice_base + y1 * width + x1;
           *offset_bottom_data_diff_addr00 =
               *offset_bottom_data_diff_addr00 + q00 * diff_val;
           *offset_bottom_data_diff_addr01 =
@@ -366,10 +366,10 @@ void DeformablePSROIPoolBackwardAccCPUKernel(
           continue;
         }
 
-        T u00 = offset_bottom_data[bottom_index_base + y0 * width + x0];
-        T u01 = offset_bottom_data[bottom_index_base + y1 * width + x0];
-        T u10 = offset_bottom_data[bottom_index_base + y0 * width + x1];
-        T u11 = offset_bottom_data[bottom_index_base + y1 * width + x1];
+        T u00 = offset_bottom_data[bottom_indice_base + y0 * width + x0];
+        T u01 = offset_bottom_data[bottom_indice_base + y1 * width + x0];
+        T u10 = offset_bottom_data[bottom_indice_base + y0 * width + x1];
+        T u11 = offset_bottom_data[bottom_indice_base + y1 * width + x1];
 
         T diff_x = (u11 * dist_y + u10 * (1 - dist_y) - u01 * dist_y -
                     u00 * (1 - dist_y)) *

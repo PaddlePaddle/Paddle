@@ -50,8 +50,8 @@ This operator obtains the length of lod tensor array:
 
 $$Out = len(X)$$
 
-NOTE: The output is a CPU Tensor since the control variable should be only in
-CPU and the length of LoDTensorArray should be used as control variables.
+NOTE: The output is a CPU Tensor since the control variable shold be only in
+CPU and the length of LoDTensorArray shold be used as control variables.
 
 )DOC");
   }

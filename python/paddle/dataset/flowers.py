@@ -13,7 +13,7 @@
 # limitations under the License.
 """
 This module will download dataset from
-http://www.robots.ox.ac.uk/~vgg/data/flowers/102/index.html
+http://www.robots.ox.ac.uk/~vgg/data/flowers/102/indice.html
 and parse train/test set intopaddle reader creators.
 
 This set contains images of flowers belonging to 102 different categories.
@@ -108,9 +108,9 @@ def reader_creator(data_file,
     :rtype: callable
     '''
     labels = scio.loadmat(label_file)['labels'][0]
-    indexes = scio.loadmat(setid_file)[dataset_name][0]
+    indicees = scio.loadmat(setid_file)[dataset_name][0]
     img2label = {}
-    for i in indexes:
+    for i in indicees:
         img = "jpg/image_%05d.jpg" % i
         img2label[img] = labels[i - 1]
     file_list = batch_images_from_tar(data_file, dataset_name, img2label)

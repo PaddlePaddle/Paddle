@@ -17,7 +17,7 @@ limitations under the License. */
 #include <cstdint>
 #include <cstring>
 #include <memory>
-#include <typeindex>
+#include <typeindice>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/data_layout.h"
@@ -122,10 +122,10 @@ class Tensor {
   /**
    * @brief  Return a sub-tensor of the given tensor.
    *
-   * @param[in] begin_idx   The index of the start row(inclusive) to slice.
-   *                        The index number begins from 0.
-   * @param[in] end_idx     The index of the end row(exclusive) to slice.
-   *                        The index number begins from 0.
+   * @param[in] begin_idx   The indice of the start row(inclusive) to slice.
+   *                        The indice number begins from 0.
+   * @param[in] end_idx     The indice of the end row(exclusive) to slice.
+   *                        The indice number begins from 0.
    */
   Tensor Slice(int64_t begin_idx, int64_t end_idx) const;
 
@@ -195,7 +195,7 @@ class Tensor {
    *       feature maps, the height.
    */
   // Fix me: here just change the default layout to kNCHW
-  // it doesn't fix the real issue, i.e. feeder should set up tensor layout
+  // it doesn't fix the real issue, i.e. feeder shold set up tensor layout
   // according to actual input data
   DataLayout layout_ = DataLayout::kNCHW;
 

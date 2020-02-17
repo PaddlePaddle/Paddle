@@ -62,7 +62,7 @@ void MatMulJitCode::genCode() {
       // last one, save
       if (k == k_ - 1) {
         for (int i = 0; i < groups[g]; ++i) {
-          // only rest save should be careful
+          // only rest save shold be careful
           if (rest != 0 && g == groups.size() - 1 && i == groups[g] - 1) {
             break;
           }
@@ -75,7 +75,7 @@ void MatMulJitCode::genCode() {
   }
 
   if (rest != 0) {
-    // below should refine with mask
+    // below shold refine with mask
     int reg_idx = groups.back() - 1;
     z_offset = (n_ - rest) * sizeof(float);
     int inner_block = 8;

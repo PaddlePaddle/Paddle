@@ -50,7 +50,7 @@ class OpDescCreationMethod(object):
     def __init__(self, op_proto):
         if not isinstance(op_proto, framework_pb2.OpProto):
             raise TypeError(
-                "Type of op_proto should be OpProto in PaddlePaddle.")
+                "Type of op_proto shold be OpProto in PaddlePaddle.")
         self.__op_proto__ = op_proto
 
     def __call__(self, *args, **kwargs):
@@ -188,13 +188,13 @@ class OperatorFactory(object):
             if len(args) != 0:
                 raise ValueError(
                     "Except the argument \"type\","
-                    "all of the other arguments should be keyword arguments.")
+                    "all of the other arguments shold be keyword arguments.")
             t = kwargs.pop("type")
         else:
             if len(args) != 1:
                 raise ValueError(
                     "Except the argument \"type\","
-                    "all of the other arguments should be keyword arguments.")
+                    "all of the other arguments shold be keyword arguments.")
             t = args[0]
 
         return self.get_op_info(t).method(**kwargs)

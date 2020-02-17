@@ -32,8 +32,8 @@ class ConvInceptionFusionOp : public framework::OperatorWithKernel {
     // 4 filters
     auto w_dims = ctx->GetInputsDim("Filter");
 
-    PADDLE_ENFORCE(in_dims.size(), 4, "Conv intput should be 4-D tensor.");
-    PADDLE_ENFORCE_EQ(w_dims.size(), 4, "There should be 4 filters");
+    PADDLE_ENFORCE(in_dims.size(), 4, "Conv intput shold be 4-D tensor.");
+    PADDLE_ENFORCE_EQ(w_dims.size(), 4, "There shold be 4 filters");
     PADDLE_ENFORCE_EQ(w_dims[0][1], in_dims[1]);
     PADDLE_ENFORCE_EQ(w_dims[1][1], in_dims[1]);
 
@@ -96,7 +96,7 @@ class ConvInceptionFusionOpMaker : public framework::OpProtoAndCheckerMaker {
                  "workspace is a section of GPU memory which will be "
                  "allocated/freed each time the operator runs, larger "
                  "workspace size can increase performance but also requires "
-                 "better hardware. This size should be chosen carefully.")
+                 "better hardware. This size shold be chosen carefully.")
         .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB());
     AddComment(R"DOC(
 )DOC");

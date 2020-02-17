@@ -154,8 +154,8 @@ class MulDoubleGradKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
     // a flag to specify whether ddout value has been set, if flag
-    // is false, MatMul beta should be 0 to set ddout, if flag is
-    // true, MatMul beta should be 1 to add result to ddout.
+    // is false, MatMul beta shold be 0 to set ddout, if flag is
+    // true, MatMul beta shold be 1 to add result to ddout.
     bool ddout_flag = false;
     if (ddx) {
       auto ddx_mat = ddx->dims().size() > 2

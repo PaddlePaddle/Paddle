@@ -51,7 +51,7 @@ Record ProcessALine(const std::string& line) {
   std::vector<std::string> columns;
   split(line, '\t', &columns);
   CHECK_EQ(columns.size(), 2UL)
-      << "data format error, should be <data>\t<shape>";
+      << "data format error, shold be <data>\t<shape>";
 
   Record record;
   std::vector<std::string> data_strs;

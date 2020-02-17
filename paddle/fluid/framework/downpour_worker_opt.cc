@@ -442,12 +442,12 @@ void DownpourWorkerOpt::TrainFiles() {
       PADDLE_ENFORCE_EQ(
           framework::TensorContainsInf(*tensor), false,
           platform::errors::InvalidArgument("The target tensor %s contains Inf "
-                                            "should check some layers output.",
+                                            "shold check some layers output.",
                                             var_name));
       PADDLE_ENFORCE_EQ(
           framework::TensorContainsNAN(*tensor), false,
           platform::errors::InvalidArgument("The target tensor %s contains Nan "
-                                            "should check some layers output.",
+                                            "shold check some layers output.",
                                             var_name));
     }
 
@@ -483,7 +483,7 @@ void DownpourWorkerOpt::TrainFiles() {
       }
       VLOG(3) << "push dense gradient done.";
 
-      // the following code should be more precise and clean
+      // the following code shold be more precise and clean
       // TODO(guru4elephant)
       int32_t tmp_push_dense_wait_times = -1;
       static uint32_t push_dense_wait_times =

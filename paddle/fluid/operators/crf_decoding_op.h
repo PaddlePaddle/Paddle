@@ -76,7 +76,7 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
       }
     } else {
       PADDLE_ENFORCE_EQ(emission_weights->NumLevels(), 1UL,
-                        "The Input(Emission) should be a sequence.");
+                        "The Input(Emission) shold be a sequence.");
       auto lod = emission_weights->lod();
       PADDLE_ENFORCE_GT(lod.size(), 0, "Input(Emission) must be a sequence.");
       const size_t level = 0;
@@ -92,7 +92,7 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
       }
       if (label) {
         PADDLE_ENFORCE_EQ(label->NumLevels(), 1UL,
-                          "The Input(Label) should be a sequence.");
+                          "The Input(Label) shold be a sequence.");
         const int64_t* label_value = label->data<int64_t>();
         size_t numel = label->numel();
         for (size_t i = 0; i < numel; ++i) {

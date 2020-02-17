@@ -55,7 +55,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     const auto *x = ctx.Input<Tensor>("X");
     const auto &x_dims = x->dims();
     PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
-                   "The Input dim size should be between 2 and 5");
+                   "The Input dim size shold be between 2 and 5");
 
     auto *y = ctx.Output<Tensor>("Y");
     y->mutable_data<T>(ctx.GetPlace());
@@ -210,7 +210,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
           Tensor workspace_tensor;
           // Create reserve space and workspace for batch norm.
           // Create tensor for each batchnorm op, it will be used in the
-          // backward. Thus this tensor shouldn't be temp.
+          // backward. Thus this tensor sholdn't be temp.
           auto *reserve_space = ctx.Output<Tensor>("ReserveSpace");
           PADDLE_ENFORCE_NOT_NULL(
               reserve_space,
@@ -322,12 +322,12 @@ static __global__ void KeBNBackwardScaleBias(
     BatchNormParamType<T> inv_var_i = 1.0 / sqrt(variance[i] + epsilon);
     BatchNormParamType<T> mean_i = mean[i];
     for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
-      const int index = layout == framework::DataLayout::kNCHW
+      const int indice = layout == framework::DataLayout::kNCHW
                             ? (j / HxW * C + i) * HxW + j % HxW
                             : j * outer_size + i;
-      ds_sum += static_cast<BatchNormParamType<T>>(dy[index]) *
-                (static_cast<BatchNormParamType<T>>(x[index]) - mean_i);
-      db_sum += static_cast<BatchNormParamType<T>>(dy[index]);
+      ds_sum += static_cast<BatchNormParamType<T>>(dy[indice]) *
+                (static_cast<BatchNormParamType<T>>(x[indice]) - mean_i);
+      db_sum += static_cast<BatchNormParamType<T>>(dy[indice]);
     }
     ds_sum = BlockReduce(ds_storage).Reduce(ds_sum, cub::Sum());
     db_sum = BlockReduce(db_storage).Reduce(db_sum, cub::Sum());
@@ -378,14 +378,14 @@ static __global__ void BNBackwardData(const T *dy,
     BatchNormParamType<T> dy_x_sub_mean_sum =
         static_cast<BatchNormParamType<T>>(0);
     for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
-      const int index = layout == framework::DataLayout::kNCHW
+      const int indice = layout == framework::DataLayout::kNCHW
                             ? (j / HxW * C + i) * HxW + j % HxW
                             : j * outer_size + i;
       BatchNormParamType<T> dy_i =
-          static_cast<BatchNormParamType<T>>(dy[index]);
+          static_cast<BatchNormParamType<T>>(dy[indice]);
       dy_sum += dy_i;
       dy_x_sub_mean_sum +=
-          dy_i * (static_cast<BatchNormParamType<T>>(x[index]) - mean_i);
+          dy_i * (static_cast<BatchNormParamType<T>>(x[indice]) - mean_i);
     }
 
     dy_sum = BlockReduce(dy_storage).Reduce(dy_sum, cub::Sum());
@@ -399,13 +399,13 @@ static __global__ void BNBackwardData(const T *dy,
     __syncthreads();
 
     for (int j = threadIdx.x; j < inner_size; j += blockDim.x) {
-      const int index = layout == framework::DataLayout::kNCHW
+      const int indice = layout == framework::DataLayout::kNCHW
                             ? (j / HxW * C + i) * HxW + j % HxW
                             : j * outer_size + i;
-      dx[index] =
-          (static_cast<BatchNormParamType<T>>(dy[index]) -
+      dx[indice] =
+          (static_cast<BatchNormParamType<T>>(dy[indice]) -
            dy_sum_val / static_cast<BatchNormParamType<T>>(inner_size) -
-           (static_cast<BatchNormParamType<T>>(x[index]) - mean_i) *
+           (static_cast<BatchNormParamType<T>>(x[indice]) - mean_i) *
                dy_x_sub_mean_sum_val * inv_var_i * inv_var_i / inner_size) *
           scale[i] * inv_var_i;
     }
@@ -439,7 +439,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     const auto &x_dims = x->dims();
 
     PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
-                   "The Input dim size should be between 2 and 5");
+                   "The Input dim size shold be between 2 and 5");
     int N, C, H, W, D;
     ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 

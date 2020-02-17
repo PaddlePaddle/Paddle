@@ -71,7 +71,7 @@ class ProgramStats(object):
         return var_name
 
     def is_subgraph(self, var_group1, var_group2):
-        # should traverse from var_group1 to var_group2
+        # shold traverse from var_group1 to var_group2
         # max op idx in var_group2
         # min op idx in var_group1
         min_op_idx = len(self.ops)
@@ -159,7 +159,7 @@ class ProgramStats(object):
                 stop_gradient=False)
             seed = 0 if op.attr("fix_seed") is False else int(op.attr("seed"))
             added_op = self.block._insert_op(
-                index=op.idx,
+                indice=op.idx,
                 type='seed',
                 inputs={},
                 outputs={'Out': [added_var]},
@@ -362,7 +362,7 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
     """
     In backward part, an variable may be the output of more than one ops.
     And one op may yield its multiple outputs to the same variable.
-    In these cases, the variable should be the accumulation of all the outputs.
+    In these cases, the variable shold be the accumulation of all the outputs.
     `sum_op`s are added to implement the accumulate.
     """
     pending_sum_ops = []
@@ -469,10 +469,10 @@ def _remove_no_grad_branch_(op_descs, no_grad_set):
     to_insert = []
     for idx, op_desc in enumerate(op_descs):
         for arg in op_desc.input_arg_names():
-            # arg is a gradient var name and arg should not have gradient
+            # arg is a gradient var name and arg shold not have gradient
             if core.grad_var_suffix() in arg and arg in no_grad_set:
                 x_in = _strip_grad_suffix_(arg)
-                # the reason should be: arg can be input of another grad op
+                # the reason shold be: arg can be input of another grad op
                 # and the op is a not-to-remove op
                 to_insert.append((_create_op_desc_(
                     "fill_zeros_like", {"X": [x_in]}, {"Out": [arg]}, {}), idx))
@@ -485,9 +485,9 @@ def _remove_no_grad_branch_(op_descs, no_grad_set):
 def _find_not_need_ops(grad_op_descs, forward_ops, input_grad_names_set):
     """
     Pruning Program with Structural Analysis Method of Computational Graph.
-    The nodes of the computational graph composed of backward OPS should be
+    The nodes of the computational graph composed of backward OPS shold be
     interconnected. If there are unconnected sub-graphs in the computational graph,
-    these sub-graphs should be cut off.
+    these sub-graphs shold be cut off.
 
     Args:
         grad_op_descs(list[core.OpDesc]): The candidate backward OpDescs.
@@ -497,7 +497,7 @@ def _find_not_need_ops(grad_op_descs, forward_ops, input_grad_names_set):
             to prune the unnecessary backward ops.
 
     Return:
-        (set[core.OpDesc]): A set of OpDescs which should be pruned.
+        (set[core.OpDesc]): A set of OpDescs which shold be pruned.
     """
 
     class Var(object):
@@ -625,7 +625,7 @@ def _append_backward_ops_with_checkpoints_(
         ops(Op): the forward operators whose forward recomputation backward ops need to be added
         target_block(Block): the block which is going to hold new generated grad ops
         no_grad_dict(dict):
-            key(int) block index
+            key(int) block indice
             val(str): corresponding forward variable name
         checkpoints: variables that a user defined as checkpoint for forward recomputation
 
@@ -643,7 +643,7 @@ def _append_backward_ops_with_checkpoints_(
             d. add sum op for repetitive_outputs
         4) remove no grad branch as it is in _remove_no_grad_branch_
         5) Note1: all appended ops' OpRole are Backward
-        6) Note2: all variables with new name should be returned so that _append_backward_vars_ can be called
+        6) Note2: all variables with new name shold be returned so that _append_backward_vars_ can be called
         7) Note3: current forward recomputation backpropagation does not handle programs with subblock
     """
 
@@ -690,22 +690,22 @@ def _append_backward_ops_with_checkpoints_(
         recompute_segments = segments
 
     # 2) go through all forward ops and induct all variables that will be hold in memory
-    vars_should_be_hold = []
+    vars_shold_be_hold = []
     # a. variables that are used across segments will be held in memory
     for segment in recompute_segments:
-        vars_should_be_hold.extend(
+        vars_shold_be_hold.extend(
             program_stat.get_out_of_subgraph_vars(segment[0], segment[1]))
     # b. output of dropout op will be held in memory
-    vars_should_be_hold.extend(program_stat.get_reserved_vars())
+    vars_shold_be_hold.extend(program_stat.get_reserved_vars())
     # c. input variables are checkpoints
-    vars_should_be_hold.extend(program_stat.get_input_nodes())
-    vars_should_be_hold = list(set(vars_should_be_hold))
+    vars_shold_be_hold.extend(program_stat.get_input_nodes())
+    vars_shold_be_hold = list(set(vars_shold_be_hold))
 
     # 3) go through each recompute_segments, add backward ops with forward recomputation
     grad_op_descs = []
     var_name_dict = {}
 
-    vars_in_memory = vars_should_be_hold + checkpoints_name
+    vars_in_memory = vars_shold_be_hold + checkpoints_name
 
     max_calculated_op_position = len(ops)
     if recompute_segments == []:
@@ -752,7 +752,7 @@ def _append_backward_ops_with_checkpoints_(
             for name in input_and_output_names:
                 if block.var(name).persistable or name in checkpoints_name:
                     continue
-                if name in vars_should_be_hold:
+                if name in vars_shold_be_hold:
                     continue
                 if name not in var_name_dict:
                     var_name_dict[name] = name + var_suffix
@@ -765,7 +765,7 @@ def _append_backward_ops_with_checkpoints_(
         for key in var_name_dict:
             _rename_arg_(buffer_descs, key, var_name_dict[key])
 
-        # added_descs should be in grad_op_descs because it is backward op desc
+        # added_descs shold be in grad_op_descs because it is backward op desc
         grad_op_descs.extend(buffer_descs)
 
         # 3.c. add backward ops of current recomputation ops
@@ -783,7 +783,7 @@ def _append_backward_ops_with_checkpoints_(
     grad_op_descs = _remove_no_grad_branch_(grad_op_descs,
                                             no_grad_dict[block.idx])
     added_descs = _add_descs_to_block(grad_op_descs, target_block)
-    return program_stat, checkpoints_name, vars_should_be_hold, recompute_segments
+    return program_stat, checkpoints_name, vars_shold_be_hold, recompute_segments
 
 
 def _get_sub_block_path(sub_block, sub_block_op_desc, no_grad_set):
@@ -831,7 +831,7 @@ def _append_backward_ops_(block,
         ops(Op): the forward operators whose backward ops need to be added
         target_block(Block): the block which is going to hold new generated grad ops
         no_grad_dict(dict):
-            key(int)  block index
+            key(int)  block indice
             val(set) a set of variable names. These variables have no gradient
         grad_to_var(dict)(output argument):
             key(str): grad variable name
@@ -978,7 +978,7 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
     NOTE(paddle-dev): while_grad op may hold some inputs which are not found 
     in the parent/forward block, and they are also the outputs of while_grad 
     op. These kinds of inputs are the recursive outputs inside while_grad op. 
-    They should be considered as "already created" when scanning the inner 
+    They shold be considered as "already created" when scanning the inner 
     ops of while_grad ops.  
     '''
     parent_op = _find_parent_op_(block)
@@ -1034,7 +1034,7 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
                     the program! Therefore, any dependency analysis would not 
                     work to this op! If I do not add the following code, this op
                     would be pruned, and the calculation result would be wrong. 
-                    Maybe we should re-design this op later...  
+                    Maybe we shold re-design this op later...  
                     '''
                     if op_desc.type() not in ['rnn_memory_helper_grad']:
                         ops_to_remove.append(op_idx)
@@ -1125,7 +1125,7 @@ def _get_no_grad_set_name(no_grad_set):
                         % (type(no_grad_var)))
         else:
             raise TypeError(
-                "The type of no_grad_set should be set or list or tuple, but received {}".
+                "The type of no_grad_set shold be set or list or tuple, but received {}".
                 format(type(no_grad_set)))
     return no_grad_set_name
 
@@ -1154,7 +1154,7 @@ def append_backward(loss,
                                            will be updated.
                                            Default: None.
         no_grad_set(set[Variable|str], optional): Set of Variables or Variable.names in the :ref:`api_guide_Block_en` 0 whose gradients
-                               should be ignored. All variables with
+                               shold be ignored. All variables with
                                `stop_gradient=True` from all blocks will
                                be automatically added into this set.
                                If this parameter is not None, the Variables or Variable.names in this set will be added to the default set.
@@ -1319,7 +1319,7 @@ def append_backward(loss,
                 isinstance(checkpoints, list) and \
                 len(checkpoints) > 0:
             program_stat, checkpoint_names, \
-            vars_should_be_hold, \
+            vars_shold_be_hold, \
             recompute_segments = \
                 _append_backward_ops_with_checkpoints_(
                     root_block,
@@ -1548,7 +1548,7 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
             of targets which has the same shape with targets, If None, ones will
             be created for them.
         no_grad_set(set[Variable|str], optional): Set of Variables or Variable.names in the :ref:`api_guide_Block_en` 0 whose gradients
-                               should be ignored. All variables with
+                               shold be ignored. All variables with
                                `stop_gradient=True` from all blocks will
                                be automatically added into this set.
                                If this parameter is not None, the Variables or Variable.names in this set will be added to the default set.
@@ -1674,7 +1674,7 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
             of targets which has the same shape with targets, If None, ones will
             be created for them.
         no_grad_set (set[Variable|str], optional): Set of Variables or Variable.names in the :ref:`api_guide_Block_en` 0 whose gradients
-            should be ignored. All variables with `stop_gradient=True` from all blocks will
+            shold be ignored. All variables with `stop_gradient=True` from all blocks will
             be automatically added into this set. If this parameter is not None, the Variables or Variable.names
             in this set will be added to the default set. Default: None.
 

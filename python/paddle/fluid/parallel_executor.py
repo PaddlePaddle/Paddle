@@ -72,7 +72,7 @@ class ParallelExecutor(object):
             please refer to :code:`fluid.BuildStrategy`.  The default is None.
         num_trainers(int): This parameter needs to be set in GPU distributed training.
             If the parameter value is greater than 1, NCCL will be initialized by multi-level
-            nodes. Each node should have the same number of GPUs. The default is 1.
+            nodes. Each node shold have the same number of GPUs. The default is 1.
         trainer_id(int): This parameter needs to be set when performing GPU distributed
             training. This parameter must be used with the num_trainers parameter.
             Trainer_id indicates the "rank" of the current node. The trainer_id starts
@@ -108,7 +108,7 @@ class ParallelExecutor(object):
           # NOTE: If you use CPU to run the program, you need
           # to specify the CPU_NUM, otherwise, fluid will use
           # all the number of the logic core as the CPU_NUM,
-          # in that case, the batch size of the input should be
+          # in that case, the batch size of the input shold be
           # greater than CPU_NUM, if not, the process will be
           # failed by an exception.
           if not use_cuda:
@@ -157,7 +157,7 @@ class ParallelExecutor(object):
         if build_strategy is None:
             build_strategy = BuildStrategy()
 
-        # TODO(paddle-dev): trainer_id and num_trainers should be removed from parameter list.
+        # TODO(paddle-dev): trainer_id and num_trainers shold be removed from parameter list.
         if num_trainers != 1 and build_strategy.num_trainers != num_trainers:
             sys.stderr.write(
                 'The value of build_strategy.num_trainers[%d] is overwritten '
@@ -191,7 +191,7 @@ class ParallelExecutor(object):
         if share_vars_from:
             assert isinstance(
                 share_vars_from, ParallelExecutor
-            ), "The share_vars_from should be ParallelExecutor."
+            ), "The share_vars_from shold be ParallelExecutor."
 
         self._compiled_program.with_data_parallel(
             loss_name=loss_name,
@@ -205,7 +205,7 @@ class ParallelExecutor(object):
 
     def run(self, fetch_list, feed=None, feed_dict=None, return_numpy=True):
         """
-        This interface is used to run the current model. It should be noted
+        This interface is used to run the current model. It shold be noted
         that the executor will execute all the operators in the Program,
         and will not prune some operators in the Program according to the
         fetch_list.
@@ -218,10 +218,10 @@ class ParallelExecutor(object):
                 training, the parameter feed can be dict or list type variable. If the
                 parameter type is dict, the data in the feed will be split and sent to
                 multiple devices (CPU/GPU), that is to say, the input data will be evenly
-                sent to different devices, so you should make sure the number of samples of
+                sent to different devices, so you shold make sure the number of samples of
                 the current mini-batch must be greater than the number of places;
                 if the parameter type is list, those data are copied directly to each device,
-                so the length of this list should be equal to the number of places.
+                so the length of this list shold be equal to the number of places.
                 The default is None.
             feed_dict: Alias for feed parameter, for backward compatibility.
                 This parameter has been deprecated. Default None.
@@ -242,8 +242,8 @@ class ParallelExecutor(object):
                sample number is 3, that is, [0, 1, 2], the sample number on GPU0 is 1,
                that is, [0], and the sample number on GPU1 is 2, that is, [1, 2].
                If the number of samples is less than the number of devices, the program will
-               throw an exception, so when running the model, you should make sure that the
-               number of samples of the last batch of the data set should be greater than the
+               throw an exception, so when running the model, you shold make sure that the
+               number of samples of the last batch of the data set shold be greater than the
                number of CPU cores or GPU cards, if it is less than, it is recommended that
                the batch be discarded.
             2. If the number of CPU cores or GPU cards available is greater than 1, the fetch
@@ -264,7 +264,7 @@ class ParallelExecutor(object):
               # NOTE: If you use CPU to run the program, you need
               # to specify the CPU_NUM, otherwise, fluid will use
               # all the number of the logic core as the CPU_NUM,
-              # in that case, the batch size of the input should be
+              # in that case, the batch size of the input shold be
               # greater than CPU_NUM, if not, the process will be
               # failed by an exception.
               if not use_cuda:
@@ -339,7 +339,7 @@ class ParallelExecutor(object):
               # NOTE: If you use CPU to run the program, you need
               # to specify the CPU_NUM, otherwise, fluid will use
               # all the number of the logic core as the CPU_NUM,
-              # in that case, the batch size of the input should be
+              # in that case, the batch size of the input shold be
               # greater than CPU_NUM, if not, the process will be
               # failed by an exception.
               if not use_cuda:
@@ -368,12 +368,12 @@ class ParallelExecutor(object):
         """
         assert isinstance(
             self._compiled_program._executor,
-            core.ParallelExecutor), "The Executor should be ParallelExecutor."
+            core.ParallelExecutor), "The Executor shold be ParallelExecutor."
         self._compiled_program._executor.drop_local_exe_scopes()
 
     # This API is used to check whether DropLocalExeScopes can work.
     def _need_create_local_exe_scopes(self):
         assert isinstance(
             self._compiled_program._executor,
-            core.ParallelExecutor), "The Executor should be ParallelExecutor."
+            core.ParallelExecutor), "The Executor shold be ParallelExecutor."
         return self._compiled_program._executor._need_create_local_exe_scopes()

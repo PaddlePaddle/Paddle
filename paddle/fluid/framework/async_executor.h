@@ -72,10 +72,10 @@ class AsyncExecutor {
                    const std::string& mode, const bool debug);
 
   // TODO(guru4elephant): make init server decoupled from executor
-  void InitServer(const std::string& dist_desc, int index);
+  void InitServer(const std::string& dist_desc, int indice);
   void InitWorker(const std::string& dist_desc,
                   const std::vector<uint64_t>& host_sign_list, int node_num,
-                  int index);
+                  int indice);
   uint64_t StartServer();
   void StopServer();
   void GatherServers(const std::vector<uint64_t>& host_sign_list, int node_num);

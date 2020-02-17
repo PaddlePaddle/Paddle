@@ -43,7 +43,7 @@ struct Chunk {
 // So we choose to use `std::list` and return an allocation instance, which
 // contains the list node iterator, then we can unify CPU/GPU code.
 //
-// To return an allocation is not a bad idea, since Tensor/Vector should holds
+// To return an allocation is not a bad idea, since Tensor/Vector shold holds
 // an allocation instead of raw pointer directly.
 using ChunkList = std::list<Chunk>;
 

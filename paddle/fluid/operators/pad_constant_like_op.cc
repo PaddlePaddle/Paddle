@@ -26,17 +26,17 @@ class PadConstantLikeOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of PadConstantLikeOp should not be null.");
+                   "Input(X) of PadConstantLikeOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Y"),
-                   "Input(Y) of PadConstantLikeOp should not be null.");
+                   "Input(Y) of PadConstantLikeOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of PadConstantLikeOp should not be null.");
+                   "Output(Out) of PadConstantLikeOp shold not be null.");
 
     auto x_dim = ctx->GetInputDim("X");
     auto y_dim = ctx->GetInputDim("Y");
 
     PADDLE_ENFORCE_EQ(x_dim.size(), y_dim.size(),
-                      "The dimension of X and Y should be the same.");
+                      "The dimension of X and Y shold be the same.");
 
     for (int i = 0; i < x_dim.size(); ++i) {
       if ((!ctx->IsRuntime()) && ((x_dim[i] == -1) || (y_dim[i] == -1))) {
@@ -67,10 +67,10 @@ class PadConstantLikeOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "The input of pad_constant_like op. "
-             "The input should be a k-D tensor(k > 0 and k < 7)");
+             "The input shold be a k-D tensor(k > 0 and k < 7)");
     AddInput("Y",
              "The input of pad_constant_like op. "
-             "The input should be a k-D tensor(k > 0 and k < 7)");
+             "The input shold be a k-D tensor(k > 0 and k < 7)");
     AddOutput("Out",
               "The output of pad_constant_like op. "
               "A tensor with the same shape as X.");
@@ -85,7 +85,7 @@ Pad input(Y) with a pad_value, the number of values padded to the edges of each
 axis is specified by the difference of the shape of X and Y.
 ((0, shape_x_0 - shape_y_0), ... (0, shape_x_n - shape_y_n)) unique pad widths for
 each axis.
-The input should be a k-D tensor(k > 0 and k < 7). As an example:
+The input shold be a k-D tensor(k > 0 and k < 7). As an example:
 
 case1:
     Given:
@@ -157,14 +157,14 @@ class PadConstantLikeOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) shold not be null");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
+                   "Input(Out@GRAD) shold not be null");
     auto y_dim = ctx->GetInputDim("Y");
     auto dout_dim = ctx->GetInputDim(framework::GradVarName("Out"));
 
     PADDLE_ENFORCE_EQ(dout_dim.size(), y_dim.size(),
-                      "The dimension of X and Y should be the same.");
+                      "The dimension of X and Y shold be the same.");
 
     auto y_grad_name = framework::GradVarName("Y");
     if (ctx->HasOutput(y_grad_name)) {

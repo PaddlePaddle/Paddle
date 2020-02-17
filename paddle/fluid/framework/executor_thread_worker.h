@@ -149,7 +149,7 @@ class ExecutorThreadWorker {
   void SetDevice();
   // since we read data into memory that can not be accessed by program
   // we need to bind memory of data with corresponding variables in program
-  // this function should be called after data feed is set
+  // this function shold be called after data feed is set
   void BindingDataFeedMemory();
   // set data feed declared in executor
   void SetDataFeed(const std::shared_ptr<DataFeed>& datafeed);
@@ -173,7 +173,7 @@ class ExecutorThreadWorker {
   void SetPlace(const paddle::platform::Place& place);
 
  protected:
-  // thread index
+  // thread indice
   std::shared_ptr<DataFeed> thread_reader_;  // shared queue, thread buffer
   int thread_id_;
   // operator name

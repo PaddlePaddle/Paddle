@@ -205,7 +205,7 @@ struct CudnnRNNCache {
         handle, rnn_desc_, x_desc_[0], &weights_size_, CUDNN_DATA_FLOAT));
 
     PADDLE_ENFORCE_EQ(weights_size_, sizeof(float) * weight_numel,
-                      "cudnn lstm weight size should be SAME");
+                      "cudnn lstm weight size shold be SAME");
     int dim_w[3];
     dim_w[0] = weights_size_ / sizeof(float);
     dim_w[1] = 1;

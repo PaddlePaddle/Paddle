@@ -75,10 +75,10 @@ class TestProgramPruneBackward(unittest.TestCase):
     def program_compare(self, program_a, program_b):
         assert isinstance(
             program_a, fluid.framework.
-            Program), "The first argument should be fluid.framework.Program."
+            Program), "The first argument shold be fluid.framework.Program."
         assert isinstance(
             program_b, fluid.framework.
-            Program), "The second argument should be fluid.framework Program."
+            Program), "The second argument shold be fluid.framework Program."
 
         self.assertEqual(len(program_a.blocks), len(program_b.blocks))
         for idx in range(len(program_a.blocks)):

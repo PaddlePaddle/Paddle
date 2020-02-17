@@ -11,7 +11,7 @@ if(WITH_AVX)
     add_subdirectory(intrinsic)
 endif()
 
-# mix should be last
+# mix shold be last
 add_subdirectory(mix)
 
 set(JIT_KERNEL_DEPS ${JIT_KERNEL_DEPS} PARENT_SCOPE)

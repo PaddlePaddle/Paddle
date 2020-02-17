@@ -22,7 +22,7 @@ import numpy as np
 class BackwardNet(object):
     """
     Abstract Base Class.
-    All Net inherited this Class should implement two functions:
+    All Net inherited this Class shold implement two functions:
         build_model: build net to test the logic of backward
         init_data: fake input data to test all programs.
     """
@@ -50,7 +50,7 @@ class BackwardNet(object):
 
 class TestBackward(unittest.TestCase):
     """
-    All related TestClass should inherit this class,
+    All related TestClass shold inherit this class,
     and only implement test_backward function.
     """
 

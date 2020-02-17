@@ -24,9 +24,9 @@ class SequenceSoftmaxOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SequenceSoftmaxOp should not be null.");
+                   "Input(X) of SequenceSoftmaxOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SequenceSoftmaxOp should not be null.");
+                   "Output(Out) of SequenceSoftmaxOp shold not be null.");
 
     ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -80,7 +80,7 @@ class SequenceSoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
 Sequence Softmax Operator.
 
 SequenceSoftmaxOp computes the softmax activation among all time-steps for each
-sequence. The dimension of each time-step should be 1. Thus, the shape of
+sequence. The dimension of each time-step shold be 1. Thus, the shape of
 input Tensor can be either [N, 1] or [N], where N is the sum of the length
 of all sequences.
 
@@ -109,19 +109,19 @@ class SequenceSoftmaxGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Out"),
-                   "Input(Out) of SequenceSoftmaxGradOp should not be null.");
+                   "Input(Out) of SequenceSoftmaxGradOp shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasInput(framework::GradVarName("Out")),
-        "Input(Out@GRAD) of SequenceSoftmaxGradOp should not be null.");
+        "Input(Out@GRAD) of SequenceSoftmaxGradOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SequenceSoftmaxOp should not be null.");
+                   "Input(X) of SequenceSoftmaxOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Output(X@GRAD) of SequenceSoftmaxOp should not be null.");
+                   "Output(X@GRAD) of SequenceSoftmaxOp shold not be null.");
 
     PADDLE_ENFORCE_EQ(
         ctx->GetInputDim("Out"),
         ctx->GetInputDim(framework::GradVarName("Out")),
-        "Input(Out) and Input(Out@GRAD) of SequenceSoftmaxGradOp should be of "
+        "Input(Out) and Input(Out@GRAD) of SequenceSoftmaxGradOp shold be of "
         "the same shape.");
 
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));

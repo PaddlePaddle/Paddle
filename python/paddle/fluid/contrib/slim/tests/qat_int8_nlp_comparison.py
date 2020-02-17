@@ -105,7 +105,7 @@ class QatInt8NLPComparisonTest(unittest.TestCase):
                             assert len(
                                 data
                             ) >= 2, "Size of data in the dataset is less than 2"
-                            # Shape is stored under index 0, while data under 1
+                            # Shape is stored under indice 0, while data under 1
                             shape = data[0].split()
                             shape.pop(0)
                             shape_np = np.array(shape).astype("int64")

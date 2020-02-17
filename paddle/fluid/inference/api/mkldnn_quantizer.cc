@@ -135,7 +135,7 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateSingleScale(
   PADDLE_ENFORCE(
       var_tensor.numel() > 0,
       "MkldnnQuantizer: LoDTensor of variable %s for quantization of op "
-      "%s of connection %s should not be empty.",
+      "%s of connection %s shold not be empty.",
       var_name, op_type_name, conn_name);
 
   switch (rule) {

@@ -54,9 +54,9 @@ class Evaluator(object):
     Args:
         name(str): The name of evaluator. such as, "accuracy". Used for generate
             temporary variable name.
-        main_program(Program, optional): The evaluator should be added to this
+        main_program(Program, optional): The evaluator shold be added to this
             main_program. Default default_main_program()
-        startup_program(Program, optional):The parameter should be added to this
+        startup_program(Program, optional):The parameter shold be added to this
             startup_program. Default default_startup_program()
 
     Attributes:
@@ -226,7 +226,7 @@ class EditDistance(Evaluator):
         input: the sequences predicted by network.
         label: the target sequences which must have same sequence count
         with input.
-        ignored_tokens(list of int): Tokens that should be removed before
+        ignored_tokens(list of int): Tokens that shold be removed before
         calculating edit distance.
 
     Examples:
@@ -314,7 +314,7 @@ class DetectionMAP(Evaluator):
     Args:
         input (Variable): The detection results, which is a LoDTensor with shape
             [M, 6]. The layout is [label, confidence, xmin, ymin, xmax, ymax].
-        gt_label (Variable): The ground truth label index, which is a LoDTensor
+        gt_label (Variable): The ground truth label indice, which is a LoDTensor
             with shape [N, 1].
         gt_box (Variable): The ground truth bounding box (bbox), which is a
             LoDTensor with shape [N, 4]. The layout is [xmin, ymin, xmax, ymax].
@@ -322,7 +322,7 @@ class DetectionMAP(Evaluator):
             bounding bbox, which can be a LoDTensor [N, 1] or not set. If None,
             it means all the ground truth labels are not difficult bbox.
         class_num (int): The class number.
-        background_label (int): The index of background label, the background
+        background_label (int): The indice of background label, the background
             label will be ignored. If set to -1, then all categories will be
             considered, 0 by default.
         overlap_threshold (float): The threshold for deciding true/false

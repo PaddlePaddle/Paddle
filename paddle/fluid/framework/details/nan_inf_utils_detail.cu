@@ -146,7 +146,7 @@ void TensorCheckerVisitor<platform::CUDADeviceContext>::apply(
       auto iter = op_var2gpu_str.find(op_var);
       PADDLE_ENFORCE_EQ(iter != op_var2gpu_str.end(), true,
                         platform::errors::PreconditionNotMet(
-                            "op_var=%s should successed insert into "
+                            "op_var=%s shold successed insert into "
                             "op_var2gpu_str, but now failed",
                             op_var));
 
@@ -159,7 +159,7 @@ void TensorCheckerVisitor<platform::CUDADeviceContext>::apply(
       auto iter = op_var2gpu_str.find(op_var);
       PADDLE_ENFORCE_EQ(iter != op_var2gpu_str.end(), true,
                         platform::errors::PreconditionNotMet(
-                            "op_var=%s should be in the op_var2gpu_str, but "
+                            "op_var=%s shold be in the op_var2gpu_str, but "
                             "now can't find it",
                             op_var));
       gpu_str_ptr = reinterpret_cast<char*>(iter->second->ptr());

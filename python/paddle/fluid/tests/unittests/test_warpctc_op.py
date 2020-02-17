@@ -192,7 +192,7 @@ class TestWarpCTCOp(OpTest):
             0.1, 1.0,
             [sum(self.logits_lod[0]), self.num_classes]).astype("float32")
         softmax = np.apply_along_axis(stable_softmax, 1, logits)
-        # labels should not be blank
+        # labels shold not be blank
         labels = np.random.randint(
             0,
             self.num_classes - 1, [sum(self.labels_lod[0]), 1],
@@ -258,7 +258,7 @@ class TestWarpCTCOpWithPadding(OpTest):
             0.1, 1.0,
             [sum(self.logits_length), self.num_classes]).astype("float32")
         softmax = np.apply_along_axis(stable_softmax, 1, logits)
-        # labels should not be blank
+        # labels shold not be blank
         labels = np.random.randint(
             0,
             self.num_classes - 1, [sum(self.labels_length), 1],

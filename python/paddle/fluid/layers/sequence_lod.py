@@ -98,7 +98,7 @@ def sequence_conv(input,
 
     Args:
         input (Variable): LoDTensor with shape :math:`(M, K)`, where M is the total time-step of mini-batch
-            and K is hidden_size of input. Only lod_level of 1 is supported. The data type should be float32 or
+            and K is hidden_size of input. Only lod_level of 1 is supported. The data type shold be float32 or
             float64.
         num_filters (int): the number of filters.
         filter_size (int): the height of filter. Specified filter width is not supported, the width is
@@ -110,7 +110,7 @@ def sequence_conv(input,
             input sequence may be shorter than :attr:`filter\_size`, which will cause the convolution
             result to not be computed correctly. These padding data will not be trainable or updated
             while training. Default: True.
-        padding_start (int): It is used to indicate the start index for padding the input
+        padding_start (int): It is used to indicate the start indice for padding the input
             sequence, which can be negative. The negative number means to pad
             :attr:`|padding_start|` time-steps of all-zero data at the beginning of each instance.
             The positive number means to skip :attr:`padding_start` time-steps of each instance,
@@ -308,10 +308,10 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
             where 1.=1., 5.=3. + 2., 4.=4., 0.0=pad_value, 12.=6. + 5. + 1.
 
     Args:
-        input (variable): LoDTensor with lod_level no more than 2. The data type should be float32.
+        input (variable): LoDTensor with lod_level no more than 2. The data type shold be float32.
         pool_type (str): The pooling type that supports average, sum, sqrt, max, last or first.
         is_test (bool): Only works when :attr:`pool_type` is max. If set False, a temporary Tenosr maxIndex is
-            created to record the index information corresponding to the maximum value, which is used for backward
+            created to record the indice information corresponding to the maximum value, which is used for backward
             gradient calculation in the training phase. Default: False.
         pad_value (float): Used to pad the pooling result for empty input sequence. Default: 0.0
 
@@ -337,23 +337,23 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
     helper = LayerHelper('sequence_pool', **locals())
     dtype = helper.input_dtype()
     pool_out = helper.create_variable_for_type_inference(dtype)
-    max_index = helper.create_variable_for_type_inference(dtype)
+    max_indice = helper.create_variable_for_type_inference(dtype)
 
     helper.append_op(
         type="sequence_pool",
         inputs={"X": input},
         outputs={"Out": pool_out,
-                 "MaxIndex": max_index},
+                 "MaxIndex": max_indice},
         attrs={
             "pooltype": pool_type.upper(),
             "is_test": is_test,
             "pad_value": pad_value
         })
 
-    # when pool_type is max, variable max_index is initialized,
+    # when pool_type is max, variable max_indice is initialized,
     # so we stop the gradient explicitly here
     if pool_type == 'max':
-        max_index.stop_gradient = True
+        max_indice.stop_gradient = True
 
     return pool_out
 
@@ -378,7 +378,7 @@ def sequence_concat(input, name=None):
             x2.lod = [[0, 2, 4]]
             x2.data = [[6], [7], [8], [9]]
             x2.shape = [4, 1]
-        and should satisfy: len(x1.lod[0]) == len(x2.lod[0])
+        and shold satisfy: len(x1.lod[0]) == len(x2.lod[0])
 
         output is LoDTensor:
             out.lod = [[0, 3+2, 5+4]]
@@ -386,7 +386,7 @@ def sequence_concat(input, name=None):
             out.shape = [9, 1]
 
     Args:
-        input(list of Variable): List of LoDTensor to be concatenated. The length of each LoDTensor should be same.
+        input(list of Variable): List of LoDTensor to be concatenated. The length of each LoDTensor shold be same.
             The data type can be float32, float64 or int64.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
@@ -447,7 +447,7 @@ def sequence_first_step(input):
             where 1.=first(1.), 3.=first(3., 2.), 4.=first(4.), 0.0 = pad_value, 6.=first(6., 5., 1.)
 
     Args:
-        input(Variable): LoDTensor with lod_level no more than 2. The data type should be float32.
+        input(Variable): LoDTensor with lod_level no more than 2. The data type shold be float32.
 
     Returns:
         Variable: LoDTensor consist of the sequence's first step vector. The data type is float32.
@@ -500,7 +500,7 @@ def sequence_last_step(input):
 
 
     Args:
-        input(Variable): LoDTensor with lod_level no more than 2. The data type should be float32.
+        input(Variable): LoDTensor with lod_level no more than 2. The data type shold be float32.
 
     Returns:
         Variable: LoDTensor consist of the sequence's last step vector. The data type is float32.
@@ -545,7 +545,7 @@ def sequence_slice(input, offset, length, name=None):
 
     Note:
           The first dimension size of **input**, **offset** and **length**
-          should be equal. The **offset** should start from 0.
+          shold be equal. The **offset** shold start from 0.
 
     Args:
         input(Variable): LoDTensor, The input Variable which consists of the complete
@@ -598,11 +598,11 @@ def sequence_expand(x, y, ref_level=-1, name=None):
         according to specified level ``ref_level`` lod of ``y``. Please note that \
         the lod level of ``x`` is at most 1. If the lod level of ``x`` is 1, than \
         the size of lod of ``x`` must be equal to the length of ``ref_level`` lod \
-        of ``y``. If the lod level of ``x`` is 0, then the first dim of ``x`` should \
+        of ``y``. If the lod level of ``x`` is 0, then the first dim of ``x`` shold \
         be equal to the size of ``ref_level`` of ``y``. The rank of **x** is at least 2. \
         When rank of ``x`` is greater than 2, then it would be viewed as a 2-D tensor.
 
-    Please note that the input ``x`` should be LodTensor or Tensor, \
+    Please note that the input ``x`` shold be LodTensor or Tensor, \
         and input ``y`` must be LodTensor.
 
     Following examples will explain how sequence_expand works:
@@ -651,7 +651,7 @@ def sequence_expand(x, y, ref_level=-1, name=None):
 
     Args:
         x (Variable): The input variable which is a Tensor or LoDTensor, with the \
-            dims ``[M, K]``. The lod level is at most 1. The data type should be \
+            dims ``[M, K]``. The lod level is at most 1. The data type shold be \
             float32, float64, int8, int32 or int64.
         y (Variable): The input variable which is a LoDTensor, the lod level is \
             at least 1.
@@ -728,11 +728,11 @@ def sequence_expand_as(x, y, name=None):
     """Sequence Expand As Layer. This OP will expand the input variable ``x`` \
         according to the zeroth level lod of ``y``. Current implementation requires \
         the level number of ``y``'s lod must be 1, and the first dimension of \
-        ``x`` should be equal to the size of ``y``'s zeroth level lod, thus \
+        ``x`` shold be equal to the size of ``y``'s zeroth level lod, thus \
         the expanded LodTensor has the same lod info as ``y``. The expanded result \
         has nothing to do with ``x``'s lod, so the lod of Input(X) is not considered.
 
-    Please note that the input ``x`` should be LodTensor or Tensor, \
+    Please note that the input ``x`` shold be LodTensor or Tensor, \
         and input ``y`` must be LodTensor.
 
     Following examples will explain how sequence_expand_as works:
@@ -770,7 +770,7 @@ def sequence_expand_as(x, y, name=None):
 
     Args:
         x (Variable): The input variable which is a Tensor or LoDTensor, with the \
-            dims ``[M, K]``. The data type should be float32, float64, int8, int32 \
+            dims ``[M, K]``. The data type shold be float32, float64, int8, int32 \
             or int64.
         y (Variable): The input variable which is a LoDTensor with 1-level lod.
         name (str, optional): For detailed information, please refer \
@@ -847,7 +847,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
         the length information of input sequences. For removing padding data (unpadding \
 	operation), See :ref:`api_fluid_layers_sequence_unpad` .
 
-    Please note that the input ``x`` should be LodTensor.
+    Please note that the input ``x`` shold be LodTensor.
 
     .. code-block:: text
 
@@ -892,10 +892,10 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
     Args:
         x (Variable): Input 1-level LodTensor with dims ``[M, K]``. The batch \
             size is described by lod infor (the number of sequences ). \
-            The data type should be float32, float64, int8, int32 or int64.
+            The data type shold be float32, float64, int8, int32 or int64.
         pad_value (Variable): Padding value. It can be a scalar or a 1D tensor \
             with length ``K``. If it's a scalar, it will be automatically broadcasted \
-            to a Tensor. The data type should be as same as ``x``.
+            to a Tensor. The data type shold be as same as ``x``.
         maxlen (int, optional): The length of padded sequences, None by default. \
             When it is None, all sequences will be padded up to the length of the \
             longest one among them; when it a certain positive value, it must be \
@@ -906,7 +906,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
 
     Returns: A Python tuple (Out, Length): the 1st is a 0 level LodTensor \
             ``Out``, with the shape ``[batch_size, maxlen, K]``; the second is the original \
-            sequences length infor ``Length``, which should be a 0-level 1D LodTensor. \
+            sequences length infor ``Length``, which shold be a 0-level 1D LodTensor. \
             The size of ``Length`` is equal to batch size, and the data type is int64.
 
     Return Type: tuple
@@ -1045,7 +1045,7 @@ def sequence_reshape(input, new_dim):
 
     Args:
 
-       input (Variable): 1-level LoDTensor with shape :math:`[M, K]` . The data type should
+       input (Variable): 1-level LoDTensor with shape :math:`[M, K]` . The data type shold
             be int32, int64, float32 or float64.
        new_dim (int): New dimension that the input LoDTensor is reshaped to.
 
@@ -1071,24 +1071,24 @@ def sequence_reshape(input, new_dim):
     return out
 
 
-def sequence_scatter(input, index, updates, name=None):
+def sequence_scatter(input, indice, updates, name=None):
     """
     **Note**:
     
-    **The index and updates parameters of the OP must be LoDTensor.**
+    **The indice and updates parameters of the OP must be LoDTensor.**
      
-    Plus the updates data to the corresponding input according to the index.
+    Plus the updates data to the corresponding input according to the indice.
  
-    The updated algorithm is as follows: output[instance_index][index [pos]] = input[instance_index][index [pos]] +  updates[pos], 
+    The updated algorithm is as follows: output[instance_indice][indice [pos]] = input[instance_indice][indice [pos]] +  updates[pos], 
     where instance_idx is the K sample corresponding to pos in batch.
 
-    The value of output[i][j] depends on whether j can be found in the i+1th interval of the index. If found, 
+    The value of output[i][j] depends on whether j can be found in the i+1th interval of the indice. If found, 
     out[i][j] = input[i][j] + update[m] [n], otherwise, out[i][j] = input[i][j].
 
-    For example, in the following example, the lod information for index is divided into three sequences. Among 
-    them, because the element 0 can be found in the first interval of the index, it is updated with the value of 
+    For example, in the following example, the lod information for indice is divided into three sequences. Among 
+    them, because the element 0 can be found in the first interval of the indice, it is updated with the value of 
     the corresponding position of the updates, out[0][0] = input[0][0]+updates[0][0] . Because element 1 cannot 
-    be found in the third interval of index, out[2][1] = input[2][1].
+    be found in the third interval of indice, out[2][1] = input[2][1].
 
     .. code-block:: text
         
@@ -1100,8 +1100,8 @@ def sequence_scatter(input, index, updates, name=None):
                               [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]]
                               input.dims = [3, 6]
 
-                index.data = [[0], [1], [2], [5], [4], [3], [2], [1], [3], [2], [5], [4]]
-                index.lod =  [[0,        3,                       8,                 12]]
+                indice.data = [[0], [1], [2], [5], [4], [3], [2], [1], [3], [2], [5], [4]]
+                indice.lod =  [[0,        3,                       8,                 12]]
 
                 updates.data = [[0.3], [0.3], [0.4], [0.1], [0.2], [0.3], [0.4], [0.0], [0.2], [0.3], [0.1], [0.4]]
                 updates.lod =  [[  0,            3,                                 8,                         12]]
@@ -1114,8 +1114,8 @@ def sequence_scatter(input, index, updates, name=None):
 
     Args:
         input (Variable): A Tensor with shape of  :math:`[N, k_1... k_n]`. Supported data types: float32, float64, int32, int64.
-        index (Variable):  A LoDTensor contains index information. Its LoD level must be 1 and its data type must be int64.
-        updates (Variable): A LodTensor contains updates information. It has the same  LoD level with the index and has the 
+        indice (Variable):  A LoDTensor contains indice information. Its LoD level must be 1 and its data type must be int64.
+        updates (Variable): A LodTensor contains updates information. It has the same  LoD level with the indice and has the 
                             same data type  with the input. Supported data types: float32, float64, int32, int64.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, 
                               please refer to :ref:`api_guide_Name`
@@ -1130,9 +1130,9 @@ def sequence_scatter(input, index, updates, name=None):
             import paddle.fluid as fluid
 
             input = fluid.data( name="x", shape=[None, 3, 6], dtype='float32' )
-            index = fluid.data( name='index', shape=[12, 1],  dtype='int64', lod_level=1)
+            indice = fluid.data( name='indice', shape=[12, 1],  dtype='int64', lod_level=1)
             updates = fluid.data( name='updates', shape=[12, 1], dtype='float32', lod_level=1)
-            output = fluid.layers.sequence_scatter(input, index, updates)
+            output = fluid.layers.sequence_scatter(input, indice, updates)
 
     """
     assert not in_dygraph_mode(), (
@@ -1143,7 +1143,7 @@ def sequence_scatter(input, index, updates, name=None):
     helper.append_op(
         type="sequence_scatter",
         inputs={"X": input,
-                "Ids": index,
+                "Ids": indice,
                 "Updates": updates},
         outputs={"Out": out})
     return out
@@ -1151,7 +1151,7 @@ def sequence_scatter(input, index, updates, name=None):
 
 def sequence_enumerate(input, win_size, pad_value=0, name=None):
     """
-    Generate a new sequence for the input index sequence with \
+    Generate a new sequence for the input indice sequence with \
         shape ``[d_1, win_size]``, which enumerates all the \
         sub-sequences with length ``win_size`` of the input with \
         shape ``[d_1, 1]``, and padded by ``pad_value`` if necessary in generation.
@@ -1176,9 +1176,9 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
 
 
     Args:
-        input (Variable): The input variable which is a index sequence, \
-            which should be a LodTensor with shape ``[d_1, 1]`` and 1-level lod info. \
-            The data type should be float32, float64, int8, int32 or int64.
+        input (Variable): The input variable which is a indice sequence, \
+            which shold be a LodTensor with shape ``[d_1, 1]`` and 1-level lod info. \
+            The data type shold be float32, float64, int8, int32 or int64.
         win_size (int): The window size for enumerating all sub-sequences.
         pad_value (int, optional): The padding value, default 0.
         name(str, optional): For detailed information, please refer \
@@ -1253,7 +1253,7 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
             None by default.
 
     Returns: The output sequence mask. Tensor or LodTensor with shape [d_1, d_2, ..., d_n, maxlen] \
-            and data type of :code:`dtype`. The data type should be float32, float64, int8, \
+            and data type of :code:`dtype`. The data type shold be float32, float64, int8, \
             int32 or int64.
 
     Return Type: Variable
@@ -1320,7 +1320,7 @@ def sequence_reverse(x, name=None):
 
     Args:
         x(Variable): LoDTensor with 1-level LoD info. Currently it only supports 1-level LoDTensor.
-            The data type should be float32, float64, int8, int32 or int64.
+            The data type shold be float32, float64, int8, int32 or int64.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 

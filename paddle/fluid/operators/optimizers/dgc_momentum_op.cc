@@ -26,7 +26,7 @@ class DGCMomentumOp : public MomentumOp {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("current_step"), true,
-                      "current_step should be set.");
+                      "current_step shold be set.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("nranks"), true,
                       platform::errors::NotFound(
                           "Input(nranks) of DGCMomentumOp is not found."));

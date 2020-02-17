@@ -166,7 +166,7 @@ class Conv2D(layers.Layer):
                  use_cudnn=True,
                  act=None,
                  dtype='float32'):
-        assert param_attr is not False, "param_attr should not be False here."
+        assert param_attr is not False, "param_attr shold not be False here."
         super(Conv2D, self).__init__()
         self._num_channels = num_channels
         self._groups = groups
@@ -175,7 +175,7 @@ class Conv2D(layers.Layer):
         self._dilation = utils.convert_to_list(dilation, 2, 'dilation')
         self._act = act
         if not isinstance(use_cudnn, bool):
-            raise ValueError("use_cudnn should be True or False")
+            raise ValueError("use_cudnn shold be True or False")
         self._use_cudnn = use_cudnn
         self._filter_size = filter_size
         self._num_filters = num_filters
@@ -393,7 +393,7 @@ class Conv3D(layers.Layer):
                  use_cudnn=True,
                  act=None,
                  dtype='float32'):
-        assert param_attr is not False, "param_attr should not be False here."
+        assert param_attr is not False, "param_attr shold not be False here."
         super(Conv3D, self).__init__()
         self._num_channels = num_channels
         self._groups = groups
@@ -628,8 +628,8 @@ class Conv3DTranspose(layers.Layer):
                  dtype='float32'):
         super(Conv3DTranspose, self).__init__()
         if not isinstance(use_cudnn, bool):
-            raise ValueError("use_cudnn should be True or False")
-        assert param_attr is not False, "param_attr should not be False in conv3d_transpose."
+            raise ValueError("use_cudnn shold be True or False")
+        assert param_attr is not False, "param_attr shold not be False in conv3d_transpose."
         self._padding = utils.convert_to_list(padding, 3, 'padding')
         self._stride = utils.convert_to_list(stride, 3, 'stride')
         self._dilation = utils.convert_to_list(dilation, 3, 'dilation')
@@ -809,7 +809,7 @@ class Pool2D(layers.Layer):
                 "and be a valid value. Received pool_size: " + str(pool_size))
 
         if not isinstance(use_cudnn, bool):
-            raise ValueError("use_cudnn should be True or False")
+            raise ValueError("use_cudnn shold be True or False")
 
         super(Pool2D, self).__init__()
 
@@ -1022,7 +1022,7 @@ class BatchNorm(layers.Layer):
         in_place(bool, optional): Make the input and output of batch norm reuse memory. Default: False.
         moving_mean_name(str, optional): The name of moving_mean which store the global Mean. Default: None.
         moving_variance_name(str, optional): The name of the moving_variance which store the global Variance. Default: None.
-        do_model_average_for_mean_and_var(bool, optional): Whether parameter mean and variance should do model
+        do_model_average_for_mean_and_var(bool, optional): Whether parameter mean and variance shold do model
             average when model average is enabled. Default: True.
         use_global_stats(bool, optional): Whether to use global mean and
             variance. In inference or test mode, set use_global_stats to true
@@ -1071,7 +1071,7 @@ class BatchNorm(layers.Layer):
         self._bias_attr = bias_attr
         self._act = act
 
-        assert bias_attr is not False, "bias_attr should not be False in batch_norm."
+        assert bias_attr is not False, "bias_attr shold not be False in batch_norm."
 
         if dtype == "float16":
             self._dtype = "float32"
@@ -1223,7 +1223,7 @@ class Embedding(layers.Layer):
         It will pad all-zero data when ids is 127.
 
     Parameters:
-        size(tuple|list): The shape of the look up table parameter. It should have two elements which indicate the size
+        size(tuple|list): The shape of the look up table parameter. It shold have two elements which indicate the size
             of the dictionary of embeddings and the size of each embedding vector respectively.
         is_sparse(bool): The flag indicating whether to use sparse update. This parameter only
             affects the performance of the backwards gradient update. It is recommended to set 
@@ -1243,7 +1243,7 @@ class Embedding(layers.Layer):
             default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` . In addition,
             user-defined or pre-trained word vectors can be loaded with the :attr:`param_attr` parameter. 
             The local word vector needs to be transformed into numpy format, and the shape of local word
-            vector should be consistent with :attr:`size` . Then :ref:`api_fluid_initializer_NumpyArrayInitializer`
+            vector shold be consistent with :attr:`size` . Then :ref:`api_fluid_initializer_NumpyArrayInitializer`
             is used to load custom or pre-trained word vectors. See code example 2 for details.
         dtype(np.dtype|core.VarDesc.VarType|str): It refers to the data type of output Tensor.
             It must be "float32" or "float64". Default: "float32".
@@ -1999,7 +1999,7 @@ class PRelu(layers.Layer):
             )), "input_shape argument is required when mode is 'element'."
             self._alpha_shape = [1] + list(input_shape)[1:]
         else:
-            raise ValueError('mode should be one of all, channel, element.')
+            raise ValueError('mode shold be one of all, channel, element.')
         self.weight = self.create_parameter(
             attr=self._param_attr,
             shape=self._alpha_shape,
@@ -2191,7 +2191,7 @@ class Conv2DTranspose(layers.Layer):
             tuple, it must contain two integers, (image_H, image_W). None if use
             filter_size, padding, and stride to calculate output_size.
             if output_size and filter_size are specified at the same time, They
-            should follow the formula above. Default: None.
+            shold follow the formula above. Default: None.
         padding(int or tuple, optional): The padding size. If padding is a tuple, it must
             contain two integers, (padding_H, padding_W). Otherwise, the
             padding_H = padding_W = padding. Default: 0.
@@ -2259,7 +2259,7 @@ class Conv2DTranspose(layers.Layer):
                  act=None,
                  dtype='float32'):
         super(Conv2DTranspose, self).__init__()
-        assert param_attr is not False, "param_attr should not be False in conv2d_transpose."
+        assert param_attr is not False, "param_attr shold not be False in conv2d_transpose."
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._act = act
@@ -2295,7 +2295,7 @@ class Conv2DTranspose(layers.Layer):
             self._output_size = utils.convert_to_list(self._output_size, 2,
                                                       'output_size')
         else:
-            raise ValueError("output_size should be list or int")
+            raise ValueError("output_size shold be list or int")
         self._padding = utils.convert_to_list(self._padding, 2, 'padding')
         self._groups = 1 if self._groups is None else self._groups
         filter_shape = [self._num_channels, self._num_filters // self._groups
@@ -2632,7 +2632,7 @@ class SpectralNorm(layers.Layer):
     This interface is used to construct a callable object of the ``SpectralNorm`` class.
     For more details, refer to code examples. It implements the function of the Spectral Normalization Layer.
     This layer calculates the spectral normalization value of weight parameters of
-    fc, conv1d, conv2d, conv3d layers which should be 2-D, 3-D, 4-D, 5-D
+    fc, conv1d, conv2d, conv3d layers which shold be 2-D, 3-D, 4-D, 5-D
     Parameters. Calculations are showed as follows.
 
     Step 1:
@@ -2641,7 +2641,7 @@ class SpectralNorm(layers.Layer):
     and W is the product result of remaining dimensions.
 
     Step 2:
-    :attr:`power_iters` should be a positive integer, do following
+    :attr:`power_iters` shold be a positive integer, do following
     calculations with U and V for :attr:`power_iters` rounds.
 
     .. math::
@@ -2664,7 +2664,7 @@ class SpectralNorm(layers.Layer):
 
     Parameters:
         weight_shape(list or tuple): The shape of weight parameter.
-        dim(int, optional): The index of dimension which should be permuted to the first before reshaping Input(Weight) to matrix, it should be set as 0 if Input(Weight) is the weight of fc layer, and should be set as 1 if Input(Weight) is the weight of conv layer. Default: 0.
+        dim(int, optional): The indice of dimension which shold be permuted to the first before reshaping Input(Weight) to matrix, it shold be set as 0 if Input(Weight) is the weight of fc layer, and shold be set as 1 if Input(Weight) is the weight of conv layer. Default: 0.
         power_iters(int, optional): The number of power iterations to calculate spectral norm. Default: 1.
         eps(float, optional): The epsilon for numerical stability in calculating norms. Default: 1e-12.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .

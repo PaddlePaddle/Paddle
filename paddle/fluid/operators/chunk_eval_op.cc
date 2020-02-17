@@ -25,24 +25,24 @@ class ChunkEvalOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("Inference"), true,
-                      "Input(Inference) of ChunkEvalOp should not be null.");
+                      "Input(Inference) of ChunkEvalOp shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("Label"), true,
-                      "Input(Label) of ChunkEvalOp should not be null.");
+                      "Input(Label) of ChunkEvalOp shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Precision"), true,
-                      "Output(Precision) of ChunkEvalOp should not be null.");
+                      "Output(Precision) of ChunkEvalOp shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Recall"), true,
-                      "Output(Recall) of ChunkEvalOp should not be null.");
+                      "Output(Recall) of ChunkEvalOp shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("F1-Score"), true,
-                      "Output(F1-Score) of ChunkEvalOp should not be null.");
+                      "Output(F1-Score) of ChunkEvalOp shold not be null.");
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("NumInferChunks"), true,
-        "Output(NumInferChunks) of ChunkEvalOp should not be null.");
+        "Output(NumInferChunks) of ChunkEvalOp shold not be null.");
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("NumLabelChunks"), true,
-        "Output(NumLabelChunks) of ChunkEvalOp should not be null.");
+        "Output(NumLabelChunks) of ChunkEvalOp shold not be null.");
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("NumCorrectChunks"), true,
-        "Output(NumCorrectChunks) of ChunkEvalOp should not be null.");
+        "Output(NumCorrectChunks) of ChunkEvalOp shold not be null.");
 
     auto inference_dim = ctx->GetInputDim("Inference");
     auto label_dim = ctx->GetInputDim("Label");
@@ -57,12 +57,12 @@ class ChunkEvalOp : public framework::OperatorWithKernel {
                             inference_dim.size() == 2,
                         true,
                         "when Input(SeqLength) is provided, Input(Inference) "
-                        "should be of dim 3 (batch_size, bucket, 1) or dim 2 "
+                        "shold be of dim 3 (batch_size, bucket, 1) or dim 2 "
                         "(batch_size, bucket).");
       auto seq_length_dim = ctx->GetInputDim("SeqLength");
       PADDLE_ENFORCE_LE(
           seq_length_dim.size(), 2,
-          "Input(SeqLength)'s rank should not be greater than 2.");
+          "Input(SeqLength)'s rank shold not be greater than 2.");
     }
 
     ctx->SetOutputDim("Precision", {1});
@@ -142,7 +142,7 @@ There are three chunk types(named entity types) including PER(person), ORG(organ
 and LOC(LOCATION), and we can see that the labels have the form <tag type>-<chunk type>.
 
 Since the calculations actually use label ids rather than labels, extra attention
-should be paid when mapping labels to ids to make CheckEvalOp work. The key point
+shold be paid when mapping labels to ids to make CheckEvalOp work. The key point
 is that the listed equations are satisfied by ids.
    
    tag_type = label % num_tag_type

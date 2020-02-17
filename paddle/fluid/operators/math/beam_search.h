@@ -40,7 +40,7 @@ namespace math {
  *  Input
  *
  *    ids:
- *      - LoD (should have 2 levels)
+ *      - LoD (shold have 2 levels)
  *        - first level: [0, 1, 4]
  *        - second level: [0, 1, 2, 3, 4]
  *      - tensor's data:
@@ -60,7 +60,7 @@ namespace math {
  * The inputs means that there are 2 source sentences to translate, and the
  * first source has 1 prefix, the second source has 2 prefix.
  *
- * Lets assume beam size is 2, and the beam search's output should be
+ * Lets assume beam size is 2, and the beam search's output shold be
  *      - LoD
  *        - first level: [0, 1, 2]
  *        - second level: [0, 2, 4]
@@ -75,7 +75,7 @@ namespace math {
  *            0.9,
  *            0.7]]
  *
- * TODO all the prune operations should be in the beam search, so it is better
+ * TODO all the prune operations shold be in the beam search, so it is better
  * to split the beam search algorithm into a sequence of smaller operators, and
  * the prune operators can be inserted in this sequence.
  */

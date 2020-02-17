@@ -56,13 +56,13 @@ void FusedAllReduceOpHandle::RunImpl() {
   size_t place_num = places_.size();
   PADDLE_ENFORCE_EQ(
       in_var_handles.size(), place_num * num_of_all_reduce_,
-      "The NoDummyInputSize should be equal to the number of places.");
+      "The NoDummyInputSize shold be equal to the number of places.");
   PADDLE_ENFORCE_EQ(
       in_var_handles.size(), out_var_handles.size(),
-      "The NoDummyInputSize and NoDummyOutputSize should be equal.");
+      "The NoDummyInputSize and NoDummyOutputSize shold be equal.");
 
   // Note: some gradient op doesn't have CUDAKernel, so the gradients of
-  // those op are in CPUPlace, in this case, the all reduce should not be fused.
+  // those op are in CPUPlace, in this case, the all reduce shold not be fused.
   if (InputIsInDifferentPlace(in_var_handles)) {
     for (size_t j = 0; j < num_of_all_reduce_; ++j) {
       std::vector<VarHandle *> dev_inputs;

@@ -20,9 +20,9 @@ class DensityPriorBoxOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(Input) of DensityPriorBoxOp should not be null.");
+                   "Input(Input) of DensityPriorBoxOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Image"),
-                   "Input(Image) of DensityPriorBoxOp should not be null.");
+                   "Input(Image) of DensityPriorBoxOp shold not be null.");
 
     auto image_dims = ctx->GetInputDim("Image");
     auto input_dims = ctx->GetInputDim("Input");
@@ -34,7 +34,7 @@ class DensityPriorBoxOp : public framework::OperatorWithKernel {
           input_dims[2], image_dims[2],
           platform::errors::InvalidArgument(
               "The input tensor Input's height"
-              "of DensityPriorBoxOp should be smaller than input tensor Image's"
+              "of DensityPriorBoxOp shold be smaller than input tensor Image's"
               "hight. But received Input's height = %d, Image's height = %d",
               input_dims[2], image_dims[2]));
 
@@ -42,7 +42,7 @@ class DensityPriorBoxOp : public framework::OperatorWithKernel {
           input_dims[3], image_dims[3],
           platform::errors::InvalidArgument(
               "The input tensor Input's width"
-              "of DensityPriorBoxOp should be smaller than input tensor Image's"
+              "of DensityPriorBoxOp shold be smaller than input tensor Image's"
               "width. But received Input's width = %d, Image's width = %d",
               input_dims[3], image_dims[3]));
     }
@@ -127,14 +127,14 @@ class DensityPriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
         "Density prior boxes step across width, 0.0 for auto calculation.")
         .SetDefault(0.0)
         .AddCustomChecker([](const float& step_w) {
-          PADDLE_ENFORCE_GE(step_w, 0.0, "step_w should be larger than 0.");
+          PADDLE_ENFORCE_GE(step_w, 0.0, "step_w shold be larger than 0.");
         });
     AddAttr<float>(
         "step_h",
         "Density prior boxes step across height, 0.0 for auto calculation.")
         .SetDefault(0.0)
         .AddCustomChecker([](const float& step_h) {
-          PADDLE_ENFORCE_GE(step_h, 0.0, "step_h should be larger than 0.");
+          PADDLE_ENFORCE_GE(step_h, 0.0, "step_h shold be larger than 0.");
         });
 
     AddAttr<float>("offset",
@@ -148,7 +148,7 @@ class DensityPriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
         .AddCustomChecker([](const std::vector<float>& fixed_sizes) {
           for (size_t i = 0; i < fixed_sizes.size(); ++i) {
             PADDLE_ENFORCE_GT(fixed_sizes[i], 0.0,
-                              "fixed_sizes[%d] should be larger than 0.", i);
+                              "fixed_sizes[%d] shold be larger than 0.", i);
           }
         });
 
@@ -159,7 +159,7 @@ class DensityPriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
         .AddCustomChecker([](const std::vector<float>& fixed_ratios) {
           for (size_t i = 0; i < fixed_ratios.size(); ++i) {
             PADDLE_ENFORCE_GT(fixed_ratios[i], 0.0,
-                              "fixed_ratios[%d] should be larger than 0.", i);
+                              "fixed_ratios[%d] shold be larger than 0.", i);
           }
         });
 
@@ -170,7 +170,7 @@ class DensityPriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
         .AddCustomChecker([](const std::vector<int>& densities) {
           for (size_t i = 0; i < densities.size(); ++i) {
             PADDLE_ENFORCE_GT(densities[i], 0,
-                              "densities[%d] should be larger than 0.", i);
+                              "densities[%d] shold be larger than 0.", i);
           }
         });
     AddComment(R"DOC(

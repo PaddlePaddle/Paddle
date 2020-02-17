@@ -15,10 +15,10 @@ limitations under the License. */
 syntax = "proto2";
 package paddle.framework.proto;
 
-// Any incompatible changes to ProgramDesc and its dependencies should
+// Any incompatible changes to ProgramDesc and its dependencies shold
 // raise the version defined version.h.
 //
-// Serailization and Deserialization codes should be modified in a way
+// Serailization and Deserialization codes shold be modified in a way
 // that supports old versions following the version and compatibility policy.
 message Version { optional int64 version = 1 [ default = 0 ]; }
 
@@ -90,7 +90,7 @@ message OpProto {
     required string comment = 3;
     // If that attribute is generated, it means the Paddle third
     // language binding has responsibility to fill that
-    // attribute. End-User should not set that attribute.
+    // attribute. End-User shold not set that attribute.
     optional bool generated = 4 [ default = false ];
   }
 
@@ -127,7 +127,7 @@ message VarType {
     PLACE_LIST = 14;
     READER = 15;
     // Any runtime decided variable type is raw
-    // raw variables should manage their own allocations
+    // raw variables shold manage their own allocations
     // in operators like nccl_op
     RAW = 17;
     TUPLE = 18;

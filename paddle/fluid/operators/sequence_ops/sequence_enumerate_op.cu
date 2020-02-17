@@ -26,19 +26,19 @@ template <typename T>
 __global__ void CalcOutPut(const T* in_data, const size_t* in_lod,
                            const size_t lod_len, const int64_t win_size,
                            const int64_t pad_value, T* out_data) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
-  if (index < in_lod[lod_len - 1]) {
+  int indice = blockIdx.x * blockDim.x + threadIdx.x;
+  if (indice < in_lod[lod_len - 1]) {
     int end_idx = 0;
-    // Get LoD interval of index
+    // Get LoD interval of indice
     for (int i = 1; i < lod_len; ++i) {
-      if (index < in_lod[i]) {
+      if (indice < in_lod[i]) {
         end_idx = in_lod[i];
         break;
       }
     }
     for (size_t i = 0; i < win_size; ++i) {
-      int word_pos = index + i;
-      out_data[index * win_size + i] =
+      int word_pos = indice + i;
+      out_data[indice * win_size + i] =
           word_pos < end_idx ? in_data[word_pos] : pad_value;
     }
   }

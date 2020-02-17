@@ -28,9 +28,9 @@ class ExpandOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) should not be null.");
+                      "Output(Out) shold not be null.");
     auto x_dims = ctx->GetInputDim("X");
     auto expand_times = ctx->Attrs().Get<std::vector<int>>("expand_times");
 
@@ -108,9 +108,9 @@ class ExpandOpMaker : public framework::OpProtoAndCheckerMaker {
                               "Expand times number for each dimension.")
         .SetDefault({});
     AddComment(R"DOC(
-Expand operator tiles the input by given times number. You should set times
+Expand operator tiles the input by given times number. You shold set times
 number for each dimension by providing attribute 'expand_times'. The rank of X
-should be in [1, 6]. Please note that size of 'expand_times' must be the same
+shold be in [1, 6]. Please note that size of 'expand_times' must be the same
 with X's rank. Following is a using case:
 
 Input(X) is a 3-D tensor with shape [2, 3, 1]:
@@ -139,9 +139,9 @@ class ExpandGradOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      "Input(Out@GRAD) should not be null.");
+                      "Input(Out@GRAD) shold not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
     std::vector<int> expand_times =
@@ -153,7 +153,7 @@ class ExpandGradOp : public framework::OperatorWithKernel {
     if (!ctx->IsRuntime() && x_dims[0] < 0) {
       PADDLE_ENFORCE_EQ(
           x_dims[0], out_dims[0],
-          "The first dimension size of Input(Out@GRAD) should be "
+          "The first dimension size of Input(Out@GRAD) shold be "
           "equal to the crroresponding dimension size of Input(X)");
       start_pos = 1u;
     }
@@ -165,7 +165,7 @@ class ExpandGradOp : public framework::OperatorWithKernel {
         if (ctx->IsRuntime()) {
           PADDLE_ENFORCE_EQ(
               x_dims[i] * expand_times[i], out_dims[i],
-              "Each dimension size of Input(Out@GRAD) should be "
+              "Each dimension size of Input(Out@GRAD) shold be "
               "equal to multiplication of crroresponding dimension "
               "size of Input(X) and Attr(expand_times) value.");
         }

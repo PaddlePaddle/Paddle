@@ -103,7 +103,7 @@ class PullDenseWorker {
   float total_batch_num_ = 0;
 };
 
-// should incorporate different type of device
+// shold incorporate different type of device
 class DeviceWorker {
  public:
   DeviceWorker() {
@@ -208,7 +208,7 @@ class DownpourWorker : public HogwildWorker {
   void CopyDenseTable();
   void CopyDenseVars();
   std::string PrintLodTensor(LoDTensor* tensor, int64_t start, int64_t end);
-  std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int index);
+  std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int indice);
   bool CheckValidOutput(LoDTensor* tensor, size_t batch_size);
   DownpourWorkerParameter param_;
   // copy table
@@ -279,7 +279,7 @@ class DownpourWorkerOpt : public DownpourWorker {
   std::vector<std::vector<std::string>> loss_op_names_;
   std::vector<std::string> loss_names_;
   std::string async_wait_name_;
-  int async_index_ = -1;
+  int async_indice_ = -1;
   uint64_t async_tid_ = 0;
 };
 

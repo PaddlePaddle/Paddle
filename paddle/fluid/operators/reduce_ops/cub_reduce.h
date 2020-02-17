@@ -33,10 +33,10 @@ struct Array {
  public:
   HOSTDEVICE inline Array() {}
 
-  HOSTDEVICE inline T& operator[](size_t index) { return data_[index]; }
+  HOSTDEVICE inline T& operator[](size_t indice) { return data_[indice]; }
 
-  HOSTDEVICE inline const T& operator[](size_t index) const {
-    return data_[index];
+  HOSTDEVICE inline const T& operator[](size_t indice) const {
+    return data_[indice];
   }
 
   HOSTDEVICE constexpr inline size_t size() const { return ElementCount; }
@@ -86,32 +86,32 @@ __global__ void ReduceKernel(const Tx* x, Ty* y, ReduceOp reducer,
                              Array<int, Rank - ReduceRank> left_dim,
                              Array<int, Rank - ReduceRank> left_strides) {
   __shared__ typename cub::BlockReduce<Ty, BlockDim>::TempStorage temp_storage;
-  Array<int, Rank> sub_index;
+  Array<int, Rank> sub_indice;
   int left_idx = blockIdx.x;
   for (int i = 0; i < Rank - ReduceRank; ++i) {
-    sub_index[left_dim[i]] = left_idx / left_strides[i];
+    sub_indice[left_dim[i]] = left_idx / left_strides[i];
     left_idx %= left_strides[i];
   }
 
   int reduce_idx = threadIdx.x;
   for (int j = 0; j < ReduceRank; ++j) {
-    sub_index[reduce_dim[j]] = reduce_idx / reduce_strides[j];
+    sub_indice[reduce_dim[j]] = reduce_idx / reduce_strides[j];
     reduce_idx %= reduce_strides[j];
   }
 
   int idx_x = 0;
-  for (int k = 0; k < Rank; ++k) idx_x += (sub_index[k] * x_strides[k]);
+  for (int k = 0; k < Rank; ++k) idx_x += (sub_indice[k] * x_strides[k]);
   Ty reduce_var = static_cast<Ty>(transformer(x[idx_x]));
 
   for (int i = threadIdx.x + BlockDim; i < reduce_num; i += BlockDim) {
     int reduce_idx = i;
     for (int j = 0; j < ReduceRank; ++j) {
-      sub_index[reduce_dim[j]] = reduce_idx / reduce_strides[j];
+      sub_indice[reduce_dim[j]] = reduce_idx / reduce_strides[j];
       reduce_idx %= reduce_strides[j];
     }
 
     int idx_x = 0;
-    for (int k = 0; k < Rank; ++k) idx_x += (sub_index[k] * x_strides[k]);
+    for (int k = 0; k < Rank; ++k) idx_x += (sub_indice[k] * x_strides[k]);
     reduce_var = static_cast<Ty>(reducer(reduce_var, transformer(x[idx_x])));
   }
   __syncthreads();

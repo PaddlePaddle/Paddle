@@ -143,23 +143,23 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Emission"),
-                   "Input(Emission) should be not null.");
+                   "Input(Emission) shold be not null.");
     PADDLE_ENFORCE(ctx->HasInput("Transition"),
-                   "Input(Transition) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
+                   "Input(Transition) shold be not null.");
+    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) shold be not null.");
 
     PADDLE_ENFORCE(ctx->HasOutput("Alpha"),
-                   "Output(Alpha) should be not null.");
+                   "Output(Alpha) shold be not null.");
     PADDLE_ENFORCE(ctx->HasOutput("EmissionExps"),
-                   "Output(EmissionExps) should be not null.");
+                   "Output(EmissionExps) shold be not null.");
     PADDLE_ENFORCE(ctx->HasOutput("TransitionExps"),
-                   "Output(TransitionExps) should be not null.");
+                   "Output(TransitionExps) shold be not null.");
     PADDLE_ENFORCE(ctx->HasOutput("LogLikelihood"),
-                   "Output(LogLikelihood) should be not null.");
+                   "Output(LogLikelihood) shold be not null.");
 
     auto transition_dims = ctx->GetInputDim("Transition");
     PADDLE_ENFORCE_EQ(transition_dims.size(), 2,
-                      "The Input(Transition) should be a 2-D tensor.");
+                      "The Input(Transition) shold be a 2-D tensor.");
     bool check = true;
     if ((!ctx->IsRuntime()) &&
         (transition_dims[0] <= 0 || transition_dims[1] <= 0)) {
@@ -168,7 +168,7 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
     if (check) {
       PADDLE_ENFORCE_EQ(
           transition_dims[0] - 2, transition_dims[1],
-          "An invalid dimension for the Input(Transition), which should "
+          "An invalid dimension for the Input(Transition), which shold "
           "be a 2-D tensor with shape [(D + 2) x D].");
     }
     auto emission_dims = ctx->GetInputDim("Emission");
@@ -176,48 +176,48 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
                       "An empty mini-batch is not allowed.");
     if (ctx->HasInput("Length")) {
       PADDLE_ENFORCE_EQ(emission_dims.size(), 3,
-                        "The Input(Emission) should be a 3-D tensor.");
+                        "The Input(Emission) shold be a 3-D tensor.");
       auto label_dims = ctx->GetInputDim("Label");
       PADDLE_ENFORCE_EQ(
           (label_dims.size() == 3UL && label_dims[2] == 1) ||
               (label_dims.size() == 2UL),
           true,
-          "The Input(Label) should be a 3-D tensor with last "
+          "The Input(Label) shold be a 3-D tensor with last "
           "dimension fixed to 1 or a 2-D tensor in padding mode.");
       if (ctx->IsRuntime()) {
         PADDLE_ENFORCE_EQ(emission_dims[0], label_dims[0],
                           "The batch size of Input(Emission) and Input(Label) "
-                          "should be the same.");
+                          "shold be the same.");
         PADDLE_ENFORCE_EQ(emission_dims[1], label_dims[1],
                           "The max length of Input(Emission) and Input(Label) "
-                          "should be the same.");
+                          "shold be the same.");
       }
     } else {
       PADDLE_ENFORCE_EQ(emission_dims.size(), 2,
-                        "The Input(Emission) should be a 2-D tensor.");
+                        "The Input(Emission) shold be a 2-D tensor.");
       if (ctx->IsRuntime()) {
         PADDLE_ENFORCE_EQ(emission_dims[1], transition_dims[1],
                           "The 2nd dimension of the Input(Emission) and the "
                           "Input(Transition) "
-                          "should be equal to the tag number.");
+                          "shold be equal to the tag number.");
       }
 
       auto label_dims = ctx->GetInputDim("Label");
       PADDLE_ENFORCE_EQ(label_dims.size(), 2,
-                        "The Input(Label) should be a 2-D tensor with the 2nd "
+                        "The Input(Label) shold be a 2-D tensor with the 2nd "
                         "dimensions fixed to 1.");
       if (ctx->IsRuntime()) {
         PADDLE_ENFORCE_EQ(
             emission_dims[0], label_dims[0],
             "The height of Input(Emission) and the height of Input(Label) "
-            "should be the same.");
+            "shold be the same.");
       }
     }
     ctx->SetOutputDim("Alpha", emission_dims);
     ctx->SetOutputDim("EmissionExps", emission_dims);
     ctx->SetOutputDim("TransitionExps", transition_dims);
     // TODO(caoying) This is tricky. The 1st dimension of Output(LogLikelihood)
-    // is the sequence number in a mini-batch. The dimension set here should be
+    // is the sequence number in a mini-batch. The dimension set here shold be
     // resized to its correct size in the function Compute. Fix this once we can
     // get LoD information in the InferShape interface.
     ctx->SetOutputDim("LogLikelihood", {emission_dims[0], 1});
@@ -240,9 +240,9 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("EmissionExps"),
-                   "Input(EmissionExps) should be not null.");
+                   "Input(EmissionExps) shold be not null.");
     PADDLE_ENFORCE(ctx->HasInput("TransitionExps"),
-                   "Input(TransitionExps) should be not null.");
+                   "Input(TransitionExps) shold be not null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("LogLikelihood")),
                    "Input(LogLikelihood@GRAD) shoudl be not null.");
 

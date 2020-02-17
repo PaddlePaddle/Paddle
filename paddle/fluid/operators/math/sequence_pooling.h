@@ -25,11 +25,11 @@ namespace math {
 template <typename DeviceContext, typename T>
 class SequencePoolFunctor {
  public:
-  /* max pool has index output */
+  /* max pool has indice output */
   void operator()(const DeviceContext& context, const std::string pooltype,
                   T pad_value, const framework::LoDTensor& input,
                   framework::LoDTensor* output, bool is_test = false,
-                  framework::Tensor* index = nullptr);
+                  framework::Tensor* indice = nullptr);
 };
 
 template <typename DeviceContext, typename T>
@@ -38,8 +38,8 @@ class SequencePoolGradFunctor {
   void operator()(const DeviceContext& context, const std::string pooltype,
                   const framework::LoDTensor& out_grad,
                   framework::LoDTensor* in_grad,
-                  /* max pool has index */
-                  const framework::Tensor* index = nullptr);
+                  /* max pool has indice */
+                  const framework::Tensor* indice = nullptr);
 };
 
 }  // namespace math

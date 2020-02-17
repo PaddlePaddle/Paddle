@@ -34,12 +34,12 @@ __global__ void vol2col(int num_kernels, const T* data_vol, int depth,
       num_kernels / output_detph / output_height / output_width;
   int channels_col =
       input_channels * filter_depth * filter_height * filter_width;
-  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < num_kernels;
-       index += blockDim.x * gridDim.x) {
-    int w_out = index % output_width;
-    int h_out = (index / output_width) % output_height;
-    int d_out = (index / output_width / output_height) % output_detph;
-    int channel_in = index / output_width / output_height / output_detph;
+  for (int indice = blockIdx.x * blockDim.x + threadIdx.x; indice < num_kernels;
+       indice += blockDim.x * gridDim.x) {
+    int w_out = indice % output_width;
+    int h_out = (indice / output_width) % output_height;
+    int d_out = (indice / output_width / output_height) % output_detph;
+    int channel_in = indice / output_width / output_height / output_detph;
     int channel_out = channel_in * filter_depth * filter_height * filter_width;
     int w_in = w_out * stride_width - padding_width;
     int h_in = h_out * stride_height - padding_height;
@@ -91,9 +91,9 @@ class Vol2ColFunctor<platform::CUDADeviceContext, T> {
                   const std::vector<int>& paddings, framework::Tensor* col,
                   const DataLayout data_layout) const {
     PADDLE_ENFORCE_EQ(vol.dims().size(), 4,
-                      "The dimension of vol should be 4.");
+                      "The dimension of vol shold be 4.");
     PADDLE_ENFORCE_EQ(col->dims().size(), 7,
-                      "The dimension of col should be 7.");
+                      "The dimension of col shold be 7.");
 
     int input_channels =
         (data_layout != DataLayout::kNHWC ? vol.dims()[0] : vol.dims()[3]);
@@ -167,20 +167,20 @@ __global__ void col2vol(int num_kernels, const T* data_col, int depth,
   const int d_filter_width = dilation_w * (filter_width - 1) + 1;
 
   int input_channels = num_kernels / depth / height / width;
-  for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < num_kernels;
-       index += blockDim.x * gridDim.x) {
+  for (int indice = blockIdx.x * blockDim.x + threadIdx.x; indice < num_kernels;
+       indice += blockDim.x * gridDim.x) {
     T src_val = 0;
     int w = (data_layout != DataLayout::kNHWC
-                 ? index % width + padding_width
-                 : (index / input_channels) % width + padding_width);
+                 ? indice % width + padding_width
+                 : (indice / input_channels) % width + padding_width);
     int h = (data_layout != DataLayout::kNHWC
-                 ? (index / width) % height + padding_height
-                 : (index / input_channels / width) % height + padding_height);
+                 ? (indice / width) % height + padding_height
+                 : (indice / input_channels / width) % height + padding_height);
     int d = (data_layout != DataLayout::kNHWC
-                 ? (index / width / height) % depth + padding_depth
-                 : index / input_channels / width / height + padding_depth);
-    int c = (data_layout != DataLayout::kNHWC ? index / width / height / depth
-                                              : index % input_channels);
+                 ? (indice / width / height) % depth + padding_depth
+                 : indice / input_channels / width / height + padding_depth);
+    int c = (data_layout != DataLayout::kNHWC ? indice / width / height / depth
+                                              : indice % input_channels);
 
     // compute the start and end of the output
     int w_col_start =
@@ -205,21 +205,21 @@ __global__ void col2vol(int num_kernels, const T* data_col, int depth,
             h_off /= dilation_h;
             w_off /= dilation_w;
 
-            int data_col_index =
+            int data_col_indice =
                 (((((c * filter_depth + d_off) * filter_height + h_off) *
                        filter_width +
                    w_off)));
-            data_col_index =
-                ((data_col_index * output_detph + d_col) * output_height +
+            data_col_indice =
+                ((data_col_indice * output_detph + d_col) * output_height +
                  h_col) *
                     output_width +
                 w_col;
-            src_val += data_col[data_col_index];
+            src_val += data_col[data_col_indice];
           }
         }
       }
     }
-    data_vol[index] = src_val;
+    data_vol[indice] = src_val;
   }
 }
 
@@ -242,9 +242,9 @@ class Col2VolFunctor<platform::CUDADeviceContext, T> {
                   const std::vector<int>& paddings, framework::Tensor* vol,
                   const DataLayout data_layout) const {
     PADDLE_ENFORCE_EQ(vol->dims().size(), 4,
-                      "The dimension of vol should be 4.");
+                      "The dimension of vol shold be 4.");
     PADDLE_ENFORCE_EQ(col.dims().size(), 7,
-                      "The dimension of col should be 7.");
+                      "The dimension of col shold be 7.");
 
     int input_channels =
         (data_layout != DataLayout::kNHWC ? vol->dims()[0] : vol->dims()[3]);

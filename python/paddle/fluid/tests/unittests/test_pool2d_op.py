@@ -23,12 +23,12 @@ from op_test import OpTest
 import paddle.fluid as fluid
 
 
-def adaptive_start_index(index, input_size, output_size):
-    return int(np.floor(index * input_size / output_size))
+def adaptive_start_indice(indice, input_size, output_size):
+    return int(np.floor(indice * input_size / output_size))
 
 
-def adaptive_end_index(index, input_size, output_size):
-    return int(np.ceil((index + 1) * input_size / output_size))
+def adaptive_end_indice(indice, input_size, output_size):
+    return int(np.ceil((indice + 1) * input_size / output_size))
 
 
 def max_pool2D_forward_naive(x,
@@ -56,10 +56,10 @@ def max_pool2D_forward_naive(x,
     for i in range(H_out):
         for j in range(W_out):
             if adaptive:
-                r_start = adaptive_start_index(i, H, ksize[0])
-                r_end = adaptive_end_index(i, H, ksize[0])
-                c_start = adaptive_start_index(j, W, ksize[1])
-                c_end = adaptive_end_index(j, W, ksize[1])
+                r_start = adaptive_start_indice(i, H, ksize[0])
+                r_end = adaptive_end_indice(i, H, ksize[0])
+                c_start = adaptive_start_indice(j, W, ksize[1])
+                c_end = adaptive_end_indice(j, W, ksize[1])
             else:
                 r_start = np.max((i * strides[0] - paddings[0], 0))
                 r_end = np.min((i * strides[0] + ksize[0] - paddings[0], H))
@@ -96,10 +96,10 @@ def avg_pool2D_forward_naive(x,
     for i in range(H_out):
         for j in range(W_out):
             if adaptive:
-                r_start = adaptive_start_index(i, H, ksize[0])
-                r_end = adaptive_end_index(i, H, ksize[0])
-                c_start = adaptive_start_index(j, W, ksize[1])
-                c_end = adaptive_end_index(j, W, ksize[1])
+                r_start = adaptive_start_indice(i, H, ksize[0])
+                r_end = adaptive_end_indice(i, H, ksize[0])
+                c_start = adaptive_start_indice(j, W, ksize[1])
+                c_end = adaptive_end_indice(j, W, ksize[1])
             else:
                 r_start = np.max((i * strides[0] - paddings[0], 0))
                 r_end = np.min((i * strides[0] + ksize[0] - paddings[0], H))
@@ -195,16 +195,16 @@ def pool2D_forward_naive(x,
         else np.zeros((N, H_out, W_out, C))
     for i in range(H_out):
         if adaptive:
-            in_h_start = adaptive_start_index(i, H, ksize[0])
-            in_h_end = adaptive_end_index(i, H, ksize[0])
+            in_h_start = adaptive_start_indice(i, H, ksize[0])
+            in_h_end = adaptive_end_indice(i, H, ksize[0])
         else:
             in_h_start = np.max((i * strides[0] - pad_h_up, 0))
             in_h_end = np.min((i * strides[0] + ksize[0] - pad_h_up, H))
 
         for j in range(W_out):
             if adaptive:
-                in_w_start = adaptive_start_index(j, W, ksize[1])
-                in_w_end = adaptive_end_index(j, W, ksize[1])
+                in_w_start = adaptive_start_indice(j, W, ksize[1])
+                in_w_end = adaptive_end_indice(j, W, ksize[1])
             else:
                 in_w_start = np.max((j * strides[1] - pad_w_left, 0))
                 in_w_end = np.min((j * strides[1] + ksize[1] - pad_w_left, W))

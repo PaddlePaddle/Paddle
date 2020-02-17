@@ -26,17 +26,17 @@ class CVMOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("CVM"), "Input(CVM) should be not null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Y"), "Output(Y) should be not null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold be not null.");
+    PADDLE_ENFORCE(ctx->HasInput("CVM"), "Input(CVM) shold be not null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Y"), "Output(Y) shold be not null.");
 
     auto x_dims = ctx->GetInputDim("X");
     auto cvm_dims = ctx->GetInputDim("CVM");
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2UL, "Input(X)'s rank should be 2.");
-    PADDLE_ENFORCE_EQ(cvm_dims.size(), 2UL, "Input(CVM)'s rank should be 2.");
+    PADDLE_ENFORCE_EQ(x_dims.size(), 2UL, "Input(X)'s rank shold be 2.");
+    PADDLE_ENFORCE_EQ(cvm_dims.size(), 2UL, "Input(CVM)'s rank shold be 2.");
     PADDLE_ENFORCE_EQ(cvm_dims[1], 2UL,
                       "The 2nd dimension of "
-                      "Input(CVM) should be 2.");
+                      "Input(CVM) shold be 2.");
 
     if (ctx->Attrs().Get<bool>("use_cvm")) {
       ctx->SetOutputDim("Y", {x_dims[0], x_dims[1]});
@@ -63,27 +63,27 @@ class CVMGradientOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("CVM"), "Input(CVM) should be not null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold be not null.");
+    PADDLE_ENFORCE(ctx->HasInput("CVM"), "Input(CVM) shold be not null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Y")),
-                   "Input(Y@GRAD) should be not null.");
+                   "Input(Y@GRAD) shold be not null.");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Output(X@GRAD) should be not null.");
+                   "Output(X@GRAD) shold be not null.");
 
     auto x_dims = ctx->GetInputDim("X");
     auto cvm_dims = ctx->GetInputDim("CVM");
     auto dy_dims = ctx->GetInputDim(framework::GradVarName("Y"));
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank should be 2.");
-    PADDLE_ENFORCE_EQ(dy_dims.size(), 2, "Input(Y@Grad)'s rank should be 2.");
-    PADDLE_ENFORCE_EQ(cvm_dims.size(), 2, "Input(CVM)'s rank should be 2.");
+    PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank shold be 2.");
+    PADDLE_ENFORCE_EQ(dy_dims.size(), 2, "Input(Y@Grad)'s rank shold be 2.");
+    PADDLE_ENFORCE_EQ(cvm_dims.size(), 2, "Input(CVM)'s rank shold be 2.");
 
     PADDLE_ENFORCE_EQ(x_dims[0], dy_dims[0],
-                      "The 1st dimension of Input(X) and Input(Y@Grad) should "
+                      "The 1st dimension of Input(X) and Input(Y@Grad) shold "
                       "be equal.");
 
     PADDLE_ENFORCE_EQ(cvm_dims[1], 2,
                       "When Attr(soft_label) == false, the 2nd dimension of "
-                      "Input(CVM) should be 2.");
+                      "Input(CVM) shold be 2.");
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
     ctx->ShareLoD("X", framework::GradVarName("X"));
   }

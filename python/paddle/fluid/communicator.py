@@ -15,7 +15,7 @@
 from .executor import global_scope
 """
 Communicator is used for async distribute training in distribute_transpiler mode.
-It's a wrapper of a cpp class Communicator and should be used inside fleet API.
+It's a wrapper of a cpp class Communicator and shold be used inside fleet API.
 """
 from . import core
 from .framework import Program
@@ -28,7 +28,7 @@ class Communicator(object):
     def __init__(self, program, mode, kwargs=None, envs={}):
         """
         Communicator is used for async distribute training in distribute_transpiler mode.
-        It's a wrapper of a cpp class Communicator and should be used inside fleet API.
+        It's a wrapper of a cpp class Communicator and shold be used inside fleet API.
 
         Args:
             program(Program): the trainers program after transpile of distribute_transpiler.

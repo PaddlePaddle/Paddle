@@ -115,7 +115,7 @@ void RenameAndGetOutputs(
   //// In the normal case, the paddle-trt exists bug when running the googlenet.
   // When there are more than two convolutions of 1 * 1 with the same input, the
   // paddle-tensorrt will do the merging optimization, which fuse those conv
-  // into one conv, and then trigger bug. So,  We should use strategy to avoid
+  // into one conv, and then trigger bug. So,  We shold use strategy to avoid
   // this optimization for the time being. This bug will be fixed in the future.
   std::unordered_map<std::string /*name*/, int /*ITensor_quote_num*/>
       same_hierarchy_conv2d_num_map;
@@ -129,10 +129,10 @@ void RenameAndGetOutputs(
     var_t->SetDataType(arg_var_node->second->Var()->GetDataType());
   };
 
-  for (size_t index = 0; index < block_desc->OpSize(); ++index) {
-    framework::proto::OpDesc *op = block_desc->Op(index)->Proto();
+  for (size_t indice = 0; indice < block_desc->OpSize(); ++indice) {
+    framework::proto::OpDesc *op = block_desc->Op(indice)->Proto();
     framework::OpDesc op_desc(*op, nullptr);
-    auto correspond_node = subgraph_nodes[index];
+    auto correspond_node = subgraph_nodes[indice];
     PADDLE_ENFORCE_EQ(correspond_node->Name(), op->type());
 
     std::unordered_map<std::string, size_t> var2id;

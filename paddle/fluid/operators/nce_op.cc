@@ -41,7 +41,7 @@ class NCEOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           x_dims[0], label_dims[0],
           "ShapeError: the first dimension of Input(Input) and Input(Label) "
-          "should be equal in runtime. But received: Input(Input)'s shape = "
+          "shold be equal in runtime. But received: Input(Input)'s shape = "
           "[%s] with 1st dim =  %d, Input(Label)'s shape = [%s] with 1st "
           "dim = %d.",
           x_dims, x_dims[0], label_dims, label_dims[0]);
@@ -51,7 +51,7 @@ class NCEOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           ctx->GetInputDim("Weight")[0], ctx->GetInputDim("Bias")[0],
           "ShapeError: the first dimension of Input(Weight) and Input(Bias) "
-          "should be equal. But received: Input(Weight)'s shape = [%s] with "
+          "shold be equal. But received: Input(Weight)'s shape = [%s] with "
           "1st dim = %d, Input(Bias)'s shape = [%s] with 1st dim = %d.",
           ctx->GetInputDim("Weight"), ctx->GetInputDim("Weight")[0],
           ctx->GetInputDim("Bias"), ctx->GetInputDim("Bias")[0]);
@@ -62,7 +62,7 @@ class NCEOp : public framework::OperatorWithKernel {
         ctx->Attrs().Get<std::vector<int>>("custom_neg_classes");
     PADDLE_ENFORCE_EQ(
         num_total_classes, ctx->GetInputDim("Weight")[0],
-        "ShapeError: the number of total classes should be equal to the first "
+        "ShapeError: the number of total classes shold be equal to the first "
         "dimension of Input(Weight). But received: Attr(num_total_classes) = "
         "%d, Input(Weight)'s shape = [%s] with 1st dim = %d.",
         num_total_classes, ctx->GetInputDim("Weight"),
@@ -70,7 +70,7 @@ class NCEOp : public framework::OperatorWithKernel {
     if (custom_neg_classes.size() > 0) {
       PADDLE_ENFORCE_EQ(
           custom_neg_classes.size(), static_cast<size_t>(num_neg_samples),
-          "ShapeError: the size of Attr(custom_neg_classes) should be equal "
+          "ShapeError: the size of Attr(custom_neg_classes) shold be equal "
           "to the number of negative samples. But received: "
           "custom_neg_classes.size() = %d, num_neg_samples = %d.",
           custom_neg_classes.size(), num_neg_samples);
@@ -107,7 +107,7 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
         "Label",
         "(Tensor) A tensor of shape [batch_size, num_true_class]. "
         "'num_true_class' is the number of target classes in each sample."
-        "The number of target classes per sample should be same. "
+        "The number of target classes per sample shold be same. "
         "If you have a variable number of target classes, "
         "you can pad them out to a constant number by either repeating them"
         " or by padding with an otherwise unused class.)");
@@ -201,7 +201,7 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
                               "This attribute only be used in unitest. Classes "
                               "in this list wiil be used as negative classes "
                               "for every samples. Under normal conditions, "
-                              "user should avoid setting this attribute.")
+                              "user shold avoid setting this attribute.")
         .SetDefault({});
     AddComment(R"DOC(
 Compute and return the noise-contrastive estimation training loss. See
@@ -249,7 +249,7 @@ class NCEOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("SampleLogits"));
     PADDLE_ENFORCE(ctx->HasInput("SampleLabels"));
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Cost")),
-                   "The input(Out@GRAD) should not be null.");
+                   "The input(Out@GRAD) shold not be null.");
 
     auto x_dims = ctx->GetInputDim("Input");
     auto x_grad_name = framework::GradVarName("Input");

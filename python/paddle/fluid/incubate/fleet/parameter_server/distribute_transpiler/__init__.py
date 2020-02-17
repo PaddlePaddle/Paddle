@@ -340,7 +340,7 @@ fleet = DistributedTranspiler()
 class TranspilerOptimizer(DistributedOptimizer):
     """
     DistributedOptimizer is a wrapper for paddle.fluid.optimizer
-    A user should pass a paddle.fluid.optimizer to DistributedOptimizer
+    A user shold pass a paddle.fluid.optimizer to DistributedOptimizer
     minimize() function is implemented.
     DistributedOptimizer is the starting point for a user who wants to
     run distributed training. The optimized information will be stored in
@@ -384,7 +384,7 @@ class TranspilerOptimizer(DistributedOptimizer):
             startup_program (Program): startup_program for initializing parameters
                 in `parameter_list`.
             parameter_list (list): list of Variables to update.
-            no_grad_set (set|None): set of Variables should be ignored.
+            no_grad_set (set|None): set of Variables shold be ignored.
             callbacks (list|None): list of callables to run when appending backward
                 operator for one parameter.
 
@@ -438,7 +438,7 @@ class TranspilerOptimizer(DistributedOptimizer):
             startup_program (Program): startup_program for initializing parameters
                 in `parameter_list`.
             parameter_list (list): list of Variables to update.
-            no_grad_set (set|None): set of Variables should be ignored.
+            no_grad_set (set|None): set of Variables shold be ignored.
 
         Returns:
             tuple: (optimize_ops, params_grads) which are, list of operators appended;

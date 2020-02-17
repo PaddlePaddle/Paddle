@@ -166,18 +166,18 @@ class MineHardExamplesOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("ClsLoss"),
-                   "Input(ClsLoss) of MineHardExamplesOp should not be null.");
+                   "Input(ClsLoss) of MineHardExamplesOp shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasInput("MatchIndices"),
-        "Input(MatchIndices) of MineHardExamplesOp should not be null.");
+        "Input(MatchIndices) of MineHardExamplesOp shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasInput("MatchDist"),
-        "Input(MatchDist) of MineHardExamplesOp should not be null.");
+        "Input(MatchDist) of MineHardExamplesOp shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasOutput("NegIndices"),
-        "Output(NegIndices) of MineHardExamplesOp should not be null.");
+        "Output(NegIndices) of MineHardExamplesOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("UpdatedMatchIndices"),
-                   "Output(UpdatedMatchIndices) of MineHardExamplesOp should "
+                   "Output(UpdatedMatchIndices) of MineHardExamplesOp shold "
                    "not be null.");
 
     auto cls_loss_dims = ctx->GetInputDim("ClsLoss");
@@ -303,7 +303,7 @@ class MineHardExamplesOpMaker : public framework::OpProtoAndCheckerMaker {
         "NegIndices",
         "(LoDTensor<int>) The output of negative example indices. a LoDTensor "
         "with shape [Neg, 1]. The size of lod[0] minus 1 is batch size, "
-        "and each element is the prior box index. "
+        "and each element is the prior box indice. "
         "For example, the batch size is 2, the lod is [[0, 1, 2]], "
         "the sample 0's box 1(MatchIndices[0][1]) is selected, "
         "and sample 1's box 0 is selected. The output NegIndices is "

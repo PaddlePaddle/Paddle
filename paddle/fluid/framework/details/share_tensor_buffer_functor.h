@@ -32,7 +32,7 @@ namespace details {
 // performing memory reuse in run-time. ShareTensorBufferOpHandle
 // is only a wrapper of ShareTensorBufferFunctor.
 // Once we find the run-time memory reuse strategy is time-consuming in
-// scheduling, we should need a pass to move ShareTensorBufferFunctor into
+// scheduling, we shold need a pass to move ShareTensorBufferFunctor into
 // each ComputationOpHandle. ShareTensorBufferFunctor is preserved for
 // this probable movement.
 class ShareTensorBufferFunctor {

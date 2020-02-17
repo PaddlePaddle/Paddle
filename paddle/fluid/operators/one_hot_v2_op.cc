@@ -25,13 +25,13 @@ class OneHotV2Op : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of OneHotOp should not be null.");
+                      "Input(X) of OneHotOp shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of OneHotOp should not be null.");
+                      "Output(Out) of OneHotOp shold not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_GE(x_dims.size(), 1,
-                      "Rank of Input(X) should be at least 1.");
+                      "Rank of Input(X) shold be at least 1.");
 
     int depth = ctx->Attrs().Get<int>("depth");
     if (ctx->HasInput("depth_tensor")) {
@@ -69,7 +69,7 @@ class OneHotV2OpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "(LoDTensor, LoDTensor<int>) Input variable with rank at least 2. "
-             "The last dimension of X should be 1. Each value of X is an index "
+             "The last dimension of X shold be 1. Each value of X is an indice "
              "to indicate the position.");
     AddInput("depth_tensor", "(Tensor, Tensor<int>), Length of one-hot vector")
         .AsDispensable();
@@ -91,7 +91,7 @@ class OneHotV2OpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddComment(R"DOC(
 One Hot Operator. This operator creates the one-hot representations for input
-index values. The following example will help to explain the function of this
+indice values. The following example will help to explain the function of this
 operator:
 
 X is a LoDTensor:

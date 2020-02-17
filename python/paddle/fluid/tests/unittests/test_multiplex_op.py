@@ -23,21 +23,21 @@ class TestMultiplexOp(OpTest):
     def setUp(self):
         self.op_type = "multiplex"
         rows = 4
-        index = np.arange(0, rows).astype('int32')
-        np.random.shuffle(index)
-        index = np.reshape(index, (rows, 1))
+        indice = np.arange(0, rows).astype('int32')
+        np.random.shuffle(indice)
+        indice = np.reshape(indice, (rows, 1))
         ins1 = np.random.random((rows, 25)).astype("float64")
         ins2 = np.random.random((rows, 25)).astype("float64")
         ins3 = np.random.random((rows, 25)).astype("float64")
         ins4 = np.random.random((rows, 25)).astype("float64")
         self.inputs = {
-            'Ids': index,
+            'Ids': indice,
             'X': [('x1', ins1), ('x2', ins2), ('x3', ins3), ('x4', ins4)]
         }
         # multiplex output
         output = np.zeros_like(ins1)
         for i in range(0, rows):
-            k = index[i][0]
+            k = indice[i][0]
             output[i] = self.inputs['X'][k][1][i]
         self.outputs = {'Out': output}
 

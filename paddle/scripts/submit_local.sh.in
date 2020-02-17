@@ -132,7 +132,7 @@ export PYTHONPATH=${PWD}:${PYTHONPATH}
 # Check python lib installed or not.
 pip --help > /dev/null
 if [ $? -ne 0 ]; then
-    echo "pip should be installed to run paddle."
+    echo "pip shold be installed to run paddle."
     exit 1
 fi
 

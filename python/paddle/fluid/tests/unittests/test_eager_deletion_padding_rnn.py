@@ -262,8 +262,8 @@ def lm_model(hidden_size,
         sliced_inputs = layers.split(
             input_embedding, num_or_sections=len, dim=1)
 
-        for index in range(len):
-            input = sliced_inputs[index]
+        for indice in range(len):
+            input = sliced_inputs[indice]
             input = layers.reshape(input, shape=[-1, hidden_size], inplace=True)
             for k in range(num_layers):
                 pre_hidden = hidden_array[k]

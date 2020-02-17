@@ -175,7 +175,7 @@ const int kEnableProfiler = 1;
 const int kDisableProfiler = 2;
 // Test if the profiler is currently enabled.
 bool IsProfileEnabled();
-// Whether the trainer should send profiling state to PS.
+// Whether the trainer shold send profiling state to PS.
 bool ShouldSendProfileState();
 // Mark current process as PS by assigning a lister id.
 void SetProfileListener();

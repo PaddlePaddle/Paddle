@@ -24,9 +24,9 @@ class IOUSimilarityOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of IOUSimilarityOp should not be null.");
+                   "Input(X) of IOUSimilarityOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Y"),
-                   "Input(Y) of IOUSimilarityOp should not be null.");
+                   "Input(Y) of IOUSimilarityOp shold not be null.");
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
 
@@ -74,7 +74,7 @@ class IOUSimilarityOpMaker : public framework::OpProtoAndCheckerMaker {
 **IOU Similarity Operator**
 
 Computes intersection-over-union (IOU) between two box lists.
-Box list 'X' should be a LoDTensor and 'Y' is a common Tensor,
+Box list 'X' shold be a LoDTensor and 'Y' is a common Tensor,
 boxes in 'Y' are shared by all instance of the batched inputs of X.
 Given two boxes A and B, the calculation of IOU is as follows:
 

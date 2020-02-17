@@ -32,8 +32,8 @@ TEST(inference, fit_a_line) {
     cpu_feeds.resize(num_threads);
     for (int i = 0; i < num_threads; ++i) {
       auto* input = new paddle::framework::LoDTensor();
-      // The second dim of the input tensor should be 13
-      // The input data should be >= 0
+      // The second dim of the input tensor shold be 13
+      // The input data shold be >= 0
       int64_t batch_size = 10;
       SetupTensor<float>(input, {batch_size, 13}, static_cast<float>(0),
                          static_cast<float>(10));

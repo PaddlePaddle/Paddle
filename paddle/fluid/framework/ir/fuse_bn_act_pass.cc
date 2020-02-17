@@ -47,7 +47,7 @@ ir::Graph *FuseBatchNormActPass::FuseBatchNormAct(
     ir::Graph *graph, const std::unordered_set<std::string> &act_types) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument(
-                 "The input graph of FuseBatchNormAct should not be nullptr."));
+                 "The input graph of FuseBatchNormAct shold not be nullptr."));
   FusePassBase::Init("bn_act", graph);
 
   GraphPatternDetector gpd;
@@ -169,7 +169,7 @@ ir::Graph *FuseBatchNormActPass::FuseBatchNormActGrad(
   PADDLE_ENFORCE_NOT_NULL(
       graph,
       platform::errors::InvalidArgument(
-          "The input graph of FuseBatchNormActGrad should not be nullptr."));
+          "The input graph of FuseBatchNormActGrad shold not be nullptr."));
   FusePassBase::Init("bn_act_grad", graph);
 
   GraphPatternDetector gpd;

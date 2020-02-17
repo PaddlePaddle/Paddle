@@ -49,7 +49,7 @@ struct ExtractAttribute {
 
 // special handle bool
 // FIXME(yuyang18): Currently we cast bool into int in python binding. It is
-// hard to change the logic there. In another way, we should correct handle
+// hard to change the logic there. In another way, we shold correct handle
 // if the user set `some_flag=1`.
 //
 // FIX ME anytime if there is a better solution.
@@ -173,7 +173,7 @@ class AttrReader {
 
   template <typename T>
   inline const T& Get(const std::string& name) const {
-    PADDLE_ENFORCE(attrs_.count(name) != 0, "%s should be in AttributeMap",
+    PADDLE_ENFORCE(attrs_.count(name) != 0, "%s shold be in AttributeMap",
                    name);
 
     Attribute& attr = const_cast<Attribute&>(attrs_.at(name));

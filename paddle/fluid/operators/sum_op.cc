@@ -34,10 +34,10 @@ class SumOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInputs("X"), true,
-                      "Inputs(X) should not be null");
+                      "Inputs(X) shold not be null");
 
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of SumOp should not be null.");
+                      "Output(Out) of SumOp shold not be null.");
     if (ctx->IsRuntime() &&
         ctx->GetOutputsVarType("Out")[0] ==
             framework::proto::VarType::LOD_TENSOR_ARRAY) {
@@ -51,7 +51,7 @@ class SumOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GT(
         N, 0,
         "ShapeError: The input tensor X's dimensions of SumOp "
-        "should be larger than 0. But received X's dimensions %d, "
+        "shold be larger than 0. But received X's dimensions %d, "
         "X's shape = [%s].",
         N, &x_dims);
     if (N == 1) {
@@ -117,7 +117,7 @@ class SumOp : public framework::OperatorWithKernel {
       int dtype = -1;
       for (size_t idx = 0; idx < x_vars.size(); ++idx) {
         PADDLE_ENFORCE_NOT_NULL(x_vars[idx],
-                                "Input var[%s] should not be nullptr",
+                                "Input var[%s] shold not be nullptr",
                                 x_vars_name[idx]);
         auto tensor =
             framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_vars[idx]);
@@ -131,7 +131,7 @@ class SumOp : public framework::OperatorWithKernel {
         }
       }
       PADDLE_ENFORCE_NE(dtype, -1,
-                        "Sum operator should have at least one tensor");
+                        "Sum operator shold have at least one tensor");
 
 #ifdef PADDLE_WITH_MKLDNN
       if (library == framework::LibraryType::kPlain &&
@@ -186,7 +186,7 @@ class SumOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "A Varaible list. The shape and data type of the list elements"
-             "should be consistent. Variable can be multi-dimensional Tensor"
+             "shold be consistent. Variable can be multi-dimensional Tensor"
              "or LoDTensor, and data types can be: float32, float64, int32, "
              "int64.")
         .AsDuplicable();

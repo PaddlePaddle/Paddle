@@ -26,8 +26,8 @@ void test_pool2d(bool global_pooling, bool ceil_mode,
   std::unordered_set<std::string> parameters;
   TRTConvertValidation validator(5, parameters, scope, 1 << 15);
 
-  // The ITensor's Dims should not contain the batch size.
-  // So, the ITensor's Dims of input and output should be C * H * W.
+  // The ITensor's Dims shold not contain the batch size.
+  // So, the ITensor's Dims of input and output shold be C * H * W.
   validator.DeclInputVar("pool2d-X", nvinfer1::Dims3(3, 6, 7));
   if (global_pooling)
     validator.DeclOutputVar("pool2d-Out", nvinfer1::Dims3(3, 1, 1));

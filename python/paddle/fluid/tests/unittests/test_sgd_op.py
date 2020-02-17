@@ -145,7 +145,7 @@ class TestSGDOpOptimizeSelectedRows(unittest.TestCase):
         w_selected_rows = scope.var('Param').get_selected_rows()
         w_selected_rows.set_height(len(param_rows))
         w_selected_rows.set_rows(param_rows)
-        w_selected_rows.sync_index()
+        w_selected_rows.sync_indice()
         w_array = np.ones((len(param_rows), row_width)).astype("float32")
         for i in range(len(param_rows)):
             w_array[i] *= i
@@ -162,9 +162,9 @@ class TestSGDOpOptimizeSelectedRows(unittest.TestCase):
 
         # optimize with Python
         w_after_optimize = np.copy(w_before_optimize)
-        for index, id in enumerate(grad_rows):
+        for indice, id in enumerate(grad_rows):
             w_after_optimize[id] = w_before_optimize[
-                id] - lr_value * grad_array[index]
+                id] - lr_value * grad_array[indice]
 
         # create and run sgd operator
         sgd_op = Operator(

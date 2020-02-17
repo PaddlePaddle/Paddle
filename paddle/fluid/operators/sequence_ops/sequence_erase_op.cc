@@ -24,15 +24,15 @@ class SequenceEraseOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SequenceErase operator should not be null.");
+                   "Input(X) of SequenceErase operator shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SequenceErase operator should not be null.");
+                   "Output(Out) of SequenceErase operator shold not be null.");
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE(x_dims.size() == 2 && x_dims[1] == 1,
-                   "Input(X) of SequenceEraseOp should be a 2-D LoDTensor "
+                   "Input(X) of SequenceEraseOp shold be a 2-D LoDTensor "
                    "with the 2nd dimension equal to 1.");
     ctx->SetOutputDim("Out", x_dims);
-    // The output LoDTensor's lod_level should be input X's lod_level.
+    // The output LoDTensor's lod_level shold be input X's lod_level.
     // For compile-time, we call SetLoDLevel to set output's lod_level.
     // For runtime, output LoDTensor's lod is determined by input X's lod and
     // the level specified by input RandTable.
@@ -74,7 +74,7 @@ operation, the three sequences become
 
     X1' = [[6]]^T, X2' = [[1, 9]]^T and X3' = [[6, 1, 0, 1]]^T.
 
-Hence the LoDTensor Output(Out) should be
+Hence the LoDTensor Output(Out) shold be
 
     Out = [[6, 1, 9, 6, 1, 0, 1]]^T,
 

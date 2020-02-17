@@ -45,12 +45,12 @@ struct Operation {
 
   bool IsValid() {
     if (!IsGradOp() && exprs.size() != 1U) {
-      // When it is a forward operation, it should hold only one expression (for
+      // When it is a forward operation, it shold hold only one expression (for
       // only one output).
       return false;
     }
     if (IsGradOp() && exprs.size() != static_cast<size_t>(num_operands)) {
-      // When it is a backward opertion, it should hold a expression for each
+      // When it is a backward opertion, it shold hold a expression for each
       // operand.
       return false;
     }

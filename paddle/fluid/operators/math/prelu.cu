@@ -33,13 +33,13 @@ template <typename T>
 __global__ void PReluChannelWiseKernel(const T *input, const T *alpha,
                                        T *output, size_t channel_num,
                                        size_t plane_size, size_t numel) {
-  size_t index;
-  CUDA_KERNEL_LOOP(index, numel) {
-    size_t temp = index / plane_size;
-    size_t channel_index = temp % channel_num;
-    T scale = alpha[channel_index];
-    T x = input[index];
-    output[index] = (x > 0) ? x : scale * x;
+  size_t indice;
+  CUDA_KERNEL_LOOP(indice, numel) {
+    size_t temp = indice / plane_size;
+    size_t channel_indice = temp % channel_num;
+    T scale = alpha[channel_indice];
+    T x = input[indice];
+    output[indice] = (x > 0) ? x : scale * x;
   }
 }
 
@@ -47,12 +47,12 @@ template <typename T>
 __global__ void PReluElementWiseKernel(const T *input, const T *alpha,
                                        T *output, size_t spatial_size,
                                        size_t numel) {
-  size_t index;
-  CUDA_KERNEL_LOOP(index, numel) {
-    size_t element_index = index % spatial_size;
-    T scale = alpha[element_index];
-    T x = input[index];
-    output[index] = (x > 0) ? x : scale * x;
+  size_t indice;
+  CUDA_KERNEL_LOOP(indice, numel) {
+    size_t element_indice = indice % spatial_size;
+    T scale = alpha[element_indice];
+    T x = input[indice];
+    output[indice] = (x > 0) ? x : scale * x;
   }
 }
 
@@ -60,10 +60,10 @@ template <typename T>
 __global__ void PReluScalarKernel(const T *input, const T *alpha, T *output,
                                   size_t numel) {
   T scale = alpha[0];
-  size_t index;
-  CUDA_KERNEL_LOOP(index, numel) {
-    T x = input[index];
-    output[index] = (x > 0) ? x : scale * x;
+  size_t indice;
+  CUDA_KERNEL_LOOP(indice, numel) {
+    T x = input[indice];
+    output[indice] = (x > 0) ? x : scale * x;
   }
 }
 

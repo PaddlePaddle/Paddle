@@ -24,32 +24,32 @@ class DpsgdOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("Param"), true,
-                      "Input(Param) of DpsgdOp should not be null.");
+                      "Input(Param) of DpsgdOp shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("Grad"), true,
-                      "Input(Grad) of DpsgdOp should not be null.");
+                      "Input(Grad) of DpsgdOp shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("LearningRate"), true,
-                      "Input(LearningRate) of DpsgdOp should not be null.");
+                      "Input(LearningRate) of DpsgdOp shold not be null.");
     PADDLE_ENFORCE_EQ(
         ctx->GetInputsVarType("Param").front(),
         framework::proto::VarType::LOD_TENSOR,
-        "The input var's type should be LoDTensor, but the received is %s",
+        "The input var's type shold be LoDTensor, but the received is %s",
         ctx->Inputs("Param").front(), ctx->GetInputsVarType("Param").front());
     PADDLE_ENFORCE_EQ(
         ctx->GetInputsVarType("Grad").front(),
         framework::proto::VarType::LOD_TENSOR,
-        "The input var's type should be LoDTensor, but the received is %s",
+        "The input var's type shold be LoDTensor, but the received is %s",
         ctx->Inputs("Grad").front(), ctx->GetInputsVarType("Grad").front());
 
     PADDLE_ENFORCE_EQ(ctx->HasOutput("ParamOut"), true,
-                      "Output(ParamOut) of DpsgdOp should not be null.");
+                      "Output(ParamOut) of DpsgdOp shold not be null.");
 
     auto lr_dims = ctx->GetInputDim("LearningRate");
     PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
-                      "Learning rate should have 1 dimension");
+                      "Learning rate shold have 1 dimension");
     auto param_dims = ctx->GetInputDim("Param");
     PADDLE_ENFORCE_EQ(
         param_dims, ctx->GetInputDim("Grad"),
-        "Param and Grad input of DpsgdOp should have same dimension");
+        "Param and Grad input of DpsgdOp shold have same dimension");
 
     ctx->SetOutputDim("ParamOut", param_dims);
   }

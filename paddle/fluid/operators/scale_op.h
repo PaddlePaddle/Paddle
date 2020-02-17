@@ -60,7 +60,7 @@ class ScaleKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(in->place());
 
     PADDLE_ENFORCE_EQ(in->dims(), out->dims(),
-                      "in and out should have the same dim");
+                      "in and out shold have the same dim");
 
     auto eigen_out = framework::EigenVector<T>::Flatten(*out);
     auto eigen_in = framework::EigenVector<T>::Flatten(*in);

@@ -37,10 +37,10 @@ class MaxSeqPoolFunctor {
  public:
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::LoDTensor& input, T pad_value,
-                  framework::LoDTensor* output, framework::Tensor* index) {
+                  framework::LoDTensor* output, framework::Tensor* indice) {
     auto in_dims = input.dims();
     auto out_dims = output->dims();
-    auto idx_dims = index->dims();
+    auto idx_dims = indice->dims();
     PADDLE_ENFORCE_GT(in_dims.size(), 1,
                       "The rank of input shall be greater than 1.");
     PADDLE_ENFORCE_GT(out_dims.size(), 1,
@@ -50,13 +50,13 @@ class MaxSeqPoolFunctor {
                         "The dimension of input and output shall be same.");
     }
     PADDLE_ENFORCE_EQ(idx_dims, out_dims,
-                      "The dimension of index and output shall be same.");
+                      "The dimension of indice and output shall be same.");
 
     auto lod_level = input.lod().size();
     auto starts = input.lod()[lod_level - 1];
     const T* in_data = input.data<T>();
     T* out_data = output->data<T>();
-    int* max_index = index->data<int>();
+    int* max_indice = indice->data<int>();
 
     int64_t num_seq = out_dims[0];
     int64_t dim = output->numel() / num_seq;
@@ -64,19 +64,19 @@ class MaxSeqPoolFunctor {
       if (starts[i] == starts[i + 1]) {
         for (int64_t k = 0; k < dim; ++k) {
           out_data[i * dim + k] = pad_value;
-          max_index[i * dim + k] = -1;
+          max_indice[i * dim + k] = -1;
         }
         continue;
       }
       for (int64_t k = 0; k < dim; ++k) {
         out_data[i * dim + k] = in_data[starts[i] * dim + k];
-        max_index[i * dim + k] = starts[i];
+        max_indice[i * dim + k] = starts[i];
       }
       for (size_t j = starts[i] + 1; j < starts[i + 1]; ++j) {
         for (int64_t k = 0; k < dim; ++k) {
           if (in_data[j * dim + k] > out_data[i * dim + k]) {
             out_data[i * dim + k] = in_data[j * dim + k];
-            max_index[i * dim + k] = j;
+            max_indice[i * dim + k] = j;
           }
         }
       }
@@ -84,13 +84,13 @@ class MaxSeqPoolFunctor {
   }
 };
 // Instantisation of Max Sequence Pooling for test phase eg. no need to fill
-// index buffer
+// indice buffer
 template <typename T>
 class MaxSeqPoolFunctor<T, true> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::LoDTensor& input, T pad_value,
-                  framework::LoDTensor* output, framework::Tensor* index) {
+                  framework::LoDTensor* output, framework::Tensor* indice) {
     auto in_dims = input.dims();
     auto out_dims = output->dims();
     PADDLE_ENFORCE_GT(in_dims.size(), 1,
@@ -133,11 +133,11 @@ class MaxSeqPoolGradFunctor {
  public:
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::LoDTensor& out_grad,
-                  const framework::Tensor& index,
+                  const framework::Tensor& indice,
                   framework::LoDTensor* in_grad) {
     auto og_dims = out_grad.dims();
     auto ig_dims = in_grad->dims();
-    auto idx_dims = index.dims();
+    auto idx_dims = indice.dims();
     PADDLE_ENFORCE_GT(og_dims.size(), 1,
                       "The rank of output@Grad shall be greater than 1.");
     PADDLE_ENFORCE_GT(ig_dims.size(), 1,
@@ -148,10 +148,10 @@ class MaxSeqPoolGradFunctor {
           "The dimension of input@Grad and output@Grad shall be same.");
     }
     PADDLE_ENFORCE_EQ(idx_dims, og_dims,
-                      "The dimension of index and output@Grad shall be same.");
+                      "The dimension of indice and output@Grad shall be same.");
 
     const T* og_data = out_grad.data<T>();
-    const int* max_index = index.data<int>();
+    const int* max_indice = indice.data<int>();
     T* ig_data = in_grad->data<T>();
 
     SetConstant<platform::CPUDeviceContext, T> set_zero;
@@ -160,7 +160,7 @@ class MaxSeqPoolGradFunctor {
     int64_t dim = out_grad.numel() / num_seq;
     for (int64_t i = 0; i < num_seq; ++i) {
       for (int64_t j = 0; j < dim; ++j) {
-        int step_id = max_index[i * dim + j];
+        int step_id = max_indice[i * dim + j];
         if (step_id == -1) continue;
         ig_data[step_id * dim + j] = og_data[i * dim + j];
       }
@@ -266,19 +266,19 @@ class SumSeqPoolGradFunctor {
 template <typename T>
 class SequencePoolFunctor<platform::CPUDeviceContext, T> {
  public:
-  /* max pool has index output */
+  /* max pool has indice output */
   void operator()(const platform::CPUDeviceContext& context,
                   const std::string pooltype, T pad_value,
                   const framework::LoDTensor& input,
                   framework::LoDTensor* output, bool is_test,
-                  framework::Tensor* index = nullptr) {
+                  framework::Tensor* indice = nullptr) {
     if (pooltype == "MAX") {
       if (is_test) {
         math::MaxSeqPoolFunctor<T, true> max_pool;
-        max_pool(context, input, pad_value, output, index);
+        max_pool(context, input, pad_value, output, indice);
       } else {
         math::MaxSeqPoolFunctor<T, false> max_pool;
-        max_pool(context, input, pad_value, output, index);
+        max_pool(context, input, pad_value, output, indice);
       }
       return;
     }
@@ -298,7 +298,7 @@ class SequencePoolFunctor<platform::CPUDeviceContext, T> {
       auto place = context.GetPlace();
       PADDLE_ENFORCE_EQ(
           platform::is_cpu_place(place), true,
-          "Sequence_pool should run on CPU Device when pooltype is SUM");
+          "Sequence_pool shold run on CPU Device when pooltype is SUM");
       const T* src = input.data<T>();
       T* dst = output->mutable_data<T>(place);
       jit::seq_pool_attr_t attr(
@@ -355,11 +355,11 @@ class SequencePoolGradFunctor<platform::CPUDeviceContext, T> {
                   const std::string pooltype,
                   const framework::LoDTensor& out_grad,
                   framework::LoDTensor* in_grad,
-                  /* max pool has index */
-                  const framework::Tensor* index = nullptr) {
+                  /* max pool has indice */
+                  const framework::Tensor* indice = nullptr) {
     if (pooltype == "MAX") {
       math::MaxSeqPoolGradFunctor<T> max_pool_grad;
-      max_pool_grad(context, out_grad, *index, in_grad);
+      max_pool_grad(context, out_grad, *indice, in_grad);
       return;
     }
 

@@ -27,23 +27,23 @@ class ROIPoolOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of ROIPoolOp should not be null.");
+                   "Input(X) of ROIPoolOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("ROIs"),
-                   "Input(ROIs) of ROIPoolOp should not be null.");
+                   "Input(ROIs) of ROIPoolOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of ROIPoolOp should not be null.");
+                   "Output(Out) of ROIPoolOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Argmax"),
-                   "Output(Argmax) of ROIPoolOp should not be null.");
+                   "Output(Argmax) of ROIPoolOp shold not be null.");
     auto input_dims = ctx->GetInputDim("X");
     auto rois_dims = ctx->GetInputDim("ROIs");
 
     PADDLE_ENFORCE(input_dims.size() == 4,
                    "The format of input tensor is NCHW.");
     PADDLE_ENFORCE(rois_dims.size() == 2,
-                   "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
+                   "ROIs shold be a 2-D LoDTensor of shape (num_rois, 4)"
                    "given as [[x1, y1, x2, y2], ...].");
     PADDLE_ENFORCE(rois_dims[1] == kROISize,
-                   "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
+                   "ROIs shold be a 2-D LoDTensor of shape (num_rois, 4)"
                    "given as [[x1, y1, x2, y2], ...].");
 
     int pooled_height = ctx->Attrs().Get<int>("pooled_height");
@@ -82,9 +82,9 @@ class ROIPoolGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "The gradient of Out should not be null.");
+                   "The gradient of Out shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName("X")),
-                   "The gradient of X should not be null.");
+                   "The gradient of X shold not be null.");
     ctx->SetOutputsDim(framework::GradVarName("X"), ctx->GetInputsDim("X"));
   }
 
@@ -110,7 +110,7 @@ class ROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("ROIs",
              "(LoDTensor), "
              "ROIs (Regions of Interest) to pool over. "
-             "should be a 2-D LoDTensor of shape (num_rois, 4)"
+             "shold be a 2-D LoDTensor of shape (num_rois, 4)"
              "given as [[x1, y1, x2, y2], ...]. "
              "Where batch_id is the id of the data, "
              "(x1, y1) is the top left coordinates, and "

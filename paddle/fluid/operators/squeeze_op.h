@@ -46,14 +46,14 @@ class SqueezeKernel : public framework::OpKernel<T> {
                                         const framework::DDim &in_dims) {
     size_t num_squeeze_dims = squeeze_dims.size();
     int cnt_squeezed_dims = 0;
-    bool should_squeeze[9] = {false};
+    bool shold_squeeze[9] = {false};
 
     // Determines number of dimensions of output tensor after squeeze.
     // Mark and count the dimensions need to be squeezed
     if (num_squeeze_dims == 0) {
       for (int idx = 0; idx < in_dims.size(); ++idx) {
         if (in_dims[idx] == 1) {
-          should_squeeze[idx] = true;
+          shold_squeeze[idx] = true;
           ++cnt_squeezed_dims;
         }
       }
@@ -63,27 +63,27 @@ class SqueezeKernel : public framework::OpKernel<T> {
                                             : squeeze_dims[idx];
 
         PADDLE_ENFORCE_GE(current, 0,
-                          "Invalid axis, the axis should >= 0."
+                          "Invalid axis, the axis shold >= 0."
                           "Current axis is:%d, input tensor's shape = [%s].",
                           current, in_dims);
 
         PADDLE_ENFORCE_EQ(in_dims[current], 1,
-                          "Invalid axis index, the axis that will be squeezed "
-                          "should be equal to 1. But current axis = %d,"
+                          "Invalid axis indice, the axis that will be squeezed "
+                          "shold be equal to 1. But current axis = %d,"
                           "input tensor's shape = [%s].",
                           in_dims[current], in_dims);
 
-        if (!(should_squeeze[current])) {
+        if (!(shold_squeeze[current])) {
           ++cnt_squeezed_dims;
         }
-        should_squeeze[current] = true;
+        shold_squeeze[current] = true;
       }
     }
 
     // Make output dimensions
     std::vector<int64_t> output_shape(in_dims.size() - cnt_squeezed_dims, 0);
     for (int in_idx = 0, out_idx = 0; in_idx < in_dims.size(); ++in_idx) {
-      if (!should_squeeze[in_idx]) {
+      if (!shold_squeeze[in_idx]) {
         output_shape[out_idx++] = in_dims[in_idx];
       }
     }

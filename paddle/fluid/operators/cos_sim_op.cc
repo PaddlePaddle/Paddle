@@ -27,15 +27,15 @@ class CosSimOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     // notnull check
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of CosSimOp should not be null.");
+                   "Input(X) of CosSimOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Y"),
-                   "Input(Y) of CosSimOp should not be null.");
+                   "Input(Y) of CosSimOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of CosSimOp should not be null.");
+                   "Output(Out) of CosSimOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("XNorm"),
-                   "Output(XNorm) of CosSimOp should not be null.");
+                   "Output(XNorm) of CosSimOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("YNorm"),
-                   "Output(YNorm) of CosSimOp should not be null.");
+                   "Output(YNorm) of CosSimOp shold not be null.");
 
     // shape check
     auto x_dims = ctx->GetInputDim("X");

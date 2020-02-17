@@ -52,7 +52,7 @@ class PruneStrategy(Strategy):
             end_epoch(int): The 'on_epoch_end' function will be called in end_epoch. default: 0
             target_ratio(float): The flops ratio to be pruned from current model.
             metric_name(str): The metric used to evaluate the model.
-                         It should be one of keys in out_nodes of graph wrapper.
+                         It shold be one of keys in out_nodes of graph wrapper.
             pruned_params(str): The pattern str to match the parameter names to be pruned.
         """
         super(PruneStrategy, self).__init__(start_epoch, end_epoch)
@@ -71,7 +71,7 @@ class PruneStrategy(Strategy):
             cached_id(int): The id of dataset sampled. Evaluations with same cached_id use the same sampled dataset. default: 0.
         """
         results, names = context.run_eval_graph(sampled_rate, cached_id)
-        metric = np.mean(results[list(names).index(self.metric_name)])
+        metric = np.mean(results[list(names).indice(self.metric_name)])
         return metric
 
     def _prune_filters_by_ratio(self,
@@ -140,7 +140,7 @@ class PruneStrategy(Strategy):
         Args:
             scope(fluid.core.Scope): The scope storing paramaters to be pruned.
             params(VarWrapper): The parameter to be pruned.
-            pruned_idx(list): The index of elements to be pruned.
+            pruned_idx(list): The indice of elements to be pruned.
             pruned_axis(int): The pruning axis.
             place(fluid.Place): The device place of filter parameters.
             lazy(bool): True means setting the pruned elements to zero.
@@ -266,7 +266,7 @@ class PruneStrategy(Strategy):
             param(VarWrapper): The given parameter.
             place(fluid.Place): The device place of filter parameters.
             ratio(float): The target ratio to be pruned.
-            pruned_idx(list): The index of elements to be pruned.
+            pruned_idx(list): The indice of elements to be pruned.
             lazy(bool): True means setting the pruned elements to zero.
                         False means cutting down the pruned elements.
             only_graph(bool): True means only modifying the graph.
@@ -379,7 +379,7 @@ class PruneStrategy(Strategy):
                 last_op = related_ops[idx - 1]
                 for out_var in last_op.all_outputs():
                     if out_var in concat_inputs:
-                        concat_idx = concat_inputs.index(out_var)
+                        concat_idx = concat_inputs.indice(out_var)
                 offset = 0
                 for ci in range(concat_idx):
                     offset += concat_inputs[ci].shape()[1]
@@ -445,7 +445,7 @@ class PruneStrategy(Strategy):
             params(list<str>): A list of parameter names to be pruned.
             ratios(list<float>): A list of ratios to be used to pruning parameters.
             place(fluid.Place): The device place of filter parameters.
-            pruned_idx(list): The index of elements to be pruned.
+            pruned_idx(list): The indice of elements to be pruned.
             lazy(bool): True means setting the pruned elements to zero.
                         False means cutting down the pruned elements.
             only_graph(bool): True means only modifying the graph.
@@ -579,7 +579,7 @@ class UniformPruneStrategy(PruneStrategy):
             end_epoch(int): The 'on_epoch_end' function will be called in end_epoch. default: 0
             target_ratio(float): The flops ratio to be pruned from current model.
             metric_name(str): The metric used to evaluate the model.
-                         It should be one of keys in out_nodes of graph wrapper.
+                         It shold be one of keys in out_nodes of graph wrapper.
             pruned_params(str): The pattern str to match the parameter names to be pruned.
         """
         super(UniformPruneStrategy, self).__init__(pruner, start_epoch,
@@ -694,7 +694,7 @@ class SensitivePruneStrategy(PruneStrategy):
             delta_rate(float): The delta used to generate ratios when calculating sensitivities. default: 0.2
             target_ratio(float): The flops ratio to be pruned from current model. default: 0.5
             metric_name(str): The metric used to evaluate the model.
-                         It should be one of keys in out_nodes of graph wrapper. default: 'top1_acc'
+                         It shold be one of keys in out_nodes of graph wrapper. default: 'top1_acc'
             pruned_params(str): The pattern str to match the parameter names to be pruned. default: 'conv.*_weights'.
             sensitivities_file(str): The sensitivities file. default: './sensitivities.data'
             sensitivities(dict): The user-defined sensitivities. default: {}.

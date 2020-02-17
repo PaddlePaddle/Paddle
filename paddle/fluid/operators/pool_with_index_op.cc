@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/pool_with_index_op.h"
+#include "paddle/fluid/operators/pool_with_indice_op.h"
 #include <memory>
 
 namespace paddle {
@@ -30,11 +30,11 @@ class MaxPoolWithIndexOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of Pooling should not be null.");
+                   "Input(X) of Pooling shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of Pooling should not be null.");
+                   "Output(Out) of Pooling shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Mask"),
-                   "Output(Mask) of Pooling should not be null.");
+                   "Output(Mask) of Pooling shold not be null.");
 
     auto in_x_dims = ctx->GetInputDim("X");
 
@@ -44,7 +44,7 @@ class MaxPoolWithIndexOp : public framework::OperatorWithKernel {
     bool adaptive = ctx->Attrs().Get<bool>("adaptive");
 
     PADDLE_ENFORCE(in_x_dims.size() == 4 || in_x_dims.size() == 5,
-                   "Pooling intput should be 4-D or 5-D tensor.");
+                   "Pooling intput shold be 4-D or 5-D tensor.");
 
     if (ctx->Attrs().Get<bool>("global_pooling")) {
       ksize.resize(static_cast<size_t>(in_x_dims.size()) - 2);
@@ -55,11 +55,11 @@ class MaxPoolWithIndexOp : public framework::OperatorWithKernel {
     }
 
     PADDLE_ENFORCE(in_x_dims.size() - ksize.size() == 2U,
-                   "Input size and pooling size should be consistent.");
+                   "Input size and pooling size shold be consistent.");
     PADDLE_ENFORCE_EQ(ksize.size(), strides.size(),
-                      "Strides size and pooling size should be the same.");
+                      "Strides size and pooling size shold be the same.");
     PADDLE_ENFORCE_EQ(ksize.size(), paddings.size(),
-                      "Paddings size and pooling size should be the same.");
+                      "Paddings size and pooling size shold be the same.");
 
     std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1]});
     if (adaptive) {
@@ -95,10 +95,10 @@ class MaxPoolWithIndexOpGrad : public framework::OperatorWithKernel {
                       platform::errors::NotFound("Input(X) must not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput(framework::GradVarName("Out")), true,
-        platform::errors::NotFound("Input(Out@GRAD) should not be null."));
+        platform::errors::NotFound("Input(Out@GRAD) shold not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput(framework::GradVarName("X")), true,
-        platform::errors::NotFound("Output(X@GRAD) should not be null."));
+        platform::errors::NotFound("Output(X@GRAD) shold not be null."));
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 
@@ -132,7 +132,7 @@ class MaxPool2dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
               "where N is batch size, C is the number of channels, "
               "H is the height of the image, "
               "and W is the width of the image. "
-              "It represents the index in the current feature map.");
+              "It represents the indice in the current feature map.");
 
     AddAttr<std::vector<int>>("ksize",
                               "(vector<int>) The pooling window size(height, "
@@ -170,7 +170,7 @@ class MaxPool2dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 MaxPool2d Operator.
 
-The maxPooling2d with index operation calculates the output and the mask
+The maxPooling2d with indice operation calculates the output and the mask
 based on the input, ksize, strides, and paddings parameters. Input(X) and
 output(Out, Mask) are in NCHW format, where N is batch size, C is the
 number of channels, H is the height of the feature, 
@@ -222,7 +222,7 @@ class MaxPool3dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
               "where N is the batch size, C is the number of channels, and "
               "D, H and W are the depth, height and width "
               "of the image, respectively. "
-              "It represents the index in the current feature map.");
+              "It represents the indice in the current feature map.");
 
     AddAttr<std::vector<int>>("ksize",
                               "(vector<int>) The pooling window size(depth, "
@@ -260,7 +260,7 @@ class MaxPool3dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 MaxPool3d Operator.
 
-The maxpooling3d with index operation calculates the output and the mask
+The maxpooling3d with indice operation calculates the output and the mask
 based on the input and ksize, strides, paddings parameters.
 Input(X) and output(Out, Mask) are in NCDHW format, where N is batch
 size, C is the number of channels, and D, H and W are the depth, height and
@@ -317,39 +317,39 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(max_pool2d_with_index, ops::MaxPoolWithIndexOp,
+REGISTER_OPERATOR(max_pool2d_with_indice, ops::MaxPoolWithIndexOp,
                   ops::MaxPool2dWithIndexOpMaker,
                   ops::MaxPoolWithIndexGradOpMaker<paddle::framework::OpDesc>,
                   ops::MaxPoolWithIndexGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(max_pool2d_with_index_grad, ops::MaxPoolWithIndexOpGrad,
+REGISTER_OPERATOR(max_pool2d_with_indice_grad, ops::MaxPoolWithIndexOpGrad,
                   ops::MaxPoolWithIndexOpGradNoNeedBufferVarsInference);
 
 REGISTER_OP_CPU_KERNEL(
-    max_pool2d_with_index,
+    max_pool2d_with_indice,
     ops::MaxPoolWithIndexKernel<paddle::platform::CPUDeviceContext, float, int>,
     ops::MaxPoolWithIndexKernel<paddle::platform::CPUDeviceContext, double,
                                 int>);
 REGISTER_OP_CPU_KERNEL(
-    max_pool2d_with_index_grad,
+    max_pool2d_with_indice_grad,
     ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUDeviceContext, float,
                                     int>,
     ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUDeviceContext, double,
                                     int>);
 
-REGISTER_OPERATOR(max_pool3d_with_index, ops::MaxPoolWithIndexOp,
+REGISTER_OPERATOR(max_pool3d_with_indice, ops::MaxPoolWithIndexOp,
                   ops::MaxPool3dWithIndexOpMaker,
                   ops::MaxPoolWithIndexGradOpMaker<paddle::framework::OpDesc>,
                   ops::MaxPoolWithIndexGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(max_pool3d_with_index_grad, ops::MaxPoolWithIndexOpGrad,
+REGISTER_OPERATOR(max_pool3d_with_indice_grad, ops::MaxPoolWithIndexOpGrad,
                   ops::MaxPoolWithIndexOpGradNoNeedBufferVarsInference);
 
 REGISTER_OP_CPU_KERNEL(
-    max_pool3d_with_index,
+    max_pool3d_with_indice,
     ops::MaxPoolWithIndexKernel<paddle::platform::CPUDeviceContext, float, int>,
     ops::MaxPoolWithIndexKernel<paddle::platform::CPUDeviceContext, double,
                                 int>);
 REGISTER_OP_CPU_KERNEL(
-    max_pool3d_with_index_grad,
+    max_pool3d_with_indice_grad,
     ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUDeviceContext, float,
                                     int>,
     ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUDeviceContext, double,

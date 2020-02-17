@@ -50,7 +50,7 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
 
   std::vector<std::string> graph_param_names =
       ExtractParameters(graph->Nodes());
-  // those parameter already exist in trt, and should not have another copy in
+  // those parameter already exist in trt, and shold not have another copy in
   // fluid.
   std::vector<std::string> repetitive_params;
 

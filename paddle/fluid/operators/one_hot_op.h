@@ -52,10 +52,10 @@ struct OneHotOpFunctor {
     } else {
       for (int i = 0; i < numel; ++i) {
         PADDLE_ENFORCE_GE(p_in_data[i], 0,
-                          "Illegal index value, should be at least 0.");
+                          "Illegal indice value, shold be at least 0.");
         PADDLE_ENFORCE_LT(
             p_in_data[i], depth_,
-            "Illegal index value, should be less than depth (%d).", depth_);
+            "Illegal indice value, shold be less than depth (%d).", depth_);
         *(p_out_data + i * depth_ + p_in_data[i]) = 1.0;
       }
     }

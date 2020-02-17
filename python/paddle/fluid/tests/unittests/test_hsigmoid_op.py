@@ -32,7 +32,7 @@ class CodeTable(object):
     def __init__(self, num_classes, code):
         self.c = num_classes + code
 
-    def cal_index(self, bit):
+    def cal_indice(self, bit):
         return (self.c >> (bit + 1)) - 1
 
     def get_length(self):
@@ -43,17 +43,17 @@ class CodeTable(object):
 
 
 class CodeTableWithCustomTree(object):
-    def __init__(self, path_table, path_code, index):
+    def __init__(self, path_table, path_code, indice):
         self.ptable_ = path_table
         self.pcode_ = path_code
-        self.index_ = index
+        self.indice_ = indice
 
-    def cal_index(self, bit):
-        return self.ptable_[self.index_][bit]
+    def cal_indice(self, bit):
+        return self.ptable_[self.indice_][bit]
 
     def get_length(self):
         length = 0
-        for ele in self.ptable_[self.index_]:  # find the first -1 to stop trace
+        for ele in self.ptable_[self.indice_]:  # find the first -1 to stop trace
 
             if ele >= 0:
                 length = length + 1
@@ -62,7 +62,7 @@ class CodeTableWithCustomTree(object):
         return length
 
     def cal_bit(self, bit):
-        return self.pcode_[self.index_][bit]
+        return self.pcode_[self.indice_][bit]
 
 
 def hsigmoid(x, w, label, bias, num_classes):
@@ -76,13 +76,13 @@ def hsigmoid(x, w, label, bias, num_classes):
         code_table = CodeTable(num_classes, label[i])
         length = code_table.get_length()
         for j in range(length):
-            idx = code_table.cal_index(j)
+            idx = code_table.cal_indice(j)
             pre_output[i][j] += bias[idx][0]
     for i in range(batch_size):
         code_table = CodeTable(num_classes, label[i])
         length = code_table.get_length()
         for j in range(length):
-            idx = code_table.cal_index(j)
+            idx = code_table.cal_indice(j)
             pre_output[i][j] += np.dot(w[idx], x[i])
     # clip[-40.0, 40.0]
     pre_output = np.clip(pre_output, -40.0, 40.0)
@@ -116,13 +116,13 @@ def hsigmoidWithCustomTree(x, w, path_table, path_code, label, bias,
             code_table = CodeTableWithCustomTree(path_table, path_code, i)
             length = code_table.get_length()
             for j in range(length):
-                idx = code_table.cal_index(j)
+                idx = code_table.cal_indice(j)
                 pre_output[i][j] += bias[idx][0]
     for i in range(batch_size):
         code_table = CodeTableWithCustomTree(path_table, path_code, i)
         length = code_table.get_length()
         for j in range(length):
-            idx = code_table.cal_index(j)
+            idx = code_table.cal_indice(j)
             pre_output[i][j] += np.dot(w[idx], x[i])
     # clip[-40.0, 40.0]
     pre_output = np.clip(pre_output, -40.0, 40.0)

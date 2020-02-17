@@ -29,7 +29,7 @@ class AssignValueOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of AssignValueOp should not be null.");
+                   "Output(Out) of AssignValueOp shold not be null.");
     auto shape = ctx->Attrs().Get<std::vector<int>>("shape");
     ctx->SetOutputDim("Out", framework::make_ddim(shape));
   }

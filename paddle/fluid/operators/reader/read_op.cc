@@ -47,7 +47,7 @@ class ReadInferShape : public framework::InferShapeBase {
     PADDLE_ENFORCE(ctx->HasInput("Reader"),
                    "The ReadOp must take a reader as input.");
     PADDLE_ENFORCE(ctx->HasOutputs("Out"),
-                   "The ReadOp should be assigned with output.");
+                   "The ReadOp shold be assigned with output.");
     if (!ctx->IsRuntime() && ctx->Attrs().Get<bool>("infer_out")) {
       std::vector<framework::DDim> reader_dims = ctx->GetReaderDims("Reader");
       std::vector<std::string> out_names = ctx->Outputs("Out");
@@ -127,7 +127,7 @@ class ReadOp : public framework::OperatorBase {
       if (need_check_feed[i]) {
         auto in_dims = ins[i].dims();
         PADDLE_ENFORCE_EQ(DimensionIsCompatibleWith(shapes[i], in_dims), true,
-                          "The feeded Variable %s should have dimensions = %d, "
+                          "The feeded Variable %s shold have dimensions = %d, "
                           "shape = [%s], but received feeded shape [%s]",
                           out_arg_names[i], shapes[i].size(), shapes[i],
                           in_dims);

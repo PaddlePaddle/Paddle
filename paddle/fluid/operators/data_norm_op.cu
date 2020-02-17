@@ -103,9 +103,9 @@ class DataNormKernel<platform::CUDADeviceContext, T>
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *x = ctx.Input<Tensor>("X");
     const auto &x_dims = x->dims();
-    // Align with CPU version, but should we add this restriction?
+    // Align with CPU version, but shold we add this restriction?
     PADDLE_ENFORCE_EQ(x_dims.size(), 2, platform::errors::PreconditionNotMet(
-                                            "The Input dim size should be 2"));
+                                            "The Input dim size shold be 2"));
     const int N = x_dims[0];
     const int C = x_dims[1];
     const T *batch_size_in = ctx.Input<Tensor>("BatchSize")->data<T>();
@@ -146,9 +146,9 @@ class DataNormGradKernel<platform::CUDADeviceContext, T>
     const bool need_sync_stats = ctx.Attr<bool>("sync_stats");
 
     const auto &x_dims = x->dims();
-    // Align with CPU version, but should we add this restriction?
+    // Align with CPU version, but shold we add this restriction?
     PADDLE_ENFORCE_EQ(x_dims.size(), 2, platform::errors::PreconditionNotMet(
-                                            "The Input dim size should be 2"));
+                                            "The Input dim size shold be 2"));
     const int N = x_dims[0];
     const int C = x_dims[1];
 
@@ -199,7 +199,7 @@ class DataNormGradKernel<platform::CUDADeviceContext, T>
       }
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "PaddlePaddle should compile with GPU, and need_sync_stats connot be "
+          "PaddlePaddle shold compile with GPU, and need_sync_stats connot be "
           "supported on windows now."));
 #endif
     }

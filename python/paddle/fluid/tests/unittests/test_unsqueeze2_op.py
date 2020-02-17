@@ -47,7 +47,7 @@ class TestUnsqueezeOp(OpTest):
         self.attrs = {"axes": self.axes}
 
 
-# Correct: Single input index.
+# Correct: Single input indice.
 class TestUnsqueezeOp1(TestUnsqueezeOp):
     def init_test_case(self):
         self.ori_shape = (20, 5)
@@ -86,8 +86,8 @@ class TestUnsqueezeOp_AxesTensorList(OpTest):
         self.op_type = "unsqueeze2"
 
         axes_tensor_list = []
-        for index, ele in enumerate(self.axes):
-            axes_tensor_list.append(("axes" + str(index), np.ones(
+        for indice, ele in enumerate(self.axes):
+            axes_tensor_list.append(("axes" + str(indice), np.ones(
                 (1)).astype('int32') * ele))
 
         self.inputs = {

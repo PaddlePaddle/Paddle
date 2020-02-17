@@ -51,7 +51,7 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
     for (auto &out_node : fused_scale1->outputs) {
       if (fused_scale2_in_nodes.count(out_node)) {
         PADDLE_ENFORCE(out_node->IsCtrlVar(),
-                       "The dependency var only should be ctrl var.");
+                       "The dependency var only shold be ctrl var.");
         not_need_ctrl_var_nodes.insert(out_node);
       }
     }
@@ -59,7 +59,7 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
     for (auto &node : not_need_ctrl_var_nodes) {
       // remove this node from the input op node.
       PADDLE_ENFORCE(!node->inputs.empty(),
-                     "The input should not be empty here.");
+                     "The input shold not be empty here.");
       auto op_node = node->inputs.front();
       PADDLE_ENFORCE(op_node->IsOp());
       op_node->outputs.erase(
@@ -124,7 +124,7 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
     adam_desc.SetInput(kGrad, {fused_vars_name.at(kGrad)});
     adam_desc.SetInput("Moment1", {fused_vars_name.at("Moment1")});
     adam_desc.SetInput("Moment2", {fused_vars_name.at("Moment2")});
-    // TODO(zcd): The LearningRate, Beta1Pow, Beta2Pow should be equal.
+    // TODO(zcd): The LearningRate, Beta1Pow, Beta2Pow shold be equal.
     adam_desc.SetInput(kLearningRate, adam_ops[0]->Op()->Input(kLearningRate));
     adam_desc.SetInput("Beta1Pow", adam_ops[0]->Op()->Input("Beta1Pow"));
     adam_desc.SetInput("Beta2Pow", adam_ops[0]->Op()->Input("Beta2Pow"));

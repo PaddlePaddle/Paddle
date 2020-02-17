@@ -20,40 +20,40 @@ from op_test import OpTest
 import paddle.fluid as fluid
 
 
-def numpy_scatter_nd(ref, index, updates, fun):
+def numpy_scatter_nd(ref, indice, updates, fun):
     ref_shape = ref.shape
-    index_shape = index.shape
+    indice_shape = indice.shape
 
-    end_size = index_shape[-1]
+    end_size = indice_shape[-1]
     remain_numl = 1
-    for i in range(len(index_shape) - 1):
-        remain_numl *= index_shape[i]
+    for i in range(len(indice_shape) - 1):
+        remain_numl *= indice_shape[i]
 
     slice_size = 1
     for i in range(end_size, len(ref_shape)):
         slice_size *= ref_shape[i]
 
-    flat_index = index.reshape([remain_numl] + list(index_shape[-1:]))
+    flat_indice = indice.reshape([remain_numl] + list(indice_shape[-1:]))
     flat_updates = updates.reshape((remain_numl, slice_size))
     flat_output = ref.reshape(list(ref_shape[:end_size]) + [slice_size])
 
-    for i_up, i_out in enumerate(flat_index):
+    for i_up, i_out in enumerate(flat_indice):
         i_out = tuple(i_out)
         flat_output[i_out] = fun(flat_output[i_out], flat_updates[i_up])
     return flat_output.reshape(ref.shape)
 
 
-def numpy_scatter_nd_add(ref, index, updates):
-    return numpy_scatter_nd(ref, index, updates, lambda x, y: x + y)
+def numpy_scatter_nd_add(ref, indice, updates):
+    return numpy_scatter_nd(ref, indice, updates, lambda x, y: x + y)
 
 
-def judge_update_shape(ref, index):
+def judge_update_shape(ref, indice):
     ref_shape = ref.shape
-    index_shape = index.shape
+    indice_shape = indice.shape
     update_shape = []
-    for i in range(len(index_shape) - 1):
-        update_shape.append(index_shape[i])
-    for i in range(index_shape[-1], len(ref_shape), 1):
+    for i in range(len(indice_shape) - 1):
+        update_shape.append(indice_shape[i])
+    for i in range(indice_shape[-1], len(ref_shape), 1):
         update_shape.append(ref_shape[i])
     return update_shape
 
@@ -66,11 +66,11 @@ class TestScatterNdAddSimpleOp(OpTest):
     def setUp(self):
         self.op_type = "scatter_nd_add"
         ref_np = np.random.random([100]).astype("float64")
-        index_np = np.random.randint(0, 100, [100, 1]).astype("int32")
+        indice_np = np.random.randint(0, 100, [100, 1]).astype("int32")
         updates_np = np.random.random([100]).astype("float64")
-        expect_np = numpy_scatter_nd_add(ref_np.copy(), index_np, updates_np)
+        expect_np = numpy_scatter_nd_add(ref_np.copy(), indice_np, updates_np)
 
-        self.inputs = {'X': ref_np, 'Index': index_np, 'Updates': updates_np}
+        self.inputs = {'X': ref_np, 'Index': indice_np, 'Updates': updates_np}
         self.outputs = {'Out': expect_np}
 
     def test_check_output(self):
@@ -88,12 +88,12 @@ class TestScatterNdAddWithEmptyIndex(OpTest):
     def setUp(self):
         self.op_type = "scatter_nd_add"
         ref_np = np.random.random((10, 10)).astype("float64")
-        index_np = np.array([[], []]).astype("int32")
+        indice_np = np.array([[], []]).astype("int32")
         updates_np = np.random.random((2, 10, 10)).astype("float64")
 
-        expect_np = numpy_scatter_nd_add(ref_np.copy(), index_np, updates_np)
+        expect_np = numpy_scatter_nd_add(ref_np.copy(), indice_np, updates_np)
 
-        self.inputs = {'X': ref_np, 'Index': index_np, 'Updates': updates_np}
+        self.inputs = {'X': ref_np, 'Index': indice_np, 'Updates': updates_np}
         self.outputs = {'Out': expect_np}
 
     def test_check_output(self):
@@ -112,14 +112,14 @@ class TestScatterNdAddWithHighRankSame(OpTest):
         self.op_type = "scatter_nd_add"
         shape = (10, 9, 8, 1, 15)
         ref_np = np.random.rand(*shape).astype("float64")
-        index_np = np.vstack(
+        indice_np = np.vstack(
             [np.random.randint(
                 0, s, size=150) for s in shape]).T.astype("int32")
-        update_shape = judge_update_shape(ref_np, index_np)
+        update_shape = judge_update_shape(ref_np, indice_np)
         updates_np = np.random.rand(*update_shape).astype("float64")
-        expect_np = numpy_scatter_nd_add(ref_np.copy(), index_np, updates_np)
+        expect_np = numpy_scatter_nd_add(ref_np.copy(), indice_np, updates_np)
 
-        self.inputs = {'X': ref_np, 'Index': index_np, 'Updates': updates_np}
+        self.inputs = {'X': ref_np, 'Index': indice_np, 'Updates': updates_np}
         self.outputs = {'Out': expect_np}
 
     def test_check_output(self):
@@ -138,13 +138,13 @@ class TestScatterNdAddWithHighRankDiff(OpTest):
         self.op_type = "scatter_nd_add"
         shape = (10, 9, 8, 1, 15)
         ref_np = np.random.rand(*shape).astype("double")
-        index = np.vstack([np.random.randint(0, s, size=500) for s in shape]).T
-        index_np = index.reshape([10, 5, 10, 5]).astype("int64")
-        update_shape = judge_update_shape(ref_np, index_np)
+        indice = np.vstack([np.random.randint(0, s, size=500) for s in shape]).T
+        indice_np = indice.reshape([10, 5, 10, 5]).astype("int64")
+        update_shape = judge_update_shape(ref_np, indice_np)
         updates_np = np.random.rand(*update_shape).astype("double")
-        expect_np = numpy_scatter_nd_add(ref_np.copy(), index_np, updates_np)
+        expect_np = numpy_scatter_nd_add(ref_np.copy(), indice_np, updates_np)
 
-        self.inputs = {'X': ref_np, 'Index': index_np, 'Updates': updates_np}
+        self.inputs = {'X': ref_np, 'Index': indice_np, 'Updates': updates_np}
         self.outputs = {'Out': expect_np}
 
     def test_check_output(self):
@@ -166,8 +166,8 @@ class TestScatterNdOpAPI(unittest.TestCase):
             shape=[10, 9, 8, 1, 3],
             dtype='float32',
             append_batch_size=False)
-        index1 = fluid.layers.data(
-            name='index1',
+        indice1 = fluid.layers.data(
+            name='indice1',
             shape=[5, 5, 8, 5],
             dtype='int32',
             append_batch_size=False)
@@ -176,7 +176,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
             shape=[5, 5, 8],
             dtype='float32',
             append_batch_size=False)
-        output1 = fluid.layers.scatter_nd_add(ref1, index1, updates1)
+        output1 = fluid.layers.scatter_nd_add(ref1, indice1, updates1)
 
     def testcase2(self):
         ref2 = fluid.layers.data(
@@ -184,8 +184,8 @@ class TestScatterNdOpAPI(unittest.TestCase):
             shape=[10, 9, 8, 1, 3],
             dtype='double',
             append_batch_size=False)
-        index2 = fluid.layers.data(
-            name='index2',
+        indice2 = fluid.layers.data(
+            name='indice2',
             shape=[5, 8, 5],
             dtype='int32',
             append_batch_size=False)
@@ -195,12 +195,12 @@ class TestScatterNdOpAPI(unittest.TestCase):
             dtype='double',
             append_batch_size=False)
         output2 = fluid.layers.scatter_nd_add(
-            ref2, index2, updates2, name="scatter_nd_add")
+            ref2, indice2, updates2, name="scatter_nd_add")
 
     def testcase3(self):
         shape3 = [10, 9, 8, 1, 3]
-        index3 = fluid.layers.data(
-            name='index3',
+        indice3 = fluid.layers.data(
+            name='indice3',
             shape=[5, 5, 8, 5],
             dtype='int32',
             append_batch_size=False)
@@ -209,12 +209,12 @@ class TestScatterNdOpAPI(unittest.TestCase):
             shape=[5, 5, 8],
             dtype='float32',
             append_batch_size=False)
-        output3 = fluid.layers.scatter_nd(index3, updates3, shape3)
+        output3 = fluid.layers.scatter_nd(indice3, updates3, shape3)
 
     def testcase4(self):
         shape4 = [10, 9, 8, 1, 3]
-        index4 = fluid.layers.data(
-            name='index4',
+        indice4 = fluid.layers.data(
+            name='indice4',
             shape=[5, 5, 8, 5],
             dtype='int32',
             append_batch_size=False)
@@ -224,7 +224,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
             dtype='double',
             append_batch_size=False)
         output4 = fluid.layers.scatter_nd(
-            index4, updates4, shape4, name='scatter_nd')
+            indice4, updates4, shape4, name='scatter_nd')
 
 
 #Test Raise Error
@@ -234,14 +234,14 @@ class TestScatterNdOpRaise(unittest.TestCase):
             try:
                 ref5 = fluid.layers.data(
                     name='ref5', shape=[3, 4, 5], dtype='float32')
-                index5 = fluid.layers.data(
-                    name='index5', shape=[2, 10], dtype='int32')
+                indice5 = fluid.layers.data(
+                    name='indice5', shape=[2, 10], dtype='int32')
                 updates5 = fluid.layers.data(
                     name='updates5', shape=[2, 10], dtype='float32')
-                output5 = fluid.layers.scatter_nd_add(ref5, index5, updates5)
+                output5 = fluid.layers.scatter_nd_add(ref5, indice5, updates5)
             except Exception as e:
                 t = \
-                "Input(Index).shape[-1] should be no greater than Input(X).rank"
+                "Input(Index).shape[-1] shold be no greater than Input(X).rank"
                 if t in str(e):
                     raise IndexError
 
@@ -254,8 +254,8 @@ class TestScatterNdOpRaise(unittest.TestCase):
                 shape=[10, 9, 8, 1, 3],
                 dtype='double',
                 append_batch_size=False)
-            index6 = fluid.layers.data(
-                name='index6',
+            indice6 = fluid.layers.data(
+                name='indice6',
                 shape=[5, 8, 5],
                 dtype='int32',
                 append_batch_size=False)
@@ -264,17 +264,17 @@ class TestScatterNdOpRaise(unittest.TestCase):
                 shape=[5, 8],
                 dtype='float32',
                 append_batch_size=False)
-            output6 = fluid.layers.scatter_nd_add(ref6, index6, updates6)
+            output6 = fluid.layers.scatter_nd_add(ref6, indice6, updates6)
 
     def test_check_raise3(self):
         def check_raise_is_test():
             try:
                 shape = [3, 4, 5]
-                index7 = fluid.layers.data(
-                    name='index7', shape=[2, 1], dtype='int32')
+                indice7 = fluid.layers.data(
+                    name='indice7', shape=[2, 1], dtype='int32')
                 updates7 = fluid.layers.data(
                     name='updates7', shape=[2, 4, 5, 20], dtype='float32')
-                output7 = fluid.layers.scatter_nd(index7, updates7, shape)
+                output7 = fluid.layers.scatter_nd(indice7, updates7, shape)
             except Exception as e:
                 t = \
                 "Updates has wrong shape"

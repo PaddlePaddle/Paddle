@@ -27,7 +27,7 @@ std::vector<DDim> InferShapeContext::GetReaderDims(
   const std::vector<std::string> &arg_names = Inputs(name);
   PADDLE_ENFORCE_EQ(
       arg_names.size(), 1UL,
-      "Reader input '%s' should hold one element, but now it holds %d", name,
+      "Reader input '%s' shold hold one element, but now it holds %d", name,
       arg_names.size());
   return this->GetRepeatedDims(arg_names[0]);
 }
@@ -37,7 +37,7 @@ void InferShapeContext::SetReaderDims(const std::string &name,
   const std::vector<std::string> &arg_names = Outputs(name);
   PADDLE_ENFORCE_EQ(
       arg_names.size(), 1UL,
-      "Reader output '%s' should hold one element, but now it holds %d", name,
+      "Reader output '%s' shold hold one element, but now it holds %d", name,
       arg_names.size());
   return this->SetRepeatedDims(arg_names[0], dims);
 }

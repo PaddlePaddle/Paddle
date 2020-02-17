@@ -45,7 +45,7 @@ class MergeLoDTensorOp : public framework::OperatorBase {
     auto level = static_cast<size_t>(Attr<int>("level"));
 
     PADDLE_ENFORCE(in_true.numel() || in_false.numel(),
-                   "Input(InTrue) or Input(InFalse) should be initialized.");
+                   "Input(InTrue) or Input(InFalse) shold be initialized.");
 
     auto &mask_dim = mask.dims();
     std::unique_ptr<framework::LoDTensor> cpu_mask{new framework::LoDTensor()};
@@ -194,8 +194,8 @@ class MergeLoDTensorInferShape : public framework::InferShapeBase {
                       "If you are using IfElse OP:"
                       "\n\nie = fluid.layers.IfElse(cond=cond)\nwith "
                       "ie.true_block():\n    out_1 = ie.input(x)\n\n"
-                      "Please ensure that the cond should be a 2-D tensor and "
-                      "the second dim size of cond should be 1. "
+                      "Please ensure that the cond shold be a 2-D tensor and "
+                      "the second dim size of cond shold be 1. "
                       "But now the cond's shape is [",
                       *mask_dim.Get(), "].\n");
     if (context->IsRuntime() || mask_dim[1] > 0) {
@@ -203,8 +203,8 @@ class MergeLoDTensorInferShape : public framework::InferShapeBase {
                         "If you are using IfElse OP:"
                         "\n\nie = fluid.layers.IfElse(cond=cond)\nwith "
                         "ie.true_block():\n    out_1 = ie.input(x)\n\n"
-                        "Please ensure that the cond should be a 2-D tensor "
-                        "and the second dim size of cond should be 1. "
+                        "Please ensure that the cond shold be a 2-D tensor "
+                        "and the second dim size of cond shold be 1. "
                         "But now the cond's shape is [",
                         *mask_dim.Get(), "].\n");
     }

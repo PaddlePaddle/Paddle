@@ -445,7 +445,7 @@ class DownpourWorker(Worker):
                 Can be a float value
             param_vars(list): all dense param. it is a list.
             grad_vars(list): all dense grad parm it is a list.
-            dense_start_table_id(int): dense table start index
+            dense_start_table_id(int): dense table start indice
             sparse_table_names(list): sparse table names
         Returns:
             return None 
@@ -491,19 +491,19 @@ class DownpourWorker(Worker):
 
         #def cmp_fc(x, y):
         #    if x.startswith("fc_") and y.startswith("fc_"):
-        #        index_x = x.find('.')
-        #        index_y = y.find('.')
-        #        if index_x > 0 and index_y > 0:
-        #            num_x = x[3:index_x]
-        #            num_y = y[3:index_y]
+        #        indice_x = x.find('.')
+        #        indice_y = y.find('.')
+        #        if indice_x > 0 and indice_y > 0:
+        #            num_x = x[3:indice_x]
+        #            num_y = y[3:indice_y]
         #            if num_x.isdigit() and num_y.isdigit():
         #                if int(num_x) < int(num_y):
         #                    return -1
         #                if int(num_x) > int(num_y):
         #                    return 1
-        #                if x[index_x + 1] == 'w' and y[index_y + 1] == 'b':
+        #                if x[indice_x + 1] == 'w' and y[indice_y + 1] == 'b':
         #                    return -1
-        #                if x[index_x + 1] == 'b' and y[index_y + 1] == 'w':
+        #                if x[indice_x + 1] == 'b' and y[indice_y + 1] == 'w':
         #                    return 1
         #    if x < y:
         #        return -1

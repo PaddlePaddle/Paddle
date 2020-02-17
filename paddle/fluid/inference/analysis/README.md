@@ -32,10 +32,10 @@ each pass will generate unified debug information or visualization for better de
 
 ### `FluidToDataFlowGraphPass`
 Transform the fluid `ProgramDesc` to a `DataFlowGraph` to give an abstract representation for all the middle passes, 
-this should be the first pass of the pipeline.
+this shold be the first pass of the pipeline.
 
 ### `DataFlowGraphToFluidPass`
-Generate a final `ProgramDesc` from a data flow graph, this should be the last pass of the pipeline.
+Generate a final `ProgramDesc` from a data flow graph, this shold be the last pass of the pipeline.
 
 ### `TensorRTSubgraphNodeMarkPass`
 Mark the `Node` that are supported by TensorRT, 

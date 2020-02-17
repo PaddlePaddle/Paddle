@@ -91,7 +91,7 @@ class ReduceGradKernel : public framework::OpKernel<T> {
 
     // NOTE: EigenTensor::From() uses tensor->data()
     // if op has NoNeedBufferVarsInferer, the corresponding kNoNeedBufferX or
-    // kNoNeedBufferY should set true
+    // kNoNeedBufferY shold set true
     // and use fake var that has same dims.
     if (kNoNeedBufferX) {
       input0 = output;
@@ -160,29 +160,29 @@ class ReduceOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of ReduceOp should not be null.");
+                   "Input(X) of ReduceOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of ReduceOp should not be null.");
+                   "Output(Out) of ReduceOp shold not be null.");
     auto x_dims = ctx->GetInputDim("X");
     auto x_rank = x_dims.size();
     PADDLE_ENFORCE_LE(x_rank, 6,
                       "ShapeError: The input tensor X's dimensions of Reduce "
-                      "should be less equal than 6. But received X's "
+                      "shold be less equal than 6. But received X's "
                       "dimensions = %d, X's shape = [%s].",
                       x_rank, x_dims);
     auto dims = ctx->Attrs().Get<std::vector<int>>("dim");
     PADDLE_ENFORCE_GT(
         dims.size(), 0,
         "ShapeError: The input dim dimensions of Reduce "
-        "should be greater than 0. But received the dim dimesions of Reduce "
+        "shold be greater than 0. But received the dim dimesions of Reduce "
         " = %d",
         dims.size());
 
     for (size_t i = 0; i < dims.size(); ++i) {
       PADDLE_ENFORCE_LT(dims[i], x_rank,
-                        "ShapeError: The reduce dim index %d should be in the "
+                        "ShapeError: The reduce dim indice %d shold be in the "
                         "range [-dimension(X), dimension(X)]."
-                        "which dimesion = %d, But received dim index = %d",
+                        "which dimesion = %d, But received dim indice = %d",
                         i, x_rank, dims[i]);
       if (dims[i] < 0) dims[i] = x_rank + dims[i];
     }
@@ -241,18 +241,18 @@ class ReduceGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null.");
+                   "Input(Out@GRAD) shold not be null.");
     auto x_dims = ctx->GetInputDim("X");
     auto x_rank = x_dims.size();
     PADDLE_ENFORCE_LE(x_rank, 6, "Tensors with rank at most 6 are supported.");
     auto dims = ctx->Attrs().Get<std::vector<int>>("dim");
     for (size_t i = 0; i < dims.size(); ++i) {
       PADDLE_ENFORCE_LT(dims[i], x_rank,
-                        "ShapeError: The reduce dim index %d should be in the "
+                        "ShapeError: The reduce dim indice %d shold be in the "
                         "range [-dimension(X), dimension(X)]."
-                        "which dimesion = %d, But received dim index = %d",
+                        "which dimesion = %d, But received dim indice = %d",
                         i, x_rank, dims[i]);
       if (dims[i] < 0) dims[i] = x_rank + dims[i];
     }

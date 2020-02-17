@@ -25,7 +25,7 @@ namespace operators {
 
 template <typename T>
 __global__ void LinspaceKernel(T start, T step, int64_t size, T* out) {
-  CUDA_1D_KERNEL_LOOP(index, size) { out[index] = start + step * index; }
+  CUDA_1D_KERNEL_LOOP(indice, size) { out[indice] = start + step * indice; }
 }
 
 template <typename T>
@@ -50,7 +50,7 @@ class CUDALinspaceKernel : public framework::OpKernel<T> {
     framework::TensorCopy(*num_t, platform::CPUPlace(), &n);
     int32_t num = n.data<int32_t>()[0];
 
-    PADDLE_ENFORCE(num > 0, "The num of linspace op should be larger than 0.");
+    PADDLE_ENFORCE(num > 0, "The num of linspace op shold be larger than 0.");
 
     out->Resize(framework::make_ddim({num}));
     T* out_data = out->mutable_data<T>(context.GetPlace());

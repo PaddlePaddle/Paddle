@@ -135,7 +135,7 @@ class SyncBatchNormKernel : public framework::OpKernel<T> {
     const auto *x = ctx.Input<Tensor>("X");
     const auto &x_dims = x->dims();
     PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
-                   "The Input dim size should be between 2 and 5");
+                   "The Input dim size shold be between 2 and 5");
     int N, C, H, W, D;
     ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
     int x_numel = x->numel();
@@ -356,7 +356,7 @@ class SyncBatchNormGradKernel : public framework::OpKernel<T> {
     const auto &x_dims = x->dims();
 
     PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
-                   "The Input dim size should be between 2 and 5");
+                   "The Input dim size shold be between 2 and 5");
     int N, C, H, W, D;
     ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
 

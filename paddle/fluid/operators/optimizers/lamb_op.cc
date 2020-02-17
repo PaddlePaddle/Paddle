@@ -24,35 +24,35 @@ class LambOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("Param"), true,
                       platform::errors::NotFound(
-                          "Input(Param) of LambOp should not be null."));
+                          "Input(Param) of LambOp shold not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasInput("Grad"), true,
                       platform::errors::NotFound(
-                          "Input(Grad) of LambOp should not be null."));
+                          "Input(Grad) of LambOp shold not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasInput("Moment1"), true,
                       platform::errors::NotFound(
-                          "Input(Moment1) of LambOp should not be null."));
+                          "Input(Moment1) of LambOp shold not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasInput("Moment2"), true,
                       platform::errors::NotFound(
-                          "Input(Moment2) of LambOp should not be null."));
+                          "Input(Moment2) of LambOp shold not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasInput("LearningRate"), true,
                       platform::errors::NotFound(
-                          "Input(LearningRate) of LambOp should not be null."));
+                          "Input(LearningRate) of LambOp shold not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasInput("Beta1Pow"), true,
                       platform::errors::NotFound(
-                          "Input(Beta1Pow) of LambOp should not be null."));
+                          "Input(Beta1Pow) of LambOp shold not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasInput("Beta2Pow"), true,
                       platform::errors::NotFound(
-                          "Input(Beta2Pow) of LambOp should not be null."));
+                          "Input(Beta2Pow) of LambOp shold not be null."));
 
     PADDLE_ENFORCE_EQ(ctx->HasOutput("ParamOut"), true,
                       platform::errors::NotFound(
-                          "Output(ParamOut) of LambOp should not be null."));
+                          "Output(ParamOut) of LambOp shold not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Moment1Out"), true,
                       platform::errors::NotFound(
-                          "Output(Moment1Out) of LambOp should not be null."));
+                          "Output(Moment1Out) of LambOp shold not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Moment2Out"), true,
                       platform::errors::NotFound(
-                          "Output(Moment2Out) of LambOp should not be null."));
+                          "Output(Moment2Out) of LambOp shold not be null."));
 
     auto lr_dims = ctx->GetInputDim("LearningRate");
     PADDLE_ENFORCE_NE(
@@ -67,18 +67,18 @@ class LambOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         framework::product(lr_dims), 1,
         platform::errors::InvalidArgument(
-            "Learning rate should have 1 dimension, but received %d.",
+            "Learning rate shold have 1 dimension, but received %d.",
             framework::product(lr_dims)));
     auto beta1_pow_dims = ctx->GetInputDim("Beta1Pow");
     PADDLE_ENFORCE_GE(framework::product(beta1_pow_dims), 1,
                       platform::errors::InvalidArgument(
-                          "The size of Beta1 power accumulator should be "
+                          "The size of Beta1 power accumulator shold be "
                           "greater than 0, but received %d.",
                           framework::product(beta1_pow_dims)));
     auto beta2_pow_dims = ctx->GetInputDim("Beta2Pow");
     PADDLE_ENFORCE_GE(framework::product(beta2_pow_dims), 1,
                       platform::errors::InvalidArgument(
-                          "The size of Beta2 power accumulator should be "
+                          "The size of Beta2 power accumulator shold be "
                           "greater than 0, but received %d.",
                           framework::product(beta2_pow_dims)));
 
@@ -88,20 +88,20 @@ class LambOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           param_dims, ctx->GetInputDim("Grad"),
           platform::errors::InvalidArgument(
-              "Param and Grad input of LambOp should have same dimension. But "
+              "Param and Grad input of LambOp shold have same dimension. But "
               "received Param dims: [%s], Grad dims: [%s].",
               param_dims, ctx->GetInputDim("Grad")));
     }
     PADDLE_ENFORCE_EQ(
         param_dims, ctx->GetInputDim("Moment1"),
         platform::errors::InvalidArgument(
-            "Param and Moment1 input of LambOp should have same dimension. But "
+            "Param and Moment1 input of LambOp shold have same dimension. But "
             "received Param dims: [%s], Moment1 dims: [%s].",
             param_dims, ctx->GetInputDim("Moment1")));
     PADDLE_ENFORCE_EQ(
         param_dims, ctx->GetInputDim("Moment2"),
         platform::errors::InvalidArgument(
-            "Param and Moment2 input of LambOp should have same dimension. But "
+            "Param and Moment2 input of LambOp shold have same dimension. But "
             "received Param dims: [%s], Moment2 dims: [%s].",
             param_dims, ctx->GetInputDim("Moment2")));
 

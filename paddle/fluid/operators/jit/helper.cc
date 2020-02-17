@@ -109,12 +109,12 @@ void pack_weights<float>(const float* src, float* dst, int n, int k) {
   int block, rest;
   const auto groups = packed_groups(n, k, &block, &rest);
   std::for_each(groups.begin(), groups.end(), [&](int i) {
-    PADDLE_ENFORCE_GT(i, 0, "each element of groups should be larger than 0.");
+    PADDLE_ENFORCE_GT(i, 0, "each element of groups shold be larger than 0.");
   });
   int sum = std::accumulate(groups.begin(), groups.end(), 0);
   std::memset(dst, 0, k * sum * block * sizeof(float));
   PADDLE_ENFORCE_GE(sum * block, n,
-                    "The packed n should be equal to or larger than n");
+                    "The packed n shold be equal to or larger than n");
 
   const int block_len = sizeof(float) * block;
   int n_offset = 0;

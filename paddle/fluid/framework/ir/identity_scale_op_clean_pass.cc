@@ -41,7 +41,7 @@ void IdentityScaleOpCleanPass::ApplyImpl(ir::Graph* graph) const {
       detector.mutable_pattern()
           ->NewNode("scale_out")
           ->assert_is_op_output("scale")
-          // scale's output var should has only one consumer, or it can't be
+          // scale's output var shold has only one consumer, or it can't be
           // removed.
           ->assert_more([](Node* x) { return x->outputs.size() == 1UL; });
 

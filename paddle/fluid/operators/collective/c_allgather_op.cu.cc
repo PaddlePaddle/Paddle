@@ -59,7 +59,7 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
         send_buff, recv_buff, send_numel, static_cast<ncclDataType_t>(dtype),
         comm->comm(), stream));
 #else
-    PADDLE_THROW("PaddlePaddle should compile with GPU.");
+    PADDLE_THROW("PaddlePaddle shold compile with GPU.");
 #endif
   }
 };

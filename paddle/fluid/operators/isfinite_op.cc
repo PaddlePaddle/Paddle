@@ -27,9 +27,9 @@ class OverflowOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInputs("X"), "Inputs(X) should not be null");
+    PADDLE_ENFORCE(ctx->HasInputs("X"), "Inputs(X) shold not be null");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of OverflowOp should not be null.");
+                   "Output(Out) of OverflowOp shold not be null.");
 
     ctx->SetOutputDim("Out", {1});
   }

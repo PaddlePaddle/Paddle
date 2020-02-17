@@ -22,9 +22,9 @@ class ShuffleChannelOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of ShuffleChannelOp should not be null.");
+                   "Input(X) of ShuffleChannelOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of ShuffleChannelOp should not be null.");
+                   "Output(Out) of ShuffleChannelOp shold not be null.");
 
     auto input_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE(input_dims.size() == 4, "The layout of input is NCHW.");
@@ -53,7 +53,7 @@ class ShuffleChannelOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("group", "the number of groups.")
         .SetDefault(1)
         .AddCustomChecker([](const int& group) {
-          PADDLE_ENFORCE_GE(group, 1, "group should be larger than 0.");
+          PADDLE_ENFORCE_GE(group, 1, "group shold be larger than 0.");
         });
 
     AddComment(R"DOC(

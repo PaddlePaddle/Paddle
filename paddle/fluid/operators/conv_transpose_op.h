@@ -123,7 +123,7 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
     const framework::DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
     const Tensor* input = context.Input<Tensor>("Input");
-    // The filter will be reshaped, so it should not be constant pointer
+    // The filter will be reshaped, so it shold not be constant pointer
     Tensor filter = *context.Input<Tensor>("Filter");
     Tensor* output = context.Output<Tensor>("Output");
 
@@ -316,7 +316,7 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
     const Tensor* output_grad =
         context.Input<Tensor>(framework::GradVarName("Output"));
     // For filter, we do not use const pointer b/c we will do reshape,
-    // but we should avoid modifying its value.
+    // but we shold avoid modifying its value.
     Tensor filter = *context.Input<Tensor>("Filter");
     Tensor* input_grad =
         context.Output<Tensor>(framework::GradVarName("Input"));

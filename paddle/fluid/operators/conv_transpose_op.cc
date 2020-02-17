@@ -30,11 +30,11 @@ using DataLayout = framework::DataLayout;
 
 void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
-                    "Input(Input) of ConvTransposeOp should not be null.");
+                    "Input(Input) of ConvTransposeOp shold not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasInput("Filter"), true,
-                    "Input(Filter) of ConvTransposeOp should not be null.");
+                    "Input(Filter) of ConvTransposeOp shold not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasOutput("Output"), true,
-                    "Output(Output) of ConvTransposeOp should not be null.");
+                    "Output(Output) of ConvTransposeOp shold not be null.");
 
   auto in_dims = ctx->GetInputDim("Input");
   auto filter_dims = ctx->GetInputDim("Filter");
@@ -53,14 +53,14 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
                            : framework::StringToDataLayout(data_layout_str);
 
   PADDLE_ENFORCE_EQ(in_dims.size() == 4 || in_dims.size() == 5, true,
-                    "ShapeError: input of Op(conv_transpose) should be 4-D or "
+                    "ShapeError: input of Op(conv_transpose) shold be 4-D or "
                     "5-D Tensor. But received: %u-D Tensor, "
                     "the shape of input is [%s]",
                     in_dims.size(), in_dims);
   PADDLE_ENFORCE_EQ(
       in_dims.size(), filter_dims.size(),
       "ShapeError: the input's dimension size and filter's dimension size of "
-      "Op (conv_transpose) should be equal. But received: the shape of input "
+      "Op (conv_transpose) shold be equal. But received: the shape of input "
       "is [%s], the dimension size of input is [%d], the shape of filter is "
       "[%s],  the dimension size of filter is [%d]. ",
       in_dims, in_dims.size(), filter_dims, filter_dims.size());
@@ -76,14 +76,14 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
     PADDLE_ENFORCE_EQ(
         output_size.size(), strides.size(),
         "The Attr(output_size) and Attr(stride) of Op(conv_transpose) "
-        "should be the same.");
+        "shold be the same.");
 
   const int64_t C =
       (data_layout != DataLayout::kNHWC ? in_dims[1]
                                         : in_dims[in_dims.size() - 1]);
   PADDLE_ENFORCE_EQ(
       C, filter_dims[0],
-      "ShapeError: The number of input channels should be equal to filter "
+      "ShapeError: The number of input channels shold be equal to filter "
       "channels for Op(conv_transpose). But received: the input's channels is "
       "[%d], the shape of input is [%s], the filter's channels is [%d], the "
       "shape of filter is [%s]. The data_format is %s."
@@ -115,7 +115,7 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
       PADDLE_ENFORCE_EQ((output_size[i] >= infer_shape &&
                          output_size[i] < infer_shape + strides[i]),
                         true,
-                        "output_size of Op(ConvTransposeOp) should be "
+                        "output_size of Op(ConvTransposeOp) shold be "
                         "in appropriate range.");
       output_shape.push_back(output_size[i]);
     } else {
@@ -267,7 +267,7 @@ void Conv2DTransposeOpMaker::Make() {
                "workspace is a section of GPU memory which will be "
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
-               "better hardward. This size should be carefully set.")
+               "better hardward. This size shold be carefully set.")
       .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB());
   AddComment(R"DOC(
 Convolution2D Transpose Operator.
@@ -368,7 +368,7 @@ void Conv3DTransposeOpMaker::Make() {
                "workspace is a section of GPU memory which will be "
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
-               "better hardward. This size should be carefully set.")
+               "better hardward. This size shold be carefully set.")
       .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB());
   AddComment(R"DOC(
 Convolution3D Transpose Operator.

@@ -28,25 +28,25 @@ class SimilarityFocusOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("axis",
                  "(int32), indicating the dimension to be select. It can"
                  " only be 1, 2, or 3.");
-    AddAttr<std::vector<int>>("indexes",
-                              "(std::vector<int32>), indicating the indexes"
+    AddAttr<std::vector<int>>("indicees",
+                              "(std::vector<int32>), indicating the indicees"
                               " of the selected dimension.");
     AddComment(R"DOC(
 SimilarityFocus Operator.
 
 Generate a similarity focus mask with the same shape of input using the following method:
 1. Extract the 3-D tensor(here the first dimension is BatchSize) corresponding 
-   to the axis according to the indexes. For example, if axis=1 and indexes=[a], 
+   to the axis according to the indicees. For example, if axis=1 and indicees=[a], 
    it will get the matrix T=X[:, a, :, :]. In this case, if the shape of input X 
    is (BatchSize, A, B, C), the shape of tensor T is (BatchSize, B, C).
-2. For each index, find the largest numbers in the tensor T, so that the same 
+2. For each indice, find the largest numbers in the tensor T, so that the same 
    row and same column has at most one number(what it means is that if the 
    largest number has been found in the i-th row and the j-th column, then 
    the numbers in the i-th row or j-th column will be skipped. And then the 
    next largest number will be selected from the remaining numbers. Obviously 
    there will be min(B, C) numbers), and mark the corresponding position of the 
    3-D similarity focus mask as 1, otherwise as 0. Do elementwise-or for 
-   each index.
+   each indice.
 3. Broadcast the 3-D similarity focus mask to the same shape of input X.
 
 Refer to `Similarity Focus Layer <http://www.aclweb.org/anthology/N16-1108>`_
@@ -59,10 +59,10 @@ class SimilarityFocusOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should be not null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold be not null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) shold be not null.");
     auto x_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_EQ(x_dims.size(), 4, "Input(X)'s rank should be 4.");
+    PADDLE_ENFORCE_EQ(x_dims.size(), 4, "Input(X)'s rank shold be 4.");
     ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
   }

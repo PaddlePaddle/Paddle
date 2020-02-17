@@ -1764,9 +1764,9 @@ class TestBook(LayerTest):
                            fluid.default_startup_program()):
             dat = self._get_data(name='data', shape=[10], dtype='float32')
             lbl = self._get_data(name='label', shape=[10], dtype='float32')
-            ignore_index = -1
+            ignore_indice = -1
             return (layers.sigmoid_cross_entropy_with_logits(
-                x=dat, label=lbl, ignore_index=ignore_index))
+                x=dat, label=lbl, ignore_indice=ignore_indice))
 
     def make_hsigmoid(self):
         self._force_to_use_cpu = True
@@ -1823,11 +1823,11 @@ class TestBook(LayerTest):
                            fluid.default_startup_program()):
             x = self._get_data(name='x', shape=[3, 224, 224], dtype='float32')
             return (layers.adaptive_pool2d(x, [3, 3], pool_type='avg'))
-            pool, mask = layers.adaptive_pool2d(x, [3, 3], require_index=True)
+            pool, mask = layers.adaptive_pool2d(x, [3, 3], require_indice=True)
             return (pool)
             return (mask)
             return (layers.adaptive_pool2d(x, 3, pool_type='avg'))
-            pool, mask = layers.adaptive_pool2d(x, 3, require_index=True)
+            pool, mask = layers.adaptive_pool2d(x, 3, require_indice=True)
             return (pool)
             return (mask)
 
@@ -1838,11 +1838,11 @@ class TestBook(LayerTest):
                 name='x', shape=[3, 244, 224, 224], dtype='float32')
             return (layers.adaptive_pool3d(x, [3, 3, 3], pool_type='avg'))
             pool, mask = layers.adaptive_pool3d(
-                x, [3, 3, 3], require_index=True)
+                x, [3, 3, 3], require_indice=True)
             return (pool)
             return (mask)
             return (layers.adaptive_pool3d(x, 3, pool_type='avg'))
-            pool, mask = layers.adaptive_pool3d(x, 3, require_index=True)
+            pool, mask = layers.adaptive_pool3d(x, 3, require_indice=True)
             return (pool)
             return (mask)
 
@@ -1928,8 +1928,8 @@ class TestBook(LayerTest):
                            fluid.default_startup_program()):
             x1 = self._get_data(name='x1', shape=[4], dtype='float32')
             x2 = self._get_data(name='x2', shape=[4], dtype='float32')
-            index = self._get_data(name='index', shape=[1], dtype='int32')
-            out = layers.multiplex(inputs=[x1, x2], index=index)
+            indice = self._get_data(name='indice', shape=[1], dtype='int32')
+            out = layers.multiplex(inputs=[x1, x2], indice=indice)
             return (out)
 
     def make_softmax_with_cross_entropy(self):
@@ -1982,7 +1982,7 @@ class TestBook(LayerTest):
                 shape=[2, 3],
                 append_batch_size=False,
                 dtype='float32')
-            out = layers.scatter(input=x, index=idx, updates=updates)
+            out = layers.scatter(input=x, indice=idx, updates=updates)
             return (out)
 
     def make_one_hot(self):
@@ -2743,7 +2743,7 @@ class TestBook(LayerTest):
                 append_batch_size=False,
                 dtype='float32',
                 lod_level=1)
-            out = layers.sequence_scatter(input=x, index=idx, updates=updates)
+            out = layers.sequence_scatter(input=x, indice=idx, updates=updates)
             return (out)
 
     def test_sequence_slice(self):

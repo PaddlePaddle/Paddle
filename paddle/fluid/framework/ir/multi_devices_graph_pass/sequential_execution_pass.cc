@@ -34,9 +34,9 @@ class SequentialExecutionPass : public ir::Pass {
   void ApplyImpl(ir::Graph *graph) const override {
     // FIXME(zjl): Insert dependencies between some distributed ops may cause
     // the multi_devices_graph_pass fails. So we skip these ops here.
-    // Indeed, maybe we should not insert dependencies between these ops
+    // Indeed, maybe we shold not insert dependencies between these ops
     // casually, which may cause deadlock easily.
-    // We should add more skipped distributed ops when found errors in
+    // We shold add more skipped distributed ops when found errors in
     // multi_devices_graph_pass
     static std::unordered_set<std::string> skip_dist_ops{
         "send", "recv", "send_barrier", "fetch_barrier"};

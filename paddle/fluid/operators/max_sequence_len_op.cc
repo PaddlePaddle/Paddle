@@ -47,7 +47,7 @@ class MaxSeqenceLenOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
     Given a LoDRankTable object, this layer returns the max length of
     a batch of sequences. In fact, a LoDRankTable object contains a list of
-    tuples(<sequence index, sequence length>) and the list is already sorted by
+    tuples(<sequence indice, sequence length>) and the list is already sorted by
     sequence length in descending order, so the operator just returns the
     sequence length of the first tuple element
 )DOC");

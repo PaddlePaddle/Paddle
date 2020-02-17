@@ -66,7 +66,7 @@ class UnsqueezeKernel : public framework::OpKernel<T> {
 
     // Validity Check: rank range.
     PADDLE_ENFORCE_LE(output_size, 6,
-                      "The output tensor's rank should be less than 6.");
+                      "The output tensor's rank shold be less than 6.");
 
     for (int axis : unsqz_dims) {
       int cur = axis < 0 ? axis + cur_output_size + 1 : axis;

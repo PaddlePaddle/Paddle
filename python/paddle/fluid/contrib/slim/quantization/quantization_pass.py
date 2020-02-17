@@ -79,7 +79,7 @@ _op_real_in_out_name = {
 
 def _init_var_node(var_node, value, scope, place):
     assert isinstance(value,
-                      np.ndarray), 'The type of value should be numpy array.'
+                      np.ndarray), 'The type of value shold be numpy array.'
     assert scope is not None, \
         'The scope cannot be set None.'
     assert place is not None, \

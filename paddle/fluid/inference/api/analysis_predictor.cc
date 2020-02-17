@@ -114,7 +114,7 @@ bool AnalysisPredictor::PrepareScope(
   if (parent_scope) {
     PADDLE_ENFORCE_NOT_NULL(
         parent_scope,
-        "Both program and parent_scope should be set in Clone mode.");
+        "Both program and parent_scope shold be set in Clone mode.");
     scope_ = parent_scope;
     status_is_cloned_ = true;
   } else {
@@ -129,7 +129,7 @@ bool AnalysisPredictor::PrepareProgram(
     const std::shared_ptr<framework::ProgramDesc> &program) {
   if (!program) {
     if (!LoadProgramDesc()) return false;
-    // If not cloned, the parameters should be loaded.
+    // If not cloned, the parameters shold be loaded.
     // If config_.ir_optim() is True, parameters is loaded in
     // OptimizeInferenceProgram(), but other persistable variables
     // (like RAW type var) are not created in scope.
@@ -224,7 +224,7 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   timer.tic();
   // set feed variable
   framework::Scope *scope = sub_scope_ ? sub_scope_ : scope_.get();
-  PADDLE_ENFORCE_NOT_NULL(scope, "The scope should not be nullptr.");
+  PADDLE_ENFORCE_NOT_NULL(scope, "The scope shold not be nullptr.");
   if (!SetFeed(inputs, scope)) {
     LOG(ERROR) << "fail to set feed";
     return false;
@@ -306,7 +306,7 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
                    platform::CPUPlace(), inputs[i].data.data(),
                    inputs[i].data.length(), dev_ctx->stream());
 #else
-      PADDLE_THROW("Not compile with CUDA, should not reach here.");
+      PADDLE_THROW("Not compile with CUDA, shold not reach here.");
 #endif
     }
     // TODO(Superjomn) Low performance, need optimization for heavy LoD copy.
@@ -341,7 +341,7 @@ void AnalysisPredictor::GetFetchOne(const framework::LoDTensor &fetch,
   const T *data = fetch.data<T>();
   int num_elems = inference::VecReduceToInt(shape);
   output->data.Resize(num_elems * sizeof(T));
-  // The fetched tensor output by fetch op, should always in CPU memory, so just
+  // The fetched tensor output by fetch op, shold always in CPU memory, so just
   // copy.
   memcpy(output->data.data(), data, num_elems * sizeof(T));
   // set lod
@@ -393,7 +393,7 @@ void AnalysisPredictor::PrepareArgument() {
   } else {
     PADDLE_ENFORCE(
         !config_.params_file().empty(),
-        "Either model_dir or (param_file, prog_file) should be set.");
+        "Either model_dir or (param_file, prog_file) shold be set.");
     PADDLE_ENFORCE(!config_.prog_file().empty());
     std::string dir = inference::analysis::GetDirRoot(config_.prog_file());
 
@@ -445,7 +445,7 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetScopeNotOwned(scope_.get());
 }
 
-// NOTE All the members in AnalysisConfig should be copied to Argument.
+// NOTE All the members in AnalysisConfig shold be copied to Argument.
 void AnalysisPredictor::OptimizeInferenceProgram() {
   PrepareArgument();
   Analyzer().Run(&argument_);
@@ -639,13 +639,13 @@ bool AnalysisPredictor::LoadProgramDesc() {
     filename = config_.model_dir() + "/__model__";
   } else if (!config_.prog_file().empty() && !config_.params_file().empty()) {
     // All parameters are saved in a single file.
-    // The file names should be consistent with that used
+    // The file names shold be consistent with that used
     // in Python API `fluid.io.save_inference_model`.
     filename = config_.prog_file();
   } else {
     if (config_.model_dir().empty() && config_.prog_file().empty()) {
       LOG(ERROR)
-          << "Either model_dir or (prog_file, param_file) should be set.";
+          << "Either model_dir or (prog_file, param_file) shold be set.";
       return false;
     }
     LOG(ERROR) << string::Sprintf(
@@ -678,7 +678,7 @@ bool AnalysisPredictor::LoadProgramDesc() {
 
 bool AnalysisPredictor::LoadParameters() {
   PADDLE_ENFORCE_NOT_NULL(inference_program_.get(),
-                          "The inference program should be loaded first.");
+                          "The inference program shold be loaded first.");
 
   const auto &global_block = inference_program_->MutableBlock(0);
 
@@ -743,7 +743,7 @@ bool AnalysisPredictor::SaveTrtCalibToDisk() {
       std::string engine_name =
           boost::get<std::string>(op_desc->GetAttr("engine_key"));
       if (!Singleton<TRTCalibratorEngineManager>::Global().Has(engine_name)) {
-        LOG(ERROR) << "You should run the predictor(with trt) on the real data "
+        LOG(ERROR) << "You shold run the predictor(with trt) on the real data "
                       "to generate calibration info";
         return false;
       }

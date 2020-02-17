@@ -39,7 +39,7 @@ struct ExceptionHandler {
     auto ex = this->future_.get();
     if (ex != nullptr) {
       LOG(FATAL) << "The exception is thrown inside the thread pool. You "
-                    "should use RunAndGetException to handle the exception.\n"
+                    "shold use RunAndGetException to handle the exception.\n"
                     "The default exception handler is LOG(FATAL)."
                  << ex->what();
     }
@@ -79,7 +79,7 @@ class ThreadPool {
             new platform::EnforceNotMet(ex));
       } catch (const std::exception& e) {
         LOG(FATAL) << "Unexpected exception is catched in thread pool. All "
-                      "throwable exception in Fluid should be an EnforceNotMet."
+                      "throwable exception in Fluid shold be an EnforceNotMet."
                    << e.what();
       }
       return nullptr;

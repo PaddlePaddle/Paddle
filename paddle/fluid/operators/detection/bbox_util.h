@@ -84,11 +84,11 @@ inline void BoxToDelta(const int box_num, const framework::Tensor& ex_boxes,
 }
 
 template <typename T>
-void Gather(const T* in, const int in_stride, const int* index, const int num,
+void Gather(const T* in, const int in_stride, const int* indice, const int num,
             T* out) {
   const int stride_bytes = in_stride * sizeof(T);
   for (int i = 0; i < num; ++i) {
-    int id = index[i];
+    int id = indice[i];
     memcpy(out + i * in_stride, in + id * in_stride, stride_bytes);
   }
 }

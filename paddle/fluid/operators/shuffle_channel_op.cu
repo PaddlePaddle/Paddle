@@ -29,15 +29,15 @@ template <typename T>
 __global__ void ShuffleChannel(const int nthreads, const int feature_map_size,
                                T* output, const T* input, int group_row,
                                int group_column, int len) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int indice = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
-  for (size_t ii = index; ii < nthreads; ii += offset) {
-    const int n = index / group_row / group_column / len;
-    const int i = (index / group_column / len) % group_row;
-    const int j = index / len % group_column;
-    const int k = index - (n * feature_map_size + (i * group_column + j) * len);
+  for (size_t ii = indice; ii < nthreads; ii += offset) {
+    const int n = indice / group_row / group_column / len;
+    const int i = (indice / group_column / len) % group_row;
+    const int j = indice / len % group_column;
+    const int k = indice - (n * feature_map_size + (i * group_column + j) * len);
     T* p_o = output + n * feature_map_size + (j * group_row + i) * len;
-    p_o[k] = input[index];
+    p_o[k] = input[indice];
   }
 }
 template <typename DeviceContext, typename T>

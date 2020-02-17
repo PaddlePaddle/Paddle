@@ -23,34 +23,34 @@ namespace operators {
 void FusionRepeatedFCReluOp::InferShape(
     framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE(ctx->HasInput("X"),
-                 "Input(X) of FusionRepeatedFCReluOp should not be null.");
+                 "Input(X) of FusionRepeatedFCReluOp shold not be null.");
   auto sz = ctx->Inputs("W").size();
   PADDLE_ENFORCE_GT(
-      sz, 1UL, "Inputs(W) of FusionRepeatedFCReluOp should larger than 1.");
+      sz, 1UL, "Inputs(W) of FusionRepeatedFCReluOp shold larger than 1.");
   PADDLE_ENFORCE_EQ(ctx->Inputs("Bias").size(), sz,
-                    "Size of inputs(Bias) of FusionRepeatedFCReluOp should be "
+                    "Size of inputs(Bias) of FusionRepeatedFCReluOp shold be "
                     "equal to inputs size.");
   PADDLE_ENFORCE_EQ(ctx->Outputs("ReluOut").size(), sz - 1,
-                    "Size of output(ReluOut) of FusionRepeatedFCReluOp should "
+                    "Size of output(ReluOut) of FusionRepeatedFCReluOp shold "
                     "be equal to inputs size -1.");
   PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                 "Output(Out) of FusionRepeatedFCReluOp should not be null.");
+                 "Output(Out) of FusionRepeatedFCReluOp shold not be null.");
 
   auto i_dims = ctx->GetInputDim("X");
-  PADDLE_ENFORCE_EQ(i_dims.size(), 2, "Input shape size should be 2");
+  PADDLE_ENFORCE_EQ(i_dims.size(), 2, "Input shape size shold be 2");
 
   auto w_dims = ctx->GetInputsDim("W");
   auto b_dims = ctx->GetInputsDim("Bias");
   PADDLE_ENFORCE_EQ(w_dims.size(), b_dims.size(),
-                    "Shape size of weight and bias should be equal");
+                    "Shape size of weight and bias shold be equal");
   PADDLE_ENFORCE_EQ(w_dims.size(), sz,
-                    "Shape size of weight and bias should be equal");
+                    "Shape size of weight and bias shold be equal");
   PADDLE_ENFORCE_EQ(i_dims[1], w_dims[0][0],
-                    "inpute width should be equal with weight height");
+                    "inpute width shold be equal with weight height");
 
   for (size_t i = 1; i < sz; ++i) {
     PADDLE_ENFORCE_EQ(w_dims[i].size(), 2,
-                      "Every weight shape size should be 2.");
+                      "Every weight shape size shold be 2.");
     PADDLE_ENFORCE_EQ(framework::product(b_dims[i]), w_dims[i][1],
                       "The length of Bias must be equal with w_dims[1].");
   }

@@ -56,9 +56,9 @@ class ReshapeOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of ReshapeOp should not be null.");
+                      "Input(X) of ReshapeOp shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of ReshapeOp should not be null.");
+                      "Output(Out) of ReshapeOp shold not be null.");
 
     if (ctx->HasInputs("ShapeTensor")) {
       // top prority shape
@@ -78,7 +78,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
           PADDLE_ENFORCE_LT(
               static_cast<int>(i), in_dims.size(),
               platform::errors::InvalidArgument(
-                  "The index of 0 in `shape` must be less than "
+                  "The indice of 0 in `shape` must be less than "
                   "the input tensor X's dimensions. But received shape[%d] "
                   "= 0, X's dimensions = %d, X's shape = [%s].",
                   i, in_dims.size(), in_dims));
@@ -152,7 +152,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_LT(
             static_cast<int>(i), in_dims.size(),
             platform::errors::InvalidArgument(
-                "The index of 0 in `shape` must be less than "
+                "The indice of 0 in `shape` must be less than "
                 "the input tensor X's dimensions. "
                 "But received shape = [%s], shape[%d] = 0, X's shape = [%s], "
                 "X's dimensions = %d.",
@@ -233,7 +233,7 @@ class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Shape",
              "(Tensor<int32>, optional). Target shape of reshape operator. "
              "It has a higher priority than Attr(shape) but a lower priority "
-             "than Input(ShapeTensor). The Attr(shape) still should be "
+             "than Input(ShapeTensor). The Attr(shape) still shold be "
              "set correctly to guarantee shape inference in compile time.")
         .AsDispensable();
     AddInput(
@@ -283,12 +283,12 @@ the actual dimension value will be infered from the total element number of
 Input(X) and remaining dimensions.
 
 2. More than one dimensions in Attr(shape) can be set to 0, which means the real
-dimension value will be copied from Input(X) at runtime. Note that the index of
+dimension value will be copied from Input(X) at runtime. Note that the indice of
 0 can not exceed Rank(X). For example, Input(X) is a 3-D tensor with shape
 [2, 3, 4], Attr(shape) = [2, 3, 2, 0] is an invalid input.
 
 3. Input(Shape) has a higher priority than Attr(shape) if it is provided, while
-Attr(shape) still should be set correctly to guarantee shape inference in
+Attr(shape) still shold be set correctly to guarantee shape inference in
 compile-time.
 
 )DOC");
@@ -304,9 +304,9 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) shouldn't be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) sholdn't be null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      "Input(Out@GRAD) shouldn't be null.");
+                      "Input(Out@GRAD) sholdn't be null.");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 
@@ -403,7 +403,7 @@ class Reshape2Op : public ReshapeOp {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasOutput("XShape"), true,
-                      "Output(XShape) of ReshapeOp should not be null.");
+                      "Output(XShape) of ReshapeOp shold not be null.");
     const auto &x_dims = ctx->GetInputDim("X");
     std::vector<int64_t> xshape_dims(x_dims.size() + 1);
     xshape_dims[0] = 0;
@@ -428,7 +428,7 @@ class Reshape2OpMaker : public ReshapeOpMaker {
     /* int8 parameters */
     AddAttr<bool>("use_quantizer",
                   "(bool, default false) "
-                  "Set to true for operators that should be quantized and use "
+                  "Set to true for operators that shold be quantized and use "
                   "int8 kernel. "
                   "Used only on CPU.")
         .SetDefault(false);
@@ -477,9 +477,9 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("XShape"), true,
-                      "Input(XShape) shouldn't be null.");
+                      "Input(XShape) sholdn't be null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      "Input(Out@GRAD) shouldn't be null.");
+                      "Input(Out@GRAD) sholdn't be null.");
     auto xshape_dims = ctx->GetInputDim("XShape");
     auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
@@ -515,7 +515,7 @@ class Reshape2DoubleGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("DDX"), true,
-                      "Input(X@GRAD_GRAD) shouldn't be null.");
+                      "Input(X@GRAD_GRAD) sholdn't be null.");
 
     if (ctx->HasOutput("DDOut") && ctx->HasInput("DDX")) {
       ctx->ShareDim("DOut", "DDOut");

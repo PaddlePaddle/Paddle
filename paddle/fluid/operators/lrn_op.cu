@@ -39,26 +39,26 @@ __global__ void KeCMRNormFillScale(int img_size, const T* in, T* mid, int C,
     const int post_pad = size - pre_pad - 1;
 
     T accum = 0;
-    int index = 0;
-    while (index < C + post_pad) {
-      if (index < C) {
-        int in_idx = (data_layout != DataLayout::kNHWC ? index * step : index);
+    int indice = 0;
+    while (indice < C + post_pad) {
+      if (indice < C) {
+        int in_idx = (data_layout != DataLayout::kNHWC ? indice * step : indice);
         T val = in[in_idx];
         accum += val * val;
       }
-      if (index >= size) {
-        int in_idx = (data_layout != DataLayout::kNHWC ? (index - size) * step
-                                                       : index - size);
+      if (indice >= size) {
+        int in_idx = (data_layout != DataLayout::kNHWC ? (indice - size) * step
+                                                       : indice - size);
         T val = in[in_idx];
         accum -= val * val;
       }
-      if (index >= post_pad) {
+      if (indice >= post_pad) {
         int mid_idx =
-            (data_layout != DataLayout::kNHWC ? (index - post_pad) * step
-                                              : index - post_pad);
+            (data_layout != DataLayout::kNHWC ? (indice - post_pad) * step
+                                              : indice - post_pad);
         mid[mid_idx] = k + accum * alpha;
       }
-      ++index;
+      ++indice;
     }
   }
 }
@@ -66,9 +66,9 @@ __global__ void KeCMRNormFillScale(int img_size, const T* in, T* mid, int C,
 template <typename T>
 __global__ void KeCMRNormOutput(int input_size, const T* in, const T* mid,
                                 T negative_beta, T* out) {
-  const int index = threadIdx.x + blockIdx.x * blockDim.x;
-  if (index < input_size) {
-    out[index] = in[index] * pow(mid[index], negative_beta);
+  const int indice = threadIdx.x + blockIdx.x * blockDim.x;
+  if (indice < input_size) {
+    out[indice] = in[indice] * pow(mid[indice], negative_beta);
   }
 }
 
@@ -129,27 +129,27 @@ __global__ void KeCMRNormDiff(int img_size, const T* x, const T* out,
     const int pre_pad = size - (size + 1) / 2;
     const int post_pad = size - pre_pad - 1;
 
-    int index = 0;
+    int indice = 0;
     T accum = 0;
     // TODO(gongwb): optimize this with thread shared array.
-    while (index < C + post_pad) {
-      if (index < C) {
-        int idx = (data_layout != DataLayout::kNHWC ? index * step : index);
+    while (indice < C + post_pad) {
+      if (indice < C) {
+        int idx = (data_layout != DataLayout::kNHWC ? indice * step : indice);
         x_g[idx] = 0.0;
         accum += out_g[idx] * out[idx] / mid[idx];
       }
-      if (index >= size) {
-        int idx = (data_layout != DataLayout::kNHWC ? (index - size) * step
-                                                    : index - size);
+      if (indice >= size) {
+        int idx = (data_layout != DataLayout::kNHWC ? (indice - size) * step
+                                                    : indice - size);
         accum -= out_g[idx] * out[idx] / mid[idx];
       }
-      if (index >= post_pad) {
-        int idx = (data_layout != DataLayout::kNHWC ? (index - post_pad) * step
-                                                    : index - post_pad);
+      if (indice >= post_pad) {
+        int idx = (data_layout != DataLayout::kNHWC ? (indice - post_pad) * step
+                                                    : indice - post_pad);
         x_g[idx] +=
             out_g[idx] * pow(mid[idx], negative_beta) - ratio * x[idx] * accum;
       }
-      ++index;
+      ++indice;
     }
   }
 }

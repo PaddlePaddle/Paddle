@@ -23,12 +23,12 @@ class AnchorGeneratorOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(Input) of AnchorGeneratorOp should not be null.");
+                   "Input(Input) of AnchorGeneratorOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Anchors"),
-                   "Output(Anchors) of AnchorGeneratorOp should not be null.");
+                   "Output(Anchors) of AnchorGeneratorOp shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasOutput("Variances"),
-        "Output(Variances) of AnchorGeneratorOp should not be null.");
+        "Output(Variances) of AnchorGeneratorOp shold not be null.");
 
     auto input_dims = ctx->GetInputDim("Input");
     PADDLE_ENFORCE(input_dims.size() == 4, "The layout of input is NCHW.");
@@ -122,7 +122,7 @@ class AnchorGeneratorOpMaker : public framework::OpProtoAndCheckerMaker {
               "Must and only provide 2 stride for width and height.");
           for (size_t i = 0; i < stride.size(); ++i) {
             PADDLE_ENFORCE_GT(stride[i], 0.0,
-                              "stride[%d] should be larger than 0.", i);
+                              "stride[%d] shold be larger than 0.", i);
           }
         });
 

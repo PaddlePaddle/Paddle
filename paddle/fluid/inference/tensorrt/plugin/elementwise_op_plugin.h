@@ -52,7 +52,7 @@ class ElementWisePlugin : public PluginTensorRT {
 
   const char *getPluginType() const override { return "elementwise_plugin"; }
 
-  nvinfer1::Dims getOutputDimensions(int index,
+  nvinfer1::Dims getOutputDimensions(int indice,
                                      const nvinfer1::Dims *input_dims,
                                      int num_inputs) override;
 

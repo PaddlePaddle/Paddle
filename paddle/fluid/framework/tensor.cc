@@ -76,11 +76,11 @@ Tensor& Tensor::ShareDataWith(const Tensor& src) {
 Tensor Tensor::Slice(int64_t begin_idx, int64_t end_idx) const {
   check_memory_size();
   PADDLE_ENFORCE_GE(begin_idx, 0,
-                    "The start row index must be greater than 0.");
-  PADDLE_ENFORCE_LE(end_idx, dims_[0], "The end row index is out of bound.");
+                    "The start row indice must be greater than 0.");
+  PADDLE_ENFORCE_LE(end_idx, dims_[0], "The end row indice is out of bound.");
   PADDLE_ENFORCE_LT(
       begin_idx, end_idx,
-      "The start row index must be lesser than the end row index.");
+      "The start row indice must be lesser than the end row indice.");
 
   if (dims_[0] == 1) {
     return *this;

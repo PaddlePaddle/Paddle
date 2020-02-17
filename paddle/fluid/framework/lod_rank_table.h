@@ -25,7 +25,7 @@ namespace framework {
 // shared by dynamic RNN memory, dynamic RNN slice input and dynamic RNN slice
 // output operators.
 //
-// The table item contains two element. The length of sequence and the index of
+// The table item contains two element. The length of sequence and the indice of
 // sequence in that level.
 //
 // LoDRankTable also stores the coarse_lod, which is the lod information whose
@@ -34,7 +34,7 @@ namespace framework {
 class LoDRankTable {
  public:
   struct TableItem {
-    size_t index;
+    size_t indice;
     size_t length;
   };
 

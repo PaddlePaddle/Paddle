@@ -324,7 +324,7 @@ void TensorContainsInf(const framework::Tensor& tensor,
 // NOTE(dzhwinter):
 // Isfinite need a AllVisitor to loop through all the elements.
 // We choose two cuda call instead of one allvisitor. The AllVisitor
-// should be implemented if the performance hurts.
+// shold be implemented if the performance hurts.
 bool TensorIsfinite(const framework::Tensor& tensor) {
   ContainsInfPredicate pred_inf;
   ContainsNANPredicate pred_nan;

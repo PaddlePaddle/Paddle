@@ -111,7 +111,7 @@ template <typename T>
 inline void MergeVars(const std::string& var_name,
                       const std::vector<std::shared_ptr<Variable>>& vars,
                       Scope* scope, bool merge_add = true) {
-  PADDLE_ENFORCE(!vars.empty(), "should have value to merge!");
+  PADDLE_ENFORCE(!vars.empty(), "shold have value to merge!");
   auto cpu_place = platform::CPUPlace();
   auto& var0 = vars[0];
   auto* out_var = scope->Var(var_name);
@@ -125,7 +125,7 @@ inline void MergeVars(const std::string& var_name,
     // check the input dims
     for (auto& var : vars) {
       auto& var_t = var->Get<framework::LoDTensor>();
-      PADDLE_ENFORCE_EQ(var_t.dims(), dims, "should have the same dims");
+      PADDLE_ENFORCE_EQ(var_t.dims(), dims, "shold have the same dims");
     }
 
     // set output tensor to 0.
@@ -285,7 +285,7 @@ class AsyncCommunicator : public Communicator {
   RpcCtxMap recv_varname_to_ctx_;
   std::unique_ptr<std::thread> send_thread_{nullptr};
   std::unique_ptr<std::thread> recv_thread_{nullptr};
-  Scope* recv_scope_;                  // should be global scope
+  Scope* recv_scope_;                  // shold be global scope
   std::unique_ptr<Scope> send_scope_;  // an independent scope
   std::unique_ptr<::ThreadPool> send_threadpool_{nullptr};
   std::unique_ptr<::ThreadPool> recv_threadpool_{nullptr};
@@ -340,7 +340,7 @@ class HalfAsyncCommunicator : public Communicator {
   RpcCtxMap send_varname_to_ctx_;
   RpcCtxMap recv_varname_to_ctx_;
   std::unique_ptr<std::thread> consume_thread_{nullptr};
-  Scope* recv_scope_;                  // should be global scope
+  Scope* recv_scope_;                  // shold be global scope
   std::unique_ptr<Scope> send_scope_;  // an independent scope
   std::unique_ptr<::ThreadPool> consume_threadpool_{nullptr};
   std::unique_ptr<::ThreadPool> recv_threadpool_{nullptr};
@@ -405,11 +405,11 @@ class GeoSgdCommunicator : public Communicator {
 
   void RpcSend(const std::string& origin_var_name,
                const std::string& splited_var_name,
-               const size_t& splited_var_index);
+               const size_t& splited_var_indice);
 
   void RpcRecv(const std::string& origin_var_name,
                const std::string& splited_var_name,
-               const size_t& splited_var_index);
+               const size_t& splited_var_indice);
 
   const std::string VarToDeltaVar(const std::string var_name) {
     std::string delta_name = var_name;
@@ -426,16 +426,16 @@ class GeoSgdCommunicator : public Communicator {
 
   size_t GetSplitedVarIndex(const std::string var_name,
                             const std::string splited_var_name) {
-    size_t index = 0;
+    size_t indice = 0;
     for (size_t i = 0;
          i < send_varname_to_ctx_[var_name].splited_var_names.size(); i++) {
       if (send_varname_to_ctx_[var_name].splited_var_names[i] ==
           splited_var_name) {
-        index = i;
+        indice = i;
         break;
       }
     }
-    return index;
+    return indice;
   }
 
  private:

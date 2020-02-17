@@ -142,7 +142,7 @@ class OpConverter {
   }
 
   // Convert a fluid block to tensorrt network, NOTE it just convert operators,
-  // the INetwork's inputs and outputs should specified in some other modules.
+  // the INetwork's inputs and outputs shold specified in some other modules.
   void ConvertBlock(const framework::proto::BlockDesc& block,
                     const std::unordered_set<std::string>& parameters,
                     const framework::Scope& scope, TensorRTEngine* engine) {
@@ -153,7 +153,7 @@ class OpConverter {
     }
   }
 
-  // The scope  here should be inited with the parameter vars.
+  // The scope  here shold be inited with the parameter vars.
   void ConvertBlockToTRTEngine(
       framework::BlockDesc* block_desc, const framework::Scope& scope,
       const std::vector<std::string>& inputs,

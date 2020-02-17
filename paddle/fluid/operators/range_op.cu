@@ -25,7 +25,7 @@ namespace operators {
 
 template <typename T>
 __global__ void RangeKernel(T start, T step, int64_t size, T* out) {
-  CUDA_1D_KERNEL_LOOP(index, size) { out[index] = start + step * index; }
+  CUDA_1D_KERNEL_LOOP(indice, size) { out[indice] = start + step * indice; }
 }
 
 template <typename T>

@@ -28,13 +28,13 @@ class TransposeFlattenConcatFusionOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_GE(ctx->Inputs("X").size(), 1UL,
-                      "Inputs(X) of ConcatOp should be empty.");
+                      "Inputs(X) of ConcatOp shold be empty.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of ConcatOp should not be null.");
+                   "Output(Out) of ConcatOp shold not be null.");
 
     auto ins = ctx->GetInputsDim("X");
     const size_t n = ins.size();
-    PADDLE_ENFORCE_GT(n, 0, "Input tensors count should > 0.");
+    PADDLE_ENFORCE_GT(n, 0, "Input tensors count shold > 0.");
 
     std::vector<int> trans_axis =
         ctx->Attrs().Get<std::vector<int>>("trans_axis");
@@ -45,7 +45,7 @@ class TransposeFlattenConcatFusionOp : public framework::OperatorWithKernel {
     size_t trans_axis_size = trans_axis.size();
     PADDLE_ENFORCE_EQ(x_rank, trans_axis_size,
                       "The input tensor's rank(%d) "
-                      "should be equal to the permutation axis's size(%d)",
+                      "shold be equal to the permutation axis's size(%d)",
                       x_rank, trans_axis_size);
 
     auto dims0 =
@@ -59,7 +59,7 @@ class TransposeFlattenConcatFusionOp : public framework::OperatorWithKernel {
           out_dims[concat_axis] += dimsi[j];
         } else {
           PADDLE_ENFORCE_EQ(out_dims[j], dimsi[j],
-                            "After flatting, the %d-th dim should be save "
+                            "After flatting, the %d-th dim shold be save "
                             "except the specify axis.",
                             j);
         }
@@ -83,12 +83,12 @@ class TransposeFlattenConcatFusionOpMaker
     AddOutput("Out", "(Tensor)The output tensor.");
     AddAttr<std::vector<int>>(
         "trans_axis",
-        "(vector<int>) A list of values, and the size of the list should be "
+        "(vector<int>) A list of values, and the size of the list shold be "
         "the same with the input tensor rank. This operator permutes the input "
         "tensor's axes according to the values given.");
     AddAttr<int>("flatten_axis",
                  "(int)"
-                 "Indicate up to which input dimensions (exclusive) should be"
+                 "Indicate up to which input dimensions (exclusive) shold be"
                  "flattened to the outer dimension of the output. The value"
                  "for axis must be in the range [0, R], where R is the rank of"
                  "the input tensor. When axis = 0, the shape of the output"
@@ -96,7 +96,7 @@ class TransposeFlattenConcatFusionOpMaker
                  "input tensor is (d_0, d_1, ... d_n).");
     AddAttr<int>("concat_axis",
                  "The axis along which the input tensors will be concatenated. "
-                 "It should be 0 or 1, since the tensor is 2D after flatting.");
+                 "It shold be 0 or 1, since the tensor is 2D after flatting.");
     AddComment(R"DOC(
 
 

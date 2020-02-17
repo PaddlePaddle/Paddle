@@ -55,7 +55,7 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
         return;
       }
 
-      // NOTE: fixed seed should only be used in unittest or for debug.
+      // NOTE: fixed seed shold only be used in unittest or for debug.
       // Guarantee to use random seed in training.
       std::random_device rnd;
       std::minstd_rand engine;

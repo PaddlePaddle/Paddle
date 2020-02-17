@@ -80,7 +80,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     PADDLE_ENFORCE_EQ(
         in_var_names.size(), out_var_names.size(),
         platform::errors::PreconditionNotMet(
-            "Op [%s]:  Input var number should be equal with output var number",
+            "Op [%s]:  Input var number shold be equal with output var number",
             op_.Type()));
 
     for (size_t i = 0; i < in_var_names.size(); ++i) {
@@ -126,7 +126,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
                       i);
     auto *in_var = block_.FindVarRecursive(Inputs(in)[i]);
     PADDLE_ENFORCE_NOT_NULL(
-        in_var, "Input %s[%d] of operator %s should not be nullptr.", in,
+        in_var, "Input %s[%d] of operator %s shold not be nullptr.", in,
         op_.Type(), i);
     return in_var->GetLoDLevel();
   }
@@ -141,7 +141,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
                       op_.Type(), j);
     auto *out_var = block_.FindVarRecursive(Outputs(out)[j]);
     PADDLE_ENFORCE_NOT_NULL(
-        out_var, "Output %s[%d] of operator %s should not be nullptr.", out,
+        out_var, "Output %s[%d] of operator %s shold not be nullptr.", out,
         op_.Type(), j);
     if (lod_level >= 0) {
       out_var->SetLoDLevel(lod_level);
@@ -175,7 +175,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   DDim GetInputDim(const std::string &name) const override {
     const std::vector<std::string> &arg_names = Inputs(name);
     PADDLE_ENFORCE_EQ(arg_names.size(), 1UL,
-                      "Input(%s) should hold one element, but now it holds %d",
+                      "Input(%s) shold hold one element, but now it holds %d",
                       name, arg_names.size());
     return this->GetDim(arg_names[0]);
   }
@@ -200,7 +200,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   void SetOutputDim(const std::string &name, const DDim &dim) override {
     auto arg_names = Outputs(name);
     PADDLE_ENFORCE_EQ(arg_names.size(), 1UL,
-                      "Output(%s) should hold one element, but now it holds %d",
+                      "Output(%s) shold hold one element, but now it holds %d",
                       name, arg_names.size());
     SetDim(arg_names[0], dim);
   }
@@ -727,7 +727,7 @@ bool CompileTimeInferShapeContext::HasInput(const std::string &name) const {
     return false;
   }
   PADDLE_ENFORCE_EQ(length, 1UL,
-                    "Input(%s) should have only one value, "
+                    "Input(%s) shold have only one value, "
                     "but it have %d now",
                     name, length);
   return block_.HasVarRecursive(input_names[0]);
@@ -740,7 +740,7 @@ bool CompileTimeInferShapeContext::HasOutput(const std::string &name) const {
     return false;
   }
   PADDLE_ENFORCE_EQ(length, 1UL,
-                    "Output(%s) should have only one value, "
+                    "Output(%s) shold have only one value, "
                     "but it have %d now",
                     name, length);
   return block_.HasVarRecursive(output_names[0]);

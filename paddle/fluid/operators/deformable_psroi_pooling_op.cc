@@ -33,7 +33,7 @@ class DeformablePSROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("ROIs",
              "(LoDTensor), "
              "ROIs (Regions of Interest) to pool over. "
-             "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
+             "ROIs shold be a 2-D LoDTensor of shape (num_rois, 4) "
              "given as [[x1, y1, x2, y2], ...]. "
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates.");
@@ -56,7 +56,7 @@ class DeformablePSROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
                    "of total stride in convolutional layers.");
     AddAttr<int>("output_dim",
                  "(int), "
-                 "the number of output channels, which should be less than "
+                 "the number of output channels, which shold be less than "
                  "input channels. Deformable roi_pooling requires "
                  "output_channels = input_channels, while deformable "
                  "psroi_pooling requires output_channels = input_channels "
@@ -128,24 +128,24 @@ class DeformablePSROIPoolOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Input"),
                    "Input(Input) of DeformablePSROIPoolOp"
-                   "should not be null.");
+                   "shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("ROIs"),
                    "Input(ROIs) of DeformablePSROIPoolOp "
-                   "should not be null.");
+                   "shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Trans"),
                    "Input(Trans) of DeformablePSROIPoolOp "
-                   "should not be null.");
+                   "shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Output"),
                    "Output(Output) of DeformablePSROIPoolOp "
-                   "should not be null.");
+                   "shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("TopCount"),
                    "Output(TopCount) of DeformablePSROIPoolOp "
-                   "should not be null.");
+                   "shold not be null.");
     auto input_dims = ctx->GetInputDim("Input");
     auto rois_dims = ctx->GetInputDim("ROIs");
     auto trans_dims = ctx->GetInputDim("Trans");
     PADDLE_ENFORCE(rois_dims.size() == 2,
-                   "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
+                   "ROIs shold be a 2-D LoDTensor of shape (num_rois, 4)"
                    "given as [[ x1, y1, x2, y2], ...].");
     PADDLE_ENFORCE(trans_dims.size() == 4,
                    "The format of Input Trans is (N, 2, H, W).");
@@ -170,13 +170,13 @@ class DeformablePSROIPoolOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GT(spatial_scale, 0.0f,
                       "The spatial scale must greater than 0");
     PADDLE_ENFORCE_EQ(group_size.size(), 2,
-                      "The size of group_size should be 2.");
+                      "The size of group_size shold be 2.");
     PADDLE_ENFORCE_GT(group_height, 0,
                       "The group_height in group_size must greater than 0");
     PADDLE_ENFORCE_GT(group_width, 0,
                       "The group_width in group_size must greater than 0");
     PADDLE_ENFORCE_EQ(part_size.size(), 2,
-                      "The size of part_size should be 2.");
+                      "The size of part_size shold be 2.");
     PADDLE_ENFORCE_GT(part_height, 0,
                       "The part_height in part_size must greater than 0");
     PADDLE_ENFORCE_GT(part_width, 0,
@@ -234,7 +234,7 @@ class DeformablePSROIPoolGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Output")),
-                   "The gradient of Output should not be null.");
+                   "The gradient of Output shold not be null.");
     if (ctx->HasOutput(framework::GradVarName("Input"))) {
       ctx->SetOutputDim(framework::GradVarName("Input"),
                         ctx->GetInputDim("Input"));

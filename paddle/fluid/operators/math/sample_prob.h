@@ -59,14 +59,14 @@ class SampleWithProb {
 
     // temp sets for unique sampling
     std::unordered_set<int64_t> tmp_samples;
-    int j = 0;  // column index
+    int j = 0;  // column indice
     // add true labels, not that efficient
     while (j < num_true) {
       for (int i = 0; i < batch_size; ++i) {
-        auto samples_index = i * num_sampled_classes + j;
+        auto samples_indice = i * num_sampled_classes + j;
         auto v = label_data[i * num_true + j];
-        samples_data[samples_index] = v;
-        probabilities_data[samples_index] = sampler.Probability(v);
+        samples_data[samples_indice] = v;
+        probabilities_data[samples_indice] = sampler.Probability(v);
       }
       ++j;
     }
@@ -84,9 +84,9 @@ class SampleWithProb {
       }
       auto p = sampler.Probability(v);
       for (int i = 0; i < batch_size; ++i) {
-        auto samples_index = i * num_sampled_classes + j;
-        samples_data[samples_index] = v;
-        probabilities_data[samples_index] = p;
+        auto samples_indice = i * num_sampled_classes + j;
+        samples_data[samples_indice] = v;
+        probabilities_data[samples_indice] = p;
       }
       ++j;
     }
@@ -95,9 +95,9 @@ class SampleWithProb {
     // adjusted
     for (int k = 0; k < num_sampled_classes; ++k) {
       for (int i = 0; i < batch_size; ++i) {
-        auto samples_index = i * num_sampled_classes + k;
-        probabilities_data[samples_index] = adjust_prob(
-            probabilities_data[samples_index], num_samples, num_tries);
+        auto samples_indice = i * num_sampled_classes + k;
+        probabilities_data[samples_indice] = adjust_prob(
+            probabilities_data[samples_indice], num_samples, num_tries);
       }
     }
   }

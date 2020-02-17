@@ -143,8 +143,8 @@ bool SelectedRows::HasKey(int64_t key) const {
 int64_t SelectedRows::AutoGrownIndex(int64_t key, bool auto_grown,
                                      bool is_test) {
   if (is_test) {
-    auto iter = id_to_index_.find(key);
-    if (iter == id_to_index_.end()) {
+    auto iter = id_to_indice_.find(key);
+    if (iter == id_to_indice_.end()) {
       return -1;
     } else {
       return iter->second;
@@ -152,51 +152,51 @@ int64_t SelectedRows::AutoGrownIndex(int64_t key, bool auto_grown,
   }
 
   rwlock_->RDLock();
-  auto iter = id_to_index_.find(key);
-  if (iter == id_to_index_.end()) {
+  auto iter = id_to_indice_.find(key);
+  if (iter == id_to_indice_.end()) {
     rwlock_->UNLock();
     if (!auto_grown) {
       PADDLE_THROW("key %d not found", key);
     }
     rwlock_->WRLock();
-    auto map_size = id_to_index_.size();
+    auto map_size = id_to_indice_.size();
     auto vector_size = rows_.size();
     if (map_size != vector_size) {
       rwlock_->UNLock();
       PADDLE_THROW(
-          "id_to_index_ size %d should have the same size with rows_ %d",
+          "id_to_indice_ size %d shold have the same size with rows_ %d",
           map_size, vector_size);
     }
-    auto write_iter = id_to_index_.find(key);
-    if (write_iter == id_to_index_.end()) {
+    auto write_iter = id_to_indice_.find(key);
+    if (write_iter == id_to_indice_.end()) {
       int row_num = rows_.size();
       if (row_num == value_->dims()[0]) {
         rwlock_->UNLock();
         PADDLE_THROW("selected rows is full, then length exceed %d", row_num);
       }
-      // key logic to put a key into id_to_index_
+      // key logic to put a key into id_to_indice_
       rows_.push_back(key);
-      auto index = static_cast<int64_t>(rows_.size() - 1);
-      id_to_index_[key] = index;
+      auto indice = static_cast<int64_t>(rows_.size() - 1);
+      id_to_indice_[key] = indice;
       rwlock_->UNLock();
-      return index;
+      return indice;
     } else {
-      auto index = write_iter->second;
+      auto indice = write_iter->second;
       rwlock_->UNLock();
-      return index;
+      return indice;
     }
   } else {
-    auto index = iter->second;
+    auto indice = iter->second;
     rwlock_->UNLock();
-    return index;
+    return indice;
   }
 }
 
 void SelectedRows::SyncIndex() {
   rwlock_->WRLock();
-  id_to_index_.clear();
+  id_to_indice_.clear();
   for (size_t i = 0; i < rows_.size(); ++i) {
-    id_to_index_[rows_[i]] = i;
+    id_to_indice_[rows_[i]] = i;
   }
   rwlock_->UNLock();
 }
@@ -204,18 +204,18 @@ void SelectedRows::SyncIndex() {
 void SelectedRows::Get(const framework::Tensor& ids, framework::Tensor* value,
                        bool auto_grown, bool is_test) {
   PADDLE_ENFORCE(value->IsInitialized(),
-                 "The value tensor should be initialized.");
+                 "The value tensor shold be initialized.");
   if (ids.numel() == 0) {
     VLOG(3) << "keys is empty, please check data!";
   } else {
     int64_t value_width = value_->numel() / value_->dims()[0];
     PADDLE_ENFORCE_EQ(value_width, value->numel() / value->dims()[0],
-                      "output tensor should have the same shape with table "
+                      "output tensor shold have the same shape with table "
                       "except the dims[0].");
     for (int i = 0; i < ids.numel(); ++i) {
       auto id = ids.data<int64_t>()[i];
-      int64_t index = AutoGrownIndex(id, auto_grown, is_test);
-      if (index < 0) {
+      int64_t indice = AutoGrownIndex(id, auto_grown, is_test);
+      if (indice < 0) {
         VLOG(5) << "id " << id << " not in the table, return 0";
         framework::VisitDataType(
             value_->type(),
@@ -224,7 +224,7 @@ void SelectedRows::Get(const framework::Tensor& ids, framework::Tensor* value,
         framework::VisitDataType(
             value_->type(),
             TensorCopyVisitor(value, i * value_width, *value_.get(),
-                              index * value_width, value_width));
+                              indice * value_width, value_width));
       }
     }
   }

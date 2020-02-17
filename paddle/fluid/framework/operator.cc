@@ -196,7 +196,7 @@ std::string OperatorBase::Input(const std::string& name) const {
   PADDLE_ENFORCE_LE(
       ins.size(), 1UL,
       platform::errors::AlreadyExists(
-          "Operator %s's input %s should contain only one variable.", type_,
+          "Operator %s's input %s shold contain only one variable.", type_,
           name));
   return ins.empty() ? kEmptyVarName : ins[0];
 }
@@ -220,7 +220,7 @@ bool OperatorBase::HasOutputs(const std::string& name) const {
 std::string OperatorBase::Output(const std::string& name) const {
   auto& outs = Outputs(name);
   PADDLE_ENFORCE_LE(outs.size(), 1UL,
-                    "Operator %s's output %s should contain only one variable.",
+                    "Operator %s's output %s shold contain only one variable.",
                     type_, name);
   return outs.empty() ? kEmptyVarName : outs[0];
 }
@@ -444,7 +444,7 @@ const Variable* ExecutionContext::InputVar(const std::string& name) const {
   PADDLE_ENFORCE_LE(
       it->second.size(), 1UL,
       platform::errors::AlreadyExists(
-          "Operator %s's input %s should contain only one variable.",
+          "Operator %s's input %s shold contain only one variable.",
           op_.Type(), name));
   return it->second.empty() ? nullptr : it->second[0];
 }
@@ -454,7 +454,7 @@ Variable* ExecutionContext::OutputVar(const std::string& name) const {
   if (it == ctx_.outputs.end()) return nullptr;
 
   PADDLE_ENFORCE_LE(it->second.size(), 1UL,
-                    "Operator %s's output %s should contain only one variable.",
+                    "Operator %s's output %s shold contain only one variable.",
                     op_.Type(), name);
   return it->second.empty() ? nullptr : it->second[0];
 }
@@ -480,7 +480,7 @@ const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
                    if (var == nullptr) return nullptr;
                    PADDLE_ENFORCE(
                        var->IsType<LoDTensor>(),
-                       "should be LoDTensor, but the received type is %s",
+                       "shold be LoDTensor, but the received type is %s",
                        ToTypeName(var->Type()));
                    return &(var->Get<LoDTensor>());
                  });
@@ -540,7 +540,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
     const auto& in = it->second;
     if (in.size() == 0) return false;
     PADDLE_ENFORCE_EQ(in.size(), 1UL,
-                      "Input %s should not have more than one inputs", name);
+                      "Input %s shold not have more than one inputs", name);
     return in[0] != nullptr;
   }
 
@@ -556,7 +556,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
       return false;
     }
     PADDLE_ENFORCE_EQ(out.size(), 1UL,
-                      "Output %s should not have more than one outputs", name);
+                      "Output %s shold not have more than one outputs", name);
     return out[0] != nullptr;
   }
 
@@ -603,9 +603,9 @@ class RuntimeInferShapeContext : public InferShapeContext {
     auto in_it = ctx_.inputs.find(in);
     auto out_it = ctx_.outputs.find(out);
     PADDLE_ENFORCE(in_it != ctx_.inputs.end() && in_it->second.size() > i,
-                   "Inputs %s should have %llu argument", in, i);
+                   "Inputs %s shold have %llu argument", in, i);
     PADDLE_ENFORCE(out_it != ctx_.outputs.end() && out_it->second.size() > j,
-                   "Outputs %s should have %llu argument", out, j);
+                   "Outputs %s shold have %llu argument", out, j);
 
     Variable* in_var = in_it->second[i];
     Variable* out_var = out_it->second[j];
@@ -648,7 +648,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
     PADDLE_ENFORCE_EQ(
         in_var_list.size(), out_var_list.size(),
         platform::errors::PreconditionNotMet(
-            "Op [%s]: Input var size should be equal with output var size",
+            "Op [%s]: Input var size shold be equal with output var size",
             op_.Type()));
 
     auto& out_var_names = op_.Outputs(out);
@@ -680,9 +680,9 @@ class RuntimeInferShapeContext : public InferShapeContext {
     auto in_it = ctx_.inputs.find(in);
     auto out_it = ctx_.outputs.find(out);
     PADDLE_ENFORCE(in_it != ctx_.inputs.end() && in_it->second.size() > i,
-                   "Inputs %s should have %llu argument", in, i);
+                   "Inputs %s shold have %llu argument", in, i);
     PADDLE_ENFORCE(out_it != ctx_.outputs.end() && out_it->second.size() > j,
-                   "Outputs %s should have %llu argument", out, j);
+                   "Outputs %s shold have %llu argument", out, j);
 
     Variable* in_var = in_it->second.at(i);
     if (!in_var->IsType<LoDTensor>()) return;
@@ -699,15 +699,15 @@ class RuntimeInferShapeContext : public InferShapeContext {
 #ifdef PADDLE_WITH_MKLDNN
     // Fix me: ugly workaround below
     // Correct solution:
-    //    set_layout() should NOT be called here (i.e. ShareLoD). Instead,
-    //    layout of output tensor should be set "manually" in Compute()
-    //    of each OPKernel. The reason layout should NOT be shared between
+    //    set_layout() shold NOT be called here (i.e. ShareLoD). Instead,
+    //    layout of output tensor shold be set "manually" in Compute()
+    //    of each OPKernel. The reason layout shold NOT be shared between
     //    input and output "automatically" (now by InferShape()->ShareLoD())
     //    is that layout transform may occur after InferShape().
     // Workaround:
     //    Skip set_layout() when input layout is kMKLDNN
     //    This is to avoid kMKLDNN is populated wrongly into a non-MKLDNN
-    //    OPKernel. In all MKLDNN OPkernel, set_layout(kMKLDNN) should be called
+    //    OPKernel. In all MKLDNN OPkernel, set_layout(kMKLDNN) shold be called
     //    in Compute()
     if (in_tensor.layout() != DataLayout::kMKLDNN)
 #endif
@@ -717,7 +717,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
   int32_t GetLoDLevel(const std::string& in, size_t i = 0) const override {
     PADDLE_THROW(
         "GetLoDLevel is only used in compile time. The calculation of "
-        "output's actual lod is different among operators so that should be "
+        "output's actual lod is different among operators so that shold be "
         "set in the runtime kernel.");
   }
 
@@ -725,7 +725,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
                    size_t j = 0) const override {
     PADDLE_THROW(
         "SetLoDLevel is only used in compile time. The calculation of "
-        "output's actual lod is different among operators so that should be "
+        "output's actual lod is different among operators so that shold be "
         "set in the runtime kernel.");
   }
 
@@ -753,7 +753,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
   DDim GetInputDim(const std::string& name) const override {
     const std::vector<Variable*>& vars = InputVars(name);
     PADDLE_ENFORCE_EQ(vars.size(), 1UL,
-                      "Input(%s) should hold one element, but now it holds %d",
+                      "Input(%s) shold hold one element, but now it holds %d",
                       name, vars.size());
     return this->GetDim(vars[0]);
   }
@@ -776,7 +776,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
   void SetOutputDim(const std::string& name, const DDim& dim) override {
     auto& vars = OutputVars(name);
     PADDLE_ENFORCE_EQ(vars.size(), 1UL,
-                      "Output(%s) should hold one element, but now it holds %d",
+                      "Output(%s) shold hold one element, but now it holds %d",
                       name, vars.size());
     SetDim(vars[0], dim);
   }
@@ -972,7 +972,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     GetThreadLocalUsedVarNameSet()->clear();
   }
 
-  // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
+  // TODO(panyx0718): ExecutionContext shold only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
   {
     platform::RecordEvent record_event("compute_inner_op");
@@ -1078,12 +1078,12 @@ void OperatorWithKernel::TransferInplaceVarsBack(
   for (auto& var_name : inplace_vars) {
     VLOG(3) << "share inplace var " + var_name + " back to it's original scope";
     auto* origin_var = scope.FindVar(var_name);
-    PADDLE_ENFORCE_NOT_NULL(origin_var, "The var[%s] should not be nullptr.",
+    PADDLE_ENFORCE_NOT_NULL(origin_var, "The var[%s] shold not be nullptr.",
                             var_name);
     auto* original_tensor =
         GetMutableLoDTensorOrSelectedRowsValueFromVar(origin_var);
     auto* var = transfer_scope.FindVar(var_name);
-    PADDLE_ENFORCE_NOT_NULL(var, "The var[%s] should not be nullptr.",
+    PADDLE_ENFORCE_NOT_NULL(var, "The var[%s] shold not be nullptr.",
                             var_name);
     auto* transformed_tensor = GetLoDTensorOrSelectedRowsValueFromVar(*var);
     auto original_dims = original_tensor->dims();
@@ -1109,7 +1109,7 @@ Scope* OperatorWithKernel::PrepareData(
   }
 
   for (auto& var_name_item : Inputs()) {
-    bool should_skip_input =
+    bool shold_skip_input =
         no_buffer_ins && no_buffer_ins->count(var_name_item.first) > 0;
 
     std::vector<Variable*>& input_vars = ctx->inputs[var_name_item.first];
@@ -1128,7 +1128,7 @@ Scope* OperatorWithKernel::PrepareData(
       // When no_buffer_ins then checking of Tensor::holder_ is
       // not a thread safe. And for infershape scenario checks
       // to be omitted are not really needed
-      if (should_skip_input == true) {
+      if (shold_skip_input == true) {
 #ifdef PADDLE_WITH_MKLDNN
         // Var without buffer may be needed
         // for some situation like InferShape().
@@ -1191,7 +1191,7 @@ Scope* OperatorWithKernel::PrepareData(
       // Have a discussion with @Superjomn or the inference developers if some
       // changes on this logic for this macro might not tested on the other
       // scenerios.
-      // If this op is not called by an Executor or ParallelExecutor, it should
+      // If this op is not called by an Executor or ParallelExecutor, it shold
       // called by a NaiveExecutor, the NaiveExecutor will cache the scopes and
       // variables, that behavior a lot different.
       //
@@ -1286,7 +1286,7 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
     ParseInputDataType(ctx, input, &data_type);
   }
   PADDLE_ENFORCE_NE(data_type, dafault_data_type,
-                    "DataType should be indicated by input Variable.");
+                    "DataType shold be indicated by input Variable.");
   return data_type;
 }
 

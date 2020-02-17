@@ -77,7 +77,7 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
 
     def run_pserver(self, args):
         self.get_model(batch_size=2)
-        # NOTE: pserver should not call memory optimize
+        # NOTE: pserver shold not call memory optimize
         t = self.get_transpiler(args.trainer_id,
                                 fluid.default_main_program(), args.endpoints,
                                 args.trainers, args.sync_mode, False,

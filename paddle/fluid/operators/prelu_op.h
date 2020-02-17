@@ -36,19 +36,19 @@ class PReluKernel : public framework::OpKernel<T> {
 
     int numel = x->numel();
     auto dim = x->dims();
-    int index = 0;
+    int indice = 0;
     int i = 0;
     if (mode == "channel") {
       int temp = numel / (dim[0] * dim[1]);
       for (i = 0; i < numel; i++) {
-        index = (i / temp) % dim[1];
-        o_ptr[i] = x_ptr[i] > 0 ? x_ptr[i] : alpha_ptr[index] * x_ptr[i];
+        indice = (i / temp) % dim[1];
+        o_ptr[i] = x_ptr[i] > 0 ? x_ptr[i] : alpha_ptr[indice] * x_ptr[i];
       }
     } else if (mode == "element") {
       int temp = numel / dim[0];
       for (i = 0; i < numel; i++) {
-        index = i % temp;
-        o_ptr[i] = x_ptr[i] > 0 ? x_ptr[i] : alpha_ptr[index] * x_ptr[i];
+        indice = i % temp;
+        o_ptr[i] = x_ptr[i] > 0 ? x_ptr[i] : alpha_ptr[indice] * x_ptr[i];
       }
     } else {
       for (i = 0; i < numel; i++) {
@@ -73,7 +73,7 @@ class PReluGradKernel : public framework::OpKernel<T> {
     std::string mode = context.Attr<std::string>("mode");
     int numel = x->numel();
     auto dim = x->dims();
-    int index = 0;
+    int indice = 0;
     int i = 0;
     int temp = 0;
     if (dx) {
@@ -81,16 +81,16 @@ class PReluGradKernel : public framework::OpKernel<T> {
       if (mode == "channel") {
         for (i = 0; i < numel; i++) {
           temp = numel / (dim[0] * dim[1]);
-          index = (i / temp) % dim[1];
+          indice = (i / temp) % dim[1];
           dx_ptr[i] =
-              x_ptr[i] > 0 ? dout_ptr[i] : alpha_ptr[index] * dout_ptr[i];
+              x_ptr[i] > 0 ? dout_ptr[i] : alpha_ptr[indice] * dout_ptr[i];
         }
       } else if (mode == "element") {
         temp = numel / dim[0];
         for (i = 0; i < numel; i++) {
-          index = i % temp;
+          indice = i % temp;
           dx_ptr[i] =
-              x_ptr[i] > 0 ? dout_ptr[i] : alpha_ptr[index] * dout_ptr[i];
+              x_ptr[i] > 0 ? dout_ptr[i] : alpha_ptr[indice] * dout_ptr[i];
         }
       } else {
         for (i = 0; i < numel; i++) {
@@ -99,7 +99,7 @@ class PReluGradKernel : public framework::OpKernel<T> {
       }
     }
 
-    index = 0;
+    indice = 0;
     if (dalpha) {
       T* dalpha_ptr = dalpha->mutable_data<T>(context.GetPlace());
       memset(dalpha_ptr, 0, sizeof(T) * dalpha->numel());
@@ -107,14 +107,14 @@ class PReluGradKernel : public framework::OpKernel<T> {
       if (mode == "channel") {
         for (i = 0; i < numel; i++) {
           temp = numel / (dim[0] * dim[1]);
-          index = (i / temp) % dim[1];
-          dalpha_ptr[index] += x_ptr[i] > 0 ? 0 : x_ptr[i] * dout_ptr[i];
+          indice = (i / temp) % dim[1];
+          dalpha_ptr[indice] += x_ptr[i] > 0 ? 0 : x_ptr[i] * dout_ptr[i];
         }
       } else if (mode == "element") {
         temp = numel / dim[0];
         for (i = 0; i < numel; i++) {
-          index = i % temp;
-          dalpha_ptr[index] += x_ptr[i] > 0 ? 0 : x_ptr[i] * dout_ptr[i];
+          indice = i % temp;
+          dalpha_ptr[indice] += x_ptr[i] > 0 ? 0 : x_ptr[i] * dout_ptr[i];
         }
       } else {
         for (i = 0; i < numel; i++) {

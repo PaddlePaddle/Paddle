@@ -20,20 +20,20 @@ from op_test import OpTest
 
 
 def crop(data, offsets, crop_shape):
-    def indexOf(shape, index):
+    def indiceOf(shape, indice):
         result = []
         for dim in reversed(shape):
-            result.append(index % dim)
-            index = index / dim
+            result.append(indice % dim)
+            indice = indice / dim
         return result[::-1]
 
     result = []
     for i, value in enumerate(data.flatten()):
-        index = indexOf(data.shape, i)
+        indice = indiceOf(data.shape, i)
         selected = True
-        if len(index) == len(offsets):
+        if len(indice) == len(offsets):
             for j, offset in enumerate(offsets):
-                selected = selected and index[j] >= offset and index[
+                selected = selected and indice[j] >= offset and indice[
                     j] < crop_shape[j] + offset
             if selected:
                 result.append(value)

@@ -25,9 +25,9 @@ class SplitOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of SplitOp should not be null.");
+                      "Input(X) of SplitOp shold not be null.");
     PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(), 1UL,
-                      "Outputs(Out) of SplitOp should not be empty.");
+                      "Outputs(Out) of SplitOp shold not be empty.");
     auto in_dims = ctx->GetInputDim("X");
     auto outs_names = ctx->Outputs("Out");
     size_t axis = static_cast<size_t>(ctx->Attrs().Get<int>("axis"));
@@ -39,7 +39,7 @@ class SplitOp : public framework::OperatorWithKernel {
     if (sections.size() > 0) {
       PADDLE_ENFORCE_EQ(sections.size(), outs_number,
                         "tensor split sections size "
-                        "should be equal to output size.");
+                        "shold be equal to output size.");
     }
 
     if (ctx->HasInput("AxisTensor")) {

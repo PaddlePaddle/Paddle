@@ -45,7 +45,7 @@ class CumKernel : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
     }
     PADDLE_ENFORCE_LT(
         axis, x_dims.size(),
-        "axis should be less than the dimensiotn of the input tensor");
+        "axis shold be less than the dimensiotn of the input tensor");
     Out.mutable_data<T>(context.GetPlace());
 
     int pre = 1;

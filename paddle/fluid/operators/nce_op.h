@@ -59,20 +59,20 @@ void PrepareSamples(const framework::ExecutionContext &context,
       sample_labels->mutable_data<int64_t>(context.GetPlace());
 
   int num_label = label_dims.size() == 2 ? label_dims[1] : 1;
-  int index = 0;
+  int indice = 0;
   for (int64_t i = 0; i < label_dims[0]; ++i) {
     int j = 0;
     for (; j < num_label; ++j) {
-      sample_labels_data[index++] = label_data[i * num_label + j];
+      sample_labels_data[indice++] = label_data[i * num_label + j];
     }
     if (custom_neg_classes.size() > 0) {
       for (auto label : custom_neg_classes) {
-        sample_labels_data[index++] = label;
+        sample_labels_data[indice++] = label;
       }
     } else {
       for (; j < sample_labels_dims[1]; ++j) {
         // TODO(wanghaoshuang): support more distribution sampling
-        sample_labels_data[index++] = sampler->Sample();
+        sample_labels_data[indice++] = sampler->Sample();
       }
     }
   }
@@ -105,21 +105,21 @@ class NCEKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_EQ(
             dist_probs->numel(), num_total_classes,
             "ShapeError: The number of elements in Input(CustomDistProbs) "
-            "should be equal to the number of total classes. But Received: "
+            "shold be equal to the number of total classes. But Received: "
             "Input(CustomDistProbs).numel() = %d, Attr(num_total_classes) "
             "= %d.",
             dist_probs->numel(), num_total_classes);
         PADDLE_ENFORCE_EQ(
             dist_alias->numel(), num_total_classes,
             "ShapeError: The number of elements in Input(CustomDistAlias) "
-            "should be equal to the number of total classes. But Received: "
+            "shold be equal to the number of total classes. But Received: "
             "Input(CustomDistAlias).numel() = %d, Attr(num_total_classes) "
             "= %d.",
             dist_alias->numel(), num_total_classes);
         PADDLE_ENFORCE_EQ(
             dist_alias_probs->numel(), num_total_classes,
             "ShapeError: The number of elements in Input(CustomDistAliasProbs) "
-            "should be equal to the number of total classes. But Received: "
+            "shold be equal to the number of total classes. But Received: "
             "Input(CustomDistAliasProbs).numel() = %d, "
             "Attr(num_total_classes) = %d.",
             dist_alias_probs->numel(), num_total_classes);
@@ -140,7 +140,7 @@ class NCEKernel : public framework::OpKernel<T> {
 
     for (int x = 0; x < sample_labels->numel(); x++) {
       PADDLE_ENFORCE_GE(sample_labels_data[x], 0,
-                        "ValueError: Every sample label should be "
+                        "ValueError: Every sample label shold be "
                         "non-negative. But received: "
                         "Input(SampleLabels)[%d] = %d",
                         x, sample_labels_data[x]);
@@ -314,21 +314,21 @@ class NCEGradKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_EQ(
             dist_probs->numel(), num_total_classes,
             "ShapeError: The number of elements in Input(CustomDistProbs) "
-            "should be equal to the number of total classes. But Received: "
+            "shold be equal to the number of total classes. But Received: "
             "Input(CustomDistProbs).numel() = %d, Attr(num_total_classes) "
             "= %d.",
             dist_probs->numel(), num_total_classes);
         PADDLE_ENFORCE_EQ(
             dist_alias->numel(), num_total_classes,
             "ShapeError: The number of elements in Input(CustomDistAlias) "
-            "should be equal to the number of total classes. But Received: "
+            "shold be equal to the number of total classes. But Received: "
             "Input(CustomDistAlias).numel() = %d, Attr(num_total_classes) "
             "= %d.",
             dist_alias->numel(), num_total_classes);
         PADDLE_ENFORCE_EQ(
             dist_alias_probs->numel(), num_total_classes,
             "ShapeError: The number of elements in Input(CustomDistAliasProbs) "
-            "should be equal to the number of total classes. But Received: "
+            "shold be equal to the number of total classes. But Received: "
             "Input(CustomDistAliasProbs).numel() = %d, "
             "Attr(num_total_classes) = %d.",
             dist_alias_probs->numel(), num_total_classes);

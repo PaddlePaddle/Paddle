@@ -61,7 +61,7 @@ class FleetUtil(object):
               fleet_util.rank0_print("my log")
 
         """
-        if fleet.worker_index() != 0:
+        if fleet.worker_indice() != 0:
             return
         print(s)
         sys.stdout.flush()
@@ -81,7 +81,7 @@ class FleetUtil(object):
               fleet_util.rank0_info("my log info")
 
         """
-        if fleet.worker_index() != 0:
+        if fleet.worker_indice() != 0:
             return
         _logger.info(s)
 
@@ -100,7 +100,7 @@ class FleetUtil(object):
               fleet_util.rank0_error("my log error")
 
         """
-        if fleet.worker_index() != 0:
+        if fleet.worker_indice() != 0:
             return
         _logger.error(s)
 
@@ -227,11 +227,11 @@ class FleetUtil(object):
         new_neg = 0.0
         total_ins_num = 0
         for i in xrange(num_bucket):
-            index = num_bucket - 1 - i
-            new_pos = pos + global_pos[0][index]
-            total_ins_num += global_pos[0][index]
-            new_neg = neg + global_neg[0][index]
-            total_ins_num += global_neg[0][index]
+            indice = num_bucket - 1 - i
+            new_pos = pos + global_pos[0][indice]
+            total_ins_num += global_pos[0][indice]
+            new_neg = neg + global_neg[0][indice]
+            total_ins_num += global_neg[0][indice]
             area += (new_neg - neg) * (pos + new_pos) / 2
             pos = new_pos
             neg = new_neg
@@ -392,7 +392,7 @@ class FleetUtil(object):
             suffix_name = "/%s/0/" % day
             model_path = output_path.rstrip("/") + suffix_name
 
-        if fleet.worker_index() == 0:
+        if fleet.worker_indice() == 0:
             donefile_path = output_path + "/" + donefile_name
             content  = "%s\t%lu\t%s\t%s\t%d" % (day, xbox_base_key,\
                                                 model_path, pass_id, 0)
@@ -504,7 +504,7 @@ class FleetUtil(object):
         if isinstance(data_path, list):
             data_path = ",".join(data_path)
 
-        if fleet.worker_index() == 0:
+        if fleet.worker_indice() == 0:
             donefile_path = output_path + "/" + donefile_name
             xbox_str = self._get_xbox_str(output_path, day, model_path, \
                     xbox_base_key, data_path, hadoop_fs_name, monitor_data={},
@@ -605,7 +605,7 @@ class FleetUtil(object):
             suffix_name = "/%s/base/%03d_cache" % (day, table_id)
             model_path = output_path.rstrip("/") + suffix_name
 
-        if fleet.worker_index() == 0:
+        if fleet.worker_indice() == 0:
             donefile_path = model_path + "/" + donefile_name
             configs = {
                 "fs.default.name": hadoop_fs_name,
@@ -912,7 +912,7 @@ class FleetUtil(object):
         model_name = "inference_model"
         # pull dense before save
         self.pull_all_dense_params(scope, program)
-        if fleet.worker_index() == 0:
+        if fleet.worker_indice() == 0:
             with fluid.scope_guard(scope):
                 if save_combine:
                     fluid.io.save_inference_model(
@@ -1020,7 +1020,7 @@ class FleetUtil(object):
         pass_id = str(pass_id)
         # pull dense before save
         self.pull_all_dense_params(scope, program)
-        if fleet.worker_index() == 0:
+        if fleet.worker_indice() == 0:
             vars = [program.global_block().var(i) for i in var_names]
             with fluid.scope_guard(scope):
                 if save_combine:

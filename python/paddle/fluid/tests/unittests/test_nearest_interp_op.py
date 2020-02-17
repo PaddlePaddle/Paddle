@@ -357,8 +357,8 @@ class TestNearestInterpOp_attr_tensor(OpTest):
             self.inputs['OutSize'] = self.out_size
         elif self.out_size is not None:
             size_tensor = []
-            for index, ele in enumerate(self.out_size):
-                size_tensor.append(("x" + str(index), np.ones(
+            for indice, ele in enumerate(self.out_size):
+                size_tensor.append(("x" + str(indice), np.ones(
                     (1)).astype('int32') * ele))
             self.inputs['SizeTensor'] = size_tensor
 

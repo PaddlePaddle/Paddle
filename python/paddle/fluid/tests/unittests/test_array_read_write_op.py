@@ -97,7 +97,7 @@ class TestArrayReadWrite(unittest.TestCase):
 
         # since our final gradient is 1 and the neural network are all linear
         # with mean_op.
-        # the input gradient should also be 1
+        # the input gradient shold also be 1
         self.assertAlmostEqual(1.0, g_out_sum, delta=0.1)
 
 

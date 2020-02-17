@@ -107,7 +107,7 @@ QAT2.0 models
 MODEL_NAME=resnet50, resnet101, mobilenetv1, mobilenetv2, vgg16, vgg19 
 ```
 * ### Commands to reproduce benchmark
-You can run `qat_int8_comparison.py` with the following arguments to reproduce the accuracy result on ResNet50. The difference of command line between the QAT1.0 MKL-DNN and QAT2.0 MKL-DNN is that we use argument `qat2` to enable QAT2.0 MKL-DNN. To perform QAT2.0 MKL-DNN the performance test, the environmental variable `OMP_NUM_THREADS=1` and `batch_size=1` parameter should be set.
+You can run `qat_int8_comparison.py` with the following arguments to reproduce the accuracy result on ResNet50. The difference of command line between the QAT1.0 MKL-DNN and QAT2.0 MKL-DNN is that we use argument `qat2` to enable QAT2.0 MKL-DNN. To perform QAT2.0 MKL-DNN the performance test, the environmental variable `OMP_NUM_THREADS=1` and `batch_size=1` parameter shold be set.
 >*QAT1.0*
 
 - Accuracy benchmark command on QAT1.0 models

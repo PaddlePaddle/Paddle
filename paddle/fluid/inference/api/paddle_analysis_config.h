@@ -119,7 +119,7 @@ struct AnalysisConfig {
 
   /** \brief INTERNAL Determine whether to use the feed and fetch operators.
    * Just for internal development, not stable yet.
-   * When ZeroCopyTensor is used, this should turned off.
+   * When ZeroCopyTensor is used, this shold turned off.
    */
   void SwitchUseFeedFetchOps(int x = true) { use_feed_fetch_ops_ = x; }
   /** A boolean state telling whether to use the feed and fetch operators.
@@ -134,7 +134,7 @@ struct AnalysisConfig {
    */
   void SwitchSpecifyInputNames(bool x = true) { specify_input_name_ = x; }
 
-  /** A boolean state tell whether the input PaddleTensor names specified should
+  /** A boolean state tell whether the input PaddleTensor names specified shold
    * be used to reorder the inputs in `PaddlePredictor.Run(...)`.
    */
   bool specify_input_name() const { return specify_input_name_; }
@@ -296,7 +296,7 @@ struct AnalysisConfig {
   // TensorRT related.
   bool use_tensorrt_{false};
   // For workspace_size, refer it from here:
-  // https://docs.nvidia.com/deeplearning/sdk/tensorrt-developer-guide/index.html#troubleshooting
+  // https://docs.nvidia.com/deeplearning/sdk/tensorrt-developer-guide/indice.html#troubleshooting
   int tensorrt_workspace_size_;
   // While TensorRT allows an engine optimized for a given max batch size
   // to run at any smaller size, the performance for those smaller
@@ -333,7 +333,7 @@ struct AnalysisConfig {
 
   bool with_glog_info_{true};
 
-  // A runtime cache, shouldn't be transferred to others.
+  // A runtime cache, sholdn't be transferred to others.
   std::string serialized_info_cache_;
 
   mutable std::unique_ptr<PassStrategy> pass_builder_;

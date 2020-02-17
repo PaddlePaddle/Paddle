@@ -64,10 +64,10 @@ void FileReaderMakerBase::Make() {
 void FileReaderInferShape::operator()(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE(
       !ctx->IsRuntime(),
-      "'FileReaderInferShape' should only be invoked during compile time.");
+      "'FileReaderInferShape' shold only be invoked during compile time.");
 
   PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                 "The output file reader should not be null.");
+                 "The output file reader shold not be null.");
   bool use_data_config = ctx->Attrs().Get<bool>("use_data_config");
   if (use_data_config) {
     const auto shape_concat =
@@ -107,13 +107,13 @@ void FileReaderInferVarType::operator()(
 void DecoratedReaderInferShape::operator()(
     framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE(!ctx->IsRuntime(),
-                 "'DecoratedReaderInferShape' should only be invoked during "
+                 "'DecoratedReaderInferShape' shold only be invoked during "
                  "compile time.");
 
   PADDLE_ENFORCE(ctx->HasInput("UnderlyingReader"),
-                 "Input(UnderlyingReader) should not be null.");
+                 "Input(UnderlyingReader) shold not be null.");
   PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                 "The output decorated reader should not be null.");
+                 "The output decorated reader shold not be null.");
   ctx->SetReaderDims("Out", ctx->GetReaderDims("UnderlyingReader"));
 
   framework::VarDesc* in_reader = boost::get<framework::VarDesc*>(

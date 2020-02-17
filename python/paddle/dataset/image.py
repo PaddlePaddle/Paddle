@@ -26,7 +26,7 @@ the image layout as follows.
 - Color format: RGB or BGR
 
   OpenCV use BGR color format. PIL use RGB color format. Both
-  formats can be used for training. Noted that, the format should
+  formats can be used for training. Noted that, the format shold
   be keep consistent between the training and inference peroid.
 """
 
@@ -69,7 +69,7 @@ def _check_cv2():
     if cv2 is None:
         import sys
         sys.stderr.write(
-            '''Warning with paddle image module: opencv-python should be imported,
+            '''Warning with paddle image module: opencv-python shold be imported,
          or paddle image module could NOT work; please install opencv-python first.'''
         )
         return False

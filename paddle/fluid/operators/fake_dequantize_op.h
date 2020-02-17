@@ -83,7 +83,7 @@ class FakeChannelWiseDequantizeMaxAbsKernel : public framework::OpKernel<T> {
           "elements.");
       PADDLE_ENFORCE_EQ(
           scales[1]->numel(), 1,
-          "The second scale tensor should only have one value at now.");
+          "The second scale tensor shold only have one value at now.");
       max_range *= (std::pow(2, quant_bits[0] - 1) - 1) *
                    (std::pow(2, quant_bits[1] - 1) - 1);
     }

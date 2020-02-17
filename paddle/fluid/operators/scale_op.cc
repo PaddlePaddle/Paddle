@@ -31,9 +31,9 @@ class ScaleOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of ScaleOp should not be null.");
+                   "Input(X) of ScaleOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of ScaleOp should not be null.");
+                   "Output(Out) of ScaleOp shold not be null.");
 
     if (ctx->IsRuntime() && ctx->HasInput("ScaleTensor")) {
       auto scale = ctx->Inputs("ScaleTensor");

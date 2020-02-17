@@ -55,7 +55,7 @@ class Optimizer(object):
     """Optimizer Base class.
 
     Define the common interface of an optimizer.
-    User should not use this class directly,
+    User shold not use this class directly,
     but need to use one of it's implementation.
     """
 
@@ -70,7 +70,7 @@ class Optimizer(object):
             if not isinstance(learning_rate, float) and \
                     not isinstance(learning_rate, LearningRateDecay):
                 raise TypeError(
-                    "learning rate should be float or LearningRateDecay, got %s here"
+                    "learning rate shold be float or LearningRateDecay, got %s here"
                     % type(learning_rate))
             if name is not None:
                 self._name = unique_name.generate(name)
@@ -80,21 +80,21 @@ class Optimizer(object):
                 self._parameter_list = parameter_list
             else:
                 raise AttributeError(
-                    "parameter_list argument given to the Optimizer should not be None in dygraph mode."
+                    "parameter_list argument given to the Optimizer shold not be None in dygraph mode."
                 )
         else:
             if not isinstance(learning_rate, float) and \
                     not isinstance(learning_rate, framework.Variable):
                 raise TypeError(
-                    "learning rate should be float or Variable, got %s here" %
+                    "learning rate shold be float or Variable, got %s here" %
                     type(learning_rate))
             self._name = name
 
         self.regularization = regularization
         self._learning_rate = learning_rate
-        # the learning rate type should be inferenced from loss
+        # the learning rate type shold be inferenced from loss
         self._dtype = None
-        # each program should have a independent learning rate
+        # each program shold have a independent learning rate
         # program -> Variable(learning_rate)
         self._learning_rate_map = dict()
         if isinstance(self._learning_rate, framework.Variable):
@@ -443,7 +443,7 @@ class Optimizer(object):
         if framework.in_dygraph_mode():
             if len(self._accumulators_holder) > 0:
                 assert var_name in self._accumulators_holder, \
-                        "Optimizer set error, {} should in state dict".format( var_name )
+                        "Optimizer set error, {} shold in state dict".format( var_name )
                 var.set_value(self._accumulators_holder[var_name])
 
         self._accumulators[name][param.name] = var
@@ -532,7 +532,7 @@ class Optimizer(object):
     def _process_distribute_lookuptable(self, param_grads):
         """
         Because distribute lookup table only support SGD optimizer for now, not support
-        other optimizer and regularization, so we should find the table parameter out,
+        other optimizer and regularization, so we shold find the table parameter out,
         and avoid to add regularization and other op for it, and add sgd optimize op
         for it independently.
         :param param_grads(list((Var, Var))): list of (param, grad) pair.
@@ -627,14 +627,14 @@ class Optimizer(object):
                 assert (isinstance(callbacks, list))
             program = loss.block.program
             assert len(loss.shape) == 1 and loss.shape[0] == 1, \
-                "The loss.shape should be (1L,), but the current loss.shape is {}. " \
-                "Maybe that you should call fluid.layers.mean to process the current loss.".format(
+                "The loss.shape shold be (1L,), but the current loss.shape is {}. " \
+                "Maybe that you shold call fluid.layers.mean to process the current loss.".format(
                     loss.shape)
             with program_guard(program, startup_program):
                 params_grads = append_backward(loss, parameter_list,
                                                act_no_grad_set, callbacks)
                 # Note: since we can't use all_reduce_op now,
-                #  dgc_op should be the last op of one grad.
+                #  dgc_op shold be the last op of one grad.
                 self._append_dgc_ops(params_grads)
         return params_grads
 
@@ -709,7 +709,7 @@ class Optimizer(object):
         parameters = loss.block.program.global_block().all_parameters()
         param_no_trainable = set(
             [param.name for param in parameters if param.trainable is False])
-        # If the parameter is no trainable, it should not have a gradient.
+        # If the parameter is no trainable, it shold not have a gradient.
         no_grad_set.update(param_no_trainable)
 
         return no_grad_set
@@ -778,7 +778,7 @@ class Optimizer(object):
         Examples:
             Please refer to the example of current Optimizer.
         """
-        assert isinstance(loss, Variable), "The loss should be an Variable."
+        assert isinstance(loss, Variable), "The loss shold be an Variable."
         params_grads = self.backward(
             loss,
             startup_program=startup_program,
@@ -786,7 +786,7 @@ class Optimizer(object):
             no_grad_set=no_grad_set)
 
         if grad_clip is not None and framework.in_dygraph_mode():
-            # TODO(hongyu): FIX later, this is only for dygraph, should be work for static mode
+            # TODO(hongyu): FIX later, this is only for dygraph, shold be work for static mode
             params_grads = grad_clip(params_grads)
 
         optimize_ops = self.apply_optimize(
@@ -1639,10 +1639,10 @@ class AdamOptimizer(Optimizer):
         learning_rate (float|Variable, optional): The learning rate used to update ``Parameter``.
             It can be a float value or a ``Variable`` with a float type. The default value is 0.001.
         beta1 (float|Variable, optional): The exponential decay rate for the 1st moment estimates.
-            It should be a float number or a Variable with shape [1] and data type as float32.
+            It shold be a float number or a Variable with shape [1] and data type as float32.
             The default value is 0.9.
         beta2 (float|Variable, optional): The exponential decay rate for the 2nd moment estimates.
-            It should be a float number or a Variable with shape [1] and data type as float32.
+            It shold be a float number or a Variable with shape [1] and data type as float32.
             The default value is 0.999.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
@@ -3423,7 +3423,7 @@ class PipelineOptimizer(object):
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
-            filelist = [] # you should set your own filelist, e.g. filelist = ["dataA.txt"]
+            filelist = [] # you shold set your own filelist, e.g. filelist = ["dataA.txt"]
             dataset = fluid.DatasetFactory().create_dataset("FileInstantDataset")
             dataset.set_use_var([x,y])
             dataset.set_batch_size(batch_size)
@@ -3689,7 +3689,7 @@ class RecomputeOptimizer(Optimizer):
     very helpful for saving memory.
  
     The Variables that separate a network to segments are called as checkpoints,
-    and users should set it manually. The usage is very simple:
+    and users shold set it manually. The usage is very simple:
 
     Args:
         optimizer (Optimizer): The optimizer that is applied to parameters.
@@ -3841,7 +3841,7 @@ class RecomputeOptimizer(Optimizer):
             startup_program (Program): startup_program for initializing parameters
                 in `parameter_list`.
             parameter_list (list): list of Variables or Variable.names to update.
-            no_grad_set (set|None): set of Variables or Variables.names should be ignored.
+            no_grad_set (set|None): set of Variables or Variables.names shold be ignored.
             callbacks (list|None): list of callables to run when appending backward
                 operator for one parameter.
             checkpoints (list): list of Variables as checkpoints
@@ -3942,9 +3942,9 @@ class RecomputeOptimizer(Optimizer):
                  no_grad_set=None,
                  grad_clip=None):
 
-        assert (isinstance(loss, Variable)), "The loss should be an Variable."
+        assert (isinstance(loss, Variable)), "The loss shold be an Variable."
         assert (self._checkpoints is not None
-                ), "You should call _set_checkpoints first"
+                ), "You shold call _set_checkpoints first"
         if framework.in_dygraph_mode():
             raise NotImplementedError(
                 "DyGraph current does not support recompute")
@@ -3957,7 +3957,7 @@ class RecomputeOptimizer(Optimizer):
             checkpoints=self._checkpoints)
 
         if grad_clip:
-            # TODO(guru4elephant): should add grad_clip for static graph
+            # TODO(guru4elephant): shold add grad_clip for static graph
             pass
 
         optimize_ops = self.apply_optimize(
@@ -4026,8 +4026,8 @@ class LookaheadOptimizer(object):
         assert (inner_optimizer is not None), "inner optimizer can not be None"
         assert (
             0.0 <= alpha <= 1.0
-        ), "alpha should be larger or equal to 0.0, and less or equal than 1.0"
-        assert (isinstance(k, int) and k > 0), "k should be a positive integer"
+        ), "alpha shold be larger or equal to 0.0, and less or equal than 1.0"
+        assert (isinstance(k, int) and k > 0), "k shold be a positive integer"
 
         self.inner_optimizer = inner_optimizer
         self.alpha = alpha

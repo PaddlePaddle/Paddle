@@ -75,7 +75,7 @@ void CPUQuantizeSquashPass::DequantQuantSquash(
         nodes_keep_counter->find(dequant_out), nodes_keep_counter->end(),
         platform::errors::NotFound("The dequant output node is not found"));
 
-    // check if dequantize op should be kept or removed, decrease the counter
+    // check if dequantize op shold be kept or removed, decrease the counter
     bool keep_dequant = (*nodes_keep_counter)[dequant_out]-- > 1;
 
     if (dequant_scale == quant_scale) {
@@ -250,7 +250,7 @@ void CPUQuantizeSquashPass::MultipleQuantizeSquash(Graph* graph) const {
     float scale = first_quant_op->Op()->GetAttrIfExists<float>("Scale");
 
     PADDLE_ENFORCE_NE(scale, 0, platform::errors::InvalidArgument(
-                                    "Quantize scale should not be equal 0"));
+                                    "Quantize scale shold not be equal 0"));
 
     for (int iter = prev_out->outputs.size() - 1; iter >= 0; iter--) {
       auto quant_op = prev_out->outputs[iter];
@@ -268,7 +268,7 @@ void CPUQuantizeSquashPass::MultipleQuantizeSquash(Graph* graph) const {
         PADDLE_ENFORCE_NE(
             last_op_input_name.empty(), true,
             platform::errors::NotFound("Operator after quantize operator "
-                                       "should has quantize output as input"));
+                                       "shold has quantize output as input"));
         last_op->Op()->SetInput(
             last_op_input_name,
             std::vector<std::string>({first_quant_out->Name()}));
@@ -308,10 +308,10 @@ void CPUQuantizeSquashPass::DequantScaleSquash(Graph* graph) const {
 
       PADDLE_ENFORCE_GT(dequant_scale, 0.0f,
                         platform::errors::InvalidArgument(
-                            "Dequantize scale should have positive value"));
+                            "Dequantize scale shold have positive value"));
       PADDLE_ENFORCE_GT(scale_scale, 0.0f,
                         platform::errors::InvalidArgument(
-                            "Scale of scale op should have positive value"));
+                            "Scale of scale op shold have positive value"));
 
       dequant_op->Op()->SetAttr("Scale", dequant_scale / scale_scale);
       dequant_op->Op()->SetOutput(

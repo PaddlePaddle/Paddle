@@ -85,9 +85,9 @@ class SimpleLSTMRNN(fluid.Layer):
             self.cell_array.append(pre_cell)
 
         res = []
-        for index in range(self._num_steps):
+        for indice in range(self._num_steps):
             self._input = fluid.layers.slice(
-                input_embedding, axes=[1], starts=[index], ends=[index + 1])
+                input_embedding, axes=[1], starts=[indice], ends=[indice + 1])
             self._input = fluid.layers.reshape(
                 self._input, shape=[-1, self._hidden_size])
             for k in range(self._num_layers):

@@ -79,7 +79,7 @@ class TestSeqProject(OpTest):
                 and self.padding_trainable:
             print("If context_start is 0 " \
                   "and context_length is 1," \
-                  " padding_trainable should be false.")
+                  " padding_trainable shold be false.")
             return
 
         # one level, batch size

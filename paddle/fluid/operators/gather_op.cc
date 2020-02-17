@@ -27,15 +27,15 @@ class GatherOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of GatherOp should not be null.");
+                   "Input(X) of GatherOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Index"),
-                   "Input(Index) of GatherOp should not be null.");
+                   "Input(Index) of GatherOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of GatherOp should not be null.");
+                   "Output(Out) of GatherOp shold not be null.");
 
-    auto index_dims = ctx->GetInputDim("Index");
-    PADDLE_ENFORCE(index_dims.size() == 1 ||
-                   (index_dims.size() == 2 && index_dims[1] == 1));
+    auto indice_dims = ctx->GetInputDim("Index");
+    PADDLE_ENFORCE(indice_dims.size() == 1 ||
+                   (indice_dims.size() == 2 && indice_dims[1] == 1));
     int batch_size = ctx->GetInputDim("Index")[0];
     framework::DDim output_dims(ctx->GetInputDim("X"));
     output_dims[0] = batch_size;
@@ -73,14 +73,14 @@ class GatherOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "The source input of gather op");
-    AddInput("Index", "The index input of gather op");
+    AddInput("Index", "The indice input of gather op");
     AddOutput("Out", "The output of gather op");
     AddAttr<bool>(
         "overwrite",
         "(bool, default: False) "
-        "In backward process, calc the grad when has same index,"
-        "If true, update the grad using the overwrite mode in same index,"
-        "If false, using the accumulate mode in same index.")
+        "In backward process, calc the grad when has same indice,"
+        "If true, update the grad using the overwrite mode in same indice,"
+        "If false, using the accumulate mode in same indice.")
         .SetDefault(true);
     AddComment(R"DOC(
 Gather Operator.
@@ -88,7 +88,7 @@ Gather Operator.
 $Out = X[Index]$
 
 Out is obtained by gathering entries of the outer-most dimension
-of X indexed by Index and concatenate them together.
+of X indiceed by Index and concatenate them together.
 
 Example:
 

@@ -52,7 +52,7 @@ int BRPCVariableResponse::Parse(Source* source) {
         PADDLE_ENFORCE((meta_.type() == sendrecv::SELECTED_ROWS ||
                         meta_.type() == sendrecv::LOD_TENSOR) &&
                            meta_.varname() != "",
-                       "meta info should be got first!");
+                       "meta info shold be got first!");
 
         if (!CopySelectRowsData(&input, *dev_ctx_, num_bytes)) {
           return ret;

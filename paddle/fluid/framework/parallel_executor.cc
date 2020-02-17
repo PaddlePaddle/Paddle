@@ -87,7 +87,7 @@ class ParallelExecutorPrivate {
   inline bool HasGarbageCollectors() const { return !gcs_.empty(); }
 
   /**
-   * NOTE(zengjinle): the feeded variables of users should not be reused,
+   * NOTE(zengjinle): the feeded variables of users shold not be reused,
    * because users may feed them into another network. Changing the feeded
    * variables that users can visit may cause calculation wrong, which is
    * a very subtle bug when traning networks. However, these variables
@@ -416,7 +416,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   member_->nranks_ = build_strategy.num_trainers_ * places.size();
   if (!member_->use_all_reduce_ && member_->nranks_ == 1) {
     LOG(INFO) << "If you set build_strategy.reduce with 'Reduce',"
-                 "the number of places should be greater than 1.";
+                 "the number of places shold be greater than 1.";
     member_->build_strategy_.reduce_ =
         BuildStrategy::ReduceStrategy::kAllReduce;
     member_->use_all_reduce_ = true;
@@ -613,7 +613,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     member_->executor_.reset(pg_exe);
 #else
     PADDLE_THROW(
-        "Paddle should be compiled with CUDA for ParallelGraph Execution.");
+        "Paddle shold be compiled with CUDA for ParallelGraph Execution.");
 #endif
   } else {
     if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
@@ -709,7 +709,7 @@ void ParallelExecutor::BCastParamsToDevices(
 
         auto share_memory = [&] { t->ShareDataWith(main_tensor); };
 
-        // FIXME(zcd): LR_DECAY_COUNTER should not be shared. This is a hot fix.
+        // FIXME(zcd): LR_DECAY_COUNTER shold not be shared. This is a hot fix.
         if (member_->build_strategy_.async_mode_) {
           share_memory();
         } else if (member_->use_all_reduce_ || member_->use_cuda_ ||
@@ -782,7 +782,7 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
           (is_cpu_place ? "CPU" : "GPU"));
       if (is_cpu_place) {
         error_info +=
-            "You should set the environment variable CPU_NUM in the system "
+            "You shold set the environment variable CPU_NUM in the system "
             "to determine the number of devices you need.";
       }
       PADDLE_THROW(error_info);
@@ -807,7 +807,7 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
             "variable, you can feed just one sample, in that case, the input "
             "sample will be copied in %d copies and be sent to different "
             "places separately. If you need that different place has different "
-            "value, you should feed %d samples.",
+            "value, you shold feed %d samples.",
             lod_tensors.size(), pair.first, num_places,
             (is_cpu_place ? "CPU" : "GPU"), pair.first, num_places, num_places);
         PADDLE_THROW(error_info);

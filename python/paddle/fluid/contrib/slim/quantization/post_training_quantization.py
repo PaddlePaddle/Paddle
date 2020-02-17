@@ -45,7 +45,7 @@ def _set_variable_data(scope, place, var_name, np_value):
     Set the value of var node by name, if the node exits,
     '''
     assert isinstance(np_value, np.ndarray), \
-        'The type of value should be numpy array.'
+        'The type of value shold be numpy array.'
     var_node = scope.find_var(var_name)
     if var_node != None:
         tensor = var_node.get_tensor()
@@ -111,7 +111,7 @@ class PostTrainingQuantization(object):
             is_use_cache_file(bool, optional): If set is_use_cache_file as False,
                 all temp data will be saved in memory. If set is_use_cache_file as True,
                 it will save temp data to disk. When the fp32 model is complex or
-                the number of calibrate data is large, we should set is_use_cache_file
+                the number of calibrate data is large, we shold set is_use_cache_file
                 as True. Defalut is False.
             cache_dir(str, optional): When is_use_cache_file is True, set cache_dir as
                 the directory for saving temp data. Default is ./temp_post_training.
@@ -631,11 +631,11 @@ class WeightQuantization(object):
                 saved in separate files. If it is not None, all 
                 parameters were saved in a single binary file.
             quantizable_op_type(list[str], optional): The list of ops 
-                that will be quantized, and the quantized ops should be
+                that will be quantized, and the quantized ops shold be
                 contained in ["conv2d", "depthwise_conv2d", "mul"]. 
                 Default is ["conv2d","mul"].
             weight_bits(int, optional): The bits for the quantized weight, 
-                and it should be 8 or 16. Default is 8.
+                and it shold be 8 or 16. Default is 8.
             threshold_rate(float, optional): This api uses abs_max methd to 
                 quantize the weight from float32 to int8/16, and the abs max 
                 value is important for quantization diff. When the abs_max 
@@ -648,7 +648,7 @@ class WeightQuantization(object):
                 "input error:" + op_type + \
                 " is not supported for weight quantization."
         assert weight_bits in [8, 16], \
-            "input error: weight_bits should be 8 or 16."
+            "input error: weight_bits shold be 8 or 16."
         quantize_range = (1 << (weight_bits - 1)) - 1
         save_weight_dtype = np.int8 if weight_bits == 8 else np.int16
 

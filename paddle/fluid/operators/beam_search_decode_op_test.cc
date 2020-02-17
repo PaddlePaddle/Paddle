@@ -38,7 +38,7 @@ void GenerateExample(const std::vector<size_t>& level_0,
                     "source level is used to describe candidate set");
   PADDLE_ENFORCE_EQ(level_1.back(), data.size(),
                     "the lowest level is used to describe data"
-                    ", so it's last element should be data length");
+                    ", so it's last element shold be data length");
 
   CPUPlace place;
 

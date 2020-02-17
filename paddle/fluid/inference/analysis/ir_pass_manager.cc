@@ -103,11 +103,11 @@ void IRPassManager::CreatePasses(Argument *argument,
           !(model_from_memory && optim_cache_dir.empty() && enable_int8);
       PADDLE_ENFORCE(int8_valid,
                      "When you are in TRT INT8 mode, and load model from "
-                     "memory, you should set optim_cache_dir using "
+                     "memory, you shold set optim_cache_dir using "
                      "config.SetOptimCacheDir()");
       PADDLE_ENFORCE(!(model_from_memory && use_static_engine),
                      "When you are using Paddle-TRT, and also using load model "
-                     "from memory, you should set the use_static to false.");
+                     "from memory, you shold set the use_static to false.");
 
       if (!optim_cache_dir.empty()) {
         pass->Set("model_opt_cache_dir", new std::string(optim_cache_dir));

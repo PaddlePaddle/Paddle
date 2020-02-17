@@ -23,7 +23,7 @@ def distributed_batch_reader(batch_reader):
     Create a reader for multi-process training. The input must be a batch reader.
 
     Args:
-        batch_reader (callable): The input reader should be a batch reader.
+        batch_reader (callable): The input reader shold be a batch reader.
 
     Examples:
 
@@ -56,7 +56,7 @@ def distributed_batch_reader(batch_reader):
                 else:
                     if idx == trainer_id + 1:
                         train_data = data
-                    assert train_data is not None, "train data should not be None."
+                    assert train_data is not None, "train data shold not be None."
                     yield train_data
                     train_data, idx = None, 1
             else:

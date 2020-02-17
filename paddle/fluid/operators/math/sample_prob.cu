@@ -54,7 +54,7 @@ __device__ int64_t GPULogUniformSampler::Sample(float random, const int range,
   // Got Log Uniform distribution from uniform distribution by
   // inverse_transform_sampling method
   const int64_t value = static_cast<int64_t>(exp(random * log_range)) - 1;
-  // Mathematically, value should be <= range_, but might not be due to some
+  // Mathematically, value shold be <= range_, but might not be due to some
   // floating point roundoff, so we mod by range_.
   return value % range;
 }

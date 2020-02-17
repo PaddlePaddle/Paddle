@@ -57,8 +57,8 @@ class PSLib(Fleet):
     def init_worker(self):
         """
         init_worker(): will be called by user. When a user knows current process is_server(), he/she
-                    should call init_worker() to initialize global information about worker and connect
-                    worker with pserver. You should run startup program before init_worker.
+                    shold call init_worker() to initialize global information about worker and connect
+                    worker with pserver. You shold run startup program before init_worker.
 
         Args:
             executor(Executor): The executor to run for init server.
@@ -67,7 +67,7 @@ class PSLib(Fleet):
 
         if len(self._main_programs) == 0:
             raise ValueError(
-                "You should run DistributedOptimizer.minimize() first")
+                "You shold run DistributedOptimizer.minimize() first")
 
         if self._opt_info:
             if "fleet_desc" in self._opt_info:
@@ -76,7 +76,7 @@ class PSLib(Fleet):
                 self._dist_desc = self._opt_info["fleet_desc"]
             else:
                 raise Exception(
-                    "You should run DistributedOptimizer.minimize() first")
+                    "You shold run DistributedOptimizer.minimize() first")
             # barrier_all for init_server, wait for server starts
             self._role_maker._barrier_all()
             self.all_ips_ = self._role_maker._all_gather(self._local_ip)
@@ -120,7 +120,7 @@ class PSLib(Fleet):
                             if scope.find_var(var_name) is None:
                                 raise ValueError(
                                     "var " + var_name + " not found in scope, "
-                                    + "you should run startup program first")
+                                    + "you shold run startup program first")
                             var_name_list.append(var_name)
                         self._fleet_ptr.init_model(scope,
                                                    int(table.table_id),
@@ -129,7 +129,7 @@ class PSLib(Fleet):
             self._role_maker._barrier_worker()
         else:
             raise NameError(
-                "You should run DistributedOptimizer.minimize() first")
+                "You shold run DistributedOptimizer.minimize() first")
 
     def init_server(self, model_dir=None, **kwargs):
         """
@@ -156,7 +156,7 @@ class PSLib(Fleet):
     def run_server(self):
         """
          init_pserver(): will be called by user. When a user knows current process is_worker(), he/she
-             should call init_pserver() to initialize global information about parameter server
+             shold call init_pserver() to initialize global information about parameter server
         """
         if self._opt_info:
             if "fleet_desc" in self._opt_info:
@@ -165,7 +165,7 @@ class PSLib(Fleet):
                 self._dist_desc = self._opt_info["fleet_desc"]
             else:
                 raise Exception(
-                    "You should run DistributedOptimizer.minimize() first")
+                    "You shold run DistributedOptimizer.minimize() first")
             # server_index * 2 is for compatible with older versions of pslib
             self._fleet_ptr.init_server(self._dist_desc_str,
                                         self._role_maker.server_index() * 2)
@@ -187,7 +187,7 @@ class PSLib(Fleet):
             self._role_maker._barrier_all()
         else:
             raise Exception(
-                "You should run DistributedOptimizer.minimize() first")
+                "You shold run DistributedOptimizer.minimize() first")
 
     def stop_worker(self):
         """
@@ -195,7 +195,7 @@ class PSLib(Fleet):
             destroyed when stop() is called.
         """
         self._role_maker._barrier_worker()
-        # all worker should be finalize first
+        # all worker shold be finalize first
         if self._role_maker.is_worker():
             self._fleet_ptr.finalize_worker()
         self._role_maker._barrier_worker()
@@ -373,7 +373,7 @@ class PSLib(Fleet):
             emb_dim(int): one element's length in datanorm layer
             scope(Scope): Scope object, default is fluid.global_scope()
             table_id(int): table id of shrinking dense table. None means shrink all,
-                           you should specify it when using multiple scopes,
+                           you shold specify it when using multiple scopes,
                            default is None.
 
         Example:
@@ -563,7 +563,7 @@ fleet = PSLib()
 class DownpourOptimizer(DistributedOptimizer):
     """
     DistributedOptimizer is a wrapper for paddle.fluid.optimizer
-    A user should pass a paddle.fluid.optimizer to DistributedOptimizer
+    A user shold pass a paddle.fluid.optimizer to DistributedOptimizer
     minimize() function is implemented.
     DistributedOptimizer is the starting point for a user who wants to
     run distributed training. The optimized information will be stored in
@@ -628,7 +628,7 @@ class DownpourOptimizer(DistributedOptimizer):
             startup_programs (Program|Program List): startup_program for initializing parameters
                 in `parameter_list`.
             parameter_list (list): list of Variables to update.
-            no_grad_set (set|None): set of Variables should be ignored.
+            no_grad_set (set|None): set of Variables shold be ignored.
 
         Returns:
             tuple: (optimize_ops, params_grads) which are, list of operators appended;
@@ -656,7 +656,7 @@ class DownpourOptimizer(DistributedOptimizer):
 
         if len(scopes) != len(programs):
             raise ValueError(
-                "You should make sure len(scopes) == len(programs) or set scopes None"
+                "You shold make sure len(scopes) == len(programs) or set scopes None"
             )
 
         fleet._main_programs = programs

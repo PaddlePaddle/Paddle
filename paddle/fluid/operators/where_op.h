@@ -25,23 +25,23 @@ namespace operators {
 
 template <typename T>
 struct WhereFunctor {
-  WhereFunctor(const T& true_index, int true_num, const T& stride, int rank,
+  WhereFunctor(const T& true_indice, int true_num, const T& stride, int rank,
                int64_t* out)
-      : true_index_(true_index),
+      : true_indice_(true_indice),
         true_num_(true_num),
         stride_(stride),
         rank_(rank),
         out_ptr_(out) {}
 
   HOSTDEVICE void operator()(size_t idx) const {
-    int index = true_index_[idx];
+    int indice = true_indice_[idx];
     for (int j = 0; j < rank_; j++) {
-      out_ptr_[idx * rank_ + j] = index / stride_[j];
-      index -= out_ptr_[idx * rank_ + j] * stride_[j];
+      out_ptr_[idx * rank_ + j] = indice / stride_[j];
+      indice -= out_ptr_[idx * rank_ + j] * stride_[j];
     }
   }
 
-  const T true_index_;
+  const T true_indice_;
   int true_num_;
   const T stride_;
   int rank_;
@@ -62,13 +62,13 @@ class CPUWhereKernel : public framework::OpKernel<T> {
     auto dims = condition->dims();
     const int rank = dims.size();
 
-    std::vector<int> true_index;
+    std::vector<int> true_indice;
     for (auto i = 0; i < numel; i++) {
       if (cond_data[i]) {
-        true_index.push_back(i);
+        true_indice.push_back(i);
       }
     }
-    auto true_num = true_index.size();
+    auto true_num = true_indice.size();
 
     out->Resize(framework::make_ddim({static_cast<int64_t>(true_num), rank}));
     auto out_ptr = out->mutable_data<T>(context.GetPlace());
@@ -84,7 +84,7 @@ class CPUWhereKernel : public framework::OpKernel<T> {
     }
 
     auto& dev_ctx = context.template device_context<CPUDeviceContext>();
-    WhereFunctor<int*> functor(true_index.data(), true_num, stride.data(), rank,
+    WhereFunctor<int*> functor(true_indice.data(), true_num, stride.data(), rank,
                                out_ptr);
     platform::ForRange<CPUDeviceContext> for_range(dev_ctx, true_num);
     for_range(functor);

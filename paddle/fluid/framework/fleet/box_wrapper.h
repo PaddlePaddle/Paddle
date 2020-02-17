@@ -52,9 +52,9 @@ class BasicAucCalculator {
   }
   void add_data(double pred, int label) {
     PADDLE_ENFORCE_GE(pred, 0.0, platform::errors::PreconditionNotMet(
-                                     "pred should be greater than 0"));
+                                     "pred shold be greater than 0"));
     PADDLE_ENFORCE_LE(pred, 1.0, platform::errors::PreconditionNotMet(
-                                     "pred should be lower than 1"));
+                                     "pred shold be lower than 1"));
     PADDLE_ENFORCE_EQ(
         label * label, label,
         platform::errors::PreconditionNotMet(

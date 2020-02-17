@@ -191,8 +191,8 @@ class ReorderLoDTensorByRankTableOp : public ReorderLoDTensorByRankTableBase {
     size_t out_offset = 0;
     out->mutable_lod()->clear();
     for (auto &item : rank_table.items()) {
-      PADDLE_ENFORCE_LT(item.index, absolute_table.size());
-      out_offset = CopyTensorAndLod(place, absolute_table[item.index], x, out,
+      PADDLE_ENFORCE_LT(item.indice, absolute_table.size());
+      out_offset = CopyTensorAndLod(place, absolute_table[item.indice], x, out,
                                     out_offset);
     }
   }
@@ -242,11 +242,11 @@ class ReorderLoDTensorByRankGradOp : public ReorderLoDTensorByRankTableBase {
                framework::LoDTensor *out) const override {
     auto absolute_table = GetAbsoluteOffsetAndLengthByLoDRankTable(x);
 
-    // offsets = enumerate([item.index for item in rank_table.items()])
+    // offsets = enumerate([item.indice for item in rank_table.items()])
     std::vector<std::pair<size_t, size_t>> offsets;
     offsets.reserve(rank_table.items().size());
     for (size_t i = 0; i < rank_table.items().size(); ++i) {
-      offsets.push_back({i, rank_table.items()[i].index});
+      offsets.push_back({i, rank_table.items()[i].indice});
     }
 
     // offsets.sort(key=lambda x: x[1])

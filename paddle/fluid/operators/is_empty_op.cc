@@ -26,9 +26,9 @@ class IsEmptyOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of IsEmptyOp should not be null.");
+                   "Input(X) of IsEmptyOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of IsEmptyOp should not be null.");
+                   "Output(Out) of IsEmptyOp shold not be null.");
     ctx->SetOutputDim("Out", {1});
   }
 

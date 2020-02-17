@@ -21,7 +21,7 @@ class DecoupledWeightDecay(object):
     def __init__(self, coeff=0.0, apply_decay_param_fun=None, **kwargs):
         if not isinstance(coeff, float) and \
                 not isinstance(coeff, framework.Variable):
-            raise TypeError("coeff should be float or Variable.")
+            raise TypeError("coeff shold be float or Variable.")
         self._params_name = set()
         self._apply_decay_param_fun = apply_decay_param_fun
         self._coeff = coeff
@@ -109,7 +109,7 @@ def extend_with_decoupled_weight_decay(base_optimizer):
     `DECOUPLED WEIGHT DECAY REGULARIZATION <https://arxiv.org/pdf/1711.05101.pdf>`_.
 
     Args:
-        base_optimizer (Optimizer): The base_optimizer should be a derived class of Optimizer.
+        base_optimizer (Optimizer): The base_optimizer shold be a derived class of Optimizer.
 
     Returns:
         OptimizerWithDecoupledWeightDecay: the optimizer with decouple weight decay.
@@ -127,7 +127,7 @@ def extend_with_decoupled_weight_decay(base_optimizer):
     """
     if not issubclass(base_optimizer, paddle.fluid.optimizer.Optimizer):
         raise TypeError(
-            "The input(base_optimizer) should be a derived class of Optimizer.")
+            "The input(base_optimizer) shold be a derived class of Optimizer.")
 
     class OptimizerWithDecoupledWeightDecay(DecoupledWeightDecay,
                                             base_optimizer):

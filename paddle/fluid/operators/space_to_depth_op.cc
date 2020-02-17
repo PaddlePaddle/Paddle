@@ -31,50 +31,50 @@ class SpaceToDepthOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SpaceToDepthOp should not be null.");
+                   "Input(X) of SpaceToDepthOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SpaceToDepthOp should not be null.");
+                   "Output(Out) of SpaceToDepthOp shold not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_EQ(x_dims.size(), 4, "input should be a 4D tensor");
+    PADDLE_ENFORCE_EQ(x_dims.size(), 4, "input shold be a 4D tensor");
     auto blocksize = ctx->Attrs().Get<int64_t>("blocksize");
 
-    PADDLE_ENFORCE_GT(blocksize, 1, "The blocksize should be Greater than 1");
+    PADDLE_ENFORCE_GT(blocksize, 1, "The blocksize shold be Greater than 1");
     if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_GT(x_dims[1], 0, "input channel should be Greater than 0");
-      PADDLE_ENFORCE_GT(x_dims[2], 0, "input Height should be Greater than 0");
-      PADDLE_ENFORCE_GT(x_dims[3], 0, "input Width should be Greater than 0");
+      PADDLE_ENFORCE_GT(x_dims[1], 0, "input channel shold be Greater than 0");
+      PADDLE_ENFORCE_GT(x_dims[2], 0, "input Height shold be Greater than 0");
+      PADDLE_ENFORCE_GT(x_dims[3], 0, "input Width shold be Greater than 0");
 
       PADDLE_ENFORCE_EQ(x_dims[1] % (blocksize * blocksize), 0,
-                        "input channel should be divisible of the square of "
+                        "input channel shold be divisible of the square of "
                         "SpaceToDepthOp blocksize");
       PADDLE_ENFORCE_EQ(x_dims[2] % (blocksize), 0,
-                        "input Height should be divisible of the square of "
+                        "input Height shold be divisible of the square of "
                         "SpaceToDepthOp blocksize");
       PADDLE_ENFORCE_EQ(x_dims[3] % (blocksize), 0,
-                        "input Width should be divisible of the square of "
+                        "input Width shold be divisible of the square of "
                         "SpaceToDepthOp blocksize");
     } else {
       if (x_dims[1] != -1) {
         PADDLE_ENFORCE_GT(x_dims[1], 0,
-                          "input channel should be Greater than 0");
+                          "input channel shold be Greater than 0");
         PADDLE_ENFORCE_EQ(x_dims[1] % (blocksize * blocksize), 0,
-                          "input channel should be divisible of the square of "
+                          "input channel shold be divisible of the square of "
                           "SpaceToDepthOp blocksize");
       }
       if (x_dims[2] != -1) {
         PADDLE_ENFORCE_GT(x_dims[2], 0,
-                          "input Height should be Greater than 0");
+                          "input Height shold be Greater than 0");
         PADDLE_ENFORCE_EQ(x_dims[2] % (blocksize), 0,
-                          "input Height should be divisible of the square of "
+                          "input Height shold be divisible of the square of "
                           "SpaceToDepthOp blocksize");
       }
 
       if (x_dims[3] != -1) {
-        PADDLE_ENFORCE_GT(x_dims[3], 0, "input Width should be Greater than 0");
+        PADDLE_ENFORCE_GT(x_dims[3], 0, "input Width shold be Greater than 0");
 
         PADDLE_ENFORCE_EQ(x_dims[3] % (blocksize), 0,
-                          "input Width should be divisible of the square of "
+                          "input Width shold be divisible of the square of "
                           "SpaceToDepthOp blocksize");
       }
     }
@@ -104,11 +104,11 @@ class SpaceToDepthOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(Tensor). The input should be a 4D tensor B * C * W * H of "
+             "(Tensor). The input shold be a 4D tensor B * C * W * H of "
              "SpaceToDepthOp "
              "operator.");
     AddOutput("Out",
-              "(Tensor), The output should be a 4D tensor B * C2 * W2 * H2 of "
+              "(Tensor), The output shold be a 4D tensor B * C2 * W2 * H2 of "
               "SpaceToDepthOp operator.");
     AddAttr<int64_t>(
         "blocksize",
@@ -159,9 +159,9 @@ class SpaceToDepthGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shouldn't be null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) sholdn't be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) shouldn't be null.");
+                   "Input(Out@GRAD) sholdn't be null.");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 

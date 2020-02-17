@@ -28,7 +28,7 @@ from op_test import OpTest
 
 class BenchmarkSuite(OpTest):
     def timeit_function(self, callback, iters, *args, **kwargs):
-        assert iters != 0, "Iters should >= 1"
+        assert iters != 0, "Iters shold >= 1"
         start = time.time()
         for i in range(iters):
             callback(*args, **kwargs)

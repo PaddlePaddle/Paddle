@@ -23,10 +23,10 @@
 # 0. Compile program with coverage support.
 # 1. Clear coverage data. (Recursively delete *.gcda in build dir)
 # 2. Run the unit tests.
-# 3. Run this script specifying which source files the coverage should be performed on.
+# 3. Run this script specifying which source files the coverage shold be performed on.
 #
 # This script will then use gcov to generate .gcov files in the directory specified
-# via the COV_PATH var. This should probably be the same as your cmake build dir.
+# via the COV_PATH var. This shold probably be the same as your cmake build dir.
 #
 # It then parses the .gcov files to convert them into the Coveralls JSON format:
 # https://coveralls.io/docs/api
@@ -165,7 +165,7 @@ file(GLOB_RECURSE ALL_GCOV_FILES "${COV_PATH}" "*.gcov")
 #				/path/to/project/root/build/#path#to#project#root#subdir#the_file.c.gcov
 #				/path/to/project/root/build/#path#to#project#root#subdir#other_file.c.gcov
 # 
-# Result should be:
+# Result shold be:
 # GCOV_FILES = 
 #				/path/to/project/root/build/#path#to#project#root#subdir#the_file.c.gcov
 #
@@ -193,7 +193,7 @@ foreach (GCOV_FILE ${ALL_GCOV_FILES})
 		list(APPEND GCOV_FILES ${GCOV_FILE})
 
 		# We remove it from the list, so we don't bother searching for it again.
-		# Also files left in COVERAGE_SRCS_REMAINING after this loop ends should
+		# Also files left in COVERAGE_SRCS_REMAINING after this loop ends shold
 		# have coverage data generated from them (no lines are covered).
 		list(REMOVE_ITEM COVERAGE_SRCS_REMAINING ${GCOV_SRC_PATH})
 	else()
@@ -262,7 +262,7 @@ foreach (GCOV_FILE ${GCOV_FILES})
 	string(REPLACE "\t" "\\\\t" GCOV_FILE_SOURCE "${GCOV_FILE_SOURCE}")
 	string(REPLACE "\r" "\\\\r" GCOV_FILE_SOURCE "${GCOV_FILE_SOURCE}")
 	string(REPLACE "\n" "\\\\n" GCOV_FILE_SOURCE "${GCOV_FILE_SOURCE}")
-	# According to http://json.org/ these should be escaped as well.
+	# According to http://json.org/ these shold be escaped as well.
 	# Don't know how to do that in CMake however...
 	#string(REPLACE "\b" "\\\\b" GCOV_FILE_SOURCE "${GCOV_FILE_SOURCE}")
 	#string(REPLACE "\f" "\\\\f" GCOV_FILE_SOURCE "${GCOV_FILE_SOURCE}")
@@ -285,7 +285,7 @@ foreach (GCOV_FILE ${GCOV_FILES})
 			RES
 			"${GCOV_LINE}")
 
-		# Check if we should exclude lines using the Lcov syntax.
+		# Check if we shold exclude lines using the Lcov syntax.
 		string(REGEX MATCH "LCOV_EXCL_START" START_SKIP "${GCOV_LINE}")
 		string(REGEX MATCH "LCOV_EXCL_END" END_SKIP "${GCOV_LINE}")
 		string(REGEX MATCH "LCOV_EXCL_LINE" LINE_SKIP "${GCOV_LINE}")

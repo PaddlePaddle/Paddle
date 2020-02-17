@@ -109,8 +109,8 @@ def infer(use_cuda, save_dirname=None):
         [inference_program, feed_target_names,
          fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
 
-        # The input's dimension should be 2-D and the second dim is 13
-        # The input data should be >= 0
+        # The input's dimension shold be 2-D and the second dim is 13
+        # The input data shold be >= 0
         batch_size = 10
 
         test_reader = paddle.batch(

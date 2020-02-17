@@ -28,13 +28,13 @@ class LayerNormOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of LayerNormOp should not be null.");
+                   "Input(X) of LayerNormOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Y"),
-                   "Output(Y) of LayerNormOp should not be null.");
+                   "Output(Y) of LayerNormOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Mean"),
-                   "Output(Mean) of LayerNormOp should not be null.");
+                   "Output(Mean) of LayerNormOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Variance"),
-                   "Output(Variance) of LayerNormOp should not be null.");
+                   "Output(Variance) of LayerNormOp shold not be null.");
 
     auto x_dim = ctx->GetInputDim("X");
     auto begin_norm_axis = ctx->Attrs().Get<int>("begin_norm_axis");
@@ -49,14 +49,14 @@ class LayerNormOp : public framework::OperatorWithKernel {
 
       if (ctx->IsRuntime()) {
         PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale")[0], right,
-                          "scale should with right");
+                          "scale shold with right");
       }
     }
     if (ctx->HasInput("Bias")) {
       PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias").size(), 1);
       if (ctx->IsRuntime()) {
         PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias")[0], right,
-                          "bias should with right");
+                          "bias shold with right");
       }
     }
 
@@ -91,7 +91,7 @@ class LayerNormOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1e-5)
         .AddCustomChecker([](const float &epsilon) {
           PADDLE_ENFORCE(epsilon >= 0.0f && epsilon <= 0.001f,
-                         "'epsilon' should be between 0.0 and 0.001.");
+                         "'epsilon' shold be between 0.0 and 0.001.");
         });
     AddAttr<int>("begin_norm_axis",
                  "the axis of `begin_norm_axis ... Rank(X) - 1` will be "
@@ -100,7 +100,7 @@ class LayerNormOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1)
         .AddCustomChecker([](const int &begin_norm_axis) {
           PADDLE_ENFORCE_GT(begin_norm_axis, 0,
-                            "'begin_norm_axis' should be greater than zero.");
+                            "'begin_norm_axis' shold be greater than zero.");
         });
 
     AddComment(R"DOC(
@@ -123,13 +123,13 @@ class LayerNormGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     // check input
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of LayerNormOp should not be null.");
+                   "Input(X) of LayerNormOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Mean"),
-                   "Input(Mean) of LayerNormOp should not be null.");
+                   "Input(Mean) of LayerNormOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Variance"),
-                   "Input(Variance) of LayerNormOp should not be null.");
+                   "Input(Variance) of LayerNormOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Y")),
-                   "Input(Y@GRAD) of LayerNormOp should not be null.");
+                   "Input(Y@GRAD) of LayerNormOp shold not be null.");
 
     // check output
     if (ctx->HasOutput(framework::GradVarName("X"))) {

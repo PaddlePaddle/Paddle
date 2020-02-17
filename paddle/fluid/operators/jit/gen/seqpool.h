@@ -126,7 +126,7 @@ class SeqPoolJitCode : public JitCode {
         reg_idx++;
       }
       PADDLE_ENFORCE_EQ(reg_idx, rest_used_num_regs,
-                        "All heights should use same regs");
+                        "All heights shold use same regs");
       for (int i = 0; i < reg_idx; ++i) {
         vaddps(xmm_t(i), xmm_t(i), xmm_t(i + max_num_regs));
       }

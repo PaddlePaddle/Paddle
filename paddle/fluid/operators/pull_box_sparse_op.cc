@@ -22,9 +22,9 @@ class PullBoxSparseOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_GE(ctx->Inputs("Ids").size(), 1UL,
-                      "Inputs(Ids) of PullBoxSparseOp should not be empty.");
+                      "Inputs(Ids) of PullBoxSparseOp shold not be empty.");
     PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(), 1UL,
-                      "Outputs(Out) of PullBoxSparseOp should not be empty.");
+                      "Outputs(Out) of PullBoxSparseOp shold not be empty.");
     auto hidden_size = static_cast<int64_t>(ctx->Attrs().Get<int>("size"));
     auto all_ids_dim = ctx->GetInputsDim("Ids");
     const size_t n_ids = all_ids_dim.size();

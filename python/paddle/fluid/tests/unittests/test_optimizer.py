@@ -821,7 +821,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
 
     def test_dropout(self):
         """
-        If there are dropout layers in the forward nets, we should add a
+        If there are dropout layers in the forward nets, we shold add a
         seed op
         """
         mul_out, b1_out, b2_out, mean_out = self.net(with_dropout=True)

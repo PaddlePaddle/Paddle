@@ -236,7 +236,7 @@ class GradAllReduce(Collective):
                             attrs={self.op_role_key: OpRole.Backward})
                         offset += 1
 
-                    # As we search ops reversedly, we should insert c_allreduce_sum
+                    # As we search ops reversedly, we shold insert c_allreduce_sum
                     # op in the same way to keep the ring_id alternate
                     ring_id = (ring_id + 1) % self.nrings
                     block._insert_op(

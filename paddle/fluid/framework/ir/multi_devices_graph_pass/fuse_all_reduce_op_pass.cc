@@ -116,11 +116,11 @@ class FuseAllReduceOpPass : public ir::Pass {
           auto inputs = details::DynamicCast<details::VarHandle>(
               all_reduce_op_handle->Inputs());
           PADDLE_ENFORCE_EQ(inputs.size(), num_place);
-          // The inputs' name should be the same.
+          // The inputs' name shold be the same.
           auto &grad_name = inputs[0]->name();
           for (size_t i = 1; i < inputs.size(); ++i) {
             PADDLE_ENFORCE_EQ(inputs[i]->name(), grad_name,
-                              "The input name should be the same.");
+                              "The input name shold be the same.");
           }
           PADDLE_ENFORCE_NE(grads.count(grad_name), static_cast<size_t>(0));
           all_reduce_ops.emplace(grad_name, node);

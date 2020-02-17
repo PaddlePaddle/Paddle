@@ -51,7 +51,7 @@ using VarQuantScale =
 /*
  * The argument definition of both Pass and PassManagers.
  *
- * All the fields should be registered here for clearness.
+ * All the fields shold be registered here for clearness.
  */
 struct Argument {
   Argument() = default;
@@ -208,7 +208,7 @@ struct Argument {
 
 #define ARGUMENT_CHECK_FIELD(argument__, fieldname__) \
   PADDLE_ENFORCE(argument__->Has(#fieldname__),       \
-                 "the argument field [%s] should be set", #fieldname__);
+                 "the argument field [%s] shold be set", #fieldname__);
 
 }  // namespace analysis
 }  // namespace inference

@@ -54,23 +54,23 @@ class Collective(Fleet):
 
     def init_worker(self):
         logging.warn(
-            "You should not call 'init_worker' method for collective mode.")
+            "You shold not call 'init_worker' method for collective mode.")
 
     def run_worker(self, main_programs=None, scopes=None):
         logging.warn(
-            "You should not call 'run_worker' method for collective mode.")
+            "You shold not call 'run_worker' method for collective mode.")
 
     def init_server(self, model_dir=None):
         logging.warn(
-            "You should not call 'init_server' method for collective mode.")
+            "You shold not call 'init_server' method for collective mode.")
 
     def run_server(self):
         logging.warn(
-            "You should not call 'run_server' method for collective mode.")
+            "You shold not call 'run_server' method for collective mode.")
 
     def stop_worker(self):
         logging.warn(
-            "You should not call 'stop_worker' method for collective mode.")
+            "You shold not call 'stop_worker' method for collective mode.")
 
     def distributed_optimizer(self, optimizer, strategy=None):
         self._optimizer = \
@@ -182,7 +182,7 @@ class CollectiveOpBasedOptimizer(DistributedOptimizer):
 class CollectiveOptimizer(DistributedOptimizer):
     """
     DistributedOptimizer is a wrapper for paddle.fluid.optimizer
-    A user should pass a paddle.fluid.optimizer to DistributedOptimizer
+    A user shold pass a paddle.fluid.optimizer to DistributedOptimizer
     minimize() function is implemented.
     DistributedOptimizer is the starting point for a user who wants to
     run distributed training. The optimized information will be stored in
@@ -237,7 +237,7 @@ class CollectiveOptimizer(DistributedOptimizer):
                 use_dgc=main_program._enable_dgc,
                 use_local_sgd=strategy.use_local_sgd,
                 use_lamb=main_program._use_lamb)
-            assert strategy.dist_fc_config is not None, "DistributedStrategy.dist_fc_config should be set"
+            assert strategy.dist_fc_config is not None, "DistributedStrategy.dist_fc_config shold be set"
 
         if strategy._ut4grad_allreduce:
             strategy.mode = "collective"
@@ -387,7 +387,7 @@ class CollectiveOptimizer(DistributedOptimizer):
             startup_program (Program): startup_program for initializing parameters
                 in `parameter_list`.
             parameter_list (list): list of Variables to update.
-            no_grad_set (set|None): set of Variables should be ignored.
+            no_grad_set (set|None): set of Variables shold be ignored.
         Returns:
             tuple: (optimize_ops, params_grads) which are, list of operators appended;
             and list of (param, grad) Variables pair for optimization.

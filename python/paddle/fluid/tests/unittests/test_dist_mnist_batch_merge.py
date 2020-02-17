@@ -33,7 +33,7 @@ class TestDistMnist2x2(TestDistBase):
                          delta=1e-3,
                          check_error_log=False,
                          need_envs={}):
-        # TODO(typhoonzero): should auto adapt GPU count on the machine.
+        # TODO(typhoonzero): shold auto adapt GPU count on the machine.
         required_envs = {
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),

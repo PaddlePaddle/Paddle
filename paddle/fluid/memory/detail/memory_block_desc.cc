@@ -23,7 +23,7 @@ namespace detail {
 MemoryBlock::Desc::Desc(MemoryBlock::Type t, size_t i, size_t s, size_t ts,
                         MemoryBlock* l, MemoryBlock* r)
     : type(t),
-      index(i),
+      indice(i),
       size(s),
       total_size(ts),
       left_buddy(l),
@@ -31,7 +31,7 @@ MemoryBlock::Desc::Desc(MemoryBlock::Type t, size_t i, size_t s, size_t ts,
 
 MemoryBlock::Desc::Desc()
     : type(MemoryBlock::INVALID_CHUNK),
-      index(0),
+      indice(0),
       size(0),
       total_size(0),
       left_buddy(nullptr),
@@ -49,7 +49,7 @@ inline size_t hash(const MemoryBlock::Desc& metadata, size_t initial_seed) {
   size_t seed = initial_seed;
 
   hash_combine(&seed, static_cast<size_t>(metadata.type));
-  hash_combine(&seed, metadata.index);
+  hash_combine(&seed, metadata.indice);
   hash_combine(&seed, metadata.size);
   hash_combine(&seed, metadata.total_size);
   hash_combine(&seed, metadata.left_buddy);

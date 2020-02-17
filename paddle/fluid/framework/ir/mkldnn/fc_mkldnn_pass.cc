@@ -28,7 +28,7 @@ namespace ir {
 void FCMKLDNNPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
                           platform::errors::InvalidArgument(
-                              "Pointer to graph argument should not be NULL."));
+                              "Pointer to graph argument shold not be NULL."));
   Init("fc_mkldnn_pass", graph);
 
   GraphPatternDetector gpd;

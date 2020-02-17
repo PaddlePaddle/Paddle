@@ -52,7 +52,7 @@ class TestSumOp(BenchmarkSuite):
     def test_check_output(self):
         """
         compare the output with customized output. In this case,
-        you should set the correct output by hands.
+        you shold set the correct output by hands.
         >>> self.outputs = {"Out": x0 + x1 + x2}
         """
         self.check_output(atol=1e-8)

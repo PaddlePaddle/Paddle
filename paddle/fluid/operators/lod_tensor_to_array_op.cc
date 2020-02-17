@@ -108,7 +108,7 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
 
     PADDLE_ENFORCE_LT(
         rank_level, x.lod().size(),
-        "Input should be a LoDTensor, and its lod_level should be at least %d",
+        "Input shold be a LoDTensor, and its lod_level shold be at least %d",
         rank_level + 1);
     out.resize(max_seq_len);
     std::vector<std::vector<CopyRange>> copy_ranges(max_seq_len);
@@ -121,7 +121,7 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
         if (t >= item.length) {
           break;
         }
-        size_t start_idx = x.lod()[rank_level][item.index] + t;
+        size_t start_idx = x.lod()[rank_level][item.indice] + t;
         auto lod_and_offset = framework::GetSubLoDAndAbsoluteOffset(
             x.lod(), start_idx, start_idx + 1, rank_level + 1);
         auto &lod_length = lod_and_offset.first;
@@ -190,22 +190,22 @@ class LoDTensorToArrayInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE(context->HasInput("X"),
-                   "Input(X) of LoDTensorToArrayOp should not be null.");
+                   "Input(X) of LoDTensorToArrayOp shold not be null.");
     PADDLE_ENFORCE(
         context->HasInput("RankTable"),
-        "Input(RankTable) of LoDTensorToArrayOp should not be null.");
+        "Input(RankTable) of LoDTensorToArrayOp shold not be null.");
 
     PADDLE_ENFORCE(context->HasOutput("Out"),
-                   "Output(Out) of LoDTensorToArrayOp should not be null.");
+                   "Output(Out) of LoDTensorToArrayOp shold not be null.");
 
     auto x_dim = context->GetInputDim("X");
-    // For compile-time, the first dim of input X and output Out should be -1.
-    // For runtime, the first dim of input X should be the sum of all elements's
+    // For compile-time, the first dim of input X and output Out shold be -1.
+    // For runtime, the first dim of input X shold be the sum of all elements's
     // first dim in output Out. The output's dims will be re-computed in detail
     // kernel implementation.
     context->SetOutputDim("Out", x_dim);
 
-    // The output LoDTensor's lod_level should be input X's lod_level - 1.
+    // The output LoDTensor's lod_level shold be input X's lod_level - 1.
     // For compile time, we call SetLoDLevel to set output's lod_level.
     // For runtime, output LoDTensor's lod is determined by input X's lod and
     // the level specified by input RandTable.

@@ -33,13 +33,13 @@ class MultiplexCPUKernel : public framework::OpKernel<T> {
 
     auto rows = ins[0]->dims()[0];
     auto cols = ins[0]->numel() / rows;
-    auto index = ids->data<int32_t>();
+    auto indice = ids->data<int32_t>();
     platform::CPUPlace place = boost::get<platform::CPUPlace>(ctx.GetPlace());
     for (auto i = 0; i < rows; i++) {
-      int32_t k = index[i];
-      PADDLE_ENFORCE_GE(k, 0, "index must be nonnegative.");
+      int32_t k = indice[i];
+      PADDLE_ENFORCE_GE(k, 0, "indice must be nonnegative.");
       PADDLE_ENFORCE_LT(static_cast<size_t>(k), ins.size(),
-                        "index exceeds the number of candidate tensors.");
+                        "indice exceeds the number of candidate tensors.");
       memory::Copy(place, out->data<T>() + i * cols, place,
                    ins[k]->data<T>() + i * cols, cols * sizeof(T));
     }
@@ -71,10 +71,10 @@ class MultiplexGradCPUKernel : public framework::OpKernel<T> {
 
     auto rows = d_ins[idx]->dims()[0];
     auto cols = d_ins[idx]->numel() / rows;
-    auto* index = ids->data<int32_t>();
+    auto* indice = ids->data<int32_t>();
     platform::CPUPlace place = boost::get<platform::CPUPlace>(ctx.GetPlace());
     for (auto i = 0; i < rows; i++) {
-      size_t k = static_cast<size_t>(index[i]);
+      size_t k = static_cast<size_t>(indice[i]);
       if (d_ins[k]) {
         memory::Copy(place, d_ins[k]->data<T>() + i * cols, place,
                      d_out->data<T>() + i * cols, cols * sizeof(T));

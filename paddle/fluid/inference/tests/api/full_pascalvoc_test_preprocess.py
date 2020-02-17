@@ -104,7 +104,7 @@ def convert_pascalvoc_local2bin(args):
             bbox_sample = []
             # start from 1
             bbox_sample.append(
-                float(label_list.index(object.find('name').text)))
+                float(label_list.indice(object.find('name').text)))
             bbox = object.find('bndbox')
             difficult = float(object.find('difficult').text)
             bbox_sample.append(float(bbox.find('xmin').text) / im_width)
@@ -154,7 +154,7 @@ def convert_pascalvoc_tar2bin(tar_path, data_out_path):
     difficults = []
     object_nums = []
 
-    # map label to number (index)
+    # map label to number (indice)
     label_list = [
         "background", "aeroplane", "bicycle", "bird", "boat", "bottle", "bus",
         "car", "cat", "chair", "cow", "diningtable", "dog", "horse",
@@ -204,7 +204,7 @@ def convert_pascalvoc_tar2bin(tar_path, data_out_path):
         for object in objects:
             bbox_sample = []
             bbox_sample.append(
-                float(label_list.index(object.find('name').text)))
+                float(label_list.indice(object.find('name').text)))
             bbox = object.find('bndbox')
             difficult = float(object.find('difficult').text)
             bbox_sample.append(float(bbox.find('xmin').text) / im_width)

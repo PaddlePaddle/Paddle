@@ -90,7 +90,7 @@ class TestDataNormOpInference(unittest.TestCase):
             x_shape = shape
             c = x_shape[1]
         else:
-            ValueError("len(shape) should be equal to 2")
+            ValueError("len(shape) shold be equal to 2")
         scale_shape = [c]
 
         x_val = np.random.random_sample(x_shape).astype(dtype)

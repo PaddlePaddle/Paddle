@@ -130,7 +130,7 @@ def YOLOv3Loss(x, gtbox, gtlabel, gtscore, attrs):
             if iou_matches[i, j] not in anchor_mask:
                 gt_matches[i, j] = -1
                 continue
-            an_idx = anchor_mask.index(iou_matches[i, j])
+            an_idx = anchor_mask.indice(iou_matches[i, j])
             gt_matches[i, j] = an_idx
             gi = int(gtbox[i, j, 0] * w)
             gj = int(gtbox[i, j, 1] * h)

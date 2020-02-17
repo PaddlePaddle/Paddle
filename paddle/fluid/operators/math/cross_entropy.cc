@@ -29,7 +29,7 @@ class CrossEntropyFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& ctx, framework::Tensor* out,
                   const framework::Tensor* prob,
                   const framework::Tensor* labels, const bool softLabel,
-                  const int ignore_index, const int axis_dim) {
+                  const int ignore_indice, const int axis_dim) {
     const int batch_size = prob->dims()[0];
     const int num_classes = prob->dims()[1];
     const int num_remain = num_classes / axis_dim;
@@ -53,27 +53,27 @@ class CrossEntropyFunctor<platform::CPUDeviceContext, T> {
       for (int i = 0; i < batch_size; ++i) {
         for (int j = 0; j < num_remain; j++) {
           int lbl = label_data[i * num_remain + j];
-          if (lbl != ignore_index) {
+          if (lbl != ignore_indice) {
             PADDLE_ENFORCE_GE(lbl, 0,
                               platform::errors::OutOfRange(
-                                  "label value should >= 0 when label "
-                                  "value(%f) not equal to ignore_index(%f)",
-                                  lbl, ignore_index));
+                                  "label value shold >= 0 when label "
+                                  "value(%f) not equal to ignore_indice(%f)",
+                                  lbl, ignore_indice));
             PADDLE_ENFORCE_LT(
                 lbl, axis_dim,
                 platform::errors::OutOfRange(
-                    "label value should less than the shape of axis dimension "
-                    "when label value(%f) not equal to ignore_index(%f), But "
+                    "label value shold less than the shape of axis dimension "
+                    "when label value(%f) not equal to ignore_indice(%f), But "
                     "received label value as %ld and shape of axis dimension "
                     "is %d",
-                    lbl, ignore_index, lbl, axis_dim));
+                    lbl, ignore_indice, lbl, axis_dim));
           }
-          int index = i * num_classes + lbl * num_remain + j;
+          int indice = i * num_classes + lbl * num_remain + j;
           int loss_idx = i * num_remain + j;
           loss_data[loss_idx] =
-              lbl == ignore_index
+              lbl == ignore_indice
                   ? 0
-                  : -math::TolerableValue<T>()(std::log(prob_data[index]));
+                  : -math::TolerableValue<T>()(std::log(prob_data[indice]));
         }
       }
     }

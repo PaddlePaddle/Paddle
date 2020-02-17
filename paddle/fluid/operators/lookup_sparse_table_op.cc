@@ -27,7 +27,7 @@ class LookupSparseTableInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of LookupSparseTableOp should not be null.");
+                   "Output(Out) of LookupSparseTableOp shold not be null.");
     auto shape_w = ctx->GetInputDim("W");
     auto shape_ids = ctx->GetInputDim("Ids");
     shape_w[0] = shape_ids.size();
@@ -48,11 +48,11 @@ class LookupSparseTableOp : public framework::OperatorBase {
     auto is_test = Attr<bool>("is_test");
 
     PADDLE_ENFORCE(out_var->IsType<framework::LoDTensor>(),
-                   "The type of Out var should be LodTensor.");
+                   "The type of Out var shold be LodTensor.");
     PADDLE_ENFORCE(w_var->IsType<framework::SelectedRows>(),
-                   "The type of W var should be SelectedRows.");
+                   "The type of W var shold be SelectedRows.");
     PADDLE_ENFORCE(ids_var->IsType<framework::LoDTensor>(),
-                   "The type of Ids var should be LoDTensor.");
+                   "The type of Ids var shold be LoDTensor.");
     auto &ids_t = ids_var->Get<framework::LoDTensor>();
     auto out_t = out_var->GetMutable<framework::LoDTensor>();
     auto w_t = w_var->GetMutable<framework::SelectedRows>();
@@ -77,7 +77,7 @@ class LookupSparseTableOpMaker : public framework::OpProtoAndCheckerMaker {
              "(SelectedRows) The input represents embedding table, "
              "which is a learnable parameter.");
     AddInput("Ids",
-             "(LoDTensor) Ids's type should be LoDTensor"
+             "(LoDTensor) Ids's type shold be LoDTensor"
              "THe ids to be looked up in W.");
     AddOutput("Out",
               "(LoDTensor) The lookup results, which have the "

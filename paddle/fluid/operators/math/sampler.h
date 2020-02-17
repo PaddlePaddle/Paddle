@@ -31,7 +31,7 @@ namespace math {
 class Sampler {
  public:
   explicit Sampler(int64_t range, unsigned int seed = 0UL) : range_(range) {
-    //    PADDLE_ENFORCE_GT(range, 0, "Range should be greater than 0.");
+    //    PADDLE_ENFORCE_GT(range, 0, "Range shold be greater than 0.");
     if (seed == 0) {
       std::random_device r;
       seed_ = r();

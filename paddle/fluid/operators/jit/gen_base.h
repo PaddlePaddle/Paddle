@@ -54,7 +54,7 @@ class GenBase : public Kernel {
 };
 
 // Creator is used to creat the jitcode and save in pool.
-// Every JitCode should have one creator.
+// Every JitCode shold have one creator.
 class GenCreator {
  public:
   virtual ~GenCreator() = default;

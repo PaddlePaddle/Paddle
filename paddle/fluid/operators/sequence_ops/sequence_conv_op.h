@@ -58,7 +58,7 @@ class SequenceConvKernel : public framework::OpKernel<T> {
                                  context_length * sequence_width};
     Tensor col;
     col.mutable_data<T>(col_shape, context.GetPlace());
-    // Because if padding_trainable is false, padding data should be zeros.
+    // Because if padding_trainable is false, padding data shold be zeros.
     math::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
     auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
@@ -108,7 +108,7 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
 
     if (in_g || filter_g || (padding_trainable && padding_data_g)) {
       col.mutable_data<T>(col_shape, context.GetPlace());
-      // Because if padding_trainable is false, padding data should be zeros.
+      // Because if padding_trainable is false, padding data shold be zeros.
       set_zero(dev_ctx, &col, static_cast<T>(0));
       blas.MatMul(*out_g, false, *filter, true, &col);
     }

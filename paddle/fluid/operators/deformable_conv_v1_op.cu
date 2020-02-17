@@ -55,16 +55,16 @@ __global__ void DeformableCol2imCUDAKernel(
     const int channel_per_deformable_group, const int batch_size,
     const int deformable_group, const int height_col, const int width_col,
     T* grad_im) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int indice = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
-  for (size_t thread = index; thread < nthreads; thread += offset) {
+  for (size_t thread = indice; thread < nthreads; thread += offset) {
     const int j = (thread / width_col / height_col / batch_size) % kernel_w;
     const int i =
         (thread / width_col / height_col / batch_size / kernel_w) % kernel_h;
     const int c =
         thread / width_col / height_col / batch_size / kernel_w / kernel_h;
 
-    const int deformable_group_index = c / channel_per_deformable_group;
+    const int deformable_group_indice = c / channel_per_deformable_group;
 
     int w_out = thread % width_col;
     int h_out = (thread / width_col) % height_col;
@@ -73,7 +73,7 @@ __global__ void DeformableCol2imCUDAKernel(
     int h_in = h_out * stride_h - pad_h;
 
     const T* data_offset_ptr = data_offset +
-                               (b * deformable_group + deformable_group_index) *
+                               (b * deformable_group + deformable_group_indice) *
                                    2 * kernel_h * kernel_w * height_col *
                                    width_col;
     const int data_offset_h_ptr =
@@ -139,32 +139,32 @@ __global__ void DeformableCol2imCoordCUDAKernel(
     const int dilation_w, const int channel_per_deformable_group,
     const int batch_size, const int offset_channels, const int deformable_group,
     const int height_col, const int width_col, T* grad_offset) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int indice = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
-  for (size_t i = index; i < nthreads; i += offset) {
+  for (size_t i = indice; i < nthreads; i += offset) {
     T val = 0, mval = 0;
     const int w = i % width_col;
     const int h = (i / width_col) % height_col;
     const int c = (i / width_col / height_col) % offset_channels;
     const int b = (i / width_col / height_col) / offset_channels;
 
-    const int deformable_group_index = c / (2 * kernel_h * kernel_w);
+    const int deformable_group_indice = c / (2 * kernel_h * kernel_w);
     const int col_step = kernel_h * kernel_w;
     int cnt = 0;
     const T* data_col_ptr = data_col +
-                            deformable_group_index *
+                            deformable_group_indice *
                                 channel_per_deformable_group * batch_size *
                                 width_col * height_col;
     const T* data_im_ptr = data_im +
-                           (b * deformable_group + deformable_group_index) *
+                           (b * deformable_group + deformable_group_indice) *
                                channel_per_deformable_group / kernel_h /
                                kernel_w * height * width;
     const T* data_offset_ptr = data_offset +
-                               (b * deformable_group + deformable_group_index) *
+                               (b * deformable_group + deformable_group_indice) *
                                    2 * kernel_h * kernel_w * height_col *
                                    width_col;
 
-    const int offset_c = c - deformable_group_index * 2 * kernel_h * kernel_w;
+    const int offset_c = c - deformable_group_indice * 2 * kernel_h * kernel_w;
 
     for (int col_c = offset_c / 2; col_c < channel_per_deformable_group;
          col_c += col_step) {
@@ -239,16 +239,16 @@ __global__ void DeformableIm2colCUDAKernel(
     const int channel_per_deformable_group, const int batch_size,
     const int num_channels, const int deformable_group, const int height_col,
     const int width_col, T* data_col) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int indice = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
-  for (size_t i = index; i < nthreads; i += offset) {
+  for (size_t i = indice; i < nthreads; i += offset) {
     const int w_col = i % width_col;
     const int h_col = (i / width_col) % height_col;
     const int b_col = (i / width_col) / height_col % batch_size;
     const int c_im = (i / width_col / height_col) / batch_size;
     const int c_col = c_im * kernel_h * kernel_w;
 
-    const int deformable_group_index = c_im / channel_per_deformable_group;
+    const int deformable_group_indice = c_im / channel_per_deformable_group;
 
     const int h_in = h_col * stride_h - pad_h;
     const int w_in = w_col * stride_w - pad_w;
@@ -260,7 +260,7 @@ __global__ void DeformableIm2colCUDAKernel(
         data_im + (b_col * num_channels + c_im) * height * width;
     const T* data_offset_ptr =
         data_offset +
-        (b_col * deformable_group + deformable_group_index) * 2 * kernel_h *
+        (b_col * deformable_group + deformable_group_indice) * 2 * kernel_h *
             kernel_w * height_col * width_col;
 
     for (int i = 0; i < kernel_h; ++i) {

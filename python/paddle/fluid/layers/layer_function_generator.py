@@ -76,7 +76,7 @@ def _generate_doc_string_(op_proto,
     """
 
     if not isinstance(op_proto, framework_pb2.OpProto):
-        raise TypeError("OpProto should be `framework_pb2.OpProto`")
+        raise TypeError("OpProto shold be `framework_pb2.OpProto`")
 
     buf = cStringIO()
     buf.write(escape_math(op_proto.comment))
@@ -92,7 +92,7 @@ def _generate_doc_string_(op_proto,
         buf.write('\n')
 
     skip_attrs = OpProtoHolder.generated_op_attr_names()
-    # attr use_mkldnn and is_test also should not be visible to users.
+    # attr use_mkldnn and is_test also shold not be visible to users.
     skip_attrs.add("use_mkldnn")
     skip_attrs.add("is_test")
     skip_attrs.add("use_cudnn")

@@ -202,8 +202,8 @@ according to the tensors of Input, the dtype is the same with those input tensor
 the size is the sum of those input tensors' numel, and the dim of the big
 tensor is {sum(numel)}. And the big tensor is stored in FusedOutput.
 The tensors of Output are sliced from the tensor of FusedOutput.
-Note that, the dtype of Input should be the same, and the dim of Input
-and Output should equal.
+Note that, the dtype of Input shold be the same, and the dim of Input
+and Output shold equal.
 The tensors of Input and Output could be the same or different. And
 coalesce_tensor allows copying the value of Input to Output, or
 setting the Output with a constant value.

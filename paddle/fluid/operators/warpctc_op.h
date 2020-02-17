@@ -71,7 +71,7 @@ class WarpCTCFunctor {
                       platform::dynload::ctcGetStatusString(status));
     PADDLE_ENFORCE_GT(workspace_bytes, 0UL,
                       "Bytes of workspace got by warp-ctc function, "
-                      "get_workspace_size(), should be larger than 0.");
+                      "get_workspace_size(), shold be larger than 0.");
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     size_t workspace_elements = workspace_bytes / sizeof(float) + 1UL;
@@ -160,18 +160,18 @@ class WarpCTCKernel : public framework::OpKernel<T> {
       auto logits_dims = logits->dims();
       PADDLE_ENFORCE_EQ(
           logits_dims[0], static_cast<int64_t>(logits_lod.back()),
-          "The first dimension of Input(Logits) should be equal to "
+          "The first dimension of Input(Logits) shold be equal to "
           "the sum of all sequences' lengths.");
 
       label_lod = framework::ToAbsOffset(label->lod())[0];
       auto label_dims = label->dims();
       PADDLE_ENFORCE_EQ(
           label_dims[0], label->numel(),
-          "The width of each timestep in Input(Label) should be 1.");
+          "The width of each timestep in Input(Label) shold be 1.");
 
       num_sequences = logits_lod.size() - 1;
       PADDLE_ENFORCE_EQ(num_sequences, label_lod.size() - 1,
-                        "The number of sequences of Input(Logits) should be "
+                        "The number of sequences of Input(Logits) shold be "
                         "equal to that of Input(Label).");
 
       sequence_width = logits->numel() / logits_dims[0];

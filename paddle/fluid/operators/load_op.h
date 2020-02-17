@@ -30,7 +30,7 @@ class LoadOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto place = ctx.GetPlace();
-    // FIXME(yuyang18): We save variable to local file now, but we should change
+    // FIXME(yuyang18): We save variable to local file now, but we shold change
     // it to save an output stream.
     auto filename = ctx.Attr<std::string>("file_path");
     std::ifstream fin(filename, std::ios::binary);

@@ -133,7 +133,7 @@ def start_profiler(state):
     of `fluid.profiler.profiler` interface.
 
     Args:
-        state (str) : The profiling state, which should be one of 'CPU', 'GPU'
+        state (str) : The profiling state, which shold be one of 'CPU', 'GPU'
             or 'All'. 'CPU' means only profiling CPU; 'GPU' means profiling
             both CPU and GPU; 'All' means profiling both CPU and GPU, and 
             generates timeline as well.
@@ -176,7 +176,7 @@ def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
 
     Args:
         sorted_key (str, optional) : The order of profiling results, which 
-            should be one of None, 'calls', 'total', 'max', 'min' or 'ave'.
+            shold be one of None, 'calls', 'total', 'max', 'min' or 'ave'.
             Default is None, means the profiling results will be printed
             in the order of first end time of events.
             The `calls` means sorting by the number of calls.
@@ -231,12 +231,12 @@ def profiler(state, sorted_key=None, profile_path='/tmp/profile'):
     this profiler can be used to profile both CPU and GPU program.
 
     Args:
-        state (str) : The profiling state, which should be one of 'CPU', 'GPU'
+        state (str) : The profiling state, which shold be one of 'CPU', 'GPU'
             or 'All'. 'CPU' means only profiling CPU; 'GPU' means profiling
             both CPU and GPU; 'All' means profiling both CPU and GPU, and 
             generates timeline as well.
         sorted_key (str, optional) : The order of profiling results, which 
-            should be one of None, 'calls', 'total', 'max', 'min' or 'ave'.
+            shold be one of None, 'calls', 'total', 'max', 'min' or 'ave'.
             Default is None, means the profiling results will be printed
             in the order of first end time of events.
             The `calls` means sorting by the number of calls.

@@ -242,7 +242,7 @@ def _cpu_num():
     if "CPU_NUM" not in os.environ.keys():
         if multiprocessing.cpu_count() > 1:
             sys.stderr.write(
-                '!!! The CPU_NUM is not specified, you should set CPU_NUM in the environment variable list.\n'
+                '!!! The CPU_NUM is not specified, you shold set CPU_NUM in the environment variable list.\n'
                 'CPU_NUM indicates that how many CPUPlace are used in the current task.\n'
                 'And if this parameter are set as N (equal to the number of physical CPU core) the program may be faster.\n\n'
                 'export CPU_NUM={} # for example, set CPU_NUM as number of physical CPU core which is {}.\n\n'
@@ -292,7 +292,7 @@ def cuda_places(device_ids=None):
     If :code:`FLAGS_selected_gpus` is not set, all visible
     gpu places would be returned according to the :code:`CUDA_VISIBLE_DEVICES` environment variable.
 
-    If :code:`device_ids` is not None, it should be the device
+    If :code:`device_ids` is not None, it shold be the device
     ids of GPUs. For example, if :code:`device_ids=[0,1,2]`,
     the returned list would be 
     [fluid.CUDAPlace(0), fluid.CUDAPlace(1), fluid.CUDAPlace(2)].
@@ -413,7 +413,7 @@ def name_scope(prefix=None):
     Generate hierarchical name prefix for the operators.
 
     Note: 
-        This should only used for debugging and visualization purpose.
+        This shold only used for debugging and visualization purpose.
         Don't use it for serious analysis such as graph/program transformations.
 
     Args:
@@ -604,7 +604,7 @@ def _getitem_impl_(var, item):
     Slice the variable.
 
     Args:
-        item(int/slice/tuple) : the index.
+        item(int/slice/tuple) : the indice.
 
     Returns:
         Sliced variable
@@ -802,7 +802,7 @@ def _getitem_impl_(var, item):
 class Variable(object):
     """
     **Notes**:
-        **The constructor of Variable should not be invoked directly.**
+        **The constructor of Variable shold not be invoked directly.**
 
         **In Static Graph Mode: Please use** `Block.create_var` **to create a Static variable which has no data until being feed.**
 
@@ -1255,14 +1255,14 @@ class Variable(object):
     @property
     def persistable(self):
         """
-        Indicating if we current Variable should be long-term alive
+        Indicating if we current Variable shold be long-term alive
 
 
         **Notes: This Property will be deprecated and this API is just to help user understand concept**
 
             **1. All Variable's persistable is** ``False`` **except Parameters.**
 
-            **2. In** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **mode, this property should not be changed**
+            **2. In** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **mode, this property shold not be changed**
 
         Examples:
           .. code-block:: python
@@ -1398,7 +1398,7 @@ class Variable(object):
 
             **1. This is a read-only property**
 
-            **2. Don't support this property in** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **mode, it's value should be** ``0(int)``
+            **2. Don't support this property in** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **mode, it's value shold be** ``0(int)``
 
         Examples:
           .. code-block:: python
@@ -1493,7 +1493,7 @@ class Variable(object):
 
         # Raise ValueError for negative length or zero step.
         if length < 0:
-            raise ValueError("length should not be negative")
+            raise ValueError("length shold not be negative")
         if step == 0:
             raise ValueError("slice step canot be zero")
 
@@ -1522,15 +1522,15 @@ class Variable(object):
         has_ellipsis = False
         start = 0
         end = len(self.shape)
-        for index, o in enumerate(item):
+        for indice, o in enumerate(item):
             if o is Ellipsis:
                 if has_ellipsis:
                     raise ValueError("Index can have one ellipsis only.")
                 has_ellipsis = True
-                start = index
+                start = indice
             else:
                 if has_ellipsis:
-                    end = index
+                    end = indice
         return has_ellipsis, start, end
 
     def _reconstructSliceinfo(self, item):
@@ -1550,25 +1550,25 @@ class Variable(object):
     def _detectContinuesSlice(self, item):
         starts = []
         ends = []
-        for index, o in enumerate(item):
+        for indice, o in enumerate(item):
             if isinstance(o, int):
                 start = int(o)
-                if (index > 0 and index >= self.shape[index]) \
-                        or (index < 0 and (index + self.shape[index]) < 0):
-                    raise IndexError("invalid index")
-                start = max(start + self.shape[index], 0) if start < 0 else min(
-                    start, self.shape[index])
+                if (indice > 0 and indice >= self.shape[indice]) \
+                        or (indice < 0 and (indice + self.shape[indice]) < 0):
+                    raise IndexError("invalid indice")
+                start = max(start + self.shape[indice], 0) if start < 0 else min(
+                    start, self.shape[indice])
                 starts.append(start)
                 ends.append(start + 1)
             elif isinstance(o, slice):
-                start, stop, step = self._slice_indices(o, self.shape[index])
+                start, stop, step = self._slice_indices(o, self.shape[indice])
                 if step == 1 or step == -1:
                     starts.append(start)
                     ends.append(stop)
                 else:
                     return False, None
             else:
-                raise IndexError("Valid index accept int or slice or ellipsis")
+                raise IndexError("Valid indice accept int or slice or ellipsis")
         return True, [starts, ends]
 
     def _cloneVar(self, copy=False):
@@ -1622,13 +1622,13 @@ class Variable(object):
         elif isinstance(item, int):
             if self.shape[axis] < 0:
                 return self._cloneVar(True)
-            index = int(item)
-            if (index > 0 and index >= self.shape[axis]) \
-                    or (index < 0 and (index + self.shape[axis]) < 0):
-                raise IndexError("invalid index")
-            return self._sliceVar([axis], [index], [index + 1])
+            indice = int(item)
+            if (indice > 0 and indice >= self.shape[axis]) \
+                    or (indice < 0 and (indice + self.shape[axis]) < 0):
+                raise IndexError("invalid indice")
+            return self._sliceVar([axis], [indice], [indice + 1])
         else:
-            raise IndexError("Valid index accept int or slice or tuple")
+            raise IndexError("Valid indice accept int or slice or tuple")
 
     def __getitem__(self, item):
         return _getitem_impl_(self, item)
@@ -1716,7 +1716,7 @@ class Operator(object):
             of variables. Default None.
         attrs(dict): The attributes of this Operator. it is a dictionary, for
             every element, key is attribute name, and value is the attribute value.
-            The attribute type should be as same as the type registered in C++ side.
+            The attribute type shold be as same as the type registered in C++ side.
             Default None.
 
     Returns:
@@ -1727,7 +1727,7 @@ class Operator(object):
             initializing Operator's that registered in C++ side.
 
     Notes:
-        The constructor of operator should not be invoked directly. Use
+        The constructor of operator shold not be invoked directly. Use
         Block.append_op or Block._prepend_op instead.
 
     Examples:
@@ -1822,7 +1822,7 @@ class Operator(object):
                                 "Input %s expects only one input, but %d are given."
                                 % (in_proto.name, len(in_args)))
                         in_arg_names = []
-                        for index, arg in enumerate(in_args):
+                        for indice, arg in enumerate(in_args):
                             if isinstance(arg, six.string_types):
                                 in_arg_names.append(arg)
                             elif isinstance(arg, six.binary_type):
@@ -1831,7 +1831,7 @@ class Operator(object):
                                 in_arg_names.append(cpt.to_text(arg.name))
                             else:
                                 raise TypeError(
-                                    "The type of '%s' in operator %s should be "
+                                    "The type of '%s' in operator %s shold be "
                                     "one of [basestring(), str, Varibale] in python2, "
                                     "or one of [str, bytes, Variable] in python3."
                                     "but received : %s" %
@@ -1846,7 +1846,7 @@ class Operator(object):
                         continue
                     if not ((m.name in outputs) or m.dispensable):
                         raise ValueError(("Incorrect setting for output(s) of "
-                                          "operator \"%s\", should set: [%s].")
+                                          "operator \"%s\", shold set: [%s].")
                                          % (type, m.name))
                 for out_proto in proto.outputs:
                     if out_proto.name not in outputs:
@@ -1868,7 +1868,7 @@ class Operator(object):
 
             if op_attrs is not None:
                 if not isinstance(op_attrs, dict):
-                    raise TypeError("'attrs' should be a dict.")
+                    raise TypeError("'attrs' shold be a dict.")
                 for attr in proto.attrs:
                     attr_name = attr.name
                     if (attr_name not in op_attrs) or (
@@ -2077,7 +2077,7 @@ class Operator(object):
             name(str): the attribute name.
 
         Returns:
-            int: the block index.
+            int: the block indice.
         """
         return self.desc._block_attr_id(name)
 
@@ -2155,7 +2155,7 @@ class Block(object):
     In Fluid, a Program is consistence of multi-Block, and Block stores
     VarDesc and OpDesc. In a specific Block, a VarDesc have a unique name.
     One block could have some child blocks, and child block's name scopes
-    should inherit the parent's so that OpDesc in child block can reference
+    shold inherit the parent's so that OpDesc in child block can reference
     a VarDesc that is stored in the parent block.
     Please reference the framework.proto for details.
 
@@ -2164,7 +2164,7 @@ class Block(object):
         idx(int): The block's id in the Program.
 
     Notes:
-        The constructor of Block should not be invoked directly. Please
+        The constructor of Block shold not be invoked directly. Please
         use `Program._create_block()` to create a block.
 
     Examples:
@@ -2241,7 +2241,7 @@ class Block(object):
         Set the forward block Idx.
 
         Args:
-            idx(int): the block index.
+            idx(int): the block indice.
 
         Returns:
             None
@@ -2473,7 +2473,7 @@ class Block(object):
                                    " is inited by multiple init ops " + str(
                                        init_ops))
             elif init_ops_len == 1:
-                # TODO already inited, do nothing, should log a warning
+                # TODO already inited, do nothing, shold log a warning
                 pass
             else:
                 initializer(param, self)
@@ -2531,35 +2531,35 @@ class Block(object):
 
         return op
 
-    def _insert_op(self, index, *args, **kwargs):
+    def _insert_op(self, indice, *args, **kwargs):
         """
         Insert a Operator according to the giving arguments.
 
         Args:
-            index(int): the place that the operator to insert.
+            indice(int): the place that the operator to insert.
 
         Returns:
             Operator: the insert Operator.
         """
         self._sync_with_cpp()
-        op_desc = self.desc._insert_op(index)
+        op_desc = self.desc._insert_op(indice)
         op = Operator(block=self, desc=op_desc, *args, **kwargs)
-        self.ops.insert(index, op)
+        self.ops.insert(indice, op)
         return op
 
-    def _remove_op(self, index):
+    def _remove_op(self, indice):
         """
         Remove the specific position operator.
 
         Args:
-            index(int): the position that the operator to insert.
+            indice(int): the position that the operator to insert.
 
         Returns:
             None
         """
         self._sync_with_cpp()
-        self.desc._remove_op(index, index + 1)
-        del self.ops[index]
+        self.desc._remove_op(indice, indice + 1)
+        del self.ops[indice]
 
     def _slice_ops(self, start, end):
         """
@@ -2622,48 +2622,48 @@ class Block(object):
         if len(self.ops) != 0:
             first_op_in_python = self.ops[0].desc
             last_op_in_python = self.ops[len(self.ops) - 1].desc
-            start_index = None
-            end_index = None
-            for index in range(len(ops_in_cpp)):
-                if first_op_in_python == ops_in_cpp[index]:
-                    start_index = index
-                if last_op_in_python == ops_in_cpp[index]:
-                    end_index = index
-            assert start_index is not None
-            assert end_index is not None
-            assert start_index <= end_index
+            start_indice = None
+            end_indice = None
+            for indice in range(len(ops_in_cpp)):
+                if first_op_in_python == ops_in_cpp[indice]:
+                    start_indice = indice
+                if last_op_in_python == ops_in_cpp[indice]:
+                    end_indice = indice
+            assert start_indice is not None
+            assert end_indice is not None
+            assert start_indice <= end_indice
         else:
-            start_index = 0
-            end_index = -1
+            start_indice = 0
+            end_indice = -1
 
         # sync ops append to the head of cpp_ops
-        for index in range((start_index - 1 - 1), -1, -1):
-            op_desc = ops_in_cpp[index]
+        for indice in range((start_indice - 1 - 1), -1, -1):
+            op_desc = ops_in_cpp[indice]
             op = Operator(self, op_desc)
             self.ops.insert(0, op)
 
         # sync ops append to the end of cpp_ops
-        for index in range((end_index + 1), len(ops_in_cpp)):
-            op_desc = ops_in_cpp[index]
+        for indice in range((end_indice + 1), len(ops_in_cpp)):
+            op_desc = ops_in_cpp[indice]
             op = Operator(self, op_desc)
             self.ops.append(op)
 
         # sync ops removed from c++ end
-        if end_index != -1 and end_index < len(self.ops):
-            ops_in_cpp_index = 0
-            ops_in_python_index = 0
-            while ops_in_python_index < len(
-                    self.ops) and ops_in_cpp_index < len(ops_in_cpp):
-                if self.ops[ops_in_python_index].desc != ops_in_cpp[
-                        ops_in_cpp_index]:
-                    del self.ops[ops_in_python_index]
+        if end_indice != -1 and end_indice < len(self.ops):
+            ops_in_cpp_indice = 0
+            ops_in_python_indice = 0
+            while ops_in_python_indice < len(
+                    self.ops) and ops_in_cpp_indice < len(ops_in_cpp):
+                if self.ops[ops_in_python_indice].desc != ops_in_cpp[
+                        ops_in_cpp_indice]:
+                    del self.ops[ops_in_python_indice]
                 else:
-                    ops_in_cpp_index += 1
-                    ops_in_python_index += 1
+                    ops_in_cpp_indice += 1
+                    ops_in_python_indice += 1
 
         assert len(self.ops) == len(ops_in_cpp)
-        for index in range(len(self.ops)):
-            assert self.ops[index].desc == ops_in_cpp[index]
+        for indice in range(len(self.ops)):
+            assert self.ops[indice].desc == ops_in_cpp[indice]
 
     def _copy_param_info_from(self, other):
         """
@@ -2681,12 +2681,12 @@ class Block(object):
         """
         if not isinstance(other, Block):
             raise TypeError(
-                "_copy_param_info_from should be invoked with Block")
+                "_copy_param_info_from shold be invoked with Block")
         for p in other.iter_parameters():
             assert isinstance(p, Parameter)
             v = self.vars.get(p.name, None)
             if v is None:
-                raise ValueError("_copy_param_info_from should be invoked with "
+                raise ValueError("_copy_param_info_from shold be invoked with "
                                  "same topology")
             assert isinstance(v, Variable)
             new_p = None
@@ -3671,11 +3671,11 @@ class Program(object):
         Notes: this is a low level API. It is used only for ParallelExecutor to
         duplicate or schedule operator to devices.
 
-        For example, the forward operator should be executed on every device.
-        The backward operator should be executed on every device and the
+        For example, the forward operator shold be executed on every device.
+        The backward operator shold be executed on every device and the
         parameter gradient of backward (use :code:`_op_role_var` to get this
-        variable) operator should be merged to one device. The optimization
-        operators should be executed on only one device and broadcast the
+        variable) operator shold be merged to one device. The optimization
+        operators shold be executed on only one device and broadcast the
         optimization result, i.e., the new parameter, to every other device.
         """
         return self._current_role
@@ -3691,7 +3691,7 @@ class Program(object):
 
         See Also: :code:`Program._op_role`'s documentation for details.
 
-        Notes: This is a very low-level API. Users should not use it directly.
+        Notes: This is a very low-level API. Users shold not use it directly.
         """
         return self.__op_role_var
 
@@ -3710,7 +3710,7 @@ class Program(object):
         A with guard to set :code:`Optimization` :code:`OpRole` and
         :code:`OpRoleVar` automatically.
 
-        Notes: This is a very low level API. Users should not use it directly.
+        Notes: This is a very low level API. Users shold not use it directly.
 
         Args:
             param_and_grads(list): The variables (names) to be optimized.
@@ -3742,7 +3742,7 @@ class Program(object):
         :code:`OpRoleVar` automatically. The :code:`OpRoleVar` is
         set to the target learning rate.
 
-        Notes: This is a very low level API. Users should not use it directly.
+        Notes: This is a very low level API. Users shold not use it directly.
 
         Args:
             is_with_opt: Only set to true if these ops a in the middle
@@ -3827,7 +3827,7 @@ class Program(object):
         Get the C++ side of `ProgramDesc` object pointer. The C++ object is
         exposed by :code:`pybind`.
 
-        Notes: This is a very low level API. Users should not use this API
+        Notes: This is a very low level API. Users shold not use this API
         directly.
         """
         return self.desc
@@ -4028,7 +4028,7 @@ class Program(object):
         Prune operators and variables which are not needed to generate
         :code:`targets`.
 
-        Notes: This is a very low level API. Users should not use this API
+        Notes: This is a very low level API. Users shold not use this API
         directly. This API is in flux and not stable.
 
         Args:
@@ -4081,7 +4081,7 @@ class Program(object):
         :code:`targets`. Prune operators and variables which are needed 
         to generate feeded_var 
 
-        Notes: This is a very low level API. Users should not use this API
+        Notes: This is a very low level API. Users shold not use this API
         directly. This API is in flux and not stable.
 
         Args:
@@ -4338,18 +4338,18 @@ class Program(object):
         """
         return self.blocks[0]
 
-    def block(self, index):
+    def block(self, indice):
         """
         **Notes**:
             **This API has no effect in Dygraph mode**
 
-        Get the :code:`index`  :ref:`api_guide_Block_en`  of this Program
+        Get the :code:`indice`  :ref:`api_guide_Block_en`  of this Program
 
         Args:
-            index (int) - The index of  :ref:`api_guide_Block_en`  to get
+            indice (int) - The indice of  :ref:`api_guide_Block_en`  to get
 
         Returns:
-            :ref:`api_guide_Block_en`: The :code:`index` block
+            :ref:`api_guide_Block_en`: The :code:`indice` block
 
         Examples:
             .. code-block:: python
@@ -4360,7 +4360,7 @@ class Program(object):
                 block_0 = prog.block(0)
                 print(block_0)
         """
-        return self.blocks[index]
+        return self.blocks[indice]
 
     def current_block(self):
         """
@@ -4371,7 +4371,7 @@ class Program(object):
         is the  :ref:`api_guide_Block_en`  to append operators.
 
         Returns:
-             :ref:`api_guide_Block_en`: The :code:`index`  :ref:`api_guide_Block_en`
+             :ref:`api_guide_Block_en`: The :code:`indice`  :ref:`api_guide_Block_en`
 
         Examples:
             .. code-block:: python
@@ -4391,7 +4391,7 @@ class Program(object):
 
         Args:
 
-            parent_idx(int): The parent block index.
+            parent_idx(int): The parent block indice.
 
         Returns:
             Block: The new block.
@@ -4415,9 +4415,9 @@ class Program(object):
     def _sync_with_cpp(self):
         """
         Synchronize Python instance to its binding C++ object instance.
-        If the program is modified in C++ space, this method should be invoked.
+        If the program is modified in C++ space, this method shold be invoked.
 
-        Notes: This is a very low level API. Users should not invoke it
+        Notes: This is a very low level API. Users shold not invoke it
         directly.
 
         Returns:
@@ -4432,7 +4432,7 @@ class Program(object):
         """
         Copy the information of parameters from other program.
 
-        Notes: This is a very low level API. Users should not invoke it
+        Notes: This is a very low level API. Users shold not invoke it
         directly.
 
         Args:
@@ -4442,11 +4442,11 @@ class Program(object):
             None
         """
         if not isinstance(other, Program):
-            raise TypeError("_copy_param_info_from should be invoked with "
+            raise TypeError("_copy_param_info_from shold be invoked with "
                             "Program")
 
         if len(self.blocks) != len(other.blocks):
-            raise ValueError("_copy_param_info_from should be invoked with two "
+            raise ValueError("_copy_param_info_from shold be invoked with two "
                              "program, with represent the same topology")
         self.global_block()._copy_param_info_from(other.global_block())
 
@@ -4461,7 +4461,7 @@ class Program(object):
             None
         """
         if not isinstance(other, Program):
-            raise TypeError("_copy_dist_param_info_from should be invoked with "
+            raise TypeError("_copy_dist_param_info_from shold be invoked with "
                             "Program")
         self._is_distributed = other._is_distributed
         self._is_chief = other._is_chief
@@ -4474,7 +4474,7 @@ class Program(object):
         """
         Copy the information of data variables from other program.
 
-        Notes: This is a very low level API. Users should not invoke it
+        Notes: This is a very low level API. Users shold not invoke it
         directly.
 
         Args:
@@ -4484,11 +4484,11 @@ class Program(object):
             None
         """
         if not isinstance(other, Program):
-            raise TypeError("_copy_data_info_from should be invoked with "
+            raise TypeError("_copy_data_info_from shold be invoked with "
                             "Program")
 
         if len(self.blocks) != len(other.blocks):
-            raise ValueError("_copy_data_info_from should be invoked with two "
+            raise ValueError("_copy_data_info_from shold be invoked with two "
                              "program, with represent the same topology")
 
         # NOTE(zhiqiu): All vars in cloned program exist in original program.
@@ -4619,9 +4619,9 @@ class Parameter(Variable):
                  type=core.VarDesc.VarType.LOD_TENSOR,
                  **kwargs):
         if shape is None:
-            raise ValueError("The shape of Parameter should not be None")
+            raise ValueError("The shape of Parameter shold not be None")
         if dtype is None:
-            raise ValueError("The dtype of Parameter should not be None")
+            raise ValueError("The dtype of Parameter shold not be None")
 
         if len(shape) == 0:
             raise ValueError(
@@ -4721,9 +4721,9 @@ class ParamBase(core.VarBase):
     @dygraph_only
     def __init__(self, shape, dtype, **kwargs):
         if shape is None:
-            raise ValueError("The shape of Parameter should not be None")
+            raise ValueError("The shape of Parameter shold not be None")
         if dtype is None:
-            raise ValueError("The dtype of Parameter should not be None")
+            raise ValueError("The dtype of Parameter shold not be None")
 
         if len(shape) == 0:
             raise ValueError(
@@ -4961,11 +4961,11 @@ def program_guard(main_program, startup_program=None):
     
     """
     if not isinstance(main_program, Program):
-        raise TypeError("main_program should be Program")
+        raise TypeError("main_program shold be Program")
     main_program = switch_main_program(main_program)
     if startup_program is not None:
         if not isinstance(startup_program, Program):
-            raise TypeError("startup_program should be Program")
+            raise TypeError("startup_program shold be Program")
         startup_program = switch_startup_program(startup_program)
     yield
     switch_main_program(main_program)

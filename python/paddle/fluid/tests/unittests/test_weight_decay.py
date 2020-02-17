@@ -165,7 +165,7 @@ class TestWeightDecay(unittest.TestCase):
         for place in get_places():
             loss = self.check_weight_decay(place, model, use_parallel_exe=False)
 
-            # TODO(zcd): should test use_reduce=True
+            # TODO(zcd): shold test use_reduce=True
             loss2 = self.check_weight_decay(
                 place, model, use_parallel_exe=True, use_reduce=False)
 

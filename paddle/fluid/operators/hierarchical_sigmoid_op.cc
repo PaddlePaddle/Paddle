@@ -120,13 +120,13 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
              "tensor with shape [N, 1].");
     AddInput("PathTable",
              "(LoDTensor, optional), The Path Table from root to current word"
-             "it should have shape like [N, L], L is the length of the Path")
+             "it shold have shape like [N, L], L is the length of the Path")
         .AsDispensable();
     AddInput(
         "PathCode",
         "(LoDTensor, optional), The Code on each Node of the Path from root "
         "to current word"
-        "it should have shape like [N, L], L is the length of the Path")
+        "it shold have shape like [N, L], L is the length of the Path")
         .AsDispensable();
     AddInput("Bias",
              "(LoDTensor, optional), The bias is a tensor with shape or "

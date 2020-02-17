@@ -307,7 +307,7 @@ if(WITH_MKLDNN)
   inference_analysis_api_test_build(${QAT_IMG_CLASS_TEST_APP} ${QAT_IMG_CLASS_TEST_APP_SRC})
 
   # MobileNet FP32 vs. QAT INT8
-  # The FP32 model should already be downloaded for slim QAT unit tests
+  # The FP32 model shold already be downloaded for slim QAT unit tests
   set(QAT2_MobileNet_MODEL_DIR "${QAT_DATA_DIR}/MobileNet_qat_perf")
   set(QAT2_INT8_MobileNet_MODEL_DIR "${QAT_DATA_DIR}/MobileNet_qat_perf_int8")
   download_qat_data(${QAT2_INT8_MobileNet_MODEL_DIR} "MobileNet_qat_perf_int8.tar.gz")

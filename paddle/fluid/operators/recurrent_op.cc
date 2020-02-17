@@ -116,7 +116,7 @@ RecurrentBase::RecurrentBase(const std::string &type,
 
 // Get SequenceLength from Scope
 //   The sequence length is got from input tensor. The input tensor's
-//   dimension should be [SEQ_LEN, ..., ...]. The first of the tensor's shape
+//   dimension shold be [SEQ_LEN, ..., ...]. The first of the tensor's shape
 //   is SEQ_LEN. The second of the tensor's shape could be the batch size or
 //   nested sequence length.
 int64_t RecurrentBase::GetSequenceLength(const framework::Scope &scope) const {
@@ -561,7 +561,7 @@ if reverse is True
     AddAttr<bool>(RecurrentBase::kIsTrain, "").SetDefault(true);
     AddAttr<std::vector<std::string>>(RecurrentBase::kSkipEagerDeletionVars,
                                       "Vars that would skip eager deletion."
-                                      "Users should not set this manually.")
+                                      "Users shold not set this manually.")
         .SetDefault(std::vector<std::string>());
 
     AddComment(R"DOC(
@@ -613,25 +613,25 @@ class RecurrentGradOpShapeInference : public framework::InferShapeBase {
     std::vector<std::string> output{RecurrentBase::kOutputs};
 
     // In some case the kInitialStates is empty.
-    // If the kInitialStates is empty, all the states should be empty.
+    // If the kInitialStates is empty, all the states shold be empty.
     if (!ctx->HasInputs(RecurrentBase::kInitialStates)) {
       PADDLE_ENFORCE_EQ(
           ctx->Attrs()
               .Get<std::vector<std::string>>(RecurrentBase::kExStates)
               .size(),
-          0, "The Attr(%s) should be empty.", RecurrentBase::kExStates);
+          0, "The Attr(%s) shold be empty.", RecurrentBase::kExStates);
       PADDLE_ENFORCE_EQ(
           ctx->Attrs()
               .Get<std::vector<std::string>>(RecurrentBase::kStates)
               .size(),
-          0, "The Attr(%s) should be empty.", RecurrentBase::kStates);
+          0, "The Attr(%s) shold be empty.", RecurrentBase::kStates);
     }
 
     PADDLE_ENFORCE_EQ(ctx->HasInputs(RecurrentBase::kInputs), true,
-                      "The input(%s) should not be empty.",
+                      "The input(%s) shold not be empty.",
                       RecurrentBase::kInputs);
     PADDLE_ENFORCE_EQ(ctx->HasInputs(RecurrentBase::kOutputs), true,
-                      "The input(%s) should not be empty.",
+                      "The input(%s) shold not be empty.",
                       RecurrentBase::kOutputs);
 
     // In some case the kInitialStates is empty.
@@ -644,7 +644,7 @@ class RecurrentGradOpShapeInference : public framework::InferShapeBase {
 
     PADDLE_ENFORCE_EQ(
         ctx->HasOutputs(framework::GradVarName(RecurrentBase::kInputs)), true,
-        "The output of(%s) should not be empty.",
+        "The output of(%s) shold not be empty.",
         framework::GradVarName(RecurrentBase::kInputs));
     ctx->SetOutputsDim(framework::GradVarName(RecurrentBase::kInputs),
                        ctx->GetInputsDim(RecurrentBase::kInputs));
@@ -653,7 +653,7 @@ class RecurrentGradOpShapeInference : public framework::InferShapeBase {
     if (ctx->HasInputs(RecurrentBase::kParameters)) {
       PADDLE_ENFORCE_EQ(
           ctx->HasOutputs(framework::GradVarName(RecurrentBase::kParameters)),
-          true, "The output of(%s) should not be empty.",
+          true, "The output of(%s) shold not be empty.",
           framework::GradVarName(RecurrentBase::kParameters));
       ctx->SetOutputsDim(framework::GradVarName(RecurrentBase::kParameters),
                          ctx->GetInputsDim(RecurrentBase::kParameters));

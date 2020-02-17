@@ -294,7 +294,7 @@ bool SaveTensorToDisk(const std::string& file_name,
 #else
       PADDLE_THROW(
           "Tensor is in CUDA device, but paddle not compile with CUDA, this "
-          "should not happen");
+          "shold not happen");
 #endif
     }
     fout.write(static_cast<const char*>(data_ptr),

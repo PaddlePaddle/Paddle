@@ -25,28 +25,28 @@ class DGCOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("U"), "Input(U) of DGCop should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("V"), "Input(V) of DGCop should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("U"), "Input(U) of DGCop shold not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("V"), "Input(V) of DGCop shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Grad"),
-                   "Input(Grad) of DGCop should not be null.");
+                   "Input(Grad) of DGCop shold not be null.");
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Param"), true,
         platform::errors::NotFound("Input(Param) of DGCop is not found."));
     PADDLE_ENFORCE(ctx->HasInput("current_step"),
-                   "Input(current_step) of DGCop should not be null.");
+                   "Input(current_step) of DGCop shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("nranks"), true,
-                      "Input(nranks) of DGCop should not be null.");
+                      "Input(nranks) of DGCop shold not be null.");
 
     PADDLE_ENFORCE(ctx->HasOutput("U_out"),
-                   "Output(U_out) of DGCop should not be null.");
+                   "Output(U_out) of DGCop shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("V_out"),
-                   "Output(V_out) of DGCop should not be null.");
+                   "Output(V_out) of DGCop shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("k"),
-                   "Output(k) of DGCop should not be null.");
+                   "Output(k) of DGCop shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("EncodeGrad"),
-                   "Output(EncodeGrad) of DGCop should not be null.");
+                   "Output(EncodeGrad) of DGCop shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("GatherBuff"), true,
-                      "Output(EncodeGrad) of DGCop should not be null.");
+                      "Output(EncodeGrad) of DGCop shold not be null.");
   }
 
  protected:

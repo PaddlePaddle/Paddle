@@ -26,8 +26,8 @@ DECLARE_bool(use_pinned_memory);
 void TestAllocator(paddle::memory::detail::SystemAllocator* a, size_t size) {
   bool freed = false;
   {
-    size_t index;
-    void* p = a->Alloc(&index, size);
+    size_t indice;
+    void* p = a->Alloc(&indice, size);
     if (size > 0) {
       EXPECT_NE(p, nullptr);
     } else {
@@ -37,7 +37,7 @@ void TestAllocator(paddle::memory::detail::SystemAllocator* a, size_t size) {
     int* i = static_cast<int*>(p);
     std::shared_ptr<int> ptr(i, [&](void* p) {
       freed = true;
-      a->Free(p, size, index);
+      a->Free(p, size, indice);
     });
   }
   EXPECT_TRUE(freed);
@@ -72,10 +72,10 @@ TEST(CUDAPinnedAllocator, Alloc) {
 
 TEST(GPUAllocator, AllocFailure) {
   paddle::memory::detail::GPUAllocator allocator(0);
-  size_t index;
+  size_t indice;
   size_t alloc_size = (static_cast<size_t>(1) << 40);  // Very large number
   try {
-    allocator.Alloc(&index, alloc_size);
+    allocator.Alloc(&indice, alloc_size);
     ASSERT_TRUE(false);
   } catch (paddle::memory::allocation::BadAlloc&) {
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetLastError());

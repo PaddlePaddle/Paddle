@@ -117,7 +117,7 @@ void ListenAndServOp::RunSyncLoop(
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
   PADDLE_ENFORCE_GE(num_blocks, 2,
-                    "server program should have at least 2 blocks");
+                    "server program shold have at least 2 blocks");
 
   // Prepare all the server block
   std::vector<int> optimize_blocks_list;
@@ -126,7 +126,7 @@ void ListenAndServOp::RunSyncLoop(
   }
   auto optimize_prepared = executor->Prepare(*program, optimize_blocks_list);
   // Insert placeholder for block0 which holds current op itself,
-  // NOTE the first block in `optimize_prepared` should never be ran.
+  // NOTE the first block in `optimize_prepared` shold never be ran.
   optimize_prepared.insert(
       optimize_prepared.begin(),
       std::shared_ptr<framework::ExecutorPrepareContext>(nullptr));
@@ -200,7 +200,7 @@ void ListenAndServOp::ResetReceivedVars(framework::Scope *recv_scope,
       VLOG(3) << "reset sparse var: " << varname;
       var->GetMutable<framework::SelectedRows>()->mutable_rows()->clear();
     } else {
-      PADDLE_THROW("The type of sparse var should be SelectedRows");
+      PADDLE_THROW("The type of sparse var shold be SelectedRows");
     }
   }
   if (UNLIKELY(reset_all)) {
@@ -217,7 +217,7 @@ void ListenAndServOp::ResetReceivedVars(framework::Scope *recv_scope,
         math::set_constant(*dev_ctx, var->GetMutable<framework::Tensor>(),
                            static_cast<float>(0));
       } else {
-        PADDLE_THROW("The type of dense var should be in [LoDTensor, Tensor]");
+        PADDLE_THROW("The type of dense var shold be in [LoDTensor, Tensor]");
       }
     }
   }
@@ -249,7 +249,7 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
 
   size_t num_blocks = program->Size();
   PADDLE_ENFORCE_GE(num_blocks, 2,
-                    "server program should have at least 2 blocks");
+                    "server program shold have at least 2 blocks");
 
   std::vector<int> block_list;
   for (size_t blkid = 1; blkid < num_blocks; ++blkid) {
@@ -316,7 +316,7 @@ void ListenAndServOp::CacheVarsType(const std::vector<std::string> &varnames,
   for (const auto &varname : varnames) {
     auto var = scope.FindVar(varname);
     PADDLE_ENFORCE(var != nullptr,
-                   "Received var should be initialized in the received scope.");
+                   "Received var shold be initialized in the received scope.");
     if (var->IsType<framework::SelectedRows>()) {
       sparse_vars_.push_back(varname);
     } else if (var->IsType<framework::LoDTensor>() ||
@@ -324,7 +324,7 @@ void ListenAndServOp::CacheVarsType(const std::vector<std::string> &varnames,
       dense_vars_.push_back(varname);
     } else {
       PADDLE_THROW(
-          "The type of received var should be in [SelectedRows, LoDTensor, "
+          "The type of received var shold be in [SelectedRows, LoDTensor, "
           "Tensor].");
     }
   }
@@ -332,7 +332,7 @@ void ListenAndServOp::CacheVarsType(const std::vector<std::string> &varnames,
 
 void ListenAndServOp::RunImpl(const framework::Scope &scope,
                               const platform::Place &dev_place) const {
-  // Mark this as PS that it should decide profiling by listening from trainer.
+  // Mark this as PS that it shold decide profiling by listening from trainer.
   platform::SetProfileListener();
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto &dev_ctx = *pool.Get(dev_place);
@@ -391,7 +391,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
   PADDLE_ENFORCE(optimize_blocks.size() >= 1,
-                 "optimize blocks should be 1 at least on the pserver side.");
+                 "optimize blocks shold be 1 at least on the pserver side.");
   auto *program = optimize_blocks[0]->Program();
   framework::Executor executor(dev_place);
 
@@ -526,7 +526,7 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault("127.0.0.1:6164")
         .AddCustomChecker([](const std::string &ip) { return !ip.empty(); });
     AddAttr<int>("pserver_id",
-                 "(int, default -1), the parameter server index id")
+                 "(int, default -1), the parameter server indice id")
         .SetDefault(-1);
     AddAttr<std::vector<std::string>>(
         "grad_to_block_id",

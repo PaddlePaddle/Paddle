@@ -140,20 +140,20 @@ def _sequence_like(instance, args):
         return type(instance)(args)
 
 
-def _packed_nest_with_indices(structure, flat, index):
+def _packed_nest_with_indices(structure, flat, indice):
     """
     Helper function for pack_sequence_as.
     """
     packed = []
     for s in _yield_value(structure):
         if is_sequence(s):
-            new_index, child = _packed_nest_with_indices(s, flat, index)
+            new_indice, child = _packed_nest_with_indices(s, flat, indice)
             packed.append(_sequence_like(s, child))
-            index = new_index
+            indice = new_indice
         else:
-            packed.append(flat[index])
-            index += 1
-    return index, packed
+            packed.append(flat[indice])
+            indice += 1
+    return indice, packed
 
 
 def pack_sequence_as(structure, flat_sequence):

@@ -24,12 +24,12 @@ class SequenceReshapeOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SequenceReshapeOp should not be null.");
+                   "Input(X) of SequenceReshapeOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SequenceReshapeOp should not be null.");
+                   "Output(Out) of SequenceReshapeOp shold not be null.");
     auto x_dims = ctx->GetInputDim("X");
     auto x_numel = product(x_dims);
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2U, "Rank of Input(X) should be 2.");
+    PADDLE_ENFORCE_EQ(x_dims.size(), 2U, "Rank of Input(X) shold be 2.");
     int new_dim = ctx->Attrs().Get<int>("new_dim");
     if (ctx->IsRuntime()) {
       ctx->SetOutputDim("Out",
@@ -92,9 +92,9 @@ class SequenceReshapeGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(
         ctx->HasInput(framework::GradVarName("Out")),
-        "Input(Out@GRAD) of SequenceReshapeGradOp should not be null.");
+        "Input(Out@GRAD) of SequenceReshapeGradOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SequenceReshapeGradOp should  not be null.");
+                   "Input(X) of SequenceReshapeGradOp shold  not be null.");
 
     ctx->ShareDim("X", /*->*/ framework::GradVarName("X"));
     ctx->ShareLoD("X", /*->*/ framework::GradVarName("X"));

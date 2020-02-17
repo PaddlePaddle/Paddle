@@ -25,15 +25,15 @@ class SamplingIdOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SamplingIdOp should not be null.");
+                   "Input(X) of SamplingIdOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SamplingIdOp should not be null.");
+                   "Output(Out) of SamplingIdOp shold not be null.");
     PADDLE_ENFORCE_LT(ctx->Attrs().Get<float>("min"),
                       ctx->Attrs().Get<float>("max"), "min must less then max");
 
     auto input_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE(input_dims.size() == 2,
-                   "Input(X, Filter) should be 2-D tensor.");
+                   "Input(X, Filter) shold be 2-D tensor.");
 
     auto dim0 = input_dims[0];
     framework::DDim dims = framework::make_ddim({dim0});

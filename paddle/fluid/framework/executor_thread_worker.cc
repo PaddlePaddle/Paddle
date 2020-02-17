@@ -145,7 +145,7 @@ void ExecutorThreadWorker::CreateThreadScope(const ProgramDesc& program) {
   PADDLE_ENFORCE_NOT_NULL(
       root_scope_,
       platform::errors::PreconditionNotMet(
-          "root_scope should be set before creating thread scope."));
+          "root_scope shold be set before creating thread scope."));
 
   thread_scope_ = &root_scope_->NewScope();
   for (auto& var : block.AllVars()) {
@@ -551,13 +551,13 @@ void AsyncExecutorThreadWorker::FillSparse(int table_id) {
     LoD data_lod{tensor_lod};
     tensor_emb->set_lod(data_lod);
 
-    for (auto index = 0u; index < len; ++index) {
-      if (ids[index] == 0u) {
-        memcpy(ptr + slot_dim * index, init_value.data() + 2,
+    for (auto indice = 0u; indice < len; ++indice) {
+      if (ids[indice] == 0u) {
+        memcpy(ptr + slot_dim * indice, init_value.data() + 2,
                sizeof(float) * slot_dim);
         continue;
       }
-      memcpy(ptr + slot_dim * index, fea_value[fea_idx].data() + 2,
+      memcpy(ptr + slot_dim * indice, fea_value[fea_idx].data() + 2,
              sizeof(float) * slot_dim);
       fea_idx++;
     }
@@ -651,7 +651,7 @@ void AsyncExecutorThreadWorker::collect_feasign_info(int table_id) {
   LoDTensor* tensor = var->GetMutable<LoDTensor>();
   int64_t* label = tensor->data<int64_t>();
 
-  int global_index = 0;
+  int global_indice = 0;
   for (auto slot_idx = 1u; slot_idx < feed_vec.size(); ++slot_idx) {
     Variable* var = thread_scope_->FindVar(feed_vec[slot_idx]);
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
@@ -665,12 +665,12 @@ void AsyncExecutorThreadWorker::collect_feasign_info(int table_id) {
         }
         FeasignInfo info{slot_idx, ins_idx, label[ins_idx - 1]};
 
-        fea_info[global_index++] = std::move(info);
+        fea_info[global_indice++] = std::move(info);
       }
     }
   }
-  CHECK(global_index == feature.size())
-      << "expect fea info size:" << feature.size() << " real:" << global_index;
+  CHECK(global_indice == feature.size())
+      << "expect fea info size:" << feature.size() << " real:" << global_indice;
 }
 
 void AsyncExecutorThreadWorker::check_pull_push_memory(

@@ -35,7 +35,7 @@ class SplitIdsOpKernel : public framework::OpKernel<T> {
 
     const auto ids_vars = ctx.MultiInputVar("Ids");
 
-    PADDLE_ENFORCE_GT(ids_vars.size(), 0, "The number of Ids should > 0");
+    PADDLE_ENFORCE_GT(ids_vars.size(), 0, "The number of Ids shold > 0");
     auto *ids_var = ids_vars[0];
 
     if (ids_var->IsType<framework::LoDTensor>()) {
@@ -115,7 +115,7 @@ class SplitIdsOpKernel : public framework::OpKernel<T> {
       }
     } else {
       PADDLE_THROW(
-          "% should be LoDTensor or SelectedRows, but the received type is %s",
+          "% shold be LoDTensor or SelectedRows, but the received type is %s",
           ctx.InputNames("Ids")[0], framework::ToTypeName(ids_var->Type()));
     }
   }

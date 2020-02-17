@@ -30,16 +30,16 @@ class FlattenOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input (X) of Flatten op should not be null.");
+                      "Input (X) of Flatten op shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output (Output) of Flatten op should not be null.");
+                      "Output (Output) of Flatten op shold not be null.");
     const auto &axis = ctx->Attrs().Get<int>("axis");
     const auto &in_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_GE(axis, 0,
-                      "The axis should be greater than or equal to 0.");
+                      "The axis shold be greater than or equal to 0.");
     PADDLE_ENFORCE_LE(
         axis, in_dims.size(),
-        "The axis should be less than or equal to input tensor's rank.");
+        "The axis shold be less than or equal to input tensor's rank.");
 
     const auto &out_dims = GetOutputShape(axis, in_dims);
     ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
@@ -86,7 +86,7 @@ class FlattenOpMaker : public framework::OpProtoAndCheckerMaker {
               "dimension of the output.");
     AddAttr<int>("axis",
                  "(int)"
-                 "Indicate up to which input dimensions (exclusive) should be"
+                 "Indicate up to which input dimensions (exclusive) shold be"
                  "flattened to the outer dimension of the output. The value"
                  "for axis must be in the range [0, R], where R is the rank of"
                  "the input tensor. When axis = 0, the shape of the output"
@@ -164,16 +164,16 @@ class Flatten2Op : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input (X) of Flatten op should not be null.");
+                      "Input (X) of Flatten op shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output (Output) of Flatten op should not be null.");
+                      "Output (Output) of Flatten op shold not be null.");
     const auto &axis = ctx->Attrs().Get<int>("axis");
     const auto &in_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_GE(axis, 0,
-                      "The axis should be greater than or equal to 0.");
+                      "The axis shold be greater than or equal to 0.");
     PADDLE_ENFORCE_LE(
         axis, in_dims.size(),
-        "The axis should be less than or equal to input tensor's rank.");
+        "The axis shold be less than or equal to input tensor's rank.");
 
     const auto &out_dims = FlattenOp::GetOutputShape(axis, in_dims);
     ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
@@ -184,7 +184,7 @@ class Flatten2Op : public framework::OperatorWithKernel {
     }
 
     PADDLE_ENFORCE_EQ(ctx->HasOutput("XShape"), true,
-                      "Output (XShape) of Flatten op should not be null.");
+                      "Output (XShape) of Flatten op shold not be null.");
     std::vector<int64_t> xshape_dims(in_dims.size() + 1);
     xshape_dims[0] = 0;
     for (int i = 0; i < in_dims.size(); ++i) {
@@ -228,9 +228,9 @@ class Flatten2GradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE_EQ(context->HasInput("XShape"), true,
-                      "Input(XShape) shouldn't be null.");
+                      "Input(XShape) sholdn't be null.");
     PADDLE_ENFORCE_EQ(context->HasInput(framework::GradVarName("Out")), true,
-                      "Input(Out@GRAD) shouldn't be null.");
+                      "Input(Out@GRAD) sholdn't be null.");
     auto xshape_dims = context->GetInputDim("XShape");
     auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
     context->SetOutputDim(framework::GradVarName("X"), x_dims);

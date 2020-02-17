@@ -29,7 +29,7 @@ class TestCrossEntropyOp(OpTest):
     def setUp(self):
         self.op_type = "cross_entropy"
         self.soft_label = False
-        self.ignore_index = -100
+        self.ignore_indice = -100
         self.dtype = np.float64
         self.batch_size = 30
         self.class_num = 10
@@ -45,7 +45,7 @@ class TestCrossEntropyOp(OpTest):
         self.outputs = {"Y": self.cross_entropy}
         self.attrs = {
             "soft_label": self.soft_label,
-            "ignore_index": self.ignore_index
+            "ignore_indice": self.ignore_indice
         }
 
     def init_x(self):
@@ -128,14 +128,14 @@ class TestCrossEntropyOp3(TestCrossEntropyOp):
     """
 
     def init_label(self):
-        self.label_index = np.random.randint(0, self.class_num,
+        self.label_indice = np.random.randint(0, self.class_num,
                                              (self.batch_size))
         self.label = np.zeros(self.x.shape).astype(self.dtype)
-        self.label[np.arange(self.batch_size), self.label_index] = 1
+        self.label[np.arange(self.batch_size), self.label_indice] = 1
 
     def get_cross_entropy(self):
         self.cross_entropy = np.asmatrix(
-            [[-np.log(self.x[i][self.label_index[i]])]
+            [[-np.log(self.x[i][self.label_indice[i]])]
              for i in range(self.x.shape[0])]).astype(self.dtype)
 
     def init_attr_type(self):
@@ -251,16 +251,16 @@ class TestCrossEntropyOp6(TestCrossEntropyOp):
         self.x = self.X_2d.reshape(self.shape + [self.class_num])
 
     def init_label(self):
-        self.label_index_2d = np.random.randint(
+        self.label_indice_2d = np.random.randint(
             0, self.class_num, (self.ins_num), dtype="int64")
         label_2d = np.zeros(self.X_2d.shape)
-        label_2d[np.arange(self.ins_num), self.label_index_2d] = 1
+        label_2d[np.arange(self.ins_num), self.label_indice_2d] = 1
         self.label = label_2d.reshape(self.shape + [self.class_num]).astype(
             self.dtype)
 
     def get_cross_entropy(self):
         cross_entropy_2d = np.asmatrix(
-            [[-np.log(self.X_2d[i][self.label_index_2d[i]])]
+            [[-np.log(self.X_2d[i][self.label_indice_2d[i]])]
              for i in range(self.X_2d.shape[0])])
         self.cross_entropy = np.array(cross_entropy_2d).reshape(
             self.shape + [1]).astype(self.dtype)
@@ -280,7 +280,7 @@ class TestCrossEntropyOp6(TestCrossEntropyOp):
 
 
 class TestCrossEntropyOp7(TestCrossEntropyOp):
-    """Test cross-entropy with ignore index.
+    """Test cross-entropy with ignore indice.
     """
 
     def init_label(self):
@@ -290,12 +290,12 @@ class TestCrossEntropyOp7(TestCrossEntropyOp):
     def get_cross_entropy(self):
         self.cross_entropy = np.asmatrix(
             [[-np.log(self.x[i][self.label[i][0]])]
-             if self.label[i][0] != self.ignore_index else [0]
+             if self.label[i][0] != self.ignore_indice else [0]
              for i in range(self.x.shape[0])]).astype(self.dtype)
 
     def init_attr_type(self):
         self.soft_label = False
-        self.ignore_index = 3
+        self.ignore_indice = 3
 
     def init_dtype_type(self):
         self.dtype = np.float64
@@ -306,7 +306,7 @@ class TestCrossEntropyOp7(TestCrossEntropyOp):
 
 
 class TestCrossEntropyOp7RemoveLastDim(TestCrossEntropyOp7):
-    """Test cross-entropy with ignore index with shape [batch_size].
+    """Test cross-entropy with ignore indice with shape [batch_size].
     """
 
     def init_label(self):
@@ -316,7 +316,7 @@ class TestCrossEntropyOp7RemoveLastDim(TestCrossEntropyOp7):
     def get_cross_entropy(self):
         self.cross_entropy = np.asmatrix(
             [[-np.log(self.x[i][self.label[i]])]
-             if self.label[i] != self.ignore_index else [0]
+             if self.label[i] != self.ignore_indice else [0]
              for i in range(self.x.shape[0])]).astype(self.dtype)
         self.cross_entropy = np.array(self.cross_entropy).reshape(
             [self.batch_size]).astype(self.dtype)

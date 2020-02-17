@@ -225,7 +225,7 @@ def check_feed_shape_type(var, feed, num_places=1):
                                 num_places) if len(feed.lod()) == 0 else -1
         if not dimension_is_compatible_with(feed_shape, var.shape):
             raise ValueError(
-                'The feeded Variable %r should have dimensions = %d, shape = '
+                'The feeded Variable %r shold have dimensions = %d, shape = '
                 '%r, but received feeded shape %r on each device' %
                 (var.name, len(var.shape), var.shape, feed_shape))
         if not dtype_is_compatible_with(feed._dtype(), var.dtype):
@@ -325,7 +325,7 @@ def _fetch_var(name, scope=None, return_numpy=True):
     Args:
         name(str): name of the variable. Typically, only persistable variables
             can be found in the scope used for running the program.
-        scope(core.Scope|None): scope object. It should be the scope where
+        scope(core.Scope|None): scope object. It shold be the scope where
             you pass to Executor.run() when running your program.
             If None, global_scope() will be used. Default None.
         return_numpy(bool): whether convert the tensor to numpy.ndarray.
@@ -358,7 +358,7 @@ def _to_name_str(var):
     elif isinstance(var, six.string_types):
         return str(var)
     else:
-        raise TypeError(str(var) + " should be Variable or str")
+        raise TypeError(str(var) + " shold be Variable or str")
 
 
 def _get_strong_program_cache_key(program, feed, fetch_list):
@@ -478,7 +478,7 @@ class Executor(object):
           # NOTE: If you use CPU to run the program, you need
           # to specify the CPU_NUM, otherwise, fluid will use
           # all the number of the logic core as the CPU_NUM,
-          # in that case, the batch size of the input should be
+          # in that case, the batch size of the input shold be
           # greater than CPU_NUM, if not, the process will be
           # failed by an exception.
           if not use_cuda:
@@ -636,7 +636,7 @@ class Executor(object):
                     # always set to CPU place, since the tensor need to be split
                     # it is fast in CPU
                     assert isinstance( feed[feed_name], np.ndarray ), \
-                        "The input({}) should be numpy.array, but not {}.".format(
+                        "The input({}) shold be numpy.array, but not {}.".format(
                         feed_name, type(feed[feed_name]))
                     feed_tensor.set(feed[feed_name], core.CPUPlace())
                 if need_check_feed:
@@ -648,21 +648,21 @@ class Executor(object):
         elif isinstance(feed, list) or isinstance(feed, tuple):
             if len(feed) != len(program._places):
                 raise ValueError(
-                    "Feed a list of tensor, the list should be the same size as places"
+                    "Feed a list of tensor, the list shold be the same size as places"
                 )
 
             res = list()
             for i, each in enumerate(feed):
                 if not isinstance(each, dict):
                     raise TypeError(
-                        "Each element of feed list should be a dict")
+                        "Each element of feed list shold be a dict")
                 res_dict = dict()
                 for feed_name in each:
                     tensor = each[feed_name]
                     if not isinstance(tensor, core.LoDTensor):
                         tmp = core.LoDTensor()
                         assert isinstance(each[feed_name], np.ndarray), \
-                            "The input({}) should be numpy.array, but not {}.".format(
+                            "The input({}) shold be numpy.array, but not {}.".format(
                             feed_name, type(each[feed_name]))
                         tmp.set(tensor, program._places[i])
                         tensor = tmp
@@ -687,7 +687,7 @@ class Executor(object):
             return_numpy=True,
             use_program_cache=False):
         """
-        Run the specified :code:`Program` or :code:`CompiledProgram`. It should be noted that the executor
+        Run the specified :code:`Program` or :code:`CompiledProgram`. It shold be noted that the executor
         will execute all the operators in :code:`Program` or :code:`CompiledProgram` without pruning some
         operators of the :code:`Program` or :code:`CompiledProgram` according to fetch_list. And you could
         specify the scope to store the :code:`Variables` during the executor running if the scope
@@ -703,10 +703,10 @@ class Executor(object):
                 training, the parameter feed can be dict or list type variable. If the
                 parameter type is dict, the data in the feed will be split and sent to
                 multiple devices (CPU/GPU), that is to say, the input data will be evenly
-                sent to different devices, so you should make sure the number of samples of
+                sent to different devices, so you shold make sure the number of samples of
                 the current mini-batch must be greater than the number of places;
                 if the parameter type is list, those data are copied directly to each device,
-                so the length of this list should be equal to the number of places.
+                so the length of this list shold be equal to the number of places.
                 The default is None.
             fetch_list(list): This parameter represents the variables that need to be returned
                 after the model runs. The default is None.
@@ -735,8 +735,8 @@ class Executor(object):
                the input sample number is 3, that is, [0, 1, 2], the sample number on GPU0 is 1,
                that is, [0], and the sample number on GPU1 is 2, that is, [1, 2].
                If the number of samples is less than the number of devices, the program will
-               throw an exception, so when running the model, you should make sure that the
-               number of samples of the last batch of the data set should be greater than the
+               throw an exception, so when running the model, you shold make sure that the
+               number of samples of the last batch of the data set shold be greater than the
                number of CPU cores or GPU cards, if it is less than, it is recommended that
                the batch be discarded.
             2. If the number of CPU cores or GPU cards available is greater than 1, the fetch
@@ -810,7 +810,7 @@ class Executor(object):
             if isinstance(fetch_list, Variable) or isinstance(fetch_list, str):
                 fetch_list = [fetch_list]
             assert isinstance(fetch_list, tuple) or isinstance(fetch_list, list), \
-                "Currently , The fetch_list type only should be list or tuple, \n"\
+                "Currently , The fetch_list type only shold be list or tuple, \n"\
                 "but the input type is {}. For more information please refer to \n"\
                 "the executor.run(...).".format(type(fetch_list))
         else:
@@ -856,7 +856,7 @@ class Executor(object):
                 "feed requires dict as its Parameter. But you passed in %s" %
                 (type(feed)))
 
-        assert program is not None, "The program should not be Empty"
+        assert program is not None, "The program shold not be Empty"
         if not isinstance(program, Program):
             raise TypeError(
                 "Executor requires Program as its Parameter. But you passed in %s"
@@ -977,7 +977,7 @@ class Executor(object):
         if thread <= 0:
             if dataset.thread_num <= 0:
                 raise RuntimeError(
-                    "You should set thread num first, either in Dataset"
+                    "You shold set thread num first, either in Dataset"
                     "or in Executor.train_from_dataset")
             else:
                 trainer._set_thread(dataset.thread_num)
@@ -1000,7 +1000,7 @@ class Executor(object):
                           print_period=100,
                           fetch_handler=None):
         if dataset is None:
-            raise RuntimeError("dataset is need and should be initialized")
+            raise RuntimeError("dataset is need and shold be initialized")
 
         if program._pipeline_opt is not None and program._pipeline_opt[
                 "sync_steps"] != -1:
@@ -1073,7 +1073,7 @@ class Executor(object):
             program(Program|CompiledProgram): the program that needs to be run,
                 if not provided, then default_main_program (not compiled) will be used.
             dataset(paddle.fluid.Dataset): dataset created outside this function,
-                a user should provide a well-defined dataset before calling this function.
+                a user shold provide a well-defined dataset before calling this function.
                 Please check the document of Dataset if needed. default is None
             scope(Scope): the scope used to run this program, you can switch it to different scope
                 for each run. default is global_scope
@@ -1102,7 +1102,7 @@ class Executor(object):
                 dataset = fluid.DatasetFactory().create_dataset()
                 dataset.set_use_var([x, y])
                 dataset.set_thread(1)
-                filelist = [] # you should set your own filelist, e.g. filelist = ["dataA.txt"]
+                filelist = [] # you shold set your own filelist, e.g. filelist = ["dataA.txt"]
                 dataset.set_filelist(filelist)
                 exe.run(fluid.default_startup_program())
                 exe.infer_from_dataset(program=fluid.default_main_program(),
@@ -1138,7 +1138,7 @@ class Executor(object):
             program(Program|CompiledProgram): the program that needs to be run,
                 if not provided, then default_main_program (not compiled) will be used.
             dataset(paddle.fluid.Dataset): dataset created outside this function,
-                a user should provide a well-defined dataset before calling this function.
+                a user shold provide a well-defined dataset before calling this function.
                 Please check the document of Dataset if needed.
             scope(Scope): the scope used to run this program, you can switch it to different scope
                 for each run. default is global_scope
@@ -1147,7 +1147,7 @@ class Executor(object):
             debug(bool): whether a user wants to run train_from_dataset 
             fetch_list(Variable List): fetch variable list, each variable will be printed
                 during training
-            fetch_info(String List): print information for each variable, its length should be equal
+            fetch_info(String List): print information for each variable, its length shold be equal
                 to fetch_list
             print_period(int): the number of mini-batches for each print, default is 100
             fetch_handler(FetchHandler): a user define class for fetch output.
@@ -1168,7 +1168,7 @@ class Executor(object):
               dataset = fluid.DatasetFactory().create_dataset()
               dataset.set_use_var([x, y])
               dataset.set_thread(1)
-              filelist = [] # you should set your own filelist, e.g. filelist = ["dataA.txt"]
+              filelist = [] # you shold set your own filelist, e.g. filelist = ["dataA.txt"]
               dataset.set_filelist(filelist)
               exe.run(fluid.default_startup_program())
               exe.train_from_dataset(program=fluid.default_main_program(),

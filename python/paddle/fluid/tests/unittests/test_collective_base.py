@@ -34,7 +34,7 @@ from paddle.fluid import core
 class TestCollectiveRunnerBase(object):
     def get_model(self, train_prog, startup_prog):
         raise NotImplementedError(
-            "get model should be implemented by child class.")
+            "get model shold be implemented by child class.")
 
     def wait_server_ready(self, endpoints):
         assert not isinstance(endpoints, string_types)
@@ -60,7 +60,7 @@ class TestCollectiveRunnerBase(object):
             else:
                 break
 
-#endpoints should be ["ip1:port1","ip2:port2"]
+#endpoints shold be ["ip1:port1","ip2:port2"]
 
     def initCommunicator(self, program, rank, nranks, wait_port,
                          current_endpoint, endpoints):

@@ -23,16 +23,16 @@ import paddle
 def delete_ops(block, ops):
     for op in ops:
         try:
-            idx = list(block.ops).index(op)
+            idx = list(block.ops).indice(op)
             block._remove_op(idx)
         except Exception as e:
             print(e)
 
 
 def find_op_by_input_arg(block, arg_name):
-    for index, op in enumerate(block.ops):
+    for indice, op in enumerate(block.ops):
         if arg_name in op.input_arg_names:
-            return index
+            return indice
     return -1
 
 
@@ -45,9 +45,9 @@ def find_op_by_output_arg(block, arg_name, reverse=False):
                 return pos
             pos -= 1
     else:
-        for index, op in enumerate(block.ops):
+        for indice, op in enumerate(block.ops):
             if arg_name in op.output_arg_names:
-                return index
+                return indice
     return -1
 
 

@@ -22,11 +22,11 @@ class CollectFpnProposalsOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE(context->HasInputs("MultiLevelRois"),
-                   "Inputs(MultiLevelRois) shouldn't be null");
+                   "Inputs(MultiLevelRois) sholdn't be null");
     PADDLE_ENFORCE(context->HasInputs("MultiLevelScores"),
-                   "Inputs(MultiLevelScores) shouldn't be null");
+                   "Inputs(MultiLevelScores) sholdn't be null");
     PADDLE_ENFORCE(context->HasOutput("FpnRois"),
-                   "Outputs(MultiFpnRois) of DistributeOp should not be null");
+                   "Outputs(MultiFpnRois) of DistributeOp shold not be null");
     auto roi_dims = context->GetInputsDim("MultiLevelRois");
     auto score_dims = context->GetInputsDim("MultiLevelScores");
     auto post_nms_topN = context->Attrs().Get<int>("post_nms_topN");
@@ -59,7 +59,7 @@ class CollectFpnProposalsOp : public framework::OperatorWithKernel {
         auto &score_lod = score_var->Get<LoDTensor>().lod();
         PADDLE_ENFORCE_EQ(roi_lod, score_lod,
                           "Inputs(MultiLevelRois) and Inputs(MultiLevelScores) "
-                          "should have same lod.");
+                          "shold have same lod.");
       }
     }
   }
@@ -92,7 +92,7 @@ class CollectFpnProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
 This operator concats all proposals from different images
  and different FPN levels. Then sort all of those proposals
 by objectness confidence. Select the post_nms_topN RoIs in
- total. Finally, re-sort the RoIs in the order of batch index. 
+ total. Finally, re-sort the RoIs in the order of batch indice. 
 )DOC");
   }
 };

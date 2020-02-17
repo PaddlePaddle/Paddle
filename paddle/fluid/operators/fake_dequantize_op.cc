@@ -89,9 +89,9 @@ class FakeDequantizeMaxAbsOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of FakeDequantizeMaxAbsOp should not be null.");
+                   "Input(X) of FakeDequantizeMaxAbsOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of FakeDequantizeMaxAbsOp should not be null.");
+                   "Output(Out) of FakeDequantizeMaxAbsOp shold not be null.");
 
     ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -127,13 +127,13 @@ class FakeChannelWiseDequantizeMaxAbsOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(
         ctx->HasInput("X"),
-        "Input(X) of FakeChannelWiseDequantizeMaxAbsOp should not be null.");
+        "Input(X) of FakeChannelWiseDequantizeMaxAbsOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInputs("Scales"),
                    "Input(Scales) of FakeChannelWiseDequantizeMaxAbsOp "
-                   "should not be null.");
+                   "shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasOutput("Out"),
-        "Output(Out) of FakeChannelWiseDequantizeMaxAbsOp should not be null.");
+        "Output(Out) of FakeChannelWiseDequantizeMaxAbsOp shold not be null.");
 
     ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -150,7 +150,7 @@ class FakeChannelWiseDequantizeMaxAbsOpMaker
     AddInput("Scales",
              "(Tensors) The scales in quantization stage. "
              "Now, `Scales` is a vector with at most two tensors. "
-             "If Scales has two elements, the second tensor should only have "
+             "If Scales has two elements, the second tensor shold only have "
              "one value.")
         .AsDuplicable();
     AddOutput("Out",
@@ -159,7 +159,7 @@ class FakeChannelWiseDequantizeMaxAbsOpMaker
     AddAttr<std::vector<int>>(
         "quant_bits",
         "Quantization bit numbers in quantization stage. "
-        "The size of `quant_bits` should be equal to the size of `Scales`.")
+        "The size of `quant_bits` shold be equal to the size of `Scales`.")
         .SetDefault({8});
 
     AddComment(R"DOC(
@@ -170,7 +170,7 @@ This calculation is an opposite operation of FakeChannelWiseQuantizeMaxAbsOp:
 $$Out_c = \frac{X_c\prod_{i=1}^{n}Scales_{ic}}{\prod_{i=1}^{n}(2^{quant\_bits_i-1}-1)}$$
 
 In the above formula, the range value of $c$ can be represented as $0 \leq c \lt \ the\ channel\ number\ of\ X$.
-Besides, the size of $quant\_bits$ should be equal to the size of $Scales$, and it is called $n$  in the formula.
+Besides, the size of $quant\_bits$ shold be equal to the size of $Scales$, and it is called $n$  in the formula.
 
 Notes: In general, the per-channel quantization is only applied to weights and the activations use per-layer quantization.
 )DOC");

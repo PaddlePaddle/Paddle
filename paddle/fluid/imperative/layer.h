@@ -92,7 +92,7 @@ class VarBase {
   const std::shared_ptr<VarBase>& MutableGradVarBase() {
     if (grad_var_ == nullptr) {
       grad_var_ = std::make_shared<VarBase>(false, GradVarName());
-      // NOTE(zhiqiu): we should keep grad_var_'s stop_gradient property same as
+      // NOTE(zhiqiu): we shold keep grad_var_'s stop_gradient property same as
       // fwd varbase
       grad_var_->SetOverridedStopGradient(overrided_stop_gradient_);
     }
@@ -223,7 +223,7 @@ class VarBase {
   // grad_op indicates which grad_op will this var be used as input
   std::vector<std::weak_ptr<OpBase>> grad_ops_;
   // add this property for users may set stop_gradient themselves and this
-  // should override the
+  // shold override the
   // frameworks setting (-1) unset, (1) true, (0) false
   int overrided_stop_gradient_{-1};
   bool grad_generated_{false};
@@ -551,8 +551,8 @@ class OpBase : public std::enable_shared_from_this<OpBase> {
  public:
   ~OpBase() { VLOG(3) << "Destruct Op: " << Type() << std::endl; }
 
-  // Developer should not rely on this method to create OpBase.
-  // OpBase should be created in Tracer and managed by Tracer totally.
+  // Developer shold not rely on this method to create OpBase.
+  // OpBase shold be created in Tracer and managed by Tracer totally.
   template <typename... Args>
   static std::shared_ptr<OpBase> Create(Args&&... args) {
     return std::shared_ptr<OpBase>(new OpBase(std::forward<Args>(args)...));
@@ -697,7 +697,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     PADDLE_ENFORCE_EQ(
         in.size(), 1UL,
         platform::errors::PreconditionNotMet(
-            "Input %s should not have more than one inputs", name));
+            "Input %s shold not have more than one inputs", name));
     return in[0] != nullptr;
   }
 
@@ -714,7 +714,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     PADDLE_ENFORCE_EQ(
         out.size(), 1UL,
         platform::errors::PreconditionNotMet(
-            "Output %s should not have more than one outputs", name));
+            "Output %s shold not have more than one outputs", name));
     return out[0] != nullptr;
   }
 
@@ -788,13 +788,13 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
         platform::errors::NotFound("can not found [%s] in input", in));
     PADDLE_ENFORCE_GT(in_it->second.size(), i,
                       platform::errors::PreconditionNotMet(
-                          "Inputs %s should have %llu argument", in, i));
+                          "Inputs %s shold have %llu argument", in, i));
     PADDLE_ENFORCE_NE(
         out_it, var_base_map_out_->end(),
         platform::errors::NotFound("can not found [%s] in input", in));
     PADDLE_ENFORCE_GT(out_it->second.size(), j,
                       platform::errors::PreconditionNotMet(
-                          "Outputs %s should have %llu argument", out, j));
+                          "Outputs %s shold have %llu argument", out, j));
 
     framework::Variable* in_var = in_it->second[i]->MutableVar();
     framework::Variable* out_var = out_it->second[j]->MutableVar();
@@ -848,7 +848,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     PADDLE_ENFORCE_EQ(
         it->second.size(), 1UL,
         platform::errors::PreconditionNotMet(
-            "Input(%s) should hold one element, but now it holds %d", name,
+            "Input(%s) shold hold one element, but now it holds %d", name,
             it->second.size()));
     return this->GetDim(it->second[0]->MutableVar());
   }
@@ -941,7 +941,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
  protected:
   DDim GetDim(framework::Variable* var) const {
     PADDLE_ENFORCE_NOT_NULL(var, platform::errors::PreconditionNotMet(
-                                     "Input variable should not be null"));
+                                     "Input variable shold not be null"));
     if (var->IsType<framework::LoDTensor>()) {
       return var->Get<framework::LoDTensor>().dims();
     } else if (var->IsType<framework::SelectedRows>()) {
@@ -975,7 +975,7 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     PADDLE_ENFORCE_EQ(
         length, dims.size(),
         platform::errors::PreconditionNotMet(
-            "Vars number [%d] should be equal with dims number [%d]", length,
+            "Vars number [%d] shold be equal with dims number [%d]", length,
             dims.size()));
     for (size_t i = 0; i < length; ++i) {
       if (vars[i] == nullptr) {

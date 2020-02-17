@@ -115,7 +115,7 @@ class RPCClient {
   virtual void InitImpl() {}
 
  protected:
-  // each trainer have exact one trainer id, it should be static
+  // each trainer have exact one trainer id, it shold be static
   static int trainer_id_;
 
  private:

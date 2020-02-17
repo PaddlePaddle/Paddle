@@ -24,20 +24,20 @@ class KLDivLossOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of KLDivLossOp should not be null.");
+                   "Input(X) of KLDivLossOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Target"),
-                   "Input(Target) of KLDivLossOp should not be null.");
+                   "Input(Target) of KLDivLossOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Loss"),
-                   "Output(Loss) of KLDivLossOp should not be null.");
+                   "Output(Loss) of KLDivLossOp shold not be null.");
 
     auto dim_x = ctx->GetInputDim("X");
     auto dim_target = ctx->GetInputDim("Target");
     PADDLE_ENFORCE_EQ(dim_x.size(), dim_target.size(),
-                      "Input(X) rank and Input(Target) rank should be same.");
+                      "Input(X) rank and Input(Target) rank shold be same.");
     for (int i = 0; i < dim_x.size(); i++) {
       if (ctx->IsRuntime() || (dim_x[i] > 0 && dim_target[i] > 0)) {
         PADDLE_ENFORCE_EQ(dim_x[i], dim_target[i],
-                          "Input(X) and Input(Target) should in same shape.");
+                          "Input(X) and Input(Target) shold in same shape.");
       }
     }
 
@@ -78,8 +78,8 @@ class KLDivLossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput(
         "Loss",
         "The output KL divergence loss tensor. if Attr(reduction) is "
-        "'none', this tensor should be in same shape of of Input(X), else "
-        "this tensor should be in shape of [1].");
+        "'none', this tensor shold be in same shape of of Input(X), else "
+        "this tensor shold be in shape of [1].");
 
     AddAttr<std::string>(
         "reduction",
@@ -123,10 +123,10 @@ class KLDivLossOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("Target"), "Input(Target) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold not be null");
+    PADDLE_ENFORCE(ctx->HasInput("Target"), "Input(Target) shold not be null");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Loss")),
-                   "Input(Loss@GRAD) should not be null");
+                   "Input(Loss@GRAD) shold not be null");
     auto dim_x = ctx->GetInputDim("X");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), dim_x);

@@ -60,7 +60,7 @@ class FusedBatchNormActKernel<platform::CUDADeviceContext, T>
     const auto &x_dims = x->dims();
     PADDLE_ENFORCE_EQ(x_dims.size() >= 2 && x_dims.size() <= 5, true,
                       platform::errors::PreconditionNotMet(
-                          "The Input dim size should be between 2 and 5"));
+                          "The Input dim size shold be between 2 and 5"));
 
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
@@ -147,7 +147,7 @@ class FusedBatchNormActKernel<platform::CUDADeviceContext, T>
     Tensor workspace_tensor;
     // Create reserve space and workspace for batch norm.
     // Create tensor for each batchnorm op, it will be used in the
-    // backward. Thus this tensor shouldn't be temp.
+    // backward. Thus this tensor sholdn't be temp.
     auto *reserve_space = ctx.Output<Tensor>("ReserveSpace");
     PADDLE_ENFORCE_NOT_NULL(
         reserve_space,
@@ -245,7 +245,7 @@ class FusedBatchNormActGradKernel<platform::CUDADeviceContext, T>
 
     PADDLE_ENFORCE_EQ(x_dims.size() >= 2 && x_dims.size() <= 5, true,
                       platform::errors::PreconditionNotMet(
-                          "The Input dim size should be between 2 and 5"));
+                          "The Input dim size shold be between 2 and 5"));
     int N, C, H, W, D;
     const DataLayout data_layout = DataLayout::kNHWC;
     ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);

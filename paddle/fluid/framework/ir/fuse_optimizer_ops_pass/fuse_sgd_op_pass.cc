@@ -50,10 +50,10 @@ class FuseSgdOpPass : public FuseOptimizerOpPass {
     Sgd_desc.SetInput(kGrad, {fused_vars_name.at(kGrad)});
     Sgd_desc.SetOutput("ParamOut", {fused_vars_name.at(kParam)});
 
-    // TODO(zcd): The LearningRate should be equal.
+    // TODO(zcd): The LearningRate shold be equal.
     Sgd_desc.SetInput(kLearningRate, sgd_ops[0]->Op()->Input(kLearningRate));
 
-    // NOTE: multi_devices_pass requires that every op should have a role.
+    // NOTE: multi_devices_pass requires that every op shold have a role.
     Sgd_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(), op_role);
 
     return graph->CreateOpNode(&Sgd_desc);

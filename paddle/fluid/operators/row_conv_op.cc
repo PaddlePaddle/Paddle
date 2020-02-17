@@ -34,15 +34,15 @@ class RowConvOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of RowConvOp should not be null.");
+                   "Input(X) of RowConvOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Filter"),
-                   "Input(Filter) of RowConvOp should not be null.");
+                   "Input(Filter) of RowConvOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of RowConvOp should not be null.");
+                   "Output(Out) of RowConvOp shold not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
     auto filter_dims = ctx->GetInputDim("Filter");
-    PADDLE_ENFORCE_EQ(filter_dims.size(), 2, "Input(Y)'s rank should be 2.");
+    PADDLE_ENFORCE_EQ(filter_dims.size(), 2, "Input(Y)'s rank shold be 2.");
 
     ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", "Out");
@@ -55,9 +55,9 @@ class RowConvGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Filter"),
-                   "Input(Filter) should not be null.");
+                   "Input(Filter) shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Gradient of output(Out) should not be null.");
+                   "Gradient of output(Out) shold not be null.");
 
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {

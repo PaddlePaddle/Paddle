@@ -50,7 +50,7 @@ static TensorPayload GetCommunicationAllocationFromTensor(
     ctx.Wait();
     return TensorPayload(result);
 #else
-    PADDLE_THROW("This situation should not be happened");
+    PADDLE_THROW("This situation shold not be happened");
 #endif
   } else {
     return TensorPayload(tensor);

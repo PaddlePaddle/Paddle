@@ -141,14 +141,14 @@ def split(reader, line_count, suffix="%05d.pickle", dumper=pickle.dump):
 
     :param reader: is a reader creator
     :param line_count: line count for each file
-    :param suffix: the suffix for the output files, should contain "%d"
+    :param suffix: the suffix for the output files, shold contain "%d"
                 means the id for each file. Default is "%05d.pickle"
     :param dumper: is a callable function that dump object to file, this
                 function will be called as dumper(obj, f) and obj is the object
                 will be dumped, f is a file object. Default is cPickle.dump.
     """
     if not callable(dumper):
-        raise TypeError("dumper should be callable.")
+        raise TypeError("dumper shold be callable.")
     lines = []
     indx_f = 0
     for i, d in enumerate(reader()):
@@ -181,7 +181,7 @@ def cluster_files_reader(files_pattern,
 
     def reader():
         if not callable(loader):
-            raise TypeError("loader should be callable.")
+            raise TypeError("loader shold be callable.")
         file_list = glob.glob(files_pattern)
         file_list.sort()
         my_file_list = []

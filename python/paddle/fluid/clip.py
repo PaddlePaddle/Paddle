@@ -110,7 +110,7 @@ def error_clip_callback(block, context):
         if not (error_clip is None or isinstance(error_clip,
                                                  BaseErrorClipAttr)):
             raise TypeError(
-                "Variable's error_clip should be an instance of BaseErrorClipAttr or None."
+                "Variable's error_clip shold be an instance of BaseErrorClipAttr or None."
             )
         if error_clip is not None:
             error_clip._append_clip_op(block, grad_n)
@@ -391,7 +391,7 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
         else:
             if not self.clip_norm == context[self.group_name + "_clip_value"]:
                 raise ValueError(
-                    "All parameters' 'clip_norm' of a same group should be the same"
+                    "All parameters' 'clip_norm' of a same group shold be the same"
                 )
 
         merge_grad = grad
@@ -488,7 +488,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
     """
     if not isinstance(clip, BaseGradientClipAttr):
         raise TypeError(
-            "'clip' should be an instance of BaseGradientClipAttr's derived class"
+            "'clip' shold be an instance of BaseGradientClipAttr's derived class"
         )
     if program is None:
         program = framework.default_main_program()
@@ -498,7 +498,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
         param_list = [program.block(0).var(elem) for elem in param_list]
     if not all(isinstance(elem, framework.Parameter) for elem in param_list):
         raise TypeError(
-            "'param_list' should be a list of Parameter or basestring(parameter's name)."
+            "'param_list' shold be a list of Parameter or basestring(parameter's name)."
         )
 
     for param in param_list:
@@ -517,7 +517,7 @@ def append_gradient_clip_ops(param_grads):
                 clip_attr = NullGradientClipAttr()
             if not isinstance(clip_attr, BaseGradientClipAttr):
                 raise TypeError(
-                    "clip attribute should be an instance of BaseGradientClipAttr"
+                    "clip attribute shold be an instance of BaseGradientClipAttr"
                 )
 
             clip_attr._process_context(context=context, param=p, grad=g)
@@ -540,11 +540,11 @@ def append_gradient_clip_ops(param_grads):
                     "op_namescope"):
                 if op.attr('op_role_var'):
                     param_name = op.attr('op_role_var')[0]
-                    index = 0
+                    indice = 0
                     for i in range(len(res)):
                         if res[i][0].name == param_name:
-                            index = i
-                    correct_p_g = [param_name, res[index][1].name]
+                            indice = i
+                    correct_p_g = [param_name, res[indice][1].name]
                     op._set_attr('op_role_var', correct_p_g)
     return res
 

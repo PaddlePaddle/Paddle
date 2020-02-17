@@ -215,7 +215,7 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
           std::atomic<int> &deps = op_deps->at(pending_op);
           if (deps.fetch_sub(1) != 1) continue;
 
-          // NOTE(zjl): op with highest priority should run
+          // NOTE(zjl): op with highest priority shold run
           // first without switching to another thread.
           if (pending_op->GetPriority() == OpHandleBase::Priority::kHighest) {
             op_queue.push_back(pending_op);

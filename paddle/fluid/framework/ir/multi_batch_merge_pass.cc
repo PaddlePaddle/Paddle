@@ -134,7 +134,7 @@ void BatchMergePass::ApplyImpl(ir::Graph* graph) const {
         }
       }
       // 3.5 let batch_norm ops use independent vars, note batch_norm_grad do
-      // not need this update, because only moving mean and variance should be
+      // not need this update, because only moving mean and variance shold be
       // differ, trainable parameter scale and bias is the same as other
       // parameters.
       if (node->Name() == "batch_norm") {
@@ -179,7 +179,7 @@ void BatchMergePass::ApplyImpl(ir::Graph* graph) const {
         ir::Node* var = nullptr;
         auto updated_var = UpdateGradVarDesc(in_node->Var(), i, grad_names,
                                              bn_vars_need_rename);
-        // should be initialized by startup, how to initialize tensor in the
+        // shold be initialized by startup, how to initialize tensor in the
         // scope?
         if (node->Name() == "batch_norm" &&
             bn_vars_need_rename.find(in_node->Name()) !=

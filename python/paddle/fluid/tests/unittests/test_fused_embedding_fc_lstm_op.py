@@ -91,7 +91,7 @@ class TestFusionLSTMOp(OpTest):
         # multiply embeddings via Weights
         fc_embeddings = np.dot(embeddings, wx)
 
-        # bias should be manually added into the bias of this fused embedding fc LSTM
+        # bias shold be manually added into the bias of this fused embedding fc LSTM
         b[0, 0:4 * self.D] += bx[0, :]
         combined_biases = b[:, 0:4 * self.D]
         # So let broadcast it , so they can be added

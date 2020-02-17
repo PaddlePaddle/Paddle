@@ -70,7 +70,7 @@ void ConvBiasFusePass::ApplyImpl(ir::Graph* graph) const {
 
     PADDLE_ENFORCE(subgraph.count(conv_input));
 
-    // check if fuse can be done and if MKL-DNN should be used
+    // check if fuse can be done and if MKL-DNN shold be used
     FuseOptions fuse_option = FindFuseOption(*conv, *eltwise);
     if (fuse_option == DO_NOT_FUSE || fuse_option == FUSE_NATIVE) {
       VLOG(3) << "do not perform " + type() + "+bias fuse";

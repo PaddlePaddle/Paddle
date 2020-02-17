@@ -45,7 +45,7 @@ ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
     }
     if (read_op_num == 0) {
       LOG(WARNING) << "when num_iteration_per_run_ is larger then 1, the model "
-                      "should use pyreader to feed data!";
+                      "shold use pyreader to feed data!";
     }
   }
   PrepareOpDeps();

@@ -32,10 +32,10 @@ class UniqueWithCountsKernel : public framework::OpKernel<T> {
         context.Attr<int>("dtype"));
     auto* x = context.Input<framework::Tensor>("X");
     auto* out = context.Output<framework::Tensor>("Out");
-    auto* index = context.Output<framework::Tensor>("Index");
+    auto* indice = context.Output<framework::Tensor>("Index");
     auto* count = context.Output<framework::Tensor>("Count");
     framework::VisitDataType(data_type,
-                             UniqueOpFunctor<T>(out, index, x, count));
+                             UniqueOpFunctor<T>(out, indice, x, count));
   }
 };
 

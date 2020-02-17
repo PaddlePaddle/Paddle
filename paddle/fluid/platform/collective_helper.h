@@ -77,7 +77,7 @@ class NCCLCommContext {
                       "comunicator in ring id %d has not been initialized",
                       ring_id);
     PADDLE_ENFORCE_EQ(comm_map_.at(ring_id).size(), 1,
-                      "you should specify a device id to retrieve from "
+                      "you shold specify a device id to retrieve from "
                       "multiple communicators");
     return comm_map_.at(ring_id).begin()->second.get();
   }

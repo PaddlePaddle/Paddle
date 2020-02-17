@@ -19,8 +19,8 @@
 # If any cblas implementation found, the following variable will be set.
 #    CBLAS_PROVIDER  # one of MKLML, OPENBLAS, REFERENCE
 #    CBLAS_INC_DIR   # the include directory for cblas.
-#    CBLAS_LIBS      # a list of libraries should be linked by paddle.
-#                    # Each library should be full path to object file.
+#    CBLAS_LIBS      # a list of libraries shold be linked by paddle.
+#                    # Each library shold be full path to object file.
 
 set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/cblas_dummy.c)
 file(WRITE ${dummyfile} "const char *dummy_cblas = \"${dummyfile}\";")

@@ -281,11 +281,11 @@ class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
         rois_batch_id_list.mutable_data<int>(ctx.GetPlace());
     if (ctx.HasInput("BatchRoINums") || rois->lod().empty()) {
       auto* batchroinum = ctx.Input<framework::Tensor>("BatchRoINums");
-      auto* batch_index = batchroinum->data<int64_t>();
+      auto* batch_indice = batchroinum->data<int64_t>();
       int rois_batch_size = batchroinum->dims()[0];
       size_t c = 0;
       for (int n = 0; n < rois_batch_size; ++n) {
-        for (int64_t k = 0; k < batch_index[n]; ++k) {
+        for (int64_t k = 0; k < batch_indice[n]; ++k) {
           rois_batch_id_data[c] = n;
           c = c + 1;
         }
@@ -293,21 +293,21 @@ class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
     } else {
       PADDLE_ENFORCE_EQ(rois->lod().empty(), false,
                         platform::errors::InvalidArgument(
-                            "the lod of Input ROIs should not be empty when "
+                            "the lod of Input ROIs shold not be empty when "
                             "BatchRoINums is None!"));
       auto rois_lod = rois->lod().back();
       int rois_batch_size = rois_lod.size() - 1;
       PADDLE_ENFORCE_EQ(
           rois_batch_size, batch_size,
           platform::errors::InvalidArgument("the rois_batch_size and input(X) "
-                                            "batch_size should be the same."));
+                                            "batch_size shold be the same."));
       int rois_num_with_lod = rois_lod[rois_batch_size];
       PADDLE_ENFORCE_EQ(
           rois_num_with_lod, rois_num,
           platform::errors::InvalidArgument(
               "the rois_num from input and lod must be the same"));
 
-      // calculate batch id index for each roi according to LoD
+      // calculate batch id indice for each roi according to LoD
       for (int n = 0; n < rois_batch_size; ++n) {
         for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
           rois_batch_id_data[i] = n;
@@ -356,7 +356,7 @@ class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
             int s_h = std::floor(win_start_h);
             int e_h = std::ceil(win_end_h);
 
-            int output_index = out_row_offset + pw;
+            int output_indice = out_row_offset + pw;
             int input_channel = c;
             int input_plane_offset =
                 roi_batch_id * in_stride[0] + input_channel * in_stride[1];
@@ -378,9 +378,9 @@ class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
                 }
               }
 
-              output_data[output_index] = sum_out / win_size;
+              output_data[output_indice] = sum_out / win_size;
             } else {
-              output_data[output_index] = 0.;
+              output_data[output_indice] = 0.;
             }
           }
         }
@@ -425,11 +425,11 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
           rois_batch_id_list.mutable_data<int>(ctx.GetPlace());
       if (ctx.HasInput("BatchRoINums") || rois->lod().empty()) {
         auto* batchroinum = ctx.Input<framework::Tensor>("BatchRoINums");
-        auto* batch_index = batchroinum->data<int64_t>();
+        auto* batch_indice = batchroinum->data<int64_t>();
         int rois_batch_size = batchroinum->dims()[0];
         size_t c = 0;
         for (int n = 0; n < rois_batch_size; ++n) {
-          for (int64_t k = 0; k < batch_index[n]; ++k) {
+          for (int64_t k = 0; k < batch_indice[n]; ++k) {
             rois_batch_id_data[c] = n;
             c = c + 1;
           }
@@ -437,7 +437,7 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
       } else {
         auto rois_lod = rois->lod().back();
         int rois_batch_size = rois_lod.size() - 1;
-        // calculate batch id index for each roi according to LoD
+        // calculate batch id indice for each roi according to LoD
         for (int n = 0; n < rois_batch_size; ++n) {
           for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
             rois_batch_id_data[i] = n;

@@ -472,22 +472,22 @@ class ROIPerspectiveTransformOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of ROIPerspectiveTransformOp should not be null.");
+                   "Input(X) of ROIPerspectiveTransformOp shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasInput("ROIs"),
-        "Input(ROIs) of ROIPerspectiveTransformOp should not be null.");
+        "Input(ROIs) of ROIPerspectiveTransformOp shold not be null.");
     PADDLE_ENFORCE(
         ctx->HasOutput("Out"),
-        "Output(Out) of ROIPerspectiveTransformOp should not be null.");
+        "Output(Out) of ROIPerspectiveTransformOp shold not be null.");
     auto input_dims = ctx->GetInputDim("X");
     auto rois_dims = ctx->GetInputDim("ROIs");
     PADDLE_ENFORCE(input_dims.size() == 4,
                    "The format of input tensor is NCHW.");
     PADDLE_ENFORCE(rois_dims.size() == 2,
-                   "ROIs should be a 2-D LoDTensor of shape (num_rois, 8)"
+                   "ROIs shold be a 2-D LoDTensor of shape (num_rois, 8)"
                    "given as [[x0, y0, x1, y1, x2, y2, x3, y3], ...]");
     PADDLE_ENFORCE(rois_dims[1] == 8,
-                   "ROIs should be a 2-D LoDTensor of shape (num_rois, 8)"
+                   "ROIs shold be a 2-D LoDTensor of shape (num_rois, 8)"
                    "given as [[x0, y0, x1, y1, x2, y2, x3, y3], ...].");
     int transformed_height = ctx->Attrs().Get<int>("transformed_height");
     int transformed_width = ctx->Attrs().Get<int>("transformed_width");
@@ -537,9 +537,9 @@ class ROIPerspectiveTransformGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "The gradient of Out should not be null.");
+                   "The gradient of Out shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName("X")),
-                   "The gradient of X should not be null.");
+                   "The gradient of X shold not be null.");
     ctx->SetOutputsDim(framework::GradVarName("X"), ctx->GetInputsDim("X"));
   }
 
@@ -566,7 +566,7 @@ class ROIPerspectiveTransformOpMaker
     AddInput("ROIs",
              "(LoDTensor), "
              "ROIs (Regions of Interest) to be transformed. "
-             "should be a 2-D LoDTensor of shape (num_rois, 8)"
+             "shold be a 2-D LoDTensor of shape (num_rois, 8)"
              "given as [[x1, y1, x2, y2, x3, y3, x4, y4], ...]."
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the top right coordinates, and"

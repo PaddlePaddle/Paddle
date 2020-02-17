@@ -72,7 +72,7 @@ class TestCVMOpWithLodTensor(OpTest):
         }
         self.attrs = {'use_cvm': False}
         out = []
-        for index, emb in enumerate(self.inputs["X"][0]):
+        for indice, emb in enumerate(self.inputs["X"][0]):
             out.append(emb[2:])
         self.outputs = {'Y': (np.array(out), lod)}
 

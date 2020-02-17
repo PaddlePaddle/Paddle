@@ -80,7 +80,7 @@ class SequenceExpandAsKernel : public framework::OpKernel<T> {
                       "LoD information.");
 
     auto &y_lod = y->lod();
-    PADDLE_ENFORCE_EQ(y_lod.size(), 1, "LoD of Y should be 1.");
+    PADDLE_ENFORCE_EQ(y_lod.size(), 1, "LoD of Y shold be 1.");
     PADDLE_ENFORCE_GT(y_lod[0].size(), 1, ".");
 
     out->mutable_data<T>(context.GetPlace());

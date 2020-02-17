@@ -125,7 +125,7 @@ def get_numeric_gradient(place,
         if in_place:
             set_input(scope, op, inputs, place)
 
-        # get one input element throw it's index i.
+        # get one input element throw it's indice i.
         origin = __get_elem__(tensor_to_check, i)
         # add delta to it, run op and then get the sum of the result tensor.
         x_pos = origin + delta
@@ -215,7 +215,7 @@ class OpTest(unittest.TestCase):
                 "This test do not have op_type in class attrs, "
                 "please set self.__class__.op_type=the_real_op_type manually.")
 
-        # case in NO_FP64_CHECK_GRAD_CASES and op in NO_FP64_CHECK_GRAD_OP_LIST should be fixed
+        # case in NO_FP64_CHECK_GRAD_CASES and op in NO_FP64_CHECK_GRAD_OP_LIST shold be fixed
         if not hasattr(cls, "no_need_check_grad") \
             and not is_empty_grad_op(cls.op_type):
             if cls.dtype is None or \
@@ -237,7 +237,7 @@ class OpTest(unittest.TestCase):
             if not get_numeric_gradient.is_large_shape \
                 and cls.op_type not in check_shape_white_list.NEED_TO_FIX_OP_LIST:
                 raise AssertionError(
-                    "Input's shape should be large than or equal to 100 for " +
+                    "Input's shape shold be large than or equal to 100 for " +
                     cls.op_type + " Op.")
 
     def try_call_once(self, data_type):
@@ -381,10 +381,10 @@ class OpTest(unittest.TestCase):
 
     def get_sequence_batch_size_1_input(self, lod=None, shape=None):
         """Get LoD input data whose batch size is 1.
-        All sequence related OP unittests should call this function to contain the case of batch size = 1.
+        All sequence related OP unittests shold call this function to contain the case of batch size = 1.
         Args:
-            lod (list[list of int], optional): Length-based LoD, length of lod[0] should be 1. Default: [[13]].
-            shape (list, optional): Shape of input, shape[0] should be equals to lod[0][0]. Default: [13, 23].
+            lod (list[list of int], optional): Length-based LoD, length of lod[0] shold be 1. Default: [[13]].
+            shape (list, optional): Shape of input, shape[0] shold be equals to lod[0][0]. Default: [13, 23].
         Returns:
             tuple (ndarray, lod) : LoD input data whose batch size is 1.
         """
@@ -412,10 +412,10 @@ class OpTest(unittest.TestCase):
 
     def get_sequence_instance_size_0_input(self, lod=None, shape=None):
         """Get LoD input data whose instance size is 0.
-        All sequence related OP unittests should call this function to contain the case of instance size is 0.
+        All sequence related OP unittests shold call this function to contain the case of instance size is 0.
         Args:
             lod (list[list of int], optional): Length-based LoD, lod[0]'s size must at least eight, lod[0] must at least two zeros at the beginning and at least two zeros at the end, the middle position of lod[0] contains a single zero and multiple zero. Default: [[0, 0, 4, 0, 3, 0, 0, 5, 0, 0]].
-            shape (list, optional): Shape of input, shape[0] should be equals to lod[0][0]. Default: [13, 23].
+            shape (list, optional): Shape of input, shape[0] shold be equals to lod[0][0]. Default: [13, 23].
         Returns:
             tuple (ndarray, lod): LoD input data whose instance size is 0.
         """
@@ -481,7 +481,7 @@ class OpTest(unittest.TestCase):
             if var_proto.duplicable:
                 assert isinstance(
                     np_list[name],
-                    list), "Duplicable {} should be set as list".format(name)
+                    list), "Duplicable {} shold be set as list".format(name)
                 var_list = []
                 slot_name = name
                 for (name, np_value) in np_list[name]:
@@ -628,7 +628,7 @@ class OpTest(unittest.TestCase):
         """
         # compare expect_outs and actual_outs
         for i, name in enumerate(fetch_list):
-            # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure 
+            # Note(zhiqiu): inplace_atol shold be only set when op doesn't ensure 
             # computational consistency.
             # When inplace_atol is not None, the inplace check uses numpy.allclose
             # to check inplace result instead of numpy.array_equal.
@@ -1093,7 +1093,7 @@ class OpTest(unittest.TestCase):
                             "Output (" + out_name + ") has different lod at " +
                             str(place) + " in dygraph mode")
 
-        # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure 
+        # Note(zhiqiu): inplace_atol shold be only set when op doesn't ensure 
         # computational consistency.
         # For example, group_norm uses AtomicAdd on CUDAPlace, which do not ensure
         # computation order when multiple threads write the same address. So the 
@@ -1102,7 +1102,7 @@ class OpTest(unittest.TestCase):
         # to check inplace result instead of numpy.array_equal.
         if inplace_atol is not None:
             warnings.warn(
-                "inplace_atol should only be set when op doesn't ensure computational consistency, please check it!"
+                "inplace_atol shold only be set when op doesn't ensure computational consistency, please check it!"
             )
         # Check inplace for given op, its grad op, its grad_grad op, etc.
         # No effect on original OpTest 
@@ -1115,7 +1115,7 @@ class OpTest(unittest.TestCase):
             return outs, fetch_list
 
     def check_compile_vs_runtime(self, fetch_list, fetch_outs):
-        def find_fetch_index(target_name, fetch_list):
+        def find_fetch_indice(target_name, fetch_list):
             found = [
                 i for i, var_name in enumerate(fetch_list)
                 if var_name == target_name
@@ -1131,7 +1131,7 @@ class OpTest(unittest.TestCase):
         for name in self.op.desc.output_names():
             var_names = self.op.desc.output(name)
             for var_name in var_names:
-                i = find_fetch_index(var_name, fetch_list)
+                i = find_fetch_indice(var_name, fetch_list)
                 if i == -1:
                     # The output is dispensiable or intermediate.
                     break
@@ -1336,8 +1336,8 @@ class OpTest(unittest.TestCase):
         if name in output_vars:
             return output_vars[name]
         else:
-            for output_vars_index in output_vars:
-                for output_vars_selected in output_vars[output_vars_index]:
+            for output_vars_indice in output_vars:
+                for output_vars_selected in output_vars[output_vars_indice]:
                     if output_vars_selected.name == name:
                         return output_vars_selected
 

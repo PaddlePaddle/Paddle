@@ -55,7 +55,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
     Args:
         block (Program): The block in which the operator is.
         op (Operator): The operator to insert cast op.
-        idx (int): The index of current operator.
+        idx (int): The indice of current operator.
         src_dtype (VarType): The input variable dtype of cast op.
         dest_dtype (VarType): The output variable dtype of cast op.
 
@@ -219,7 +219,7 @@ def rewrite_program(main_prog, amp_lists):
                 pass
         else:
             # For numerical safe, we apply fp32 computation on ops that
-            # are not determined which list they should stay.
+            # are not determined which list they shold stay.
             black_op_set.add(op)
 
     idx = 0
@@ -311,10 +311,10 @@ def update_loss_scaling(is_overall_finite, prev_loss_scaling, num_good_steps,
     zero_steps = layers.fill_constant(shape=[1], dtype='int32', value=0)
     with layers.Switch() as switch:
         with switch.case(is_overall_finite):
-            should_incr_loss_scaling = layers.less_than(incr_every_n_steps,
+            shold_incr_loss_scaling = layers.less_than(incr_every_n_steps,
                                                         num_good_steps + 1)
             with layers.Switch() as switch1:
-                with switch1.case(should_incr_loss_scaling):
+                with switch1.case(shold_incr_loss_scaling):
                     new_loss_scaling = prev_loss_scaling * incr_ratio
                     loss_scaling_is_finite = layers.isfinite(new_loss_scaling)
                     with layers.Switch() as switch2:
@@ -330,10 +330,10 @@ def update_loss_scaling(is_overall_finite, prev_loss_scaling, num_good_steps,
                     layers.assign(zero_steps, num_bad_steps)
 
         with switch.default():
-            should_decr_loss_scaling = layers.less_than(decr_every_n_nan_or_inf,
+            shold_decr_loss_scaling = layers.less_than(decr_every_n_nan_or_inf,
                                                         num_bad_steps + 1)
             with layers.Switch() as switch3:
-                with switch3.case(should_decr_loss_scaling):
+                with switch3.case(shold_decr_loss_scaling):
                     new_loss_scaling = prev_loss_scaling * decr_ratio
                     static_loss_scaling = \
                         layers.fill_constant(shape=[1],

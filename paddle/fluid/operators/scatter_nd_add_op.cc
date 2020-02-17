@@ -26,33 +26,33 @@ class ScatterNdAddOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of ScatterNdAddOp should not be null.");
+                      "Input(X) of ScatterNdAddOp shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("Index"), true,
-                      "Input(Index) of ScatterNdAddOp should not be null.");
+                      "Input(Index) of ScatterNdAddOp shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("Updates"), true,
-                      "Input(Updates) of ScatterNdAddOp should not be null.");
+                      "Input(Updates) of ScatterNdAddOp shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of ScatterNdAddOp should not be null.");
+                      "Output(Out) of ScatterNdAddOp shold not be null.");
 
     auto ref_dims = ctx->GetInputDim("X");
     auto ref_dims_size = ref_dims.size();
-    auto index_dims = ctx->GetInputDim("Index");
-    auto index_dims_size = index_dims.size();
+    auto indice_dims = ctx->GetInputDim("Index");
+    auto indice_dims_size = indice_dims.size();
     auto updates_dims = ctx->GetInputDim("Updates");
     auto updates_dims_size = updates_dims.size();
 
     PADDLE_ENFORCE_LE(
-        index_dims[index_dims_size - 1], ref_dims_size,
-        "Input(Index).shape[-1] should be no greater than Input(X).rank");
-    PADDLE_ENFORCE_GE(index_dims_size, 2UL,
-                      "The rank of Input(Index) should be greater than 1");
+        indice_dims[indice_dims_size - 1], ref_dims_size,
+        "Input(Index).shape[-1] shold be no greater than Input(X).rank");
+    PADDLE_ENFORCE_GE(indice_dims_size, 2UL,
+                      "The rank of Input(Index) shold be greater than 1");
 
-    // update.shape = index.shape[:-1] + output.shape[index.shape[-1]:]
+    // update.shape = indice.shape[:-1] + output.shape[indice.shape[-1]:]
     std::vector<int64_t> r_updates_dims;
-    for (int64_t i = 0; i < index_dims_size - 1; ++i) {
-      r_updates_dims.emplace_back(index_dims[i]);
+    for (int64_t i = 0; i < indice_dims_size - 1; ++i) {
+      r_updates_dims.emplace_back(indice_dims[i]);
     }
-    for (int64_t i = index_dims[index_dims_size - 1]; i < ref_dims_size; ++i) {
+    for (int64_t i = indice_dims[indice_dims_size - 1]; i < ref_dims_size; ++i) {
       r_updates_dims.emplace_back(ref_dims[i]);
     }
 
@@ -107,7 +107,7 @@ class ScatterNdAddOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "The source input of scatter_nd_add op");
     AddInput("Index",
-             "The index input of scatter_nd_add op where X will be updated");
+             "The indice input of scatter_nd_add op where X will be updated");
     AddInput("Updates", "The updated value of scatter_nd_add op");
     AddOutput("Out", "The output of scatter_nd_add op");
     AddComment(R"DOC(
@@ -118,7 +118,7 @@ Output is obtained by applying sparse addition to a single value or slice in a V
       Given:
         * Case 1:
             ref = [0, 1, 2, 3, 4, 5]
-            index = [[1], [2], [3], [1]]
+            indice = [[1], [2], [3], [1]]
             updates = [9, 10, 11, 12]
 
           we get:
@@ -127,11 +127,11 @@ Output is obtained by applying sparse addition to a single value or slice in a V
 
         * Case 2:
             ref = [[65, 17], [-14, -25]]
-            index = [[], []]
+            indice = [[], []]
             updates = [[[-1, -2], [1, 2]],
                        [[3, 4], [-3, -4]]]
             ref.shape = (2, 2)
-            index.shape = (2, 0)
+            indice.shape = (2, 0)
             updates.shape = (2, 2, 2)
 
           we get:

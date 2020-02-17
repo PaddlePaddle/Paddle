@@ -25,25 +25,25 @@ class LSTMPOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(Input) of LSTMP operator should not be null.");
+                   "Input(Input) of LSTMP operator shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Weight"),
-                   "Input(Weight) of LSTMP operator should not be null.");
+                   "Input(Weight) of LSTMP operator shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("ProjWeight"),
-                   "Input(ProjWeight) of LSTMP operator should not be null.");
+                   "Input(ProjWeight) of LSTMP operator shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Bias"),
-                   "Input(Bias) of LSTMP operator should not be null.");
+                   "Input(Bias) of LSTMP operator shold not be null.");
 
     PADDLE_ENFORCE(ctx->HasOutput("Projection"),
-                   "Output(Projection) of LSTMP operator should not be null.");
+                   "Output(Projection) of LSTMP operator shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Cell"),
-                   "Output(Cell) of LSTMP operator should not be null.");
+                   "Output(Cell) of LSTMP operator shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("BatchGate"),
-                   "Output(BatchGate) of LSTMP operator should not be null.");
+                   "Output(BatchGate) of LSTMP operator shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("BatchCellPreAct"),
-                   "Output(BatchCellPreAct) of LSTMP operator should not be "
+                   "Output(BatchCellPreAct) of LSTMP operator shold not be "
                    "null.");
     PADDLE_ENFORCE(ctx->HasOutput("BatchHidden"),
-                   "Output(BatchHidden) of LSTMP operator should not be null.");
+                   "Output(BatchHidden) of LSTMP operator shold not be null.");
 
     auto in_dims = ctx->GetInputDim("Input");
 
@@ -54,42 +54,42 @@ class LSTMPOp : public framework::OperatorWithKernel {
     auto w_dims = ctx->GetInputDim("Weight");
     auto proj_dims = ctx->GetInputDim("ProjWeight");
     PADDLE_ENFORCE_EQ(w_dims.size(), 2,
-                      "The rank of Input(Weight) should be 2.");
+                      "The rank of Input(Weight) shold be 2.");
     PADDLE_ENFORCE_EQ(w_dims[0], proj_dims[1],
                       "The first dimension of Input(Weight) "
-                      "should be %d.",
+                      "shold be %d.",
                       proj_dims[1]);
     PADDLE_ENFORCE_EQ(w_dims[1], 4 * frame_size,
                       "The second dimension of Input(Weight) "
-                      "should be 4 * %d.",
+                      "shold be 4 * %d.",
                       frame_size);
 
     PADDLE_ENFORCE_EQ(proj_dims.size(), 2,
-                      "The rank of Input(ProjWeight) should be 2.");
+                      "The rank of Input(ProjWeight) shold be 2.");
     PADDLE_ENFORCE_EQ(proj_dims[0], frame_size,
                       "The first dimension of Input(ProjWeight) "
-                      "should be %d.",
+                      "shold be %d.",
                       frame_size);
 
     if (ctx->HasInput("H0")) {
       PADDLE_ENFORCE(ctx->HasInput("C0"),
-                     "Input(C0) of LSTMP operator should not be null after "
+                     "Input(C0) of LSTMP operator shold not be null after "
                      "Input(H0) provided.");
     }
 
     auto b_dims = ctx->GetInputDim("Bias");
-    PADDLE_ENFORCE_EQ(b_dims.size(), 2, "The rank of Input(Bias) should be 2.");
+    PADDLE_ENFORCE_EQ(b_dims.size(), 2, "The rank of Input(Bias) shold be 2.");
     PADDLE_ENFORCE_EQ(b_dims[0], 1,
-                      "The first dimension of Input(Bias) should be 1.");
+                      "The first dimension of Input(Bias) shold be 1.");
 
     if (ctx->Attrs().Get<bool>("use_peepholes")) {
       PADDLE_ENFORCE_EQ(b_dims[1], 7 * frame_size,
-                        "The second dimension of Input(Bias) should be "
+                        "The second dimension of Input(Bias) shold be "
                         "7 * %d if enable peepholes connection",
                         frame_size);
     } else {
       PADDLE_ENFORCE_EQ(b_dims[1], 4 * frame_size,
-                        "The second dimension of Input(Bias) should be "
+                        "The second dimension of Input(Bias) shold be "
                         "4 * %d if disable peepholes connection",
                         frame_size);
     }
@@ -130,7 +130,7 @@ class LSTMPOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("C0",
              "(Tensor, optional) the initial cell state is an optional "
              "input. This is a tensor with shape (N x D), where N is the "
-             "batch size. `C0` should not be null if `H0` provided.")
+             "batch size. `C0` shold not be null if `H0` provided.")
         .AsDispensable();
     AddInput("Weight",
              "(Tensor) the learnable hidden-hidden weights."
@@ -317,20 +317,20 @@ class LSTMPGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Projection"),
-                   "Input(Projection) of LSTMP operator should not be null.");
+                   "Input(Projection) of LSTMP operator shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Cell"),
-                   "Input(Cell) of LSTMP operator should not be null.");
+                   "Input(Cell) of LSTMP operator shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Weight"),
-                   "Input(Weight) of LSTMP operator should not be null.");
+                   "Input(Weight) of LSTMP operator shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("ProjWeight"),
-                   "Input(ProjWeight) of LSTMP operator should not be null.");
+                   "Input(ProjWeight) of LSTMP operator shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Bias"),
-                   "Input(Bias) of LSTMP operator should not be null.");
+                   "Input(Bias) of LSTMP operator shold not be null.");
 
     PADDLE_ENFORCE(ctx->HasInput("BatchGate"),
-                   "Input(BatchGate) of LSTMP operator should not be null.");
+                   "Input(BatchGate) of LSTMP operator shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("BatchCellPreAct"),
-                   "Input(BatchGate) of LSTMP operator should not be null.");
+                   "Input(BatchGate) of LSTMP operator shold not be null.");
 
     auto SetOutGradDim = [&ctx](const std::string& name) {
       auto g_name = framework::GradVarName(name);

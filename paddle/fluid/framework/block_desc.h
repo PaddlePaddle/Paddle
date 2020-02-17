@@ -85,7 +85,7 @@ class BlockDesc {
 
   void PrependAllocatedOp(std::unique_ptr<OpDesc> &&op_desc);
 
-  OpDesc *InsertOp(size_t index);
+  OpDesc *InsertOp(size_t indice);
 
   /*
    * Only remove op itself,

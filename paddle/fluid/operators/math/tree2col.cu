@@ -22,7 +22,7 @@ namespace math {
 using Tensor = framework::Tensor;
 using Node = paddle::operators::math::TreeNode;
 template <typename T>
-__global__ void tree2col(const T* eta, const int* node, const int* index,
+__global__ void tree2col(const T* eta, const int* node, const int* indice,
                          const T* vectors, T* result, int feature_size, int n) {
   const int thread_id =
       (blockIdx.x * gridDim.y + blockIdx.y) * blockDim.x + threadIdx.x;
@@ -30,7 +30,7 @@ __global__ void tree2col(const T* eta, const int* node, const int* index,
   const int j = thread_id % feature_size;
   if (patch_id < n) {
     const int begin_o = patch_id * 3 * feature_size;
-    const int begin = index[patch_id * 2], end = index[patch_id * 2 + 1];
+    const int begin = indice[patch_id * 2], end = indice[patch_id * 2 + 1];
     T res_l = 0, res_r = 0, res_t = 0;
     for (int i = begin; i < end; i++) {
       const int id = node[i];
@@ -76,17 +76,17 @@ class Tree2ColFunctor<platform::CUDADeviceContext, T> {
     }
 
     size_t patch_size = processing_list.size();
-    Tensor node_cpu, node_gpu, eta_cpu, eta_gpu, index_cpu, index_gpu;
+    Tensor node_cpu, node_gpu, eta_cpu, eta_gpu, indice_cpu, indice_gpu;
     int* node = node_cpu.mutable_data<int>({static_cast<int64_t>(total_size)},
                                            cpu_place);
     T* eta = eta_cpu.mutable_data<T>({static_cast<int64_t>(total_size * 3)},
                                      cpu_place);
-    int* index = index_cpu.mutable_data<int>(
+    int* indice = indice_cpu.mutable_data<int>(
         {static_cast<int64_t>(patch_size * 2)}, cpu_place);
 
-    int idx = 0, index_idx = 0;
+    int idx = 0, indice_idx = 0;
     for (auto& tmp : processing_list) {
-      index[index_idx++] = idx;
+      indice[indice_idx++] = idx;
       for (auto& v : tmp) {
         node[idx] = static_cast<int>(v.node - 1);
         eta[idx * 3] = v.eta_l<T>(max_depth);
@@ -94,11 +94,11 @@ class Tree2ColFunctor<platform::CUDADeviceContext, T> {
         eta[idx * 3 + 2] = v.eta_t<T>(max_depth);
         idx++;
       }
-      index[index_idx++] = idx;
+      indice[indice_idx++] = idx;
     }
     framework::TensorCopy(node_cpu, gpu_place, context, &node_gpu);
     framework::TensorCopy(eta_cpu, gpu_place, context, &eta_gpu);
-    framework::TensorCopy(index_cpu, gpu_place, context, &index_gpu);
+    framework::TensorCopy(indice_cpu, gpu_place, context, &indice_gpu);
 
     int elem_size = patch_size * feature_size;
     int blocks = (elem_size + 1024 - 1) / 1024;
@@ -112,7 +112,7 @@ class Tree2ColFunctor<platform::CUDADeviceContext, T> {
         gpu_place);
     constant(context, patch, 0);
     tree2col<T><<<grid, threads, 0, stream>>>(
-        eta_gpu.data<T>(), node_gpu.data<int>(), index_gpu.data<int>(),
+        eta_gpu.data<T>(), node_gpu.data<int>(), indice_gpu.data<int>(),
         node_features.data<T>(), patch->data<T>(), feature_size, patch_size);
   }
 };
@@ -156,17 +156,17 @@ class Col2TreeFunctor<platform::CUDADeviceContext, T> {
       total_size += tmp.size();
     }
 
-    Tensor node_cpu, node_gpu, eta_cpu, eta_gpu, index_cpu, index_gpu;
+    Tensor node_cpu, node_gpu, eta_cpu, eta_gpu, indice_cpu, indice_gpu;
     int* node = node_cpu.mutable_data<int>({static_cast<int64_t>(total_size)},
                                            cpu_place);
     T* eta = eta_cpu.mutable_data<T>({static_cast<int64_t>(total_size * 3)},
                                      cpu_place);
-    int* index = index_cpu.mutable_data<int>(
+    int* indice = indice_cpu.mutable_data<int>(
         {static_cast<int64_t>(grad_size * 2)}, cpu_place);
 
-    size_t idx = 0, index_idx = 0;
+    size_t idx = 0, indice_idx = 0;
     for (auto& tmp : grad_list) {
-      index[index_idx++] = idx;
+      indice[indice_idx++] = idx;
       for (auto& v : tmp) {
         node[idx] = static_cast<int>(v.node - 1);
         eta[idx * 3] = v.eta_l<T>(max_depth);
@@ -174,11 +174,11 @@ class Col2TreeFunctor<platform::CUDADeviceContext, T> {
         eta[idx * 3 + 2] = v.eta_t<T>(max_depth);
         idx++;
       }
-      index[index_idx++] = idx;
+      indice[indice_idx++] = idx;
     }
     framework::TensorCopy(node_cpu, gpu_place, &node_gpu);
     framework::TensorCopy(eta_cpu, gpu_place, &eta_gpu);
-    framework::TensorCopy(index_cpu, gpu_place, &index_gpu);
+    framework::TensorCopy(indice_cpu, gpu_place, &indice_gpu);
 
     int elem_size = output_size * grad_size;
     int blocks = (elem_size + 1024 - 1) / 1024;
@@ -193,7 +193,7 @@ class Col2TreeFunctor<platform::CUDADeviceContext, T> {
 
     constant(context, embedding_grad, 0);
     tree2col<T><<<grid, threads, 0, stream>>>(
-        eta_gpu.data<T>(), node_gpu.data<int>(), index_gpu.data<int>(),
+        eta_gpu.data<T>(), node_gpu.data<int>(), indice_gpu.data<int>(),
         patch_grad.data<T>(), embedding_grad->data<T>(), output_size,
         grad_size);
   }

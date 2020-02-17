@@ -81,7 +81,7 @@ class SubGraph {
   }
 
   std::vector<Node*> GetInputVarNodes() {
-    // The order of input nodes should be consistent anywhere.
+    // The order of input nodes shold be consistent anywhere.
     std::vector<Node*> input_vars;
     for (auto* n : SortedNodes()) {
       if (n && n->IsVar() && n->Var()) {
@@ -106,7 +106,7 @@ class SubGraph {
   }
 
   std::vector<Node*> GetOutputVarNodes() {
-    // The order of output nodes should be consistant anywhere..
+    // The order of output nodes shold be consistant anywhere..
     std::vector<Node*> output_vars_all;
     for (auto* n : SortedNodes()) {
       if (n && n->IsVar() && n->Var()) {

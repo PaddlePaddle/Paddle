@@ -57,22 +57,22 @@ class SequencePoolKernel : public framework::OpKernel<T> {
     dims[0] = lod[lod_level - 1].size() - 1;
     out->Resize({dims});
     out->mutable_data<T>(context.GetPlace());
-    Tensor* index = nullptr;
+    Tensor* indice = nullptr;
 
     const bool is_test = context.Attr<bool>("is_test");
 
-    // Do not create index buffer for inference (is_test) mode
-    // TODO(jczaja): Skip index buffer creation for other devices eg. GPU
+    // Do not create indice buffer for inference (is_test) mode
+    // TODO(jczaja): Skip indice buffer creation for other devices eg. GPU
     if (pooltype == "MAX" &&
         (is_test == false ||
          platform::is_cpu_place(context.GetPlace()) == false)) {
-      index = context.Output<Tensor>("MaxIndex");
-      index->Resize({dims});
-      index->mutable_data<int>(context.GetPlace());
+      indice = context.Output<Tensor>("MaxIndex");
+      indice->Resize({dims});
+      indice->mutable_data<int>(context.GetPlace());
     }
     math::SequencePoolFunctor<DeviceContext, T> pool;
     pool(context.template device_context<DeviceContext>(), pooltype, pad_value,
-         *in, out, is_test, index);
+         *in, out, is_test, indice);
   }
 };
 
@@ -83,14 +83,14 @@ class SequencePoolGradKernel : public framework::OpKernel<T> {
     auto* out_g = context.Input<LoDTensor>(framework::GradVarName("Out"));
     auto* in_g = context.Output<LoDTensor>(framework::GradVarName("X"));
     std::string pooltype = context.Attr<std::string>("pooltype");
-    const Tensor* index = nullptr;
+    const Tensor* indice = nullptr;
     if (pooltype == "MAX") {
-      index = context.Input<Tensor>("MaxIndex");
+      indice = context.Input<Tensor>("MaxIndex");
     }
     in_g->mutable_data<T>(context.GetPlace());
     math::SequencePoolGradFunctor<DeviceContext, T> pool;
     pool(context.template device_context<DeviceContext>(), pooltype, *out_g,
-         in_g, index);
+         in_g, indice);
   }
 };
 

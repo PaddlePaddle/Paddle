@@ -27,18 +27,18 @@ class SequenceExpandOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SequenceExpandOp should not be null.");
+                   "Input(X) of SequenceExpandOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Y"),
-                   "Input(Y) of SequenceExpandOp should not be null.");
+                   "Input(Y) of SequenceExpandOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SequenceExpandOp should not be null.");
+                   "Output(Out) of SequenceExpandOp shold not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
     auto out_dims = x_dims;
     int ref_level = ctx->Attrs().Get<int>("ref_level");
 
     PADDLE_ENFORCE_GE(x_dims.size(), 2,
-                      "Dimension number of Input(X) should be at least 2.");
+                      "Dimension number of Input(X) shold be at least 2.");
 
     if (ctx->IsRuntime()) {
       framework::Variable* x_var =
@@ -50,15 +50,15 @@ class SequenceExpandOp : public framework::OperatorWithKernel {
       auto& y_lod = y_var->Get<LoDTensor>().lod();
 
       PADDLE_ENFORCE_LE(x_lod.size(), 1UL,
-                        "Level number of Input(X)'s lod should not be "
+                        "Level number of Input(X)'s lod shold not be "
                         "greater than 1.");
       PADDLE_ENFORCE_GT(y_lod.size(), 0UL,
-                        "Level number of Input(Y)'s lod should be "
+                        "Level number of Input(Y)'s lod shold be "
                         "greater than 0.");
       PADDLE_ENFORCE(
           ref_level == -1 ||
               (ref_level >= 0 && ref_level < static_cast<int>(y_lod.size())),
-          "Invlid `ref_level`, which should be either equal to -1 "
+          "Invlid `ref_level`, which shold be either equal to -1 "
           "or in [0, %d)",
           y_lod.size());
 
@@ -67,13 +67,13 @@ class SequenceExpandOp : public framework::OperatorWithKernel {
       if (x_lod.size() > 0) {
         PADDLE_ENFORCE(x_lod[0].size() == y_lod[ref_level].size(),
                        "Level number of Input(X)'s lod could be 0. Otherwise "
-                       "size of Input(X)'s first level lod should be equal to "
+                       "size of Input(X)'s first level lod shold be equal to "
                        "size of Input(Y)'s referred level lod.");
       } else {
         PADDLE_ENFORCE_EQ(x_dims[0],
                           static_cast<int64_t>(y_lod[ref_level].size()) - 1,
                           "When Input(X)'s lod is null, the dims[0] of "
-                          "Input(X) should match the "
+                          "Input(X) shold match the "
                           "size of Input(Y)'s referred level lod.");
       }
 
@@ -122,10 +122,10 @@ class SequenceExpandOpMaker : public framework::OpProtoAndCheckerMaker {
 Sequence Expand Operator.
 
 This operator expands `X` according to specified level lod of `Y`. Current
-implementation constaints that lod level of `X` should be at most 1. Attribute
+implementation constaints that lod level of `X` shold be at most 1. Attribute
 `ref_level` is used to specify which level lod of `Y` is referred to expand `X`.
 If set `ref_level` to -1, then last level lod of `Y` would be referred.
-Please note, rank of `X` should be at least 2, when the rank exceeds 2, `X`
+Please note, rank of `X` shold be at least 2, when the rank exceeds 2, `X`
 would be viewed as a 2-D tensor.
 
 Following are cases to better explain how this works:
@@ -194,9 +194,9 @@ class SequenceExpandOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null.");
+                   "Input(Out@GRAD) shold not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");

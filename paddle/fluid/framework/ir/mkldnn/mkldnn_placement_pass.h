@@ -23,7 +23,7 @@ namespace framework {
 namespace ir {
 
 /*
- * Specifies which operators should use MKLDNN.
+ * Specifies which operators shold use MKLDNN.
  */
 class MKLDNNPlacementPass : public PlacementPassBase {
  private:

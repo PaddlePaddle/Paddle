@@ -23,25 +23,25 @@ class LinspaceOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Start"),
-                   "Input(Start) of LinspaceOp should not be null.");
+                   "Input(Start) of LinspaceOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Stop"),
-                   "Input(Stop) of LinspaceOp should not be null.");
+                   "Input(Stop) of LinspaceOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Num"),
-                   "Input(Num) of LinspaceOp should not be null.");
+                   "Input(Num) of LinspaceOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(OUt) of LinspaceOp should not be null.");
+                   "Output(OUt) of LinspaceOp shold not be null.");
 
     auto s_dims = ctx->GetInputDim("Start");
     PADDLE_ENFORCE((s_dims.size() == 1) && (s_dims[0] == 1),
-                   "The shape of Input(Start) should be [1].");
+                   "The shape of Input(Start) shold be [1].");
 
     auto e_dims = ctx->GetInputDim("Stop");
     PADDLE_ENFORCE((e_dims.size() == 1) && (e_dims[0] == 1),
-                   "The shape of Input(Stop) should be [1].");
+                   "The shape of Input(Stop) shold be [1].");
 
     auto step_dims = ctx->GetInputDim("Num");
     PADDLE_ENFORCE((step_dims.size() == 1) && (step_dims[0] == 1),
-                   "The shape of Input(Num) should be [1].");
+                   "The shape of Input(Num) shold be [1].");
 
     ctx->SetOutputDim("Out", {-1});
   }
@@ -61,14 +61,14 @@ class LinspaceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Start",
-             "First entry in the sequence. It is a tensor of shape [1], should "
+             "First entry in the sequence. It is a tensor of shape [1], shold "
              "be of type float32 or float64.");
     AddInput("Stop",
-             "Last entry in the sequence. It is a tensor of shape [1], should "
+             "Last entry in the sequence. It is a tensor of shape [1], shold "
              "be of type float32 or float64.");
     AddInput("Num",
              "Number of entry in the sequence. It is a tensor of shape [1], "
-             "should be of type int32.");
+             "shold be of type int32.");
     AddOutput("Out", "A sequence of numbers.");
     AddComment(R"DOC(
     Return fixed number of evenly spaced values within a given interval. First entry is start, and last entry is stop. In the case when Num is 1, only Start is returned. Like linspace function of numpy.

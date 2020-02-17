@@ -159,7 +159,7 @@ def tokenize(pattern):
     with tarfile.open(
             paddle.dataset.common.download(DATA_URL, 'text_classification',
                                            DATA_MD5)) as tarf:
-        # Note that we should use tarfile.next(), which does
+        # Note that we shold use tarfile.next(), which does
         # sequential access of member files, other than
         # tarfile.extractfile, which does random access and might
         # destroy hard disks.

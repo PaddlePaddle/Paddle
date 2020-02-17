@@ -26,9 +26,9 @@ __global__ void KernelMaxOut(const int nthreads, const T* input_data,
                              const int axis, T* output_data) {
   const int size = input_height * input_width * channels / groups;
   const int feat_len = input_height * input_width;
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int indice = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
-  for (int i = index; i < nthreads; i += offset) {
+  for (int i = indice; i < nthreads; i += offset) {
     int batch_idx = i / size;
     int batch_offset = i % size;
     int channel_idx, feat_idx, data_idx;
@@ -60,9 +60,9 @@ __global__ void KernelMaxoutGrad(const int nthreads, const T* input_data,
                                  const int groups, const int axis) {
   const int size = input_height * input_width * channels / groups;
   const int feat_len = input_height * input_width;
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int indice = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
-  for (int i = index; i < nthreads; i += offset) {
+  for (int i = indice; i < nthreads; i += offset) {
     int batch_idx = i / size;
     int batch_offset = i % size;
     int channel_idx, feat_idx, data_idx;
@@ -77,18 +77,18 @@ __global__ void KernelMaxoutGrad(const int nthreads, const T* input_data,
       data_idx =
           (batch_idx * size + feat_idx * channels + channel_idx) * groups;
     }
-    int max_index = -1;
+    int max_indice = -1;
     bool continue_match = true;
     for (int g = 0; g < groups && continue_match; ++g) {
       int idx_offset = (axis == 1 ? g * feat_len : g);
       if (input_data[data_idx + idx_offset] == output_data[i]) {
-        max_index = data_idx + idx_offset;
+        max_indice = data_idx + idx_offset;
         continue_match = false;
         break;
       }
     }
-    if (max_index != -1) {
-      input_grad[max_index] += output_grad[index];
+    if (max_indice != -1) {
+      input_grad[max_indice] += output_grad[indice];
     }
   }
 }

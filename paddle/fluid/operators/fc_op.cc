@@ -24,11 +24,11 @@ class FCOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
-                      "X(Input) of Fully Connected should not be null.");
+                      "X(Input) of Fully Connected shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Out(Output) of Fully Connected should not be null.");
+                      "Out(Output) of Fully Connected shold not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true,
-                      "W(Input) of Fully Connected should not be null.");
+                      "W(Input) of Fully Connected shold not be null.");
 
     auto in_dims = ctx->GetInputDim("Input");
     auto w_dims = ctx->GetInputDim("W");
@@ -41,14 +41,14 @@ class FCOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_EQ(bias_dims[0], 1,
                           platform::errors::InvalidArgument(
                               "The shape of Bias is invalid."
-                              "The height of Bias should be 1."
+                              "The height of Bias shold be 1."
                               "But received height of Bias is %d.",
                               bias_dims[0]));
         PADDLE_ENFORCE_EQ(
             bias_dims[1], w_dims1,
             platform::errors::InvalidArgument(
                 "The shape of Bias is invalid."
-                "The width of Bias should be equal to width of Weight."
+                "The width of Bias shold be equal to width of Weight."
                 "But received width of Bias is %d and width of Weight is %d.",
                 bias_dims[1], w_dims1));
       } else if (bias_dims.size() == 1) {
@@ -56,7 +56,7 @@ class FCOp : public framework::OperatorWithKernel {
             bias_dims[0], w_dims1,
             platform::errors::InvalidArgument(
                 "The shape of Bias is invalid."
-                "The height of Bias should be equal to the width of weight."
+                "The height of Bias shold be equal to the width of weight."
                 "But received height of Bias is %d and width of Weight is %d.",
                 bias_dims[0], w_dims1));
       }
@@ -72,14 +72,14 @@ class FCOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           in_dims.size() >= 2 && in_dims.size() <= 4, true,
           platform::errors::Unimplemented(
-              "Fully Connected input should be 2D, 3D or 4D tensor."));
+              "Fully Connected input shold be 2D, 3D or 4D tensor."));
     }
     PADDLE_ENFORCE_EQ(w_dims.size(), 2,
-                      "Fully Connected weights should be 2-D tensor.");
+                      "Fully Connected weights shold be 2-D tensor.");
     int in_num_col_dims = ctx->Attrs().Get<int>("in_num_col_dims");
     PADDLE_ENFORCE_GT(
         in_dims.size(), in_num_col_dims,
-        "The input tensor Input's rank of FCOp should be larger than "
+        "The input tensor Input's rank of FCOp shold be larger than "
         "in_num_col_dims.");
 
     std::vector<int64_t> output_dims;
@@ -145,7 +145,7 @@ class FCOpMaker : public framework::OpProtoAndCheckerMaker {
     /* int8 parameters */
     AddAttr<bool>("use_quantizer",
                   "(bool, default false) "
-                  "Set to true for operators that should be quantized and use "
+                  "Set to true for operators that shold be quantized and use "
                   "int8 kernel. "
                   "Only used on CPU.")
         .SetDefault(false);

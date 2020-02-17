@@ -34,7 +34,7 @@ class TestFusionSeqPoolConcatOp(OpTest):
         outs = []
         i = 0
         for lod in self.lods:
-            assert bs == len(lod[0]), 'All lod size should be equal'
+            assert bs == len(lod[0]), 'All lod size shold be equal'
             x = np.random.uniform(0.1, 1,
                                   [sum(lod[0]), self.w]).astype('float32')
             offset = convert_to_offset(lod)

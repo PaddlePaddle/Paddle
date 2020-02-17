@@ -23,10 +23,10 @@ namespace operators {
 template <typename T>
 void GetSize(T start, T end, T step, int64_t* size) {
   PADDLE_ENFORCE(!std::equal_to<T>()(step, 0),
-                 "The step of range op should not be 0.");
+                 "The step of range op shold not be 0.");
   PADDLE_ENFORCE(((start < end) && (step > 0)) || ((start > end) && (step < 0)),
-                 "The step should be greater than 0 while start < end. And the "
-                 "step should be less than 0 while start > end.");
+                 "The step shold be greater than 0 while start < end. And the "
+                 "step shold be less than 0 while start > end.");
   *size = std::is_integral<T>::value
               ? ((std::abs(end - start) + std::abs(step) - 1) / std::abs(step))
               : std::ceil(std::abs((end - start) / step));

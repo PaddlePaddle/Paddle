@@ -74,8 +74,8 @@ def data(name,
        name(str): The name/alias of the variable, see :ref:`api_guide_Name`
             for more details.
        shape(list): Tuple declaring the shape. If :code:`append_batch_size` is 
-            True and there is no -1 inside :code:`shape`, it should be 
-            considered as the shape of the each sample. Otherwise, it should
+            True and there is no -1 inside :code:`shape`, it shold be 
+            considered as the shape of the each sample. Otherwise, it shold
             be considered as the shape of the batched data.  
        append_batch_size(bool):
           1. If true, it prepends -1 to the shape.
@@ -91,7 +91,7 @@ def data(name,
             VarType.SELECTED_ROWS, VarType.NCCL_ID. Default: VarType.LOD_TENSOR. 
        lod_level(int): The LoD Level. 0 means the input data is not a sequence.
             Default: 0.
-       stop_gradient(bool): A boolean that mentions whether gradient should flow.
+       stop_gradient(bool): A boolean that mentions whether gradient shold flow.
             Default: True. 
 
     Returns:
@@ -190,7 +190,7 @@ class ListenAndServ(object):
         self.outputs = []
         self.endpoint = endpoint
         self.fan_in = fan_in
-        # FIXME(typhoonzero): add optimizer_mode is stupid, should make it more
+        # FIXME(typhoonzero): add optimizer_mode is stupid, shold make it more
         # general.
         self.optimizer_mode = optimizer_mode
 
@@ -390,7 +390,7 @@ def _py_reader(capacity,
 
     if feed_list is not None:
         if not isinstance(feed_list, list):
-            raise TypeError("feed_list should be a list of Variable"
+            raise TypeError("feed_list shold be a list of Variable"
                             " instead of " + str(type(feed_list)))
         lod_levels = []
         dtypes = []
@@ -563,8 +563,8 @@ def py_reader(capacity,
     generator would be read automatically. Unlike :code:`DataFeeder.feed()`,
     the data reading process and :code:`Executor::Run()` process can run in 
     parallel using :code:`py_reader`. The :code:`start()` method of the Reader
-    should be called when each pass begins, while the :code:`reset()` method 
-    should be called when the pass ends and :code:`fluid.core.EOFException` raises.
+    shold be called when each pass begins, while the :code:`reset()` method 
+    shold be called when the pass ends and :code:`fluid.core.EOFException` raises.
 
     Note:
        :code:`Program.clone()` method cannot clone :code:`py_reader`. You can 
@@ -633,7 +633,7 @@ def py_reader(capacity,
                                        executor=fluid.Executor(fluid.CUDAPlace(0)))
 
        2. When training and testing are both performed, two different
-       :code:`py_reader` should be created with different names, e.g.:
+       :code:`py_reader` shold be created with different names, e.g.:
 
        .. code-block:: python
     

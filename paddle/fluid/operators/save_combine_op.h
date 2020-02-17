@@ -53,7 +53,7 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
     auto inp_var_names = ctx.InputNames("X");
     auto &inp_vars = ctx.MultiInputVar("X");
     PADDLE_ENFORCE_GT(static_cast<int>(inp_var_names.size()), 0,
-                      "The number of input variables should be greater than 0");
+                      "The number of input variables shold be greater than 0");
 
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();

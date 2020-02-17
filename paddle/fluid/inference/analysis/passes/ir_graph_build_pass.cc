@@ -33,7 +33,7 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
   }
   PADDLE_ENFORCE(argument->use_gpu_valid());
 
-  // The load program should run on the same device with the inference program,
+  // The load program shold run on the same device with the inference program,
   // so that the parameters will on the same device, or they will keep copying
   // between difference devices.
   platform::Place place;
@@ -52,7 +52,7 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
     argument->SetMainProgram(program.release());
   } else {
     PADDLE_THROW(
-        "either model_dir or (program path and parameter path) should be set.");
+        "either model_dir or (program path and parameter path) shold be set.");
   }
 
   auto graph = std::unique_ptr<Graph>(new Graph(argument->main_program()));

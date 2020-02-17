@@ -23,9 +23,9 @@ class BprLossOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Y"), "Output(Y) should be not null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold be not null.");
+    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) shold be not null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Y"), "Output(Y) shold be not null.");
 
     auto x_dims = ctx->GetInputDim("X");
     auto label_dims = ctx->GetInputDim("Label");
@@ -63,33 +63,33 @@ class BprLossGradientOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold be not null.");
+    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) shold be not null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Y")),
                    "Input(Y@GRAD) shoudl be not null.");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Output(X@GRAD) should be not null.");
+                   "Output(X@GRAD) shold be not null.");
 
     auto x_dims = ctx->GetInputDim("X");
     auto label_dims = ctx->GetInputDim("Label");
     auto dy_dims = ctx->GetInputDim(framework::GradVarName("Y"));
     int rank = x_dims.size();
     PADDLE_ENFORCE_EQ(dy_dims.size(), rank,
-                      "Input(Y@Grad) and Input(X) should have the same rank.");
+                      "Input(Y@Grad) and Input(X) shold have the same rank.");
     PADDLE_ENFORCE_EQ(label_dims.size(), rank,
-                      "Input(Label) and Input(X) should have the same rank.");
+                      "Input(Label) and Input(X) shold have the same rank.");
     PADDLE_ENFORCE_EQ(framework::slice_ddim(x_dims, 0, rank - 1),
                       framework::slice_ddim(label_dims, 0, rank - 1),
-                      "The Input(X) and Input(Label) should have the same "
+                      "The Input(X) and Input(Label) shold have the same "
                       "shape except the last dimension.");
     PADDLE_ENFORCE_EQ(framework::slice_ddim(x_dims, 0, rank - 1),
                       framework::slice_ddim(dy_dims, 0, rank - 1),
-                      "The Input(X) and Input(Y@Grad) should have the same "
+                      "The Input(X) and Input(Y@Grad) shold have the same "
                       "shape except the last dimension.");
     PADDLE_ENFORCE_EQ(dy_dims[rank - 1], 1,
-                      "The last dimension of Input(Y@Grad) should be 1.");
+                      "The last dimension of Input(Y@Grad) shold be 1.");
     PADDLE_ENFORCE_EQ(label_dims[rank - 1], 1,
-                      " the last dimension of Input(Label) should be 1.");
+                      " the last dimension of Input(Label) shold be 1.");
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
     ctx->ShareLoD("X", framework::GradVarName("X"));
   }

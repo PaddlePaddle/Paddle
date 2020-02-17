@@ -262,10 +262,10 @@ class GRUCell(RNNCell):
         Parameters:
             inputs(Variable): A tensor with shape `[batch_size, input_size]`,
                 corresponding to :math:`x_t` in the formula. The data type
-                should be float32.
+                shold be float32.
             states(Variable): A tensor with shape `[batch_size, hidden_size]`.
                 corresponding to :math:`h_{t-1}` in the formula. The data type
-                should be float32.
+                shold be float32.
 
         Returns:
             tuple: A tuple( :code:`(outputs, new_states)` ), where `outputs` and \
@@ -355,10 +355,10 @@ class LSTMCell(RNNCell):
         Parameters:
             inputs(Variable): A tensor with shape `[batch_size, input_size]`,
                 corresponding to :math:`x_t` in the formula. The data type
-                should be float32.
+                shold be float32.
             states(Variable): A list of containing two tensors, each shaped
                 `[batch_size, hidden_size]`, corresponding to :math:`h_{t-1}, c_{t-1}`
-                in the formula. The data type should be float32.
+                in the formula. The data type shold be float32.
 
         Returns:
             tuple: A tuple( :code:`(outputs, new_states)` ), where `outputs` is \
@@ -397,7 +397,7 @@ def rnn(cell,
     Parameters:
         cell(RNNCell): An instance of `RNNCell`.
         inputs(Variable): A (possibly nested structure of) tensor variable[s]. 
-            The shape of tensor should be `[batch_size, sequence_length, ...]`
+            The shape of tensor shold be `[batch_size, sequence_length, ...]`
             for `time_major == False` or `[sequence_length, batch_size, ...]`
             for `time_major == True`. It represents the inputs to be unrolled
             in RNN.
@@ -661,7 +661,7 @@ class BeamSearchDecoder(Decoder):
             embedding_fn(optional): A callable to apply to selected candidate ids. 
                 Mostly it is an embedding layer to transform ids to embeddings,
                 and the returned value acts as the `input` argument for `cell.call`.
-                **Note that fluid.embedding should be used here rather than
+                **Note that fluid.embedding shold be used here rather than
                 fluid.layers.embedding, since shape of ids is [batch_size, beam_size].
                 when using fluid.layers.embedding, must unsqueeze in embedding_fn.**
                 If not provided, the id to embedding transformation must be built into
@@ -688,7 +688,7 @@ class BeamSearchDecoder(Decoder):
 
         Parameters:
             x(Variable): A tensor with shape `[batch_size, ...]`. The data type
-                should be float32, float64, int32, int64 or bool.
+                shold be float32, float64, int32, int64 or bool.
             beam_size(int): The beam width used in beam search.
 
         Returns:
@@ -717,7 +717,7 @@ class BeamSearchDecoder(Decoder):
 
         Parameters:
             x(Variable): A tensor with shape `[batch_size * beam_size, ...]`. The
-                data type should be float32, float64, int32, int64 or bool.
+                data type shold be float32, float64, int32, int64 or bool.
 
         Returns:
             Variable: A tensor with shape `[batch_size, beam_size, ...]`, whose \
@@ -733,7 +733,7 @@ class BeamSearchDecoder(Decoder):
 
         Parameters:
             x(Variable): A tensor with shape `[batch_size, beam_size, ...]`. The
-                data type should be float32, float64, int32, int64 or bool.
+                data type shold be float32, float64, int32, int64 or bool.
 
         Returns:
             Variable: A tensor with shape `[batch_size * beam_size, ...]`, whose \
@@ -752,10 +752,10 @@ class BeamSearchDecoder(Decoder):
 
         Parameters:
             probs(Variable): A tensor with shape `[batch_size, ...]`, representing
-                the log probabilities. Its data type should be float32.
+                the log probabilities. Its data type shold be float32.
             finished(Variable): A tensor with shape `[batch_size, beam_size]`,
                 representing the finished status for all beams. Its data type
-                should be bool.
+                shold be bool.
 
         Returns:
             Variable: A tensor with shape `[batch_size, beam_size, ...]`, whose \
@@ -774,10 +774,10 @@ class BeamSearchDecoder(Decoder):
 
         Parameters:
             probs(Variable): A tensor with shape `[batch_size, beam_size, vocab_size]`,
-                representing the log probabilities. Its data type should be float32.
+                representing the log probabilities. Its data type shold be float32.
             finished(Variable): A tensor with shape `[batch_size, beam_size]`,
                 representing the finished status for all beams. Its data type
-                should be bool.
+                shold be bool.
 
         Returns:
             Variable: A tensor with the same shape and data type as `x`, \
@@ -793,15 +793,15 @@ class BeamSearchDecoder(Decoder):
                 probs, (finished - 1), axis=0)
         return probs
 
-    def _gather(self, x, indexs, batch_size):
+    def _gather(self, x, indices, batch_size):
         """
-        Gather from the tensor `x` using `indexs`.
+        Gather from the tensor `x` using `indices`.
 
         Parameters:
             x(Variable): A tensor with shape `[batch_size, beam_size, ...]`.
-            indexs(Variable): A `int64` tensor with shape `[batch_size, beam_size]`,
-                representing the indexs that we use to gather.
-            batch_size(Variable): A tensor with shape `[1]`. Its data type should
+            indices(Variable): A `int64` tensor with shape `[batch_size, beam_size]`,
+                representing the indices that we use to gather.
+            batch_size(Variable): A tensor with shape `[1]`. Its data type shold
                 be int32 or int64.
 
         Returns:
@@ -811,14 +811,14 @@ class BeamSearchDecoder(Decoder):
         # TODO: compatibility of int32 and int64
         batch_size = tensor.cast(
             batch_size,
-            indexs.dtype) if batch_size.dtype != indexs.dtype else batch_size
+            indices.dtype) if batch_size.dtype != indices.dtype else batch_size
         batch_size.stop_gradient = True  # TODO: remove this
         batch_pos = nn.expand(
             nn.unsqueeze(
                 tensor.range(
-                    0, batch_size, 1, dtype=indexs.dtype), [1]),
+                    0, batch_size, 1, dtype=indices.dtype), [1]),
             [1, self.beam_size])
-        topk_coordinates = nn.stack([batch_pos, indexs], axis=2)
+        topk_coordinates = nn.stack([batch_pos, indices], axis=2)
         topk_coordinates.stop_gradient = True
         return nn.gather_nd(x, topk_coordinates)
 
@@ -940,28 +940,28 @@ class BeamSearchDecoder(Decoder):
         scores = log_probs
         scores = nn.reshape(scores, [-1, self.beam_size * self.vocab_size])
         # TODO: add grad for topk then this beam search can be used to train
-        topk_scores, topk_indexs = nn.topk(input=scores, k=self.beam_size)
-        beam_indexs = nn.elementwise_floordiv(topk_indexs,
+        topk_scores, topk_indices = nn.topk(input=scores, k=self.beam_size)
+        beam_indices = nn.elementwise_floordiv(topk_indices,
                                                self.vocab_size_tensor)
-        token_indexs = nn.elementwise_mod(topk_indexs, self.vocab_size_tensor)
+        token_indices = nn.elementwise_mod(topk_indices, self.vocab_size_tensor)
         next_log_probs = self._gather(
             nn.reshape(log_probs, [-1, self.beam_size * self.vocab_size]),
-            topk_indexs, self.batch_size)
+            topk_indices, self.batch_size)
         next_cell_states = map_structure(
-            lambda x: self._gather(x, beam_indexs, self.batch_size),
+            lambda x: self._gather(x, beam_indices, self.batch_size),
             next_cell_states)
-        next_finished = self._gather(beam_state.finished, beam_indexs,
+        next_finished = self._gather(beam_state.finished, beam_indices,
                                      self.batch_size)
-        next_lengths = self._gather(beam_state.lengths, beam_indexs,
+        next_lengths = self._gather(beam_state.lengths, beam_indices,
                                     self.batch_size)
         next_lengths = next_lengths + tensor.cast(
             nn.logical_not(next_finished), beam_state.lengths.dtype)
         next_finished = control_flow.logical_or(
             next_finished,
-            control_flow.equal(token_indexs, self.end_token_tensor))
+            control_flow.equal(token_indices, self.end_token_tensor))
 
-        beam_search_output = self.OutputWrapper(topk_scores, token_indexs,
-                                                beam_indexs)
+        beam_search_output = self.OutputWrapper(topk_scores, token_indices,
+                                                beam_indices)
         beam_search_state = self.StateWrapper(next_cell_states, next_log_probs,
                                               next_finished, next_lengths)
         return beam_search_output, beam_search_state
@@ -1083,7 +1083,7 @@ def dynamic_decode(decoder,
             unfinished using the new states returned by :code:`decoder.step()` and
             ensures that the final states have the correct values. Otherwise, states
             wouldn't be copied through when finished. If the returned `final_states`
-            is needed, it should be set as True, which causes some slowdown.
+            is needed, it shold be set as True, which causes some slowdown.
             Default `False`.
         is_test(bool, optional): A flag indicating whether to use test mode. In
             test mode, it is more memory saving. Default `False`.
@@ -1372,7 +1372,7 @@ class TrainingHelper(DecodeHelper):
 
         Parameters:
             inputs(Variable): A (possibly nested structure of) tensor variable[s]. 
-                The shape of tensor should be `[batch_size, sequence_length, ...]`
+                The shape of tensor shold be `[batch_size, sequence_length, ...]`
                 for `time_major == False` or `[sequence_length, batch_size, ...]`
                 for `time_major == True`. It represents the inputs to be sliced
                 from at every decoding step.
@@ -1527,7 +1527,7 @@ class GreedyEmbeddingHelper(DecodeHelper):
         Parameters:
             embedding_fn(callable): A functor to apply on the argmax results. 
                 Mostly it is an embedding layer to transform ids to embeddings.
-                **Note that fluid.embedding should be used here rather than
+                **Note that fluid.embedding shold be used here rather than
                 fluid.layers.embedding, since shape of ids is [batch_size].
                 when using fluid.layers.embedding, must unsqueeze in embedding_fn.**
             start_tokens(Variable):  A `int64` tensor shaped `[batch_size]`,
@@ -1664,7 +1664,7 @@ class SampleEmbeddingHelper(GreedyEmbeddingHelper):
         Parameters:
             embedding_fn(callable): A functor to apply on the argmax results. 
                 Mostly it is an embedding layer to transform ids to embeddings.
-                **Note that fluid.embedding should be used here rather than
+                **Note that fluid.embedding shold be used here rather than
                 fluid.layers.embedding, since shape of ids is [batch_size].
                 when using fluid.layers.embedding, must unsqueeze in embedding_fn.**
             start_tokens(Variable):  A `int64` tensor shaped `[batch_size]`,
@@ -1969,7 +1969,7 @@ def dynamic_lstm(input,
     """
     assert in_dygraph_mode(
     ) is not True, "please use lstm instead of dynamic_lstm in dygraph mode!"
-    assert bias_attr is not False, "bias_attr should not be False in dynamic_lstmp."
+    assert bias_attr is not False, "bias_attr shold not be False in dynamic_lstmp."
     helper = LayerHelper('lstm', **locals())
     size = size // 4
     weight = helper.create_parameter(
@@ -1988,11 +1988,11 @@ def dynamic_lstm(input,
     batch_size = input.shape[0]
     if h_0:
         assert h_0.shape == (batch_size, size), \
-            'The shape of h0 should be (batch_size, %d)' % size
+            'The shape of h0 shold be (batch_size, %d)' % size
         inputs['H0'] = h_0
     if c_0:
         assert c_0.shape == (batch_size, size), \
-            'The shape of c0 should be (batch_size, %d)' % size
+            'The shape of c0 shold be (batch_size, %d)' % size
         inputs['C0'] = c_0
 
     helper.append_op(
@@ -2066,9 +2066,9 @@ def lstm(input,
     Parameters:
         input ( :ref:`api_guide_Variable_en` ): LSTM input tensor, 3-D Tensor of shape :math:`[batch\_size, seq\_len, input\_dim]` . Data type is float32 or float64
         init_h( :ref:`api_guide_Variable_en` ): The initial hidden state of the LSTM, 3-D Tensor of shape :math:`[num\_layers, batch\_size, hidden\_size]` .
-                       If is_bidirec = True, shape should be :math:`[num\_layers*2, batch\_size, hidden\_size]` . Data type is float32 or float64.
+                       If is_bidirec = True, shape shold be :math:`[num\_layers*2, batch\_size, hidden\_size]` . Data type is float32 or float64.
         init_c( :ref:`api_guide_Variable_en` ): The initial cell state of the LSTM, 3-D Tensor of shape :math:`[num\_layers, batch\_size, hidden\_size]` .
-                       If is_bidirec = True, shape should be :math:`[num\_layers*2, batch\_size, hidden\_size]` . Data type is float32 or float64.
+                       If is_bidirec = True, shape shold be :math:`[num\_layers*2, batch\_size, hidden\_size]` . Data type is float32 or float64.
         max_len (int): max length of LSTM. the first dim of input tensor CAN NOT greater than max_len.
         hidden_size (int): hidden size of the LSTM.
         num_layers (int): total layers number of the LSTM.
@@ -2329,7 +2329,7 @@ def dynamic_lstmp(input,
     assert in_dygraph_mode(
     ) is not True, "please use lstm instead of dynamic_lstmp in dygraph mode!"
 
-    assert bias_attr is not False, "bias_attr should not be False in dynamic_lstmp."
+    assert bias_attr is not False, "bias_attr shold not be False in dynamic_lstmp."
     helper = LayerHelper('lstmp', **locals())
     size = size // 4
     weight = helper.create_parameter(
@@ -2357,17 +2357,17 @@ def dynamic_lstmp(input,
     batch_size = input.shape[0]
     if h_0:
         assert h_0.shape == (batch_size, proj_size), \
-            'The shape of h0 should be (batch_size, %d)' % proj_size
+            'The shape of h0 shold be (batch_size, %d)' % proj_size
         inputs['H0'] = h_0
     if c_0:
         assert c_0.shape == (batch_size, size), \
-            'The shape of c0 should be (batch_size, %d)' % size
+            'The shape of c0 shold be (batch_size, %d)' % size
         inputs['C0'] = c_0
 
     if cell_clip:
-        assert cell_clip >= 0, "cell_clip should not be negative."
+        assert cell_clip >= 0, "cell_clip shold not be negative."
     if proj_clip:
-        assert proj_clip >= 0, "proj_clip should not be negative."
+        assert proj_clip >= 0, "proj_clip shold not be negative."
 
     helper.append_op(
         type='lstmp',
@@ -2440,8 +2440,8 @@ def dynamic_gru(input,
 
     :math:`x_t` is the input of current time step, but it is not from ``input`` .
     This operator does not include the calculations :math:`W_{ux}x_{t}, W_{rx}x_{t}, W_{cx}x_{t}` ,
-    **Note** thus a fully-connect layer whose size is 3 times of ``size`` should
-    be used before this operator, and the output should be used as ``input`` here.
+    **Note** thus a fully-connect layer whose size is 3 times of ``size`` shold
+    be used before this operator, and the output shold be used as ``input`` here.
     :math:`h_{t-1}` is the hidden state from previous time step. 
     :math:`u_t` , :math:`r_t` , :math:`\\tilde{h_t}` and :math:`h_t` stand for
     update gate, reset gate, candidate hidden and hidden output separately.
@@ -2457,9 +2457,9 @@ def dynamic_gru(input,
 
     Args:
         input(Variable): A LoDTensor whose lod level is 1, representing the input
-            after linear projection. Its shape should be :math:`[T, D \\times 3]` ,
+            after linear projection. Its shape shold be :math:`[T, D \\times 3]` ,
             where :math:`T` stands for the total sequence lengths in this mini-batch,
-            :math:`D` for the hidden size. The data type should be float32 or float64.
+            :math:`D` for the hidden size. The data type shold be float32 or float64.
         size(int): Indicate the hidden size.
         param_attr(ParamAttr, optional):  To specify the weight parameter property.
             Default: None, which means the default weight parameter property is used.
@@ -2478,7 +2478,7 @@ def dynamic_gru(input,
         h_0 (Variable, optional): A Tensor representing the initial hidden state.
             It not provided, the default initial hidden state is 0. The shape is
             :math:`[N, D]` , where :math:`N` is the number of sequences in the
-            mini-batch, :math:`D` for the hidden size. The data type should be
+            mini-batch, :math:`D` for the hidden size. The data type shold be
             same as ``input`` . Default None.
 
     Returns:
@@ -2519,7 +2519,7 @@ def dynamic_gru(input,
     if h_0:
         assert h_0.shape == (
             batch_size, size
-        ), 'The shape of h0 should be(batch_size, %d)' % size
+        ), 'The shape of h0 shold be(batch_size, %d)' % size
         inputs['H0'] = h_0
 
     hidden = helper.create_variable_for_type_inference(dtype)
@@ -2588,8 +2588,8 @@ def gru_unit(input,
 
     :math:`x_t` is the input of current time step, but it is not ``input`` .
     This operator does not include the calculations :math:`W_{ux}x_{t}, W_{rx}x_{t}, W_{cx}x_{t}` ,
-    **Note** thus a fully-connect layer whose size is 3 times of GRU hidden size should
-    be used before this operator, and the output should be used as ``input`` here.
+    **Note** thus a fully-connect layer whose size is 3 times of GRU hidden size shold
+    be used before this operator, and the output shold be used as ``input`` here.
     :math:`h_{t-1}` is the hidden state from previous time step. 
     :math:`u_t` , :math:`r_t` , :math:`\\tilde{h_t}` and :math:`h_t` stand for
     update gate, reset gate, candidate hidden and hidden output separately.
@@ -2605,12 +2605,12 @@ def gru_unit(input,
 
     Args:
         input(Variable): A 2D Tensor representing the input after linear projection
-            after linear projection. Its shape should be :math:`[N, D \\times 3]` ,
+            after linear projection. Its shape shold be :math:`[N, D \\times 3]` ,
             where :math:`N` stands for batch size, :math:`D` for the hidden size.
-            The data type should be float32 or float64.
+            The data type shold be float32 or float64.
         hidden(Variable): A 2D Tensor representing the hidden state from previous step.
-            Its shape should be :math:`[N, D]` , where :math:`N` stands for batch size,
-            :math:`D` for the hidden size. The data type should be same as ``input`` .
+            Its shape shold be :math:`[N, D]` , where :math:`N` stands for batch size,
+            :math:`D` for the hidden size. The data type shold be same as ``input`` .
         size(int): Indicate the hidden size.
         param_attr(ParamAttr, optional):  To specify the weight parameter property.
             Default: None, which means the default weight parameter property is used.
@@ -2720,11 +2720,11 @@ def beam_search(pre_ids,
     ``pre_scores`` are the output of `beam_search` at previous step, they
     are needed for special use to handle ended candidate translations.
 
-    Note that if ``is_accumulated`` is True, the ``scores`` passed in should
+    Note that if ``is_accumulated`` is True, the ``scores`` passed in shold
     be accumulated scores. Otherwise, the ``scores`` are
     considered as the probabilities of single step and would be transformed to
     the log field and added up with ``pre_scores`` for final scores in this
-    operator. Length penalty should be done with extra operators before calculating
+    operator. Length penalty shold be done with extra operators before calculating
     the accumulated scores if needed.
 
     Please see the following demo for a fully beam search usage example:
@@ -2736,21 +2736,21 @@ def beam_search(pre_ids,
             the selected ids of previous step. It is the output of beam_search
             at previous step. Its shape is `[batch_size, 1]` and its lod is
             `[[0, 1, ... , batch_size], [0, 1, ..., batch_size]]` at the
-            first step. The data type should be int64.
+            first step. The data type shold be int64.
         pre_scores(Variable): A LodTensor variable has the same shape and lod
             with ``pre_ids`` , representing the accumulated scores corresponding
             to the selected ids of previous step. It is the output of
-            beam_search at previous step. The data type should be float32.
+            beam_search at previous step. The data type shold be float32.
         ids(Variable|None): A LodTensor variable containing the candidates ids.
-            It has the same lod with ``pre_ids`` and its shape should be
+            It has the same lod with ``pre_ids`` and its shape shold be
             `[batch_size * beam_size, K]`, where `K` supposed to be greater than
             ``beam_size`` and the first dimension size (decrease as samples reach
-            to the end) should be same as that of ``pre_ids`` . The data type
-            should be int64. It can be None, which use index in ``scores`` as
+            to the end) shold be same as that of ``pre_ids`` . The data type
+            shold be int64. It can be None, which use indice in ``scores`` as
             ids.
         scores(Variable): A LodTensor variable containing the accumulated
             scores corresponding to ``ids`` . Both its shape and lod are same as
-            those of ``ids`` . The data type should be float32.
+            those of ``ids`` . The data type shold be float32.
         beam_size(int): The beam width used in beam search.
         end_id(int): The id of end token.
         level(int): **It can be ignored and mustn't change currently.**
@@ -2758,14 +2758,14 @@ def beam_search(pre_ids,
             meaning: The first level describes how many beams each sample has,
             which would change to 0 when beams of the sample all end (batch reduce);
             The second level describes how many times each beam is selected.
-            Default 0, which shouldn't be changed currently.
+            Default 0, which sholdn't be changed currently.
         is_accumulated(bool): Whether the input ``score`` is accumulated scores.
             Default True.
         name(str, optional): For detailed information, please refer 
             to :ref:`api_guide_Name`. Usually name is no need to set and 
             None by default.
         return_parent_idx(bool, optional): Whether to return an extra Tensor variable
-            in output, which stores the selected ids' parent index in
+            in output, which stores the selected ids' parent indice in
             ``pre_ids`` and can be used to update RNN's states by gather operator.
             Default False.
 
@@ -2774,7 +2774,7 @@ def beam_search(pre_ids,
             representing the selected ids and the corresponding accumulated scores of \
             current step, have the same shape `[batch_size, beam_size]` and lod with 2 levels, \
             and have data types int64 and float32. If ``return_parent_idx`` is True, \
-            an extra Tensor variable preserving the selected ids' parent index \
+            an extra Tensor variable preserving the selected ids' parent indice \
             is included, whose shape is `[batch_size * beam_size]` and data type \
             is int64.
 
@@ -2794,7 +2794,7 @@ def beam_search(pre_ids,
                 name='pre_scores', shape=[None, 1], lod_level=2, dtype='float32')
             probs = fluid.data(
                 name='probs', shape=[None, 10000], dtype='float32')
-            topk_scores, topk_indexs = fluid.layers.topk(probs, k=beam_size)
+            topk_scores, topk_indices = fluid.layers.topk(probs, k=beam_size)
             accu_scores = fluid.layers.elementwise_add(
                 x=fluid.layers.log(x=topk_scores),
                 y=fluid.layers.reshape(pre_scores, shape=[-1]),
@@ -2802,7 +2802,7 @@ def beam_search(pre_ids,
             selected_ids, selected_scores = fluid.layers.beam_search(
                 pre_ids=pre_ids,
                 pre_scores=pre_scores,
-                ids=topk_indexs,
+                ids=topk_indices,
                 scores=accu_scores,
                 beam_size=beam_size,
                 end_id=end_id)
@@ -2821,7 +2821,7 @@ def beam_search(pre_ids,
     # parent_idx is a tensor used to gather cell states at the next time
     # step. Though lod in selected_ids can also be used to gather by
     # sequence_expand, it is not efficient.
-    # gather_op's index input only supports int32 dtype currently
+    # gather_op's indice input only supports int32 dtype currently
     parent_idx = helper.create_variable_for_type_inference(dtype="int32")
 
     helper.append_op(
@@ -2953,13 +2953,13 @@ def lstm_unit(x_t,
 
     Args:
         x_t(Variable): A 2D Tensor representing the input of current time step.
-            Its shape should be :math:`[N, M]` , where :math:`N` stands for batch
-            size, :math:`M` for the feature size of input. The data type should
+            Its shape shold be :math:`[N, M]` , where :math:`N` stands for batch
+            size, :math:`M` for the feature size of input. The data type shold
             be float32 or float64.
         hidden_t_prev(Variable): A 2D Tensor representing the hidden value from
-            previous step. Its shape should be :math:`[N, D]` , where :math:`N`
+            previous step. Its shape shold be :math:`[N, D]` , where :math:`N`
             stands for batch size, :math:`D` for the hidden size. The data type
-            should be same as ``x_t`` .
+            shold be same as ``x_t`` .
         cell_t_prev(Variable): A 2D Tensor representing the cell value from
             previous step. It has the same shape and data type with ``hidden_t_prev`` .
         forget_bias (float, optional): :math:`forget\\_bias` added to the biases

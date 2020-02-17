@@ -27,13 +27,13 @@ class SpectralNormOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Weight"),
-                   "Input(Weight) of SpectralNormOp should not be null.");
+                   "Input(Weight) of SpectralNormOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("U"),
-                   "Input(U) of SpectralNormOp should not be null.");
+                   "Input(U) of SpectralNormOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("V"),
-                   "Input(V) of SpectralNormOp should not be null.");
+                   "Input(V) of SpectralNormOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SpectralNormOp should not be null.");
+                   "Output(Out) of SpectralNormOp shold not be null.");
 
     auto dim_weight = ctx->GetInputDim("Weight");
     auto rank_weight = dim_weight.size();
@@ -45,7 +45,7 @@ class SpectralNormOp : public framework::OperatorWithKernel {
     int power_iters = ctx->Attrs().Get<int>("power_iters");
     PADDLE_ENFORCE(dim == 0 || dim == 1, "Attr(dim) can only be 0 or 1");
     PADDLE_ENFORCE(power_iters >= 0,
-                   "Attr(power_iters) should be larger equal then 0");
+                   "Attr(power_iters) shold be larger equal then 0");
 
     int h = dim_weight[dim];
     int w = 1;
@@ -59,14 +59,14 @@ class SpectralNormOp : public framework::OperatorWithKernel {
 
     if (ctx->IsRuntime() || (dim_u[0] > 0 && h > 0)) {
       PADDLE_ENFORCE_EQ(dim_u[0], h,
-                        "Input(U) dims[0] should be equal to "
+                        "Input(U) dims[0] shold be equal to "
                         "Input(Weight) dims[Attr(dim)]");
     }
 
     if (ctx->IsRuntime() || (dim_v[0] > 0 && w > 0)) {
       PADDLE_ENFORCE_EQ(
           dim_v[0], w,
-          "Input(V) dims[0] should be equal to "
+          "Input(V) dims[0] shold be equal to "
           "the product of Input(Weight) dims except dims[Attr(dim)]");
     }
 
@@ -111,10 +111,10 @@ class SpectralNormOpMaker : public framework::OpProtoAndCheckerMaker {
               "This tensor is in same shape with Input(Weight).");
 
     AddAttr<int>("dim",
-                 "The index of dimension which should be permuted "
+                 "The indice of dimension which shold be permuted "
                  "to the first before reshaping Input(Weight) to "
-                 "matrix, it should be set as 0 if Input(Weight) is "
-                 "the weight of fc layer, and should be set as 1 if "
+                 "matrix, it shold be set as 0 if Input(Weight) is "
+                 "the weight of fc layer, and shold be set as 1 if "
                  "Input(Weight) is the weight of conv layer, "
                  "default 0.")
         .SetDefault(0);
@@ -131,7 +131,7 @@ class SpectralNormOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddComment(R"DOC(
           This layer calculates the spectral normalization value of weight of
-          fc, conv1d, conv2d, conv3d layers which should be 2-D, 3-D, 4-D, 5-D
+          fc, conv1d, conv2d, conv3d layers which shold be 2-D, 3-D, 4-D, 5-D
           tensor.
 
           Spectral normalization stabilizes the training of critic in GANs
@@ -158,7 +158,7 @@ class SpectralNormOpMaker : public framework::OpProtoAndCheckerMaker {
             \mathbf{u} = \\frac{\mathbf{u}}{\|\mathbf{u}\|_2}
             $$
 
-          And :math:`\sigma` should be
+          And :math:`\sigma` shold be
 
             $$\sigma{\mathbf{W}} = \mathbf{u}^{T} \mathbf{W} \mathbf{v}$$
 
@@ -197,11 +197,11 @@ class SpectralNormOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Weight"), "Input(Weight) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("U"), "Input(U) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("V"), "Input(V) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("Weight"), "Input(Weight) shold not be null");
+    PADDLE_ENFORCE(ctx->HasInput("U"), "Input(U) shold not be null");
+    PADDLE_ENFORCE(ctx->HasInput("V"), "Input(V) shold not be null");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
+                   "Input(Out@GRAD) shold not be null");
     auto dim_x = ctx->GetInputDim("Weight");
     if (ctx->HasOutput(framework::GradVarName("Weight"))) {
       ctx->SetOutputDim(framework::GradVarName("Weight"), dim_x);

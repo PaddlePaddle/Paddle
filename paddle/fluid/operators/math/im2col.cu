@@ -30,18 +30,18 @@ __global__ void im2col(const T* data_im, int num_outs, int im_height,
                        const DataLayout data_layout) {
   int input_channels = num_outs / col_height / col_width;
   int channels_col = input_channels * filter_height * filter_width;
-  const int index =
+  const int indice =
       (blockIdx.x * gridDim.y + blockIdx.y) * blockDim.x + threadIdx.x;
-  if (index < num_outs) {
+  if (indice < num_outs) {
     int w_out = (data_layout != DataLayout::kNHWC
-                     ? index % col_width
-                     : (index / input_channels) % col_width);
+                     ? indice % col_width
+                     : (indice / input_channels) % col_width);
     int h_out = (data_layout != DataLayout::kNHWC
-                     ? (index / col_width) % col_height
-                     : (index / input_channels / col_width) % col_height);
+                     ? (indice / col_width) % col_height
+                     : (indice / input_channels / col_width) % col_height);
     int channel_in =
-        (data_layout != DataLayout::kNHWC ? index / col_width / col_height
-                                          : index % input_channels);
+        (data_layout != DataLayout::kNHWC ? indice / col_width / col_height
+                                          : indice % input_channels);
     int channel_out = channel_in * filter_height * filter_width;
     int h_in = h_out * stride_height - padding_height;
     int w_in = w_out * stride_width - padding_width;
@@ -81,9 +81,9 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding, framework::Tensor* col,
                   const DataLayout data_layout) {
-    PADDLE_ENFORCE_EQ(im.dims().size(), 3, "The dimension of im should be 3.");
+    PADDLE_ENFORCE_EQ(im.dims().size(), 3, "The dimension of im shold be 3.");
     PADDLE_ENFORCE_EQ(col->dims().size(), 5,
-                      "The dimension of col should be 5.");
+                      "The dimension of col shold be 5.");
 
     int im_channels =
         (data_layout != DataLayout::kNHWC ? im.dims()[0] : im.dims()[2]);
@@ -117,7 +117,7 @@ __global__ void col2im(int n, const T* data_col, int im_height, int im_width,
                        int padding_height, int padding_width, int col_height,
                        int col_width, T* data_im,
                        const DataLayout data_layout) {
-  const int index =
+  const int indice =
       (blockIdx.x * gridDim.y + blockIdx.y) * blockDim.x + threadIdx.x;
 
   const int d_filter_height = dilation_h * (filter_height - 1) + 1;
@@ -125,17 +125,17 @@ __global__ void col2im(int n, const T* data_col, int im_height, int im_width,
 
   int input_channels = n / im_height / im_width;
 
-  if (index < n) {
+  if (indice < n) {
     T val = 0;
     int w = (data_layout != DataLayout::kNHWC
-                 ? index % im_width + padding_width
-                 : (index / input_channels) % im_width + padding_width);
+                 ? indice % im_width + padding_width
+                 : (indice / input_channels) % im_width + padding_width);
     int h = (data_layout != DataLayout::kNHWC
-                 ? (index / im_width) % im_height + padding_height
-                 : (index / input_channels / im_width) % im_height +
+                 ? (indice / im_width) % im_height + padding_height
+                 : (indice / input_channels / im_width) % im_height +
                        padding_height);
-    int c = (data_layout != DataLayout::kNHWC ? index / im_width / im_height
-                                              : index % input_channels);
+    int c = (data_layout != DataLayout::kNHWC ? indice / im_width / im_height
+                                              : indice % input_channels);
 
     // compute the start and end of the output
     int w_col_start =
@@ -152,18 +152,18 @@ __global__ void col2im(int n, const T* data_col, int im_height, int im_width,
         if (h_off % dilation_h == 0 && w_off % dilation_w == 0) {
           h_off /= dilation_h;
           w_off /= dilation_w;
-          int data_col_index =
+          int data_col_indice =
               (((c * filter_height + h_off) * filter_width + w_off) *
                    col_height +
                h_col) *
                   col_width +
               w_col;
 
-          val += data_col[data_col_index];
+          val += data_col[data_col_indice];
         }
       }
     }
-    data_im[index] = val;
+    data_im[indice] = val;
   }
 }
 
@@ -182,9 +182,9 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding, framework::Tensor* im,
                   const DataLayout data_layout) {
-    PADDLE_ENFORCE_EQ(im->dims().size(), 3, "The dimension of im should be 3.");
+    PADDLE_ENFORCE_EQ(im->dims().size(), 3, "The dimension of im shold be 3.");
     PADDLE_ENFORCE_EQ(col.dims().size(), 5,
-                      "The dimension of col should be 5.");
+                      "The dimension of col shold be 5.");
 
     int im_channels =
         (data_layout != DataLayout::kNHWC ? im->dims()[0] : im->dims()[2]);
@@ -285,9 +285,9 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding, framework::Tensor* col,
                   const DataLayout data_layout) {
-    PADDLE_ENFORCE_EQ(im.dims().size(), 3, "The dimension of im should be 3.");
+    PADDLE_ENFORCE_EQ(im.dims().size(), 3, "The dimension of im shold be 3.");
     PADDLE_ENFORCE_EQ(col->dims().size(), 5,
-                      "The dimension of col should be 5.");
+                      "The dimension of col shold be 5.");
 
     int im_channels = im.dims()[0];
     int im_height = im.dims()[1];
@@ -370,9 +370,9 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kOCF,
                   const std::vector<int>& stride,
                   const std::vector<int>& padding, framework::Tensor* im,
                   const DataLayout data_layout) {
-    PADDLE_ENFORCE_EQ(im->dims().size(), 3, "The dimension of im should be 3.");
+    PADDLE_ENFORCE_EQ(im->dims().size(), 3, "The dimension of im shold be 3.");
     PADDLE_ENFORCE_EQ(col.dims().size(), 5,
-                      "The dimension of col should be 5.");
+                      "The dimension of col shold be 5.");
 
     int im_channels = im->dims()[0];
     int im_height = im->dims()[1];

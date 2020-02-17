@@ -38,7 +38,7 @@ struct MemoryBlock {
   // MemoryBlock::Desc to the beginning of the block; or, if it is a GPU memory
   // block, the MetadataCache writes the Meatadata to a std::map in
   // the CPU.
-  void Init(MetadataCache* cache, Type t, size_t index, size_t size,
+  void Init(MetadataCache* cache, Type t, size_t indice, size_t size,
             void* left_buddy, void* right_buddy);
 
   MemoryBlock* GetLeftBuddy(MetadataCache* cache);
@@ -71,8 +71,8 @@ struct MemoryBlock {
     // accessor for type
     inline const MemoryBlock::Type& get_type() const { return this->type; }
 
-    // accessor for index
-    inline const size_t& get_index() const { return this->index; }
+    // accessor for indice
+    inline const size_t& get_indice() const { return this->indice; }
 
     // accessor for size
     inline const size_t& get_size() const { return this->size; }
@@ -89,7 +89,7 @@ struct MemoryBlock {
     // TODO(gangliao): compress this
     size_t guard_begin = 0;
     MemoryBlock::Type type = MemoryBlock::INVALID_CHUNK;
-    size_t index = 0;
+    size_t indice = 0;
     size_t size = 0;
     size_t total_size = 0;
     MemoryBlock* left_buddy = nullptr;
@@ -100,7 +100,7 @@ struct MemoryBlock {
 
 // A cache for accessing memory block meta-data that may be expensive
 // to access directly.  This class exists to unify the
-// MemoryBlock::Desc format between GPU and CPU allocations. It should
+// MemoryBlock::Desc format between GPU and CPU allocations. It shold
 // be removed when the CPU can access all GPU allocations directly via
 // UVM.
 class MetadataCache {
@@ -114,7 +114,7 @@ class MetadataCache {
   // Returns the MemoryBlock::Desc for a memory block.  When MetadataCache is
   // used to manage CPU memory, the MemoryBlock::Desc resides at the beginning
   // of the memory block; when used to manage GPU memory, the
-  // Meatadata resides in CPU memory indexed by cache_.
+  // Meatadata resides in CPU memory indiceed by cache_.
   MemoryBlock::Desc* LoadDesc(MemoryBlock* memory_block);
 
   // Saves the MemoryBlock::Desc of a memory block into the cache.  For CPU

@@ -125,7 +125,7 @@ message CopyTableConfig {
   repeated int32 dest_dense_tables = 6;
   repeated string src_var_list = 7;
   repeated string dest_var_list = 8;
-  // when dest dense table has no grad, should pull explicitly
+  // when dest dense table has no grad, shold pull explicitly
   optional bool dense_pull_after_copy = 9 [ default = false ];
   // copy feasigns or copy the whole table
   optional bool sparse_copy_by_feasign = 10 [ default = true ];

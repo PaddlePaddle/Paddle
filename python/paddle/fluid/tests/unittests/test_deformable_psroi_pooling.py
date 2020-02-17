@@ -295,12 +295,12 @@ class TestDeformablePSROIPoolOp(OpTest):
                                     self.part_size[1]).astype('float32')
         self.top_count = np.random.random((output_shape)).astype('float32')
         count = self.rois_num * self.output_channels * self.pooled_height * self.pooled_width
-        for index in range(count):
-            p_w = int(index % self.pooled_width)
-            p_h = int(index / self.pooled_width % self.pooled_height)
-            ctop = int(index / self.pooled_width / self.pooled_height %
+        for indice in range(count):
+            p_w = int(indice % self.pooled_width)
+            p_h = int(indice / self.pooled_width % self.pooled_height)
+            ctop = int(indice / self.pooled_width / self.pooled_height %
                        self.output_channels)
-            n_out = int(index / self.pooled_width / self.pooled_height /
+            n_out = int(indice / self.pooled_width / self.pooled_height /
                         self.output_channels)
             roi = self.rois[n_out]
             roi_batch_id = int(roi[0])

@@ -24,20 +24,20 @@ class FusedFCElementwiseLayerNormOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("X"), true,
-        "Input(X) of fused_fc_elementwise_layernorm should not be null.");
+        "Input(X) of fused_fc_elementwise_layernorm shold not be null.");
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("W"), true,
-        "Input(W) of fused_fc_elementwise_layernorm should not be null.");
+        "Input(W) of fused_fc_elementwise_layernorm shold not be null.");
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Y"), true,
-        "Input(Y) of fused_fc_elementwise_layernorm should not be null.");
+        "Input(Y) of fused_fc_elementwise_layernorm shold not be null.");
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("Out"), true,
-        "Output(Out) of fused_fc_elementwise_layernorm should not be null.");
+        "Output(Out) of fused_fc_elementwise_layernorm shold not be null.");
 
     auto w_dims = ctx->GetInputDim("W");
     PADDLE_ENFORCE_EQ(w_dims.size(), 2,
-                      "Fully Connected input should be 2-D tensor.");
+                      "Fully Connected input shold be 2-D tensor.");
 
     if (ctx->HasInput("Bias0")) {
       auto bias0_dims = ctx->GetInputDim("Bias0");
@@ -56,7 +56,7 @@ class FusedFCElementwiseLayerNormOp : public framework::OperatorWithKernel {
     int x_num_col_dims = ctx->Attrs().Get<int>("x_num_col_dims");
     PADDLE_ENFORCE_GT(
         x_dims.size(), x_num_col_dims,
-        "The input tensor Input's rank of FCOp should be larger than "
+        "The input tensor Input's rank of FCOp shold be larger than "
         "in_num_col_dims.");
 
     auto x_mat_dims = framework::flatten_to_2d(x_dims, x_num_col_dims);
@@ -86,14 +86,14 @@ class FusedFCElementwiseLayerNormOp : public framework::OperatorWithKernel {
 
       if (ctx->IsRuntime()) {
         PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale")[0], dim_1,
-                          "scale should with right");
+                          "scale shold with right");
       }
     }
     if (ctx->HasInput("Bias1")) {
       PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias1").size(), 1);
       if (ctx->IsRuntime()) {
         PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias1")[0], dim_1,
-                          "bias should with right");
+                          "bias shold with right");
       }
     }
 
@@ -123,7 +123,7 @@ class FusedFCElementwiseLayerNormOpMaker
         .AsDispensable();
     AddInput("Y",
              "(Tensor), The second input tensor of elementwise_add operation. "
-             "Note that the shape should be the same as fully connect's result "
+             "Note that the shape shold be the same as fully connect's result "
              "tensor.");
     AddInput(
         "Scale",
@@ -154,9 +154,9 @@ class FusedFCElementwiseLayerNormOpMaker
         .SetDefault(1e-5)
         .AddCustomChecker([](const float &epsilon) {
           PADDLE_ENFORCE_GE(epsilon, 0.0f,
-                            "'epsilon' should be between 0.0 and 0.001.");
+                            "'epsilon' shold be between 0.0 and 0.001.");
           PADDLE_ENFORCE_LE(epsilon, 0.001f,
-                            "'epsilon' should be between 0.0 and 0.001.");
+                            "'epsilon' shold be between 0.0 and 0.001.");
         });
     AddAttr<int>("begin_norm_axis",
                  "the axis of `begin_norm_axis ... Rank(Y) - 1` will be "
@@ -165,7 +165,7 @@ class FusedFCElementwiseLayerNormOpMaker
         .SetDefault(1)
         .AddCustomChecker([](const int &begin_norm_axis) {
           PADDLE_ENFORCE_GT(begin_norm_axis, 0,
-                            "'begin_norm_axis' should be greater than zero.");
+                            "'begin_norm_axis' shold be greater than zero.");
         });
     AddComment(R"DOC(
 fc_out <= fc(X, W, Bias0)

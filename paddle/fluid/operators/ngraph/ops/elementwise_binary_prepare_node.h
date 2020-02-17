@@ -47,7 +47,7 @@ ngraph::NodeVector ElementwiseBinaryNodePrepare(
   axis = (rhs_shape.size() == 0) ? lhs_shape.size() - 1 : axis;
   axis = (axis == -1 ? lhs_shape.size() - rhs_shape.size() : axis);
   PADDLE_ENFORCE(axis >= 0 && axis < (int)(lhs_shape.size()),
-                 "Axis should be in range [0, lhs_shape)");
+                 "Axis shold be in range [0, lhs_shape)");
   paddle::platform::TrimTrailingSingularDims(&rhs_shape);
 
   int pre, n, post;

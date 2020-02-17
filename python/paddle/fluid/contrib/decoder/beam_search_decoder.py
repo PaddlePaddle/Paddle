@@ -56,7 +56,7 @@ class InitState(object):
         init_boot (Variable): If provided, the initial variable will be created
             with the same shape as this variable.
         need_reorder (bool): If set true, the init will be sorted by its lod
-            rank within its batches. This should be used if `batch_size > 1`.
+            rank within its batches. This shold be used if `batch_size > 1`.
         dtype (np.dtype|core.VarDesc.VarType|str): Data type of the initial
             variable.
 
@@ -240,7 +240,7 @@ class StateCell(object):
                 state = self._cur_states[state_name]
 
                 if not isinstance(state, InitState):
-                    raise ValueError('Current type of state is %s, should be '
+                    raise ValueError('Current type of state is %s, shold be '
                                      'an InitState object.' % type(state))
 
                 self._states_holder[state_name] = {}
@@ -259,7 +259,7 @@ class StateCell(object):
                     raise ValueError('Unknown decoder type, only support '
                                      '[TRAINING, BEAM_SEARCH]')
 
-            # Read back, since current state should be LoDTensor
+            # Read back, since current state shold be LoDTensor
             self._cur_states[state_name] = \
                 self._states_holder[state_name][
                     id(self._cur_decoder_obj)].get_state()
@@ -314,7 +314,7 @@ class StateCell(object):
     def state_updater(self, updater):
         """
         Set up the updater to update the hidden state every RNN step. The
-        behavior of updater could be customized by users. The updater should be
+        behavior of updater could be customized by users. The updater shold be
         a function that takes a `StateCell` object as input and update the
         hidden state within it. The hidden state could be accessed through
         `get_state` method.
@@ -326,7 +326,7 @@ class StateCell(object):
 
         def _decorator(state_cell):
             if state_cell == self:
-                raise TypeError('Updater should only accept a StateCell object '
+                raise TypeError('Updater shold only accept a StateCell object '
                                 'as argument.')
             updater(state_cell)
 
@@ -338,8 +338,8 @@ class StateCell(object):
         with updater and give step input.
 
         Args:
-            inputs (dict): A feed dict, {name(str): Variable}. name should be
-            the names of step inputs for this RNN cell, and Variable should be
+            inputs (dict): A feed dict, {name(str): Variable}. name shold be
+            the names of step inputs for this RNN cell, and Variable shold be
             the associated variables.
 
         Examples:
@@ -485,7 +485,7 @@ class TrainingDecoder(object):
 
     def __call__(self, *args, **kwargs):
         """
-        Get the output of RNN. This API should only be invoked after RNN.block()
+        Get the output of RNN. This API shold only be invoked after RNN.block()
 
         Returns:
             Variable: The specified output of the RNN cell.
@@ -516,13 +516,13 @@ class TrainingDecoder(object):
 
     def _assert_in_decoder_block(self, method):
         if self._status != TrainingDecoder.IN_DECODER:
-            raise ValueError('%s should be invoked inside block of '
+            raise ValueError('%s shold be invoked inside block of '
                              'TrainingDecoder object.' % method)
 
 
 class BeamSearchDecoder(object):
     """
-    A beam search decoder that can be used for inference. The decoder should be
+    A beam search decoder that can be used for inference. The decoder shold be
     initialized with a `StateCell` object. The decode process can be defined
     within its block.
 
@@ -832,11 +832,11 @@ class BeamSearchDecoder(object):
         program = self._helper.main_program
         parent_block_idx = program.current_block().parent_idx
         if parent_block_idx < 0:
-            raise ValueError('Invalid block with index %d.' % parent_block_idx)
+            raise ValueError('Invalid block with indice %d.' % parent_block_idx)
         parent_block = program.block(parent_block_idx)
         return parent_block
 
     def _assert_in_decoder_block(self, method):
         if self._status != BeamSearchDecoder.IN_BEAM_SEARCH_DECODER:
-            raise ValueError('%s should be invoked inside block of '
+            raise ValueError('%s shold be invoked inside block of '
                              'BeamSearchDecoder object.' % method)

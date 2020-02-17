@@ -29,7 +29,7 @@ class LearningRateDecay(object):
     Base class of learning rate decay
     
     Define the common interface of an LearningRateDecay.
-    User should not use this class directly,
+    User shold not use this class directly,
     but need to use one of it's implementation.
     """
 
@@ -630,7 +630,7 @@ class LinearLrWarmup(LearningRateDecay):
             learning_rate, int) or isinstance(learning_rate, LearningRateDecay)
         if not type_check:
             raise TypeError(
-                "the type of learning_rate should be [int, float or LearningRateDecay], the current type is {}".
+                "the type of learning_rate shold be [int, float or LearningRateDecay], the current type is {}".
                 format(learning_rate))
         self.learning_rate = learning_rate
         self.warmup_steps = warmup_steps

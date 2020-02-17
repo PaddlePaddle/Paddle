@@ -28,21 +28,21 @@ class LayerNormOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(
         op_desc.Input("X").size(), 1,
         platform::errors::InvalidArgument(
-            "input of layer_norm op converter should be 1, got %d",
+            "input of layer_norm op converter shold be 1, got %d",
             op_desc.Input("X").size()));
     PADDLE_ENFORCE_EQ(op_desc.Input("Bias").size(), 1,
                       platform::errors::InvalidArgument(
-                          "Bias of layer_norm op converter should be 1, got %d",
+                          "Bias of layer_norm op converter shold be 1, got %d",
                           op_desc.Input("Bias").size()));  // Bias is a weight
     PADDLE_ENFORCE_EQ(
         op_desc.Input("Scale").size(), 1,
         platform::errors::InvalidArgument(
-            "Scale of layer_norm op converter should be 1, got %d",
+            "Scale of layer_norm op converter shold be 1, got %d",
             op_desc.Input("Scale").size()));  // Scale is a weight
     PADDLE_ENFORCE_EQ(
         op_desc.Output("Y").size(), 1,
         platform::errors::InvalidArgument(
-            "output of layer_norm op converter should be 1, got %d",
+            "output of layer_norm op converter shold be 1, got %d",
             op_desc.Input("Y").size()));
 
     auto* X = engine_->GetITensor(op_desc.Input("X").front());
@@ -57,10 +57,10 @@ class LayerNormOpConverter : public OpConverter {
                           : 1e-5f;
     PADDLE_ENFORCE_NOT_NULL(
         Bias_v, platform::errors::InvalidArgument(
-                    "Input(Bias) of layer_norm should not be null."));
+                    "Input(Bias) of layer_norm shold not be null."));
     PADDLE_ENFORCE_NOT_NULL(
         Scale_v, platform::errors::InvalidArgument(
-                     "Input(Scale) of layer_norm should not be null."));
+                     "Input(Scale) of layer_norm shold not be null."));
 
     auto* Bias_t = Bias_v->GetMutable<framework::LoDTensor>();
     auto* Scale_t = Scale_v->GetMutable<framework::LoDTensor>();

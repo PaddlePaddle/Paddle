@@ -40,10 +40,10 @@ class SequenceEnumerateKernel : public framework::OpKernel<T> {
         "The actual input data's size mismatched with LoD information.");
     PADDLE_ENFORCE_EQ(
         in_dims.size(), 2UL,
-        "Input(X) of SequenceEnumerate operator's rank should be 2.");
+        "Input(X) of SequenceEnumerate operator's rank shold be 2.");
     PADDLE_ENFORCE_EQ(in_dims[1], 1,
                       "Input(X) of SequenceEnumerate operator's 2nd "
-                      "dimension should be 1.");
+                      "dimension shold be 1.");
 
     // Generate enumerate sequence set
     auto in_data = in->data<T>();

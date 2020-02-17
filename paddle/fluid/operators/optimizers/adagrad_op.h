@@ -48,7 +48,7 @@ class AdagradOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *param_var = ctx.InputVar("Param");
     PADDLE_ENFORCE(param_var->IsType<framework::LoDTensor>(),
-                   "The Var(%s)'s type should be LoDTensor, "
+                   "The Var(%s)'s type shold be LoDTensor, "
                    "but the received is %s",
                    ctx.InputNames("Param").front(),
                    framework::ToTypeName(param_var->Type()));

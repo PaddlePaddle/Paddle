@@ -384,7 +384,7 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
   unsigned int grid_size = num_rows < maxGridDimX
                                ? static_cast<unsigned int>(num_rows)
                                : maxGridDimX;
-  // Init a index array
+  // Init a indice array
   InitIndex<<<grid_size, block_size, 0, cu_stream>>>(
       input_indices.data<int64_t>(), num_rows, num_cols);
 

@@ -28,11 +28,11 @@ class BilinearTensorProductOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Weight"),
-                   "Input(Weight) should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null.");
+                   "Input(Weight) shold not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) shold not be null.");
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
     auto weight_dims = ctx->GetInputDim("Weight");
@@ -104,12 +104,12 @@ class BilinearTensorProductOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Weight"),
-                   "Input(Weight) should not be null.");
+                   "Input(Weight) shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null.");
+                   "Input(Out@GRAD) shold not be null.");
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
     auto weight_dims = ctx->GetInputDim("Weight");

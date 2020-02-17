@@ -178,7 +178,7 @@ class FcOpConverter : public OpConverter {
       PADDLE_ENFORCE_NE(input_dims, 1,
                         platform::errors::InvalidArgument(
                             "Invalid dimensions. When x_num_col_dims equals to "
-                            "2, input_dims should not be 1"));
+                            "2, input_dims shold not be 1"));
       for (int i = 0; i < 4; i++) {
         if (i < input_dims) {
           reshape_dim4[i] = input_d[i];

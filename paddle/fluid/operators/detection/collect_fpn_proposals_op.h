@@ -33,17 +33,17 @@ template <typename T>
 struct ScoreWithID {
   T score;
   int batch_id;
-  int index;
+  int indice;
   int level;
   ScoreWithID() {
     batch_id = -1;
-    index = -1;
+    indice = -1;
     level = -1;
   }
-  ScoreWithID(T score_, int batch_id_, int index_, int level_) {
+  ScoreWithID(T score_, int batch_id_, int indice_, int level_) {
     score = score_;
     batch_id = batch_id_;
-    index = index_;
+    indice = indice_;
     level = level_;
   }
 };
@@ -99,11 +99,11 @@ class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
         if (static_cast<size_t>(j) >= cur_scores_lod[cur_batch_id + 1]) {
           cur_batch_id++;
         }
-        int cur_index = j + integral_of_all_rois[i];
-        scores_of_all_rois[cur_index].score = cur_level_scores[j];
-        scores_of_all_rois[cur_index].index = j;
-        scores_of_all_rois[cur_index].level = i;
-        scores_of_all_rois[cur_index].batch_id = cur_batch_id;
+        int cur_indice = j + integral_of_all_rois[i];
+        scores_of_all_rois[cur_indice].score = cur_level_scores[j];
+        scores_of_all_rois[cur_indice].indice = j;
+        scores_of_all_rois[cur_indice].level = i;
+        scores_of_all_rois[cur_indice].batch_id = cur_batch_id;
       }
     }
     // keep top post_nms_topN rois
@@ -129,9 +129,9 @@ class CollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     int cur_batch_id = 0;
     for (int i = 0; i < post_nms_topN; ++i) {
       int cur_fpn_level = scores_of_all_rois[i].level;
-      int cur_level_index = scores_of_all_rois[i].index;
+      int cur_level_indice = scores_of_all_rois[i].indice;
       memcpy(fpn_rois_data,
-             multi_fpn_rois_data[cur_fpn_level] + cur_level_index * kBoxDim,
+             multi_fpn_rois_data[cur_fpn_level] + cur_level_indice * kBoxDim,
              kBoxDim * sizeof(T));
       fpn_rois_data += kBoxDim;
       if (scores_of_all_rois[i].batch_id != cur_batch_id) {

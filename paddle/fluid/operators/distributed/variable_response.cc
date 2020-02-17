@@ -97,7 +97,7 @@ bool VariableResponse::CopyLodTensorData(
     int length) {
   auto server_var = GetVar();
   if (!server_var) {
-    LOG(ERROR) << "recved var should not on current server: "
+    LOG(ERROR) << "recved var shold not on current server: "
                << meta_.varname();
     return false;
   }
@@ -179,7 +179,7 @@ bool VariableResponse::ProcSerializedField(
                   meta_.type() == sendrecv::LOD_TENSOR ||
                   meta_.type() == sendrecv::NCCL_ID) &&
                      meta_.varname() != "",
-                 "meta info should be got first!");
+                 "meta info shold be got first!");
 
   if (meta_.type() == sendrecv::NCCL_ID) {
 #ifdef PADDLE_WITH_CUDA
@@ -202,7 +202,7 @@ bool VariableResponse::ProcSerializedField(
           << ", type:" << meta_.type() << std::endl;
   framework::DDim dims = GetDims(meta_.dims());
   if (meta_.type() == sendrecv::LOD_TENSOR) {
-    PADDLE_ENFORCE(meta_.lod_size() >= 0, "lod info should be got first!");
+    PADDLE_ENFORCE(meta_.lod_size() >= 0, "lod info shold be got first!");
     if (!CopyLodTensorData(input, *dev_ctx_, dims, num_bytes)) {
       return false;
     }

@@ -22,11 +22,11 @@ class EditDistanceOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Hyps"), "Input(Hyps) shouldn't be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Refs"), "Input(Refs) shouldn't be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) shouldn't be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Hyps"), "Input(Hyps) sholdn't be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Refs"), "Input(Refs) sholdn't be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) sholdn't be null.");
     PADDLE_ENFORCE(ctx->HasOutput("SequenceNum"),
-                   "Output(SequenceNum) shouldn't be null.");
+                   "Output(SequenceNum) sholdn't be null.");
     auto hyp_dims = ctx->GetInputDim("Hyps");
     auto ref_dims = ctx->GetInputDim("Refs");
 
@@ -41,7 +41,7 @@ class EditDistanceOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE(hyp_length_dims[0] == ref_length_dims[0] &&
                          hyp_length_dims[0] == hyp_dims[0],
                      "Input(HypsLength), Input(RefsLength) and Input(Hyps) "
-                     "should have identical first dimension");
+                     "shold have identical first dimension");
     } else {
       PADDLE_ENFORCE(
           hyp_dims.size() == 2 && hyp_dims[1] == 1,

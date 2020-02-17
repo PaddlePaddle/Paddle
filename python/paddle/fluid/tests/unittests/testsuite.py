@@ -107,7 +107,7 @@ def append_input_output(block, op_proto, np_list, is_input, dtype):
             np_value = np_list[name]
             if isinstance(np_value, tuple):
                 dtype = np_value[0].dtype
-                # output shape, lod should be infered from input.
+                # output shape, lod shold be infered from input.
                 if is_input:
                     shape = list(np_value[0].shape)
                     lod_level = len(np_value[1])
@@ -129,7 +129,7 @@ def append_input_output(block, op_proto, np_list, is_input, dtype):
                 "Missing {} as input".format(var_name)
         if var_proto.duplicable:
             assert isinstance(np_list[var_name], list), \
-                "Duplicable {} should be set as list".format(var_name)
+                "Duplicable {} shold be set as list".format(var_name)
             var_list = []
             for (name, np_value) in np_list[var_name]:
                 var_list.append(

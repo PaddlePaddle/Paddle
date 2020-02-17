@@ -82,7 +82,7 @@ def fused_elemwise_activation(x,
 
     if not isinstance(functor_list, list) or len(functor_list) != 2:
         raise ValueError(
-            'functor_list should be a list of str, and the length should be 2.')
+            'functor_list shold be a list of str, and the length shold be 2.')
 
     helper = LayerHelper('fused_elemwise_activation', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -117,7 +117,7 @@ def var_conv_2d(input,
     The var_conv_2d layer calculates the output base on the :attr:`input` with variable length,
     row, col, input channel, filter size and strides. Both :attr:`input`, :attr:`row`,
     and :attr:`col` are 1-level LodTensor. The convolution operation is same as conv2d layer with 
-    padding. Besides, input.dims[1] should be 1. 
+    padding. Besides, input.dims[1] shold be 1. 
 
     .. code-block:: text
 
@@ -133,9 +133,9 @@ def var_conv_2d(input,
                 output.dims = [174, 1]  # where 174 = 90 + 84
 
     Args:
-        input (Variable): The input should be 1-level LodTensor with dims[1] equals 1.
-        row (Variable): The row should be 1-level LodTensor to provide height information.
-        col (Variable): The col should be 1-level LodTensor to provide width information.
+        input (Variable): The input shold be 1-level LodTensor with dims[1] equals 1.
+        row (Variable): The row shold be 1-level LodTensor to provide height information.
+        col (Variable): The col shold be 1-level LodTensor to provide width information.
         input_channel (int): The number of input channel.
         output_channel (int): The number of output channel.
         filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
@@ -234,7 +234,7 @@ def match_matrix_tensor(x,
     A * W * B.T = [n, h]*[h, 3, h]*[h, m] = [n, 3, m]. The learnable parameter matrix `W` 
     is equivalent to a fully connected layer in the calculation process. If :attr:`act` is provided, 
     the corresponding activation function will be applied to output matrix.
-    The :attr:`x` and :attr:`y` should be LodTensor and only one level LoD is supported.
+    The :attr:`x` and :attr:`y` shold be LodTensor and only one level LoD is supported.
 
     .. code-block:: text
 
@@ -251,8 +251,8 @@ def match_matrix_tensor(x,
                 out.dims = [18, 1]     # where 18 = 12 + 6
 
     Args:
-        x (Variable): Input variable x which should be 1-level LodTensor.
-        y (Variable): Input variable y which should be 1-level LodTensor.
+        x (Variable): Input variable x which shold be 1-level LodTensor.
+        y (Variable): Input variable y which shold be 1-level LodTensor.
         channel_num (int): The channel number of learnable parameter W.
         act (str, default None): Activation to be applied to the output of this layer.
         param_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for learnable
@@ -324,10 +324,10 @@ def sequence_topk_avg_pooling(input, row, col, topks, channel_num):
                 out.dims = [9, 6]   	# where 6 = len(topks) * channel_num
 
     Args:
-        input (Variable): The input should be 2D LodTensor with dims[1] equals 1.
-        row (Variable): The row should be 1-level LodTensor to provide the height information
+        input (Variable): The input shold be 2D LodTensor with dims[1] equals 1.
+        row (Variable): The row shold be 1-level LodTensor to provide the height information
                         of the input tensor data.
-        col (Variable): The col should be 1-level LodTensor to provide the width information
+        col (Variable): The col shold be 1-level LodTensor to provide the width information
                         of the input tensor data.
         topks (list): A list of incremental value to average the topk feature.
         channel_num (int): The number of input channel.
@@ -448,8 +448,8 @@ def fused_embedding_seq_pool(input,
 
     Args:
         input (Variable): Input is a Tensor<int64> Variable, which contains the IDs' information.
-            The value of the input IDs should satisfy :math:`0<= id < size[0]`.
-        size (tuple|list): The shape of the lookup_table parameter. It should
+            The value of the input IDs shold satisfy :math:`0<= id < size[0]`.
+        size (tuple|list): The shape of the lookup_table parameter. It shold
             have two elements which indicate the size of the dictionary of
             embedding and the size of each embedding vector respectively.
         is_sparse (bool): The flag indicating whether to use sparse update.
@@ -509,7 +509,7 @@ def multiclass_nms2(bboxes,
                     normalized=True,
                     nms_eta=1.,
                     background_label=0,
-                    return_index=False,
+                    return_indice=False,
                     name=None):
     """
     **Multiclass NMS2**
@@ -546,9 +546,9 @@ def multiclass_nms2(bboxes,
                            of BBoxes.
                            2. (LoDTensor) A 2-D LoDTensor with shape [M, C].
                            M is the number of bbox, C is the class number.
-                           In this case, input BBoxes should be the second
+                           In this case, input BBoxes shold be the second
                            case with shape [M, C, 4].
-        background_label (int): The index of background label, the background 
+        background_label (int): The indice of background label, the background 
                                 label will be ignored. If set to -1, then all
                                 categories will be considered. Default: 0
         score_threshold (float): Threshold to filter out bounding boxes with
@@ -562,11 +562,11 @@ def multiclass_nms2(bboxes,
         keep_top_k (int): Number of total bboxes to be kept per image after NMS
                           step. -1 means keeping all bboxes after NMS step.
         normalized (bool): Whether detections are normalized. Default: True
-        return_index(bool): Whether return selected index. Default: False
+        return_indice(bool): Whether return selected indice. Default: False
         name(str): Name of the multiclass nms op. Default: None.
 
     Returns:
-        A tuple with two Variables: (Out, Index) if return_index is True,
+        A tuple with two Variables: (Out, Index) if return_indice is True,
         otherwise, a tuple with one Variable(Out) is returned. 
         Out: A 2-D LoDTensor with shape [No, 6] represents the detections. 
         Each row has 6 values: [label, confidence, xmin, ymin, xmax, ymax] 
@@ -575,10 +575,10 @@ def multiclass_nms2(bboxes,
         x4, y4]. No is the total number of detections. 
         If all images have not detected results, all elements in LoD will be
         0, and output tensor is empty (None).
-        Index: Only return when return_index is True. A 2-D LoDTensor with 
-        shape [No, 1] represents the selected index which type is Integer. 
-        The index is the absolute value cross batches. No is the same number 
-        as Out. If the index is used to gather other attribute such as age, 
+        Index: Only return when return_indice is True. A 2-D LoDTensor with 
+        shape [No, 1] represents the selected indice which type is Integer. 
+        The indice is the absolute value cross batches. No is the same number 
+        as Out. If the indice is used to gather other attribute such as age, 
         one needs to reshape the input(N, M, 1) to (N * M, 1) as first, where 
         N is the batch size and M is the number of boxes.
 
@@ -592,7 +592,7 @@ def multiclass_nms2(bboxes,
                                       dtype='float32', lod_level=1)
             scores = fluid.layers.data(name='scores', shape=[81],
                                       dtype='float32', lod_level=1)
-            out, index = fluid.layers.multiclass_nms2(bboxes=boxes,
+            out, indice = fluid.layers.multiclass_nms2(bboxes=boxes,
                                               scores=scores,
                                               background_label=0,
                                               score_threshold=0.5,
@@ -600,12 +600,12 @@ def multiclass_nms2(bboxes,
                                               nms_threshold=0.3,
                                               keep_top_k=200,
                                               normalized=False,
-                                              return_index=True)
+                                              return_indice=True)
     """
     helper = LayerHelper('multiclass_nms2', **locals())
 
     output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
-    index = helper.create_variable_for_type_inference(dtype='int')
+    indice = helper.create_variable_for_type_inference(dtype='int')
     helper.append_op(
         type="multiclass_nms2",
         inputs={'BBoxes': bboxes,
@@ -621,12 +621,12 @@ def multiclass_nms2(bboxes,
             'normalized': normalized
         },
         outputs={'Out': output,
-                 'Index': index})
+                 'Index': indice})
     output.stop_gradient = True
-    index.stop_gradient = True
+    indice.stop_gradient = True
 
-    if return_index:
-        return output, index
+    if return_indice:
+        return output, indice
     return output
 
 
@@ -655,17 +655,17 @@ def search_pyramid_hash(input,
         input (Variable): LoDTensor<int32> Variable contained the IDs' information.
         num_emb (int): The embedding size of output.
         space_len (int): The length of pyramid hash embedding space.
-        pyramid_layer (int): The number of pyramid layers. It should be greater than 2.
+        pyramid_layer (int): The number of pyramid layers. It shold be greater than 2.
         rand_len (int): The minimum length of pyramid hash cell.
         drop_out_percent (float): The probability of dropping out the input token randomly.
-            It should satisfy: [0., 1.]
+            It shold satisfy: [0., 1.]
         is_training (bool): Whether in training or testing phrase.
-        use_filter(bool): If set True, the white filter and black filter should be given by
+        use_filter(bool): If set True, the white filter and black filter shold be given by
             :attr:`param_attr_wl` and :attr:`param_attr_bl` .
         white_list_len(int): If set :math:`white_list_len>0` , white filter with shape [white_list_len, 1]
-            should be provided by param_attr_wl.
+            shold be provided by param_attr_wl.
         black_list_len(int): If set :math:`black_list_len>0` , black filter with shape [black_list_len, 1]
-            should be provided by param_attr_bl.
+            shold be provided by param_attr_bl.
         seed(int): The number of random seed.
         lr(float): The learning rate of weight created by :attr:`param_attr` with shape [space_len+rand_len, 1]
             in this layer.
@@ -673,7 +673,7 @@ def search_pyramid_hash(input,
             default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` .
         param_attr_wl(ParamAttr): Specified parameters of white filter.
         param_attr_bl(ParamAttr): Specified parameters of black filter.
-        distribute_update_vars(list[ParamAttr.name]): Decided which params should be updated in distribute training. 
+        distribute_update_vars(list[ParamAttr.name]): Decided which params shold be updated in distribute training. 
             Used in Distribute Transpiler to create a trainer/server program.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .

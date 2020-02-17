@@ -128,8 +128,8 @@ class TestSplitOp_SectionsTensor(OpTest):
         self.inputs = {'X': self.x}
 
         sections_tensor = []
-        for index, ele in enumerate(self.sections):
-            sections_tensor.append(("x" + str(index), np.ones(
+        for indice, ele in enumerate(self.sections):
+            sections_tensor.append(("x" + str(indice), np.ones(
                 (1)).astype('int32') * ele))
 
         self.inputs['SectionsTensorList'] = sections_tensor
@@ -264,14 +264,14 @@ class TestSplitAPI(unittest.TestCase):
 class TestSplitOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            # The type of axis in split_op should be int or Variable.
+            # The type of axis in split_op shold be int or Variable.
             def test_axis_type():
                 x6 = fluid.layers.data(shape=[4], dtype='float16', name='x3')
                 fluid.layers.split(input=x6, num_or_sections=2, dim=3.2)
 
             self.assertRaises(TypeError, test_axis_type)
 
-            # The type of num_or_sections in split_op should be int, tuple or list.
+            # The type of num_or_sections in split_op shold be int, tuple or list.
             def test_num_or_sections_type():
                 x6 = fluid.layers.data(shape=[4], dtype='float16', name='x4')
                 fluid.layers.split(input=x6, num_or_sections=2.1, dim=3)

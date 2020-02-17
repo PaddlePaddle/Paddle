@@ -27,11 +27,11 @@ namespace framework {
 namespace ir {
 namespace fusion_group {
 
-static inline std::string ArgName(int index) {
-  return "arg" + std::to_string(index);
+static inline std::string ArgName(int indice) {
+  return "arg" + std::to_string(indice);
 }
-static inline std::string TmpName(int index) {
-  return "tmp" + std::to_string(index);
+static inline std::string TmpName(int indice) {
+  return "tmp" + std::to_string(indice);
 }
 
 class OperationExpression {

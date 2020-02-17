@@ -1465,17 +1465,17 @@ class MaxPool2dWithIndexFunctor<platform::CPUDeviceContext, T1, T2> {
             }
 
             T1 ele = static_cast<T1>(-FLT_MAX);
-            int index = -1;
+            int indice = -1;
             for (int h = hstart; h < hend; ++h) {
               for (int w = wstart; w < wend; ++w) {
                 if (ele < input_data[h * input_width + w]) {
                   ele = input_data[h * input_width + w];
-                  index = h * input_width + w;
+                  indice = h * input_width + w;
                 }
               }
             }
             output_data[ph * output_width + pw] = ele;
-            mask_data[ph * output_width + pw] = index;
+            mask_data[ph * output_width + pw] = indice;
           }
         }
         // offset
@@ -1613,20 +1613,20 @@ class MaxPool3dWithIndexFunctor<platform::CPUDeviceContext, T1, T2> {
 
               int output_idx = (pd * output_height + ph) * output_width + pw;
               T1 ele = static_cast<T1>(-FLT_MAX);
-              int index = -1;
+              int indice = -1;
               for (int d = dstart; d < dend; ++d) {
                 for (int h = hstart; h < hend; ++h) {
                   for (int w = wstart; w < wend; ++w) {
                     int input_idx = (d * input_height + h) * input_width + w;
                     if (ele < input_data[input_idx]) {
-                      index = input_idx;
+                      indice = input_idx;
                       ele = input_data[input_idx];
                     }
                   }
                 }
               }
               output_data[output_idx] = ele;
-              mask_data[output_idx] = index;
+              mask_data[output_idx] = indice;
             }
           }
         }

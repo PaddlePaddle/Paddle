@@ -53,7 +53,7 @@ void serialize_params(std::string* str, framework::Scope* scope,
   for (const auto& param : params) {
     PADDLE_ENFORCE_NOT_NULL(
         scope->FindVar(param),
-        platform::errors::NotFound("Block should already have a '%s' variable",
+        platform::errors::NotFound("Block shold already have a '%s' variable",
                                    param));
     auto* tensor = scope->FindVar(param)->GetMutable<framework::LoDTensor>();
     framework::SerializeToStream(os, *tensor, ctx);
@@ -76,7 +76,7 @@ void RandomizeTensor(framework::LoDTensor* tensor,
   PADDLE_ENFORCE_GT(num_elements, 0,
                     platform::errors::InvalidArgument(
                         "The input tensor dimension of the randomized tensor "
-                        "function should be greater than zero."));
+                        "function shold be greater than zero."));
   platform::CPUPlace cpu_place;
   framework::LoDTensor temp_tensor;
   temp_tensor.Resize(dims);

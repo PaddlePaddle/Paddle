@@ -125,13 +125,13 @@ class TestTransposeOpError(unittest.TestCase):
 
             def test_perm_length_and_x_dim_check():
                 # Input(perm) is the permutation of dimensions of Input(input)
-                # its length should be equal to dimensions of Input(input)
+                # its length shold be equal to dimensions of Input(input)
                 fluid.layers.transpose(x, perm=[1, 0, 2, 3, 4])
 
             self.assertRaises(ValueError, test_perm_length_and_x_dim_check)
 
             def test_each_elem_value_check():
-                # Each element in Input(perm) should be less than Input(x)'s dimension
+                # Each element in Input(perm) shold be less than Input(x)'s dimension
                 fluid.layers.transpose(x, perm=[3, 5, 7])
 
             self.assertRaises(ValueError, test_each_elem_value_check)

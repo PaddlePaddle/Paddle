@@ -34,9 +34,9 @@ REGISTER_TRT_PLUGIN("layer_norm_plugin", CreateLayerNormPluginDeserialize);
 int LayerNormPlugin::initialize() { return 0; }
 
 nvinfer1::Dims LayerNormPlugin::getOutputDimensions(
-    int index, const nvinfer1::Dims *inputDims, int nbInputs) {
+    int indice, const nvinfer1::Dims *inputDims, int nbInputs) {
   assert(nbInputs == 1);
-  assert(index < this->getNbOutputs());
+  assert(indice < this->getNbOutputs());
   nvinfer1::Dims const &input_dims = inputDims[0];
   nvinfer1::Dims output_dims = input_dims;
   return output_dims;

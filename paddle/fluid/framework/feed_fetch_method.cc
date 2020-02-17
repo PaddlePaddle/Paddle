@@ -24,23 +24,23 @@ namespace paddle {
 namespace framework {
 
 void SetFeedVariable(Scope* scope, const LoDTensor& input,
-                     const std::string& var_name, size_t index) {
+                     const std::string& var_name, size_t indice) {
   // If var_name Variable is not found in GlobalScope, a new variable will
   // be created.
-  VLOG(3) << "SetFeedVariable name=" << var_name << " index=" << index;
+  VLOG(3) << "SetFeedVariable name=" << var_name << " indice=" << indice;
   Variable* g_feed_value = scope->Var(var_name);
   auto& feed_inputs = *(g_feed_value->GetMutable<FeedFetchList>());
-  if (index >= feed_inputs.size()) {
-    feed_inputs.resize(index + 1);
+  if (indice >= feed_inputs.size()) {
+    feed_inputs.resize(indice + 1);
   }
   // shared data with input tensor
-  feed_inputs[index].ShareDataWith(input);
+  feed_inputs[indice].ShareDataWith(input);
   // set lod
-  feed_inputs[index].set_lod(input.lod());
+  feed_inputs[indice].set_lod(input.lod());
 }
 
 LoDTensor& GetFetchVariable(const Scope& scope, const std::string& var_name,
-                            size_t index) {
+                            size_t indice) {
   // Since we want to fetch LodTensor from a variable, the variable must
   // be created alreadly.
   Variable* g_fetch_value = scope.FindVar(var_name);
@@ -49,10 +49,10 @@ LoDTensor& GetFetchVariable(const Scope& scope, const std::string& var_name,
                  "Only %s can be invoked by GetFetchVariable",
                  typeid(FeedFetchList).name());
   auto& fetch_outputs = *g_fetch_value->GetMutable<FeedFetchList>();
-  auto& tensor = fetch_outputs[index];
-  VLOG(3) << "Fetch " << var_name << " with index " << index
+  auto& tensor = fetch_outputs[indice];
+  VLOG(3) << "Fetch " << var_name << " with indice " << indice
           << " shape= " << tensor.dims();
-  PADDLE_ENFORCE_LT(index, fetch_outputs.size());
+  PADDLE_ENFORCE_LT(indice, fetch_outputs.size());
   return tensor;
 }
 

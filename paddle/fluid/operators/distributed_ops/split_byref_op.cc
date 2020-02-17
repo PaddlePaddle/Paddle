@@ -25,9 +25,9 @@ class SplitByrefOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SplitOp should not be null.");
+                   "Input(X) of SplitOp shold not be null.");
     PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(), 1UL,
-                      "Outputs(Out) of SplitOp should not be empty.");
+                      "Outputs(Out) of SplitOp shold not be empty.");
     auto in_dims = ctx->GetInputDim("X");
     auto outs_names = ctx->Outputs("Out");
     size_t num = static_cast<size_t>(ctx->Attrs().Get<int>("num"));
@@ -53,7 +53,7 @@ class SplitByrefOp : public framework::OperatorWithKernel {
     } else if (sections.size() > 0) {
       PADDLE_ENFORCE_EQ(sections.size(), outs_number,
                         "tensor split sections size"
-                        "should be equal to output size.");
+                        "shold be equal to output size.");
       for (size_t i = 0; i < outs_number; ++i) {
         auto dim = in_dims;
         dim[0] = sections[i];

@@ -35,9 +35,9 @@ __global__ void GPUPSROIPoolForward(
     const float spatial_scale, const int input_channels, const int height,
     const int width, const int output_channels, const int pooled_height,
     const int pooled_width, const int* rois_batch_id_data, T* output_data) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int indice = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
-  for (size_t i = index; i < nthreads; i += offset) {
+  for (size_t i = indice; i < nthreads; i += offset) {
     // The output is in order (n, c, ph, pw)
     int pw = i % pooled_width;
     int ph = (i / pooled_width) % pooled_height;
@@ -84,8 +84,8 @@ __global__ void GPUPSROIPoolForward(
 
     for (int ih = hstart; ih < hend; ++ih) {
       for (int iw = wstart; iw < wend; ++iw) {
-        int input_index = ih * width + iw;
-        outsum += offset_input_data[input_index];
+        int input_indice = ih * width + iw;
+        outsum += offset_input_data[input_indice];
       }
     }
 
@@ -100,9 +100,9 @@ __global__ void GPUPSROIPoolBackward(
     const float spatial_scale, const int input_channels, const int height,
     const int width, const int output_channels, const int pooled_height,
     const int pooled_width, const int* rois_batch_id_data, T* input_grad_data) {
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
+  int indice = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
-  for (int i = index; i < nthreads; i += offset) {
+  for (int i = indice; i < nthreads; i += offset) {
     // The output is in order (n, c, ph, pw)
     int pw = i % pooled_width;
     int ph = (i / pooled_width) % pooled_height;
@@ -150,8 +150,8 @@ __global__ void GPUPSROIPoolBackward(
     T diff_val = is_empty ? 0. : output_grad_data[i] / bin_area;
     for (int ih = hstart; ih < hend; ++ih) {
       for (int iw = wstart; iw < wend; ++iw) {
-        int input_index = ih * width + iw;
-        platform::CudaAtomicAdd(offset_input_grad_data + input_index, diff_val);
+        int input_indice = ih * width + iw;
+        platform::CudaAtomicAdd(offset_input_grad_data + input_indice, diff_val);
       }
     }
   }
@@ -178,7 +178,7 @@ class GPUPSROIPoolOpKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_EQ(input_channels,
                       output_channels * pooled_height * pooled_width,
-                      "the channels of input X should equal the product of "
+                      "the channels of input X shold equal the product of "
                       "output_channels x pooled_height x pooled_width");
 
     int rois_num = rois->dims()[0];

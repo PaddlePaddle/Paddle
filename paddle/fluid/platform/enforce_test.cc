@@ -199,7 +199,7 @@ TEST(ENFORCE_NOT_NULL, FAIL) {
   } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
     std::string ex_msg = error.what();
-    EXPECT_TRUE(ex_msg.find("a should not be null") != std::string::npos);
+    EXPECT_TRUE(ex_msg.find("a shold not be null") != std::string::npos);
   }
   EXPECT_TRUE(caught_exception);
 }

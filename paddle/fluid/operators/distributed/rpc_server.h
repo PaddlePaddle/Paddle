@@ -80,7 +80,7 @@ class RPCServer {
   }
 
   // Wait util all the clients have reached the barrier for one
-  // rpc method. This function should be called in the
+  // rpc method. This function shold be called in the
   // RequestHandler if you want to run the server/client in a
   // synchronous mode.
   void WaitBarrier(const std::string& rpc_name);

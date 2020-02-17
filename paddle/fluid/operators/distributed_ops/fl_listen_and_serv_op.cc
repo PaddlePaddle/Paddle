@@ -106,7 +106,7 @@ void FlListenAndServOp::RunSyncLoop(framework::Executor *executor,
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
   PADDLE_ENFORCE_GE(num_blocks, 2,
-                    "server program should have at least 2 blocks");
+                    "server program shold have at least 2 blocks");
 
   // Prepare all the server block
   std::vector<int> optimize_blocks_list;
@@ -115,7 +115,7 @@ void FlListenAndServOp::RunSyncLoop(framework::Executor *executor,
   }
   auto optimize_prepared = executor->Prepare(*program, optimize_blocks_list);
   // Insert placeholder for block0 which holds current op itself,
-  // NOTE the first block in `optimize_prepared` should never be ran.
+  // NOTE the first block in `optimize_prepared` shold never be ran.
   optimize_prepared.insert(
       optimize_prepared.begin(),
       std::shared_ptr<framework::ExecutorPrepareContext>(nullptr));
@@ -180,7 +180,7 @@ static void FillRequestCtx(distributed::RequestHandler *h,
 
 void FlListenAndServOp::RunImpl(const framework::Scope &scope,
                                 const platform::Place &dev_place) const {
-  // Mark this as PS that it should decide profiling by listening from trainer.
+  // Mark this as PS that it shold decide profiling by listening from trainer.
   platform::SetProfileListener();
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto &dev_ctx = *pool.Get(dev_place);
@@ -213,7 +213,7 @@ void FlListenAndServOp::RunImpl(const framework::Scope &scope,
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
   PADDLE_ENFORCE_GE(
       optimize_blocks.size(), 1,
-      "optimize blocks should be 1 at least on the pserver side.");
+      "optimize blocks shold be 1 at least on the pserver side.");
   auto *program = optimize_blocks[0]->Program();
   framework::Executor executor(dev_place);
 

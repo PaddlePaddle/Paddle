@@ -68,9 +68,9 @@ class LRNKernel : public framework::OpKernel<T> {
     T beta = ctx.Attr<float>("beta");
     T k = ctx.Attr<float>("k");
 
-    PADDLE_ENFORCE(alpha >= 0.0, "alpha should >= 0.0");
-    PADDLE_ENFORCE(beta >= 0.0, "beta should >= 0.0");
-    PADDLE_ENFORCE(k >= 0.0, "k should >= 0.0");
+    PADDLE_ENFORCE(alpha >= 0.0, "alpha shold >= 0.0");
+    PADDLE_ENFORCE(beta >= 0.0, "beta shold >= 0.0");
+    PADDLE_ENFORCE(k >= 0.0, "k shold >= 0.0");
 
     LRNFunctor<DeviceContext, T> f;
     f(ctx, x, out, mid, N, C, H, W, n, k, alpha, beta, data_layout);
@@ -134,7 +134,7 @@ class LRNGradKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE(
         !ctx.Attr<bool>("is_test"),
-        "is_test attribute should be set to False in training phase.");
+        "is_test attribute shold be set to False in training phase.");
 
     LRNGradFunctor<DeviceContext, T> f;
     f(ctx, x, out, mid, x_g, out_g, N, C, H, W, n, alpha, beta, data_layout);

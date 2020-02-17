@@ -69,13 +69,13 @@ class Allocator;
  *
  *   A(1).Free() -> A(2).Free() -> ... -> A(n).Free()
  *
- * Therefore, we should record the allocator chain when allocating, so
+ * Therefore, we shold record the allocator chain when allocating, so
  * that we can free the allocation in the reverse order of allocator chain.
  * The field `decorated_allocators_` is used to record this chain.
  *
  * Another example is that we want to add additional fields in Allocation,
  * e.g., something what is done in AlignedAllocator, etc.
- * In this case, we should declare a derived class of Allocation, which
+ * In this case, we shold declare a derived class of Allocation, which
  * contains an underlying Allocation allocated by the underlying allocator.
  * Therefore, `decorated_allocators_` of the new Allocation object would
  * be a new chain, differing from the underlying Allocation object.
@@ -171,7 +171,7 @@ class Allocator {
     return AllocationPtr(ptr);
   }
 
-  // This function should not be called outside Allocator class
+  // This function shold not be called outside Allocator class
   inline void Free(Allocation* allocation) {
     allocation->PopDecoratedAllocator();
     FreeImpl(allocation);

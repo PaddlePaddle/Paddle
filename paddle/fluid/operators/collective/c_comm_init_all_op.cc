@@ -62,7 +62,7 @@ class CCommInitAllOp : public framework::OperatorBase {
 
     platform::NCCLCommContext::Instance().CreateAllNCCLComms(devices, rid);
 #else
-    PADDLE_THROW("PaddlePaddle should compile with GPU.");
+    PADDLE_THROW("PaddlePaddle shold compile with GPU.");
 #endif
   }
 };

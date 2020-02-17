@@ -72,7 +72,7 @@ class FeedOpInfoMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Feed Operator.
 
-It should not be configured by users directly.
+It shold not be configured by users directly.
 
 )DOC");
   }

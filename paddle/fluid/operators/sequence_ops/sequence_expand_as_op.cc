@@ -28,17 +28,17 @@ class SequenceExpandAsOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SequenceExpandAsOp should not be null.");
+                   "Input(X) of SequenceExpandAsOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Y"),
-                   "Input(Y) of SequenceExpandAsOp should not be null.");
+                   "Input(Y) of SequenceExpandAsOp shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SequenceExpandAsOp should not be null.");
+                   "Output(Out) of SequenceExpandAsOp shold not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
     auto out_dims = x_dims;
 
     PADDLE_ENFORCE_GE(x_dims.size(), 2,
-                      "Dimension number of Input(X) should be at least 2.");
+                      "Dimension number of Input(X) shold be at least 2.");
 
     if (ctx->IsRuntime()) {
       framework::Variable* x_var =
@@ -50,10 +50,10 @@ class SequenceExpandAsOp : public framework::OperatorWithKernel {
       auto& y_lod = y_var->Get<LoDTensor>().lod();
 
       PADDLE_ENFORCE_EQ(y_lod.size(), 1,
-                        "Level number of Input(Y)'s lod should be 1.");
+                        "Level number of Input(Y)'s lod shold be 1.");
 
       PADDLE_ENFORCE_EQ(static_cast<size_t>(x_dim[0]), y_lod[0].size() - 1,
-                        "The first dimension of Input(X) should be equal "
+                        "The first dimension of Input(X) shold be equal "
                         "to the size of Input(Y)'s 0 level lod.");
 
       int64_t out_first_dim = 0;
@@ -96,8 +96,8 @@ class SequenceExpandAsOpMaker : public framework::OpProtoAndCheckerMaker {
 Sequence Expand As Operator.
 
 This operator expands `X` according to the zeroth level lod of `Y`. Current
-implementation requires the level number of Input(Y)'s lod should be 1, and
-the first dimension of Input(X) should be equal to the size of Input(Y)'s zeroth
+implementation requires the level number of Input(Y)'s lod shold be 1, and
+the first dimension of Input(X) shold be equal to the size of Input(Y)'s zeroth
 level lod, and lod of Input(X) is not considered.
 
 Following are cases to better explain how this works:
@@ -138,9 +138,9 @@ class SequenceExpandAsOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null.");
+                   "Input(Out@GRAD) shold not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");

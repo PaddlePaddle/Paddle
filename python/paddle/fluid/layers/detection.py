@@ -166,7 +166,7 @@ def retinanet_target_assign(bbox_pred,
             value is 0.5.
         negative_overlap(float32): Maximum overlap allowed between an anchor
             and ground-truth box for the anchor to be a negative sample, the default
-            value is 0.4. :attr:`negative_overlap` should be less than or equal to
+            value is 0.4. :attr:`negative_overlap` shold be less than or equal to
             :attr:`positive_overlap`, if not, the actual value of
             :attr:`positive_overlap` is :attr:`negative_overlap`.
 
@@ -241,8 +241,8 @@ def retinanet_target_assign(bbox_pred,
 
     helper = LayerHelper('retinanet_target_assign', **locals())
     # Assign target label to anchors
-    loc_index = helper.create_variable_for_type_inference(dtype='int32')
-    score_index = helper.create_variable_for_type_inference(dtype='int32')
+    loc_indice = helper.create_variable_for_type_inference(dtype='int32')
+    score_indice = helper.create_variable_for_type_inference(dtype='int32')
     target_label = helper.create_variable_for_type_inference(dtype='int32')
     target_bbox = helper.create_variable_for_type_inference(
         dtype=anchor_box.dtype)
@@ -259,8 +259,8 @@ def retinanet_target_assign(bbox_pred,
             'ImInfo': im_info
         },
         outputs={
-            'LocationIndex': loc_index,
-            'ScoreIndex': score_index,
+            'LocationIndex': loc_indice,
+            'ScoreIndex': score_indice,
             'TargetLabel': target_label,
             'TargetBBox': target_bbox,
             'BBoxInsideWeight': bbox_inside_weight,
@@ -271,8 +271,8 @@ def retinanet_target_assign(bbox_pred,
             'negative_overlap': negative_overlap
         })
 
-    loc_index.stop_gradient = True
-    score_index.stop_gradient = True
+    loc_indice.stop_gradient = True
+    score_indice.stop_gradient = True
     target_label.stop_gradient = True
     target_bbox.stop_gradient = True
     bbox_inside_weight.stop_gradient = True
@@ -280,8 +280,8 @@ def retinanet_target_assign(bbox_pred,
 
     cls_logits = nn.reshape(x=cls_logits, shape=(-1, num_classes))
     bbox_pred = nn.reshape(x=bbox_pred, shape=(-1, 4))
-    predicted_cls_logits = nn.gather(cls_logits, score_index)
-    predicted_bbox_pred = nn.gather(bbox_pred, loc_index)
+    predicted_cls_logits = nn.gather(cls_logits, score_indice)
+    predicted_bbox_pred = nn.gather(bbox_pred, loc_indice)
 
     return predicted_cls_logits, predicted_bbox_pred, target_label, target_bbox, bbox_inside_weight, fg_num
 
@@ -388,8 +388,8 @@ def rpn_target_assign(bbox_pred,
 
     helper = LayerHelper('rpn_target_assign', **locals())
     # Assign target label to anchors
-    loc_index = helper.create_variable_for_type_inference(dtype='int32')
-    score_index = helper.create_variable_for_type_inference(dtype='int32')
+    loc_indice = helper.create_variable_for_type_inference(dtype='int32')
+    score_indice = helper.create_variable_for_type_inference(dtype='int32')
     target_label = helper.create_variable_for_type_inference(dtype='int32')
     target_bbox = helper.create_variable_for_type_inference(
         dtype=anchor_box.dtype)
@@ -404,8 +404,8 @@ def rpn_target_assign(bbox_pred,
             'ImInfo': im_info
         },
         outputs={
-            'LocationIndex': loc_index,
-            'ScoreIndex': score_index,
+            'LocationIndex': loc_indice,
+            'ScoreIndex': score_indice,
             'TargetLabel': target_label,
             'TargetBBox': target_bbox,
             'BBoxInsideWeight': bbox_inside_weight
@@ -419,16 +419,16 @@ def rpn_target_assign(bbox_pred,
             'use_random': use_random
         })
 
-    loc_index.stop_gradient = True
-    score_index.stop_gradient = True
+    loc_indice.stop_gradient = True
+    score_indice.stop_gradient = True
     target_label.stop_gradient = True
     target_bbox.stop_gradient = True
     bbox_inside_weight.stop_gradient = True
 
     cls_logits = nn.reshape(x=cls_logits, shape=(-1, 1))
     bbox_pred = nn.reshape(x=bbox_pred, shape=(-1, 4))
-    predicted_cls_logits = nn.gather(cls_logits, score_index)
-    predicted_bbox_pred = nn.gather(bbox_pred, loc_index)
+    predicted_cls_logits = nn.gather(cls_logits, score_indice)
+    predicted_bbox_pred = nn.gather(bbox_pred, loc_indice)
 
     return predicted_cls_logits, predicted_bbox_pred, target_label, target_bbox, bbox_inside_weight
 
@@ -473,7 +473,7 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2, alpha=0.25):
             range of :math:`[1, C]`, and the values for negative samples are 0. The data type of :attr:`label`
             is int32.
         fg_num(Variable): A 1-D tensor with shape [1] represents the number of positive samples in a
-            mini-batch, which should be obtained before this OP. The data type of :attr:`fg_num` is int32.
+            mini-batch, which shold be obtained before this OP. The data type of :attr:`fg_num` is int32.
         gamma(float): Hyper-parameter to balance the easy and hard examples. Default value is
             set to 2.0.
         alpha(float): Hyper-parameter to balance the positive and negative example. Default value
@@ -524,7 +524,7 @@ def detection_output(loc,
                      keep_top_k=200,
                      score_threshold=0.01,
                      nms_eta=1.0,
-                     return_index=False):
+                     return_indice=False):
     """
     Given the regression locations, classification confidences and prior boxes,
     calculate the detection outputs by performing following steps:
@@ -539,20 +539,20 @@ def detection_output(loc,
 
     Args:
         loc(Variable): A 3-D Tensor with shape [N, M, 4] represents the
-            predicted locations of M bounding bboxes. Data type should be
+            predicted locations of M bounding bboxes. Data type shold be
             float32 or float64. N is the batch size,
             and each bounding box has four coordinate values and the layout
             is [xmin, ymin, xmax, ymax].
         scores(Variable): A 3-D Tensor with shape [N, M, C] represents the
-            predicted confidence predictions. Data type should be float32
+            predicted confidence predictions. Data type shold be float32
             or float64. N is the batch size, C is the
             class number, M is number of bounding boxes.
         prior_box(Variable): A 2-D Tensor with shape [M, 4] holds M boxes,
             each box is represented as [xmin, ymin, xmax, ymax]. Data type
-            should be float32 or float64.
+            shold be float32 or float64.
         prior_box_var(Variable): A 2-D Tensor with shape [M, 4] holds M group
-            of variance. Data type should be float32 or float64.
-        background_label(int): The index of background label,
+            of variance. Data type shold be float32 or float64.
+        background_label(int): The indice of background label,
             the background label will be ignored. If set to -1, then all
             categories will be considered. Default: 0.
         nms_threshold(float): The threshold to be used in NMS. Default: 0.3.
@@ -566,11 +566,11 @@ def detection_output(loc,
             Default: 0.01.
         nms_eta(float): The parameter for adaptive NMS. It works only when the
             value is less than 1.0. Default: 1.0.
-        return_index(bool): Whether return selected index. Default: False
+        return_indice(bool): Whether return selected indice. Default: False
 
     Returns:
 
-        A tuple with two Variables: (Out, Index) if return_index is True,
+        A tuple with two Variables: (Out, Index) if return_indice is True,
         otherwise, a tuple with one Variable(Out) is returned. 
 
         Out (Variable): The detection outputs is a LoDTensor with shape [No, 6].
@@ -581,10 +581,10 @@ def detection_output(loc,
         N + 1, N is the batch size. The i-th image has `LoD[i + 1] - LoD[i]`
         detected results, if it is 0, the i-th image has no detected results.
 
-        Index (Variable): Only return when return_index is True. A 2-D LoDTensor
-        with shape [No, 1] represents the selected index which type is Integer.
-        The index is the absolute value cross batches. No is the same number
-        as Out. If the index is used to gather other attribute such as age,
+        Index (Variable): Only return when return_indice is True. A 2-D LoDTensor
+        with shape [No, 1] represents the selected indice which type is Integer.
+        The indice is the absolute value cross batches. No is the same number
+        as Out. If the indice is used to gather other attribute such as age,
         one needs to reshape the input(N, M, 1) to (N * M, 1) as first, where
         N is the batch size and M is the number of boxes.
 
@@ -598,11 +598,11 @@ def detection_output(loc,
             pbv = fluid.data(name='prior_box_var', shape=[10, 4], dtype='float32')
             loc = fluid.data(name='target_box', shape=[2, 21, 4], dtype='float32')
             scores = fluid.data(name='scores', shape=[2, 21, 10], dtype='float32')
-            nmsed_outs, index = fluid.layers.detection_output(scores=scores,
+            nmsed_outs, indice = fluid.layers.detection_output(scores=scores,
                                        loc=loc,
                                        prior_box=pb,
                                        prior_box_var=pbv,
-                                       return_index=True)
+                                       return_indice=True)
     """
     helper = LayerHelper("detection_output", **locals())
     decoded_box = box_coder(
@@ -615,14 +615,14 @@ def detection_output(loc,
     scores.stop_gradient = True
     nmsed_outs = helper.create_variable_for_type_inference(
         dtype=decoded_box.dtype)
-    if return_index:
-        index = helper.create_variable_for_type_inference(dtype='int')
+    if return_indice:
+        indice = helper.create_variable_for_type_inference(dtype='int')
         helper.append_op(
             type="multiclass_nms2",
             inputs={'Scores': scores,
                     'BBoxes': decoded_box},
             outputs={'Out': nmsed_outs,
-                     'Index': index},
+                     'Index': indice},
             attrs={
                 'background_label': 0,
                 'nms_threshold': nms_threshold,
@@ -631,7 +631,7 @@ def detection_output(loc,
                 'score_threshold': score_threshold,
                 'nms_eta': 1.0,
             })
-        index.stop_gradient = True
+        indice.stop_gradient = True
     else:
         helper.append_op(
             type="multiclass_nms",
@@ -647,8 +647,8 @@ def detection_output(loc,
                 'nms_eta': 1.0,
             })
     nmsed_outs.stop_gradient = True
-    if return_index:
-        return nmsed_outs, index
+    if return_indice:
+        return nmsed_outs, indice
     return nmsed_outs
 
 
@@ -907,14 +907,14 @@ def yolov3_loss(x,
 
     Args:
         x (Variable): ${x_comment}The data type is float32 or float64. 
-        gt_box (Variable): groud truth boxes, should be in shape of [N, B, 4],
-                          in the third dimension, x, y, w, h should be stored. 
+        gt_box (Variable): groud truth boxes, shold be in shape of [N, B, 4],
+                          in the third dimension, x, y, w, h shold be stored. 
                           x,y is the center coordinate of boxes, w, h are the
-                          width and height, x, y, w, h should be divided by 
+                          width and height, x, y, w, h shold be divided by 
                           input image height to scale to [0, 1].
                           N is the batch number and B is the max box number in 
                           an image.The data type is float32 or float64. 
-        gt_label (Variable): class id of ground truth boxes, should be in shape
+        gt_label (Variable): class id of ground truth boxes, shold be in shape
                             of [N, B].The data type is int32. 
         anchors (list|tuple): ${anchors_comment}
         anchor_mask (list|tuple): ${anchor_mask_comment}
@@ -924,7 +924,7 @@ def yolov3_loss(x,
         name (string): The default value is None.  Normally there is no need 
                        for user to set this property.  For more information, 
                        please refer to :ref:`api_guide_Name`
-        gt_score (Variable): mixup score of ground truth boxes, should be in shape
+        gt_score (Variable): mixup score of ground truth boxes, shold be in shape
                             of [N, B]. Default None.
         use_label_smooth (bool): ${use_label_smooth_comment}
 
@@ -1231,7 +1231,7 @@ def bipartite_match(dist_matrix,
             better matching the pairs are. NOTE: This tensor can contain LoD 
             information to represent a batch of inputs. One instance of this 
             batch can contain different numbers of entities.
-        match_type(str, optional): The type of matching method, should be
+        match_type(str, optional): The type of matching method, shold be
            'bipartite' or 'per_prediction'. None ('bipartite') by default.
         dist_threshold(float32, optional): If `match_type` is 'per_prediction',
             this threshold is to determine the extra matching bboxes based
@@ -1327,7 +1327,7 @@ def target_assign(input,
 
     Args:
        input (Variable): This input is a 3D LoDTensor with shape [M, P, K].
-           Data type should be int32 or float32.
+           Data type shold be int32 or float32.
        matched_indices (Variable): The input matched indices
            is 2D Tenosr<int32> with shape [N, P], If MatchIndices[i][j] is -1,
            the j-th entity of column is not matched to any entity of row in
@@ -1464,7 +1464,7 @@ def ssd_loss(location,
             float32 or float64.
         prior_box_var (Variable): The variance of prior boxes are a 2D Tensor
             with shape [Np, 4]. Np and 4 are the same as they are in `prior_box`
-        background_label (int): The index of background label, 0 by default.
+        background_label (int): The indice of background label, 0 by default.
         overlap_threshold (float): If match_type is 'per_prediction', use
             'overlap_threshold' to determine the extra matching bboxes when finding \
             matched boxes. 0.5 by default.
@@ -1475,9 +1475,9 @@ def ssd_loss(location,
             0.5 by default.
         loc_loss_weight (float): Weight for localization loss, 1.0 by default.
         conf_loss_weight (float): Weight for confidence loss, 1.0 by default.
-        match_type (str): The type of matching method during training, should
+        match_type (str): The type of matching method during training, shold
             be 'bipartite' or 'per_prediction', 'per_prediction' by default.
-        mining_type (str): The hard example mining type, should be 'hard_example'
+        mining_type (str): The hard example mining type, shold be 'hard_example'
             or 'max_negative', now only support `max_negative`.
         normalize (bool): Whether to normalize the SSD loss by the total number
             of output locations, True by default.
@@ -1653,9 +1653,9 @@ def prior_box(input,
     sequence according to the aspect_ratios.
 
     Parameters:
-       input(Variable): 4-D tensor(NCHW), the data type should be float32 or float64.
+       input(Variable): 4-D tensor(NCHW), the data type shold be float32 or float64.
        image(Variable): 4-D tensor(NCHW), the input image data of PriorBoxOp,
-            the data type should be float32 or float64.
+            the data type shold be float32 or float64.
        min_sizes(list|tuple|float): the min sizes of generated prior boxes.
        max_sizes(list|tuple|None): the max sizes of generated prior boxes.
             Default: None.
@@ -1752,7 +1752,7 @@ def prior_box(input,
     if not _is_list_or_tuple_(aspect_ratios):
         aspect_ratios = [aspect_ratios]
     if not (_is_list_or_tuple_(steps) and len(steps) == 2):
-        raise ValueError('steps should be a list or tuple ',
+        raise ValueError('steps shold be a list or tuple ',
                          'with length 2, (step_width, step_height).')
 
     min_sizes = list(map(float, min_sizes))
@@ -1819,14 +1819,14 @@ def density_prior_box(input,
     N_density_prior_box is the number of density_prior_box and N_fixed_ratios is the number of fixed_ratios.
 
     Parameters:
-       input(Variable): 4-D tensor(NCHW), the data type should be float32 of float64.
-       image(Variable): 4-D tensor(NCHW), the input image data of PriorBoxOp, the data type should be float32 or float64.
+       input(Variable): 4-D tensor(NCHW), the data type shold be float32 of float64.
+       image(Variable): 4-D tensor(NCHW), the input image data of PriorBoxOp, the data type shold be float32 or float64.
             the layout is NCHW.
        densities(list|tuple|None): The densities of generated density prior 
-            boxes, this attribute should be a list or tuple of integers. 
+            boxes, this attribute shold be a list or tuple of integers. 
             Default: None.
        fixed_sizes(list|tuple|None): The fixed sizes of generated density
-            prior boxes, this attribute should a list or tuple of same 
+            prior boxes, this attribute shold a list or tuple of same 
             length with :attr:`densities`. Default: None.
        fixed_ratios(list|tuple|None): The fixed ratios of generated density
             prior boxes, if this attribute is not set and :attr:`densities`
@@ -1926,15 +1926,15 @@ def density_prior_box(input,
         return (isinstance(data, list) or isinstance(data, tuple))
 
     if not _is_list_or_tuple_(densities):
-        raise TypeError('densities should be a list or a tuple or None.')
+        raise TypeError('densities shold be a list or a tuple or None.')
     if not _is_list_or_tuple_(fixed_sizes):
-        raise TypeError('fixed_sizes should be a list or a tuple or None.')
+        raise TypeError('fixed_sizes shold be a list or a tuple or None.')
     if not _is_list_or_tuple_(fixed_ratios):
-        raise TypeError('fixed_ratios should be a list or a tuple or None.')
+        raise TypeError('fixed_ratios shold be a list or a tuple or None.')
     if len(densities) != len(fixed_sizes):
-        raise ValueError('densities and fixed_sizes length should be euqal.')
+        raise ValueError('densities and fixed_sizes length shold be euqal.')
     if not (_is_list_or_tuple_(steps) and len(steps) == 2):
-        raise ValueError('steps should be a list or tuple ',
+        raise ValueError('steps shold be a list or tuple ',
                          'with length 2, (step_width, step_height).')
 
     densities = list(map(int, densities))
@@ -1998,8 +1998,8 @@ def multi_box_head(inputs,
     Args:
        inputs (list(Variable)|tuple(Variable)): The list of input variables,
            the format of all Variables are 4-D Tensor, layout is NCHW.
-           Data type should be float32 or float64.
-       image (Variable): The input image, layout is NCHW. Data type should be
+           Data type shold be float32 or float64.
+       image (Variable): The input image, layout is NCHW. Data type shold be
            the same as inputs.
        base_size(int): the base_size is input image size. When len(inputs) > 2
            and `min_size` and `max_size` are None, the `min_size` and `max_size`
@@ -2024,10 +2024,10 @@ def multi_box_head(inputs,
        max_ratio(int): the max ratio of generated prior boxes.
        min_sizes(list|tuple|None): If `len(inputs) <=2`,
             min_sizes must be set up, and the length of min_sizes
-            should equal to the length of inputs. Default: None.
+            shold equal to the length of inputs. Default: None.
        max_sizes(list|tuple|None): If `len(inputs) <=2`,
             max_sizes must be set up, and the length of min_sizes
-            should equal to the length of inputs. Default: None.
+            shold equal to the length of inputs. Default: None.
        steps(list|tuple): If step_w and step_h are the same,
             step_w and step_h can be replaced by steps.
        step_w(list|tuple): Prior boxes step
@@ -2137,7 +2137,7 @@ def multi_box_head(inputs,
             raise ValueError(err_info)
 
     if not _is_list_or_tuple_(inputs):
-        raise ValueError('inputs should be a list or tuple.')
+        raise ValueError('inputs shold be a list or tuple.')
 
     num_layer = len(inputs)
 
@@ -2157,23 +2157,23 @@ def multi_box_head(inputs,
     if aspect_ratios:
         _is_list_or_tuple_and_equal(
             aspect_ratios, num_layer,
-            'aspect_ratios should be list or tuple, and the length of inputs '
-            'and aspect_ratios should be the same.')
+            'aspect_ratios shold be list or tuple, and the length of inputs '
+            'and aspect_ratios shold be the same.')
     if step_h:
         _is_list_or_tuple_and_equal(
             step_h, num_layer,
-            'step_h should be list or tuple, and the length of inputs and '
-            'step_h should be the same.')
+            'step_h shold be list or tuple, and the length of inputs and '
+            'step_h shold be the same.')
     if step_w:
         _is_list_or_tuple_and_equal(
             step_w, num_layer,
-            'step_w should be list or tuple, and the length of inputs and '
-            'step_w should be the same.')
+            'step_w shold be list or tuple, and the length of inputs and '
+            'step_w shold be the same.')
     if steps:
         _is_list_or_tuple_and_equal(
             steps, num_layer,
-            'steps should be list or tuple, and the length of inputs and '
-            'step_w should be the same.')
+            'steps shold be list or tuple, and the length of inputs and '
+            'step_w shold be the same.')
         step_w = steps
         step_h = steps
 
@@ -2329,7 +2329,7 @@ def anchor_generator(input,
     if not _is_list_or_tuple_(aspect_ratios):
         aspect_ratios = [aspect_ratios]
     if not (_is_list_or_tuple_(stride) and len(stride) == 2):
-        raise ValueError('stride should be a list or tuple ',
+        raise ValueError('stride shold be a list or tuple ',
                          'with length 2, (stride_width, stride_height).')
 
     anchor_sizes = list(map(float, anchor_sizes))
@@ -2364,7 +2364,7 @@ def roi_perspective_transform(input,
                               spatial_scale=1.0,
                               name=None):
     """
-    **The** `rois` **of this op should be a LoDTensor.**
+    **The** `rois` **of this op shold be a LoDTensor.**
 
     ROI perspective transform op applies perspective transform to map each roi into an 
     rectangular region. Perspective transform is a type of transformation in linear algebra.
@@ -2375,7 +2375,7 @@ def roi_perspective_transform(input,
                           number of input channels, H is the height of the feature,
                           and W is the width of the feature. The data type is float32.
         rois (Variable):  2-D LoDTensor, ROIs (Regions of Interest) to be transformed. 
-                          It should be a 2-D LoDTensor of shape (num_rois, 8). Given as 
+                          It shold be a 2-D LoDTensor of shape (num_rois, 8). Given as 
                           [[x1, y1, x2, y2, x3, y3, x4, y4], ...], (x1, y1) is the 
                           top left coordinates, and (x2, y2) is the top right 
                           coordinates, and (x3, y3) is the bottom right coordinates, 
@@ -2610,7 +2610,7 @@ def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
             target_size / original_size, target_size is the size after resize,
             original_size is the original image size.
         gt_classes (Variable): A 2-D LoDTensor with shape [M, 1]. Data type
-            should be int. M is the total number of ground-truth, each
+            shold be int. M is the total number of ground-truth, each
             element is a class label.
         is_crowd (Variable): A 2-D LoDTensor with same shape and same data type
             as gt_classes, each element is a flag indicating whether a
@@ -2618,7 +2618,7 @@ def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
         gt_segms (Variable): This input is a 2D LoDTensor with shape [S, 2] and
             float32 data type, it's LoD level is 3.
             Usually users do not needs to understand LoD,
-            The users should return correct data format in reader.
+            The users shold return correct data format in reader.
             The LoD[0] represents the ground-truth objects number of
             each instance. LoD[1] represents the segmentation counts of each
             objects. LoD[2] represents the polygons number of each segmentation.
@@ -2641,7 +2641,7 @@ def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
 
         mask_rois_has_mask_int32 (Variable): A 2D LoDTensor with shape [P, 1]
         and int data type, each element represents the output mask RoI
-        index with regard to input RoIs.
+        indice with regard to input RoIs.
 
         mask_int32 (Variable): A 2D LoDTensor with shape [P, K * M * M] and int
         data type, K is the classes number and M is the resolution of mask
@@ -2666,7 +2666,7 @@ def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
               dtype="float32", lod_level=1)
           roi_labels = fluid.data(name="roi_labels", shape=[None, 1],
               dtype="int32", lod_level=1)
-          mask_rois, mask_index, mask_int32 = fluid.layers.generate_mask_labels(
+          mask_rois, mask_indice, mask_int32 = fluid.layers.generate_mask_labels(
               im_info=im_info,
               gt_classes=gt_classes,
               is_crowd=is_crowd,
@@ -3081,9 +3081,9 @@ def multiclass_nms(bboxes,
                            of BBoxes.The data type is float32 or float64. 
                            2. (LoDTensor) A 2-D LoDTensor with shape [M, C].
                            M is the number of bbox, C is the class number.
-                           In this case, input BBoxes should be the second
+                           In this case, input BBoxes shold be the second
                            case with shape [M, C, 4].The data type is float32 or float64. 
-        background_label (int): The index of background label, the background 
+        background_label (int): The indice of background label, the background 
                                 label will be ignored. If set to -1, then all
                                 categories will be considered. Default: 0
         score_threshold (float): Threshold to filter out bounding boxes with
@@ -3194,7 +3194,7 @@ def locality_aware_nms(bboxes,
                            there are total M scores which corresponding M bounding
                            boxes. Please note, M is equal to the 2nd dimension of
                            BBoxes. The data type is float32 or float64.
-        background_label (int): The index of background label, the background
+        background_label (int): The indice of background label, the background
                                 label will be ignored. If set to -1, then all
                                 categories will be considered. Default: -1
         score_threshold (float): Threshold to filter out bounding boxes with
@@ -3282,7 +3282,7 @@ def distribute_fpn_proposals(fpn_rois,
     (FPN) models, it is needed to distribute all proposals into different FPN 
     level, with respect to scale of the proposals, the referring scale and the 
     referring level. Besides, to restore the order of proposals, we return an 
-    array which indicates the original index of rois in current proposals. 
+    array which indicates the original indice of rois in current proposals. 
     To compute FPN level for each roi, the formula is given as follows:
     
     .. math::

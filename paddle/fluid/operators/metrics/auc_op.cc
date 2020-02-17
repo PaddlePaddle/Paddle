@@ -24,21 +24,21 @@ class AucOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Predict"),
-                   "Input of Out should not be null.");
+                   "Input of Out shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Label"),
-                   "Input of Label should not be null.");
+                   "Input of Label shold not be null.");
     auto predict_width = ctx->GetInputDim("Predict")[1];
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_LE(predict_width, 2,
                         "Only support binary classification,"
-                        "prediction dims[1] should be 1 or 2");
+                        "prediction dims[1] shold be 1 or 2");
     }
     auto predict_height = ctx->GetInputDim("Predict")[0];
     auto label_height = ctx->GetInputDim("Label")[0];
 
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(predict_height, label_height,
-                        "Out and Label should have same height.");
+                        "Out and Label shold have same height.");
     }
 
     int num_pred_buckets = ctx->Attrs().Get<int>("num_thresholds") + 1;

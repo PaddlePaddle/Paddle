@@ -153,7 +153,7 @@ class TestOptimizer(unittest.TestCase):
     def _apply_gradient(self, param, grad, name):
         """
         The way of updating grad in optimizer.(such as SGD)
-        This method should be override.
+        This method shold be override.
         """
         return param - self.attr['lr'] * grad
 

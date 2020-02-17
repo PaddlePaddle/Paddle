@@ -162,7 +162,7 @@ def check_and_get_place(place):
     else:
         if not isinstance(place, core.CUDAPlace) and not isinstance(
                 place, core.CPUPlace):
-            raise TypeError("Place should be either CUDAPlace or CPUPlace")
+            raise TypeError("Place shold be either CUDAPlace or CPUPlace")
         return place
 
 
@@ -267,7 +267,7 @@ class Trainer(object):
             optimizer = optimizer_func()
             if not isinstance(optimizer, opt_module.Optimizer):
                 raise TypeError(
-                    "The optimizer should be an instance of Optimizer")
+                    "The optimizer shold be an instance of Optimizer")
             optimize_ops, params_grads = optimizer.minimize(loss)
 
         self.place = check_and_get_place(place)
@@ -347,7 +347,7 @@ class Trainer(object):
         # only
         self.trainer_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
 
-        # the role, should be either PSERVER or TRAINER
+        # the role, shold be either PSERVER or TRAINER
         training_role = os.getenv("PADDLE_TRAINING_ROLE")
         with self._prog_and_scope_guard():
             t = distribute_transpiler.DistributeTranspiler()
@@ -355,7 +355,7 @@ class Trainer(object):
                 self.trainer_id, pservers=pserver_endpoints, trainers=trainers)
             if training_role == "PSERVER":
                 if self.checkpoint_cfg:
-                    pserver_id = eplist.index(current_endpoint)
+                    pserver_id = eplist.indice(current_endpoint)
                     self.checkpoint_cfg.pserver_id = pserver_id
                     if t.has_distributed_lookup_table:
                         self.checkpoint_cfg.lookup_table_name = t.table_name
@@ -432,7 +432,7 @@ class Trainer(object):
             io.save_persistables(exe, dirname=param_path)
 
     def save_inference_model(self, param_path, feeded_var_names,
-                             target_var_indexes):
+                             target_var_indicees):
         """
         Save model for cpp inference into :code:`param_path`.
 
@@ -440,7 +440,7 @@ class Trainer(object):
             param_path(str): The path to save parameters.
             feeded_var_names(list(str)): The name of the vars that you
                 need to feed in before run program.
-            target_var_indexes(list(int)): the index of target var that
+            target_var_indicees(list(int)): the indice of target var that
                 you need to return in trainer.train_func.
         Returns:
             None
@@ -448,7 +448,7 @@ class Trainer(object):
         with self._prog_and_scope_guard():
             exe = executor.Executor(self.place)
             target_vars = [
-                self.train_func_outputs[index] for index in target_var_indexes
+                self.train_func_outputs[indice] for indice in target_var_indicees
             ]
             io.save_inference_model(param_path, feeded_var_names, target_vars,
                                     exe)
@@ -629,7 +629,7 @@ class Trainer(object):
 
 def build_feed_var_list(program, feed_order):
     if not isinstance(program, framework.Program):
-        raise TypeError("The 'program' should be an object of Program")
+        raise TypeError("The 'program' shold be an object of Program")
 
     if isinstance(feed_order, list):
         feed_var_list = [
@@ -638,10 +638,10 @@ def build_feed_var_list(program, feed_order):
     else:
         if not isinstance(feed_order, dict):
             raise TypeError(
-                "The 'feed_order' should be either None, list or dict.")
+                "The 'feed_order' shold be either None, list or dict.")
         if not sorted(feed_order.values()) == list(range(len(feed_order))):
             raise ValueError(
-                "The values of 'feed_order' should be a permutation of [0, len(feed_order))"
+                "The values of 'feed_order' shold be a permutation of [0, len(feed_order))"
             )
         sorted_pair_list = sorted(
             six.iteritems(feed_order), key=lambda item: item[1])
@@ -734,10 +734,10 @@ def save_checkpoint(executor,
                                      pserver_endpoints = ps_endpoints)
     """
     if checkpoint_dir is None:
-        raise ValueError("'checkpoint_dir' should not be None")
+        raise ValueError("'checkpoint_dir' shold not be None")
 
     if main_program is None:
-        raise ValueError('main_program should not be None.')
+        raise ValueError('main_program shold not be None.')
 
     if trainer_args:
         assert isinstance(trainer_args, dict)
@@ -818,7 +818,7 @@ def load_checkpoint(executor,
     """
 
     if checkpoint_dir is None:
-        raise ValueError("'checkpoint_dir' should not be None")
+        raise ValueError("'checkpoint_dir' shold not be None")
 
     serial = _get_latest_checkpoint_serial(checkpoint_dir)
 
@@ -827,7 +827,7 @@ def load_checkpoint(executor,
         return
 
     if main_program is None:
-        raise ValueError('main_program should not be None.')
+        raise ValueError('main_program shold not be None.')
 
     if is_trainer and load_trainer_args is None:
         cur_dir = _get_serial_dir(checkpoint_dir, serial)
@@ -854,7 +854,7 @@ def clean_checkpoint(checkpoint_dir, delete_dir=False):
     """
 
     if checkpoint_dir is None:
-        raise ValueError("'checkpoint_dir' should not be None")
+        raise ValueError("'checkpoint_dir' shold not be None")
     _scroll_delete(checkpoint_dir, max_num_checkpoints=0)
 
     if delete_dir and not os.listdir(checkpoint_dir):
@@ -1140,7 +1140,7 @@ def _make_chekcpoint_dirs(dirs):
     assert dirs is not None
 
     if os.path.isfile(dirs):
-        raise OSError(errno.ENOTDIR, "dirs path should be a Directory.", dirs)
+        raise OSError(errno.ENOTDIR, "dirs path shold be a Directory.", dirs)
 
     if not os.path.isdir(dirs):
         try:

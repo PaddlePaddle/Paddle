@@ -47,15 +47,15 @@ def nms(boxes,
     Return:
         The indices of the kept boxes with respect to num_priors.
     """
-    index = -1
+    indice = -1
     for i in range(boxes.shape[0]):
-        if index > -1 and iou(boxes[i], boxes[index],
+        if indice > -1 and iou(boxes[i], boxes[indice],
                               normalized) > nms_threshold:
-            weight_merge(boxes[i], boxes[index], scores[i], scores[index])
-            scores[index] += scores[i]
+            weight_merge(boxes[i], boxes[indice], scores[i], scores[indice])
+            scores[indice] += scores[i]
             scores[i] = score_threshold - 1.
         else:
-            index = i
+            indice = i
 
     all_scores = copy.deepcopy(scores)
     all_scores = all_scores.flatten()
@@ -114,22 +114,22 @@ def multiclass_nms(boxes, scores, background, score_threshold, nms_threshold,
         num_det += len(indices)
 
     if keep_top_k > -1 and num_det > keep_top_k:
-        score_index = []
+        score_indice = []
         for c, indices in selected_indices.items():
             for idx in indices:
                 if shared:
-                    score_index.append((scores[c][idx], c, idx))
+                    score_indice.append((scores[c][idx], c, idx))
                 else:
-                    score_index.append((scores[idx][c], c, idx))
+                    score_indice.append((scores[idx][c], c, idx))
 
-        sorted_score_index = sorted(
-            score_index, key=lambda tup: tup[0], reverse=True)
-        sorted_score_index = sorted_score_index[:keep_top_k]
+        sorted_score_indice = sorted(
+            score_indice, key=lambda tup: tup[0], reverse=True)
+        sorted_score_indice = sorted_score_indice[:keep_top_k]
         selected_indices = {}
 
-        for _, c, _ in sorted_score_index:
+        for _, c, _ in sorted_score_indice:
             selected_indices[c] = []
-        for s, c, idx in sorted_score_index:
+        for s, c, idx in sorted_score_indice:
             selected_indices[c].append(idx)
         if not shared:
             for labels in selected_indices:

@@ -35,18 +35,18 @@ class ModelHyperParams(object):
 
     # size of source word dictionary.
     src_vocab_size = 10000
-    # index for <pad> token in source language.
+    # indice for <pad> token in source language.
     src_pad_idx = src_vocab_size
 
     # size of target word dictionay
     trg_vocab_size = 10000
-    # index for <pad> token in target language.
+    # indice for <pad> token in target language.
     trg_pad_idx = trg_vocab_size
 
     # position value corresponding to the <pad> token.
     pos_pad_idx = 0
 
-    # max length of sequences. It should plus 1 to include position
+    # max length of sequences. It shold plus 1 to include position
     # padding token for position encoding.
     max_length = 50
 
@@ -65,7 +65,7 @@ class ModelHyperParams(object):
     n_head = 8
     # number of sub-layers to be stacked in the encoder and decoder.
     # NOTE(zcd): the origin number of layer is 6, to make this unit test faster,
-    # we should reduce the layer number to 4.
+    # we shold reduce the layer number to 4.
     n_layer = 4
     # dropout rate used by all dropout layers.
     dropout = 0.1

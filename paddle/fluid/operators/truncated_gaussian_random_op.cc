@@ -184,7 +184,7 @@ class TruncatedGaussianRandomOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(
         ctx->HasOutput("Out"),
-        "Output(Out) of TruncatedGaussianRandomOp should not be null.");
+        "Output(Out) of TruncatedGaussianRandomOp shold not be null.");
     auto shape = ctx->Attrs().Get<std::vector<int>>("shape");
     std::vector<int64_t> out_dim;
     out_dim.reserve(shape.size());

@@ -48,7 +48,7 @@ class TestLRNMKLDNNOpWithIsTest(TestLRNMKLDNNOp):
                     ['X'], 'Out', max_relative_error=0.01, check_dygraph=False)
             except Exception as e:
                 t = \
-                "is_test attribute should be set to False in training phase."
+                "is_test attribute shold be set to False in training phase."
                 if t in str(e):
                     raise AttributeError
 

@@ -37,10 +37,10 @@ def prepare_context(strategy=None):
     if strategy.nranks < 2:
         return
     assert framework.in_dygraph_mode() is True, \
-        "dygraph.parallel.prepare_context should be used with dygrahp mode."
+        "dygraph.parallel.prepare_context shold be used with dygrahp mode."
     place = framework._current_expected_place()
     assert place is not None, \
-        "dygraph.parallel.prepare_context should be used in fluid.dygraph.guard(place) guard."
+        "dygraph.parallel.prepare_context shold be used in fluid.dygraph.guard(place) guard."
     if isinstance(place, core.CUDAPlace):
         parallel_helper._set_parallel_ctx(
             core.NCCLParallelContext(strategy, place))
@@ -130,7 +130,7 @@ class DataParallel(layers.Layer):
                linear.clear_gradients()
 
     Args:
-        layers(Layer): The module that should be executed by data parallel.
+        layers(Layer): The module that shold be executed by data parallel.
         strategy(ParallelStrategy): The strategy of data parallelism.
 
     Returns:
@@ -149,7 +149,7 @@ class DataParallel(layers.Layer):
 
     def scale_loss(self, loss):
         """
-        Scale the loss. In data parallel mode, the loss should be scale with
+        Scale the loss. In data parallel mode, the loss shold be scale with
         the number of trainers. If not in data parallel mode, return the loss
         directly.
 
@@ -225,9 +225,9 @@ class DataParallel(layers.Layer):
                 assert g_var not in grad_var_set
                 grad_var_set.add(g_var)
 
-        # FIXME(zcd): the type of the var should be LoDTensor, i.e
-        # the gradients should be dense, otherwise, the following
-        # logic should be updated.
+        # FIXME(zcd): the type of the var shold be LoDTensor, i.e
+        # the gradients shold be dense, otherwise, the following
+        # logic shold be updated.
         # 128 MB as a group
         mega_bytes = 128 * 1024 * 1024
         group_idx = 0
@@ -235,7 +235,7 @@ class DataParallel(layers.Layer):
         grad_var_groups = OrderedDict()
         dtype = grad_vars[0].dtype
         for g_var in grad_vars:
-            # Note: the dtype of the same group should be the same.
+            # Note: the dtype of the same group shold be the same.
             bytes = np.prod(g_var.shape) * core.size_of_dtype(g_var.dtype)
             if memory_counter < mega_bytes and dtype == g_var.dtype:
                 memory_counter += bytes

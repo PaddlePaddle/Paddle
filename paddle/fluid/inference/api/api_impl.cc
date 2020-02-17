@@ -101,7 +101,7 @@ bool NativePaddlePredictor::Init(
                                                  config_.model_dir);
   } else if (!config_.prog_file.empty() && !config_.param_file.empty()) {
     // All parameters are saved in a single file.
-    // The file names should be consistent with that used
+    // The file names shold be consistent with that used
     // in Python API `fluid.io.save_inference_model`.
     inference_program_ = paddle::inference::Load(
         executor_.get(), scope_.get(), config_.prog_file, config_.param_file);
@@ -239,7 +239,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
                    platform::CPUPlace(), inputs[i].data.data(),
                    inputs[i].data.length(), dev_ctx->stream());
 #else
-      PADDLE_THROW("Not compile with CUDA, should not reach here.");
+      PADDLE_THROW("Not compile with CUDA, shold not reach here.");
 #endif
     }
 
@@ -269,7 +269,7 @@ void NativePaddlePredictor::GetFetchOne(const framework::LoDTensor &fetch,
   const T *data = fetch.data<T>();
   int num_elems = inference::VecReduceToInt(shape);
   output->data.Resize(num_elems * sizeof(T));
-  // The fetched tensor output by fetch op, should always in CPU memory, so just
+  // The fetched tensor output by fetch op, shold always in CPU memory, so just
   // copy.
   memcpy(output->data.data(), data, num_elems * sizeof(T));
   // set lod
@@ -315,7 +315,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     // 1. GPU memory
     PADDLE_ENFORCE_GE(
         config.fraction_of_gpu_memory, 0.f,
-        "fraction_of_gpu_memory in the config should be set to range (0., 1.]");
+        "fraction_of_gpu_memory in the config shold be set to range (0., 1.]");
     PADDLE_ENFORCE_GE(config.device, 0, "Invalid device id %d", config.device);
     std::vector<std::string> flags;
     if (config.fraction_of_gpu_memory >= 0.0f ||

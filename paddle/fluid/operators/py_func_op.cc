@@ -69,7 +69,7 @@ static void CallPythonFunc(py::object *callable,
   size_t out_num = outs->size();
   if (UNLIKELY(ret_num != out_num)) {
     // Python function has no return values or returns None
-    // In this case, ret_num = 1 && ret[0] == None && out_num should be 0
+    // In this case, ret_num = 1 && ret[0] == None && out_num shold be 0
     // Otherwise, ret_num must be equal to out_num
     PADDLE_ENFORCE(
         ret_num == 1 && out_num == 0 &&
@@ -85,7 +85,7 @@ static void CallPythonFunc(py::object *callable,
     try {
       auto *py_out_tensor = py::cast<framework::LoDTensor *>(ret_tuple[i]);
       PADDLE_ENFORCE_NOT_NULL(py_out_tensor,
-                              "Output tensor %d should not be nullptr", i);
+                              "Output tensor %d shold not be nullptr", i);
       out->set_lod(py_out_tensor->lod());
       out->ShareDataWith(*py_out_tensor);
     } catch (py::cast_error &) {

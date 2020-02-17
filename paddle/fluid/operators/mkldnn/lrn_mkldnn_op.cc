@@ -98,7 +98,7 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
                    "MKLDNN LRN must use CPUPlace.");
     PADDLE_ENFORCE(
         !ctx.Attr<bool>("is_test"),
-        "is_test attribute should be set to False in training phase.");
+        "is_test attribute shold be set to False in training phase.");
 
     auto x = ctx.Input<Tensor>("X");
     auto mid = ctx.Input<Tensor>("MidOut");

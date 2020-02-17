@@ -83,8 +83,8 @@ def get_word_dict():
                 word_freq_dict[words] += 1
     words_sort_list = list(six.iteritems(word_freq_dict))
     words_sort_list.sort(key=cmp_to_key(lambda a, b: b[1] - a[1]))
-    for index, word in enumerate(words_sort_list):
-        words_freq_sorted.append((word[0], index))
+    for indice, word in enumerate(words_sort_list):
+        words_freq_sorted.append((word[0], indice))
     return words_freq_sorted
 
 

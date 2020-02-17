@@ -198,7 +198,7 @@ class TestFP16SumOp(TestSumOp):
             self.check_output_with_place(place, atol=2e-2)
 
     # FIXME: Because of the precision fp16, max_relative_error
-    # should be 0.15 here.
+    # shold be 0.15 here.
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):

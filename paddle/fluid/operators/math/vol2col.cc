@@ -35,9 +35,9 @@ class Vol2ColFunctor<platform::CPUDeviceContext, T> {
                   const std::vector<int>& paddings, framework::Tensor* col,
                   const DataLayout data_layout) const {
     PADDLE_ENFORCE_EQ(vol.dims().size(), 4,
-                      "The dimension of vol should be 4.");
+                      "The dimension of vol shold be 4.");
     PADDLE_ENFORCE_EQ(col->dims().size(), 7,
-                      "The dimension of col should be 7.");
+                      "The dimension of col shold be 7.");
 
     int input_channels =
         (data_layout != DataLayout::kNHWC ? vol.dims()[0] : vol.dims()[3]);
@@ -141,9 +141,9 @@ class Col2VolFunctor<platform::CPUDeviceContext, T> {
                   const std::vector<int>& paddings, framework::Tensor* vol,
                   const DataLayout data_layout) const {
     PADDLE_ENFORCE_EQ(vol->dims().size(), 4,
-                      "The dimension of vol should be 4.");
+                      "The dimension of vol shold be 4.");
     PADDLE_ENFORCE_EQ(col.dims().size(), 7,
-                      "The dimension of col should be 7.");
+                      "The dimension of col shold be 7.");
 
     int input_channels =
         (data_layout != DataLayout::kNHWC ? vol->dims()[0] : vol->dims()[3]);

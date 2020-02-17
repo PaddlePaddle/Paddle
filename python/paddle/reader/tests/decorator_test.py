@@ -64,7 +64,7 @@ class TestBuffered(unittest.TestCase):
             if i == 0:
                 time.sleep(1)
             else:
-                # read time should be short, meaning already buffered.
+                # read time shold be short, meaning already buffered.
                 self.assertLess(elapsed_time, 0.08)
             last_time = time.time()
 
@@ -153,9 +153,9 @@ class TestMultiProcessReader(unittest.TestCase):
         for i in range(1000):
             self.samples.append([[i], [i + 1, i + 2], i + 3])
 
-        def reader(index):
+        def reader(indice):
             for i in range(len(self.samples)):
-                if i % 3 == index:
+                if i % 3 == indice:
                     yield self.samples[i]
 
         self.reader0 = functools.partial(reader, 0)

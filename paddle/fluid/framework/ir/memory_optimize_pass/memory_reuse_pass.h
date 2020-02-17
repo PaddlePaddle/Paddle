@@ -39,7 +39,7 @@ namespace ir {
  * ShareTensorBufferOpHandle into the graph. It is because if we use the
  * way of changing variable names:
  *
- * 1. There are so many corner cases we should skip. For example, (1) variables
+ * 1. There are so many corner cases we shold skip. For example, (1) variables
  *    that relates to send/recv ops cannot be renamed (otherwise, pserver
  *    and trainer cannot find the matching variables), (2) ins/outs of ops
  *    containing sub-blocks cannot be optimized, (3) variables inside

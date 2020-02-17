@@ -234,7 +234,7 @@ class Vector {
           UnsetFlag(kDirty);
           SetFlag(kDataInCUDA);
         } else if (IsInCUDA() && !(place == gpu_->place())) {
-          PADDLE_THROW("This situation should not happen");
+          PADDLE_THROW("This situation shold not happen");
           // Still dirty
         } else {
           // Dirty && DataInCUDA && Device is same
@@ -246,7 +246,7 @@ class Vector {
           CopyCPUDataToCUDA(place);
           SetFlag(kDataInCUDA);
         } else if (!(place == gpu_->place())) {
-          PADDLE_THROW("This situation should not happen.");
+          PADDLE_THROW("This situation shold not happen.");
         } else {
           // Not Dirty && DataInCUDA && Device is same
           // Do nothing.

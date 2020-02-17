@@ -27,11 +27,11 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("BBoxes"),
-                   "Input(BBoxes) of MultiClassNMS should not be null.");
+                   "Input(BBoxes) of MultiClassNMS shold not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Scores"),
-                   "Input(Scores) of MultiClassNMS should not be null.");
+                   "Input(Scores) of MultiClassNMS shold not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of MultiClassNMS should not be null.");
+                   "Output(Out) of MultiClassNMS shold not be null.");
 
     auto box_dims = ctx->GetInputDim("BBoxes");
     auto score_dims = ctx->GetInputDim("Scores");
@@ -206,7 +206,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     const T* scores_data = scores.data<T>();
     if (keep_top_k > -1 && num_det > keep_top_k) {
       const T* sdata;
-      std::vector<std::pair<float, std::pair<int, int>>> score_index_pairs;
+      std::vector<std::pair<float, std::pair<int, int>>> score_indice_pairs;
       for (const auto& it : *indices) {
         int label = it.first;
         if (scores_size == 3) {
@@ -219,20 +219,20 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
         const std::vector<int>& label_indices = it.second;
         for (size_t j = 0; j < label_indices.size(); ++j) {
           int idx = label_indices[j];
-          score_index_pairs.push_back(
+          score_indice_pairs.push_back(
               std::make_pair(sdata[idx], std::make_pair(label, idx)));
         }
       }
       // Keep top k results per image.
-      std::stable_sort(score_index_pairs.begin(), score_index_pairs.end(),
+      std::stable_sort(score_indice_pairs.begin(), score_indice_pairs.end(),
                        SortScorePairDescend<std::pair<int, int>>);
-      score_index_pairs.resize(keep_top_k);
+      score_indice_pairs.resize(keep_top_k);
 
       // Store the new indices.
       std::map<int, std::vector<int>> new_indices;
-      for (size_t j = 0; j < score_index_pairs.size(); ++j) {
-        int label = score_index_pairs[j].second.first;
-        int idx = score_index_pairs[j].second.second;
+      for (size_t j = 0; j < score_indice_pairs.size(); ++j) {
+        int label = score_indice_pairs[j].second.first;
+        int idx = score_indice_pairs[j].second.second;
         new_indices[label].push_back(idx);
       }
       if (scores_size == 2) {
@@ -302,8 +302,8 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     auto* boxes = ctx.Input<LoDTensor>("BBoxes");
     auto* scores = ctx.Input<LoDTensor>("Scores");
     auto* outs = ctx.Output<LoDTensor>("Out");
-    bool return_index = ctx.HasOutput("Index") ? true : false;
-    auto index = ctx.Output<LoDTensor>("Index");
+    bool return_indice = ctx.HasOutput("Index") ? true : false;
+    auto indice = ctx.Output<LoDTensor>("Index");
     auto score_dims = scores->dims();
     auto score_size = score_dims.size();
     auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
@@ -336,9 +336,9 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
 
     int num_kept = batch_starts.back();
     if (num_kept == 0) {
-      if (return_index) {
+      if (return_indice) {
         outs->mutable_data<T>({0, out_dim}, ctx.GetPlace());
-        index->mutable_data<int>({0, 1}, ctx.GetPlace());
+        indice->mutable_data<int>({0, 1}, ctx.GetPlace());
       } else {
         T* od = outs->mutable_data<T>({1, 1}, ctx.GetPlace());
         od[0] = -1;
@@ -354,14 +354,14 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
           boxes_slice = boxes->Slice(i, i + 1);
           scores_slice.Resize({score_dims[1], score_dims[2]});
           boxes_slice.Resize({score_dims[2], box_dim});
-          if (return_index) {
+          if (return_indice) {
             offset = i * score_dims[2];
           }
         } else {
           auto boxes_lod = boxes->lod().back();
           scores_slice = scores->Slice(boxes_lod[i], boxes_lod[i + 1]);
           boxes_slice = boxes->Slice(boxes_lod[i], boxes_lod[i + 1]);
-          if (return_index) {
+          if (return_indice) {
             offset = boxes_lod[i] * score_dims[1];
           }
         }
@@ -369,9 +369,9 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
         int64_t e = batch_starts[i + 1];
         if (e > s) {
           Tensor out = outs->Slice(s, e);
-          if (return_index) {
+          if (return_indice) {
             int* output_idx =
-                index->mutable_data<int>({num_kept, 1}, ctx.GetPlace());
+                indice->mutable_data<int>({num_kept, 1}, ctx.GetPlace());
             oindices = output_idx + s;
           }
           MultiClassOutput(dev_ctx, scores_slice, boxes_slice, all_indices[i],
@@ -382,8 +382,8 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
 
     framework::LoD lod;
     lod.emplace_back(batch_starts);
-    if (return_index) {
-      index->set_lod(lod);
+    if (return_indice) {
+      indice->set_lod(lod);
     }
     outs->set_lod(lod);
   }
@@ -410,11 +410,11 @@ class MultiClassNMSOpMaker : public framework::OpProtoAndCheckerMaker {
              " Please note, M is equal to the 2nd dimension of BBoxes. "
              "2. (LoDTensor) A 2-D LoDTensor with shape [M, C]. "
              "M is the number of bbox, C is the class number. In this case, "
-             "Input BBoxes should be the second case with shape [M, C, 4].");
+             "Input BBoxes shold be the second case with shape [M, C, 4].");
     AddAttr<int>(
         "background_label",
         "(int, default: 0) "
-        "The index of background label, the background label will be ignored. "
+        "The indice of background label, the background label will be ignored. "
         "If set to -1, then all categories will be considered.")
         .SetDefault(0);
     AddAttr<float>("score_threshold",
@@ -502,7 +502,7 @@ class MultiClassNMS2OpMaker : public MultiClassNMSOpMaker {
     MultiClassNMSOpMaker::Make();
     AddOutput("Index",
               "(LoDTensor) A 2-D LoDTensor with shape [No, 1] represents the "
-              "index of selected bbox. The index is the absolute index cross "
+              "indice of selected bbox. The indice is the absolute indice cross "
               "batches.")
         .AsIntermediate();
   }
