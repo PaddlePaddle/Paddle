@@ -181,7 +181,8 @@ class FleetUtil(object):
 
         """
         auc_value, ins_num = self.get_global_auc(scope, stat_pos, stat_neg)
-        self.rank0_print(print_prefix + " global auc = %s, ins num = %s" % (auc_value, ins_num))
+        self.rank0_print(print_prefix + " global auc = %s, ins num = %s" % (
+            auc_value, ins_num))
 
     def get_global_auc(self,
                        scope=fluid.global_scope(),
@@ -1356,7 +1357,8 @@ class FleetUtil(object):
         fleet._role_maker._barrier_worker()
 
         # get auc
-        auc, total_ins_num_from_auc = self.get_global_auc(scope, stat_pos_name, stat_neg_name)
+        auc, total_ins_num_from_auc = self.get_global_auc(scope, stat_pos_name,
+                                                          stat_neg_name)
         pos = np.array(scope.find_var(stat_pos_name).get_tensor())
         # auc pos bucket shape
         old_pos_shape = np.array(pos.shape)
