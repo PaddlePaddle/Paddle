@@ -47,20 +47,33 @@ class Cluster():
 
     def update_pods(cluster):
         self.pods = copy.copy(cluster.pods)
-        pass
 
-    def world_rank(self):
+    def trainer_nranks(self):
         count = 0
         for pod in self.pods:
             for gpu in pod.gpus:
                 count += 1
         return count
 
-    def get_trainer_endpoints(self):
-        pass
+    def pod_nranks(self):
+        return len(self.pods)
 
-    def get_pods_endpints(self):
-        pass
+    def get_trainer_endpoints(self):
+        r = []
+        for pod in self.pods:
+            for t in pod.trainers:
+                r.append(t.endpoint)
+        return r
+
+    def get_pod_endpints(self):
+        r = []
+        for pod in self.pods:
+            ep = "{}:{}".format(pod.ip, pod.port)
+            assert pod.port != None and pod.ip != None, "{} not a valid endpoint".format(
+                ep)
+            r.append(ep)
+
+        return r
 
 
 class JobServer():
@@ -80,7 +93,7 @@ class Trainer():
     def __ne__(self):
         pass
 
-    def ranks(self):
+    def rank(self):
         return self.rank
 
 
@@ -93,7 +106,20 @@ class Pod():
         self.trainers = []
 
     def __eq__(self, pod):
-        pass
+        if self.ranks != pod.rank or \
+                self.id != pod.id or \
+                self.ip != pod.ip or \
+                self.port != pod.port:
+            return False
+
+        if len(self.trainers) != pod.trainers:
+            return False
+
+        for i in range(len(self.trainers)):
+            if self.trainers[i] != pod.trainers[i]:
+                return False
+
+        return True
 
     def __ne__(self, pod):
         return not self == pod
@@ -101,12 +127,8 @@ class Pod():
     def parse_response(self, res_pods):
         pass
 
-    def ranks(self):
-        r = []
-        for t in self.trainers:
-            r.extend(t.ranks)
-
-        return r
+    def rank(self):
+        return self.rank
 
 
 class Gloo():

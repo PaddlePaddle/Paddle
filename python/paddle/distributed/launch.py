@@ -46,8 +46,9 @@ import copy
 from argparse import ArgumentParser, REMAINDER
 import paddle.fluid as fluid
 
-from cloud_util import get_cloud_cluster
-from util import logger, get_logger
+from utils import *
+import cloud_util as cloud
+import edl_util as edl
 
 
 def _print_arguments(args):
@@ -289,17 +290,20 @@ def get_cluster_from_args(args, selected_gpus):
 def launch(args):
     # parse arguments, used for cloud-single-machine and local
     selected_gpus = get_gpus()
-    trainer_nums = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
+    trainer_nums = cloud.get_trainers_num()
     logger.debug("parsed from args trainerss_num:{} selected_gpus:{}".format(
         trainers_num, selected_gpus))
 
     cluster = None
+    comm = None
+    use_edl = edl.is_use_edl()
     if args.use_paddlecloud and not use_edl and trainers_num != 1:
-        cluster = get_cloud_cluster(arges.node_ips, args.node_ip,
-                                    args.started_port, selected_gpus)
+        cluster = cloud.get_cloud_cluster(arges.node_ips, args.node_ip,
+                                          args.started_port, selected_gpus)
         logger.info("get cluster from cloud:{}".format(cluster))
     elif use_edl:
-        cluster = get_edl_cluster()
+        cluster = edl.get_edl_cluster()
+        comm = Gloo()
         logger.info("get cluster from edl:{}".format(cluster))
     else:
         cluster = get_cluster_from_args(args, selected_gpus)
@@ -315,7 +319,7 @@ def launch(args):
                             format(cluster2, cluster))
                 terminate_local_trainers(procs)
 
-                if not barrier_terminate_world_trainers(cluster):
+                if not barrier_terminate_world_trainers(cluster, comm):
                     logger.warning("Can't barrier in cluster:{}".format(
                         cluster))
                     continue

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from util import logger, get_cluster
+from utils import logger, get_cluster
 
 
 def get_cloud_cluster(args_node_ips, args_node_ip, args_port, selected_gpus):
@@ -61,3 +61,7 @@ paddlecloud environment.".format(args_node_ips, node_ips))
                  .format(node_ips, node_ip, node_rank, started_port))
 
     return get_cluster(node_ips, node_ip, started_port, selected_gpus)
+
+
+def get_trainers_num():
+    return int(os.getenv("PADDLE_TRAINERS_NUM", "1"))

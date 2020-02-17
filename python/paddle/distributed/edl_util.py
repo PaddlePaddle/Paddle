@@ -11,8 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 
-g_gloo = None
+
+def is_use_edl():
+    use_edl = os.getenv("PADDLE_RUNING_ENV", "")
+    if use_edl == "PADDLE_EDL":
+        return True
+
+    return False
 
 
 def get_jobserver():
@@ -28,16 +35,16 @@ def get_pods_from_master(job_server, job_id):
     return pods
 
 
-def barrier_terminate_world_trainers(cluster, pod, timeout, try_num=3):
+def barrier_terminate_world_trainers(cluster, pod, comm, timeout=10, try_num=3):
     pods_endpoints = cluster.get_pods_endpoints()
 
     step = 0
     while True:
-        r = g_gloo.init(cluster.hdfs, pods_endpoints, pods.idx, try_num=try_num)
+        r = comm.init(cluster.hdfs, pods_endpoints, pods.idx, try_num=try_num)
         if not r:
             return False
 
-        r = g_gloo.barrier(timeout)
+        r = comm.barrier(timeout)
         if not r:
             return False
 
