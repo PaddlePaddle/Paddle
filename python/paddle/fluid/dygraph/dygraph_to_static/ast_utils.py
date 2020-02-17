@@ -14,9 +14,9 @@
 
 from __future__ import print_function
 
-import ast
+import astor
+import gast
 import six
-import codegen
 import copy
 import tempfile
 import imp
@@ -57,34 +57,35 @@ def get_name_ids(nodes, not_name_set=None, node_black_list=None):
     name_ids = defaultdict(list)
     for node in nodes:
         if node_black_list and node in node_black_list: continue
-        if isinstance(node, ast.AST):
+        if isinstance(node, gast.AST):
             # In two case, the ast.Name should be filtered.
             # 1. Function name like `my_func` of my_func(x)
             # 2. api prefix like `fluid` of `fluid.layers.mean`
-            if isinstance(node, ast.Return):
+            if isinstance(node, gast.Return):
                 continue
-            elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+            elif isinstance(node, gast.Call) and isinstance(node.func,
+                                                            gast.Name):
                 not_name_set.add(node.func.id)
-            elif isinstance(node, ast.Attribute) and isinstance(node.value,
-                                                                ast.Name):
+            elif isinstance(node, gast.Attribute) and isinstance(node.value,
+                                                                 gast.Name):
                 not_name_set.add(node.value.id)
             if isinstance(
-                    node, ast.Name
+                    node, gast.Name
             ) and node.id not in name_ids and node.id not in not_name_set:
-                if isinstance(node.ctx, (ast.Store, ast.Load)):
+                if isinstance(node.ctx, (gast.Store, gast.Load, gast.Param)):
                     name_ids[node.id].append(node.ctx)
             else:
-                if isinstance(node, ast.Assign):
+                if isinstance(node, gast.Assign):
                     node = copy.copy(node)
                     node._fields = ('value', 'targets')
-                for field, value in ast.iter_fields(node):
+                for field, value in gast.iter_fields(node):
                     value = value if isinstance(value, list) else [value]
                     update(name_ids,
                            get_name_ids(value, not_name_set, node_black_list))
     return name_ids
 
 
-def parse_args(var_ids_dict, return_ids=None, ctx=ast.Load):
+def parse_args(var_ids_dict, return_ids=None, ctx=gast.Load):
     """
     Find out the ast.Name.id list of input by analyzing node's AST information.
     """
@@ -97,8 +98,19 @@ def parse_args(var_ids_dict, return_ids=None, ctx=ast.Load):
         new_args = set(return_ids) - set(name_ids)
         name_ids.extend(list(new_args))
     name_ids.sort()
-    args = [ast.Name(id=name_id, ctx=ast.Load()) for name_id in name_ids]
-    arguments = ast.arguments(args=args, vararg=None, kwarg=None, defaults=[])
+    args = [
+        gast.Name(
+            id=name_id, ctx=gast.Load(), annotation=None, type_comment=None)
+        for name_id in name_ids
+    ]
+    arguments = gast.arguments(
+        args=args,
+        posonlyargs=[],
+        vararg=None,
+        kwonlyargs=[],
+        kw_defaults=None,
+        kwarg=None,
+        defaults=[])
     return arguments
 
 
@@ -106,10 +118,10 @@ def parse_return(parent_vars_dict, if_vars_dict, else_vars_dict):
     """
     Find out the ast.Name list of output by analyzing node's AST information.
     Following conditions should be satisfied while determining whether a variable is a return value:
-    1. the var in parent_ids is modified in if/else node.
+    1. the var in parent scope is modified in if/else node.
     2. new var is both created in if and else node.
 
-    If different var is modified in if and else node, it should place `None` in return_ids
+    If different var is modified in if and else node, it should add the var in return_ids
     of different node.
     For example:
             x, y = 5, 10
@@ -120,12 +132,12 @@ def parse_return(parent_vars_dict, if_vars_dict, else_vars_dict):
                 y = y - 1
                 z = y*y
 
-    The return_ids should be (x, None, z) for `if` node and (None, y, z) for `else` node.
+    The return_ids should be (x, y, z) for `if` and `else`node.
     """
 
     def _is_return_var(ctxs):
         for ctx in ctxs:
-            if isinstance(ctx, ast.Store):
+            if isinstance(ctx, (gast.Store, gast.Param)):
                 return True
         return False
 
@@ -164,17 +176,21 @@ def parse_return(parent_vars_dict, if_vars_dict, else_vars_dict):
     return return_ids, list(modified_vars - new_vars)
 
 
-def generate_name_node(name_ids, ctx=ast.Load()):
+def generate_name_node(name_ids, ctx=gast.Load()):
     if isinstance(name_ids, six.string_types):
         name_ids = [name_ids]
     if not isinstance(name_ids, (list, tuple, set)):
         raise TypeError('name_ids must be list or tuple or set, but received %s'
                         % type(type(name_ids)))
-    ast_names = [ast.Name(id=name_id, ctx=ctx) for name_id in name_ids]
-    if len(ast_names) == 1:
-        name_node = ast_names[0]
+    gast_names = [
+        gast.Name(
+            id=name_id, ctx=ctx, annotation=None, type_comment=None)
+        for name_id in name_ids
+    ]
+    if len(gast_names) == 1:
+        name_node = gast_names[0]
     else:
-        name_node = ast.Tuple(elts=ast_names)
+        name_node = gast.Tuple(elts=gast_names, ctx=ctx)
     return name_node
 
 
@@ -185,9 +201,14 @@ def create_funcDef_node(nodes, name, input_args, return_name_ids):
     """
     nodes = copy.copy(nodes)
     # add return statement
-    nodes.append(ast.Return(value=generate_name_node(return_name_ids)))
-    func_def_node = ast.FunctionDef(
-        name=name, args=input_args, body=nodes, decorator_list=[])
+    nodes.append(gast.Return(value=generate_name_node(return_name_ids)))
+    func_def_node = gast.FunctionDef(
+        name=name,
+        args=input_args,
+        body=nodes,
+        decorator_list=[],
+        returns=None,
+        type_comment=None)
     return func_def_node
 
 
@@ -221,36 +242,47 @@ def create_cond_node(return_name_ids, pred, true_func, false_func):
     Create `fluid.layers.cond(pred, true_fn, false_fn)` to replace
     original `python if/else` statement.
     """
-    #TODO: how to determine the statement of api (fluid.layers.cond or layers.cond or f.layers.cond)?
-    cond_api = ast.parse('fluid.layers.cond').body[0].value
-    true_func_lambda = ast.Lambda(
-        args=ast.arguments(
-            args=[], vararg=None, kwarg=None, defaults=[]),
-        body=ast.Call(
-            func=ast.Name(
-                id=true_func.name, ctx=ast.Load()),
+    cond_api = gast.parse('fluid.layers.cond').body[0].value
+    true_func_lambda = gast.Lambda(
+        args=gast.arguments(
+            args=[],
+            posonlyargs=[],
+            vararg=None,
+            kwonlyargs=[],
+            kw_defaults=None,
+            kwarg=None,
+            defaults=[]),
+        body=gast.Call(
+            func=gast.Name(
+                id=true_func.name,
+                ctx=gast.Load(),
+                annotation=None,
+                type_comment=None),
             args=[true_func.args],
-            keywords=[],
-            kwargs=None,
-            starargs=None))
-    false_func_lambda = ast.Lambda(
-        args=ast.arguments(
-            args=[], vararg=None, kwarg=None, defaults=[]),
-        body=ast.Call(
-            func=ast.Name(
-                id=false_func.name, ctx=ast.Load()),
+            keywords=[]))
+    false_func_lambda = gast.Lambda(
+        args=gast.arguments(
+            args=[],
+            posonlyargs=[],
+            vararg=None,
+            kwonlyargs=[],
+            kw_defaults=None,
+            kwarg=None,
+            defaults=[]),
+        body=gast.Call(
+            func=gast.Name(
+                id=false_func.name,
+                ctx=gast.Load(),
+                annotation=None,
+                type_comment=None),
             args=[false_func.args],
-            keywords=[],
-            kwargs=None,
-            starargs=None))
-    cond_layer = ast.Call(
+            keywords=[]))
+    cond_layer = gast.Call(
         func=cond_api,
         args=[pred, true_func_lambda, false_func_lambda],
-        keywords=[],
-        kwargs=None,
-        starargs=None)
-    targets = [generate_name_node(return_name_ids, ctx=ast.Store())]
-    assign_node = ast.Assign(targets=targets, value=cond_layer)
+        keywords=[])
+    targets = [generate_name_node(return_name_ids, ctx=gast.Store())]
+    assign_node = gast.Assign(targets=targets, value=cond_layer)
 
     return assign_node
 
@@ -259,7 +291,8 @@ def ast_to_func(ast_root, func_name, delete_on_exit=True):
     """
     Transform modified AST of decorated function into python callable object.
     """
-    source = codegen.to_source(ast_root)
+    ast_root = gast.gast_to_ast(ast_root)
+    source = astor.to_source(ast_root)
     if six.PY2:
         source = source.encode('utf-8')
         f = tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False)

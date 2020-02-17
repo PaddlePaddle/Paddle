@@ -14,7 +14,7 @@
 
 __all__ = ['TracedLayer', 'dygraph_to_static_output']
 
-import ast
+import gst
 import inspect
 import textwrap
 
@@ -57,7 +57,7 @@ def _dygraph_to_static_output_(dygraph_func):
         # Get AST from dygraph function
         dygraph_code = inspect.getsource(dygraph_func)
         dygraph_code = textwrap.dedent(dygraph_code)
-        root = ast.parse(dygraph_code)
+        root = gast.parse(dygraph_code)
 
         root, func_name = DygraphToStaticAst().get_static_ast(root)
         static_func, file_name = ast_to_func(root, func_name)

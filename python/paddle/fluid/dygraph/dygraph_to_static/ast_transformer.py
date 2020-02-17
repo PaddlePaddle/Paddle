@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-import ast
+import gast
 from .ast_utils import is_control_flow_if, create_cond_node, transform_if_else
 
 __all__ = ['AstNodeWrapper', 'DygraphToStaticAst', 'StaticAnalysisVisitor']
@@ -90,7 +90,7 @@ class StaticAnalysisVisitor(object):
             cur_wrapper.parent = last_wrapper
 
         self.ancestor_wrappers.append(cur_wrapper)
-        for child in ast.iter_child_nodes(node):
+        for child in gast.iter_child_nodes(node):
             self.dfs_visit(child)
         self.ancestor_wrappers.pop()
         return cur_wrapper.node_var_type
@@ -102,7 +102,7 @@ class StaticAnalysisVisitor(object):
         return self.node_to_wrapper_map
 
 
-class DygraphToStaticAst(ast.NodeTransformer):
+class DygraphToStaticAst(gast.NodeTransformer):
     """
     Main class to transform Dygraph to Static Graph
     """
@@ -116,18 +116,8 @@ class DygraphToStaticAst(ast.NodeTransformer):
         # record all created ast.functionDef in control flow statement
         self.new_func_nodes = []
         self.decorate_func_name = None
-        # self._visit(root)
         self.transfer_from_node_type(self.static_analysis_root)
         return self.static_analysis_root, self.decorate_func_name
-
-    def _visit(self, root):
-        # TODO construct a tree whose nodes are AstNodeWrapper
-        # This step also does static node type analysis
-        for node in ast.walk(root):
-            for child in ast.iter_child_nodes(node):
-                node_info = AstNodeWrapper(node)
-                node_info.parent = node
-                child.ast_info = node_info
 
     def transfer_from_node_type(self, node):
         self.visit(node)
@@ -135,7 +125,7 @@ class DygraphToStaticAst(ast.NodeTransformer):
         node.body = self.new_func_nodes + node.body
 
     def visit_If(self, node):
-        assert isinstance(node, ast.If)
+        assert isinstance(node, gast.If)
         self.generic_visit(node)
         if is_control_flow_if(node.test):
             pred_node = node.test
@@ -150,17 +140,12 @@ class DygraphToStaticAst(ast.NodeTransformer):
             return node
 
     def visit_Call(self, node):
-        # Remove `numpy()` statement, like `Tensor.numpy()[i]` -> `Tensor[i]`
-        if isinstance(node.func, ast.Attribute):
+        # Remove `numpy()` statement
+        # like `Tensor.numpy()[i]` -> `Tensor[i]`
+        if isinstance(node.func, gast.Attribute):
             attribute = node.func
             if attribute.attr == 'numpy':
                 node = attribute.value
-        # In PY3, the fields of ast.Call may don't hold `starargs` and `kwargs`.
-        # They are necessary to transform into source code for codegen.
-        if not hasattr(node, 'starargs'):
-            setattr(node, 'starargs', None)
-        if not hasattr(node, 'kwargs'):
-            setattr(node, 'kwargs', None)
         return node
 
     def visit_Compare(self, node):
@@ -178,10 +163,3 @@ class DygraphToStaticAst(ast.NodeTransformer):
             ]
             node.decorator_list = decorator_list
         return node
-
-    def visit_arg(self, node):
-        # The type of param in ast.FunctionDef is ast.Name in PY2, but ast.arg in PY3.
-        # ast.Name is used uniformly because ast.arg will lead missing parameter while
-        # transformed into source code by codegen.
-        new_node = ast.Name(id=node.arg, ctx=ast.Param())
-        return new_node
