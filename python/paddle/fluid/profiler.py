@@ -126,7 +126,10 @@ def reset_profiler():
     core.reset_profiler()
 
 
-def start_profiler(state, tracer_option='Default'):
+def start_profiler(state,
+                   tracer_option='Default',
+                   start_iter=None,
+                   cur_iter=None):
     """
     Enable the profiler. Uers can use `fluid.profiler.start_profiler` and
     `fluid.profiler.stop_profiler` to profile, which is equal to the usage 
@@ -142,6 +145,9 @@ def start_profiler(state, tracer_option='Default'):
             the different Op type profiling result and the OpDetail option print the detail profiling 
             result of different op types such as compute and data transform, AllOpDetail option 
             print the detail profiling result of different op name same as OpDetail.
+        start_iter (int | None) : start iter  in profile stage. if the `start_iter` is None, it
+            will start profile now.
+        cur_iter (int | None) : Current iter in profile stage.
 
     Raises:
         ValueError: If `state` is not in ['CPU', 'GPU', 'All'].
@@ -190,10 +196,15 @@ def start_profiler(state, tracer_option='Default'):
         prof_tracer_option = core.TracerOption.kAllOpDetail
 
     core.set_tracer_option(prof_tracer_option)
-    core.enable_profiler(prof_state)
+
+    if (cur_iter == start_iter or (start_iter is None)):
+        core.enable_profiler(prof_state)
 
 
-def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
+def stop_profiler(sorted_key=None,
+                  profile_path='/tmp/profile',
+                  end_iter=None,
+                  cur_iter=None):
     """
     Stop the profiler. Uers can use `fluid.profiler.start_profiler` and
     `fluid.profiler.stop_profiler` to profile, which is equal to the usage 
@@ -211,6 +222,9 @@ def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
             The `ave` means sorting by the average execution time.
             and write it into `profile_path`. The default profile_path is `/tmp/profile`. 
         profile_path (str, optional) : If state == 'All', it will generate timeline,
+        start_iter (int | None) : End iter  in profile stage. if the `start_iter` is None, it
+            will end profile now.
+        cur_iter (int | None) : Current iter in profile stage.
 
     Raises:
         ValueError: If `sorted_key` is not in
@@ -246,7 +260,8 @@ def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
     }
     # TODO(qingqing) : redirect C++ ostream to Python stream.
     # with core.ostream_redirect(stdout=True, stderr=True):
-    core.disable_profiler(key_map[sorted_key], profile_path)
+    if (cur_iter == end_iter or (end_iter is None and end_iter is None)):
+        core.disable_profiler(key_map[sorted_key], profile_path)
 
 
 @signature_safe_contextmanager
