@@ -14,11 +14,51 @@
 
 from __future__ import print_function
 
+import codegen
 import gast
+import inspect
 import six
 import warnings
 
 __all__ = ['AstNodeWrapper', 'NodeVarType', 'StaticAnalysisVisitor']
+
+
+# TODO: _is_paddle_dygraph_api is duplicated in Yamei's utils.py. Merge the two
+# function code together when Yamei finish her PR.
+def _is_paddle_dygraph_api(obj):
+    m = inspect.getmodule(obj)
+    return m is not None and m.__name__.startswith("paddle.fluid.dygraph")
+
+
+# TODO: is_dygraph_api is duplicated in Yamei's utils.py. Merge the two
+# function code together when Yamei finish her PR.
+def is_dygraph_api(node):
+    assert isinstance(node, gast.Call), "Input non-Call node for is_dygraph_api"
+    func_src = codegen.to_source(node.func)
+    try:
+        import paddle.fluid as fluid
+        return eval("_is_paddle_dygraph_api({})".format(func_src))
+    except NameError:
+        return False
+
+
+def _is_numpy_api_helper(obj):
+    m = inspect.getmodule(obj)
+    return m is not None and m.__name__.startswith("numpy")
+
+
+def is_numpy_api(node):
+    assert isinstance(node, gast.Call), "Input non-Call node for is_numpy_api"
+    func_str = codegen.to_source(node.func)
+    try:
+        import numpy as np
+        module_result = eval("_is_numpy_api_helper({})".format(func_str))
+        # BUG: np.random.uniform doesn't have module and cannot be analyzed
+        # TODO: find a better way
+        if not module_result:
+            return func_str.startswith("numpy.") or func_str.startswith("np.")
+    except NameError:
+        return False
 
 
 class NodeVarType(object):
@@ -28,6 +68,7 @@ class NodeVarType(object):
     tensor variable in if clause may lead to different conversion from dygraph
     to static graph.
     """
+    ERROR = -1  # Returns when static analysis gets error
     UNKNOWN = 0  # Reserve for AST nodes have not known the type
     STATEMENT = 1  # For nodes representing statement (non-variable type)
     CALLABLE = 2
@@ -39,6 +80,7 @@ class NodeVarType(object):
     FLOAT = 103
     STRING = 104
     TENSOR = 105
+    NUMPY_NDARRAY = 106
 
     # python collections
     LIST = 200
@@ -61,8 +103,10 @@ class NodeVarType(object):
             return in_type1
 
         supported_types = [
-            NodeVarType.BOOLEAN, NodeVarType.INT, NodeVarType.FLOAT
+            NodeVarType.BOOLEAN, NodeVarType.INT, NodeVarType.FLOAT,
+            NodeVarType.NUMPY_NDARRAY, NodeVarType.TENSOR
         ]
+
         if in_type1 not in supported_types:
             warnings.warn("Binary Op on un supported in_type1 = %d " %
                           (in_type1))
@@ -70,6 +114,13 @@ class NodeVarType(object):
         if in_type2 not in supported_types:
             warnings.warn("Binary Op on un supported in_type2 = %d " %
                           (in_type2))
+            return NodeVarType.UNKNOWN
+
+        forbidden_types = [NodeVarType.NUMPY_NDARRAY, NodeVarType.TENSOR]
+        if in_type1 in forbidden_types and in_type2 in forbidden_types:
+            warnings.warn(
+                "Binary Op on un supported types: in_type1 = %d, in_type2 = %d"
+                % (in_type1, in_type2))
             return NodeVarType.UNKNOWN
         return max(in_type1, in_type2)
 
@@ -255,5 +306,14 @@ class StaticAnalysisVisitor(object):
             if node.id == "True" or node.id == "False":
                 return NodeVarType.BOOLEAN
             return self.var_env.get_var_type(node.id)
+
+        if isinstance(node, gast.Call):
+            if is_dygraph_api(node):
+                api_name = node.func.attr
+                if api_name == "to_variable":
+                    return NodeVarType.TENSOR
+            if is_numpy_api(node):
+                # In this simple version we assume numpy api returns nd-array
+                return NodeVarType.NUMPY_NDARRAY
 
         return NodeVarType.STATEMENT

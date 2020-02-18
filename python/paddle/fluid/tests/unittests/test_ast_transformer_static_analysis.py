@@ -16,6 +16,8 @@ from __future__ import print_function
 
 import gast
 import inspect
+import numpy as np
+import paddle.fluid as fluid
 import unittest
 
 from paddle.fluid.dygraph.dygraph_to_static import AstNodeWrapper, NodeVarType, StaticAnalysisVisitor
@@ -49,7 +51,7 @@ def func_to_test3():
     c = a * b
     d = True + c
     e = a < b
-    f = (a + 4) * 9
+    f = 9 * (a * 4)
     g = "dddy"
     h = None
     i = False
@@ -69,8 +71,26 @@ result_var_type3 = {
     'j': NodeVarType.UNKNOWN
 }
 
-test_funcs = [func_to_test1, func_to_test2, func_to_test3]
-result_var_type = [result_var_type1, result_var_type2, result_var_type3]
+
+def func_to_test4():
+    with fluid.dygraph.guard():
+        a = np.random.uniform(0.1, 1, [1, 2])
+        b = 1 + a
+        c = fluid.dygraph.to_variable(b)
+        d = (c + 1) * 0.3
+
+
+result_var_type4 = {
+    'a': NodeVarType.NUMPY_NDARRAY,
+    'b': NodeVarType.NUMPY_NDARRAY,
+    'c': NodeVarType.TENSOR,
+    'd': NodeVarType.TENSOR
+}
+
+test_funcs = [func_to_test1, func_to_test2, func_to_test3, func_to_test4]
+result_var_type = [
+    result_var_type1, result_var_type2, result_var_type3, result_var_type4
+]
 
 
 class TestStaticAnalysis(unittest.TestCase):
@@ -97,7 +117,7 @@ class TestStaticAnalysis(unittest.TestCase):
             self._check_wrapper(wrapper_root, node_to_wrapper_map)
 
     def test_var_env(self):
-        for i in range(2, 3):
+        for i in range(4):
             func = test_funcs[i]
             var_type = result_var_type[i]
             test_source_code = inspect.getsource(func)
