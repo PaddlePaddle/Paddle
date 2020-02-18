@@ -156,6 +156,11 @@ copy(inference_lib_dist
         SRCS ${ZLIB_INCLUDE_DIR} ${ZLIB_LIBRARIES}
         DSTS ${dst_dir} ${dst_dir}/lib)
 
+set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/threadpool")
+copy(inference_lib_dist
+        SRCS ${THREADPOOL_INCLUDE_DIR}/ThreadPool.h
+        DSTS ${dst_dir})
+
 copy(inference_lib_dist
         SRCS ${CMAKE_CURRENT_BINARY_DIR}/CMakeCache.txt
         DSTS ${FLUID_INFERENCE_INSTALL_DIR})
