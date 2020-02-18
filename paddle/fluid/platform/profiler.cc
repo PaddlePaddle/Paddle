@@ -325,6 +325,7 @@ struct EventItem {
 // Print results
 void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
                    const std::multimap<std::string, EventItem> &child_map,
+                   const double total_time, const float compute_ratio,
                    const std::string &sorted_domain, const size_t name_width,
                    const size_t data_width, bool merge_thread, int print_depth,
                    int remove_len) {
@@ -354,6 +355,19 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
     std::cout << "Time unit: ms" << std::endl;
     std::cout << "Sorted by " << sorted_domain
               << " in descending order in the same thread\n\n";
+
+    if (merge_thread &&
+        platform::GetTracerOption() != platform::TracerOption::kDefault) {
+      float framework_ratio = 1.0f - compute_ratio;
+      double compute_time = total_time * compute_ratio;
+      double framework_time = total_time * framework_ratio;
+      std::cout << "Total time: " << total_time << " ms" << std::endl;
+      std::cout << "Computation overhead: The time: " << compute_time << " ms, "
+                << "The ratio: " << compute_ratio * 100 << "%" << std::endl;
+      std::cout << "Framework overhead: The time: " << framework_time << " ms, "
+                << "The ratio: " << framework_ratio * 100 << "%" << std::endl
+                << std::endl;
+    }
     // Output events table
     std::cout.setf(std::ios::left);
     std::cout << std::setw(name_width) << "Event" << std::setw(data_width)
@@ -406,8 +420,9 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
                 << std::setw(data_width) << event_item.max_time
                 << std::setw(data_width) << event_item.ave_time
                 << std::setw(data_width) << event_item.ratio << std::endl;
-      PrintProfiler(child_table, child_map, sorted_domain, name_width,
-                    data_width, merge_thread, print_depth + 1, 0);
+      PrintProfiler(child_table, child_map, total_time, compute_ratio,
+                    sorted_domain, name_width, data_width, merge_thread,
+                    print_depth + 1, 0);
     }
   }
 }
@@ -564,6 +579,8 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
   std::vector<std::vector<EventItem>> events_table;
   std::multimap<std::string, EventItem> child_map;
   size_t max_name_width = 0;
+  float op_compute_ratio = 0.0f;
+  double total_time = 0.;
 
   for (size_t i = 0; i < (*analyze_events).size(); i++) {
     double total = 0.;  // the total time in one thread
@@ -606,6 +623,7 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
       }
     }
 
+    if (merge_thread) total_time = total;
     // average time
     for (auto &item : main_event_items) {
       item.ave_time = item.total_time / item.calls;
@@ -614,6 +632,10 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
     for (auto it = sub_child_map.begin(); it != sub_child_map.end(); it++) {
       it->second.ratio = it->second.total_time / total;
       it->second.ave_time = it->second.total_time / it->second.calls;
+      if (merge_thread &&
+          it->second.name.find("compute") != std::string::npos) {
+        op_compute_ratio += it->second.ratio;
+      }
     }
 
     // sort
@@ -637,8 +659,8 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
   }
 
   // Print report
-  PrintProfiler(events_table, child_map, sorted_domain, max_name_width + 8, 12,
-                merge_thread, 0, 0);
+  PrintProfiler(events_table, child_map, total_time, op_compute_ratio,
+                sorted_domain, max_name_width + 8, 12, merge_thread, 0, 0);
 }
 
 struct MemoryProfierReport {
