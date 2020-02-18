@@ -151,18 +151,7 @@ class DygraphToStaticAst(gast.NodeTransformer):
             node.decorator_list = decorator_list
         return node
 
-    def is_to_variable(self, node):
-        assert isinstance(node, gast.Assign)
-        if isinstance(node.value, gast.Call):
-            if is_dygraph_api(node.value):
-                api_name = node.value.func.attr
-                return api_name is "to_variable"
-        return False
-
     def visit_Assign(self, node):
-        if self.is_to_variable(node):
-            node.value = to_assign_node(node.value)
-            return node
 
         if self._update_class_node_dict(node):
             return None
@@ -178,7 +167,10 @@ class DygraphToStaticAst(gast.NodeTransformer):
         value_node = node.value
         for child_node in gast.walk(value_node):
             if isinstance(child_node, gast.Call):
-                self._visit_Call(child_node)
+                if is_dygraph_api(child_node):
+                    return
+                else:
+                    self._visit_Call(child_node)
 
         return node
 
@@ -193,6 +185,12 @@ class DygraphToStaticAst(gast.NodeTransformer):
         assert isinstance(node, gast.Call)
         if not isinstance(node.func, (gast.Name, gast.Attribute)):
             return
+
+        # Replace API `to_variable` with `fluid.layers.assign`
+        if is_to_variable(node):
+            node = to_assign_node(node)
+            return node
+
         func_id = astor.to_source(node.func)
         if self._is_dygraph_forward(func_id):
             class_node = self._get_class_node(func_id)
@@ -209,6 +207,8 @@ class DygraphToStaticAst(gast.NodeTransformer):
         assert isinstance(node, gast.Assign)
 
         if isinstance(node.value, gast.Call):
+            if is_to_variable(node.value):
+                return False
 
             if is_dygraph_api(node.value):
                 target_str = astor.to_source(node.targets[0])

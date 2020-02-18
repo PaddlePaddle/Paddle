@@ -15,7 +15,6 @@
 from __future__ import print_function
 
 import inspect
-import codegen
 import gast
 import astor
 import atexit
@@ -171,6 +170,14 @@ def _add_keywords_to(node, dygraph_api_name):
     return
 
 
+def is_to_variable(node):
+    assert isinstance(node, gast.Call)
+    if is_dygraph_api(node):
+        api_name = node.func.attr
+        return api_name is "to_variable"
+    return False
+
+
 def to_static_ast(node, dygraph_class, dygraph_args, dygraph_keywords):
     static_info = to_static_api(dygraph_class)
     static_api = static_info[STATIC_API]
@@ -199,7 +206,6 @@ def to_assign_node(ori_node):
 
     assign_api = gast.parse('fluid.layers.assign').body[0].value
     ori_node.func = assign_api
-
     return ori_node
 
 
@@ -210,7 +216,6 @@ def _is_paddle_dygraph_api(obj):
 
 def is_dygraph_api(node):
     assert isinstance(node, gast.Call)
-
     func_src = astor.to_source(gast.gast_to_ast(node.func))
     try:
         import paddle.fluid as fluid
