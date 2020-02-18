@@ -342,7 +342,8 @@ class Optimizer(object):
                          dtype=None,
                          fill_value=0.0,
                          shape=None,
-                         type=None):
+                         type=None,
+                         force_cpu=False):
         """Utility function to add an accumulator for a parameter
 
         Args:
@@ -376,7 +377,9 @@ class Optimizer(object):
             shape=shape,
             belong_to_optimizer=True)
         self.helper.set_variable_initializer(
-            var, initializer=Constant(value=float(fill_value)))
+            var,
+            initializer=Constant(
+                value=float(fill_value), force_cpu=force_cpu))
 
         if framework.in_dygraph_mode():
             if len(self._accumulators_holder) > 0:
@@ -1731,14 +1734,14 @@ class AdamOptimizer(Optimizer):
                 fill_value=0.9 if isinstance(self._beta1, Variable) \
                         else self._beta1,
                 shape=[1],
-                type=core.VarDesc.VarType.LOD_TENSOR)
+                type=core.VarDesc.VarType.LOD_TENSOR, force_cpu=True)
             self._add_accumulator(
                 name=self._beta2_pow_acc_str,
                 param=p,
                 fill_value=0.999 if isinstance(self._beta2, Variable) \
                         else self._beta2,
                 shape=[1],
-                type=core.VarDesc.VarType.LOD_TENSOR)
+                type=core.VarDesc.VarType.LOD_TENSOR, force_cpu=True)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)

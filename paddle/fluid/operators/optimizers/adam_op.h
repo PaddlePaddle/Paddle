@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <math.h>  // for sqrt in CPU and CUDA
 #include <Eigen/Dense>
+#include <string>
 #include <unordered_map>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
@@ -46,6 +47,9 @@ class AdamOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override;
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override;
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override;
 };
 
 struct GPUAdam;

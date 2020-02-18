@@ -17,12 +17,41 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-__global__ void AdamKernel(T beta1, T beta2, T epsilon, const T* beta1_pow_,
-                           const T* beta2_pow_, const T* moment1,
-                           T* moment1_out, const T* moment2, T* moment2_out,
-                           const T* lr_, const T* grad, const T* param,
-                           T* param_out, int ndim, T* beta1_pow_out,
-                           T* beta2_pow_out) {
+__global__ void AdamKernelREG(T beta1, T beta2, T epsilon, T beta1_pow_,
+                              T beta2_pow_, const T* moment1, T* moment1_out,
+                              const T* moment2, T* moment2_out, const T* lr_,
+                              const T* grad, const T* param, T* param_out,
+                              int ndim) {
+  T lr = *lr_;
+  T beta1_pow = beta1_pow_;
+  T beta2_pow = beta2_pow_;
+
+  lr *=
+      sqrt(static_cast<T>(1.0) - beta2_pow) / (static_cast<T>(1.0) - beta1_pow);
+
+  int id = blockIdx.x * blockDim.x + threadIdx.x;
+
+  for (; id < ndim; id += gridDim.x * blockDim.x) {
+    T p = param[id];
+    T g = grad[id];
+    T mom1 = moment1[id];
+    T mom2 = moment2[id];
+    mom1 = beta1 * mom1 + (static_cast<T>(1.0) - beta1) * g;
+    mom2 = beta2 * mom2 + (static_cast<T>(1.0) - beta2) * g * g;
+    p -= lr * (mom1 / (sqrt(mom2) + epsilon));
+
+    moment1_out[id] = mom1;
+    moment2_out[id] = mom2;
+    param_out[id] = p;
+  }
+}
+
+template <typename T>
+__global__ void AdamKernelMEM(T beta1, T beta2, T epsilon, const T* beta1_pow_,
+                              const T* beta2_pow_, const T* moment1,
+                              T* moment1_out, const T* moment2, T* moment2_out,
+                              const T* lr_, const T* grad, const T* param,
+                              T* param_out, int ndim) {
   T lr = *lr_;
   T beta1_pow = *beta1_pow_;
   T beta2_pow = *beta2_pow_;
@@ -45,11 +74,13 @@ __global__ void AdamKernel(T beta1, T beta2, T epsilon, const T* beta1_pow_,
     moment2_out[id] = mom2;
     param_out[id] = p;
   }
-  __syncthreads();
-  if (id == ndim - 1) {
-    beta1_pow_out[0] = beta1_pow * beta1;
-    beta2_pow_out[0] = beta2_pow * beta2;
-  }
+}
+template <typename T>
+__global__ void UpdateBetaPow(T beta1, T beta2, const T* beta1_pow_,
+                              const T* beta2_pow_, T* beta1_pow_out,
+                              T* beta2_pow_out) {
+  *beta1_pow_out = beta1 * beta1_pow_[0];
+  *beta2_pow_out = beta2 * beta2_pow_[0];
 }
 
 template <typename T>
@@ -129,18 +160,46 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
       int threads = 512;
       int blocks = (param.numel() + threads - 1) / threads;
 
-      // Fuse adam and beta compute together
-      AdamKernel<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
-          beta1, beta2, epsilon, beta1_pow.template data<T>(),
-          beta2_pow.template data<T>(), mom1.template data<T>(),
-          mom1_out.template mutable_data<T>(ctx.GetPlace()),
-          mom2.template data<T>(),
-          mom2_out.template mutable_data<T>(ctx.GetPlace()),
-          lr.template data<T>(), grad.template data<T>(),
-          param.template data<T>(),
-          param_out.template mutable_data<T>(ctx.GetPlace()), param.numel(),
-          beta1_pow_out.template mutable_data<T>(ctx.GetPlace()),
-          beta2_pow_out.template mutable_data<T>(ctx.GetPlace()));
+      if (beta1_pow.place() == platform::CPUPlace() &&
+          beta2_pow.place() == platform::CPUPlace()) {
+        // Fuse adam and beta compute together
+        AdamKernelREG<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
+            beta1, beta2, epsilon, *beta1_pow.template data<T>(),
+            *beta2_pow.template data<T>(), mom1.template data<T>(),
+            mom1_out.template mutable_data<T>(ctx.GetPlace()),
+            mom2.template data<T>(),
+            mom2_out.template mutable_data<T>(ctx.GetPlace()),
+            lr.template data<T>(), grad.template data<T>(),
+            param.template data<T>(),
+            param_out.template mutable_data<T>(ctx.GetPlace()), param.numel());
+        // Cpu update
+        beta1_pow_out.template mutable_data<T>(platform::CPUPlace())[0] =
+            beta1 * beta1_pow.template data<T>()[0];
+        beta2_pow_out.template mutable_data<T>(platform::CPUPlace())[0] =
+            beta2 * beta2_pow.template data<T>()[0];
+        LOG(INFO) << "+++update cpu";
+      } else {
+        LOG(INFO) << "+++beta1:" << beta1 << " beta2:" << beta2
+                  << " beta1_pow:" << beta1_pow << " beta2_pow:" << beta2_pow;
+        AdamKernelMEM<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
+            beta1, beta2, epsilon, beta1_pow.template data<T>(),
+            beta2_pow.template data<T>(), mom1.template data<T>(),
+            mom1_out.template mutable_data<T>(ctx.GetPlace()),
+            mom2.template data<T>(),
+            mom2_out.template mutable_data<T>(ctx.GetPlace()),
+            lr.template data<T>(), grad.template data<T>(),
+            param.template data<T>(),
+            param_out.template mutable_data<T>(ctx.GetPlace()), param.numel());
+        // Update with gpu
+        UpdateBetaPow<T><<<1, 32, 0, dev_ctx.stream()>>>(
+            beta1, beta2, beta1_pow.template data<T>(),
+            beta2_pow.template data<T>(),
+            beta1_pow_out.template mutable_data<T>(ctx.GetPlace()),
+            beta2_pow_out.template mutable_data<T>(ctx.GetPlace()));
+        LOG(INFO) << "+++beta1:" << beta1 << " beta2:" << beta2
+                  << " beta1_powout:" << beta1_pow_out
+                  << " beta2_powout:" << beta2_pow_out;
+      }
 
     } else if (grad_var->IsType<framework::SelectedRows>()) {
       auto& grad =
@@ -214,5 +273,9 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+/*REGISTER_OP_CUDA_KERNEL(
+    adam, ops::AdamOpKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::AdamOpKernel<paddle::platform::CUDADeviceContext, double>);*/
+
 REGISTER_OP_CUDA_KERNEL(adam, ops::AdamOpCUDAKernel<float>,
                         ops::AdamOpCUDAKernel<double>);
