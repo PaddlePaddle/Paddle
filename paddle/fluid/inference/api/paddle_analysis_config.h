@@ -80,10 +80,10 @@ struct AnalysisConfig {
   // Padding related.
   /** Turn off Padding.
  */
-  void DisablePadding();
+  void DisableFCPadding();
   /** A bool state telling whether padding is turned on.
    */
-  bool use_padding() const { return use_padding_; }
+  bool use_fc_padding() const { return use_fc_padding_; }
 
   // GPU related.
 
@@ -305,7 +305,7 @@ struct AnalysisConfig {
   bool use_cudnn_{false};
 
   // Padding related
-  bool use_padding_{true};
+  bool use_fc_padding_{true};
 
   // TensorRT related.
   bool use_tensorrt_{false};

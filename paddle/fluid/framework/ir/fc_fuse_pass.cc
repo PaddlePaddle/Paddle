@@ -90,8 +90,10 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     desc.SetAttr("activation_type", activation_type);
 
     // This is to add padding for dimension 128 on concern of MKL performance
-    bool use_padding = Has("use_padding") ? Get<bool>("use_padding") : true;
-    if (use_padding) {
+    bool use_gpu = Has("use_gpu") ? Get<bool>("use_gpu") : false;
+    bool use_fc_padding =
+        Has("use_fc_padding") ? Get<bool>("use_fc_padding") : true;
+    if (!use_gpu && use_fc_padding) {
       auto* scope = param_scope();
       auto* weight = scope->FindVar(w->Name())->GetMutable<LoDTensor>();
       auto* weight_data = weight->data<float>();
@@ -99,26 +101,21 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
       int weight_num = product(weight_dims);
       int w_h = weight_dims[0];
       int w_w = weight_dims[1];
-      bool use_gpu = Has("use_gpu") ? Get<bool>("use_gpu") : false;
-      bool use_fc_padding =
-          Has("use_fc_padding") ? Get<bool>("use_fc_padding") : true;
-      if (!use_gpu && use_fc_padding) {
-        if (w_h % 128 == 0 && w_w % 128 == 0) {
-          auto* weight_data_tmp = new float[weight_num];
-          for (int i = 0; i < w_h; i++) {
-            memcpy(weight_data_tmp + i * w_w, weight_data + i * w_w,
-                   w_w * sizeof(float));
-          }
-          weight->Resize(DDim{weight_dims[0] + 4, weight_dims[1] + 4});
-          auto* weight_data_new =
-              weight->mutable_data<float>(platform::CPUPlace());
-          for (int i = 0; i < w_h; i++) {
-            memcpy(weight_data_new + i * (w_w + 4), weight_data_tmp + i * w_w,
-                   w_w * sizeof(float));
-          }
-          delete[] weight_data_tmp;
-          desc.SetAttr("padding_weights", true);
+      if (w_h % 128 == 0 && w_w % 128 == 0) {
+        auto* weight_data_tmp = new float[weight_num];
+        for (int i = 0; i < w_h; i++) {
+          memcpy(weight_data_tmp + i * w_w, weight_data + i * w_w,
+                 w_w * sizeof(float));
         }
+        weight->Resize(DDim{weight_dims[0] + 4, weight_dims[1] + 4});
+        auto* weight_data_new =
+            weight->mutable_data<float>(platform::CPUPlace());
+        for (int i = 0; i < w_h; i++) {
+          memcpy(weight_data_new + i * (w_w + 4), weight_data_tmp + i * w_w,
+                 w_w * sizeof(float));
+        }
+        delete[] weight_data_tmp;
+        desc.SetAttr("padding_weights", true);
       }
     }
 
