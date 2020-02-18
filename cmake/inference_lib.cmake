@@ -102,14 +102,21 @@ function(copy_part_of_thrid_party TARGET DST)
                 DSTS ${dst_dir} ${dst_dir}/lib ${dst_dir}/lib)
     else()
         copy(${TARGET}
-                SRCS ${GFLAGS_INCLUDE_DIR} ${GFLAGS_LIBRARIES}}
+                SRCS ${GFLAGS_INCLUDE_DIR} ${GFLAGS_LIBRARIES}
                 DSTS ${dst_dir} ${dst_dir}/lib)
     endif()
 
     set(dst_dir "${DST}/third_party/install/glog")
-    copy(${TARGET}
-            SRCS ${GLOG_INCLUDE_DIR} ${GLOG_LIBRARIES}  ${GLOG_SHARED_LIB_DLL}
-            DSTS ${dst_dir} ${dst_dir}/lib ${dst_dir}/lib)
+ 
+    if(WIN32)
+        copy(${TARGET}
+                SRCS ${GLOG_INCLUDE_DIR} ${GLOG_LIBRARIES}  ${GLOG_SHARED_LIB_DLL}
+                DSTS ${dst_dir} ${dst_dir}/lib ${dst_dir}/lib)
+    else()
+        copy(${TARGET}
+                SRCS ${GLOG_INCLUDE_DIR} ${GLOG_LIBRARIES}
+                DSTS ${dst_dir} ${dst_dir}/lib)
+    endif()
 
     set(dst_dir "${DST}/third_party/install/xxhash")
     copy(${TARGET}

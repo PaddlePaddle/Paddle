@@ -65,6 +65,12 @@ if(WITH_PYTHON)
       COMMAND "${CMAKE_BINARY_DIR}/paddle/fluid/pybind/${CMAKE_BUILD_TYPE}/op_function_generator" 
               "${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function_impl.h") 
     add_dependencies(op_function_cmd op_function_generator)
+
+    add_custom_command(TARGET op_function_generator POST_BUILD
+          COMMAND ${CMAKE_COMMAND} -E copy ${GFLAGS_SHARED_LIB_DLL} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+          COMMAND ${CMAKE_COMMAND} -E copy ${GLOG_SHARED_LIB_DLL} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+        )
+
     if(${CBLAS_PROVIDER} STREQUAL MKLML)
       add_custom_command(TARGET op_function_generator POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
