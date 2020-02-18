@@ -14,14 +14,14 @@
 
 from __future__ import print_function
 
-import ast
+import gast
 
 from .static_analysis import AstNodeWrapper, StaticAnalysisVisitor
 
 __all__ = ['DygraphToStaticAst']
 
 
-class DygraphToStaticAst(ast.NodeTransformer):
+class DygraphToStaticAst(gast.NodeTransformer):
     """
     Main class to transform Dygraph to Static Graph
     """

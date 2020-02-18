@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import os
 import unittest
+import tempfile
 from test_dist_fleet_base import TestFleetBase
 
 
@@ -99,7 +100,11 @@ class TestDistMnistAsyncDataset2x2(TestFleetBase):
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
             "http_proxy": "",
-            "SAVE_MODEL": "1"
+            "SAVE_MODEL": "1",
+            "dump_param": "concat_0.tmp_0",
+            "dump_fields": "dnn-fc-3.tmp_0,dnn-fc-3.tmp_0@GRAD",
+            "dump_fields_path": tempfile.mkdtemp(),
+            "Debug": "1"
         }
 
         required_envs.update(need_envs)
