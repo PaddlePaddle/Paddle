@@ -42,6 +42,7 @@ static int64_t profiler_lister_id = 0;
 static bool should_send_profile_state = false;
 std::mutex profiler_mu;
 
+static TracerOption g_tracer_option = TracerOption::kDefault;
 // The profiler state, the initial value is ProfilerState::kDisabled
 static ProfilerState g_state = ProfilerState::kDisabled;
 // The thread local event list only can be accessed by the specific thread
@@ -137,11 +138,15 @@ void PopEvent(const std::string &name) {
   GetEventList().Record(EventType::kPopRange, name, g_thread_id);
 }
 
-RecordEvent::RecordEvent(const std::string &name)
-    : is_enabled_(false), start_ns_(PosixInNsec()) {
+RecordEvent::RecordEvent(const std::string &name, const RecordRole role)
+    : is_enabled_(false), start_ns_(PosixInNsec()), role_(role) {
   if (g_state == ProfilerState::kDisabled || name.empty()) return;
+  if ((g_tracer_option == TracerOption::kOpDetail &&
+       role_ != RecordRole::kInnerOp) ||
+      (g_tracer_option == TracerOption::kDefault &&
+       role != RecordRole::kOrdinary))
+    return;
   // lock is not needed, the code below is thread-safe
-
   is_enabled_ = true;
   Event *e = PushEvent(name);
   // Maybe need the same push/pop behavior.
@@ -363,29 +368,20 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
               << "Max." << std::setw(data_width) << "Ave."
               << std::setw(data_width) << "Ratio." << std::endl;
   }
-  if (print_depth >= 100) return;
-  int print_depth_next = print_depth;
+
+  if (events_table.size() <= 0) return;
+
   for (size_t i = 0; i < events_table.size(); ++i) {
     for (size_t j = 0; j < events_table[i].size(); ++j) {
       auto event_item = events_table[i][j];
       std::vector<std::vector<EventItem>> child_table;
       std::vector<EventItem> table;
-      bool do_next = false;
-      std::string op_end_str = "inner_op";
       for (auto it = child_map.begin(); it != child_map.end(); it++) {
         if (it->first == event_item.name) {
           table.push_back(it->second);
-          if (!do_next)
-            do_next = !(it->second.name.rfind(op_end_str) ==
-                        (it->second.name.length() - op_end_str.length()));
         }
       }
       child_table.push_back(table);
-
-      if (do_next)
-        print_depth_next = print_depth + 1;
-      else
-        print_depth_next = print_depth + 100;
 
       auto name_len = event_item.name.length();
       std::string print_name = event_item.name.substr(remove_len, name_len);
@@ -394,10 +390,7 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
         delimiter = "  " + delimiter;
       }
       print_name = delimiter + print_name;
-      size_t pos = 0;
-      while ((pos = print_name.find(op_end_str)) != std::string::npos) {
-        print_name.erase(pos, op_end_str.length());
-      }
+
       std::cout << std::setw(name_width) << print_name << std::setw(data_width)
                 << event_item.calls << std::setw(data_width)
                 << event_item.total_time;
@@ -416,14 +409,14 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
                 << std::setw(data_width) << event_item.ave_time
                 << std::setw(data_width) << event_item.ratio << std::endl;
       PrintProfiler(child_table, child_map, sorted_domain, name_width,
-                    data_width, merge_thread, print_depth_next, 0);
+                    data_width, merge_thread, print_depth + 1, 0);
     }
   }
 }
 
 std::function<bool(const EventItem &, const EventItem &)> SetSortedFunc(
     EventSortingKey sorted_by, std::string *domain) {
-  auto sorted_domain = *domain;
+  std::string sorted_domain;
   std::function<bool(const EventItem &, const EventItem &)> sorted_func;
   switch (sorted_by) {
     case EventSortingKey::kCalls:
@@ -471,6 +464,7 @@ std::function<bool(const EventItem &, const EventItem &)> SetSortedFunc(
     default:
       sorted_domain = "event first end time";
   }
+  *domain = sorted_domain;
   return sorted_func;
 }
 
@@ -709,6 +703,45 @@ void ParseMemEvents(const std::vector<std::vector<MemEvent>> &events) {
   PrintMemProfiler(annotation_report, 55, 18);
 }
 
+void DealWithShowName() {
+  std::unordered_map<std::string, int> prefix_name;
+  std::vector<std::string> op_out_name;
+  for (auto it = g_all_event_lists.begin(); it != g_all_event_lists.end();
+       ++it) {
+    for (auto &block : (*it)->event_blocks) {
+      for (auto &r : block) {
+        auto event_name = r.name();
+        size_t start = event_name.find('%', 0);
+        size_t end = event_name.find('%', start + 1);
+        std::string prefix_str = event_name.substr(0, start);
+        while (start != std::string::npos && end != std::string::npos) {
+          auto search_str = event_name.substr(start, end - start + 1);
+          auto it = find(op_out_name.begin(), op_out_name.end(), search_str);
+          std::string replace_str;
+          bool prefix_find = true;
+          if (prefix_name.find(prefix_str) == prefix_name.end()) {
+            prefix_find = false;
+            prefix_name[prefix_str] = 0;
+          }
+
+          if (it == op_out_name.end()) {
+            if (prefix_find)
+              prefix_name[prefix_str] = prefix_name[prefix_str] + 1;
+            op_out_name.push_back(search_str);
+          }
+          replace_str = std::to_string(prefix_name[prefix_str]);
+          event_name.replace(start, end - start + 1, replace_str);
+          start = start + 1;
+          start = event_name.find('%', start);
+          end = event_name.find('%', start + 1);
+          prefix_str = event_name.substr(0, start);
+        }
+        r.set_name(event_name);
+      }
+    }
+  }
+}
+
 void DisableProfiler(EventSortingKey sorted_key,
                      const std::string &profile_path) {
   SynchronizeAllDevice();
@@ -718,36 +751,16 @@ void DisableProfiler(EventSortingKey sorted_key,
   if (g_state == ProfilerState::kDisabled) return;
   // Mark the profiling stop.
   Mark("_stop_profiler_");
+  DealWithShowName();
 
   DeviceTracer *tracer = GetDeviceTracer();
   if (tracer->IsEnabled()) {
     tracer->Disable();
-    tracer->GenProfile(profile_path);
     tracer->GenEventKernelCudaElapsedTime();
+    tracer->GenProfile(profile_path);
   }
 
   std::vector<std::vector<Event>> all_events = GetAllEvents();
-
-  std::vector<std::string> op_name;
-  for (size_t i = 0; i < (all_events).size(); i++) {
-    for (size_t j = 0; j < (all_events)[i].size(); j++) {
-      std::string event_name = (all_events)[i][j].name();
-      size_t start = event_name.find('%', 0);
-      size_t end = event_name.rfind('%', event_name.length() - 1);
-      if (start == std::string::npos || end == std::string::npos) continue;
-      std::string search_str = event_name.substr(start, end - start + 1);
-      auto it = find(op_name.begin(), op_name.end(), search_str);
-      std::string replace_str;
-      if (it != op_name.end()) {
-        replace_str = std::to_string(std::distance(op_name.begin(), it));
-      } else {
-        replace_str = std::to_string(op_name.size());
-        op_name.push_back(search_str);
-      }
-      event_name.replace(start, end - start + 1, replace_str);
-      (all_events)[i][j].set_name(event_name);
-    }
-  }
 
   ParseEvents(all_events, true, sorted_key);
   ParseEvents(all_events, false, sorted_key);
@@ -773,5 +786,30 @@ void SetProfileListener() {
 }
 int64_t ListenerId() { return profiler_lister_id; }
 
+std::string OpName(const framework::VariableNameMap &name_map,
+                   const std::string &type_name) {
+  if (platform::GetTracerOption() != platform::TracerOption::kAllOpDetail)
+    return "";
+
+  std::string ret = type_name + "%";
+  for (auto it = name_map.begin(); it != name_map.end(); it++) {
+    auto name_outputs = it->second;
+    if (!name_outputs.empty() &&
+        type_name.length() < name_outputs[0].length()) {
+      ret = ret + name_outputs[0];
+      break;
+    }
+  }
+  ret = ret + "%";
+
+  return ret;
+}
+
+void SetTracerOption(TracerOption option) {
+  std::lock_guard<std::mutex> l(profiler_mu);
+  g_tracer_option = option;
+}
+
+platform::TracerOption GetTracerOption() { return g_tracer_option; }
 }  // namespace platform
 }  // namespace paddle
