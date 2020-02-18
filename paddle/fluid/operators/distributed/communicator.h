@@ -247,6 +247,7 @@ class AsyncCommunicator : public Communicator {
     send_queue_size_ = std::stoi(envs.at("communicator_send_queue_size"));
     is_sgd_optimizer_ =
         static_cast<bool>(std::stoi(envs.at("communicator_is_sgd_optimizer")));
+    VLOG(0) << "AsyncCommunicator Initialized";
   }
   ~AsyncCommunicator();
   void Start() override;
@@ -302,6 +303,7 @@ class HalfAsyncCommunicator : public Communicator {
     send_wait_times_ = std::stoi(envs.at("communicator_send_wait_times"));
     thread_pool_size_ = std::stoi(envs.at("communicator_thread_pool_size"));
     send_queue_size_ = std::stoi(envs.at("communicator_send_queue_size"));
+    VLOG(0) << "HalfAsyncCommunicator Initialized";
   }
   ~HalfAsyncCommunicator();
   void Start() override;
@@ -335,6 +337,8 @@ class HalfAsyncCommunicator : public Communicator {
   int send_wait_times_;
   int thread_pool_size_;
   int send_queue_size_;
+  bool is_half_comm_ = true;
+  int trainer_id_ = 0;
 
  protected:
   std::unordered_map<std::string,
@@ -360,9 +364,12 @@ class SyncCommunicator : public HalfAsyncCommunicator {
   SyncCommunicator() : HalfAsyncCommunicator() {}
   explicit SyncCommunicator(const std::map<std::string, std::string>& envs)
       : HalfAsyncCommunicator(envs) {
+    is_half_comm_ = false;
     trainer_id_ = std::stoi(envs.at("trainer_id"));
+
     auto pserver_strings = envs.at("pserver_endpoints");
     pserver_endpoints_ = paddle::string::Split(pserver_strings, ',');
+    VLOG(0) << "SyncCommunicator Initialized";
   }
   ~SyncCommunicator() {}
   void BarrierSend();
@@ -370,7 +377,6 @@ class SyncCommunicator : public HalfAsyncCommunicator {
 
  private:
   std::vector<std::string> pserver_endpoints_{};
-  int trainer_id_ = 0;
 };
 
 class GeoSgdCommunicator : public Communicator {
@@ -382,6 +388,7 @@ class GeoSgdCommunicator : public Communicator {
     trainer_nums_ = std::stoi(envs.at("geo_trainer_nums"));
     thread_pool_size_ = std::stoi(envs.at("communicator_thread_pool_size"));
     send_wait_times_ = std::stoi(envs.at("communicator_send_wait_times"));
+    VLOG(0) << "GeoSgdCommunicator Initialized";
   }
 
   ~GeoSgdCommunicator();

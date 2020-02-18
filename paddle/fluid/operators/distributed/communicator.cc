@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/parameter_recv.h"
 #include "paddle/fluid/operators/distributed/parameter_send.h"
+#include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/split.h"
 
 namespace paddle {
@@ -64,7 +65,6 @@ std::shared_ptr<Communicator> Communicator::communicator_(nullptr);
 void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
                                  const RpcCtxMap &recv_varname_to_ctx,
                                  Scope *recv_scope) {
-  VLOG(0) << "AsyncCommunicator Initializing";
   send_varname_to_ctx_ = std::move(send_varname_to_ctx);
   recv_varname_to_ctx_ = std::move(recv_varname_to_ctx);
   recv_scope_ = std::move(recv_scope);
@@ -90,7 +90,6 @@ void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
 
 void AsyncCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
                                  Scope *param_scope) {
-  VLOG(0) << "AsyncCommunicator Initializing";
   RpcCtxMap send_varname_to_ctx;
   RpcCtxMap recv_varname_to_ctx;
   for (auto *op : program.Block(0).AllOps()) {
@@ -332,8 +331,6 @@ GeoSgdCommunicator::~GeoSgdCommunicator() {
 
 void GeoSgdCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
                                   Scope *recv_scope) {
-  VLOG(0) << "GeoCommunicator Initializing";
-
   training_scope_ = std::move(recv_scope);
 
   auto geo_send_varnames = envs["geo_send_varnames"];
@@ -954,7 +951,6 @@ void GeoSgdCommunicator::Recv() {}
 void HalfAsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
                                      const RpcCtxMap &recv_varname_to_ctx,
                                      Scope *recv_scope) {
-  VLOG(0) << "HalfAsyncCommunicator Initializing";
   send_varname_to_ctx_ = std::move(send_varname_to_ctx);
   recv_varname_to_ctx_ = std::move(recv_varname_to_ctx);
   recv_scope_ = std::move(recv_scope);
@@ -1068,6 +1064,10 @@ void HalfAsyncCommunicator::ConsumeThread() {
             }
           }
           auto before_merge = GetCurrentUS();
+
+          if (!is_half_comm_) {
+            var_name = string::Sprintf("%s.trainer_%d", var_name, trainer_id_);
+          }
 
           MergeVars<float>(var_name, vars, send_scope_.get(), false);
 
