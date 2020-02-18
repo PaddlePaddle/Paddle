@@ -19,7 +19,7 @@ limitations under the License. */
 #include <iostream>
 #include <string>
 #include <vector>
-#include "paddle/fluid/inference/capi/c_api.h"
+#include "paddle/fluid/inference/capi/paddle_c_api.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
@@ -92,9 +92,6 @@ TEST(PD_AnalysisConfig, profile_mkldnn) {
   CHECK(quantizer_enable) << "NO";
   PD_SetMkldnnCacheCapacity(config, 0);
   PD_SetModel(config, prog_file.c_str(), params_file.c_str());
-  PD_EnableAnakinEngine(config);
-  bool anakin_enable = PD_AnakinEngineEnabled(config);
-  LOG(INFO) << anakin_enable;
   PD_DeleteAnalysisConfig(config);
 }
 #endif

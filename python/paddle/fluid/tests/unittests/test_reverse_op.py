@@ -47,10 +47,22 @@ class TestCase0(TestReverseOp):
         self.axis = [1]
 
 
+class TestCase0(TestReverseOp):
+    def initTestCase(self):
+        self.x = np.random.random((3, 40)).astype('float64')
+        self.axis = [-1]
+
+
 class TestCase1(TestReverseOp):
     def initTestCase(self):
         self.x = np.random.random((3, 40)).astype('float64')
         self.axis = [0, 1]
+
+
+class TestCase0(TestReverseOp):
+    def initTestCase(self):
+        self.x = np.random.random((3, 40)).astype('float64')
+        self.axis = [0, -1]
 
 
 class TestCase2(TestReverseOp):
@@ -59,10 +71,22 @@ class TestCase2(TestReverseOp):
         self.axis = [0, 2]
 
 
+class TestCase2(TestReverseOp):
+    def initTestCase(self):
+        self.x = np.random.random((3, 4, 10)).astype('float64')
+        self.axis = [0, -2]
+
+
 class TestCase3(TestReverseOp):
     def initTestCase(self):
         self.x = np.random.random((3, 4, 10)).astype('float64')
         self.axis = [1, 2]
+
+
+class TestCase3(TestReverseOp):
+    def initTestCase(self):
+        self.x = np.random.random((3, 4, 10)).astype('float64')
+        self.axis = [-1, -2]
 
 
 if __name__ == '__main__':

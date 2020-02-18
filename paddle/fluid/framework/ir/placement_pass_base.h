@@ -35,6 +35,10 @@ class PlacementPassBase : public Pass {
 
  private:
   bool IsSupport(const std::string& op_type) const;
+
+#if PADDLE_WITH_TESTING
+  friend class PlacementPassTest;
+#endif
 };
 
 }  // namespace ir

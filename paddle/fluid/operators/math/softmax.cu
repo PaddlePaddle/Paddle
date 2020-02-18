@@ -49,7 +49,7 @@ void SoftmaxCUDNNFunctor<T>::operator()(
       xDesc.descriptor<T>(layout, cudnn_tensor_dims);
   cudnnTensorDescriptor_t cudnn_y_desc =
       xDesc.descriptor<T>(layout, cudnn_tensor_dims);
-  CUDNN_ENFORCE(platform::dynload::cudnnSoftmaxForward(
+  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxForward(
       context.cudnn_handle(), CUDNN_SOFTMAX_ACCURATE,
       CUDNN_SOFTMAX_MODE_INSTANCE, CudnnDataType<T>::kOne(), cudnn_x_desc,
       X->data<T>(), CudnnDataType<T>::kZero(), cudnn_y_desc,
@@ -80,7 +80,7 @@ void SoftmaxGradCUDNNFunctor<T>::operator()(
       dxDesc.descriptor<T>(layout, cudnn_tensor_dims);
   cudnnTensorDescriptor_t cudnn_ygrad_desc =
       dyDesc.descriptor<T>(layout, cudnn_tensor_dims);
-  CUDNN_ENFORCE(platform::dynload::cudnnSoftmaxBackward(
+  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSoftmaxBackward(
       context.cudnn_handle(), CUDNN_SOFTMAX_ACCURATE,
       CUDNN_SOFTMAX_MODE_INSTANCE, CudnnDataType<T>::kOne(), cudnn_y_desc,
       Y->data<T>(), cudnn_ygrad_desc, YGrad->data<T>(),

@@ -33,6 +33,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/profiler.h"
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+
 DECLARE_bool(benchmark);
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
@@ -162,16 +166,17 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
 #endif
     }
 
-    // The profile has a process-wide mutex, results in serious performance
-    // issue
-    // in concurrency scenerio. Here use an `if` to fix this issue.
-    // Please not remove the `if`, ask @Superjomn if there are any concern.
-    if (platform::IsProfileEnabled()) {
-      platform::RecordEvent record_event(Type());
-      RunImpl(scope, place);
-    } else {
+    {
+      // TODO(wangchaochaohu) : refine code to use only one RecordEvent)
+      // in order to record different op type cost time
+      // and different op name cost time,we set two event.
+      platform::RecordEvent op_type_record_event(Type());
+      auto op_name = platform::OpName(outputs_, Type());
+      platform::RecordEvent op_name_record_event(
+          op_name, platform::RecordRole::kUniqueOp);
       RunImpl(scope, place);
     }
+
     VLOG(3) << place << " " << DebugStringEx(&scope);
   } catch (platform::EnforceNotMet& exception) {
     framework::InsertCallStackInfo(Type(), Attrs(), &exception);
@@ -528,8 +533,7 @@ bool OpSupportGPU(const std::string& op_type) {
 
 class RuntimeInferShapeContext : public InferShapeContext {
  public:
-  RuntimeInferShapeContext(const OperatorBase& op, const Scope& scope,
-                           const RuntimeContext& ctx)
+  RuntimeInferShapeContext(const OperatorBase& op, const RuntimeContext& ctx)
       : op_(op), ctx_(ctx) {}
 
   bool HasInput(const std::string& name) const override {
@@ -897,7 +901,7 @@ static void CheckTensorNANOrInf(const std::string& op_type,
 void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
                                            const platform::Place& place,
                                            const RuntimeContext& ctx) const {
-  RuntimeInferShapeContext infer_shape_ctx(*this, scope, ctx);
+  RuntimeInferShapeContext infer_shape_ctx(*this, ctx);
   this->InferShape(&infer_shape_ctx);
 }
 
@@ -950,9 +954,13 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
   // do data transformScope &transfer_scope;
   std::vector<std::string> transfered_inplace_vars;
-  auto* transfer_scope =
-      PrepareData(scope, *kernel_type_, &transfered_inplace_vars, runtime_ctx);
-
+  Scope* transfer_scope = nullptr;
+  {
+    platform::RecordEvent record_event("prepare_data",
+                                       platform::RecordRole::kInnerOp);
+    transfer_scope = PrepareData(scope, *kernel_type_, &transfered_inplace_vars,
+                                 runtime_ctx);
+  }
   // exec scope is the scope that kernel actually executed on.
   const Scope& exec_scope =
       (transfer_scope == nullptr ? scope : *transfer_scope);
@@ -962,7 +970,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 
   if (!all_kernels_must_compute_runtime_shape_) {
-    RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, *runtime_ctx);
+    platform::RecordEvent record_event("infer_shape",
+                                       platform::RecordRole::kInnerOp);
+    RuntimeInferShapeContext infer_shape_ctx(*this, *runtime_ctx);
     this->InferShape(&infer_shape_ctx);
   }
 
@@ -972,8 +982,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
-  (*kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx,
-                                   kernel_configs));
+  {
+    platform::RecordEvent record_event("compute",
+                                       platform::RecordRole::kInnerOp);
+    (*kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx,
+                                     kernel_configs));
+  }
 
   if (!transfered_inplace_vars.empty()) {
     // there is inplace variable has been transfered.
@@ -1081,7 +1095,9 @@ void OperatorWithKernel::TransferInplaceVarsBack(
     PADDLE_ENFORCE_NOT_NULL(var, "The var[%s] should not be nullptr.",
                             var_name);
     auto* transformed_tensor = GetLoDTensorOrSelectedRowsValueFromVar(*var);
+    auto original_dims = original_tensor->dims();
     original_tensor->ShareDataWith(*transformed_tensor);
+    original_tensor->Resize(original_dims);
   }
 }
 
@@ -1102,11 +1118,8 @@ Scope* OperatorWithKernel::PrepareData(
   }
 
   for (auto& var_name_item : Inputs()) {
-    if (no_buffer_ins && no_buffer_ins->count(var_name_item.first) > 0) {
-      VLOG(7) << "Skip scanning input " << var_name_item.first
-              << " in Operator " << type_;
-      continue;
-    }
+    bool should_skip_input =
+        no_buffer_ins && no_buffer_ins->count(var_name_item.first) > 0;
 
     std::vector<Variable*>& input_vars = ctx->inputs[var_name_item.first];
 
@@ -1120,6 +1133,44 @@ Scope* OperatorWithKernel::PrepareData(
       }
 
       auto* tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
+
+      // When no_buffer_ins then checking of Tensor::holder_ is
+      // not a thread safe. And for infershape scenario checks
+      // to be omitted are not really needed
+      if (should_skip_input == true) {
+#ifdef PADDLE_WITH_MKLDNN
+        // Var without buffer may be needed
+        // for some situation like InferShape().
+        // In this situation We cannot skip Var analysis, as
+        // MKL-DNN shape of Var may differ from kNHWC Var
+        // In such situation corressponding resized Var
+        // has to be created and registered
+        if ((tensor_in->layout() == DataLayout::kMKLDNN) &&
+            (var->IsType<LoDTensor>() == true) &&
+            (expected_kernel_key.data_layout_ != DataLayout::kMKLDNN) &&
+            (paddle::platform::get_cur_paddle_data_layout() ==
+             DataLayout::kNHWC)) {
+          // Mixed execution : MKL-DNN and GPU is not supported!
+          if (!new_scope) {
+            new_scope = &scope.NewScope();
+          }
+          auto* trans_var = new_scope->Var(var_name);
+          input_vars[i] = trans_var;
+          auto out = trans_var->GetMutable<LoDTensor>();
+          out->Resize(tensor_in->dims());
+          platform::MatchShapeToLayout(out, tensor_in->layout(),
+                                       DataLayout::kNHWC);
+          VLOG(7) << "Created reshaped dummy input based on MKL-DNN Tensor , "
+                     "but kNHWC layout"
+                  << var_name_item.first << " in Operator " << type_;
+        } else {
+          VLOG(7) << "Skip scanning input " << var_name_item.first
+                  << " in Operator " << type_;
+        }
+#endif
+        continue;
+      }
+
       if (!tensor_in->IsInitialized()) {
         continue;
       }
@@ -1173,16 +1224,13 @@ Scope* OperatorWithKernel::PrepareData(
       // The reason is that if a gpu tensor is the input of a cpu kernel,
       // we will create a new cpu tensor in new scope.
       // However, if enable_cache_runtime_context_, we get the cpu tensor each
-      // time, not the gpu tensor.
-      // Thus, we set pre_scope_ = nullptr to trigger `new RuntimeContext()` in
-      // RunImpl().
+      // time, not the gpu tensor. Thus, we set pre_scope_ = nullptr
+      // to trigger `new RuntimeContext()` in RunImpl().
       if (enable_cache_runtime_context_) {
         pre_scope_ = nullptr;
       }
-
       auto* trans_var = new_scope->Var(var_name);
       input_vars[i] = trans_var;
-
       Tensor out;
       TransformData(expected_kernel_key, kernel_type_for_var, *tensor_in, &out);
       SetTensorToVariable(*var, out, trans_var);
@@ -1195,7 +1243,7 @@ Scope* OperatorWithKernel::PrepareData(
 void OperatorWithKernel::ParseInputDataType(
     const ExecutionContext& ctx, const std::string& name,
     proto::VarType::Type* data_type) const {
-  proto::VarType::Type dafault_data_type =
+  proto::VarType::Type default_data_type =
       static_cast<proto::VarType::Type>(-1);
   const std::vector<Variable*> vars = ctx.MultiInputVar(name);
   for (size_t i = 0; i < vars.size(); ++i) {
@@ -1208,6 +1256,13 @@ void OperatorWithKernel::ParseInputDataType(
         t = &var->Get<LoDTensor>();
       } else if (var->IsType<SelectedRows>()) {
         t = &(var->Get<SelectedRows>().value());
+      } else if (var->IsType<LoDTensorArray>()) {
+        auto t_arr = var->Get<LoDTensorArray>();
+        for (size_t j = 0; j < t_arr.size(); j++) {
+          if (t_arr[j].IsInitialized()) {
+            t = &(t_arr[j]);
+          }
+        }
       }
       if (t != nullptr) {
         PADDLE_ENFORCE_EQ(
@@ -1218,7 +1273,7 @@ void OperatorWithKernel::ParseInputDataType(
                 Type(), name, ctx.InputNames(name).at(i)));
         proto::VarType::Type tmp = t->type();
         PADDLE_ENFORCE(
-            tmp == *data_type || *data_type == dafault_data_type,
+            tmp == *data_type || *data_type == default_data_type,
             platform::errors::InvalidArgument(
                 "The DataType of %s Op's duplicable Variable %s must be "
                 "consistent. The current variable type is (%s), but the "

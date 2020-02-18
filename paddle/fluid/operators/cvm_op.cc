@@ -94,9 +94,9 @@ class CVMGradientOp : public framework::OperatorWithKernel {
   // is determined by its input "X".
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Y")),
+                                   ctx.device_context());
   }
 };
 
@@ -134,8 +134,8 @@ class CVMGradOpMaker : public framework::SingleGradOpMaker<T> {
   std::unique_ptr<T> Apply() const override {
     std::unique_ptr<T> op(new T());
     op->SetType("cvm_grad");
-    op->SetInput("X", this->Input("X"));
     op->SetInput("CVM", this->Input("CVM"));
+    op->SetInput("X", this->Input("X"));
     op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
@@ -143,15 +143,20 @@ class CVMGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(CVMNoNeedBufferVarInference, "CVM");
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(CVMGradNoNeedBufferVarInference, "X");
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(cvm, ops::CVMOp, ops::CVMOpMaker,
                   ops::CVMGradOpMaker<paddle::framework::OpDesc>,
-                  ops::CVMGradOpMaker<paddle::imperative::OpBase>);
+                  ops::CVMGradOpMaker<paddle::imperative::OpBase>,
+                  ops::CVMNoNeedBufferVarInference);
 
-REGISTER_OPERATOR(cvm_grad, ops::CVMGradientOp);
+REGISTER_OPERATOR(cvm_grad, ops::CVMGradientOp,
+                  ops::CVMGradNoNeedBufferVarInference);
 
 REGISTER_OP_CPU_KERNEL(cvm, ops::CVMOpKernel<float>, ops::CVMOpKernel<double>);
 

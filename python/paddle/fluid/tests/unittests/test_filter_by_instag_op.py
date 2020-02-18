@@ -87,12 +87,8 @@ class TestFilterByInstagOp(OpTest):
 class TestFilterByInstagOp2(OpTest):
     def setUp(self):
         self.op_type = 'filter_by_instag'
-        batch_size = 4
-        x1_embed_size = 4
-        fc_cnt = 2
 
-        x1 = np.array([[10, 13, 12, 1], [1, 1, 1, 1], [1, 1, 1, 1],
-                       [1, 1, 1, 1]]).astype('double')
+        x1 = np.random.random((4, 36)).astype('double')
         x1_lod = [[1, 1, 1, 1]]
 
         x2 = np.array([[2], [1], [2], [1]]).astype('int64')
@@ -100,7 +96,9 @@ class TestFilterByInstagOp2(OpTest):
 
         x3 = np.array([1]).astype('int64')
 
-        out = np.array([[1, 1, 1, 1], [1, 1, 1, 1]]).astype('double')
+        out = np.zeros([2, 36]).astype('double')
+        out[0] = x1[1]
+        out[1] = x1[3]
         out_lod = [[1, 1]]
 
         mmap = np.array([[0, 1, 1], [1, 3, 1]]).astype('int64')
@@ -134,12 +132,8 @@ class TestFilterByInstagOp2(OpTest):
 class TestFilterByInstagOp3(OpTest):
     def setUp(self):
         self.op_type = 'filter_by_instag'
-        batch_size = 4
-        x1_embed_size = 4
-        fc_cnt = 2
 
-        x1 = np.array([[10, 13, 12, 1], [1, 1, 1, 1], [1, 1, 1, 1],
-                       [1, 1, 1, 1]]).astype('double')
+        x1 = np.random.random((4, 36)).astype('double')
         x1_lod = [[1, 1, 1, 1]]
 
         x2 = np.array([[2], [1], [2], [1]]).astype('int64')
@@ -147,7 +141,7 @@ class TestFilterByInstagOp3(OpTest):
 
         x3 = np.array([3]).astype('int64')
 
-        out = np.array([[0, 0, 0, 0]]).astype('double')
+        out = np.zeros((1, 36)).astype('double')
         out_lod = [[1]]
 
         mmap = np.array([[0, 1, 1]]).astype('int64')
@@ -180,19 +174,15 @@ class TestFilterByInstagOp3(OpTest):
 class TestFilterByInstagOp4(OpTest):
     def setUp(self):
         self.op_type = 'filter_by_instag'
-        batch_size = 4
-        x1_embed_size = 4
-        fc_cnt = 2
 
-        x1 = np.array([[10, 13, 12, 1], [1, 1, 1, 1], [1, 1, 1, 1],
-                       [1, 1, 1, 1]]).astype('double')
+        x1 = np.random.random((4, 36)).astype('double')
 
         x2 = np.array([[2], [1], [2], [1]]).astype('int64')
         x2_lod = [[1, 1, 1, 1]]
 
         x3 = np.array([3]).astype('int64')
 
-        out = np.array([[0, 0, 0, 0]]).astype('double')
+        out = np.zeros((1, 36)).astype('double')
         out_lod = [[1]]
 
         mmap = np.array([[0, 1, 1]]).astype('int64')
