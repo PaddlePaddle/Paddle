@@ -45,10 +45,10 @@ func (config *AnalysisConfig) SetModel(model, params string) {
 	defer C.free(unsafe.Pointer(c_model))
 	var c_params *C.char
 	if params == "" {
+		c_params = nil
+	} else {
 		c_params = C.CString(params)
 		defer C.free(unsafe.Pointer(c_params))
-	} else {
-		c_params = nil
 	}
 
 	C.PD_SetModel(config.c, c_model, c_params)
@@ -66,8 +66,8 @@ func (config *AnalysisConfig) ParamsFile() string {
 	return C.GoString(C.PD_ParamsFile(config.c))
 }
 
-func (config *AnalysisConfig) EnableUseGpu(memory_pool_init_size_mb uint64, device_id int) {
-	C.PD_EnableUseGpu(config.c, C.uint64(memory_pool_init_size_mb), C.int(device_id))
+func (config *AnalysisConfig) EnableUseGpu(memory_pool_init_size_mb int, device_id int) {
+	C.PD_EnableUseGpu(config.c, C.int(memory_pool_init_size_mb), C.int(device_id))
 }
 
 func (config *AnalysisConfig) DisableGpu() {
@@ -118,7 +118,9 @@ func (config *AnalysisConfig) SpecifyInputName() bool {
 	return ConvertCBooleanToGo(C.PD_SpecifyInputName(config.c))
 }
 
-//func (config *AnalysisConfig) EnableTensorRtEngine(workspace_size int)
+func (config *AnalysisConfig) EnableTensorRtEngine(workspace_size int, max_batch_size int, min_subgraph_size int, precision Precision, use_static bool, use_calib_mode bool) {
+	C.PD_EnableTensorRtEngine(config.c, C.int(workspace_size), C.int(max_batch_size), C.int(min_subgraph_size), C.Precision(precision), C.bool(use_static), C.bool(use_calib_mode))
+}
 
 func (config *AnalysisConfig) TensorrtEngineEnabled() bool {
 	return ConvertCBooleanToGo(C.PD_TensorrtEngineEnabled(config.c))

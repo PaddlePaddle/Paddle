@@ -21,6 +21,14 @@ package paddle
 import "C"
 import "fmt"
 
+type Precision C.Precision
+
+const (
+	kFloat32 Precision = C.kFloat32
+	kInt8    Precision = C.kInt8
+	kHalf    Precision = C.kHalf
+)
+
 func ConvertCBooleanToGo(b C.bool) bool {
 	var c_false C.bool
 	if b != c_false {
