@@ -141,9 +141,11 @@ def _add_keywords_to(node, dygraph_api_name):
                 ast_keyword.arg = "size"
                 changed = True
 
-        if not changed:
-            # todo: arg and keywords
-            pass
+        node.keywords.append(
+            gast.keyword(
+                arg="num_flatten_dims",
+                value=gast.Constant(
+                    value=-1, kind=None)))
 
     if dygraph_api_name is "BilinearTensorProduct":
         changed = False
@@ -151,10 +153,6 @@ def _add_keywords_to(node, dygraph_api_name):
             if ast_keyword.arg == "output_dim":
                 ast_keyword.arg = "size"
                 changed = True
-
-        if not changed:
-            # todo: arg and keywords
-            pass
 
     if dygraph_api_name is "PRelu":
         changed = False
@@ -164,7 +162,7 @@ def _add_keywords_to(node, dygraph_api_name):
                 changed = True
 
         if not changed:
-            # todo: arg and keywords
+            # todo: args and keywords of static function should be set more accurately
             pass
 
     return
@@ -190,7 +188,7 @@ def to_static_ast(node, dygraph_class, dygraph_args, dygraph_keywords):
             ctx=gast.Load(),
             value=gast.Name(
                 ctx=gast.Load(), id='fluid', annotation=None,
-                type_comment=None)))  # todo ast.Name for PY3
+                type_comment=None)))
     node.args.extend(dygraph_args)
     node.keywords.extend(dygraph_keywords)
     _add_keywords_to(node, dygraph_class)
@@ -245,7 +243,7 @@ def ast_to_func(ast_root, func_name, delete_on_exit=True):
         f = tempfile.NamedTemporaryFile(
             mode='w', suffix='.py', delete=False, encoding='utf-8')
 
-    # Todo
+    # Todo: A more elegant way to import fluid is needed
     import_str = "import paddle.fluid as fluid\n"
 
     with f:
@@ -264,7 +262,11 @@ def ast_to_func(ast_root, func_name, delete_on_exit=True):
     return getattr(module, func_name)
 
 
-def def_node_from_class(class_node):
+def func_node_from_class(class_node):
+    """
+    Only get the method `forward` of class. And modify the name of `forward` to
+    class_node.name + '_' + new_node.name. eg: ConvLayer_forward
+    """
     assert isinstance(class_node, gast.ClassDef)
     new_node = None
     for child_node in class_node.body:
@@ -279,5 +281,5 @@ def def_node_from_class(class_node):
         new_node.args.args = [arg for arg in arg_list if arg.id != "self"]
         return new_node
     else:
-        raise ValueError("Class {class_name} must have function 'forward'".
+        raise ValueError("Class {class_name} must have the method 'forward'".
                          format(class_node.name))

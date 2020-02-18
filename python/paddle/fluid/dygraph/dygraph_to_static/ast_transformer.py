@@ -15,7 +15,7 @@
 from __future__ import print_function
 import gast
 import astor
-from utils import *
+from .utils import *
 
 __all__ = ['AstNodeWrapper', 'DygraphToStaticAst', 'StaticAnalysisVisitor']
 DECORATOR_NAME = 'dygraph_to_static_output'
@@ -110,22 +110,13 @@ class DygraphToStaticAst(gast.NodeTransformer):
         # save root for some analysis may need global AST
         self.root = root
         self.class_node_dict = {}
-        # self._visit(root) # todo: delete it
+        self.static_analysis_root = StaticAnalysisVisitor(
+            root).get_node_wrapper_root()
 
-        # self.static_analysis_root = StaticAnalysisVisitor(
-        #     root).get_node_wrapper_root()
         # self.transfer_from_node_type(self.static_analysis_root)
-        # return self.static_analysis_root
+        # Just modify self.root now. todo: modify self.static_analysis_root
         self.transfer_from_node_type(self.root)
         return self.root, root.body[0].name
-
-    def _visit(self, node):
-        # TODO construct a tree whose nodes are AstNodeWrapper
-        # This step also does static node type analysis
-        for each_node in ast.walk(node):
-            for child in ast.iter_child_nodes(each_node):
-                wrapper_child = AstNodeWrapper(child)
-                wrapper_child.parent = each_node
 
     def transfer_from_node_type(self, node):
         ast_node = node
@@ -139,7 +130,7 @@ class DygraphToStaticAst(gast.NodeTransformer):
             ]
             node.decorator_list = decorator_list
 
-        new_node = def_node_from_class(node)
+        new_node = func_node_from_class(node)
         return new_node
 
     def visit_FunctionDef(self, node):

@@ -80,12 +80,10 @@ def dyfunc_BilinearTensorProduct(layer1, layer2):
             value=0.99)),
         bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
             value=0.5)))
-    l1 = fluid.dygraph.base.to_variable(layer1)
-    l2 = fluid.dygraph.base.to_variable(layer2)
 
-    res = bilinearTensorProduct(l1, l2)
-    # res = bilinearTensorProduct(fluid.dygraph.base.to_variable(layer1),
-    #                             fluid.dygraph.base.to_variable(layer2))
+    res = bilinearTensorProduct(
+        fluid.dygraph.base.to_variable(layer1),
+        fluid.dygraph.base.to_variable(layer2))
     return res
 
 
@@ -393,9 +391,7 @@ class TestDygraphBasicAPI_LayerNorm(TestDygraphBasicAPI):
 
 class TestDygraphBasicAPI_Linear(TestDygraphBasicAPI):
     def setUp(self):
-        # todo: add test that input dimension is greater than 2, eg: 3-D or 4-D Tensor
-        # after merge fc
-        self.input = np.random.random((4, 10)).astype('float32')
+        self.input = np.random.random((4, 3, 10)).astype('float32')
         self.dygraph_func = dyfunc_Linear
 
 
