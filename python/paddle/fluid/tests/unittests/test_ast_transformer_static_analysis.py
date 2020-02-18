@@ -50,6 +50,8 @@ def func_to_test3():
     d = True + c
     e = a < b
     f = a
+    g = "dddy"
+    h = None + 1
 
 
 result_var_type3 = {
@@ -58,7 +60,9 @@ result_var_type3 = {
     'c': NodeVarType.FLOAT,
     'd': NodeVarType.FLOAT,
     'e': NodeVarType.BOOLEAN,
-    'f': NodeVarType.INT
+    'f': NodeVarType.INT,
+    'g': NodeVarType.STRING,
+    'h': NodeVarType.UNKNOWN
 }
 
 test_funcs = [func_to_test1, func_to_test2, func_to_test3]
@@ -94,11 +98,13 @@ class TestStaticAnalysis(unittest.TestCase):
             var_type = result_var_type[i]
             test_source_code = inspect.getsource(func)
             ast_root = ast.parse(test_source_code)
+            # print(ast.dump(ast_root))
             visitor = StaticAnalysisVisitor(ast_root)
             var_env = visitor.get_var_env()
             scope_var_type = var_env.get_scope_var_type()
             self.assertEqual(len(scope_var_type), len(var_type))
             for name in scope_var_type:
+                print("Test var name %s" % (name))
                 self.assertTrue(name in var_type)
                 self.assertEqual(scope_var_type[name], var_type[name])
 

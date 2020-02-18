@@ -66,9 +66,11 @@ class NodeVarType(object):
         if in_type1 not in supported_types:
             warnings.warn("Binary Op on un supported in_type1 = %d " %
                           (in_type1))
+            return NodeVarType.UNKNOWN
         if in_type2 not in supported_types:
             warnings.warn("Binary Op on un supported in_type2 = %d " %
                           (in_type2))
+            return NodeVarType.UNKNOWN
         return max(in_type1, in_type2)
 
 
@@ -209,6 +211,8 @@ class StaticAnalysisVisitor(object):
     def _get_node_var_type(self, cur_wrapper):
         node = cur_wrapper.node
         if isinstance(node, ast.Num):
+            if node.n is None:
+                return NodeVarType.NONE
             if isinstance(node.n, int):
                 return NodeVarType.INT
             if isinstance(node.n, float):
