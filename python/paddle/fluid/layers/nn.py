@@ -326,6 +326,8 @@ def fc(input,
     mul_results = []
     for input_var, param_attr in helper.iter_inputs_and_params():
         input_shape = input_var.shape
+        if num_flatten_dims == -1:
+            num_flatten_dims = len(input_shape) - 1
         param_shape = [
             reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
         ] + [size]
