@@ -1695,13 +1695,13 @@ def load(program, model_path, executor=None, var_list=None):
                                                    global_scope(),
                                                    executor._default_executor)
     with open(parameter_file_name, 'rb') as f:
-        load_dict = pickle.load(f) if six.PY2 else pickle.load(
+        param_load_dict = pickle.load(f) if six.PY2 else pickle.load(
             f, encoding='latin1')
     for v in parameter_list:
-        assert v.name in load_dict, \
+        assert v.name in param_load_dict, \
             "Can not find [{}] in model file [{}]".format(
                 v.name, parameter_file_name)
-        set_var(v, load_dict[v.name])
+        set_var(v, param_load_dict[v.name])
 
     optimizer_var_list = list(
         filter(is_belong_to_optimizer, program.list_vars()))
@@ -1718,6 +1718,7 @@ def load(program, model_path, executor=None, var_list=None):
         with open(opt_file_name, 'rb') as f:
             load_dict = pickle.load(f) if six.PY2 else pickle.load(
                 f, encoding='latin1')
+            load_dict.update(param_load_dict)
         for v in optimizer_var_list:
             assert v.name in load_dict, \
                 "Can not find [{}] in model file [{}]".format(
