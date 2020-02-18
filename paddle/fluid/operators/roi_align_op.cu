@@ -270,8 +270,7 @@ class GPUROIAlignOpKernel : public framework::OpKernel<T> {
 
       std::vector<int64_t> rois_lod_(rois_batch_size);
       memory::Copy(cplace, rois_lod_.data(), gplace, rois_lod->data<int64_t>(),
-                   sizeof(int64_t) * rois_batch_size, dev_ctx.stream());
-      dev_ctx.Wait();
+                   sizeof(int64_t) * rois_batch_size, 0);
       for (int n = 0; n < rois_batch_size - 1; ++n) {
         for (size_t i = rois_lod_[n]; i < rois_lod_[n + 1]; ++i) {
           roi_batch_id_data[i] = n;
