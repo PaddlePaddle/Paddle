@@ -1209,9 +1209,8 @@ def append_backward(loss,
     is_in_control_flow = current_block_idx != 0
 
     # Double grad is not supported in sub-block (control flow)
-    if not is_in_control_flow:
-        # _appending_grad_times used for double grad
-        program._appending_grad_times += 1
+    # Note(zhiqiu): This should be refined. 
+    program._appending_grad_times += 1
 
     if no_grad_set is None:
         no_grad_set = set()
