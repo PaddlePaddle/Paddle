@@ -114,6 +114,15 @@ class GradOpBaseMakerBase {
   }
 
  private:
+  bool InputGradIsSelectedRows(const std::string& name) const {
+    if ((ForwardOpType() == "lookup_table_v2") &&
+        (Attr<bool>("is_sparse") == true) && (name == "W")) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
   std::vector<std::shared_ptr<VarBase>> GetVarBaseList(const std::string& name,
                                                        bool is_grad,
                                                        bool is_input) const {
@@ -133,11 +142,15 @@ class GradOpBaseMakerBase {
             var_base_temp->MutableGradVarBase();
           }
           auto grad_var_base_tmp = var_base_temp->GradVarBase();
-          if (!is_input) {
-            auto* tensor = grad_var_base_tmp->MutableVar()
-                               ->GetMutable<framework::LoDTensor>();
-            tensor->Resize(
-                var_base_temp->Var().Get<framework::LoDTensor>().dims());
+          auto* grad_var_tmp = grad_var_base_tmp->MutableVar();
+          if (!grad_var_tmp->IsInitialized()) {
+            if (is_input && InputGradIsSelectedRows(name)) {
+              grad_var_tmp->GetMutable<framework::SelectedRows>();
+            } else {
+              auto* tensor = grad_var_tmp->GetMutable<framework::LoDTensor>();
+              tensor->Resize(
+                  var_base_temp->Var().Get<framework::LoDTensor>().dims());
+            }
           }
           if (var_base_temp->Trainable()) {
             grad_var_base_tmp->SetTrainable(true);

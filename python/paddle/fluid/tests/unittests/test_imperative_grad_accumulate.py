@@ -50,7 +50,7 @@ class SimpleNetSharedEmbedding(fluid.Layer):
             dtype=dtype,
             param_attr='emb.w2',
             is_sparse=is_sparse)
-        self.emb2._w = self.emb1._w
+        self.emb2.weight = self.emb1.weight
 
     def forward(self, input):
         input_emb1 = self.emb1(input)
@@ -102,13 +102,13 @@ class Test_Grad_Accumulate(unittest.TestCase):
                             outs = simplenet(input, y)
                             outs = outs / 2
                             outs.backward(backward_strategy)
-                            emb_gradient = simplenet.embedding._w.gradient()
+                            emb_gradient = simplenet.embedding.weight.gradient()
 
                             outs = simplenet(input, y)
                             outs = outs / 2
                             outs.backward(backward_strategy)
 
-                            emb_gradient_multi_mini_batch = simplenet.embedding._w.gradient(
+                            emb_gradient_multi_mini_batch = simplenet.embedding.weight.gradient(
                             )
 
                         with fluid.dygraph.guard(place):
@@ -142,7 +142,7 @@ class Test_Grad_Accumulate(unittest.TestCase):
                                 parameter_list=simplenet.parameters())
                             outs = simplenet(input, y)
                             outs.backward(backward_strategy)
-                            emb_gradient_one_large_batch = simplenet.embedding._w.gradient(
+                            emb_gradient_one_large_batch = simplenet.embedding.weight.gradient(
                             )
 
                         self.assertTrue(
@@ -191,13 +191,13 @@ class Test_Grad_Accumulate(unittest.TestCase):
                             outs = simplenet(input, y)
                             outs = outs / 2
                             outs.backward(backward_strategy)
-                            emb_gradient = simplenet.embedding._w.gradient()
+                            emb_gradient = simplenet.embedding.weight.gradient()
 
                             outs = simplenet(input, y)
                             outs = outs / 2
                             outs.backward(backward_strategy)
 
-                            emb_gradient_multi_mini_batch = simplenet.embedding._w.gradient(
+                            emb_gradient_multi_mini_batch = simplenet.embedding.weight.gradient(
                             )
 
                         with fluid.dygraph.guard(place):
@@ -231,7 +231,7 @@ class Test_Grad_Accumulate(unittest.TestCase):
                                 parameter_list=simplenet.parameters())
                             outs = simplenet(input, y)
                             outs.backward(backward_strategy)
-                            emb_gradient_one_large_batch = simplenet.embedding._w.gradient(
+                            emb_gradient_one_large_batch = simplenet.embedding.weight.gradient(
                             )
 
                         self.assertTrue(
@@ -261,18 +261,18 @@ class Test_Grad_Accumulate(unittest.TestCase):
                             input_emb, emb = simplenet(input)
                             input_emb.backward(backward_strategy)
                             adam.minimize(input_emb)
-                            emb_gradient = emb._w.gradient()
+                            emb_gradient = emb.weight.gradient()
 
                             input_emb, emb = simplenet(input)
                             input_emb.backward(backward_strategy)
 
                             if is_sparse:
                                 self.assertTrue(
-                                    np.array_equal(emb._w.gradient()[0],
+                                    np.array_equal(emb.weight.gradient()[0],
                                                    emb_gradient[0] * 2))
                             else:
                                 self.assertTrue(
-                                    np.array_equal(emb._w.gradient(),
+                                    np.array_equal(emb.weight.gradient(),
                                                    emb_gradient * 2))
 
                             simplenet.clear_gradients()
@@ -301,18 +301,18 @@ class Test_Grad_Accumulate(unittest.TestCase):
                             input_emb, emb = simplenet(input)
                             input_emb.backward(backward_strategy)
                             adam.minimize(input_emb)
-                            emb_gradient = emb._w.gradient()
+                            emb_gradient = emb.weight.gradient()
 
                             input_emb, emb = simplenet(input)
                             input_emb.backward(backward_strategy)
 
                             if is_sparse:
                                 self.assertTrue(
-                                    np.array_equal(emb._w.gradient()[0],
+                                    np.array_equal(emb.weight.gradient()[0],
                                                    emb_gradient[0] * 2))
                             else:
                                 self.assertTrue(
-                                    np.array_equal(emb._w.gradient(),
+                                    np.array_equal(emb.weight.gradient(),
                                                    emb_gradient * 2))
 
                             simplenet.clear_gradients()
@@ -358,15 +358,15 @@ class Test_Grad_Accumulate(unittest.TestCase):
                                 parameter_list=simplenet.parameters())
                             outs = simplenet(input, y)
                             outs.backward(backward_strategy)
-                            emb_gradient = simplenet.embedding._w.gradient()
+                            emb_gradient = simplenet.embedding.weight.gradient()
                             simplenet.clear_gradients()
 
                             outs = simplenet(input, y)
                             outs.backward(backward_strategy)
 
                             self.assertTrue(
-                                np.array_equal(simplenet.embedding._w.gradient(
-                                ), emb_gradient))
+                                np.array_equal(simplenet.embedding.weight.
+                                               gradient(), emb_gradient))
 
     def test_simplenet_shared_embedding_clear_gradient(self):
         places = [fluid.CPUPlace()]
@@ -391,7 +391,7 @@ class Test_Grad_Accumulate(unittest.TestCase):
                             input_emb, emb = simplenet(input)
                             input_emb.backward(backward_strategy)
                             adam.minimize(input_emb)
-                            emb_gradient = emb._w.gradient()
+                            emb_gradient = emb.weight.gradient()
                             simplenet.clear_gradients()
 
                             input_emb, emb = simplenet(input)
@@ -399,11 +399,11 @@ class Test_Grad_Accumulate(unittest.TestCase):
 
                             if is_sparse:
                                 self.assertTrue(
-                                    np.array_equal(emb._w.gradient()[0],
+                                    np.array_equal(emb.weight.gradient()[0],
                                                    emb_gradient[0]))
                             else:
                                 self.assertTrue(
-                                    np.array_equal(emb._w.gradient(),
+                                    np.array_equal(emb.weight.gradient(),
                                                    emb_gradient))
 
     def test_simplenet_only_embedding_clear_gradient(self):
@@ -429,7 +429,7 @@ class Test_Grad_Accumulate(unittest.TestCase):
                                 parameter_list=simplenet.parameters())
                             input_emb, emb = simplenet(input)
                             input_emb.backward(backward_strategy)
-                            emb_gradient = emb._w.gradient()
+                            emb_gradient = emb.weight.gradient()
                             simplenet.clear_gradients()
 
                             input_emb, emb = simplenet(input)
@@ -437,11 +437,11 @@ class Test_Grad_Accumulate(unittest.TestCase):
 
                             if is_sparse:
                                 self.assertTrue(
-                                    np.array_equal(emb._w.gradient()[0],
+                                    np.array_equal(emb.weight.gradient()[0],
                                                    emb_gradient[0]))
                             else:
                                 self.assertTrue(
-                                    np.array_equal(emb._w.gradient(),
+                                    np.array_equal(emb.weight.gradient(),
                                                    emb_gradient))
 
 

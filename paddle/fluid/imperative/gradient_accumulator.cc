@@ -236,31 +236,37 @@ platform::Place GetPlaceOfVarBase(const std::shared_ptr<VarBase>& var) {
   return place;
 }
 
+bool VariableIsInitialized(framework::Variable* dst_var) {
+  bool is_initialized = false;
+  if (dst_var->IsType<framework::SelectedRows>() &&
+      (dst_var->Get<framework::SelectedRows>().value().IsInitialized())) {
+    is_initialized = true;
+  }
+  if (dst_var->IsType<framework::LoDTensor>() &&
+      (dst_var->Get<framework::LoDTensor>().IsInitialized())) {
+    is_initialized = true;
+  }
+  return is_initialized;
+}
+
 void GradientAccumulate(std::shared_ptr<VarBase> src_varbase,
                         VarBase* dst_varbase) {
   auto* dst_var = dst_varbase->MutableVar();
   auto* src_var = src_varbase->MutableVar();
 
-  // Note(wangzhongpu) Because dst_var may not be initialized at this time,
-  //   you need to determine whether it is initialized.
+  // Note(wangzhongpu)
   // 1.  if src_var's type is SelectedRows:
-  // 1.1 (1) if dst_var is not initialized or (2) dst_var is initialized but
-  //     dst_var's type is SelectedRows and SelectedRows is not initialized;
+  // 1.1 if dst_var is not initialized;
   //     yot need use std::move to initialize dst_var.
   // 1.2 Except 1.1, if dst_var is parameter, grad accumulate; otherwise use
   //     std::move to initialize dst_var.
   // 2.  if src_var's type is LoDTensor:
-  // 2.1 (1) if dst_var is not initialized or (2) dst_var is initialized but
-  //     dst_var's type is LoDTensor and dst_var is not initialized; yot need
-  //     use std::move to initialize dst_var or (3) dst_var is initialized
-  //     and dst_var's type is SelectedRows.
+  // 2.1 if dst_var is not initialized;
+  //     yot need use std::move to initialize dst_var.
   // 2.2 Except 2.1, if dst_var is parameter, grad accumulate; otherwise use
   //     std::move to initialize dst_var.
   if (src_var->IsType<framework::SelectedRows>()) {
-    if ((!dst_var->IsInitialized()) ||
-        (dst_var->IsInitialized() &&
-         dst_var->IsType<framework::SelectedRows>() &&
-         (!dst_var->Get<framework::SelectedRows>().value().IsInitialized()))) {
+    if (!VariableIsInitialized(dst_var)) {
       dst_varbase->SetType(framework::proto::VarType::SELECTED_ROWS);
       std::shared_ptr<VarBase> temp =
           SelectedRowsMerge(*src_var, *dst_var, false);
@@ -276,9 +282,7 @@ void GradientAccumulate(std::shared_ptr<VarBase> src_varbase,
       }
     }
   } else {
-    if ((!dst_var->IsInitialized()) ||
-        (dst_var->IsInitialized() && dst_var->IsType<framework::LoDTensor>() &&
-         (!dst_var->Get<framework::LoDTensor>().IsInitialized()))) {
+    if (!VariableIsInitialized(dst_var)) {
       *dst_var = std::move(*(src_varbase->MutableVar()));
     } else {
       if (dst_varbase->Trainable()) {
@@ -350,17 +354,13 @@ void SortedGradientAccumulator::Add(std::shared_ptr<VarBase> var,
       auto* dst_var = var_->MutableVar();
       if (paddle::platform::is_gpu_place(place)) {
         bool dst_varbase_is_initialized = false;
-        if (dst_var->IsInitialized()) {
-          if (dst_var->IsType<framework::SelectedRows>()) {
-            if (dst_var->Get<framework::SelectedRows>()
-                    .value()
-                    .IsInitialized()) {
-              dst_varbase_is_initialized = true;
-            }
-          } else {
-            if (dst_var->Get<framework::LoDTensor>().IsInitialized()) {
-              dst_varbase_is_initialized = true;
-            }
+        if (dst_var->IsType<framework::SelectedRows>()) {
+          if (dst_var->Get<framework::SelectedRows>().value().IsInitialized()) {
+            dst_varbase_is_initialized = true;
+          }
+        } else {
+          if (dst_var->Get<framework::LoDTensor>().IsInitialized()) {
+            dst_varbase_is_initialized = true;
           }
         }
         // accumulate selected rows firstly
