@@ -127,6 +127,8 @@ def as_numpy(tensor):
         return [as_numpy(t) for t in tensor]
     if isinstance(tensor, list):
         return [as_numpy(t) for t in tensor]
+    if isinstance(tensor, core.LoDTensor2DArray):
+        return [as_numpy(t) for t in tensor]
     assert isinstance(tensor, core.LoDTensor)
     lod = tensor.lod()
     if len(lod) > 0:
@@ -620,7 +622,7 @@ class Executor(object):
             self._closed = True
 
     def _run_parallel(self, program, scope, feed, fetch_list, fetch_var_name,
-                      return_numpy):
+                      return_numpy, merge_result):
         exe = program._executor
         # TODO(zhenghuihuang): quantization uses Graph in CompiledProgram
         # instead of program. We will add support for checking Vars in Graph
@@ -674,7 +676,7 @@ class Executor(object):
             exe.feed_tensors_into_local_scopes(res)
 
         fetch_var_names = list(map(_to_name_str, fetch_list))
-        tensors = exe.run(fetch_var_names)._move_to_list()
+        tensors = exe.run(fetch_var_names, merge_result)._move_to_list()
         return as_numpy(tensors) if return_numpy else tensors
 
     def run(self,
@@ -685,7 +687,8 @@ class Executor(object):
             fetch_var_name='fetch',
             scope=None,
             return_numpy=True,
-            use_program_cache=False):
+            use_program_cache=False,
+            merge_result=True):
         """
         Run the specified :code:`Program` or :code:`CompiledProgram`. It should be noted that the executor
         will execute all the operators in :code:`Program` or :code:`CompiledProgram` without pruning some
@@ -775,7 +778,8 @@ class Executor(object):
                 fetch_var_name=fetch_var_name,
                 scope=scope,
                 return_numpy=return_numpy,
-                use_program_cache=use_program_cache)
+                use_program_cache=use_program_cache,
+                merge_result=merge_result)
         except Exception as e:
             if not isinstance(e, core.EOFException):
                 warnings.warn(
@@ -783,7 +787,8 @@ class Executor(object):
             six.reraise(*sys.exc_info())
 
     def _run_impl(self, program, feed, fetch_list, feed_var_name,
-                  fetch_var_name, scope, return_numpy, use_program_cache):
+                  fetch_var_name, scope, return_numpy, use_program_cache,
+                  merge_result):
         if self._closed:
             raise RuntimeError("Attempted to use a closed Executor")
 
@@ -840,7 +845,8 @@ class Executor(object):
                 feed=feed,
                 fetch_list=fetch_list,
                 fetch_var_name=fetch_var_name,
-                return_numpy=return_numpy)
+                return_numpy=return_numpy,
+                merge_result=merge_result)
 
     def _run_program(self, program, feed, fetch_list, feed_var_name,
                      fetch_var_name, scope, return_numpy, use_program_cache):
