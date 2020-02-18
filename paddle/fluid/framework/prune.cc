@@ -133,6 +133,16 @@ void AppendOpOutputVarNames(const proto::OpDesc& op_desc,
   }
 }
 
+int FindMapByValue(std::map<int, int> m, int val) {
+  std::map<int, int>::iterator it;
+  for (it = m.begin(); it != m.end(); ++it) {
+    if (it->second == val) {
+      return it->first;
+    }
+  }
+  return -1;
+}
+
 // block_id is the idx of the current block in the input desc
 // parent_block_id is the idx of the parent of the current block
 // in the output desc, -1 means the current block is global block
@@ -141,7 +151,8 @@ void AppendOpOutputVarNames(const proto::OpDesc& op_desc,
 void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
                 int block_id, int parent_block_id,
                 std::unordered_set<std::string>* dependent_vars,
-                const std::set<std::string> feed_var_names) {
+                const std::set<std::string> feed_var_names,
+                std::map<int, int>* pruned_origin_block_id_map) {
   auto& block = input.blocks(block_id);
   auto& ops = block.ops();
 
@@ -191,8 +202,11 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
   output_block->set_idx(output_block_id);
   output_block->set_parent_idx(parent_block_id);
 
+  (*pruned_origin_block_id_map)[output_block_id] = block_id;
+  std::cout << "map " << output_block_id << " " << block_id << std::endl;
   auto* op_field = output_block->mutable_ops();
   op_field->Clear();
+
   for (size_t i = 0; i < should_run.size(); ++i) {
     if (should_run[i]) {
       auto* op = op_field->Add();
@@ -232,7 +246,8 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
         // GetSubBlockIndex(*op) is the idx of the sub_block in the input desc
         // output_block_id is the idx of the current block in the output desc
         prune_impl(input, output, GetSubBlockIndex(*op), output_block_id,
-                   &sub_block_dependent_vars, feed_var_names);
+                   &sub_block_dependent_vars, feed_var_names,
+                   pruned_origin_block_id_map);
       }
     }
   }
@@ -272,12 +287,34 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
 }
 
 // TODO(fengjiayi): Prune() could be inplaced to avoid unnecessary copies
-void Prune(const proto::ProgramDesc& input,
-           const std::set<std::string>& feed_var_names,
-           proto::ProgramDesc* output) {
+std::map<int, int> Prune(const proto::ProgramDesc& input,
+                         const std::set<std::string>& feed_var_names,
+                         proto::ProgramDesc* output) {
   std::unordered_set<std::string> dependent_vars;
   output->clear_blocks();
-  prune_impl(input, output, 0, -1, &dependent_vars, feed_var_names);
+  std::map<int, int> pruned_origin_block_id_map;
+  prune_impl(input, output, 0, -1, &dependent_vars, feed_var_names,
+             &pruned_origin_block_id_map);
+  // update subblock idx
+  for (int i = 0; i < output->blocks_size(); i++) {
+    auto* pruned = output->mutable_blocks(i);
+    auto* ops = pruned->mutable_ops();
+    for (auto op_iter = ops->rbegin(); op_iter != ops->rend(); ++op_iter) {
+      auto& op_desc = *op_iter;
+      if (HasSubBlock(op_desc)) {
+        int origin_sub_idx = GetSubBlockIndex(op_desc);
+        std::cout << "idx " << i << " origin_sub_idx " << origin_sub_idx
+                  << std::endl;
+        auto sub_idx =
+            FindMapByValue(pruned_origin_block_id_map, origin_sub_idx);
+        PADDLE_ENFORCE_NE(sub_idx, -1,
+                          "The origin sub block id should be found in "
+                          "pruned_progin_block_id_map");
+        SetSubBlockIndex(&op_desc, sub_idx);
+      }
+    }
+  }
+  return pruned_origin_block_id_map;
 }
 
 void UpdateBlockIdx(proto::ProgramDesc* prog,
@@ -295,15 +332,6 @@ void CloneWholeBlock(proto::ProgramDesc* input, proto::ProgramDesc* output,
   output_block->set_parent_idx(parent_block_id);
 }
 
-int FindMapByValue(std::map<int, int> m, int val) {
-  std::map<int, int>::iterator it;
-  for (it = m.begin(); it != m.end(); ++it) {
-    if (it->second == val) {
-      return it->first;
-    }
-  }
-  return -1;
-}
 std::unordered_set<std::string> op_input_vars;
 std::unordered_set<std::string> op_output_vars;
 std::unordered_set<std::string> gradop_input_vars;

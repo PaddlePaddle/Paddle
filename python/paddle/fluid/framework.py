@@ -4077,11 +4077,17 @@ class Program(object):
 
             targets_idx.append([t.block.idx, t.idx])
         res = Program()
-        res.desc = core.prune(self.desc, set(), targets_idx)
+        res.desc, pruned_origin_block_id_map = core.prune(self.desc,
+                                                          set(), targets_idx)
         res.blocks = [
             Block(res, i) for i in six.moves.range(res.desc.num_blocks())
         ]
         res._sync_with_cpp()
+
+        res._copy_param_info_from(self)
+        res._copy_data_info_from(self, pruned_origin_block_id_map)
+        res._copy_dist_param_info_from(self)
+
         return res
 
     def _prune_with_input(self, feeded_var_names, targets):
@@ -4142,11 +4148,18 @@ class Program(object):
 
             targets_idx.append([t.block.idx, t.idx])
         res = Program()
-        res.desc = core.prune(self.desc, set(feeded_var_names), targets_idx)
+        res.desc, pruned_origin_block_id_map = core.prune(self.desc,
+                                                          set(feeded_var_names),
+                                                          targets_idx)
         res.blocks = [
             Block(res, i) for i in six.moves.range(res.desc.num_blocks())
         ]
         res._sync_with_cpp()
+
+        res._copy_param_info_from(self)
+        res._copy_data_info_from(self, pruned_origin_block_id_map)
+        res._copy_dist_param_info_from(self)
+
         return res
 
     def _inference_optimize(self, prune_read_op=True):
