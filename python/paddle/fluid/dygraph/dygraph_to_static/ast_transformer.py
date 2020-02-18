@@ -121,7 +121,7 @@ class DygraphToStaticAst(gast.NodeTransformer):
 
     def transfer_from_node_type(self, node):
         self.visit(node)
-        # TODO: need to be more elegant implement.
+        # add new ast.funcDef of `if/else`
         node.body = self.new_func_nodes + node.body
 
     def visit_If(self, node):
