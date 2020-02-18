@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-import ast
+import gast
 import inspect
 import unittest
 
@@ -49,9 +49,11 @@ def func_to_test3():
     c = a * b
     d = True + c
     e = a < b
-    f = a
+    f = (a + 4) * 9
     g = "dddy"
-    h = None + 1
+    h = None
+    i = False
+    j = None + 1
 
 
 result_var_type3 = {
@@ -62,7 +64,9 @@ result_var_type3 = {
     'e': NodeVarType.BOOLEAN,
     'f': NodeVarType.INT,
     'g': NodeVarType.STRING,
-    'h': NodeVarType.UNKNOWN
+    'h': NodeVarType.NONE,
+    'i': NodeVarType.BOOLEAN,
+    'j': NodeVarType.UNKNOWN
 }
 
 test_funcs = [func_to_test1, func_to_test2, func_to_test3]
@@ -76,7 +80,7 @@ class TestStaticAnalysis(unittest.TestCase):
             self.assertTrue(wrapper in wrapper.parent.children)
 
         children_ast_nodes = [
-            child for child in ast.iter_child_nodes(wrapper.node)
+            child for child in gast.iter_child_nodes(wrapper.node)
         ]
         self.assertEqual(len(wrapper.children), len(children_ast_nodes))
         for child in wrapper.children:
@@ -86,19 +90,19 @@ class TestStaticAnalysis(unittest.TestCase):
     def test_construct_node_wrapper(self):
         for func in test_funcs:
             test_source_code = inspect.getsource(func)
-            ast_root = ast.parse(test_source_code)
+            ast_root = gast.parse(test_source_code)
             visitor = StaticAnalysisVisitor(ast_root)
             wrapper_root = visitor.get_node_wrapper_root()
             node_to_wrapper_map = visitor.get_node_to_wrapper_map()
             self._check_wrapper(wrapper_root, node_to_wrapper_map)
 
     def test_var_env(self):
-        for i in range(3):
+        for i in range(2, 3):
             func = test_funcs[i]
             var_type = result_var_type[i]
             test_source_code = inspect.getsource(func)
-            ast_root = ast.parse(test_source_code)
-            # print(ast.dump(ast_root))
+            ast_root = gast.parse(test_source_code)
+            print(gast.dump(ast_root))
             visitor = StaticAnalysisVisitor(ast_root)
             var_env = visitor.get_var_env()
             scope_var_type = var_env.get_scope_var_type()

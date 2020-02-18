@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-import ast
+import gast
 import six
 import warnings
 
@@ -76,7 +76,7 @@ class NodeVarType(object):
 
 class AstNodeWrapper(object):
     """
-    Wrapper for python ast.node. We need a node wrapper because ast.node
+    Wrapper for python gast.node. We need a node wrapper because gast.node
     doesn't store all required information when we are transforming AST.
     We should collect additional information which the actual transformation
     needs.
@@ -176,7 +176,7 @@ class StaticAnalysisVisitor(object):
         self.dfs_visit(ast_root)
 
     def dfs_visit(self, node):
-        # AST reuses some ast.nodes, such as Param node of expr_context
+        # AST reuses some gast.nodes, such as Param node of expr_context
         if node not in self.node_to_wrapper_map:
             cur_wrapper = AstNodeWrapper(node)
             self.node_to_wrapper_map[node] = cur_wrapper
@@ -192,7 +192,7 @@ class StaticAnalysisVisitor(object):
             cur_wrapper.parent = last_wrapper
 
         self.ancestor_wrappers.append(cur_wrapper)
-        for child in ast.iter_child_nodes(node):
+        for child in gast.iter_child_nodes(node):
             self.dfs_visit(child)
         self.ancestor_wrappers.pop()
 
@@ -210,52 +210,50 @@ class StaticAnalysisVisitor(object):
 
     def _get_node_var_type(self, cur_wrapper):
         node = cur_wrapper.node
-        if isinstance(node, ast.Num):
-            if node.n is None:
+        if isinstance(node, gast.Constant):
+            # singleton: None, True or False
+            if node.value is None:
                 return NodeVarType.NONE
-            if isinstance(node.n, int):
+            if isinstance(node.value, bool):
+                return NodeVarType.BOOLEAN
+            if isinstance(node.value, int):
                 return NodeVarType.INT
-            if isinstance(node.n, float):
+            if isinstance(node.value, float):
                 return NodeVarType.FLOAT
-        if isinstance(node, ast.Str):
-            return NodeVarType.STRING
+            if isinstance(node.value, str):
+                return NodeVarType.STRING
 
-        if six.PY3:
-            # NameConstant are Py3 grammar
-            if isinstance(node, ast.NameConstant):
-                # singleton: None, True or False
-                if node.value is None:
-                    return NodeVarType.NONE
-                else:
-                    return NodeVarType.BOOLEAN
-
-        if isinstance(node, ast.BoolOp):
+        if isinstance(node, gast.BoolOp):
             return NodeVarType.BOOLEAN
-        if isinstance(node, ast.Compare):
+        if isinstance(node, gast.Compare):
             return NodeVarType.BOOLEAN
 
-        if isinstance(node, ast.Dict):
+        if isinstance(node, gast.Dict):
             return NodeVarType.DICT
-        if isinstance(node, ast.Set):
+        if isinstance(node, gast.Set):
             return NodeVarType.SET
 
-        if isinstance(node, ast.UnaryOp):
+        if isinstance(node, gast.UnaryOp):
             return self.node_to_wrapper_map[node.operand].node_var_type
 
-        if isinstance(node, ast.BinOp):
+        if isinstance(node, gast.BinOp):
             left_type = self.node_to_wrapper_map[node.left].node_var_type
             right_type = self.node_to_wrapper_map[node.right].node_var_type
             return NodeVarType.binary_op_output_type(left_type, right_type)
 
-        if isinstance(node, ast.Assign):
+        if isinstance(node, gast.Assign):
             ret_type = self.node_to_wrapper_map[node.value].node_var_type
             for target in node.targets:
-                if isinstance(target, ast.Name):
+                if isinstance(target, gast.Name):
                     self.node_to_wrapper_map[target].node_var_type = ret_type
                     self.var_env.set_var_type(target.id, ret_type)
             return ret_type
 
-        if isinstance(node, ast.Name):
+        if isinstance(node, gast.Name):
+            if node.id == "None":
+                return NodeVarType.NONE
+            if node.id == "True" or node.id == "False":
+                return NodeVarType.BOOLEAN
             return self.var_env.get_var_type(node.id)
 
         return NodeVarType.STATEMENT
