@@ -71,6 +71,58 @@ def simple_fc_net_with_accuracy(use_feed):
     return loss
 
 
+def cond_net(use_feed=None):
+    x = fluid.layers.data(name="x", shape=[4], dtype='float32')
+    label = fluid.layers.data('label', shape=[1], dtype='int64')
+    prediction = fluid.layers.fc(input=x, size=1, act=None)
+
+    def loss1(pred, label):
+        x = fluid.layers.data(name="x", shape=[4], dtype='float32')
+        loss = fluid.layers.cross_entropy(input=pred, label=label)
+        avg_loss = fluid.layers.mean(loss, name='mean_cross_entropy_loss')
+        return avg_loss
+
+    def loss2(pred, label):
+        loss = fluid.layers.softmax_with_cross_entropy(logits=pred, label=label)
+        avg_loss = fluid.layers.mean(loss, name='mean_softmax_loss')
+        return avg_loss
+
+    two = fluid.layers.fill_constant([1], 'int32', 2)
+    pred = (two == 0)
+    avg_loss = fluid.layers.case([(pred, lambda: loss1(prediction, label))],
+                                 lambda: loss2(prediction, label))
+    return avg_loss
+
+
+def optimization_in_cond_net(with_optimize=False):
+    x = fluid.layers.data(name="x", shape=[4], dtype='float32')
+    label = fluid.layers.data('label', shape=[1], dtype='int64')
+    prediction = fluid.layers.fc(input=x, size=1, act=None)
+
+    def loss1(opt, pred, label, with_optimize):
+        x = fluid.layers.data(name="x", shape=[4], dtype='float32')
+        loss = fluid.layers.cross_entropy(input=pred, label=label)
+        avg_loss = fluid.layers.mean(loss, name='mean_cross_entropy_loss')
+        if with_optimize:
+            opt.minimize(avg_loss)
+        return avg_loss
+
+    def loss2(opt, pred, label, with_optimize):
+        loss = fluid.layers.softmax_with_cross_entropy(logits=pred, label=label)
+        avg_loss = fluid.layers.mean(loss, name='mean_softmax_loss')
+        if with_optimize:
+            opt.minimize(avg_loss)
+        return avg_loss
+
+    sgd = fluid.optimizer.SGD(learning_rate=0.1)
+    two = fluid.layers.fill_constant([1], 'int32', 2)
+    pred = (two == 0)
+    avg_loss = fluid.layers.case(
+        [(pred, lambda: loss1(sgd, prediction, label, with_optimize))],
+        lambda: loss2(sgd, prediction, label, with_optimize))
+    return avg_loss
+
+
 class TestProgramPruneBackward(unittest.TestCase):
     def program_compare(self, program_a, program_b):
         assert isinstance(
@@ -82,6 +134,7 @@ class TestProgramPruneBackward(unittest.TestCase):
 
         self.assertEqual(len(program_a.blocks), len(program_b.blocks))
         for idx in range(len(program_a.blocks)):
+            print(idx)
             block_a = program_a.blocks[idx]
             block_b = program_b.blocks[idx]
             self.assertEqual(len(block_a.ops), len(block_b.ops))
@@ -90,6 +143,7 @@ class TestProgramPruneBackward(unittest.TestCase):
                 self.assertEqual(block_a.ops[op_idx].type,
                                  block_b.ops[op_idx].type)
             for var_key in list(block_a.vars.keys()):
+                print(var_key)
                 self.assertTrue(block_b.has_var(var_key))
 
     def check_prune_correctness(self, method, feed_dict, optimizer):
@@ -99,6 +153,10 @@ class TestProgramPruneBackward(unittest.TestCase):
         test_prog_orig = main_program.clone(for_test=True)
         optimizer().minimize(loss)
         test_prog_prune = main_program.clone(for_test=True)
+
+        import paddle.fluid.transpiler.details.program_utils as pu
+        pu.program_to_code(test_prog_orig, skip_op_callstack=True)
+        pu.program_to_code(test_prog_prune, skip_op_callstack=True)
         self.program_compare(test_prog_orig, test_prog_prune)
 
         place = core.CPUPlace()
@@ -198,6 +256,51 @@ class TestProgramPruneBackward(unittest.TestCase):
             self.check_prune_correctness(
                 method=lstm_net, feed_dict=feed_data, optimizer=optimizer)
 
+    def test_cond(self):
+        def optimizer():
+            optimizer = fluid.optimizer.SGD(learning_rate=0.01, )
+            return optimizer
+
+        with self.program_scope_guard():
+            x_in = np.random.random(size=(10, 4)).astype('float32')
+            label_in = np.random.randint(1, size=(10, 1)).astype('int64')
+            feed_dict = {'x': x_in, 'label': label_in}
+            self.check_prune_correctness(
+                method=cond_net, feed_dict=feed_dict, optimizer=optimizer)
+
+    def test_optimization_in_cond(self):
+        x_in = np.random.random(size=(10, 4)).astype('float32')
+        label_in = np.random.randint(1, size=(10, 1)).astype('int64')
+        feed_dict = {'x': x_in, 'label': label_in}
+        with self.program_scope_guard():
+            loss = optimization_in_cond_net(False)
+            main_program = fluid.default_main_program()
+            test_prog_orig = main_program.clone(for_test=True)
+            place = core.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            loss_data_orig, = exe.run(test_prog_orig,
+                                      feed=feed_dict,
+                                      fetch_list=[loss.name])
+
+        with self.program_scope_guard():
+            loss = optimization_in_cond_net(True)
+            main_program = fluid.default_main_program()
+            test_prog_prune = main_program.clone(for_test=True)
+            place = core.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            loss_data_prune, = exe.run(test_prog_prune,
+                                       feed=feed_dict,
+                                       fetch_list=[loss.name])
+
+        import paddle.fluid.transpiler.details.program_utils as pu
+        pu.program_to_code(test_prog_orig, skip_op_callstack=True)
+        pu.program_to_code(test_prog_prune, skip_op_callstack=True)
+        self.program_compare(test_prog_orig, test_prog_prune)
+
+        self.assertEqual(loss_data_orig, loss_data_prune)
+
     @contextlib.contextmanager
     def program_scope_guard(self):
         prog = fluid.Program()
@@ -205,7 +308,8 @@ class TestProgramPruneBackward(unittest.TestCase):
         scope = fluid.core.Scope()
         with fluid.scope_guard(scope):
             with fluid.program_guard(prog, startup_prog):
-                yield
+                with fluid.unique_name.guard():
+                    yield
 
 
 if __name__ == '__main__':
