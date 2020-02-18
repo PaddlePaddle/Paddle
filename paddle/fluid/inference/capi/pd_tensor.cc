@@ -73,12 +73,14 @@ PD_PaddleBuf* PD_GetPaddleTensorData(const PD_Tensor* tensor) {
   return ret;
 }
 
-int* PD_GetPaddleTensorShape(const PD_Tensor* tensor, int** size) {
+int* PD_GetPaddleTensorShape(const PD_Tensor* tensor, int* size) {
   PADDLE_ENFORCE_NOT_NULL(tensor);
   std::vector<int> shape = tensor->tensor.shape;
   int s = shape.size();
-  *size = &s;
-  return shape.data();
+  *size = s;
+  int* ret_shape = new int[s];
+  ret_shape = shape.data();
+  return ret_shape;
 }
 
 PD_ZeroCopyTensor* PD_NewZeroCopyTensor() {
