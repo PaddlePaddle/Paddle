@@ -397,7 +397,7 @@ def scaled_dot_product_attention(queries,
             where :math:`N` stands for batch size, :math:`L_k` for the sequence length
             of key, :math:`d_v \\times h` for the feature size of value, :math:`h` for head
             number. The data type should be the same as ``queries`` .
-        num_heads (int, optional): Indicate the number of head. If the numher
+        num_heads (int, optional): Indicate the number of head. If the number
             is 1, linear projection would not be performed on inputs. Default: 1.
         dropout_rate (float, optional): The rate to drop the attention weight.
             Default: 0.0, which means no dropout.
@@ -410,7 +410,7 @@ def scaled_dot_product_attention(queries,
             Multi-Head Attention.
 
     Raises:
-        ValueError: Inputs quries, keys and values should all be 3-D tensors.
+        ValueError: Inputs queries, keys and values should all be 3-D tensors.
         ValueError: The hidden size of queries and keys should be the same.
         ValueError: The max sequence length in query batch and in key batch should be the same.
         ValueError: he hidden size of keys must be divisible by the number of attention heads.
@@ -429,7 +429,7 @@ def scaled_dot_product_attention(queries,
     """
     if not (len(queries.shape) == len(keys.shape) == len(values.shape) == 3):
         raise ValueError(
-            "Inputs quries, keys and values should all be 3-D tensors.")
+            "Inputs queries, keys and values should all be 3-D tensors.")
 
     if queries.shape[-1] != keys.shape[-1]:
         raise ValueError(
@@ -474,7 +474,7 @@ def scaled_dot_product_attention(queries,
 
     def __split_heads(x, num_heads):
         """
-        Reshape the last dimension of inpunt tensor x so that it becomes two
+        Reshape the last dimension of input tensor x so that it becomes two
         dimensions.
 
         Args:
@@ -496,13 +496,13 @@ def scaled_dot_product_attention(queries,
             x=x,
             shape=list(x.shape[:-1]) + [num_heads, hidden_size // num_heads])
 
-        # permuate the dimensions into:
+        # permute the dimensions into:
         # [batch_size, num_heads, max_sequence_len, hidden_size_per_head]
         return layers.transpose(x=reshaped, perm=[0, 2, 1, 3])
 
     def __combine_heads(x):
         """
-        Reshape the last two dimensions of inpunt tensor x so that it becomes
+        Reshape the last two dimensions of input tensor x so that it becomes
         one dimension.
 
         Args:

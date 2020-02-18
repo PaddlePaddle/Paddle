@@ -112,12 +112,12 @@ class Optimizer(object):
     @framework.dygraph_only
     def state_dict(self):
         '''
-        Get state dict information from optimizer. It contain all the variable used by optimizer. For Adam opimizer, contains beta1, beta2, momentum etc. If LearningRateDecay have been used, global_step will be include in state dict.
-        If the optimzier never be called(minimize function), the state_dict is empty.
+        Get state dict information from optimizer. It contain all the variable used by optimizer. For Adam optimizer, contains beta1, beta2, momentum etc. If LearningRateDecay have been used, global_step will be include in state dict.
+        If the optimizer never be called(minimize function), the state_dict is empty.
 
         Args: None
         Return:
-            state_dict(dict) : dict contains all the variablel used by optimizer
+            state_dict(dict) : dict contains all the variable used by optimizer
         
         Examples:
             .. code-block:: python
@@ -153,7 +153,7 @@ class Optimizer(object):
     @framework.dygraph_only
     def set_dict(self, state_dict):
         '''
-        Load optimizer state dict. For Adam opimizer, contains beta1, beta2, momentum etc. If LearningRateDecay have been used, global_step will be changed.
+        Load optimizer state dict. For Adam optimizer, contains beta1, beta2, momentum etc. If LearningRateDecay have been used, global_step will be changed.
 
         Args: 
             state_dict(dict) : Dict contains all the Variable needed by optimizer
@@ -289,7 +289,7 @@ class Optimizer(object):
     def current_step_lr(self):
         """
         .. note::
-          **This API is ONLY avaliable in Dygraph mode**
+          **This API is ONLY available in Dygraph mode**
         
         Get current step learning rate. The return value is all the same When LearningRateDecay is not used,
         otherwise return the step learning rate.
@@ -1613,7 +1613,7 @@ class AdagradOptimizer(Optimizer):
 
 class AdamOptimizer(Optimizer):
     """
-    The Adam optimzier uses an optimization described at the end
+    The Adam optimizer uses an optimization described at the end
     of section 2 of `Adam paper <https://arxiv.org/abs/1412.6980>`_ ,
     it can dynamically adjusts the learning rate of each parameter using
     the 1st moment estimates and the 2nd moment estimates of the gradient.

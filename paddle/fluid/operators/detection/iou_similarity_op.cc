@@ -63,7 +63,7 @@ class IOUSimilarityOpMaker : public framework::OpProtoAndCheckerMaker {
              "bottom coordinate of the box.");
     AddAttr<bool>("box_normalized",
                   "(bool, default true) "
-                  "whether treat the priorbox as a noramlized box")
+                  "whether treat the priorbox as a normalized box")
         .SetDefault(true);
     AddOutput("Out",
               "(LoDTensor, the lod is same as input X) The output of "
