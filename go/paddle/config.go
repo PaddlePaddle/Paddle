@@ -43,8 +43,13 @@ func (config *AnalysisConfig) SetModel(model, params string) {
 	//C.printString((*C.char)(unsafe.Pointer(&s[0])))
 	c_model := C.CString(model)
 	defer C.free(unsafe.Pointer(c_model))
-	c_params := C.CString(params)
-	defer C.free(unsafe.Pointer(c_params))
+	var c_params *C.char
+	if params == "" {
+		c_params = C.CString(params)
+		defer C.free(unsafe.Pointer(c_params))
+	} else {
+		c_params = nil
+	}
 
 	C.PD_SetModel(config.c, c_model, c_params)
 }
@@ -62,7 +67,7 @@ func (config *AnalysisConfig) ParamsFile() string {
 }
 
 func (config *AnalysisConfig) EnableUseGpu(memory_pool_init_size_mb uint64, device_id int) {
-	C.PD_EnableUseGpu(config.c, C.ulong(memory_pool_init_size_mb), C.int(device_id))
+	C.PD_EnableUseGpu(config.c, C.uint64(memory_pool_init_size_mb), C.int(device_id))
 }
 
 func (config *AnalysisConfig) DisableGpu() {
@@ -175,15 +180,15 @@ func (config *AnalysisConfig) DisableGlogInfo() {
 }
 
 func (config *AnalysisConfig) DeletePass(pass string) {
-    c_pass := C.CString(pass)
-    defer C.free(unsafe.Pointer(c_pass))
-    C.PD_DeletePass(config.c, c_pass)
+	c_pass := C.CString(pass)
+	defer C.free(unsafe.Pointer(c_pass))
+	C.PD_DeletePass(config.c, c_pass)
 }
 
 func (config *AnalysisConfig) SetInValid() {
-    C.PD_SetInValid(config.c)
+	C.PD_SetInValid(config.c)
 }
 
 func (config *AnalysisConfig) IsValid() bool {
-    return ConvertCBooleanToGo(C.PD_IsValid(config.c))
+	return ConvertCBooleanToGo(C.PD_IsValid(config.c))
 }
