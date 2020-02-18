@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-import codegen
+import astor
 import gast
 import inspect
 import six
@@ -34,7 +34,7 @@ def _is_paddle_dygraph_api(obj):
 # function code together when Yamei finish her PR.
 def is_dygraph_api(node):
     assert isinstance(node, gast.Call), "Input non-Call node for is_dygraph_api"
-    func_src = codegen.to_source(node.func)
+    func_src = astor.to_source(node.func)
     try:
         import paddle.fluid as fluid
         return eval("_is_paddle_dygraph_api({})".format(func_src))
@@ -49,7 +49,7 @@ def _is_numpy_api_helper(obj):
 
 def is_numpy_api(node):
     assert isinstance(node, gast.Call), "Input non-Call node for is_numpy_api"
-    func_str = codegen.to_source(node.func)
+    func_str = astor.to_source(node.func)
     try:
         import numpy as np
         module_result = eval("_is_numpy_api_helper({})".format(func_str))
