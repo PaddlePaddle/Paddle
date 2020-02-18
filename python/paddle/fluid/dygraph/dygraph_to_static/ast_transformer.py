@@ -15,6 +15,10 @@
 from __future__ import print_function
 
 import gast
+# gast is a generic AST to represent Python2 and Python3's Abstract Syntax Tree(AST).
+# It provides a compatibility layer between the AST of various Python versions,
+# as produced by ast.parse from the standard ast module.
+# See details in https://github.com/serge-sans-paille/gast/
 from .ast_utils import is_control_flow_if, create_cond_node, transform_if_else
 
 __all__ = ['AstNodeWrapper', 'DygraphToStaticAst', 'StaticAnalysisVisitor']

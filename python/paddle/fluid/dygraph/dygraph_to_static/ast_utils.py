@@ -52,7 +52,6 @@ def get_name_ids(nodes, not_name_set=None, node_black_list=None):
     def update(old_dict, new_dict):
         for k, v in new_dict.items():
             old_dict[k].extend(v)
-        # return old_dict
 
     name_ids = defaultdict(list)
     for node in nodes:
@@ -177,6 +176,9 @@ def parse_return(parent_vars_dict, if_vars_dict, else_vars_dict):
 
 
 def generate_name_node(name_ids, ctx=gast.Load()):
+    """
+    Generate list or gast.Tuple of ast.Name for Return statement.
+    """
     if isinstance(name_ids, six.string_types):
         name_ids = [name_ids]
     if not isinstance(name_ids, (list, tuple, set)):
@@ -214,7 +216,7 @@ def create_funcDef_node(nodes, name, input_args, return_name_ids):
 
 def transform_if_else(node, root):
     """
-    Transoform ast.If into control flow statement of Paddle static graph.
+    Transform ast.If into control flow statement of Paddle static graph.
     """
     parent_name_ids = get_name_ids([root], node_black_list=[node])
     if_name_ids = get_name_ids(node.body)
@@ -242,6 +244,7 @@ def create_cond_node(return_name_ids, pred, true_func, false_func):
     Create `fluid.layers.cond(pred, true_fn, false_fn)` to replace
     original `python if/else` statement.
     """
+    # TODO(Aurelius84): should replace the api hard code.
     cond_api = gast.parse('fluid.layers.cond').body[0].value
     true_func_lambda = gast.Lambda(
         args=gast.arguments(
@@ -300,7 +303,7 @@ def ast_to_func(ast_root, func_name, delete_on_exit=True):
         f = tempfile.NamedTemporaryFile(
             mode='w', suffix='.py', delete=False, encoding='utf-8')
 
-    # TODO: more elegent way to transform ast into callable object
+    # TODO(Aurelius84): more elegent way to transform ast into callable object
     import_str = "import paddle\n" \
                  "import paddle.fluid as fluid\n" \
                  "import paddle.fluid.layers as layers\n"

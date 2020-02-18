@@ -41,6 +41,27 @@ def dyfunc_with_if_else2(x):
     return y
 
 
+def nested_if_else(x_v):
+    batch_size = x_v.shape[0]
+    feat_size = x_v.shape[-1]
+    bias = fluid.layers.fill_constant([feat_size], dtype='float32', value=1)
+    if fluid.layers.mean(x_v).numpy()[0] < 0:
+        y = x_v + bias
+        w = fluid.layers.fill_constant([feat_size], dtype='float32', value=10)
+        if y.numpy()[0] < 10:
+            tmp = y * w
+            y = fluid.layers.relu(tmp)
+            if fluid.layers.mean(y).numpy()[0] < batch_size:
+                y = fluid.layers.abs(y)
+            else:
+                tmp = fluid.layers.fill_constant(
+                    [feat_size], dtype='float32', value=-1)
+                y = y - tmp
+    else:
+        y = x_v - bias
+    return y
+
+
 class TestDygraphIfElse(unittest.TestCase):
     """
     TestCase for the transformation from control flow `if/else`
@@ -75,6 +96,12 @@ class TestDygraphIfElse2(TestDygraphIfElse):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = dyfunc_with_if_else2
+
+
+class TestDygraphIfElse3(TestDygraphIfElse):
+    def setUp(self):
+        self.x = np.random.random([10, 16]).astype('float32')
+        self.dyfunc = nested_if_else
 
 
 if __name__ == '__main__':
