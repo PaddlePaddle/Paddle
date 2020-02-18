@@ -18,7 +18,7 @@ import numpy as np
 import paddle.fluid as fluid
 import unittest
 import inspect
-import ast
+import gast
 
 from paddle.fluid.dygraph.jit import dygraph_to_static_output
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_dygraph_api
@@ -233,10 +233,8 @@ def dyfunc_SpectralNorm(weight):
 
 
 class TestDygraphBasicAPI(unittest.TestCase):
-    '''
-    Compare results of dynamic graph and transformed static graph function which only
-    includes basic API.
-    '''
+    # Compare results of dynamic graph and transformed static graph function which only
+    # includes basic API.
 
     def setUp(self):
         self.input = np.random.random((1, 4, 3, 3)).astype('float32')
@@ -553,13 +551,13 @@ def _dygraph_fn():
 class TestDygraphAPIRecognition(unittest.TestCase):
     def setUp(self):
         self.src = inspect.getsource(_dygraph_fn)
-        self.root_ast = ast.parse(self.src)
+        self.root = gast.parse(self.src)
 
     def _get_dygraph_ast_node(self):
-        return self.root_ast.body[0].body[2].body[0].value
+        return self.root.body[0].body[2].body[0].value
 
     def _get_static_ast_node(self):
-        return self.root_ast.body[0].body[2].body[1].value
+        return self.root.body[0].body[2].body[1].value
 
     def test_dygraph_api(self):
         self.assertTrue(is_dygraph_api(self._get_dygraph_ast_node()) is True)

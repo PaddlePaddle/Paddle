@@ -16,7 +16,8 @@ from __future__ import print_function
 
 import inspect
 import codegen
-import ast
+import gast
+import astor
 import atexit
 import os
 import tempfile
@@ -119,7 +120,7 @@ dygraph_class_to_static_api = {
 
 
 def _delete_keywords_from(node, deleted_keywords):
-    assert isinstance(node, ast.Call)
+    assert isinstance(node, gast.Call)
     node.keywords = [k for k in node.keywords if k.arg not in deleted_keywords]
 
 
@@ -133,7 +134,7 @@ def to_static_api(dygraph_class):
 
 
 def _add_keywords_to(node, dygraph_api_name):
-    assert isinstance(node, ast.Call)
+    assert isinstance(node, gast.Call)
     if dygraph_api_name is "Linear":
         changed = False
         for ast_keyword in node.keywords:
@@ -174,25 +175,29 @@ def to_static_ast(node, dygraph_class, dygraph_args, dygraph_keywords):
     static_info = to_static_api(dygraph_class)
     static_api = static_info[STATIC_API]
 
-    node.func = ast.Attribute(
+    node.func = gast.Attribute(
         attr=static_api,
-        value=ast.Attribute(
-            attr='layers', value=ast.Name(
-                ctx=ast.Load(), id='fluid')))  # todo ast.Name for PY3
+        ctx=gast.Load(),
+        value=gast.Attribute(
+            attr='layers',
+            ctx=gast.Load(),
+            value=gast.Name(
+                ctx=gast.Load(), id='fluid', annotation=None,
+                type_comment=None)))  # todo ast.Name for PY3
     node.args.extend(dygraph_args)
     node.keywords.extend(dygraph_keywords)
     _add_keywords_to(node, dygraph_class)
     _delete_keywords_from(node, static_info.get(TO_DELETE_ARGS, []))
 
-    ast.fix_missing_locations(node)
+    gast.fix_missing_locations(node)
 
     return node
 
 
 def to_assign_node(ori_node):
-    assert isinstance(ori_node, ast.Call)
+    assert isinstance(ori_node, gast.Call)
 
-    assign_api = ast.parse('fluid.layers.assign').body[0].value
+    assign_api = gast.parse('fluid.layers.assign').body[0].value
     ori_node.func = assign_api
 
     return ori_node
@@ -204,8 +209,9 @@ def _is_paddle_dygraph_api(obj):
 
 
 def is_dygraph_api(node):
-    assert isinstance(node, ast.Call)
-    func_src = codegen.to_source(node.func)
+    assert isinstance(node, gast.Call)
+
+    func_src = astor.to_source(gast.gast_to_ast(node.func))
     try:
         import paddle.fluid as fluid
         return eval("_is_paddle_dygraph_api({})".format(func_src))
@@ -214,7 +220,7 @@ def is_dygraph_api(node):
 
 
 def parse_class(node):
-    assert isinstance(node, ast.Call)
+    assert isinstance(node, gast.Call)
     paddle_class = node.func.attr  # str
     paddle_args = node.args
     paddle_keywords = node.keywords  # list
@@ -225,7 +231,8 @@ def ast_to_func(ast_root, func_name, delete_on_exit=True):
     """
     Transform modified AST of decorated function into python callable object.
     """
-    source = codegen.to_source(ast_root)
+    ast_root = gast.gast_to_ast(ast_root)
+    source = astor.to_source(ast_root)
     if six.PY2:
         source = source.encode('utf-8')
         f = tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False)
@@ -253,7 +260,7 @@ def ast_to_func(ast_root, func_name, delete_on_exit=True):
 
 
 def def_node_from_class(class_node):
-    assert isinstance(class_node, ast.ClassDef)
+    assert isinstance(class_node, gast.ClassDef)
     new_node = None
     for child_node in class_node.body:
         if child_node.name == "forward":

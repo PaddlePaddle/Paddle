@@ -17,12 +17,8 @@ from __future__ import print_function
 import numpy as np
 import paddle.fluid as fluid
 import unittest
-import inspect
-import ast, codegen
 
 from paddle.fluid.dygraph.jit import dygraph_to_static_output, _dygraph_to_static_output_
-from paddle.fluid.dygraph.dygraph_to_static.utils import is_dygraph_api
-from paddle.fluid.dygraph.dygraph_to_static import DygraphToStaticAst
 
 SEED = 2020
 np.random.seed(SEED)

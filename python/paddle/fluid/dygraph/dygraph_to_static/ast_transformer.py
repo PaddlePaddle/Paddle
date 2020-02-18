@@ -13,8 +13,8 @@
 # limitations under the License.
 
 from __future__ import print_function
-import codegen
-import ast, astor
+import gast
+import astor
 from utils import *
 
 __all__ = ['AstNodeWrapper', 'DygraphToStaticAst', 'StaticAnalysisVisitor']
@@ -89,7 +89,7 @@ class StaticAnalysisVisitor(object):
             cur_wrapper.parent = last_wrapper
 
         self.ancestor_wrappers.append(cur_wrapper)
-        for child in ast.iter_child_nodes(node):
+        for child in gast.iter_child_nodes(node):
             self.dfs_visit(child)
         self.ancestor_wrappers.pop()
         return cur_wrapper.node_var_type
@@ -101,7 +101,7 @@ class StaticAnalysisVisitor(object):
         return self.node_to_wrapper_map
 
 
-class DygraphToStaticAst(ast.NodeTransformer):
+class DygraphToStaticAst(gast.NodeTransformer):
     """
     Main class to transform Dygraph to Static Graph
     """
@@ -152,8 +152,8 @@ class DygraphToStaticAst(ast.NodeTransformer):
         return node
 
     def is_to_variable(self, node):
-        assert isinstance(node, ast.Assign)
-        if isinstance(node.value, ast.Call):
+        assert isinstance(node, gast.Assign)
+        if isinstance(node.value, gast.Call):
             if is_dygraph_api(node.value):
                 api_name = node.value.func.attr
                 return api_name is "to_variable"
@@ -168,16 +168,16 @@ class DygraphToStaticAst(ast.NodeTransformer):
             return None
 
         value_node = node.value
-        for child_node in ast.walk(value_node):
-            if isinstance(child_node, ast.Call):
+        for child_node in gast.walk(value_node):
+            if isinstance(child_node, gast.Call):
                 self._visit_Call(child_node)
 
         return node
 
     def visit_Expr(self, node):
         value_node = node.value
-        for child_node in ast.walk(value_node):
-            if isinstance(child_node, ast.Call):
+        for child_node in gast.walk(value_node):
+            if isinstance(child_node, gast.Call):
                 self._visit_Call(child_node)
 
         return node
@@ -190,8 +190,8 @@ class DygraphToStaticAst(ast.NodeTransformer):
         return self.class_node_dict[func_id]
 
     def _visit_Call(self, node):
-        assert isinstance(node, ast.Call)
-        if not isinstance(node.func, (ast.Name, ast.Attribute)):
+        assert isinstance(node, gast.Call)
+        if not isinstance(node.func, (gast.Name, gast.Attribute)):
             return
         func_id = astor.to_source(node.func)
         if self._is_dygraph_forward(func_id):
@@ -206,9 +206,9 @@ class DygraphToStaticAst(ast.NodeTransformer):
 
     def _update_class_node_dict(self, node):
 
-        assert isinstance(node, ast.Assign)
+        assert isinstance(node, gast.Assign)
 
-        if isinstance(node.value, ast.Call):
+        if isinstance(node.value, gast.Call):
 
             if is_dygraph_api(node.value):
                 target_str = astor.to_source(node.targets[0])
