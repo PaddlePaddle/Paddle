@@ -83,7 +83,7 @@ Notes:
 
 |     Model    |  FP32 Accuracy | QAT INT8 Accuracy | Accuracy Diff |
 |:------------:|:----------------------:|:----------------------:|:---------:|
-|   Ernie      |      0.80              |         0.82           |     +0.02 |               
+|   Ernie      |      79.76%              |         79.28%           |    -0.48% |               
 
 
 >**V. Ernie QAT2.0 MKL-DNN Performance on Intel(R) Xeon(R) Gold 6271**
