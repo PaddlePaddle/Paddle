@@ -112,10 +112,10 @@ class DygraphToStaticAst(gast.NodeTransformer):
         self.static_analysis_root = StaticAnalysisVisitor(
             root).get_node_wrapper_root()
         self.transfer_from_node_type(self.static_analysis_root)
-        return self.root, root.body[0].name
+
+        return self.static_analysis_root
 
     def transfer_from_node_type(self, node):
-
         BasicAPITransformer(node).ast_visit()
 
 

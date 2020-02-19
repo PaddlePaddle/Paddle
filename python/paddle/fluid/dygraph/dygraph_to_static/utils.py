@@ -242,15 +242,12 @@ def ast_to_func(ast_root, func_name, delete_on_exit=True):
         module_name = os.path.basename(f.name)
         f.write(import_str)
         f.write(source)
-
     if delete_on_exit:
         atexit.register(lambda: os.remove(f.name))
 
     module = imp.load_source(module_name, f.name)
-
     assert hasattr(module, func_name), \
         "Function: {} doesn't exist in the Module transformed from AST.".format(func_name)
-
     return getattr(module, func_name)
 
 
