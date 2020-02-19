@@ -50,6 +50,8 @@ from utils import *
 import cloud_utils
 import edl_utils
 
+logger = None
+
 
 def _print_arguments(args):
     print("-----------  Configuration Arguments -----------")

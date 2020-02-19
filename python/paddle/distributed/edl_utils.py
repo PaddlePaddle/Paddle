@@ -16,7 +16,10 @@ import os
 import requests
 import time
 import sys
-import utils
+from utils import Cluster
+import logging
+
+logger = logging.getLogger('launch')
 
 
 class Edlenv(object):
@@ -48,6 +51,7 @@ class Edlenv(object):
     def _get_pods_from_job_server(self):
         job_id = {'job_id': self.job_id}
         url = "{}/rest/1.0/get/query_pods".format(self.job_server)
+        logger.debug("query pods from url:{}".format(url))
 
         step = 0
         pods = {}
@@ -67,14 +71,17 @@ class Edlenv(object):
                             r.url))
                     sys.exit(1)
 
-                logger.warning("get pods from job_server:{} error, try again!".
-                               format(r.url))
+                logger.warning(
+                    "get pods from job_server:{} payload:{} error, try again!".
+                    format(url, job_id))
                 time.sleep(3)
 
         return self._parse_response_pods(pods)
 
     def get_cluster(self):
         assert self.is_under_edl(), "Edlenv only used under edl environments"
+
+        pods = self._get_pods_from_job_server()
 
         cluster = utils.Cluster()
         cluster.job_server = self.job_server
