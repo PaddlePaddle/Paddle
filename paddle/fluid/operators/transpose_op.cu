@@ -374,7 +374,7 @@ struct NarrowDims2TransposeDispatch<
   }
 };
 
-template <typename T, bool conjugate = false>
+template <typename T>
 void SwapDim1And2InNarrow(const platform::CUDADeviceContext& d, const T* input,
                           const Dim3& input_dims, T* output,
                           const int kMinTileSize) {
@@ -406,7 +406,9 @@ void SwapDim1And2InNarrow(const platform::CUDADeviceContext& d, const T* input,
     int num_full_tiles = framework::CeilOrFloor<int, false>(
         input_long_edge, proposed_tile_long_edge);
 
-    float cost = num_wasted_threads;
+    float cost = 0;
+    // Change tile size only smaller than 2 tiles.
+    if (num_full_tiles <= 1) cost = num_wasted_threads;
 
     if (cost <= lowest_cost) {
       tile_long_edge = proposed_tile_long_edge;
