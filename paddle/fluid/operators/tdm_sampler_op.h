@@ -58,6 +58,11 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
     auto layer_nums = neg_samples_num_vec.size();
     VLOG(1) << "TDM: tree layer nums: " << layer_nums;
 
+    // get all data
+    auto *input_data = input_tensor.data<int64_t>();
+    int *travel_data = const_cast<int *>(travel_lod_tensor.data<int>());
+    int *layer_data = const_cast<int *>(layer_lod_tensor.data<int>());
+
     std::vector<std::vector<int64_t>> tdm_res_data(layer_nums,
                                                    std::vector<int64_t>{});
     std::vector<std::vector<int64_t>> tdm_label_data(layer_nums,
@@ -112,8 +117,8 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
               layer_data[layer_offset_lod[layer_idx] + sample_res]);
           VLOG(1) << "TDM: Res append negitive "
                   << layer_data[layer_offset_lod[layer_idx] + sample_res];
-          tdm_label_data[layer_idx].push_back(0) VLOG(1)
-              << "TDM: Label append negitive " << 0;
+          tdm_label_data[layer_idx].push_back(0);
+          VLOG(1) << "TDM: Label append negitive " << 0;
           offset += 1;
         }  // end layer nce
         delete sampler;
@@ -129,8 +134,10 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
       auto *out_tensor = context.Output<framework::LoDTensor>(sample_res_name);
       auto *label_tensor =
           context.Output<framework::LoDTensor>(sample_label_name);
-      out_tensor->Resize(framework::make_ddim({tdm_res_data[i].size(), 1}));
-      label_tensor->Resize(framework::make_ddim({tdm_label_data[i].size(), 1}));
+      out_tensor->Resize(
+          framework::make_ddim({const_cast<int>(tdm_res_data[i].size()), 1}));
+      label_tensor->Resize(
+          framework::make_ddim({const_cast<int>(tdm_label_data[i].size()), 1}));
       auto res_data = out_tensor->mutable_data<int64_t>(context.GetPlace());
       auto label_data = label_tensor->mutable_data<int64_t>(context.GetPlace());
       if (tdm_res_data[i].size() >= 1) {
@@ -142,7 +149,7 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
 
       std::string output_str = "";
       std::string label_str = "";
-      for (int i = 0; i < tdm_res_data[i].size(); i++) {
+      for (size_t i = 0; i < tdm_res_data[i].size(); ++i) {
         output_str += std::to_string(res_data[i]);
         output_str += ", ";
         label_str += std::to_string(label_data[i]);
