@@ -2,6 +2,7 @@
 from flask import Flask, jsonify, abort, request, make_response, url_for
 from contextlib import closing
 import socket
+import request
 
 app = Flask(__name__, static_url_path="")
 
@@ -16,41 +17,37 @@ def not_found(error):
     return make_response(jsonify({'error': 'Not found'}), 404)
 
 
-def find_free_ports(num):
-    def __free_port():
-        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
-            s.bind(('', 0))
-            print("socket name: %s" % s.getsockname()[1])
-            return s.getsockname()[1]
-
-    port_set = {}
-    step = 0
-    while True:
-        port = __free_port()
-        if port not in port_set:
-            port_set[port] = ""
-
-        if len(port_set) >= num:
-            return port_set
-
-        step += 1
-        if step > 100:
-            print("can't find avilable port")
-            return None
-
-    return None
+class Pod():
+    def __init__():
+        self.pod_id = None
+        self.running = None
+        self.addr = None
+        self.pod_port = None
+        self.trainer_ports = []
 
 
-@app.route('/todo/api/v1.0/ports', methods=['GET'])
-def get_ports():
-    try:
-        ports = request.args.get('port_num')
-        ports = int(ports)
-        if ports > 32:
-            ports = 32
-    except:
-        return jsonify({'ports': {}})
-    return jsonify({'ports': find_free_ports(ports)})
+def get_job_pods(job_id):
+    job = {"job_id": "test_job_id_1234", "pods": []}
+
+    pods = []
+    for i in range(0, 8):
+        pod = Pod()
+        pod.pod_id = i
+        pod.running = True
+        pod.addr = "127.0.0.1"
+        pod.pod_port = 6070
+        pod.trainer_ports = [6071]
+        pods.append(pod)
+
+    job["pods"] = pods
+    return job
+
+
+@app.route('/rest/1.0/post/job_runtime_static', methods=['POST'])
+def update_job_static():
+    if not request.json or not 'job_id' in request.json or not 'estimated_run_time' in request.json:
+        abort(400)
+    print(requests.json)
 
 
 if __name__ == '__main__':
