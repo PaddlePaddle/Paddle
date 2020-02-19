@@ -47,8 +47,8 @@ from argparse import ArgumentParser, REMAINDER
 import paddle.fluid as fluid
 
 from utils import *
-import cloud_util as cloud
-import edl_util as edl
+import cloud_utils
+import edl_utils
 
 
 def _print_arguments(args):
@@ -290,19 +290,19 @@ def get_cluster_from_args(args, selected_gpus):
 def launch(args):
     # parse arguments, used for cloud-single-machine and local
     selected_gpus = get_gpus()
-    trainer_nums = cloud.get_trainers_num()
+    trainers_num = cloud_utils.get_trainers_num()
     logger.debug("parsed from args trainerss_num:{} selected_gpus:{}".format(
         trainers_num, selected_gpus))
 
     cluster = None
     comm = None
-    use_edl = edl.is_under_edl()
+    edl_env = edl_utils.Edlenv()
+    use_edl = edl_env.is_under_edl()
     if args.use_paddlecloud and not use_edl and trainers_num != 1:
-        cluster = cloud.get_cloud_cluster(arges.node_ips, args.node_ip,
-                                          args.started_port, selected_gpus)
+        cluster = cloud_utils.get_cloud_cluster(
+            arges.node_ips, args.node_ip, args.started_port, selected_gpus)
         logger.info("get cluster from cloud:{}".format(cluster))
     elif use_edl:
-        edl_env = Edlenv()
         cluster = edl_env.get_cluster()
         comm = Gloo()
         logger.info("get cluster from edl:{}".format(cluster))
@@ -344,9 +344,10 @@ def launch(args):
 
 
 if __name__ == "__main__":
-    get_logger()
-
     args = _parse_args()
+
+    logger = get_logger(args.log_level)
+
     if args.print_config:
         _print_arguments(args)
 

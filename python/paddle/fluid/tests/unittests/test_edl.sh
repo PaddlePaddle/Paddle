@@ -11,8 +11,7 @@ export PADDLE_POD_ID=0
 
 nohup python job_server_demo.py &
 
-CUDA_VISIBLE_DEVICES=0 python -m paddle.distributed.launch edl_demo.py > edl_demo.log 2>&1
-
+CUDA_VISIBLE_DEVICES=0 python -m paddle.distributed.launch --log_level 10 edl_demo.py > edl_demo.log 2>&1
 
 echo "test request and response"
 str=""
@@ -24,6 +23,8 @@ else
     echo "request and response error!"
     exit -1
 fi
+
+exit 0
 
 # kill job_server_demo process
 curl -i -X POST -H "'Content-type':'application/json'" -d '{}' $PADDLE_JOBSERVER

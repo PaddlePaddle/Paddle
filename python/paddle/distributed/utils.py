@@ -19,14 +19,14 @@ import logging
 logger = None
 
 
-class Hdfs():
-    def __init__():
+class Hdfs(object):
+    def __init__(self):
         self.hdfs_ugi = None
         self.hdfs_name = None
         self.hdfs_path = None
 
 
-class Cluster():
+class Cluster(object):
     def __init__(self):
         self.job_server = None
         self.pods = None
@@ -83,12 +83,12 @@ class Cluster():
         return None
 
 
-class JobServer():
+class JobServer(object):
     def __init__(self):
         self.endpoint = None
 
 
-class Trainer():
+class Trainer(object):
     def __init__(self):
         self.gpu = []
         self.endpoint = None
@@ -104,7 +104,7 @@ class Trainer():
         return self.rank
 
 
-class Pod():
+class Pod(object):
     def __init__(self):
         self.rank = None  # pod_id
         self.id = None  # node rank
@@ -138,7 +138,7 @@ class Pod():
         return self.rank
 
 
-class Gloo():
+class Gloo(object):
     def __init__():
         self._prefix = "edl_job"
         self._gloo = fluid.core.Gloo()
@@ -237,15 +237,17 @@ class Gloo():
 
 
 def get_logger(log_level):
-    logger = logging.getLogger()
+    l = logging.getLogger()
 
-    # initial log with args.loglevel
-    logger.setLevel(args.log_level)
+    # initial log with loglevel
+    l.setLevel(log_level)
     log_handler = logging.StreamHandler()
     log_format = logging.Formatter(
         '%(levelname)s %(asctime)s %(filename)s:%(lineno)d] %(message)s')
     log_handler.setFormatter(log_format)
-    logger.addHandler(log_handler)
+    l.addHandler(log_handler)
+
+    return l
 
 
 def get_cluster(node_ips, node_ip, started_port, selected_gpus):

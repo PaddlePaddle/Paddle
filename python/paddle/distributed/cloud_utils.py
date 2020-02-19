@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from utils import logger, get_cluster
+import os
 
 
 def get_cloud_cluster(args_node_ips, args_node_ip, args_port, selected_gpus):

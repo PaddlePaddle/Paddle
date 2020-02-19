@@ -16,6 +16,7 @@ import os
 import requests
 import time
 import sys
+import utils
 
 
 class Edlenv(object):
@@ -73,9 +74,9 @@ class Edlenv(object):
         return self._parse_response_pods(pods)
 
     def get_cluster(self):
-        assert is_under_edl(), "Edlenv only used under edl environments"
+        assert self.is_under_edl(), "Edlenv only used under edl environments"
 
-        cluster = Cluster()
+        cluster = utils.Cluster()
         cluster.job_server = self.job_server
         cluster.job_id = self.job_id
         cluster.pods = pods
