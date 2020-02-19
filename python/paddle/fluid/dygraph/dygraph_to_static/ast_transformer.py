@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-import ast
+import gast
 
 __all__ = ['AstNodeWrapper', 'DygraphToStaticAst', 'StaticAnalysisVisitor']
 
@@ -87,7 +87,7 @@ class StaticAnalysisVisitor(object):
             cur_wrapper.parent = last_wrapper
 
         self.ancestor_wrappers.append(cur_wrapper)
-        for child in ast.iter_child_nodes(node):
+        for child in gast.iter_child_nodes(node):
             self.dfs_visit(child)
         self.ancestor_wrappers.pop()
         return cur_wrapper.node_var_type
@@ -99,7 +99,7 @@ class StaticAnalysisVisitor(object):
         return self.node_to_wrapper_map
 
 
-class DygraphToStaticAst(ast.NodeTransformer):
+class DygraphToStaticAst(gast.NodeTransformer):
     """
     Main class to transform Dygraph to Static Graph
     """
