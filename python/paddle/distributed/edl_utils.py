@@ -92,6 +92,9 @@ class Edlenv(object):
         cluster.job_id = self.job_id
         cluster.pods = pods
 
+        #logger.debug("get clsuter:{} from jobserver", cluster)
+        print(cluster)
+
         return cluster
 
 

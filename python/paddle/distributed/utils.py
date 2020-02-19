@@ -25,12 +25,20 @@ class Hdfs(object):
         self.hdfs_name = None
         self.hdfs_path = None
 
+    def __str__(self):
+        return "hdfs_ugi:{} hdfs_name:{} hdfs_path{}".format(
+            self.hdfs_ugi, self.hdfs_name, self.hdfs_path)
+
 
 class Cluster(object):
     def __init__(self):
         self.job_server = None
         self.pods = None
         self.hdfs = None
+
+    def __str__(self):
+        return "job_server:{} pods:{} hdfs:{}".format(
+            self.job_server, [str(pod) for pod in self.pods], self.hdfs)
 
     def __eq__(self, cluster):
         if len(self.pods) != len(cluster.pods):
@@ -87,12 +95,19 @@ class JobServer(object):
     def __init__(self):
         self.endpoint = None
 
+    def __str__(self):
+        return "{}".format(self.endpoint)
+
 
 class Trainer(object):
     def __init__(self):
         self.gpu = []
         self.endpoint = None
         self.rank = None
+
+    def __str__(self):
+        return "gpu:{} endpoint:{} rank:{}".format(self.gpu, self.endpoint,
+                                                   self.rank)
 
     def __eq__(self):
         pass
@@ -111,6 +126,11 @@ class Pod(object):
         self.addr = None
         self.port = None
         self.trainers = []
+
+    def __str__(self):
+        return "rank:{} id:{} addr:{} port:{} trainers:{}".format(
+            self.rank, self.id, self.addr, self.port,
+            [str(t) for t in self.trainers])
 
     def __eq__(self, pod):
         if self.ranks != pod.rank or \
