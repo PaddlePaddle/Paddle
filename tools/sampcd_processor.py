@@ -1,4 +1,4 @@
-#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+#Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@ import subprocess
 import multiprocessing
 import math
 import platform
+import paddle
+import paddle.fluid
 """
 please make sure to run in the tools path
 usage: python sample_test.py {arg1} 
@@ -271,7 +273,7 @@ def srccoms_extract(srcfile, wlist):
         wlist(list): white list
 
     Returns:
-    result: True or False
+        result: True or False
     """
 
     process_result = True
@@ -430,50 +432,58 @@ def test(file_list):
     return process_result
 
 
+def get_filenames(path):
+    '''
+    Given a path ``path``, this function will
+    get the modules that pending for check.
+
+    Args:
+        path(path): the path of API.spec
+
+    Returns:
+
+        list: the modules pending for check .
+
+    '''
+    filenames = []
+    API_spec = '%s/%s' % (os.path.abspath(os.path.join(os.getcwd(), "..")),
+                          path)
+    with open(API_spec) as f:
+        for line in f.readlines():
+            try:
+                module = eval(line.split(' ', 1)[0]).__module__
+            except AttributeError:
+                continue
+            if len(module.split('.')) == 3:
+                filename = '%s.py' % module.split('.')[2]
+            elif len(module.split('.')) == 4:
+                filename = '%s/%s.py' % (module.split('.')[2],
+                                         module.split('.')[3])
+            elif len(module.split('.')) == 5:
+                filename = '%s/%s/%s.py' % (module.split('.')[2],
+                                            module.split('.')[3],
+                                            module.split('.')[4])
+            elif len(module.split('.')) == 6:
+                filename = '%s/%s/%s/%s.py' % (
+                    module.split('.')[2], module.split('.')[3],
+                    module.split('.')[4], module.split('.')[5])
+            else:
+                print("\n----Exception in get api filename----\n")
+                print("\n" + line.split(' ', 1)[0] + 'module is ' + module +
+                      "\n")
+            if filename not in filenames:
+                filenames.append(filename)
+    return filenames
+
+
 '''
 Important constant lists:
 
-    filenames : the modules pending for check .
     wlist : a list of API that should not trigger the example check .
             It is composed of wlist_temp + wlist_inneed + wlist_ignore.
     srcfile: the source .py code file
 '''
 
-filenames = [
-    "../python/paddle/fluid/layers/control_flow.py",
-    "../python/paddle/fluid/layers/io.py",
-    "../python/paddle/fluid/layers/nn.py",
-    "../python/paddle/fluid/layers/ops.py",
-    "../python/paddle/fluid/layers/tensor.py",
-    "../python/paddle/fluid/layers/learning_rate_scheduler.py",
-    "../python/paddle/fluid/layers/detection.py",
-    "../python/paddle/fluid/layers/metric_op.py"
-]
-filenames += [
-    "../python/paddle/fluid/dygraph/layers.py",
-    "../python/paddle/fluid/dygraph/base.py",
-    "../python/paddle/fluid/dygraph/nn.py",
-    "../python/paddle/fluid/dygraph/tracer.py",
-    "../python/paddle/fluid/dygraph/profiler.py",
-    "../python/paddle/fluid/dygraph/parallel.py",
-    "../python/paddle/fluid/dygraph/checkpoint.py",
-    "../python/paddle/fluid/dygraph/learning_rate_scheduler.py",
-    "../python/paddle/fluid/dygraph/backward_strategy.py"
-]
-filenames += [
-    "../python/paddle/fluid/data_feeder.py",
-    "../python/paddle/fluid/dataset.py", "../python/paddle/fluid/clip.py",
-    "../python/paddle/fluid/metrics.py", "../python/paddle/fluid/executor.py",
-    "../python/paddle/fluid/initializer.py", "../python/paddle/fluid/io.py",
-    "../python/paddle/fluid/nets.py", "../python/paddle/fluid/optimizer.py",
-    "../python/paddle/fluid/profiler.py",
-    "../python/paddle/fluid/regularizer.py",
-    "../python/paddle/fluid/backward.py", "../python/paddle/fluid/average.py",
-    "../python/paddle/fluid/unique_name.py",
-    "../python/paddle/fluid/framework.py",
-    "../python/paddle/fluid/evaluator.py",
-    "../python/paddle/fluid/param_attr.py"
-]
 wlist_inneed = [
     "append_LARS", "BuildStrategy.debug_graphviz_path",
     "BuildStrategy.enable_sequential_execution",
@@ -632,6 +642,7 @@ else:
         os.mkdir("./samplecode_temp")
 
     cpus = multiprocessing.cpu_count()
+    filenames = get_filenames('paddle/fluid/API.spec')
     one_part_filenum = int(math.ceil(len(filenames) / cpus))
     divided_file_list = [
         filenames[i:i + one_part_filenum]
