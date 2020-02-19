@@ -75,13 +75,12 @@ class TDMSamplerOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->HasInput("Layer"), true);
     auto neg_samples_num_vec =
         ctx->Attrs().Get<std::vector<int>>("neg_samples_num_list");
-    auto output_positive_flag = ctx->Attrs().Get<bool>("output_positive");
 
     if (ctx->IsRuntime()) {
       // something to do in runtime
     } else {
       // compile time
-      for (int i = 0; i < neg_samples_num_vec.size(); ++i) {
+      for (size_t i = 0; i < neg_samples_num_vec.size(); ++i) {
         std::string sample_res_name = "Sample_res_layer_" + std::to_string(i);
         std::string sample_label_name =
             "Sample_label_layer_" + std::to_string(i);

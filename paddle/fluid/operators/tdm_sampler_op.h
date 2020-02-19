@@ -134,10 +134,10 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
       auto *out_tensor = context.Output<framework::LoDTensor>(sample_res_name);
       auto *label_tensor =
           context.Output<framework::LoDTensor>(sample_label_name);
-      out_tensor->Resize(
-          framework::make_ddim({const_cast<int>(tdm_res_data[i].size()), 1}));
-      label_tensor->Resize(
-          framework::make_ddim({const_cast<int>(tdm_label_data[i].size()), 1}));
+      int res_size = tdm_res_data[i].size();
+      int label_size = tdm_label_data[i].size();
+      out_tensor->Resize(framework::make_ddim({res_size, 1}));
+      label_tensor->Resize(framework::make_ddim({label_size, 1}));
       auto res_data = out_tensor->mutable_data<int64_t>(context.GetPlace());
       auto label_data = label_tensor->mutable_data<int64_t>(context.GetPlace());
       if (tdm_res_data[i].size() >= 1) {
