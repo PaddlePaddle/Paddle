@@ -53,10 +53,12 @@ class TDMSamplerOpMaker : public framework::OpProtoAndCheckerMaker {
                  "(int) The seed used in sampler. If it is 0, "
                  "the sampler will generate a seed randomly.")
         .SetDefault(0);
-    AddOutput("Out",
+
+    AddOutput("Sample_res_layer",
               "Sampling result lodTensor, with shape [batch_size, layer_num, "
-              "neg_num_of_layer]");
-    AddOutput("Labels",
+              "neg_num_of_layer]")
+        .AsDispensable();
+    AddOutput("Sample_label_layer",
               "Labels of sampling result, has the same shape with Out."
               "pos samples mapping value 1, neg sample mapping value 0")
         .AsDispensable();

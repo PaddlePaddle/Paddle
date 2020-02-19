@@ -13947,7 +13947,7 @@ def tdm_sampler(input,
     layer.stop_gradient = True
 
     outputs_dict = {}
-    for index, layer in enumerate(tree_layer_list):
+    for index, _ in enumerate(tree_layer_list):
         out_layer = helper.create_variable_for_type_inference(dtype=dtype)
         out_layer.stop_gradient = True
         label_layer = helper.create_variable_for_type_inference(dtype=dtype)
