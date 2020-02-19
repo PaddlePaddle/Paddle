@@ -729,7 +729,14 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                     program.global_block().vars[splited_grad_varname]
                 ]
                 sections = self._get_splited_var_sections(splited_vars)
-                send_varnames = [var.name for var in splited_vars]
+
+                if self.config.completely_not_async:
+                    send_varnames = [
+                        "{}.trainer_{}".format(var.name, self.trainer_id)
+                        for var in splited_vars
+                    ]
+                else:
+                    send_varnames = [var.name for var in splited_vars]
             else:
                 send_input_vars = splited_vars
                 sections = []

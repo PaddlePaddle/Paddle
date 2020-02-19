@@ -337,7 +337,6 @@ class HalfAsyncCommunicator : public Communicator {
   int send_wait_times_;
   int thread_pool_size_;
   int send_queue_size_;
-  bool is_half_comm_ = true;
   int trainer_id_ = 0;
 
  protected:
@@ -364,9 +363,7 @@ class SyncCommunicator : public HalfAsyncCommunicator {
   SyncCommunicator() : HalfAsyncCommunicator() {}
   explicit SyncCommunicator(const std::map<std::string, std::string>& envs)
       : HalfAsyncCommunicator(envs) {
-    is_half_comm_ = false;
     trainer_id_ = std::stoi(envs.at("trainer_id"));
-
     auto pserver_strings = envs.at("pserver_endpoints");
     pserver_endpoints_ = paddle::string::Split(pserver_strings, ',');
     VLOG(0) << "SyncCommunicator Initialized";

@@ -1007,6 +1007,8 @@ void HalfAsyncCommunicator::InitImpl(
       auto trainer_id = boost::get<int>(op->GetNullableAttr("trainer_id"));
       recv_varname_to_ctx[recv_var_name] = operators::distributed::RpcContext(
           recv_var_name, recv_varnames, epmap, {}, trainer_id);
+      VLOG(3) << "find and init an recv op: "
+              << recv_varname_to_ctx[recv_var_name];
     }
   }
 
@@ -1064,10 +1066,6 @@ void HalfAsyncCommunicator::ConsumeThread() {
             }
           }
           auto before_merge = GetCurrentUS();
-
-          if (!is_half_comm_) {
-            var_name = string::Sprintf("%s.trainer_%d", var_name, trainer_id_);
-          }
 
           MergeVars<float>(var_name, vars, send_scope_.get(), false);
 
