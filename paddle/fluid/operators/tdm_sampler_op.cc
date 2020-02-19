@@ -73,31 +73,25 @@ class TDMSamplerOp : public framework::OperatorWithKernel {
                       "Inputs(Input) of TdmSampler should not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("Travel"), true);
     PADDLE_ENFORCE_EQ(ctx->HasInput("Layer"), true);
-    VLOG(1) << "Begin infershape vec get";
     auto neg_samples_num_vec =
         ctx->Attrs().Get<std::vector<int>>("neg_samples_num_list");
     auto output_positive_flag = ctx->Attrs().Get<bool>("output_positive");
 
-    int64_t sample_res_length = 0;
-    for (auto sample_nums : neg_samples_num_vec) {
-      sample_res_length += sample_nums + (int64_t)output_positive_flag;
-    }
-    VLOG(1) << "Infershape sample_res_length: " << sample_res_length;
-    std::vector<int64_t> out_dims_vec;
-    int64_t out_dim_0 = -1;
-    auto input_dims = ctx->GetInputDim("Input");
     if (ctx->IsRuntime()) {
-      out_dim_0 = input_dims[0];
+      // something to do in runtime
+    } else {
+      // compile time
+      for (int i = 0; i < neg_samples_num_vec.size(); ++i) {
+        std::string sample_res_name = "Sample_res_layer_" + std::to_string(i);
+        std::string sample_label_name =
+            "Sample_label_layer_" + std::to_string(i);
+        ctx->SetOutputDim(sample_res_name, framework::make_ddim({-1, 1}));
+        ctx->SetOutputDim(sample_label_name, framework::make_ddim({-1, 1}));
+      }
     }
-    out_dims_vec.push_back(out_dim_0);
-    VLOG(1) << "Infershape out_dims_vec [0]: " << out_dim_0;
-    out_dims_vec.push_back(sample_res_length);
 
     // check vec.size() < tree deepth
     // check every layer neg num <= layer nodes num
-
-    ctx->SetOutputDim("Out", framework::make_ddim(out_dims_vec));
-    ctx->SetOutputDim("Labels", framework::make_ddim(out_dims_vec));
   }
 
  protected:

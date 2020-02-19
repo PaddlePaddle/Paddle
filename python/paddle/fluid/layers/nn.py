@@ -13922,12 +13922,9 @@ def tdm_sampler(input,
     '''
     helper = LayerHelper("tdm_sampler", **locals())
     layer_nums = len(tree_layer_list)
-    sampling_nums = 0
-    for layer_sampling_nums in neg_samples_num_list:
-        sampling_nums += (layer_sampling_nums + int(output_positive))
-
     leaf_node_nums = len(tree_travel_list)
     travel_shape = [leaf_node_nums, layer_nums]
+
     travel = helper.create_parameter(
         attr=tree_travel_attr,
         shape=travel_shape,
@@ -13949,16 +13946,21 @@ def tdm_sampler(input,
         default_initializer=Constant(0))
     layer.stop_gradient = True
 
-    out = helper.create_variable_for_type_inference(dtype=dtype)
-    labels = helper.create_variable_for_type_inference(dtype=dtype)
+    outputs_dict = {}
+    for index, layer in enumerate(tree_layer_list):
+        out_layer = helper.create_variable_for_type_inference(dtype=dtype)
+        out_layer.stop_gradient = True
+        label_layer = helper.create_variable_for_type_inference(dtype=dtype)
+        label_layer.stop_gradient = True
+        outputs_dict["Sample_res_layer_{}".format(index)] = out_layer
+        outputs_dict["Sample_label_layer_{}".format(index)] = label_layer
 
     helper.append_op(
         type='tdm_sampler',
         inputs={"Input": input,
                 "Travel": travel,
                 "Layer": layer},
-        outputs={'Out': out,
-                 'Labels': labels},
+        outputs=outputs_dict,
         attrs={
             'neg_samples_num_list': neg_samples_num_list,
             'output_labels': output_labels,
@@ -13967,24 +13969,4 @@ def tdm_sampler(input,
             'seed': seed
         })
 
-    if output_list:
-        output_list = []
-        start_offset = 0
-
-        for layer_sample_num in neg_samples_num_list:
-            end_offset = start_offset + layer_sample_num + int(output_positive)
-            layer_samples = slice(
-                out, axes=[1], starts=[start_offset], ends=[end_offset])
-            layer_samples = reshape(
-                layer_samples,
-                [-1, layer_sample_num + int(output_positive), 1])
-            layer_samples.stop_gradient = True
-            output_list.append(layer_samples)
-            start_offset = end_offset
-        out = output_list
-
-    if output_labels:
-        labels = reshape(labels, [-1, 1])
-        labels.stop_gradient = True
-        return out, labels
-    return out
+    return outputs_dict

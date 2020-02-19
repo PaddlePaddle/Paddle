@@ -51,31 +51,17 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
     auto &input_tensor = input_var->Get<framework::LoDTensor>();
     auto &travel_lod_tensor = travel_var->Get<framework::LoDTensor>();
     auto &layer_lod_tensor = layer_var->Get<framework::LoDTensor>();
-    auto *out_var = context.OutputVar("Out");
-    auto *label_var = context.OutputVar("Labels");
-    auto *out_tensor = out_var->GetMutable<framework::LoDTensor>();
-    auto *label_tensor = label_var->GetMutable<framework::LoDTensor>();
+
     // get dimension
     int input_ids_num = input_tensor.numel();
     VLOG(1) << "TDM: input ids nums: " << input_ids_num;
     auto layer_nums = neg_samples_num_vec.size();
     VLOG(1) << "TDM: tree layer nums: " << layer_nums;
 
-    int sample_res_length = 0;
-    for (int layer_idx = 0; layer_idx < layer_nums; ++layer_idx) {
-      sample_res_length += (neg_samples_num_vec[layer_idx] +
-                            static_cast<int>(output_positive_flag));
-    }
-    VLOG(1) << "TDM: sample res length: " << sample_res_length;
-
-    // get all data
-    auto *input_data = input_tensor.data<int64_t>();
-    int *travel_data = const_cast<int *>(travel_lod_tensor.data<int>());
-    int *layer_data = const_cast<int *>(layer_lod_tensor.data<int>());
-    auto *output_data = out_tensor->mutable_data<int64_t>(context.GetPlace());
-    auto *label_data = label_tensor->mutable_data<int64_t>(context.GetPlace());
-    VLOG(2) << "End get input & output data";
-    // generate uniform sampler
+    std::vector<std::vector<int64_t>> tdm_res_data(layer_nums,
+                                                   std::vector<int64_t>{});
+    std::vector<std::vector<int64_t>> tdm_label_data(layer_nums,
+                                                     std::vector<int64_t>{});
 
     auto seed = context.Attr<int>("seed");
     for (int i = 0; i < input_ids_num; ++i) {
@@ -87,64 +73,85 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
       // nce sample, layer by layer
       int offset = 0;
       for (int layer_idx = 0; layer_idx < layer_nums; ++layer_idx) {
+        if (travel_data[start_offset + layer_idx] == 0) {
+          VLOG(1) << "TDM: Skip padding 0 ";
+          continue;
+        }
+
         int sample_num = neg_samples_num_vec[layer_idx];
         VLOG(1) << "TDM: Sample num: " << sample_num;
         int node_nums =
             layer_offset_lod[layer_idx + 1] - layer_offset_lod[layer_idx];
         VLOG(1) << "TDM: layer " << layer_idx + 1
                 << "has node_nums: " << node_nums;
+
         Sampler *sampler = new math::UniformSampler(node_nums - 1, seed);
         VLOG(2) << "TDM: get sampler ";
+
         // If output positive, add itself
         if (output_positive_flag) {
-          output_data[i * sample_res_length + offset] =
-              travel_data[start_offset + layer_idx];
+          tdm_res_data[layer_idx].push_back(
+              travel_data[start_offset + layer_idx]);
           VLOG(1) << "TDM: Res append positive "
                   << travel_data[start_offset + layer_idx];
-          label_data[i * sample_res_length + offset] =
-              travel_data[start_offset + layer_idx] == 0 ? 0 : 1;
+          tdm_label_data[layer_idx].push_back(1);
           VLOG(1) << "TDM: Label append positive " << 1;
           offset += 1;
         }
         VLOG(1) << "end output positive";
+
         // Sampling at layer, until samples enough
         for (int sample_index = 0; sample_index < sample_num; ++sample_index) {
-          // Avoid sampling to positive samples
+          // Avoid sampling positive samples
           int64_t sample_res = 0;
           do {
             sample_res = sampler->Sample();
           } while (travel_data[start_offset + layer_idx] ==
                    layer_data[layer_offset_lod[layer_idx] + sample_res]);
-
-          output_data[i * sample_res_length + offset] =
-              layer_data[layer_offset_lod[layer_idx] + sample_res];
+          tdm_res_data[layer_idx].push_back(
+              layer_data[layer_offset_lod[layer_idx] + sample_res]);
           VLOG(1) << "TDM: Res append negitive "
                   << layer_data[layer_offset_lod[layer_idx] + sample_res];
-          VLOG(1) << "sample res: " << sample_res
-                  << " layer_offset: " << layer_offset_lod[layer_idx]
-                  << " layer res: "
-                  << layer_data[layer_offset_lod[layer_idx] + sample_res]
-                  << " output res: "
-                  << output_data[i * sample_res_length + offset];
-          label_data[i * sample_res_length + offset] = 0;
-          VLOG(1) << "TDM: Label append negitive " << 0;
+          tdm_label_data[layer_idx].push_back(0) VLOG(1)
+              << "TDM: Label append negitive " << 0;
           offset += 1;
         }  // end layer nce
         delete sampler;
       }  // end one input nce
     }    // end all input nce
 
-    int sample_total_nums = input_ids_num * sample_res_length;
-    std::string output_str = "";
-    std::string label_str = "";
-    for (int i = 0; i < sample_total_nums; i++) {
-      output_str += std::to_string(output_data[i]);
-      output_str += ", ";
-      label_str += std::to_string(label_data[i]);
-      label_str += ", ";
+    std::vector<framework::LoDTensor *> sample_res_data;
+    std::vector<framework::LoDTensor *> sample_label_data;
+
+    for (int i = 0; i < layer_nums; ++i) {
+      std::string sample_res_name = "Sample_res_layer_" + std::to_string(i);
+      std::string sample_label_name = "Sample_label_layer_" + std::to_string(i);
+      auto *out_tensor = context.Output<framework::LoDTensor>(sample_res_name);
+      auto *label_tensor =
+          context.Output<framework::LoDTensor>(sample_label_name);
+      out_tensor->Resize(framework::make_ddim({tdm_res_data[i].size(), 1}));
+      label_tensor->Resize(framework::make_ddim({tdm_label_data[i].size(), 1}));
+      auto res_data = out_tensor->mutable_data<int64_t>(context.GetPlace());
+      auto label_data = label_tensor->mutable_data<int64_t>(context.GetPlace());
+      if (tdm_res_data[i].size() >= 1) {
+        memcpy(res_data, &tdm_res_data[i][0], tdm_res_data[i].size());
+      }
+      if (tdm_label_data[i].size() >= 1) {
+        memcpy(label_data, &tdm_label_data[i][0], tdm_label_data[i].size());
+      }
+
+      std::string output_str = "";
+      std::string label_str = "";
+      for (int i = 0; i < tdm_res_data[i].size(); i++) {
+        output_str += std::to_string(res_data[i]);
+        output_str += ", ";
+        label_str += std::to_string(label_data[i]);
+        label_str += ", ";
+      }
+      VLOG(1) << "TDM: Layer " << i << " Sample Res " << output_str;
+      VLOG(1) << "TDM: Layer " << i << " Label Res " << label_str;
     }
-    VLOG(1) << "TDM: Sample Res " << output_str;
-    VLOG(1) << "TDM: Label Res " << label_str;
+    VLOG(1) << "End get input & output data";
   }
 };
 
