@@ -2,7 +2,7 @@
 from flask import Flask, jsonify, abort, request, make_response, url_for
 from contextlib import closing
 import socket
-import request
+from flask import request
 
 app = Flask(__name__, static_url_path="")
 
@@ -35,8 +35,8 @@ def get_job_pods(job_id):
         pod.pod_id = i
         pod.running = True
         pod.addr = "127.0.0.1"
-        pod.pod_port = 6070
-        pod.trainer_ports = [6071]
+        pod.pod_port = 7070
+        pod.trainer_ports = [7071]
         pods.append(pod)
 
     job["pods"] = pods
