@@ -25,8 +25,11 @@ class TestSppOp(OpTest):
     def setUp(self):
         self.op_type = "spp"
         self.init_test_case()
-        input = np.random.random(self.shape).astype("float64")
-        nsize, csize, hsize, wsize = input.shape
+        nsize, csize, hsize, wsize = self.shape
+        data = np.array(list(range(nsize * csize * hsize * wsize)))
+        input = data.reshape(self.shape)
+        input_random = np.random.random(self.shape).astype("float64")
+        input = input + input_random
         out_level_flatten = []
         for i in range(self.pyramid_height):
             bins = np.power(2, i)
@@ -65,7 +68,7 @@ class TestSppOp(OpTest):
         self.check_grad(['X'], 'Out')
 
     def init_test_case(self):
-        self.shape = [3, 2, 4, 4]
+        self.shape = [3, 2, 16, 16]
         self.pyramid_height = 3
         self.pool2D_forward_naive = max_pool2D_forward_naive
         self.pool_type = "max"
