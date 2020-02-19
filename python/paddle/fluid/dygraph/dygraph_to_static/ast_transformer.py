@@ -109,17 +109,32 @@ class DygraphToStaticAst(gast.NodeTransformer):
     def get_static_ast(self, root):
         # save root for some analysis may need global AST
         self.root = root
-        self.class_node_dict = {}
         self.static_analysis_root = StaticAnalysisVisitor(
             root).get_node_wrapper_root()
-
-        # self.transfer_from_node_type(self.static_analysis_root)
-        # Just modify self.root now. todo: modify self.static_analysis_root
-        self.transfer_from_node_type(self.root)
+        self.transfer_from_node_type(self.static_analysis_root)
         return self.root, root.body[0].name
 
     def transfer_from_node_type(self, node):
-        self.visit(node)
+
+        BasicAPITransformer(node).ast_visit()
+
+
+class BasicAPITransformer(gast.NodeTransformer):
+    """
+    Class to transform basic API from dygraph to static graph.
+    """
+
+    def __init__(self, wrapper_root):
+        assert isinstance(
+            wrapper_root, AstNodeWrapper
+        ), "Input non-AstNodeWrapper node for the initialization of BasicAPITransformer"
+        self.wrapper_root = wrapper_root
+        self.root = wrapper_root.node
+        self.class_node_dict = {}
+
+    def ast_visit(self):
+        self.visit(self.root)
+        return self.wrapper_root
 
     def visit_ClassDef(self, node):
         self.generic_visit(node)
