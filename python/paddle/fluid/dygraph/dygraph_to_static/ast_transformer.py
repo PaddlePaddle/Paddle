@@ -163,16 +163,8 @@ class DygraphToStaticAst(gast.NodeTransformer):
 
         return node
 
-    def _is_dygraph_forward(self, func_id):
-        return func_id in self.class_node_dict
-
-    def _get_class_node(self, func_id):
-        return self.class_node_dict[func_id]
-
     def _visit_Call(self, node):
         assert isinstance(node, gast.Call)
-        if not isinstance(node.func, (gast.Name, gast.Attribute)):
-            return
 
         # Replace API `to_variable` with `fluid.layers.assign`
         if is_to_variable(node):
@@ -188,6 +180,12 @@ class DygraphToStaticAst(gast.NodeTransformer):
             return static_node
         else:
             return node
+
+    def _is_dygraph_forward(self, func_id):
+        return func_id in self.class_node_dict
+
+    def _get_class_node(self, func_id):
+        return self.class_node_dict[func_id]
 
     def _update_class_node_dict(self, node):
         assert isinstance(node, gast.Assign)

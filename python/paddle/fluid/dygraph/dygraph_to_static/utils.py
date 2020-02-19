@@ -162,6 +162,21 @@ def _add_keywords_to(node, dygraph_api_name):
     return
 
 
+def _is_paddle_dygraph_api(obj):
+    m = inspect.getmodule(obj)
+    return m is not None and m.__name__.startswith("paddle.fluid.dygraph")
+
+
+def is_dygraph_api(node):
+    assert isinstance(node, gast.Call)
+    func_src = astor.to_source(node.func)
+    try:
+        import paddle.fluid as fluid
+        return eval("_is_paddle_dygraph_api({})".format(func_src))
+    except NameError:
+        return False
+
+
 def is_to_variable(node):
     assert isinstance(node, gast.Call)
     if is_dygraph_api(node):
@@ -200,21 +215,6 @@ def to_assign_node(ori_node):
     return ori_node
 
 
-def _is_paddle_dygraph_api(obj):
-    m = inspect.getmodule(obj)
-    return m is not None and m.__name__.startswith("paddle.fluid.dygraph")
-
-
-def is_dygraph_api(node):
-    assert isinstance(node, gast.Call)
-    func_src = astor.to_source(gast.gast_to_ast(node.func))
-    try:
-        import paddle.fluid as fluid
-        return eval("_is_paddle_dygraph_api({})".format(func_src))
-    except NameError:
-        return False
-
-
 def parse_class(node):
     assert isinstance(node, gast.Call)
     paddle_class = node.func.attr  # str
@@ -227,7 +227,6 @@ def ast_to_func(ast_root, func_name, delete_on_exit=True):
     """
     Transform modified AST of decorated function into python callable object.
     """
-    ast_root = gast.gast_to_ast(ast_root)
     source = astor.to_source(ast_root)
     if six.PY2:
         source = source.encode('utf-8')
