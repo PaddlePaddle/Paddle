@@ -70,7 +70,7 @@ void PD_run() {
   int size;
   int* out_shape = PD_GetPaddleTensorShape(out_data, &size);
   CHECK(size == 2) << "The Output shape's size is NOT match.";
-  std::vector<int> ref_outshape_size({1917, 6});
+  std::vector<int> ref_outshape_size({9, 6});
   for (int i = 0; i < 2; ++i) {
     CHECK(out_shape[i] == ref_outshape_size[i])
         << "The Output's shape is NOT match.";

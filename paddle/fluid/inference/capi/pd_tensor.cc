@@ -79,7 +79,7 @@ int* PD_GetPaddleTensorShape(const PD_Tensor* tensor, int* size) {
   int s = shape.size();
   *size = s;
   int* ret_shape = new int[s];
-  ret_shape = shape.data();
+  memmove(ret_shape, shape.data(), s * sizeof(int));
   return ret_shape;
 }
 
