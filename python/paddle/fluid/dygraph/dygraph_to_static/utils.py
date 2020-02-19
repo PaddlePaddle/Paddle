@@ -134,12 +134,10 @@ def to_static_api(dygraph_class):
 
 def _add_keywords_to(node, dygraph_api_name):
     assert isinstance(node, gast.Call)
-    if dygraph_api_name is "Linear":
-        changed = False
+    if dygraph_api_name == "Linear":
         for ast_keyword in node.keywords:
             if ast_keyword.arg == "output_dim":
                 ast_keyword.arg = "size"
-                changed = True
 
         node.keywords.append(
             gast.keyword(
@@ -147,14 +145,12 @@ def _add_keywords_to(node, dygraph_api_name):
                 value=gast.Constant(
                     value=-1, kind=None)))
 
-    if dygraph_api_name is "BilinearTensorProduct":
-        changed = False
+    if dygraph_api_name == "BilinearTensorProduct":
         for ast_keyword in node.keywords:
             if ast_keyword.arg == "output_dim":
                 ast_keyword.arg = "size"
-                changed = True
 
-    if dygraph_api_name is "PRelu":
+    if dygraph_api_name == "PRelu":
         changed = False
         for ast_keyword in node.keywords:
             if ast_keyword.arg == "input":
@@ -170,7 +166,7 @@ def is_to_variable(node):
     assert isinstance(node, gast.Call)
     if is_dygraph_api(node):
         api_name = node.func.attr
-        return api_name is "to_variable"
+        return api_name == "to_variable"
     return False
 
 
@@ -267,7 +263,8 @@ def func_node_from_class(class_node):
     assert isinstance(class_node, gast.ClassDef)
     new_node = None
     for child_node in class_node.body:
-        if child_node.name == "forward":
+        if isinstance(child_node,
+                      gast.FunctionDef) and child_node.name == "forward":
             new_node = child_node
     if new_node:
         # modify func name and delete arg self

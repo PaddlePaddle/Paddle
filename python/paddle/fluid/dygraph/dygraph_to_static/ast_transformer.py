@@ -119,8 +119,7 @@ class DygraphToStaticAst(gast.NodeTransformer):
         return self.root, root.body[0].name
 
     def transfer_from_node_type(self, node):
-        ast_node = node
-        self.visit(ast_node)
+        self.visit(node)
 
     def visit_ClassDef(self, node):
         self.generic_visit(node)
