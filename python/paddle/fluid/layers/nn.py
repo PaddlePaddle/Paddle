@@ -6335,10 +6335,10 @@ def roi_pool(
         pool_out = fluid.layers.roi_pool(
                 input=x,
                 rois=rois,
-                rois_lod=rois_lod,
                 pooled_height=1,
                 pooled_width=1,
-                spatial_scale=1.0)
+                spatial_scale=1.0,
+                rois_lod=rois_lod)
     
         exe = fluid.Executor(place)
         out, = exe.run(feed={'input':input_data ,'roi':roi_data}, fetch_list=[pool_out.name])
@@ -6410,11 +6410,11 @@ def roi_align(
             rois_lod = fluid.data(name='rois_lod', shape=[None], dtype=DATATYPE)
             align_out = fluid.layers.roi_align(input=x,
                                                rois=rois,
-                                               rois_lod=rois_lod,
                                                pooled_height=7,
                                                pooled_width=7,
                                                spatial_scale=0.5,
-                                               sampling_ratio=-1)
+                                               sampling_ratio=-1,
+                                               rois_lod=rois_lod)
     """
     helper = LayerHelper('roi_align', **locals())
     dtype = helper.input_dtype()
