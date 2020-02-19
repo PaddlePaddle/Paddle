@@ -16,6 +16,8 @@ import functools
 import paddle.fluid as fluid
 import logging
 
+logger = logging.getLogger()
+
 
 class Hdfs(object):
     def __init__(self):
@@ -236,7 +238,8 @@ class Gloo(object):
 
 def get_logger(log_level):
     # initial log with loglevel
-    logger = logging.getLogger('launch')
+    #logger = logging.getLogger()
+    global logger
     logger.setLevel(log_level)
 
     log_handler = logging.StreamHandler()
@@ -244,7 +247,6 @@ def get_logger(log_level):
         '%(levelname)s %(asctime)s %(filename)s:%(lineno)d] %(message)s')
     log_handler.setFormatter(log_format)
     logger.addHandler(log_handler)
-    return logger
 
 
 def get_cluster(node_ips, node_ip, started_port, selected_gpus):

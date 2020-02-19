@@ -12,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
-from utils import get_cluster
+from utils import get_cluster, logger
 import os
-
-logger = logging.getLogger('launch')
 
 
 def get_cloud_cluster(args_node_ips, args_node_ip, args_port, selected_gpus):

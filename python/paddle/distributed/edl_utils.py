@@ -16,10 +16,7 @@ import os
 import requests
 import time
 import sys
-from utils import Cluster
-import logging
-
-logger = logging.getLogger('launch')
+from utils import Cluster, logger, Pod, Trainer
 
 
 class Edlenv(object):
@@ -32,19 +29,27 @@ class Edlenv(object):
     def is_under_edl(self):
         return self.running_env == "PADDLE_EDL"
 
-    def _parse_response_pods(r_pods):
-        for rank, r_pod in enumerate(r_pods):
+    def _parse_response_pods(self, r_pods):
+        t_rank = 0
+        pods = []
+        for rank, r_pod in enumerate(r_pods["pods"]):
+            print("r_pod:", r_pod)
             pod = Pod()
             pod.rank = rank
-            pod.id = r_pod.pod_id
-            pod.addr = r_pod.addr
-            pod.port = r_pod.pod_port
+            pod.id = r_pod["pod_id"]
+            pod.addr = r_pod["addr"]
+            pod.port = r_pod["pod_port"]
+            pod.trainers = []
 
-            for idx, t_port in enumerate(r_pod.trainer_ports):
+            for idx, t_port in enumerate(r_pod["trainer_ports"]):
                 trainer = Trainer()
-                trainer.endpoint = pod.addr + ":" + t_port
+                trainer.endpoint = "{}:{}".format(pod.addr, t_port)
                 trainer.gpu.append(idx)
+                trainer.rank = t_rank
+                t_rank += 1
+
                 pod.trainers.append(trainer)
+            pods.append(pod)
 
         return pods
 
@@ -60,20 +65,19 @@ class Edlenv(object):
                 r = requests.get(url, params=job_id)
                 d = r.json()
                 pods = d["job_id"]
-                logger.debug("get pods:{} from job_server:{}".format(
-                    pods, r.job_server))
+                logger.debug("job_server:{} response:{}".format(r.url, pods))
                 break
-            except:
+            except Exception as e:
                 step += 1
                 if step > 10:
                     logger.error(
                         "get pods from job_server:{} error, try again!".format(
-                            r.url))
+                            url))
                     sys.exit(1)
 
                 logger.warning(
-                    "get pods from job_server:{} payload:{} error, try again!".
-                    format(url, job_id))
+                    "get pods from job_server:{} payload:{} error:{}, try again!".
+                    format(url, job_id, str(e)))
                 time.sleep(3)
 
         return self._parse_response_pods(pods)
@@ -83,7 +87,7 @@ class Edlenv(object):
 
         pods = self._get_pods_from_job_server()
 
-        cluster = utils.Cluster()
+        cluster = Cluster()
         cluster.job_server = self.job_server
         cluster.job_id = self.job_id
         cluster.pods = pods
