@@ -164,7 +164,7 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
       label_str += std::to_string(label_data[i]);
       label_str += ", ";
       mask_str += std::to_string(mask_data[i]);
-      mask_str++ ", ";
+      mask_str += ", ";
     }
     VLOG(1) << "TDM: Sample Res " << output_str;
     VLOG(1) << "TDM: Label Res " << label_str;
