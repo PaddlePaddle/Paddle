@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import unittest
 import random
@@ -21,6 +19,8 @@ import numpy as np
 import paddle.fluid as fluid
 import six
 import paddle
+
+os.environ["CPU_NUM"] = "2"
 
 
 class TestFetchUnmerged(unittest.TestCase):
@@ -61,16 +61,13 @@ class TestFetchUnmerged(unittest.TestCase):
                     opt.minimize(loss)
         return [img, label], loss, prediction
 
-    def test_fetch_unmerged(self):
+    def fetch_unmerged(self, use_cuda):
         main_program = fluid.Program()
         startup_program = fluid.Program()
-        test_program = fluid.Program()
         feeds, loss, prediction = self.build_program(main_program,
                                                      startup_program, False)
-        self.build_program(test_program, startup_program, True)
-        test_program = test_program.clone(for_test=True)
 
-        place = fluid.CUDAPlace(0)
+        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(startup_program)
 
@@ -84,18 +81,19 @@ class TestFetchUnmerged(unittest.TestCase):
             paddle.reader.shuffle(
                 paddle.dataset.mnist.train(), buf_size=500),
             batch_size=batch_size)
-        test_reader = paddle.batch(
-            paddle.dataset.mnist.test(), batch_size=batch_size)
         feeder = fluid.DataFeeder(feed_list=feeds, place=place)
 
+        device_num = fluid.core.get_cuda_device_count() if use_cuda else 2
         for _ in range(iters):
             data = next(train_reader())
             loss_v, prediction_v = exe.run(binary,
                                            feed=feeder.feed(data),
                                            fetch_list=[loss, prediction],
                                            merge_result=False)
-            self.assertEqual(np.array(loss_v).shape, (4, 1))
-            self.assertEqual(np.array(prediction_v).shape, (4, 16, 10))
+            self.assertEqual(np.array(loss_v).shape, (device_num, 1))
+            self.assertEqual(
+                np.array(prediction_v).shape,
+                (device_num, batch_size / device_num, 10))
 
         for _ in range(iters):
             data = next(train_reader())
@@ -103,8 +101,13 @@ class TestFetchUnmerged(unittest.TestCase):
                                            feed=feeder.feed(data),
                                            fetch_list=[loss, prediction],
                                            merge_result=True)
-            self.assertEqual(np.array(loss_v).shape, (4, ))
-            self.assertEqual(np.array(prediction_v).shape, (64, 10))
+            self.assertEqual(np.array(loss_v).shape, (device_num, ))
+            self.assertEqual(np.array(prediction_v).shape, (batch_size, 10))
+
+    def test_fetch_unmerged(self):
+        if fluid.core.is_compiled_with_cuda():
+            self.fetch_unmerged(use_cuda=True)
+        self.fetch_unmerged(use_cuda=False)
 
 
 if __name__ == '__main__':

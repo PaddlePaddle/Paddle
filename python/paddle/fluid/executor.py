@@ -127,8 +127,6 @@ def as_numpy(tensor):
         return [as_numpy(t) for t in tensor]
     if isinstance(tensor, list):
         return [as_numpy(t) for t in tensor]
-    if isinstance(tensor, core.LoDTensor2DArray):
-        return [as_numpy(t) for t in tensor]
     assert isinstance(tensor, core.LoDTensor)
     lod = tensor.lod()
     if len(lod) > 0:
@@ -727,6 +725,9 @@ class Executor(object):
                 the input program is :code:`fluid.Program`, and the parameters(program, feed variable name
                 and fetch_list variable) of this interface remains unchanged during running.
                 The default is False.
+            merge_result(bool): This parameter indicates whether fetched variables (the variable specified
+                in the fetch list) should be merged according to the execution device dimension. If it is
+                False, the fetched results will not be merged. The default is True.
                 
         Returns:
 
