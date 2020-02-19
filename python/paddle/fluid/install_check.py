@@ -48,7 +48,7 @@ def run_check():
 
     This func should not be called only if you need to verify installation
     '''
-    print("Running Verify Fluid Program ... ")
+    print("Running Verify Paddle Program ... ")
 
     device_list = []
     if core.is_compiled_with_cuda():
@@ -56,7 +56,7 @@ def run_check():
             core.get_cuda_device_count()
         except Exception as e:
             logging.warning(
-                "You are using GPU version Paddle Fluid, But Your CUDA Device is not set properly"
+                "You are using GPU version Paddle, But Your CUDA Device is not set properly"
                 "\n Original Error is {}".format(e))
             return 0
         device_list = cuda_places()
@@ -123,16 +123,16 @@ def run_check():
 
     test_simple_exe()
 
-    print("Your Paddle Fluid works well on SINGLE GPU or CPU.")
+    print("Your Paddle works well on SINGLE GPU or CPU.")
     try:
         test_parallerl_exe()
-        print("Your Paddle Fluid works well on MUTIPLE GPU or CPU.")
+        print("Your Paddle works well on MUTIPLE GPU or CPU.")
         print(
-            "Your Paddle Fluid is installed successfully! Let's start deep Learning with Paddle Fluid now"
+            "Your Paddle is installed successfully! Let's start deep Learning with Paddle now"
         )
     except Exception as e:
         logging.warning(
-            "Your Paddle Fluid has some problem with multiple GPU. This may be caused by:"
+            "Your Paddle has some problem with multiple GPU. This may be caused by:"
             "\n 1. There is only 1 or 0 GPU visible on your Device;"
             "\n 2. No.1 or No.2 GPU or both of them are occupied now"
             "\n 3. Wrong installation of NVIDIA-NCCL2, please follow instruction on https://github.com/NVIDIA/nccl-tests "
@@ -141,5 +141,5 @@ def run_check():
 
         print("\n Original Error is: {}".format(e))
         print(
-            "Your Paddle Fluid is installed successfully ONLY for SINGLE GPU or CPU! "
-            "\n Let's start deep Learning with Paddle Fluid now")
+            "Your Paddle is installed successfully ONLY for SINGLE GPU or CPU! "
+            "\n Let's start deep Learning with Paddle now")
