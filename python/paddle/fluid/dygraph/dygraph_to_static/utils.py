@@ -160,11 +160,9 @@ def _add_keywords_to(node, dygraph_api_name):
             if ast_keyword.arg == "input":
                 ast_keyword.arg = "x"
                 changed = True
-
         if not changed:
             # todo: args and keywords of static function should be set more accurately
             pass
-
     return
 
 
@@ -201,7 +199,6 @@ def to_static_ast(node, dygraph_class, dygraph_args, dygraph_keywords):
 
 def to_assign_node(ori_node):
     assert isinstance(ori_node, gast.Call)
-
     assign_api = gast.parse('fluid.layers.assign').body[0].value
     ori_node.func = assign_api
     return ori_node

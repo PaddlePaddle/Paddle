@@ -143,7 +143,6 @@ class DygraphToStaticAst(gast.NodeTransformer):
         return node
 
     def visit_Assign(self, node):
-
         if self._update_class_node_dict(node):
             return None
 
@@ -166,7 +165,6 @@ class DygraphToStaticAst(gast.NodeTransformer):
         return node
 
     def _is_dygraph_forward(self, func_id):
-
         return func_id in self.class_node_dict
 
     def _get_class_node(self, func_id):
@@ -188,15 +186,12 @@ class DygraphToStaticAst(gast.NodeTransformer):
             paddle_class, paddle_args, paddle_keywords = parse_class(class_node)
             static_node = to_static_ast(node, paddle_class, paddle_args,
                                         paddle_keywords)
-
             return static_node
         else:
             return node
 
     def _update_class_node_dict(self, node):
-
         assert isinstance(node, gast.Assign)
-
         if isinstance(node.value, gast.Call):
             if is_to_variable(node.value):
                 return False

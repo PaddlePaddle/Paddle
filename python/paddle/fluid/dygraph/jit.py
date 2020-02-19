@@ -14,9 +14,7 @@
 
 from __future__ import print_function
 
-__all__ = [
-    'TracedLayer', 'dygraph_to_static_output', '_dygraph_to_static_output_'
-]
+__all__ = ['TracedLayer', 'dygraph_to_static_output']
 
 import gast
 import inspect
