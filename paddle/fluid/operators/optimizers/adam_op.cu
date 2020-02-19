@@ -84,6 +84,38 @@ __global__ void UpdateBetaPow(T beta1, T beta2, const T* beta1_pow_,
 }
 
 template <typename T>
+__global__ void SparseAdamCUDAKernelREG(
+    T beta1, T beta2, T epsilon, const T beta1_pow, const T beta2_pow,
+    const T* mom1_, T* mom1_out_, const T* mom2_, T* mom2_out_, const T* lr_,
+    const T* grad_, const T* param_, T* param_out_, const int64_t* rows_,
+    int64_t row_numel, int64_t row_count, bool lazy_mode, int ndim) {
+  int id = blockIdx.x * blockDim.x + threadIdx.x;
+  T lr = *lr_;
+  lr *= sqrt(1 - beta2_pow) / (1 - beta1_pow);
+
+  for (; id < ndim; id += blockDim.x * gridDim.x) {
+    auto row_idx =
+        math::BinarySearch<int64_t>(rows_, row_count, id / row_numel);
+    if (lazy_mode && row_idx < 0) {
+      return;
+    } else {
+      T mom1 = mom1_[id];
+      T mom2 = mom2_[id];
+      T p = param_[id];
+      T g = row_idx >= 0 ? grad_[row_idx * row_numel + id % row_numel] : 0;
+      mom1 = beta1 * mom1 + (1 - beta1) * g;
+      mom2 = beta2 * mom2 + (1 - beta2) * g * g;
+      p -= lr * (mom1 / (sqrt(mom2) + epsilon));
+
+      // Write back to global memory
+      mom1_out_[id] = mom1;
+      mom2_out_[id] = mom2;
+      param_out_[id] = p;
+    }
+  }
+}
+
+template <typename T>
 class AdamOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -138,24 +170,22 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
     VLOG(3) << "beta1_pow.numel() : " << beta1_pow.numel()
             << "beta2_pow.numel() : " << beta2_pow.numel();
     VLOG(3) << "param.numel(): " << param.numel();
+    PADDLE_ENFORCE_EQ(beta1_pow_out.numel(), 1,
+                      platform::errors::InvalidArgument(
+                          "beta1 pow output size should be 1, but received "
+                          "value is:%d.",
+                          beta1_pow_out.numel()));
+
+    PADDLE_ENFORCE_EQ(beta2_pow_out.numel(), 1,
+                      platform::errors::InvalidArgument(
+                          "beta2 pow output size should be 1, but received "
+                          "value is:%d.",
+                          beta2_pow_out.numel()));
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
 
     if (grad_var->IsType<framework::LoDTensor>()) {
-      PADDLE_ENFORCE_EQ(beta1_pow_out.numel(), 1,
-                        platform::errors::InvalidArgument(
-                            "beta1 pow output size should be 1, but received "
-                            "value is:%d.",
-                            beta1_pow_out.numel()));
-
-      PADDLE_ENFORCE_EQ(beta2_pow_out.numel(), 1,
-                        platform::errors::InvalidArgument(
-                            "beta2 pow output size should be 1, but received "
-                            "value is:%d.",
-                            beta2_pow_out.numel()));
-
       auto& grad = Ref(ctx.Input<LoDTensor>("Grad"), "Must set Grad");
 
-      auto& dev_ctx =
-          ctx.template device_context<platform::CUDADeviceContext>();
       // update param and moment
       int threads = 512;
       int blocks = (param.numel() + threads - 1) / threads;
@@ -177,10 +207,7 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
             beta1 * beta1_pow.template data<T>()[0];
         beta2_pow_out.template mutable_data<T>(platform::CPUPlace())[0] =
             beta2 * beta2_pow.template data<T>()[0];
-        LOG(INFO) << "+++update cpu";
       } else {
-        LOG(INFO) << "+++beta1:" << beta1 << " beta2:" << beta2
-                  << " beta1_pow:" << beta1_pow << " beta2_pow:" << beta2_pow;
         AdamKernelMEM<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
             beta1, beta2, epsilon, beta1_pow.template data<T>(),
             beta2_pow.template data<T>(), mom1.template data<T>(),
@@ -196,9 +223,6 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
             beta2_pow.template data<T>(),
             beta1_pow_out.template mutable_data<T>(ctx.GetPlace()),
             beta2_pow_out.template mutable_data<T>(ctx.GetPlace()));
-        LOG(INFO) << "+++beta1:" << beta1 << " beta2:" << beta2
-                  << " beta1_powout:" << beta1_pow_out
-                  << " beta2_powout:" << beta2_pow_out;
       }
 
     } else if (grad_var->IsType<framework::SelectedRows>()) {
@@ -230,38 +254,62 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
                    grad, &tmp_grad_merge, true);
         grad_merge_ptr = &tmp_grad_merge;
       }
-
-      BetaPowFunctor<T> beta_functor(
-          beta1, beta2, beta1_pow.template data<T>(),
-          beta2_pow.template data<T>(),
-          beta1_pow_out.template mutable_data<T>(ctx.GetPlace()),
-          beta2_pow_out.template mutable_data<T>(ctx.GetPlace()));
       auto& grad_merge = *grad_merge_ptr;
       auto& grad_tensor = grad_merge.value();
       const T* grad_data = grad_tensor.template data<T>();
       const int64_t* rows = grad_merge.rows().Data(ctx.GetPlace());
       auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
 
-      SparseAdamFunctor<T, GPUAdam> functor(
-          beta1, beta2, epsilon, beta1_pow.template data<T>(),
-          beta2_pow.template data<T>(), mom1.template data<T>(),
-          mom1_out.template mutable_data<T>(ctx.GetPlace()),
-          mom2.template data<T>(),
-          mom2_out.template mutable_data<T>(ctx.GetPlace()),
-          lr.template data<T>(), grad_data, param.template data<T>(),
-          param_out.template mutable_data<T>(ctx.GetPlace()), rows, row_numel,
-          grad_merge.rows().size(), lazy_mode);
+      if (beta1_pow.place() == platform::CPUPlace() &&
+          beta2_pow.place() == platform::CPUPlace()) {
+        int threads = 512;
+        int ndim = param.numel();
+        int blocks = (ndim + threads - 1) / threads;
 
-      // FIXME(minqiyang): remove BinarySearch in GPU later
-      platform::ForRange<platform::CUDADeviceContext> for_range(
-          static_cast<const platform::CUDADeviceContext&>(ctx.device_context()),
-          param.numel());
-      for_range(functor);
-      // update beta1 and beta2
-      platform::ForRange<platform::CUDADeviceContext> for_range_beta(
-          static_cast<const platform::CUDADeviceContext&>(ctx.device_context()),
-          beta2_pow.numel());
-      for_range_beta(beta_functor);
+        SparseAdamCUDAKernelREG<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
+            beta1, beta2, epsilon, *beta1_pow.template data<T>(),
+            *beta2_pow.template data<T>(), mom1.template data<T>(),
+            mom1_out.template mutable_data<T>(ctx.GetPlace()),
+            mom2.template data<T>(),
+            mom2_out.template mutable_data<T>(ctx.GetPlace()),
+            lr.template data<T>(), grad_data, param.template data<T>(),
+            param_out.template mutable_data<T>(ctx.GetPlace()), rows, row_numel,
+            grad_merge.rows().size(), lazy_mode, ndim);
+        // Update with cpu
+        beta1_pow_out.template mutable_data<T>(platform::CPUPlace())[0] =
+            beta1 * beta1_pow.template data<T>()[0];
+        beta2_pow_out.template mutable_data<T>(platform::CPUPlace())[0] =
+            beta2 * beta2_pow.template data<T>()[0];
+      } else {
+        BetaPowFunctor<T> beta_functor(
+            beta1, beta2, beta1_pow.template data<T>(),
+            beta2_pow.template data<T>(),
+            beta1_pow_out.template mutable_data<T>(ctx.GetPlace()),
+            beta2_pow_out.template mutable_data<T>(ctx.GetPlace()));
+
+        SparseAdamFunctor<T, GPUAdam> functor(
+            beta1, beta2, epsilon, beta1_pow.template data<T>(),
+            beta2_pow.template data<T>(), mom1.template data<T>(),
+            mom1_out.template mutable_data<T>(ctx.GetPlace()),
+            mom2.template data<T>(),
+            mom2_out.template mutable_data<T>(ctx.GetPlace()),
+            lr.template data<T>(), grad_data, param.template data<T>(),
+            param_out.template mutable_data<T>(ctx.GetPlace()), rows, row_numel,
+            grad_merge.rows().size(), lazy_mode);
+
+        // FIXME(minqiyang): remove BinarySearch in GPU later
+        platform::ForRange<platform::CUDADeviceContext> for_range(
+            static_cast<const platform::CUDADeviceContext&>(
+                ctx.device_context()),
+            param.numel());
+        for_range(functor);
+        // update beta1 and beta2
+        platform::ForRange<platform::CUDADeviceContext> for_range_beta(
+            static_cast<const platform::CUDADeviceContext&>(
+                ctx.device_context()),
+            beta2_pow.numel());
+        for_range_beta(beta_functor);
+      }
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Variable type not supported by adam_op"));
