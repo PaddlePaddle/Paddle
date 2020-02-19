@@ -104,7 +104,9 @@ framework::Scope &StepScopes::GetScope(size_t scope_id) const {
   if (!is_train_) {
     scope_id %= 2;
   }
-  PADDLE_ENFORCE_LT(scope_id, scopes_->size());
+  PADDLE_ENFORCE_LT(
+      scope_id, scopes_->size(),
+      "Input scope_id is greater than scopes size in RecurrentOp");
   return *(*scopes_)[scope_id];
 }
 
@@ -123,18 +125,24 @@ int64_t RecurrentBase::GetSequenceLength(const framework::Scope &scope) const {
   // Dim format SEQ_LEN, BATCH_SIZE, ...
   int64_t seq_len = -1;
   auto &all_inputs = Inputs(kInputs);
-  PADDLE_ENFORCE_EQ(all_inputs.empty(), false);
+  PADDLE_ENFORCE_EQ(all_inputs.empty(), false, "RecurrentOp gets empty input");
   for (auto &iname : all_inputs) {
     auto *var = scope.FindVar(iname);
-    PADDLE_ENFORCE_NOT_NULL(var);
-    PADDLE_ENFORCE_EQ(var->IsType<framework::LoDTensor>(), true);
+    PADDLE_ENFORCE_NOT_NULL(var, "RecurrentOp finds var %s is NULL", iname);
+    PADDLE_ENFORCE_EQ(var->IsType<framework::LoDTensor>(), true,
+                      "RecurrentOp only accepts LoDTensor as input but input "
+                      "var %s is not LoDTensor",
+                      iname);
     auto &dim = var->Get<framework::LoDTensor>().dims();
     if (seq_len == -1) {
       seq_len = dim[0];
     } else {
-      PADDLE_ENFORCE_EQ(seq_len, dim[0]);
+      PADDLE_ENFORCE_EQ(
+          seq_len, dim[0],
+          "Sequence lengths of inputs of RecurrentOp are NOT equal");
     }
   }
+  PADDLE_ENFORCE_GE(seq_len, 0, "RecurrentOp gets invalid sequence length.");
   return seq_len;
 }
 
@@ -260,7 +268,7 @@ StepScopes RecurrentOp::CreateStepScopes(const platform::DeviceContext &dev_ctx,
                                          const framework::Scope &scope,
                                          size_t seq_len) const {
   auto *var = scope.FindVar(Output(kStepScopes));
-  PADDLE_ENFORCE_NOT_NULL(var);
+  PADDLE_ENFORCE_NOT_NULL(var, "RecurrentOp gets empty StepScopes var");
   return StepScopes(dev_ctx, scope, var->GetMutable<StepScopeVar>(),
                     Attr<bool>(kIsTrain), seq_len);
 }
@@ -328,7 +336,9 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
         auto cur_state_grads =
             GradVarLists(Attr<std::vector<std::string>>(kStates));
 
-        PADDLE_ENFORCE_EQ(ex_state_grads.size(), cur_state_grads.size());
+        PADDLE_ENFORCE_EQ(ex_state_grads.size(), cur_state_grads.size(),
+                          "lengths of ex_states and cur_states are not equal "
+                          "in RecurrentGradOp");
         for (size_t i = 0; i < ex_state_grads.size(); ++i) {
           auto &cur_grad = cur_state_grads[i];
           auto &ex_grad = ex_state_grads[i];
@@ -380,7 +390,9 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
     {
       auto &pg_names = Outputs(kParamGrads);
       auto &p_names = Inputs(kParameters);
-      PADDLE_ENFORCE_EQ(pg_names.size(), p_names.size());
+      PADDLE_ENFORCE_EQ(pg_names.size(), p_names.size(),
+                        "Sizes of Parameters and ParamGrads are not equal in "
+                        "RecurrentGradOp");
 
       for (size_t param_id = 0; param_id < pg_names.size(); ++param_id) {
         auto inside_grad_name = framework::GradVarName(p_names[param_id]);
@@ -461,7 +473,7 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
   }
   // Delete the scope of StepScopes
   auto *var = scope.FindVar(Input(kStepScopes));
-  PADDLE_ENFORCE_NOT_NULL(var);
+  PADDLE_ENFORCE_NOT_NULL(var, "StepScopes var is empty in RecurrentGradOp");
   auto *step_scopes = var->GetMutable<StepScopeVar>();
   ClearStepScopes(dev_ctx, const_cast<framework::Scope *>(&scope), step_scopes);
 }
@@ -470,7 +482,7 @@ StepScopes RecurrentGradOp::CreateStepScopes(
     const platform::DeviceContext &dev_ctx, const framework::Scope &scope,
     size_t seq_len) const {
   auto *var = scope.FindVar(Input(kStepScopes));
-  PADDLE_ENFORCE_NOT_NULL(var);
+  PADDLE_ENFORCE_NOT_NULL(var, "StepScopes var is empty in RecurrentGradOp");
   return StepScopes(dev_ctx, scope, var->GetMutable<StepScopeVar>(),
                     Attr<bool>(kIsTrain), seq_len, true /*is_backward*/);
 }
