@@ -13951,6 +13951,7 @@ def tdm_sampler(input,
 
     out = helper.create_variable_for_type_inference(dtype=dtype)
     labels = helper.create_variable_for_type_inference(dtype=dtype)
+    mask = helper.create_variable_for_type_inference(dtype=dtype)
 
     helper.append_op(
         type='tdm_sampler',
@@ -13958,7 +13959,8 @@ def tdm_sampler(input,
                 "Travel": travel,
                 "Layer": layer},
         outputs={'Out': out,
-                 'Labels': labels},
+                 'Labels': labels,
+                 'Mask': mask},
         attrs={
             'neg_samples_num_list': neg_samples_num_list,
             'output_labels': output_labels,
@@ -13986,5 +13988,5 @@ def tdm_sampler(input,
     if output_labels:
         labels = reshape(labels, [-1, 1])
         labels.stop_gradient = True
-        return out, labels
-    return out
+        return out, labels, mask
+    return out, mask

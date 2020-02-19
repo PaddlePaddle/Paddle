@@ -60,6 +60,11 @@ class TDMSamplerOpMaker : public framework::OpProtoAndCheckerMaker {
               "Labels of sampling result, has the same shape with Out."
               "pos samples mapping value 1, neg sample mapping value 0")
         .AsDispensable();
+    AddOutput(
+        "Mask",
+        "Padding flag of Sampling result, if sampling res comes from padding,"
+        "it will be 0, else 1, lodTensor, with shape [batch_size, "
+        "layer_num, neg_num_of_layer]");
     AddComment(R"DOC("TDM Sampler")DOC");
   }
 };
@@ -98,6 +103,7 @@ class TDMSamplerOp : public framework::OperatorWithKernel {
 
     ctx->SetOutputDim("Out", framework::make_ddim(out_dims_vec));
     ctx->SetOutputDim("Labels", framework::make_ddim(out_dims_vec));
+    ctx->SetOutputDim("Mask", framework::make_ddim(out_dims_vec));
   }
 
  protected:
