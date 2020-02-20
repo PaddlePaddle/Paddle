@@ -161,9 +161,9 @@ PADDLE_CAPI_EXPORT extern const char* PD_ProgFile(
 PADDLE_CAPI_EXPORT extern const char* PD_ParamsFile(
     const PD_AnalysisConfig* config);
 
-PADDLE_CAPI_EXPORT extern void PD_EnableUseGpu(
-    PD_AnalysisConfig* config, uint64_t memory_pool_init_size_mb,
-    int device_id);
+PADDLE_CAPI_EXPORT extern void PD_EnableUseGpu(PD_AnalysisConfig* config,
+                                               int memory_pool_init_size_mb,
+                                               int device_id);
 
 PADDLE_CAPI_EXPORT extern void PD_DisableGpu(PD_AnalysisConfig* config);
 
