@@ -6282,13 +6282,12 @@ def label_smooth(label,
 
 
 @templatedoc()
-def roi_pool(
-        input,
-        rois,
-        pooled_height=1,
-        pooled_width=1,
-        spatial_scale=1.0,
-        rois_lod=None, ):
+def roi_pool(input,
+             rois,
+             pooled_height=1,
+             pooled_width=1,
+             spatial_scale=1.0,
+             rois_lod=None):
     """
     This operator implements the roi_pooling layer. 
     Region of interest pooling (also known as RoI pooling) is to perform max pooling on inputs of nonuniform sizes to obtain fixed-size feature maps (e.g. 7*7).
@@ -6365,15 +6364,14 @@ def roi_pool(
 
 
 @templatedoc()
-def roi_align(
-        input,
-        rois,
-        pooled_height=1,
-        pooled_width=1,
-        spatial_scale=1.0,
-        sampling_ratio=-1,
-        name=None,
-        rois_lod=None, ):
+def roi_align(input,
+              rois,
+              pooled_height=1,
+              pooled_width=1,
+              spatial_scale=1.0,
+              sampling_ratio=-1,
+              name=None,
+              rois_lod=None):
     """
     ${comment}
 
