@@ -104,11 +104,35 @@ class DygraphToStaticAst(gast.NodeTransformer):
         return self.static_analysis_root
 
     def transfer_from_node_type(self, node):
+        # Generic transformation
+        self.visit(node.node)
+
         # Transform basic api of dygraph to static graph
         BasicApiTransformer(node).ast_visit()
 
         # Transform all if/else statement of Dygraph into Static Graph.
         IfElseTransformer(node).ast_visit()
+
+    def visit_FunctionDef(self, node):
+        if self.decorate_func_name is None:
+            self.decorate_func_name = node.name
+        self.generic_visit(node)
+        # Remove the decorated name of dygraph_to_static
+        if hasattr(node, 'decorator_list'):
+            decorator_list = [
+                d for d in node.decorator_list if d.id != DECORATOR_NAME
+            ]
+            node.decorator_list = decorator_list
+        return node
+
+    def get_module_name(self):
+        """
+        Return the main function name which will be used as module name
+        in ast_to_func.
+        """
+        # Should consider BaseAPITransformer which add new module name in Yamei's PR.
+        assert self.decorate_func_name, "decorate_func_name shall not be None."
+        return self.decorate_func_name
 
 
 class BasicApiTransformer(gast.NodeTransformer):
@@ -140,10 +164,7 @@ class BasicApiTransformer(gast.NodeTransformer):
         return new_node
 
     def visit_FunctionDef(self, node):
-        if self.decorate_func_name is None:
-            self.decorate_func_name = node.name
         self.generic_visit(node)
-        # Remove the decorated name of dygraph_to_static
         if hasattr(node, 'decorator_list'):
             decorator_list = [
                 d for d in node.decorator_list if d.id != DECORATOR_NAME
@@ -210,12 +231,3 @@ class BasicApiTransformer(gast.NodeTransformer):
                 return True
             # TODO: node.value is not dygraph class
         return False
-
-    def get_module_name(self):
-        """
-        Return the main function name which will be used as module name
-        in ast_to_func.
-        """
-        # Should consider BaseAPITransformer which add new module name in Yamei's PR.
-        assert self.decorate_func_name, "decorate_func_name shall not be None."
-        return self.decorate_func_name
