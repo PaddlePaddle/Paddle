@@ -32,14 +32,6 @@ __device__ inline double real_log(double x) { return ::log(x); }
 )";
 
 static constexpr char predefined_cuda_functions_fp16[] = R"(
-#if CUDA_VERSION >= 9010
-#include <cuda_fp16.h>
-
-__device__ inline float16 real_exp(float16 x) { return ::hexp(x); }
-__device__ inline float16 real_log(float16 x) { return ::hlog(x); }
-
-#else  // CUDA_VERSION >= 9010
-
 __device__ inline float real_exp(float x) { return ::expf(x); }
 __device__ inline float real_log(float x) { return ::logf(x); }
 
@@ -69,7 +61,6 @@ __device__ float __half2float(const __half h) {
 
 #undef __HALF_TO_US
 #undef __HALF_TO_CUS
-#endif  // CUDA_VERSION >= 9010
 
 typedef __half float16;
 
