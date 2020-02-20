@@ -2149,6 +2149,15 @@ class Operator(object):
 
         return attr_map
 
+    def _is_optimize_op(self):
+        op_maker = core.op_proto_and_checker_maker
+        OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
+        op_role = self.desc.attr(op_maker.kOpRoleAttrName())
+        if op_role == int(OPTIMIZE):
+            return True
+        else:
+            return False
+
 
 class Block(object):
     """
@@ -4067,8 +4076,12 @@ class Program(object):
                 global_block = self.global_block()
                 for idx, op in enumerate(global_block.ops):
                     if name in op.output_arg_names:
-                        target_op = op
-                        break
+                        if op._is_optimize_op() and not op in targets:
+                            continue
+                        else:
+                            target_op = op
+                            break
+                #TODO(zhiqiu): maybe we should not break?
 
                 t = target_op
                 if t is None:
@@ -4136,10 +4149,14 @@ class Program(object):
                 # variable here.
                 target_op = None
                 global_block = self.global_block()
+
                 for idx, op in enumerate(global_block.ops):
                     if name in op.output_arg_names:
-                        target_op = op
-                        break
+                        if op._is_optimize_op() and not op in targets:
+                            continue
+                        else:
+                            target_op = op
+                            break
 
                 t = target_op
                 if t is None:
@@ -4147,6 +4164,7 @@ class Program(object):
                                      "associated operator that generates it.")
 
             targets_idx.append([t.block.idx, t.idx])
+        print('target_idx', targets_idx)
         res = Program()
         res.desc, pruned_origin_block_id_map = core.prune(self.desc,
                                                           set(feeded_var_names),

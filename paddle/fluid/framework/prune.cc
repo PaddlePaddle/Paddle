@@ -174,18 +174,36 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
   std::vector<bool> should_run;
   for (auto op_iter = ops.rbegin(); op_iter != ops.rend(); ++op_iter) {
     auto& op_desc = *op_iter;
-    if (IsTarget(op_desc) || HasDependentOutputVar(op_desc, *dependent_vars)) {
-      // insert its input to the dependency graph
+
+    if (IsTarget(op_desc) ||
+        (HasDependentOutputVar(op_desc, *dependent_vars) &&
+         GetOpRole(op_desc) != static_cast<int>(OpRole::kOptimize))) {
+      // NOTE(zhiqiu): since optimize op takes parameter as inputs and output,
+      // it may introduce wrong dependency graph. For train mode, the optimize
+      // op should be in targets, so is not need and not right to mark optimize
+      // op by its outputs. For eval/infer mode, there is no optimize op in
+      // program.
       for (auto& var : op_desc.inputs()) {
+        // insert its input to the dependency graph
         for (auto& argu : var.arguments()) {
           if (feed_var_names.count(argu) == 0) {
             dependent_vars->insert(argu);
           }
         }
       }
+
       should_run.push_back(true);
+      std::cout << op_desc.type() << " " << IsTarget(op_desc) << " "
+                << HasDependentOutputVar(op_desc, *dependent_vars) << " "
+                << GetOpRole(op_desc) << "true" << std::endl;
+      for (auto var : *dependent_vars) {
+        std::cout << var << " ";
+      }
+      std::cout << std::endl;
     } else {
       should_run.push_back(false);
+      std::cout << op_desc.type() << " "
+                << "false" << std::endl;
     }
   }
 
@@ -284,7 +302,7 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
   for (const auto& name : var_names) {
     *var_field->Add() = var_map[name];
   }
-}
+}  // namespace framework
 
 // TODO(fengjiayi): Prune() could be inplaced to avoid unnecessary copies
 std::map<int, int> Prune(const proto::ProgramDesc& input,

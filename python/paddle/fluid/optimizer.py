@@ -51,6 +51,15 @@ __all__ = [
 ]
 
 
+class TrainOperator(object):
+    def __init__(self, optimize_ops, params_grads):
+        self._optimize_ops = optimize_ops
+        self._params_grads = params_grads
+
+    def optimize_ops():
+        return self._optimize_ops
+
+
 class Optimizer(object):
     """Optimizer Base class.
 

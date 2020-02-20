@@ -23,7 +23,7 @@ import numpy as np
 from .wrapped_decorator import signature_safe_contextmanager
 import six
 from .data_feeder import convert_dtype
-from .framework import Program, default_main_program, Variable, convert_np_dtype_to_dtype_
+from .framework import Program, default_main_program, Variable, Operator, convert_np_dtype_to_dtype_
 from . import core
 from . import compiler
 from .. import compat as cpt
@@ -633,17 +633,58 @@ class Executor(object):
         feed_names = list(feed.keys())
         print(feed_names)
 
-        targets = [item for item in fetch_list]
-        # get all optimize op 
-        op_maker = core.op_proto_and_checker_maker
-        OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
-        for idx, op in enumerate(origin_program.global_block().ops):
+        def _is_optimize_op(op):
             op_maker = core.op_proto_and_checker_maker
+            OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
             op_role = op.desc.attr(op_maker.kOpRoleAttrName())
             if op_role == int(OPTIMIZE):
-                targets.append(op)
+                return True
+            else:
+                return False
+
+        targets = []
+        has_optimize = False
+        for item in fetch_list:
+            if isinstance(item, Variable) or isinstance(item, str):
+                targets.append(item)
+            elif isinstance(item, Operator):
+                if _is_optimize_op(item):
+                    has_optimize = True
+                targets.append(item)
+            elif isinstance(item, list):
+                for i in item:
+                    if isinstance(i, Variable) or isinstance(i, str):
+                        res.append(i)
+                    elif isinstance(i, Operator):
+                        if _is_optimize_op(i):
+                            has_optimize = True
+                        targets.append(i)
+
+        # get all optimize op 
+        if not has_optimize:
+            op_maker = core.op_proto_and_checker_maker
+            OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
+            for block in origin_program.blocks:
+                for op in block.ops:
+                    if _is_optimize(op):
+                        targets.append(op)
+
+        print('targets')
+        for t in targets:
+            if isinstance(t, Operator):
+                print(t.type)
+            elif isinstance(t, Variable):
+                print(t.name)
+            else:
+                print(t)
 
         pruned_program = origin_program._prune_with_input(feed_names, targets)
+
+        import paddle.fluid.transpiler.details.program_utils as pu
+        pu.program_to_code(pruned_program, skip_op_callstack=True)
+
+        for block in pruned_program.blocks:
+            print([op.type for op in block.ops])
 
         if compiled:
             program._program = pruned_program
@@ -696,6 +737,34 @@ class Executor(object):
                             % feed_name)
 
         return feed
+
+    def _update_fetch(self, program, fetch_list):
+        """
+        Update the fetch list, remove the fetch item which is optimize op.  
+
+        Notes: This is a very low level API. Users should not use this API
+        directly. 
+
+        Args:
+            program(Program): the pruned program.
+            feed(list): feed dict or list.
+
+        Returns:
+            feed:(list)  updated fetch_list.
+        """
+        res = []
+        for item in fetch_list:
+            if isinstance(item, Variable) or isinstance(item, str):
+                res.append(item)
+            elif isinstance(item, Operator):
+                continue
+            elif isinstance(item, list):
+                for i in item:
+                    if isinstance(i, Variable) or isinstance(i, str):
+                        res.append(i)
+                    elif isinstance(i, Operator):
+                        continue
+        return res
 
     def close(self):
         """
@@ -928,6 +997,8 @@ class Executor(object):
             pruned_program = self._prune_program(program, feed, fetch_list)
             feed = self._update_feed(pruned_program, feed)
             program = pruned_program
+
+        fetch_list = self._update_fetch(program, fetch_list)
 
         compiled = isinstance(program, compiler.CompiledProgram)
 
