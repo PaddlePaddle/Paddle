@@ -453,10 +453,10 @@ def get_filenames(path):
                 module = eval(line.split(' ', 1)[0]).__module__
             except AttributeError: 
                 continue
-            if len(module.split('.')) - 2 > 0:
-                filename = ''
+            if len(module.split('.')) > 2:
+                filename = '../python/'
                 module_py = '%s.py' % module.split('.')[-1]
-                for i in range (2, len(module.split('.')) - 1):
+                for i in range (0, len(module.split('.')) - 1):
                     filename = filename + '%s/' % module.split('.')[i]
                 filename = filename + module_py       
             else:
@@ -657,3 +657,4 @@ else:
             print("Mistakes found in sample codes")
             exit(1)
     print("Sample code check is successful!")
+    
