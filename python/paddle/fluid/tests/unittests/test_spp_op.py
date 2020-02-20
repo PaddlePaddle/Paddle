@@ -58,7 +58,6 @@ class TestSppOp(OpTest):
             'pyramid_height': self.pyramid_height,
             'pooling_type': self.pool_type
         }
-
         self.outputs = {'Out': output.astype('float64')}
 
     def test_check_output(self):
