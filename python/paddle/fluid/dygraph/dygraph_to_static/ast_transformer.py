@@ -143,7 +143,7 @@ class BasicApiTransformer(gast.NodeTransformer):
     def __init__(self, wrapper_root):
         assert isinstance(
             wrapper_root, AstNodeWrapper
-        ), "Input non-AstNodeWrapper node for the initialization of BasicApiTransformer"
+        ), "Input non-AstNodeWrapper node for the initialization of BasicApiTransformer."
         self.wrapper_root = wrapper_root
         self.root = wrapper_root.node
         self.class_node_dict = {}
@@ -151,17 +151,6 @@ class BasicApiTransformer(gast.NodeTransformer):
     def ast_visit(self):
         self.visit(self.root)
         return self.wrapper_root
-
-    def visit_ClassDef(self, node):
-        self.generic_visit(node)
-        if hasattr(node, 'decorator_list'):
-            decorator_list = [
-                d for d in node.decorator_list if d.id != DECORATOR_NAME
-            ]
-            node.decorator_list = decorator_list
-
-        new_node = func_node_from_class(node)
-        return new_node
 
     def visit_FunctionDef(self, node):
         self.generic_visit(node)
@@ -174,7 +163,6 @@ class BasicApiTransformer(gast.NodeTransformer):
 
     def visit_Assign(self, node):
         if self._update_class_node_dict(node):
-
             return None
 
         value_node = node.value

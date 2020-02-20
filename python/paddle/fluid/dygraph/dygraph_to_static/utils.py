@@ -151,58 +151,6 @@ def to_assign_node(ori_node):
     return ori_node
 
 
-def ast_to_func(ast_root, func_name, delete_on_exit=True):
-    """
-    Transform modified AST of decorated function into python callable object.
-    """
-    source = astor.to_source(gast.gast_to_ast(ast_root))
-    if six.PY2:
-        source = source.encode('utf-8')
-        f = tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False)
-    else:
-        f = tempfile.NamedTemporaryFile(
-            mode='w', suffix='.py', delete=False, encoding='utf-8')
-
-    # TODO: A more elegant way to import fluid is needed
-    import_str = "import paddle.fluid as fluid\n"
-
-    with f:
-        module_name = os.path.basename(f.name)
-        f.write(import_str)
-        f.write(source)
-    if delete_on_exit:
-        atexit.register(lambda: os.remove(f.name))
-
-    module = imp.load_source(module_name, f.name)
-    assert hasattr(module, func_name), \
-        "Function: {} doesn't exist in the Module transformed from AST.".format(func_name)
-    return getattr(module, func_name)
-
-
-def func_node_from_class(class_node):
-    """
-    Only get the method `forward` of class. And modify the name of `forward` to
-    class_node.name + '_' + new_node.name. eg: ConvLayer_forward
-    """
-    assert isinstance(class_node, gast.ClassDef)
-    new_node = None
-    for child_node in class_node.body:
-        if isinstance(child_node,
-                      gast.FunctionDef) and child_node.name == "forward":
-            new_node = child_node
-    if new_node:
-        # modify func name and delete arg self
-        new_func_name = class_node.name + '_' + new_node.name
-        new_node.name = new_func_name
-
-        arg_list = new_node.args.args
-        new_node.args.args = [arg for arg in arg_list if arg.id != "self"]
-        return new_node
-    else:
-        raise ValueError("Class {class_name} must have the method 'forward'".
-                         format(class_node.name))
-
-
 def update_args_of_func(node, dygraph_node, method_name):
     assert isinstance(node, gast.Call)
     if method_name not in ["__init__", "forward"]:
