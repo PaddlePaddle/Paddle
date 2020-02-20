@@ -60,7 +60,6 @@ class TestDygraphBasicAPI_to_variable(unittest.TestCase):
     def test_transformed_static_result(self):
         dygraph_res = self.get_dygraph_output()
         static_res = self.get_static_output()
-        # print(static_res)
         self.assertTrue(np.array_equal(static_res, dygraph_res))
 
 
@@ -264,8 +263,6 @@ class TestDygraphBasicAPI(unittest.TestCase):
     def test_transformed_static_result(self):
         dygraph_res = self.get_dygraph_output()
         static_res = self.get_static_output()
-        # print("dygraph_res\n", dygraph_res)
-        # print("static_res\n", static_res)
         self.assertTrue(np.array_equal(static_res, dygraph_res))
 
 
@@ -334,7 +331,7 @@ class TestDygraphBasicAPI_Embedding(TestDygraphBasicAPI):
 
     def test_transformed_static_result(self):
         # the input of embedding must be 'int64', but 'int64' is not support by assign
-        pass
+        return
 
 
 class TestDygraphBasicAPI_GroupNorm(TestDygraphBasicAPI):
@@ -344,7 +341,7 @@ class TestDygraphBasicAPI_GroupNorm(TestDygraphBasicAPI):
 
     def test_transformed_static_result(self):
         # todo: wrong answer
-        pass
+        return
 
 
 class TestDygraphBasicAPI_GRUUnit(unittest.TestCase):
@@ -372,15 +369,8 @@ class TestDygraphBasicAPI_GRUUnit(unittest.TestCase):
         return static_res
 
     def test_transformed_static_result(self):
-        # todo wrong answer
-        pass
-        # dygraph_res = self.get_dygraph_output()
-        # static_res = self.get_static_output()
-        # print("-"*20)
-        # print("dygraph_res \n", dygraph_res)
-        # print("static_res \n", static_res)
-        # print("-"*20)
-        # self.assertTrue(np.array_equal(static_res, dygraph_res))
+        # diff exists in static and dygraph API
+        return
 
 
 class TestDygraphBasicAPI_LayerNorm(TestDygraphBasicAPI):
@@ -408,7 +398,7 @@ class TestDygraphBasicAPI_SpectralNorm(TestDygraphBasicAPI):
 
     def test_transformed_static_result(self):
         # randomness exists in SpectralNorm
-        pass
+        return
 
 
 # 2. test 7 APIs that inherit from LearningRateDecay

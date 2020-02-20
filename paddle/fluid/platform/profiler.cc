@@ -141,9 +141,7 @@ void PopEvent(const std::string &name) {
 RecordEvent::RecordEvent(const std::string &name, const RecordRole role)
     : is_enabled_(false), start_ns_(PosixInNsec()), role_(role) {
   if (g_state == ProfilerState::kDisabled || name.empty()) return;
-  if ((g_tracer_option == TracerOption::kOpDetail &&
-       role_ != RecordRole::kInnerOp) ||
-      (g_tracer_option == TracerOption::kDefault &&
+  if ((g_tracer_option == TracerOption::kDefault &&
        role != RecordRole::kOrdinary))
     return;
   // lock is not needed, the code below is thread-safe
