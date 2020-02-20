@@ -16,30 +16,57 @@
 
 #ifndef _WIN32
 
+#include <memory>
 #include <string>
+
 #include "paddle/fluid/memory/allocation/allocator.h"
 
 namespace paddle {
 namespace memory {
 namespace allocation {
 
-void* GetMemoryMapAddr(std::string ipc_name, size_t size);
-
-class MemoryMapAllocation : public Allocation {
+class MemoryMapWriterAllocation : public Allocation {
  public:
-  explicit MemoryMapAllocation(void* ptr, size_t size, std::string ipc_name)
-      : Allocation(ptr, size, platform::CPUPlace(), true, ipc_name) {}
+  explicit MemoryMapWriterAllocation(void* ptr, size_t size,
+                                     std::string ipc_name)
+      : Allocation(ptr, size, platform::CPUPlace()), ipc_name_(ipc_name) {}
 
-  ~MemoryMapAllocation() override;
+  inline std::string ipc_name() const { return ipc_name_; }
+
+  ~MemoryMapWriterAllocation() override;
+
+ private:
+  std::string ipc_name_;
 };
 
-class MemoryMapAllocator : public Allocator {
+class MemoryMapReaderAllocation : public Allocation {
+ public:
+  explicit MemoryMapReaderAllocation(void* ptr, size_t size,
+                                     std::string ipc_name)
+      : Allocation(ptr, size, platform::CPUPlace()), ipc_name_(ipc_name) {}
+
+  inline std::string ipc_name() const { return ipc_name_; }
+
+  ~MemoryMapReaderAllocation() override;
+
+ private:
+  std::string ipc_name_;
+};
+
+class MemoryMapAllocator {
+ public:
+  MemoryMapAllocator() {}
+  ~MemoryMapAllocator() {}
+
+  std::shared_ptr<MemoryMapWriterAllocation> Allocate(size_t size);
+
+  std::shared_ptr<MemoryMapReaderAllocation> Rebuild(std::string ipc_name,
+                                                     size_t size);
+
+  void Free(MemoryMapWriterAllocation* mmap_allocation);
+
  private:
   std::string GetIPCName();
-
- protected:
-  void FreeImpl(Allocation* allocation) override;
-  Allocation* AllocateImpl(size_t size) override;
 };
 
 }  // namespace allocation

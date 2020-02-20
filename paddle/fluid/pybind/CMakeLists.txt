@@ -9,6 +9,7 @@ endif()
 
 if(NOT WIN32)
   set(PYBIND_DEPS ${PYBIND_DEPS} data_loader)
+  set(PYBIND_DEPS ${PYBIND_DEPS} mmap_allocator)
   if (WITH_NCCL)
     set(PYBIND_DEPS ${PYBIND_DEPS} nccl_context)
   endif()

@@ -30,17 +30,11 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-void* GetMemoryMapAddr(std::string ipc_name, size_t size) {
-  int fd = shm_open(ipc_name.c_str(), O_RDONLY, 0644);
-  void* ptr = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
-  PADDLE_ENFORCE_NE(ptr, MAP_FAILED,
-                    platform::errors::Unavailable(
-                        "Memory map failed when rebuild shared memory."));
-  close(fd);
-  return ptr;
+MemoryMapWriterAllocation::~MemoryMapWriterAllocation() {
+  munmap(this->ptr(), this->size());
 }
 
-MemoryMapAllocation::~MemoryMapAllocation() {
+MemoryMapReaderAllocation::~MemoryMapReaderAllocation() {
   munmap(this->ptr(), this->size());
   shm_unlink(this->ipc_name().c_str());
 }
@@ -58,11 +52,15 @@ std::string MemoryMapAllocator::GetIPCName() {
   return handle;
 }
 
-Allocation* MemoryMapAllocator::AllocateImpl(size_t size) {
+std::shared_ptr<MemoryMapWriterAllocation> MemoryMapAllocator::Allocate(
+    size_t size) {
   std::string ipc_name = GetIPCName();
   int flags = O_RDWR | O_CREAT;
 
   int fd = shm_open(ipc_name.c_str(), flags, 0644);
+  PADDLE_ENFORCE_NE(
+      fd, -1, platform::errors::Unavailable("File descriptor %s open failed",
+                                            ipc_name.c_str()));
   PADDLE_ENFORCE_EQ(ftruncate(fd, size), 0,
                     platform::errors::Unavailable(
                         "Fruncate a file to a specified length failed!"));
@@ -73,14 +71,29 @@ Allocation* MemoryMapAllocator::AllocateImpl(size_t size) {
                         "Memory map failed when create shared memory."));
   close(fd);
 
-  return new Allocation(ptr, size, platform::CPUPlace(), true, ipc_name);
+  return std::make_shared<MemoryMapWriterAllocation>(ptr, size, ipc_name);
 }
 
-void MemoryMapAllocator::FreeImpl(Allocation* allocation) {
-  void* ptr = allocation->ptr();
-  munmap(ptr, allocation->size());
-  // shm_unlink(allocation->ipc_name().c_str());
-  delete allocation;
+std::shared_ptr<MemoryMapReaderAllocation> MemoryMapAllocator::Rebuild(
+    std::string ipc_name, size_t size) {
+  int fd = shm_open(ipc_name.c_str(), O_RDONLY, 0644);
+  PADDLE_ENFORCE_NE(
+      fd, -1, platform::errors::Unavailable("File descriptor %s open failed",
+                                            ipc_name.c_str()));
+
+  void* ptr = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
+  PADDLE_ENFORCE_NE(ptr, MAP_FAILED,
+                    platform::errors::Unavailable(
+                        "Memory map failed when rebuild shared memory."));
+  close(fd);
+  return std::make_shared<MemoryMapReaderAllocation>(ptr, size, ipc_name);
+}
+
+void MemoryMapAllocator::Free(MemoryMapWriterAllocation* mmap_allocation) {
+  void* ptr = mmap_allocation->ptr();
+  munmap(ptr, mmap_allocation->size());
+  shm_unlink(mmap_allocation->ipc_name().c_str());
+  delete mmap_allocation;
 }
 
 }  // namespace allocation

@@ -36,10 +36,5 @@ extern AllocationPtr Alloc(const platform::Place& place, size_t size);
 
 extern AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size);
 
-#ifndef _WIN32
-extern std::shared_ptr<Allocation> AllocMapShared(const platform::Place& place,
-                                                  size_t size);
-#endif
-
 }  // namespace memory
 }  // namespace paddle

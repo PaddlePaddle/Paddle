@@ -17,7 +17,6 @@ limitations under the License. */
 #include <cstdint>
 #include <cstring>
 #include <memory>
-#include <string>
 #include <typeindex>
 #include <utility>
 #include <vector>
@@ -172,12 +171,6 @@ class Tensor {
 
   void ResetHolderWithType(std::shared_ptr<memory::Allocation> holder,
                            const proto::VarType::Type type);
-
-#ifndef _WIN32
-  void ShareMemory();
-#endif
-
-  std::string DebugString() const;
 
  private:
   /*! holds the memory block if allocated. */

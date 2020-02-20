@@ -82,13 +82,8 @@ class Allocator;
  */
 class Allocation {
  public:
-  inline Allocation(void* ptr, size_t size, platform::Place place,
-                    bool is_shared = false, std::string ipc_name = "")
-      : ptr_(ptr),
-        size_(size),
-        place_(place),
-        is_shared_(is_shared),
-        ipc_name_(ipc_name) {}
+  inline Allocation(void* ptr, size_t size, platform::Place place)
+      : ptr_(ptr), size_(size), place_(place) {}
 
   Allocation(const Allocation& o) = delete;
   Allocation& operator=(const Allocation& o) = delete;
@@ -115,10 +110,6 @@ class Allocation {
 
   inline const platform::Place& place() const { return place_; }
 
-  inline bool is_shared() const { return is_shared_; }
-
-  inline std::string ipc_name() const { return ipc_name_; }
-
   virtual ~Allocation() {}
 
  private:
@@ -136,9 +127,6 @@ class Allocation {
   void* ptr_;
   size_t size_;
   platform::Place place_;
-  // IPC shared memory configs
-  bool is_shared_;
-  std::string ipc_name_;
 
   /**
    * NOTE(zjl): Since decorated_allocators_ is usually a small vector.

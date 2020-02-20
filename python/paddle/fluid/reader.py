@@ -34,9 +34,8 @@ if sys.version_info[0] == 2:
     import Queue as queue
 else:
     import queue
-# NOTE: [ avoid hanging ] These value is used in getting data from another process
-QUEUE_GET_TIMEOUT = 5
-MAX_GET_FAILED_TIME = 12
+# NOTE: [ avoid hanging & failed quickly ] These value is used in getting data from another process
+QUEUE_GET_TIMEOUT = 60
 
 __all__ = ['PyReader', 'DataLoader']
 
@@ -383,6 +382,16 @@ class DygraphGeneratorLoader(DataLoaderBase):
     def iterable(self):
         return self._iterable
 
+    # NOTE: If there is still data in the queue when the main process finishes reading,
+    # the data in the queue needs to be cleared. The LoDTensor read by the main process
+    # from the child process will automatically clear the memory-mapped file.
+    def _clear_data_queue(self):
+        while True:
+            try:
+                self._data_queue.get_nowait()
+            except queue.Empty:
+                break
+
     def _wait_thread_ends(self):
         thread = self._thread
         if thread is not None:
@@ -502,20 +511,8 @@ class DygraphGeneratorLoader(DataLoaderBase):
             # set signal handler
             core._set_process_signal_handler()
 
-            for sample in self._batch_reader():
-                if sample is None:
-                    raise ValueError(
-                        "Sample in reader is None. Please check whether your dataset is valid."
-                    )
-                tensor_list = []
-                for item in sample:
-                    if not isinstance(item, core.LoDTensor):
-                        self._check_input_array(item)
-                        tmp = core.LoDTensor()
-                        tmp.set(item, core.CPUPlace())
-                        tmp._share_memory()
-                        item = tmp
-                    tensor_list.append(item)
+            for batch in self._batch_reader():
+                tensor_list = core._convert_to_tensor_list(batch)
                 self._data_queue.put(tensor_list)
             self._data_queue.put(None)
         except KeyboardInterrupt:
@@ -527,7 +524,6 @@ class DygraphGeneratorLoader(DataLoaderBase):
             six.reraise(*sys.exc_info())
 
     def _reader_thread_loop_with_process(self):
-        get_sample_try_time = 0
         while not self._thread_done_event.is_set():
             try:
                 # NOTE: [ avoid hanging ] Even with carefully designed data dependencies 
@@ -535,21 +531,18 @@ class DygraphGeneratorLoader(DataLoaderBase):
                 # still happen when data in queue is corrupted (e.g., due to 
                 # Queue.cancel_join_thread or unexpected exit). So we set a timeout whenever 
                 # we try to get data from `data_queue`
+                # NOTE: [ avoid failed quickly ] Here, the time setting of QUEUE_GET_TIMEOUT
+                # is relatively long, currently it is 60 seconds, because in some models,
+                # if the reader child process starts with a heavy burden, the child process
+                # has no enough time to put the data in the queue when the main process
+                # start trying to get data from queue. At this time, the child thread needs
+                # to wait slightly longer
                 tensor_list = self._data_queue.get(timeout=QUEUE_GET_TIMEOUT)
-                get_sample_try_time = 0
             except queue.Empty:
-                get_sample_try_time += 1
-                if get_sample_try_time > MAX_GET_FAILED_TIME:
-                    self._exit_thread_unexpectedly()
-                    raise RuntimeError(
-                        "DataLoader reader thread has not read data for a long time (60s)."
-                    )
-                else:
-                    # NOTE: [ avoid failed quickly ] Sometimes if the reader child process has a heavy burden,
-                    # the child process has no enough time to put the data in the queue when the main process
-                    # start trying to get data from queue. At this time, failure to read data should not be
-                    # counted as a fatal error, there should be a certain number of attempts.
-                    continue
+                self._exit_thread_unexpectedly()
+                raise RuntimeError(
+                    "DataLoader reader thread has not read data for a long time (60s)."
+                )
 
             if not self._thread_done_event.is_set():
                 if tensor_list is not None:

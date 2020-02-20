@@ -24,9 +24,6 @@
 #include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
 #include "paddle/fluid/memory/allocation/locked_allocator.h"
-#ifndef _WIN32
-#include "paddle/fluid/memory/allocation/mmap_allocator.h"
-#endif
 #include "paddle/fluid/memory/allocation/naive_best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
 #include "paddle/fluid/platform/cpu_info.h"
@@ -90,9 +87,6 @@ class AllocatorFacadePrivate {
     }
     InitZeroSizeAllocators();
     InitSystemAllocators();
-#ifndef _WIN32
-    InitMemoryMapAllocators();
-#endif
 
     if (FLAGS_gpu_allocator_retry_time > 0) {
       WrapCUDARetryAllocator(FLAGS_gpu_allocator_retry_time);
@@ -112,17 +106,6 @@ class AllocatorFacadePrivate {
                    "No such allocator for the place, %s", place);
     return iter->second;
   }
-
-#ifndef _WIN32
-  inline const std::shared_ptr<Allocator>& GetMapAllocator(
-      const platform::Place& place, size_t size) {
-    auto iter = memory_map_allocator_.find(place);
-    PADDLE_ENFORCE_NE(iter, memory_map_allocator_.end(),
-                      platform::errors::NotFound(
-                          "No such allocator for the place, %s", place));
-    return iter->second;
-  }
-#endif
 
  private:
   void InitSystemAllocators() {
@@ -193,15 +176,6 @@ class AllocatorFacadePrivate {
     }
   }
 
-#ifndef _WIN32
-  void InitMemoryMapAllocators() {
-    std::vector<platform::Place> places;
-    places.emplace_back(platform::CPUPlace());
-    memory_map_allocator_[places.front()] =
-        std::make_shared<MemoryMapAllocator>();
-  }
-#endif
-
   static void CheckAllocThreadSafe(const AllocatorMap& allocators) {
     for (auto& pair : allocators) {
       PADDLE_ENFORCE_EQ(pair.second->IsAllocThreadSafe(), true,
@@ -229,9 +203,6 @@ class AllocatorFacadePrivate {
   AllocatorMap allocators_;
   AllocatorMap zero_size_allocators_;
   AllocatorMap system_allocators_;
-#ifndef _WIN32
-  AllocatorMap memory_map_allocator_;
-#endif
 };
 
 // Pimpl. Make interface clean.
@@ -254,14 +225,6 @@ AllocationPtr AllocatorFacade::Alloc(const platform::Place& place,
                                      size_t size) {
   return m_->GetAllocator(place, size)->Allocate(size);
 }
-
-#ifndef _WIN32
-std::shared_ptr<Allocation> AllocatorFacade::AllocMapShared(
-    const platform::Place& place, size_t size) {
-  return std::shared_ptr<Allocation>(
-      m_->GetMapAllocator(place, size)->Allocate(size));
-}
-#endif
 
 }  // namespace allocation
 }  // namespace memory

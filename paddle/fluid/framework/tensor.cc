@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <string>
-
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/var_type.h"
 
@@ -69,40 +67,7 @@ void* Tensor::mutable_data(const platform::Place& place,
   return mutable_data(place, type_, requested_size);
 }
 
-#ifndef _WIN32
-void Tensor::ShareMemory() {
-  // 1. alloc shared memory
-  PADDLE_ENFORCE_EQ(platform::is_cpu_place(holder_->place()), true,
-                    platform::errors::PermissionDenied(
-                        "Only Tensor on CPU can allocate shared memory."));
-  PADDLE_ENFORCE_GT(
-      holder_->size(), 0,
-      platform::errors::PreconditionNotMet(
-          "The Tensor memory size is 0, no need allocate shared memory."));
-  auto shared_holder =
-      memory::AllocMapShared(platform::CPUPlace(), holder_->size());
-  // 2. copy data
-  memory::Copy(platform::CPUPlace(), shared_holder->ptr(), platform::CPUPlace(),
-               holder_->ptr(), holder_->size());
-  // 2. reset holder
-  ResetHolder(shared_holder);
-}
-#endif
-
-std::string Tensor::DebugString() const {
-  std::stringstream ss;
-  ss << "Tensor Info: ";
-  ss << "Type: " << this->type() << ", ";
-  ss << "DDim: " << this->dims() << ", ";
-  ss << "Layout: " << this->layout_ << ", ";
-  ss << "Place: " << this->place() << ", ";
-  ss << "Offset: " << this->offset_ << ", ";
-  ss << "DataAddr: " << this->holder_->ptr();
-  return ss.str();
-}
-
 Tensor& Tensor::ShareDataWith(const Tensor& src) {
-  VLOG(3) << src.DebugString();
   src.check_memory_size();
   *this = src;
   return *this;

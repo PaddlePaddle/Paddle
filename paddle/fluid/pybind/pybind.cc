@@ -569,9 +569,6 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("_get_float_element", TensorGetElement<float>)
       .def("_set_double_element", TensorSetElement<double>)
       .def("_get_double_element", TensorGetElement<double>)
-#ifndef _WIN32
-      .def("_share_memory", &Tensor::ShareMemory)
-#endif
       .def("_place", [](Tensor &self) { return self.place(); })
       .def("_dtype", [](Tensor &self) { return self.type(); })
       .def("_share_data_with", &Tensor::ShareDataWith)
@@ -870,18 +867,23 @@ PYBIND11_MODULE(core_noavx, m) {
       .def(py::pickle(
           [](const LoDTensor &t) {  // __getstate__
             auto holder = t.Holder();
-            if (!platform::is_cpu_place(holder->place()))
-              throw std::runtime_error(
+            PADDLE_ENFORCE_EQ(
+              platform::is_cpu_place(holder->place()), true,
+              platform::errors::PreconditionNotMet(
                   "LoDTensor is not on CPU."
-                  "Now only LoDTensor on CPU can be serialized.");
-            if (!holder->is_shared())
-              throw std::runtime_error(
-                  "LoDTensor is not on shared memory."
-                  "Now only LoDTensor on shared memory can be serialized.");
+                  "Now only LoDTensor on CPU can be serialized."));
+            auto* mmap_writer_allocation =
+              dynamic_cast<memory::allocation::MemoryMapWriterAllocation *>(
+                holder.get());
+            PADDLE_ENFORCE_NOT_NULL(mmap_writer_allocation,
+              platform::errors::PreconditionNotMet(
+                "LoDTensor is not in shared memory."
+                "Now only LoDTensor on shared memory can be serialized."));
             int type_idx = static_cast<int>(t.type());
 
-            return py::make_tuple(holder->ipc_name(), holder->size(), type_idx,
-                                  vectorize(t.dims()), t.lod());
+            return py::make_tuple(mmap_writer_allocation->ipc_name(),
+                                  mmap_writer_allocation->size(),
+                                  type_idx, vectorize(t.dims()), t.lod());
           },
           [](py::tuple t) {  // __setstate__
             if (t.size() != 5)
@@ -891,16 +893,13 @@ PYBIND11_MODULE(core_noavx, m) {
             LoDTensor tensor;
 
             // 2. Rebuild Allocation
+            memory::allocation::MemoryMapAllocator alloctor;
             std::string ipc_name = t[0].cast<std::string>();
             size_t size = t[1].cast<size_t>();
-            void *shared_ptr =
-                memory::allocation::GetMemoryMapAddr(ipc_name, size);
-            auto shared_holder =
-                std::make_shared<memory::allocation::MemoryMapAllocation>(
-                    shared_ptr, size, ipc_name);
+            auto shared_reader_holder = alloctor.Rebuild(ipc_name, size);
 
             // 3. Rebuild LoDTensor
-            tensor.ResetHolderWithType(shared_holder,
+            tensor.ResetHolderWithType(shared_reader_holder,
                 static_cast<proto::VarType::Type>(t[2].cast<int>()));
             tensor.Resize(make_ddim(t[3].cast<std::vector<int>>()));
             tensor.set_lod(t[4].cast<framework::LoD>());
