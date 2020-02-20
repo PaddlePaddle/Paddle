@@ -1504,8 +1504,8 @@ class TestLayer(LayerTest):
                 shape=[1], dtype='float32', value=0.1)
             b = fluid.layers.fill_constant(
                 shape=[1], dtype='float32', value=0.23)
-            out = fluid.layers.cond(a < b, lambda: less_than_branch(a, b),
-                                    lambda: greater_equal_branch(a, b))
+            out = fluid.layers.cond(a >= b, lambda: greater_equal_branch(a, b),
+                                    lambda: less_than_branch(a, b))
             place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
             ) else fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -1518,6 +1518,9 @@ class TestLayer(LayerTest):
             out = layers.cond(a < b, lambda: less_than_branch(a, b),
                               lambda: greater_equal_branch(a, b))
             dynamic_res = out.numpy()
+            with self.assertRaises(TypeError):
+                layers.cond(a < b, 'str', 'str')
+                layers.cond(a >= b, 'str', 'str')
 
         self.assertTrue(np.array_equal(static_res, dynamic_res))
 
