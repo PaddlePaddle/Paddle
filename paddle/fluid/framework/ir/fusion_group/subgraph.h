@@ -168,14 +168,14 @@ class SubGraph {
     for (auto* n : nodes_set_) {
       if (n && n->IsVar() && n->Var()) {
         if (n->Var()->GetType() != proto::VarType::LOD_TENSOR) {
-          VLOG(2) << "All var node in a subgraph should hold a LoDTensor.";
+          // All var node in a subgraph should hold a LoDTensor.
           return false;
         }
         if (is_first) {
           data_type = n->Var()->GetDataType();
           is_first = false;
         } else if (n->Var()->GetDataType() != data_type) {
-          VLOG(2) << "DataType of VarDesc in a subgraph is not the same.";
+          // DataType of VarDesc in a subgraph is not the same.
           return false;
         }
       }
@@ -187,7 +187,7 @@ class SubGraph {
     } else if (data_type == proto::VarType::FP16) {
       data_type_ = "float16";
     } else {
-      VLOG(2) << "Only support fp32 and fp64 in fusion_group.";
+      VLOG(2) << "Only support fp32, fp64 and fp16 in fusion_group.";
       return false;
     }
     return true;

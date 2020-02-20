@@ -60,6 +60,8 @@ class FusionGroupPassTest(PassTest):
             shape = var.shape
             if var.dtype == fluid.core.VarDesc.VarType.FP32:
                 dtype = "float32"
+            elif var.dtype == fluid.core.VarDesc.VarType.FP64:
+                dtype = "float64"
             elif var.dtype == fluid.core.VarDesc.VarType.FP16:
                 dtype = "float16"
             else:
@@ -105,6 +107,14 @@ class FusionGroupPassTest2(FusionGroupPassTest):
 
         self.fetch_list = [tmp_1, tmp_2, tmp_3]
         self.num_fused_ops = 2
+
+
+class FusionGroupPassTestFP64(FusionGroupPassTest):
+    def setUp(self):
+        self.build_program("float64")
+        self.feeds = self._feed_random_data(self.feed_vars)
+        self.pass_names = "fusion_group_pass"
+        self.fused_op_type = "fusion_group"
 
 
 class FusionGroupPassTestFP16(FusionGroupPassTest):
