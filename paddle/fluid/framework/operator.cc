@@ -167,7 +167,13 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     }
 
     {
-      platform::RecordEvent record_event(Type());
+      // TODO(wangchaochaohu) : refine code to use only one RecordEvent)
+      // in order to record different op type cost time
+      // and different op name cost time,we set two event.
+      platform::RecordEvent op_type_record_event(Type());
+      auto op_name = platform::OpName(outputs_, Type());
+      platform::RecordEvent op_name_record_event(
+          op_name, platform::RecordRole::kUniqueOp);
       RunImpl(scope, place);
     }
 
@@ -950,7 +956,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   std::vector<std::string> transfered_inplace_vars;
   Scope* transfer_scope = nullptr;
   {
-    platform::RecordEvent record_event("prepare_data_inner_op");
+    platform::RecordEvent record_event("prepare_data",
+                                       platform::RecordRole::kInnerOp);
     transfer_scope = PrepareData(scope, *kernel_type_, &transfered_inplace_vars,
                                  runtime_ctx);
   }
@@ -963,7 +970,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 
   if (!all_kernels_must_compute_runtime_shape_) {
-    platform::RecordEvent record_event("infer_shape_inner_op");
+    platform::RecordEvent record_event("infer_shape",
+                                       platform::RecordRole::kInnerOp);
     RuntimeInferShapeContext infer_shape_ctx(*this, *runtime_ctx);
     this->InferShape(&infer_shape_ctx);
   }
@@ -975,7 +983,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
   {
-    platform::RecordEvent record_event("compute_inner_op");
+    platform::RecordEvent record_event("compute",
+                                       platform::RecordRole::kInnerOp);
     (*kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx,
                                      kernel_configs));
   }
