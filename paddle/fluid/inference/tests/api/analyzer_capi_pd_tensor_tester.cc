@@ -68,7 +68,7 @@ void PD_run() {
   LOG(INFO) << *result;
   PD_DeletePaddleTensor(input);
   int size;
-  int* out_shape = PD_GetPaddleTensorShape(out_data, &size);
+  const int* out_shape = PD_GetPaddleTensorShape(out_data, &size);
   CHECK(size == 2) << "The Output shape's size is NOT match.";
   std::vector<int> ref_outshape_size({9, 6});
   for (int i = 0; i < 2; ++i) {

@@ -117,8 +117,8 @@ PADDLE_CAPI_EXPORT extern PD_DataType PD_GetPaddleTensorDType(
 PADDLE_CAPI_EXPORT extern PD_PaddleBuf* PD_GetPaddleTensorData(
     const PD_Tensor* tensor);
 
-PADDLE_CAPI_EXPORT extern int* PD_GetPaddleTensorShape(const PD_Tensor* tensor,
-                                                       int* size);
+PADDLE_CAPI_EXPORT extern const int* PD_GetPaddleTensorShape(
+    const PD_Tensor* tensor, int* size);
 
 // AnalysisPredictor
 PADDLE_CAPI_EXPORT extern bool PD_PredictorRun(const PD_AnalysisConfig* config,
