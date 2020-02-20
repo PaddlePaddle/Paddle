@@ -60,10 +60,10 @@ def _dygraph_to_static_output_(dygraph_func):
         root = gast.parse(dygraph_code)
         # Transform AST
         dygraph_to_static = DygraphToStaticAst()
-        root = dygraph_to_static.get_static_ast(root)
+        root_wrapper = dygraph_to_static.get_static_ast(root)
         func_name = dygraph_to_static.get_module_name()
 
-        static_func, file_name = ast_to_func(root, func_name)
+        static_func, file_name = ast_to_func(root_wrapper.node, func_name)
 
         return static_func(*args, **kwargs)
 
