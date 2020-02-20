@@ -322,13 +322,21 @@ struct EventItem {
   float ratio;
 };
 
+struct OverHead {
+  bool print = false;
+  double total_time = 0.;
+  float compute_ratio = 0.0f;
+  float framework_ratio = 0.0f;
+  EventItem memcpy_item;
+  std::vector<EventItem> memcpy_item_vec;
+};
+
 // Print results
 void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
                    const std::multimap<std::string, EventItem> &child_map,
-                   const double total_time, const float compute_ratio,
-                   const std::string &sorted_domain, const size_t name_width,
-                   const size_t data_width, bool merge_thread, int print_depth,
-                   int remove_len) {
+                   const OverHead &overhead, const std::string &sorted_domain,
+                   const size_t name_width, const size_t data_width,
+                   bool merge_thread, int print_depth, int remove_len) {
   if (print_depth == 0) {
     // Output header information
     std::cout << "\n------------------------->"
@@ -356,17 +364,37 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
     std::cout << "Sorted by " << sorted_domain
               << " in descending order in the same thread\n\n";
 
-    if (merge_thread &&
-        platform::GetTracerOption() != platform::TracerOption::kDefault) {
-      float framework_ratio = 1.0f - compute_ratio;
-      double compute_time = total_time * compute_ratio;
-      double framework_time = total_time * framework_ratio;
-      std::cout << "Total time: " << total_time << " ms" << std::endl;
-      std::cout << "Computation overhead: The time: " << compute_time << " ms, "
-                << "The ratio: " << compute_ratio * 100 << "%" << std::endl;
-      std::cout << "Framework overhead: The time: " << framework_time << " ms, "
-                << "The ratio: " << framework_ratio * 100 << "%" << std::endl
+    if (overhead.print) {
+      double compute_time = overhead.total_time * overhead.compute_ratio;
+      double framework_time = overhead.total_time * overhead.framework_ratio;
+      std::cout.setf(std::ios::left);
+      std::cout << "Total time: " << overhead.total_time << " ms" << std::endl;
+      std::cout << std::setw(25) << "Computation overhead"
+                << "Total: " << std::setw(data_width) << compute_time
+                << "Ratio: " << overhead.compute_ratio * 100 << "%"
                 << std::endl;
+      std::cout << std::setw(25) << "Framework overhead"
+                << "Total: " << std::setw(data_width) << framework_time
+                << "Ratio: " << overhead.framework_ratio * 100 << "%"
+                << std::endl;
+
+      std::cout << std::setw(25) << "GPUMemcpy"
+                << "Calls: " << std::setw(data_width)
+                << overhead.memcpy_item.calls
+                << "Total: " << std::setw(data_width)
+                << overhead.memcpy_item.total_time
+                << "Ratio: " << overhead.memcpy_item.ratio * 100 << "%"
+                << std::endl;
+      for (size_t i = 0; i < overhead.memcpy_item_vec.size(); ++i) {
+        EventItem item = overhead.memcpy_item_vec[i];
+        if (item.calls != 0) {
+          std::cout << std::setw(25) << "  " + item.name
+                    << "Calls: " << std::setw(data_width) << item.calls
+                    << "Total: " << std::setw(data_width) << item.total_time
+                    << "Ratio: " << item.ratio * 100 << "%" << std::endl;
+        }
+      }
+      std::cout << std::endl;
     }
     // Output events table
     std::cout.setf(std::ios::left);
@@ -420,9 +448,8 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
                 << std::setw(data_width) << event_item.max_time
                 << std::setw(data_width) << event_item.ave_time
                 << std::setw(data_width) << event_item.ratio << std::endl;
-      PrintProfiler(child_table, child_map, total_time, compute_ratio,
-                    sorted_domain, name_width, data_width, merge_thread,
-                    print_depth + 1, 0);
+      PrintProfiler(child_table, child_map, overhead, sorted_domain, name_width,
+                    data_width, merge_thread, print_depth + 1, 0);
     }
   }
 }
@@ -550,6 +577,33 @@ void SetEvent(bool merge_thread, Event analyze_event, size_t *max_name_width,
     }
   }
 }
+
+void ComputeOverhead(const std::multimap<std::string, EventItem> &sub_child_map,
+                     OverHead *overhead) {
+  EventItem memcpy_async = {"GpuMemcpyAsync", 0, 0., 0., 0., 0., 0., 0., 0.0f};
+  EventItem memcpy_sync = {"GpuMemcpySync", 0, 0., 0., 0., 0., 0., 0., 0.0f};
+  for (auto it = sub_child_map.begin(); it != sub_child_map.end(); it++) {
+    if (it->second.name.find("compute") != std::string::npos) {
+      overhead->compute_ratio += it->second.ratio;
+    }
+    if (it->second.name.find("GpuMemcpyAsync") != std::string::npos) {
+      memcpy_async.calls += it->second.calls;
+      memcpy_async.total_time += it->second.total_time;
+      memcpy_async.ratio += it->second.ratio;
+    } else if (it->second.name.find("GpuMemcpySync") != std::string::npos) {
+      memcpy_sync.calls += it->second.calls;
+      memcpy_sync.total_time += it->second.total_time;
+      memcpy_sync.ratio += it->second.ratio;
+    }
+  }
+  overhead->framework_ratio = 1.0f - overhead->compute_ratio;
+  overhead->memcpy_item.calls = memcpy_async.calls + memcpy_sync.calls;
+  overhead->memcpy_item.total_time =
+      memcpy_async.total_time + memcpy_sync.total_time;
+  overhead->memcpy_item.ratio = memcpy_async.ratio + memcpy_sync.ratio;
+  overhead->memcpy_item_vec = {memcpy_async, memcpy_sync};
+}
+
 // Parse the event list and output the profiling report
 void ParseEvents(const std::vector<std::vector<Event>> &events,
                  bool merge_thread,
@@ -579,8 +633,7 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
   std::vector<std::vector<EventItem>> events_table;
   std::multimap<std::string, EventItem> child_map;
   size_t max_name_width = 0;
-  float op_compute_ratio = 0.0f;
-  double total_time = 0.;
+  OverHead overhead;
 
   for (size_t i = 0; i < (*analyze_events).size(); i++) {
     double total = 0.;  // the total time in one thread
@@ -623,7 +676,6 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
       }
     }
 
-    if (merge_thread) total_time = total;
     // average time
     for (auto &item : main_event_items) {
       item.ave_time = item.total_time / item.calls;
@@ -632,10 +684,13 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
     for (auto it = sub_child_map.begin(); it != sub_child_map.end(); it++) {
       it->second.ratio = it->second.total_time / total;
       it->second.ave_time = it->second.total_time / it->second.calls;
-      if (merge_thread &&
-          it->second.name.find("compute") != std::string::npos) {
-        op_compute_ratio += it->second.ratio;
-      }
+    }
+
+    if ((*analyze_events).size() == 1 &&
+        platform::GetTracerOption() != platform::TracerOption::kDefault) {
+      overhead.total_time = total;
+      overhead.print = true;
+      ComputeOverhead(sub_child_map, &overhead);
     }
 
     // sort
@@ -659,8 +714,8 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
   }
 
   // Print report
-  PrintProfiler(events_table, child_map, total_time, op_compute_ratio,
-                sorted_domain, max_name_width + 8, 12, merge_thread, 0, 0);
+  PrintProfiler(events_table, child_map, overhead, sorted_domain,
+                max_name_width + 8, 12, merge_thread, 0, 0);
 }
 
 struct MemoryProfierReport {
