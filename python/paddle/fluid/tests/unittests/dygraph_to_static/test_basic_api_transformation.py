@@ -35,7 +35,7 @@ def dyfunc_to_variable(x):
     return res
 
 
-class TestDygraphBasicAPI_to_variable(unittest.TestCase):
+class TestDygraphBasicApi_ToVariable(unittest.TestCase):
     def setUp(self):
         self.input = np.random.random((1, 1, 3, 20)).astype('float32')
         self.dygraph_func = dyfunc_to_variable
@@ -63,7 +63,7 @@ class TestDygraphBasicAPI_to_variable(unittest.TestCase):
         self.assertTrue(np.array_equal(static_res, dygraph_res))
 
 
-# 1. test APIs that inherit from layers.Layer
+# 1. test Apis that inherit from layers.Layer
 def dyfunc_BarchNorm(input):
     batch_norm = fluid.BatchNorm(num_channels=10)
     hidden = batch_norm(input)
@@ -174,9 +174,9 @@ def dyfunc_Prelu(input):
     return res
 
 
-class TestDygraphBasicAPI(unittest.TestCase):
+class TestDygraphBasicApi(unittest.TestCase):
     # Compare results of dynamic graph and transformed static graph function which only
-    # includes basic API.
+    # includes basic Api.
 
     def setUp(self):
         self.input = np.random.random((1, 4, 3, 3)).astype('float32')
@@ -211,13 +211,13 @@ class TestDygraphBasicAPI(unittest.TestCase):
         self.assertTrue(np.array_equal(static_res, dygraph_res))
 
 
-class TestDygraphBasicAPI_BatchNorm(TestDygraphBasicAPI):
+class TestDygraphBasicApi_BatchNorm(TestDygraphBasicApi):
     def setUp(self):
         self.input = np.random.random(size=(3, 10, 3, 7)).astype('float32')
         self.dygraph_func = dyfunc_BarchNorm
 
 
-class TestDygraphBasicAPI_BilinearTensorProduct(TestDygraphBasicAPI):
+class TestDygraphBasicApi_BilinearTensorProduct(TestDygraphBasicApi):
     def setUp(self):
         self.input1 = np.random.random((5, 5)).astype('float32')
         self.input2 = np.random.random((5, 4)).astype('float32')
@@ -245,49 +245,49 @@ class TestDygraphBasicAPI_BilinearTensorProduct(TestDygraphBasicAPI):
         return static_res[0]
 
 
-class TestDygraphBasicAPI_Conv2D(TestDygraphBasicAPI):
+class TestDygraphBasicApi_Conv2D(TestDygraphBasicApi):
     def setUp(self):
         self.input = np.random.random((1, 3, 3, 5)).astype('float32')
         self.dygraph_func = dyfunc_Conv2D
 
 
-class TestDygraphBasicAPI_Conv3D(TestDygraphBasicAPI):
+class TestDygraphBasicApi_Conv3D(TestDygraphBasicApi):
     def setUp(self):
         self.input = np.random.random((1, 3, 3, 3, 5)).astype('float32')
         self.dygraph_func = dyfunc_Conv3D
 
 
-class TestDygraphBasicAPI_Conv2DTranspose(TestDygraphBasicAPI):
+class TestDygraphBasicApi_Conv2DTranspose(TestDygraphBasicApi):
     def setUp(self):
         self.input = np.random.random((5, 3, 32, 32)).astype('float32')
         self.dygraph_func = dyfunc_Conv2DTranspose
 
 
-class TestDygraphBasicAPI_Conv3DTranspose(TestDygraphBasicAPI):
+class TestDygraphBasicApi_Conv3DTranspose(TestDygraphBasicApi):
     def setUp(self):
         self.input = np.random.random((5, 3, 12, 32, 32)).astype('float32')
         self.dygraph_func = dyfunc_Conv3DTranspose
 
 
-class TestDygraphBasicAPI_LayerNorm(TestDygraphBasicAPI):
+class TestDygraphBasicApi_LayerNorm(TestDygraphBasicApi):
     def setUp(self):
         self.input = np.random.random((3, 32, 32)).astype('float32')
         self.dygraph_func = dyfunc_LayerNorm
 
 
-class TestDygraphBasicAPI_Linear(TestDygraphBasicAPI):
+class TestDygraphBasicApi_Linear(TestDygraphBasicApi):
     def setUp(self):
         self.input = np.random.random((4, 3, 10)).astype('float32')
         self.dygraph_func = dyfunc_Linear
 
 
-class TestDygraphBasicAPI_Prelu(TestDygraphBasicAPI):
+class TestDygraphBasicApi_Prelu(TestDygraphBasicApi):
     def setUp(self):
         self.input = np.ones([5, 20, 10, 10]).astype('float32')
         self.dygraph_func = dyfunc_Prelu
 
 
-# 2. test APIs that inherit from LearningRateDecay
+# 2. test Apis that inherit from LearningRateDecay
 def dyfunc_CosineDecay():
     base_lr = 0.1
     CosineDecay = fluid.dygraph.CosineDecay(
@@ -352,7 +352,7 @@ def dyfunc_PolynomialDecay():
     return lr
 
 
-class TestDygraphBasicAPI_CosineDecay(unittest.TestCase):
+class TestDygraphBasicApi_CosineDecay(unittest.TestCase):
     def setUp(self):
         self.dygraph_func = dyfunc_CosineDecay
 
@@ -382,32 +382,32 @@ class TestDygraphBasicAPI_CosineDecay(unittest.TestCase):
         self.assertTrue(np.array_equal(static_res, dygraph_res))
 
 
-class TestDygraphBasicAPI_ExponentialDecay(TestDygraphBasicAPI_CosineDecay):
+class TestDygraphBasicApi_ExponentialDecay(TestDygraphBasicApi_CosineDecay):
     def setUp(self):
         self.dygraph_func = dyfunc_ExponentialDecay
 
 
-class TestDygraphBasicAPI_InverseTimeDecay(TestDygraphBasicAPI_CosineDecay):
+class TestDygraphBasicApi_InverseTimeDecay(TestDygraphBasicApi_CosineDecay):
     def setUp(self):
         self.dygraph_func = dyfunc_InverseTimeDecay
 
 
-class TestDygraphBasicAPI_NaturalExpDecay(TestDygraphBasicAPI_CosineDecay):
+class TestDygraphBasicApi_NaturalExpDecay(TestDygraphBasicApi_CosineDecay):
     def setUp(self):
         self.dygraph_func = dyfunc_NaturalExpDecay
 
 
-class TestDygraphBasicAPI_NoamDecay(TestDygraphBasicAPI_CosineDecay):
+class TestDygraphBasicApi_NoamDecay(TestDygraphBasicApi_CosineDecay):
     def setUp(self):
         self.dygraph_func = dyfunc_NoamDecay
 
 
-class TestDygraphBasicAPI_PiecewiseDecay(TestDygraphBasicAPI_CosineDecay):
+class TestDygraphBasicApi_PiecewiseDecay(TestDygraphBasicApi_CosineDecay):
     def setUp(self):
         self.dygraph_func = dyfunc_PiecewiseDecay
 
 
-class TestDygraphBasicAPI_PolynomialDecay(TestDygraphBasicAPI_CosineDecay):
+class TestDygraphBasicApi_PolynomialDecay(TestDygraphBasicApi_CosineDecay):
     def setUp(self):
         self.dygraph_func = dyfunc_PolynomialDecay
 
@@ -420,7 +420,7 @@ def _dygraph_fn():
         np.random.random((1))
 
 
-class TestDygraphAPIRecognition(unittest.TestCase):
+class TestDygraphApiRecognition(unittest.TestCase):
     def setUp(self):
         self.src = inspect.getsource(_dygraph_fn)
         self.root = gast.parse(self.src)

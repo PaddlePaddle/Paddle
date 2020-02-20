@@ -67,7 +67,7 @@ class IfElseTransformer(gast.NodeTransformer):
 
     def visit_Call(self, node):
         # Remove `numpy()` statement, like `Tensor.numpy()[i]` -> `Tensor[i]`
-        # Todo: should be removed. it may be considered as basic api transformation.
+        # TODO: should be removed. it may be considered as basic api transformation.
         if isinstance(node.func, gast.Attribute):
             attribute = node.func
             if attribute.attr == 'numpy':
@@ -105,13 +105,13 @@ class DygraphToStaticAst(gast.NodeTransformer):
 
     def transfer_from_node_type(self, node):
         # Transform basic api of dygraph to static graph
-        BasicAPITransformer(node).ast_visit()
+        BasicApiTransformer(node).ast_visit()
 
         # Transform all if/else statement of Dygraph into Static Graph.
         IfElseTransformer(node).ast_visit()
 
 
-class BasicAPITransformer(gast.NodeTransformer):
+class BasicApiTransformer(gast.NodeTransformer):
     """
     Class to transform basic API from dygraph to static graph.
     """
@@ -119,7 +119,7 @@ class BasicAPITransformer(gast.NodeTransformer):
     def __init__(self, wrapper_root):
         assert isinstance(
             wrapper_root, AstNodeWrapper
-        ), "Input non-AstNodeWrapper node for the initialization of BasicAPITransformer"
+        ), "Input non-AstNodeWrapper node for the initialization of BasicApiTransformer"
         self.wrapper_root = wrapper_root
         self.root = wrapper_root.node
         self.class_node_dict = {}
@@ -208,7 +208,7 @@ class BasicAPITransformer(gast.NodeTransformer):
                 target_str = astor.to_source(node.targets[0])
                 self.class_node_dict[target_str] = node_value
                 return True
-            # todo: node.value is not dygraph class
+            # TODO: node.value is not dygraph class
         return False
 
     def get_module_name(self):

@@ -163,7 +163,7 @@ def ast_to_func(ast_root, func_name, delete_on_exit=True):
         f = tempfile.NamedTemporaryFile(
             mode='w', suffix='.py', delete=False, encoding='utf-8')
 
-    # Todo: A more elegant way to import fluid is needed
+    # TODO: A more elegant way to import fluid is needed
     import_str = "import paddle.fluid as fluid\n"
 
     with f:
