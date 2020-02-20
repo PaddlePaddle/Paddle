@@ -1517,7 +1517,11 @@ class TestLayer(LayerTest):
             b = fluid.dygraph.to_variable(np.array([0.23]).astype('float32'))
             out = layers.cond(a < b, lambda: less_than_branch(a, b),
                               lambda: greater_equal_branch(a, b))
+            out2 = layers.cond(a >= b, lambda: greater_equal_branch(a, b),
+                               lambda: less_than_branch(a, b))
             dynamic_res = out.numpy()
+            dynamic_res2 = out2.numpy()
+            self.assertTrue(np.array_equal(dynamic_res, dynamic_res2))
             with self.assertRaises(TypeError):
                 layers.cond(a < b, 'str', 'str')
                 layers.cond(a >= b, 'str', 'str')
