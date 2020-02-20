@@ -1524,6 +1524,7 @@ class TestLayer(LayerTest):
             self.assertTrue(np.array_equal(dynamic_res, dynamic_res2))
             with self.assertRaises(TypeError):
                 layers.cond(a < b, 'str', 'str')
+            with self.assertRaises(TypeError):
                 layers.cond(a >= b, 'str', 'str')
 
         self.assertTrue(np.array_equal(static_res, dynamic_res))
