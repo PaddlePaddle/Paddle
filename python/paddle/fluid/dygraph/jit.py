@@ -16,10 +16,12 @@ __all__ = ['TracedLayer', 'dygraph_to_static_output']
 
 import gast
 import inspect
+import textwrap
 
 from ..wrapped_decorator import wrap_decorator
 from .base import program_desc_tracing_guard, switch_to_static_graph
 from .dygraph_to_static import DygraphToStaticAst
+from .dygraph_to_static.ast_utils import ast_to_func
 from .layers import Layer
 from paddle.fluid import core
 from paddle.fluid.framework import Program, Block, Variable, _dygraph_tracer, dygraph_only, _dygraph_guard, _current_expected_place, in_dygraph_mode
@@ -54,14 +56,15 @@ def _dygraph_to_static_output_(dygraph_func):
     def __impl__(*args, **kwargs):
         # Get AST from dygraph function
         dygraph_code = inspect.getsource(dygraph_func)
+        dygraph_code = textwrap.dedent(dygraph_code)
         root = gast.parse(dygraph_code)
+        # Transform AST
+        dygraph_to_static = DygraphToStaticAst()
+        root_wrapper = dygraph_to_static.get_static_ast(root)
+        func_name = dygraph_to_static.get_module_name()
 
-        root = DygraphToStaticAst().get_static_ast(root)
+        static_func, file_name = ast_to_func(root_wrapper.node, func_name)
 
-        # TODO static_func should a callable from AST, like
-        # static_func = ast_to_func(root)
-        # currently just use dygraph_func
-        static_func = dygraph_func
         return static_func(*args, **kwargs)
 
     return __impl__
