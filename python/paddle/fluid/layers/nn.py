@@ -13950,8 +13950,13 @@ def tdm_sampler(input,
     layer.stop_gradient = True
 
     out = helper.create_variable_for_type_inference(dtype=dtype)
+    out.stop_gradient = True
+
     labels = helper.create_variable_for_type_inference(dtype=dtype)
+    labels.stop_gradient = True
+
     mask = helper.create_variable_for_type_inference(dtype=dtype)
+    mask.stop_gradient = True
 
     helper.append_op(
         type='tdm_sampler',
@@ -13986,7 +13991,5 @@ def tdm_sampler(input,
         out = output_list
 
     if output_labels:
-        labels = reshape(labels, [-1, 1])
-        labels.stop_gradient = True
         return out, labels, mask
     return out, mask
