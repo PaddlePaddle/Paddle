@@ -446,33 +446,25 @@ def get_filenames(path):
 
     '''
     filenames = []
-    API_spec = '%s/%s' % (os.path.abspath(os.path.join(os.getcwd(), "..")),
-                          path)
+    API_spec = '%s/%s' % (os.path.abspath(os.path.join(os.getcwd(), "..")), path)
     with open(API_spec) as f:
         for line in f.readlines():
             try:
                 module = eval(line.split(' ', 1)[0]).__module__
-            except AttributeError:
+            except AttributeError: 
                 continue
-            if len(module.split('.')) == 3:
-                filename = '%s.py' % module.split('.')[2]
-            elif len(module.split('.')) == 4:
-                filename = '%s/%s.py' % (module.split('.')[2],
-                                         module.split('.')[3])
-            elif len(module.split('.')) == 5:
-                filename = '%s/%s/%s.py' % (module.split('.')[2],
-                                            module.split('.')[3],
-                                            module.split('.')[4])
-            elif len(module.split('.')) == 6:
-                filename = '%s/%s/%s/%s.py' % (
-                    module.split('.')[2], module.split('.')[3],
-                    module.split('.')[4], module.split('.')[5])
+            if len(module.split('.')) - 2 > 0:
+                filename = ''
+                module_py = '%s.py' % module.split('.')[-1]
+                for i in range (2, len(module.split('.')) - 1):
+                    filename = filename + '%s/' % module.split('.')[i]
+                filename = filename + module_py       
+                #print module_py
             else:
                 print("\n----Exception in get api filename----\n")
-                print("\n" + line.split(' ', 1)[0] + 'module is ' + module +
-                      "\n")
-            if filename not in filenames:
-                filenames.append(filename)
+                print("\n" + line.split(' ', 1)[0] + 'module is '+ module + "\n")
+            if filename not in filenames:  
+                filenames.append(filename)   
     return filenames
 
 
