@@ -106,27 +106,26 @@ class StaticAnalysisVisitor(object):
         return self.node_to_wrapper_map
 
 
-class DygraphToStaticAst(gast.NodeTransformer):
+class IfElseTransformer(gast.NodeTransformer):
     """
-    Main class to transform Dygraph to Static Graph
+    Transform if/else statement of Dygraph into Static Graph.
     """
 
-    def get_static_ast(self, root):
-        # save root for some analysis may need global AST
-        self.root = root
-        self.static_analysis_root = StaticAnalysisVisitor(
-            root).get_node_wrapper_root()
-        self.static_analysis_root = root
-        # record all created ast.functionDef in control flow statement
+    def __init__(self, wrapper_root):
+        assert isinstance(
+            wrapper_root, AstNodeWrapper
+        ), "Type of input node should be AstNodeWrapper, but received %s ." % type(
+            wrapper_root)
+        self.wrapper_root = wrapper_root
+        self.root = wrapper_root.node
         self.new_func_nodes = []
-        self.decorate_func_name = None
-        self.transfer_from_node_type(self.static_analysis_root)
-        return self.static_analysis_root, self.decorate_func_name
 
-    def transfer_from_node_type(self, node):
-        self.visit(node)
-        # add new ast.funcDef of `if/else`
-        node.body = self.new_func_nodes + node.body
+    def ast_visit(self):
+        """
+        Main function to transform AST.
+        """
+        self.visit(self.root)
+        self.after_visit(self.root)
 
     def visit_If(self, node):
         assert isinstance(node, gast.If)
@@ -144,17 +143,48 @@ class DygraphToStaticAst(gast.NodeTransformer):
             return node
 
     def visit_Call(self, node):
-        # Remove `numpy()` statement
-        # like `Tensor.numpy()[i]` -> `Tensor[i]`
+        # Remove `numpy()` statement, like `Tensor.numpy()[i]` -> `Tensor[i]`
+        # Todo: should be removed. it may be considered as basic api transformation.
         if isinstance(node.func, gast.Attribute):
             attribute = node.func
             if attribute.attr == 'numpy':
                 node = attribute.value
         return node
 
-    def visit_Compare(self, node):
-        self.generic_visit(node)
-        return node
+    def after_visit(self, node):
+        """
+        This function will add some postprocessing operations with node.
+        It can be used to add the created `true_fn/false_fn` in front of
+        the node.body before they are called in cond layer.
+        """
+        assert hasattr(node, 'body')
+        # add new ast.funcDef of `if/else`
+        if self.new_func_nodes:
+            node.body = self.new_func_nodes + node.body
+
+    def get_new_func_nodes(self):
+        return self.new_func_nodes
+
+
+class DygraphToStaticAst(gast.NodeTransformer):
+    """
+    Main class to transform Dygraph to Static Graph
+    """
+
+    def get_static_ast(self, root):
+        # save root for some analysis may need global AST
+        self.root = root
+        self.static_analysis_root = StaticAnalysisVisitor(
+            root).get_node_wrapper_root()
+        self.decorate_func_name = None
+        self.transfer_from_node_type(self.static_analysis_root)
+        return self.static_analysis_root
+
+    def transfer_from_node_type(self, node):
+        # Generic transformation
+        self.visit(node.node)
+        # Transform all if/else statement of Dygraph into Static Graph.
+        IfElseTransformer(node).ast_visit()
 
     def visit_FunctionDef(self, node):
         if self.decorate_func_name is None:
@@ -167,3 +197,12 @@ class DygraphToStaticAst(gast.NodeTransformer):
             ]
             node.decorator_list = decorator_list
         return node
+
+    def get_module_name(self):
+        """
+        Return the main function name which will be used as module name
+        in ast_to_func.
+        """
+        # Should consider BaseAPITransformer which add new module name in Yamei's PR.
+        assert self.decorate_func_name, "decorate_func_name shall not be None."
+        return self.decorate_func_name

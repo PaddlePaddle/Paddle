@@ -58,8 +58,11 @@ def _dygraph_to_static_output_(dygraph_func):
         dygraph_code = inspect.getsource(dygraph_func)
         dygraph_code = textwrap.dedent(dygraph_code)
         root = gast.parse(dygraph_code)
+        # Transform AST
+        dygraph_to_static = DygraphToStaticAst()
+        root = dygraph_to_static.get_static_ast(root)
+        func_name = dygraph_to_static.get_module_name()
 
-        root, func_name = DygraphToStaticAst().get_static_ast(root)
         static_func, file_name = ast_to_func(root, func_name)
 
         return static_func(*args, **kwargs)

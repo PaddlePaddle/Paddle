@@ -154,6 +154,12 @@ class TestAST2Func(unittest.TestCase):
             ret = exe.run(main_program, fetch_list=[true_ret, test_ret])
             self.assertTrue((ret[0] == ret[1]).all())
 
+    def test_ast2func_error(self):
+        with self.assertRaises(Exception) as e:
+            self.assertRaises(TypeError, ast_to_func("x = a + b", 'foo'))
+        self.assertTrue("Type of ast_root should be gast.AST or ast.AST" in
+                        str(e.exception))
+
 
 if __name__ == '__main__':
     unittest.main()

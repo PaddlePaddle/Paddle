@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import astor
+import ast
 import gast
 import six
 import copy
@@ -84,7 +85,7 @@ def get_name_ids(nodes, not_name_set=None, node_black_list=None):
     return name_ids
 
 
-def parse_args(var_ids_dict, return_ids=None, ctx=gast.Load):
+def parse_cond_args(var_ids_dict, return_ids=None, ctx=gast.Load):
     """
     Find out the ast.Name.id list of input by analyzing node's AST information.
     """
@@ -113,7 +114,7 @@ def parse_args(var_ids_dict, return_ids=None, ctx=gast.Load):
     return arguments
 
 
-def parse_return(parent_vars_dict, if_vars_dict, else_vars_dict):
+def parse_cond_return(parent_vars_dict, if_vars_dict, else_vars_dict):
     """
     Find out the ast.Name list of output by analyzing node's AST information.
     Following conditions should be satisfied while determining whether a variable is a return value:
@@ -222,18 +223,18 @@ def transform_if_else(node, root):
     if_name_ids = get_name_ids(node.body)
     else_name_ids = get_name_ids(node.orelse)
 
-    return_name_ids, modified_name_ids = parse_return(
+    return_name_ids, modified_name_ids = parse_cond_return(
         parent_name_ids, if_name_ids, else_name_ids)
 
     true_func_node = create_funcDef_node(
         node.body,
         name=unique_name.generate(TRUE_FUNC_PRFIX),
-        input_args=parse_args(if_name_ids, modified_name_ids),
+        input_args=parse_cond_args(if_name_ids, modified_name_ids),
         return_name_ids=return_name_ids)
     false_func_node = create_funcDef_node(
         node.orelse,
         name=unique_name.generate(FALSE_FUNC_PRFIX),
-        input_args=parse_args(else_name_ids, modified_name_ids),
+        input_args=parse_cond_args(else_name_ids, modified_name_ids),
         return_name_ids=return_name_ids)
 
     return true_func_node, false_func_node, return_name_ids
@@ -294,7 +295,12 @@ def ast_to_func(ast_root, func_name, delete_on_exit=True):
     """
     Transform modified AST of decorated function into python callable object.
     """
-    ast_root = gast.gast_to_ast(ast_root)
+    if not isinstance(ast_root, (gast.AST, ast.AST)):
+        raise TypeError(
+            "Type of ast_root should be gast.AST or ast.AST, but received %s." %
+            type(ast_root))
+    if isinstance(ast_root, gast.AST):
+        ast_root = gast.gast_to_ast(ast_root)
     source = astor.to_source(ast_root)
     if six.PY2:
         source = source.encode('utf-8')
