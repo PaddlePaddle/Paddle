@@ -24,6 +24,14 @@ import "C"
 import "runtime"
 import "unsafe"
 
+type Precision C.Precision
+
+const (
+	Precision_FLOAT32 Precision = C.kFloat32
+	Precision_INT8    Precision = C.kInt8
+	Precision_HALF    Precision = C.kHalf
+)
+
 type AnalysisConfig struct {
 	c *C.PD_AnalysisConfig
 }
