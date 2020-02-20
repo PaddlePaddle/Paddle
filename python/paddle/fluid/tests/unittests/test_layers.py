@@ -1492,6 +1492,35 @@ class TestLayer(LayerTest):
             for i in range(len(static_ret5)):
                 self.assertTrue(dcond5.numpy()[i] == static_ret5[i])
 
+    def test_cond(self):
+        def less_than_branch(a, b):
+            return fluid.layers.elementwise_add(a, b)
+
+        def greater_equal_branch(a, b):
+            return fluid.layers.elementwise_sub(a, b)
+
+        with self.static_graph():
+            a = fluid.layers.fill_constant(
+                shape=[1], dtype='float32', value=0.1)
+            b = fluid.layers.fill_constant(
+                shape=[1], dtype='float32', value=0.23)
+            out = fluid.layers.cond(a < b, lambda: less_than_branch(a, b),
+                                    lambda: greater_equal_branch(a, b))
+            place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+            ) else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            ret = exe.run(fetch_list=[out])
+            static_res = ret[0]
+
+        with self.dynamic_graph():
+            a = fluid.dygraph.to_variable(np.array([0.1]).astype('float32'))
+            b = fluid.dygraph.to_variable(np.array([0.23]).astype('float32'))
+            out = layers.cond(a < b, lambda: less_than_branch(a, b),
+                              lambda: greater_equal_branch(a, b))
+            dynamic_res = out.numpy()
+
+        self.assertTrue(np.array_equal(static_res, dynamic_res))
+
     def test_crop_tensor(self):
         with self.static_graph():
             x = fluid.layers.data(name="x1", shape=[6, 5, 8])

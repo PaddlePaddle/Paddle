@@ -18,7 +18,7 @@ from ..wrapped_decorator import signature_safe_contextmanager
 from .layer_function_generator import autodoc, templatedoc
 from .tensor import assign, cast, fill_constant
 from .. import core
-from ..framework import Program, Variable, Operator
+from ..framework import Program, Variable, Operator, in_dygraph_mode
 from ..layer_helper import LayerHelper, unique_name
 from .nn import logical_and, logical_not, logical_or
 from .utils import assert_same_structure, map_structure
@@ -2021,6 +2021,22 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
             #           [ True  True  True]]
 
     """
+    if in_dygraph_mode():
+        assert isinstance(pred, Variable), "The pred in cond must be Variable"
+        assert pred.numpy().size == 1, "condition input's numel should be 1"
+        pred = pred.numpy()[0]
+        if pred:
+            if true_fn is not None:
+                if not callable(true_fn):
+                    raise TypeError("The true_fn in cond must be callable")
+                return true_fn()
+        else:
+            if false_fn is not None:
+                if not callable(false_fn):
+                    raise TypeError("The false_fn in cond must be callable")
+                return false_fn()
+        return None
+
     helper = LayerHelper('cond', **locals())
     true_output = None
     false_output = None
