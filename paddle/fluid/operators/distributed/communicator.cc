@@ -1030,7 +1030,8 @@ void HalfAsyncCommunicator::ConsumeThread() {
   VLOG(3) << "ConsumeThread start!";
   while (running_) {
     while (running_) {
-      if (barrier_counter_.load() >= barrier_trigger_.load()) {
+      if (barrier_counter_.load() >= barrier_trigger_.load() &&
+          barrier_trigger_.load() != 0) {
         break;
       } else {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -1201,6 +1202,8 @@ void HalfAsyncCommunicator::Stop() {
 }
 
 void SyncCommunicator::BarrierSend() {
+  if (!running_) return;
+
   distributed::RPCClient *rpc_client =
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id_);
 
@@ -1219,6 +1222,8 @@ void SyncCommunicator::BarrierSend() {
 }
 
 void SyncCommunicator::BarrierRecv() {
+  if (!running_) return;
+
   distributed::RPCClient *rpc_client =
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id_);
 
@@ -1233,6 +1238,11 @@ void SyncCommunicator::BarrierRecv() {
   }
 
   VLOG(4) << "BarrierRecv with SyncCommunicator";
+}
+
+SyncCommunicator::~SyncCommunicator() {
+  running_ = false;
+  if (consume_thread_) consume_thread_->join();
 }
 }  // namespace distributed
 }  // namespace operators

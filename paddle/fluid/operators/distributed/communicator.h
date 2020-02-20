@@ -368,7 +368,7 @@ class SyncCommunicator : public HalfAsyncCommunicator {
     pserver_endpoints_ = paddle::string::Split(pserver_strings, ',');
     VLOG(0) << "SyncCommunicator Initialized";
   }
-  ~SyncCommunicator() {}
+  ~SyncCommunicator();
   void BarrierSend();
   void BarrierRecv();
 
