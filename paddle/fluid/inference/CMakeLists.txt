@@ -34,11 +34,22 @@ if (WITH_LITE)
   add_subdirectory(lite)
 endif()
 
+if(NOT ON_INFER)
+  return()
+endif()
+
 # fluid_modules exclude API-interface of inference/api and inference/capi
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 get_property(cuda_modules GLOBAL PROPERTY CUDA_MODULES)
 
 add_subdirectory(api)
+
+# Create static inference library if needed
+# All static libs in inference/api
+set(STATIC_INFERENCE_API paddle_inference_api analysis_predictor zero_copy_tensor reset_tensor_array
+              analysis_config paddle_pass_builder activation_functions ${mkldnn_quantizer_cfg})
+create_static_lib(paddle_fluid ${fluid_modules} ${STATIC_INFERENCE_API})
+
 add_subdirectory(capi)
 
 if(WITH_TESTING)
@@ -49,15 +60,6 @@ if(WITH_TESTING)
   endif()
 endif()
 
-if(NOT ON_INFER)
-  return()
-endif()
-
-# Create static inference library if needed
-# All static libs in inference/api
-set(STATIC_INFERENCE_API paddle_inference_api analysis_predictor zero_copy_tensor reset_tensor_array 
-              analysis_config paddle_pass_builder activation_functions ${mkldnn_quantizer_cfg})
-create_static_lib(paddle_fluid ${fluid_modules} ${STATIC_INFERENCE_API})
 if(NOT APPLE)
   # TODO(liuyiqu: Temporarily disable the link flag because it is not support on Mac.
   set(LINK_FLAGS "-Wl,--retain-symbols-file ${CMAKE_CURRENT_SOURCE_DIR}/paddle_fluid.sym")
