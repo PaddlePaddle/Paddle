@@ -79,21 +79,25 @@ class FusionGroupPassTest2(FusionGroupPassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = []
-            for i in range(4):
+            for i in range(3):
                 data.append(
                     fluid.data(
                         name=("data" + str(i)),
                         shape=[32, 128],
                         dtype="float32"))
+            data.append(
+                fluid.data(
+                    name="data3", shape=[128, 32], dtype="float32"))
             tmp_1 = fluid.layers.relu((data[0] - data[1]) * data[2])
             tmp_2 = fluid.layers.sigmoid(data[3])
             tmp_3 = fluid.layers.relu(tmp_2)
             tmp_4 = fluid.layers.mul(tmp_1, tmp_3)
 
         self.feeds = {}
-        for i in range(4):
+        for i in range(3):
             self.feeds["data" + str(i)] = np.random.random(
                 (32, 128)).astype("float32")
+        self.feeds["data3"] = np.random.random((128, 32)).astype("float32")
 
         self.fetch_list = [tmp_1, tmp_2, tmp_3, tmp_4]
         self.pass_names = "fusion_group_pass"
