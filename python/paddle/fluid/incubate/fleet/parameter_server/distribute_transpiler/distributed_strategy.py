@@ -169,6 +169,7 @@ class SyncStrategy(DistributedStrategy):
         self._build_strategy.async_mode = True
         self._program_config.half_async = True
         self._program_config.completely_not_async = True
+        self._execute_strategy.use_thread_barrier = True
 
         num_threads = os.getenv("CPU_NUM", "1")
 
