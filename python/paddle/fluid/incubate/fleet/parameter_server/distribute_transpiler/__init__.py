@@ -333,6 +333,12 @@ class DistributedTranspiler(Fleet):
                 self._transpiler.get_pserver_programs(
                     self.server_endpoints()[self.server_index()])
 
+    def _set_opt_info(self, opt_info):
+        """
+        this function saves the result from DistributedOptimizer.minimize()
+        """
+        self._opt_info = opt_info
+
 
 fleet = DistributedTranspiler()
 
@@ -358,9 +364,11 @@ class TranspilerOptimizer(DistributedOptimizer):
     def __init__(self, optimizer, strategy=None):
         super(TranspilerOptimizer, self).__init__(optimizer, strategy)
 
+        self.opt_info = dict()
         if strategy:
-            if isinstance(strategy, DistributeTranspilerConfig) or isinstance(
-                    strategy, DistributedStrategy):
+            if isinstance(strategy, DistributeTranspilerConfig):
+                self._strategy = strategy
+            elif isinstance(strategy, DistributedStrategy):
                 self._strategy = strategy
             else:
                 raise TypeError(
@@ -368,6 +376,14 @@ class TranspilerOptimizer(DistributedOptimizer):
                     format(fleet._mode))
         else:
             self._strategy = StrategyFactory.create_sync_strategy()
+
+        if isinstance(self._strategy, DistributedStrategy):
+            self.opt_info = self._strategy.get_debug_opt()
+            self.opt_info["mpi_rank"] = fleet.worker_index()
+            self.opt_info["mpi_size"] = fleet.worker_num()
+            self.opt_info["trainer"] = "MultiTrainer"
+            self.opt_info["device_worker"] = "Hogwild"
+            fleet._set_opt_info(self.opt_info)
 
     def backward(self,
                  loss,
@@ -456,4 +472,5 @@ class TranspilerOptimizer(DistributedOptimizer):
         optimize_ops, params_grads = self._optimizer.minimize(
             loss, startup_program, parameter_list, no_grad_set)
         fleet._transpile(config=self._strategy)
+        loss.block.program._fleet_opt = self.opt_info
         return optimize_ops, params_grads

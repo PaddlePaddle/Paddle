@@ -17,3 +17,5 @@ pyyaml
 decorator
 prettytable
 objgraph
+gast
+astor

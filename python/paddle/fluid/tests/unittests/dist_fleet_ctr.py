@@ -39,7 +39,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
     For test CTR model, using Fleet api
     """
 
-    def net(self, batch_size=4, lr=0.01):
+    def net(self, args, batch_size=4, lr=0.01):
         """
         network definition
 
@@ -71,6 +71,13 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             append_batch_size=False)
 
         datas = [dnn_data, lr_data, label]
+
+        if args.reader == "pyreader":
+            self.reader = fluid.io.PyReader(
+                feed_list=datas,
+                capacity=64,
+                iterable=False,
+                use_double_buffer=False)
 
         # build dnn model
         dnn_layer_dims = [128, 128, 64, 32, 1]
@@ -222,7 +229,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                 fetch_list=[self.avg_cost],
                 fetch_info=["cost"],
                 print_period=2,
-                debug=False)
+                debug=int(os.getenv("Debug", "0")))
             pass_time = time.time() - pass_start
 
         if os.getenv("SAVE_MODEL") == "1":

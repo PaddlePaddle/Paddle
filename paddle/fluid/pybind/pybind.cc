@@ -68,7 +68,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/ir.h"
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
 
-#ifndef _WIN32
+#ifdef PADDLE_WITH_NCCL
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
 #endif
 #include "paddle/fluid/framework/data_type.h"
@@ -78,7 +78,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/fluid/string/to_string.h"
 #ifdef PADDLE_WITH_CUDA
-#ifndef _WIN32
+#ifdef PADDLE_WITH_NCCL
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 #endif
 #include "paddle/fluid/platform/cuda_profiler.h"
@@ -926,7 +926,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("get_lod_tensor_array",
            [](Variable &self) { return self.GetMutable<LoDTensorArray>(); },
            py::return_value_policy::reference)
-#if (defined(PADDLE_WITH_CUDA) && !defined(_WIN32))
+#if (defined(PADDLE_WITH_NCCL))
       .def("get_communicator",
            [](Variable &self) -> platform::Communicator * {
              return self.GetMutable<platform::Communicator>();
@@ -1174,7 +1174,7 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
                 });;
 // clang-format on
-#if (defined(PADDLE_WITH_CUDA) && !defined(_WIN32))
+#if defined(PADDLE_WITH_NCCL)
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
   py::class_<platform::CUDAPlace>(m, "CUDAPlace", R"DOC(
@@ -1555,6 +1555,12 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 #endif
 
+  py::enum_<platform::TracerOption>(m, "TracerOption", py::arithmetic())
+      .value("kDefault", platform::TracerOption::kDefault)
+      .value("kOpDetail", platform::TracerOption::kOpDetail)
+      .value("kAllOpDetail", platform::TracerOption::kAllOpDetail)
+      .export_values();
+
   py::enum_<platform::ProfilerState>(m, "ProfilerState", py::arithmetic())
       .value("kDisabled", platform::ProfilerState::kDisabled)
       .value("kCPU", platform::ProfilerState::kCPU)
@@ -1571,6 +1577,7 @@ All parameter, weight, gradient are variables in Paddle.
       .value("kAve", platform::EventSortingKey::kAve)
       .export_values();
 
+  m.def("set_tracer_option", platform::SetTracerOption);
   m.def("enable_profiler", platform::EnableProfiler);
   m.def("disable_profiler", platform::DisableProfiler);
   m.def("is_profiler_enabled", platform::IsProfileEnabled);
@@ -1731,6 +1738,14 @@ All parameter, weight, gradient are variables in Paddle.
           },
           R"DOC(This config that how many iteration the executor will run when
                 user call exe.run() in python
+              )DOC")
+      .def_property(
+          "use_thread_barrier",
+          [](const ExecutionStrategy &self) { return self.thread_barrier_; },
+          [](ExecutionStrategy &self, bool use_thread_barrier) {
+            self.thread_barrier_ = use_thread_barrier;
+          },
+          R"DOC(This config that the this is distributed training with parameter server
               )DOC")
       .def_property("_dry_run",
                     [](const ExecutionStrategy &self) { return self.dry_run_; },

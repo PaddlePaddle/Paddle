@@ -919,7 +919,7 @@ class Executor(object):
     def _dump_debug_info(self, program=None, trainer=None):
         with open(str(id(program)) + "_train_desc.prototxt", "w") as fout:
             fout.write(str(trainer))
-        if program._fleet_opt:
+        if program._fleet_opt and "fleet_desc" in program._fleet_opt:
             with open("fleet_desc.prototxt", "w") as fout:
                 fout.write(str(program._fleet_opt["fleet_desc"]))
 

@@ -66,9 +66,11 @@ else()
   cc_test(mixed_vector_test SRCS mixed_vector_test.cc DEPS place memory device_context tensor)
 endif()
 cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto version)
+cc_library(device_worker SRCS device_worker.cc DEPS trainer_desc_proto lod_tensor)
 
 cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor memory)
 nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor)
+cc_test(device_worker_test SRCS device_worker_test.cc DEPS device_worker)
 
 cc_library(garbage_collector SRCS garbage_collector.cc DEPS device_context memory gflags glog)
 
@@ -189,7 +191,7 @@ cc_library(executor_gc_helper SRCS executor_gc_helper.cc DEPS scope proto_desc o
 if(WITH_DISTRIBUTE)
   cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
-  data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc
+  data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc downpour_worker_opt.cc
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto trainer_desc_proto glog fs shell fleet_wrapper lodtensor_printer
   lod_rank_table feed_fetch_method sendrecvop_rpc communicator collective_helper ${GLOB_DISTRIBUTE_DEPS}
@@ -199,7 +201,7 @@ set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_CO
 else()
   cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
-  data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc
+  data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc downpour_worker_opt.cc
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto data_feed_proto trainer_desc_proto glog
   lod_rank_table fs shell fleet_wrapper lodtensor_printer feed_fetch_method

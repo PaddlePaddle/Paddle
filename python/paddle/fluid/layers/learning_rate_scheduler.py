@@ -56,7 +56,7 @@ def noam_decay(d_model, warmup_steps):
 
     .. code-block:: python
       
-      import padde.fluid as fluid
+      import paddle.fluid as fluid
       import numpy as np
       # set hyper parameters
       d_model = 2
@@ -80,7 +80,7 @@ def noam_decay(d_model, warmup_steps):
     Examples:
         .. code-block:: python
 
-          import padde.fluid as fluid
+          import paddle.fluid as fluid
           warmup_steps = 100
           learning_rate = 0.01
           lr = fluid.layers.learning_rate_scheduler.noam_decay(
