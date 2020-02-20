@@ -57,8 +57,9 @@ def parse_args():
     parser.add_argument(
         '--batch_num',
         type=int,
-        default=1,
-        help='Number of batches to process. 0 or less means all.')
+        default=0,
+        help='Number of batches to process. 0 or less means whole dataset. Default: 0.'
+    )
     parser.add_argument(
         '--acc_diff_threshold',
         type=float,
