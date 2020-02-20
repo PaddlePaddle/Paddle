@@ -63,7 +63,7 @@ class TestDygraphBasicAPI_to_variable(unittest.TestCase):
         self.assertTrue(np.array_equal(static_res, dygraph_res))
 
 
-# 1. test 14 APIs that inherit from layers.Layer
+# 1. test APIs that inherit from layers.Layer
 def dyfunc_BarchNorm(input):
     batch_norm = fluid.BatchNorm(num_channels=10)
     hidden = batch_norm(input)
@@ -140,54 +140,6 @@ def dyfunc_Conv3DTranspose(input):
     return ret
 
 
-def dyfunc_Embedding(input):
-
-    weight_data = np.random.random(size=(128, 100))
-    w_param_attrs = fluid.ParamAttr(
-        name="emb_weight",
-        learning_rate=0.5,
-        initializer=fluid.initializer.NumpyArrayInitializer(weight_data),
-        trainable=True)
-    emb = fluid.dygraph.Embedding(
-        size=[128, 100], param_attr=w_param_attrs, is_sparse=False)
-    ret = emb(input)
-    return ret
-
-
-def dyfunc_GroupNorm(input):
-    groupNorm = fluid.dygraph.nn.GroupNorm(
-        channels=32,
-        groups=4,
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.99)),
-        bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.5)), )
-    ret = groupNorm(input)
-    return ret
-
-
-def dyfunc_GRUUnit():
-    lod = [[2, 4, 3]]
-    D = 5
-    T = sum(lod[0])
-
-    import numpy as np  # todo delete
-    input = np.random.rand(T, 3 * D).astype('float32')
-    hidden = np.random.rand(T, D).astype('float32')
-
-    input_var = fluid.dygraph.to_variable(input)
-    hidden_var = fluid.dygraph.to_variable(hidden)
-
-    gru = fluid.dygraph.GRUUnit(
-        size=D * 3,
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.99)),
-        bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.5)))
-    ret = gru(input_var, hidden_var)
-    return ret
-
-
 def dyfunc_LayerNorm(input):
     layerNorm = fluid.LayerNorm([32, 32])
     ret = layerNorm(input)
@@ -220,13 +172,6 @@ def dyfunc_Prelu(input):
         param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(1.0)))
     res = prelu0(input=input)
     return res
-
-
-def dyfunc_SpectralNorm(weight):
-    spectralNorm = fluid.dygraph.nn.SpectralNorm(
-        weight_shape=[2, 8, 32, 32], dim=1, power_iters=2)
-    ret = spectralNorm(weight)
-    return ret
 
 
 class TestDygraphBasicAPI(unittest.TestCase):
@@ -324,55 +269,6 @@ class TestDygraphBasicAPI_Conv3DTranspose(TestDygraphBasicAPI):
         self.dygraph_func = dyfunc_Conv3DTranspose
 
 
-class TestDygraphBasicAPI_Embedding(TestDygraphBasicAPI):
-    def setUp(self):
-        self.input = np.array([[2, 3, 5], [4, 2, 1]]).astype('int64')
-        self.dygraph_func = dyfunc_Embedding
-
-    def test_transformed_static_result(self):
-        # the input of embedding must be 'int64', but 'int64' is not support by assign
-        return
-
-
-class TestDygraphBasicAPI_GroupNorm(TestDygraphBasicAPI):
-    def setUp(self):
-        self.input = np.random.random((8, 32, 32)).astype('float32')
-        self.dygraph_func = dyfunc_GroupNorm
-
-    def test_transformed_static_result(self):
-        # todo: wrong answer
-        return
-
-
-class TestDygraphBasicAPI_GRUUnit(unittest.TestCase):
-    def setUp(self):
-        self.dygraph_func = dyfunc_GRUUnit
-
-    def get_dygraph_output(self):
-        with fluid.dygraph.guard():
-            fluid.default_startup_program.random_seed = SEED
-            fluid.default_main_program.random_seed = SEED
-            res = self.dygraph_func()
-            return res[0].numpy(), res[1].numpy()
-
-    def get_static_output(self):
-        startup_program = fluid.Program()
-        startup_program.random_seed = SEED
-        main_program = fluid.Program()
-        main_program.random_seed = SEED
-        with fluid.program_guard(main_program, startup_program):
-            static_out = dygraph_to_static_output(self.dygraph_func)()
-
-        exe = fluid.Executor(fluid.CPUPlace())
-        exe.run(startup_program)
-        static_res = exe.run(main_program, fetch_list=static_out)
-        return static_res
-
-    def test_transformed_static_result(self):
-        # diff exists in static and dygraph API
-        return
-
-
 class TestDygraphBasicAPI_LayerNorm(TestDygraphBasicAPI):
     def setUp(self):
         self.input = np.random.random((3, 32, 32)).astype('float32')
@@ -391,17 +287,7 @@ class TestDygraphBasicAPI_Prelu(TestDygraphBasicAPI):
         self.dygraph_func = dyfunc_Prelu
 
 
-class TestDygraphBasicAPI_SpectralNorm(TestDygraphBasicAPI):
-    def setUp(self):
-        self.input = np.random.random((2, 8, 32, 32)).astype('float32')
-        self.dygraph_func = dyfunc_SpectralNorm
-
-    def test_transformed_static_result(self):
-        # randomness exists in SpectralNorm
-        return
-
-
-# 2. test 7 APIs that inherit from LearningRateDecay
+# 2. test APIs that inherit from LearningRateDecay
 def dyfunc_CosineDecay():
     base_lr = 0.1
     CosineDecay = fluid.dygraph.CosineDecay(
