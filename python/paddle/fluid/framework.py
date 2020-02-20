@@ -3736,7 +3736,7 @@ class Program(object):
         self._current_role = tmp_role
 
     @signature_safe_contextmanager
-    def _lr_schedule_guard(self, is_with_opt=True):
+    def _lr_schedule_guard(self, is_with_opt=False):
         """
         A with guard to set :code:`LRSched` :code:`OpRole` and
         :code:`OpRoleVar` automatically. The :code:`OpRoleVar` is
@@ -4474,7 +4474,7 @@ class Program(object):
         self._ps_endpoint = other._ps_endpoint
         self._distributed_lookup_table = other._distributed_lookup_table
 
-    def _copy_data_info_from(self, other, pruned_origin_block_id_map):
+    def _copy_data_info_from(self, other, pruned_origin_block_id_map={}):
         """
         Copy the information of data variables from other program.
 
@@ -4483,6 +4483,10 @@ class Program(object):
 
         Args:
             other(Program): Other program
+            pruned_origin_block_id_map(map{int:int}): A map from block id in self 
+            to block id in other. For example, {0:0, 1:1, 2:3} means block 0 in self is 
+            cloned from block 0 in other, etc. Default is {}, means default mapped, 
+            {0:0, 1:1,..., n:n}.
 
         Returns:
             None
@@ -4490,6 +4494,12 @@ class Program(object):
         if not isinstance(other, Program):
             raise TypeError("_copy_data_info_from should be invoked with "
                             "Program")
+
+        if not pruned_origin_block_id_map:
+            pruned_origin_block_id_map = {
+                i: i
+                for i in six.moves.range(self.desc.num_blocks())
+            }
 
         # NOTE(zhiqiu): All vars in cloned program exist in original program.
         # The reverse is not true, due to backward pruning.

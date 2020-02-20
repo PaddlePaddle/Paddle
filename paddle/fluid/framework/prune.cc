@@ -304,112 +304,8 @@ int FindMapByValue(std::map<int, int> m, int val) {
   }
   return -1;
 }
-std::unordered_set<std::string> op_input_vars;
-std::unordered_set<std::string> op_output_vars;
-std::unordered_set<std::string> gradop_input_vars;
-std::unordered_set<std::string> gradop_output_vars;
 
 void PruneBackwardImpl(proto::BlockDesc* origin, proto::BlockDesc* pruned) {
-  // Step 2. Mark forward ops on main branch
-  auto* ops = origin->mutable_ops();
-
-  for (auto op_iter = ops->rbegin(); op_iter != ops->rend(); ++op_iter) {
-    auto& op_desc = *op_iter;
-    if (HasTrueTarget(op_desc) ||
-        HasDependentOutputVar(op_desc, op_input_vars) ||
-        HasDependentInputVar(op_desc, op_output_vars)) {
-      op_desc.set_is_target(true);
-      std::cout << "set true " << op_desc.type() << std::endl;
-      AppendOpInputVarNames(op_desc, &op_input_vars);
-      AppendOpOutputVarNames(op_desc, &op_output_vars);
-    }
-  }
-
-  // Step 3. Mark backward & optimize ops on main branch
-
-  for (auto op_iter = ops->begin(); op_iter != ops->end(); ++op_iter) {
-    auto& op_desc = *op_iter;
-    if (HasFalseTarget(op_desc) ||
-        HasDependentInputVar(op_desc, gradop_output_vars) ||
-        HasDependentOutputVar(op_desc, gradop_output_vars)) {
-      op_desc.set_is_target(false);
-      std::cout << "set false " << op_desc.type() << std::endl;
-      AppendOpInputVarNames(op_desc, &gradop_input_vars);
-      AppendOpOutputVarNames(op_desc, &gradop_output_vars);
-
-      if (GetOpRole(op_desc) == static_cast<int>(OpRole::kOptimize)) {
-        // remove var both in input and output
-        std::cout << "optimize " << op_desc.type() << std::endl;
-        std::set<std::string> var_names;
-        for (auto& var : op_desc.inputs()) {
-          for (auto& arg : var.arguments()) {
-            var_names.emplace(arg);
-          }
-        }
-        for (auto& var : op_desc.outputs()) {
-          for (auto& arg : var.arguments()) {
-            if (var_names.count(arg)) {
-              std::cout << arg << std::endl;
-              auto iter = gradop_output_vars.find(arg);
-              if (iter != gradop_output_vars.end()) {
-                gradop_output_vars.erase(iter);
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  // Step 4. Mark ops need to be reserved on sub-branch
-  for (auto op_iter = ops->rbegin(); op_iter != ops->rend(); ++op_iter) {
-    auto& op_desc = *op_iter;
-    if (!op_desc.has_is_target()) {
-      if (HasDependentOutputVar(op_desc, gradop_input_vars)) {
-        op_desc.set_is_target(false);
-        std::cout << "set false " << op_desc.type() << std::endl;
-        AppendOpInputVarNames(op_desc, &gradop_input_vars);
-      } else {
-        op_desc.set_is_target(true);
-        std::cout << "set true " << op_desc.type() << std::endl;
-        AppendOpInputVarNames(op_desc, &op_input_vars);
-        AppendOpOutputVarNames(op_desc, &op_output_vars);
-      }
-    }
-  }
-
-  // Step 5. Copy the forward ops to new ProgramDesc
-  //   Note: The proto::ProgramDesc doesn't have interface
-  //         to remove op and var
-  auto* op_field = pruned->mutable_ops();
-  op_field->Clear();
-  for (auto op_iter = ops->begin(); op_iter != ops->end(); ++op_iter) {
-    if (IsTarget(*op_iter)) {
-      auto* op = op_field->Add();
-      *op = *op_iter;
-    }
-  }
-
-  // Step 6. Copy the forward vars to new ProgramDesc
-  // construct all var's map before clear
-  auto* origin_vars = origin->mutable_vars();
-  auto* pruned_vars = pruned->mutable_vars();
-  std::unordered_map<std::string, proto::VarDesc> var_map;
-  for (const auto& var : *origin_vars) {
-    var_map[var.name()] = var;
-  }
-  pruned_vars->Clear();
-
-  std::unordered_set<std::string> var_names;
-  var_names.insert(op_input_vars.begin(), op_input_vars.end());
-  var_names.insert(op_output_vars.begin(), op_output_vars.end());
-  for (const auto& name : var_names) {
-    *pruned_vars->Add() = var_map[name];
-    std::cout << name << " " << std::endl;
-  }
-}
-
-void PruneBackwardImpl2(proto::BlockDesc* origin, proto::BlockDesc* pruned) {
   // Step 3. Mark backward & optimize ops on main branch
   std::unordered_set<std::string> op_input_vars;
   std::unordered_set<std::string> op_output_vars;
@@ -437,7 +333,6 @@ void PruneBackwardImpl2(proto::BlockDesc* origin, proto::BlockDesc* pruned) {
       AppendOpInputVarNames(*op_iter, &op_input_vars);
       AppendOpOutputVarNames(*op_iter, &op_output_vars);
       *op = *op_iter;
-      std::cout << "true " << op_iter->type() << std::endl;
     }
   }
 
@@ -447,7 +342,6 @@ void PruneBackwardImpl2(proto::BlockDesc* origin, proto::BlockDesc* pruned) {
   auto* pruned_vars = pruned->mutable_vars();
   std::unordered_map<std::string, proto::VarDesc> var_map;
   for (const auto& var : *origin_vars) {
-    std::cout << "origin " << var.name() << std::endl;
     var_map[var.name()] = var;
   }
   pruned_vars->Clear();
@@ -458,7 +352,6 @@ void PruneBackwardImpl2(proto::BlockDesc* origin, proto::BlockDesc* pruned) {
   for (const auto& name : var_names) {
     if (var_map.count(name)) {
       *pruned_vars->Add() = var_map[name];
-      std::cout << "cloned " << name << std::endl;
     }
   }
 }  // namespace framework
@@ -510,30 +403,11 @@ std::tuple<framework::ProgramDesc, std::map<int, int>> PruneBackward(
   for (int i = origin_clone.Size() - 1; i >= 0; i--) {
     auto* pruned = new proto::BlockDesc();
     auto origin = origin_clone.Proto()->mutable_blocks(i);
-    PruneBackwardImpl2(origin, pruned);
-
-    for (auto i : op_input_vars) {
-      std::cout << " " << i;
-    }
-    std::cout << std::endl;
-    for (auto i : op_output_vars) {
-      std::cout << " " << i;
-    }
-    std::cout << std::endl;
-    for (auto i : gradop_input_vars) {
-      std::cout << " " << i;
-    }
-    std::cout << std::endl;
-    for (auto i : gradop_output_vars) {
-      std::cout << " " << i;
-    }
-    std::cout << std::endl;
+    PruneBackwardImpl(origin, pruned);
 
     if (pruned->ops_size() > 0) {
       pruned_blocks.emplace(pruned_blocks.begin(), pruned);
-      std::cout << pruned->ops_size() << std::endl;
       pruned_progin_block_map[pruned] = origin;
-      std::cout << pruned << " " << origin << std::endl;
     } else {
       delete pruned;
     }
@@ -548,9 +422,7 @@ std::tuple<framework::ProgramDesc, std::map<int, int>> PruneBackward(
     std::cout << origin << std::endl;
     pruned->set_idx(i);
     pruned_progin_block_id_map[i] = origin->idx();
-    std::cout << "map " << i << " " << origin->idx() << std::endl;
   }
-  std::cout << "update idx done" << std::endl;
 
   // update parent idx
   for (size_t i = 0; i < pruned_blocks.size(); i++) {
@@ -568,7 +440,6 @@ std::tuple<framework::ProgramDesc, std::map<int, int>> PruneBackward(
     }
     pruned->set_parent_idx(parent_idx);
   }
-  std::cout << "update parenet done" << std::endl;
 
   // update subblock attrs
   for (size_t i = 0; i < pruned_blocks.size(); i++) {
@@ -587,7 +458,6 @@ std::tuple<framework::ProgramDesc, std::map<int, int>> PruneBackward(
       }
     }
   }
-  std::cout << "update subblock done" << std::endl;
 
   // clone blocks to program
   for (size_t i = 0; i < pruned_blocks.size(); i++) {
@@ -595,7 +465,6 @@ std::tuple<framework::ProgramDesc, std::map<int, int>> PruneBackward(
     *block_field->Add() = *pruned_blocks[i];
     delete pruned_blocks[i];
   }
-  std::cout << "clone done" << std::endl;
   for (auto pair : pruned_progin_block_id_map) {
     std::cout << pair.first << " " << pair.second << std::endl;
   }
