@@ -459,7 +459,6 @@ def get_filenames(path):
                 for i in range (2, len(module.split('.')) - 1):
                     filename = filename + '%s/' % module.split('.')[i]
                 filename = filename + module_py       
-                #print module_py
             else:
                 print("\n----Exception in get api filename----\n")
                 print("\n" + line.split(' ', 1)[0] + 'module is '+ module + "\n")
@@ -634,7 +633,7 @@ else:
         os.mkdir("./samplecode_temp")
 
     cpus = multiprocessing.cpu_count()
-    filenames = get_filenames('paddle/fluid/API.spec')
+    filenames = get_filenames('paddle/fluid/API_PR.spec')
     one_part_filenum = int(math.ceil(len(filenames) / cpus))
     divided_file_list = [
         filenames[i:i + one_part_filenum]
