@@ -41,6 +41,28 @@ void FetchOpHandle::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
 
 void FetchOpHandle::WaitAndMergeCPUTensors() const {
   if (merge_result_) {
+    const auto &tensor_dims = tensors_[0].dims();
+    for (int i = 1; i < tensors_.size(); i++) {
+      const auto &ele_dims = tensors_[i].dims();
+      PADDLE_ENFORCE_EQ(
+          tensor_dims.size(), ele_dims.size(),
+          platform::errors::Fatal(
+              "The dimensions of fetched LoDTensors "
+              "are different from each other on different devices. Please set "
+              "the parameter `merge_result = False` when you call the "
+              "`Executor.run()` "
+              "method."));
+      for (int j = 1; j < tensor_dims.size(); j++) {
+        PADDLE_ENFORCE_EQ(
+            tensor_dims[j], ele_dims[j],
+            platform::errors::Fatal("The dimensions of fetched LoDTensors "
+                                    "are different from each other on "
+                                    "different devices. Please set "
+                                    "the parameter `merge_result = False` when "
+                                    "you call the `Executor.run()` "
+                                    "method."));
+      }
+    }
     std::vector<const LoDTensor *> tensors_ptr;
     tensors_ptr.reserve(tensors_.size());
     for (auto &t : tensors_) {
