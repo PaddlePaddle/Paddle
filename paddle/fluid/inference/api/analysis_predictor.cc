@@ -385,7 +385,7 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
 
 void AnalysisPredictor::PrepareArgument() {
   argument_.SetUseGPU(config_.use_gpu());
-  argument_.SetUseFCPadding(config_.use_fc_padding());
+  argument_.SetUseFcPadding(config_.use_fc_padding());
   argument_.SetGPUDeviceId(config_.gpu_device_id());
   argument_.SetEnableAnalysisOptim(config_.enable_ir_optim_);
   argument_.SetEnableMemoryOptim(config_.enable_memory_optim());
