@@ -23,113 +23,50 @@ import tempfile
 import six
 import imp
 
-STATIC_API = "static_api"
-TO_DELETE_ARGS = "to_delete_args"
 dygraph_class_to_static_api = {
-    "BatchNorm": {
-        STATIC_API: "batch_norm",
-        TO_DELETE_ARGS: ["num_channels", "trainable_statistics", "dtype"]
-    },
-    "BilinearTensorProduct": {
-        STATIC_API: "bilinear_tensor_product",
-        TO_DELETE_ARGS: ["input1_dim", "input2_dim", "output_dim", "dtype"]
-    },
-    "Conv2D": {
-        STATIC_API: "conv2d",
-        TO_DELETE_ARGS: ["num_channels", "dtype"]
-    },
-    "Conv3D": {
-        STATIC_API: "conv3d",
-        TO_DELETE_ARGS: ["num_channels", "dtype"]
-    },
-    "Conv2DTranspose": {
-        STATIC_API: "conv2d_transpose",
-        TO_DELETE_ARGS: ["num_channels", "dtype"]
-    },
-    "Conv3DTranspose": {
-        STATIC_API: "conv3d_transpose",
-        TO_DELETE_ARGS: ["num_channels", "dtype"]
-    },
-    "CosineDecay": {
-        STATIC_API: "cosine_decay",
-        TO_DELETE_ARGS: ["begin", "step", "dtype"]
-    },
-    "Embedding": {
-        STATIC_API: "embedding",
-        TO_DELETE_ARGS: []
-    },
-    "ExponentialDecay": {
-        STATIC_API: "exponential_decay",
-        TO_DELETE_ARGS: ["begin", "step", "dtype"]
-    },
-    "FC": "fc",
-    "GroupNorm": {
-        STATIC_API: "group_norm",
-        TO_DELETE_ARGS: ["channels", "dtype"]
-    },
-    "GRUUnit": {
-        STATIC_API: "gru_unit",
-        TO_DELETE_ARGS: ["name_scope", "dtype"]
-    },
-    "InverseTimeDecay": {
-        STATIC_API: "inverse_time_decay",
-        TO_DELETE_ARGS: ["begin", "step", "dtype"]
-    },
-    "LayerNorm": {
-        STATIC_API: "layer_norm",
-        TO_DELETE_ARGS: ["normalized_shape", "dtype"]
-    },
-    "Linear": {
-        STATIC_API: "fc",
-        TO_DELETE_ARGS: ["input_dim", "output_dim", "dtype"]
-    },
-    "NaturalExpDecay": {
-        STATIC_API: "natural_exp_decay",
-        TO_DELETE_ARGS: ["begin", "step", "dtype"]
-    },
-    "NCE": {
-        STATIC_API: "nce",
-        TO_DELETE_ARGS: ["dim", "dtype"]
-    },
-    "NoamDecay": {
-        STATIC_API: "noam_decay",
-        TO_DELETE_ARGS: ["begin", "step", "dtype"]
-    },
-    "PiecewiseDecay": {
-        STATIC_API: "piecewise_decay",
-        TO_DELETE_ARGS: ["begin", "step", "dtype"]
-    },
-    "PolynomialDecay": {
-        STATIC_API: "polynomial_decay",
-        TO_DELETE_ARGS: ["begin", "step", "dtype"]
-    },
-    "Pool2D": {
-        STATIC_API: "pool2d",
-        TO_DELETE_ARGS: []
-    },
-    "PRelu": {
-        STATIC_API: "prelu",
-        TO_DELETE_ARGS: ["channel", "input_shape", "dtype"]
-    },
-    "SpectralNorm": {
-        STATIC_API: "spectral_norm",
-        TO_DELETE_ARGS: ["weight_shape", "dtype"]
-    },
+    "BatchNorm": "batch_norm",
+    "BilinearTensorProduct": "bilinear_tensor_product",
+    "Conv2D": "conv2d",
+    "Conv3D": "conv3d",
+    "Conv2DTranspose": "conv2d_transpose",
+    "Conv3DTranspose": "conv3d_transpose",
+    "CosineDecay": "cosine_decay",
+    "Embedding": "embedding",
+    "ExponentialDecay": "exponential_decay",
+    "GroupNorm": "group_norm",
+    "GRUUnit": "gru_unit",
+    "InverseTimeDecay": "inverse_time_decay",
+    "LayerNorm": "layer_norm",
+    "Linear": "fc",
+    "NaturalExpDecay": "natural_exp_decay",
+    "NCE": "nce",
+    "NoamDecay": "noam_decay",
+    "PiecewiseDecay": "piecewise_decay",
+    "PolynomialDecay": "polynomial_decay",
+    "Pool2D": "pool2d",
+    "PRelu": "prelu",
+    "SpectralNorm": "spectral_norm",
 }
 
 
-def _delete_keywords_from(node, deleted_keywords):
+def _delete_keywords_from(node):
     assert isinstance(node, gast.Call)
-    node.keywords = [k for k in node.keywords if k.arg not in deleted_keywords]
+    func_src = astor.to_source(node.func)
+    import paddle.fluid as fluid
+    full_args = eval("inspect.getargspec({})".format(func_src))
+    full_args_name = full_args[0]
+
+    node.keywords = [k for k in node.keywords if k.arg in full_args_name]
+    return
 
 
 def to_static_api(dygraph_class):
     if dygraph_class in dygraph_class_to_static_api:
         return dygraph_class_to_static_api[dygraph_class]
     else:
-        raise NotImplementedError(
-            "Paddle dygraph API {class_name} cannot be converted "
-            "to static graph at present.")
+        raise NotImplementedError("Paddle dygraph API {} cannot be converted "
+                                  "to static graph at present.".format(
+                                      dygraph_class))
 
 
 def _add_keywords_to(node, dygraph_api_name):
@@ -151,14 +88,9 @@ def _add_keywords_to(node, dygraph_api_name):
                 ast_keyword.arg = "size"
 
     if dygraph_api_name == "PRelu":
-        changed = False
         for ast_keyword in node.keywords:
             if ast_keyword.arg == "input":
                 ast_keyword.arg = "x"
-                changed = True
-        if not changed:
-            # todo: args and keywords of static function should be set more accurately
-            pass
     return
 
 
@@ -185,9 +117,10 @@ def is_to_variable(node):
     return False
 
 
-def to_static_ast(node, dygraph_class, dygraph_args, dygraph_keywords):
-    static_info = to_static_api(dygraph_class)
-    static_api = static_info[STATIC_API]
+def to_static_ast(node, class_node):
+    assert isinstance(node, gast.Call)
+    assert isinstance(class_node, gast.Call)
+    static_api = to_static_api(class_node.func.attr)
 
     node.func = gast.Attribute(
         attr=static_api,
@@ -198,10 +131,13 @@ def to_static_ast(node, dygraph_class, dygraph_args, dygraph_keywords):
             value=gast.Name(
                 ctx=gast.Load(), id='fluid', annotation=None,
                 type_comment=None)))
-    node.args.extend(dygraph_args)
-    node.keywords.extend(dygraph_keywords)
-    _add_keywords_to(node, dygraph_class)
-    _delete_keywords_from(node, static_info.get(TO_DELETE_ARGS, []))
+
+    update_args_of_func(node, class_node, 'forward')
+
+    node.args.extend(class_node.args)
+    node.keywords.extend(class_node.keywords)
+    _add_keywords_to(node, class_node.func.attr)
+    _delete_keywords_from(node)
 
     gast.fix_missing_locations(node)
 
@@ -215,19 +151,11 @@ def to_assign_node(ori_node):
     return ori_node
 
 
-def parse_class(node):
-    assert isinstance(node, gast.Call)
-    paddle_class = node.func.attr  # str
-    paddle_args = node.args
-    paddle_keywords = node.keywords  # list
-    return paddle_class, paddle_args, paddle_keywords
-
-
 def ast_to_func(ast_root, func_name, delete_on_exit=True):
     """
     Transform modified AST of decorated function into python callable object.
     """
-    source = astor.to_source(ast_root)
+    source = astor.to_source(gast.gast_to_ast(ast_root))
     if six.PY2:
         source = source.encode('utf-8')
         f = tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False)
@@ -273,3 +201,29 @@ def func_node_from_class(class_node):
     else:
         raise ValueError("Class {class_name} must have the method 'forward'".
                          format(class_node.name))
+
+
+def update_args_of_func(node, dygraph_node, method_name):
+    assert isinstance(node, gast.Call)
+    if method_name not in ["__init__", "forward"]:
+        raise ValueError(
+            "The method name of class to update args should be '__init__' or 'forward'"
+        )
+
+    class_src = astor.to_source(dygraph_node.func)
+    import paddle.fluid as fluid
+    if method_name == "__init__" or eval(
+            "issubclass({}, fluid.dygraph.Layer)".format(class_src)):
+        full_args = eval("inspect.getargspec({}.{})".format(class_src,
+                                                            method_name))
+        full_args_name = [
+            arg_name for arg_name in full_args[0] if arg_name != "self"
+        ]
+    else:
+        full_args_name = []
+    added_keywords = []
+    for idx, arg in enumerate(node.args):
+        added_keywords.append(gast.keyword(arg=full_args_name[idx], value=arg))
+
+    node.args = []
+    node.keywords = added_keywords + node.keywords

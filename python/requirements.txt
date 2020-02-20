@@ -17,5 +17,4 @@ pyyaml
 decorator
 prettytable
 objgraph
-gast>=0.3.3
-astor
+gast
