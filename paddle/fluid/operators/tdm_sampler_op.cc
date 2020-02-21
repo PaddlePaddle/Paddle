@@ -88,22 +88,19 @@ class TDMSamplerOp : public framework::OperatorWithKernel {
       sample_res_length += sample_nums + (int64_t)output_positive_flag;
     }
     VLOG(1) << "Infershape sample_res_length: " << sample_res_length;
-    std::vector<int64_t> out_dims_vec;
-    int64_t out_dim_0 = -1;
+
+    auto ddim = framework::make_ddim({-1, sample_res_length});
     auto input_dims = ctx->GetInputDim("Input");
     if (ctx->IsRuntime()) {
-      out_dim_0 = input_dims[0];
+      // out_dim_0 = input_dims[0];
     }
-    out_dims_vec.push_back(out_dim_0);
-    VLOG(1) << "Infershape out_dims_vec [0]: " << out_dim_0;
-    out_dims_vec.push_back(sample_res_length);
 
     // check vec.size() < tree deepth
     // check every layer neg num <= layer nodes num
 
-    ctx->SetOutputDim("Out", framework::make_ddim(out_dims_vec));
-    ctx->SetOutputDim("Labels", framework::make_ddim(out_dims_vec));
-    ctx->SetOutputDim("Mask", framework::make_ddim(out_dims_vec));
+    ctx->SetOutputDim("Out", ddim);
+    ctx->SetOutputDim("Labels", ddim);
+    ctx->SetOutputDim("Mask", ddim);
   }
 
  protected:
