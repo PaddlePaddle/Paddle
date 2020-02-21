@@ -150,8 +150,13 @@ void IRPassManager::CreatePasses(Argument *argument,
     disable_logs_ = argument->disable_logs();
     if (pass_name == "fc_fuse_pass") {
       pass->Set("use_gpu", new bool(argument->use_gpu()));
-      bool use_fc_padding =
-          !HasPass("fc_mkldnn_pass") && argument->use_fc_padding();
+      bool fc_mkldnn_pass = 0;
+      for (const std::string &pass_n : passes) {
+        if (pass_n == "fc_mkldnn_pass") {
+          fc_mkldnn_pass = 1;
+        }
+      }
+      bool use_fc_padding = !fc_mkldnn_pass && argument->use_fc_padding();
       pass->Set("use_fc_padding", new bool(use_fc_padding));
     }
 
@@ -159,14 +164,6 @@ void IRPassManager::CreatePasses(Argument *argument,
 
     passes_.emplace_back(std::move(pass));
   }
-}
-
-bool IRPassManager::HasPass(const std::string &pass_type) {
-  if (passes_.empty()) return false;
-  auto it = std::find_if(
-      passes_.begin(), passes_.end(),
-      [&](std::unique_ptr<Pass> &pass) { return pass->Type() == pass_type; });
-  return it != passes_.end();
 }
 
 std::unique_ptr<Graph> IRPassManager::Apply(std::unique_ptr<Graph> graph) {
