@@ -160,6 +160,8 @@ def dyfunc_Linear(input):
 
 
 def dyfunc_Pool2D(input):
+    fluid.dygraph.Pool2D(
+        pool_size=2, pool_type='avg', pool_stride=1, global_pooling=False)
     pool2d = fluid.dygraph.Pool2D(
         pool_size=2, pool_type='avg', pool_stride=1, global_pooling=False)
     res = pool2d(input)
