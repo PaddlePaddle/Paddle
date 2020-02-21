@@ -155,6 +155,7 @@ class PartialConcatOpMaker : public framework::OpProtoAndCheckerMaker {
 Partial Concat Operator.
 Partial Concatenate the input tensors along the 2nd dimension.
 Only 2-D Tensor or LodTensor input is supported.
+Slice and concat can only be performed along the second dimension.
 Examples:
   Input[0] = [[1,2],[3,4]]
   Input[1] = [[5,6],[7,8]]

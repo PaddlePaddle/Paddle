@@ -812,7 +812,8 @@ def partial_concat(input, start_index=0, length=-1):
     **Partial Concat**
     This OP concatenates the inputs according to the start index and length. This
     OP exists in contrib, which means that it is not shown to the public.
-    Only 2-D Tensor or LodTensor input is  supported.
+    Only 2-D Tensor or LodTensor input is supported. Slice and concat can only be 
+    performed along the second dimension.
 
     .. code-block:: text
         
