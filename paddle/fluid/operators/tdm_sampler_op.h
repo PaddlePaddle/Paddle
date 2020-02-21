@@ -86,10 +86,13 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
     auto *output_data = out_tensor->mutable_data<int64_t>(context.GetPlace());
     auto *label_data = label_tensor->mutable_data<int64_t>(context.GetPlace());
     auto *mask_data = mask_tensor->mutable_data<int64_t>(context.GetPlace());
-
-    memset(output_data, 0, sample_res_length * input_ids_num * sizeof(int64_t));
-    memset(label_data, 0, sample_res_length * input_ids_num * sizeof(int64_t));
-    memset(mask_data, 1, sample_res_length * input_ids_num * sizeof(int64_t));
+    int64_t zero = 0;
+    int64_t one = 1;
+    memset(output_data, zero,
+           sample_res_length * input_ids_num * sizeof(int64_t));
+    memset(label_data, zero,
+           sample_res_length * input_ids_num * sizeof(int64_t));
+    memset(mask_data, one, sample_res_length * input_ids_num * sizeof(int64_t));
 
     VLOG(2) << "End get input & output data";
     // generate uniform sampler
