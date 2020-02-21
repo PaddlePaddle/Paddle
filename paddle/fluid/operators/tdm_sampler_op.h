@@ -80,8 +80,8 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
 
     // get all data
     auto *input_data = input_tensor.data<int64_t>();
-    int64_t *travel_data = const_cast<int64_t *>(travel_lod_tensor.data<int>());
-    int64_t *layer_data = const_cast<int64_t *>(layer_lod_tensor.data<int>());
+    int *travel_data = const_cast<int *>(travel_lod_tensor.data<int>());
+    int *layer_data = const_cast<int *>(layer_lod_tensor.data<int>());
 
     auto *output_data = out_tensor->mutable_data<int64_t>(context.GetPlace());
     auto *label_data = label_tensor->mutable_data<int64_t>(context.GetPlace());
