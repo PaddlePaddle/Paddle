@@ -61,7 +61,7 @@ class TestFetchUnmerged(unittest.TestCase):
                     opt.minimize(loss)
         return [img, label], loss, prediction
 
-    def fetch_unmerged(self, use_cuda):
+    def fetch_unmerged(self, use_cuda=True):
         main_program = fluid.Program()
         startup_program = fluid.Program()
         feeds, loss, prediction = self.build_program(main_program,
@@ -108,6 +108,13 @@ class TestFetchUnmerged(unittest.TestCase):
         if fluid.core.is_compiled_with_cuda():
             self.fetch_unmerged(use_cuda=True)
         self.fetch_unmerged(use_cuda=False)
+
+    def test_fetch_unmerged_parallel_graph(self):
+        fluid.core.globals()['FLAGS_enable_parallel_graph'] = True
+        if fluid.core.is_compiled_with_cuda():
+            self.fetch_unmerged(use_cuda=True)
+        self.fetch_unmerged(use_cuda=False)
+        fluid.core.globals()['FLAGS_enable_parallel_graph'] = False
 
 
 if __name__ == '__main__':
