@@ -23,17 +23,24 @@ from paddle.fluid.dygraph.jit import dygraph_to_static_output
 np.random.seed(1)
 
 
-def dyfunc_with_if_else(x_v):
+def dyfunc_with_if_else(x_v, label=None):
     if fluid.layers.mean(x_v).numpy()[0] > 5:
         x_v = x_v - 1
     else:
         x_v = x_v + 1
+    # plain if in python
+    if label is not None:
+        loss = fluid.layers.cross_entropy(x_v, label)
+        return loss
     return x_v
 
 
-def dyfunc_with_if_else2(x):
-    i, j = 0, 0
-    if fluid.layers.reduce_mean(x).numpy()[0] > x.numpy()[i][j]:
+def dyfunc_with_if_else2(x, col=100):
+    row = 0
+    # plain if in python
+    if abs(col) > x.shape[-1]:
+        col = -1
+    if fluid.layers.reduce_mean(x).numpy()[0] > x.numpy()[row][col]:
         y = fluid.layers.relu(x)
     else:
         x_pow = fluid.layers.pow(x, 2)
@@ -42,9 +49,12 @@ def dyfunc_with_if_else2(x):
 
 
 def nested_if_else(x_v):
-    batch_size = x_v.shape[0]
+    batch_size = 16
     feat_size = x_v.shape[-1]
     bias = fluid.layers.fill_constant([feat_size], dtype='float32', value=1)
+    # plain if in python
+    if x_v.shape[0] != batch_size:
+        batch_size = x_v.shape[0]
     if fluid.layers.mean(x_v).numpy()[0] < 0:
         y = x_v + bias
         w = fluid.layers.fill_constant([feat_size], dtype='float32', value=10)

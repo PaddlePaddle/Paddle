@@ -51,8 +51,9 @@ class IfElseTransformer(gast.NodeTransformer):
 
     def visit_If(self, node):
         assert isinstance(node, gast.If)
+        need_transform = is_control_flow_if(node.test)
         self.generic_visit(node)
-        if is_control_flow_if(node.test):
+        if need_transform:
             pred_node = node.test
             true_func_node, false_func_node, return_name_ids = transform_if_else(
                 node, self.root)
