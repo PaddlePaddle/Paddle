@@ -1393,6 +1393,41 @@ class TestLayer(LayerTest):
 
         self.assertTrue(np.allclose(static_ret, dy_ret_rlt))
 
+    def test_while_loop(self):
+        with self.static_graph():
+            i = layers.fill_constant(shape=[1], dtype='int64', value=0)
+            ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
+
+            def cond(i):
+                return layers.less_than(i, ten)
+
+            def body(i):
+                return i + 1
+
+            out = layers.while_loop(cond, body, [i])
+            static_ret = self.get_static_graph_result(feed={}, fetch_list=out)
+
+        with self.dynamic_graph():
+            i = layers.fill_constant(shape=[1], dtype='int64', value=0)
+            ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
+
+            def cond(i):
+                return layers.less_than(i, ten)
+
+            def body(i):
+                return i + 1
+
+            dy_ret = layers.while_loop(cond, body, [i])
+            with self.assertRaises(ValueError):
+                j = layers.fill_constant(shape=[1], dtype='int64', value=0)
+
+                def body2(i):
+                    return i + 1, i + 2
+
+                layers.while_loop(cond, body2, [j])
+
+        self.assertTrue(np.array_equal(static_ret[0], dy_ret[0].numpy()))
+
     def test_compare(self):
         value_a = np.arange(3)
         value_b = np.arange(3)
