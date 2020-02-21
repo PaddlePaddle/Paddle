@@ -40,7 +40,7 @@ class RefByTrainerIdKernel : public framework::OpKernel<T> {
     }
     PADDLE_ENFORCE_LT((size_t)trainer_id, in_list.size());
     out->mutable_data<T>(context.GetPlace());
-    framework::TensorCopy(*(in_list[trainer_id]), in_list->place(), out)
+    framework::TensorCopy(*(in_list[trainer_id]), in_list.place(), out)
   }
 };
 
