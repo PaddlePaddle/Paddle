@@ -28,16 +28,13 @@ np.random.seed(SEED)
 
 
 def dyfunc_to_variable(x):
-    input = fluid.dygraph.to_variable(x)
-    pool2d = fluid.dygraph.Pool2D(
-        pool_size=2, pool_type='avg', pool_stride=1, global_pooling=False)
-    res = pool2d(input)
+    res = fluid.dygraph.to_variable(x)
     return res
 
 
 class TestDygraphBasicApi_ToVariable(unittest.TestCase):
     def setUp(self):
-        self.input = np.random.random((1, 1, 3, 20)).astype('float32')
+        self.input = np.ones(5).astype("int32")
         self.dygraph_func = dyfunc_to_variable
 
     def get_dygraph_output(self):
@@ -60,14 +57,13 @@ class TestDygraphBasicApi_ToVariable(unittest.TestCase):
     def test_transformed_static_result(self):
         dygraph_res = self.get_dygraph_output()
         static_res = self.get_static_output()
-        self.assertTrue(np.array_equal(static_res, dygraph_res))
+        self.assertTrue(
+            np.allclose(dygraph_res, static_res),
+            msg='dygraph is {}\n static_res is {}'.format(dygraph_res,
+                                                          static_res))
 
 
 # 1. test Apis that inherit from layers.Layer
-def dyfunc_BarchNorm(input):
-    batch_norm = fluid.BatchNorm(num_channels=10)
-    hidden = batch_norm(input)
-    return hidden
 
 
 def dyfunc_BilinearTensorProduct(layer1, layer2):
@@ -140,12 +136,6 @@ def dyfunc_Conv3DTranspose(input):
     return ret
 
 
-def dyfunc_LayerNorm(input):
-    layerNorm = fluid.LayerNorm([32, 32])
-    ret = layerNorm(input)
-    return ret
-
-
 def dyfunc_Linear(input):
     fc = fluid.dygraph.Linear(
         input_dim=10,
@@ -160,6 +150,8 @@ def dyfunc_Linear(input):
 
 
 def dyfunc_Pool2D(input):
+    fluid.dygraph.Pool2D(
+        pool_size=2, pool_type='avg', pool_stride=1, global_pooling=False)
     pool2d = fluid.dygraph.Pool2D(
         pool_size=2, pool_type='avg', pool_stride=1, global_pooling=False)
     res = pool2d(input)
@@ -208,13 +200,10 @@ class TestDygraphBasicApi(unittest.TestCase):
     def test_transformed_static_result(self):
         dygraph_res = self.get_dygraph_output()
         static_res = self.get_static_output()
-        self.assertTrue(np.array_equal(static_res, dygraph_res))
-
-
-class TestDygraphBasicApi_BatchNorm(TestDygraphBasicApi):
-    def setUp(self):
-        self.input = np.random.random(size=(3, 10, 3, 7)).astype('float32')
-        self.dygraph_func = dyfunc_BarchNorm
+        self.assertTrue(
+            np.allclose(dygraph_res, static_res),
+            msg='dygraph is {}\n static_res is \n{}'.format(dygraph_res,
+                                                            static_res))
 
 
 class TestDygraphBasicApi_BilinearTensorProduct(TestDygraphBasicApi):
@@ -267,12 +256,6 @@ class TestDygraphBasicApi_Conv3DTranspose(TestDygraphBasicApi):
     def setUp(self):
         self.input = np.random.random((5, 3, 12, 32, 32)).astype('float32')
         self.dygraph_func = dyfunc_Conv3DTranspose
-
-
-class TestDygraphBasicApi_LayerNorm(TestDygraphBasicApi):
-    def setUp(self):
-        self.input = np.random.random((3, 32, 32)).astype('float32')
-        self.dygraph_func = dyfunc_LayerNorm
 
 
 class TestDygraphBasicApi_Linear(TestDygraphBasicApi):
@@ -379,7 +362,10 @@ class TestDygraphBasicApi_CosineDecay(unittest.TestCase):
     def test_transformed_static_result(self):
         dygraph_res = self.get_dygraph_output()
         static_res = self.get_static_output()
-        self.assertTrue(np.array_equal(static_res, dygraph_res))
+        self.assertTrue(
+            np.allclose(dygraph_res, static_res),
+            msg='dygraph is {}\n static_res is \n{}'.format(dygraph_res,
+                                                            static_res))
 
 
 class TestDygraphBasicApi_ExponentialDecay(TestDygraphBasicApi_CosineDecay):
