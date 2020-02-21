@@ -810,13 +810,30 @@ def shuffle_batch(x, seed=None):
 def partial_concat(input, start_index=0, length=-1):
     """
     **Partial Concat**
-    This OP concatenates the inputs according to the start index and length.
+    This OP concatenates the inputs according to the start index and length. This
+    OP exists in contrib, which means that it is not shown to the public.
+
+    .. code-block:: text
+        
+        Given:
+            x = [[0, 1, 2],
+                 [3, 4, 5]]
+            y = [[6, 7 ,8],
+                 [9, 10, 11]]
+            output = partial_concat([x, y], start_index=0, length=2)
+
+          we get:
+             
+            output = [[0, 1, 6, 7],
+                      [3, 4, 9, 10]]
+
     Args:
         input(list): List of input Tensors with data type float32, float64, int32,
             int64.
         start_index(int32): The start index of each instance for partial concatenation.
             Default is 0.
         length(int32): The length of each instance for partial concatenation. Default is -1.
+            Negative values for all elements after start_index.
     Returns:
         Variable: A Tensor with the same data type as input's.
     Examples:
