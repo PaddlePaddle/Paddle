@@ -108,10 +108,12 @@ def write_distributed_training_mode_py(filename='paddle/fluid/incubate/fleet/par
     cnt = '''
 # THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY#
 
-IS_PSLIB=%(is_pslib)s
+from paddle.fluid.incubate.fleet.base.fleet_base import Mode
+
+BUILD_MODE=Mode.%(mode)s
 
 def is_transpiler():
-    return not IS_PSLIB
+    return Mode.Transpiler == BUILD_MODE
 
 '''
 
@@ -120,7 +122,7 @@ def is_transpiler():
 
     with open(filename, 'w') as f:
         f.write(cnt % {
-            'is_pslib': '${WITH_PSLIB}'
+            'mode': 'PSLIB' if '${WITH_PSLIB}' == ON else 'TRANSPILER'
         })
 
 write_distributed_training_mode_py(filename='@PADDLE_BINARY_DIR@/python/paddle/fluid/incubate/fleet/parameter_server/version.py')
