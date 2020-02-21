@@ -82,33 +82,44 @@ class Edlenv(object):
 
         return self._parse_response_pods(pods)
 
-    def get_cluster(self):
+    def get_cluster(self, hdfs):
         assert self.is_under_edl(), "Edlenv only used under edl environments"
 
         pods = self._get_pods_from_job_server()
 
-        cluster = Cluster()
+        cluster = Cluster(hdfs)
         cluster.job_server = self.job_server
         cluster.job_id = self.job_id
         cluster.pods = pods
+        cluster.hdfs = hdfs
 
-        #logger.debug("get clsuter:{} from jobserver", cluster)
-        print(cluster)
+        logger.debug("get clsuter:{} from jobserver", cluster)
 
         return cluster
 
 
 def barrier_terminate_world_trainers(cluster, pod, comm, timeout=10, try_num=3):
-    pods_endpoints = cluster.get_pods_endpoints()
-
     step = 0
     while True:
-        r = comm.init(cluster.hdfs, pods_endpoints, pods.idx, try_num=try_num)
+        r = comm.init(
+            cluster.job_id,
+            cluster.hdfs,
+            cluster.get_pods_endpoints(),
+            pod.rank,
+            try_num=try_num)
         if not r:
+            logger.warning("can't init from context:{}".format(cluster))
             return False
 
         r = comm.barrier(timeout)
         if not r:
+            logger.warning("barrier timeout context:{}".format(cluster))
             return False
+
+        if step > 3:
+            time.sleep(1)
+            return False
+
+        return true
 
     return False

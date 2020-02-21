@@ -125,6 +125,21 @@ POD_IP (current node ip address, not needed for local training)
         help="The path for each process's log.If it's not setted, the log will printed to default pipe."
     )
 
+    parser.add_argument(
+        "--hdfs_name",
+        type=str,
+        default=None,
+        help="The hdfs_name used for edl.")
+
+    parser.add_argument(
+        "--hdfs_ugi", type=str, default=None, help="The hdfs_ugi used for edl.")
+
+    parser.add_argument(
+        "--hdfs_path",
+        type=str,
+        default=None,
+        help="The hdfs_path used for edl.")
+
     #positional
     parser.add_argument(
         "training_script",
@@ -287,6 +302,15 @@ def get_cluster_from_args(args, selected_gpus):
     return get_cluster(node_ips, node_ip, args.started_port, selected_gpus)
 
 
+def get_hdfs_from_args(args):
+    hdfs = Hdfs()
+    hdfs.hdfs_name = args.hdfs_name
+    hdfs.hdfs_ugi = args.hdfs_ugi
+    hdfs.hdfs_path = args.hdfs_path
+
+    assert hdfs.is_valid()
+
+
 def launch(args):
     # parse arguments, used for cloud-single-machine and local
     selected_gpus = get_gpus()
@@ -296,14 +320,18 @@ def launch(args):
 
     cluster = None
     comm = None
+    hdfs = None
+
     edl_env = edl_utils.Edlenv()
     use_edl = edl_env.is_under_edl()
+
     if args.use_paddlecloud and not use_edl and trainers_num != 1:
         cluster = cloud_utils.get_cloud_cluster(
             arges.node_ips, args.node_ip, args.started_port, selected_gpus)
         logger.info("get cluster from cloud:{}".format(cluster))
     elif use_edl:
-        cluster = edl_env.get_cluster()
+        hdfs = get_hdfs_from_args(args)
+        cluster = edl_env.get_cluster(hdfs)
         comm = Gloo()
         logger.info("get cluster from edl:{}".format(cluster))
     else:
@@ -314,7 +342,7 @@ def launch(args):
     step = 0
     while True:
         if use_edl:
-            cluster2 = edl_env.get_cluster()
+            cluster2 = edl_env.get_cluster(hdfs)
             pod = cluster2.pod(edl_env.pod_id)
             if pod is None:  # me is dead
                 logger.info(

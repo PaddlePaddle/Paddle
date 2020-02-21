@@ -25,13 +25,26 @@ class Hdfs(object):
         self.hdfs_name = None
         self.hdfs_path = None
 
+    def is_valid(self):
+        return self.hdfs_ugi is not None and \
+            self.hdfs_name is not None and \
+            self.hdfs_path is not None
+
     def __str__(self):
         return "hdfs_ugi:{} hdfs_name:{} hdfs_path{}".format(
             self.hdfs_ugi, self.hdfs_name, self.hdfs_path)
 
+    def __eq__(self, n):
+        return self.hdfs_ugi == n.hdfs_ugi and \
+            self.hdfs_name == n.hdfs_name and \
+            self.hdfs_path == n.hdfs_path
+
+    def __ne__(self, n):
+        return not self == n
+
 
 class Cluster(object):
-    def __init__(self):
+    def __init__(self, hdfs):
         self.job_server = None
         self.pods = None
         self.hdfs = None
@@ -159,32 +172,36 @@ class Pod(object):
 
 
 class Gloo(object):
-    def __init__():
-        self._prefix = "edl_job"
+    def __init__(self):
         self._gloo = fluid.core.Gloo()
+        self._clear()
 
+    def _clear(self):
         self._endpoints = None
+        self._job_id = None
         self._hdfs = None
         self._rank = None
 
-    def _clear():
-        self._endpoints = None
-        self._hdfs = None
-        self._rank = None
+    def _is_changed(self, job_id, hdfs, endpoints, rank):
+        return self._job_id == job_id and \
+            self._hdfs == hdfs and \
+            self._endpoints == endpoints and \
+            self._rank == rank
 
-    def _init(hdfs, endpints, rank, try_num=3):
-        if endpoints != self._endpoints or hdfs != self._hdfs or rank != self._rank:
+    def _init(job_id, hdfs, endpoints, rank, try_num=3):
+        if not self._is_changed(job_id, hdfs, endpoints, rank):
+            self._job_id = job_id
             self._hdfs = hdfs
-            self._endpoints = self._endpoints
+            self._endpoints = endpoints
             self._rank = rank
             self._try_num = try_num
 
             iface = self.__get_default_iface()
-            if not self.__gloo.init(pod.idx,
-                                    len(pods_endpoints),
-                                    hdfs.hdfs_path.rstrip("/") + "/all",
-                                    hdfs.hdfs_name, hdfs.hdfs_ugi, self.__iface,
-                                    self._prefix):
+            if not self._gloo.init(rank,
+                                   len(self._endpoints),
+                                   hdfs.hdfs_path.rstrip("/") + "/edl_job_gloo",
+                                   hdfs.hdfs_name, hdfs.hdfs_ugi, self.__iface,
+                                   self._job_id):
                 self._clear()
                 return False
 
@@ -203,9 +220,10 @@ class Gloo(object):
 
         return False
 
-    def init(hdfs, endpoints, rank, try_num=3):
+    def init(job_id, hdfs, endpoints, rank, try_num=3):
         func = functools.partial(
             self._init,
+            job_id=job_id,
             hdfs=hdfs,
             endpoints=endpoints,
             rank=rank,
@@ -213,7 +231,8 @@ class Gloo(object):
         return self._loop(func)
 
     def barrier(timeout):
-        func = functools.partial(self._gloo.barrier, timeout=timeout)
+        #func = functools.partial(self._gloo.barrier, timeout=timeout)
+        func = functools.partial(self._gloo.barrier)
         return self._loop(func)
 
     def allgather(input, output, timeout):
