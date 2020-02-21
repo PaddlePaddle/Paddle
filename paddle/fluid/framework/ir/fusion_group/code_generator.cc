@@ -28,7 +28,7 @@ CodeGenerator::CodeGenerator() {
   // Only support elementwise operations now.
   code_templates_.resize(1);
 
-  CodeTemplate elementwise_t(elementwise_cuda_template);
+  CodeTemplate elementwise_t(cuda_kernel_template_1d);
   code_templates_[0] = elementwise_t;
 }
 
@@ -103,7 +103,7 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
 // store the expression as suffix Expressions using vector.
 std::string CodeGenerator::Generate(
     std::string func_name, std::string dtype,
-    std::vector<OperationExpression> expressions) {
+    const std::vector<OperationExpression>& expressions) {
   // TODO(liuyiqun): Check whether all expressions are elementwise operations.
   std::set<int> input_ids = DistilInputIds(expressions);
   std::set<int> output_ids = DistilOutputIds(expressions);

@@ -66,7 +66,7 @@ typedef __half float16;
 
 )";
 
-static constexpr char elementwise_cuda_template[] = R"(
+static constexpr char cuda_kernel_template_1d[] = R"(
 extern "C" __global__ void $func_name($parameters) {
   for(int idx = blockIdx.x * blockDim.x + threadIdx.x;
       idx < N;
