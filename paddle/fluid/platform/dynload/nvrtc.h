@@ -60,6 +60,7 @@ extern bool HasNVRTC();
  * include all needed nvrtc functions
  **/
 #define NVRTC_ROUTINE_EACH(__macro) \
+  __macro(nvrtcVersion);            \
   __macro(nvrtcGetErrorString);     \
   __macro(nvrtcCompileProgram);     \
   __macro(nvrtcCreateProgram);      \

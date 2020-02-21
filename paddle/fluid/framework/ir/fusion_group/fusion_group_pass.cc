@@ -41,6 +41,11 @@ int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
   // TODO(liuyiqun): supported different places
   platform::CUDAPlace place = platform::CUDAPlace(0);
   int index = platform::DeviceCodePool::Init({place}).size(place);
+  if (!platform::CUDADeviceCode::IsAvailable()) {
+    LOG(WARNING)
+        << "Disable fusion_group because CUDA Driver or NVRTC is not avaiable.";
+    return 0;
+  }
 
   std::vector<std::vector<Node*>> subgraphs =
       fusion_group::ElementwiseGroupDetector()(graph);

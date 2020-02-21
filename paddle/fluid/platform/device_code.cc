@@ -17,6 +17,7 @@ limitations under the License. */
 #include <set>
 #include <utility>
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
 namespace platform {
@@ -76,9 +77,70 @@ DeviceCodePool::DeviceCodePool(const std::vector<platform::Place>& places) {
 #endif
     }
   }
+
+#ifdef PADDLE_WITH_CUDA
+  CUDADeviceCode::CheckAvailableStatus();
+#endif
 }
 
 #ifdef PADDLE_WITH_CUDA
+static bool CheckCUDADriverResult(CUresult result, std::string caller,
+                                  std::string kernel_name = "") {
+  if (result != CUDA_SUCCESS) {
+    const char* error = nullptr;
+    dynload::cuGetErrorString(result, &error);
+    LOG_FIRST_N(WARNING, 1) << "Call " << caller << " for < " << kernel_name
+                            << " > failed: " << error << " (" << result << ")";
+    return false;
+  }
+  return true;
+}
+
+bool CUDADeviceCode::available_ = false;
+void CUDADeviceCode::CheckAvailableStatus() {
+  available_ = false;
+  if (!dynload::HasNVRTC() || !dynload::HasCUDADriver()) {
+    LOG_FIRST_N(WARNING, 1)
+        << "NVRTC and CUDA driver are need for JIT compiling of CUDA code.";
+    return;
+  }
+
+  int nvrtc_major = 0;
+  int nvrtc_minor = 0;
+  nvrtcResult nvrtc_result = dynload::nvrtcVersion(&nvrtc_major, &nvrtc_minor);
+
+  int driver_version = 0;
+  int dirver_major = 0;
+  int driver_minor = 0;
+  CUresult driver_result = dynload::cuDriverGetVersion(&driver_version);
+  if (driver_result == CUDA_SUCCESS) {
+    dirver_major = driver_version / 1000;
+    driver_minor = (driver_version % 1000) / 10;
+  }
+
+  LOG_FIRST_N(INFO, 1) << "CUDA Driver Version: " << dirver_major << "."
+                       << driver_minor << "; NVRTC Version: " << nvrtc_major
+                       << "." << nvrtc_minor;
+  if (nvrtc_result != NVRTC_SUCCESS || driver_result != CUDA_SUCCESS) {
+    return;
+  }
+
+  int count = 0;
+  driver_result = dynload::cuDeviceGetCount(&count);
+  if (driver_result == CUDA_SUCCESS) {
+    available_ = true;
+  } else {
+    if (driver_result == CUDA_ERROR_NOT_INITIALIZED) {
+      // Try call cuInit to inlitialize the CUDA driver.
+      if (CheckCUDADriverResult(dynload::cuInit(0), "cuInit")) {
+        available_ = true;
+      }
+    } else {
+      CheckCUDADriverResult(driver_result, "cuDeviceGetCount");
+    }
+  }
+}
+
 CUDADeviceCode::CUDADeviceCode(const Place& place, const std::string& name,
                                const std::string& kernel) {
   if (!is_gpu_place(place)) {
@@ -94,7 +156,7 @@ CUDADeviceCode::CUDADeviceCode(const Place& place, const std::string& name,
 bool CUDADeviceCode::Compile() {
   is_compiled_ = false;
   if (!dynload::HasNVRTC() || !dynload::HasCUDADriver()) {
-    LOG(WARNING)
+    LOG_FIRST_N(WARNING, 1)
         << "NVRTC and CUDA driver are need for JIT compiling of CUDA code.";
     return false;
   }
@@ -160,13 +222,13 @@ bool CUDADeviceCode::Compile() {
   }
 
   if (!CheckCUDADriverResult(dynload::cuModuleLoadData(&module_, ptx_.data()),
-                             "cuModuleLoadData")) {
+                             "cuModuleLoadData", name_)) {
     return false;
   }
 
   if (!CheckCUDADriverResult(
           dynload::cuModuleGetFunction(&function_, module_, name_.c_str()),
-          "cuModuleGetFunction")) {
+          "cuModuleGetFunction", name_)) {
     return false;
   }
 
@@ -204,19 +266,9 @@ void CUDADeviceCode::Launch(const size_t n, std::vector<void*>* args) const {
 bool CUDADeviceCode::CheckNVRTCResult(nvrtcResult result,
                                       std::string function) {
   if (result != NVRTC_SUCCESS) {
-    LOG(WARNING) << "Call " << function
-                 << " failed: " << dynload::nvrtcGetErrorString(result);
-    return false;
-  }
-  return true;
-}
-
-bool CUDADeviceCode::CheckCUDADriverResult(CUresult result,
-                                           std::string function) {
-  if (result != CUDA_SUCCESS) {
-    const char* error = nullptr;
-    LOG(WARNING) << "Call " << function
-                 << " failed: " << dynload::cuGetErrorString(result, &error);
+    LOG_FIRST_N(WARNING, 1)
+        << "Call " << function << " for < " << name_
+        << " > failed: " << dynload::nvrtcGetErrorString(result);
     return false;
   }
   return true;
