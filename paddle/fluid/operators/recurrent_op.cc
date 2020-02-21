@@ -146,10 +146,11 @@ int64_t RecurrentBase::GetSequenceLength(const framework::Scope &scope) const {
     if (seq_len == -1) {
       seq_len = dim[0];
     } else {
-      PADDLE_ENFORCE_EQ(
-          seq_len, dim[0],
-          platform::errors::InvalidArgument(
-              "Sequence lengths of inputs of RecurrentOp are NOT equal"));
+      PADDLE_ENFORCE_EQ(seq_len, dim[0],
+                        platform::errors::InvalidArgument(
+                            "Sequence length of input %s in RecurrentOp is NOT "
+                            "equal to sequence length of previous input",
+                            iname));
     }
   }
   PADDLE_ENFORCE_GE(seq_len, 0,
