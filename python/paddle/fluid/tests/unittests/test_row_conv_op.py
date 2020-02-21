@@ -139,8 +139,8 @@ def row_conv_foward_Tensor(x, wt):
 class TestRowOpWithTensorInput(OpTest):
     def setUp(self):
         self.op_type = "row_conv"
-        length = [2, 2, 2]
-        B = 1
+        length = [1, 2, 3]
+        B = 2
         T = sum(length)
         D = 20
         context_length = 6
