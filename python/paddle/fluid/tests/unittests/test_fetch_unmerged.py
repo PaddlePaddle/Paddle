@@ -89,7 +89,7 @@ class TestFetchUnmerged(unittest.TestCase):
             loss_v, prediction_v = exe.run(binary,
                                            feed=feeder.feed(data),
                                            fetch_list=[loss, prediction],
-                                           merge_result=False)
+                                           return_merged=False)
             self.assertEqual(np.array(loss_v).shape, (device_num, 1))
             self.assertEqual(
                 np.array(prediction_v).shape,
@@ -100,7 +100,7 @@ class TestFetchUnmerged(unittest.TestCase):
             loss_v, prediction_v = exe.run(binary,
                                            feed=feeder.feed(data),
                                            fetch_list=[loss, prediction],
-                                           merge_result=True)
+                                           return_merged=True)
             self.assertEqual(np.array(loss_v).shape, (device_num, ))
             self.assertEqual(np.array(prediction_v).shape, (batch_size, 10))
 

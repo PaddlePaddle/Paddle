@@ -724,7 +724,7 @@ void ParallelExecutor::BCastParamsToDevices(
 }
 
 FetchResultType ParallelExecutor::Run(
-    const std::vector<std::string> &fetch_tensors, bool merge_result) {
+    const std::vector<std::string> &fetch_tensors, bool return_merged) {
   VLOG(3) << "enter ParallelExecutor Run";
 #ifdef WITH_GPERFTOOLS
   if (gProfileStarted) {
@@ -738,7 +738,7 @@ FetchResultType ParallelExecutor::Run(
                                 member_->HasGarbageCollectors());
 
   VLOG(3) << "ParallelExecutor begin to run member_->executor_->Run";
-  auto fetch_data = member_->executor_->Run(fetch_tensors, merge_result);
+  auto fetch_data = member_->executor_->Run(fetch_tensors, return_merged);
   return fetch_data;
 }
 

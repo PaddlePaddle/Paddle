@@ -78,7 +78,7 @@ class ParallelExecutor {
       const std::unordered_map<std::string, LoDTensor> &tensors);
 
   FetchResultType Run(const std::vector<std::string> &fetch_tensors,
-                      bool merge_result = true);
+                      bool return_merged = true);
 
  private:
   // broadcast the parameters from the 0th device.

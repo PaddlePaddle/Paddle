@@ -2276,13 +2276,13 @@ All parameter, weight, gradient are variables in Paddle.
       .def("run",
            [](ParallelExecutor &self,
               const std::vector<std::string> &fetch_tensors,
-              bool merge_result) -> py::object {
+              bool return_merged) -> py::object {
              paddle::framework::FetchResultType ret;
              {
                pybind11::gil_scoped_release release;
-               ret = self.Run(fetch_tensors, merge_result);
+               ret = self.Run(fetch_tensors, return_merged);
              }
-             if (merge_result) {
+             if (return_merged) {
                return py::cast(std::move(
                    boost::get<paddle::framework::FeedFetchList>(ret)));
              } else {
