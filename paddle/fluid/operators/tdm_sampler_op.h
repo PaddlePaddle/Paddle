@@ -86,6 +86,9 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
     auto *output_data = out_tensor->mutable_data<int64_t>(context.GetPlace());
     auto *label_data = label_tensor->mutable_data<int64_t>(context.GetPlace());
     auto *mask_data = mask_tensor->mutable_data<int64_t>(context.GetPlace());
+
+    memset(output_data, 0, sample_res_length * input_ids_num * sizeof(int64_t));
+    memset(label_data, 0, sample_res_length * input_ids_num * sizeof(int64_t));
     memset(mask_data, 1, sample_res_length * input_ids_num * sizeof(int64_t));
 
     VLOG(2) << "End get input & output data";
@@ -173,21 +176,21 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
       }  // end one input nce
     }    // end all input nce
 
-    int sample_total_nums = input_ids_num * sample_res_length;
-    std::string output_str = "";
-    std::string label_str = "";
-    std::string mask_str = "";
-    for (int i = 0; i < sample_total_nums; i++) {
-      output_str += std::to_string(output_data[i]);
-      output_str += ",";
-      label_str += std::to_string(label_data[i]);
-      label_str += ",";
-      mask_str += std::to_string(mask_data[i]);
-      mask_str += ",";
-    }
-    VLOG(1) << "TDM: Sample Res " << output_str;
-    VLOG(1) << "TDM: Label Res " << label_str;
-    VLOG(1) << "TDM: Mask Res " << mask_str;
+    // int sample_total_nums = input_ids_num * sample_res_length;
+    // std::string output_str = "";
+    // std::string label_str = "";
+    // std::string mask_str = "";
+    // for (int i = 0; i < sample_total_nums; i++) {
+    //   output_str += std::to_string(output_data[i]);
+    //   output_str += ",";
+    //   label_str += std::to_string(label_data[i]);
+    //   label_str += ",";
+    //   mask_str += std::to_string(mask_data[i]);
+    //   mask_str += ",";
+    // }
+    // VLOG(1) << "TDM: Sample Res " << output_str;
+    // VLOG(1) << "TDM: Label Res " << label_str;
+    // VLOG(1) << "TDM: Mask Res " << mask_str;
   }
 };
 
