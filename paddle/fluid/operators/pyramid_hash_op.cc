@@ -205,31 +205,30 @@ class PyramidHashOP : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        ctx.GetPlace(), OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        OperatorWithKernel::IndicateVarDataType(ctx, "W"));
+        OperatorWithKernel::IndicateVarDataType(ctx, "W"), ctx.GetPlace());
   }
 };
 
-template <typename DeviceContext, typename Tin, typename Tweight>
-class CPUPyramidHashOPKernel : public framework::OpKernel<Tin, Tweight> {
+template <typename DeviceContext, typename T>
+class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
  public:
   bool should_use_term(math::bloomfilter* _filter,
-                       math::bloomfilter* _black_filter,
-                       const Tweight* word_repr, int len) const {
+                       math::bloomfilter* _black_filter, const float* word_repr,
+                       int len) const {
     return (!_filter ||
             1 == math::bloomfilter_get(_filter, word_repr,
-                                       len * sizeof(Tweight))) &&
+                                       len * sizeof(float))) &&
            (!_black_filter ||
             0 == math::bloomfilter_get(_black_filter, word_repr,
-                                       len * sizeof(Tweight)));
+                                       len * sizeof(float)));
   }
 
-  void hash_embedding_ff(const float* hash_id, int len, Tweight* top_pos,
-                         const Tweight* weights, int _num_emb, int _rand_len,
+  void hash_embedding_ff(const float* hash_id, int len, T* top_pos,
+                         const T* weights, int _num_emb, int _rand_len,
                          int _space_len) const {
-    unsigned int pos1 = XXH32(hash_id, len * sizeof(Tin), 0) % _space_len;
+    unsigned int pos1 = XXH32(hash_id, len * sizeof(float), 0) % _space_len;
     unsigned int pos2 =
-        XXH32(hash_id, len * sizeof(Tin), _rand_len) % _space_len;
+        XXH32(hash_id, len * sizeof(float), _rand_len) % _space_len;
 
     for (int j = 0; j != _num_emb; j += _rand_len) {
       if (j + _rand_len < _num_emb) {
@@ -238,9 +237,9 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<Tin, Tweight> {
       }
 
       unsigned int pos3 =
-          XXH32(hash_id, len * sizeof(Tin), j + 2 * _rand_len) % _space_len;
-      memcpy(top_pos + j, const_cast<Tweight*>(weights + pos1),
-             _rand_len * sizeof(Tweight));
+          XXH32(hash_id, len * sizeof(float), j + 2 * _rand_len) % _space_len;
+      memcpy(top_pos + j, const_cast<T*>(weights + pos1),
+             _rand_len * sizeof(T));
       pos1 = pos2;
       pos2 = pos3;
     }
@@ -270,12 +269,12 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<Tin, Tweight> {
     const auto* bottom_data_ori = bottom->data<int32_t>();
     auto* buff = ctx.Output<LoDTensor>("X_Temp_Out");
     buff->Resize(framework::make_ddim({bottom->dims()[0], bottom->dims()[1]}));
-    Tin* bottom_data = buff->mutable_data<float>(ctx.GetPlace());
+    float* bottom_data = buff->mutable_data<float>(ctx.GetPlace());
     for (int i = 0; i < bottom->dims()[0]; i++) {
       bottom_data[i] = bottom_data_ori[i];
     }
 
-    const auto* weights = _blobs_0->data<Tweight>();
+    const auto* weights = _blobs_0->data<T>();
 
     std::vector<size_t> top_offset;
     top_offset.resize(offset.size());
@@ -285,12 +284,12 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<Tin, Tweight> {
     math::bloomfilter* _black_filter = NULL;
     if (use_filter) {
       if (white_list_len != 0) {
-        _filter = (math::bloomfilter*)_blobs_1->data<Tin>();
+        _filter = (math::bloomfilter*)_blobs_1->data<float>();
         PADDLE_ENFORCE_EQ(math::bloomfilter_check(_filter), 1,
                           "white filter not load");
       }
       if (black_list_len != 0) {
-        _black_filter = (math::bloomfilter*)_blobs_2->data<Tin>();
+        _black_filter = (math::bloomfilter*)_blobs_2->data<float>();
         PADDLE_ENFORCE_EQ(math::bloomfilter_check(_black_filter), 1,
                           "black filter not load");
       }
@@ -313,11 +312,11 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<Tin, Tweight> {
         for (int ilayer = 1; ilayer < _pyramid_layer && ilayer < w; ++ilayer) {
           for (int l = 0; l < w - ilayer; ++l) {
             if (should_use_term(_filter, _black_filter,
-                                (const Tweight*)(bottom_data + offset[i] + l),
+                                (const float*)(bottom_data + offset[i] + l),
                                 ilayer + 1)) {
               if (_is_training != 0) {
                 unsigned int rand_val = rand_r(&_seed);
-                Tweight rate = static_cast<Tweight>(rand_val) / (RAND_MAX);
+                float rate = static_cast<float>(rand_val) / (RAND_MAX);
                 *(iter_end++) = (rate < _drop_out_percent ? 0 : 1);
               } else {
                 *(iter_end++) = 1;
@@ -342,7 +341,7 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<Tin, Tweight> {
     top_lod.push_back(top_offset);
     top->set_lod(top_lod);
     top->Resize(framework::make_ddim({top_l, _num_emb}));
-    auto* top_data = top->mutable_data<Tweight>(ctx.GetPlace());
+    auto* top_data = top->mutable_data<T>(ctx.GetPlace());
 
     framework::LoD drop_pos_lod;
     drop_pos_lod.push_back(drop_pos_offset);
@@ -363,7 +362,7 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<Tin, Tweight> {
           }
         }
         auto* top_pos = top_data + top_counter++ * _num_emb;
-        memset(top_pos, 0, _num_emb * sizeof(Tweight));
+        memset(top_pos, 0, _num_emb * sizeof(T));
         continue;
       }
       if (w >= 2) {
@@ -373,7 +372,7 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<Tin, Tweight> {
               // do nothing
             } else {
               auto* top_pos = top_data + top_counter++ * _num_emb;
-              hash_embedding_ff((const Tin*)(bottom_data + offset[i] + l),
+              hash_embedding_ff((const float*)(bottom_data + offset[i] + l),
                                 ilayer + 1, top_pos, weights, _num_emb,
                                 _rand_len, _space_len);
             }
@@ -526,11 +525,9 @@ REGISTER_OPERATOR(pyramid_hash, ops::PyramidHashOP, ops::PyramidHashOpMaker,
 REGISTER_OPERATOR(pyramid_hash_grad, ops::PyramidHashOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
-    pyramid_hash,
-    ops::CPUPyramidHashOPKernel<plt::CPUDeviceContext, float, float>,
-    ops::CPUPyramidHashOPKernel<plt::CPUDeviceContext, float, int8_t>,
-    ops::CPUPyramidHashOPKernel<plt::CPUDeviceContext, double, double>,
-    ops::CPUPyramidHashOPKernel<plt::CPUDeviceContext, double, int8_t>);
+    pyramid_hash, ops::CPUPyramidHashOPKernel<plt::CPUDeviceContext, float>,
+    ops::CPUPyramidHashOPKernel<plt::CPUDeviceContext, double>,
+    ops::CPUPyramidHashOPKernel<plt::CPUDeviceContext, int8_t>);
 REGISTER_OP_CPU_KERNEL(
     pyramid_hash_grad,
     ops::CPUPyramidHashOPGradKernel<plt::CPUDeviceContext, float>,
