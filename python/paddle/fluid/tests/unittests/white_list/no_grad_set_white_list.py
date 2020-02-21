@@ -23,7 +23,6 @@ NEED_TO_FIX_OP_LIST = [
     'affine_grid',
     'backward',
     'batch_norm',
-    'conv_shift',
     'conv2d',
     'conv2d_transpose',
     'conv3d',
