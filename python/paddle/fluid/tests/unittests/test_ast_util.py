@@ -22,7 +22,7 @@ import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.dygraph_to_static.ast_utils import get_name_ids, ast_to_func, is_control_flow_if
 
-from test_dygraph_to_static_ifelse import dyfunc_with_if_else, dyfunc_with_if_else2, nested_if_else
+from test_dygraph_to_static_basic import dyfunc_with_if_else, dyfunc_with_if_else2, nested_if_else
 
 
 class TestGetNameIds(unittest.TestCase):
