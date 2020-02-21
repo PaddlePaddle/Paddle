@@ -154,6 +154,7 @@ class PartialConcatOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Partial Concat Operator.
 Partial Concatenate the input tensors along the 2nd dimension.
+Only 2-D Tensor or LodTensor input is supported.
 Examples:
   Input[0] = [[1,2],[3,4]]
   Input[1] = [[5,6],[7,8]]

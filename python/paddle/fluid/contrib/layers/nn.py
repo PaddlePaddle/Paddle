@@ -812,6 +812,7 @@ def partial_concat(input, start_index=0, length=-1):
     **Partial Concat**
     This OP concatenates the inputs according to the start index and length. This
     OP exists in contrib, which means that it is not shown to the public.
+    Only 2-D Tensor or LodTensor input is  supported.
 
     .. code-block:: text
         
@@ -839,8 +840,8 @@ def partial_concat(input, start_index=0, length=-1):
     Examples:
         .. code-block:: python
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[3], dtype="float32")
-            y = fluid.layers.data(name="y", shape=[3], dtype="float32")
+            x = fluid.data(name="x", shape=[-1,3], dtype="float32")
+            y = fluid.data(name="y", shape=[-1,3], dtype="float32")
             concat = fluid.contrib.layers.partial_concat([x, y], start_index=0, length=2)
     """
     if not isinstance(input, list):
