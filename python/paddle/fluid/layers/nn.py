@@ -326,6 +326,8 @@ def fc(input,
     mul_results = []
     for input_var, param_attr in helper.iter_inputs_and_params():
         input_shape = input_var.shape
+        if num_flatten_dims == -1:
+            num_flatten_dims = len(input_shape) - 1
         param_shape = [
             reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
         ] + [size]
@@ -12542,7 +12544,9 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
         out_list = [out]
     elif isinstance(out, tuple):
         out_list = list(out)
-    elif not isinstance(x, (list, tuple, Variable)):
+    elif isinstance(out, list):
+        out_list = out
+    else:
         raise TypeError(
             'Output must be Variable/list(Variable)/tuple(Variable)')
 
