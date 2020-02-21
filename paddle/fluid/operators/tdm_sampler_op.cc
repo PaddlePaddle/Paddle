@@ -90,7 +90,6 @@ class TDMSamplerOp : public framework::OperatorWithKernel {
     VLOG(1) << "Infershape sample_res_length: " << sample_res_length;
 
     auto ddim = framework::make_ddim({-1, sample_res_length});
-    auto input_dims = ctx->GetInputDim("Input");
     if (ctx->IsRuntime()) {
       // out_dim_0 = input_dims[0];
     } else {
