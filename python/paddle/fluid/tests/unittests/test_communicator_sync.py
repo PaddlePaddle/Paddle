@@ -51,6 +51,7 @@ class TestCommunicator(unittest.TestCase):
         optimizer = fluid.optimizer.SGD(0.01)
 
         strategy = StrategyFactory.create_sync_strategy()
+        strategy._program_config.wait_port = False
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
 
