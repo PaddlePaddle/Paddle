@@ -70,6 +70,7 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
     auto *mask_var = context.OutputVar("Mask");
 
     auto ddim = framework::make_ddim({input_ids_num, sample_res_length});
+    auto total_sample_nums = input_ids_num * sample_res_length;
 
     auto *out_tensor = out_var->GetMutable<framework::LoDTensor>();
     out_tensor->Resize(ddim);
@@ -83,16 +84,18 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
     int *travel_data = const_cast<int *>(travel_lod_tensor.data<int>());
     int *layer_data = const_cast<int *>(layer_lod_tensor.data<int>());
 
-    auto *output_data = out_tensor->mutable_data<int64_t>(context.GetPlace());
-    auto *label_data = label_tensor->mutable_data<int64_t>(context.GetPlace());
-    auto *mask_data = mask_tensor->mutable_data<int64_t>(context.GetPlace());
     int64_t zero = 0;
     int64_t one = 1;
-    memset(output_data, zero,
-           sample_res_length * input_ids_num * sizeof(int64_t));
-    memset(label_data, zero,
-           sample_res_length * input_ids_num * sizeof(int64_t));
-    memset(mask_data, one, sample_res_length * input_ids_num * sizeof(int64_t));
+    std::vector<int64_t> output_vec(total_sample_nums, zero);
+    std::vector<int64_t> label_vec(total_sample_nums, zero);
+    std::vector<int64_t> mask_vec(total_sample_nums, one);
+
+    // memset(output_data, zero,
+    //        sample_res_length * input_ids_num * sizeof(int64_t));
+    // memset(label_data, zero,
+    //        sample_res_length * input_ids_num * sizeof(int64_t));
+    // memset(mask_data, one, sample_res_length * input_ids_num *
+    // sizeof(int64_t));
 
     VLOG(2) << "End get input & output data";
     // generate uniform sampler
@@ -120,15 +123,15 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
           VLOG(1) << "TDM: Skip padding ";
           for (int i = 0;
                i < sample_num + static_cast<int>(output_positive_flag); i++) {
-            output_data[i * sample_res_length + offset] = 0;
-            label_data[i * sample_res_length + offset] = 0;
-            mask_data[i * sample_res_length + offset] = 0;
+            output_vec[i * sample_res_length + offset] = 0;
+            label_vec[i * sample_res_length + offset] = 0;
+            mask_vec[i * sample_res_length + offset] = 0;
             VLOG(1) << "TDM: Res append positive "
-                    << output_data[i * sample_res_length + offset];
+                    << output_vec[i * sample_res_length + offset];
             VLOG(1) << "TDM: Label append positive "
-                    << label_data[i * sample_res_length + offset];
+                    << label_vec[i * sample_res_length + offset];
             VLOG(1) << "TDM: Mask append value "
-                    << mask_data[i * sample_res_length + offset];
+                    << mask_vec[i * sample_res_length + offset];
             offset += 1;
           }
           continue;
@@ -139,16 +142,16 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
 
         // If output positive, add itself
         if (output_positive_flag) {
-          output_data[i * sample_res_length + offset] =
+          output_vec[i * sample_res_length + offset] =
               travel_data[start_offset + layer_idx];
-          label_data[i * sample_res_length + offset] = 1;
-          mask_data[i * sample_res_length + offset] = 1;
+          label_vec[i * sample_res_length + offset] = 1;
+          mask_vec[i * sample_res_length + offset] = 1;
           VLOG(1) << "TDM: Res append positive "
-                  << output_data[i * sample_res_length + offset];
+                  << output_vec[i * sample_res_length + offset];
           VLOG(1) << "TDM: Label append positive "
-                  << label_data[i * sample_res_length + offset];
+                  << label_vec[i * sample_res_length + offset];
           VLOG(1) << "TDM: Mask append value "
-                  << mask_data[i * sample_res_length + offset];
+                  << mask_vec[i * sample_res_length + offset];
           offset += 1;
         }
 
@@ -161,23 +164,31 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
           } while (travel_data[start_offset + layer_idx] ==
                    layer_data[layer_offset_lod[layer_idx] + sample_res]);
 
-          output_data[i * sample_res_length + offset] =
+          output_vec[i * sample_res_length + offset] =
               layer_data[layer_offset_lod[layer_idx] + sample_res];
-          label_data[i * sample_res_length + offset] = 0;
-          mask_data[i * sample_res_length + offset] = 1;
+          label_vec[i * sample_res_length + offset] = 0;
+          mask_vec[i * sample_res_length + offset] = 1;
 
           VLOG(1) << "TDM: Res append negitive "
-                  << output_data[i * sample_res_length + offset];
+                  << output_vec[i * sample_res_length + offset];
           VLOG(1) << "TDM: Label append negitive "
-                  << label_data[i * sample_res_length + offset];
+                  << label_vec[i * sample_res_length + offset];
           VLOG(1) << "TDM: Mask append value "
-                  << mask_data[i * sample_res_length + offset];
+                  << mask_vec[i * sample_res_length + offset];
 
           offset += 1;
         }  // end layer nce
         delete sampler;
       }  // end one input nce
     }    // end all input nce
+
+    auto *output_data = out_tensor->mutable_data<int64_t>(context.GetPlace());
+    auto *label_data = label_tensor->mutable_data<int64_t>(context.GetPlace());
+    auto *mask_data = mask_tensor->mutable_data<int64_t>(context.GetPlace());
+
+    memcpy(output_data, &output_vec[0], sizeof(int64_t) * total_sample_nums);
+    memcpy(label_data, &label_vec[0], sizeof(int64_t) * total_sample_nums);
+    memcpy(mask_data, &mask_vec[0], sizeof(int64_t) * total_sample_nums);
 
     // int sample_total_nums = input_ids_num * sample_res_length;
     // std::string output_str = "";
