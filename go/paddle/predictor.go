@@ -102,12 +102,12 @@ func (predictor *Predictor) SetZeroCopyInput(tensor *ZeroCopyTensor) {
 func (predictor *Predictor) GetZeroCopyOutput(tensor *ZeroCopyTensor) {
 	C.PD_GetZeroCopyOutput(predictor.c, tensor.c)
 	tensor.name = C.GoString(tensor.c.name)
-    var shape []int32
+	var shape []int32
 	shape_hdr := (*reflect.SliceHeader)(unsafe.Pointer(&shape))
 	shape_hdr.Data = uintptr(unsafe.Pointer(tensor.c.shape.data))
 	shape_hdr.Len = int(tensor.c.shape.length / C.sizeof_int)
 	shape_hdr.Cap = int(tensor.c.shape.length / C.sizeof_int)
-    tensor.Reshape(shape)
+	tensor.Reshape(shape)
 }
 
 func (predictor *Predictor) ZeroCopyRun() {
