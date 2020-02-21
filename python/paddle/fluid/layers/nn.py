@@ -13534,7 +13534,7 @@ def deformable_roi_pooling(input,
     if position_sensitive == False:
         output_channels = input_channels
     else:
-        output_channels = input_channels / pooled_height / pooled_width
+        output_channels = int(input_channels / pooled_height / pooled_width)
 
     if part_size is None:
         part_height = pooled_height
