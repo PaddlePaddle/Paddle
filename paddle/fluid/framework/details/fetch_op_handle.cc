@@ -25,13 +25,13 @@ namespace details {
 FetchOpHandle::FetchOpHandle(ir::Node *node, FetchResultType *data,
                              size_t offset, std::vector<Scope *> *local_scopes,
                              std::vector<Scope *> *local_exec_scopes,
-                             bool merge_result)
+                             bool return_merged)
     : OpHandleBase(node),
       data_(data),
       offset_(offset),
       local_scopes_(local_scopes),
       local_exec_scopes_(local_exec_scopes),
-      merge_result_(merge_result) {}
+      return_merged_(return_merged) {}
 
 FetchOpHandle::~FetchOpHandle() {}
 
@@ -40,9 +40,9 @@ void FetchOpHandle::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
 }
 
 void FetchOpHandle::WaitAndMergeCPUTensors() const {
-  if (merge_result_) {
+  if (return_merged_) {
     const auto &tensor_dims = tensors_[0].dims();
-    for (int i = 1; i < tensors_.size(); i++) {
+    for (size_t i = 1; i < tensors_.size(); i++) {
       const auto &ele_dims = tensors_[i].dims();
       PADDLE_ENFORCE_EQ(
           tensor_dims.size(), ele_dims.size(),

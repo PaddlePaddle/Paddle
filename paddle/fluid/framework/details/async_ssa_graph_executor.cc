@@ -132,14 +132,14 @@ AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
   ProcessGraph(graphs_, local_scopes_[0]);
 }
 
-void AsyncSSAGraphExecutor::StartOffPythonTrainLoop(bool merge_result) {
+void AsyncSSAGraphExecutor::StartOffPythonTrainLoop(bool return_merged) {
   VLOG(3) << "StartOffPythonTrainLoop size = " << places_.size();
   for (size_t i = 1; i < places_.size(); ++i) {
-    auto call = [this, i, merge_result]() -> void {
+    auto call = [this, i, return_merged]() -> void {
       VLOG(3) << "start off python thread " << i;
       try {
         while (true) {
-          executors_[i]->Run({}, merge_result);
+          executors_[i]->Run({}, return_merged);
         }
       } catch (...) {
         exception_holder_.Catch(std::current_exception());
@@ -165,7 +165,7 @@ void AsyncSSAGraphExecutor::HandleException() {
 }
 
 FetchResultType AsyncSSAGraphExecutor::Run(
-    const std::vector<std::string> &fetch_tensors, bool merge_result) {
+    const std::vector<std::string> &fetch_tensors, bool return_merged) {
   // init once
   if (run_futures_.size() == 0 && places_.size() > 1) {
     if (strategy_.thread_barrier_) {
@@ -175,7 +175,7 @@ FetchResultType AsyncSSAGraphExecutor::Run(
 #endif
     }
     exception_holder_.Clear();
-    StartOffPythonTrainLoop(merge_result);
+    StartOffPythonTrainLoop(return_merged);
   }
 
   if (places_.size() == 1) {
@@ -185,14 +185,14 @@ FetchResultType AsyncSSAGraphExecutor::Run(
   FetchResultType fetch_data;
 
   try {
-    fetch_data = executors_[0]->Run(fetch_tensors, merge_result);
+    fetch_data = executors_[0]->Run(fetch_tensors, return_merged);
   } catch (...) {
     exception_holder_.Catch(std::current_exception());
   }
 
   HandleException();
 
-  if (merge_result) {
+  if (return_merged) {
     FeedFetchList ret;
     auto &val = boost::get<FeedFetchList>(fetch_data);
     for (size_t fetch_idx = 0; fetch_idx < fetch_tensors.size(); ++fetch_idx) {

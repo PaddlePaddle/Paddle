@@ -42,7 +42,7 @@ ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
 }
 
 FetchResultType ScopeBufferedSSAGraphExecutor::Run(
-    const std::vector<std::string> &fetch_tensors, bool merge_result) {
+    const std::vector<std::string> &fetch_tensors, bool return_merged) {
   if (drop_scope_counter_ == 0) {
     platform::RecordEvent e("InitLocalVars");
     InitVariables();
@@ -53,7 +53,7 @@ FetchResultType ScopeBufferedSSAGraphExecutor::Run(
 
   auto exe_run_func = [&]() {
     try {
-      fetch_data = underlying_executor_->Run(fetch_tensors, merge_result);
+      fetch_data = underlying_executor_->Run(fetch_tensors, return_merged);
     } catch (...) {
       eptr = std::current_exception();
     }

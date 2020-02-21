@@ -59,13 +59,13 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   // Run a SSAGraph by a thread pool
   // Use topological sort algorithm
   FetchResultType Run(const std::vector<std::string> &fetch_tensors,
-                      bool merge_result) override;
+                      bool return_merged) override;
 
   ~ThreadedSSAGraphExecutor() final = default;
 
  private:
   inline FetchResultType RunImpl(const std::vector<std::string> &fetch_tensors,
-                                 bool merge_result);
+                                 bool return_merged);
   void RunOp(const std::shared_ptr<BlockingQueue<VarHandleBase *>> &ready_var_q,
              details::OpHandleBase *op);
 
@@ -101,7 +101,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
                       std::unordered_set<OpHandleBase *> *ready_ops,
                       std::unordered_map<OpHandleBase *, size_t> *pending_ops,
                       std::unordered_set<VarHandleBase *> *pending_vars,
-                      FetchResultType *fetch_data, bool merge_result);
+                      FetchResultType *fetch_data, bool return_merged);
 
   void PrepareOpDeps();
 

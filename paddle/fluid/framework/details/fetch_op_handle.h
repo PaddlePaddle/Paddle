@@ -30,7 +30,7 @@ struct FetchOpHandle : public OpHandleBase {
  public:
   FetchOpHandle(ir::Node *node, FetchResultType *data, size_t offset,
                 std::vector<Scope *> *local_scopes,
-                std::vector<Scope *> *local_exec_scopes, bool merge_result);
+                std::vector<Scope *> *local_exec_scopes, bool return_merged);
 
   ~FetchOpHandle();
 
@@ -55,7 +55,7 @@ struct FetchOpHandle : public OpHandleBase {
   std::vector<Scope *> *local_scopes_;
   std::vector<Scope *> *local_exec_scopes_;
   std::vector<LoDTensor> tensors_;
-  bool merge_result_;
+  bool return_merged_;
 };
 
 }  // namespace details

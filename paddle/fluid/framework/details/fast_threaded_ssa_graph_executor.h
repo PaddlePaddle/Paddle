@@ -37,7 +37,7 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
                                const std::vector<platform::Place> &places,
                                ir::Graph *graph);
   FetchResultType Run(const std::vector<std::string> &fetch_tensors,
-                      bool merge_result) override;
+                      bool return_merged) override;
   const ir::Graph &Graph() const override;
 
  private:
@@ -89,7 +89,7 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
           *fetched_vars,
       std::unordered_map<OpHandleBase *, std::atomic<int>> *op_deps,
       std::vector<OpHandleBase *> *fetch_ops,
-      std::vector<OpHandleBase *> *ready_fetch_ops, bool merge_result);
+      std::vector<OpHandleBase *> *ready_fetch_ops, bool return_merged);
 };
 }  // namespace details
 }  // namespace framework

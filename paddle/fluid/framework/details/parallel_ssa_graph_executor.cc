@@ -124,13 +124,13 @@ std::vector<ir::Graph *> ParallelSSAGraphExecutor::Graphs() {
 }
 
 FetchResultType ParallelSSAGraphExecutor::Run(
-    const std::vector<std::string> &fetch_tensors, bool merge_result) {
+    const std::vector<std::string> &fetch_tensors, bool return_merged) {
   std::vector<std::future<FetchResultType>> run_futures;
 
   std::vector<FetchResultType> fetch_data;
   FetchResultType ret;
   fetch_data.reserve(places_.size());
-  if (merge_result) {
+  if (return_merged) {
     ret = FeedFetchList();
   } else {
     ret = FetchUnmergedList();
@@ -139,13 +139,13 @@ FetchResultType ParallelSSAGraphExecutor::Run(
   exception_holder_.Clear();
 
   for (size_t i = 0; i < places_.size(); ++i) {
-    auto call = [this, i, merge_result, &fetch_tensors]() -> FetchResultType {
+    auto call = [this, i, return_merged, &fetch_tensors]() -> FetchResultType {
       try {
-        return executors_[i]->Run(fetch_tensors, merge_result);
+        return executors_[i]->Run(fetch_tensors, return_merged);
       } catch (...) {
         exception_holder_.Catch(std::current_exception());
       }
-      if (merge_result) {
+      if (return_merged) {
         return FeedFetchList();
       } else {
         return FetchUnmergedList();
@@ -172,7 +172,7 @@ FetchResultType ParallelSSAGraphExecutor::Run(
     exception_holder_.ReThrow();
   }
 
-  if (merge_result) {
+  if (return_merged) {
     auto &ret_val = boost::get<FeedFetchList>(ret);
     for (size_t fetch_idx = 0; fetch_idx < fetch_tensors.size(); ++fetch_idx) {
       std::vector<const LoDTensor *> lodtensor_ptrs;
