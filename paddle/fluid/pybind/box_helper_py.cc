@@ -84,30 +84,6 @@ void BindBoxWrapper(py::module* m) {
       .def("finalize", &framework::BoxWrapper::Finalize,
            py::call_guard<py::gil_scoped_release>());
 }  // end BoxWrapper
-
-void BindSaveModelStat(py::module* m) {
-  py::class_<boxps::SaveModelStat, std::shared_ptr<boxps::SaveModelStat>>(
-      *m, "SaveModelStat")
-      .def(py::init())
-      .def_readwrite("total_key_count", &boxps::SaveModelStat::total_key_count)
-      .def_readwrite("total_embedx_key_count",
-                     &boxps::SaveModelStat::total_embedx_key_count)
-      .def_readwrite("xbox_key_count", &boxps::SaveModelStat::xbox_key_count)
-      .def_readwrite("xbox_embedx_key_count",
-                     &boxps::SaveModelStat::xbox_embedx_key_count)
-      .def_readwrite("ctr_key_count", &boxps::SaveModelStat::ctr_key_count)
-      .def_readwrite("ctr_embedx_key_count",
-                     &boxps::SaveModelStat::ctr_embedx_key_count)
-      .def_readwrite("ubm_key_count", &boxps::SaveModelStat::ubm_key_count)
-      .def_readwrite("ubm_embedx_key_count",
-                     &boxps::SaveModelStat::ubm_embedx_key_count)
-      .def_readwrite("shrink_key_count",
-                     &boxps::SaveModelStat::shrink_key_count)
-      .def_readwrite("filter_key_count",
-                     &boxps::SaveModelStat::filter_key_count)
-      .def_readwrite("invalid_key_count",
-                     &boxps::SaveModelStat::invalid_key_count);
-}  // end BindSaveModelStat
 #endif
 
 }  // end namespace pybind

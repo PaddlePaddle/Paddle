@@ -25,7 +25,6 @@ namespace pybind {
 void BindBoxHelper(py::module* m);
 #ifdef PADDLE_WITH_BOX_PS
 void BindBoxWrapper(py::module* m);
-void BindSaveModelStat(py::module* m);
 #endif
 
 }  // namespace pybind

@@ -191,21 +191,23 @@ class BoxWrapper {
     }
   }
 
-  void SaveBase(const char* batch_model_path, const char* xbox_model_path,
-                boxps::SaveModelStat& stat) {  // NOLINT
+  const std::string SaveBase(const char* batch_model_path,
+                             const char* xbox_model_path) {
     VLOG(3) << "Begin SaveBase";
-    if (nullptr != s_instance_) {
-      s_instance_->boxps_ptr_->SaveBase(batch_model_path, xbox_model_path,
-                                        stat);
-    }
+    std::string ret_str;
+    int ret = boxps_ptr_->SaveBase(batch_model_path, xbox_model_path, ret_str);
+    PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
+                                  "SaveBase failed in BoxPS."));
+    return ret_str;
   }
 
-  void SaveDelta(const char* xbox_model_path,
-                 boxps::SaveModelStat& stat) {  // NOLINT
+  const std::string SaveDelta(const char* xbox_model_path) {
     VLOG(3) << "Begin SaveDelta";
-    if (nullptr != s_instance_) {
-      s_instance_->boxps_ptr_->SaveDelta(xbox_model_path, stat);
-    }
+    std::string ret_str;
+    int ret = boxps_ptr_->SaveDelta(xbox_model_path, ret_str);
+    PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
+                                  "SaveDelta failed in BoxPS."));
+    return ret_str;
   }
 
   static std::shared_ptr<BoxWrapper> GetInstance() {
