@@ -211,7 +211,7 @@ class TrainerProc(object):
         self.cmd = None
 
 
-def start_local_trainers(pod):
+def start_local_trainers(cluster, pod):
     current_env = copy.copy(os.environ.copy())
     #paddle broadcast ncclUniqueId use socket, and
     #proxy maybe make trainers unreachable, so delete them.
@@ -221,14 +221,22 @@ def start_local_trainers(pod):
     current_env.pop("https_proxy", None)
 
     procs = []
-    for t in len(pod.trainers):
-        current_env.update({
-            "FLAGS_selected_gpus": "%s" % t.gpu,
+    for t in pod.trainers:
+        new_env = ({
+            "FLAGS_selected_gpus": "%s" % ",".join([str(g) for g in t.gpu]),
             "PADDLE_TRAINER_ID": "%d" % t.rank,
-            "PADDLE_CURRENT_ENDPOINT": "%s:%d" % t.endpoint,
-            "PADDLE_TRAINERS_NUM": "%d" % cluster.world_ranks(),
-            "PADDLE_TRAINER_ENDPOINTS": cluster.trainer_endpoints
+            "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
+            "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
+            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
         })
+
+        current_env.update(new_env)
+        logger.debug("trainer proc env:{}".format(current_env))
+
+        for k, v in current_env.iteritems():
+            print(type(k), type(v))
+
+        #current_env={}
 
         cmd = [sys.executable, "-u", args.training_script
                ] + args.training_script_args
@@ -299,7 +307,9 @@ def get_cluster_from_args(args, selected_gpus):
     logger.debug("parsed from args:node_ips:{} node_ip:{} node_rank:{}".format(
         node_ips, node_ip, node_rank))
 
-    return get_cluster(node_ips, node_ip, args.started_port, selected_gpus)
+    cluster = get_cluster(node_ips, node_ip, args.started_port, selected_gpus)
+    pod = cluster.pods[node_rank]
+    return cluster, pod
 
 
 def get_hdfs_from_args(args):
@@ -319,6 +329,7 @@ def launch(args):
         trainers_num, selected_gpus))
 
     cluster = None
+    pod = None
     comm = None
     hdfs = None
 
@@ -326,25 +337,28 @@ def launch(args):
     use_edl = edl_env.is_under_edl()
 
     if args.use_paddlecloud and not use_edl and trainers_num != 1:
-        cluster = cloud_utils.get_cloud_cluster(
+        cluster, pod = cloud_utils.get_cloud_cluster(
             arges.node_ips, args.node_ip, args.started_port, selected_gpus)
         logger.info("get cluster from cloud:{}".format(cluster))
     elif use_edl:
         hdfs = get_hdfs_from_args(args)
-        cluster = edl_env.get_cluster(hdfs)
-        comm = Gloo()
+        cluster, pod = edl_env.get_cluster(hdfs)
         logger.info("get cluster from edl:{}".format(cluster))
+
+        comm = Gloo()
     else:
-        cluster = get_cluster_from_args(args, selected_gpus)
+        cluster, pod = get_cluster_from_args(args, selected_gpus)
         logger.info("get cluster from args:{}".format(cluster))
 
-    procs = start_local_trainers(cluster, pod)
-    step = 0
+    if use_edl:
+        procs = start_local_trainers(cluster, pod)
+    else:
+        procs = start_local_trainers(cluster, pod)
+
     while True:
         if use_edl:
-            cluster2 = edl_env.get_cluster(hdfs)
-            pod = cluster2.pod(edl_env.pod_id)
-            if pod is None:  # me is dead
+            cluster2, pod = edl_env.get_cluster(hdfs)
+            if pod2 is None:  # me is dead
                 logger.info(
                     "Cluster changed. This pod is not exist so exit(0)! \
                     New cluster:{}. Old Cluster:{}".format(cluster2, cluster))
@@ -361,6 +375,7 @@ def launch(args):
                     continue
 
                 procs = start_local_trainers(cluster, pod)
+                cluster = cluster2
 
         alive = watch_local_trainers(procs)
 

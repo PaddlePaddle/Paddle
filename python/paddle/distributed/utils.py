@@ -69,24 +69,20 @@ class Cluster(object):
     def update_pods(cluster):
         self.pods = copy.copy(cluster.pods)
 
-    def trainer_nranks(self):
-        count = 0
-        for pod in self.pods:
-            for gpu in pod.gpus:
-                count += 1
-        return count
+    def trainers_nranks(self):
+        return len(self.trainers_endpoints())
 
-    def pod_nranks(self):
+    def pods_nranks(self):
         return len(self.pods)
 
-    def get_trainers_endpoints(self):
+    def trainers_endpoints(self):
         r = []
         for pod in self.pods:
             for t in pod.trainers:
                 r.append(t.endpoint)
         return r
 
-    def get_pods_endpints(self):
+    def pods_endpints(self):
         r = []
         for pod in self.pods:
             ep = "{}:{}".format(pod.ip, pod.port)
@@ -96,9 +92,10 @@ class Cluster(object):
 
         return r
 
-    def get_pod(self, pod_id):
+    def get_pod_by_id(self, pod_id):
         for pod in self.pods:
-            if pod_id == pod.id:
+            print("iterate pod:", pod.id, pod_id)
+            if str(pod_id) == str(pod.id):
                 return pod
 
         return None
@@ -134,8 +131,8 @@ class Trainer(object):
 
 class Pod(object):
     def __init__(self):
-        self.rank = None  # pod_id
-        self.id = None  # node rank
+        self.rank = None
+        self.id = None
         self.addr = None
         self.port = None
         self.trainers = []
@@ -288,16 +285,16 @@ def get_logger(log_level):
     logger.addHandler(log_handler)
 
 
-def get_cluster(node_ips, node_ip, started_port, selected_gpus):
+def get_cluster(node_ips, node_ip, paddle_port, selected_gpus):
     cluster = Cluster()
     trainer_rank = 0
     for node_rank, ip in enumerate(node_ips):
         pod = Pod()
         pod.rank = node_rank
         pod.ip = ip
-        for gpu in range(len(selected_gpus)):
+        for i in range(len(selected_gpus)):
             trainer = Trainer()
-            trainer.gpu = gpu
+            trainer.gpu.append(selected_gpus[i])
             trainer.endpoint = "%s:%d" % (ip, paddle_port + i)
             trainer.rank = trainer_rank
             trainer_rank += 1

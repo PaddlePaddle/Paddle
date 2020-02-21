@@ -61,7 +61,8 @@ paddlecloud environment.".format(args_node_ips, node_ips))
         node_ip:{} node_rank:{} started_port:{}"
                  .format(node_ips, node_ip, node_rank, started_port))
 
-    return get_cluster(node_ips, node_ip, started_port, selected_gpus)
+    cluster = get_cluster(node_ips, node_ip, started_port, selected_gpus)
+    return cluster, cluster.pods[node_rank]
 
 
 def get_trainers_num():

@@ -26,6 +26,10 @@ class Edlenv(object):
         self.job_id = os.getenv("PADDLE_JOB_ID")
         self.pod_id = os.getenv("PADDLE_POD_ID")
 
+    def __str__(self):
+        return "runing_env:{} job_server:{} job_id:{} pod_id:{}".format(
+            self.running_env, self.job_server, self.job_id, self.pod_id)
+
     def is_under_edl(self):
         return self.running_env == "PADDLE_EDL"
 
@@ -93,9 +97,13 @@ class Edlenv(object):
         cluster.pods = pods
         cluster.hdfs = hdfs
 
-        logger.debug("get clsuter:{} from jobserver", cluster)
+        logger.debug("get clsuter:{} from jobserver edl_env:{}".format(cluster,
+                                                                       self))
 
-        return cluster
+        pod = cluster.get_pod_by_id(self.pod_id)
+        print("return pod:", pod)
+
+        return cluster, pod
 
 
 def barrier_terminate_world_trainers(cluster, pod, comm, timeout=10, try_num=3):
