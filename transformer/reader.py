@@ -114,7 +114,7 @@ def prepare_train_input(insts, src_pad_idx, trg_pad_idx, n_head):
     return data_inputs
 
 
-def prepare_infer_input(insts, src_pad_idx, bos_idx, n_head, place):
+def prepare_infer_input(insts, src_pad_idx, bos_idx, n_head):
     """
     Put all padded data needed by beam search decoder into a list.
     """
@@ -517,7 +517,7 @@ class DataProcessor(object):
 
         return __impl__
 
-    def data_generator(self, phase, place=None):
+    def data_generator(self, phase):
         # Any token included in dict can be used to pad, since the paddings' loss
         # will be masked out by weights and make no effect on parameter gradients.
         src_pad_idx = trg_pad_idx = self._eos_idx
@@ -540,7 +540,7 @@ class DataProcessor(object):
         def __for_predict__():
             for data in data_reader():
                 data_inputs = prepare_infer_input(data, src_pad_idx, bos_idx,
-                                                  n_head, place)
+                                                  n_head)
                 yield data_inputs
 
         return __for_train__ if phase == "train" else __for_predict__

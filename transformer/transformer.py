@@ -189,6 +189,15 @@ class MultiHeadAttention(Layer):
         out = self.proj_fc(out)
         return out
 
+    def cal_kv(self, keys, values):
+        k = self.k_fc(keys)
+        v = self.v_fc(values)
+        k = layers.reshape(x=k, shape=[0, 0, self.n_head, self.d_key])
+        k = layers.transpose(x=k, perm=[0, 2, 1, 3])
+        v = layers.reshape(x=v, shape=[0, 0, self.n_head, self.d_value])
+        v = layers.transpose(x=v, perm=[0, 2, 1, 3])
+        return k, v
+
 
 class FFN(Layer):
     """
@@ -441,6 +450,14 @@ class Decoder(Layer):
 
         return self.processer(dec_output)
 
+    def prepare_static_cache(self, enc_output):
+        return [
+            dict(
+                zip(("static_k", "static_v"),
+                    decoder_layer.cross_attn.cal_kv(enc_output, enc_output)))
+            for decoder_layer in self.decoder_layers
+        ]
+
 
 class WrapDecoder(Layer):
     """
@@ -622,481 +639,96 @@ class Transformer(Model):
                                trg_src_attn_bias, enc_output)
         return predict
 
-    def beam_search_v2(self,
-                       src_word,
-                       src_pos,
-                       src_slf_attn_bias,
-                       trg_word,
-                       trg_src_attn_bias,
-                       bos_id=0,
-                       eos_id=1,
-                       beam_size=4,
-                       max_len=None,
-                       alpha=0.6):
-        """
-        Beam search with the alive and finished two queues, both have a beam size
-        capicity separately. It includes `grow_topk` `grow_alive` `grow_finish` as
-        steps.
 
-        1. `grow_topk` selects the top `2*beam_size` candidates to avoid all getting
-        EOS.
+from rnn_api import TransformerBeamSearchDecoder, DynamicDecode
 
-        2. `grow_alive` selects the top `beam_size` non-EOS candidates as the inputs
-        of next decoding step.
 
-        3. `grow_finish` compares the already finished candidates in the finished queue
-        and newly added finished candidates from `grow_topk`, and selects the top
-        `beam_size` finished candidates.
-        """
-        def expand_to_beam_size(tensor, beam_size):
-            tensor = layers.reshape(tensor,
-                                    [tensor.shape[0], 1] + tensor.shape[1:])
-            tile_dims = [1] * len(tensor.shape)
-            tile_dims[1] = beam_size
-            return layers.expand(tensor, tile_dims)
+class TransfomerCell(object):
+    """
+    Let inputs=(trg_word, trg_pos), states=cache to make Transformer can be
+    used as RNNCell
+    """
+    def __init__(self, decoder):
+        self.decoder = decoder
 
-        def merge_beam_dim(tensor):
-            return layers.reshape(tensor, [-1] + tensor.shape[2:])
+    def __call__(self, inputs, states, trg_src_attn_bias, enc_output,
+                 static_caches):
+        trg_word, trg_pos = inputs
+        for cache, static_cache in zip(states, static_caches):
+            cache.update(static_cache)
+        logits = self.decoder(trg_word, trg_pos, None, trg_src_attn_bias,
+                              enc_output, states)
+        new_states = [{"k": cache["k"], "v": cache["v"]} for cache in states]
+        return logits, new_states
 
-        # run encoder
+
+class InferTransformer(Transformer):
+    """
+    model for prediction
+    """
+    def __init__(self,
+                 src_vocab_size,
+                 trg_vocab_size,
+                 max_length,
+                 n_layer,
+                 n_head,
+                 d_key,
+                 d_value,
+                 d_model,
+                 d_inner_hid,
+                 prepostprocess_dropout,
+                 attention_dropout,
+                 relu_dropout,
+                 preprocess_cmd,
+                 postprocess_cmd,
+                 weight_sharing,
+                 bos_id=0,
+                 eos_id=1,
+                 beam_size=4,
+                 max_out_len=256):
+        args = locals()
+        args.pop("self")
+        self.beam_size = args.pop("beam_size")
+        self.max_out_len = args.pop("max_out_len")
+        super(InferTransformer, self).__init__(**args)
+        cell = TransfomerCell(self.decoder)
+        self.beam_search_decoder = DynamicDecode(
+            TransformerBeamSearchDecoder(cell,
+                                         bos_id,
+                                         eos_id,
+                                         beam_size,
+                                         var_dim_in_state=2), max_out_len)
+
+
+    @shape_hints(src_word=[None, None],
+                 src_pos=[None, None],
+                 src_slf_attn_bias=[None, 8, None, None],
+                 trg_src_attn_bias=[None, 8, None, None])
+    def forward(self, src_word, src_pos, src_slf_attn_bias, trg_src_attn_bias):
         enc_output = self.encoder(src_word, src_pos, src_slf_attn_bias)
-
-        # constant number
-        inf = float(1. * 1e7)
-        batch_size = enc_output.shape[0]
-        max_len = (enc_output.shape[1] + 20) if max_len is None else max_len
-
-        ### initialize states of beam search ###
-        ## init for the alive ##
-        initial_log_probs = to_variable(
-            np.array([[0.] + [-inf] * (beam_size - 1)], dtype="float32"))
-        alive_log_probs = layers.expand(initial_log_probs, [batch_size, 1])
-        alive_seq = to_variable(
-            np.tile(np.array([[[bos_id]]], dtype="int64"),
-                    (batch_size, beam_size, 1)))
-
-        ## init for the finished ##
-        finished_scores = to_variable(
-            np.array([[-inf] * beam_size], dtype="float32"))
-        finished_scores = layers.expand(finished_scores, [batch_size, 1])
-        finished_seq = to_variable(
-            np.tile(np.array([[[bos_id]]], dtype="int64"),
-                    (batch_size, beam_size, 1)))
-        finished_flags = layers.zeros_like(finished_scores)
-
-        ### initialize inputs and states of transformer decoder ###
-        ## init inputs for decoder, shaped `[batch_size*beam_size, ...]`
-        trg_word = layers.reshape(alive_seq[:, :, -1],
-                                  [batch_size * beam_size, 1])
-        trg_src_attn_bias = merge_beam_dim(
-            expand_to_beam_size(trg_src_attn_bias, beam_size))
-        enc_output = merge_beam_dim(expand_to_beam_size(enc_output, beam_size))
         ## init states (caches) for transformer, need to be updated according to selected beam
         caches = [{
             "k":
-            layers.fill_constant(
-                shape=[batch_size * beam_size, self.n_head, 0, self.d_key],
+            layers.fill_constant_batch_size_like(
+                input=enc_output,
+                shape=[-1, self.n_head, 0, self.d_key],
                 dtype=enc_output.dtype,
                 value=0),
             "v":
-            layers.fill_constant(
-                shape=[batch_size * beam_size, self.n_head, 0, self.d_value],
+            layers.fill_constant_batch_size_like(
+                input=enc_output,
+                shape=[-1, self.n_head, 0, self.d_value],
                 dtype=enc_output.dtype,
                 value=0),
         } for i in range(self.n_layer)]
-
-        def update_states(caches, beam_idx, beam_size):
-            for cache in caches:
-                cache["k"] = gather_2d_by_gather(cache["k"], beam_idx,
-                                                 beam_size, batch_size, False)
-                cache["v"] = gather_2d_by_gather(cache["v"], beam_idx,
-                                                 beam_size, batch_size, False)
-            return caches
-
-        def gather_2d_by_gather(tensor_nd,
-                                beam_idx,
-                                beam_size,
-                                batch_size,
-                                need_flat=True):
-            batch_idx = layers.range(0, batch_size, 1,
-                                     dtype="int64") * beam_size
-            flat_tensor = merge_beam_dim(tensor_nd) if need_flat else tensor_nd
-            idx = layers.reshape(layers.elementwise_add(beam_idx, batch_idx, 0),
-                                 [-1])
-            new_flat_tensor = layers.gather(flat_tensor, idx)
-            new_tensor_nd = layers.reshape(
-                new_flat_tensor,
-                shape=[batch_size, beam_idx.shape[1]] +
-                tensor_nd.shape[2:]) if need_flat else new_flat_tensor
-            return new_tensor_nd
-
-        def early_finish(alive_log_probs, finished_scores,
-                         finished_in_finished):
-            max_length_penalty = np.power(((5. + max_len) / 6.), alpha)
-            # The best possible score of the most likely alive sequence
-            lower_bound_alive_scores = alive_log_probs[:, 0] / max_length_penalty
-
-            # Now to compute the lowest score of a finished sequence in finished
-            # If the sequence isn't finished, we multiply it's score by 0. since
-            # scores are all -ve, taking the min will give us the score of the lowest
-            # finished item.
-            lowest_score_of_fininshed_in_finished = layers.reduce_min(
-                finished_scores * finished_in_finished, 1)
-            # If none of the sequences have finished, then the min will be 0 and
-            # we have to replace it by -ve INF if it is. The score of any seq in alive
-            # will be much higher than -ve INF and the termination condition will not
-            # be met.
-            lowest_score_of_fininshed_in_finished += (
-                1. - layers.reduce_max(finished_in_finished, 1)) * -inf
-            bound_is_met = layers.reduce_all(
-                layers.greater_than(lowest_score_of_fininshed_in_finished,
-                                    lower_bound_alive_scores))
-
-            return bound_is_met
-
-        def grow_topk(i, logits, alive_seq, alive_log_probs, states):
-            logits = layers.reshape(logits, [batch_size, beam_size, -1])
-            candidate_log_probs = layers.log(layers.softmax(logits, axis=2))
-            log_probs = layers.elementwise_add(candidate_log_probs,
-                                               alive_log_probs, 0)
-
-            length_penalty = np.power(5.0 + (i + 1.0) / 6.0, alpha)
-            curr_scores = log_probs / length_penalty
-            flat_curr_scores = layers.reshape(curr_scores, [batch_size, -1])
-
-            topk_scores, topk_ids = layers.topk(flat_curr_scores,
-                                                k=beam_size * 2)
-
-            topk_log_probs = topk_scores * length_penalty
-
-            topk_beam_index = topk_ids // self.trg_vocab_size
-            topk_ids = topk_ids % self.trg_vocab_size
-
-            # use gather as gather_nd, TODO: use gather_nd
-            topk_seq = gather_2d_by_gather(alive_seq, topk_beam_index,
-                                           beam_size, batch_size)
-            topk_seq = layers.concat(
-                [topk_seq,
-                 layers.reshape(topk_ids, topk_ids.shape + [1])],
-                axis=2)
-            states = update_states(states, topk_beam_index, beam_size)
-            eos = layers.fill_constant(shape=topk_ids.shape,
-                                       dtype="int64",
-                                       value=eos_id)
-            topk_finished = layers.cast(layers.equal(topk_ids, eos), "float32")
-
-            #topk_seq: [batch_size, 2*beam_size, i+1]
-            #topk_log_probs, topk_scores, topk_finished: [batch_size, 2*beam_size]
-            return topk_seq, topk_log_probs, topk_scores, topk_finished, states
-
-        def grow_alive(curr_seq, curr_scores, curr_log_probs, curr_finished,
-                       states):
-            curr_scores += curr_finished * -inf
-            _, topk_indexes = layers.topk(curr_scores, k=beam_size)
-            alive_seq = gather_2d_by_gather(curr_seq, topk_indexes,
-                                            beam_size * 2, batch_size)
-            alive_log_probs = gather_2d_by_gather(curr_log_probs, topk_indexes,
-                                                  beam_size * 2, batch_size)
-            states = update_states(states, topk_indexes, beam_size * 2)
-
-            return alive_seq, alive_log_probs, states
-
-        def grow_finished(finished_seq, finished_scores, finished_flags,
-                          curr_seq, curr_scores, curr_finished):
-            # finished scores
-            finished_seq = layers.concat([
-                finished_seq,
-                layers.fill_constant(shape=[batch_size, beam_size, 1],
-                                     dtype="int64",
-                                     value=eos_id)
-            ],
-                                         axis=2)
-            # Set the scores of the unfinished seq in curr_seq to large negative
-            # values
-            curr_scores += (1. - curr_finished) * -inf
-            # concatenating the sequences and scores along beam axis
-            curr_finished_seq = layers.concat([finished_seq, curr_seq], axis=1)
-            curr_finished_scores = layers.concat([finished_scores, curr_scores],
-                                                 axis=1)
-            curr_finished_flags = layers.concat([finished_flags, curr_finished],
-                                                axis=1)
-            _, topk_indexes = layers.topk(curr_finished_scores, k=beam_size)
-            finished_seq = gather_2d_by_gather(curr_finished_seq, topk_indexes,
-                                               beam_size * 3, batch_size)
-            finished_scores = gather_2d_by_gather(curr_finished_scores,
-                                                  topk_indexes, beam_size * 3,
-                                                  batch_size)
-            finished_flags = gather_2d_by_gather(curr_finished_flags,
-                                                 topk_indexes, beam_size * 3,
-                                                 batch_size)
-            return finished_seq, finished_scores, finished_flags
-
-        for i in range(max_len):
-            trg_pos = layers.fill_constant(shape=trg_word.shape,
-                                           dtype="int64",
-                                           value=i)
-            logits = self.decoder(trg_word, trg_pos, None, trg_src_attn_bias,
-                                  enc_output, caches)
-            topk_seq, topk_log_probs, topk_scores, topk_finished, states = grow_topk(
-                i, logits, alive_seq, alive_log_probs, caches)
-            alive_seq, alive_log_probs, states = grow_alive(
-                topk_seq, topk_scores, topk_log_probs, topk_finished, states)
-            finished_seq, finished_scores, finished_flags = grow_finished(
-                finished_seq, finished_scores, finished_flags, topk_seq,
-                topk_scores, topk_finished)
-            trg_word = layers.reshape(alive_seq[:, :, -1],
-                                      [batch_size * beam_size, 1])
-
-            if early_finish(alive_log_probs, finished_scores,
-                            finished_flags).numpy():
-                break
-
-        return finished_seq, finished_scores
-
-    def beam_search(self,
-                    src_word,
-                    src_pos,
-                    src_slf_attn_bias,
-                    trg_word,
-                    trg_src_attn_bias,
-                    bos_id=0,
-                    eos_id=1,
-                    beam_size=4,
-                    max_len=256):
-        if beam_size == 1:
-            return self._greedy_search(src_word,
-                                       src_pos,
-                                       src_slf_attn_bias,
-                                       trg_word,
-                                       trg_src_attn_bias,
-                                       bos_id=bos_id,
-                                       eos_id=eos_id,
-                                       max_len=max_len)
-        else:
-            return self._beam_search(src_word,
-                                     src_pos,
-                                     src_slf_attn_bias,
-                                     trg_word,
-                                     trg_src_attn_bias,
-                                     bos_id=bos_id,
-                                     eos_id=eos_id,
-                                     beam_size=beam_size,
-                                     max_len=max_len)
-
-    def _beam_search(self,
-                     src_word,
-                     src_pos,
-                     src_slf_attn_bias,
-                     trg_word,
-                     trg_src_attn_bias,
-                     bos_id=0,
-                     eos_id=1,
-                     beam_size=4,
-                     max_len=256):
-        def expand_to_beam_size(tensor, beam_size):
-            tensor = layers.reshape(tensor,
-                                    [tensor.shape[0], 1] + tensor.shape[1:])
-            tile_dims = [1] * len(tensor.shape)
-            tile_dims[1] = beam_size
-            return layers.expand(tensor, tile_dims)
-
-        def merge_batch_beams(tensor):
-            return layers.reshape(tensor, [tensor.shape[0] * tensor.shape[1]] +
-                                  tensor.shape[2:])
-
-        def split_batch_beams(tensor):
-            return layers.reshape(tensor,
-                                  shape=[-1, beam_size] +
-                                  list(tensor.shape[1:]))
-
-        def mask_probs(probs, finished, noend_mask_tensor):
-            # TODO: use where_op
-            finished = layers.cast(finished, dtype=probs.dtype)
-            probs = layers.elementwise_mul(layers.expand(
-                layers.unsqueeze(finished, [2]), [1, 1, self.trg_vocab_size]),
-                                           noend_mask_tensor,
-                                           axis=-1) - layers.elementwise_mul(
-                                               probs, (finished - 1), axis=0)
-            return probs
-
-        def gather(x, indices, batch_pos):
-            topk_coordinates = layers.stack([batch_pos, indices], axis=2)
-            return layers.gather_nd(x, topk_coordinates)
-
-        def update_states(func, caches):
-            for cache in caches:  # no need to update static_kv
-                cache["k"] = func(cache["k"])
-                cache["v"] = func(cache["v"])
-            return caches
-
-        # run encoder
-        enc_output = self.encoder(src_word, src_pos, src_slf_attn_bias)
-
-        # constant number
-        inf = float(1. * 1e7)
-        batch_size = enc_output.shape[0]
-        max_len = (enc_output.shape[1] + 20) if max_len is None else max_len
-        vocab_size_tensor = layers.fill_constant(shape=[1],
-                                                 dtype="int64",
-                                                 value=self.trg_vocab_size)
-        end_token_tensor = to_variable(
-            np.full([batch_size, beam_size], eos_id, dtype="int64"))
-        noend_array = [-inf] * self.trg_vocab_size
-        noend_array[eos_id] = 0
-        noend_mask_tensor = to_variable(np.array(noend_array,dtype="float32"))
-        batch_pos = layers.expand(
-            layers.unsqueeze(
-                to_variable(np.arange(0, batch_size, 1, dtype="int64")), [1]),
-            [1, beam_size])
-
-        predict_ids = []
-        parent_ids = []
-        ### initialize states of beam search ###
-        log_probs = to_variable(
-            np.array([[0.] + [-inf] * (beam_size - 1)] * batch_size,
-                     dtype="float32"))
-        finished = to_variable(np.full([batch_size, beam_size], 0,
-                                       dtype="bool"))
-        ### initialize inputs and states of transformer decoder ###
-        ## init inputs for decoder, shaped `[batch_size*beam_size, ...]`
-        trg_word = layers.fill_constant(shape=[batch_size * beam_size, 1],
-                                        dtype="int64",
-                                        value=bos_id)
-        trg_pos = layers.zeros_like(trg_word)
-        trg_src_attn_bias = merge_batch_beams(
-            expand_to_beam_size(trg_src_attn_bias, beam_size))
-        enc_output = merge_batch_beams(expand_to_beam_size(enc_output, beam_size))
-        ## init states (caches) for transformer, need to be updated according to selected beam
-        caches = [{
-            "k":
-            layers.fill_constant(
-                shape=[batch_size * beam_size, self.n_head, 0, self.d_key],
-                dtype=enc_output.dtype,
-                value=0),
-            "v":
-            layers.fill_constant(
-                shape=[batch_size * beam_size, self.n_head, 0, self.d_value],
-                dtype=enc_output.dtype,
-                value=0),
-        } for i in range(self.n_layer)]
-
-        for i in range(max_len):
-            trg_pos = layers.fill_constant(shape=trg_word.shape,
-                                           dtype="int64",
-                                           value=i)
-            caches = update_states(  # can not be reshaped since the 0 size
-                lambda x: x if i == 0 else merge_batch_beams(x), caches)
-            logits = self.decoder(trg_word, trg_pos, None, trg_src_attn_bias,
-                                  enc_output, caches)
-            caches = update_states(split_batch_beams, caches)
-            step_log_probs = split_batch_beams(
-                layers.log(layers.softmax(logits)))
-            step_log_probs = mask_probs(step_log_probs, finished,
-                                        noend_mask_tensor)
-            log_probs = layers.elementwise_add(x=step_log_probs,
-                                               y=log_probs,
-                                               axis=0)
-            log_probs = layers.reshape(log_probs,
-                                       [-1, beam_size * self.trg_vocab_size])
-            scores = log_probs
-            topk_scores, topk_indices = layers.topk(input=scores, k=beam_size)
-            beam_indices = layers.elementwise_floordiv(
-                topk_indices, vocab_size_tensor)
-            token_indices = layers.elementwise_mod(
-                topk_indices, vocab_size_tensor)
-
-            # update states
-            caches = update_states(lambda x: gather(x, beam_indices, batch_pos),
-                                   caches)
-            log_probs = gather(log_probs, topk_indices, batch_pos)
-            finished = gather(finished, beam_indices, batch_pos)
-            finished = layers.logical_or(
-                finished, layers.equal(token_indices, end_token_tensor))
-            trg_word = layers.reshape(token_indices, [-1, 1])
-
-            predict_ids.append(token_indices)
-            parent_ids.append(beam_indices)
-
-            if layers.reduce_all(finished).numpy():
-                break
-
-        predict_ids = layers.stack(predict_ids, axis=0)
-        parent_ids = layers.stack(parent_ids, axis=0)
-        finished_seq = layers.transpose(
-            layers.gather_tree(predict_ids, parent_ids), [1, 2, 0])
-        finished_scores = topk_scores
-
-        return finished_seq, finished_scores
-
-    def _greedy_search(self,
-                       src_word,
-                       src_pos,
-                       src_slf_attn_bias,
-                       trg_word,
-                       trg_src_attn_bias,
-                       bos_id=0,
-                       eos_id=1,
-                       max_len=256):
-        # run encoder
-        enc_output = self.encoder(src_word, src_pos, src_slf_attn_bias)
-
-        # constant number
-        batch_size = enc_output.shape[0]
-        max_len = (enc_output.shape[1] + 20) if max_len is None else max_len
-        end_token_tensor = layers.fill_constant(shape=[batch_size, 1],
-                                                dtype="int64",
-                                                value=eos_id)
-
-        predict_ids = []
-        log_probs = layers.fill_constant(shape=[batch_size, 1],
-                                         dtype="float32",
-                                         value=0)
-        trg_word = layers.fill_constant(shape=[batch_size, 1],
-                                        dtype="int64",
-                                        value=bos_id)
-        finished = layers.fill_constant(shape=[batch_size, 1],
-                                        dtype="bool",
-                                        value=0)
-
-        ## init states (caches) for transformer
-        caches = [{
-            "k":
-            layers.fill_constant(
-                shape=[batch_size, self.n_head, 0, self.d_key],
-                dtype=enc_output.dtype,
-                value=0),
-            "v":
-            layers.fill_constant(
-                shape=[batch_size, self.n_head, 0, self.d_value],
-                dtype=enc_output.dtype,
-                value=0),
-        } for i in range(self.n_layer)]
-
-        for i in range(max_len):
-            trg_pos = layers.fill_constant(shape=trg_word.shape,
-                                           dtype="int64",
-                                           value=i)
-            logits = self.decoder(trg_word, trg_pos, None, trg_src_attn_bias,
-                                  enc_output, caches)
-            step_log_probs = layers.log(layers.softmax(logits))
-            log_probs = layers.elementwise_add(x=step_log_probs,
-                                               y=log_probs,
-                                               axis=0)
-            scores = log_probs
-            topk_scores, topk_indices = layers.topk(input=scores, k=1)
-
-            finished = layers.logical_or(
-                finished, layers.equal(topk_indices, end_token_tensor))
-            trg_word = topk_indices
-            log_probs = topk_scores
-
-            predict_ids.append(topk_indices)
-
-            if layers.reduce_all(finished).numpy():
-                break
-
-        predict_ids = layers.stack(predict_ids, axis=0)
-        finished_seq = layers.transpose(predict_ids, [1, 2, 0])
-        finished_scores = topk_scores
-
-        return finished_seq, finished_scores
+        enc_output = TransformerBeamSearchDecoder.tile_beam_merge_with_batch(
+            enc_output, self.beam_size)
+        trg_src_attn_bias = TransformerBeamSearchDecoder.tile_beam_merge_with_batch(
+            trg_src_attn_bias, self.beam_size)
+        static_caches = self.decoder.decoder.prepare_static_cache(
+            enc_output)
+        rs, _ = self.beam_search_decoder(inits=caches,
+                                         enc_output=enc_output,
+                                         trg_src_attn_bias=trg_src_attn_bias,
+                                         static_caches=static_caches)
+        return rs
