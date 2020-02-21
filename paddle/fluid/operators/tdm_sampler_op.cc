@@ -93,14 +93,14 @@ class TDMSamplerOp : public framework::OperatorWithKernel {
     auto input_dims = ctx->GetInputDim("Input");
     if (ctx->IsRuntime()) {
       // out_dim_0 = input_dims[0];
+    } else {
+      ctx->SetOutputDim("Out", ddim);
+      ctx->SetOutputDim("Labels", ddim);
+      ctx->SetOutputDim("Mask", ddim);
     }
 
     // check vec.size() < tree deepth
     // check every layer neg num <= layer nodes num
-
-    ctx->SetOutputDim("Out", ddim);
-    ctx->SetOutputDim("Labels", ddim);
-    ctx->SetOutputDim("Mask", ddim);
   }
 
  protected:
