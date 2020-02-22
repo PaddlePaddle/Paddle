@@ -45,8 +45,8 @@ class IsControlFlowIfVisitor(gast.NodeTransformer):
     Note: pred in ConditionalBlock require variable, which means all vars should be Tensor
           or transformed into Tensor, like fill_constant(shape=[1], dtype='int32', value=Tensor.shape[i]).
 
-    TODO: 1. need to deal with `tensor.shape[i]` which need eval the data of shape[i],
-             because reshape_op maybe called before this statement.
+    TODO: 1. need to deal with `tensor.shape[i]` which need to eval the data of shape[i],
+             because reshape_op may be called before this statement.
     """
 
     def __init__(self, node):
