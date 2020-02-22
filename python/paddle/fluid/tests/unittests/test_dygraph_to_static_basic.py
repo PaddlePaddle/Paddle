@@ -22,6 +22,11 @@ from paddle.fluid.dygraph.jit import dygraph_to_static_output
 
 np.random.seed(1)
 
+if fluid.is_compiled_with_cuda():
+    place = fluid.CUDAPlace(0)
+else:
+    place = fluid.CPUPlace()
+
 
 def dyfunc_with_if_else(x_v, label=None):
     if fluid.layers.mean(x_v).numpy()[0] > 5:
@@ -88,12 +93,12 @@ class TestDygraphIfElse(unittest.TestCase):
             x_v = fluid.layers.assign(self.x)
             # Transform into static graph
             out = dygraph_to_static_output(self.dyfunc)(x_v)
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = fluid.Executor(place)
             ret = exe.run(main_program, fetch_list=out)
             return ret
 
     def _run_dygraph(self):
-        with fluid.dygraph.guard():
+        with fluid.dygraph.guard(place):
             x_v = fluid.dygraph.to_variable(self.x)
             ret = self.dyfunc(x_v)
             return ret.numpy()

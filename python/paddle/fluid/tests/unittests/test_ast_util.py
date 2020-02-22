@@ -128,6 +128,13 @@ class TestIsControlFlowIf(unittest.TestCase):
         node = gast.parse("1 < fluid.layers.sum(x).numpy()[2] or x+y < 0")
         self.assertTrue(is_control_flow_if(node))
 
+    def test_raise_error(self):
+        node = "a + b"
+        with self.assertRaises(Exception) as e:
+            self.assertRaises(TypeError, is_control_flow_if(node))
+        self.assertTrue(
+            "Type of input node should be gast.AST" in str(e.exception))
+
 
 class TestAST2Func(unittest.TestCase):
     """
