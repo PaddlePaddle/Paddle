@@ -23,29 +23,6 @@ static const unsigned int SSE_CUT_LEN_MASK = 3U;
 namespace paddle {
 namespace operators {
 
-inline void sse_add(const float* x, const float* y, size_t len, float* result) {
-  unsigned int jjj, lll;
-  jjj = lll = 0;
-  lll = len & ~SSE_CUT_LEN_MASK;
-  for (jjj = 0; jjj < lll; jjj += SSE_STEP_SIZE) {
-    _mm_storeu_ps(result + jjj,
-                  _mm_add_ps(_mm_loadu_ps(x + jjj), _mm_loadu_ps(y + jjj)));
-  }
-  for (; jjj < len; jjj++) {
-    result[jjj] = x[jjj] + y[jjj];
-  }
-}
-
-// Todo: satisfy the double type
-template <typename T>
-inline void sse_add(const T* x, const T* y, size_t len, T* result) {
-  unsigned int jjj, lll;
-  jjj = lll = 0;
-  for (; jjj < len; jjj++) {
-    result[jjj] = x[jjj] + y[jjj];
-  }
-}
-
 using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
@@ -74,14 +51,10 @@ class PartialSumKernel : public framework::OpKernel<T> {
       auto* in_t = ins[i]->data<T>();
       auto total_len = ins[i]->dims()[1];
       for (auto bs_id = 0; bs_id < batch_size; ++bs_id) {
-        sse_add<T>(&out_t[bs_id * length],
-                   &in_t[bs_id * total_len + start_index], length,
-                   &out_t[bs_id * length]);
-        // for (auto k = 0; k < length; ++k) {
-        // out_t[bs_id * length + k] +=
-        //    in_t[bs_id * total_len + start_index + k];
-        // sse_add(in_t,out_t,)
-        //}
+        for (auto k = 0; k < length; ++k) {
+          out_t[bs_id * length + k] +=
+              in_t[bs_id * total_len + start_index + k];
+        }
       }
     }
   }

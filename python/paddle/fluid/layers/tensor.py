@@ -32,7 +32,7 @@ __all__ = [
     'tensor_array_to_tensor', 'concat', 'sums', 'assign',
     'fill_constant_batch_size_like', 'fill_constant', 'argmin', 'argmax',
     'argsort', 'ones', 'zeros', 'reverse', 'has_inf', 'has_nan', 'isfinite',
-    'range', 'linspace', 'zeros_like', 'ones_like', 'diag', 'eye', 'partial_sum'
+    'range', 'linspace', 'zeros_like', 'ones_like', 'diag', 'eye'
 ]
 
 
@@ -285,44 +285,6 @@ def concat(input, axis=0, name=None):
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     helper.append_op(
         type='concat', inputs=inputs, outputs={'Out': [out]}, attrs=attrs)
-    return out
-
-
-def partial_sum(input, start_index=0, length=-1):
-    """
-    **PartialSum**
-    Args:
-        input(list): List of input Tensors with data type float32, float64, int32,
-            int64.
-    Returns:
-        Variable: A Tensor with the same data type as input's.
-    Examples:
-        .. code-block:: python
-        import paddle.fluid.layers as layers
-        import paddle.fluid as fluid
-        import numpy as np
-        x = layers.data(name="x", shape=[3], dtype="float32")
-        y = layers.data(name="y", shape=[3], dtype="float32")
-        sum = layers.partial_sum([x,y], start_index=0, length=2)
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        xx = np.array([1,2,3,4,5,6]).reshape((2,3)).astype("float32")
-        yy = np.array([6,5,4,4,5,6]).reshape((2,3)).astype("float32")
-        out = exe.run(feed={"x":xx, "y":yy}, fetch_list=[sum])
-        print(out)
-    """
-    for id, x in enumerate(input):
-        check_type_and_dtype(x, 'input[' + str(id) + ']', Variable,
-                             ['float32', 'int32', 'int64'], 'partial_sum')
-    inputs = {'X': input}
-    attrs = {}
-    attrs['start_index'] = start_index
-    attrs['length'] = length
-
-    helper = LayerHelper('partial_sum', **locals())
-    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    helper.append_op(
-        type='partial_sum', inputs=inputs, outputs={'Out': [out]}, attrs=attrs)
     return out
 
 

@@ -2782,9 +2782,10 @@ class TestBook(LayerTest):
 
     def test_partial_sum(self):
         with self.static_graph():
-            x = layers.data(name="x", shape=[3], dtype="float32")
-            y = layers.data(name="y", shape=[3], dtype="float32")
-            sum = layers.partial_sum([x, y], start_index=0, length=2)
+            x = fluid.data(name="x", shape=[None, 3], dtype="float32")
+            y = fluid.data(name="y", shape=[None, 3], dtype="float32")
+            sum = fluid.contrib.layers.partial_sum(
+                [x, y], start_index=0, length=2)
             return (sum)
 
     def test_roi_pool(self):
