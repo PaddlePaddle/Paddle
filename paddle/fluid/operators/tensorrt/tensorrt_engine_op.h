@@ -276,7 +276,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
             "size(%d).\n"
             "There are two possible causes for this problem: \n"
             "1. Check whether the runtime batch is larger than the max_batch "
-            "setted by EnableTensorrtEngine()\n"
+            "set by EnableTensorrtEngine()\n"
             "2. Check whether the model you are running has multiple trt "
             "subgraphs: \n "
             "\tIf there are multiple trt subgraphs, you need to ensure that "

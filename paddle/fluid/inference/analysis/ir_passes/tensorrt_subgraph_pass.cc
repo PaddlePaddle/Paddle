@@ -223,7 +223,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   auto use_static_engine = Get<bool>("use_static_engine");
   // TODO(NHZlX)
   // There are models with the same structure but the different parameters,
-  // when runing in the 'use_serialize' mode, there is a bug.
+  // when running in the 'use_serialize' mode, there is a bug.
   auto engine_key = GenerateEngineKey(input_names_with_id, output_names_with_id,
                                       std::to_string(0));
   auto predictor_id = Get<int>("predictor_id");

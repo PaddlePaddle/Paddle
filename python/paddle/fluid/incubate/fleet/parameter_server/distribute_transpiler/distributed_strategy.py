@@ -55,26 +55,11 @@ class TrainerRuntimeConfig(object):
         need_keys = []
         num_threads = os.getenv("CPU_NUM", "1")
         mode_str = ""
-        if self.mode is None:
+        if self.mode is None or self.mode == DistributedMode.ASYNC:
             need_keys = self.runtime_configs.keys()
-        elif self.mode == DistributedMode.SYNC:
-            mode_str = "sync"
-            need_keys = [
-                'communicator_max_merge_var_num',
-                'communicator_send_wait_times', 'communicator_thread_pool_size',
-                'communicator_send_queue_size'
-            ]
-        elif self.mode == DistributedMode.ASYNC:
             mode_str = "async"
-            need_keys = [
-                'communicator_max_merge_var_num',
-                'communicator_independent_recv_thread',
-                'communicator_min_send_grad_num_before_recv',
-                'communicator_thread_pool_size', 'communicator_send_wait_times',
-                'communicator_is_sgd_optimizer', 'communicator_send_queue_size'
-            ]
-        elif self.mode == DistributedMode.HALF_ASYNC:
-            mode_str = "half_async"
+        elif self.mode == DistributedMode.SYNC or self.mode == DistributedMode.HALF_ASYNC:
+            mode_str = "sync or half_async"
             need_keys = [
                 'communicator_max_merge_var_num',
                 'communicator_send_wait_times', 'communicator_thread_pool_size',
@@ -86,9 +71,7 @@ class TrainerRuntimeConfig(object):
                 'communicator_thread_pool_size', 'communicator_send_wait_times'
             ]
         else:
-            raise ValueError(
-                "In get_communicator_flags, mode = {} is not supported. Please choose one mode from [DistributedMode.SYNC, DistributedMode.HALF_ASYNC, DistributedMode.ASYNC, DistributedMode.GEO"
-            )
+            raise ValueError("Unsupported Mode")
 
         if self.mode == DistributedMode.SYNC or self.mode == DistributedMode.HALF_ASYNC:
             max_merge_var_num = self.runtime_configs[
@@ -306,18 +289,19 @@ class SyncStrategy(DistributedStrategy):
         self._trainer_runtime_config.mode = DistributedMode.SYNC
 
     def check_program_config(self):
-        self._program_config.sync_mode = True
-        self._program_config.runtime_split_send_recv = False
-        self._build_strategy.async_mode = False
+        self._program_config.sync_mode = False
+        self._program_config.runtime_split_send_recv = True
+        self._program_config.half_async = True
+        self._program_config.completely_not_async = True
 
     def check_server_runtime_config(self):
         pass
 
     def check_execute_strategy(self):
-        pass
+        self._execute_strategy.use_thread_barrier = True
 
     def check_build_strategy(self):
-        pass
+        self._build_strategy.async_mode = True
 
 
 class AsyncStrategy(DistributedStrategy):

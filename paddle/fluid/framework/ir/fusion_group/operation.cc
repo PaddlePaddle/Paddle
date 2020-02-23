@@ -91,7 +91,7 @@ void OperationMap::InsertUnaryElementwiseOperations() {
   // relu:
   //  out = f(x) = x > 0 ? x : 0
   //  dx = dout * (out > 0 ? 1 : 0)
-  insert_handler("relu", "real_max(${0}, 0)", {"${1} > 0 ? ${2} : 0"});
+  insert_handler("relu", "${0} > 0 ? ${0} : 0", {"${1} > 0 ? ${2} : 0"});
   // sigmoid:
   //  out = f(x) = 1.0 / (1.0 + exp(-x))
   //  dx = dout * out * (1 - out)
@@ -133,9 +133,24 @@ void OperationMap::InsertBinaryElementwiseOperations() {
   //  dy = dout * x
   insert_handler("elementwise_mul", "${0} * ${1}",
                  {"${3} * ${1}", "${3} * ${0}"});
-  insert_handler("elementwise_div", "${0} / ${1}", {});
-  insert_handler("elementwise_min", "real_min(${0}, ${1})", {});
-  insert_handler("elementwise_max", "real_max(${0}, ${1})", {});
+  // elementwise_div:
+  //  out = x / y
+  //  dx = dout / y
+  //  dy = - dout * out / y
+  insert_handler("elementwise_div", "${0} / ${1}",
+                 {"${3} / ${1}", "- ${3} * ${2} / ${1}"});
+  // elementwise_min:
+  //  out = x < y ? x : y
+  //  dx = dout * (x < y)
+  //  dy = dout * (x >= y)
+  insert_handler("elementwise_min", "${0} < ${1} ? ${0} : ${1}",
+                 {"${3} * (${0} < ${1})", "${3} * (${0} >= ${1})"});
+  // elementwise_max:
+  //  out = x > y ? x : y
+  //  dx = dout * (x > y)
+  //  dy = dout * (x <= y)
+  insert_handler("elementwise_max", "${0} > ${1} ? ${0} : ${1}",
+                 {"${3} * (${0} > ${1})", "${3} * (${0} <= ${1})"});
 }
 
 }  // namespace fusion_group

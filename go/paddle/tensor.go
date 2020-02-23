@@ -137,16 +137,16 @@ func (tensor *ZeroCopyTensor) SetValue(value interface{}) {
 	tensor.c.data.length = length
 
 	switch dtype {
-    case PaddleDType(UINT8):
+	case PaddleDType(UINT8):
 		data := val.Interface().([]uint8)
 		C.memcpy(tensor.c.data.data, unsafe.Pointer(&data[0]), length)
-    case PaddleDType(INT32):
+	case PaddleDType(INT32):
 		data := val.Interface().([]int32)
 		C.memcpy(tensor.c.data.data, unsafe.Pointer(&data[0]), length)
-    case PaddleDType(INT64):
+	case PaddleDType(INT64):
 		data := val.Interface().([]int64)
 		C.memcpy(tensor.c.data.data, unsafe.Pointer(&data[0]), length)
-    case PaddleDType(FLOAT32):
+	case PaddleDType(FLOAT32):
 		data := val.Interface().([]float32)
 		C.memcpy(tensor.c.data.data, unsafe.Pointer(&data[0]), length)
 	}

@@ -73,9 +73,6 @@ class DistributedTranspiler(Fleet):
         trainer_communicator_config = self._transpile_config.get_trainer_runtime_config(
         )
 
-        if isinstance(self._transpile_config, SyncStrategy):
-            return
-
         print(trainer_communicator_config)
 
         if isinstance(self._transpile_config, GeoStrategy):
@@ -98,6 +95,17 @@ class DistributedTranspiler(Fleet):
             self._communicator = Communicator(
                 self.main_program, DistributedMode.HALF_ASYNC, None,
                 trainer_communicator_config.get_communicator_flags())
+
+        elif isinstance(self._transpile_config, SyncStrategy):
+            kwargs = {}
+            kwargs[
+                "pserver_endpoints"] = self._role_maker.get_pserver_endpoints()
+            kwargs["trainer_id"] = self._role_maker.worker_index()
+
+            self._communicator = Communicator(
+                self.main_program, DistributedMode.SYNC, kwargs,
+                trainer_communicator_config.get_communicator_flags())
+
         else:
             raise TypeError("Training MODE do not supported")
 
@@ -156,8 +164,7 @@ class DistributedTranspiler(Fleet):
             None
         """
 
-        if not isinstance(self._transpile_config, SyncStrategy):
-            self._communicator.stop()
+        self._communicator.stop()
         if isinstance(self._role_maker, MPISymetricRoleMaker):
             self._role_maker._finalize()
         self._executor.close()
