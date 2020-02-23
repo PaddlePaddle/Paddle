@@ -111,15 +111,15 @@ class Yolov3LossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "The input tensor of YOLOv3 loss operator, "
              "This is a 4-D tensor with shape of [N, C, H, W]."
-             "H and W should be same, and the second dimention(C) stores"
+             "H and W should be same, and the second dimension(C) stores"
              "box locations, confidence score and classification one-hot"
              "keys of each anchor box");
     AddInput("GTBox",
              "The input tensor of ground truth boxes, "
              "This is a 3-D tensor with shape of [N, max_box_num, 5], "
              "max_box_num is the max number of boxes in each image, "
-             "In the third dimention, stores x, y, w, h coordinates, "
-             "x, y is the center cordinate of boxes and w, h is the "
+             "In the third dimension, stores x, y, w, h coordinates, "
+             "x, y is the center coordinate of boxes and w, h is the "
              "width and height and x, y, w, h should be divided by "
              "input image height to scale to [0, 1].");
     AddInput("GTLabel",

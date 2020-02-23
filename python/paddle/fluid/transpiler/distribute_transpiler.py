@@ -160,7 +160,7 @@ class DistributeTranspilerConfig(object):
           Minimum number of splitted elements in block, default is 8192.
 
           According to : https://github.com/PaddlePaddle/Paddle/issues/8638#issuecomment-369912156
-          We can use bandwidth effiently when data size is larger than 2MB.If you
+          We can use bandwidth efficiently when data size is larger than 2MB.If you
           want to change it, please be sure you have read the slice_variable function. You can find
           the definition of slice_variable in
           https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/transpiler/distribute_transpiler.py
@@ -202,7 +202,7 @@ class DistributeTranspilerConfig(object):
     #The picture here illustrates the principle:
     #https://github.com/PaddlePaddle/Paddle/pull/17263#discussion_r285411396
     use_hierarchical_allreduce = False
-    #Nccl ranks in a node when use hierarchical allreduce, it's setted to gpu cards' number in most cases.
+    #Nccl ranks in a node when use hierarchical allreduce, it's set to gpu cards' number in most cases.
     hierarchical_allreduce_inter_nranks = 0
 
     # if mode is collective
@@ -1460,7 +1460,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             endpoint (str): current pserver endpoint.
             pserver_program (Program): deprecated, call get_pserver_program first.
             startup_program (Program): deprecated, should pass startup_program
-                when initalizing
+                when initializing
 
         Returns:
             Program: parameter server side startup program.
