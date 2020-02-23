@@ -17,17 +17,6 @@ def not_found(error):
     return make_response(jsonify({'error': 'Not found'}), 404)
 
 
-"""
-class Pod(object):
-    def __init__(self):
-        self.pod_id = None
-        self.running = None
-        self.addr = None
-        self.pod_port = None
-        self.trainer_ports = []
-"""
-
-
 def _get_job_pods(job_id):
     job = {"job_id": "test_job_id_1234", "pods": []}
 

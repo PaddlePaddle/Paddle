@@ -304,3 +304,27 @@ def get_cluster(node_ips, node_ip, paddle_port, selected_gpus):
 
     pod_rank = node_ips.index(node_ip)
     return cluster, cluster.pods[pod_rank]
+
+
+def terminate_local_trainers(procs):
+    for p in procs:
+        if p.proc.poll() is None:
+            p.terminate()
+            p.log_fn.close()
+
+    # wait all process terminiated
+    time.sleep(5)
+
+    alive = False
+    for step in range(0, 100):
+        for p in procs:
+            if p.proc.poll() is not None:
+                os.kill(p.pid, SIGKILL)
+                alive = True
+        if not alive:
+            return
+
+        time.sleep(10)
+
+    logger.fatal("can't kill all process and exit")
+    exit(1)

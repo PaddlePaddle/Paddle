@@ -154,30 +154,6 @@ POD_IP (current node ip address, not needed for local training)
     return parser.parse_args()
 
 
-def terminate_local_trainers(procs):
-    for p in procs:
-        if p.proc.poll() is None:
-            p.terminate()
-            p.log_fn.close()
-
-    # wait all process terminiated
-    time.sleep(5)
-
-    alive = False
-    for step in range(0, 100):
-        for p in procs:
-            if p.proc.poll() is not None:
-                os.kill(p.pid, SIGKILL)
-                alive = True
-        if not alive:
-            return
-
-        time.sleep(10)
-
-    print("can't kill all process and exit")
-    exit(1)
-
-
 def get_gpus():
     if args.selected_gpus is None:
         gpus_num = fluid.core.get_cuda_device_count()
@@ -222,7 +198,7 @@ def start_local_trainers(cluster, pod):
 
     procs = []
     for t in pod.trainers:
-        new_env = ({
+        current_env.update({
             "FLAGS_selected_gpus": "%s" % ",".join([str(g) for g in t.gpu]),
             "PADDLE_TRAINER_ID": "%d" % t.rank,
             "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
@@ -230,13 +206,7 @@ def start_local_trainers(cluster, pod):
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
         })
 
-        current_env.update(new_env)
         logger.debug("trainer proc env:{}".format(current_env))
-
-        for k, v in current_env.iteritems():
-            print(type(k), type(v))
-
-        #current_env={}
 
         cmd = [sys.executable, "-u", args.training_script
                ] + args.training_script_args
@@ -276,24 +246,24 @@ def watch_local_trainers(procs):
                 error_rank.append(p.rank)
 
         if error:
-            terminate_procs(procs)
+            terminate_local_procs(procs)
             exit(1)
 
     except KeyboardInterrupt:
         logger.warning("KeyboardInterrupt, exit")
-        terminate_procs(procs)
+        terminate_local_procs(procs)
         raise
     except SystemExit:
         logger.error(
             "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log.".
             format(nranks, error_rank))
-        terminate_procs(procs)
+        terminate_local_procs(procs)
         raise
     except:
         logger.error(
             "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log.".
             format(nranks, error_rank))
-        terminate_procs(procs)
+        terminate_local_procs(procs)
         raise
 
     return alive
