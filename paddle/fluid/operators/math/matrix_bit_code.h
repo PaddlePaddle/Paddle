@@ -105,7 +105,7 @@ class SimpleCode {
   SimpleCode(size_t code, size_t num_classes, const int64_t* ids)
       : c_(static_cast<size_t>(ids[code]) + num_classes) {}
   /**
-   * Here the id of root shoud be 1 rather than 0, thus the encoding of class c
+   * Here the id of root should be 1 rather than 0, thus the encoding of class c
    * is `c + num_classes` and all siblings can get the same weight indice using
    * prefixes.
    * Weight index is the prefixes of encoding, thus leave out the right most

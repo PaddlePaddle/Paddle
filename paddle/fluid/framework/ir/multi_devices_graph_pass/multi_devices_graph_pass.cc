@@ -1041,7 +1041,7 @@ void DistSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
     // There are 4 conditions:
     // 1. GPU && Reduce: Reduce gradient then broadcast gradient to other GPUS.
     // Need to broadcast received parameters to other GPU.
-    // 2. GPU && AllReduce: AllReduce all graident to each GPU. Need to
+    // 2. GPU && AllReduce: AllReduce all gradient to each GPU. Need to
     // broadcast received parameters to other GPU.
     // 3. CPU && AllReduce: AllReduce all gradient to each thread. Need to
     // broadcast received parameters to other scope.
