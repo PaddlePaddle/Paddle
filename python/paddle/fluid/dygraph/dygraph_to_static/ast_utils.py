@@ -27,8 +27,8 @@ from collections import defaultdict
 
 from paddle.fluid import unique_name
 
-TRUE_FUNC_PRFIX = 'true_fn'
-FALSE_FUNC_PRFIX = 'false_fn'
+TRUE_FUNC_PREFIX = 'true_fn'
+FALSE_FUNC_PREFIX = 'false_fn'
 
 
 class IsControlFlowIfVisitor(gast.NodeTransformer):
@@ -53,7 +53,7 @@ class IsControlFlowIfVisitor(gast.NodeTransformer):
         self.node = node
         self.is_control_flow = False
 
-    def ast_vist(self):
+    def ast_visit(self):
         self.visit(self.node)
         return self.is_control_flow
 
@@ -84,7 +84,7 @@ def is_control_flow_if(node):
     assert isinstance(
         node, gast.AST
     ), "Type of input node should be gast.AST, but received %s." % type(node)
-    return IsControlFlowIfVisitor(node).ast_vist()
+    return IsControlFlowIfVisitor(node).ast_visit()
 
 
 def get_name_ids(nodes, not_name_set=None, node_black_list=None):
@@ -276,12 +276,12 @@ def transform_if_else(node, root):
 
     true_func_node = create_funcDef_node(
         node.body,
-        name=unique_name.generate(TRUE_FUNC_PRFIX),
+        name=unique_name.generate(TRUE_FUNC_PREFIX),
         input_args=parse_cond_args(if_name_ids, modified_name_ids),
         return_name_ids=return_name_ids)
     false_func_node = create_funcDef_node(
         node.orelse,
-        name=unique_name.generate(FALSE_FUNC_PRFIX),
+        name=unique_name.generate(FALSE_FUNC_PREFIX),
         input_args=parse_cond_args(else_name_ids, modified_name_ids),
         return_name_ids=return_name_ids)
 
@@ -357,7 +357,7 @@ def ast_to_func(ast_root, func_name, delete_on_exit=True):
         f = tempfile.NamedTemporaryFile(
             mode='w', suffix='.py', delete=False, encoding='utf-8')
 
-    # TODO(Aurelius84): more elegent way to transform ast into callable object
+    # TODO(Aurelius84): more elegant way to transform ast into callable object
     import_str = "import paddle\n" \
                  "import paddle.fluid as fluid\n" \
                  "import paddle.fluid.layers as layers\n"
