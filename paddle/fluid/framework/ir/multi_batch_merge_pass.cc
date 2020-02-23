@@ -179,7 +179,7 @@ void BatchMergePass::ApplyImpl(ir::Graph* graph) const {
         ir::Node* var = nullptr;
         auto updated_var = UpdateGradVarDesc(in_node->Var(), i, grad_names,
                                              bn_vars_need_rename);
-        // should be initialized by startup, how to initilize tensor in the
+        // should be initialized by startup, how to initialize tensor in the
         // scope?
         if (node->Name() == "batch_norm" &&
             bn_vars_need_rename.find(in_node->Name()) !=
