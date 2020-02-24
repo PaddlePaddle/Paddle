@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <algorithm>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -26,6 +27,9 @@ namespace framework {
 class OpDesc;
 class BlockDesc;
 // default infer var type context
+
+static const int ALL_ELEMENTS = -1;
+
 class InferVarTypeContext {
  public:
   InferVarTypeContext(const OpDesc* op, BlockDesc* block)
@@ -57,35 +61,116 @@ class InferVarTypeContext {
     return output != outputs.end() && !output->second.empty();
   }
 
+  virtual bool InputTypeAnyOf(const std::string& name,
+                              proto::VarType::Type type) const {
+    PADDLE_ENFORCE_NOT_NULL(op_);
+    auto& inputs = op_->Input(name);
+    return std::any_of(inputs.begin(), inputs.end(),
+                       [this, &type](const std::string& name) {
+                         return this->GetType(name) == type;
+                       });
+  }
+
+  virtual bool InputTypeAllOf(const std::string& name,
+                              proto::VarType::Type type) const {
+    PADDLE_ENFORCE_NOT_NULL(op_);
+    auto& inputs = op_->Input(name);
+    return std::all_of(inputs.begin(), inputs.end(),
+                       [this, &type](const std::string& name) {
+                         return this->GetType(name) == type;
+                       });
+  }
+
+  // not available in dygraph mode
   virtual const std::vector<std::string>& Input(const std::string& name) const {
     PADDLE_ENFORCE_NOT_NULL(op_);
     return op_->Input(name);
   }
 
+  // not available in dygraph mode
   virtual const std::vector<std::string>& Output(
       const std::string& name) const {
     PADDLE_ENFORCE_NOT_NULL(op_);
     return op_->Output(name);
   }
 
-  virtual proto::VarType::Type GetType(const std::string& name) const {
-    PADDLE_ENFORCE_NOT_NULL(block_);
-    return block_->FindRecursiveOrCreateVar(name).GetType();
+  virtual void SyncTypeAndDataType(const std::string& input_name,
+                                   const std::string& output_name,
+                                   int index = 0) {
+    auto& x_name = op_->Input(input_name).at(index);
+    auto& out_name = op_->Output(output_name).at(index);
+
+    if (x_name != out_name) {
+      this->SetType(out_name, this->GetType(x_name));
+      this->SetDataType(out_name, this->GetDataType(x_name));
+    }
   }
 
+  virtual void SetOutputType(const std::string& name, proto::VarType::Type type,
+                             int index = 0) {
+    if (ALL_ELEMENTS == index) {
+      for (const auto& var_name : op_->Output(name)) {
+        this->SetType(var_name, type);
+      }
+    } else {
+      auto& var_name = op_->Output(name).at(index);
+      this->SetType(var_name, type);
+    }
+  }
+
+  // used in paddle/fluid/operators/save_op.cc
+  // legacy function, maybe removed in the future, don't use in new code
+  // use SetOutputType instead
   virtual void SetType(const std::string& name, proto::VarType::Type type) {
     PADDLE_ENFORCE_NOT_NULL(block_);
     block_->FindRecursiveOrCreateVar(name).SetType(type);
   }
 
+  virtual proto::VarType::Type GetInputType(const std::string& name,
+                                            const int& index = 0) const {
+    return this->GetType(op_->Input(name).at(index));
+  }
+
+  // not available in dygraph mode
+  virtual proto::VarType::Type GetType(const std::string& name) const {
+    PADDLE_ENFORCE_NOT_NULL(block_);
+    return block_->FindRecursiveOrCreateVar(name).GetType();
+  }
+
+  virtual proto::VarType::Type GetInputDataType(const std::string& name,
+                                                const int& index = 0) const {
+    return this->GetDataType(op_->Input(name).at(index));
+  }
+
+  virtual proto::VarType::Type GetOutputDataType(const std::string& name,
+                                                 const int& index = 0) const {
+    return this->GetDataType(op_->Output(name).at(index));
+  }
+
+  // not available in dygraph mode
   virtual proto::VarType::Type GetDataType(const std::string& name) const {
     PADDLE_ENFORCE_NOT_NULL(block_);
     return block_->FindRecursiveOrCreateVar(name).GetDataType();
   }
 
+  virtual void SetOutputDataType(const std::string& name,
+                                 proto::VarType::Type type, int index = 0) {
+    auto& var_name = op_->Output(name).at(index);
+    this->SetDataType(var_name, type);
+  }
+
+  // not available in dygraph mode
   virtual void SetDataType(const std::string& name, proto::VarType::Type type) {
     PADDLE_ENFORCE_NOT_NULL(block_);
     block_->FindRecursiveOrCreateVar(name).SetDataType(type);
+  }
+
+  virtual void SyncDataTypes(const std::string& input_name,
+                             const std::string& output_name,
+                             const int& index = 0) {
+    auto& input_var = op_->Input(input_name).at(index);
+    auto& output_var = op_->Output(input_name).at(index);
+    this->SetDataTypes(output_var, this->GetDataTypes(input_var));
   }
 
   virtual std::vector<proto::VarType::Type> GetDataTypes(
@@ -122,6 +207,8 @@ class InferVarTypeContext {
     block_->FindRecursiveOrCreateVar(name).SetLoDLevel(lod_level);
   }
 
+  virtual bool IsDygraph() const { return false; }
+
  protected:
   const OpDesc* op_;
   BlockDesc* block_;
@@ -136,19 +223,21 @@ class VarTypeInference {
 class PassInDtypeAndVarTypeToOutput : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const final {  // NOLINT
-    auto in_out_var_names = this->GetInputOutputWithSameType();
+    auto& in_out_var_names = this->GetInputOutputWithSameType();
 
     for (auto& i_o_n : in_out_var_names) {
-      auto& x_name = ctx->Input(i_o_n.first).at(0);
-      auto& out_name = ctx->Output(i_o_n.second).at(0);
+      // auto& x_name = ctx->Input(i_o_n.first).at(0);
+      // auto& out_name = ctx->Output(i_o_n.second).at(0);
 
-      ctx->SetType(out_name, ctx->GetType(x_name));
-      ctx->SetDataType(out_name, ctx->GetDataType(x_name));
+      // ctx->SetType(out_name, ctx->GetType(x_name));
+      // ctx->SetDataType(out_name, ctx->GetDataType(x_name));
+
+      ctx->SyncTypeAndDataType(i_o_n.first, i_o_n.second);
     }
   }
 
  protected:
-  virtual std::unordered_map<std::string, std::string>
+  virtual std::unordered_map<std::string, std::string>&
   GetInputOutputWithSameType() const = 0;
 };
 
