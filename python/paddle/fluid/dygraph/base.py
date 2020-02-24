@@ -23,6 +23,9 @@ import objgraph
 __all__ = [
     'no_grad',
     'guard',
+    'enable',
+    'disable',
+    'enabled',
     'to_variable',
 ]
 
@@ -49,10 +52,66 @@ def program_desc_tracing_guard(enable):
         tracer._enable_program_desc_tracing = original_val
 
 
-# This function should be removed in V1.6, because it can easily lead to cyclic dependencies.
 def enabled():
-    # Internal use only
+    """
+    This function checks whether the program runs in dynamic graph mode or not.
+    You can enter dynamic graph mode with :ref:`api_fluid_dygraph_guard` api,
+    or enable and disable dynamic graph mode with :ref:`api_fluid_dygraph_enable`
+    and :ref:`api_fluid_dygraph_disable` api .
+
+    **Note**:
+        ``fluid.dygraph.enabled`` is the alias of ``fluid.in_dygraph_mode``, and
+        ``fluid.in_dygraph_mode`` is recommended to use.
+
+    Returns:
+        bool: Whether the program is running in dynamic graph mode.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            if fluid.in_dygraph_mode():
+                print('running in dygraph mode')
+            else:
+                print('not running in dygraph mode')
+    """
     return framework.in_dygraph_mode()
+
+
+def enable(place=None):
+    """
+    This function enables dynamic graph mode.
+
+    Parameters:
+        place(fluid.CPUPlace or fluid.CUDAPlace, optional): Place to execute dygraph.
+            If None, the running place will be determined according to the way of paddle compilation. Default: None
+
+    return:
+        None
+    """
+    tracer = Tracer()
+    framework._dygraph_tracer_ = tracer
+    core._switch_tracer(tracer)
+
+    if place is None:
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+
+    tracer._expected_place = place
+    framework._dygraph_current_expected_place_ = place
+
+
+def disable():
+    """
+    This function disables dynamic graph mode.
+
+    return:
+        None
+    """
+    core._switch_tracer(None)
+    framework._dygraph_tracer_ = None
 
 
 @contextlib.contextmanager
