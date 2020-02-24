@@ -71,13 +71,12 @@ def convert_dtype(dtype):
         "int32, int64, uint8]")
 
 
-def check_type_and_dtype(input,
-                         input_name,
-                         expected_type,
-                         expected_dtype,
-                         op_name,
-                         extra_message=''):
-    check_type(input, input_name, expected_type, op_name, extra_message)
+def check_variable_and_dtype(input,
+                             input_name,
+                             expected_dtype,
+                             op_name,
+                             extra_message=''):
+    check_type(input, input_name, Variable, op_name, extra_message)
     check_dtype(input.dtype, input_name, expected_dtype, op_name, extra_message)
 
 
@@ -340,10 +339,10 @@ class DataFeeder(object):
         """
         Similar with feed function, feed_parallel is used with multiple devices (CPU|GPU).
         Here :code:`iterable` is a list of python generators. The data return by each 
-        generator in the list will be fed into a seperate device.        
+        generator in the list will be fed into a separate device.        
 
         Parameters:
-            iterable (list|tuple): list of user-defined python geneators. The element 
+            iterable (list|tuple): list of user-defined python generators. The element 
                 number should match the :code:`num_places`.
             num_places (int, optional): the number of devices. If not provided (None), 
                 all available devices on the machine will be used. Default None.
@@ -380,7 +379,7 @@ class DataFeeder(object):
                 exe.run(fluid.default_startup_program())
                 program = fluid.CompiledProgram(fluid.default_main_program()).with_data_parallel(places=places)
 
-                # print sample feed_parallel r resultt
+                # print sample feed_parallel r result
                 # for item in list(feeder.feed_parallel([generate_reader(5, 0, 1), generate_reader(3, 10, 2)], 2)):
                 #     print(item['x'])
                 #     print(item['y'])
@@ -434,7 +433,7 @@ class DataFeeder(object):
 
         Parameters:
             reader(generator): a user defined python generator used to get :code:`mini-batch` of data.
-                A :code:`mini-batch` can be regarded as a python generator that returns batchs of input 
+                A :code:`mini-batch` can be regarded as a python generator that returns batches of input 
                 entities, just like the below :code:`_mini_batch` in the code example.                      
             multi_devices(bool): indicate whether to use multiple devices or not.
             num_places(int, optional): if :code:`multi_devices` is True, you can specify the number

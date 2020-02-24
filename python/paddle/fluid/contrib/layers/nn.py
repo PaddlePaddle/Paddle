@@ -24,17 +24,14 @@ import inspect
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import utils
 from ... import unique_name
+from paddle.fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
+from paddle.fluid.framework import Variable
+import warnings
 
 __all__ = [
-    'fused_elemwise_activation',
-    'sequence_topk_avg_pooling',
-    'var_conv_2d',
-    'match_matrix_tensor',
-    'tree_conv',
-    'fused_embedding_seq_pool',
-    'multiclass_nms2',
-    'search_pyramid_hash',
-    'shuffle_batch',
+    'fused_elemwise_activation', 'sequence_topk_avg_pooling', 'var_conv_2d',
+    'match_matrix_tensor', 'tree_conv', 'fused_embedding_seq_pool',
+    'multiclass_nms2', 'search_pyramid_hash', 'shuffle_batch', 'partial_concat'
 ]
 
 
@@ -116,7 +113,7 @@ def var_conv_2d(input,
     """
     The var_conv_2d layer calculates the output base on the :attr:`input` with variable length,
     row, col, input channel, filter size and strides. Both :attr:`input`, :attr:`row`,
-    and :attr:`col` are 1-level LodTensor. The covolution operation is same as conv2d layer with 
+    and :attr:`col` are 1-level LodTensor. The convolution operation is same as conv2d layer with 
     padding. Besides, input.dims[1] should be 1. 
 
     .. code-block:: text
@@ -133,9 +130,9 @@ def var_conv_2d(input,
                 output.dims = [174, 1]  # where 174 = 90 + 84
 
     Args:
-        input (Variable): The input shoud be 1-level LodTensor with dims[1] equals 1.
-        row (Variable): The row shoud be 1-level LodTensor to provide height information.
-        col (Variable): The col shoud be 1-level LodTensor to provide width information.
+        input (Variable): The input should be 1-level LodTensor with dims[1] equals 1.
+        row (Variable): The row should be 1-level LodTensor to provide height information.
+        col (Variable): The col should be 1-level LodTensor to provide width information.
         input_channel (int): The number of input channel.
         output_channel (int): The number of output channel.
         filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
@@ -325,9 +322,9 @@ def sequence_topk_avg_pooling(input, row, col, topks, channel_num):
 
     Args:
         input (Variable): The input should be 2D LodTensor with dims[1] equals 1.
-        row (Variable): The row shoud be 1-level LodTensor to provide the height information
+        row (Variable): The row should be 1-level LodTensor to provide the height information
                         of the input tensor data.
-        col (Variable): The col shoud be 1-level LodTensor to provide the width information
+        col (Variable): The col should be 1-level LodTensor to provide the width information
                         of the input tensor data.
         topks (list): A list of incremental value to average the topk feature.
         channel_num (int): The number of input channel.
@@ -555,7 +552,7 @@ def multiclass_nms2(bboxes,
                                  low confidence score. If not provided, 
                                  consider all boxes.
         nms_top_k (int): Maximum number of detections to be kept according to
-                         the confidences aftern the filtering detections based
+                         the confidences after the filtering detections based
                          on score_threshold.
         nms_threshold (float): The threshold to be used in NMS. Default: 0.3
         nms_eta (float): The threshold to be used in NMS. Default: 1.0
@@ -807,4 +804,66 @@ def shuffle_batch(x, seed=None):
                  'ShuffleIdx': shuffle_idx,
                  'SeedOut': seed},
         attrs=op_attrs)
+    return out
+
+
+def partial_concat(input, start_index=0, length=-1):
+    """
+    **Partial Concat**
+    This OP concatenates the inputs according to the start index and length. This
+    OP exists in contrib, which means that it is not shown to the public.
+    Only 2-D Tensor or LodTensor input is supported. Slice and concat can only be 
+    performed along the second dimension.
+
+    .. code-block:: text
+        
+        Given:
+            x = [[0, 1, 2],
+                 [3, 4, 5]]
+            y = [[6, 7 ,8],
+                 [9, 10, 11]]
+            output = partial_concat([x, y], start_index=0, length=2)
+
+          we get:
+             
+            output = [[0, 1, 6, 7],
+                      [3, 4, 9, 10]]
+
+    Args:
+        input(list): List of input Tensors with data type float32, float64, int32,
+            int64.
+        start_index(int32): The start index of each instance for partial concatenation.
+            Default is 0.
+        length(int32): The length of each instance for partial concatenation. Default is -1.
+            Negative values for all elements after start_index.
+    Returns:
+        Variable: A Tensor with the same data type as input's.
+    Examples:
+        .. code-block:: python
+            import paddle.fluid as fluid
+            x = fluid.data(name="x", shape=[None,3], dtype="float32")
+            y = fluid.data(name="y", shape=[None,3], dtype="float32")
+            concat = fluid.contrib.layers.partial_concat([x, y], start_index=0, length=2)
+    """
+    if not isinstance(input, list):
+        warnings.warn(
+            "The type of input in partial_concat should be list, but received %s."
+            % (type(input)))
+        input = [input]
+    for id, x in enumerate(input):
+        check_variable_and_dtype(
+            x, 'input[' + str(id) + ']',
+            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            'partial_concat')
+    check_type(start_index, 'start_index', (int), 'partial_concat')
+    check_type(length, 'length', (int), 'partial_concat')
+    inputs = {'X': input}
+    attrs = {'start_index': start_index, 'length': length}
+    helper = LayerHelper('partial_concat', **locals())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+    helper.append_op(
+        type='partial_concat',
+        inputs=inputs,
+        outputs={'Out': [out]},
+        attrs=attrs)
     return out

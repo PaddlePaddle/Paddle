@@ -23,6 +23,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/place.h"
@@ -32,11 +33,24 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-enum ProfilerState {
+enum class ProfilerState {
   kDisabled,  // disabled state
   kCPU,       // CPU profiling state
   kCUDA,      // GPU profiling state
   kAll,       // Profile both CPU and GPU. (Currently experimental).
+};
+
+enum class RecordRole {
+  kOrdinary,  // only record op time with op type key
+  kInnerOp,   // record op detail time with op type key
+  kUniqueOp,  // record op detail time with op unique name key
+};
+
+// it is the flag to control to print the profiling result
+enum class TracerOption {
+  kDefault,      // print the different op type profiling result
+  kOpDetail,     // print the detail profiling result of different op type
+  kAllOpDetail,  // print the detail profiling result of different op name
 };
 
 void Mark(const std::string& name);
@@ -79,7 +93,8 @@ Event* PushEvent(const std::string& name);
 void PopEvent(const std::string& name);
 
 struct RecordEvent {
-  explicit RecordEvent(const std::string& name);
+  RecordEvent(const std::string& name,
+              const RecordRole role = RecordRole::kOrdinary);
 
   ~RecordEvent();
 
@@ -90,6 +105,7 @@ struct RecordEvent {
   // Need to distinguish name by op type, block_id, program_id and perhaps
   // different kernel invocations within an op.
   std::string full_name_;
+  RecordRole role_{RecordRole::kOrdinary};
 };
 
 class RecordRPCEvent {
@@ -116,7 +132,7 @@ struct RecordBlock {
 std::vector<std::vector<Event>> GetAllEvents();
 
 // Candidate keys to sort the profiling report
-enum EventSortingKey {
+enum class EventSortingKey {
   kDefault,
   kCalls,
   kTotal,
@@ -181,6 +197,10 @@ bool ShouldSendProfileState();
 void SetProfileListener();
 int64_t ListenerId();
 
+std::string OpName(const framework::VariableNameMap& name_map,
+                   const std::string& type_name);
+void SetTracerOption(TracerOption option);
+platform::TracerOption GetTracerOption();
 #ifdef PADDLE_WITH_CUDA
 void DummyKernelAndEvent();
 #endif

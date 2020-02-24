@@ -31,7 +31,6 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'depthwise_conv2d', \
     'depthwise_conv2d_transpose', \
     'dropout', \
-    'elementwise_max', \
     'fused_elemwise_activation', \
     'hierarchical_sigmoid', \
     'hinge_loss', \
@@ -50,9 +49,6 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'modified_huber_loss', \
     'mul', \
     'nce', \
-    'pad', \
-    'pad2d', \
-    'pad_constant_like', \
     'pool2d', \
     'pool3d', \
     'prroi_pool', \
@@ -62,7 +58,6 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'reshape2', \
     'roi_perspective_transform', \
     'row_conv', \
-    'scale', \
     'scatter', \
     'sequence_conv', \
     'sequence_pool', \
@@ -74,7 +69,6 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'smooth_l1_loss', \
     'softmax', \
     'spectral_norm', \
-    'sqrt', \
     'squared_l2_distance', \
     'squared_l2_norm', \
     'tanh', \
