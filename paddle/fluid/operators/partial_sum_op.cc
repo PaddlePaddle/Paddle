@@ -34,11 +34,10 @@ class PartialSumOp : public framework::OperatorWithKernel {
     auto inputs_dims = ctx->GetInputsDim("X");
 
     const size_t inputs_num = inputs_dims.size();
-    PADDLE_ENFORCE_GT(
-        inputs_num, 0,
-        platform::errors::InvalidArgument(
-            "ShapeError: Input tensors "
-            "count should > 0. But recevied inputs' length is 0."));
+    PADDLE_ENFORCE_GT(inputs_num, 0,
+                      platform::errors::InvalidArgument(
+                          "ShapeError: Input tensors count should > 0. But "
+                          "recevied inputs' length is 0."));
     if (inputs_num == 1) {
       VLOG(3) << "Warning: partial_sum op have only one input, may be useless";
     }
@@ -58,14 +57,12 @@ class PartialSumOp : public framework::OperatorWithKernel {
         batch_size = inputs_dims[0][0];
         input_len = inputs_dims[0][1];
       } else {
-        PADDLE_ENFORCE_EQ(
-            inputs_dims[i][0], batch_size,
-            platform::errors::InvalidArgument("The batch size "
-                                              "of all inputs must be same"));
-        PADDLE_ENFORCE_EQ(
-            inputs_dims[i][1], input_len,
-            platform::errors::InvalidArgument("The input len "
-                                              "of all inputs must be same"));
+        PADDLE_ENFORCE_EQ(inputs_dims[i][0], batch_size,
+                          platform::errors::InvalidArgument(
+                              "The batch size of all inputs must be same"));
+        PADDLE_ENFORCE_EQ(inputs_dims[i][1], input_len,
+                          platform::errors::InvalidArgument(
+                              "The input len of all inputs must be same"));
       }
     }
     PADDLE_ENFORCE_GT(input_len, start_index,
@@ -153,7 +150,11 @@ class PartialSumOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(-1);
     AddComment(R"DOC(
 PartialSum Operator.
-Partial sum the input tensors along dimension axis.
+This Op can sum the vars by specifying the initial position(start_index) and length(length). 
+This OP exists in contrib, which means that it is not shown to the public.
+Only 2-D Tensor or LodTensor input is supported. Slice and concat can only be 
+performed along the second dimension.
+
 Examples:
   Input[0] = [[1,2,3],[3,4,5]]
   Input[1] = [[5,6,7],[7,8,9]]
