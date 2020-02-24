@@ -13,7 +13,9 @@
 # limitations under the License.
 
 # check no_grad_set is None
-NOT_CHECK_OP_LIST = ['deformable_conv', 'row_conv']
+NOT_CHECK_OP_LIST = [
+    'deformable_conv', 'row_conv', 'batch_norm', 'cos_sim', 'instance_norm'
+]
 
 # TODO(Shixiaowei02): Check if the items do not need fix.
 # no_grad_set has value in NEED_TO_FIX_OP_LIST
@@ -22,12 +24,10 @@ NEED_TO_FIX_OP_LIST = [
     'affine_channel',
     'affine_grid',
     'backward',
-    'batch_norm',
     'conv2d',
     'conv2d_transpose',
     'conv3d',
     'conv3d_transpose',
-    'cos_sim',
     'cross_entropy',
     'cross_entropy2',
     'data_norm',
@@ -48,7 +48,6 @@ NEED_TO_FIX_OP_LIST = [
     'hierarchical_sigmoid',
     'hsigmoid',
     'huber_loss',
-    'instance_norm',
     'kldiv_loss',
     'linear_chain_crf',
     'lod_reset',
