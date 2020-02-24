@@ -1010,7 +1010,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                     "body in while_loop should return the same arity "
                     "(length and structure) and types as loop_vars")
             now_cond = cond(*output_vars).numpy()[0]
-            map_structure(assign, output_vars, loop_vars)
+            loop_vars = output_vars
         return loop_vars
 
     while_loop_block = While(pre_cond, is_test, name)
