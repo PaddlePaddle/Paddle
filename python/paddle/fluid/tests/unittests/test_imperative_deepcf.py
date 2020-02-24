@@ -23,6 +23,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from test_imperative_base import new_program_scope
 from paddle.fluid.dygraph.base import to_variable
+from paddle.fluid.dygraph import Linear
 
 # Can use Amusic dataset as the DeepCF describes.
 DATA_PATH = os.environ.get('DATA_PATH', '')
@@ -33,10 +34,10 @@ NUM_EPOCHES = int(os.environ.get('NUM_EPOCHES', 1))
 
 
 class DMF(fluid.Layer):
-    def __init__(self, name_scope):
-        super(DMF, self).__init__(name_scope)
-        self._user_latent = fluid.FC(self.full_name(), 256)
-        self._item_latent = fluid.FC(self.full_name(), 256)
+    def __init__(self):
+        super(DMF, self).__init__()
+        self._user_latent = Linear(1000, 256)
+        self._item_latent = Linear(100, 256)
 
         self._user_layers = []
         self._item_layers = []
@@ -45,11 +46,17 @@ class DMF(fluid.Layer):
             self._user_layers.append(
                 self.add_sublayer(
                     'user_layer_%d' % i,
-                    fluid.FC(self.full_name(), self._hid_sizes[i], act='relu')))
+                    Linear(
+                        256 if i == 0 else self._hid_sizes[i - 1],
+                        self._hid_sizes[i],
+                        act='relu')))
             self._item_layers.append(
                 self.add_sublayer(
                     'item_layer_%d' % i,
-                    fluid.FC(self.full_name(), self._hid_sizes[i], act='relu')))
+                    Linear(
+                        256 if i == 0 else self._hid_sizes[i - 1],
+                        self._hid_sizes[i],
+                        act='relu')))
 
     def forward(self, users, items):
         users = self._user_latent(users)
@@ -62,17 +69,20 @@ class DMF(fluid.Layer):
 
 
 class MLP(fluid.Layer):
-    def __init__(self, name_scope):
-        super(MLP, self).__init__(name_scope)
-        self._user_latent = fluid.FC(self.full_name(), 256)
-        self._item_latent = fluid.FC(self.full_name(), 256)
+    def __init__(self):
+        super(MLP, self).__init__()
+        self._user_latent = Linear(1000, 256)
+        self._item_latent = Linear(100, 256)
         self._match_layers = []
         self._hid_sizes = [128, 64]
         for i in range(len(self._hid_sizes)):
             self._match_layers.append(
                 self.add_sublayer(
                     'match_layer_%d' % i,
-                    fluid.FC(self.full_name(), self._hid_sizes[i], act='relu')))
+                    Linear(
+                        256 * 2 if i == 0 else self._hid_sizes[i - 1],
+                        self._hid_sizes[i],
+                        act='relu')))
 
     def forward(self, users, items):
         users = self._user_latent(users)
@@ -85,21 +95,21 @@ class MLP(fluid.Layer):
 
 
 class DeepCF(fluid.Layer):
-    def __init__(self, name_scope, num_users, num_items, matrix):
-        super(DeepCF, self).__init__(name_scope)
+    def __init__(self, num_users, num_items, matrix):
+        super(DeepCF, self).__init__()
         self._num_users = num_users
         self._num_items = num_items
         self._rating_matrix = self.create_parameter(
-            fluid.ParamAttr(trainable=False),
-            matrix.shape,
-            matrix.dtype,
+            attr=fluid.ParamAttr(trainable=False),
+            shape=matrix.shape,
+            dtype=matrix.dtype,
             is_bias=False,
             default_initializer=fluid.initializer.NumpyArrayInitializer(matrix))
         self._rating_matrix.stop_gradient = True
 
-        self._mlp = MLP(self.full_name())
-        self._dmf = DMF(self.full_name())
-        self._match_fc = fluid.FC(self.full_name(), 1, act='sigmoid')
+        self._mlp = MLP()
+        self._dmf = DMF()
+        self._match_fc = Linear(128, 1, act='sigmoid')
 
     def forward(self, users, items):
         # users_emb = self._user_emb(users)
@@ -208,7 +218,7 @@ class TestDygraphDeepCF(unittest.TestCase):
             items = fluid.layers.data('items', [1], dtype='int32')
             labels = fluid.layers.data('labels', [1], dtype='float32')
 
-            deepcf = DeepCF('deepcf', num_users, num_items, matrix)
+            deepcf = DeepCF(num_users, num_items, matrix)
             prediction = deepcf(users, items)
             loss = fluid.layers.reduce_sum(
                 fluid.layers.log_loss(prediction, labels))
@@ -237,8 +247,9 @@ class TestDygraphDeepCF(unittest.TestCase):
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
-            deepcf = DeepCF('deepcf', num_users, num_items, matrix)
-            adam = fluid.optimizer.AdamOptimizer(0.01)
+            deepcf = DeepCF(num_users, num_items, matrix)
+            adam = fluid.optimizer.AdamOptimizer(
+                0.01, parameter_list=deepcf.parameters())
             for e in range(NUM_EPOCHES):
                 sys.stderr.write('epoch %d\n' % e)
                 for slice in range(0, BATCH_SIZE * NUM_BATCHES, BATCH_SIZE):
@@ -261,8 +272,9 @@ class TestDygraphDeepCF(unittest.TestCase):
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
-            deepcf2 = DeepCF('deepcf', num_users, num_items, matrix)
-            adam2 = fluid.optimizer.AdamOptimizer(0.01)
+            deepcf2 = DeepCF(num_users, num_items, matrix)
+            adam2 = fluid.optimizer.AdamOptimizer(
+                0.01, parameter_list=deepcf2.parameters())
             backward_strategy = fluid.dygraph.BackwardStrategy()
             backward_strategy.sort_sum_gradient = True
             for e in range(NUM_EPOCHES):

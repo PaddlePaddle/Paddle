@@ -33,9 +33,9 @@ class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):
         self.inputs = {
             'X': logit(
                 np.random.uniform(0, 1, (batch_size, num_classes))
-                .astype("float32")),
+                .astype("float64")),
             'Label': np.random.randint(0, 2, (batch_size, num_classes))
-            .astype("float32")
+            .astype("float64")
         }
 
         # Fw Pass is implemented as elementwise sigmoid followed by
@@ -65,9 +65,9 @@ class TestSigmoidCrossEntropyWithLogitsOp2(OpTest):
         self.inputs = {
             'X': logit(
                 np.random.uniform(0, 1, (batch_size, num_classes))
-                .astype("float32")),
+                .astype("float64")),
             'Label': np.random.randint(-1, 2, (batch_size, num_classes))
-            .astype("float32")
+            .astype("float64")
         }
         self.attrs = {'ignore_index': ignore_index, }
         # Fw Pass is implemented as elementwise sigmoid followed by
@@ -98,9 +98,9 @@ class TestSigmoidCrossEntropyWithLogitsOp3(OpTest):
         self.inputs = {
             'X': logit(
                 np.random.uniform(0, 1, (batch_size, num_classes))
-                .astype("float32")),
+                .astype("float64")),
             'Label': np.random.uniform(0, 1, (batch_size, num_classes))
-            .astype("float32")
+            .astype("float64")
         }
 
         # Fw Pass is implemented as elementwise sigmoid followed by
@@ -127,9 +127,9 @@ class TestSigmoidCrossEntropyWithNorm(OpTest):
         self.inputs = {
             'X': logit(
                 np.random.uniform(0, 1, (batch_size, num_classes))
-                .astype("float32")),
+                .astype("float64")),
             'Label': np.random.randint(-1, 2, (batch_size, num_classes))
-            .astype("float32")
+            .astype("float64")
         }
         self.attrs = {'ignore_index': ignore_index, 'normalize': True}
         sigmoid_X = expit(self.inputs['X'])
@@ -160,9 +160,9 @@ class TestSigmoidCrossEntropyWithLogitsOp5(OpTest):
         self.inputs = {
             'X': logit(
                 np.random.uniform(0, 1, tuple(batch_size + [num_classes]))
-                .astype("float32")),
+                .astype("float64")),
             'Label': np.random.uniform(0, 1, tuple(batch_size + [num_classes]))
-            .astype("float32")
+            .astype("float64")
         }
 
         # Fw Pass is implemented as elementwise sigmoid followed by
@@ -189,9 +189,9 @@ class TestSigmoidCrossEntropyWithNorm2(OpTest):
         self.inputs = {
             'X': logit(
                 np.random.uniform(0, 1, tuple(batch_size + [num_classes]))
-                .astype("float32")),
+                .astype("float64")),
             'Label': np.random.randint(-1, 2, tuple(batch_size + [num_classes]))
-            .astype("float32")
+            .astype("float64")
         }
         self.attrs = {'ignore_index': ignore_index, 'normalize': True}
         sigmoid_X = expit(self.inputs['X'])
@@ -222,9 +222,9 @@ class TestSigmoidCrossEntropyWithLogitsOp6(OpTest):
         self.inputs = {
             'X': logit(
                 np.random.uniform(0, 1, tuple(batch_size + [num_classes]))
-                .astype("float32")),
+                .astype("float64")),
             'Label': np.random.randint(0, 2, tuple(batch_size + [num_classes]))
-            .astype("float32")
+            .astype("float64")
         }
 
         # Fw Pass is implemented as elementwise sigmoid followed by

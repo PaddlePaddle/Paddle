@@ -15,21 +15,31 @@
 #include "paddle/fluid/framework/op_compatible_info.h"
 #include <iostream>
 #include "gtest/gtest.h"
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace framework {
+
 TEST(test_op_compatible_info, test_op_compatible) {
   auto comp_map = OpCompatibleMap();
   comp_map.InitOpCompatibleMap();
 
-  auto default_req_version = comp_map.GetDefaultRequiredVersion();
+  // Ensure save-load consistency.
+  auto program_desc = ProgramDesc();
+  proto::OpCompatibleMap* proto_map = program_desc.OpCompatibleMap();
+  comp_map.ConvertToProto(proto_map);
+  comp_map.ReadFromProto(*proto_map);
 
-  auto seq_pad = comp_map.GetOpCompatibleInfo("sequence_pad");
-  auto reshape = comp_map.GetOpCompatibleInfo("reshape");
-  auto layer_norm = comp_map.GetOpCompatibleInfo("layer_norm");
-
-  auto deafult_info = comp_map.GetOpCompatibleInfo("layer_xx");
+  ASSERT_NE(comp_map.GetDefaultRequiredVersion(), std::string());
+  ASSERT_NE(comp_map.GetOpCompatibleInfo("sequence_pad").required_version_,
+            std::string());
+  ASSERT_NE(comp_map.GetOpCompatibleInfo("reshape").required_version_,
+            std::string());
+  ASSERT_NE(comp_map.GetOpCompatibleInfo("layer_norm").required_version_,
+            std::string());
+  ASSERT_NE(comp_map.GetOpCompatibleInfo("layer_xx").required_version_,
+            std::string());
 
   auto comp_1 = comp_map.IsRequireMiniVersion("sequence_pad", "1.5.0");
   ASSERT_EQ(comp_1, OpCompatibleType::DEFIN_NOT);
@@ -54,5 +64,6 @@ TEST(test_op_compatible_info, test_op_compatible) {
   ASSERT_EQ(comp_map.IsRequireMiniVersion("slice", "1.6.0"),
             OpCompatibleType::compatible);
 }
+
 }  // namespace framework
 }  // namespace paddle

@@ -78,9 +78,9 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
 
   inline void ExecutionFinal(std::vector<OpHandleBase *> *fetch_ops);
 
-  inline void RunOpSync(OpHandleBase *op);
+  inline bool RunOpSync(OpHandleBase *op);
 
-  void RunTracedOps(const std::vector<OpHandleBase *> &traced_ops);
+  bool RunTracedOps(const std::vector<OpHandleBase *> &traced_ops);
 
   void InsertFetchOps(
       const std::vector<std::string> &fetch_tensors, FeedFetchList *fetches,

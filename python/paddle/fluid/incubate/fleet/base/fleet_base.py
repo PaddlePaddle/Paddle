@@ -23,7 +23,7 @@ from paddle.fluid.optimizer import SGD
 from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase
 from paddle.fluid.incubate.fleet.base.role_maker import UserDefinedRoleMaker
-from paddle.fluid.contrib.mixed_precision.decorator import OptimizerWithMixedPrecison
+from paddle.fluid.contrib.mixed_precision.decorator import OptimizerWithMixedPrecision
 
 
 class Mode:
@@ -202,6 +202,22 @@ class Fleet(object):
         self._role_maker.generate_role()
         self._is_initialized = True
 
+    def all_reduce_worker(self, input, output):
+        """
+        all reduce between workers, only support array of one dim.
+
+        Args:
+            input(list|numpy.array): array of one dim
+            output(list|numpy.array): array of one dim
+        """
+        self._role_maker.all_reduce_worker(input, output)
+
+    def barrier_worker(self):
+        """
+        barrier between workers
+        """
+        self._role_maker.barrier_worker()
+
     @abc.abstractmethod
     def init_worker(self):
         pass
@@ -259,7 +275,7 @@ class DistributedOptimizer(object):
 
     def __init__(self, optimizer, strategy=None):
         if not isinstance(optimizer, SGD.__bases__) \
-                 and not isinstance(optimizer, OptimizerWithMixedPrecison):
+                 and not isinstance(optimizer, OptimizerWithMixedPrecision):
             raise TypeError("optimizer must be an instance of Optimizer")
 
         self._optimizer = optimizer

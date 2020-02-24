@@ -18,9 +18,16 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import unittest
 import numpy
+import numbers
 
 
 class TestTensor(unittest.TestCase):
+    def setUp(self):
+        self.support_dtypes = [
+            'bool', 'uint8', 'int8', 'int16', 'int32', 'int64', 'float16',
+            'float32', 'float64'
+        ]
+
     def test_int_tensor(self):
         scope = core.Scope()
         var = scope.var("test_tensor")
@@ -171,7 +178,6 @@ class TestTensor(unittest.TestCase):
         var = scope.var("test_tensor")
 
         tensor = var.get_tensor()
-
         tensor._set_dims([0, 1])
         tensor._alloc_float(place)
 
@@ -184,15 +190,15 @@ class TestTensor(unittest.TestCase):
             tensor_array = numpy.array(tensor)
             self.assertEqual((0, 1), tensor_array.shape)
 
-    def run_sliece_tensor(self, place):
-
+    def run_slice_tensor(self, place, dtype):
         tensor = fluid.Tensor()
         shape = [3, 3, 3]
         tensor._set_dims(shape)
 
-        tensor_array = numpy.array([[[1, 2, 3], [4, 5, 6], [7, 8, 9]],
-                                    [[10, 11, 12], [13, 14, 15], [16, 17, 18]],
-                                    [[19, 20, 21], [22, 23, 24], [25, 26, 27]]])
+        tensor_array = numpy.array(
+            [[[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+             [[10, 11, 12], [13, 14, 15], [16, 17, 18]],
+             [[19, 20, 21], [22, 23, 24], [25, 26, 27]]]).astype(dtype)
 
         tensor.set(tensor_array, place)
         n1 = tensor[1]
@@ -227,14 +233,15 @@ class TestTensor(unittest.TestCase):
         t8 = tensor_array[0::1, 0::-1, 2:]
         self.assertTrue((numpy.array(n8) == numpy.array(t8)).all())
 
-    def test_sliece_tensor(self):
-        # run cpu first
-        place = core.CPUPlace()
-        self.run_sliece_tensor(place)
+    def test_slice_tensor(self):
+        for dtype in self.support_dtypes:
+            # run cpu first
+            place = core.CPUPlace()
+            self.run_slice_tensor(place, dtype)
 
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            self.run_sliece_tensor(place)
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+                self.run_slice_tensor(place, dtype)
 
     def test_print_tensor(self):
         scope = core.Scope()
@@ -255,6 +262,88 @@ class TestTensor(unittest.TestCase):
             tensor.set(tensor_array, core.CUDAPlace(0))
             print(tensor)
             self.assertTrue(isinstance(str(tensor), str))
+
+    def test_tensor_poiter(self):
+        place = core.CPUPlace()
+        scope = core.Scope()
+        var = scope.var("test_tensor")
+        place = core.CPUPlace()
+        tensor = var.get_tensor()
+        dtype = core.VarDesc.VarType.FP32
+        self.assertTrue(
+            isinstance(tensor._mutable_data(place, dtype), numbers.Integral))
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.assertTrue(
+                isinstance(
+                    tensor._mutable_data(place, dtype), numbers.Integral))
+            place = core.CUDAPinnedPlace()
+            self.assertTrue(
+                isinstance(
+                    tensor._mutable_data(place, dtype), numbers.Integral))
+            places = fluid.cuda_pinned_places()
+            self.assertTrue(
+                isinstance(
+                    tensor._mutable_data(places[0], dtype), numbers.Integral))
+
+    def test_tensor_set_fp16(self):
+        array = numpy.random.random((300, 500)).astype("float16")
+        tensor = fluid.Tensor()
+        place = core.CPUPlace()
+        tensor.set(array, place)
+        self.assertEqual(tensor._dtype(), core.VarDesc.VarType.FP16)
+        self.assertTrue(numpy.array_equal(numpy.array(tensor), array))
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            tensor.set(array, place)
+            self.assertEqual(tensor._dtype(), core.VarDesc.VarType.FP16)
+            self.assertTrue(numpy.array_equal(numpy.array(tensor), array))
+
+            place = core.CUDAPinnedPlace()
+            tensor.set(array, place)
+            self.assertEqual(tensor._dtype(), core.VarDesc.VarType.FP16)
+            self.assertTrue(numpy.array_equal(numpy.array(tensor), array))
+
+    def test_tensor_set_int16(self):
+        array = numpy.random.randint(100, size=(300, 500)).astype("int16")
+        tensor = fluid.Tensor()
+        place = core.CPUPlace()
+        tensor.set(array, place)
+        self.assertEqual(tensor._dtype(), core.VarDesc.VarType.INT16)
+        self.assertTrue(numpy.array_equal(numpy.array(tensor), array))
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            tensor.set(array, place)
+            self.assertEqual(tensor._dtype(), core.VarDesc.VarType.INT16)
+            self.assertTrue(numpy.array_equal(numpy.array(tensor), array))
+
+            place = core.CUDAPinnedPlace()
+            tensor.set(array, place)
+            self.assertEqual(tensor._dtype(), core.VarDesc.VarType.INT16)
+            self.assertTrue(numpy.array_equal(numpy.array(tensor), array))
+
+    def test_tensor_set_from_array_list(self):
+        array = numpy.random.randint(1000, size=(200, 300))
+        list_array = [array, array]
+        tensor = fluid.Tensor()
+        place = core.CPUPlace()
+        tensor.set(list_array, place)
+        self.assertEqual([2, 200, 300], tensor.shape())
+        self.assertTrue(numpy.array_equal(numpy.array(tensor), list_array))
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            tensor.set(list_array, place)
+            self.assertEqual([2, 200, 300], tensor.shape())
+            self.assertTrue(numpy.array_equal(numpy.array(tensor), list_array))
+
+            place = core.CUDAPinnedPlace()
+            tensor.set(list_array, place)
+            self.assertEqual([2, 200, 300], tensor.shape())
+            self.assertTrue(numpy.array_equal(numpy.array(tensor), list_array))
 
 
 if __name__ == '__main__':

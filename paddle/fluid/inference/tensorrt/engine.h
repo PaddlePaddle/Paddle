@@ -82,7 +82,7 @@ class TensorRTEngine {
   void Build(const DescType& paddle_model);
 
   void Execute(int batch_size, std::vector<void*>* buffers,
-               cudaStream_t stream);
+               cudaStream_t stream = nullptr);
 
   // Initialize the inference network, so that TensorRT layers can add to this
   // network.
@@ -159,7 +159,8 @@ class TensorRTEngine {
                   std::unique_ptr<framework::Tensor> w_tensor) {
     static int suffix_counter = 0;
     std::string suffix = std::to_string(suffix_counter);
-    weight_map[w_name + suffix] = std::move(w_tensor);
+    std::string splitter = "__";
+    weight_map[w_name + splitter + suffix] = std::move(w_tensor);
     suffix_counter += 1;
   }
 
@@ -215,6 +216,7 @@ class TensorRTEngine {
       infer_context_;
   infer_ptr<nvinfer1::IHostMemory> ihost_memory_;
   std::unordered_map<nvinfer1::ITensor*, float> quant_dynamic_range_;
+  std::mutex mutex_;
 };  // class TensorRTEngine
 
 #define IS_TRT_VERSION_GE(version)                       \

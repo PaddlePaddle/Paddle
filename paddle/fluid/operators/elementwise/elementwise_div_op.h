@@ -17,16 +17,36 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/elementwise/elementwise_sub_op.h"
+#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename T>
-struct DivFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const { return a / b; }
+template <typename DeviceContext, typename T>
+void default_elementwise_div(const framework::ExecutionContext& ctx,
+                             const framework::Tensor* x,
+                             const framework::Tensor* y, framework::Tensor* z) {
+  int axis = ctx.Attr<int>("axis");
+  auto x_dims = x->dims();
+  auto y_dims = y->dims();
+  if (x_dims.size() >= y_dims.size()) {
+    ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
+                                                          DivFunctor<T>(), z);
+  } else {
+    ElementwiseComputeEx<InverseDivFunctor<T>, DeviceContext, T>(
+        ctx, x, y, axis, InverseDivFunctor<T>(), z);
+  }
+}
+
+template <typename DeviceContext, typename T, class Enable = void>
+struct SameDimsElemwiseDiv {
+  void operator()(const framework::ExecutionContext& ctx,
+                  const framework::Tensor* x, const framework::Tensor* y,
+                  framework::Tensor* z);
 };
 
 template <typename DeviceContext, typename T>
@@ -36,11 +56,15 @@ class ElementwiseDivKernel : public framework::OpKernel<T> {
     auto* x = ctx.Input<framework::LoDTensor>("X");
     auto* y = ctx.Input<framework::LoDTensor>("Y");
     auto* z = ctx.Output<framework::LoDTensor>("Out");
-
     z->mutable_data<T>(ctx.GetPlace());
-    int axis = ctx.Attr<int>("axis");
-    ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
-                                                          DivFunctor<T>(), z);
+
+    auto dims_equal = x->dims() == y->dims();
+    if (dims_equal) {
+      SameDimsElemwiseDiv<DeviceContext, T> same_dims_div;
+      same_dims_div(ctx, x, y, z);
+    } else {
+      default_elementwise_div<DeviceContext, T>(ctx, x, y, z);
+    }
   }
 };
 
@@ -64,12 +88,38 @@ struct DivDoubleDY {
 };
 
 template <typename DeviceContext, typename T>
+typename std::enable_if<
+    std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
+elementwise_div_grad(const framework::ExecutionContext& ctx,
+                     const framework::Tensor* x, const framework::Tensor* y,
+                     const framework::Tensor* out,
+                     const framework::Tensor* dout, framework::Tensor* dx,
+                     framework::Tensor* dy) {
+  int axis = ctx.Attr<int>("axis");
+  ElemwiseGradCompute<DeviceContext, T, DivGradDX<T>, DivGradDY<T>>(
+      ctx, *x, *y, *out, *dout, axis, dx, dy, DivGradDX<T>(), DivGradDY<T>());
+}
+
+#ifdef PADDLE_WITH_CUDA
+// cuda definition
+template <typename DeviceContext, typename T>
+typename std::enable_if<
+    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
+elementwise_div_grad(const framework::ExecutionContext& ctx,
+                     const framework::Tensor* x, const framework::Tensor* y,
+                     const framework::Tensor* out,
+                     const framework::Tensor* dout, framework::Tensor* dx,
+                     framework::Tensor* dy);
+#endif
+
+template <typename DeviceContext, typename T>
 class ElementwiseDivGradKernel : public ElemwiseGradKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     ElemwiseGradKernel<T>::Compute(ctx);
     using Tensor = framework::Tensor;
 
+    auto* x = ctx.Input<Tensor>("X");
     auto* y = ctx.Input<Tensor>("Y");
     auto* out = ctx.Input<Tensor>("Out");
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
@@ -77,10 +127,13 @@ class ElementwiseDivGradKernel : public ElemwiseGradKernel<T> {
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     int axis = ctx.Attr<int>("axis");
 
-    auto* x = dout;  // Fake x, not used
-
-    ElemwiseGradCompute<DeviceContext, T, DivGradDX<T>, DivGradDY<T>>(
-        ctx, *x, *y, *out, *dout, axis, dx, dy, DivGradDX<T>(), DivGradDY<T>());
+    if (dx != nullptr && dy != nullptr && (dx->dims() == dy->dims())) {
+      elementwise_div_grad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
+    } else {
+      ElemwiseGradCompute<DeviceContext, T, DivGradDX<T>, DivGradDY<T>>(
+          ctx, *x, *y, *out, *dout, axis, dx, dy, DivGradDX<T>(),
+          DivGradDY<T>());
+    }
   }
 };
 
@@ -107,7 +160,7 @@ class ElementwiseDivOpDoubleGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto input_data_type = ctx.Input<Tensor>("DDX")->type();
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DDX");
 
 #ifdef PADDLE_WITH_MKLDNN
     if (platform::CanMKLDNNBeUsed(ctx)) {
@@ -145,7 +198,7 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
     // ddX_safe == null ? 0 : ddX
     // ddY_safe == null ? 0 : ddY
     Tensor ddX_safe, ddY_safe;
-    GetDoubleGradSafeTensor<DeviceContext, T>(ctx, Out, ddX, &ddX_safe);
+    GetDoubleGradSafeTensor<DeviceContext, T>(ctx, dX, ddX, &ddX_safe);
     GetDoubleGradSafeTensor<DeviceContext, T>(ctx, Y, ddY, &ddY_safe);
 
     // ddOut = ddX / Y - Out * ddY / Y = (ddX - Out * ddY) / Y
@@ -163,8 +216,7 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
     if (dY) {
       // dX_div_Y = dX / Y;
       Tensor dX_div_Y = tmp;
-      ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(
-          ctx, dX, Y, axis, DivFunctor<T>(), &dX_div_Y);
+      default_elementwise_div<DeviceContext, T>(ctx, dX, Y, &dX_div_Y);
 
       // NOTE(dengkaipeng): in the following ElemwiseGradCompute, for the
       // first output tensor is nullptr, the branch to calculate first
@@ -181,10 +233,8 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
     if (ddOut) {
       // ddOut = ddX / Y - Out * ddY / Y = (ddX - Out * ddY) / Y
       default_elementwise_mul<DeviceContext, T>(ctx, Out, &ddY_safe, &tmp);
-      ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
-          ctx, &ddX_safe, &tmp, 0, SubFunctor<T>(), &tmp);
-      ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(
-          ctx, &tmp, Y, axis, DivFunctor<T>(), ddOut);
+      default_elementwise_sub<DeviceContext, T>(ctx, &ddX_safe, &tmp, &tmp);
+      default_elementwise_div<DeviceContext, T>(ctx, &tmp, Y, ddOut);
     }
 
     if (dOut) {
@@ -197,8 +247,6 @@ class ElementwiseDivDoubleGradKernel : public framework::OpKernel<T> {
     }
   }
 };
-
-DECLARE_INPLACE_OP_INFERER(ElementwiseDivDoubleGradOpInplace, {"DDX", "DDOut"});
 
 }  // namespace operators
 }  // namespace paddle

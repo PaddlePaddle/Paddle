@@ -58,7 +58,7 @@ output operators.
 class LoDRankTableInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInput("X"), "LoDRankTable must has input X");
+    PADDLE_ENFORCE(context->HasInput("X"), "LoDRankTable must have input X");
   }
 };
 
@@ -74,8 +74,10 @@ class LoDRankTableInferVarType : public framework::VarTypeInference {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(lod_rank_table, paddle::operators::LoDRankTableOp,
-                  paddle::operators::LoDRankTableOpProtoMaker,
-                  paddle::operators::LoDRankTableInferShape,
-                  paddle::operators::LoDRankTableInferVarType,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    lod_rank_table, paddle::operators::LoDRankTableOp,
+    paddle::operators::LoDRankTableOpProtoMaker,
+    paddle::operators::LoDRankTableInferShape,
+    paddle::operators::LoDRankTableInferVarType,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

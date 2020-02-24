@@ -741,7 +741,7 @@ class SensitivePruneStrategy(PruneStrategy):
 
     def _format_sensitivities(self, sensitivities):
         """
-        Print formated sensitivities in debug log level.
+        Print formatted sensitivities in debug log level.
         """
         tb = pt.PrettyTable()
         tb.field_names = ["parameter", "size"] + [
@@ -782,7 +782,6 @@ class SensitivePruneStrategy(PruneStrategy):
                 }
 
         metric = None
-
         for param in sensitivities.keys():
             ratio = self.delta_rate
             while ratio < 1:
@@ -825,7 +824,7 @@ class SensitivePruneStrategy(PruneStrategy):
                 # restore pruned parameters
                 for param_name in param_backup.keys():
                     param_t = context.scope.find_var(param_name).get_tensor()
-                    param_t.set(self.param_backup[param_name], context.place)
+                    param_t.set(param_backup[param_name], context.place)
 
 #                pruned_metric = self._eval_graph(context)
 

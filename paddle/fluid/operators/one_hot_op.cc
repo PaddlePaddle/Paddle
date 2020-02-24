@@ -51,8 +51,9 @@ class OneHotOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
@@ -118,8 +119,10 @@ Out is a LoDTensor:
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(one_hot, ops::OneHotOp, ops::OneHotOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    one_hot, ops::OneHotOp, ops::OneHotOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     one_hot, ops::OneHotKernel<paddle::platform::CPUDeviceContext, int>,
     ops::OneHotKernel<paddle::platform::CPUDeviceContext, int64_t>);

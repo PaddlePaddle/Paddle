@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <fstream>
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -27,6 +28,7 @@
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_type_traits.h"
+#include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 #include "paddle/fluid/inference/api/helper.h"
@@ -46,10 +48,6 @@
 #if PADDLE_WITH_TENSORRT
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
-#endif
-
-#if PADDLE_WITH_ANAKIN
-#include "paddle/fluid/inference/anakin/convert/op_converter.h"
 #endif
 
 namespace paddle {
@@ -120,11 +118,7 @@ bool AnalysisPredictor::PrepareScope(
     scope_ = parent_scope;
     status_is_cloned_ = true;
   } else {
-    if (config_.use_gpu_) {
-      paddle::framework::InitDevices(false, {config_.device_id_});
-    } else {
-      paddle::framework::InitDevices(false, {});
-    }
+    paddle::framework::InitDevices(false);
     scope_.reset(new paddle::framework::Scope());
     status_is_cloned_ = false;
   }
@@ -142,6 +136,11 @@ bool AnalysisPredictor::PrepareProgram(
     // If config_.ir_optim() is False, parameters is loaded in LoadParameters(),
     // still need to create other persistable variables.
     // So in both case, create persistable variables at first.
+    if (!CheckOperatorCompatible()) {
+      LOG(WARNING) << "WARNING: Results may be DIFF! "
+                      "Please use the corresponding version of the model and "
+                      "prediction library, and do not use the develop branch.";
+    }
     executor_->CreateVariables(*inference_program_, 0, true, sub_scope_);
 
     // if enable_ir_optim_ is false,
@@ -382,12 +381,12 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
 
 void AnalysisPredictor::PrepareArgument() {
   argument_.SetUseGPU(config_.use_gpu());
+  argument_.SetUseFcPadding(config_.use_fc_padding());
   argument_.SetGPUDeviceId(config_.gpu_device_id());
   argument_.SetEnableAnalysisOptim(config_.enable_ir_optim_);
   argument_.SetEnableMemoryOptim(config_.enable_memory_optim());
   argument_.SetModelFromMemory(config_.model_from_memory_);
   // Analyze inference_program
-  argument_.SetUseAnakin(config_.anakin_engine_enabled());
   argument_.SetPredictorID(predictor_id_);
   argument_.SetOptimCacheDir(config_.opt_cache_dir_);
   if (!config_.model_dir().empty()) {
@@ -414,15 +413,11 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetTensorRtUseCalibMode(config_.trt_use_calib_mode_);
   }
 
-  if (config_.anakin_engine_enabled()) {
-    argument_.SetAnakinMaxBatchSize(config_.anakin_max_batchsize_);
-    argument_.SetAnakinMaxInputShape(config_.anakin_max_input_shape_);
-    argument_.SetAnakinMinSubgraphSize(config_.anakin_min_subgraph_size_);
-    argument_.SetAnakinPrecisionMode(config_.anakin_precision_mode_);
-    argument_.SetAnakinAutoConfigLayout(config_.anakin_auto_config_layout_);
-    argument_.SetAnakinPassesFilter(config_.anakin_passes_filter_);
-    argument_.SetAnakinOpsFilter(config_.anakin_ops_filter_);
-    LOG(INFO) << "Anakin subgraph engine is enabled";
+  if (config_.lite_engine_enabled()) {
+    argument_.SetLitePrecisionMode(config_.lite_precision_mode_);
+    argument_.SetLitePassesFilter(config_.lite_passes_filter_);
+    argument_.SetLiteOpsFilter(config_.lite_ops_filter_);
+    LOG(INFO) << "Lite subgraph engine is enabled";
   }
 
   if (config_.use_mkldnn_) {
@@ -445,6 +440,7 @@ void AnalysisPredictor::PrepareArgument() {
     passes.clear();
     LOG(INFO) << "ir_optim is turned off, no IR pass will be executed";
   }
+  argument_.SetDisableLogs(config_.glog_info_disabled());
   argument_.SetIrAnalysisPasses(passes);
   argument_.SetAnalysisPasses(config_.pass_builder()->AnalysisPasses());
   argument_.SetScopeNotOwned(scope_.get());
@@ -470,6 +466,10 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig &config) {
+  if (config.glog_info_disabled()) {
+    FLAGS_logtostderr = 1;
+    FLAGS_minloglevel = 2;  // GLOG_ERROR
+  }
   VLOG(3) << "create AnalysisConfig";
   PADDLE_ENFORCE(config.is_valid(),
                  "Note: Each config can only be used for one predictor.");
@@ -494,8 +494,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
       std::string flag = "--fraction_of_gpu_memory_to_use=" +
                          std::to_string(fraction_of_gpu_memory);
       flags.push_back(flag);
-      flags.push_back("--selected_gpus=" +
-                      std::to_string(config.gpu_device_id()));
+      flags.push_back("--cudnn_deterministic=True");
       VLOG(3) << "set flag: " << flag;
       framework::InitGflags(flags);
     }
@@ -823,6 +822,39 @@ std::string AnalysisPredictor::GetSerializedProgram() const {
   return inference_program_->Proto()->SerializeAsString();
 }
 
+bool AnalysisPredictor::CheckOperatorCompatible() {
+  if (!inference_program_) {
+    LOG(FATAL) << "Inference program version check failed because the program "
+                  "does not exist.";
+    return false;
+  }
+  bool res = true;
+  op_compatible_map_.ReadFromProto(*inference_program_->OpCompatibleMap());
+  const auto &version = framework::DumpVersion(framework::kCurProgramVersion);
+  LOG(INFO) << "MODEL VERSION: "
+            << framework::DumpVersion(inference_program_->Version());
+  LOG(INFO) << "PREDICTOR VERSION: " << version;
+  std::set<std::string> op_types;
+  for (size_t i = 0; i < inference_program_->Size(); ++i) {
+    const auto &block = inference_program_->Block(i);
+    for (const auto *op : block.AllOps()) {
+      op_types.insert(op->Type());
+    }
+  }
+  for (const auto type : op_types) {
+    auto compatible_type =
+        op_compatible_map_.IsRequireMiniVersion(type, version);
+    if (compatible_type != framework::OpCompatibleType::compatible) {
+      if (!framework::kCurProgramVersion) {
+        LOG(WARNING) << " - Version incompatible ("
+                     << static_cast<int>(compatible_type) << ") " << type;
+      }
+      res = false;
+    }
+  }
+  return res;
+}
+
 // Add SaveOptimModel
 void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
   // save model
@@ -898,34 +930,8 @@ USE_TRT_CONVERTER(conv2d_transpose);
 USE_TRT_CONVERTER(leaky_relu);
 USE_TRT_CONVERTER(shuffle_channel);
 USE_TRT_CONVERTER(swish);
-#endif
-
-#if PADDLE_WITH_ANAKIN
-USE_ANAKIN_CONVERTER(mul);
-USE_ANAKIN_CONVERTER(fc);
-USE_ANAKIN_CONVERTER(conv2d);
-USE_ANAKIN_CONVERTER(conv2d_fusion);
-USE_ANAKIN_CONVERTER(concat);
-USE_ANAKIN_CONVERTER(split);
-USE_ANAKIN_CONVERTER(relu);
-USE_ANAKIN_CONVERTER(sigmoid);
-USE_ANAKIN_CONVERTER(tanh);
-USE_ANAKIN_CONVERTER(pool2d);
-USE_ANAKIN_CONVERTER(elementwise_add);
-USE_ANAKIN_CONVERTER(elementwise_mul);
-USE_ANAKIN_CONVERTER(batch_norm);
-USE_ANAKIN_CONVERTER(flatten);
-USE_ANAKIN_CONVERTER(reshape);
-USE_ANAKIN_CONVERTER(transpose);
-USE_ANAKIN_CONVERTER(softmax);
-USE_ANAKIN_CONVERTER(detection_out);
-USE_ANAKIN_CONVERTER(density_prior_box);
-USE_ANAKIN_CONVERTER(dropout);
-USE_ANAKIN_CONVERTER(sum);
-USE_ANAKIN_CONVERTER(prior_box);
-USE_ANAKIN_CONVERTER(leaky_relu);
-USE_ANAKIN_CONVERTER(affine_channel);
-USE_ANAKIN_CONVERTER(relu6);
-USE_ANAKIN_CONVERTER(swish);
-USE_ANAKIN_CONVERTER(shuffle_channel);
+USE_TRT_CONVERTER(instance_norm);
+USE_TRT_CONVERTER(layer_norm);
+USE_TRT_CONVERTER(gelu);
+USE_TRT_CONVERTER(multihead_matmul);
 #endif

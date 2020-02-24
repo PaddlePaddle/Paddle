@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid import layers
+from paddle.fluid import layers, unique_name
 from paddle.fluid.dygraph import Layer
+from paddle.fluid.dygraph.layer_object_helper import LayerObjectHelper
 from paddle.fluid.layers.control_flow import StaticRNN
 
 __all__ = ['BasicGRUUnit', 'basic_gru', 'BasicLSTMUnit', 'basic_lstm']
@@ -80,6 +81,10 @@ class BasicGRUUnit(Layer):
                  activation=None,
                  dtype='float32'):
         super(BasicGRUUnit, self).__init__(name_scope, dtype)
+        # reserve old school _full_name and _helper for static graph save load
+        self._full_name = unique_name.generate(name_scope + "/" +
+                                               self.__class__.__name__)
+        self._helper = LayerObjectHelper(self._full_name)
 
         self._name = name_scope
         self._hiden_size = hidden_size
@@ -104,12 +109,12 @@ class BasicGRUUnit(Layer):
             dtype=self._dtype)
 
         self._gate_bias = self.create_parameter(
-            self._bias_attr,
+            attr=self._bias_attr,
             shape=[2 * self._hiden_size],
             dtype=self._dtype,
             is_bias=True)
         self._candidate_bias = self.create_parameter(
-            self._bias_attr,
+            attr=self._bias_attr,
             shape=[self._hiden_size],
             dtype=self._dtype,
             is_bias=True)
@@ -127,7 +132,7 @@ class BasicGRUUnit(Layer):
         r_hidden = r * pre_hidden
 
         candidate = layers.matmul(
-            layers.concat([input, pre_hidden], 1), self._candidate_weight)
+            layers.concat([input, r_hidden], 1), self._candidate_weight)
         candidate = layers.elementwise_add(candidate, self._candidate_bias)
 
         c = self._activation(candidate)
@@ -176,9 +181,14 @@ def basic_gru(input,
         sequence_length (Variabe|None): A Tensor (shape [batch_size]) stores each real length of each instance,
                         This tensor will be convert to a mask to mask the padding ids
                         If it's None means NO padding ids
-        dropout_prob(float|0.0): Dropout prob, dropout ONLY works after rnn output of earch layers, 
+        dropout_prob(float|0.0): Dropout prob, dropout ONLY works after rnn output of each layers, 
                              NOT between time steps
         bidirectional (bool|False): If it is bidirectional
+        batch_first (bool|True): The shape format of the input and output tensors. If true,
+            the shape format should be :attr:`[batch_size, seq_len, hidden_size]`. If false,
+            the shape format should be :attr:`[seq_len, batch_size, hidden_size]`. By default
+            this function accepts input and emits output in batch-major form to be consistent
+            with most of data format, though a bit less efficient because of extra transposes.
         param_attr(ParamAttr|None): The parameter attribute for the learnable
             weight matrix. Note:
             If it is set to None or one attribute of ParamAttr, gru_unit will
@@ -345,7 +355,7 @@ def basic_gru(input,
         last_hidden = fw_last_hidden
 
         if batch_first:
-            rnn_out = fluid.layser.transpose(rnn_out, [1, 0, 2])
+            rnn_out = layers.transpose(rnn_out, [1, 0, 2])
 
         return rnn_out, last_hidden
 
@@ -401,9 +411,14 @@ def basic_lstm(input,
         sequence_length (Variabe|None): A tensor (shape [batch_size]) stores each real length of each instance,
                         This tensor will be convert to a mask to mask the padding ids
                         If it's None means NO padding ids
-        dropout_prob(float|0.0): Dropout prob, dropout ONLY work after rnn output of earch layers, 
+        dropout_prob(float|0.0): Dropout prob, dropout ONLY work after rnn output of each layers, 
                              NOT between time steps
         bidirectional (bool|False): If it is bidirectional
+        batch_first (bool|True): The shape format of the input and output tensors. If true,
+            the shape format should be :attr:`[batch_size, seq_len, hidden_size]`. If false,
+            the shape format should be :attr:`[seq_len, batch_size, hidden_size]`. By default
+            this function accepts input and emits output in batch-major form to be consistent
+            with most of data format, though a bit less efficient because of extra transposes.
         param_attr(ParamAttr|None): The parameter attribute for the learnable
             weight matrix. Note:
             If it is set to None or one attribute of ParamAttr, lstm_unit will
@@ -700,6 +715,10 @@ class BasicLSTMUnit(Layer):
                  forget_bias=1.0,
                  dtype='float32'):
         super(BasicLSTMUnit, self).__init__(name_scope, dtype)
+        # reserve old school _full_name and _helper for static graph save load
+        self._full_name = unique_name.generate(name_scope + "/" +
+                                               self.__class__.__name__)
+        self._helper = LayerObjectHelper(self._full_name)
 
         self._name = name_scope
         self._hiden_size = hidden_size

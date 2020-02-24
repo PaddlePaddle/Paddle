@@ -103,8 +103,8 @@ class AverageAccumulatesOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("param")->type(),
-                                   ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "param"), ctx.GetPlace());
   }
 };
 
@@ -132,7 +132,7 @@ class AverageAccumulatesOpMaker : public framework::OpProtoAndCheckerMaker {
         "(Tensor<int64_t>), The accumulating times of previous window with "
         "shape [1].");
     AddInput("in_num_updates",
-             "(Tensor<int64_t>), The total number of batches used by trainning "
+             "(Tensor<int64_t>), The total number of batches used by training "
              "before this batch with shape [1].");
 
     AddOutput("out_sum_1",
@@ -155,10 +155,9 @@ class AverageAccumulatesOpMaker : public framework::OpProtoAndCheckerMaker {
         "out_old_num_accumulates",
         "(Tensor<int64_t>) The accumulating times of previous window with "
         "shape [1].");
-    AddOutput(
-        "out_num_updates",
-        "(Tensor<int64_t>), The total number of batches used by trainning "
-        "before this batch with shape [1].");
+    AddOutput("out_num_updates",
+              "(Tensor<int64_t>), The total number of batches used by training "
+              "before this batch with shape [1].");
 
     AddAttr<float>("average_window",
                    "(float, default 0) "
@@ -205,9 +204,11 @@ And for a mini-batch in training, accumulators were computed as below steps:
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(average_accumulates, ops::AverageAccumulatesOp,
-                  ops::AverageAccumulatesOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    average_accumulates, ops::AverageAccumulatesOp,
+    ops::AverageAccumulatesOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     average_accumulates,
     ops::AverageAccumulatesKernel<paddle::platform::CPUDeviceContext, float>,

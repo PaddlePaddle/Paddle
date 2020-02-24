@@ -31,7 +31,7 @@ class SaveOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("X"));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
@@ -77,22 +77,18 @@ class SaveOpVarTypeInference : public framework::VarTypeInference {
   }
 };
 
-class SaveOpShapeInference : public framework::InferShapeBase {
- public:
-  void operator()(framework::InferShapeContext *ctx) const override {}
-};
-
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(save, ops::SaveOp, ops::SaveOpProtoMaker,
-                  ops::SaveOpVarTypeInference, ops::SaveOpShapeInference);
+                  ops::SaveOpVarTypeInference);
 
 REGISTER_OP_CPU_KERNEL(
     save, ops::SaveOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SaveOpKernel<paddle::platform::CPUDeviceContext, double>,
     ops::SaveOpKernel<paddle::platform::CPUDeviceContext, int>,
     ops::SaveOpKernel<paddle::platform::CPUDeviceContext, int8_t>,
+    ops::SaveOpKernel<paddle::platform::CPUDeviceContext, int16_t>,
     ops::SaveOpKernel<paddle::platform::CPUDeviceContext, int64_t>);

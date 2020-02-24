@@ -216,6 +216,8 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   compute_capability_ = GetCUDAComputeCapability(place_.device);
   multi_process_ = GetCUDAMultiProcessors(place_.device);
   max_threads_per_mp_ = GetCUDAMaxThreadsPerMultiProcessor(place_.device);
+  max_grid_dim_size_ = GetGpuMaxGridDimSize(place_.device);
+  max_threads_per_block_ = GetCUDAMaxThreadsPerBlock(place_.device);
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream_));
   eigen_stream_.reset(new EigenCudaStreamDevice());
   eigen_stream_->Reinitialize(&stream_, place);
@@ -303,7 +305,7 @@ CUDADeviceContext::~CUDADeviceContext() {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroy(cudnn_handle_),
                                 "Failed to destory Cudnn handle");
   }
-#if !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
   if (nccl_comm_) {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclCommDestroy(nccl_comm_));
   }
@@ -313,17 +315,20 @@ CUDADeviceContext::~CUDADeviceContext() {
 Place CUDADeviceContext::GetPlace() const { return place_; }
 
 void CUDADeviceContext::Wait() const {
-  cudaError_t e_sync = cudaStreamSynchronize(stream_);
-  if (e_sync != 0) {
-    LOG(FATAL) << "cudaStreamSynchronize " << cudaGetErrorString(e_sync)
-               << " errno: " << e_sync;
+  cudaError_t e_sync = cudaSuccess;
+#if !defined(_WIN32)
+  e_sync = cudaStreamSynchronize(stream_);
+#else
+  while (e_sync = cudaStreamQuery(stream_)) {
+    if (e_sync == cudaErrorNotReady) continue;
+    break;
   }
+#endif
 
-  cudaError_t e_get = cudaGetLastError();
-  if (e_get != 0) {
-    LOG(FATAL) << "cudaGetLastError  " << cudaGetErrorString(e_get)
-               << " errno: " << e_get;
-  }
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      e_sync, platform::errors::Fatal(
+                  "cudaStreamSynchronize raises error: %s, errono: %d",
+                  cudaGetErrorString(e_sync), static_cast<int>(e_sync)));
 }
 
 int CUDADeviceContext::GetComputeCapability() const {
@@ -334,12 +339,22 @@ int CUDADeviceContext::GetMaxPhysicalThreadCount() const {
   return multi_process_ * max_threads_per_mp_;
 }
 
+int CUDADeviceContext::GetSMCount() const { return multi_process_; }
+
+int CUDADeviceContext::GetMaxThreadsPerBlock() const {
+  return max_threads_per_block_;
+}
+
 Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {
   return eigen_device_.get();
 }
 
 bool CUDADeviceContext::tensor_core_available() const {
   return cublas_tensor_core_handle_ != nullptr;
+}
+
+dim3 CUDADeviceContext::GetCUDAMaxGridDimSize() const {
+  return max_grid_dim_size_;
 }
 
 cudnnHandle_t CUDADeviceContext::cudnn_handle() const { return cudnn_handle_; }
@@ -368,7 +383,9 @@ Place CUDAPinnedDeviceContext::GetPlace() const { return place_; }
 
 #ifdef PADDLE_WITH_MKLDNN
 MKLDNNDeviceContext::MKLDNNDeviceContext(CPUPlace place)
-    : CPUDeviceContext(place), engine_(mkldnn::engine::cpu, 0), p_blobmap_() {
+    : CPUDeviceContext(place),
+      engine_(mkldnn::engine::kind::cpu, 0),
+      p_blobmap_() {
   p_blobmap_.reset(new BlobMap());
   p_mutex_.reset(new std::mutex());
 }
@@ -383,6 +400,10 @@ thread_local std::string cur_input_shape_str = "";
 // the cache capacity of different input shapes for MKLDNN.
 // Default 1 means fixed input shape, not dynamic shape.
 thread_local int cur_input_shape_cache_capacity = 1;
+// Recently registered data_format. This is needed to
+// know for converting MKL-DNN Tensor to non MKL-DNN
+thread_local paddle::framework::DataLayout cur_paddle_data_layout =
+    paddle::framework::DataLayout::kNCHW;
 }  // namespace
 
 void set_cur_mkldnn_session_id(size_t sid) { cur_mkldnn_session_id = sid; }
@@ -392,6 +413,14 @@ void set_cur_input_shape_str(std::string input_shape_str) {
 }
 void set_cur_input_shape_cache_capacity(int input_shape_cache_capacity) {
   cur_input_shape_cache_capacity = input_shape_cache_capacity;
+}
+
+void set_cur_paddle_data_layout(framework::DataLayout dl) {
+  cur_paddle_data_layout = dl;
+}
+
+framework::DataLayout get_cur_paddle_data_layout(void) {
+  return cur_paddle_data_layout;
 }
 
 void MKLDNNDeviceContext::ResetBlobMap() const { p_blobmap_->clear(); }

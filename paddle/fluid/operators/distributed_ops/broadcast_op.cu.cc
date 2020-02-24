@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
@@ -37,7 +37,7 @@ class NCCLBroadcastOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                    "The place of ExecutionContext should be CUDAPlace.");
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
     int dev_id = boost::get<platform::CUDAPlace>(ctx.GetPlace()).device;
     int root_dev_id = ctx.Attr<int>("root");
 
@@ -59,7 +59,7 @@ class NCCLBroadcastOpKernel : public framework::OpKernel<T> {
         send_recv_buffer, static_cast<size_t>(in->numel()),
         platform::ToNCCLDataType(in->type()), root_dev_id, comm, stream));
 
-    VLOG(3) << "Bcast " << ctx.Inputs("X")[0] << ", (" << in->numel() << ")"
+    VLOG(3) << "Bcast " << ctx.InputNames("X")[0] << ", (" << in->numel() << ")"
             << " From " << root_dev_id << " to " << dev_id;
 
     if (ctx.Attr<bool>("sync_mode")) {

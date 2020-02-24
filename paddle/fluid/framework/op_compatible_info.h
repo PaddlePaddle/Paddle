@@ -14,6 +14,7 @@
 
 #include <map>
 #include <string>
+#include "paddle/fluid/framework/program_desc.h"
 
 #pragma once
 
@@ -44,24 +45,28 @@ class OpCompatibleMap {
   OpCompatibleMap() : default_required_version_("1.5.0") {}
   void InitOpCompatibleMap();
 
-  CompatibleInfo GetOpCompatibleInfo(std::string op_name);
+  CompatibleInfo GetOpCompatibleInfo(std::string op_name) const;
 
   /* IsRequireMiniVersion
    *  return type OpCompatibleType */
 
   OpCompatibleType IsRequireMiniVersion(std::string op_name,
-                                        std::string current_version);
+                                        std::string current_version) const;
 
-  void SerializeToStr(std::string& str) {} /* NOLINT */
-  void UnSerialize(const std::string& str) {}
+  // Convert the entire OpCompatibleMap to Proto, which can be serialized
+  // to the model file as part of the ProgramDesc.
+  bool ConvertToProto(proto::OpCompatibleMap* desc) const;
 
-  const std::string& GetDefaultRequiredVersion() {
+  // Read and reset the entire object from proto, which can be read from
+  // the model file as part of the program.
+  bool ReadFromProto(const proto::OpCompatibleMap& desc);
+
+  const std::string& GetDefaultRequiredVersion() const {
     return default_required_version_;
   }
 
  private:
   std::map<std::string, CompatibleInfo> op_compatible_map_;
-
   std::string default_required_version_;
 };
 

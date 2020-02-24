@@ -48,7 +48,7 @@ void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
   using RpcCtxMap = operators::distributed::RpcCtxMap;
   VLOG(3) << "ProcessGraph";
   RpcCtxMap send_varname_to_ctx;
-  RpcCtxMap recv_varname_to_ctx;
+
   for (auto &node : graphs[0]->Nodes()) {
     VLOG(3) << "node name " << node->Name();
     if (node && node->IsOp()) {
@@ -62,37 +62,31 @@ void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
             node->Op()->GetNullableAttr("sections"));
         auto trainer_id =
             boost::get<int>(node->Op()->GetNullableAttr("trainer_id"));
+        auto merge_add =
+            boost::get<bool>(node->Op()->GetNullableAttr("merge_add"));
+        if (!merge_add) {
+          merge_add = FLAGS_communicator_is_sgd_optimizer;
+        }
+        auto use_send_handler =
+            boost::get<bool>(node->Op()->GetNullableAttr("use_send_handler"));
         send_varname_to_ctx[send_var_name] = operators::distributed::RpcContext(
-            send_var_name, send_varnames, epmap, height_section, trainer_id);
+            send_var_name, send_varnames, epmap, height_section, trainer_id,
+            merge_add, use_send_handler);
         VLOG(3) << "find and init an send op: "
                 << send_varname_to_ctx[send_var_name];
-      } else if (node->Name() == "recv") {
-        auto recv_var_name = node->Op()->Output("Out")[0];
-        auto recv_varnames = boost::get<std::vector<std::string>>(
-            node->Op()->GetNullableAttr("recv_varnames"));
-        auto epmap = boost::get<std::vector<std::string>>(
-            node->Op()->GetNullableAttr("epmap"));
-        auto trainer_id =
-            boost::get<int>(node->Op()->GetNullableAttr("trainer_id"));
-        recv_varname_to_ctx[recv_var_name] = operators::distributed::RpcContext(
-            recv_var_name, recv_varnames, epmap, {}, trainer_id);
-        VLOG(3) << "find and remove an recv op: "
-                << recv_varname_to_ctx[recv_var_name];
       }
     }
   }
 
   // init communicator here
   if (send_varname_to_ctx.size() > 0) {
-    VLOG(3) << "this is distribute mode, will use communicator";
-
-    if (operators::distributed::Communicator::GetInstance() == nullptr) {
-      operators::distributed::Communicator::Init(send_varname_to_ctx,
-                                                 recv_varname_to_ctx, scope);
-      operators::distributed::Communicator::GetInstance()->Start();
-    } else {
-      VLOG(3) << "communicator has been initialized, skip";
-    }
+    auto *instance = operators::distributed::Communicator::GetInstance();
+    auto initialized = instance ? true : false;
+    PADDLE_ENFORCE_EQ(initialized, true,
+                      platform::errors::InvalidArgument(
+                          "Communicator is not Initialized, you may use "
+                          "FleetAPI(https://github.com/PaddlePaddle/Fleet/tree/"
+                          "develop/markdown_doc/transpiler)"));
   }
 #endif
 }
@@ -174,14 +168,18 @@ FeedFetchList AsyncSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
   // init once
   if (run_futures_.size() == 0 && places_.size() > 1) {
+    if (strategy_.thread_barrier_) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+      operators::distributed::Communicator::GetInstance()->BarrierTriggerReset(
+          places_.size());
+#endif
+    }
     exception_holder_.Clear();
     StartOffPythonTrainLoop();
   }
 
   if (places_.size() == 1) {
     exception_holder_.Clear();
-  } else {
-    HandleException();
   }
 
   FeedFetchList fetch_data;

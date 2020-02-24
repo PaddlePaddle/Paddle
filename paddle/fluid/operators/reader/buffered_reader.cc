@@ -26,7 +26,10 @@ BufferedReader::~BufferedReader() {
   VLOG(1) << "~BufferedReader";
   reader_->Shutdown();
   while (!position_.empty()) {
-    position_.front().wait();
+    auto &front = position_.front();
+    if (front.valid()) {
+      front.wait();
+    }
     position_.pop();
   }
 #ifdef PADDLE_WITH_CUDA

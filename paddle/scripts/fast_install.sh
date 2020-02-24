@@ -33,7 +33,7 @@ function yellow(){
 }
 
 path='http://paddlepaddle.org/download?url='
-release_version=`pip show paddlepaddle|grep Version|awk '{print $NF}'`
+release_version=`curl -s https://pypi.org/project/paddlepaddle/|grep -E "/project/paddlepaddle/"|grep "release"|awk -F '/' '{print $(NF-1)}'|head -1`
 python_list=(
 "27"
 "35"
@@ -322,7 +322,7 @@ function checkLinuxPython(){
     while true
       do
         read -p "没有找到默认的python版本,请输入要安装的python路径:"  python_path
-        python_path=`$python_path -V`
+        python_path=`$python_path -V 2>&1` #add 2>&1
         if [ "$python_path" != "" ];then
           break
         else
@@ -340,11 +340,12 @@ function checkLinuxPython(){
       case $check_python in
         n)
           read -p "请指定您的python路径:" new_python_path
-          python_V=`$new_python_path -V 2>/dev/null`
+          python_V=`$new_python_path -V 2>&1` # 2>/dev/null --> 2>&1
           if [ "$python_V" != "" ];then
             python_path=$new_python_path
-            python_version=`$python_path -V 2>&1|awk -F '[ .]' '{print $2$3}'`
-            pip_version=`python -m pip -V|awk -F '[ .]' '{print $2}'`
+            python_version=`$python_path -V 2>&1|awk -F '[ .]' 'NR==1{print $2$3}'`
+            echo $python_path
+            pip_version=`$python_path -m pip -V|awk -F '[ .]' 'NR==1{print $2}'`
             echo "您的python版本为${python_version}"
             break
           else
@@ -361,7 +362,7 @@ function checkLinuxPython(){
       esac
   done
 
-  if [ "$pip_version" -lt 9 ];then
+  if [ "$pip_version" -lt 10 ];then
     echo "您的pip版本小于9.0.1  请升级pip (pip install --upgrade pip)"
     exit 0
   fi
@@ -373,7 +374,7 @@ function checkLinuxPython(){
         echo "Python2版本小于2.7.15,请更新Python2版本或使用Python3"
         exit 0
       fi
-     uncode=`python -c "import pip._internal;print(pip._internal.pep425tags.get_supported())"|grep "cp27mu"`
+     uncode=`$python_path -c "import pip._internal;print(pip._internal.pep425tags.get_supported())"|grep "cp27mu"`
      if [[ "$uncode" == "" ]];then
         uncode=
      else
@@ -394,16 +395,17 @@ function checkLinuxPython(){
 function PipLinuxInstall(){
   wheel_cpu_release="http://paddle-wheel.bj.bcebos.com/${release_version}-${GPU}-${math}/paddlepaddle-${release_version}-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
   wheel_gpu_release="http://paddle-wheel.bj.bcebos.com/${release_version}-gpu-cuda${CUDA}-cudnn${CUDNN}-${math}/paddlepaddle_gpu-${release_version}.post${CUDA}${CUDNN}-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
-  wheel_cpu_develop="http://paddle-wheel.bj.bcebos.com/latest-cpu-${math}/paddlepaddle-latest-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
-  wheel_gpu_develop="http://paddle-wheel.bj.bcebos.com/latest-gpu-cuda${CUDA}-cudnn${CUDNN}-${math}/paddlepaddle_gpu-latest-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
+  wheel_cpu_develop="http://paddle-wheel.bj.bcebos.com/0.0.0-cpu-${math}/paddlepaddle-0.0.0-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
+  wheel_gpu_develop="http://paddle-wheel.bj.bcebos.com/0.0.0-gpu-cuda${CUDA}-cudnn${CUDNN}-${math}/paddlepaddle_gpu-0.0.0-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
 
 
   if [[ "$paddle_version" == "2" ]];then
     if [[ "$GPU" == "gpu" ]];then
           rm -rf `echo $wheel_cpu_release|awk -F '/' '{print $NF}'`
+          echo $wheel_gpu_release
           wget -q $wheel_gpu_release
           if [ "$?" == "0" ];then
-            $python_path -m pip install ${use_virtualenv} -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_release
+            $python_path -m pip install -U ${use_virtualenv} -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_release
             if [ "$?" == 0 ];then
               echo 安装成功
               exit 0
@@ -413,13 +415,15 @@ function PipLinuxInstall(){
             fi
           else
             echo paddlepaddle whl包下载失败
+            echo "wget err: $wheel_gpu_release"
             exit 1
           fi
     else
+        echo $wheel_cpu_release
         rm -rf `echo $wheel_cpu_release|awk -F '/' '{print $NF}'`
         wget -q $wheel_cpu_release
         if [ "$?" == "0" ];then
-          $python_path -m pip install ${use_virtualenv} -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_cpu_release
+          $python_path -m pip install -U ${use_virtualenv} -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_cpu_release
           if [ "$?" == 0 ];then
               echo 安装成功
               exit 0
@@ -429,15 +433,18 @@ function PipLinuxInstall(){
             fi
         else
           echo paddlepaddle whl包下载失败
+          echo "wget err: $wheel_cpu_release"
           exit 1
         fi
     fi
   fi
   if [[ "$GPU" == "gpu" ]];then
+        echo $wheel_gpu_develop
         rm -rf `echo $wheel_gpu_develop|awk -F '/' '{print $NF}'`
         wget -q $wheel_gpu_develop
         if [ "$?" == "0" ];then
-          $python_path -m pip install ${use_virtualenv} -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_develop
+          echo $python_path,111
+          $python_path -m pip install -U ${use_virtualenv} -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_develop
           if [ "$?" == 0 ];then
               echo 安装成功
               exit 0
@@ -447,13 +454,15 @@ function PipLinuxInstall(){
             fi
         else
           echo paddlepaddle whl包下载失败
+          echo "wget err: $wheel_gpu_develop" 
           exit 1
         fi
   else
+        echo $wheel_cpu_develop
         rm -rf `echo $wheel_cpu_develop|awk -F '/' '{print $NF}'`
         wget -q $wheel_cpu_develop
         if [ "$?" == "0" ];then
-          $python_path -m pip install ${use_virtualenv} -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_cpu_develop
+          $python_path -m pip install -U ${use_virtualenv} -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_cpu_develop
           if [ "$?" == 0 ];then
               echo 安装成功
               exit 0
@@ -463,6 +472,7 @@ function PipLinuxInstall(){
             fi
         else
           echo paddlepaddle whl包下载失败
+          echo "wget err: $wheel_cpu_develop"
           exit 1
         fi
     fi
@@ -850,7 +860,7 @@ function initCheckMacPython2(){
 
 function initCheckMacPython3(){
    echo
-   yellow "          您选择了Python "$python_V"，正在寻找符合您要求的Python 2版本"
+   yellow "          您选择了Python "$python_V"，正在寻找符合您要求的Python 3版本"
    echo
    python_root=`which python3`
    checkMacPython3
@@ -978,7 +988,7 @@ function macos() {
         yellow "即将为您下载并安装PaddlePaddle，请按回车键继续..."
         read -n1 -p ""
         if [[ $paddle_version == "2" ]];then
-            $python_root -m pip install paddlepaddle
+            $python_root -m pip install -U  paddlepaddle
             if [[ $? == "0" ]];then
                green "安装成功，可以使用: ${python_root} 来启动安装了PaddlePaddle的Python解释器"
                break
@@ -992,7 +1002,7 @@ function macos() {
             fi
         else
             if [[ -f $whl_cpu_develop ]];then
-                $python_root -m pip install $whl_cpu_develop
+                $python_root -m pip installi -U $whl_cpu_develop
                 if [[ $? == "0" ]];then
                    rm -rf $whl_cpu_develop
                    # TODO add install success check here

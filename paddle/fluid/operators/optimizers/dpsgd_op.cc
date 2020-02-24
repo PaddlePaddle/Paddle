@@ -55,8 +55,8 @@ class DpsgdOp : public framework::OperatorWithKernel {
   }
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Param")->type(),
-                                   ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Param"), ctx.GetPlace());
   }
 };
 
@@ -83,6 +83,16 @@ class DpsgdOpMaker : public framework::OpProtoAndCheckerMaker {
                    "(float, default 1.0e-8) "
                    "Constant for numerical stability")
         .SetDefault(1.0f);
+    AddAttr<int>(
+        "seed",
+        "(int, default 0) "
+        "This property is only used for debugging, users do not need to set it."
+        "Random seed for generating samples. If seed is set to 0, this "
+        "operator will use the"
+        "system's random number seed, otherwise, this operator will always "
+        "generate the same random"
+        "number every time.")
+        .SetDefault(0);
     AddComment(R"DOC(
 Dpsgd Optimizer.
 

@@ -20,6 +20,8 @@ include_directories("${PADDLE_LIB}/third_party/install/zlib/include")
 
 include_directories("${PADDLE_LIB}/third_party/boost")
 include_directories("${PADDLE_LIB}/third_party/eigen3")
+include_directories("${PADDLE_LIB}/third_party/threadpool")
+include_directories("${PADDLE_LIB}/third_party/dlpack")
 
 link_directories("${PADDLE_LIB}/third_party/install/protobuf/lib")
 link_directories("${PADDLE_LIB}/third_party/install/glog/lib")
@@ -30,6 +32,7 @@ link_directories("${PADDLE_LIB}/third_party/install/zlib/lib")
 add_executable(demo_trainer demo_trainer.cc)
 
 if(WITH_MKLDNN)
+  add_definitions(-DPADDLE_WITH_MKLDNN)
   include_directories("${PADDLE_LIB}/third_party/install/mkldnn/include")
   if(WIN32)
     set(MKLDNN_LIB ${PADDLE_LIB}/third_party/install/mkldnn/lib/mkldnn.lib)

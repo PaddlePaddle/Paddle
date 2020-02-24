@@ -23,23 +23,27 @@ using framework::Tensor;
 class MaxOutOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput(
-        "X",
-        "(Tensor) The input tensor of maxout operator. "
-        "The format of input tensor is NCHW. Where N is batch size, C is the "
-        "number of channels, H and W is the height and width of feature.");
+    AddInput("X",
+             "A 4-D Tensor with data type of float32 or float64. "
+             "The data format is NCHW or NHWC. Where N is "
+             "batch size, C is the number of channels, "
+             "H and W is the height and width of "
+             "feature. ");
     AddOutput("Out",
-              "(Tensor) The output tensor of maxout operator."
-              "The format of output tensor is also NCHW."
-              "Where N is batch size, C is "
-              "the number of channels, H and W is the height and "
-              "width of feature.");
+              "A 4-D Tensor with same data type and data format "
+              "with input Tensor. ");
     AddAttr<int>(
         "groups",
-        "(int),"
-        "Specifies how many groups the input tensor will be split"
-        "in the channel dimension. And the number of output channel is "
-        "the number of channels divided by groups.");
+        "Specifies how many groups the input tensor will be split into "
+        "at the channel dimension. And the number of output channel is "
+        "the number of channels divided by groups. ");
+    AddAttr<int>(
+        "axis",
+        "Specifies the index of channel dimension where maxout will "
+        "be performed. It should be 1 when data format is NCHW, -1 or 3 "
+        "when data format is NHWC. "
+        "Default: 1. ")
+        .SetDefault(1);
     AddComment(R"DOC(
 MaxOut Operator.
 
@@ -68,17 +72,27 @@ class MaxOutOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of MaxoutOpshould not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of MaxoutOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      "Input(X) of MaxoutOpshould not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      "Output(Out) of MaxoutOp should not be null.");
     auto in_x_dims = ctx->GetInputDim("X");
     int groups = ctx->Attrs().Get<int>("groups");
+    int axis = ctx->Attrs().Get<int>("axis");
     // check groups > 1
-    PADDLE_ENFORCE_GT(groups, 1, "groups should be larger than 1 in maxoutop");
-    std::vector<int64_t> output_shape({in_x_dims[0], in_x_dims[1] / groups});
-    output_shape.push_back(in_x_dims[2]);
-    output_shape.push_back(in_x_dims[3]);
+    PADDLE_ENFORCE_GT(groups, 1,
+                      "Attr(groups) of Op(maxout) should be larger than 1.");
+    PADDLE_ENFORCE_EQ(
+        in_x_dims[axis] % groups, 0,
+        "ValueError: The number of input channels for Op(maxout) "
+        "should be divisible by Attr(groups). But received: the "
+        "input's channels is [%d], the shape of input is [%s], "
+        "the Attr(groups) is [%d], the Attr(axis) is [%d]. The "
+        "error may come from wrong Attr(groups) or Attr(axis) setting.",
+        in_x_dims[axis], in_x_dims, groups, axis);
+    std::vector<int64_t> output_shape(
+        {in_x_dims[0], in_x_dims[1], in_x_dims[2], in_x_dims[3]});
+    output_shape[axis] = in_x_dims[axis] / groups;
     ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
   }
 };
@@ -98,11 +112,15 @@ class MaxOutOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(maxout, ops::MaxOutOp, ops::MaxOutOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(
+    maxout, ops::MaxOutOp, ops::MaxOutOpMaker,
+    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
 REGISTER_OPERATOR(maxout_grad, ops::MaxOutOpGrad);
 REGISTER_OP_CPU_KERNEL(
-    maxout, ops::MaxOutKernel<paddle::platform::CPUDeviceContext, float>);
+    maxout, ops::MaxOutKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::MaxOutKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     maxout_grad,
-    ops::MaxOutGradKernel<paddle::platform::CPUDeviceContext, float>);
+    ops::MaxOutGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::MaxOutGradKernel<paddle::platform::CPUDeviceContext, double>);

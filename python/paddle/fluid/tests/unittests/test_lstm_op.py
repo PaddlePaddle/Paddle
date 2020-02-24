@@ -188,7 +188,7 @@ class TestLstmOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(atol=1e-8)
+        self.check_output(atol=1e-8, check_dygraph=False)
 
     def test_check_grad(self):
         # TODO(qingqing) remove folowing lines after the check_grad is refined.
@@ -197,7 +197,9 @@ class TestLstmOp(OpTest):
         self.outputs['BatchCellPreAct'] = np.zeros(
             (N, self.D)).astype('float64')
         self.check_grad(
-            ['Input', 'Weight', 'Bias'], ['Hidden'], max_relative_error=5e-4)
+            ['Input', 'Weight', 'Bias'], ['Hidden'],
+            max_relative_error=5e-4,
+            check_dygraph=False)
 
 
 class TestLstmOpCase1(TestLstmOp):

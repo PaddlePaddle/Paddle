@@ -135,12 +135,13 @@ class Uniform(Distribution):
     broadcasting (e.g., `high - low` is a valid operation).
 
     Args:
-        low(float|list|numpy.ndarray|Variable): The lower boundary of uniform distribution.
-        high(float|list|numpy.ndarray|Variable): The higher boundary of uniform distribution.
+        low(float|list|numpy.ndarray|Variable): The lower boundary of uniform distribution.The data type is float32
+        high(float|list|numpy.ndarray|Variable): The higher boundary of uniform distribution.The data type is float32
 
     Examples:
         .. code-block:: python
 
+          import numpy as np
           from paddle.fluid import layers
           from paddle.fluid.layers import Uniform
 
@@ -158,19 +159,19 @@ class Uniform(Distribution):
           # With broadcasting:
           u4 = Uniform(low=3.0, high=[5.0, 6.0, 7.0])
 
-          # Variable as input
-          dims = 3
+          # Complete example
+          value_npdata = np.array([0.8], dtype="float32")
+          value_tensor = layers.create_tensor(dtype="float32")
+          layers.assign(value_npdata, value_tensor)
 
-          low = layers.data(name='low', shape=[dims], dtype='float32')
-          high = layers.data(name='high', shape=[dims], dtype='float32')
-          values = layers.data(name='values', shape=[dims], dtype='float32')
+          uniform = Uniform([0.], [2.])
 
-          uniform = Uniform(low, high)
-
-          sample = uniform.sample([2, 3])
+          sample = uniform.sample([2])
+          # a random tensor created by uniform distribution with shape: [2, 1]
           entropy = uniform.entropy()
-          lp = uniform.log_prob(values)
-
+          # [0.6931472] with shape: [1]
+          lp = uniform.log_prob(value_tensor)
+          # [-0.6931472] with shape: [1]
     """
 
     def __init__(self, low, high):
@@ -193,7 +194,7 @@ class Uniform(Distribution):
           seed (int): Python integer number.
 
         Returns:
-          Variable: A tensor with prepended dimensions shape.
+          Variable: A tensor with prepended dimensions shape.The data type is float32.
 
         """
         batch_shape = list((self.low + self.high).shape)
@@ -208,7 +209,7 @@ class Uniform(Distribution):
             return nn.reshape(output, output_shape)
         else:
             output_shape = shape + batch_shape
-            output = ops.uniform_random(
+            output = nn.uniform_random(
                 output_shape, seed=seed) * (tensor.zeros(
                     output_shape, dtype=self.low.dtype) +
                                             (self.high - self.low)) + self.low
@@ -224,7 +225,7 @@ class Uniform(Distribution):
           value (Variable): The input tensor.
 
         Returns:
-          Variable: log probability.
+          Variable: log probability.The data type is same with value.
 
         """
         lb_bool = control_flow.less_than(self.low, value)
@@ -237,7 +238,7 @@ class Uniform(Distribution):
         """Shannon entropy in nats.
 
         Returns:
-          Variable: Shannon entropy of uniform distribution.
+          Variable: Shannon entropy of uniform distribution.The data type is float32.
 
         """
         return nn.log(self.high - self.low)
@@ -265,8 +266,8 @@ class Normal(Distribution):
     * :math:`Z`: is the normalization constant.
 
     Args:
-        loc(float|list|numpy.ndarray|Variable): The mean of normal distribution.
-        scale(float|list|numpy.ndarray|Variable): The std of normal distribution.
+        loc(float|list|numpy.ndarray|Variable): The mean of normal distribution.The data type is float32.
+        scale(float|list|numpy.ndarray|Variable): The std of normal distribution.The data type is float32.
 
     Examples:
         .. code-block:: python
@@ -278,36 +279,34 @@ class Normal(Distribution):
           dist = Normal(loc=0., scale=3.)
           # Define a batch of two scalar valued Normals.
           # The first has mean 1 and standard deviation 11, the second 2 and 22.
-          dist = Normal(loc=[1, 2.], scale=[11, 22.])
+          dist = Normal(loc=[1., 2.], scale=[11., 22.])
           # Get 3 samples, returning a 3 x 2 tensor.
           dist.sample([3])
 
           # Define a batch of two scalar valued Normals.
           # Both have mean 1, but different standard deviations.
-          dist = Normal(loc=1., scale=[11, 22.])
+          dist = Normal(loc=1., scale=[11., 22.])
 
           # Define a batch of two scalar valued Normals.
           # Both have mean 1, but different standard deviations.
-          dist = Normal(loc=1., scale=[11, 22.])
+          dist = Normal(loc=1., scale=[11., 22.])
 
-          # Variable as input
-          dims = 3
+          # Complete example
+          value_npdata = np.array([0.8], dtype="float32")
+          value_tensor = layers.create_tensor(dtype="float32")
+          layers.assign(value_npdata, value_tensor)
 
-          loc = layers.data(name='loc', shape=[dims], dtype='float32')
-          scale = layers.data(name='scale', shape=[dims], dtype='float32')
-          other_loc = layers.data(
-              name='other_loc', shape=[dims], dtype='float32')
-          other_scale = layers.data(
-              name='other_scale', shape=[dims], dtype='float32')
-          values = layers.data(name='values', shape=[dims], dtype='float32')
+          normal_a = Normal([0.], [1.])
+          normal_b = Normal([0.5], [2.])
 
-          normal = Normal(loc, scale)
-          other_normal = Normal(other_loc, other_scale)
-
-          sample = normal.sample([2, 3])
-          entropy = normal.entropy()
-          lp = normal.log_prob(values)
-          kl = normal.kl_divergence(other_normal)
+          sample = normal_a.sample([2])
+          # a random tensor created by normal distribution with shape: [2, 1]
+          entropy = normal_a.entropy()
+          # [1.4189385] with shape: [1]
+          lp = normal_a.log_prob(value_tensor)
+          # [-1.2389386] with shape: [1]
+          kl = normal_a.kl_divergence(normal_b)
+          # [0.34939718] with shape: [1]
     """
 
     def __init__(self, loc, scale):
@@ -330,7 +329,7 @@ class Normal(Distribution):
           seed (int): Python integer number.
 
         Returns:
-          Variable: A tensor with prepended dimensions shape.
+          Variable: A tensor with prepended dimensions shape.The data type is float32.
 
         """
         batch_shape = list((self.loc + self.scale).shape)
@@ -356,7 +355,7 @@ class Normal(Distribution):
         """Shannon entropy in nats.
 
         Returns:
-          Variable: Shannon entropy of normal distribution.
+          Variable: Shannon entropy of normal distribution.The data type is float32.
 
         """
         batch_shape = list((self.loc + self.scale).shape)
@@ -372,7 +371,7 @@ class Normal(Distribution):
           value (Variable): The input tensor.
 
         Returns:
-          Variable: log probability.
+          Variable: log probability.The data type is same with value.
 
         """
         var = self.scale * self.scale
@@ -387,7 +386,7 @@ class Normal(Distribution):
             other (Normal): instance of Normal.
 
         Returns:
-            Variable: kl-divergence between two normal distributions.
+            Variable: kl-divergence between two normal distributions.The data type is float32.
 
         """
         assert isinstance(other, Normal), "another distribution must be Normal"
@@ -405,8 +404,18 @@ class Categorical(Distribution):
     one of K possible categories, with the probability of each category 
     separately specified.
 
+    The probability mass function (pmf) is:
+
+    .. math::
+
+        pmf(k; p_i) = \prod_{i=1}^{k} p_i^{[x=i]}
+
+    In the above equation:
+
+    * :math:`[x=i]` : it evaluates to 1 if :math:`x==i` , 0 otherwise.
+
     Args:
-        logits(list|numpy.ndarray|Variable): The logits input of categorical distribution.
+        logits(list|numpy.ndarray|Variable): The logits input of categorical distribution. The data type is float32.
 
     Examples:
         .. code-block:: python
@@ -440,7 +449,7 @@ class Categorical(Distribution):
     def __init__(self, logits):
         """
         Args:
-            logits: A float32 tensor
+            logits(list|numpy.ndarray|Variable): The logits input of categorical distribution. The data type is float32.
         """
         if self._validate_args(logits):
             self.logits = logits
@@ -451,7 +460,7 @@ class Categorical(Distribution):
         """The KL-divergence between two Categorical distributions.
 
         Args:
-            other (Categorical): instance of Categorical.
+            other (Categorical): instance of Categorical. The data type is float32.
 
         Returns:
             Variable: kl-divergence between two Categorical distributions.
@@ -478,7 +487,7 @@ class Categorical(Distribution):
         """Shannon entropy in nats.
 
         Returns:
-          Variable: Shannon entropy of Categorical distribution.
+          Variable: Shannon entropy of Categorical distribution. The data type is float32.
 
         """
         logits = self.logits - nn.reduce_max(self.logits, dim=-1, keep_dim=True)
@@ -496,10 +505,31 @@ class MultivariateNormalDiag(Distribution):
     A multivariate normal (also called Gaussian) distribution parameterized by a mean vector
     and a covariance matrix.
 
+    The probability density function (pdf) is:
+
+    .. math::
+
+        pdf(x; loc, scale) = \\frac{e^{-\\frac{||y||^2}{2}}}{Z}
+
+    where:
+    .. math::
+
+        y = inv(scale) @ (x - loc)
+        Z = (2\\pi)^{0.5k} |det(scale)|
+
+
+    In the above equation:
+
+    * :math:`inv` : denotes to take the inverse of the matrix.
+    * :math:`@` : denotes matrix multiplication.
+    * :math:`det` : denotes to evaluate the determinant.
+
     Args:
-        loc(list|numpy.ndarray|Variable): The mean of multivariateNormal distribution.
-        scale(list|numpy.ndarray|Variable): The positive definite diagonal covariance matrix of
-        multivariateNormal distribution.
+        loc(list|numpy.ndarray|Variable): The mean of multivariateNormal distribution with shape :math:`[k]` .
+            The data type is float32.
+        scale(list|numpy.ndarray|Variable): The positive definite diagonal covariance matrix of multivariateNormal
+            distribution  with shape :math:`[k, k]` . All elements are 0 except diagonal elements. The data type is
+            float32.
 
     Examples:
         .. code-block:: python
@@ -531,7 +561,7 @@ class MultivariateNormalDiag(Distribution):
             a.entropy()
             # [2.033158] with shape: [1]
             b.entropy()
-            # [1.7777451] with shaoe: [1]
+            # [1.7777451] with shape: [1]
 
             a.kl_divergence(b)
             # [0.06542051] with shape: [1]
@@ -571,7 +601,7 @@ class MultivariateNormalDiag(Distribution):
         """Shannon entropy in nats.
 
         Returns:
-          Variable: Shannon entropy of Multivariate Normal distribution.
+          Variable: Shannon entropy of Multivariate Normal distribution. The data type is float32.
 
         """
         entropy = 0.5 * (
@@ -587,7 +617,7 @@ class MultivariateNormalDiag(Distribution):
             other (MultivariateNormalDiag): instance of Multivariate Normal.
 
         Returns:
-            Variable: kl-divergence between two Multivariate Normal distributions.
+            Variable: kl-divergence between two Multivariate Normal distributions. The data type is float32.
 
         """
         assert isinstance(other, MultivariateNormalDiag)

@@ -50,29 +50,28 @@ inline std::vector<int> get_new_data(
 }
 
 static framework::DDim ValidateShape(const std::vector<int> shape,
+                                     const std::vector<int> offsets,
                                      const framework::DDim& in_dims) {
   auto in_dim_size = in_dims.size();
   auto shape_size = shape.size();
   PADDLE_ENFORCE_EQ(
       in_dim_size, shape_size,
-      "Input(ShapeTensor)'s dimension size of Op(crop_tensor) should be equal "
-      "to that of input tensor. "
+      "Attr(shape)'s size of Op(crop_tensor) should be equal "
+      "to that of input Tensor. "
       "Please check the Attr(shape)'s size of Op(fluid.layers.crop_tensor).");
-  const int64_t unk_dim_val = -1;
-  int unk_dim_idx = -1;
   std::vector<int64_t> output_shape(shape.size(), 0);
   for (size_t i = 0; i < shape.size(); ++i) {
-    if (shape[i] == unk_dim_val) {
-      PADDLE_ENFORCE_EQ(unk_dim_idx, -1,
-                        "Only one element of shape can be unknown.");
-      PADDLE_ENFORCE_EQ(i, 0, "Only the first element of shape can be -1.");
-      unk_dim_idx = i;
+    if (shape[i] <= 0 && in_dims[i] > 0) {
+      PADDLE_ENFORCE_NE(
+          shape[i], 0,
+          "The element in Attr(shape) of Op(crop_tensor) should not be zero.");
+      PADDLE_ENFORCE_EQ(shape[i], -1,
+                        "When the element in Attr(shape) of Op(crop_tensor) is "
+                        "negative, only -1 is supported.");
+      output_shape[i] = in_dims[i] - offsets[i];
     } else {
-      PADDLE_ENFORCE_GT(shape[i], 0,
-                        "Each element of shape must be greater than 0 "
-                        "except the first element.");
+      output_shape[i] = static_cast<int64_t>(shape[i]);
     }
-    output_shape[i] = static_cast<int64_t>(shape[i]);
   }
 
   return framework::make_ddim(output_shape);
@@ -158,27 +157,21 @@ void CropTensorFunction(const framework::ExecutionContext& context) {
 
   // get shape from Input(ShapeTensor) of Input(Shape)
   std::vector<int> shape = GetShape(context);
-  // out_dims setted by arrt(shape)
+  // out_dims set by arrt(shape)
   if (shape.size() == 0) {
-    for (size_t i = 0; i < out_dims.size(); ++i) {
+    for (int i = 0; i < out_dims.size(); ++i) {
       shape.push_back(out_dims[i]);
     }
   }
-  out_dims = ValidateShape(shape, x->dims());
-  if (out_dims[0] == -1) {
-    out_dims[0] = x->dims()[0];
-  }
 
-  out->mutable_data<T>(out_dims, context.GetPlace());
-  auto x_stride = framework::stride(x->dims());
   auto offsets = GetOffsets(context);
-  int64_t offset = 0;
+  out_dims = ValidateShape(shape, offsets, x->dims());
+  out->mutable_data<T>(out_dims, context.GetPlace());
   for (size_t i = 0; i < offsets.size(); ++i) {
     PADDLE_ENFORCE_LE(
         offsets[i] + shape[i], x_dims[i],
         "The sum of the Attr(offsets) and Attr(shape) of Op(crop_tensor) "
         "should be less than or equal to corresponding input dimension size.");
-    offset += (x_stride[i] * offsets[i]);
   }
 
   auto x_tensor = EigenTensor<T, D>::From(*x);

@@ -36,6 +36,13 @@ class SendBarrierOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
+    auto is_half_async = Attr<bool>("half_async");
+
+    if (is_half_async) {
+      distributed::Communicator::GetInstance()->Barrier();
+      return;
+    }
+
     std::vector<std::string> eps = Attr<std::vector<std::string>>("endpoints");
 
     distributed::RPCClient* rpc_client =
@@ -76,6 +83,12 @@ the Parameter Server would knew all variables have been sent.
                                       "(string vector, default 127.0.0.1:6164)"
                                       "Server endpoints to send variables to.")
         .SetDefault({"127.0.0.1:6164"});
+    AddAttr<bool>(
+        "half_async",
+        "(bool, default false)"
+        "half_async=True is for half_async mode, this will send signal "
+        "to HalfAsyncCommunicator Instance")
+        .SetDefault(false);
   }
 };
 
@@ -89,6 +102,8 @@ class SendBarrierOpShapeInference : public framework::InferShapeBase {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(send_barrier, ops::SendBarrierOp,
-                  paddle::framework::EmptyGradOpMaker, ops::SendBarrierOpMaker,
-                  ops::SendBarrierOpShapeInference);
+REGISTER_OPERATOR(
+    send_barrier, ops::SendBarrierOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::SendBarrierOpMaker, ops::SendBarrierOpShapeInference);

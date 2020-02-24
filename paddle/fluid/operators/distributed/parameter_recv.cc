@@ -42,7 +42,7 @@ using DDim = framework::DDim;
 template <typename T>
 void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
                                   const framework::Scope &scope) {
-  VLOG(3) << "ParameterRecv in " << rpc_ctx.var_name;
+  VLOG(2) << "ParameterRecv in " << rpc_ctx.var_name;
   std::unique_ptr<framework::Scope> local_scope = scope.NewTmpScope();
 
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
@@ -54,15 +54,24 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
   auto *recv_var = scope.FindVar(rpc_ctx.var_name);
 
   // recv all vars to local scope
-  if (recv_var->IsType<framework::LoDTensor>()) {
+  if (recv_var->IsType<framework::LoDTensor>() ||
+      recv_var->IsType<framework::SelectedRows>()) {
     std::vector<distributed::VarHandlePtr> rets;
     for (size_t i = 0; i < rpc_ctx.splited_var_names.size(); i++) {
       auto &recv_var_name = rpc_ctx.splited_var_names[i];
       local_scope->Var(recv_var_name);
-      VLOG(3) << "recv " << recv_var_name << " from " << rpc_ctx.epmap[i];
-      rets.push_back(rpc_client->AsyncGetVar(rpc_ctx.epmap[i], cpu_ctx,
-                                             *local_scope.get(), recv_var_name,
-                                             recv_var_name));
+      VLOG(4) << "recv " << recv_var_name << " from " << rpc_ctx.epmap[i];
+      if (recv_var->IsType<framework::LoDTensor>()) {
+        // sparse param in recv_scope is LoDTensor
+        rets.push_back(rpc_client->AsyncGetVar(rpc_ctx.epmap[i], cpu_ctx,
+                                               *local_scope.get(),
+                                               recv_var_name, recv_var_name));
+      } else {
+        // sparse param in pserver_scope is SelectedRows
+        rets.push_back(rpc_client->AsyncGetVar(
+            rpc_ctx.epmap[i], cpu_ctx, *local_scope.get(), recv_var_name,
+            recv_var_name, recv_var_name));
+      }
     }
     for (size_t i = 0; i < rets.size(); i++) {
       PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
@@ -72,7 +81,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
   }
 
   // concat recved tensor into one var
-  {
+  if (recv_var->IsType<framework::LoDTensor>()) {
     size_t output_offset = 0;
     size_t row_offset = 0;
     framework::Tensor *recv_tensor =
@@ -110,7 +119,7 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
                   << sstream.str();
         }
 
-        for (auto i = 0; i < recv_slr.rows().size(); ++i) {
+        for (size_t i = 0; i < recv_slr.rows().size(); ++i) {
           auto row_id = recv_slr.rows()[i] + row_offset;
           PADDLE_ENFORCE_LT(row_id, recv_dims[0]);
           memcpy(recv_tensor->data<T>() + row_id * width,
@@ -126,9 +135,56 @@ void ParameterRecv<T>::operator()(const RpcContext &rpc_ctx,
       LOG(FATAL) << "recv_numel: " << recv_numel << " acture numel: " << numel;
     }
     PADDLE_ENFORCE_EQ(recv_numel, numel);
+  } else if (recv_var->IsType<framework::SelectedRows>()) {
+    auto cpu_place = platform::CPUPlace();
+    auto *slr = recv_var->GetMutable<framework::SelectedRows>();
+    slr->mutable_rows()->clear();
+    slr->mutable_value()->mutable_data<float>({{}}, cpu_place);
+    int64_t width = 0;
+    int64_t height = 0;
+    std::vector<int64_t> new_rows{};
+
+    // trans sparse ids from local to global
+    std::vector<int64_t> abs_sections =
+        ToAbsoluteSection(rpc_ctx.height_sections);
+
+    for (size_t i = 0; i < rpc_ctx.splited_var_names.size(); i++) {
+      auto &recv_var_name = rpc_ctx.splited_var_names[i];
+      auto *var = local_scope->FindVar(recv_var_name);
+      auto *var_slr = var->GetMutable<framework::SelectedRows>();
+      auto *var_slr_row = var_slr->mutable_rows();
+      width = var_slr->mutable_value()->dims()[1];
+      height += var_slr->height();
+      auto row_offset = abs_sections[i];
+      VLOG(4) << "Recv split_var " << recv_var_name << " Row size "
+              << var_slr_row->size();
+      for (size_t j = 0; j < var_slr_row->size(); j++) {
+        new_rows.push_back(row_offset + (*var_slr_row)[j]);
+      }
+    }
+    slr->set_rows(new_rows);
+    slr->set_height(height);
+    slr->mutable_value()->mutable_data<float>(
+        framework::make_ddim(
+            {static_cast<int64_t>(slr->mutable_rows()->size()), width}),
+        cpu_place);
+    auto *slr_data = slr->mutable_value()->data<float>();
+
+    size_t row_offset = 0;
+    for (auto &recv_var_name : rpc_ctx.splited_var_names) {
+      auto *var = local_scope->FindVar(recv_var_name);
+      auto *var_slr = var->GetMutable<framework::SelectedRows>();
+      auto *var_slr_row = var_slr->mutable_rows();
+      auto var_slr_row_size = var_slr_row->size();
+      auto *var_slr_data = var_slr->mutable_value()->data<float>();
+
+      memcpy(slr_data + row_offset * width, var_slr_data,
+             sizeof(float) * width * var_slr_row_size);
+      row_offset += var_slr_row_size;
+    }
   }
 
-  VLOG(3) << "ParameterRecv out " << rpc_ctx.var_name;
+  VLOG(2) << "ParameterRecv out " << rpc_ctx.var_name;
 }
 
 template struct ParameterRecv<float>;

@@ -20,6 +20,7 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/executor.h"
@@ -212,11 +213,25 @@ class TensorRTEngineOp : public framework::OperatorBase {
                                                i_shape.end());
         std::vector<int64_t> runtime_input_shape(t_shape.begin() + 1,
                                                  t_shape.end());
-        PADDLE_ENFORCE_EQ(model_input_shape == runtime_input_shape, true,
-                          "Input shapes are inconsistent with the model. TRT 5 "
-                          "or lower version "
-                          "does not support dynamic input shapes. Please check "
-                          "your input shapes.");
+        auto comma_fold = [](std::string a, int b) {
+          return std::move(a) + ", " + std::to_string(b);
+        };
+        std::string model_input_shape_str = std::accumulate(
+            std::next(model_input_shape.begin()), model_input_shape.end(),
+            std::to_string(model_input_shape[0]), comma_fold);
+        std::string runtime_input_shape_str = std::accumulate(
+            std::next(runtime_input_shape.begin()), runtime_input_shape.end(),
+            std::to_string(runtime_input_shape[0]), comma_fold);
+        PADDLE_ENFORCE_EQ(
+            model_input_shape == runtime_input_shape, true,
+            platform::errors::InvalidArgument(
+                "Input shapes are inconsistent with the model. Expect [%s] in "
+                "model description, but got [%s] in runtime. TRT 5 "
+                "or lower version "
+                "does not support dynamic input shapes. Please check and "
+                "modify "
+                "your input shapes.",
+                model_input_shape_str, runtime_input_shape_str));
       }
 
       runtime_batch = t_shape[0];
@@ -254,7 +269,24 @@ class TensorRTEngineOp : public framework::OperatorBase {
       output_index += 1;
     }
 
-    PADDLE_ENFORCE_LE(runtime_batch, max_batch_size_);
+    PADDLE_ENFORCE_LE(
+        runtime_batch, max_batch_size_,
+        platform::errors::InvalidArgument(
+            "The runtime batch size (%d) is greater than the max batch "
+            "size(%d).\n"
+            "There are two possible causes for this problem: \n"
+            "1. Check whether the runtime batch is larger than the max_batch "
+            "set by EnableTensorrtEngine()\n"
+            "2. Check whether the model you are running has multiple trt "
+            "subgraphs: \n "
+            "\tIf there are multiple trt subgraphs, you need to ensure that "
+            "the first dimension of the input tensor of these subgraphs is "
+            "consistent.\n"
+            "\tIf there are inconsistent subgraphs, you need to filter them by "
+            "setting min_subgraph_size using EnableTensorrtEngine interface.\n"
+            "\tThe min_subgraph_size shouble to be greater than the number of "
+            "nodes in the inconsistent subgraph.\n",
+            runtime_batch, max_batch_size_));
     // Execute the engine.
     engine->Execute(runtime_batch, &buffers, stream);
     cudaStreamSynchronize(stream);

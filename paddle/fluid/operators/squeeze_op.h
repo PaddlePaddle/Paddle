@@ -61,13 +61,17 @@ class SqueezeKernel : public framework::OpKernel<T> {
       for (size_t idx = 0; idx < num_squeeze_dims; ++idx) {
         int current = squeeze_dims[idx] < 0 ? squeeze_dims[idx] + in_dims.size()
                                             : squeeze_dims[idx];
-        // Check current index, the upper limit has beed checked in line 36.
+
         PADDLE_ENFORCE_GE(current, 0,
-                          "Invalid axis, the negative axis is out of range.");
+                          "Invalid axis, the axis should >= 0."
+                          "Current axis is:%d, input tensor's shape = [%s].",
+                          current, in_dims);
 
         PADDLE_ENFORCE_EQ(in_dims[current], 1,
                           "Invalid axis index, the axis that will be squeezed "
-                          "should be equal to 1.");
+                          "should be equal to 1. But current axis = %d,"
+                          "input tensor's shape = [%s].",
+                          in_dims[current], in_dims);
 
         if (!(should_squeeze[current])) {
           ++cnt_squeezed_dims;

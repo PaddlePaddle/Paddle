@@ -73,13 +73,16 @@ calculated by $%s$
 };
 
 template <typename OpComment>
-class CompareOpInferShape : public framework::InferShapeBase {
+class CompareOp : public framework::OperatorWithKernel {
  public:
-  void operator()(framework::InferShapeContext* context) const override {
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext* context) const override {
     OpComment comment;
-    PADDLE_ENFORCE(context->HasInput("X"), "%s operator must has input X",
+    PADDLE_ENFORCE(context->HasInput("X"), "%s operator must have input X",
                    comment.type);
-    PADDLE_ENFORCE(context->HasInput("Y"), "%s operator must has input Y",
+    PADDLE_ENFORCE(context->HasInput("Y"), "%s operator must have input Y",
                    comment.type);
     auto dim_x = context->GetInputDim("X");
     auto dim_y = context->GetInputDim("Y");
@@ -89,13 +92,7 @@ class CompareOpInferShape : public framework::InferShapeBase {
     context->SetOutputDim("Out", context->GetInputDim("X"));
     context->ShareLoD("X", "Out");
   }
-};
 
-class CompareOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
- protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
@@ -110,18 +107,18 @@ class CompareOp : public framework::OperatorWithKernel {
 }  // namespace operators
 }  // namespace paddle
 
-#define REGISTER_COMPARE_OP(op_type, _equation)                      \
-  struct _##op_type##Comment {                                       \
-    static char type[];                                              \
-    static char equation[];                                          \
-  };                                                                 \
-  char _##op_type##Comment::type[]{#op_type};                        \
-  char _##op_type##Comment::equation[]{_equation};                   \
-  REGISTER_OPERATOR(                                                 \
-      op_type, ::paddle::operators::CompareOp,                       \
-      ::paddle::operators::CompareOpProtoMaker<_##op_type##Comment>, \
-      ::paddle::operators::CompareOpInferShape<_##op_type##Comment>, \
-      ::paddle::framework::EmptyGradOpMaker);
+#define REGISTER_COMPARE_OP(op_type, _equation)                         \
+  struct _##op_type##Comment {                                          \
+    static char type[];                                                 \
+    static char equation[];                                             \
+  };                                                                    \
+  char _##op_type##Comment::type[]{#op_type};                           \
+  char _##op_type##Comment::equation[]{_equation};                      \
+  REGISTER_OPERATOR(                                                    \
+      op_type, ::paddle::operators::CompareOp<_##op_type##Comment>,     \
+      ::paddle::operators::CompareOpProtoMaker<_##op_type##Comment>,    \
+      ::paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>, \
+      ::paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_COMPARE_OP(less_than, "Out = X < Y");
 REGISTER_COMPARE_KERNEL(less_than, CPU, paddle::operators::LessThanFunctor);

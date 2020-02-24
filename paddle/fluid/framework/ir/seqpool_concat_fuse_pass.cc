@@ -142,7 +142,8 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
     PADDLE_ENFORCE(subgraph.count(pat.RetrieveNode(name)),
                    "pattern has no Node called %s", name.c_str());
     Node* p = subgraph.at(pat.RetrieveNode(name));
-    PADDLE_ENFORCE_NOT_NULL(p, "subgraph has no node %s", name.c_str());
+    PADDLE_ENFORCE_NOT_NULL(
+        p, platform::errors::NotFound("subgraph has no node %s", name.c_str()));
     return p;
   };
 

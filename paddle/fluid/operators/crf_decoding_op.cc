@@ -21,46 +21,47 @@ class CRFDecodingOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput(
         "Emission",
-        "(Tensor<float>/LoDTensor<float>). For a LoDTensor input, its "
-        "shape is [N x D] where N is the total sequence length of the "
-        "mini-batch and D is the total tag number. While for a tensor "
-        "input, its shape is [B X S X D] with B the batch size and S the "
-        "sequence length of each sample after padding. This input is the "
-        "unscaled emission weight matrix of the linear_chain_crf operator.");
+        "(Tensor/LoDTensor). For a LoDTensor input, its shape is [N x D] "
+        "where N is the total sequence length of the mini-batch and D is "
+        "the total tag number. While for a tensor input, its shape is "
+        "[B X S X D] with B the batch size and S the sequence length of each "
+        "sample after padding. This input is the unscaled emission weight "
+        "matrix of the linear_chain_crf operator. The data type is float32 "
+        "or float64.");
     AddInput(
         "Transition",
-        "(Tensor<float>). A Tensor with shape [(D + 2) x D]. "
+        "(Tensor). A Tensor with shape [(D + 2) x D]. "
         "This input is the transition weights learned by the linear_chain_crf "
         "operator, denoted as w. The 1st row of w are transition weights for "
         "the start mask. The 2nd row of w are transition weights for the end "
         "mask. Transition weights between other tags begin from the 3rd row of "
-        "w. See more details in comments of the linear_chain_crf operator.");
+        "w. See more details in comments of the linear_chain_crf operator. "
+        "The data type is the same as Input(Emission).");
     AddInput(
         "Label",
-        "(Tensor<int64_t>/LoDTensor<int64_t>). The ground truth with shape "
+        "(Tensor/LoDTensor). The ground truth with shape "
         "[N x 1] (for LoDTensor) or [B x S] (for Tensor). This input is "
-        "optional. "
-        "See more details in the operator's comments.")
+        "optional. See more details in the operator's comments. The data type "
+        "is int64.")
         .AsDispensable();
     AddOutput(
         "ViterbiPath",
-        "(Tensor<int64_t>/LoDTensor<int64_t>). The decoding results. What to "
+        "(Tensor/LoDTensor). The decoding results. What to "
         "return changes depending on whether the Input(Label) (the ground "
-        "truth) is given. See more details in the operator's comment.");
+        "truth) is given. See more details in the operator's comment. "
+        "The data type is int64.");
     AddInput("Length",
-             "(Tensor<int64_t>). The actual length of each sample before "
+             "(Tensor). The actual length of each sample before "
              "padding with shape [B x 1]. It means the Input(Emission), "
-             "Input(Label) "
-             "and Output(ViterbiPath) are common tensors with padding when "
-             "this input "
-             "is given.")
+             "Input(Label) and Output(ViterbiPath) are common tensors with "
+             "padding when this input is given. The data type is int64.")
         .AsDispensable();
     AddComment(R"DOC(
 The crf_decoding operator reads the emission feature weights and the transition
-feature weights learned by the linear_chain_crf operator. It implements the
-Viterbi algorithm which is a dynamic programming algorithm for finding the most
-likely sequence of hidden states, called the Viterbi path, that results in a
-sequence of observed tags.
+feature weights learned by the linear_chain_crf operator and performs decoding. 
+It implements the Viterbi algorithm which is a dynamic programming algorithm 
+for finding the most likely sequence of hidden states, called the Viterbi path, 
+that results in a sequence of observed tags.
 
 The output of this operator changes according to whether Input(Label) is given:
 
@@ -126,12 +127,24 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
     }
     if (ctx->HasInput("Label")) {
       auto label_dims = ctx->GetInputDim("Label");
-      PADDLE_ENFORCE_EQ(label_dims.size(), 2UL,
-                        "The Input(Label) should be a 2-D tensor");
+      if (ctx->HasInput("Length")) {
+        PADDLE_ENFORCE_EQ(
+            (label_dims.size() == 3UL && label_dims[2] == 1) ||
+                label_dims.size() == 2UL,
+            true,
+            "The Input(Label) should be a 3-D tensor with last dimension "
+            "fixed to 1 or a 2-D tensor in padding mode.");
+      } else {
+        PADDLE_ENFORCE_EQ((label_dims.size() == 2UL && label_dims[1] == 1) ||
+                              label_dims.size() == 1UL,
+                          true,
+                          "The Input(Label) should be a 2-D tensor with last "
+                          "dimension fixed to 1 or a 1-D tensor.");
+      }
       if (ctx->IsRuntime() || (emission_dims[0] > 0 && label_dims[0] > 0)) {
         PADDLE_ENFORCE_EQ(
             emission_dims[0], label_dims[0],
-            "The height of Input(Emission) and the height of Input(Label) "
+            "The first dimension of Input(Emission) and Input(Label) "
             "should be the same.");
       }
     }
@@ -147,8 +160,9 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<LoDTensor>("Emission")->type(),
-                                   platform::CPUPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Emission"),
+        platform::CPUPlace());
   }
 };
 }  // namespace operators

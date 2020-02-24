@@ -52,8 +52,8 @@ class LinspaceOp : public framework::OperatorWithKernel {
     framework::LibraryType library_{framework::LibraryType::kPlain};
     framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
     return framework::OpKernelType(
-        ctx.Input<framework::Tensor>("Start")->type(), ctx.device_context(),
-        layout_, library_);
+        OperatorWithKernel::IndicateVarDataType(ctx, "Start"),
+        ctx.device_context(), layout_, library_);
   }
 };
 

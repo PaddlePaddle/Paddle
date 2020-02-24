@@ -41,8 +41,9 @@ class ShardIndexOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -62,7 +63,7 @@ class ShardIndexOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("nshards",
                  "A positive integer to specify the number of shards.");
     AddAttr<int>("shard_id", "The current shard id");
-    AddAttr<int>("ignore_value", "An ingeter value out of sharded range")
+    AddAttr<int>("ignore_value", "An integer value out of sharded range")
         .SetDefault(-1);
     AddComment(R"DOC(
 This layer creates the sharded index for input. This layers is used in
@@ -79,7 +80,7 @@ to
     y = x % shard_size if x / shard_size == shard_id else ignore_value
 
 We take the distributed one-hot representation to show what this layer is
-used for. The distributed one-hot representation is seperated into multiple
+used for. The distributed one-hot representation is separated into multiple
 shards, and each shard is filling zeros except the one with the index
 inside. In order to create these sharded representation in each trainer,
 the original index should be recalculated (i.e. sharded) before.

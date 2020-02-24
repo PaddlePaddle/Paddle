@@ -20,6 +20,7 @@ from .... import profiler
 from .... import scope_guard
 from ....data_feeder import DataFeeder
 from ....log_helper import get_logger
+from ....reader import DataLoaderBase
 from ..graph import *
 from .config import ConfigFactory
 import numpy as np
@@ -54,7 +55,9 @@ def cached_reader(reader, sampled_rate, cache_path, cached_id):
     def s_reader():
         if os.path.isdir(cache_path):
             for file_name in open(os.path.join(cache_path, "list")):
-                yield np.load(os.path.join(cache_path, file_name.strip()))
+                yield np.load(
+                    os.path.join(cache_path, file_name.strip()),
+                    allow_pickle=True)
         else:
             os.makedirs(cache_path)
             list_file = open(os.path.join(cache_path, "list"), 'w')
@@ -185,10 +188,16 @@ class Context(object):
         s_time = time.time()
         reader = self.eval_reader
         if sampled_rate:
+            assert (not isinstance(reader, Variable))
+            assert (sampled_rate > 0)
+            assert (self.cache_path is not None)
+            _logger.info('sampled_rate: {}; cached_id: {}'.format(sampled_rate,
+                                                                  cached_id))
             reader = cached_reader(reader, sampled_rate, self.cache_path,
                                    cached_id)
 
-        if isinstance(reader, Variable):
+        if isinstance(reader, Variable) or (
+                isinstance(reader, DataLoaderBase) and (not reader.iterable)):
             reader.start()
             try:
                 while True:
@@ -211,7 +220,7 @@ class Context(object):
                         batch_id, eval_graph.out_nodes.keys(), result))
                 batch_id += 1
 
-        result = np.mean(np.array(results), axis=0)
+        result = list(np.mean(np.array(results), axis=0))
         _logger.info("Final eval result: {}={}".format(
             eval_graph.out_nodes.keys(), result))
         if not isinstance(result, Iterable):
@@ -249,7 +258,8 @@ class Compressor(object):
                  checkpoint_path=None,
                  train_optimizer=None,
                  distiller_optimizer=None,
-                 search_space=None):
+                 search_space=None,
+                 log_period=20):
         """
         Args:
             place(fluid.Place): The device place where the compression job running.
@@ -292,8 +302,9 @@ class Compressor(object):
                                  this optimizer is used to minimize the combined loss of student-net and
                                  teacher-net while train_optimizer is used to minimize loss of
                                  student-net in fine-tune stage. 
-            search_space(slim.nas.SearchSpace): The instance that define the searching space. It must inherite
+            search_space(slim.nas.SearchSpace): The instance that define the searching space. It must inherit
                               slim.nas.SearchSpace class and overwrite the abstract methods.
+            log_period(int): The period of print log of training.
 
         """
         assert train_feed_list is None or isinstance(
@@ -329,6 +340,8 @@ class Compressor(object):
         self.init_model = None
 
         self.search_space = search_space
+        self.log_period = log_period
+        assert (log_period > 0)
 
     def _add_strategy(self, strategy):
         """
@@ -357,6 +370,7 @@ class Compressor(object):
 
         if 'eval_epoch' in factory.compressor:
             self.eval_epoch = factory.compressor['eval_epoch']
+        assert (self.eval_epoch > 0)
 
     def _init_model(self, context):
         """
@@ -414,7 +428,7 @@ class Compressor(object):
                         else:
                             strategies = pickle.load(
                                 strategy_file, encoding='bytes')
-
+                assert (len(self.strategies) == len(strategies))
                 for s, s1 in zip(self.strategies, strategies):
                     s1.__dict__.update(s.__dict__)
 
@@ -468,11 +482,16 @@ class Compressor(object):
         executor = SlimGraphExecutor(self.place)
 
         if context.optimize_graph.compiled_graph is None:
+            build_strategy = compiler.BuildStrategy()
+            build_strategy.fuse_all_reduce_ops = False
             context.optimize_graph.compiled_graph = compiler.CompiledProgram(
                 context.optimize_graph.program).with_data_parallel(
-                    loss_name=context.optimize_graph.out_nodes['loss'])
+                    loss_name=context.optimize_graph.out_nodes['loss'],
+                    build_strategy=build_strategy)
 
-        if isinstance(context.train_reader, Variable):
+        if isinstance(context.train_reader, Variable) or (
+                isinstance(context.train_reader, DataLoaderBase) and
+            (not context.train_reader.iterable)):
             context.train_reader.start()
             try:
                 while True:
@@ -482,11 +501,11 @@ class Compressor(object):
                     results = executor.run(context.optimize_graph,
                                            context.scope)
                     results = [float(np.mean(result)) for result in results]
-                    if context.batch_id % 20 == 0:
+                    if context.batch_id % self.log_period == 0:
                         _logger.info("epoch:{}; batch_id:{}; {} = {}".format(
                             context.epoch_id, context.batch_id,
                             context.optimize_graph.out_nodes.keys(
-                            ), [round(r, 3) for r in results]))
+                            ), [round(r, 6) for r in results]))
                     for strategy in self.strategies:
                         strategy.on_batch_end(context)
                     context.batch_id += 1
@@ -502,11 +521,11 @@ class Compressor(object):
                                        context.scope,
                                        data=data)
                 results = [float(np.mean(result)) for result in results]
-                if context.batch_id % 20 == 0:
+                if context.batch_id % self.log_period == 0:
                     _logger.info("epoch:{}; batch_id:{}; {} = {}".format(
                         context.epoch_id, context.batch_id,
                         context.optimize_graph.out_nodes.keys(
-                        ), [round(r, 3) for r in results]))
+                        ), [round(r, 6) for r in results]))
                 for strategy in self.strategies:
                     strategy.on_batch_end(context)
                 context.batch_id += 1
@@ -532,7 +551,7 @@ class Compressor(object):
 
     def run(self):
         """
-        Execute compressiong pass.
+        Execute compressing pass.
         """
         context = Context(
             place=self.place,

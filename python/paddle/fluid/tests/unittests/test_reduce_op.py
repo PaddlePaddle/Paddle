@@ -16,7 +16,10 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
+import paddle.fluid.core as core
+import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard
 
 
 class TestSumOp(OpTest):
@@ -48,6 +51,9 @@ class TestMeanOp(OpTest):
         self.check_grad(['X'], 'Out')
 
 
+@skip_check_grad_ci(
+    reason="reduce_max is discontinuous non-derivable function,"
+    " its gradient check is not supported by unittest framework.")
 class TestMaxOp(OpTest):
     """Remove Max with subgradient from gradient check to confirm the success of CI."""
 
@@ -63,6 +69,9 @@ class TestMaxOp(OpTest):
         self.check_output()
 
 
+@skip_check_grad_ci(
+    reason="reduce_min is discontinuous non-derivable function,"
+    " its gradient check is not supported by unittest framework.")
 class TestMinOp(OpTest):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
@@ -166,7 +175,7 @@ class TestAnyOpWithKeepDim(OpTest):
 class Test1DReduce(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
-        self.inputs = {'X': np.random.random(20).astype("float64")}
+        self.inputs = {'X': np.random.random(120).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
 
     def test_check_output(self):
@@ -268,6 +277,9 @@ class TestReduceMeanOpMultiAxises(OpTest):
         self.check_grad(['X'], 'Out')
 
 
+@skip_check_grad_ci(
+    reason="reduce_max is discontinuous non-derivable function,"
+    " its gradient check is not supported by unittest framework.")
 class TestReduceMaxOpMultiAxises(OpTest):
     """Remove Max with subgradient from gradient check to confirm the success of CI."""
 
@@ -283,6 +295,9 @@ class TestReduceMaxOpMultiAxises(OpTest):
         self.check_output()
 
 
+@skip_check_grad_ci(
+    reason="reduce_min is discontinuous non-derivable function,"
+    " its gradient check is not supported by unittest framework.")
 class TestReduceMinOpMultiAxises(OpTest):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
@@ -318,7 +333,7 @@ class TestKeepDimReduceSumMultiAxises(OpTest):
 class TestReduceSumWithDimOne(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
-        self.inputs = {'X': np.random.random((10, 1, 1)).astype("float64")}
+        self.inputs = {'X': np.random.random((100, 1, 1)).astype("float64")}
         self.attrs = {'dim': [1, 2], 'keep_dim': True}
         self.outputs = {
             'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']),
@@ -335,7 +350,7 @@ class TestReduceSumWithDimOne(OpTest):
 class TestReduceSumWithNumelOne(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
-        self.inputs = {'X': np.random.random((1, 1)).astype("float64")}
+        self.inputs = {'X': np.random.random((100, 1)).astype("float64")}
         self.attrs = {'dim': [1], 'keep_dim': False}
         self.outputs = {
             'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']),
@@ -352,7 +367,7 @@ class TestReduceSumWithNumelOne(OpTest):
 class TestReduceMeanWithDimOne(OpTest):
     def setUp(self):
         self.op_type = "reduce_mean"
-        self.inputs = {'X': np.random.random((10, 1, 1)).astype("float64")}
+        self.inputs = {'X': np.random.random((100, 1, 1)).astype("float64")}
         self.attrs = {'dim': [1], 'keep_dim': False}
         self.outputs = {
             'Out': self.inputs['X'].mean(
@@ -369,7 +384,7 @@ class TestReduceMeanWithDimOne(OpTest):
 class TestReduceMeanWithNumelOne(OpTest):
     def setUp(self):
         self.op_type = "reduce_mean"
-        self.inputs = {'X': np.random.random((1, 1)).astype("float64")}
+        self.inputs = {'X': np.random.random((100, 1)).astype("float64")}
         self.attrs = {'dim': [1], 'keep_dim': True}
         self.outputs = {
             'Out': self.inputs['X'].mean(
@@ -386,7 +401,7 @@ class TestReduceMeanWithNumelOne(OpTest):
 class TestReduceAll(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
-        self.inputs = {'X': np.random.random((1, 1, 1)).astype("float64")}
+        self.inputs = {'X': np.random.random((100, 1, 1)).astype("float64")}
         self.attrs = {'reduce_all': True, 'keep_dim': False}
         self.outputs = {'Out': self.inputs['X'].sum()}
 
@@ -395,6 +410,44 @@ class TestReduceAll(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
+
+class Test1DReduceWithAxes1(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.inputs = {'X': np.random.random(100).astype("float64")}
+        self.attrs = {'dim': [0], 'keep_dim': False}
+        self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestReduceSumOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # The input type of reduce_sum_op must be Variable.
+            x1 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace())
+            self.assertRaises(TypeError, fluid.layers.reduce_sum, x1)
+            # The input dtype of reduce_sum_op  must be float32 or float64 or int32 or int64.
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
+            self.assertRaises(TypeError, fluid.layers.reduce_sum, x2)
+
+
+class TestReduceMeanOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # The input type of reduce_mean_op must be Variable.
+            x1 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace())
+            self.assertRaises(TypeError, fluid.layers.reduce_mean, x1)
+            # The input dtype of reduce_mean_op  must be float32 or float64 or int32 or int64.
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
+            self.assertRaises(TypeError, fluid.layers.reduce_mean, x2)
 
 
 if __name__ == '__main__':

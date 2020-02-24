@@ -55,36 +55,52 @@ class FuseOptimizerOpPass : public ir::Pass {
       const std::unordered_map<std::string, std::string> &fused_vars_name,
       const std::vector<ir::Node *> &adam_ops, ir::Graph *graph) const = 0;
 
-  void GetSpecifiedOpsAndVars(
+  void GetFusingVarNamesMap(
       const std::vector<std::string> &aux_vars_name,
       const std::vector<ir::Node *> &opt_nodes,
       std::unordered_map<std::string, std::vector<std::string>> *aux_args_name)
       const;
 
-  void AppendAllocContinuousSpace(const std::vector<std::string> &in_args,
-                                  const std::vector<std::string> &out_args,
-                                  const std::string &fused_out_arg,
-                                  BlockDesc *global_block, bool copy_data,
-                                  bool check_name = true) const;
+  void AppendCoalesceTensorOp(const std::vector<std::string> &in_args,
+                              const std::vector<std::string> &out_args,
+                              const std::string &fused_out_arg,
+                              const proto::VarType::Type &dtype,
+                              BlockDesc *global_block, bool copy_data,
+                              bool check_name = true) const;
 
-  void InitFusedGradsAndAllocSpaceForGrads(
-      const std::vector<std::string> &params,
-      const std::vector<std::string> &grads, const std::string &fused_grad_name,
-      ir::Graph *result) const;
+  void FuseGradientsToContinuousSpace(const std::vector<std::string> &params,
+                                      const std::vector<std::string> &grads,
+                                      const std::string &fused_grad_name,
+                                      const proto::VarType::Type &dtype,
+                                      ir::Graph *result) const;
 
-  void InitFusedVarsAndAllocSpaceForVars(
+  void FuseVarsToContinuousSpace(
       const std::vector<std::string> &aux_var_names,
       const std::unordered_map<std::string, std::vector<std::string>>
           &aux_var_set,
       const std::unordered_map<std::string, std::string> &fused_vars_name,
-      ir::Graph *result) const;
+      const proto::VarType::Type &dtype, ir::Graph *result) const;
 
   std::unordered_map<std::string, std::vector<Node *>> GetVarInfo(
       const Graph &result) const;
 
+  bool OpWithKernelSupportCPUAndGPU(const std::string &op_type) const;
+
+  bool GradGeneratedOpKernelCheck(
+      const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
+      const std::string &grad_var_name) const;
+
+  proto::VarType::Type GetDtypeOfVar(
+      const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
+      const std::string &name) const;
+
   proto::VarType::Type GetTypeOfVar(
       const std::unordered_map<std::string, std::vector<Node *>> &var_nodes,
       const std::string &name) const;
+
+  const VarDesc *GetVarDescFromVarsInfo(
+      const std::unordered_map<std::string, std::vector<Node *>> &vars_info,
+      const std::string &var_name) const;
 
   void GradientsFilter(const std::vector<size_t> &new_grad_idx,
                        std::vector<Node *> *opt_nodes,

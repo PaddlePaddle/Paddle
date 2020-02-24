@@ -14,9 +14,12 @@
 
 INCLUDE(ExternalProject)
 
-SET(GFLAGS_SOURCES_DIR ${THIRD_PARTY_PATH}/gflags)
+SET(GFLAGS_PREFIX_DIR  ${THIRD_PARTY_PATH}/gflags)
+SET(GFLAGS_SOURCE_DIR  ${THIRD_PARTY_PATH}/gflags/src/extern_gflags)
 SET(GFLAGS_INSTALL_DIR ${THIRD_PARTY_PATH}/install/gflags)
 SET(GFLAGS_INCLUDE_DIR "${GFLAGS_INSTALL_DIR}/include" CACHE PATH "gflags include directory." FORCE)
+set(GFLAGS_REPOSITORY https://github.com/gflags/gflags.git)
+set(GFLAGS_TAG        77592648e3f3be87d6c7123eb81cbad75f9aef5a)
 IF(WIN32)
   set(GFLAGS_LIBRARIES "${GFLAGS_INSTALL_DIR}/lib/gflags_static.lib" CACHE FILEPATH "GFLAGS_LIBRARIES" FORCE)
 ELSE(WIN32)
@@ -27,12 +30,18 @@ ENDIF(WIN32)
 
 INCLUDE_DIRECTORIES(${GFLAGS_INCLUDE_DIR})
 
+cache_third_party(extern_gflags
+    REPOSITORY   ${GFLAGS_REPOSITORY}
+    TAG          ${GFLAGS_TAG}
+    DIR          GFLAGS_SOURCE_DIR)
+
 ExternalProject_Add(
     extern_gflags
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    GIT_REPOSITORY  "https://github.com/gflags/gflags.git"
-    GIT_TAG         77592648e3f3be87d6c7123eb81cbad75f9aef5a
-    PREFIX          ${GFLAGS_SOURCES_DIR}
+    ${SHALLOW_CLONE}
+    "${GFLAGS_DOWNLOAD_CMD}"
+    PREFIX          ${GFLAGS_PREFIX_DIR}
+    SOURCE_DIR      ${GFLAGS_SOURCE_DIR}
     BUILD_COMMAND   ${BUILD_COMMAND}
     INSTALL_COMMAND ${INSTALL_COMMAND}
     UPDATE_COMMAND  ""

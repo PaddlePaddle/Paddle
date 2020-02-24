@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef _WIN32
+#ifdef PADDLE_WITH_NCCL
 #pragma once
 
 #include <stdio.h>
@@ -66,7 +66,7 @@ class NCCLGroupGuard {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclGroupStart());
   }
 
-  inline ~NCCLGroupGuard() {
+  inline ~NCCLGroupGuard() PADDLE_MAY_THROW {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclGroupEnd());
     NCCLMutex().unlock();
   }
@@ -179,7 +179,7 @@ inline std::string GetHierarchicalInterNCCLVarName(size_t pos) {
 class NCCLCommunicator {
  public:
   NCCLCommunicator() {}
-  virtual ~NCCLCommunicator() {}
+  virtual ~NCCLCommunicator() PADDLE_MAY_THROW {}
 
   NCCLContextMap *DefaultFlatCtx() const {
     if (flat_ctxs_.size() == 0) {

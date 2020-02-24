@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/feed_fetch_method.h"
@@ -39,16 +41,6 @@ void NaiveExecutor::Prepare(Scope *scope, const ProgramDesc &program_desc,
 }
 
 void NaiveExecutor::Run() {
-#ifndef PADDLE_ON_INFERENCE
-  LOG_FIRST_N(WARNING, 5) << "The NaiveExecutor can not work properly if the "
-                             "cmake flag ON_INFER is not set.";
-  LOG_FIRST_N(WARNING, 5) << "Unlike the training phase, all the scopes and "
-                             "variables will be reused to save the allocation "
-                             "overhead.";
-  LOG_FIRST_N(WARNING, 5) << "Please re-compile the inference library by "
-                             "setting the cmake flag ON_INFER=ON if you are "
-                             "running Paddle Inference";
-#endif  // PADDLE_ON_INFERENCE
   for (auto &op : ops_) {
     VLOG(4) << std::this_thread::get_id() << " run "
             << op->DebugStringEx(scope_) << " on scope " << scope_;
@@ -100,9 +92,8 @@ void NaiveExecutor::CreateOps(const ProgramDesc &desc, int block_id,
   for (const auto &op_desc : desc.Block(block_id).AllOps()) {
     if (!with_feed_fetch_ops &&
         (op_desc->Type() == "feed" || op_desc->Type() == "fetch")) {
-      string::PrettyLogEndl(string::Style::detail(), "---  skip [%s], %s -> %s",
-                            op_desc->Input("X")[0], op_desc->Type(),
-                            op_desc->Output("Out")[0]);
+      LOG(INFO) << "---  skip [" << op_desc->Input("X")[0] << "], "
+                << op_desc->Type() << " -> " << op_desc->Output("Out")[0];
       continue;
     }
     ops_.emplace_back(OpRegistry::CreateOp(*op_desc));

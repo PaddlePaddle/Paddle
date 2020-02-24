@@ -117,7 +117,7 @@ class BoxCoderOpMaker : public framework::OpProtoAndCheckerMaker {
         .InEnum({"encode_center_size", "decode_center_size"});
     AddAttr<bool>("box_normalized",
                   "(bool, default true) "
-                  "whether treat the priorbox as a noramlized box")
+                  "whether treat the priorbox as a normalized box")
         .SetDefault(true);
     AddAttr<int>("axis",
                  "(int, default 0)"
@@ -140,7 +140,7 @@ class BoxCoderOpMaker : public framework::OpProtoAndCheckerMaker {
               "box_coder_op with shape [N, M, 4] representing the result of N "
               "target boxes encoded with M Prior boxes and variances. When "
               "code_type is 'decode_center_size', N represents the batch size "
-              "and M represents the number of deocded boxes.");
+              "and M represents the number of decoded boxes.");
 
     AddComment(R"DOC(
 
@@ -185,8 +185,10 @@ box will broadcast to target box along the assigned axis.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(box_coder, ops::BoxCoderOp, ops::BoxCoderOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    box_coder, ops::BoxCoderOp, ops::BoxCoderOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     box_coder, ops::BoxCoderKernel<paddle::platform::CPUDeviceContext, float>,
     ops::BoxCoderKernel<paddle::platform::CPUDeviceContext, double>);

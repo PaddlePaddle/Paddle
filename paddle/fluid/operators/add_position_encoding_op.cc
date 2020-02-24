@@ -37,8 +37,9 @@ class AddPositionEncodingOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   platform::CPUPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        platform::CPUPlace());
   }
 };
 
@@ -56,9 +57,9 @@ class AddPositionEncodingOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"))->type(),
-        platform::CPUPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   platform::CPUPlace());
   }
 };
 
@@ -86,18 +87,18 @@ class AddPositionEncodingOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-class AddPositionEncodingGradOpDescMaker
-    : public framework::SingleGradOpDescMaker {
+template <typename T>
+class AddPositionEncodingGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("add_position_encoding_grad");
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -108,9 +109,11 @@ class AddPositionEncodingGradOpDescMaker
 namespace ops = paddle::operators;
 namespace plt = paddle::platform;
 
-REGISTER_OPERATOR(add_position_encoding, ops::AddPositionEncodingOp,
-                  ops::AddPositionEncodingOpMaker,
-                  ops::AddPositionEncodingGradOpDescMaker);
+REGISTER_OPERATOR(
+    add_position_encoding, ops::AddPositionEncodingOp,
+    ops::AddPositionEncodingOpMaker,
+    ops::AddPositionEncodingGradOpMaker<paddle::framework::OpDesc>,
+    ops::AddPositionEncodingGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(add_position_encoding_grad, ops::AddPositionEncodingOpGrad);
 
 REGISTER_OP_CPU_KERNEL(

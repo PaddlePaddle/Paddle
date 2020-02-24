@@ -17,6 +17,9 @@ import unittest
 from test_dist_base import TestDistBase
 import paddle.fluid as fluid
 
+import os
+flag_name = os.path.splitext(__file__)[0]
+
 
 class TestParallelDygraphMnist(TestDistBase):
     def _setup_config(self):
@@ -26,7 +29,11 @@ class TestParallelDygraphMnist(TestDistBase):
 
     def test_mnist(self):
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place("parallel_dygraph_mnist.py", delta=1e-5)
+            self.check_with_place(
+                "parallel_dygraph_mnist.py",
+                delta=1e-5,
+                check_error_log=True,
+                log_name=flag_name)
 
 
 if __name__ == "__main__":

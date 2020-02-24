@@ -87,7 +87,7 @@ class GenerateProposalLabelsOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("RpnRois"));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "RpnRois");
     return framework::OpKernelType(data_type, platform::CPUPlace());
   }
 };
@@ -124,6 +124,7 @@ std::vector<std::vector<int>> SampleFgBgGt(
   // Follow the Faster RCNN's implementation
   for (int64_t i = 0; i < row; ++i) {
     const T* v = proposal_to_gt_overlaps + i * col;
+
     T max_overlap = *std::max_element(v, v + col);
     if ((i < gt_num) && (crowd_data[i])) {
       max_overlap = -1.0;
@@ -254,38 +255,40 @@ std::vector<Tensor> SampleRoisForOneImage(
     bool is_cls_agnostic) {
   // 1.1 map to original image
   auto im_scale = im_info.data<T>()[2];
-  Tensor rpn_rois_slice;
-  Tensor rpn_rois;
 
-  if (is_cascade_rcnn) {
-    // slice rpn_rois from gt_box_num refer to detectron
-    rpn_rois_slice =
-        rpn_rois_in.Slice(gt_boxes.dims()[0], rpn_rois_in.dims()[0]);
-    rpn_rois.mutable_data<T>(rpn_rois_slice.dims(), context.GetPlace());
-    const T* rpn_rois_in_dt = rpn_rois_slice.data<T>();
-    T* rpn_rois_dt = rpn_rois.data<T>();
-    for (int i = 0; i < rpn_rois.numel(); ++i) {
-      rpn_rois_dt[i] = rpn_rois_in_dt[i] / im_scale;
-    }
-  } else {
-    rpn_rois.mutable_data<T>(rpn_rois_in.dims(), context.GetPlace());
-    const T* rpn_rois_in_dt = rpn_rois_in.data<T>();
-    T* rpn_rois_dt = rpn_rois.data<T>();
-    for (int i = 0; i < rpn_rois.numel(); ++i) {
+  Tensor rpn_rois;
+  rpn_rois.mutable_data<T>(rpn_rois_in.dims(), context.GetPlace());
+  const T* rpn_rois_in_dt = rpn_rois_in.data<T>();
+  T* rpn_rois_dt = rpn_rois.data<T>();
+  int gt_num = gt_boxes.dims()[0] * 4;
+  for (int i = 0; i < rpn_rois.numel(); ++i) {
+    if (i < gt_num && is_cascade_rcnn) {
+      rpn_rois_dt[i] = rpn_rois_in_dt[i];
+    } else {
       rpn_rois_dt[i] = rpn_rois_in_dt[i] / im_scale;
     }
   }
 
   // 1.2 compute overlaps
-  int proposals_num = gt_boxes.dims()[0] + rpn_rois.dims()[0];
-  Tensor boxes;
-  boxes.mutable_data<T>({proposals_num, kBoxDim}, context.GetPlace());
-  Concat<T>(context, gt_boxes, rpn_rois, &boxes);
+  int proposals_num = rpn_rois.dims()[0];
+  if (!is_cascade_rcnn) {
+    proposals_num += gt_boxes.dims()[0];
+  }
   Tensor proposal_to_gt_overlaps;
   proposal_to_gt_overlaps.mutable_data<T>({proposals_num, gt_boxes.dims()[0]},
                                           context.GetPlace());
-  BboxOverlaps<T>(boxes, gt_boxes, &proposal_to_gt_overlaps);
 
+  Tensor boxes;
+  boxes.mutable_data<T>({proposals_num, kBoxDim}, context.GetPlace());
+  if (!is_cascade_rcnn) {
+    Concat<T>(context, gt_boxes, rpn_rois, &boxes);
+  } else {
+    T* boxes_dt = boxes.data<T>();
+    for (int i = 0; i < boxes.numel(); ++i) {
+      boxes_dt[i] = rpn_rois_dt[i];
+    }
+  }
+  BboxOverlaps<T>(boxes, gt_boxes, &proposal_to_gt_overlaps);
   // Generate proposal index
   std::vector<std::vector<int>> fg_bg_gt =
       SampleFgBgGt<T>(context, &proposal_to_gt_overlaps, is_crowd,
@@ -518,11 +521,11 @@ class GenerateProposalLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
         "each element is a bounding box with [xmin, ymin, xmax, ymax] format.");
     AddOutput("LabelsInt32",
               "(LoDTensor), This output is a 2D LoDTensor with shape [P, 1], "
-              "each element repersents a class label of a roi");
+              "each element represents a class label of a roi");
     AddOutput("BboxTargets",
               "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4 * "
               "class_nums], "
-              "each element repersents a box label of a roi");
+              "each element represents a box label of a roi");
     AddOutput(
         "BboxInsideWeights",
         "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4 * "
@@ -583,9 +586,11 @@ Finally BboxInsideWeights and BboxOutsideWeights are used to specify whether it 
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(generate_proposal_labels, ops::GenerateProposalLabelsOp,
-                  ops::GenerateProposalLabelsOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    generate_proposal_labels, ops::GenerateProposalLabelsOp,
+    ops::GenerateProposalLabelsOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(generate_proposal_labels,
                        ops::GenerateProposalLabelsKernel<float>,
                        ops::GenerateProposalLabelsKernel<double>);

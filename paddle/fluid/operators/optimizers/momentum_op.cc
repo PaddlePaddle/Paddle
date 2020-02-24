@@ -37,36 +37,34 @@ class MomentumOpInferVarType : public framework::VarTypeInference {
   }
 };
 
-class MomentumOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("Param",
-             "(Tensor, default Tensor<float>) "
-             "Input parameter that has to be updated");
-    AddInput("Grad",
-             "(Tensor, default Tensor<float>) "
-             "Input gradient of the parameter");
-    AddInput("Velocity",
-             "(Tensor, default Tensor<float>) "
-             "Input velocity (corresponding to the parameter) "
-             "that has to be updated");
-    AddInput("LearningRate",
-             "(Tensor, default Tensor<float>) "
-             "Input learning rate");
+void MomentumOpMaker::Make() {
+  AddInput("Param",
+           "(Tensor, default Tensor<float>) "
+           "Input parameter that has to be updated");
+  AddInput("Grad",
+           "(Tensor, default Tensor<float>) "
+           "Input gradient of the parameter");
+  AddInput("Velocity",
+           "(Tensor, default Tensor<float>) "
+           "Input velocity (corresponding to the parameter) "
+           "that has to be updated");
+  AddInput("LearningRate",
+           "(Tensor, default Tensor<float>) "
+           "Input learning rate");
 
-    AddOutput("ParamOut",
-              "(Tensor) This output is updated parameter. "
-              "It shared memory with Input(Param).");
-    AddOutput("VelocityOut",
-              "(Tensor) This output is updated velocity. "
-              "It shared memory with Input(Velocity).");
+  AddOutput("ParamOut",
+            "(Tensor) This output is updated parameter. "
+            "It shared memory with Input(Param).");
+  AddOutput("VelocityOut",
+            "(Tensor) This output is updated velocity. "
+            "It shared memory with Input(Velocity).");
 
-    AddAttr<float>("mu", "(float) Momentum coefficient");
-    AddAttr<bool>("use_nesterov",
-                  "(bool, default false) "
-                  "Use Nesterov Momentum")
-        .SetDefault(false);
-    AddComment(R"DOC(
+  AddAttr<float>("mu", "(float) Momentum coefficient");
+  AddAttr<bool>("use_nesterov",
+                "(bool, default false) "
+                "Use Nesterov Momentum")
+      .SetDefault(false);
+  AddComment(R"DOC(
 Momentum Optimizer.
 
 This optimizer has a flag for Nestrov Momentum.
@@ -81,15 +79,17 @@ else:   \\
 $$
 
 )DOC");
-  }
-};
+}
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(momentum, ops::MomentumOp, ops::MomentumOpMaker,
-                  paddle::framework::EmptyGradOpMaker,
-                  ops::MomentumOpInferVarType);
+REGISTER_OPERATOR(
+    momentum, ops::MomentumOp, ops::MomentumOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::MomentumOpInferVarType);
 REGISTER_OP_CPU_KERNEL(
     momentum, ops::MomentumOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MomentumOpKernel<paddle::platform::CPUDeviceContext, double>);

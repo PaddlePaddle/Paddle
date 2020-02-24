@@ -17,7 +17,7 @@ from __future__ import print_function
 import unittest
 import platform
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid.op import Operator
@@ -25,11 +25,13 @@ import paddle.compat as cpt
 import paddle.version as ver
 
 
+@skip_check_grad_ci(reason="check_grad is called when ver.mkl() == ON"
+                    "and 'Linux' in platform.platform().")
 class TestFusedEmbeddingSeqPoolOp(OpTest):
     def setUp(self):
         self.op_type = "fused_embedding_seq_pool"
-        self.emb_size = 2
-        self.table = np.random.random((17, self.emb_size)).astype("float32")
+        self.emb_size = 6
+        self.table = np.random.random((17, self.emb_size)).astype("float64")
         self.ids = np.array([[[4], [3]], [[4], [3]], [[2], [1]],
                              [[16], [1]]]).astype("int64")
         ids_expand = np.expand_dims(self.ids, axis=1)
@@ -45,12 +47,15 @@ class TestFusedEmbeddingSeqPoolOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        # TODO(wangzhongpu): support lod in dygraph mode
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
+        # TODO(wangzhongpu): support lod in dygraph mode
         if ver.mkl() == "ON" and 'Linux' in platform.platform():
             self.attrs = {'is_sparse': False}
-            self.check_grad(['W'], 'Out', no_grad_set=('Ids'))
+            self.check_grad(
+                ['W'], 'Out', no_grad_set=['Ids'], check_dygraph=False)
 
 
 class TestLookupTableOpWithPadding(TestFusedEmbeddingSeqPoolOp):
@@ -74,14 +79,45 @@ class TestLookupTableOpWithPadding(TestFusedEmbeddingSeqPoolOp):
                     np.array(output), [len(self.lod[0]), 2 * self.emb_size])
             }
             self.attrs = {'padding_idx': int(padding_idx)}
-            self.check_output()
+            # TODO(wangzhongpu): support lod in dygraph mode
+            self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         if ver.mkl() == "ON" and 'Linux' in platform.platform():
             ids = np.squeeze(self.ids, axis=2)
             padding_idx = np.random.choice(ids.flatten(), 1)[0]
             self.attrs = {'padding_idx': int(padding_idx), 'is_sparse': False}
-            self.check_grad(['W'], 'Out', no_grad_set=('Ids'))
+            # TODO(wangzhongpu): support lod in dygraph mode
+            self.check_grad(
+                ['W'], 'Out', no_grad_set=['Ids'], check_dygraph=False)
+
+
+class TestFusedEmbeddingSeqPoolApi(unittest.TestCase):
+    def test_api(self):
+        if ver.mkl() == "ON" and 'Linux' in platform.platform():
+            import paddle.fluid as fluid
+
+            dict_size = 20
+            data_t = fluid.layers.data(
+                name='word', shape=[1], dtype='int64', lod_level=1)
+            padding_idx = np.random.randint(1, 10)
+            out = fluid.contrib.fused_embedding_seq_pool(
+                input=data_t,
+                size=[dict_size, 32],
+                param_attr='w',
+                padding_idx=padding_idx,
+                is_sparse=False)
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            # prepare input words' idx
+            x_tensor = fluid.core.LoDTensor()
+            idxs = np.random.randint(1, 10, (8)).astype("int64")
+
+            x_tensor.set(idxs, place)
+            x_tensor.set_recursive_sequence_lengths([[4, 4]])
+            ret = exe.run(feed={'word': x_tensor}, fetch_list=[out])
 
 
 if __name__ == "__main__":

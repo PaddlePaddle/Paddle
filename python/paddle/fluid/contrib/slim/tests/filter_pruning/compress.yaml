@@ -24,11 +24,11 @@ strategies:
         target_ratio: 0.08
         num_steps: 1
         eval_rate: 0.5
-        pruned_params: 'conv6_sep_weights'
+        pruned_params: '_conv6_sep_weights'
         sensitivities_file: 'mobilenet_acc_top1_sensitive.data'
         metric_name: 'acc_top1'
 compressor:
-    epoch: 1
+    epoch: 2
     checkpoint_path: './checkpoints_pruning/'
     strategies:
         - sensitive_pruning_strategy

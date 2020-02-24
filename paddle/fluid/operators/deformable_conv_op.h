@@ -44,7 +44,7 @@ void ModulatedDeformableCol2imCPUKernel(
     const int dilation_w, const int channel_per_deformable_group,
     const int batch_size, const int deformable_group, const int height_col,
     const int width_col, T* grad_im) {
-  for (size_t thread = 0; thread < num_kernels; thread++) {
+  for (int thread = 0; thread < num_kernels; thread++) {
     const int j = (thread / width_col / height_col / batch_size) % kernel_w;
     const int i =
         (thread / width_col / height_col / batch_size / kernel_w) % kernel_h;
@@ -128,7 +128,7 @@ void ModulatedDeformableCol2imCoordCPUKernel(
     const int channel_per_deformable_group, const int batch_size,
     const int offset_channels, const int deformable_group, const int height_col,
     const int width_col, T* grad_offset, T* grad_mask) {
-  for (size_t i = 0; i < num_kernels; i++) {
+  for (int i = 0; i < num_kernels; i++) {
     T val = 0, mval = 0;
     const int w = i % width_col;
     const int h = (i / width_col) % height_col;
@@ -236,7 +236,7 @@ void ModulatedDeformableIm2colCPUKernel(
     const int channel_per_deformable_group, const int batch_size,
     const int num_channels, const int deformable_group, const int height_col,
     const int width_col, T* data_col) {
-  for (size_t i = 0; i < num_kernels; i++) {
+  for (int i = 0; i < num_kernels; i++) {
     const int w_col = i % width_col;
     const int h_col = (i / width_col) % height_col;
     const int b_col = (i / width_col) / height_col % batch_size;
@@ -313,7 +313,7 @@ template <typename T>
 void FilterGradAddupCPUKernel(const int nthreads, const int n, const int height,
                               const int width, const T* dweight_3d,
                               T* filter_grad) {
-  for (size_t i = 0; i < nthreads; i++) {
+  for (int i = 0; i < nthreads; i++) {
     filter_grad[i] = filter_grad[i] + dweight_3d[i];
   }
 }

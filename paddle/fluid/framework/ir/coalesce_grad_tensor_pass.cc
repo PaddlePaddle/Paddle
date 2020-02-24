@@ -276,7 +276,7 @@ class CoalesceGradTensorPass : public ir::Pass {
       }
 
       auto dtype =
-          GetDtypeOfVar(vars_info, group_params_grads->at(i).front().first);
+          GetDtypeOfVar(vars_info, group_params_grads->at(i).front().second);
       VLOG(10) << out.str()
                << ", group size:" << group_params_grads->at(i).size()
                << ", group memory size:" << static_cast<double>(gps_size) / kMB
@@ -432,26 +432,19 @@ class CoalesceGradTensorPass : public ir::Pass {
                             details::ParamsAndGrads *params_grads) const {
     std::vector<ir::Node *> topo_nodes = ir::TopologySortOperations(graph);
     for (auto &node : topo_nodes) {
-      try {
-        bool is_bk_op =
-            static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
-                                  OpProtoAndCheckerMaker::OpRoleAttrName())) &
-                              static_cast<int>(OpRole::kBackward));
-        if (!is_bk_op) continue;
-        // Currently, we assume that once gradient is generated, it can be
-        // broadcast, and each gradient is only broadcast once.
-        auto backward_vars =
-            boost::get<std::vector<std::string>>(node->Op()->GetNullableAttr(
-                OpProtoAndCheckerMaker::OpRoleVarAttrName()));
-        PADDLE_ENFORCE_EQ(backward_vars.size() % 2, static_cast<size_t>(0));
-        for (size_t i = 0; i < backward_vars.size(); i += 2) {
-          VLOG(10) << "Trainable parameter: " << backward_vars[i]
-                   << ", gradient: " << backward_vars[i + 1];
+      auto &op_desc = *(node->Op());
 
-          params_grads->emplace_back(std::make_pair(
-              backward_vars[i] /*param*/, backward_vars[i + 1] /*grad*/));
-        }
-      } catch (boost::bad_get e) {
+      bool is_bk_op = details::IsOpRole(op_desc, OpRole::kBackward);
+      if (!is_bk_op) continue;
+      // Currently, we assume that once gradient is generated, it can be
+      // broadcast, and each gradient is only broadcast once.
+      auto backward_vars = details::GetOpRoleVarsOrEmpty(op_desc);
+      for (size_t i = 0; i < backward_vars.size(); i += 2) {
+        VLOG(10) << "Trainable parameter: " << backward_vars[i]
+                 << ", gradient: " << backward_vars[i + 1];
+
+        params_grads->emplace_back(std::make_pair(
+            backward_vars[i] /*param*/, backward_vars[i + 1] /*grad*/));
       }
     }
   }
@@ -465,28 +458,34 @@ class CoalesceGradTensorPass : public ir::Pass {
     std::vector<std::string> params_name;
     grads_name.reserve(params_grads.size());
     params_name.reserve(params_grads.size());
+
+    auto dtype = GetDtypeOfVar(vars_info, params_grads.front().second);
     for (auto &p_g : params_grads) {
       params_name.emplace_back(p_g.first);
       grads_name.emplace_back(p_g.second);
+      auto next_dtype = GetDtypeOfVar(vars_info, p_g.second);
+      PADDLE_ENFORCE_EQ(next_dtype, dtype);
     }
 
     result->Get<details::ProgramDescs>(details::kProgramDescs).emplace_back();
     ProgramDesc &program_desc =
         result->Get<details::ProgramDescs>(details::kProgramDescs).back();
     auto *global_block = program_desc.MutableBlock(0);
-    AppendAllocSpaceForVarsOp(params_name, grads_name, fused_var_name,
+    AppendAllocSpaceForVarsOp(params_name, grads_name, fused_var_name, dtype,
                               global_block);
   }
 
   void AppendAllocSpaceForVarsOp(const std::vector<std::string> &params_name,
                                  const std::vector<std::string> &grads_name,
                                  const std::string &fused_var_name,
+                                 const proto::VarType::Type &dtype,
                                  BlockDesc *global_block) const {
     auto op_desc = global_block->AppendOp();
     op_desc->SetType("coalesce_tensor");
     op_desc->SetInput("Input", params_name);
     op_desc->SetOutput("Output", grads_name);
     op_desc->SetOutput("FusedOutput", {fused_var_name});
+    op_desc->SetAttr("dtype", static_cast<int>(dtype));
   }
 };
 }  // namespace ir

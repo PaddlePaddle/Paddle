@@ -114,7 +114,7 @@ void FusedEmbeddingFCLSTMOp::InferShape(
 framework::OpKernelType FusedEmbeddingFCLSTMOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   return framework::OpKernelType(
-      ctx.Input<framework::LoDTensor>("Embeddings")->type(),
+      OperatorWithKernel::IndicateVarDataType(ctx, "Embeddings"),
       ctx.device_context());
 }
 
@@ -328,7 +328,7 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
     INIT_VEC_FUNC
     INIT_BASE_INPUT_DATAS
 
-    //  std::cout << "====> SeqCompute" << std::endl;
+    // log(INFO) << "====> SeqCompute" << "\n";
     auto ids_lod = ids->lod();
     const int total_T = ids_dims[0];
     const int N = ids_lod[0].size() - 1;

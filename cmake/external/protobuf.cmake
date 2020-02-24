@@ -15,12 +15,8 @@
 INCLUDE(ExternalProject)
 # Always invoke `FIND_PACKAGE(Protobuf)` for importing function protobuf_generate_cpp
 IF(NOT WIN32)
-FIND_PACKAGE(Protobuf QUIET)
+    FIND_PACKAGE(Protobuf QUIET)
 ENDIF(NOT WIN32)
-macro(UNSET_VAR VAR_NAME)
-    UNSET(${VAR_NAME} CACHE)
-    UNSET(${VAR_NAME})
-endmacro()
 
 UNSET_VAR(PROTOBUF_INCLUDE_DIR)
 UNSET_VAR(PROTOBUF_FOUND)
@@ -142,25 +138,23 @@ IF (WIN32)
 ENDIF(WIN32)
 
 if (NOT "${PROTOBUF_ROOT}" STREQUAL "")
-
     find_path(PROTOBUF_INCLUDE_DIR google/protobuf/message.h PATHS ${PROTOBUF_ROOT}/include NO_DEFAULT_PATH)
     find_library(PROTOBUF_LIBRARY protobuf libprotobuf.lib PATHS ${PROTOBUF_ROOT}/lib NO_DEFAULT_PATH)
     find_library(PROTOBUF_LITE_LIBRARY protobuf-lite libprotobuf-lite.lib PATHS ${PROTOBUF_ROOT}/lib NO_DEFAULT_PATH)
     find_library(PROTOBUF_PROTOC_LIBRARY protoc libprotoc.lib PATHS ${PROTOBUF_ROOT}/lib NO_DEFAULT_PATH)
     find_program(PROTOBUF_PROTOC_EXECUTABLE protoc PATHS ${PROTOBUF_ROOT}/bin NO_DEFAULT_PATH)
     if (PROTOBUF_INCLUDE_DIR AND PROTOBUF_LIBRARY AND PROTOBUF_LITE_LIBRARY AND PROTOBUF_PROTOC_LIBRARY AND PROTOBUF_PROTOC_EXECUTABLE)
-        message(STATUS "Using custom protobuf library in ${PROTOBUF_ROOT}.")
         SET(PROTOBUF_FOUND true)
         SET_PROTOBUF_VERSION()
         PROMPT_PROTOBUF_LIB()
-    else()
-        message(WARNING "Cannot find protobuf library in ${PROTOBUF_ROOT}")
+        message(STATUS "Using custom protobuf library in ${PROTOBUF_ROOT}.")
     endif()
 endif()
 
 FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
     STRING(REPLACE "extern_" "" TARGET_DIR_NAME "${TARGET_NAME}")
-    SET(PROTOBUF_SOURCES_DIR ${THIRD_PARTY_PATH}/${TARGET_DIR_NAME})
+    SET(PROTOBUF_PREFIX_DIR  ${THIRD_PARTY_PATH}/${TARGET_DIR_NAME})
+    SET(PROTOBUF_SOURCE_DIR  ${THIRD_PARTY_PATH}/${TARGET_DIR_NAME}/src/${TARGET_NAME})
     SET(PROTOBUF_INSTALL_DIR ${THIRD_PARTY_PATH}/install/${TARGET_DIR_NAME})
 
     SET(${TARGET_NAME}_INCLUDE_DIR "${PROTOBUF_INSTALL_DIR}/include" PARENT_SCOPE)
@@ -198,37 +192,45 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
         SET(OPTIONAL_CACHE_ARGS "-DZLIB_ROOT:STRING=${ZLIB_ROOT}")
     ENDIF()
     IF(WIN32)
-        SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} "-DCMAKE_GENERATOR_PLATFORM=x64")
+        SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} 
+            "-DCMAKE_GENERATOR=${CMAKE_GENERATOR}"
+            "-DCMAKE_GENERATOR_PLATFORM=${CMAKE_GENERATOR_PLATFORM}"
+            "-Dprotobuf_MSVC_STATIC_RUNTIME=${MSVC_STATIC_CRT}")
     ENDIF()
 
-    SET(PROTOBUF_REPO "https://github.com/protocolbuffers/protobuf.git")
-    SET(PROTOBUF_TAG "9f75c5aa851cd877fb0d93ccc31b8567a6706546")
+    SET(PROTOBUF_REPOSITORY  https://github.com/protocolbuffers/protobuf.git)
+    SET(PROTOBUF_TAG         9f75c5aa851cd877fb0d93ccc31b8567a6706546)
+
+    cache_third_party(${TARGET_NAME}
+        REPOSITORY    ${PROTOBUF_REPOSITORY}
+        TAG           ${PROTOBUF_TAG}
+        DIR           PROTOBUF_SOURCE_DIR)
 
     ExternalProject_Add(
         ${TARGET_NAME}
         ${EXTERNAL_PROJECT_LOG_ARGS}
-        PREFIX          ${PROTOBUF_SOURCES_DIR}
+        ${SHALLOW_CLONE}
+        "${PROTOBUF_DOWNLOAD_CMD}"
+        PREFIX          ${PROTOBUF_PREFIX_DIR}
+        SOURCE_DIR      ${PROTOBUF_SOURCE_DIR}
         UPDATE_COMMAND  ""
         DEPENDS         zlib
-        GIT_REPOSITORY  ${PROTOBUF_REPO}
-        GIT_TAG         ${PROTOBUF_TAG}
         CONFIGURE_COMMAND
-        ${CMAKE_COMMAND} ${PROTOBUF_SOURCES_DIR}/src/${TARGET_NAME}/cmake
-            ${OPTIONAL_ARGS}
-            -Dprotobuf_BUILD_TESTS=OFF
-            -DCMAKE_SKIP_RPATH=ON
-            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-            -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
-            -DCMAKE_INSTALL_PREFIX=${PROTOBUF_INSTALL_DIR}
-            -DCMAKE_INSTALL_LIBDIR=lib
-            -DBUILD_SHARED_LIBS=OFF
-            -Dprotobuf_MSVC_STATIC_RUNTIME=${MSVC_STATIC_CRT}
+                        ${CMAKE_COMMAND} ${PROTOBUF_SOURCE_DIR}/cmake
+                         ${OPTIONAL_ARGS}
+                        -Dprotobuf_BUILD_TESTS=OFF
+                        -DCMAKE_SKIP_RPATH=ON
+                        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+                        -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
+                        -DCMAKE_INSTALL_PREFIX=${PROTOBUF_INSTALL_DIR}
+                        -DCMAKE_INSTALL_LIBDIR=lib
+                        -DBUILD_SHARED_LIBS=OFF
         CMAKE_CACHE_ARGS
-            -DCMAKE_INSTALL_PREFIX:PATH=${PROTOBUF_INSTALL_DIR}
-            -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
-            -DCMAKE_VERBOSE_MAKEFILE:BOOL=OFF
-            -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
-            ${OPTIONAL_CACHE_ARGS}
+                        -DCMAKE_INSTALL_PREFIX:PATH=${PROTOBUF_INSTALL_DIR}
+                        -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
+                        -DCMAKE_VERBOSE_MAKEFILE:BOOL=OFF
+                        -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
+                        ${OPTIONAL_CACHE_ARGS}
     )
 ENDFUNCTION()
 

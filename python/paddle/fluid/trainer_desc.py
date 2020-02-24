@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Defination of trainers."""
 
 import sys
 from os import path
@@ -75,6 +76,9 @@ class TrainerDesc(object):
     def _set_use_cvm(self, use_cvm=False):
         self.proto_desc.use_cvm = use_cvm
 
+    def _set_no_cvm(self, no_cvm=False):
+        self.proto_desc.no_cvm = no_cvm
+
     def _set_scale_datanorm(self, scale_datanorm=-1):
         self.proto_desc.scale_datanorm = scale_datanorm
 
@@ -84,6 +88,9 @@ class TrainerDesc(object):
     def _set_mpi_rank(self, mpi_rank):
         self.proto_desc.mpi_rank = mpi_rank
 
+    def _set_mpi_size(self, mpi_size):
+        self.proto_desc.mpi_size = mpi_size
+
     def _set_dump_fields(self, dump_fields):
         for field in dump_fields:
             self.proto_desc.dump_fields.append(field)
@@ -91,8 +98,26 @@ class TrainerDesc(object):
     def _set_dump_fields_path(self, path):
         self.proto_desc.dump_fields_path = path
 
+    def _set_dump_file_num(self, dump_file_num):
+        self.proto_desc.dump_file_num = dump_file_num
+
     def _set_dump_converter(self, converter):
         self.proto_desc.dump_converter = converter
+
+    def _set_dump_param(self, dump_param):
+        for param in dump_param:
+            self.proto_desc.dump_param.append(param)
+
+    def _set_thread_barrier(self, thread_barrier):
+        self.proto_desc.thread_barrier = thread_barrier
+
+    def _set_check_nan_var_names(self, check_nan_var_names):
+        for var in check_nan_var_names:
+            self.proto_desc.check_nan_var_names.append(var)
+
+    def _set_loss_names(self, loss_names):
+        for loss in loss_names:
+            self.proto_desc.loss_names.append(loss)
 
     def _set_adjust_ins_weight(self, config_dict):
         self.proto_desc.adjust_ins_weight_config.need_adjust = \
@@ -105,6 +130,78 @@ class TrainerDesc(object):
                 config_dict.get("nid_adjw_ratio", 0.0)
         self.proto_desc.adjust_ins_weight_config.ins_weight_slot = \
                 config_dict.get("ins_weight_slot", "")
+
+    def _set_copy_table_config(self, config_dict):
+        config = self.proto_desc.copy_table_config
+        config.need_copy = config_dict.get("need_copy", False)
+        config.batch_num = config_dict.get("batch_num", 100)
+
+        src_sparse_tables = config_dict.get("src_sparse_tables", [])
+        if not isinstance(src_sparse_tables, list):
+            src_sparse_tables = [src_sparse_tables]
+        dest_sparse_tables = config_dict.get("dest_sparse_tables", [])
+        if not isinstance(dest_sparse_tables, list):
+            dest_sparse_tables = [dest_sparse_tables]
+        if len(src_sparse_tables) != len(dest_sparse_tables):
+            raise ValueError(
+                "len(src_sparse_tables) != len(dest_sparse_tables)," \
+                " %s vs %s" % (len(src_sparse_tables), \
+                len(dest_sparse_tables)))
+        for i in src_sparse_tables:
+            config.src_sparse_tables.append(i)
+        for i in dest_sparse_tables:
+            config.dest_sparse_tables.append(i)
+
+        src_dense_tables = config_dict.get("src_dense_tables", [])
+        if not isinstance(src_dense_tables, list):
+            src_dense_tables = [src_dense_tables]
+        dest_dense_tables = config_dict.get("dest_dense_tables", [])
+        if not isinstance(dest_dense_tables, list):
+            dest_dense_tables = [dest_dense_tables]
+        if len(src_dense_tables) != len(dest_dense_tables):
+            raise ValueError(
+                "len(src_dense_tables) != len(dest_dense_tables)," \
+                " %s vs %s" % (len(src_dense_tables), \
+                len(dest_dense_tables)))
+        for i in src_dense_tables:
+            config.src_dense_tables.append(i)
+        for i in dest_dense_tables:
+            config.dest_dense_tables.append(i)
+
+        # user can also specify dense variables to copy,
+        # instead of copy dense table
+        src_var_list = config_dict.get("src_var_list", [])
+        if not isinstance(src_var_list, list):
+            src_var_list = [src_var_list]
+        dest_var_list = config_dict.get("dest_var_list", [])
+        if not isinstance(dest_var_list, list):
+            dest_var_list = [dest_var_list]
+        if len(src_var_list) != len(dest_var_list):
+            raise ValueError(
+                "len(src_var_list) != len(dest_var_list), %s vs" \
+                " %s" % (len(src_var_list), len(dest_var_list)))
+        for i in src_var_list:
+            config.src_var_list.append(i)
+        for i in dest_var_list:
+            config.dest_var_list.append(i)
+
+        dependency_map = config_dict.get("dependency_map", {})
+        for key in dependency_map:
+            m = config.table_denpendency_map.add()
+            m.key = key
+            values = dependency_map[key]
+            if not isinstance(values, list):
+                values = [values]
+            if len(values) != 1:
+                raise ValueError("dependency len %s != 1" % len(values))
+            for value in values:
+                m.values.append(value)
+        config.dense_pull_after_copy = \
+            config_dict.get("dense_pull_after_copy", True)
+        config.enable_dependency = \
+            config_dict.get("enable_dependency", False)
+        config.sparse_copy_by_feasign = \
+            config_dict.get("sparse_copy_by_feasign", True)
 
     def _desc(self):
         from google.protobuf import text_format
@@ -137,6 +234,11 @@ class MultiTrainer(TrainerDesc):
 
 
 class DistMultiTrainer(TrainerDesc):
+    """
+    Implement of DistMultiTrainer.
+    It's for Distributed training.
+    """
+
     def __init__(self):
         super(DistMultiTrainer, self).__init__()
         pass
@@ -156,6 +258,11 @@ class DistMultiTrainer(TrainerDesc):
 
 
 class PipelineTrainer(TrainerDesc):
+    """
+    Implement of PipelineTrainer.
+    It's for Pipeline.
+    """
+
     def __init__(self):
         super(PipelineTrainer, self).__init__()
         pass

@@ -92,8 +92,9 @@ class PrecisionRecallOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("MaxProbs")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "MaxProbs"),
+        ctx.device_context());
   }
 };
 
@@ -182,8 +183,10 @@ Output(AccumStatesInfo) is metrics of accumulation data.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(precision_recall, ops::PrecisionRecallOp,
-                             ops::PrecisionRecallOpMaker);
+REGISTER_OPERATOR(
+    precision_recall, ops::PrecisionRecallOp, ops::PrecisionRecallOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     precision_recall,
     ops::PrecisionRecallKernel<paddle::platform::CPUPlace, float>,

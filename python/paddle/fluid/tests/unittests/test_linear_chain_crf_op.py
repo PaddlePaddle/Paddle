@@ -45,7 +45,7 @@ class LinearChainCrfForward(object):
         self.w_exps = transition_exps[2:, :]
 
         # The output of linear chain crf operator.
-        # alpha is a memo table in dynamic programming to caculate
+        # alpha is a memo table in dynamic programming to calculate
         # nomalization factor.
         self.alpha = np.zeros(
             (seq_start_positions[-1], self.tag_num), dtype="float64")
@@ -205,7 +205,7 @@ class TestLinearChainCrfPaddingTensor(OpTest):
             "Emission": self.seq_pad(emission, lod[0]),
             "Transition": transition,
             "Label": self.seq_pad(labels, lod[0]),
-            "length": np.array(lod).astype("int64")
+            "Length": np.array(lod).astype("int64")
         }
         crf = LinearChainCrfForward(seq_start_pos, emission, emission_row_max,
                                     emission_exps, transition, transition_exps,

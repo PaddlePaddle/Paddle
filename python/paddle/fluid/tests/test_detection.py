@@ -152,6 +152,25 @@ class TestPriorBox(unittest.TestCase):
             assert box.shape[3] == 4
 
 
+class TestPriorBox2(unittest.TestCase):
+    def test_prior_box(self):
+        program = Program()
+        with program_guard(program):
+            data_shape = [None, 3, None, None]
+            images = fluid.data(name='pixel', shape=data_shape, dtype='float32')
+            conv1 = fluid.layers.conv2d(images, 3, 3, 2)
+            box, var = layers.prior_box(
+                input=conv1,
+                image=images,
+                min_sizes=[100.0],
+                aspect_ratios=[1.],
+                flip=True,
+                clip=True)
+            assert len(box.shape) == 4
+            assert box.shape == var.shape
+            assert box.shape[3] == 4
+
+
 class TestDensityPriorBox(unittest.TestCase):
     def test_density_prior_box(self):
         program = Program()
@@ -538,8 +557,9 @@ class TestMulticlassNMS2(unittest.TestCase):
             bboxes = layers.data(
                 name='bboxes', shape=[-1, 10, 4], dtype='float32')
             scores = layers.data(name='scores', shape=[-1, 10], dtype='float32')
-            output = layers.multiclass_nms2(bboxes, scores, 0.3, 400, 200, 0.7)
-            output2, index = layers.multiclass_nms2(
+            output = fluid.contrib.multiclass_nms2(bboxes, scores, 0.3, 400,
+                                                   200, 0.7)
+            output2, index = fluid.contrib.multiclass_nms2(
                 bboxes, scores, 0.3, 400, 200, 0.7, return_index=True)
             self.assertIsNotNone(output)
             self.assertIsNotNone(output2)

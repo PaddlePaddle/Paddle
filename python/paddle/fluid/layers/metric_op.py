@@ -20,9 +20,11 @@ from __future__ import print_function
 import warnings
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
-from ..framework import Variable
+from ..framework import Variable, in_dygraph_mode, _varbase_creator
+from .. import core
 from ..param_attr import ParamAttr
 from . import nn
+from ..data_feeder import check_variable_and_dtype
 
 __all__ = ['accuracy', 'auc']
 
@@ -37,27 +39,63 @@ def accuracy(input, label, k=1, correct=None, total=None):
     Note: the dtype of accuracy is determined by input. the input and label dtype can be different.
 
     Args:
-        input(Variable): The input of accuracy layer, which is the predictions of network.
-          Carry LoD information is supported.
-        label(Variable): The label of dataset.
-        k(int): The top k predictions for each class will be checked.
-        correct(Variable): The correct predictions count.
-        total(Variable): The total entries count.
+        input(Variable): The input of accuracy layer, which is the predictions of network. A LoDTensor or Tensor with type float32,float64.
+            The shape is ``[sample_number, class_dim]`` .
+        label(Variable): The label of dataset.  LoDTensor or Tensor with type int32,int64. The shape is ``[sample_number, 1]`` .
+        k(int): The top k predictions for each class will be checked. Data type is int64 or int32.
+        correct(Variable): The correct predictions count. A Tensor with type int64 or int32.
+        total(Variable): The total entries count. A tensor with type int64 or int32.
 
     Returns:
-        Variable: The correct rate.
+        Variable: The correct rate. A Tensor with type float32.
 
     Examples:
         .. code-block:: python
 
-           import paddle.fluid as fluid
-           data = fluid.layers.data(name="data", shape=[-1, 32, 32], dtype="float32")
-           label = fluid.layers.data(name="label", shape=[-1,1], dtype="int32")
-           predict = fluid.layers.fc(input=data, size=10)
-           accuracy_out = fluid.layers.accuracy(input=predict, label=label, k=5)
+            import paddle.fluid as fluid
+            import numpy as np
 
+            data = fluid.data(name="input", shape=[-1, 32, 32], dtype="float32")
+            label = fluid.data(name="label", shape=[-1,1], dtype="int")
+            fc_out = fluid.layers.fc(input=data, size=10)
+            predict = fluid.layers.softmax(input=fc_out)
+            result = fluid.layers.accuracy(input=predict, label=label, k=5)
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+
+            exe.run(fluid.default_startup_program())
+            x = np.random.rand(3, 32, 32).astype("float32")
+            y = np.array([[1],[0],[1]])
+            output= exe.run(feed={"input": x,"label": y},
+                             fetch_list=[result[0]])
+            print(output)
+
+            #[array([0.6666667], dtype=float32)]
     """
+    if in_dygraph_mode():
+        topk_out, topk_indices = nn.topk(input, k=k)
+        inputs = {
+            "Out": [topk_out],
+            "Indices": [topk_indices],
+            "Label": [label]
+        }
+        acc_out = _varbase_creator(dtype="float32")
+        if correct is None:
+            correct = _varbase_creator(dtype="int64")
+        if total is None:
+            total = _varbase_creator(dtype="int64")
+        outputs = {
+            "Accuracy": [acc_out],
+            "Correct": [correct],
+            "Total": [total]
+        }
+        outs = core.ops.accuracy(inputs, {}, outputs)
+        return outs['Accuracy'][0]
+
     helper = LayerHelper("accuracy", **locals())
+    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
+                             'accuracy')
     topk_out, topk_indices = nn.topk(input, k=k)
     acc_out = helper.create_variable_for_type_inference(dtype="float32")
     if correct is None:
@@ -105,8 +143,10 @@ def auc(input,
                          [0, 1]. Each row is sorted in descending order. This
                          input should be the output of topk. Typically, this
                          Variable indicates the probability of each label.
+                         A LoDTensor or Tensor with type float32,float64.
         label(Variable): A 2D int Variable indicating the label of the training
                          data. The height is batch size and width is always 1.
+                         A LoDTensor or Tensor with type int32,int64.
         curve(str): Curve type, can be 'ROC' or 'PR'. Default 'ROC'.
         num_thresholds(int): The number of thresholds to use when discretizing
                              the roc curve. Default 200.
@@ -118,15 +158,30 @@ def auc(input,
         Variable: A tuple representing the current AUC.
         The return tuple is auc_out, batch_auc_out, [
         batch_stat_pos, batch_stat_neg, stat_pos, stat_neg ]
+        Data type is Tensor, supporting float32, float64.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            data = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
-            label = fluid.layers.data(name="label", shape=[1], dtype="int32")
-            predict = fluid.layers.fc(input=data, size=2)
-            auc_out = fluid.layers.auc(input=predict, label=label)
+            import numpy as np
+
+            data = fluid.data(name="input", shape=[-1, 32,32], dtype="float32")
+            label = fluid.data(name="label", shape=[-1], dtype="int")
+            fc_out = fluid.layers.fc(input=data, size=2)
+            predict = fluid.layers.softmax(input=fc_out)
+            result=fluid.layers.auc(input=predict, label=label)
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+
+            exe.run(fluid.default_startup_program())
+            x = np.random.rand(3,32,32).astype("float32")
+            y = np.array([1,0,1])
+            output= exe.run(feed={"input": x,"label": y},
+                             fetch_list=[result[0]])
+            print(output)
+            #[array([0.5])]
     """
     helper = LayerHelper("auc", **locals())
     auc_out = helper.create_variable_for_type_inference(dtype="float64")
@@ -134,16 +189,22 @@ def auc(input,
     # make tp, tn, fp, fn persistable, so that can accumulate all batches.
 
     # for batch auc
+    # we create slide_step+1 buckets, the first slide_steps buckets store 
+    # historical batch-level values, and the last bucket stores the sum values of 
+    # previous slide_step buckets.
+    # The index of bucket that the newest batch will use is determined by batch_id mod slide_steps,
+    # and batch_id is store in the last posision of following variable
     batch_stat_pos = helper.create_global_variable(
         persistable=True,
         dtype='int64',
-        shape=[slide_steps, num_thresholds + 1])
+        shape=[(1 + slide_steps) * (num_thresholds + 1) + 1])
     batch_stat_neg = helper.create_global_variable(
         persistable=True,
         dtype='int64',
-        shape=[slide_steps, num_thresholds + 1])
+        shape=[(1 + slide_steps) * (num_thresholds + 1) + 1])
 
     # for global auc
+    # Needn't maintain the batch id
     stat_pos = helper.create_global_variable(
         persistable=True, dtype='int64', shape=[1, num_thresholds + 1])
     stat_neg = helper.create_global_variable(
@@ -152,7 +213,7 @@ def auc(input,
     for var in [batch_stat_pos, batch_stat_neg, stat_pos, stat_neg]:
         helper.set_variable_initializer(
             var, Constant(
-                value=0.0, force_cpu=True))
+                value=0.0, force_cpu=False))
 
     # Batch AUC
     helper.append_op(
