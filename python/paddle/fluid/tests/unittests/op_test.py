@@ -324,9 +324,8 @@ class OpTest(unittest.TestCase):
             (hasattr(self, "attrs") and "use_mkldnn" in self.attrs and \
                     self.attrs["use_mkldnn"] == True):
             self.__class__.use_mkldnn = True
-        if (hasattr(self, "use_ngraph") and self.use_ngraph == True) or \
-            (hasattr(self, "attrs") and "use_ngraph" in self.attrs and \
-                    self.attrs["use_ngraph"] == True):
+        if fluid.core.is_compiled_with_ngraph() and \
+            fluid.core.globals()['FLAGS_use_ngraph']:
             self.__class__.use_ngraph = True
 
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
@@ -1201,9 +1200,8 @@ class OpTest(unittest.TestCase):
             (hasattr(self, "attrs") and "use_mkldnn" in self.attrs and \
                     self.attrs["use_mkldnn"] == True):
             self.__class__.use_mkldnn = True
-        if (hasattr(self, "use_ngraph") and self.use_ngraph == True) or \
-            (hasattr(self, "attrs") and "use_ngraph" in self.attrs and \
-                    self.attrs["use_ngraph"] == True):
+        if fluid.core.is_compiled_with_ngraph() and \
+            fluid.core.globals()['FLAGS_use_ngraph']:
             self.__class__.use_ngraph = True
 
         places = self._get_places()
