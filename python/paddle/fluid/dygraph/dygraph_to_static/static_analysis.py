@@ -23,18 +23,14 @@ import warnings
 __all__ = ['AstNodeWrapper', 'NodeVarType', 'StaticAnalysisVisitor']
 
 
-# TODO: _is_paddle_dygraph_api is duplicated in Yamei's utils.py. Merge the two
-# function code together when Yamei finish her PR.
 def _is_paddle_dygraph_api(obj):
     m = inspect.getmodule(obj)
     return m is not None and m.__name__.startswith("paddle.fluid.dygraph")
 
 
-# TODO: is_dygraph_api is duplicated in Yamei's utils.py. Merge the two
-# function code together when Yamei finish her PR.
 def is_dygraph_api(node):
     assert isinstance(node, gast.Call), "Input non-Call node for is_dygraph_api"
-    func_src = astor.to_source(node.func)
+    func_src = astor.to_source(gast.gast_to_ast(node.func))
     try:
         import paddle.fluid as fluid
         return eval("_is_paddle_dygraph_api({})".format(func_src))
@@ -49,7 +45,7 @@ def _is_numpy_api_helper(obj):
 
 def is_numpy_api(node):
     assert isinstance(node, gast.Call), "Input non-Call node for is_numpy_api"
-    func_str = astor.to_source(node.func)
+    func_str = astor.to_source(gast.gast_to_ast(node.func))
     try:
         import numpy as np
         module_result = eval("_is_numpy_api_helper({})".format(func_str))

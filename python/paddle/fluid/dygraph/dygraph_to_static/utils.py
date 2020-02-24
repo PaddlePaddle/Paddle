@@ -14,44 +14,25 @@
 
 from __future__ import print_function
 
-import inspect
 import gast
 import astor
-import atexit
-import os
-import tempfile
-import six
-import imp
+import inspect
+from .static_analysis import is_dygraph_api
 
 dygraph_class_to_static_api = {
-    "BatchNorm": "batch_norm",
-    "BilinearTensorProduct": "bilinear_tensor_product",
-    "Conv2D": "conv2d",
-    "Conv3D": "conv3d",
-    "Conv2DTranspose": "conv2d_transpose",
-    "Conv3DTranspose": "conv3d_transpose",
     "CosineDecay": "cosine_decay",
-    "Embedding": "embedding",
     "ExponentialDecay": "exponential_decay",
-    "GroupNorm": "group_norm",
-    "GRUUnit": "gru_unit",
     "InverseTimeDecay": "inverse_time_decay",
-    "LayerNorm": "layer_norm",
-    "Linear": "fc",
     "NaturalExpDecay": "natural_exp_decay",
-    "NCE": "nce",
     "NoamDecay": "noam_decay",
     "PiecewiseDecay": "piecewise_decay",
     "PolynomialDecay": "polynomial_decay",
-    "Pool2D": "pool2d",
-    "PRelu": "prelu",
-    "SpectralNorm": "spectral_norm",
 }
 
 
 def _delete_keywords_from(node):
     assert isinstance(node, gast.Call)
-    func_src = astor.to_source(node.func)
+    func_src = astor.to_source(gast.gast_to_ast(node.func))
     import paddle.fluid as fluid
     full_args = eval("inspect.getargspec({})".format(func_src))
     full_args_name = full_args[0]
@@ -94,21 +75,6 @@ def _add_keywords_to(node, dygraph_api_name):
     return
 
 
-def _is_paddle_dygraph_api(obj):
-    m = inspect.getmodule(obj)
-    return m is not None and m.__name__.startswith("paddle.fluid.dygraph")
-
-
-def is_dygraph_api(node):
-    assert isinstance(node, gast.Call)
-    func_src = astor.to_source(node.func)
-    try:
-        import paddle.fluid as fluid
-        return eval("_is_paddle_dygraph_api({})".format(func_src))
-    except NameError:
-        return False
-
-
 def is_to_variable(node):
     assert isinstance(node, gast.Call)
     if is_dygraph_api(node):
@@ -121,7 +87,6 @@ def to_static_ast(node, class_node):
     assert isinstance(node, gast.Call)
     assert isinstance(class_node, gast.Call)
     static_api = to_static_api(class_node.func.attr)
-
     node.func = gast.Attribute(
         attr=static_api,
         ctx=gast.Load(),
@@ -158,7 +123,7 @@ def update_args_of_func(node, dygraph_node, method_name):
             "The method name of class to update args should be '__init__' or 'forward'"
         )
 
-    class_src = astor.to_source(dygraph_node.func)
+    class_src = astor.to_source(gast.gast_to_ast(dygraph_node.func))
     import paddle.fluid as fluid
     if method_name == "__init__" or eval(
             "issubclass({}, fluid.dygraph.Layer)".format(class_src)):

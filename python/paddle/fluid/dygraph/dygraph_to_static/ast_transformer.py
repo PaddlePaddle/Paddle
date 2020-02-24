@@ -192,7 +192,7 @@ class BasicApiTransformer(gast.NodeTransformer):
             node = to_assign_node(node)
             return node
 
-        func_name = astor.to_source(node.func)
+        func_name = astor.to_source(gast.gast_to_ast(node.func))
         if self._is_dygraph_forward(func_name):
             class_node = self._get_class_node(func_name)
             static_node = to_static_ast(node, class_node)
@@ -214,8 +214,11 @@ class BasicApiTransformer(gast.NodeTransformer):
                 return False
 
             if is_dygraph_api(node_value):
+                dygraph_api = node_value.func.attr
+                if not dygraph_class_to_static_api.get(dygraph_api):
+                    return False
                 update_args_of_func(node_value, node_value, "__init__")
-                target_str = astor.to_source(node.targets[0])
+                target_str = astor.to_source(gast.gast_to_ast(node.targets[0]))
                 self.class_node_dict[target_str] = node_value
                 return True
             # TODO: node.value is not dygraph class
