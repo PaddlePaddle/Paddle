@@ -13,6 +13,7 @@
 # limitations under the License.
 from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 import contextlib
+import sys
 import numpy as np
 from paddle.fluid import core
 from paddle.fluid import framework
@@ -52,6 +53,9 @@ def program_desc_tracing_guard(enable):
         tracer._enable_program_desc_tracing = original_val
 
 
+_functional_dygraph_context_manager = None
+
+
 def enabled():
     """
     This function checks whether the program runs in dynamic graph mode or not.
@@ -89,18 +93,9 @@ def enable(place=None):
     return:
         None
     """
-    tracer = Tracer()
-    framework._dygraph_tracer_ = tracer
-    core._switch_tracer(tracer)
-
-    if place is None:
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-
-    tracer._expected_place = place
-    framework._dygraph_current_expected_place_ = place
+    global _functional_dygraph_context_manager
+    _functional_dygraph_context_manager = guard(place=place)
+    _functional_dygraph_context_manager.__enter__()
 
 
 def disable():
@@ -110,8 +105,9 @@ def disable():
     return:
         None
     """
-    core._switch_tracer(None)
-    framework._dygraph_tracer_ = None
+    global _functional_dygraph_context_manager
+    assert _functional_dygraph_context_manager is not None
+    _functional_dygraph_context_manager.__exit__(*sys.exc_info())
 
 
 @contextlib.contextmanager
