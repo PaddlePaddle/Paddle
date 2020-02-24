@@ -128,18 +128,9 @@ void CUDADeviceCode::CheckAvailableStatus() {
   }
 
   int count = 0;
-  driver_result = dynload::cuDeviceGetCount(&count);
-  if (driver_result == CUDA_SUCCESS) {
+  if (CheckCUDADriverResult(dynload::cuDeviceGetCount(&count),
+                            "cuDeviceGetCount")) {
     available_ = true;
-  } else {
-    if (driver_result == CUDA_ERROR_NOT_INITIALIZED) {
-      // Try call cuInit to inlitialize the CUDA driver.
-      if (CheckCUDADriverResult(dynload::cuInit(0), "cuInit")) {
-        available_ = true;
-      }
-    } else {
-      CheckCUDADriverResult(driver_result, "cuDeviceGetCount");
-    }
   }
 }
 
