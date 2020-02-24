@@ -17,7 +17,11 @@ import requests
 import time
 import sys
 from paddle.distributed.edl_utils import Edlenv
-from paddle.distributed.utils import get_logger, terminate_local_procs
+from paddle.distributed.utils import logger, get_logger, terminate_local_procs, get_host_name_ip
+from argparse import ArgumentParser, REMAINDER
+import six
+import copy
+import subprocess
 
 
 def _print_arguments(args):
@@ -44,13 +48,21 @@ def _parse_args():
         "--log_dir",
         type=str,
         default="pod_log",
-        help="The path for each process's log.If it's not setted, the log will printed to default pipe."
-    )
+        help="The path for each pod's log.")
+
+    #positional
+    parser.add_argument(
+        "training_script", type=str, help="The full path to start trainer proc")
+
+    #rest from the training program
+    parser.add_argument('training_script_args', nargs=REMAINDER)
+    return parser.parse_args()
 
 
 def get_cluster():
-    edl_env = edl_utils.Edlenv()
-    return edl_env.get_cluster(None)
+    edl_env = Edlenv()
+    cluster, _ = edl_env.get_cluster(None)
+    return cluster
 
 
 class PodProc(object):
@@ -65,24 +77,35 @@ class PodManager(object):
     def __init__(self):
         self.local_pods = {}
 
-    def start_local_pod(job_server, job_id, pod_id, pod_rank):
+    def start_local_pods(self, cluster):
+        host_name, host_ip = get_host_name_ip()
+        for pod in cluster.pods:
+            if pod.addr == "127.0.0.1" or \
+                    pod.addr==host_name or \
+                    pod.addr == ip:
+                self.start_local_pod(cluster.job_server, cluster.job_id, pod.id,
+                                     pod.rank)
+
+    def start_local_pod(self, job_server, job_id, pod_id, pod_rank):
         assert pod_id not in self.local_pods
 
         current_env = copy.copy(os.environ.copy())
         current_env.pop("http_proxy", None)
         current_env.pop("https_proxy", None)
 
-        current_env.update({
+        pod_env = ({
             "PADDLE_RUNING_ENV": "PADDLE_EDL",
-            "PADDLE_JOBSERVER": "%s" % edl_env.job_server,
-            "PADDLE_JOB_ID": "%s" % edl_env.job_id,
-            "PADDLE_POD_ID": "%d" % pod_id
+            "PADDLE_JOBSERVER": "%s" % job_server,
+            "PADDLE_JOB_ID": "%s" % job_id,
+            "PADDLE_POD_ID": "%s" % pod_id
         })
 
-        logger.debug("pod proc env:{}".format(current_env))
+        current_env.update(pod_env)
 
         cmd = [sys.executable, "-u", args.training_script
                ] + args.training_script_args
+
+        logger.info("start pod proc env:{} cmd:{}".format(pod_env, cmd))
 
         fn = None
         if args.log_dir is not None:
@@ -94,24 +117,23 @@ class PodManager(object):
 
         p = PodProc()
         p.proc = proc
-        p.rank = pod.rank
+        p.rank = pod_rank
         p.log_fn = fn
         p.cmd = cmd
-
-        procs.append(tp)
 
         self.local_pods[pod_id] = p
 
     def kill_local_pod(pod_id):
         assert pod_id in self.local_pods
         procs = [self.local_pods[pod_id]]
+        logger.info("kill pod_id:{} pod:{}".format(pod_id, procs))
         terminate_local_procs(procs)
 
 
 def get_deleted_pods(cluster, cluster2):
     pods = []
     for pod in cluster.pods:
-        if cluster2.get_pod_by_id(pod_id) is None:
+        if cluster2.get_pod_by_id(pod.id) is None:
             pods.append(pod)
     return pods
 
@@ -119,24 +141,27 @@ def get_deleted_pods(cluster, cluster2):
 def get_added_pods(cluster, cluster2):
     pods = []
     for pod in cluster2.pods:
-        if cluster.get_pod_by_id(pod_id) is None:
+        if cluster.get_pod_by_id(pod.id) is None:
             pods.append(pod)
     return pods
 
 
 def manage_pods():
     cluster = get_cluster()
+    logger.debug("get_cluster:", cluster)
 
-    start_local_pod(cluster)
+    pod_manager = PodManager()
+    pod_manager.start_local_pods(cluster)
 
     while True:
         cluster2 = get_cluster()
         if cluster2 != cluster:
-            for pod in get_deleted_pods():
-                kill_local_pod()
+            for pod in get_deleted_pods(cluster, cluster2):
+                pod_manager.kill_local_pod()
 
-            for pod in get_added_pods():
-                start_local_pod()
+            for pod in get_added_pods(cluster, cluster2):
+                pod_manager.start_local_pod(cluster.job_server, pod.id,
+                                            pod.rank)
 
         time.sleep(1)
 

@@ -15,6 +15,7 @@
 import functools
 import paddle.fluid as fluid
 import logging
+import socket
 
 logger = logging.getLogger()
 
@@ -57,8 +58,8 @@ class Cluster(object):
         if len(self.pods) != len(cluster.pods):
             return True
 
-        for pod in self.pods:
-            if pod != cluster.pods[i]:
+        for a, b in zip(self.pods, cluster.pods):
+            if a != b:
                 return False
 
         return True
@@ -94,7 +95,6 @@ class Cluster(object):
 
     def get_pod_by_id(self, pod_id):
         for pod in self.pods:
-            print("iterate pod:", pod.id, pod_id)
             if str(pod_id) == str(pod.id):
                 return pod
 
@@ -143,7 +143,7 @@ class Pod(object):
             [str(t) for t in self.trainers])
 
     def __eq__(self, pod):
-        if self.ranks != pod.rank or \
+        if self.rank != pod.rank or \
                 self.id != pod.id or \
                 self.addr != pod.addr or \
                 self.port != pod.port:
@@ -306,7 +306,7 @@ def get_cluster(node_ips, node_ip, paddle_port, selected_gpus):
     return cluster, cluster.pods[pod_rank]
 
 
-def terminate_local_trainers(procs):
+def terminate_local_procs(procs):
     for p in procs:
         if p.proc.poll() is None:
             p.terminate()
@@ -328,3 +328,12 @@ def terminate_local_trainers(procs):
 
     logger.fatal("can't kill all process and exit")
     exit(1)
+
+
+def get_host_name_ip():
+    try:
+        host_name = socket.gethostname()
+        host_ip = socket.gethostbyname(host_name)
+        return host_name, host_ip
+    except:
+        return None

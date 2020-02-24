@@ -111,11 +111,12 @@ def get_job_pods():
     try:
         job_id = request.args.get('job_id')
         print("job_id:", job_id)
+        job_id = "test_job_id_1234"
     except:
         return jsonify({'job_id': {}})
     job_pods = job_manager.get_job_pods("test_job_id_1234")
     print("job_pods:", job_pods)
-    return jsonify({'job_id': "job_id", "pods": job_pods})
+    return jsonify({'job_id': job_id, "pods": job_pods})
 
 
 @app.route('/rest/1.0/post/job_runtime_static', methods=['POST'])

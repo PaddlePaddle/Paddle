@@ -36,8 +36,8 @@ class Edlenv(object):
     def _parse_response_pods(self, r_pods):
         t_rank = 0
         pods = []
-        for rank, r_pod in enumerate(r_pods["pods"]):
-            print("r_pod:", r_pod)
+        for rank, r_pod in enumerate(r_pods):
+            #print("r_pod:", r_pod)
             pod = Pod()
             pod.rank = rank
             pod.id = r_pod["pod_id"]
@@ -68,7 +68,9 @@ class Edlenv(object):
             try:
                 r = requests.get(url, params=job_id)
                 d = r.json()
-                pods = d["job_id"]
+                assert self.job_id == d["job_id"], "job_id is not {}".format(
+                    self.job_id)
+                pods = d["pods"]
                 logger.debug("job_server:{} response:{}".format(r.url, pods))
                 break
             except Exception as e:
@@ -101,8 +103,6 @@ class Edlenv(object):
                                                                        self))
 
         pod = cluster.get_pod_by_id(self.pod_id)
-        print("return pod:", pod)
-
         return cluster, pod
 
 
