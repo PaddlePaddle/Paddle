@@ -16,6 +16,9 @@ import functools
 import paddle.fluid as fluid
 import logging
 import socket
+import time
+import os
+import signal
 
 logger = logging.getLogger()
 
@@ -331,16 +334,17 @@ def terminate_local_procs(procs):
             p.log_fn.close()
 
     # wait all process terminiated
-    time.sleep(5)
+    time.sleep(3)
 
     for step in range(0, 10):
         alive = False
         for p in procs:
-            if p.proc.poll() is not None:
-                os.kill(p.pid, SIGKILL)
+            if p.proc.poll() is None:  # not termniate
+                os.kill(p.proc.pid, signal.SIGKILL)
                 alive = True
 
         if not alive:
+            logger.debug("terminate all the procs")
             return
 
         time.sleep(1)

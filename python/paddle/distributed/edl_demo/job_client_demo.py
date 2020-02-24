@@ -14,7 +14,6 @@
 
 import os
 import requests
-import time
 import sys
 from paddle.distributed.edl_utils import Edlenv
 from paddle.distributed.utils import logger, get_logger, terminate_local_procs, get_host_name_ip
@@ -22,6 +21,7 @@ from argparse import ArgumentParser, REMAINDER
 import six
 import copy
 import subprocess
+import time
 
 
 def _print_arguments(args):
@@ -75,7 +75,7 @@ class PodProc(object):
 
     def __str__(self):
         return "env:{} proc:{} log_fn:{} cmd:{} rank:{}".format(
-            self.env, self.proc, self.log_fn, self.cmd, self.rank)
+            self.env, self.proc.pid, self.log_fn, self.cmd, self.rank)
 
 
 class PodManager(object):
@@ -132,7 +132,8 @@ class PodManager(object):
     def kill_local_pod(self, pod_id):
         assert pod_id in self.local_pods
         procs = [self.local_pods[pod_id]]
-        logger.info("kill pod_id:{} pod:{}".format(pod_id, procs))
+        logger.info("kill pod_id:{} pod:{}".format(
+            pod_id, [str(proc) for proc in procs]))
         terminate_local_procs(procs)
 
 
