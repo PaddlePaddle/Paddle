@@ -1,4 +1,4 @@
-#Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -100,6 +100,7 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
     """
 
     result = True
+
     def sampcd_header_print(name, sampcd, htype, hname):
         """
         print hint banner headers.
@@ -136,7 +137,7 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
         else:
             print("Error: No sample code!\n")
             result = False
-    
+
     for y in range(1, len(sampcd_begins) + 1):
         sampcd_begin = sampcd_begins[y - 1]
         sampcd = srccom[sampcd_begin + len(" code-block:: python") + 1:]
@@ -189,14 +190,14 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
         output, error = subprc.communicate()
         msg = "".join(output.decode(encoding='utf-8'))
         err = "".join(error.decode(encoding='utf-8'))
-        
-        if subprc.returncode != 0:     
+
+        if subprc.returncode != 0:
             print("\nSample code error found in ", name, ":\n")
             sampcd_header_print(name, sampcd, htype, hname)
             print("subprocess return code: ", str(subprc.returncode))
             print("Error Raised from Sample Code ", name, " :\n")
             print(err)
-            print(msg)          
+            print(msg)
             result = False
         # msg is the returned code execution report
         #os.remove("samplecode_temp/" + tfname)
@@ -264,7 +265,6 @@ def print_header(htype, name):
 
 
 def srccoms_extract(srcfile, wlist):
-    
     """
     Given a source file ``srcfile``, this function will
     extract its API(doc comments) and run sample codes in the
@@ -348,7 +348,7 @@ def srccoms_extract(srcfile, wlist):
                     'def '):  # a function header is detected in line i
                 f_header = srcls[i].replace(" ", '')
                 fn = f_header[len('def'):f_header.find('(')]  # function name
-                if "%s%s" %(srcfile_str, fn) not in methods:
+                if "%s%s" % (srcfile_str, fn) not in methods:
                     continue
                 if fn in handled:
                     continue
@@ -362,14 +362,14 @@ def srccoms_extract(srcfile, wlist):
                         print("WARNING: no comments in function ", fn,
                               ", but it deserves.")
                         continue
-                    else: 
+                    else:
                         if not sampcd_extract_and_run(fcombody, fn, "def", fn):
                             process_result = False
-            
+
             if srcls[i].startswith('class '):
                 c_header = srcls[i].replace(" ", '')
                 cn = c_header[len('class'):c_header.find('(')]  # class name
-                if '%s%s' %(srcfile_str, cn) not in methods:
+                if '%s%s' % (srcfile_str, cn) not in methods:
                     continue
                 if cn in handled:
                     continue
@@ -404,7 +404,9 @@ def srccoms_extract(srcfile, wlist):
                                 mn = thisl[indent + len('def '):thisl.find(
                                     '(')]  # method name
                                 name = cn + "." + mn  # full name
-                                if '%s%s' %(srcfile_str, name) not in methods:  # class method not in api.spec 
+                                if '%s%s' % (
+                                        srcfile_str, name
+                                ) not in methods:  # class method not in api.spec 
                                     continue
                                 if mn.startswith('_'):
                                     continue
@@ -428,11 +430,11 @@ def srccoms_extract(srcfile, wlist):
                                         thismethod.append(srcls[y][indent:])
                                 thismtdcom = single_defcom_extract(0,
                                                                    thismethod)
-                                if thismtdcom != "":                            
+                                if thismtdcom != "":
                                     if not sampcd_extract_and_run(
                                             thismtdcom, name, "method", name):
                                         process_result = False
-    
+
     return process_result
 
 
@@ -441,7 +443,7 @@ def test(file_list):
     for file in file_list:
         with open(file, 'r') as src:
             if not srccoms_extract(src, wlist):
-               process_result = False
+                process_result = False
     return process_result
 
 
@@ -461,24 +463,25 @@ def get_filenames(path):
     filenames = []
     global methods
     methods = []
-    API_spec = '%s/%s' % (os.path.abspath(os.path.join(os.getcwd(), "..")), path)
+    API_spec = '%s/%s' % (os.path.abspath(os.path.join(os.getcwd(), "..")),
+                          path)
     with open(API_spec) as f:
         for line in f.readlines():
             api = line.split(' ', 1)[0]
             try:
                 module = eval(api).__module__
-            except AttributeError: 
+            except AttributeError:
                 continue
             if len(module.split('.')) > 2:
                 filename = '../python/'
                 module_py = '%s.py' % module.split('.')[-1]
-                for i in range (0, len(module.split('.')) - 1):
+                for i in range(0, len(module.split('.')) - 1):
                     filename = filename + '%s/' % module.split('.')[i]
-                filename = filename + module_py  
+                filename = filename + module_py
             else:
                 print("\n----Exception in get api filename----\n")
-                print("\n" + api + 'module is '+ module + "\n")
-            if filename not in filenames:  
+                print("\n" + api + 'module is ' + module + "\n")
+            if filename not in filenames:
                 filenames.append(filename)
             # get all methods
             method = ''
@@ -487,18 +490,19 @@ def get_filenames(path):
             elif inspect.isfunction(eval(api)):
                 name = api.split('.')[-1]
             elif inspect.ismethod(eval(api)):
-                name = '%s.%s' %(api.split('.')[-2], api.split('.')[-1])
-            else: 
+                name = '%s.%s' % (api.split('.')[-2], api.split('.')[-1])
+            else:
                 name = ''
                 print("\n----Exception in get api methods----\n")
-                print("\n" + line + "\n") 
-                print("\n" + api + ' method is None!!!' + "\n")   
+                print("\n" + line + "\n")
+                print("\n" + api + ' method is None!!!' + "\n")
             for j in range(2, len(module.split('.'))):
-                method = method + '%s.' %module.split('.')[j]
+                method = method + '%s.' % module.split('.')[j]
             method = method + name
-            if method not in methods:  
+            if method not in methods:
                 methods.append(method)
     return filenames
+
 
 '''
 Important constant lists:
@@ -541,108 +545,52 @@ wlist_inneed = [
 ]
 
 wlist_nosample = [
-    'Compressor',
-    'Compressor.config',
-    'Compressor.run',
-    'run_check',
-    'HDFSClient.upload',
-    'HDFSClient.download',
-    'HDFSClient.is_exist',
-    'HDFSClient.is_dir',
-    'HDFSClient.delete',
-    'HDFSClient.rename',
-    'HDFSClient.makedirs',
-    'HDFSClient.ls',
-    'HDFSClient.lsr',
-    'multi_download',
-    'multi_upload',
-    'TrainingDecoder.block',
+    'Compressor', 'Compressor.config', 'Compressor.run', 'run_check',
+    'HDFSClient.upload', 'HDFSClient.download', 'HDFSClient.is_exist',
+    'HDFSClient.is_dir', 'HDFSClient.delete', 'HDFSClient.rename',
+    'HDFSClient.makedirs', 'HDFSClient.ls', 'HDFSClient.lsr', 'multi_download',
+    'multi_upload', 'TrainingDecoder.block',
     'QuantizeTranspiler.training_transpile',
-    'QuantizeTranspiler.freeze_program',
-    'AutoMixedPrecisionLists',
-    'Uniform.sample',
-    'Uniform.log_prob',
-    'Uniform.entropy',
-    'Categorical.kl_divergence',
-    'Categorical.entropy',
-    'MultivariateNormalDiag.entropy',
-    'MultivariateNormalDiag.kl_divergence',
-    'RNNCell',
-    'RNNCell.call',
-    'RNNCell.get_initial_states',
-    'GRUCell.call',
-    'LSTMCell.call',
-    'Decoder',
-    'Decoder.initialize',
-    'Decoder.step',
-    'Decoder.finalize',
-    'fused_elemwise_activation',
-    'search_pyramid_hash',
-    'convert_dist_to_sparse_program',
-    'load_persistables_for_increment',
-    'load_persistables_for_inference',
-    'cache',
-    'buffered',
-    'xmap_readers'
+    'QuantizeTranspiler.freeze_program', 'AutoMixedPrecisionLists',
+    'Uniform.sample', 'Uniform.log_prob', 'Uniform.entropy',
+    'Categorical.kl_divergence', 'Categorical.entropy',
+    'MultivariateNormalDiag.entropy', 'MultivariateNormalDiag.kl_divergence',
+    'RNNCell', 'RNNCell.call', 'RNNCell.get_initial_states', 'GRUCell.call',
+    'LSTMCell.call', 'Decoder', 'Decoder.initialize', 'Decoder.step',
+    'Decoder.finalize', 'fused_elemwise_activation', 'search_pyramid_hash',
+    'convert_dist_to_sparse_program', 'load_persistables_for_increment',
+    'load_persistables_for_inference', 'cache', 'buffered', 'xmap_readers'
 ]
 
-wlist_no_op_pass = [
-    'gelu',
-    'erf'
+wlist_no_op_pass = ['gelu', 'erf']
+
+wlist_ci_nopass = [
+    'DecodeHelper', 'DecodeHelper.initialize', 'DecodeHelper.sample',
+    'DecodeHelper.next_inputs', 'TrainingHelper.initialize',
+    'TrainingHelper.sample', 'TrainingHelper.next_inputs',
+    'GreedyEmbeddingHelper.initialize', 'GreedyEmbeddingHelper.sample',
+    'GreedyEmbeddingHelper.next_inputs', 'LayerList.append', 'HDFSClient',
+    'InitState', 'TracedLayer', 'SampleEmbeddingHelper.sample',
+    'BasicDecoder.initialize', 'BasicDecoder.step', 'GreedyEmbeddingHelper',
+    'SampleEmbeddingHelper', 'BasicDecoder', 'lstm'
 ]
 
 wlist_nopass = [
-    'StateCell',
-    'StateCell.compute_state',
-    'TrainingDecoder',
-    'TrainingDecoder.step_input',
-    'TrainingDecoder.static_input',
-    'TrainingDecoder.output',
-    'BeamSearchDecoder',
-    'GradClipByValue',
-    'GradClipByNorm',
-    'Variable.detach',
-    'Variable.numpy',
-    'Variable.set_value',
-    'Variable.gradient',
-    'BeamSearchDecoder.decode',
-    'BeamSearchDecoder.read_array',
-    'CompiledProgram',
-    'CompiledProgram.with_data_parallel',
-    'append_backward',
-    'guard',
-    'to_variable',
-    'op_freq_statistic',
-    'save_dygraph',
-    'load_dygraph',
-    'ParallelExecutor',
-    'ParallelExecutor.run',
-    'ParallelExecutor.drop_local_exe_scopes',
-    'GradClipByGlobalNorm',
-    'extend_with_decoupled_weight_decay',
-    'switch',
-    'Normal',
-    'memory_usage',
-    'decorate',
-    'PiecewiseDecay',
-    'InverseTimeDecay',
-    'PolynomialDecay',
-    'NoamDecay',
-    'start_profiler',
-    'profiler',
-    'tree_conv',
-    'multiclass_nms2',
-    'DataFeedDesc',
-    'Conv2D',
-    'Conv3D',
-    'Conv3DTranspose',
-    'Embedding',
-    'NCE',
-    'PRelu',
-    'BilinearTensorProduct',
-    'GroupNorm',
-    'SpectralNorm',
-    'TreeConv',
+    'StateCell', 'StateCell.compute_state', 'TrainingDecoder',
+    'TrainingDecoder.step_input', 'TrainingDecoder.static_input',
+    'TrainingDecoder.output', 'BeamSearchDecoder', 'GradClipByValue',
+    'GradClipByNorm', 'Variable.detach', 'Variable.numpy', 'Variable.set_value',
+    'Variable.gradient', 'BeamSearchDecoder.decode',
+    'BeamSearchDecoder.read_array', 'CompiledProgram',
+    'CompiledProgram.with_data_parallel', 'append_backward', 'guard',
+    'to_variable', 'op_freq_statistic', 'save_dygraph', 'load_dygraph',
+    'ParallelExecutor', 'ParallelExecutor.run',
+    'ParallelExecutor.drop_local_exe_scopes', 'GradClipByGlobalNorm',
+    'extend_with_decoupled_weight_decay', 'switch', 'Normal', 'memory_usage',
+    'decorate', 'PiecewiseDecay', 'InverseTimeDecay', 'PolynomialDecay',
+    'NoamDecay', 'start_profiler', 'profiler', 'tree_conv', 'multiclass_nms2',
+    'DataFeedDesc', 'Conv2D', 'Conv3D', 'Conv3DTranspose', 'Embedding', 'NCE',
+    'PRelu', 'BilinearTensorProduct', 'GroupNorm', 'SpectralNorm', 'TreeConv',
     'prroi_pool'
 ]
 
@@ -750,7 +698,8 @@ gpu_not_white = [
     "deformable_conv", "cuda_places", "CUDAPinnedPlace", "CUDAPlace",
     "cuda_profiler", 'DGCMomentumOptimizer'
 ]
-wlist = wlist_temp + wlist_inneed + wlist_ignore + wlist_nosample + wlist_nopass + wlist_no_op_pass
+
+wlist = wlist_temp + wlist_inneed + wlist_ignore + wlist_nosample + wlist_nopass + wlist_no_op_pass + wlist_ci_nopass
 
 if len(sys.argv) < 2:
     print("Error: inadequate number of arguments")
@@ -786,13 +735,13 @@ else:
     po.join()
 
     result = results.get()
-    
+
     # delete temp files
     for root, dirs, files in os.walk("./samplecode_temp"):
         for fntemp in files:
             os.remove("./samplecode_temp/" + fntemp)
     os.rmdir("./samplecode_temp")
-    
+
     print("----------------End of the Check--------------------")
     for temp in result:
         if not temp:
