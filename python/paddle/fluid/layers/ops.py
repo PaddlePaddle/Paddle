@@ -142,7 +142,7 @@ The cumulative sum of the elements along a given axis. By default, the first ele
 
 Args:
     x (Variable): Input of cumsum operator, the Tensor/LoDTensor needed to be cumsumed. 
-    axis (int, optional): The dimenstion to accumulate along. -1 means the last dimenstion. Default is -1.
+    axis (int, optional): The dimension to accumulate along. -1 means the last dimension. Default is -1.
     exclusive (bool, optional): Whether to perform exclusive cumsum. Default is False.
     reverse (bool, optional): If true, the cumsum is performed in the reversed direction. Default is False.
 

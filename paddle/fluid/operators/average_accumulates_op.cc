@@ -132,7 +132,7 @@ class AverageAccumulatesOpMaker : public framework::OpProtoAndCheckerMaker {
         "(Tensor<int64_t>), The accumulating times of previous window with "
         "shape [1].");
     AddInput("in_num_updates",
-             "(Tensor<int64_t>), The total number of batches used by trainning "
+             "(Tensor<int64_t>), The total number of batches used by training "
              "before this batch with shape [1].");
 
     AddOutput("out_sum_1",
@@ -155,10 +155,9 @@ class AverageAccumulatesOpMaker : public framework::OpProtoAndCheckerMaker {
         "out_old_num_accumulates",
         "(Tensor<int64_t>) The accumulating times of previous window with "
         "shape [1].");
-    AddOutput(
-        "out_num_updates",
-        "(Tensor<int64_t>), The total number of batches used by trainning "
-        "before this batch with shape [1].");
+    AddOutput("out_num_updates",
+              "(Tensor<int64_t>), The total number of batches used by training "
+              "before this batch with shape [1].");
 
     AddAttr<float>("average_window",
                    "(float, default 0) "

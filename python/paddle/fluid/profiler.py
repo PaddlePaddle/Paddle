@@ -312,7 +312,7 @@ def profiler(state,
 
             #### Examples Results ####
             #### 1) sorted_key = 'total', 'calls', 'max', 'min', 'ave' ####
-            # The only difference in 5 sorted_key results is the following sentense: 
+            # The only difference in 5 sorted_key results is the following sentence: 
             # "Sorted by number of xxx in descending order in the same thread."
             # The reason is that in this example, above 5 columns are already sorted.
             ------------------------->     Profiling Report     <-------------------------

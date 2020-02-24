@@ -29,6 +29,7 @@ int main(int argc, char *argv[]) {
   printf("Output num: %d\n", output_num);
 
   PD_ZeroCopyTensor input;
+  PD_InitZeroCopyTensor(&input);
   input.name = const_cast<char *>(PD_GetInputName(predictor, 0));  // NOLINT
   input.data.capacity = sizeof(float) * 1 * 3 * 300 * 300;
   input.data.length = input.data.capacity;
@@ -48,6 +49,7 @@ int main(int argc, char *argv[]) {
   PD_InitZeroCopyTensor(&output);
   output.name = const_cast<char *>(PD_GetOutputName(predictor, 0));  // NOLINT
   PD_GetZeroCopyOutput(predictor, &output);
+
   PD_DestroyZeroCopyTensor(&output);
 
   PD_DeleteAnalysisConfig(config);
