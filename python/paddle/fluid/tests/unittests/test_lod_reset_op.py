@@ -63,7 +63,7 @@ class TestLodResetOpByInput(OpTest):
 
     def test_check_grad(self):
         # TODO(wangzhongpu): support lod in dygraph mode
-        self.check_grad(["X"], "Out", no_grad_set=set("Y"), check_dygraph=False)
+        self.check_grad(["X"], "Out", check_dygraph=False)
 
 
 class TestLodResetOpBoth(OpTest):
@@ -87,7 +87,7 @@ class TestLodResetOpBoth(OpTest):
 
     def test_check_grad(self):
         # TODO(wangzhongpu): support lod in dygraph mode
-        self.check_grad(["X"], "Out", no_grad_set=set("Y"), check_dygraph=False)
+        self.check_grad(["X"], "Out", check_dygraph=False)
 
 
 class TestLodResetOpYIsLoDTensor(OpTest):
@@ -106,7 +106,7 @@ class TestLodResetOpYIsLoDTensor(OpTest):
 
     def test_check_grad(self):
         # TODO(wangzhongpu): support lod in dygraph mode
-        self.check_grad(["X"], "Out", no_grad_set=set("Y"), check_dygraph=False)
+        self.check_grad(["X"], "Out", check_dygraph=False)
 
 
 class TestLodAppendOpByAttr(OpTest):
