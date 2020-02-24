@@ -25,7 +25,6 @@ NEED_TO_FIX_OP_LIST = [
     'margin_rank_loss',
     'matmul',
     'mul',
-    'row_conv',
     'scatter',
     'smooth_l1_loss',
     'soft_relu',
