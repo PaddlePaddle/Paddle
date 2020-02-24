@@ -25,10 +25,9 @@ class TestStrategyFactor(unittest.TestCase):
     def test_sync_strategy(self):
         os.environ['CPU_NUM'] = "2"
         strategy = StrategyFactory.create_sync_strategy()
-        self.assertEqual(strategy._program_config.sync_mode, True)
-        self.assertEqual(strategy._program_config.runtime_split_send_recv,
-                         False)
-        self.assertEqual(strategy._build_strategy.async_mode, False)
+        self.assertEqual(strategy._program_config.sync_mode, False)
+        self.assertEqual(strategy._program_config.runtime_split_send_recv, True)
+        self.assertEqual(strategy._build_strategy.async_mode, True)
         self.assertEqual(strategy._execute_strategy.num_threads, 2)
 
         # test set_program_config using DistributeTranspilerConfig()

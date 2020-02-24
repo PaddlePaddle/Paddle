@@ -192,6 +192,7 @@ class DistributeTranspilerConfig(object):
 
     # half_async
     half_async = False
+    completely_not_async = False
 
     # Geo-sgd algorithm
     geo_sgd_mode = False
@@ -323,7 +324,7 @@ class DistributeTranspiler(object):
         if self.config.split_method is None:
             self.config.split_method = RoundRobin
 
-        if self.config.sync_mode:
+        if self.config.sync_mode or self.config.completely_not_async:
             self.distributed_mode = DistributedMode.SYNC
         elif self.config.runtime_split_send_recv:
             self.distributed_mode = DistributedMode.ASYNC
@@ -728,7 +729,14 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                     program.global_block().vars[splited_grad_varname]
                 ]
                 sections = self._get_splited_var_sections(splited_vars)
-                send_varnames = [var.name for var in splited_vars]
+
+                if self.config.completely_not_async:
+                    send_varnames = [
+                        "{}.trainer_{}".format(var.name, self.trainer_id)
+                        for var in splited_vars
+                    ]
+                else:
+                    send_varnames = [var.name for var in splited_vars]
             else:
                 send_input_vars = splited_vars
                 sections = []
@@ -1199,7 +1207,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                     type=v.type,
                     dtype=v.dtype,
                     shape=v.shape)
-            if self.sync_mode and self.trainer_num > 1:
+            if self.sync_mode or self.config.completely_not_async and self.trainer_num > 1:
                 for trainer_id in range(self.trainer_num):
                     var = pserver_program.global_block().create_var(
                         name="%s.trainer_%d" % (orig_var_name, trainer_id),
@@ -2204,7 +2212,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
 
         merged_var = pserver_block.vars[merged_var_name]
         grad_to_block_id.append(merged_var.name + ":" + str(optimize_block.idx))
-        if self.sync_mode and self.trainer_num > 1:
+        if self.sync_mode or self.config.completely_not_async and self.trainer_num > 1:
             vars2merge = []
             for i in range(self.trainer_num):
                 per_trainer_name = "%s.trainer_%d" % \
