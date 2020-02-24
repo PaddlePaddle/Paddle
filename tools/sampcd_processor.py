@@ -571,8 +571,8 @@ wlist_ci_nopass = [
     'GreedyEmbeddingHelper.initialize', 'GreedyEmbeddingHelper.sample',
     'GreedyEmbeddingHelper.next_inputs', 'LayerList.append', 'HDFSClient',
     'InitState', 'TracedLayer', 'SampleEmbeddingHelper.sample',
-    'BasicDecoder.initialize', 'BasicDecoder.step', 'GreedyEmbeddingHelper',
-    'SampleEmbeddingHelper', 'BasicDecoder', 'lstm'
+    'BasicDecoder.initialize', 'BasicDecoder.step', 'ParameterList.append',
+    'GreedyEmbeddingHelper', 'SampleEmbeddingHelper', 'BasicDecoder', 'lstm'
 ]
 
 wlist_nopass = [
