@@ -135,7 +135,6 @@ class OrderedMultiDeviceLoDTensorBlockingQueue {
     for (auto& item : queues_) {
       item->Close();
     }
-    data_index_ = 0;
   }
 
   inline void Kill() {
@@ -157,6 +156,7 @@ class OrderedMultiDeviceLoDTensorBlockingQueue {
       auto cap = (capacity_ + dev_cnt - 1) / dev_cnt;
       item.reset(new LoDTensorBlockingQueue(cap, speed_test_mode_));
     }
+    data_index_ = 0;
   }
 
   inline void SetResetMethod(size_t idx,
@@ -171,8 +171,7 @@ class OrderedMultiDeviceLoDTensorBlockingQueue {
 
  private:
   const std::shared_ptr<LoDTensorBlockingQueue>& CurQueue() {
-    EnforceIsInited();
-    return queues_[data_index_.fetch_add(1) % queues_.size()];
+    return queues_[(data_index_++) % queues_.size()];
   }
 
  private:
@@ -183,7 +182,7 @@ class OrderedMultiDeviceLoDTensorBlockingQueue {
 
  private:
   std::vector<std::shared_ptr<LoDTensorBlockingQueue>> queues_;
-  mutable std::atomic<uint64_t> data_index_{0};
+  mutable uint64_t data_index_{0};
 
   size_t dev_cnt_{0};
   const size_t capacity_;
