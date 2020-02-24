@@ -5,6 +5,7 @@ import socket
 from flask import request
 import random
 import threading
+import time
 
 random.seed(10)
 
@@ -19,7 +20,8 @@ class JobInfoManager(object):
         self._last_port = None
 
         pods = self._init_job_pods()
-        self.job["test_job_id_1234"] = pods
+        self._job_id = "test_job_id_1234"
+        self.job[self._job_id] = pods
 
     def _init_job_pods(self):
         pods = []
@@ -40,19 +42,20 @@ class JobInfoManager(object):
         assert self._t_id is None, "thread has been started"
 
         thread = threading.Thread(target=self.run)
-        thread.start()
-        return str(thread)
+        self._t_id = thread.start()
+        print("job manager started!")
 
     def get_job_pods(self, job_id):
         with self._lock:
-            return self.jobs[job_id]
+            return self.job[job_id]
 
     def del_tail(self, job_id, pods_num, step_id):
         with self._lock:
             pods = self.job[job_id]
             assert pods_num < len(pods), "can't delete pods_num:%d".format(
                 pods_num)
-            pods = pods[:-pods_num]
+            self.job[job_id] = pods[:-pods_num]
+            print("deleted pods {}".format(pods))
 
     def add_tail(self, job_id, pods_num, step_id):
         with self._lock:
@@ -71,19 +74,23 @@ class JobInfoManager(object):
 
                 pods.append(pod)
                 pod_rank = len(pods)
+            print("added pods {}".format(pods))
 
     def run(self):
         step_id = 0
         modify = True
-        job_id = "test_job_id_1234"
         while (True):
-            with self._lock:
-                if modify:
-                    step_id += 1
-                    self.del_tail(job_id, 1, step_id)
-                    #self.add_tail(job_id, 1, step_id)
-                    modify = False
             time.sleep(300)
+            if modify:
+                step_id += 1
+                """
+                print("del 1 pods")
+                self.del_tail(self._job_id, 1, step_id)
+                time.sleep(300)
+                print("add 1 pods")
+                self.add_tail(job_id, 1, step_id)
+                modify = False
+                """
 
 
 job_manager = JobInfoManager()
@@ -106,7 +113,7 @@ def get_job_pods():
         print("job_id:", job_id)
     except:
         return jsonify({'job_id': {}})
-    job_pods = job_manager.get_job_pods(job_id)
+    job_pods = job_manager.get_job_pods("test_job_id_1234")
     print("job_pods:", job_pods)
     return jsonify({'job_id': "job_id", "pods": job_pods})
 
@@ -119,5 +126,5 @@ def update_job_static():
 
 
 if __name__ == '__main__':
-    #job_manager.start()
+    job_manager.start()
     app.run(host='0.0.0.0', port=8180)
