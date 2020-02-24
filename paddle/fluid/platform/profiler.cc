@@ -702,8 +702,7 @@ void ParseMemEvents(const std::vector<std::vector<MemEvent>> &events) {
 }
 
 void DealWithShowName() {
-  std::unordered_map<std::string, int> prefix_name;
-  std::vector<std::string> op_out_name;
+  std::unordered_map<std::string, std::vector<std::string>> profiler_name_info;
   for (auto it = g_all_event_lists.begin(); it != g_all_event_lists.end();
        ++it) {
     for (auto &block : (*it)->event_blocks) {
@@ -714,20 +713,25 @@ void DealWithShowName() {
         std::string prefix_str = event_name.substr(0, start);
         while (start != std::string::npos && end != std::string::npos) {
           auto search_str = event_name.substr(start, end - start + 1);
-          auto it = find(op_out_name.begin(), op_out_name.end(), search_str);
-          std::string replace_str;
-          bool prefix_find = true;
-          if (prefix_name.find(prefix_str) == prefix_name.end()) {
-            prefix_find = false;
-            prefix_name[prefix_str] = 0;
-          }
+          std::string replace_str = "";
+          int replace_index = 0;
 
-          if (it == op_out_name.end()) {
-            if (prefix_find)
-              prefix_name[prefix_str] = prefix_name[prefix_str] + 1;
-            op_out_name.push_back(search_str);
+          auto it = profiler_name_info.find(prefix_str);
+          if (it == profiler_name_info.end()) {
+            std::vector<std::string> op_name_vector{search_str};
+            profiler_name_info[prefix_str] = op_name_vector;
+          } else {
+            auto op_name_vector = it->second;
+            auto iter =
+                find(op_name_vector.begin(), op_name_vector.end(), search_str);
+            if (iter == op_name_vector.end()) {
+              replace_index = it->second.size();
+              it->second.push_back(search_str);
+            } else {
+              replace_index = it->second.size() - 1;
+            }
           }
-          replace_str = std::to_string(prefix_name[prefix_str]);
+          replace_str = std::to_string(replace_index);
           event_name.replace(start, end - start + 1, replace_str);
           start = start + 1;
           start = event_name.find('%', start);
@@ -792,8 +796,7 @@ std::string OpName(const framework::VariableNameMap &name_map,
   std::string ret = type_name + "%";
   for (auto it = name_map.begin(); it != name_map.end(); it++) {
     auto name_outputs = it->second;
-    if (!name_outputs.empty() &&
-        type_name.length() < name_outputs[0].length()) {
+    if (!name_outputs.empty()) {
       ret = ret + name_outputs[0];
       break;
     }
