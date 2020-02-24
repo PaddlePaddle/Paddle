@@ -187,7 +187,7 @@ class AstVarEnv(object):
 
     def exit_scope(self):
         assert self.cur_scope.parent_scope is not None, "Call exit_scope in "\
-            "AstVarEnv when current scope doens't have parent scope."
+            "AstVarEnv when current scope doesn't have parent scope."
         self.cur_scope = self.cur_scope.parent_scope
         return self.cur_scope
 
