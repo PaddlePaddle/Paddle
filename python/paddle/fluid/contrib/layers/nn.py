@@ -874,7 +874,7 @@ def partial_sum(input, start_index=0, length=-1):
     """
     **PartialSum**
     This Op can sum the vars by specifying the initial position(start_index) and length(length). 
-    This OP exists in contrib, which means that it is not shown to the public.
+    This Op exists in contrib, which means that it is not shown to the public.
     Only 2-D Tensor or LodTensor input is supported. Slice and concat can only be 
     performed along the second dimension.
     .. code-block:: text
