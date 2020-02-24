@@ -725,9 +725,15 @@ class Executor(object):
                 the input program is :code:`fluid.Program`, and the parameters(program, feed variable name
                 and fetch_list variable) of this interface remains unchanged during running.
                 The default is False.
-            return_merged(bool): This parameter indicates whether fetched variables (the variable specified
+            return_merged(bool): This parameter indicates whether fetched variables (the variables specified
                 in the fetch list) should be merged according to the execution device dimension. If it is
-                False, the fetched results will not be merged. The default is True.
+                False, the fetched results will not be merged. If :code:`return_numpy` and :code:`return_merged`
+                are both False, the type of the return value is a two-dimensional list of :code:`LoDTensor`.
+                If :code:`return_numpy` is False and :code:`return_merged` is True, the type of the return
+                value is a one-dimensional list of :code:`LoDTensor`. Please see Examples 2 for more details.
+                If the lengths of fetched results are variant, please set :code:`return_merged` as False. 
+                The default is True, but it is just for the compatibility, and may use False as default value
+                in the future version.
                 
         Returns:
 
@@ -747,7 +753,7 @@ class Executor(object):
                results are spliced together in dimension 0 for the same variable values
                (variables in fetch_list) on different devices.
 
-        Examples:
+        Examples 1:
             .. code-block:: python
 
               import paddle.fluid as fluid
@@ -769,6 +775,46 @@ class Executor(object):
               x = numpy.random.random(size=(10, 1)).astype('float32')
               outs = exe.run(feed={'X': x},
                              fetch_list=[loss.name])
+
+
+        Examples 2:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                import numpy as np
+
+                # First create the Executor.
+                place = fluid.CUDAPlace(0)
+                exe = fluid.Executor(place)
+
+                data = fluid.data(name='X', shape=[None, 1], dtype='float32')
+                prediction = fluid.layers.fc(input=data, size=10)
+                loss = fluid.layers.mean(prediction)
+                adam = fluid.optimizer.Adam()
+                adam.minimize(loss)
+
+                # Run the startup program once and only once.
+                exe.run(fluid.default_startup_program())
+                build_strategy = fluid.BuildStrategy()
+                binary = fluid.CompiledProgram(fluid.default_main_program()).with_data_parallel(
+                    loss_name=loss.name, build_strategy=build_strategy)
+
+                batch_size = 32
+                x = np.random.random(size=(batch_size, 1)).astype('float32')
+                unmerged_loss, unmerged_prediction = exe.run(binary, feed={'X': x},
+                    fetch_list=[loss.name, prediction.name],
+                    return_merged=False)
+                # (GPU_CARD_NUM, 1)
+                print("The unmerged loss shape: {}".format(np.array(unmerged_loss).shape))
+                # (GPU_CARD_NUM, batch_size / GPU_CARD_NUM, 10)
+                print("The unmerged prediction shape: {}".format(np.array(unmerged_prediction).shape))
+                merged_loss, merged_prediction = exe.run(binary, feed={'X': x},
+                    fetch_list=[loss.name, prediction.name],
+                    return_merged=True)
+                # (GPU_CARD_NUM, )
+                print("The merged loss shape: {}".format(np.array(merged_loss).shape))
+                # (batch_size, 10)
+                print("The merged prediction shape: {}".format(np.array(merged_prediction).shape))
         """
         try:
             return self._run_impl(
