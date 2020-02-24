@@ -82,13 +82,6 @@ $$Out = scale*(X + bias)$$
 class ScaleOpVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    // auto &in_var_name = ctx->Input("X").front();
-    // auto out_var_name = ctx->Output("Out").front();
-
-    // if (in_var_name != out_var_name) {
-    //   ctx->SetType(out_var_name, ctx->GetType(in_var_name));
-    //   ctx->SetDataType(out_var_name, ctx->GetDataType(in_var_name));
-    // }
     ctx->SyncTypeAndDataType("X", "Out");
   }
 };

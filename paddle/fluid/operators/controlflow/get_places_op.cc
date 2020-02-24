@@ -94,9 +94,6 @@ execution.
 class GetPlacesInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    // for (auto &o_name : ctx->Output("Out")) {
-    //   ctx->SetType(o_name, framework::proto::VarType::PLACE_LIST);
-    // }
     ctx->SetOutputType("Out", framework::proto::VarType::PLACE_LIST,
                        framework::ALL_ELEMENTS);
   }

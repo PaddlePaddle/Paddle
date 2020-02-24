@@ -211,29 +211,12 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const override {
     if (!ctx->IsDygraph()) {
-      // auto& inputs = ctx->Input("X");
       auto var_type = framework::proto::VarType::SELECTED_ROWS;
       if (VLOG_IS_ON(10) && !ctx->IsDygraph()) {
         for (auto& name : ctx->Input("X")) {
           VLOG(10) << name << " " << ctx->GetType(name);
         }
       }
-
-      // bool any_input_is_lod_tensor = std::any_of(
-      //     inputs.begin(), inputs.end(), [ctx](const std::string& name) {
-      //       return ctx->GetType(name) ==
-      //       framework::proto::VarType::LOD_TENSOR;
-      //     });
-
-      // auto is_tensor_array = [ctx](const std::string& name) {
-      //   return ctx->GetType(name) ==
-      //   framework::proto::VarType::LOD_TENSOR_ARRAY;
-      // };
-
-      // bool any_input_is_tensor_array =
-      //     std::any_of(inputs.begin(), inputs.end(), is_tensor_array);
-      // bool all_inputs_are_tensor_array =
-      //     std::all_of(inputs.begin(), inputs.end(), is_tensor_array);
 
       if (ctx->InputTypeAnyOf("X",
                               framework::proto::VarType::LOD_TENSOR_ARRAY)) {
@@ -253,7 +236,6 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
         var_type = framework::proto::VarType::LOD_TENSOR;
       }
 
-      // auto out_var_name = ctx->Output("Out").front();
       ctx->SetOutputType("Out", var_type);
       ctx->SetOutputDataType("Out", ctx->GetInputDataType("X"));
     }

@@ -232,11 +232,9 @@ uniform distribution. The random result is in set [min, max).
 class UniformRandomOpVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    // auto out_var_name = ctx->Output("Out").front();
     auto var_data_type = static_cast<framework::proto::VarType::Type>(
         boost::get<int>(ctx->GetAttr("dtype")));
 
-    // if (ctx->GetType(out_var_name) !=
     if (ctx->GetOutputDataType("Out") !=
         framework::proto::VarType::SELECTED_ROWS) {
       ctx->SetOutputType("Out", framework::proto::VarType::LOD_TENSOR);

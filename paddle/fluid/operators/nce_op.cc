@@ -280,7 +280,6 @@ class NCEOpGrad : public framework::OperatorWithKernel {
 class NCEOpGradVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    // auto weight_grad = ctx->Output(framework::GradVarName("Weight")).front();
     auto weight_grad = framework::GradVarName("Weight");
 
     auto attr = ctx->GetAttr("is_sparse");

@@ -165,14 +165,6 @@ class InferVarTypeContext {
     block_->FindRecursiveOrCreateVar(name).SetDataType(type);
   }
 
-  virtual void SyncDataTypes(const std::string& input_name,
-                             const std::string& output_name,
-                             const int& index = 0) {
-    auto& input_var = op_->Input(input_name).at(index);
-    auto& output_var = op_->Output(input_name).at(index);
-    this->SetDataTypes(output_var, this->GetDataTypes(input_var));
-  }
-
   virtual std::vector<proto::VarType::Type> GetDataTypes(
       const std::string& name) const {
     PADDLE_ENFORCE_NOT_NULL(block_);
@@ -226,12 +218,6 @@ class PassInDtypeAndVarTypeToOutput : public framework::VarTypeInference {
     auto& in_out_var_names = this->GetInputOutputWithSameType();
 
     for (auto& i_o_n : in_out_var_names) {
-      // auto& x_name = ctx->Input(i_o_n.first).at(0);
-      // auto& out_name = ctx->Output(i_o_n.second).at(0);
-
-      // ctx->SetType(out_name, ctx->GetType(x_name));
-      // ctx->SetDataType(out_name, ctx->GetDataType(x_name));
-
       ctx->SyncTypeAndDataType(i_o_n.first, i_o_n.second);
     }
   }

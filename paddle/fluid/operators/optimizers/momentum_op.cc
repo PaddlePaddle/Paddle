@@ -22,20 +22,6 @@ using Tensor = framework::Tensor;
 class MomentumOpInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const override {
-    // auto& input_var = ctx->Input("Param")[0];
-    // for (auto& out_var : ctx->Output("ParamOut")) {
-    //   if (ctx->GetType(input_var) ==
-    //   framework::proto::VarType::SELECTED_ROWS) {
-    //     ctx->SetType(out_var, framework::proto::VarType::SELECTED_ROWS);
-    //   } else if (ctx->GetType(input_var) ==
-    //              framework::proto::VarType::LOD_TENSOR) {
-    //     ctx->SetType(out_var, framework::proto::VarType::LOD_TENSOR);
-    //   } else {
-    //     PADDLE_THROW(
-    //         "Only support LodTensor and SelectedRows, Unexpected Input
-    //         Type.");
-    //   }
-    // }
     auto in_var_type = ctx->GetInputType("Param");
     PADDLE_ENFORCE(
         in_var_type == framework::proto::VarType::SELECTED_ROWS ||

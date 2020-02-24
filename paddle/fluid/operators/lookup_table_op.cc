@@ -173,7 +173,6 @@ class LookupTableOpGrad : public framework::OperatorWithKernel {
 class LookupTableOpGradVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const override {
-    // auto out_var_name = ctx->Output(framework::GradVarName("W")).front();
     auto out_var_name = framework::GradVarName("W");
     auto attr = ctx->GetAttr("is_sparse");
     bool is_sparse = boost::get<bool>(attr);

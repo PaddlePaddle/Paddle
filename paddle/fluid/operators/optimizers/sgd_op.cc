@@ -75,8 +75,6 @@ class SGDOp : public framework::OperatorWithKernel {
 class SGDOpInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    // auto &input_var_n = ctx->Input("Param")[0];
-    // auto in_var_type = ctx->GetType(input_var_n);
     auto in_var_type = ctx->GetInputType("Param");
     PADDLE_ENFORCE(in_var_type == framework::proto::VarType::SELECTED_ROWS ||
                        in_var_type == framework::proto::VarType::LOD_TENSOR,
@@ -84,11 +82,6 @@ class SGDOpInferVarType : public framework::VarTypeInference {
                    " but the received type is %s",
                    in_var_type);
 
-    // for (auto &out_var_n : ctx->Output("ParamOut")) {
-    //   if (ctx->GetType(out_var_n) != in_var_type) {
-    //     ctx->SetType(out_var_n, in_var_type);
-    //   }
-    // }
     ctx->SetOutputType("ParamOut", in_var_type, framework::ALL_ELEMENTS);
   }
 };
