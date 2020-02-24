@@ -540,14 +540,16 @@ function check_approvals_of_unittest() {
     check_times=$1
     if [ $check_times == 1 ]; then
         approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
-        APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22165420 52485244 6836917`
-        set +x
-        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
-        if [ "${APPROVALS}" == "TRUE" ]; then
-            echo "==================================="
-            echo -e "\n current pr ${GIT_PR_ID} has got approvals. So, Pass CI directly!\n"
-            echo "==================================="
-            exit 0
+        if [ "${approval_line}" != "" ]; then
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22165420 52485244 6836917`
+            set +x
+            echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+            if [ "${APPROVALS}" == "TRUE" ]; then
+                echo "==================================="
+                echo -e "\n current pr ${GIT_PR_ID} has got approvals. So, Pass CI directly!\n"
+                echo "==================================="
+                exit 0
+            fi
         fi
     elif [ $check_times == 2 ]; then
         unittest_spec_diff=`python ${PADDLE_ROOT}/tools/diff_unittest.py ${PADDLE_ROOT}/paddle/fluid/UNITTEST_DEV.spec ${PADDLE_ROOT}/paddle/fluid/UNITTEST_PR.spec`
