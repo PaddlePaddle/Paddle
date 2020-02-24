@@ -55,8 +55,9 @@ class Cluster(object):
             self.job_server, [str(pod) for pod in self.pods], self.hdfs)
 
     def __eq__(self, cluster):
+        print("pods length:", len(self.pods), len(cluster.pods))
         if len(self.pods) != len(cluster.pods):
-            return True
+            return False
 
         for a, b in zip(self.pods, cluster.pods):
             if a != b:
@@ -108,6 +109,12 @@ class JobServer(object):
     def __str__(self):
         return "{}".format(self.endpoint)
 
+    def __eq__(self, j):
+        return self.endpint == j.endpoint
+
+    def __ne__(self, j):
+        return not self == j
+
 
 class Trainer(object):
     def __init__(self):
@@ -119,11 +126,22 @@ class Trainer(object):
         return "gpu:{} endpoint:{} rank:{}".format(self.gpu, self.endpoint,
                                                    self.rank)
 
-    def __eq__(self):
-        pass
+    def __eq__(self, t):
+        if len(self.gpu) != len(t.gpu):
+            return False
 
-    def __ne__(self):
-        pass
+        if self.endpoint != t.endpoint or \
+                self.rank != t.rank :
+            return False
+
+        for a, b in zip(self, gpu, t.gpu):
+            if a != b:
+                return False
+
+        return True
+
+    def __ne__(self, t):
+        return not self == t
 
     def rank(self):
         return self.rank
@@ -315,16 +333,17 @@ def terminate_local_procs(procs):
     # wait all process terminiated
     time.sleep(5)
 
-    alive = False
-    for step in range(0, 100):
+    for step in range(0, 10):
+        alive = False
         for p in procs:
             if p.proc.poll() is not None:
                 os.kill(p.pid, SIGKILL)
                 alive = True
+
         if not alive:
             return
 
-        time.sleep(10)
+        time.sleep(1)
 
     logger.fatal("can't kill all process and exit")
     exit(1)

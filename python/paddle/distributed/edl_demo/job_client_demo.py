@@ -67,10 +67,15 @@ def get_cluster():
 
 class PodProc(object):
     def __init__(self):
+        self.env = None
         self.proc = None
         self.log_fn = None
         self.cmd = None
         self.rank = None
+
+    def __str__(self):
+        return "env:{} proc:{} log_fn:{} cmd:{} rank:{}".format(
+            self.env, self.proc, self.log_fn, self.cmd, self.rank)
 
 
 class PodManager(object):
@@ -120,10 +125,11 @@ class PodManager(object):
         p.rank = pod_rank
         p.log_fn = fn
         p.cmd = cmd
+        p.env = pod_env
 
         self.local_pods[pod_id] = p
 
-    def kill_local_pod(pod_id):
+    def kill_local_pod(self, pod_id):
         assert pod_id in self.local_pods
         procs = [self.local_pods[pod_id]]
         logger.info("kill pod_id:{} pod:{}".format(pod_id, procs))
@@ -156,12 +162,18 @@ def manage_pods():
     while True:
         cluster2 = get_cluster()
         if cluster2 != cluster:
-            for pod in get_deleted_pods(cluster, cluster2):
-                pod_manager.kill_local_pod()
+            deleted_pods = get_deleted_pods(cluster, cluster2)
+            logger.debug("deleted_pods:", deleted_pods)
+            for pod in deleted_pods:
+                pod_manager.kill_local_pod(pod.id)
 
-            for pod in get_added_pods(cluster, cluster2):
+            added_pods = get_added_pods(cluster, cluster2)
+            logger.debug("added_pods:", added_pods)
+            for pod in added_pods:
                 pod_manager.start_local_pod(cluster.job_server, pod.id,
                                             pod.rank)
+
+            cluster = cluster2
 
         time.sleep(1)
 

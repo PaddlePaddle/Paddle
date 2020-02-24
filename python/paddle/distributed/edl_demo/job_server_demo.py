@@ -43,7 +43,7 @@ class JobInfoManager(object):
 
         thread = threading.Thread(target=self.run)
         self._t_id = thread.start()
-        print("job manager started!")
+        #print("job manager started!")
 
     def get_job_pods(self, job_id):
         with self._lock:
@@ -55,7 +55,7 @@ class JobInfoManager(object):
             assert pods_num < len(pods), "can't delete pods_num:%d".format(
                 pods_num)
             self.job[job_id] = pods[:-pods_num]
-            print("deleted pods {}".format(pods))
+            print("deleted pods {}".format(self.job[job_id]))
 
     def add_tail(self, job_id, pods_num, step_id):
         with self._lock:
@@ -74,23 +74,21 @@ class JobInfoManager(object):
 
                 pods.append(pod)
                 pod_rank = len(pods)
-            print("added pods {}".format(pods))
+            #print("added pods {}".format(pods))
 
     def run(self):
         step_id = 0
         modify = True
         while (True):
-            time.sleep(300)
+            time.sleep(30)
             if modify:
                 step_id += 1
-                """
                 print("del 1 pods")
                 self.del_tail(self._job_id, 1, step_id)
-                time.sleep(300)
-                print("add 1 pods")
-                self.add_tail(job_id, 1, step_id)
+                #time.sleep(30)
+                #print("add 1 pods")
+                #self.add_tail(self._job_id, 1, step_id)
                 modify = False
-                """
 
 
 job_manager = JobInfoManager()
@@ -110,12 +108,12 @@ def not_found(error):
 def get_job_pods():
     try:
         job_id = request.args.get('job_id')
-        print("job_id:", job_id)
+        #print("job_id:", job_id)
         job_id = "test_job_id_1234"
     except:
         return jsonify({'job_id': {}})
     job_pods = job_manager.get_job_pods("test_job_id_1234")
-    print("job_pods:", job_pods)
+    #print("job_pods:", job_pods)
     return jsonify({'job_id': job_id, "pods": job_pods})
 
 
@@ -123,7 +121,7 @@ def get_job_pods():
 def update_job_static():
     if not request.json or not 'job_id' in request.json or not 'estimated_run_time' in request.json:
         abort(400)
-    print(requests.json)
+    #print(requests.json)
 
 
 if __name__ == '__main__':
