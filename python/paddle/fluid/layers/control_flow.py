@@ -2028,12 +2028,16 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
         if pred:
             if true_fn is not None:
                 if not callable(true_fn):
-                    raise TypeError("The true_fn in cond must be callable")
+                    raise TypeError(
+                        "The true_fn in cond must be callable, but received {}".
+                        format(type(true_fn).__name__))
                 return true_fn()
         else:
             if false_fn is not None:
                 if not callable(false_fn):
-                    raise TypeError("The false_fn in cond must be callable")
+                    raise TypeError(
+                        "The false_fn in cond must be callable, but received {}".
+                        format(type(false_fn).__name__))
                 return false_fn()
         return None
 
@@ -2043,7 +2047,9 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
     copy_to_parent_func = lambda var: copy_var_to_parent_block(var, helper)
     if true_fn is not None:
         if not callable(true_fn):
-            raise TypeError("The true_fn in cond must be callable")
+            raise TypeError(
+                "The true_fn in cond must be callable, but received {}".format(
+                    type(true_fn).__name__))
         true_cond_block = ConditionalBlock([pred], is_scalar_condition=True)
         with true_cond_block.block():
             origin_true_output = true_fn()
@@ -2052,7 +2058,9 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
                                             origin_true_output)
     if false_fn is not None:
         if not callable(false_fn):
-            raise TypeError("The false_fn in cond must be callable")
+            raise TypeError(
+                "The false_fn in cond must be callable, but received {}".format(
+                    type(false_fn).__name__))
         false_cond_block = ConditionalBlock(
             [logical_not(pred)], is_scalar_condition=True)
         with false_cond_block.block():
