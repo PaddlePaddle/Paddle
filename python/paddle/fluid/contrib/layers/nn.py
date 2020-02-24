@@ -848,8 +848,8 @@ def partial_sum(input, start_index=0, length=-1):
         out = exe.run(feed={"x":xx, "y":yy}, fetch_list=[sum])
     """
     for id, x in enumerate(input):
-        check_type_and_dtype(x, 'input[' + str(id) + ']', Variable,
-                             ['float32', 'int32', 'int64'], 'partial_sum')
+        check_variable_and_dtype(x, 'input[' + str(id) + ']', Variable,
+                                 ['float32', 'int32', 'int64'], 'partial_sum')
     inputs = {'X': input}
     attrs = {}
     attrs['start_index'] = start_index
