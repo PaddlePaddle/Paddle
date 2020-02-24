@@ -19,7 +19,6 @@
 # reasons for skipping compile_vs_runtime test or be fixed later.
 
 COMPILE_RUN_OP_WHITE_LIST = [
-    'lod_reset', \
     'sequence_pool', \
     'sequence_slice', \
     'generate_mask_labels', \
