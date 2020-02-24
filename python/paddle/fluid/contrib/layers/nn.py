@@ -815,6 +815,7 @@ def partial_concat(input, start_index=0, length=-1):
     OP exists in contrib, which means that it is not shown to the public.
     Only 2-D Tensor or LodTensor input is supported. Slice and concat can only be 
     performed along the second dimension.
+
     .. code-block:: text
         
         Given:
@@ -823,10 +824,12 @@ def partial_concat(input, start_index=0, length=-1):
             y = [[6, 7 ,8],
                  [9, 10, 11]]
             output = partial_concat([x, y], start_index=0, length=2)
+
           we get:
              
             output = [[0, 1, 6, 7],
                       [3, 4, 9, 10]]
+
     Args:
         input(list): List of input Tensors with data type float32, float64, int32,
             int64.
@@ -864,4 +867,58 @@ def partial_concat(input, start_index=0, length=-1):
         inputs=inputs,
         outputs={'Out': [out]},
         attrs=attrs)
+    return out
+
+
+def partial_sum(input, start_index=0, length=-1):
+    """
+    **PartialSum**
+    This Op can sum the vars by specifying the initial position(start_index) and length(length). 
+    This OP exists in contrib, which means that it is not shown to the public.
+    Only 2-D Tensor or LodTensor input is supported. Slice and concat can only be 
+    performed along the second dimension.
+    .. code-block:: text
+        
+        Given:
+            x = [[0, 1, 2],
+                 [3, 4, 5]]
+            y = [[6, 7 ,8],
+                 [9, 10, 11]]
+            output = partial_sum([x, y], start_index=0, length=2)
+          we get:
+             
+            output = [[6, 8],
+                      [12, 14]]
+    Args:
+        input(list): List of input Tensors with data type float32, float64, int32,
+            int64.
+    Returns:
+        Variable: A Tensor with the same data type as input's.
+    Examples:
+        .. code-block:: python
+        import paddle.fluid.layers as layers
+        import paddle.fluid as fluid
+        import numpy as np
+        x = fluid.data(name="x", shape=[None, 3], dtype="float32")
+        y = fluid.data(name="y", shape=[None, 3], dtype="float32")
+        sum = layers.partial_sum([x,y], start_index=0, length=2)
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        xx = np.array([1,2,3,4,5,6]).reshape((2,3)).astype("float32")
+        yy = np.array([6,5,4,4,5,6]).reshape((2,3)).astype("float32")
+        out = exe.run(feed={"x":xx, "y":yy}, fetch_list=[sum])
+    """
+    for id, x in enumerate(input):
+        check_variable_and_dtype(x, 'input[' + str(id) + ']',
+                                 ['float32', 'float64', 'int32', 'int64'],
+                                 'partial_sum')
+
+    inputs = {'X': input}
+    attrs = {}
+    attrs['start_index'] = start_index
+    attrs['length'] = length
+    helper = LayerHelper('partial_sum', **locals())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+    helper.append_op(
+        type='partial_sum', inputs=inputs, outputs={'Out': [out]}, attrs=attrs)
     return out
