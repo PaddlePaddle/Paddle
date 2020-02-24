@@ -4,10 +4,87 @@ from contextlib import closing
 import socket
 from flask import request
 import random
+import threading
 
 random.seed(10)
 
 app = Flask(__name__, static_url_path="")
+
+
+class JobInfoManager(object):
+    def __init__(self):
+        self.job = {}
+        self._t_id = None
+        self._lock = threading.Lock()
+        self._last_port = None
+
+        pods = self._init_job_pods()
+        self.job["test_job_id_1234"] = pods
+
+    def _init_job_pods(self):
+        pods = []
+        port = 7070
+        for i in range(0, 16, 2):
+            pod = {}
+            pod["pod_id"] = "pod_{}_{}".format(i / 2, 0)
+            pod["running"] = True
+            pod["addr"] = "127.0.0.1"
+            pod_port = port + i
+            pod["pod_port"] = pod_port
+            pod["trainer_ports"] = [pod_port + 1]
+            pods.append(pod)
+            self._last_port = pod_port + 1
+        return pods
+
+    def start(self):
+        assert self._t_id is None, "thread has been started"
+
+        thread = threading.Thread(target=self.run)
+        thread.start()
+        return str(thread)
+
+    def get_job_pods(self, job_id):
+        with self._lock:
+            return self.jobs[job_id]
+
+    def del_tail(self, job_id, pods_num, step_id):
+        with self._lock:
+            pods = self.job[job_id]
+            assert pods_num < len(pods), "can't delete pods_num:%d".format(
+                pods_num)
+            pods = pods[:-pods_num]
+
+    def add_tail(self, job_id, pods_num, step_id):
+        with self._lock:
+            pods = self.job[job_id]
+            pod_rank = len(pods)
+            for i in range(0, pods_num * 2, 2):
+                pod = {}
+                pod["pod_id"] = "pod_{}_{}".format(pod_rank, step_id)
+                pod["running"] = True
+                pod["addr"] = "127.0.0.1"
+                pod_port = self._last_port + 1
+                pod["pod_port"] = pod_port
+                pod["trainer_ports"] = [pod_port + 1]
+                pods.append(pod)
+                self._last_port = pod_port + 1
+
+                pods.append(pod)
+                pod_rank = len(pods)
+
+    def run(self):
+        step_id = 0
+        modify = True
+        job_id = "test_job_id_1234"
+        while (True):
+            with self._lock:
+                if modify:
+                    step_id += 1
+                    self.del_tail(job_id, 1, step_id)
+                    #self.add_tail(job_id, 1, step_id)
+                    modify = False
+            time.sleep(300)
+
 
 job_manager = JobInfoManager()
 
@@ -20,55 +97,6 @@ def bad_request(error):
 @app.errorhandler(404)
 def not_found(error):
     return make_response(jsonify({'error': 'Not found'}), 404)
-
-
-class JobInfoManager(object):
-    def __init__(self):
-        self.job["test_job_id_1234"] = self._init_job_pods()
-        self._t_id = None
-        self._lock = threading.Lock()
-
-    def _init_job_pods(self):
-        #job = {"job_id": "test_job_id_1234", "pods": []}
-        pods = []
-        port = 7070
-        for i in range(0, 16, 2):
-            pod = {}
-            pod["pod_id"] = i / 2
-            pod["running"] = True
-            pod["addr"] = "127.0.0.1"
-            pod["pod_port"] = port + i
-            pod["trainer_ports"] = [port + i + 1]
-            pods.append(pod)
-        #job["pods"] = pods
-        return pods
-
-    def start(self):
-        assert self._t_id is None, "thread has been started"
-
-        thread = Thread(target=self.run)
-        thread.start()
-        return str(thread)
-
-    def get_job_pods(self, job_id):
-        with self._lock:
-            return self.jobs[job_id]
-
-    def del_tail(self, pods_num):
-        with self._lock:
-            pods = self.job["pods"]
-            assert pods_num < len(pods), "can't delete pods_num:%d".format(
-                pods_num)
-            #return pods[:-pods_num]
-
-    def add_tail(self, pods_num):
-        pass
-
-    def run(self):
-        while (True):
-            with self._lock:
-                generate_job_pods()
-            time.sleep(300)
 
 
 @app.route('/rest/1.0/get/query_pods', methods=['GET'])
@@ -91,5 +119,5 @@ def update_job_static():
 
 
 if __name__ == '__main__':
-    job_manager.start()
+    #job_manager.start()
     app.run(host='0.0.0.0', port=8180)
