@@ -11,14 +11,10 @@ limitations under the License. */
 
 #pragma once
 
-#include <nmmintrin.h>
 #include <string>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-
-static const unsigned int SSE_STEP_SIZE = 4;
-static const unsigned int SSE_CUT_LEN_MASK = 3U;
 
 namespace paddle {
 namespace operators {
