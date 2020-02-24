@@ -74,10 +74,13 @@ def enabled():
         .. code-block:: python
 
             import paddle.fluid as fluid
-            if fluid.in_dygraph_mode():
-                print('running in dygraph mode')
-            else:
-                print('not running in dygraph mode')
+            import numpy as np
+
+            data = np.random.uniform( -1, 1, [30, 10, 32] ).astype('float32')
+            fluid.dygraph.enable()  # Now we are in dygragh mode
+            print(fluid.dygraph.enabled())  # True
+            fluid.dygraph.disable()
+            data = fluid.dygraph.to_variable(data, name='data')  # AssertionError
     """
     return framework.in_dygraph_mode()
 
@@ -92,6 +95,19 @@ def enable(place=None):
 
     return:
         None
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+
+            data = np.random.uniform( -1, 1, [30, 10, 32] ).astype('float32')
+            fluid.dygraph.enable()  # Now we are in dygragh mode
+            data = fluid.dygraph.to_variable(data, name='data')
+            print(fluid.dygraph.enabled())  # True
+            fluid.dygraph.disable()
+            data = fluid.dygraph.to_variable(data, name='data')  # AssertionError
     """
     global _functional_dygraph_context_manager
     _functional_dygraph_context_manager = guard(place=place)
@@ -104,6 +120,19 @@ def disable():
 
     return:
         None
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+
+            data = np.random.uniform( -1, 1, [30, 10, 32] ).astype('float32')
+            fluid.dygraph.enable()  # Now we are in dygragh mode
+            data = fluid.dygraph.to_variable(data, name='data')
+            print(fluid.dygraph.enabled())  # True
+            fluid.dygraph.disable()
+            data = fluid.dygraph.to_variable(data, name='data')  # AssertionError
     """
     global _functional_dygraph_context_manager
     assert _functional_dygraph_context_manager is not None
