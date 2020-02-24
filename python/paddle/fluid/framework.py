@@ -4020,11 +4020,6 @@ class Program(object):
 
             p._sync_with_cpp()
 
-        if not pruned_origin_block_id_map:
-            pruned_origin_block_id_map = {
-                i: i
-                for i in six.moves.range(self.desc.num_blocks())
-            }
         p._copy_param_info_from(self)
         p._copy_data_info_from(self, pruned_origin_block_id_map)
         p._copy_dist_param_info_from(self)

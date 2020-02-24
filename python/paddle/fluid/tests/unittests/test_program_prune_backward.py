@@ -253,7 +253,7 @@ class TestProgramPruneBackward(unittest.TestCase):
 
     def test_cond(self):
         def optimizer():
-            optimizer = fluid.optimizer.SGD(learning_rate=0.01, )
+            optimizer = fluid.optimizer.SGD(learning_rate=0.01)
             return optimizer
 
         with self.program_scope_guard():
@@ -289,11 +289,7 @@ class TestProgramPruneBackward(unittest.TestCase):
                                        feed=feed_dict,
                                        fetch_list=[loss.name])
 
-        import paddle.fluid.transpiler.details.program_utils as pu
-        pu.program_to_code(test_prog_orig, skip_op_callstack=True)
-        pu.program_to_code(test_prog_prune, skip_op_callstack=True)
         self.program_compare(test_prog_orig, test_prog_prune)
-
         self.assertEqual(loss_data_orig, loss_data_prune)
 
     @contextlib.contextmanager
