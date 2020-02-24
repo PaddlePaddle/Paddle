@@ -55,14 +55,8 @@ class PReluTest(OpTest):
     def test_check_output(self):
         self.check_output()
 
-    def test_check_grad_1_ignore_x(self):
-        self.check_grad(['Alpha'], 'Out', no_grad_set=set('X'))
-
-    def test_check_grad_2(self):
+    def test_check_grad(self):
         self.check_grad(['X', 'Alpha'], 'Out')
-
-    def test_check_grad_3_ignore_alpha(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Alpha'))
 
 
 # TODO(minqiyang): Resume these test cases after fixing Python3 CI job issues
