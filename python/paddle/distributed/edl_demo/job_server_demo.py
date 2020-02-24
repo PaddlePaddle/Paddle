@@ -55,24 +55,25 @@ class JobInfoManager(object):
             assert pods_num < len(pods), "can't delete pods_num:%d".format(
                 pods_num)
             self.job[job_id] = pods[:-pods_num]
-            print("deleted pods {}".format(self.job[job_id]))
+            #print("deleted pods {}".format(self.job[job_id]))
 
     def add_tail(self, job_id, pods_num, step_id):
         with self._lock:
             pods = self.job[job_id]
             pod_rank = len(pods)
-            for i in range(0, pods_num * 2, 2):
+            for i in range(pods_num):
                 pod = {}
                 pod["pod_id"] = "pod_{}_{}".format(pod_rank, step_id)
                 pod["running"] = True
                 pod["addr"] = "127.0.0.1"
+
                 pod_port = self._last_port + 1
                 pod["pod_port"] = pod_port
                 pod["trainer_ports"] = [pod_port + 1]
+
                 pods.append(pod)
                 self._last_port = pod_port + 1
 
-                pods.append(pod)
                 pod_rank = len(pods)
             #print("added pods {}".format(pods))
 
@@ -80,14 +81,15 @@ class JobInfoManager(object):
         step_id = 0
         modify = True
         while (True):
-            time.sleep(30)
+            time.sleep(15)
             if modify:
                 step_id += 1
-                print("del 1 pods")
+                #print("del 1 pods")
                 self.del_tail(self._job_id, 1, step_id)
-                #time.sleep(30)
-                #print("add 1 pods")
-                #self.add_tail(self._job_id, 1, step_id)
+                time.sleep(15)
+                print("add 1 pods")
+                self.add_tail(self._job_id, 1, step_id)
+                #print("added_pod:", self.pods)
                 modify = False
 
 

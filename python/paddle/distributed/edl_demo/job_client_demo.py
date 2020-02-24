@@ -92,7 +92,8 @@ class PodManager(object):
                                      pod.rank)
 
     def start_local_pod(self, job_server, job_id, pod_id, pod_rank):
-        assert pod_id not in self.local_pods
+        assert pod_id not in self.local_pods, "pod_id:{} local_pods:{}".format(
+            pod_id, [k for k, _ in self.local_pods.items()].sort())
 
         current_env = copy.copy(os.environ.copy())
         current_env.pop("http_proxy", None)
@@ -130,11 +131,15 @@ class PodManager(object):
         self.local_pods[pod_id] = p
 
     def kill_local_pod(self, pod_id):
-        assert pod_id in self.local_pods
+        assert pod_id in self.local_pods, "pod_id:{} local_pods:{}".format(
+            pod_id, [k for k, _ in self.local_pods.items()])
         procs = [self.local_pods[pod_id]]
         logger.info("kill pod_id:{} pod:{}".format(
             pod_id, [str(proc) for proc in procs]))
         terminate_local_procs(procs)
+
+        #remove from local_pods
+        self.local_pods.pop(pod_id)
 
 
 def get_deleted_pods(cluster, cluster2):
@@ -171,8 +176,8 @@ def manage_pods():
             added_pods = get_added_pods(cluster, cluster2)
             logger.debug("added_pods:", added_pods)
             for pod in added_pods:
-                pod_manager.start_local_pod(cluster.job_server, pod.id,
-                                            pod.rank)
+                pod_manager.start_local_pod(cluster2.job_server,
+                                            cluster2.job_id, pod.id, pod.rank)
 
             cluster = cluster2
 
