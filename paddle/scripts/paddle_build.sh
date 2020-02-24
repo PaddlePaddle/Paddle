@@ -136,6 +136,20 @@ function cmake_base() {
             -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27mu/include/python2.7
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.11-ucs4/lib/libpython2.7.so"
                 pip install -r ${PADDLE_ROOT}/python/requirements.txt
+            elif [ "$1" == "cp27-cp27m-gcc82" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.15-ucs2/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.15-ucs4/lib:}
+                export PATH=/opt/python/cp27-cp27m/bin/:${PATH}
+                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27m/bin/python
+            -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27m/include/python2.7
+            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.15-ucs2/lib/libpython2.7.so"
+                pip install -r ${PADDLE_ROOT}/python/requirements.txt
+            elif [ "$1" == "cp27-cp27mu-gcc82" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.15-ucs4/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.15-ucs2/lib:}
+                export PATH=/opt/python/cp27-cp27mu/bin/:${PATH}
+                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27mu/bin/python
+            -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27mu/include/python2.7
+            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.15-ucs4/lib/libpython2.7.so"
+                pip install -r ${PADDLE_ROOT}/python/requirements.txt
             elif [ "$1" == "cp35-cp35m" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.5.1/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.5.1/bin/:${PATH}
@@ -465,16 +479,17 @@ function fetch_upstream_develop_if_not_exist() {
     if [ ! -e "$PADDLE_ROOT/.git/refs/remotes/upstream/$BRANCH" ]; then 
         git fetch upstream # develop is not fetched
     fi
-}  
+}
 
 function generate_upstream_develop_api_spec() {
     fetch_upstream_develop_if_not_exist
-    cur_branch=`git branch | grep \* | cut -d ' ' -f2` 
+    cur_branch=`git branch | grep \* | cut -d ' ' -f2`
     git checkout -b develop_base_pr upstream/$BRANCH
     cmake_gen $1
     build $2
-    generate_api_spec "$1" "DEV"
+
     git checkout $cur_branch
+    generate_api_spec "$1" "DEV"
     git branch -D develop_base_pr
     ENABLE_MAKE_CLEAN="ON"
     rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
@@ -510,12 +525,10 @@ function generate_api_spec() {
         sed -i 's/arg0: str/arg0: unicode/g' $spec_path
         sed -i "s/\(.*Transpiler.*\).__init__ (ArgSpec(args=\['self'].*/\1.__init__ /g" $spec_path
     fi   
+    
+    python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py \
+        ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_${spec_kind}.spec
 
-    # TODO(paddle-dev): remove op_use_default_grad_op_maker.spec 
-    if [ "$spec_kind" == "PR" ]; then
-        python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py \
-            ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_op_maker.spec
-    fi
     deactivate
 }
 

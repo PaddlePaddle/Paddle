@@ -53,7 +53,22 @@ class FleetDistRunnerBase(object):
         do training : exe run program
     """
 
-    def generate_strategy(self, args):
+    def build_role(self, args):
+        if args.role.upper() == "PSERVER":
+            role = role_maker.UserDefinedRoleMaker(
+                current_id=args.current_id,
+                role=role_maker.Role.SERVER,
+                worker_num=args.trainers,
+                server_endpoints=args.endpoints.split(","))
+        else:
+            role = role_maker.UserDefinedRoleMaker(
+                current_id=args.current_id,
+                role=role_maker.Role.WORKER,
+                worker_num=args.trainers,
+                server_endpoints=args.endpoints.split(","))
+        return role
+
+    def build_strategy(self, args):
         self.strategy = None
         if args.mode == "async":
             self.strategy = StrategyFactory.create_async_strategy()
@@ -64,24 +79,20 @@ class FleetDistRunnerBase(object):
         elif args.mode == "geo":
             self.strategy = StrategyFactory.create_geo_strategy(
                 args.geo_sgd_need_push_nums)
+        self.dump_param = os.getenv("dump_param", "").split(",")
+        self.dump_fields = os.getenv("dump_fields", "").split(",")
+        self.dump_fields_path = os.getenv("dump_fields_path", "")
+        debug = int(os.getenv("Debug", "0"))
+        if debug:
+            self.strategy.set_debug_opt({
+                "dump_param": self.dump_param,
+                "dump_fields": self.dump_fields,
+                "dump_fields_path": self.dump_fields_path
+            })
+
         return self.strategy
 
-    def run_pserver(self, args):
-        if args.role.upper() != "PSERVER":
-            raise ValueError("args role must be PSERVER")
-
-        role = role_maker.UserDefinedRoleMaker(
-            current_id=args.current_id,
-            role=role_maker.Role.SERVER,
-            worker_num=args.trainers,
-            server_endpoints=args.endpoints.split(","))
-
-        fleet.init(role)
-
-        strategy = self.generate_strategy(args)
-
-        avg_cost = self.net()
-
+    def build_optimizer(self, avg_cost, strategy):
         use_grad_clip = int(os.getenv('GRAD_CLIP', 0))
         if use_grad_clip:
             # 1: clip_by_value; 2: clip_by_norm; 3:clip_by_global_norm
@@ -98,74 +109,31 @@ class FleetDistRunnerBase(object):
         optimizer = fluid.optimizer.SGD(LEARNING_RATE)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
+
+    def run_pserver(self, args):
+        fleet.init(self.build_role(args))
+        strategy = self.build_strategy(args)
+        avg_cost = self.net(args)
+        self.build_optimizer(avg_cost, strategy)
 
         fleet.init_server()
         fleet.run_server()
 
     def run_dataset_trainer(self, args):
-        if args.role.upper() != "TRAINER":
-            raise ValueError("args role must be TRAINER")
-
-        role = role_maker.UserDefinedRoleMaker(
-            current_id=args.current_id,
-            role=role_maker.Role.WORKER,
-            worker_num=args.trainers,
-            server_endpoints=args.endpoints.split(","))
-
-        fleet.init(role)
-
-        strategy = self.generate_strategy(args)
-
-        avg_cost = self.net()
-
-        use_grad_clip = int(os.getenv('GRAD_CLIP', 0))
-        if use_grad_clip:
-            # 1: clip_by_value; 2: clip_by_norm; 3:clip_by_global_norm
-            if use_grad_clip == 1:
-                fluid.clip.set_gradient_clip(
-                    clip=fluid.clip.GradientClipByValue(2.0))
-            elif use_grad_clip == 2:
-                fluid.clip.set_gradient_clip(
-                    clip=fluid.clip.GradientClipByNorm(2.0))
-            elif use_grad_clip == 3:
-                fluid.clip.set_gradient_clip(
-                    clip=fluid.clip.GradientClipByGlobalNorm(2.0))
-
-        optimizer = fluid.optimizer.SGD(LEARNING_RATE)
-        optimizer = fleet.distributed_optimizer(optimizer, strategy)
-        optimizer.minimize(avg_cost)
-
+        fleet.init(self.build_role(args))
+        strategy = self.build_strategy(args)
+        avg_cost = self.net(args)
+        self.build_optimizer(avg_cost, strategy)
         out = self.do_dataset_training(fleet)
 
     def run_pyreader_trainer(self, args):
-        if args.role.upper() != "TRAINER":
-            raise ValueError("args role must be TRAINER")
-
-        role = role_maker.UserDefinedRoleMaker(
-            current_id=args.current_id,
-            role=role_maker.Role.WORKER,
-            worker_num=args.trainers,
-            server_endpoints=args.endpoints.split(","))
-
-        fleet.init(role)
-
-        strategy = self.generate_strategy(args)
-
-        avg_cost = self.net()
-
-        self.reader = fluid.io.PyReader(
-            feed_list=self.feeds,
-            capacity=64,
-            iterable=False,
-            use_double_buffer=False)
-
-        optimizer = fluid.optimizer.SGD(LEARNING_RATE)
-        optimizer = fleet.distributed_optimizer(optimizer, strategy)
-        optimizer.minimize(avg_cost)
-
+        fleet.init(self.build_role(args))
+        strategy = self.build_strategy(args)
+        avg_cost = self.net(args)
+        self.build_optimizer(avg_cost, strategy)
         out = self.do_pyreader_training(fleet)
 
-    def net(self, batch_size=4, lr=0.01):
+    def net(self, args, batch_size=4, lr=0.01):
         raise NotImplementedError(
             "get_model should be implemented by child classes.")
 
@@ -263,7 +231,7 @@ class TestFleetBase(unittest.TestCase):
         return tr0_proc, tr1_proc, tr0_pipe, tr1_pipe
 
     def _run_cluster(self, model, envs):
-        env = {'CPU_NUM': '1', 'GRAD_CLIP': str(self._grad_clip_mode)}
+        env = {'GRAD_CLIP': str(self._grad_clip_mode)}
         env.update(envs)
 
         python_path = self._python_interp
@@ -307,29 +275,6 @@ class TestFleetBase(unittest.TestCase):
 
         ps0.terminate()
         ps1.terminate()
-        '''
-        with open("/tmp/tr0_out.log", "wb+") as wn:
-            wn.write(tr0_out)
-        with open("/tmp/tr1_out.log", "wb+") as wn:
-            wn.write(tr1_out)
-        # print server log
-        '''
-
-        # print server log
-        '''
-        with open("/tmp/ps0_err.log", "r") as fn:
-            sys.stderr.write("ps0 stderr: %s\n" % fn.read())
-        with open("/tmp/ps1_err.log", "r") as fn:
-            sys.stderr.write("ps1 stderr: %s\n" % fn.read())
-        '''
-
-        # print log
-        '''
-        with open("/tmp/tr0_err.log", "r") as fn:
-            sys.stderr.write('trainer 0 stderr: %s\n' % fn.read())
-        with open("/tmp/tr1_err.log", "r") as fn:
-            sys.stderr.write('trainer 1 stderr: %s\n' % fn.read())
-        '''
 
         return 0, 0
 

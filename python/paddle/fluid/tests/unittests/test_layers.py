@@ -1558,6 +1558,7 @@ class TestBook(LayerTest):
             "make_sampled_softmax_with_cross_entropy", "make_sampling_id",
             "make_uniform_random_batch_size_like"
         })
+        self.all_close_compare = set({"make_spectral_norm"})
 
     def test_all_layers(self):
         attrs = (getattr(self, name) for name in dir(self))
@@ -1594,9 +1595,18 @@ class TestBook(LayerTest):
                     dy_result = dy_result[0]
                 dy_result_value = dy_result.numpy()
 
+            if method.__name__ in self.all_close_compare:
+                self.assertTrue(
+                    np.allclose(
+                        static_result[0], dy_result_value, atol=0, rtol=1e-05),
+                    "Result of function [{}] compare failed".format(
+                        method.__name__))
+                continue
+
             if method.__name__ not in self.not_compare_static_dygraph_set:
                 self.assertTrue(
-                    np.array_equal(static_result[0], dy_result_value))
+                    np.array_equal(static_result[0], dy_result_value),
+                    "Result of function [{}] not equal".format(method.__name__))
 
     def _get_np_data(self, shape, dtype, append_batch_size=True):
         np.random.seed(self.seed)
@@ -2909,6 +2919,16 @@ class TestBook(LayerTest):
             x = layers.data(name='x', shape=[3, 20, 20], dtype='float32')
             out = layers.unfold(x, [3, 3], 1, 1, 1)
             return (out)
+
+    def test_partial_concat(self):
+        with self.static_graph():
+            x = fluid.data(name="x", shape=[None, 3], dtype="float32")
+            y = fluid.data(name="y", shape=[None, 3], dtype="float32")
+            concat1 = fluid.contrib.layers.partial_concat(
+                [x, y], start_index=0, length=2)
+            concat2 = fluid.contrib.layers.partial_concat(
+                x, start_index=0, length=-1)
+            return concat1, concat2
 
     def test_deform_roi_pooling(self):
         with program_guard(fluid.default_main_program(),

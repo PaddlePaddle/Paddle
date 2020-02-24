@@ -92,19 +92,6 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "transpose_flatten_concat_fuse_pass",
 });
 
-// The following passes works for Anakin sub-graph engine.
-const std::vector<std::string> kAnakinSubgraphPasses({
-    "quant_conv2d_dequant_fuse_pass",               //
-    "simplify_anakin_priorbox_detection_out_pass",  //
-    "fillconstant_elementwisemul_fuse",             //
-    "fc_fuse_pass",                                 //
-    "conv_elementwise_add_fuse_pass",               //
-    "fc_gru_fuse_pass",                             //
-    "shuffle_channel_detect_pass",                  //
-    "anakin_subgraph_pass",                         //
-    "fc_gru_fuse_pass",                             //
-});
-
 const std::vector<std::string> kLiteSubgraphPasses({
 #ifdef PADDLE_WITH_LITE
     "lite_subgraph_pass",
@@ -120,7 +107,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_eltwiseadd_affine_channel_fuse_pass",  //
         "conv_bn_fuse_pass",                         //
         "conv_eltwiseadd_bn_fuse_pass",              //
-        "multihead_matmul_fuse_pass",
+        "multihead_matmul_fuse_pass_v2",
         "fc_fuse_pass",                        //
         "fc_elementwise_layernorm_fuse_pass",  //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be

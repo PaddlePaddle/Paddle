@@ -202,6 +202,22 @@ class Fleet(object):
         self._role_maker.generate_role()
         self._is_initialized = True
 
+    def all_reduce_worker(self, input, output):
+        """
+        all reduce between workers, only support array of one dim.
+
+        Args:
+            input(list|numpy.array): array of one dim
+            output(list|numpy.array): array of one dim
+        """
+        self._role_maker.all_reduce_worker(input, output)
+
+    def barrier_worker(self):
+        """
+        barrier between workers
+        """
+        self._role_maker.barrier_worker()
+
     @abc.abstractmethod
     def init_worker(self):
         pass

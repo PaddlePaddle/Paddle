@@ -284,6 +284,49 @@ void CPUQuantizeSquashPass::MultipleQuantizeSquash(Graph* graph) const {
   PrettyLogDetail("---    squashed %d quantize op", removed_quantize);
 }
 
+// squash scale with dequant
+void CPUQuantizeSquashPass::DequantScaleSquash(Graph* graph) const {
+  GraphPatternDetector gpd;
+  patterns::DequantScale dequant_scale_pattern{gpd.mutable_pattern(),
+                                               "dequant_scale"};
+  dequant_scale_pattern();
+
+  int found_dequant_scale_squash_count = 0;
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* g) {
+    VLOG(4) << "squash dequant-scale ops pair";
+
+    GET_IR_NODE_FROM_SUBGRAPH(dequant_op, dequant_op, dequant_scale_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(dequant_out, dequant_out, dequant_scale_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(scale_op, scale_op, dequant_scale_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(scale_out, scale_out, dequant_scale_pattern);
+
+    if (dequant_out->outputs.size() == 1 &&
+        scale_op->Op()->GetAttrIfExists<float>("bias") == 0.0) {
+      auto dequant_scale = dequant_op->Op()->GetAttrIfExists<float>("Scale");
+      auto scale_scale = scale_op->Op()->GetAttrIfExists<float>("scale");
+
+      PADDLE_ENFORCE_GT(dequant_scale, 0.0f,
+                        platform::errors::InvalidArgument(
+                            "Dequantize scale should have positive value"));
+      PADDLE_ENFORCE_GT(scale_scale, 0.0f,
+                        platform::errors::InvalidArgument(
+                            "Scale of scale op should have positive value"));
+
+      dequant_op->Op()->SetAttr("Scale", dequant_scale / scale_scale);
+      dequant_op->Op()->SetOutput(
+          "Output", std::vector<std::string>({scale_out->Name()}));
+      IR_NODE_LINK_TO(dequant_op, scale_out);
+      GraphSafeRemoveNodes(graph, {dequant_out, scale_op});
+      found_dequant_scale_squash_count++;
+    }
+  };
+  gpd(graph, handler);
+  AddStatis(found_dequant_scale_squash_count);
+  PrettyLogDetail("---    squashed %d scale with dequant",
+                  found_dequant_scale_squash_count);
+}
+
 void CPUQuantizeSquashPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph,
@@ -294,9 +337,11 @@ void CPUQuantizeSquashPass::ApplyImpl(ir::Graph* graph) const {
   std::unordered_map<const Node*, int> nodes_keep_counter;
   FindNodesToKeep(graph, &nodes_keep_counter);
   DequantQuantSquash(graph, &nodes_keep_counter);
+  ConvRequantSquash(graph);
   ConvDequantSquash(graph);
   FcDequantSquash(graph);
   MultipleQuantizeSquash(graph);
+  DequantScaleSquash(graph);
 }
 
 }  // namespace ir

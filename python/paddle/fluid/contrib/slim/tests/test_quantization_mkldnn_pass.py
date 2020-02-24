@@ -22,7 +22,7 @@ import paddle
 from paddle.fluid.framework import IrGraph
 from paddle.fluid.contrib.slim.quantization import QuantizationFreezePass
 from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
-from paddle.fluid.contrib.slim.quantization import FakeQAT2MkldnnINT8KernelPass
+from paddle.fluid.contrib.slim.quantization import QatInt8MkldnnPass
 from paddle.fluid import core
 
 os.environ["CPU_NUM"] = "1"
@@ -149,8 +149,7 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
         freeze_pass.apply(test_graph)
 
         # Transform quantized graph for MKL-DNN INT8 inference
-        mkldnn_int8_pass = FakeQAT2MkldnnINT8KernelPass(
-            _scope=scope, _place=place)
+        mkldnn_int8_pass = QatInt8MkldnnPass(_scope=scope, _place=place)
         mkldnn_int8_pass.apply(test_graph)
         dev_name = '_cpu_'
         if not for_ci:

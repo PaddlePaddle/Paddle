@@ -61,7 +61,7 @@ def parse_args():
         "--log_dir",
         default="logs",
         type=str,
-        help="The path for each process's log.If it's not setted, the log will printed to default pipe."
+        help="The path for each process's log.If it's not set, the log will printed to default pipe."
     )
 
     # positional

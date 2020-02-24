@@ -36,7 +36,7 @@ class PadConstantLikeOp : public framework::OperatorWithKernel {
     auto y_dim = ctx->GetInputDim("Y");
 
     PADDLE_ENFORCE_EQ(x_dim.size(), y_dim.size(),
-                      "The dimention of X and Y should be the same.");
+                      "The dimension of X and Y should be the same.");
 
     for (int i = 0; i < x_dim.size(); ++i) {
       if ((!ctx->IsRuntime()) && ((x_dim[i] == -1) || (y_dim[i] == -1))) {
@@ -164,7 +164,7 @@ class PadConstantLikeOpGrad : public framework::OperatorWithKernel {
     auto dout_dim = ctx->GetInputDim(framework::GradVarName("Out"));
 
     PADDLE_ENFORCE_EQ(dout_dim.size(), y_dim.size(),
-                      "The dimention of X and Y should be the same.");
+                      "The dimension of X and Y should be the same.");
 
     auto y_grad_name = framework::GradVarName("Y");
     if (ctx->HasOutput(y_grad_name)) {

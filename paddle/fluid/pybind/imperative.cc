@@ -25,6 +25,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 #include "paddle/fluid/imperative/backward_strategy.h"
+#include "paddle/fluid/imperative/data_loader.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/nccl_context.h"
 #include "paddle/fluid/imperative/profiler.h"
@@ -225,7 +226,7 @@ void BindImperative(py::module *m_ptr) {
     BackwardStrategy is a descriptor of how to run the backward process.
 
     **Note**:
-        **This API is only avaliable in** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **Mode**
+        **This API is only available in** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **Mode**
 
     Attribute:
         **sort_sum_gradient**:
@@ -276,6 +277,19 @@ void BindImperative(py::module *m_ptr) {
           imperative::SetCurrentTracer(tracer);
         });
 
+#ifndef _WIN32
+  // Dygraph DataLoader signal handler
+  m.def("_set_process_pid", [](int64_t key, pid_t pid) {
+    imperative::SetLoadProcessPID(key, pid);
+  });
+  m.def("_erase_process_pid",
+        [](int64_t key) { imperative::EraseLoadProcessPID(key); });
+  m.def("_set_process_signal_handler",
+        []() { imperative::SetLoadProcessSignalHandler(); });
+  m.def("_throw_error_if_process_failed",
+        []() { imperative::ThrowErrorIfLoadProcessFailed(); });
+#endif
+
   py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>>(
       m, "VarBase",
       R"DOC()DOC")
@@ -325,7 +339,7 @@ void BindImperative(py::module *m_ptr) {
            },
            R"DOC(
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Returns a numpy array shows the value of current :ref:`api_guide_Variable_en`
 
@@ -361,7 +375,7 @@ void BindImperative(py::module *m_ptr) {
            },
            py::return_value_policy::copy, R"DOC(
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Returns a new Variable, detached from the current graph.
 
@@ -388,7 +402,7 @@ void BindImperative(py::module *m_ptr) {
       .def("clear_gradient", &imperative::VarBase::ClearGradient, R"DOC(
 
         **Notes**:
-        **1. This API is ONLY avaliable in Dygraph mode**
+        **1. This API is ONLY available in Dygraph mode**
 
         **2. Use it only Variable has gradient, normally we use this for Parameters since other temporal Variable will be deleted by Python's GC**
 
@@ -522,18 +536,18 @@ void BindImperative(py::module *m_ptr) {
           [](imperative::Tracer &self, const py::object &obj) {
             if (py::isinstance<platform::CUDAPlace>(obj)) {
               auto p = obj.cast<platform::CUDAPlace *>();
-              self.SetExpectedPlace<platform::CUDAPlace>(*p);
+              self.SetExpectedPlace(*p);
             } else if (py::isinstance<platform::CPUPlace>(obj)) {
               auto p = obj.cast<platform::CPUPlace *>();
-              self.SetExpectedPlace<platform::CPUPlace>(*p);
+              self.SetExpectedPlace(*p);
             } else if (py::isinstance<platform::CUDAPinnedPlace>(obj)) {
               auto p = obj.cast<platform::CUDAPinnedPlace *>();
-              self.SetExpectedPlace<platform::CUDAPinnedPlace>(*p);
+              self.SetExpectedPlace(*p);
             } else {
-              PADDLE_THROW(
+              PADDLE_THROW(platform::errors::InvalidArgument(
                   "Incompatible Place Type: supports CUDAPlace, CPUPlace, "
-                  "CUDAPinnedPlace, "
-                  "but got Unknown Type!");
+                  "and CUDAPinnedPlace, "
+                  "but got Unknown Type!"));
             }
           })
       .def("_get_program_desc_tracer",
@@ -597,7 +611,7 @@ void BindImperative(py::module *m_ptr) {
                     },
                     [](imperative::ParallelStrategy &self,
                        const std::string &ep) { self.current_endpoint_ = ep; });
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
   py::class_<imperative::NCCLParallelContext> nccl_ctx(m,
                                                        "NCCLParallelContext");
 
