@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 __all__ = ['TracedLayer', 'dygraph_to_static_output']
 
 import gast
@@ -58,11 +60,11 @@ def _dygraph_to_static_output_(dygraph_func):
         dygraph_code = inspect.getsource(dygraph_func)
         dygraph_code = textwrap.dedent(dygraph_code)
         root = gast.parse(dygraph_code)
+
         # Transform AST
         dygraph_to_static = DygraphToStaticAst()
         root_wrapper = dygraph_to_static.get_static_ast(root)
         func_name = dygraph_to_static.get_module_name()
-
         static_func, file_name = ast_to_func(root_wrapper.node, func_name)
 
         return static_func(*args, **kwargs)
@@ -108,17 +110,17 @@ def _trace(layer,
 
 class TracedLayer(object):
     """
-    TracedLayer is used to convert a forward dygraph model to a static 
-    graph model. This is mainly used to save the dygraph model for online 
-    inference using C++. Besides, users can also do inference in Python 
-    using the converted static graph model, which usually has better 
-    performance than the original dygraph model.  
+    TracedLayer is used to convert a forward dygraph model to a static
+    graph model. This is mainly used to save the dygraph model for online
+    inference using C++. Besides, users can also do inference in Python
+    using the converted static graph model, which usually has better
+    performance than the original dygraph model.
 
     TracedLayer would run the static graph model using :code:`Executor`
     and :code:`CompiledProgram` . The static graph model would share
     parameters with the dygraph model.
-    
-    All TracedLayer objects should not be created by constructor and should 
+
+    All TracedLayer objects should not be created by constructor and should
     be created by static method :code:`TracedLayer.trace(layer, inputs)` .
 
     The TracedLayer can only be used to convert the data-independent dygraph
@@ -159,7 +161,7 @@ class TracedLayer(object):
     @dygraph_only
     def trace(layer, inputs):
         """
-        This method is the only allowed method to create TracedLayer object. 
+        This method is the only allowed method to create TracedLayer object.
         It would call the :code:`layer(*inputs)` method to run the dygraph
         model and convert it into a static graph model.
 
