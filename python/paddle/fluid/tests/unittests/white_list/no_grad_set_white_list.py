@@ -42,8 +42,6 @@ NEED_TO_FIX_OP_LIST = [
     'elementwise_sub',
     'filter_by_instag',
     'fused_elemwise_activation',
-    'fused_emb_seq_pool',
-    'fused_embedding_seq_pool',
     'gru_unit',
     'hierarchical_sigmoid',
     'hsigmoid',
