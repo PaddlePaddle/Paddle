@@ -25,34 +25,40 @@ __all__ = ['AstNodeWrapper', 'NodeVarType', 'StaticAnalysisVisitor']
 
 # TODO: _is_paddle_dygraph_api is duplicated in Yamei's utils.py. Merge the two
 # function code together when Yamei finish her PR.
-def _is_paddle_dygraph_api(obj):
+def _is_api_in_module_helper(obj, module_prefix):
     m = inspect.getmodule(obj)
-    return m is not None and m.__name__.startswith("paddle.fluid.dygraph")
+    return m is not None and m.__name__.startswith(module_prefix)
 
 
 # TODO: is_dygraph_api is duplicated in Yamei's utils.py. Merge the two
 # function code together when Yamei finish her PR.
-def is_dygraph_api(node):
+def is_api_in_module(node, module_prefix):
     assert isinstance(node, gast.Call), "Input non-Call node for is_dygraph_api"
     func_src = astor.to_source(node.func)
     try:
         import paddle.fluid as fluid
-        return eval("_is_paddle_dygraph_api({})".format(func_src))
+        return eval("_is_api_in_module({}, '{}')".format(func_src,
+                                                         module_prefix))
     except NameError:
         return False
 
 
-def _is_numpy_api_helper(obj):
-    m = inspect.getmodule(obj)
-    return m is not None and m.__name__.startswith("numpy")
+def is_dygraph_api(node):
+    return is_api_in_module(node, "paddle.fluid.dygraph")
 
 
+def is_paddle_api(node):
+    return is_api_in_module(node, "paddle.fluid")
+
+
+# Is numpy_api cannot reuse is_api_in_module because of numpy module problem
 def is_numpy_api(node):
     assert isinstance(node, gast.Call), "Input non-Call node for is_numpy_api"
     func_str = astor.to_source(node.func)
     try:
         import numpy as np
-        module_result = eval("_is_numpy_api_helper({})".format(func_str))
+        module_result = eval("_is_api_in_module({}, '{}')".format(func_src,
+                                                                  "numpy"))
         # BUG: np.random.uniform doesn't have module and cannot be analyzed
         # TODO: find a better way
         if not module_result:

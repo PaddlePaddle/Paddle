@@ -87,9 +87,39 @@ result_var_type4 = {
     'd': NodeVarType.TENSOR
 }
 
-test_funcs = [func_to_test1, func_to_test2, func_to_test3, func_to_test4]
+
+def func_to_test5():
+    def inner_int_func():
+        return 1
+
+    def inner_float_func(x):
+        a = 1.0
+        if x > 0:
+            return 1.0
+        return 0
+
+    def inner_unknown_func(x):
+        return x
+
+    a = inner_int_func()
+    b = inner_float_func(3)
+    c = inner_unknown_func(None)
+    d = paddle.fluid.data('x', [1, 2])
+
+
+result_var_type5 = {
+    'a': NodeVarType.INT,
+    'b': NodeVarType.FLOAT,
+    'c': NodeVarType.UNKNOWN,
+    'd': NodeVarType.UNKNOWN
+}
+
+test_funcs = [
+    func_to_test1, func_to_test2, func_to_test3, func_to_test4, func_to_test5
+]
 result_var_type = [
-    result_var_type1, result_var_type2, result_var_type3, result_var_type4
+    result_var_type1, result_var_type2, result_var_type3, result_var_type4,
+    result_var_type5
 ]
 
 
@@ -117,7 +147,7 @@ class TestStaticAnalysis(unittest.TestCase):
             self._check_wrapper(wrapper_root, node_to_wrapper_map)
 
     def test_var_env(self):
-        for i in range(4):
+        for i in range(5):
             func = test_funcs[i]
             var_type = result_var_type[i]
             test_source_code = inspect.getsource(func)
