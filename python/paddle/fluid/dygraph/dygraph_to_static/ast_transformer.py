@@ -13,7 +13,8 @@
 # limitations under the License.
 
 from __future__ import print_function
-
+import astor
+from .utils import *
 import gast
 # gast is a generic AST to represent Python2 and Python3's Abstract Syntax Tree(AST).
 # It provides a compatibility layer between the AST of various Python versions,
@@ -51,8 +52,9 @@ class IfElseTransformer(gast.NodeTransformer):
 
     def visit_If(self, node):
         assert isinstance(node, gast.If)
+        need_transform = is_control_flow_if(node.test)
         self.generic_visit(node)
-        if is_control_flow_if(node.test):
+        if need_transform:
             pred_node = node.test
             true_func_node, false_func_node, return_name_ids = transform_if_else(
                 node, self.root)
@@ -66,7 +68,7 @@ class IfElseTransformer(gast.NodeTransformer):
 
     def visit_Call(self, node):
         # Remove `numpy()` statement, like `Tensor.numpy()[i]` -> `Tensor[i]`
-        # Todo: should be removed. it may be considered as basic api transformation.
+        # TODO: should be removed. it may be considered as basic api transformation.
         if isinstance(node.func, gast.Attribute):
             attribute = node.func
             if attribute.attr == 'numpy':
@@ -105,6 +107,10 @@ class DygraphToStaticAst(gast.NodeTransformer):
     def transfer_from_node_type(self, node):
         # Generic transformation
         self.visit(node.node)
+
+        # Transform basic api of dygraph to static graph
+        BasicApiTransformer(node).ast_visit()
+
         # Transform all if/else statement of Dygraph into Static Graph.
         IfElseTransformer(node).ast_visit()
 
@@ -128,3 +134,89 @@ class DygraphToStaticAst(gast.NodeTransformer):
         # Should consider BaseAPITransformer which add new module name in Yamei's PR.
         assert self.decorate_func_name, "decorate_func_name shall not be None."
         return self.decorate_func_name
+
+
+class BasicApiTransformer(gast.NodeTransformer):
+    """
+    Class to transform basic API from dygraph to static graph.
+    """
+
+    def __init__(self, wrapper_root):
+        assert isinstance(
+            wrapper_root, AstNodeWrapper
+        ), "Input non-AstNodeWrapper node for the initialization of BasicApiTransformer."
+        self.wrapper_root = wrapper_root
+        self.root = wrapper_root.node
+        self.class_node_dict = {}
+
+    def ast_visit(self):
+        self.visit(self.root)
+        return self.wrapper_root
+
+    def visit_FunctionDef(self, node):
+        self.generic_visit(node)
+        if hasattr(node, 'decorator_list'):
+            decorator_list = [
+                d for d in node.decorator_list if d.id != DECORATOR_NAME
+            ]
+            node.decorator_list = decorator_list
+        return node
+
+    def visit_Assign(self, node):
+        if self._update_class_node_dict(node):
+            return None
+
+        value_node = node.value
+        for child_node in gast.walk(value_node):
+            if isinstance(child_node, gast.Call):
+                self._visit_Call(child_node)
+
+        return node
+
+    def visit_Expr(self, node):
+        value_node = node.value
+        for child_node in gast.walk(value_node):
+            if isinstance(child_node, gast.Call):
+                if is_dygraph_api(child_node):
+                    return
+                else:
+                    self._visit_Call(child_node)
+
+        return node
+
+    def _visit_Call(self, node):
+        assert isinstance(node, gast.Call)
+
+        # Replace API `to_variable` with `fluid.layers.assign`
+        if is_to_variable(node):
+            node = to_assign_node(node)
+            return node
+
+        func_name = astor.to_source(node.func)
+        if self._is_dygraph_forward(func_name):
+            class_node = self._get_class_node(func_name)
+            static_node = to_static_ast(node, class_node)
+            return static_node
+        else:
+            return node
+
+    def _is_dygraph_forward(self, func_id):
+        return func_id in self.class_node_dict
+
+    def _get_class_node(self, func_id):
+        return self.class_node_dict[func_id]
+
+    def _update_class_node_dict(self, node):
+        assert isinstance(node, gast.Assign)
+        node_value = node.value
+        if isinstance(node_value, gast.Call):
+            if is_to_variable(node_value):
+                return False
+
+            if is_dygraph_api(node_value):
+                update_args_of_func(node_value, node_value, "__init__")
+                target_str = astor.to_source(node.targets[0])
+                self.class_node_dict[target_str] = node_value
+                return True
+            # TODO: node.value is not dygraph class
+        return False

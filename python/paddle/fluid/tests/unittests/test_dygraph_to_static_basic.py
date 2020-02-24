@@ -22,18 +22,30 @@ from paddle.fluid.dygraph.jit import dygraph_to_static_output
 
 np.random.seed(1)
 
+if fluid.is_compiled_with_cuda():
+    place = fluid.CUDAPlace(0)
+else:
+    place = fluid.CPUPlace()
 
-def dyfunc_with_if_else(x_v):
+
+def dyfunc_with_if_else(x_v, label=None):
     if fluid.layers.mean(x_v).numpy()[0] > 5:
         x_v = x_v - 1
     else:
         x_v = x_v + 1
+    # plain if in python
+    if label is not None:
+        loss = fluid.layers.cross_entropy(x_v, label)
+        return loss
     return x_v
 
 
-def dyfunc_with_if_else2(x):
-    i, j = 0, 0
-    if fluid.layers.reduce_mean(x).numpy()[0] > x.numpy()[i][j]:
+def dyfunc_with_if_else2(x, col=100):
+    row = 0
+    # plain if in python
+    if abs(col) > x.shape[-1]:
+        col = -1
+    if fluid.layers.reduce_mean(x).numpy()[0] > x.numpy()[row][col]:
         y = fluid.layers.relu(x)
     else:
         x_pow = fluid.layers.pow(x, 2)
@@ -42,9 +54,12 @@ def dyfunc_with_if_else2(x):
 
 
 def nested_if_else(x_v):
-    batch_size = x_v.shape[0]
+    batch_size = 16
     feat_size = x_v.shape[-1]
     bias = fluid.layers.fill_constant([feat_size], dtype='float32', value=1)
+    # plain if in python
+    if x_v.shape[0] != batch_size:
+        batch_size = x_v.shape[0]
     if fluid.layers.mean(x_v).numpy()[0] < 0:
         y = x_v + bias
         w = fluid.layers.fill_constant([feat_size], dtype='float32', value=10)
@@ -78,12 +93,12 @@ class TestDygraphIfElse(unittest.TestCase):
             x_v = fluid.layers.assign(self.x)
             # Transform into static graph
             out = dygraph_to_static_output(self.dyfunc)(x_v)
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = fluid.Executor(place)
             ret = exe.run(main_program, fetch_list=out)
             return ret
 
     def _run_dygraph(self):
-        with fluid.dygraph.guard():
+        with fluid.dygraph.guard(place):
             x_v = fluid.dygraph.to_variable(self.x)
             ret = self.dyfunc(x_v)
             return ret.numpy()
