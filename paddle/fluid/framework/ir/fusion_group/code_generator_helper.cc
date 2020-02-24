@@ -33,9 +33,29 @@ static T StringTo(const std::string& str) {
   return value;
 }
 
+static std::string GetSumExpectedRHS(const std::string rhs,
+                                     const size_t input_size) {
+  std::string sum_rhs = rhs;
+  int start_pos = sum_rhs.find("...", 0);
+  for (size_t i = 0; i < input_size; i++) {
+    sum_rhs = sum_rhs.replace(start_pos, 3, std::to_string(i)) + rhs;
+    start_pos = sum_rhs.find("...", 0);
+  }
+  sum_rhs.replace(start_pos - 5, (sum_rhs.length() - start_pos + 5), "");
+  return sum_rhs;
+}
+
 std::string OperationExpression::GetRHS(std::unordered_set<int>* used,
-                                        size_t i) const {
-  auto rhs = OperationMap::Instance().Get(op_type_).exprs[i];
+                                        size_t exprs_index) const {
+  auto rhs = OperationMap::Instance().Get(op_type_).exprs[exprs_index];
+  if (op_type_ == "sum") {
+    size_t input_size = input_ids_.size();
+    for (size_t i = 0; i < input_size; i++) {
+      VLOG(0) << "input id: " << input_ids_[i];
+    }
+    rhs = GetSumExpectedRHS(rhs, input_size);
+    VLOG(0) << "sum rhs: " << rhs;
+  }
   for (size_t i = 0; i < rhs.size(); i++) {
     size_t pos = i;
     if (rhs[pos] == '$' && rhs[pos + 1] == '{') {

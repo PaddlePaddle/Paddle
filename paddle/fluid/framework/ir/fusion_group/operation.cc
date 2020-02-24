@@ -25,6 +25,7 @@ OperationMap* OperationMap::map = nullptr;
 OperationMap::OperationMap() {
   InsertUnaryElementwiseOperations();
   InsertBinaryElementwiseOperations();
+  InsertSpecialElementwiseOperations();
 }
 
 std::unordered_set<std::string> OperationMap::Find(int type, int num_operands) {
@@ -151,6 +152,17 @@ void OperationMap::InsertBinaryElementwiseOperations() {
   //  dy = dout * (x <= y)
   insert_handler("elementwise_max", "${0} > ${1} ? ${0} : ${1}",
                  {"${3} * (${0} > ${1})", "${3} * (${0} <= ${1})"});
+}
+
+void OperationMap::InsertSpecialElementwiseOperations() {
+  auto insert_handler = [&](std::string op_type, std::string expr,
+                            std::vector<std::string> grad_exprs) {
+    int type = 0;
+    int num_oprands = -1;
+    Insert(type, num_oprands, op_type, expr, grad_exprs, {"X", "Y"}, {"Out"});
+  };
+
+  insert_handler("sum", "${...} + ", {});
 }
 
 }  // namespace fusion_group

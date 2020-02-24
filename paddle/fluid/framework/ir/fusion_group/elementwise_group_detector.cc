@@ -26,6 +26,7 @@ namespace fusion_group {
 
 static std::unordered_set<std::string> binary_op_types;
 static std::unordered_set<std::string> unary_op_types;
+static std::unordered_set<std::string> special_op_types;
 
 static std::unordered_set<std::string>& GetBinaryOpTypes() {
   if (binary_op_types.empty()) {
@@ -41,6 +42,14 @@ static std::unordered_set<std::string>& GetUnaryOpTypes() {
         OperationMap::Instance().Find(/* type= */ 0, /* num_operands= */ 1);
   }
   return unary_op_types;
+}
+
+static std::unordered_set<std::string>& GetSpecialOpTypes() {
+  if (special_op_types.empty()) {
+    special_op_types =
+        OperationMap::Instance().Find(/* type= */ 0, /* num_operands= */ -1);
+  }
+  return special_op_types;
 }
 
 static bool IsSpecifiedOp(const std::unordered_set<std::string>& op_types,
@@ -102,8 +111,31 @@ static bool IsUnaryOp(const Node* n) {
   return IsSpecifiedOp(GetUnaryOpTypes(), n);
 }
 
+static bool IsSpecialOp(const Node* n) {
+  if (IsSpecifiedOp(GetSpecialOpTypes(), n)) {
+    std::vector<int64_t> shape_0;
+    for (size_t i = 0; i < n->inputs.size(); ++i) {
+      auto* in_i = n->inputs[i];
+      if (!(in_i && in_i->IsVar() && in_i->Var())) {
+        return false;
+      }
+
+      std::vector<int64_t> shape_i = in_i->Var()->GetShape();
+      if (i == 0U) {
+        shape_0 = shape_i;
+      } else {
+        if (!IsEqualAndNotEmpty(shape_0, shape_i)) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+  return false;
+}
+
 bool ElementwiseGroupDetector::IsElementwiseOp(const Node* n) {
-  return IsBinaryOp(n) || IsUnaryOp(n);
+  return IsBinaryOp(n) || IsUnaryOp(n) || IsSpecialOp(n);
 }
 
 std::vector<std::vector<Node*>> ElementwiseGroupDetector::operator()(
