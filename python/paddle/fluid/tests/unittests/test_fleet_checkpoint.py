@@ -58,6 +58,8 @@ class FleetTest(unittest.TestCase):
         n2 = fleet._get_last_checkpoint_no(dir_path)
         assert n2 == n1 + 1, "checkpoint increment error:{} {}".format(n1, n2)
 
+        fleet.clean_redundant_check_points(dir_path)
+
 
 if __name__ == '__main__':
     unittest.main()

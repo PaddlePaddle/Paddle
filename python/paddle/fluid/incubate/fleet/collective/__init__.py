@@ -190,10 +190,13 @@ class Collective(Fleet):
 
         return max_no
 
-    def _clean_check_points(self, root_path):
+    def clean_redundant_check_points(self, root_path, checkpoint_num=1):
         max_no = self._get_last_checkpoint_no(root_path)
         if max_no < 0:
             return
+
+        if checkpoint_num < 1:
+            checkpoint_num = 1
 
         for subdir, dirs, files in os.walk(root_path):
             for dir in dirs:
@@ -206,7 +209,7 @@ class Collective(Fleet):
 
                 try:
                     n = int(g[1])
-                    if n < max_no:
+                    if n <= max_no - checkpoint_num:
                         path = "{}/{}.{}".format(root_path,
                                                  self._checkoint_prefix, n)
                         shutil.rmtree(path)
@@ -222,7 +225,6 @@ class Collective(Fleet):
                          remain_all_checkpoint=True):
         """
         This function save persistables and current epoch num to path.
-        __paddle_fleet_checkpoint__.xx
         """
         max_no = self._get_last_checkpoint_no(path)
         if max_no < 0:
@@ -238,7 +240,7 @@ class Collective(Fleet):
         os.rename(tmp_path, real_path)
 
         if not remain_all_checkpoint:
-            self._clean_check_points(path)
+            self.clean_redundant_check_points(path)
 
     def load_check_point(self, executor, path, ignore_empty=True):
         """
