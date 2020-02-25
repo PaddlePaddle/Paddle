@@ -892,16 +892,17 @@ def partial_sum(input, start_index=0, length=-1):
     Args:
         input(list): List of input Tensors with data type float32, float64, int32,
             int64.
+
     Returns:
         Variable: A Tensor with the same data type as input's.
+
     Examples:
         .. code-block:: python
-        import paddle.fluid.layers as layers
         import paddle.fluid as fluid
         import numpy as np
         x = fluid.data(name="x", shape=[None, 3], dtype="float32")
         y = fluid.data(name="y", shape=[None, 3], dtype="float32")
-        sum = layers.partial_sum([x,y], start_index=0, length=2)
+        sum = fluid.contrib.layers.partial_sum([x,y], start_index=0, length=2)
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         xx = np.array([1,2,3,4,5,6]).reshape((2,3)).astype("float32")
