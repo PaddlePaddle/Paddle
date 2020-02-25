@@ -336,8 +336,6 @@ def srccoms_extract(srcfile, wlist):
                         opcom += srcls[j]
                         if srcls[j].find("\"\"\"") != -1:
                             break
-                    #process_result = sampcd_extract_and_run(opcom, opname,
-                    #                                        "def", opname) 
                     api_count += 1
                     handled.append(
                         opname)  # ops.py also has normal formatted functions
