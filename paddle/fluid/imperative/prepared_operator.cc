@@ -15,6 +15,8 @@
 #include "paddle/fluid/imperative/prepared_operator.h"
 #include <sstream>
 
+DECLARE_bool(benchmark);
+
 namespace paddle {
 namespace imperative {
 
@@ -126,6 +128,9 @@ void PreparedOp::Run(const NameVarBaseMap* in, const NameVarBaseMap* out,
 
   func_(DygraphExecutionContext(op_, scope, *dev_ctx_, ctx_, kernel_configs_,
                                 *in, *out, attrs));
+  if (FLAGS_benchmark) {
+    dev_ctx_->Wait();
+  }
 }
 
 }  // namespace imperative
