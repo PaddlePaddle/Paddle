@@ -42,6 +42,17 @@ class DistFCConfig(object):
         pass
 
 
+class TrainStatus(object):
+    def __init__(self):
+        self.epoch_no = 0
+
+    def __eq__(self, t):
+        return self.epoch_no == t.epoch_no
+
+    def __ne__(self, t):
+        return not self == t
+
+
 class Collective(Fleet):
     def __init__(self):
         super(Collective, self).__init__(Mode.COLLECTIVE)
@@ -126,6 +137,49 @@ class Collective(Fleet):
             "must be as Program type."
 
         io.save_persistables(executor, dirname, main_program, None)
+
+    def _save_train_status(self, path, train_status):
+        d = {}
+        d["epoch_no"] = train_status.epoch_no
+
+        file_name = "{}/fleet_train_status".format(path)
+        with open(file_name, 'wb') as f:
+            json.dumps(d, f)
+
+    def _load_train_status(self, path):
+        file_name = "{}/fleet_train_status".format(path)
+
+        r = TrainStatus()
+        if not os.exists(file_name):
+            return r
+
+        d = {}
+        with open(file_name, 'rb') as f:
+            d = json.loads(f)
+
+        assert "epoch_no" in d, "Can't find epoch_no in dict from train_status file:{}".format(
+            d)
+        r.epoch_no = d["epoch_no"]
+        assert r.epoch_no >= 0, "Data in checkpoint file is not valid:{}".format(
+            d)
+
+        return r
+
+    def save_check_point(self, executor, path, train_status, main_program=None):
+        """
+        This function save persistables and current epoch num to path.
+        """
+        self.save_persistables(
+            executor=executor, dirname=path, main_program=main_program)
+        self._save_train_status(path=path, train_status=train_status)
+
+    def load_check_point(self, executor, path):
+        """
+        This function load persistables and current epoch num from path.
+        """
+        io.load_persistables(path=path, exe=executor)
+
+        return self._load_train_status(path)
 
 
 fleet = Collective()
