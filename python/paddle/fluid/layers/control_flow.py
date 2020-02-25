@@ -2400,7 +2400,7 @@ class IfElse(object):
         exe.run(fluid.default_startup_program())
 
         res = exe.run(fluid.default_main_program(), feed={"x":x_d, "y":y_d}, fetch_list=[out])
-        print res
+        print(res)
         # [array([-1.], dtype=float32)] 
 
     Args:
