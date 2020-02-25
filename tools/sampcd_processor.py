@@ -200,7 +200,6 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
             print(msg)
             result = False
         # msg is the returned code execution report
-        #os.remove("samplecode_temp/" + tfname)
 
     return result
 
@@ -476,6 +475,8 @@ def get_filenames(path):
                 for i in range(0, len(module.split('.')) - 1):
                     filename = filename + '%s/' % module.split('.')[i]
                 filename = filename + module_py
+            elif len(module.split('.')) == 2 and module == 'paddle.batch':
+                filename = '../python/paddle/batch.py'
             else:
                 print("\n----Exception in get api filename----\n")
                 print("\n" + api + 'module is ' + module + "\n")
