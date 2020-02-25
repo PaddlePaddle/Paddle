@@ -40,12 +40,12 @@ cudnnStatus_t convert_trt2cudnn_dtype(nvinfer1::DataType trt_dtype,
   return CUDNN_STATUS_SUCCESS;
 }
 
-InstanceNormPlugin *CreateInstanceNormPluginDeserialize(const void *buffer,
-                                                        size_t length) {
-  return new InstanceNormPlugin(buffer, length);
+template <typename T>
+T *CreateInstanceNormPluginDeserialize(const void *buffer, size_t length) {
+  return new T(buffer, length);
 }
-REGISTER_TRT_PLUGIN("instance_norm_plugin",
-                    CreateInstanceNormPluginDeserialize);
+REGISTER_TRT_PLUGIN("instance_norm_plugin", PluginTensorRT,
+                    CreateInstanceNormPluginDeserialize<InstanceNormPlugin>);
 
 int InstanceNormPlugin::initialize() {
   platform::dynload::cudnnCreate(&handle_);

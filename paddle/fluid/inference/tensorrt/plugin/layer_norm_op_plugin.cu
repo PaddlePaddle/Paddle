@@ -25,11 +25,12 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-LayerNormPlugin *CreateLayerNormPluginDeserialize(const void *buffer,
-                                                  size_t length) {
-  return new LayerNormPlugin(buffer, length);
+template <typename T>
+T *CreateLayerNormPluginDeserialize(const void *buffer, size_t length) {
+  return new T(buffer, length);
 }
-REGISTER_TRT_PLUGIN("layer_norm_plugin", CreateLayerNormPluginDeserialize);
+REGISTER_TRT_PLUGIN("layer_norm_plugin", PluginTensorRT,
+                    CreateLayerNormPluginDeserialize<LayerNormPlugin>);
 
 int LayerNormPlugin::initialize() { return 0; }
 

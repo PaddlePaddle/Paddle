@@ -19,28 +19,36 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-PluginTensorRT* PluginFactoryTensorRT::createPlugin(const char* layer_name,
-                                                    const void* serial_data,
-                                                    size_t serial_length) {
+template <typename T>
+T* PluginFactoryTensorRT<T>::createPlugin(const char* layer_name,
+                                          const void* serial_data,
+                                          size_t serial_length) {
   const char* plugin_type;
   DeserializeValue(&serial_data, &serial_length, &plugin_type);
 
-  PADDLE_ENFORCE(Has(plugin_type),
+  PADDLE_ENFORCE(this->Has(plugin_type),
                  "trt plugin type %s does not exists, check it.", plugin_type);
-  auto plugin = plugin_registry_[plugin_type](serial_data, serial_length);
-  owned_plugins_.emplace_back(plugin);
+  auto plugin = this->plugin_registry_[plugin_type](serial_data, serial_length);
+  this->owned_plugins_.emplace_back(plugin);
 
   return plugin;
 }
 
-bool PluginFactoryTensorRT::RegisterPlugin(
-    const std::string& op_name, PluginDeserializeFunc deserialize_func) {
-  if (Has(op_name)) return false;
-  auto ret = plugin_registry_.emplace(op_name, deserialize_func);
+template <typename T>
+bool PluginFactoryTensorRT<T>::RegisterPlugin(
+    const std::string& op_name,
+    typename PluginDeserialize<T>::Func deserialize_func) {
+  if (this->Has(op_name)) return false;
+  auto ret = this->plugin_registry_.emplace(op_name, deserialize_func);
   return ret.second;
 }
 
-void PluginFactoryTensorRT::DestroyPlugins() { owned_plugins_.clear(); }
+template <typename T>
+void PluginFactoryTensorRT<T>::DestroyPlugins() {
+  this->owned_plugins_.clear();
+}
+
+template class PluginFactoryTensorRT<PluginTensorRT>;
 
 }  // namespace plugin
 }  // namespace tensorrt

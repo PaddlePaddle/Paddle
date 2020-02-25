@@ -55,6 +55,26 @@ void PluginTensorRT::configureWithFormat(
   max_batch_size_ = max_batch_size;
 }
 
+void DynamicPluginTensorRT::serializeBase(void*& buffer) const {
+  SerializeValue(&buffer, plugin_base_.c_str());
+  SerializeValue(&buffer, name_space_.c_str());
+}
+
+void DynamicPluginTensorRT::deserializeBase(void const*& serial_data,
+                                            size_t& serial_length) {
+  char *name_space, *plugin_base;
+  DeserializeValue(&serial_data, &serial_length, &plugin_base);
+  DeserializeValue(&serial_data, &serial_length, &name_space);
+
+  plugin_base_ = std::string(plugin_base);
+  name_space_ = std::string(name_space);
+}
+
+size_t DynamicPluginTensorRT::getBaseSerializationSize() const {
+  return SerializedSize(name_space_.c_str()) +
+         SerializedSize(plugin_base_.c_str());
+}
+
 }  // namespace plugin
 }  // namespace tensorrt
 }  // namespace inference

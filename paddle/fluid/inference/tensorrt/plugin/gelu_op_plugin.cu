@@ -26,10 +26,13 @@ namespace plugin {
 // constants for approximating the normal cdf
 constexpr float A = 1.41421356237309504;  // sqrt(2)
 
-GeluPlugin* CreateGeluPluginDeserialize(const void* buffer, size_t length) {
-  return new GeluPlugin(buffer, length);
+template <typename T>
+T* CreateGeluPluginDeserialize(const void* buffer, size_t length) {
+  return new T(buffer, length);
 }
-REGISTER_TRT_PLUGIN("gelu plugin", CreateGeluPluginDeserialize);
+// plugin_type, plugin_base, plugin_create_func
+REGISTER_TRT_PLUGIN("gelu_plugin", PluginTensorRT,
+                    CreateGeluPluginDeserialize<GeluPlugin>);
 
 nvinfer1::Dims GeluPlugin::getOutputDimensions(int index,
                                                const nvinfer1::Dims* in_dims,

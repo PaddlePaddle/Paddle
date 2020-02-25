@@ -37,9 +37,56 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-#define IS_TRT_VERSION_GE(version)                       \
-  ((NV_TENSORRT_MAJOR * 1000 + NV_TENSORRT_MINOR * 100 + \
-    NV_TENSORRT_PATCH * 10 + NV_TENSORRT_BUILD) >= version)
+using FluidDT = framework::proto::VarType_Type;
+using TRT_DT = nvinfer1::DataType;
+
+namespace {  // NOLINT
+
+TRT_DT FluidDataType2TRT(FluidDT type) {
+  switch (type) {
+    case FluidDT::VarType_Type_FP32:
+      return TRT_DT::kFLOAT;
+    case FluidDT::VarType_Type_INT32:
+      return TRT_DT::kINT32;
+    default:
+      return TRT_DT::kINT32;
+  }
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "unknown fluid datatype in TRT op converter"));
+  return TRT_DT::kINT32;
+}
+
+// The T can be int32 or int64 type.
+template <typename T>
+nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
+                            bool with_dynamic_shape = false) {
+  PADDLE_ENFORCE_GT(shape.size(), 1UL,
+                    platform::errors::InvalidArgument(
+                        "TensorRT's tensor input requires at least 2 "
+                        "dimensions, but input %s has %d dims.",
+                        input, shape.size()));
+  PADDLE_ENFORCE_LE(shape.size(), 4UL,
+                    platform::errors::InvalidArgument(
+                        "TensorRT's tensor input requires at most 4 "
+                        "dimensions, but input %s has %d dims.",
+                        input, shape.size()));
+  if (!with_dynamic_shape) {
+    if (shape.size() == 4UL) {
+      return nvinfer1::DimsCHW(shape[1], shape[2], shape[3]);
+    } else if (shape.size() == 3UL) {
+      return nvinfer1::Dims2(shape[1], shape[2]);
+    }
+    return nvinfer1::DimsCHW(shape[1], 1, 1);
+  } else {
+    if (shape.size() == 4UL) {
+      return nvinfer1::DimsNCHW(shape[0], shape[1], shape[2], shape[3]);
+    } else if (shape.size() == 3UL) {
+      return nvinfer1::Dims3(shape[0], shape[1], shape[2]);
+    }
+    return nvinfer1::Dims4(shape[0], shape[1], 1, 1);
+  }
+}
+}  // NOLINT
 
 class TRTInt8Calibrator;
 /*
@@ -189,7 +236,8 @@ class TensorRTEngine {
     infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));
     infer_engine_.reset(runtime->deserializeCudaEngine(
         engine_serialized_data.c_str(), engine_serialized_data.size(),
-        &inference::Singleton<plugin::PluginFactoryTensorRT>::Global()));
+        &inference::Singleton<
+            plugin::PluginFactoryTensorRT<plugin::PluginTensorRT>>::Global()));
     PADDLE_ENFORCE(infer_engine_ != nullptr,
                    "build cuda engine failed when deserialize engine info.!");
   }

@@ -32,15 +32,16 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
+template <typename T>
 class PluginFactoryTensorRT : public nvinfer1::IPluginFactory,
                               public DeleteHelper {
  public:
   // Deserialization method
-  PluginTensorRT* createPlugin(const char* layer_name, const void* serial_data,
-                               size_t serial_length) override;
+  T* createPlugin(const char* layer_name, const void* serial_data,
+                  size_t serial_length) override;
 
   bool RegisterPlugin(const std::string& op_name,
-                      PluginDeserializeFunc deserialize_func);
+                      typename PluginDeserialize<T>::Func deserialize_func);
 
   bool Has(const std::string& op_name) {
     return plugin_registry_.find(op_name) != plugin_registry_.end();
@@ -49,28 +50,30 @@ class PluginFactoryTensorRT : public nvinfer1::IPluginFactory,
   void DestroyPlugins();
 
  protected:
-  std::unordered_map<std::string, PluginDeserializeFunc> plugin_registry_;
+  std::unordered_map<std::string, typename PluginDeserialize<T>::Func>
+      plugin_registry_;
 
-  std::list<std::unique_ptr<PluginTensorRT>> owned_plugins_;
+  std::list<std::unique_ptr<T>> owned_plugins_;
 };
 
+template <typename T>
 class TrtPluginRegistrar {
  public:
   TrtPluginRegistrar(const std::string& name,
-                     PluginDeserializeFunc deserialize_func) {
-    inference::Singleton<PluginFactoryTensorRT>::Global().RegisterPlugin(
+                     typename PluginDeserialize<T>::Func deserialize_func) {
+    inference::Singleton<PluginFactoryTensorRT<T>>::Global().RegisterPlugin(
         name, deserialize_func);
   }
 };
 
-#define REGISTER_TRT_PLUGIN(name, deserialize_func) \
-  REGISTER_TRT_PLUGIN_UNIQ(__COUNTER__, name, deserialize_func)
+#define REGISTER_TRT_PLUGIN(name, plugin_base, deserialize_func) \
+  REGISTER_TRT_PLUGIN_UNIQ(__COUNTER__, name, plugin_base, deserialize_func)
 
-#define REGISTER_TRT_PLUGIN_UNIQ(ctr, name, deserialize_func)      \
-  static paddle::inference::tensorrt::plugin::TrtPluginRegistrar   \
-      trt_plugin_registrar##ctr UNUSED =                           \
-          paddle::inference::tensorrt::plugin::TrtPluginRegistrar( \
-              name, deserialize_func)
+#define REGISTER_TRT_PLUGIN_UNIQ(ctr, name, plugin_base, deserialize_func)    \
+  static paddle::inference::tensorrt::plugin::TrtPluginRegistrar<plugin_base> \
+      trt_plugin_registrar##ctr UNUSED =                                      \
+          paddle::inference::tensorrt::plugin::TrtPluginRegistrar<            \
+              plugin_base>(name, deserialize_func)
 
 }  // namespace plugin
 }  // namespace tensorrt

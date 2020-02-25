@@ -25,6 +25,28 @@ namespace tensorrt {
 namespace plugin {
 
 class GeluPlugin : public PluginTensorRT {
+ public:
+  explicit GeluPlugin(size_t input_volume) : input_volume_(input_volume) {}
+
+  // It was used for tensorrt deserialization.
+  // It should not be called by users.
+  GeluPlugin(void const *serialData, size_t serialLength) {
+    deserializeBase(serialData, serialLength);
+    DeserializeValue(&serialData, &serialLength, &input_volume_);
+  }
+
+  ~GeluPlugin() {}
+  int initialize() override { return 0; }
+
+  GeluPlugin *clone() const override { return new GeluPlugin(input_volume_); }
+
+  const char *getPluginType() const override { return "gelu_plugin"; }
+  int getNbOutputs() const override { return 1; }
+  nvinfer1::Dims getOutputDimensions(int index, const nvinfer1::Dims *inputs,
+                                     int nbInputDims) override;
+  int enqueue(int batchSize, const void *const *inputs, void **outputs,
+              void *workspace, cudaStream_t stream) override;
+
  protected:
   size_t getSerializationSize() override {
     return getBaseSerializationSize() + SerializedSize(getPluginType()) +
@@ -38,29 +60,6 @@ class GeluPlugin : public PluginTensorRT {
     serializeBase(buffer);
     SerializeValue(&buffer, input_volume_);
   }
-
- public:
-  explicit GeluPlugin(size_t input_volume) : input_volume_(input_volume) {}
-
-  // It was used for tensorrt deserialization.
-  // It should not be called by users.
-  GeluPlugin(void const *serialData, size_t serialLength) {
-    deserializeBase(serialData, serialLength);
-    DeserializeValue(&serialData, &serialLength, &input_volume_);
-  }
-
-  ~GeluPlugin() {}
-
-  int initialize() override { return 0; }
-
-  GeluPlugin *clone() const override { return new GeluPlugin(input_volume_); }
-
-  const char *getPluginType() const override { return "gelu_plugin"; }
-  int getNbOutputs() const override { return 1; }
-  nvinfer1::Dims getOutputDimensions(int index, const nvinfer1::Dims *inputs,
-                                     int nbInputDims) override;
-  int enqueue(int batchSize, const void *const *inputs, void **outputs,
-              void *workspace, cudaStream_t stream) override;
 
  private:
   size_t input_volume_;

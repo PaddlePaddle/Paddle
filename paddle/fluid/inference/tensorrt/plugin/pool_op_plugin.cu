@@ -21,10 +21,12 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-PoolPlugin* CreatePoolPluginDeserialize(const void* buffer, size_t length) {
-  return new PoolPlugin(buffer, length);
+template <typename T>
+T* CreatePoolPluginDeserialize(const void* buffer, size_t length) {
+  return new T(buffer, length);
 }
-REGISTER_TRT_PLUGIN("pool_plugin", CreatePoolPluginDeserialize);
+REGISTER_TRT_PLUGIN("pool_plugin", PluginTensorRT,
+                    CreatePoolPluginDeserialize<PoolPlugin>);
 
 nvinfer1::Dims PoolPlugin::getOutputDimensions(int index,
                                                const nvinfer1::Dims* inputDims,
