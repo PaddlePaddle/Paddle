@@ -54,35 +54,5 @@ class FleetTest(unittest.TestCase):
         assert status2 == status, "Checkpoint error!"
 
 
-"""
-class FleetCollectiveTest(unittest.TestCase):
-    def test_open_sync_batch_norm(self):
-        import paddle.fluid as fluid
-        import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-        from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
-
-        if not fluid.core.is_compiled_with_cuda():
-            # Operator "gen_nccl_id" has not been registered
-            return
-
-        data = fluid.layers.data(name='X', shape=[1], dtype='float32')
-        hidden = fluid.layers.fc(input=data, size=10)
-        loss = fluid.layers.mean(hidden)
-
-        optimizer = fluid.optimizer.AdamOptimizer()
-
-        role = role_maker.UserDefinedCollectiveRoleMaker(0, ['127.0.0.1:6170'])
-        fleet.init(role)
-
-        dist_strategy = DistributedStrategy()
-        #dist_strategy.sync_batch_norm = True
-
-        dist_optimizer = fleet.distributed_optimizer(
-            optimizer, strategy=dist_strategy)
-        dist_optimizer.minimize(loss)
-
-        #self.assertEqual(dist_strategy.exec_strategy.num_threads, 1)
-"""
-
 if __name__ == '__main__':
     unittest.main()
