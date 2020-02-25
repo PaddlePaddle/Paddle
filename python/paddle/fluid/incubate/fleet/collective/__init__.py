@@ -31,6 +31,7 @@ import os
 import sys
 import six
 import json
+import re
 
 
 class LambConfig(object):
@@ -63,6 +64,7 @@ class Collective(Fleet):
         self._origin_program = None
         self._transpiled_program = None
         self.main_program = None
+        self._checkoint_prefix = "__paddle_fleet_checkpoint__"
 
     def init_worker(self):
         logging.warn(
@@ -166,21 +168,84 @@ class Collective(Fleet):
 
         return r
 
+    def _get_last_checkpoint_no(self, root_path):
+        max_no = -1
+        d = {}
+        for subdir, dirs, files in os.walk(root_path):
+            for dir in dirs:
+                g = dir.split(".")
+                if len(g) != 2:
+                    continue
+
+                if g[0] != "__paddle_fleet_checkpoint__":
+                    continue
+
+                try:
+                    n = int(g[1])
+                    if n > max_no:
+                        max_no = n
+                except:
+                    continue
+
+        return max_no
+
+    def _clean_check_points(self, root_path):
+        max_no = self._get_last_checkpoint_no(path)
+        if max_no < 0:
+            return
+
+        for subdir, dirs, files in os.walk(root_path):
+            for dir in dirs:
+                g = dir.split(".")
+                if len(g) != 2:
+                    continue
+
+                if g[0] != self._checkoint_prefix:
+                    continue
+
+                try:
+                    n = int(g[1])
+                    if n != max_no:
+                        path = "{}/{}.{}".format(root_path,
+                                                 self._checkoint_prefix, n)
+                        os.remove(path)
+                except:
+                    continue
+
     def save_check_point(self, executor, path, train_status, main_program=None):
         """
         This function save persistables and current epoch num to path.
+        __paddle_fleet_checkpoint__.xx
         """
-        self.save_persistables(
-            executor=executor, dirname=path, main_program=main_program)
-        self._save_train_status(path=path, train_status=train_status)
+        max_no = self._get_last_checkpoint_no(path)
+        if max_no < 0:
+            max_no = 0
 
-    def load_check_point(self, executor, path):
+        real_path = "{}/{}.{}".format(self._checkoint_prefix, path, max_no + 1)
+        tmp_path = "{}.tmp".format(real_path, max_no)
+
+        self.save_persistables(
+            executor=executor, dirname=tmp_path, main_program=main_program)
+        self._save_train_status(path=tmp_path, train_status=train_status)
+
+        os.rename(tmp_path, real_path)
+
+        self._clean_check_points(path)
+
+    def load_check_point(self, executor, path, ignore_empty=True):
         """
         This function load persistables and current epoch num from path.
         """
-        io.load_persistables(executor=executor, dirname=path)
+        max_no = self._get_last_checkpoint_no(path)
+        if not ignore_empty:
+            assert max_no >= 0, "Can't find checkpoint"
+        else:
+            return
 
-        return self._load_train_status(path)
+        real_path = "{}/{}.{}".format(self._checkoint_prefix, path, max_no)
+        io.load_persistables(executor=executor, dirname=real_path)
+
+        return self._load_train_status(real_path)
 
 
 fleet = Collective()
