@@ -172,9 +172,7 @@ class TestArgsortOpCPU(unittest.TestCase):
                         max_relative_error, msg_prefix):
         for a, b, name in six.moves.zip(numeric_grads, analytic_grads, names):
             abs_a = np.abs(a)
-            abs_a[abs_a < 1e-10] = 1e-3
-            abs_a[np.logical_and(abs_a > 1e-10, abs_a <= 1e-8)] *= 1e4
-            abs_a[np.logical_and(abs_a > 1e-8, abs_a <= 1e-6)] *= 1e2
+            abs_a[abs_a < 1e-3] = 1
 
             diff_mat = np.abs(a - b) / abs_a
             max_diff = np.max(diff_mat)
