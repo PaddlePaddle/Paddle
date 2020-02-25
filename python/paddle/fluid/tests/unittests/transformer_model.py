@@ -57,7 +57,7 @@ def multi_head_attention(queries,
     """
     if not (len(queries.shape) == len(keys.shape) == len(values.shape) == 3):
         raise ValueError(
-            "Inputs: quries, keys and values should all be 3-D tensors.")
+            "Inputs: queries, keys and values should all be 3-D tensors.")
 
     def __compute_qkv(queries, keys, values, n_head, d_key, d_value):
         """
@@ -91,7 +91,7 @@ def multi_head_attention(queries,
 
     def __split_heads(x, n_head):
         """
-        Reshape the last dimension of inpunt tensor x so that it becomes two
+        Reshape the last dimension of input tensor x so that it becomes two
         dimensions and then transpose. Specifically, input a tensor with shape
         [bs, max_sequence_length, n_head * hidden_dim] then output a tensor
         with shape [bs, n_head, max_sequence_length, hidden_dim].
@@ -104,13 +104,13 @@ def multi_head_attention(queries,
         reshaped = layers.reshape(
             x=x, shape=[batch_size, -1, n_head, hidden_size // n_head])
 
-        # permuate the dimensions into:
+        # permute the dimensions into:
         # [batch_size, n_head, max_sequence_len, hidden_size_per_head]
         return layers.transpose(x=reshaped, perm=[0, 2, 1, 3])
 
     def __combine_heads(x):
         """
-        Transpose and then reshape the last two dimensions of inpunt tensor x
+        Transpose and then reshape the last two dimensions of input tensor x
         so that it becomes one dimension, which is reverse to __split_heads.
         """
         if len(x.shape) == 3: return x

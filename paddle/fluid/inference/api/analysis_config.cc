@@ -82,6 +82,12 @@ void AnalysisConfig::DisableGpu() {
   Update();
 }
 
+void AnalysisConfig::DisableFCPadding() {
+  use_fc_padding_ = false;
+
+  Update();
+}
+
 AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 #define CP_MEMBER(member__) member__ = other.member__;
 
@@ -94,6 +100,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   prog_file_ = std::move(other.prog_file_);
   params_file_ = std::move(other.params_file_);
 
+  CP_MEMBER(use_fc_padding_);
   // GPU related.
   CP_MEMBER(use_gpu_);
   CP_MEMBER(use_cudnn_);
@@ -354,6 +361,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << params_file_;
 
   ss << use_gpu_;
+  ss << use_fc_padding_;
   ss << device_id_;
   ss << memory_pool_init_size_mb_;
 

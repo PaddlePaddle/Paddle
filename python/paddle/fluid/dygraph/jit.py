@@ -12,9 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['TracedLayer']
+from __future__ import print_function
 
+__all__ = ['TracedLayer', 'dygraph_to_static_output']
+
+import gast
+import inspect
+import textwrap
+
+from ..wrapped_decorator import wrap_decorator
 from .base import program_desc_tracing_guard, switch_to_static_graph
+from .dygraph_to_static import DygraphToStaticAst
+from .dygraph_to_static.ast_utils import ast_to_func
 from .layers import Layer
 from paddle.fluid import core
 from paddle.fluid.framework import Program, Block, Variable, _dygraph_tracer, dygraph_only, _dygraph_guard, _current_expected_place, in_dygraph_mode
@@ -45,6 +54,27 @@ def extract_vars(inputs):
     return result_list
 
 
+def _dygraph_to_static_output_(dygraph_func):
+    def __impl__(*args, **kwargs):
+        # Get AST from dygraph function
+        dygraph_code = inspect.getsource(dygraph_func)
+        dygraph_code = textwrap.dedent(dygraph_code)
+        root = gast.parse(dygraph_code)
+
+        # Transform AST
+        dygraph_to_static = DygraphToStaticAst()
+        root_wrapper = dygraph_to_static.get_static_ast(root)
+        func_name = dygraph_to_static.get_module_name()
+        static_func, file_name = ast_to_func(root_wrapper.node, func_name)
+
+        return static_func(*args, **kwargs)
+
+    return __impl__
+
+
+dygraph_to_static_output = wrap_decorator(_dygraph_to_static_output_)
+
+
 @dygraph_only
 def _trace(layer,
            inputs,
@@ -68,29 +98,29 @@ def _trace(layer,
             outputs = original_outputs
         out_vars = [var for var in outputs]
 
-        program_desc, feed_names, fetch_names = tracer.create_program_desc(
+        program_desc, feed_names, fetch_names, parameters = tracer.create_program_desc(
             var_list, feed_prefix, out_vars, fetch_prefix, tmp_prefix)
         tracer.reset()
 
     with _dygraph_guard(None):
         program = create_program_from_desc(program_desc)
 
-    return original_outputs, program, feed_names, fetch_names
+    return original_outputs, program, feed_names, fetch_names, parameters
 
 
 class TracedLayer(object):
     """
-    TracedLayer is used to convert a forward dygraph model to a static 
-    graph model. This is mainly used to save the dygraph model for online 
-    inference using C++. Besides, users can also do inference in Python 
-    using the converted static graph model, which usually has better 
-    performance than the original dygraph model.  
+    TracedLayer is used to convert a forward dygraph model to a static
+    graph model. This is mainly used to save the dygraph model for online
+    inference using C++. Besides, users can also do inference in Python
+    using the converted static graph model, which usually has better
+    performance than the original dygraph model.
 
     TracedLayer would run the static graph model using :code:`Executor`
     and :code:`CompiledProgram` . The static graph model would share
     parameters with the dygraph model.
-    
-    All TracedLayer objects should not be created by constructor and should 
+
+    All TracedLayer objects should not be created by constructor and should
     be created by static method :code:`TracedLayer.trace(layer, inputs)` .
 
     The TracedLayer can only be used to convert the data-independent dygraph
@@ -131,7 +161,7 @@ class TracedLayer(object):
     @dygraph_only
     def trace(layer, inputs):
         """
-        This method is the only allowed method to create TracedLayer object. 
+        This method is the only allowed method to create TracedLayer object.
         It would call the :code:`layer(*inputs)` method to run the dygraph
         model and convert it into a static graph model.
 
@@ -174,8 +204,8 @@ class TracedLayer(object):
                     # save the static graph model for inference
                     static_layer.save_inference_model(dirname='./saved_infer_model')
         """
-        outs, prog, feed, fetch = _trace(layer, inputs)
-        traced = TracedLayer(prog, layer.parameters(), feed, fetch)
+        outs, prog, feed, fetch, parameters = _trace(layer, inputs)
+        traced = TracedLayer(prog, parameters, feed, fetch)
         return outs, traced
 
     def set_strategy(self, build_strategy=None, exec_strategy=None):

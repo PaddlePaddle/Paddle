@@ -174,7 +174,7 @@ class ReduceOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GT(
         dims.size(), 0,
         "ShapeError: The input dim dimensions of Reduce "
-        "shoud be greater than 0. But received the dim dimesions of Reduce "
+        "should be greater than 0. But received the dim dimesions of Reduce "
         " = %d",
         dims.size());
 
