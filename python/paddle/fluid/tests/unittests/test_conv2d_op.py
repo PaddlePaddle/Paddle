@@ -355,7 +355,7 @@ class TestConv2dOp(OpTest):
             place, atol=1e-5, check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad(self):
-        if self.dtype == np.float16:
+        if self.dtype == np.float16 or hasattr(self, "no_need_check_grad"):
             return
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
@@ -366,7 +366,7 @@ class TestConv2dOp(OpTest):
             check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad_no_filter(self):
-        if self.dtype == np.float16:
+        if self.dtype == np.float16 or hasattr(self, "no_need_check_grad"):
             return
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
@@ -378,7 +378,7 @@ class TestConv2dOp(OpTest):
             check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad_no_input(self):
-        if self.dtype == np.float16:
+        if self.dtype == np.float16 or hasattr(self, "no_need_check_grad"):
             return
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
