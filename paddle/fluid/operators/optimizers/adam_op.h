@@ -59,43 +59,6 @@ template <typename T, typename Flavour>
 class AdamFunctor;
 
 template <typename T>
-class BetaPowFunctor {
- private:
-  T beta1_;
-  T beta2_;
-  const T* beta1_pow_;
-  const T* beta2_pow_;
-  T* beta1_pow_out_;
-  T* beta2_pow_out_;
-
- public:
-  BetaPowFunctor(T beta1, T beta2, const T* beta1_pow, const T* beta2_pow,
-                 T* beta1_pow_out, T* beta2_pow_out)
-      : beta1_(beta1),
-        beta2_(beta2),
-        beta1_pow_(beta1_pow),
-        beta2_pow_(beta2_pow),
-        beta1_pow_out_(beta1_pow_out),
-        beta2_pow_out_(beta2_pow_out) {}
-
-  inline HOSTDEVICE void update_step(size_t i) const {
-    T beta1_pow_i = beta1_pow_[i];
-    T beta2_pow_i = beta2_pow_[i];
-
-    beta1_pow_out_[i] = beta1_pow_i * beta1_;
-    beta2_pow_out_[i] = beta2_pow_i * beta2_;
-  }
-
-  inline HOSTDEVICE void operator()(size_t i) const { update_step(i); }
-
-  inline HOSTDEVICE void apply_update(size_t limit) const {
-    for (size_t i = 0; i < limit; ++i) {
-      update_step(i);
-    }
-  }
-};
-
-template <typename T>
 class AdamFunctor<T, GPUAdam> {
  private:
   T beta1_;
@@ -427,28 +390,20 @@ class AdamOpKernel : public framework::OpKernel<T> {
         ctx.Attr<int64_t>("min_row_size_to_use_multithread");
     bool lazy_mode = ctx.Attr<bool>("lazy_mode");
     T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
-    auto& param = Ref(ctx.Input<LoDTensor>("Param"), "Must set Param");
+    auto* param = ctx.Input<LoDTensor>("Param");
     auto* grad_var = ctx.InputVar("Grad");
-    auto& mom1 = Ref(ctx.Input<LoDTensor>("Moment1"), "Must set Moment1");
-    auto& mom2 = Ref(ctx.Input<LoDTensor>("Moment2"), "Must set Moment2");
-    auto& lr =
-        Ref(ctx.Input<LoDTensor>("LearningRate"), "Must set LearningRate");
+    auto* mom1 = ctx.Input<LoDTensor>("Moment1");
+    auto* mom2 = ctx.Input<LoDTensor>("Moment2");
+    auto* lr = ctx.Input<LoDTensor>("LearningRate");
 
-    auto& beta1_pow =
-        Ref(ctx.Input<LoDTensor>("Beta1Pow"), "Must set Beta1Pow");
-    auto& beta2_pow =
-        Ref(ctx.Input<LoDTensor>("Beta2Pow"), "Must set Beta2Pow");
+    auto* beta1_pow = ctx.Input<LoDTensor>("Beta1Pow");
+    auto* beta2_pow = ctx.Input<LoDTensor>("Beta2Pow");
 
-    auto& param_out =
-        Ref(ctx.Output<LoDTensor>("ParamOut"), "Must set ParamOut");
-    auto& mom1_out =
-        Ref(ctx.Output<LoDTensor>("Moment1Out"), "Must set Moment1Out");
-    auto& mom2_out =
-        Ref(ctx.Output<LoDTensor>("Moment2Out"), "Must set Moment1Out");
-    auto& beta1_pow_out =
-        Ref(ctx.Output<LoDTensor>("Beta1PowOut"), "Must set Beta1PowOut");
-    auto& beta2_pow_out =
-        Ref(ctx.Output<LoDTensor>("Beta2PowOut"), "Must set Beta2PowOut");
+    auto* param_out = ctx.Output<LoDTensor>("ParamOut");
+    auto* mom1_out = ctx.Output<LoDTensor>("Moment1Out");
+    auto* mom2_out = ctx.Output<LoDTensor>("Moment2Out");
+    auto* beta1_pow_out = ctx.Output<LoDTensor>("Beta1PowOut");
+    auto* beta2_pow_out = ctx.Output<LoDTensor>("Beta2PowOut");
 
     T beta1 = static_cast<T>(ctx.Attr<float>("beta1"));
     if (ctx.HasInput("Beta1Tensor")) {
@@ -460,39 +415,45 @@ class AdamOpKernel : public framework::OpKernel<T> {
       auto* beta2_tensor = ctx.Input<framework::Tensor>("Beta2Tensor");
       beta2 = static_cast<T>(GetAttrFromTensor(beta2_tensor));
     }
-    VLOG(3) << "beta1_pow.numel() : " << beta1_pow.numel()
-            << "beta2_pow.numel() : " << beta2_pow.numel();
-    VLOG(3) << "param.numel(): " << param.numel();
-    BetaPowFunctor<T> beta_functor(
-        beta1, beta2, beta1_pow.template data<T>(),
-        beta2_pow.template data<T>(),
-        beta1_pow_out.template mutable_data<T>(ctx.GetPlace()),
-        beta2_pow_out.template mutable_data<T>(ctx.GetPlace()));
+    VLOG(3) << "beta1_pow.numel() : " << beta1_pow->numel()
+            << "beta2_pow.numel() : " << beta2_pow->numel();
+    VLOG(3) << "param.numel(): " << param->numel();
+
+    PADDLE_ENFORCE_EQ(beta1_pow_out->numel(), 1,
+                      platform::errors::InvalidArgument(
+                          "beta1 pow output size should be 1, but received "
+                          "value is:%d.",
+                          beta1_pow_out->numel()));
+
+    PADDLE_ENFORCE_EQ(beta2_pow_out->numel(), 1,
+                      platform::errors::InvalidArgument(
+                          "beta2 pow output size should be 1, but received "
+                          "value is:%d.",
+                          beta2_pow_out->numel()));
 
     if (grad_var->IsType<framework::LoDTensor>()) {
-      auto& grad = Ref(ctx.Input<LoDTensor>("Grad"), "Must set Grad");
+      auto* grad = ctx.Input<LoDTensor>("Grad");
 
       AdamFunctor<T, CPUAdam> functor(
-          beta1, beta2, epsilon, beta1_pow.template data<T>(),
-          beta2_pow.template data<T>(), mom1.template data<T>(),
-          mom1_out.template mutable_data<T>(ctx.GetPlace()),
-          mom2.template data<T>(),
-          mom2_out.template mutable_data<T>(ctx.GetPlace()),
-          lr.template data<T>(), grad.template data<T>(),
-          param.template data<T>(),
-          param_out.template mutable_data<T>(ctx.GetPlace()));
-      functor(param.numel());
-      beta_functor.apply_update(beta2_pow.numel());
+          beta1, beta2, epsilon, beta1_pow->data<T>(), beta2_pow->data<T>(),
+          mom1->data<T>(), mom1_out->mutable_data<T>(ctx.GetPlace()),
+          mom2->data<T>(), mom2_out->mutable_data<T>(ctx.GetPlace()),
+          lr->data<T>(), grad->data<T>(), param->data<T>(),
+          param_out->mutable_data<T>(ctx.GetPlace()));
+      functor(param->numel());
+      beta1_pow_out->mutable_data<T>(ctx.GetPlace())[0] =
+          beta1 * beta1_pow->data<T>()[0];
+      beta2_pow_out->mutable_data<T>(ctx.GetPlace())[0] =
+          beta2 * beta2_pow->data<T>()[0];
 
     } else if (grad_var->IsType<framework::SelectedRows>()) {
-      auto& grad =
-          Ref(ctx.Input<framework::SelectedRows>("Grad"), "Must set Grad");
-      if (grad.rows().size() == 0) {
+      auto* grad = ctx.Input<framework::SelectedRows>("Grad");
+      if (grad->rows().size() == 0) {
         VLOG(3) << "grad row size is 0!!";
         return;
       }
 
-      std::vector<int64_t> cpu_rows(grad.rows().begin(), grad.rows().end());
+      std::vector<int64_t> cpu_rows(grad->rows().begin(), grad->rows().end());
       bool is_strict_sorted = true;
       for (size_t i = 1; i < cpu_rows.size(); ++i) {
         if (cpu_rows[i - 1] >= cpu_rows[i]) {
@@ -504,12 +465,12 @@ class AdamOpKernel : public framework::OpKernel<T> {
       framework::SelectedRows tmp_grad_merge;
       const framework::SelectedRows* grad_merge_ptr;
       if (is_strict_sorted) {
-        grad_merge_ptr = &grad;
+        grad_merge_ptr = grad;
       } else {
         // merge duplicated rows if any.
         // The rows of grad_merge have been sorted inside MergeAdd functor
         scatter::MergeAdd<DeviceContext, T> merge_func;
-        merge_func(ctx.template device_context<DeviceContext>(), grad,
+        merge_func(ctx.template device_context<DeviceContext>(), *grad,
                    &tmp_grad_merge, true);
         grad_merge_ptr = &tmp_grad_merge;
       }
@@ -521,16 +482,17 @@ class AdamOpKernel : public framework::OpKernel<T> {
       auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
 
       SparseAdamFunctor<T, CPUAdam> functor(
-          beta1, beta2, epsilon, beta1_pow.template data<T>(),
-          beta2_pow.template data<T>(), mom1.template data<T>(),
-          mom1_out.template mutable_data<T>(ctx.GetPlace()),
-          mom2.template data<T>(),
-          mom2_out.template mutable_data<T>(ctx.GetPlace()),
-          lr.template data<T>(), grad_data, param.template data<T>(),
-          param_out.template mutable_data<T>(ctx.GetPlace()), rows, row_numel,
+          beta1, beta2, epsilon, beta1_pow->data<T>(), beta2_pow->data<T>(),
+          mom1->data<T>(), mom1_out->mutable_data<T>(ctx.GetPlace()),
+          mom2->data<T>(), mom2_out->mutable_data<T>(ctx.GetPlace()),
+          lr->data<T>(), grad_data, param->data<T>(),
+          param_out->mutable_data<T>(ctx.GetPlace()), rows, row_numel,
           grad_merge.rows().size(), lazy_mode);
       // update beta1 and beta2
-      beta_functor.apply_update(beta2_pow.numel());
+      beta1_pow_out->mutable_data<T>(ctx.GetPlace())[0] =
+          beta1 * beta1_pow->data<T>()[0];
+      beta2_pow_out->mutable_data<T>(ctx.GetPlace())[0] =
+          beta2 * beta2_pow->data<T>()[0];
       if (lazy_mode) {
         VLOG(3) << "run cpu lazy mode";
         size_t row_count = grad_merge.rows().size();
@@ -545,7 +507,7 @@ class AdamOpKernel : public framework::OpKernel<T> {
 #ifndef _WIN32
       else if (FLAGS_inner_op_parallelism > 1 &&  // NOLINT
                min_row_size_to_use_multithread > 0 &&
-               param.dims()[0] > min_row_size_to_use_multithread) {
+               param->dims()[0] > min_row_size_to_use_multithread) {
         VLOG(3) << "use multi thread, inner_op_parallelism="
                 << FLAGS_inner_op_parallelism
                 << " min_row_size_to_use_multithread="
@@ -556,7 +518,7 @@ class AdamOpKernel : public framework::OpKernel<T> {
         }
         auto& grad_rows = grad_merge.rows();
         std::unordered_map<size_t, int> row_id_to_grad_row_offset;
-        size_t param_row_count = param.numel() / row_numel;
+        size_t param_row_count = param->numel() / row_numel;
         if (param_row_count < 1000) {
           VLOG(1) << "param_row_count should be larger then 1000 to use "
                      "multi thread, currently "
@@ -601,7 +563,7 @@ class AdamOpKernel : public framework::OpKernel<T> {
       }
 #endif        // !_WIN32
       else {  // NOLINT
-        functor(param.numel());
+        functor(param->numel());
       }
     } else {
       PADDLE_THROW("Variable type not supported by adam_op");

@@ -57,12 +57,7 @@ class FeedOp : public framework::OperatorBase {
     if (platform::is_same_place(feed_item.place(), place)) {
       out_item->ShareDataWith(feed_item);
     } else {
-      if (out_name == "Beta1Pow" || out_name == "Beta2Pow") {
-        framework::TensorCopy(feed_item, platform::CPUPlace(), *dev_ctx,
-                              out_item);
-      } else {
-        framework::TensorCopy(feed_item, place, *dev_ctx, out_item);
-      }
+      framework::TensorCopy(feed_item, place, *dev_ctx, out_item);
     }
     out_item->set_lod(feed_item.lod());
   }
