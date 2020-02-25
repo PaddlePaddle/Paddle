@@ -110,29 +110,16 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
   // if size is 0.  We just make sure it does.
   if (size <= 0) return nullptr;
 
-  paddle::platform::CUDADeviceGuard guard(gpu_id_);
-
   void* p;
-  cudaError_t result = cudaMalloc(&p, size);
+  auto result = platform::RecordedCudaMalloc(&p, size, gpu_id_);
 
   if (result == cudaSuccess) {
     *index = 0;
     gpu_alloc_size_ += size;
     return p;
   } else {
-    platform::RaiseNonOutOfMemoryError(&result);
-
-    /**
-     * NOTE(zjl): Sometimes cudaMemGetInfo would raise OOM error
-     * if there is very little GPU memory left. In this case, we
-     * should consider the available GPU memory to be 0, and throw
-     * exception inside this function instead of throwing exception
-     * inside cudaMemGetInfo.
-     */
-    size_t avail = 0, total = 0;
-    result = cudaMemGetInfo(&avail, &total);
-    if (result != cudaSuccess) avail = 0;
-    platform::RaiseNonOutOfMemoryError(&result);
+    size_t avail, total;
+    platform::RecordedCudaMemGetInfo(&avail, &total, gpu_id_);
 
     PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
         "\n\nOut of memory error on GPU %d. "
@@ -153,20 +140,11 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
 }
 
 void GPUAllocator::Free(void* p, size_t size, size_t index) {
-  cudaError_t err;
   PADDLE_ENFORCE_EQ(index, 0);
   PADDLE_ENFORCE_GE(gpu_alloc_size_, size);
   gpu_alloc_size_ -= size;
-  err = cudaFree(p);
 
-  // Purposefully allow cudaErrorCudartUnloading, because
-  // that is returned if you ever call cudaFree after the
-  // driver has already shutdown. This happens only if the
-  // process is terminating, in which case we don't care if
-  // cudaFree succeeds.
-  if (err != cudaErrorCudartUnloading) {
-    PADDLE_ENFORCE(err, "cudaFree{Host} failed in GPUAllocator::Free.");
-  }
+  platform::RecordedCudaFree(p, size, gpu_id_);
 }
 
 bool GPUAllocator::UseGpu() const { return true; }
