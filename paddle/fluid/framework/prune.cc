@@ -83,12 +83,13 @@ bool HasFalseTarget(const proto::OpDesc& op_desc) {
 }
 
 int GetSubBlockIndex(const proto::OpDesc& op_desc) {
-  // the block index >= 0, so -1 is used to indicate "NotFound".
+  // The block index >= 0, so -1 is used to indicate "NotFound".
   for (auto& attr : op_desc.attrs()) {
     if (attr.type() == proto::AttrType::BLOCK) {
-      PADDLE_ENFORCE_EQ(
-          attr.has_block_idx(), true,
-          platform::errors::NotFound("Attribute sub_block is empty"));
+      PADDLE_ENFORCE_EQ(attr.has_block_idx(), true,
+                        platform::errors::NotFound(
+                            "Attribute sub_block is not found in operator %s",
+                            op_desc.type()));
       return attr.block_idx();
     }
   }
@@ -98,9 +99,10 @@ int GetSubBlockIndex(const proto::OpDesc& op_desc) {
 void SetSubBlockIndex(proto::OpDesc* op_desc, int sub_idx) {
   for (auto& attr : *op_desc->mutable_attrs()) {
     if (attr.type() == proto::AttrType::BLOCK) {
-      PADDLE_ENFORCE_EQ(
-          attr.has_block_idx(), true,
-          platform::errors::NotFound("Attribute sub_block is empty"));
+      PADDLE_ENFORCE_EQ(attr.has_block_idx(), true,
+                        platform::errors::NotFound(
+                            "Attribute sub_block is not found in operator %s",
+                            op_desc->type()));
       attr.set_block_idx(sub_idx);
     }
   }
@@ -111,13 +113,14 @@ bool HasSubBlock(const proto::OpDesc& op_desc) {
 }
 
 int GetOpRole(const proto::OpDesc& op_desc) {
-  // the normal op role >= 0, so -1 is used to indicate "NotFound".
+  // The op role >= 0, so -1 is used to indicate "NotFound".
   for (auto& attr : op_desc.attrs()) {
     if (attr.name() == OpProtoAndCheckerMaker::OpRoleAttrName()) {
       PADDLE_ENFORCE_EQ(
           attr.has_i(), true,
-          platform::errors::NotFound("Attribute %s is empty",
-                                     OpProtoAndCheckerMaker::OpRoleAttrName()));
+          platform::errors::NotFound("Attribute %s is empty in operator %s",
+                                     OpProtoAndCheckerMaker::OpRoleAttrName(),
+                                     op_desc.type()));
       return attr.i();
     }
   }
@@ -289,22 +292,11 @@ void Prune(const proto::ProgramDesc& input,
   prune_impl(input, output, 0, -1, &dependent_vars, feed_var_names);
 }
 
-void CloneWholeBlock(proto::ProgramDesc* input, proto::ProgramDesc* output,
-                     int block_id, int parent_block_id) {
-  auto* block_field = output->mutable_blocks();
-  *block_field->Add() = input->blocks(block_id);
-  int output_block_id = output->blocks_size() - 1;
-  auto* output_block = output->mutable_blocks(output_block_id);
-  output_block->set_idx(output_block_id);
-  output_block->set_parent_idx(parent_block_id);
-}
-
-int FindMapByValue(std::map<int, int> m, int val) {
-  // the content in map should be >= 0, so -1 is used to indicate "NotFound".
-  std::map<int, int>::iterator it;
-  for (it = m.begin(); it != m.end(); ++it) {
-    if (it->second == val) {
-      return it->first;
+int FindMapByValue(const std::map<int, int>& m, int val) {
+  // The content in map should be >= 0, so -1 is used to indicate "NotFound".
+  for (auto& pair : m) {
+    if (pair.second == val) {
+      return pair.first;
     }
   }
   return -1;
@@ -356,6 +348,8 @@ void PruneBackwardImpl(proto::BlockDesc* origin, proto::BlockDesc* pruned) {
   var_names.insert(op_output_vars.begin(), op_output_vars.end());
   for (const auto& name : var_names) {
     if (var_map.count(name)) {
+      // NOTE(zhiqiu): For operator in a conditional block, the related vars may
+      // not exist in current block, but in its futher block.
       *pruned_vars->Add() = var_map[name];
     }
   }
@@ -366,7 +360,7 @@ std::tuple<framework::ProgramDesc, std::map<int, int>> PruneBackward(
   // Copy original ProgramDesc, origin can't be change
   framework::ProgramDesc origin_clone(origin);
 
-  // Step 1: check if the program contains grad loss operator.
+  // Step 1. check if the program contains grad loss operator.
   // If not, the program need no pruning.
   bool has_loss_grad_op = false;
   std::queue<int> block_contains_loss;
@@ -384,15 +378,18 @@ std::tuple<framework::ProgramDesc, std::map<int, int>> PruneBackward(
       }
     }
   }
-  PADDLE_ENFORCE_EQ(
-      has_loss_grad_op, true,
-      platform::errors::InvalidArgument("The Program to be prune_backward"
-                                        "should have grad loss operator."));
 
-  // Step 2: Prune backward for each block.
+  std::map<int, int> pruned_progin_block_id_map;
+  if (!has_loss_grad_op) {
+    // No pruning, fast return a copy of the origin ProgramDesc with an empty
+    // map, means default mapped, i.e.{0:0, 1:1, ..., n:n}.
+    return std::make_tuple(framework::ProgramDesc(origin_clone),
+                           pruned_progin_block_id_map);
+  }
+
   proto::ProgramDesc pruned_desc;
   pruned_desc.clear_blocks();
-  std::map<int, int> pruned_progin_block_id_map;
+  // Step 2. Prune backward for each block.
   for (size_t i = 0; i < origin_clone.Size(); i++) {
     auto pruned = proto::BlockDesc();
     auto origin = origin_clone.Proto()->mutable_blocks(i);
@@ -410,26 +407,25 @@ std::tuple<framework::ProgramDesc, std::map<int, int>> PruneBackward(
       auto* pruned_block = pruned_desc.mutable_blocks(pruned_block_id);
       pruned_block->set_idx(pruned_block_id);
 
-      int parent_idx = -1;
       if (origin->parent_idx() == -1) {
-        parent_idx = -1;
+        pruned_block->set_parent_idx(-1);
       } else {
-        parent_idx =
+        auto parent_idx =
             FindMapByValue(pruned_progin_block_id_map, origin->parent_idx());
         PADDLE_ENFORCE_NE(parent_idx, -1,
                           "The parent block id should be found in "
                           "pruned_progin_block_id_map");
+        pruned_block->set_parent_idx(parent_idx);
       }
-      pruned_block->set_parent_idx(parent_idx);
     }
   }
 
-  // Step 3: Update subblock attribute for conditional operator.
+  // Step 3. Update subblock attribute for conditional operator.
   // This should be performed after all blocks pruned.
   for (int i = 0; i < pruned_desc.blocks_size(); i++) {
     auto* pruned = pruned_desc.mutable_blocks(i);
     auto* ops = pruned->mutable_ops();
-    for (auto op_iter = ops->rbegin(); op_iter != ops->rend(); ++op_iter) {
+    for (auto op_iter = ops->begin(); op_iter != ops->end(); ++op_iter) {
       auto& op_desc = *op_iter;
       if (HasSubBlock(op_desc)) {
         int origin_sub_idx = GetSubBlockIndex(op_desc);

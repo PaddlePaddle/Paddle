@@ -3993,18 +3993,15 @@ class Program(object):
         """
         pruned_origin_block_id_map = None
         if for_test:
-            if self._appending_grad_times > 0:
-                forward_prog = Program()
-                forward_prog.desc, pruned_origin_block_id_map = core.prune_backward(
-                    self.desc)
-                forward_prog.blocks = [
-                    Block(forward_prog, i)
-                    for i in six.moves.range(forward_prog.desc.num_blocks())
-                ]
-                forward_prog._sync_with_cpp()
-                p = forward_prog._inference_optimize(prune_read_op=False)
-            else:
-                p = self._inference_optimize(prune_read_op=False)
+            forward_prog = Program()
+            forward_prog.desc, pruned_origin_block_id_map = core.prune_backward(
+                self.desc)
+            forward_prog.blocks = [
+                Block(forward_prog, i)
+                for i in six.moves.range(forward_prog.desc.num_blocks())
+            ]
+            forward_prog._sync_with_cpp()
+            p = forward_prog._inference_optimize(prune_read_op=False)
         else:
             p = Program()
             p.current_block_idx = self.current_block_idx
@@ -4469,7 +4466,7 @@ class Program(object):
         self._ps_endpoint = other._ps_endpoint
         self._distributed_lookup_table = other._distributed_lookup_table
 
-    def _copy_data_info_from(self, other, pruned_origin_block_id_map={}):
+    def _copy_data_info_from(self, other, pruned_origin_block_id_map=None):
         """
         Copy the information of data variables from other program.
 
@@ -4478,9 +4475,9 @@ class Program(object):
 
         Args:
             other(Program): Other program
-            pruned_origin_block_id_map(map{int:int}): A map from block id in self 
-            to block id in other. For example, {0:0, 1:1, 2:3} means block 0 in self is 
-            cloned from block 0 in other, etc. Default is {}, means default mapped, 
+            pruned_origin_block_id_map(dict{int:int}): A dict which maps the block id in program
+            self to the block id in program other. For example, {0:0, 1:1, 2:3} means block 0 in self is 
+            cloned from block 0 in other, etc. Default is None, which means default mapped, 
             {0:0, 1:1,..., n:n}.
 
         Returns:

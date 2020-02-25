@@ -154,17 +154,21 @@ class TestProgramPruneBackward(unittest.TestCase):
 
         self.program_compare(test_prog_orig, test_prog_prune)
 
-        place = core.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        places = [core.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(core.CUDAPlace(0))
 
-        loss_data_prune, = exe.run(test_prog_prune,
-                                   feed=feed_dict,
-                                   fetch_list=[loss.name])
-        loss_data_orig, = exe.run(test_prog_orig,
-                                  feed=feed_dict,
-                                  fetch_list=[loss.name])
-        self.assertEqual(loss_data_orig, loss_data_prune)
+        for place in places:
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+
+            loss_data_prune, = exe.run(test_prog_prune,
+                                       feed=feed_dict,
+                                       fetch_list=[loss.name])
+            loss_data_orig, = exe.run(test_prog_orig,
+                                      feed=feed_dict,
+                                      fetch_list=[loss.name])
+            self.assertEqual(loss_data_orig, loss_data_prune)
 
     def test_simple_fc_net(self):
         def optimizer():
@@ -282,6 +286,7 @@ class TestProgramPruneBackward(unittest.TestCase):
             loss = optimization_in_cond_net(True)
             main_program = fluid.default_main_program()
             test_prog_prune = main_program.clone(for_test=True)
+
             place = core.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
