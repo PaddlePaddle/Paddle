@@ -16,8 +16,9 @@ from __future__ import print_function
 
 import copy
 import six
+import os
 
-from .framework import Parameter, dtype_is_floating, in_dygraph_mode, OpProtoHolder
+from .framework import Parameter, dtype_is_floating, in_dygraph_mode, OpProtoHolder, Variable
 from . import unique_name
 from paddle.fluid.initializer import Constant, Xavier
 from .param_attr import ParamAttr
@@ -27,12 +28,127 @@ from .layer_helper_base import LayerHelperBase
 
 
 class LayerHelper(LayerHelperBase):
+    def print_api_log(self, layer_type, **kwargs):
+        not_record_param = [
+            'name', 'l_type', 'num_channels', 'channel_last',
+            'padding_algorithm', 'binary_op'
+        ]
+        not_record_op = [
+            'data',
+            'create',
+            'global',
+            'autoincreased_step_counter',
+            'conditional_block',
+        ]
+        op_alias = dict()
+        op_alias['top_k'] = 'topk'
+        op_alias['depthwise_conv2d_transpose'] = 'conv2d_transpose'
+        op_alias['depthwise_conv2d'] = 'conv2d'
+        op_alias['global_step_counter'] = 'autoincreased_step_counter'
+        op_alias['cross_entropy2'] = 'cross_entropy'
+
+        def dtype_to_string(values):
+            if hasattr(values, 'dtype'):
+                if values.dtype == core.VarDesc.VarType.FP16:
+                    data_type = "float16"
+                elif values.dtype == core.VarDesc.VarType.FP32:
+                    data_type = "float32"
+                elif values.dtype == core.VarDesc.VarType.FP64:
+                    data_type = "float64"
+                elif values.dtype == core.VarDesc.VarType.INT8:
+                    data_type = 'int8'
+                elif values.dtype == core.VarDesc.VarType.INT16:
+                    data_type = 'int16'
+                elif values.dtype == core.VarDesc.VarType.INT32:
+                    data_type = 'int32'
+                elif values.dtype == core.VarDesc.VarType.INT64:
+                    data_type = 'int64'
+                elif values.dtype == core.VarDesc.VarType.UINT8:
+                    data_type = 'uint8'
+                elif values.dtype == core.VarDesc.VarType.UINT16:
+                    data_type = 'uint16'
+                elif values.dtype == core.VarDesc.VarType.BOOL:
+                    data_type = 'bool'
+                else:
+                    raise ValueError("Unsupported data type %s" % dtype)
+                return data_type
+
+        path = os.environ.get('API_LOG_PATH')
+        if path is None:
+            print(
+                'Error!!! Please set API_LOG_PATH to save API info, exit program!'
+            )
+            exit(0)
+        with open(path, 'a') as f:
+            if layer_type in op_alias.keys():
+                layer_type = op_alias[layer_type]
+            ss = ""
+            valid_op = True
+            for op in not_record_op:
+                if layer_type.find(op) != -1:
+                    valid_op = False
+            if valid_op:
+                ss = 'op_name:' + layer_type
+            else:
+                print("API_LOG: return as not valid op:", layer_type)
+                return
+            f.writelines(ss + '\n')
+            for key, values in kwargs.items():
+                # skip function param
+                if key != None and key not in not_record_param and not callable(
+                        values):
+                    vtype = ""
+                    data_type = ""
+                    if values is None: continue
+                    if type(values) is Variable:
+                        vtype = "Variable"
+                    elif type(values) is list:
+                        vtype = "list"
+                    elif type(values) is float:
+                        vtype = "float"
+                    elif type(values) is bool:
+                        vtype = "bool"
+                    elif type(values) is str:
+                        vtype = "string"
+                    elif type(values) is int:
+                        vtype = "int"
+                    elif type(values) is tuple:
+                        vtype = "tuple"
+                    elif type(values) is dict:
+                        vtype = "dict"
+                    #skip parameter object
+                    elif type(values) is ParamAttr:
+                        vtype = "object"
+                        values = str(values).split('.')[-1].split()[0]
+                        continue
+                    else:
+                        raise ValueError("Unsupported type %s" % type(values))
+                    data_type = dtype_to_string(values)
+
+                    strs = key + ' ' + vtype + ' | '
+                    if "Variable" == vtype:
+                        strs = strs + data_type + ' | shape:' + str(
+                            list(values.shape))
+                    elif "list" == vtype and type(values[0]) is Variable:
+                        v = values[0]
+                        shapes = []
+                        data_type = dtype_to_string(v)
+                        for lv in values:
+                            shapes.append(lv.shape)
+                        strs = strs + data_type + ' | shape:' + str(shapes)
+                    else:
+                        strs = strs + str(values)
+                    f.writelines(strs + '\n')
+
     def __init__(self, layer_type, **kwargs):
         self.kwargs = kwargs
         name = self.kwargs.get('name', None)
         # TODO(panyx0718, minqiyang): dygraph mode
         # can not use both `layer_type` and `name`. Deprecate LayerHelper
         # and write a Helper for dygraph mode.
+        if os.environ.get('ENABLE_API_BENCH_LOG'):
+            self.print_api_log(layer_type, **kwargs)
+
         if name is None:
             self.kwargs['name'] = unique_name.generate(layer_type)
 
