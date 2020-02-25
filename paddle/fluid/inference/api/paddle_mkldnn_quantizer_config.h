@@ -24,12 +24,12 @@
 
 #if defined(_WIN32)
 #ifdef PADDLE_DLL_INFERENCE
-#define PADDLE_INFENRENCE_EXPORT __declspec(dllexport)
+#define PD_INFER_EXPORT __declspec(dllexport)
 #else
-#define PADDLE_INFENRENCE_EXPORT __declspec(dllimport)
+#define PD_INFER_EXPORT __declspec(dllimport)
 #endif  // PADDLE_DLL_INFERENCE
 #else
-#define PADDLE_INFENRENCE_EXPORT __attribute__((visibility("default")))
+#define PD_INFER_EXPORT __attribute__((visibility("default")))
 #endif  // _WIN32
 
 namespace paddle {
@@ -44,7 +44,7 @@ enum class ScaleAlgo {
   KL,        // Find scale based on KL Divergence
 };
 
-struct PADDLE_INFENRENCE_EXPORT MkldnnQuantizerConfig {
+struct PD_INFER_EXPORT MkldnnQuantizerConfig {
   MkldnnQuantizerConfig();
 
   /** Specify a quantization algorithm for a connection (input/output) of the

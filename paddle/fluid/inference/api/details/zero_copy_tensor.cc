@@ -145,39 +145,38 @@ void ZeroCopyTensor::copy_to_cpu(T *data) {
 #endif
   }
 }
-template PADDLE_INFENRENCE_EXPORT void ZeroCopyTensor::copy_from_cpu<float>(
+template PD_INFER_EXPORT void ZeroCopyTensor::copy_from_cpu<float>(
     const float *data);
-template PADDLE_INFENRENCE_EXPORT void ZeroCopyTensor::copy_from_cpu<int64_t>(
+template PD_INFER_EXPORT void ZeroCopyTensor::copy_from_cpu<int64_t>(
     const int64_t *data);
-template PADDLE_INFENRENCE_EXPORT void ZeroCopyTensor::copy_from_cpu<int32_t>(
+template PD_INFER_EXPORT void ZeroCopyTensor::copy_from_cpu<int32_t>(
     const int32_t *data);
-template PADDLE_INFENRENCE_EXPORT void ZeroCopyTensor::copy_from_cpu<uint8_t>(
+template PD_INFER_EXPORT void ZeroCopyTensor::copy_from_cpu<uint8_t>(
     const uint8_t *data);
-template PADDLE_INFENRENCE_EXPORT void ZeroCopyTensor::copy_to_cpu<float>(
-    float *data);
-template PADDLE_INFENRENCE_EXPORT void ZeroCopyTensor::copy_to_cpu<int64_t>(
+template PD_INFER_EXPORT void ZeroCopyTensor::copy_to_cpu<float>(float *data);
+template PD_INFER_EXPORT void ZeroCopyTensor::copy_to_cpu<int64_t>(
     int64_t *data);
-template PADDLE_INFENRENCE_EXPORT void ZeroCopyTensor::copy_to_cpu<int32_t>(
+template PD_INFER_EXPORT void ZeroCopyTensor::copy_to_cpu<int32_t>(
     int32_t *data);
-template PADDLE_INFENRENCE_EXPORT void ZeroCopyTensor::copy_to_cpu<uint8_t>(
+template PD_INFER_EXPORT void ZeroCopyTensor::copy_to_cpu<uint8_t>(
     uint8_t *data);
 
-template PADDLE_INFENRENCE_EXPORT float *ZeroCopyTensor::data<float>(
+template PD_INFER_EXPORT float *ZeroCopyTensor::data<float>(PaddlePlace *place,
+                                                            int *size) const;
+template PD_INFER_EXPORT int64_t *ZeroCopyTensor::data<int64_t>(
     PaddlePlace *place, int *size) const;
-template PADDLE_INFENRENCE_EXPORT int64_t *ZeroCopyTensor::data<int64_t>(
+template PD_INFER_EXPORT int32_t *ZeroCopyTensor::data<int32_t>(
     PaddlePlace *place, int *size) const;
-template PADDLE_INFENRENCE_EXPORT int32_t *ZeroCopyTensor::data<int32_t>(
+template PD_INFER_EXPORT uint8_t *ZeroCopyTensor::data<uint8_t>(
     PaddlePlace *place, int *size) const;
-template PADDLE_INFENRENCE_EXPORT uint8_t *ZeroCopyTensor::data<uint8_t>(
-    PaddlePlace *place, int *size) const;
-template PADDLE_INFENRENCE_EXPORT float *ZeroCopyTensor::mutable_data<float>(
+template PD_INFER_EXPORT float *ZeroCopyTensor::mutable_data<float>(
     PaddlePlace place);
-template PADDLE_INFENRENCE_EXPORT int64_t *
-ZeroCopyTensor::mutable_data<int64_t>(PaddlePlace place);
-template PADDLE_INFENRENCE_EXPORT int32_t *
-ZeroCopyTensor::mutable_data<int32_t>(PaddlePlace place);
-template PADDLE_INFENRENCE_EXPORT uint8_t *
-ZeroCopyTensor::mutable_data<uint8_t>(PaddlePlace place);
+template PD_INFER_EXPORT int64_t *ZeroCopyTensor::mutable_data<int64_t>(
+    PaddlePlace place);
+template PD_INFER_EXPORT int32_t *ZeroCopyTensor::mutable_data<int32_t>(
+    PaddlePlace place);
+template PD_INFER_EXPORT uint8_t *ZeroCopyTensor::mutable_data<uint8_t>(
+    PaddlePlace place);
 
 void *ZeroCopyTensor::FindTensor() const {
   PADDLE_ENFORCE(!name_.empty(),
