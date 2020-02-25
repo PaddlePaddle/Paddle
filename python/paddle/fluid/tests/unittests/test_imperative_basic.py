@@ -179,7 +179,7 @@ class SimpleRNN(fluid.Layer):
 class TestImperative(unittest.TestCase):
     def test_functional_dygraph_context(self):
         self.assertFalse(fluid.dygraph.enabled())
-        fluid.dygraph.enable()
+        fluid.enable_dygraph()
         self.assertTrue(fluid.dygraph.enabled())
         np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
         var_inp = fluid.dygraph.base.to_variable(np_inp)
@@ -188,7 +188,7 @@ class TestImperative(unittest.TestCase):
         dy_out1 = out.numpy()
         out.backward()
         dy_grad1 = mlp._linear1.weight.gradient()
-        fluid.dygraph.disable()
+        fluid.disable_dygraph()
         self.assertFalse(fluid.dygraph.enabled())
         with fluid.dygraph.guard():
             self.assertTrue(fluid.dygraph.enabled())

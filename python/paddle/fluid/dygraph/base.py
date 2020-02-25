@@ -24,8 +24,8 @@ import objgraph
 __all__ = [
     'no_grad',
     'guard',
-    'enable',
-    'disable',
+    'enable_dygraph',
+    'disable_dygraph',
     'enabled',
     'to_variable',
 ]
@@ -77,15 +77,15 @@ def enabled():
             import numpy as np
 
             data = np.random.uniform( -1, 1, [30, 10, 32] ).astype('float32')
-            fluid.dygraph.enable()  # Now we are in dygragh mode
+            fluid.enable_dygraph()  # Now we are in dygragh mode
             print(fluid.dygraph.enabled())  # True
-            fluid.dygraph.disable()
-            data = fluid.dygraph.to_variable(data, name='data')  # AssertionError
+            fluid.disable_dygraph()
+            print(fluid.dygraph.enabled())  # False
     """
     return framework.in_dygraph_mode()
 
 
-def enable(place=None):
+def enable_dygraph(place=None):
     """
     This function enables dynamic graph mode.
 
@@ -103,10 +103,10 @@ def enable(place=None):
             import numpy as np
 
             data = np.random.uniform( -1, 1, [30, 10, 32] ).astype('float32')
-            fluid.dygraph.enable()  # Now we are in dygragh mode
+            fluid.enable_dygraph()  # Now we are in dygragh mode
             data = fluid.dygraph.to_variable(data, name='data')
             print(fluid.dygraph.enabled())  # True
-            fluid.dygraph.disable()
+            fluid.disable_dygraph()
             data = fluid.dygraph.to_variable(data, name='data')  # AssertionError
     """
     global _functional_dygraph_context_manager
@@ -114,7 +114,7 @@ def enable(place=None):
     _functional_dygraph_context_manager.__enter__()
 
 
-def disable():
+def disable_dygraph():
     """
     This function disables dynamic graph mode.
 
@@ -128,15 +128,16 @@ def disable():
             import numpy as np
 
             data = np.random.uniform( -1, 1, [30, 10, 32] ).astype('float32')
-            fluid.dygraph.enable()  # Now we are in dygragh mode
+            fluid.enable_dygraph()  # Now we are in dygragh mode
             data = fluid.dygraph.to_variable(data, name='data')
             print(fluid.dygraph.enabled())  # True
-            fluid.dygraph.disable()
+            fluid.disable_dygraph()
             data = fluid.dygraph.to_variable(data, name='data')  # AssertionError
     """
     global _functional_dygraph_context_manager
-    assert _functional_dygraph_context_manager is not None
-    _functional_dygraph_context_manager.__exit__(*sys.exc_info())
+    if _functional_dygraph_context_manager is not None:
+        _functional_dygraph_context_manager.__exit__(*sys.exc_info())
+        _functional_dygraph_context_manager = None
 
 
 @contextlib.contextmanager
