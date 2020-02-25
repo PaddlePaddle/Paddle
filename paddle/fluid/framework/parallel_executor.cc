@@ -925,6 +925,9 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
                       platform::errors::InvalidArgument(
                           "The feeded number of persistable variables should "
                           "not be less than non-persistable variables"));
+  }
+
+  if (non_persistable_feed_len != -1UL) {
     for (size_t i = 0; i < non_persistable_feed_len; ++i) {
       member_->SetHasFeed(i);
     }
