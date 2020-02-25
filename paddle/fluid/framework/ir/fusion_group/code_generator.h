@@ -30,8 +30,8 @@ class CodeGenerator {
  public:
   CodeGenerator();
 
-  std::string Generate(std::string func_name,
-                       std::vector<OperationExpression> expressions);
+  std::string Generate(std::string func_name, std::string dtype,
+                       const std::vector<OperationExpression>& expressions);
 
   std::string Generate(SubGraph* subgraph);
 

@@ -16,6 +16,7 @@ limitations under the License. */
 #include <sstream>
 #include <unordered_set>
 #include "paddle/fluid/framework/ir/fusion_group/code_generator_helper.h"
+#include "paddle/fluid/framework/ir/fusion_group/cuda_resources.h"
 #include "paddle/fluid/framework/ir/fusion_group/operation.h"
 
 namespace paddle {
@@ -27,13 +28,14 @@ CodeGenerator::CodeGenerator() {
   // Only support elementwise operations now.
   code_templates_.resize(1);
 
-  CodeTemplate elementwise_t(elementwise_cuda_template);
+  CodeTemplate elementwise_t(cuda_kernel_template_1d);
   code_templates_[0] = elementwise_t;
 }
 
 std::string CodeGenerator::Generate(SubGraph* subgraph) {
   std::vector<OperationExpression> expressions = ConvertToExpressions(subgraph);
-  return Generate(subgraph->func_name, expressions);
+  return Generate(subgraph->GetFuncName(), subgraph->GetDataType(),
+                  expressions);
 }
 
 static bool HasInput(Node* n, std::string name) {
@@ -100,9 +102,9 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
 // In order to get the right result of expression, we need to calculate and
 // store the expression as suffix Expressions using vector.
 std::string CodeGenerator::Generate(
-    std::string func_name, std::vector<OperationExpression> expressions) {
+    std::string func_name, std::string dtype,
+    const std::vector<OperationExpression>& expressions) {
   // TODO(liuyiqun): Check whether all expressions are elementwise operations.
-  std::string dtype = "float";
   std::set<int> input_ids = DistilInputIds(expressions);
   std::set<int> output_ids = DistilOutputIds(expressions);
 
@@ -111,6 +113,15 @@ std::string CodeGenerator::Generate(
   template_var.Add("parameters", EmitParameters(input_ids, output_ids, dtype));
   template_var.Add("compute_body",
                    EmitComputeBody(expressions, input_ids, output_ids, dtype));
+
+  std::string predefined_cuda_functions;
+  if (dtype == "float") {
+    predefined_cuda_functions = predefined_cuda_functions_fp32;
+  } else if (dtype == "double") {
+    predefined_cuda_functions = predefined_cuda_functions_fp64;
+  } else if (dtype == "float16") {
+    predefined_cuda_functions = predefined_cuda_functions_fp16;
+  }
   return predefined_cuda_functions + code_templates_[0].Format(template_var);
 }
 
@@ -173,9 +184,10 @@ std::string CodeGenerator::EmitComputeBody(
     std::string dtype) {
   std::ostringstream compute;
   std::unordered_set<int> used;
+  std::string compute_dtype = (dtype == "float16") ? "float" : dtype;
   for (size_t i = 0; i < expressions.size(); i++) {
     VLOG(3) << DebugString(expressions[i]);
-    compute << expressions[i].GetExpression(dtype, &used);
+    compute << expressions[i].GetExpression(compute_dtype, &used);
   }
 
   // Load input to temporal variables.
@@ -183,14 +195,23 @@ std::string CodeGenerator::EmitComputeBody(
   for (auto id : input_ids) {
     if (output_ids.find(id) == output_ids.end() &&
         used.find(id) != used.end()) {
-      load << dtype << " " << TmpName(id) << " = " << ArgName(id) << "[idx];";
+      if (dtype == "float16") {
+        load << "float " << TmpName(id) << " = __half2float(" << ArgName(id)
+             << "[idx]);";
+      } else {
+        load << dtype << " " << TmpName(id) << " = " << ArgName(id) << "[idx];";
+      }
     }
   }
 
   // Store temporal variables to memory.
   std::ostringstream store;
   for (auto id : output_ids) {
-    store << ArgName(id) << "[idx] = " << TmpName(id) << ";";
+    if (dtype == "float16") {
+      store << ArgName(id) << "[idx] = __float2half(" << TmpName(id) << ");";
+    } else {
+      store << ArgName(id) << "[idx] = " << TmpName(id) << ";";
+    }
   }
 
   return load.str() + compute.str() + store.str();

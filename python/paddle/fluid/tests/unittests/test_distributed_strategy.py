@@ -25,10 +25,9 @@ class TestStrategyFactor(unittest.TestCase):
     def test_sync_strategy(self):
         os.environ['CPU_NUM'] = "2"
         strategy = StrategyFactory.create_sync_strategy()
-        self.assertEqual(strategy._program_config.sync_mode, True)
-        self.assertEqual(strategy._program_config.runtime_split_send_recv,
-                         False)
-        self.assertEqual(strategy._build_strategy.async_mode, False)
+        self.assertEqual(strategy._program_config.sync_mode, False)
+        self.assertEqual(strategy._program_config.runtime_split_send_recv, True)
+        self.assertEqual(strategy._build_strategy.async_mode, True)
         self.assertEqual(strategy._execute_strategy.num_threads, 2)
 
         # test set_program_config using DistributeTranspilerConfig()
@@ -84,22 +83,20 @@ class TestStrategyFactor(unittest.TestCase):
                           build_strategy_illegal)
 
     def test_async_strategy(self):
+        os.environ["CPU_NUM"] = '100'
+
         strategy = StrategyFactory.create_async_strategy()
         self.assertEqual(strategy._program_config.sync_mode, False)
         self.assertEqual(strategy._program_config.runtime_split_send_recv, True)
         self.assertEqual(strategy._build_strategy.async_mode, True)
 
-        # test set_trainer_runtime_config using TrainerRuntimeConfig
-        trainer_runtime_config_class = TrainerRuntimeConfig()
-        trainer_runtime_config_class.send_queue_size = 50
-        print(trainer_runtime_config_class)
-        strategy.set_trainer_runtime_config(trainer_runtime_config_class)
         trainer_runtime_config = strategy.get_trainer_runtime_config()
-        self.assertEqual(trainer_runtime_config.send_queue_size, 50)
+        self.assertEqual(trainer_runtime_config.runtime_configs[
+            'communicator_send_queue_size'], '100')
 
         # test set_trainer_runtime_config using dict
         trainer_runtime_config_dict = dict()
-        trainer_runtime_config_dict['send_queue_size'] = 100
+        trainer_runtime_config_dict['communicator_send_queue_size'] = '20'
         strategy.set_trainer_runtime_config(trainer_runtime_config_dict)
         trainer_runtime_config = strategy.get_trainer_runtime_config()
         trainer_communicator_flags = trainer_runtime_config.get_communicator_flags(
@@ -107,7 +104,7 @@ class TestStrategyFactor(unittest.TestCase):
         self.assertIn('communicator_send_queue_size',
                       trainer_communicator_flags)
         self.assertEqual(
-            trainer_communicator_flags['communicator_send_queue_size'], '100')
+            trainer_communicator_flags['communicator_send_queue_size'], '20')
 
         # test set_trainer_runtime_config exception
         trainer_runtime_config_dict['unknown'] = None
@@ -198,6 +195,31 @@ class TestHalfAsyncStrategy(unittest.TestCase):
 
         optimizer = fluid.optimizer.SGD(0.0001)
         optimizer = fleet.distributed_optimizer(optimizer, half_async_config)
+
+
+class TestDebugInfo(unittest.TestCase):
+    def test_debug_info(self):
+        x = fluid.layers.data(name='x', shape=[1], dtype='float32')
+        y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+        y_predict = fluid.layers.fc(input=x, size=1, act=None)
+        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        avg_cost = fluid.layers.mean(cost)
+
+        role = role_maker.UserDefinedRoleMaker(
+            current_id=0,
+            role=role_maker.Role.WORKER,
+            worker_num=2,
+            server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"])
+        fleet.init(role)
+
+        optimizer = fluid.optimizer.SGD(0.0001)
+        strategy = StrategyFactory.create_sync_strategy()
+        strategy.set_debug_opt({
+            "dump_param": ["fc_0.tmp_0"],
+            "dump_fields": ["fc_0.tmp_0", "fc_0.tmp_0@GRAD"],
+            "dump_fields_path": "dump_text/"
+        })
+        optimizer = fleet.distributed_optimizer(optimizer, strategy)
 
 
 if __name__ == '__main__':

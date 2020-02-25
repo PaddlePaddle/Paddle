@@ -165,9 +165,15 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
   void AppendOpFusePasses() {
     AppendPassWithCheck(strategy_.fuse_relu_depthwise_conv_,
                         "fuse_relu_depthwise_conv_pass");
+    AppendPassWithCheck(strategy_.fuse_bn_act_ops_, "fuse_bn_act_pass");
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32) && !defined(__APPLE__)
+    AppendPassWithCheck(strategy_.enable_auto_fusion_, "fusion_group_pass");
+#else
+    LOG(WARNING) << "fusion_group is not enabled for Windows/MacOS now, and "
+                    "only effective when running with CUDA GPU.";
+#endif
     AppendPassWithCheck(strategy_.fuse_elewise_add_act_ops_,
                         "fuse_elewise_add_act_pass");
-    AppendPassWithCheck(strategy_.fuse_bn_act_ops_, "fuse_bn_act_pass");
     // for single card training, fuse_all_reduce_ops is unnecessary.
     // coalesce_grad_tensor_pass should be before of MultiDevPass.
     AppendPassWithCheck(strategy_.fuse_all_reduce_ops_,
@@ -303,7 +309,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                                 const std::string &loss_var_name,
                                 const std::vector<Scope *> &local_scopes,
                                 const size_t &nranks,
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
                                 const bool use_cuda,
                                 platform::NCCLCommunicator *nccl_ctxs) const {
 #else
@@ -326,7 +332,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Erase(kNRanks);
       pass->Set<size_t>(kNRanks, new size_t(nranks));
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
       platform::NCCLCommunicator *nctx = use_cuda ? nccl_ctxs : nullptr;
       pass->Erase(kNCCLCtxs);
       pass->SetNotOwned<platform::NCCLCommunicator>(kNCCLCtxs, nctx);
@@ -339,7 +345,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Erase(kLocalScopes);
       pass->SetNotOwned<const std::vector<Scope *>>(kLocalScopes,
                                                     &local_scopes);
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
       platform::NCCLCommunicator *nctx = use_cuda ? nccl_ctxs : nullptr;
       pass->Erase(kNCCLCtxs);
       pass->SetNotOwned<platform::NCCLCommunicator>(kNCCLCtxs, nctx);
@@ -354,7 +360,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       LOG(INFO) << "set enable_sequential_execution:"
                 << enable_sequential_execution_;
     } else if (pass->Type() == "all_reduce_deps_pass") {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
       platform::NCCLCommunicator *nctx = use_cuda ? nccl_ctxs : nullptr;
       pass->Erase(kNCCLCtxs);
       pass->SetNotOwned<platform::NCCLCommunicator>(kNCCLCtxs, nctx);
@@ -368,6 +374,12 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       if (!use_cuda) {
         LOG(WARNING) << "fuse_relu_depthwise_conv_pass is only supported on "
                         "GPU, skipped.";
+        continue;
+      }
+    } else if (pass->Type() == "fusion_group_pass") {
+      pass->Set<bool>("use_gpu", new bool(use_cuda));
+      if (!use_cuda) {
+        LOG(WARNING) << "fusion_group_pass is only supported on GPU, skipped.";
         continue;
       }
     } else if (pass->Type() == "fuse_bn_act_pass") {
@@ -426,4 +438,7 @@ USE_PASS(mkldnn_placement_pass);
 #endif
 #ifdef PADDLE_WITH_NGRAPH
 USE_PASS(ngraph_subgraph_pass);
+#endif
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32) && !defined(__APPLE__)
+USE_PASS(fusion_group_pass);
 #endif
