@@ -34,7 +34,7 @@ def _is_api_in_module_helper(obj, module_prefix):
 # function code together when Yamei finish her PR.
 def is_api_in_module(node, module_prefix):
     assert isinstance(node, gast.Call), "Input non-Call node for is_dygraph_api"
-    func_str = astor.to_source(node.func)
+    func_str = astor.to_source(gast.gast_to_ast(node.func))
     try:
         import paddle.fluid as fluid
         import paddle
@@ -55,7 +55,7 @@ def is_paddle_api(node):
 # Is numpy_api cannot reuse is_api_in_module because of numpy module problem
 def is_numpy_api(node):
     assert isinstance(node, gast.Call), "Input non-Call node for is_numpy_api"
-    func_str = astor.to_source(node.func)
+    func_str = astor.to_source(gast.gast_to_ast(node.func))
     try:
         import numpy as np
         module_result = eval("_is_api_in_module_helper({}, '{}')".format(
