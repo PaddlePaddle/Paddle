@@ -30,6 +30,7 @@ from paddle.fluid import compiler
 import os
 import sys
 import six
+import json
 
 
 class LambConfig(object):
@@ -143,19 +144,19 @@ class Collective(Fleet):
         d["epoch_no"] = train_status.epoch_no
 
         file_name = "{}/fleet_train_status".format(path)
-        with open(file_name, 'wb') as f:
-            json.dumps(d, f)
+        with open(file_name, 'w') as f:
+            json.dump(d, f)
 
     def _load_train_status(self, path):
         file_name = "{}/fleet_train_status".format(path)
 
         r = TrainStatus()
-        if not os.exists(file_name):
+        if not os.path.isfile(file_name):
             return r
 
         d = {}
         with open(file_name, 'rb') as f:
-            d = json.loads(f)
+            d = json.load(f)
 
         assert "epoch_no" in d, "Can't find epoch_no in dict from train_status file:{}".format(
             d)
@@ -177,7 +178,7 @@ class Collective(Fleet):
         """
         This function load persistables and current epoch num from path.
         """
-        io.load_persistables(path=path, exe=executor)
+        io.load_persistables(executor=executor, dirname=path)
 
         return self._load_train_status(path)
 
