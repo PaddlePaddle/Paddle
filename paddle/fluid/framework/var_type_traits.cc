@@ -112,7 +112,7 @@ const std::type_index &VarTraitIdToTypeIndex(int var_id) {
 }
 
 const char *ToTypeName(int var_id) {
-  return VarTraitIdToTypeIndex(var_id).name();
+  return paddle::platform::demangle(VarTraitIdToTypeIndex(var_id).name());
 }
 
 int TypeIndexToVarTraitId(const std::type_index &type) {
