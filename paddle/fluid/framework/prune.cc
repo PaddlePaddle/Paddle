@@ -413,8 +413,9 @@ std::tuple<framework::ProgramDesc, std::map<int, int>> PruneBackward(
         auto parent_idx =
             FindMapByValue(pruned_progin_block_id_map, origin->parent_idx());
         PADDLE_ENFORCE_NE(parent_idx, -1,
-                          "The parent block id should be found in "
-                          "pruned_progin_block_id_map");
+                          platform::errors::NotFound(
+                              "The origin parent block id is not found in "
+                              "pruned_progin_block_id_map"));
         pruned_block->set_parent_idx(parent_idx);
       }
     }
@@ -432,8 +433,9 @@ std::tuple<framework::ProgramDesc, std::map<int, int>> PruneBackward(
         auto sub_idx =
             FindMapByValue(pruned_progin_block_id_map, origin_sub_idx);
         PADDLE_ENFORCE_NE(sub_idx, -1,
-                          "The origin sub block id should be found in "
-                          "pruned_progin_block_id_map");
+                          platform::errors::NotFound(
+                              "The origin sub block id is not found in "
+                              "pruned_progin_block_id_map"));
         SetSubBlockIndex(&op_desc, sub_idx);
       }
     }
