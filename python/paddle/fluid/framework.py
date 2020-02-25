@@ -2691,12 +2691,12 @@ class Block(object):
         if not isinstance(other, Block):
             raise TypeError(
                 "_copy_param_info_from should be invoked with Block")
-        for p in other.iter_parameters():
+        for v in self.iter_parameters():
             assert isinstance(p, Parameter)
-            v = self.vars.get(p.name, None)
-            if v is None:
-                raise ValueError("_copy_param_info_from should be invoked with "
-                                 "same topology")
+            p = other.vars.get(p.name, None)
+            if p is None:
+                raise ValueError("Parameter %s not found in origin program " %
+                                 v.name)
             assert isinstance(v, Variable)
             new_p = None
             if in_dygraph_mode():
@@ -4174,6 +4174,11 @@ class Program(object):
         ]
         res._sync_with_cpp()
 
+        # import paddle.fluid.transpiler.details.program_utils as pu
+        # pu.program_to_code(self, skip_op_callstack=True)
+        # print('111')
+        # pu.program_to_code(res, skip_op_callstack=True)
+        # print('222')
         res._copy_param_info_from(self)
         res._copy_data_info_from(self, pruned_origin_block_id_map)
         res._copy_dist_param_info_from(self)

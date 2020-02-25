@@ -498,6 +498,7 @@ class Executor(object):
         self.ctx_caches = dict()
         self.scope_caches = dict()
         self.var_caches = dict()
+        self.pruned_program_caches = dict()
         p = core.Place()
         p.set_place(self.place)
         self._default_executor = core.Executor(p)
@@ -514,6 +515,12 @@ class Executor(object):
 
     def _add_program_cache(self, program_cache_key, program):
         self.program_caches[program_cache_key] = program
+
+    def _get_pruned_program_cache(self, program_cache_key):
+        return self.pruned_program_caches.get(program_cache_key, None)
+
+    def _add_pruned_program_cache(self, program_cache_key, program):
+        self.pruned_program_caches[program_cache_key] = program
 
     def _add_ctx_cache(self, ctx_cache_key, ctx):
         self.ctx_caches[ctx_cache_key] = ctx
@@ -666,7 +673,7 @@ class Executor(object):
             OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
             for block in origin_program.blocks:
                 for op in block.ops:
-                    if _is_optimize(op):
+                    if _is_optimize_op(op):
                         targets.append(op)
 
         print('targets')
@@ -994,7 +1001,20 @@ class Executor(object):
             fetch_list = []
 
         if use_prune:
-            pruned_program = self._prune_program(program, feed, fetch_list)
+            if use_program_cache:
+                cache_key = _get_strong_program_cache_key(program, feed,
+                                                          fetch_list)
+                cached_pruned_program = self._get_pruned_program_cache(
+                    cache_key)
+                if cached_pruned_program is None:
+                    pruned_program = self._prune_program(program, feed,
+                                                         fetch_list)
+                    self._add_pruned_program_cache(cache_key, pruned_program)
+                else:
+                    pruned_program = cached_pruned_program
+            else:
+                pruned_program = self._prune_program(program, feed, fetch_list)
+
             feed = self._update_feed(pruned_program, feed)
             program = pruned_program
 

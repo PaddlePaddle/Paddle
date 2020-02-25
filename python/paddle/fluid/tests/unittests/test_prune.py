@@ -20,8 +20,8 @@ import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import paddle.compat as cpt
 import numpy as np
-
-
+import unittest.mock as mock
+'''
 class TestPrune(unittest.TestCase):
     def net(self):
         x = fluid.layers.data(name='x', shape=[2], dtype='float32')
@@ -95,6 +95,7 @@ class TestPrune(unittest.TestCase):
             self.assertEqual(
                 "All targets of prune() can only be Variable or Operator.",
                 cpt.get_exception_message(e))
+'''
 
 
 class TestExecutorRunAutoPrune(unittest.TestCase):
@@ -145,7 +146,6 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
     def test_prune_fetches_without_optimize(self):
         """
         Prune operators and operators which are not needed to generate 'fetches'. 
-        In train mode, the operators and operators in backward and optimization should be kept.
         """
         program = framework.Program()
         startup_program = framework.Program()
@@ -300,6 +300,107 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                     use_prune=True)
                 self.assertIsNotNone(scope.find_var(loss1.name))
                 self.assertIsNone(scope.find_var(loss2.name))
+
+    def test_prune_with_cache_program(self):
+        '''
+        When use_prune=True and use_program_cache=True, Executor should cache the pruned program.
+        If in next run, the program, feed, fetch are not changed, Executor use the cached pruned program,
+        and needn't to call  _prune_program() to prune the program.
+        In this test, we hack the Executor._prune_program with a mock function which do nothing but increase
+        Executor.prune_called_times, and we check prune_called_times equals 1 even if we called exe.run() 
+        10 times with the same input arguments.
+        '''
+
+        def mock(self, program, feed, fetch):
+            self.prune_called_times += 1
+            return program
+
+        def init_mock(exe):
+            exe.prune_called_times = 0
+            fluid.Executor._prune_program = mock
+
+        exe = fluid.Executor(fluid.CPUPlace())
+        init_mock(exe)
+
+        program = framework.Program()
+        startup_program = framework.Program()
+        block = program.global_block()
+
+        scope = fluid.Scope()
+        with fluid.scope_guard(scope):
+            with fluid.program_guard(program, startup_program):
+                (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
+                x.persistable = True
+                sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.5)
+                sgd_optimizer.minimize(loss1)
+                exe.run(startup_program)
+                weight1 = np.array(
+                    scope.find_var(w_param_attrs.name).get_tensor())
+                x_np = np.random.random(size=(10, 2)).astype('float32')
+                label_np = np.random.randint(1, size=(10, 1)).astype('int64')
+                for i in range(10):
+                    res = exe.run(program,
+                                  feed={'x': x_np,
+                                        'label': label_np},
+                                  fetch_list=[loss1.name],
+                                  use_prune=True,
+                                  use_program_cache=True)
+                    if i == 0:
+                        self.assertEqual(exe.prune_called_times, 1)
+                    else:
+                        self.assertEqual(exe.prune_called_times, 1)
+
+    def test_prune_with_cache_compiled_program(self):
+        '''
+        When use_prune=True and use_program_cache=True, Executor should cache the pruned program.
+        If in next run, the program, feed, fetch are not changed, Executor use the cached pruned program,
+        and needn't to call  _prune_program() to prune the program.
+        In this test, we hack the Executor._prune_program with a mock function which do nothing but increase
+        Executor.prune_called_times, and we check prune_called_times equals 1 even if we called exe.run() 
+        10 times with the same input arguments.
+        '''
+
+        def mock(self, program, feed, fetch):
+            self.prune_called_times += 1
+            return program
+
+        def init_mock(exe):
+            exe.prune_called_times = 0
+            fluid.Executor._prune_program = mock
+
+        exe = fluid.Executor(fluid.CPUPlace())
+        init_mock(exe)
+
+        program = framework.Program()
+        startup_program = framework.Program()
+        block = program.global_block()
+
+        scope = fluid.Scope()
+        with fluid.scope_guard(scope):
+            with fluid.program_guard(program, startup_program):
+                (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
+                x.persistable = True
+                sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.5)
+                sgd_optimizer.minimize(loss1)
+                exe.run(startup_program)
+                weight1 = np.array(
+                    scope.find_var(w_param_attrs.name).get_tensor())
+                x_np = np.random.random(size=(10, 2)).astype('float32')
+                label_np = np.random.randint(1, size=(10, 1)).astype('int64')
+                compiled_prog = fluid.CompiledProgram(
+                    program).with_data_parallel(
+                        loss_name=loss1.name, places=fluid.CPUPlace())
+                for i in range(10):
+                    res = exe.run(compiled_prog,
+                                  feed={'x': x_np,
+                                        'label': label_np},
+                                  fetch_list=[loss1.name],
+                                  use_prune=True,
+                                  use_program_cache=True)
+                    if i == 0:
+                        self.assertEqual(exe.prune_called_times, 1)
+                    else:
+                        self.assertEqual(exe.prune_called_times, 1)
 
 
 if __name__ == '__main__':
