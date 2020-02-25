@@ -49,9 +49,14 @@ class FleetTest(unittest.TestCase):
         status = TrainStatus()
         status.epoch_no = 2
         fleet.save_check_point(exe, dir_path, train_status=status)
+        n1 = fleet._get_last_checkpoint_no(dir_path)
 
         status2 = fleet.load_check_point(exe, dir_path)
         assert status2 == status, "Checkpoint error!"
+
+        fleet.save_check_point(exe, dir_path, train_status=status)
+        n2 = fleet._get_last_checkpoint_no(dir_path)
+        assert n2 == n1 + 1, "checkpoint increment error:{} {}".format(n1, n2)
 
 
 if __name__ == '__main__':

@@ -32,6 +32,7 @@ import sys
 import six
 import json
 import re
+import shutil
 
 
 class LambConfig(object):
@@ -190,7 +191,7 @@ class Collective(Fleet):
         return max_no
 
     def _clean_check_points(self, root_path):
-        max_no = self._get_last_checkpoint_no(path)
+        max_no = self._get_last_checkpoint_no(root_path)
         if max_no < 0:
             return
 
@@ -205,11 +206,12 @@ class Collective(Fleet):
 
                 try:
                     n = int(g[1])
-                    if n != max_no:
+                    if n < max_no:
                         path = "{}/{}.{}".format(root_path,
                                                  self._checkoint_prefix, n)
-                        os.remove(path)
-                except:
+                        shutil.rmtree(path)
+                except Exception as e:
+                    print(e)
                     continue
 
     def save_check_point(self, executor, path, train_status, main_program=None):
@@ -221,13 +223,14 @@ class Collective(Fleet):
         if max_no < 0:
             max_no = 0
 
-        real_path = "{}/{}.{}".format(self._checkoint_prefix, path, max_no + 1)
+        real_path = "{}/{}.{}".format(path, self._checkoint_prefix, max_no + 1)
         tmp_path = "{}.tmp".format(real_path, max_no)
 
         self.save_persistables(
             executor=executor, dirname=tmp_path, main_program=main_program)
         self._save_train_status(path=tmp_path, train_status=train_status)
 
+        print("rename from {} to {}".format(tmp_path, real_path))
         os.rename(tmp_path, real_path)
 
         self._clean_check_points(path)
@@ -236,13 +239,17 @@ class Collective(Fleet):
         """
         This function load persistables and current epoch num from path.
         """
+        print("path", path)
         max_no = self._get_last_checkpoint_no(path)
+
         if not ignore_empty:
             assert max_no >= 0, "Can't find checkpoint"
-        else:
-            return
 
-        real_path = "{}/{}.{}".format(self._checkoint_prefix, path, max_no)
+        if max_no < 0:
+            return None
+
+        real_path = "{}/{}.{}".format(path, self._checkoint_prefix, max_no)
+        print("real_path", real_path)
         io.load_persistables(executor=executor, dirname=real_path)
 
         return self._load_train_status(real_path)
