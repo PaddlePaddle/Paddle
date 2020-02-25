@@ -214,7 +214,12 @@ class Collective(Fleet):
                     print(e)
                     continue
 
-    def save_check_point(self, executor, path, train_status, main_program=None):
+    def save_check_point(self,
+                         executor,
+                         path,
+                         train_status,
+                         main_program=None,
+                         remain_all_checkpoint=True):
         """
         This function save persistables and current epoch num to path.
         __paddle_fleet_checkpoint__.xx
@@ -230,16 +235,15 @@ class Collective(Fleet):
             executor=executor, dirname=tmp_path, main_program=main_program)
         self._save_train_status(path=tmp_path, train_status=train_status)
 
-        print("rename from {} to {}".format(tmp_path, real_path))
         os.rename(tmp_path, real_path)
 
-        self._clean_check_points(path)
+        if not remain_all_checkpoint:
+            self._clean_check_points(path)
 
     def load_check_point(self, executor, path, ignore_empty=True):
         """
         This function load persistables and current epoch num from path.
         """
-        print("path", path)
         max_no = self._get_last_checkpoint_no(path)
 
         if not ignore_empty:
@@ -249,7 +253,6 @@ class Collective(Fleet):
             return None
 
         real_path = "{}/{}.{}".format(path, self._checkoint_prefix, max_no)
-        print("real_path", real_path)
         io.load_persistables(executor=executor, dirname=real_path)
 
         return self._load_train_status(real_path)
