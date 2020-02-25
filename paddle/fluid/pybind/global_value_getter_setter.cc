@@ -32,6 +32,9 @@ DECLARE_bool(use_ngraph);
 DECLARE_bool(use_system_allocator);
 DECLARE_bool(free_idle_chunk);
 DECLARE_bool(free_when_no_cache_hit);
+#ifdef PADDLE_WITH_CUDA
+DECLARE_uint64(gpu_memory_limit_mb);
+#endif
 
 namespace paddle {
 namespace pybind {
@@ -171,6 +174,9 @@ static void RegisterGlobalVarGetterSetter() {
   REGISTER_GLOBAL_VAR_GETTER_SETTER(FLAGS_use_system_allocator);
   REGISTER_GLOBAL_VAR_GETTER_ONLY(FLAGS_free_idle_chunk);
   REGISTER_GLOBAL_VAR_GETTER_ONLY(FLAGS_free_when_no_cache_hit);
+#ifdef PADDLE_WITH_CUDA
+  REGISTER_GLOBAL_VAR_GETTER_SETTER(FLAGS_gpu_memory_limit_mb);
+#endif
 }
 
 }  // namespace pybind

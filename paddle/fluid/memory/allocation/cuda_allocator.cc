@@ -25,29 +25,24 @@ namespace memory {
 namespace allocation {
 bool CUDAAllocator::IsAllocThreadSafe() const { return true; }
 void CUDAAllocator::FreeImpl(Allocation* allocation) {
-  platform::CUDADeviceGuard guard(place_.device);
   PADDLE_ENFORCE_EQ(boost::get<platform::CUDAPlace>(allocation->place()),
                     place_);
-  PADDLE_ENFORCE(cudaFree(allocation->ptr()));
+  platform::RecordedCudaFree(allocation->ptr(), allocation->size(),
+                             place_.device);
   delete allocation;
 }
 
 Allocation* CUDAAllocator::AllocateImpl(size_t size) {
   std::call_once(once_flag_, [this] { platform::SetDeviceId(place_.device); });
 
-  platform::CUDADeviceGuard guard(place_.device);
   void* ptr;
-  auto result = cudaMalloc(&ptr, size);
+  auto result = platform::RecordedCudaMalloc(&ptr, size, place_.device);
   if (LIKELY(result == cudaSuccess)) {
     return new Allocation(ptr, size, platform::Place(place_));
   }
 
-  platform::RaiseNonOutOfMemoryError(&result);
-
-  size_t avail = 0, total = 0;
-  result = cudaMemGetInfo(&avail, &total);
-  if (result != cudaSuccess) avail = 0;
-  platform::RaiseNonOutOfMemoryError(&result);
+  size_t avail, total;
+  platform::RecordedCudaMemGetInfo(&avail, &total, place_.device);
 
   PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
       "\n\nOut of memory error on GPU %d. "
