@@ -17,7 +17,9 @@
 #ifndef _WIN32
 
 #include <memory>
+#include <mutex>  // NOLINT
 #include <string>
+#include <unordered_set>
 
 #include "paddle/fluid/memory/allocation/allocator.h"
 
@@ -27,7 +29,7 @@ namespace allocation {
 
 class MemoryMapWriterAllocation : public Allocation {
  public:
-  explicit MemoryMapWriterAllocation(void* ptr, size_t size,
+  explicit MemoryMapWriterAllocation(void *ptr, size_t size,
                                      std::string ipc_name)
       : Allocation(ptr, size, platform::CPUPlace()), ipc_name_(ipc_name) {}
 
@@ -41,7 +43,7 @@ class MemoryMapWriterAllocation : public Allocation {
 
 class MemoryMapReaderAllocation : public Allocation {
  public:
-  explicit MemoryMapReaderAllocation(void* ptr, size_t size,
+  explicit MemoryMapReaderAllocation(void *ptr, size_t size,
                                      std::string ipc_name)
       : Allocation(ptr, size, platform::CPUPlace()), ipc_name_(ipc_name) {}
 
@@ -63,10 +65,27 @@ class MemoryMapAllocator {
   std::shared_ptr<MemoryMapReaderAllocation> Rebuild(std::string ipc_name,
                                                      size_t size);
 
-  void Free(MemoryMapWriterAllocation* mmap_allocation);
-
  private:
   std::string GetIPCName();
+};
+
+class MemoryMapFdSet {
+ public:
+  static MemoryMapFdSet &Instance();  // NOLINT
+
+  void Insert(const std::string &ipc_name);
+
+  void Remove(const std::string &ipc_name);
+
+  void Clear();
+
+  ~MemoryMapFdSet();
+
+ private:
+  MemoryMapFdSet() = default;
+
+  std::unordered_set<std::string> fd_set_;
+  std::mutex mtx_;
 };
 
 }  // namespace allocation

@@ -881,6 +881,9 @@ PYBIND11_MODULE(core_noavx, m) {
                 "Now only LoDTensor on shared memory can be serialized."));
             int type_idx = static_cast<int>(t.type());
 
+            memory::allocation::MemoryMapFdSet::Instance().Remove(
+              mmap_writer_allocation->ipc_name());
+
             return py::make_tuple(mmap_writer_allocation->ipc_name(),
                                   mmap_writer_allocation->size(),
                                   type_idx, vectorize(t.dims()), t.lod());
@@ -898,7 +901,11 @@ PYBIND11_MODULE(core_noavx, m) {
             size_t size = t[1].cast<size_t>();
             auto shared_reader_holder = alloctor.Rebuild(ipc_name, size);
 
-            // 3. Rebuild LoDTensor
+            // 3. Maintain global fd set
+            VLOG(3) << "LoDTensor ipc name: " << ipc_name;
+            memory::allocation::MemoryMapFdSet::Instance().Insert(ipc_name);
+
+            // 4. Rebuild LoDTensor
             tensor.ResetHolderWithType(shared_reader_holder,
                 static_cast<proto::VarType::Type>(t[2].cast<int>()));
             tensor.Resize(make_ddim(t[3].cast<std::vector<int>>()));

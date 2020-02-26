@@ -16,6 +16,7 @@ import sys
 import unittest
 import numpy as np
 import paddle.fluid as fluid
+from paddle.fluid import core
 
 if sys.version_info[0] == 2:
     import Queue as queue
@@ -77,7 +78,7 @@ class TestDygraphhDataLoaderProcess(unittest.TestCase):
             exception = None
             try:
                 loader._reader_process_loop()
-            except AttributeError as ex:
+            except core.EnforceNotMet as ex:
                 exception = ex
             self.assertIsNotNone(exception)
 

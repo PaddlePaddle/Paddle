@@ -31,12 +31,23 @@ namespace memory {
 namespace allocation {
 
 MemoryMapWriterAllocation::~MemoryMapWriterAllocation() {
-  munmap(this->ptr(), this->size());
+  PADDLE_ENFORCE_NE(
+      munmap(this->ptr(), this->size()), -1,
+      platform::errors::Unavailable("could not unmap the shared memory file %s",
+                                    this->ipc_name()));
 }
 
 MemoryMapReaderAllocation::~MemoryMapReaderAllocation() {
-  munmap(this->ptr(), this->size());
+  PADDLE_ENFORCE_NE(
+      munmap(this->ptr(), this->size()), -1,
+      platform::errors::Unavailable("could not unmap the shared memory file %s",
+                                    this->ipc_name()));
+  /* Here we do not pay attention to the result of shm_unlink,
+     because the memory mapped file may have been cleared due to the
+     MemoryMapFdSet::Clear() */
   shm_unlink(this->ipc_name().c_str());
+  MemoryMapFdSet::Instance().Remove(this->ipc_name());
+  VLOG(3) << "~MemoryMapReaderAllocation: " << this->ipc_name();
 }
 
 std::string MemoryMapAllocator::GetIPCName() {
@@ -65,7 +76,7 @@ std::shared_ptr<MemoryMapWriterAllocation> MemoryMapAllocator::Allocate(
                     platform::errors::Unavailable(
                         "Fruncate a file to a specified length failed!"));
 
-  void* ptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  void *ptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   PADDLE_ENFORCE_NE(ptr, MAP_FAILED,
                     platform::errors::Unavailable(
                         "Memory map failed when create shared memory."));
@@ -81,7 +92,7 @@ std::shared_ptr<MemoryMapReaderAllocation> MemoryMapAllocator::Rebuild(
       fd, -1, platform::errors::Unavailable("File descriptor %s open failed",
                                             ipc_name.c_str()));
 
-  void* ptr = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
+  void *ptr = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
   PADDLE_ENFORCE_NE(ptr, MAP_FAILED,
                     platform::errors::Unavailable(
                         "Memory map failed when rebuild shared memory."));
@@ -89,12 +100,39 @@ std::shared_ptr<MemoryMapReaderAllocation> MemoryMapAllocator::Rebuild(
   return std::make_shared<MemoryMapReaderAllocation>(ptr, size, ipc_name);
 }
 
-void MemoryMapAllocator::Free(MemoryMapWriterAllocation* mmap_allocation) {
-  void* ptr = mmap_allocation->ptr();
-  munmap(ptr, mmap_allocation->size());
-  shm_unlink(mmap_allocation->ipc_name().c_str());
-  delete mmap_allocation;
+MemoryMapFdSet &MemoryMapFdSet::Instance() {  // NOLINT
+  static MemoryMapFdSet set;
+  return set;
 }
+
+void MemoryMapFdSet::Insert(const std::string &ipc_name) {
+  std::lock_guard<std::mutex> guard(mtx_);
+  fd_set_.emplace(ipc_name);
+  VLOG(3) << "PID: " << getpid() << ", MemoryMapFdSet: insert " << ipc_name
+          << ", set size: " << fd_set_.size();
+}
+
+void MemoryMapFdSet::Remove(const std::string &ipc_name) {
+  std::lock_guard<std::mutex> guard(mtx_);
+  fd_set_.erase(ipc_name);
+  VLOG(3) << "PID: " << getpid() << ", MemoryMapFdSet: erase " << ipc_name
+          << ", set size: " << fd_set_.size();
+}
+
+void MemoryMapFdSet::Clear() {
+  VLOG(3) << "PID: " << getpid() << ", MemoryMapFdSet: set size - "
+          << fd_set_.size();
+  std::lock_guard<std::mutex> guard(mtx_);
+  for (auto fd : fd_set_) {
+    int rlt = shm_unlink(fd.c_str());
+    if (rlt == 0) {
+      VLOG(3) << "PID: " << getpid() << ", MemoryMapFdSet: clear " << fd;
+    }
+  }
+  fd_set_.clear();
+}
+
+MemoryMapFdSet::~MemoryMapFdSet() { Clear(); }
 
 }  // namespace allocation
 }  // namespace memory

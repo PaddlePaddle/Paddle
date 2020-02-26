@@ -241,7 +241,8 @@ void BindImperative(py::module *m_ptr) {
               py::isinstance<py::tuple>(obj) || py::isinstance<py::list>(obj),
               platform::errors::InvalidArgument(
                   "The batch data read into DataLoader is illegal."
-                  "Expected data type is tuple or list."));
+                  "Expected data type is tuple or list, but received %s",
+                  obj.get_type()));
           py::list batch = py::cast<py::list>(obj);
           py::list tensors;
           for (size_t i = 0; i < batch.size(); ++i) {
@@ -251,12 +252,10 @@ void BindImperative(py::module *m_ptr) {
                 string::Sprintf("%s", array.dtype()).compare("object"), 0,
                 platform::errors::InvalidArgument(
                     "Faild to convert input data to a regular ndarray.\n  * "
-                    "Usually "
-                    "this means the input data contains nested lists with "
-                    "different lengths."
-                    "\n  * Check the reader function passed to "
-                    "'set_(sample/sample_list/batch)_generator'"
-                    " to locate the data causes this issue."));
+                    "Usually this means the input data contains nested "
+                    "lists with different lengths.\n  * Check the reader "
+                    "function passed to 'set_(sample/sample_list/batch)"
+                    "_generator' to locate the data causes this issue."));
             // 2. construcct LoDTensor
             framework::LoDTensor t;
             SetTensorFromPyArray<platform::CPUPlace>(
@@ -267,6 +266,8 @@ void BindImperative(py::module *m_ptr) {
                 reinterpret_cast<uintptr_t>(t.Holder()->ptr()) + t.offset());
             size_t data_size = t.memory_size();
             auto shared_writer_holder = allocator.Allocate(data_size);
+            memory::allocation::MemoryMapFdSet::Instance().Insert(
+                shared_writer_holder->ipc_name());
             memory::Copy(platform::CPUPlace(), shared_writer_holder->ptr(),
                          platform::CPUPlace(), data_ptr, data_size);
             t.ResetHolder(shared_writer_holder);
@@ -276,6 +277,9 @@ void BindImperative(py::module *m_ptr) {
           return tensors;
         },
         py::return_value_policy::take_ownership);
+
+  m.def("_mmap_fd_clear",
+        []() { memory::allocation::MemoryMapFdSet::Instance().Clear(); });
 #endif
 
   py::class_<imperative::detail::BackwardStrategy> backward_strategy(
