@@ -56,9 +56,6 @@ def extract_vars(inputs):
     return result_list
 
 
-import astor
-
-
 def _dygraph_to_static_output_(dygraph_func):
     def __impl__(*args, **kwargs):
         # Get AST from dygraph function
@@ -69,8 +66,9 @@ def _dygraph_to_static_output_(dygraph_func):
         # Transform AST
         dygraph_to_static = DygraphToStaticAst()
         root_wrapper = dygraph_to_static.get_static_ast(root)
-        func_name = dygraph_to_static.get_module_name()
 
+        # Get static_func from AST
+        func_name = dygraph_to_static.get_module_name()
         static_func, file_name = ast_to_func(root_wrapper.node, func_name)
 
         return static_func(*args, **kwargs)
@@ -78,10 +76,25 @@ def _dygraph_to_static_output_(dygraph_func):
     return __impl__
 
 
+import astor
+
+
 def _dygraph_run_in_static_mode_(dygraph_func):
     def __impl__(*args, **kwargs):
 
-        static_func = dygraph_to_static_output(dygraph_func)
+        # Get AST from dygraph function
+        dygraph_code = inspect.getsource(dygraph_func)
+        dygraph_code = textwrap.dedent(dygraph_code)
+        root = gast.parse(dygraph_code)
+
+        # Transform AST
+        dygraph_to_static = DygraphToStaticAst()
+        root_wrapper = dygraph_to_static.get_static_ast(root)
+        root_wrapper, feed_dict = dygraph_to_static.add_feed_node()
+
+        # Get static_func from AST
+        func_name = dygraph_to_static.get_module_name()
+        static_func, file_name = ast_to_func(root_wrapper.node, func_name)
 
         # Run static_func in static mode
         import paddle.fluid as fluid

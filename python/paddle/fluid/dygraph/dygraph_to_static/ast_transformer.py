@@ -27,6 +27,7 @@ from .static_analysis import AstNodeWrapper, StaticAnalysisVisitor
 __all__ = ['DygraphToStaticAst']
 
 DECORATOR_NAME = 'dygraph_to_static_output'
+DECORATOR_NAMES = ['dygraph_run_in_static_mode', 'dygraph_to_static_output']
 
 
 class IfElseTransformer(gast.NodeTransformer):
@@ -121,7 +122,7 @@ class DygraphToStaticAst(gast.NodeTransformer):
         # Remove the decorated name of dygraph_to_static
         if hasattr(node, 'decorator_list'):
             decorator_list = [
-                d for d in node.decorator_list if d.id != DECORATOR_NAME
+                d for d in node.decorator_list if d.id not in DECORATOR_NAMES
             ]
             node.decorator_list = decorator_list
         return node
@@ -134,6 +135,90 @@ class DygraphToStaticAst(gast.NodeTransformer):
         # Should consider BaseAPITransformer which add new module name in Yamei's PR.
         assert self.decorate_func_name, "decorate_func_name shall not be None."
         return self.decorate_func_name
+
+    def add_feed_node(self, root):
+        FeedTransformer(root).ast_visit()
+
+
+class FeedTransformer(gast.NodeTransformer):
+    def __init__(self, root):
+        assert isinstance(
+            root, gast.Node
+        ), "Input non-gast.Node node for the initialization of BasicApiTransformer."
+        self.root = root
+        self.feed_dict = {}  # {name: None}
+        self.to_variable_value = {}  # name: node
+
+    def ast_visit(self):
+        self.visit(self.root)
+        return self.root
+
+    def visit_FunctionDef(self, node):
+        self.generic_visit(node)
+        return node
+
+    def visit_Assign(self, node):
+        value_node = node.value
+        for child_node in gast.walk(value_node):
+            if isinstance(child_node, gast.Call):
+                self._visit_Call(child_node)
+
+        return node
+
+    def _visit_Call(self, node):
+        assert isinstance(node, gast.Call)
+        # Replace API `to_variable` with `fluid.layers.feed`
+        if is_to_variable(node):
+            node = to_feed_node(node)
+            return node
+
+        return node
+
+    def to_feed_node(self, node):
+        assert isinstance(node, gast.Call)
+
+        data_api = gast.parse('fluid.data').body[0].value
+        node.func = data_api
+
+        # update feed_dict
+        feed_var_name = node.args[0].id  # eg:"data" TODO: maybe in keywords
+        self.feed_dict[feed_var_name] = None  # TODO:
+
+        # transform to_variable to fluid.data
+
+        node.keywords.append(
+            gast.keyword(
+                arg="name", value=gast.Constant(
+                    value=feed_var_name, kind=None)))
+
+        shape_value = [None, 2, 4, 4]  # TODO: get shape_value
+        shape_node = []
+        for x in shape_value:
+            if x == None:
+                shape_node.append(
+                    gast.Name(
+                        ctx=gast.Load(),
+                        id='None',
+                        annotation=None,
+                        type_comment=None))
+            else:
+                shape_node.append(gast.Constant(value=x, kind=None))
+
+        node.keywords.append(
+            gast.keyword(
+                arg="shape", value=gast.List(
+                    ctx=gast.Load(), elts=shape_node)))
+
+        # Remove node.args because fluid.data doesn't need args
+        node.args = []
+
+        dtype_value = "float32"  # TODO: get dtype_value
+        node.keywords.append(
+            gast.keyword(
+                arg="dtype", value=gast.Constant(
+                    value=dtype_value, kind=None)))
+
+        return node
 
 
 class BasicApiTransformer(gast.NodeTransformer):
