@@ -51,7 +51,8 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
     auto &input_tensor = input_var->Get<framework::LoDTensor>();
     auto &travel_lod_tensor = travel_var->Get<framework::LoDTensor>();
     auto &layer_lod_tensor = layer_var->Get<framework::LoDTensor>();
-
+    auto travel_dim = travel_lod_tensor.dims();
+    auto layer_dim = layer_lod_tensor.dims();
     // get dimension
     int input_ids_num = input_tensor.numel();
     VLOG(1) << "TDM: input ids nums: " << input_ids_num;
@@ -104,6 +105,19 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
     for (int i = 0; i < input_ids_num; ++i) {
       // find leaf node travel path
       auto input_id = input_data[i];
+      PADDLE_ENFORCE_LT(
+          -1, input_id,
+          "Variable value (input) of OP(fluid.layers.tdm_sampler) "
+          "expected >= 0 and < %ld, but got %ld. Please check input "
+          "value.",
+          travel_dim[0], input_id);
+      PADDLE_ENFORCE_LT(
+          input_id, travel_dim[0],
+          "Variable value (input) of OP(fluid.layers.tdm_sampler) "
+          "expected >= 0 and < %ld, but got %ld. Please check input "
+          "value.",
+          travel_dim[0], input_id);
+
       VLOG(1) << "TDM: input id: " << input_id;
       auto start_offset = input_id * layer_nums;
       VLOG(1) << "TDM: Start offset(input_id * layer_nums): " << start_offset;
@@ -129,10 +143,10 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
             label_vec[i * sample_res_length + offset] = 0;
             mask_vec[i * sample_res_length + offset] = 0;
             VLOG(1) << "TDM: Res append positive "
-                    << output_vec[i * sample_res_length + offset];
-            VLOG(1) << "TDM: Label append positive "
-                    << label_vec[i * sample_res_length + offset];
-            VLOG(1) << "TDM: Mask append value "
+                    << output_vec[i * sample_res_length + offset]
+                    << " Label append positive "
+                    << label_vec[i * sample_res_length + offset]
+                    << " Mask append value "
                     << mask_vec[i * sample_res_length + offset];
             offset += 1;
           }
@@ -142,17 +156,26 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
         Sampler *sampler = new math::UniformSampler(node_nums - 1, seed);
         VLOG(2) << "TDM: get sampler ";
 
+        int node_id_max = start_offset + node_nums;
+        PADDLE_ENFORCE_LT(
+            travel_data[start_offset + layer_idx], node_id_max,
+            "Positive node id of OP(fluid.layers.tdm_sampler) "
+            "expected >= %ld and < %ld, but got %ld. Please check input "
+            "tdm tree structure and tdm travel info.",
+            start_offset, node_id_max, travel_data[start_offset + layer_idx]);
+
         // If output positive, add itself
         if (output_positive_flag) {
           output_vec[i * sample_res_length + offset] =
               travel_data[start_offset + layer_idx];
           label_vec[i * sample_res_length + offset] = 1;
           mask_vec[i * sample_res_length + offset] = 1;
-          VLOG(1) << "TDM: Res append positive "
-                  << output_vec[i * sample_res_length + offset];
-          VLOG(1) << "TDM: Label append positive "
-                  << label_vec[i * sample_res_length + offset];
-          VLOG(1) << "TDM: Mask append value "
+          VLOG(1) << "TDM: node id: " << travel_data[start_offset + layer_idx]
+                  << " Res append positive "
+                  << output_vec[i * sample_res_length + offset]
+                  << " Label append positive "
+                  << label_vec[i * sample_res_length + offset]
+                  << " Mask append value "
                   << mask_vec[i * sample_res_length + offset];
           offset += 1;
         }
@@ -170,13 +193,21 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
               layer_data[layer_offset_lod[layer_idx] + sample_res];
           label_vec[i * sample_res_length + offset] = 0;
           mask_vec[i * sample_res_length + offset] = 1;
-
-          VLOG(1) << "TDM: Res append negitive "
-                  << output_vec[i * sample_res_length + offset];
-          VLOG(1) << "TDM: Label append negitive "
-                  << label_vec[i * sample_res_length + offset];
-          VLOG(1) << "TDM: Mask append value "
+          VLOG(1) << "TDM: node id: " << travel_data[start_offset + layer_idx]
+                  << " Res append negitive "
+                  << output_vec[i * sample_res_length + offset]
+                  << " Label append negitive "
+                  << label_vec[i * sample_res_length + offset]
+                  << " Mask append value "
                   << mask_vec[i * sample_res_length + offset];
+
+          PADDLE_ENFORCE_LT(
+              layer_data[layer_offset_lod[layer_idx] + sample_res], node_id_max,
+              "Positive node id of OP(fluid.layers.tdm_sampler) "
+              "expected >= %ld and < %ld, but got %ld. Please check input "
+              "tdm tree structure and tdm travel info.",
+              start_offset, node_id_max,
+              layer_data[layer_offset_lod[layer_idx] + sample_res]);
 
           offset += 1;
         }  // end layer nce
