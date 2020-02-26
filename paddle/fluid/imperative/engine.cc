@@ -147,6 +147,7 @@ void BasicEngine::PrepareDeps() {
     visited.insert(init_op);
   }
 
+  std::unordered_map<VarBase*, int> map_all_var;
   while (!q.empty()) {
     auto* cur_op = q.front();
     q.pop();
@@ -154,7 +155,14 @@ void BasicEngine::PrepareDeps() {
 
     SetBackwardOutputs(cur_op);
 
-    PrepareGradAccumulators(cur_op);
+    // PrepareGradAccumulators(cur_op);
+    for (const auto& pair : cur_op->GetOutsMap()) {
+      for (const auto& var : pair.second) {
+        if (!var) continue;
+
+        map_all_var[var.get()]++;
+      }
+    }
 
     auto& grad_pending_ops = cur_op->GradPendingOps();
     for (auto* grad_pending_op : grad_pending_ops) {
@@ -163,6 +171,21 @@ void BasicEngine::PrepareDeps() {
       if (visited.count(grad_pending_op) == 0) {
         visited.insert(grad_pending_op);
         q.push(grad_pending_op);
+      }
+    }
+
+    for (auto& it : map_all_var) {
+      if (it.second > 1) {
+        auto& accumulator = accumulators_[it.first];
+        if (!accumulator) {
+          if (backward_strategy_.sorted_sum_gradient_) {
+            accumulator.reset(new SortedGradientAccumulator(it.first));
+          } else {
+            accumulator.reset(new EagerGradientAccumulator(it.first));
+          }
+        }
+
+        accumulator->set_ref(it.second);
       }
     }
   }
@@ -194,6 +217,7 @@ void BasicEngine::Execute() {
     auto& bwd_ins = cur_op->GetInsMap();
     auto& bwd_outs = cur_op->GetOutsMap();
 
+    /*
     NameVarBaseMap tmp_outs;
     // A var may be coresponding to several grad var in one op
     std::unordered_map<VarBase*, std::vector<std::shared_ptr<VarBase>>> var_map;
@@ -211,9 +235,38 @@ void BasicEngine::Execute() {
         }
       }
     }
+    */
+
+    auto* backward_outs = cur_op->GetMutableOutsMap();
+    std::vector<std::pair<VarBase*, std::shared_ptr<VarBase>>>
+        need_accu_var_list;
+    for (auto& backward_iter : *backward_outs) {
+      auto& var_list = backward_iter.second;
+      for (size_t i = 0; i < var_list.size(); ++i) {
+        if (accumulators_.count(var_list[i].get())) {
+          // need acccumulate
+          auto tmp_var =
+              std::make_shared<VarBase>(false, "Gtmp@");  // Do not need grad
+          VarBase* t_var = var_list[i].get();
+
+          var_list[i] = tmp_var;
+
+          need_accu_var_list.emplace_back(make_pair(t_var, std::move(tmp_var)));
+        }
+      }
+    }
+
     VLOG(3) << "Start to execute grad op " << cur_op->Type();
-    RunOp(cur_op, bwd_ins, tmp_outs, cur_op->place());
+    RunOp(cur_op, bwd_ins, bwd_outs, cur_op->place());
     // Step 2: Sum Gradient
+
+    if (need_accu_var_list.size() > 0) {
+      for (auto& pair : need_accu_var_list) {
+        SumGradient(cur_op, std::move(pair.second), pair.first);
+      }
+    }
+
+    /*
     {
       platform::RecordEvent record_event("merge_grads");
       for (auto& var_pair : var_map) {
@@ -226,6 +279,7 @@ void BasicEngine::Execute() {
         }
       }
     }
+    */
 
     // Step 3: Collect ready ops
 

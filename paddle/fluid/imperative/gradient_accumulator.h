@@ -33,6 +33,7 @@ class GradientAccumulator {
   inline void IncreaseRefCnt() { ++ref_cnt_; }
 
   inline size_t RefCnt() const { return ref_cnt_; }
+  void set_ref(size_t ref) { ref_cnt_ = ref; }
 
  protected:
   VarBase* var_;
