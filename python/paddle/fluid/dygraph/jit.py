@@ -14,7 +14,9 @@
 
 from __future__ import print_function
 
-__all__ = ['TracedLayer', 'dygraph_to_static_output']
+__all__ = [
+    'TracedLayer', 'dygraph_to_static_output', 'dygraph_run_in_static_mode'
+]
 
 import gast
 import inspect
@@ -54,6 +56,9 @@ def extract_vars(inputs):
     return result_list
 
 
+import astor
+
+
 def _dygraph_to_static_output_(dygraph_func):
     def __impl__(*args, **kwargs):
         # Get AST from dygraph function
@@ -65,6 +70,7 @@ def _dygraph_to_static_output_(dygraph_func):
         dygraph_to_static = DygraphToStaticAst()
         root_wrapper = dygraph_to_static.get_static_ast(root)
         func_name = dygraph_to_static.get_module_name()
+
         static_func, file_name = ast_to_func(root_wrapper.node, func_name)
 
         return static_func(*args, **kwargs)
@@ -72,7 +78,39 @@ def _dygraph_to_static_output_(dygraph_func):
     return __impl__
 
 
+def _dygraph_run_in_static_mode_(dygraph_func):
+    def __impl__(*args, **kwargs):
+
+        static_func = dygraph_to_static_output(dygraph_func)
+
+        # Run static_func in static mode
+        import paddle.fluid as fluid
+        startup_program = fluid.default_startup_program()
+        main_program = fluid.default_main_program()
+
+        static_out, static_res = run_static_func(main_program, startup_program,
+                                                 static_func, args, kwargs)
+
+        return static_out, static_res
+
+    return __impl__
+
+
+@switch_to_static_graph
+def run_static_func(main_program, startup_program, static_func, args, kwargs):
+    import paddle.fluid as fluid
+    with fluid.program_guard(main_program, startup_program):
+        static_out = static_func(*args, **kwargs)
+        if not isinstance(static_out, (list, tuple)):
+            static_out = [static_out]
+        exe = fluid.Executor(fluid.CPUPlace())
+        exe.run(startup_program)
+        static_res = exe.run(main_program, fetch_list=static_out)
+    return static_out, static_res
+
+
 dygraph_to_static_output = wrap_decorator(_dygraph_to_static_output_)
+dygraph_run_in_static_mode = wrap_decorator(_dygraph_run_in_static_mode_)
 
 
 @dygraph_only
