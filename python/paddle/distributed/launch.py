@@ -180,7 +180,7 @@ def get_gpus():
 
 
 class TrainerProc(object):
-    def __init__():
+    def __init__(self):
         self.proc = None
         self.log_fn = None
         self.rank = None
@@ -197,7 +197,7 @@ def start_local_trainers(cluster, pod):
     current_env.pop("https_proxy", None)
 
     procs = []
-    for t in pod.trainers:
+    for idx, t in enumerate(pod.trainers):
         current_env.update({
             "FLAGS_selected_gpus": "%s" % ",".join([str(g) for g in t.gpu]),
             "PADDLE_TRAINER_ID": "%d" % t.rank,
@@ -214,7 +214,7 @@ def start_local_trainers(cluster, pod):
         fn = None
         if args.log_dir is not None:
             os.system("mkdir -p {}".format(args.log_dir))
-            fn = open("%s/workerlog.%d" % (args.log_dir, i), "w")
+            fn = open("%s/workerlog.%d" % (args.log_dir, idx), "a")
             proc = subprocess.Popen(cmd, env=current_env, stdout=fn, stderr=fn)
         else:
             proc = subprocess.Popen(cmd, env=current_env)
@@ -230,7 +230,7 @@ def start_local_trainers(cluster, pod):
     return procs
 
 
-def watch_local_trainers(procs):
+def watch_local_trainers(procs, nranks):
     try:
         alive = True
         error = False
@@ -277,9 +277,7 @@ def get_cluster_from_args(args, selected_gpus):
     logger.debug("parsed from args:node_ips:{} node_ip:{} node_rank:{}".format(
         node_ips, node_ip, node_rank))
 
-    cluster = get_cluster(node_ips, node_ip, args.started_port, selected_gpus)
-    pod = cluster.pods[node_rank]
-    return cluster, pod
+    return get_cluster(node_ips, node_ip, args.started_port, selected_gpus)
 
 
 def get_hdfs_from_args(args):
@@ -347,7 +345,7 @@ def launch(args):
                 procs = start_local_trainers(cluster, pod)
                 cluster = cluster2
 
-        alive = watch_local_trainers(procs)
+        alive = watch_local_trainers(procs, cluster.trainers_nranks())
 
         if not alive:
             logger.info("Local procs complete, POD info:{}".format(pod))

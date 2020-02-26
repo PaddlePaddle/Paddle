@@ -226,12 +226,15 @@ class Collective(Fleet):
         """
         This function save persistables and current epoch num to path.
         """
+        if main_program == None:
+            main_program = self._transpiled_program
+
         max_no = self._get_last_checkpoint_no(path)
         if max_no < 0:
-            max_no = 0
+            max_no = -1
 
         real_path = "{}/{}.{}".format(path, self._checkoint_prefix, max_no + 1)
-        tmp_path = "{}.tmp".format(real_path, max_no)
+        tmp_path = "{}.tmp".format(real_path)
 
         self.save_persistables(
             executor=executor, dirname=tmp_path, main_program=main_program)
@@ -242,7 +245,11 @@ class Collective(Fleet):
         if not remain_all_checkpoint:
             self.clean_redundant_check_points(path)
 
-    def load_check_point(self, executor, path, ignore_empty=True):
+    def load_check_point(self,
+                         executor,
+                         path,
+                         main_program=None,
+                         ignore_empty=True):
         """
         This function load persistables and current epoch num from path.
         """
@@ -254,8 +261,12 @@ class Collective(Fleet):
         if max_no < 0:
             return None
 
+        if main_program == None:
+            main_program = self._transpiled_program
+
         real_path = "{}/{}.{}".format(path, self._checkoint_prefix, max_no)
-        io.load_persistables(executor=executor, dirname=real_path)
+        io.load_persistables(
+            executor=executor, dirname=real_path, main_program=main_program)
 
         return self._load_train_status(real_path)
 

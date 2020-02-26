@@ -50,7 +50,7 @@ class Hdfs(object):
 class Cluster(object):
     def __init__(self, hdfs):
         self.job_server = None
-        self.pods = None
+        self.pods = []
         self.hdfs = None
 
     def __str__(self):
@@ -307,7 +307,7 @@ def get_logger(log_level):
 
 
 def get_cluster(node_ips, node_ip, paddle_port, selected_gpus):
-    cluster = Cluster()
+    cluster = Cluster(hdfs=None)
     trainer_rank = 0
     for node_rank, ip in enumerate(node_ips):
         pod = Pod()
@@ -321,7 +321,7 @@ def get_cluster(node_ips, node_ip, paddle_port, selected_gpus):
             trainer_rank += 1
 
             pod.trainers.append(trainer)
-        cluster.pod.append(pod)
+        cluster.pods.append(pod)
 
     pod_rank = node_ips.index(node_ip)
     return cluster, cluster.pods[pod_rank]
