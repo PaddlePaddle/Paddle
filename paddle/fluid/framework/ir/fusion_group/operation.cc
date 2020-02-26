@@ -159,7 +159,8 @@ void OperationMap::InsertSpecialElementwiseOperations() {
                             std::vector<std::string> grad_exprs) {
     int type = 0;
     int num_oprands = -1;
-    Insert(type, num_oprands, op_type, expr, grad_exprs, {"X", "Y"}, {"Out"});
+    // here ... represent the number of input is changed
+    Insert(type, num_oprands, op_type, expr, grad_exprs, {}, {"Out"});
   };
 
   insert_handler("sum", "${...} + ", {});

@@ -60,12 +60,22 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
       //  - X, Y in forward operations
       //  - X, Y, Out, out@GRAD in backward operations
       std::vector<int> input_ids;
-      std::vector<std::string> input_names =
-          OperationMap::Instance().Get(op->Type()).input_names;
+      auto operation = OperationMap::Instance().Get(op->Type());
+      std::vector<std::string> input_names = operation.input_names;
+      // TODO(wangchaochaohu) : here to add code to refine the input name
+      // and make it for all elementwise op
+      if (input_names.size() == 0 && op->Type() == "sum") {
+        size_t input_size = node->inputs.size();
+        for (size_t i = 0; i < input_size; i++) {
+          std::string input_name = "X" + std::to_string(i);
+          op->SetInput(input_name, {node->inputs[i]->Name()});
+          input_names.push_back("X" + std::to_string(i));
+        }
+      }
       for (auto& name : input_names) {
         // Some input vars are not used in grad ops, such as
         // "elementwise_add_grad", where "X", "Y" and "Out" are not used.
-        if (HasInput(node, name) && op->Input(name).size() >= 1U) {
+        if (((HasInput(node, name)) && op->Input(name).size() >= 1U)) {
           // TODO(liuyiqun): support duplicated input.
           PADDLE_ENFORCE_NE(
               var_ids.find(op->Input(name)[0]), var_ids.end(),

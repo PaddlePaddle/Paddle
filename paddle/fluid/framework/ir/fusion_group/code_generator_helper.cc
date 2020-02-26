@@ -50,12 +50,9 @@ std::string OperationExpression::GetRHS(std::unordered_set<int>* used,
   auto rhs = OperationMap::Instance().Get(op_type_).exprs[exprs_index];
   if (op_type_ == "sum") {
     size_t input_size = input_ids_.size();
-    for (size_t i = 0; i < input_size; i++) {
-      VLOG(0) << "input id: " << input_ids_[i];
-    }
     rhs = GetSumExpectedRHS(rhs, input_size);
-    VLOG(0) << "sum rhs: " << rhs;
   }
+
   for (size_t i = 0; i < rhs.size(); i++) {
     size_t pos = i;
     if (rhs[pos] == '$' && rhs[pos + 1] == '{') {
