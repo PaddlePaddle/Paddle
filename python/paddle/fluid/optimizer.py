@@ -108,6 +108,7 @@ class Optimizer(object):
         self.helper = None
         self._opti_name_list = []
         self._accumulators_holder = {}
+        self._param_device_map = dict()
 
     @framework.dygraph_only
     def state_dict(self):
@@ -438,8 +439,9 @@ class Optimizer(object):
             type=param.type if type is None else type,
             shape=shape,
             belong_to_optimizer=True)
-        optimizer_device = self._get_device_for_optimize_op(param)
-        with device_guard(optimizer_device):
+
+        device = self._param_device_map[param.name]
+        with device_guard(device):
             self.helper.set_variable_initializer(
                 var, initializer=Constant(value=float(fill_value)))
 
@@ -470,24 +472,20 @@ class Optimizer(object):
                             format(name, param.name))
         return self._accumulators[name][param.name]
 
-    def _get_device_for_optimize_op(self, param, target_block=None):
-        if target_block == None:
-            global_block = framework.default_main_program().global_block()
-            target_block = global_block
-            current_block = framework.default_main_program().current_block()
-            if current_block.idx != global_block.idx:
-                assert current_block.backward_block_idx != -1, \
-                    "current block is not global_block, but it doesn't have backward block."
-                target_block = framework.default_main_program().blocks[
-                    current_block.backward_block_idx]
-        param_name = param.name
-        ops = target_block.ops
-        op_device = None
-        for op in ops:
-            input_arg_names = op.input_arg_names
-            if param_name in input_arg_names:
-                op_device = op.op_device
-        return op_device
+    def _update_param_device_map(self, parameters_and_grads, target_block):
+        for param_and_grad in parameters_and_grads:
+            if param_and_grad[0].trainable is True:
+                param_name = param_and_grad[0].name
+                ops = target_block.ops
+                device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName(
+                )
+                for op in ops:
+                    input_arg_names = op.input_arg_names
+                    if param_name in input_arg_names:
+                        self._param_device_map[param_name] = op.attr(
+                            device_attr_name)
+                    else:
+                        self._param_device_map[param_name] = None
 
     def _create_optimization_pass(self, parameters_and_grads):
         """Add optimization operators to update gradients to variables.
@@ -524,6 +522,7 @@ class Optimizer(object):
 
         start = len(target_block.ops)
         self.helper = LayerHelper(self.__class__.__name__)
+        self._update_param_device_map(parameters_and_grads, target_block)
         self._create_accumulators(
             target_block,
             [p[0] for p in parameters_and_grads if p[0].trainable])
@@ -542,9 +541,8 @@ class Optimizer(object):
                 with param_and_grad[0].block.program._optimized_guard(
                         param_and_grad), name_scope("optimizer"):
                     if param_and_grad[0].trainable is True:
-                        op_device = self._get_device_for_optimize_op(
-                            param_and_grad[0], target_block)
-                        with device_guard(op_device):
+                        device = self._param_device_map[param_and_grad[0].name]
+                        with device_guard(device):
                             optimize_op = self._append_optimize_op(
                                 target_block, param_and_grad)
 

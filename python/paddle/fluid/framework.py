@@ -1806,8 +1806,17 @@ class Operator(object):
             op_attrs[namescope_var_name] = _full_name_scope()
 
             # set device for op with kernels, give warning for op without kernels
+            # when force_cpu's default value is changed, a deprecation warning will be given.
+            # TODO(zhangting2020): when force_cpu is removed, clear deprecation warning below.
             if _current_device is not None:
                 if self._has_kernel(type):
+                    if 'force_cpu' in op_attrs:
+                        if (type is 'less_than' and op_attrs['force_cpu'] !=
+                                None) or op_attrs['force_cpu'] != False:
+                            warnings.warn(
+                                "The Attr(force_cpu) of Op(%s) will be deprecated in the future, "
+                                "please use device_guard instead. Device_guard has higher priority "
+                                "when they are used at the same time." % type)
                     op_device = op_maker.kOpDeviceAttrName()
                     op_attrs[op_device] = _current_device
                 else:
@@ -2160,15 +2169,6 @@ class Operator(object):
             attr_map[n] = self.attr(n)
 
         return attr_map
-
-    @property
-    def op_device(self):
-        """
-        The device on which operator will be assigned.
-        """
-        device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
-        op_device = self.attr(device_attr_name)
-        return op_device
 
 
 class Block(object):
