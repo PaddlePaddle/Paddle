@@ -129,19 +129,19 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
         "CustomDistProbs",
         "(Tensor) It is used in 'CostumDist' sampler. "
         "It is a tensor with shape [num_total_classes]."
-        "The i-th element is the probsbility of the i-th class being sampled.")
+        "The i-th element is the probability of the i-th class being sampled.")
         .AsDispensable();
     AddInput(
         "CustomDistAlias",
         "(Tensor) It is used in 'CostumDist' sampler. "
         "It is a tensor with shape [num_total_classes]."
-        "The i-th element is the probsbility of the i-th class being sampled.")
+        "The i-th element is the probability of the i-th class being sampled.")
         .AsDispensable();
     AddInput(
         "CustomDistAliasProbs",
         "(Tensor) It is used in 'CostumDist' sampler. "
         "It is a tensor with shape [num_total_classes]."
-        "The i-th element is the probsbility of the i-th class being sampled.")
+        "The i-th element is the probability of the i-th class being sampled.")
         .AsDispensable();
 
     AddOutput("Cost",
