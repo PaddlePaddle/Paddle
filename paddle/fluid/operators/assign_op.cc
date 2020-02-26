@@ -62,8 +62,9 @@ class AssignInferVarType : public framework::VarTypeInference {
   void operator()(framework::InferVarTypeContext *ctx) const override {
     auto out_var_name = ctx->Output("Out")[0];
     auto input_type = ctx->GetType(ctx->Input("X")[0]);
+    auto input_data_type = ctx->GetDataType(ctx->Input("X")[0]);
     ctx->SetType(out_var_name, input_type);
-    ctx->SetDataType(out_var_name, ctx->GetDataType(ctx->Input("X")[0]));
+    ctx->SetDataType(out_var_name, input_data_type);
   }
 };
 
