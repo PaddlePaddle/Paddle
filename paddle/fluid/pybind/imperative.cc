@@ -233,9 +233,9 @@ void BindImperative(py::module *m_ptr) {
   m.def("_throw_error_if_process_failed",
         []() { imperative::ThrowErrorIfLoadProcessFailed(); });
 
-  // Dygraph DataLoader reader process & thread function
+  // Dygraph DataLoader reader process & thread related functions
   m.def("_convert_to_tensor_list",
-        [](py::object obj) -> py::list {
+        [](py::object &obj) -> py::list {
           // 0. input data check
           PADDLE_ENFORCE(
               py::isinstance<py::tuple>(obj) || py::isinstance<py::list>(obj),
@@ -245,7 +245,6 @@ void BindImperative(py::module *m_ptr) {
                   obj.get_type()));
           py::list batch = py::cast<py::list>(obj);
           py::list tensors;
-          std::vector<std::string> ipc_names;
           for (size_t i = 0; i < batch.size(); ++i) {
             // 1. cast to python array
             auto array = batch[i].cast<py::array>();
@@ -270,7 +269,6 @@ void BindImperative(py::module *m_ptr) {
             // 4. maintain mmap fd set & backup ipc_name
             std::string ipc_name = shared_writer_holder->ipc_name();
             memory::allocation::MemoryMapFdSet::Instance().Insert(ipc_name);
-            ipc_names.emplace_back(ipc_name);
             // 5. copy data & reset holder
             memory::Copy(platform::CPUPlace(), shared_writer_holder->ptr(),
                          platform::CPUPlace(), data_ptr, data_size);
@@ -278,25 +276,22 @@ void BindImperative(py::module *m_ptr) {
             // 6. append to result list
             tensors.append(t);
           }
-          // The correct situation should be to remove the mmap fd after the
-          // current tensor_list put to the queue, but because these two
-          // operations are not atomic, there are two cases:
-          // 1. Remove before inserting the queue, so in extreme cases,
-          // some fds still cannot be cleaned up, but there is no error;
-          // 2. It is removed after being inserted into the queue, but if the
-          // program terminates abruptly after the tensor_list is inserted
-          // into the queue, the fd is not removed, and the child process
-          // ends prematurely, the fd is cleared by exit function. Because
-          // the shared memory cannot be rebuilt in thread, an error occured.
-          // So here choose case 1, ensure program executes correctly.
-          for (auto ipc_name : ipc_names) {
-            memory::allocation::MemoryMapFdSet::Instance().Remove(ipc_name);
-          }
           return tensors;
         },
         py::return_value_policy::take_ownership);
 
-  m.def("_mmap_fd_clear",
+  m.def("_remove_tensor_list_mmap_fds", [](py::list &tensor_list) {
+    for (size_t i = 0; i < tensor_list.size(); ++i) {
+      auto t = tensor_list[i].cast<framework::LoDTensor>();
+      auto *mmap_writer_allocation =
+          dynamic_cast<memory::allocation::MemoryMapWriterAllocation *>(
+              t.Holder().get());
+      memory::allocation::MemoryMapFdSet::Instance().Remove(
+          mmap_writer_allocation->ipc_name());
+    }
+  });
+
+  m.def("_cleanup_mmap_fds",
         []() { memory::allocation::MemoryMapFdSet::Instance().Clear(); });
 #endif
 

@@ -104,7 +104,7 @@ def _cleanup():
     # NOTE: inter-process Queue shared memory objects clear function
     _clear_multiprocess_queue_set()
     # NOTE: main process memory map files clear funciton
-    core._mmap_fd_clear()
+    core._cleanup_mmap_fds()
 
 
 # NOTE: [ mmap files clear ] When the main process exits unexpectedly, the remaining
@@ -582,7 +582,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
             # child process clear function at exit
             def _cleanup():
                 # clear memory map files in child process
-                core._mmap_fd_clear()
+                core._cleanup_mmap_fds()
 
             # NOTE: [ mmap files clear ] When the child process exits unexpectedly,
             # some shared memory objects may have been applied for but have not yet
@@ -593,6 +593,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
             for batch in self._batch_reader():
                 tensor_list = core._convert_to_tensor_list(batch)
                 self._data_queue.put(tensor_list)
+                core._remove_tensor_list_mmap_fds(tensor_list)
             self._data_queue.put(None)
         except KeyboardInterrupt:
             # NOTE: Main process will raise KeyboardInterrupt anyways, ignore it in child process
