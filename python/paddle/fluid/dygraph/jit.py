@@ -14,9 +14,7 @@
 
 from __future__ import print_function
 
-__all__ = [
-    'TracedLayer', 'dygraph_to_static_output', 'dygraph_run_in_static_mode'
-]
+__all__ = ['TracedLayer', 'dygraph_to_static_output']
 
 import gast
 import inspect
@@ -58,6 +56,7 @@ def extract_vars(inputs):
 
 def _dygraph_to_static_output_(dygraph_func):
     def __impl__(*args, **kwargs):
+
         # Get AST from dygraph function
         dygraph_code = inspect.getsource(dygraph_func)
         dygraph_code = textwrap.dedent(dygraph_code)
@@ -71,59 +70,52 @@ def _dygraph_to_static_output_(dygraph_func):
         func_name = dygraph_to_static.get_module_name()
         static_func, file_name = ast_to_func(root_wrapper.node, func_name)
 
-        return static_func(*args, **kwargs)
+        if not in_dygraph_mode():
+            return static_func(*args, **kwargs)
+        else:
+            feed_name_to_idx = dygraph_to_static.get_feed_name_to_idx()
+            feed_dict = {}
+            for feed_name, idx in feed_name_to_idx.iteritems():
+                feed_dict[feed_name] = args[idx]
 
-    return __impl__
+            # Run static_func in static mode
+            import paddle.fluid as fluid
+            startup_program = fluid.default_startup_program()
+            main_program = fluid.default_main_program()
 
+            static_res = run_static_func(main_program, startup_program,
+                                         static_func, args, kwargs, feed_dict,
+                                         feed_name_to_idx)
 
-import astor
-
-
-def _dygraph_run_in_static_mode_(dygraph_func):
-    def __impl__(*args, **kwargs):
-
-        # Get AST from dygraph function
-        dygraph_code = inspect.getsource(dygraph_func)
-        dygraph_code = textwrap.dedent(dygraph_code)
-        root = gast.parse(dygraph_code)
-
-        # Transform AST
-        dygraph_to_static = DygraphToStaticAst()
-        root_wrapper = dygraph_to_static.get_static_ast(root)
-        root_wrapper, feed_dict = dygraph_to_static.add_feed_node()
-
-        # Get static_func from AST
-        func_name = dygraph_to_static.get_module_name()
-        static_func, file_name = ast_to_func(root_wrapper.node, func_name)
-
-        # Run static_func in static mode
-        import paddle.fluid as fluid
-        startup_program = fluid.default_startup_program()
-        main_program = fluid.default_main_program()
-
-        static_out, static_res = run_static_func(main_program, startup_program,
-                                                 static_func, args, kwargs)
-
-        return static_out, static_res
+        return static_res
 
     return __impl__
 
 
 @switch_to_static_graph
-def run_static_func(main_program, startup_program, static_func, args, kwargs):
+def run_static_func(main_program, startup_program, static_func, args, kwargs,
+                    feed_dict, feed_name_to_idx):
     import paddle.fluid as fluid
+
     with fluid.program_guard(main_program, startup_program):
+        args_list = list(args)
+        for var_name, value in feed_dict.iteritems():
+            idx = feed_name_to_idx[var_name]
+            args_list[idx] = fluid.data(
+                name=var_name, shape=value.shape, dtype=str(value.dtype))
+        args = tuple(args_list)
         static_out = static_func(*args, **kwargs)
         if not isinstance(static_out, (list, tuple)):
             static_out = [static_out]
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(startup_program)
-        static_res = exe.run(main_program, fetch_list=static_out)
-    return static_out, static_res
+        static_res = exe.run(main_program,
+                             fetch_list=static_out,
+                             feed=feed_dict)
+    return static_res
 
 
 dygraph_to_static_output = wrap_decorator(_dygraph_to_static_output_)
-dygraph_run_in_static_mode = wrap_decorator(_dygraph_run_in_static_mode_)
 
 
 @dygraph_only

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from __future__ import print_function
-import astor
 from .utils import *
 import gast
 # gast is a generic AST to represent Python2 and Python3's Abstract Syntax Tree(AST).
@@ -21,13 +20,12 @@ import gast
 # as produced by ast.parse from the standard ast module.
 # See details in https://github.com/serge-sans-paille/gast/
 from .ast_utils import is_control_flow_if, create_cond_node, transform_if_else
-
+from paddle.fluid import unique_name
 from .static_analysis import AstNodeWrapper, StaticAnalysisVisitor
 
 __all__ = ['DygraphToStaticAst']
 
 DECORATOR_NAME = 'dygraph_to_static_output'
-DECORATOR_NAMES = ['dygraph_run_in_static_mode', 'dygraph_to_static_output']
 
 
 class IfElseTransformer(gast.NodeTransformer):
@@ -110,7 +108,9 @@ class DygraphToStaticAst(gast.NodeTransformer):
         self.visit(node.node)
 
         # Transform basic api of dygraph to static graph
-        BasicApiTransformer(node).ast_visit()
+        basic_api_trans = BasicApiTransformer(node)
+        basic_api_trans.ast_visit()
+        self.feed_name_to_arg_name = basic_api_trans._get_feed_name_to_arg_id()
 
         # Transform all if/else statement of Dygraph into Static Graph.
         IfElseTransformer(node).ast_visit()
@@ -118,11 +118,16 @@ class DygraphToStaticAst(gast.NodeTransformer):
     def visit_FunctionDef(self, node):
         if self.decorate_func_name is None:
             self.decorate_func_name = node.name
+
+        self.arg_name_to_idx = {}
+        for idx, arg in enumerate(node.args.args):
+            self.arg_name_to_idx[arg.id] = idx
+
         self.generic_visit(node)
         # Remove the decorated name of dygraph_to_static
         if hasattr(node, 'decorator_list'):
             decorator_list = [
-                d for d in node.decorator_list if d.id not in DECORATOR_NAMES
+                d for d in node.decorator_list if d.id != DECORATOR_NAME
             ]
             node.decorator_list = decorator_list
         return node
@@ -136,89 +141,11 @@ class DygraphToStaticAst(gast.NodeTransformer):
         assert self.decorate_func_name, "decorate_func_name shall not be None."
         return self.decorate_func_name
 
-    def add_feed_node(self, root):
-        FeedTransformer(root).ast_visit()
-
-
-class FeedTransformer(gast.NodeTransformer):
-    def __init__(self, root):
-        assert isinstance(
-            root, gast.Node
-        ), "Input non-gast.Node node for the initialization of BasicApiTransformer."
-        self.root = root
-        self.feed_dict = {}  # {name: None}
-        self.to_variable_value = {}  # name: node
-
-    def ast_visit(self):
-        self.visit(self.root)
-        return self.root
-
-    def visit_FunctionDef(self, node):
-        self.generic_visit(node)
-        return node
-
-    def visit_Assign(self, node):
-        value_node = node.value
-        for child_node in gast.walk(value_node):
-            if isinstance(child_node, gast.Call):
-                self._visit_Call(child_node)
-
-        return node
-
-    def _visit_Call(self, node):
-        assert isinstance(node, gast.Call)
-        # Replace API `to_variable` with `fluid.layers.feed`
-        if is_to_variable(node):
-            node = to_feed_node(node)
-            return node
-
-        return node
-
-    def to_feed_node(self, node):
-        assert isinstance(node, gast.Call)
-
-        data_api = gast.parse('fluid.data').body[0].value
-        node.func = data_api
-
-        # update feed_dict
-        feed_var_name = node.args[0].id  # eg:"data" TODO: maybe in keywords
-        self.feed_dict[feed_var_name] = None  # TODO:
-
-        # transform to_variable to fluid.data
-
-        node.keywords.append(
-            gast.keyword(
-                arg="name", value=gast.Constant(
-                    value=feed_var_name, kind=None)))
-
-        shape_value = [None, 2, 4, 4]  # TODO: get shape_value
-        shape_node = []
-        for x in shape_value:
-            if x == None:
-                shape_node.append(
-                    gast.Name(
-                        ctx=gast.Load(),
-                        id='None',
-                        annotation=None,
-                        type_comment=None))
-            else:
-                shape_node.append(gast.Constant(value=x, kind=None))
-
-        node.keywords.append(
-            gast.keyword(
-                arg="shape", value=gast.List(
-                    ctx=gast.Load(), elts=shape_node)))
-
-        # Remove node.args because fluid.data doesn't need args
-        node.args = []
-
-        dtype_value = "float32"  # TODO: get dtype_value
-        node.keywords.append(
-            gast.keyword(
-                arg="dtype", value=gast.Constant(
-                    value=dtype_value, kind=None)))
-
-        return node
+    def get_feed_name_to_idx(self):
+        feed_name_to_idx = {}
+        for feed_name, arg_name in self.feed_name_to_arg_name.iteritems():
+            feed_name_to_idx[feed_name] = self.arg_name_to_idx.get(arg_name)
+        return feed_name_to_idx
 
 
 class BasicApiTransformer(gast.NodeTransformer):
@@ -233,6 +160,7 @@ class BasicApiTransformer(gast.NodeTransformer):
         self.wrapper_root = wrapper_root
         self.root = wrapper_root.node
         self.class_node_dict = {}
+        self.feed_name_to_arg_id = {}  # {name: id}
 
     def ast_visit(self):
         self.visit(self.root)
@@ -274,10 +202,11 @@ class BasicApiTransformer(gast.NodeTransformer):
 
         # Replace API `to_variable` with `fluid.layers.assign`
         if is_to_variable(node):
+            self._update_feed_dict(node)
             node = to_assign_node(node)
             return node
 
-        func_name = astor.to_source(node.func)
+        func_name = astor.to_source(gast.gast_to_ast(node.func))
         if self._is_dygraph_forward(func_name):
             class_node = self._get_class_node(func_name)
             static_node = to_static_ast(node, class_node)
@@ -300,8 +229,25 @@ class BasicApiTransformer(gast.NodeTransformer):
 
             if is_dygraph_api(node_value):
                 update_args_of_func(node_value, node_value, "__init__")
-                target_str = astor.to_source(node.targets[0])
+                target_str = astor.to_source(gast.gast_to_ast(node.targets[0]))
                 self.class_node_dict[target_str] = node_value
                 return True
             # TODO: node.value is not dygraph class
         return False
+
+    def _update_feed_dict(self, node):
+        assert isinstance(node, gast.Call)
+
+        # update feed_dict
+        var_name = None  # TODO: rename var_name
+        for kw in node.keywords:
+            if kw.arg == 'value':
+                var_name = kw.value.id  # eg: 'a' for " value=a "
+        if not var_name:
+            var_name = node.args[0].id
+
+        feed_var_name = unique_name.generate(var_name)  # eg: "a_0"
+        self.feed_name_to_arg_id[feed_var_name] = var_name  # eg: "a_0" : "a"
+
+    def _get_feed_name_to_arg_id(self):
+        return self.feed_name_to_arg_id
