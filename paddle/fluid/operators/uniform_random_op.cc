@@ -177,7 +177,7 @@ class UniformRandomOpMaker : public framework::OpProtoAndCheckerMaker {
              "according to "
              "this given shape. It means that it has a higher priority than "
              "the shape attribute, while the shape attribute still should be "
-             "set correctly to gurantee shape inference in compile time.")
+             "set correctly to guarantee shape inference in compile time.")
         .AsDispensable();
     AddInput("ShapeTensorList",
              "(vector<Tensor<int64_t>> or vector<Tensor<int32_t>>, optional). "

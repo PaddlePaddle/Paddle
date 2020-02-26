@@ -100,7 +100,7 @@ class DatasetBase(object):
         Args:
             record_candidate_size(int): size of instances candidate to shuffle 
                                         one slot
-            fea_eval(bool): wheather enable fea eval mode to enable slots shuffle.
+            fea_eval(bool): whether enable fea eval mode to enable slots shuffle.
                             default is True.
             
         Examples:
@@ -314,12 +314,12 @@ class InMemoryDataset(DatasetBase):
 
     def _dynamic_adjust_before_train(self, thread_num):
         if not self.is_user_set_queue_num:
-            self.dataset.dynamic_adjust_channel_num(thread_num)
+            self.dataset.dynamic_adjust_channel_num(thread_num, False)
         self.dataset.dynamic_adjust_readers_num(thread_num)
 
     def _dynamic_adjust_after_train(self):
         if not self.is_user_set_queue_num:
-            self.dataset.dynamic_adjust_channel_num(self.thread_num)
+            self.dataset.dynamic_adjust_channel_num(self.thread_num, False)
         self.dataset.dynamic_adjust_readers_num(self.thread_num)
 
     def set_queue_num(self, queue_num):
@@ -793,6 +793,15 @@ class BoxPSDataset(InMemoryDataset):
         super(BoxPSDataset, self).__init__()
         self.boxps = core.BoxPS(self.dataset)
 
+    def set_date(self, date):
+        """
+        Workaround for date
+        """
+        year = int(date[:4])
+        month = int(date[4:6])
+        day = int(date[6:])
+        self.boxps.set_date(year, month, day)
+
     def begin_pass(self):
         """
         Begin Pass
@@ -822,7 +831,7 @@ class BoxPSDataset(InMemoryDataset):
 
     def wait_preload_done(self):
         """
-        Wait async proload done
+        Wait async preload done
         Wait Until Feed Pass Done
         Examples:
             .. code-block:: python
@@ -865,3 +874,8 @@ class BoxPSDataset(InMemoryDataset):
         """
         self._prepare_to_run()
         self.boxps.preload_into_memory()
+
+    def _dynamic_adjust_before_train(self, thread_num):
+        if not self.is_user_set_queue_num:
+            self.dataset.dynamic_adjust_channel_num(thread_num, True)
+        self.dataset.dynamic_adjust_readers_num(thread_num)

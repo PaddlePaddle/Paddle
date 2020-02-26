@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/garbage_collector.h"
+#include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/framework/ir/coalesce_grad_tensor_pass.h"
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/load_op_lib.h"
@@ -1135,9 +1136,23 @@ All parameter, weight, gradient are variables in Paddle.
     Prune(*prog_with_targets.Proto(), feeded_var_names, &pruned_desc);
     return new ProgramDesc(pruned_desc);
   });
-  m.def("prune_backward", [](const framework::ProgramDesc &program) {
-    return PruneBackward(program);
-  });
+  m.def("prune_backward",
+        [](const framework::ProgramDesc &program) {
+          return PruneBackward(program);
+        },
+        R"DOC(
+             Prune the backward part of a program, mostly called in
+             program.clone(for_test=True).
+              
+             Args:
+                   program (ProgramDesc): The original program.
+
+             Returns:
+                   tuple(ProgramDesc, map<int, int>): The first part is 
+                   the pruned program desc, and the second part is a map
+                   which contains the id pair of pruned block and corresponding
+                   origin block.
+           )DOC");
   m.def("empty_var_name",
         []() { return std::string(framework::kEmptyVarName); });
   m.def("grad_var_suffix",
@@ -1456,6 +1471,9 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
+  m.def("run_cmd", [](const std::string &cmd) -> const std::string {
+    return paddle::framework::shell_get_command_output(cmd);
+  });
 #ifdef PADDLE_WITH_CUDA
   m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {
     // Only GPUs with Compute Capability >= 53 support float16
@@ -2245,6 +2263,9 @@ All parameter, weight, gradient are variables in Paddle.
   BindFleetWrapper(&m);
   BindGlooWrapper(&m);
   BindBoxHelper(&m);
+#ifdef PADDLE_WITH_BOX_PS
+  BindBoxWrapper(&m);
+#endif
 #ifdef PADDLE_WITH_NCCL
   BindNCCLWrapper(&m);
 #endif

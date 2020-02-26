@@ -24,6 +24,14 @@ import "C"
 import "runtime"
 import "unsafe"
 
+type Precision C.Precision
+
+const (
+	Precision_FLOAT32 Precision = C.kFloat32
+	Precision_INT8    Precision = C.kInt8
+	Precision_HALF    Precision = C.kHalf
+)
+
 type AnalysisConfig struct {
 	c *C.PD_AnalysisConfig
 }
@@ -43,8 +51,13 @@ func (config *AnalysisConfig) SetModel(model, params string) {
 	//C.printString((*C.char)(unsafe.Pointer(&s[0])))
 	c_model := C.CString(model)
 	defer C.free(unsafe.Pointer(c_model))
-	c_params := C.CString(params)
-	defer C.free(unsafe.Pointer(c_params))
+	var c_params *C.char
+	if params == "" {
+		c_params = nil
+	} else {
+		c_params = C.CString(params)
+		defer C.free(unsafe.Pointer(c_params))
+	}
 
 	C.PD_SetModel(config.c, c_model, c_params)
 }
@@ -61,8 +74,8 @@ func (config *AnalysisConfig) ParamsFile() string {
 	return C.GoString(C.PD_ParamsFile(config.c))
 }
 
-func (config *AnalysisConfig) EnableUseGpu(memory_pool_init_size_mb uint64, device_id int) {
-	C.PD_EnableUseGpu(config.c, C.ulong(memory_pool_init_size_mb), C.int(device_id))
+func (config *AnalysisConfig) EnableUseGpu(memory_pool_init_size_mb int, device_id int) {
+	C.PD_EnableUseGpu(config.c, C.int(memory_pool_init_size_mb), C.int(device_id))
 }
 
 func (config *AnalysisConfig) DisableGpu() {
@@ -113,7 +126,9 @@ func (config *AnalysisConfig) SpecifyInputName() bool {
 	return ConvertCBooleanToGo(C.PD_SpecifyInputName(config.c))
 }
 
-//func (config *AnalysisConfig) EnableTensorRtEngine(workspace_size int)
+func (config *AnalysisConfig) EnableTensorRtEngine(workspace_size int, max_batch_size int, min_subgraph_size int, precision Precision, use_static bool, use_calib_mode bool) {
+	C.PD_EnableTensorRtEngine(config.c, C.int(workspace_size), C.int(max_batch_size), C.int(min_subgraph_size), C.Precision(precision), C.bool(use_static), C.bool(use_calib_mode))
+}
 
 func (config *AnalysisConfig) TensorrtEngineEnabled() bool {
 	return ConvertCBooleanToGo(C.PD_TensorrtEngineEnabled(config.c))
@@ -175,15 +190,15 @@ func (config *AnalysisConfig) DisableGlogInfo() {
 }
 
 func (config *AnalysisConfig) DeletePass(pass string) {
-    c_pass := C.CString(pass)
-    defer C.free(unsafe.Pointer(c_pass))
-    C.PD_DeletePass(config.c, c_pass)
+	c_pass := C.CString(pass)
+	defer C.free(unsafe.Pointer(c_pass))
+	C.PD_DeletePass(config.c, c_pass)
 }
 
 func (config *AnalysisConfig) SetInValid() {
-    C.PD_SetInValid(config.c)
+	C.PD_SetInValid(config.c)
 }
 
 func (config *AnalysisConfig) IsValid() bool {
-    return ConvertCBooleanToGo(C.PD_IsValid(config.c))
+	return ConvertCBooleanToGo(C.PD_IsValid(config.c))
 }
