@@ -881,9 +881,6 @@ PYBIND11_MODULE(core_noavx, m) {
                 "Now only LoDTensor on shared memory can be serialized."));
             int type_idx = static_cast<int>(t.type());
 
-            memory::allocation::MemoryMapFdSet::Instance().Remove(
-              mmap_writer_allocation->ipc_name());
-
             return py::make_tuple(mmap_writer_allocation->ipc_name(),
                                   mmap_writer_allocation->size(),
                                   type_idx, vectorize(t.dims()), t.lod());

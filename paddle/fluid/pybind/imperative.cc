@@ -245,6 +245,7 @@ void BindImperative(py::module *m_ptr) {
                   obj.get_type()));
           py::list batch = py::cast<py::list>(obj);
           py::list tensors;
+          std::vector<std::string> ipc_names;
           for (size_t i = 0; i < batch.size(); ++i) {
             // 1. cast to python array
             auto array = batch[i].cast<py::array>();
@@ -260,19 +261,36 @@ void BindImperative(py::module *m_ptr) {
             framework::LoDTensor t;
             SetTensorFromPyArray<platform::CPUPlace>(
                 &t, array, platform::CPUPlace(), true);
-            // 3. allocate shared memory & reset holder
+            // 3. allocate shared memory
             memory::allocation::MemoryMapAllocator allocator;
             void *data_ptr = reinterpret_cast<void *>(
                 reinterpret_cast<uintptr_t>(t.Holder()->ptr()) + t.offset());
             size_t data_size = t.memory_size();
             auto shared_writer_holder = allocator.Allocate(data_size);
-            memory::allocation::MemoryMapFdSet::Instance().Insert(
-                shared_writer_holder->ipc_name());
+            // 4. maintain mmap fd set & backup ipc_name
+            std::string ipc_name = shared_writer_holder->ipc_name();
+            memory::allocation::MemoryMapFdSet::Instance().Insert(ipc_name);
+            ipc_names.emplace_back(ipc_name);
+            // 5. copy data & reset holder
             memory::Copy(platform::CPUPlace(), shared_writer_holder->ptr(),
                          platform::CPUPlace(), data_ptr, data_size);
             t.ResetHolder(shared_writer_holder);
-            // 4. append to result list
+            // 6. append to result list
             tensors.append(t);
+          }
+          // The correct situation should be to remove the mmap fd after the
+          // current tensor_list put to the queue, but because these two
+          // operations are not atomic, there are two cases:
+          // 1. Remove before inserting the queue, so in extreme cases,
+          // some fds still cannot be cleaned up, but there is no error;
+          // 2. It is removed after being inserted into the queue, but if the
+          // program terminates abruptly after the tensor_list is inserted
+          // into the queue, the fd is not removed, and the child process
+          // ends prematurely, the fd is cleared by exit function. Because
+          // the shared memory cannot be rebuilt in thread, an error occured.
+          // So here choose case 1, ensure program executes correctly.
+          for (auto ipc_name : ipc_names) {
+            memory::allocation::MemoryMapFdSet::Instance().Remove(ipc_name);
           }
           return tensors;
         },
