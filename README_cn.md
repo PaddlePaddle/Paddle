@@ -4,8 +4,8 @@
 [English](./README.md) | 简体中文
 
 [![Build Status](https://travis-ci.org/PaddlePaddle/Paddle.svg?branch=develop)](https://travis-ci.org/PaddlePaddle/Paddle)
-[![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](http://www.paddlepaddle.org.cn/documentation/docs/en/1.6/beginners_guide/index_en.html)
-[![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)](http://www.paddlepaddle.org.cn/documentation/docs/zh/1.6/beginners_guide/index_cn.html)
+[![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](http://www.paddlepaddle.org.cn/documentation/docs/en/1.7/beginners_guide/index_en.html)
+[![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)](http://www.paddlepaddle.org.cn/documentation/docs/zh/1.7/beginners_guide/index_cn.html)
 [![Release](https://img.shields.io/github/release/PaddlePaddle/Paddle.svg)](https://github.com/PaddlePaddle/Paddle/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
 
@@ -15,7 +15,7 @@
 
 
 ## 安装
-### PaddlePaddle最新版本: [v1.6](https://github.com/PaddlePaddle/Paddle/tree/release/1.6)
+### PaddlePaddle最新版本: [v1.7](https://github.com/PaddlePaddle/Paddle/tree/release/1.7)
 
 跟进PaddlePaddle最新特性请参考我们的[版本说明](https://github.com/PaddlePaddle/Paddle/releases)
 
@@ -26,10 +26,10 @@ pip install paddlepaddle
 # Linux GPU cuda10cudnn7
 pip install paddlepaddle-gpu
 # Linux GPU cuda9cudnn7
-pip install paddlepaddle-gpu==1.6.3.post97
+pip install paddlepaddle-gpu==1.7.0.post97
 
 ```
-更多安装信息详见官网 [安装说明](http://www.paddlepaddle.org.cn/documentation/docs/zh/1.6/beginners_guide/install/index_cn.html)
+更多安装信息详见官网 [安装说明](http://www.paddlepaddle.org.cn/documentation/docs/zh/1.7/beginners_guide/install/index_cn.html)
 
 PaddlePaddle用户可领取**免费Tesla V100在线算力资源**，训练模型更高效。**每日登陆即送12小时**，**连续五天运行再加送48小时**，[前往使用免费算力](https://ai.baidu.com/support/news?action=detail&id=981)。
 
@@ -60,20 +60,20 @@ PaddlePaddle用户可领取**免费Tesla V100在线算力资源**，训练模型
 
 ## 文档
 
-我们提供 [英文](http://www.paddlepaddle.org.cn/documentation/docs/en/1.6/beginners_guide/index_en.html) 和
-[中文](http://www.paddlepaddle.org.cn/documentation/docs/zh/1.6/beginners_guide/index_cn.html) 文档
+我们提供 [英文](http://www.paddlepaddle.org.cn/documentation/docs/en/1.7/beginners_guide/index_en.html) 和
+[中文](http://www.paddlepaddle.org.cn/documentation/docs/zh/1.7/beginners_guide/index_cn.html) 文档
 
-- [深度学习基础教程](https://www.paddlepaddle.org.cn/documentation/docs/zh/1.6/beginners_guide/basics/index_cn.html)
+- [深度学习基础教程](https://www.paddlepaddle.org.cn/documentation/docs/zh/1.7/beginners_guide/basics/index_cn.html)
 
    或许您想从深度学习基础开始学习飞桨
   
 
-- [使用指南](https://www.paddlepaddle.org.cn/documentation/docs/zh/1.6/user_guides/index_cn.html)
+- [使用指南](https://www.paddlepaddle.org.cn/documentation/docs/zh/1.7/user_guides/index_cn.html)
 
    或许您已经掌握了新手入门阶段的内容，期望可以针对实际问题建模、搭建自己网络
   
 
-- [进阶使用](https://www.paddlepaddle.org.cn/documentation/docs/zh/1.6/advanced_usage/index_cn.html)
+- [进阶使用](https://www.paddlepaddle.org.cn/documentation/docs/zh/1.7/advanced_usage/index_cn.html)
 
    或许您已比较熟练使用PaddlePaddle来完成常规任务，期望获得更高效的模型或者定义自己的Operator
   
@@ -83,7 +83,7 @@ PaddlePaddle用户可领取**免费Tesla V100在线算力资源**，训练模型
    新的API支持代码更少更简洁的程序
    
 
-- [贡献方式](http://paddlepaddle.org.cn/documentation/docs/zh/1.6/advanced_usage/development/contribute_to_paddle/index_cn.html)
+- [贡献方式](http://paddlepaddle.org.cn/documentation/docs/zh/1.7/advanced_usage/development/contribute_to_paddle/index_cn.html)
 
    欢迎您的贡献!
 
