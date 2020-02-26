@@ -106,7 +106,7 @@ class ConcatKernel : public framework::OpKernel<T> {
     if (axis == 0 && ins[0]->lod().size()) {
       auto out_lod = ins[0]->lod();
       for (size_t i = 1; i < ins.size(); ++i) {
-        auto in_lod = ins[i]->lod();
+        const auto& in_lod = ins[i]->lod();
         for (size_t j = 0; j < in_lod.size(); j++) {
           size_t lod_s = out_lod[j][out_lod[j].size() - 1];
           for (size_t k = 1; k < in_lod[j].size(); k++) {

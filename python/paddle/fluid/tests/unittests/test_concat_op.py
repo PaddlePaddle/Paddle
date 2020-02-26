@@ -211,5 +211,33 @@ class TestConcatAPI(unittest.TestCase):
         assert np.array_equal(res_3, np.concatenate((input_2, input_3), axis=1))
 
 
+class TestConcatLOD(unittest.TestCase):
+    def test_lod(self):
+        with program_guard(Program(), Program()):
+            input_lod_1 = core.LoDTensor()
+            input_lod_1.set(np.random.random(size=(5)).astype('int32'),
+                            core.CPUPlace())
+            input_lod_1.set_recursive_sequence_lengths([[2, 3]])
+
+            input_lod_2 = core.LoDTensor()
+            input_lod_2.set(np.random.random(size=(5)).astype('int32'),
+                            core.CPUPlace())
+            input_lod_2.set_recursive_sequence_lengths([[2, 3]])
+            x_lod_1 = fluid.data(shape=[5], dtype='int32', name='x_lod_1')
+            x_lod_2 = fluid.data(shape=[5], dtype='int32', name='x_lod_2')
+            out_lod = fluid.layers.concat(input=[x_lod_1, x_lod_2], axis=0)
+
+            exe = fluid.Executor(place=fluid.CPUPlace())
+            [res_act] = exe.run(
+                fluid.default_main_program(),
+                feed={"x_lod_1": input_lod_1,
+                      "x_lod_2": input_lod_2},
+                fetch_list=[out_lod],
+                return_numpy=False)
+
+            res_exp = [[2, 3, 2, 3]]
+            self.assertEqual(res_act.recursive_sequence_lengths(), res_exp)
+
+
 if __name__ == '__main__':
     unittest.main()
