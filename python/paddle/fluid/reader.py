@@ -89,7 +89,7 @@ class DataLoader(object):
                        return_list=False,
                        use_multiprocess=False,
                        drop_last=True,
-                       keep_order=True):
+                       keep_order=False):
         """
         Create a DataLoader object for loading data from Python generator. 
         Data would be prefetched using Python thread and be pushed
@@ -633,7 +633,7 @@ class GeneratorLoader(DataLoaderBase):
                  iterable=True,
                  return_list=False,
                  drop_last=True,
-                 keep_order=True):
+                 keep_order=False):
         self._tensor_reader = None
         self._places = None
         self._thread = None
