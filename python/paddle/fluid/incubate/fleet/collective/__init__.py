@@ -66,6 +66,7 @@ class Collective(Fleet):
         self._transpiled_program = None
         self.main_program = None
         self._checkoint_prefix = "__paddle_fleet_checkpoint__"
+        self._param_file_name = "_paddle_fleet_param__"
 
     def init_worker(self):
         logging.warn(
@@ -118,7 +119,11 @@ class Collective(Fleet):
                                 executor, main_program, None, None,
                                 export_for_deployment)
 
-    def save_persistables(self, executor, dirname, main_program=None):
+    def save_persistables(self,
+                          executor,
+                          dirname,
+                          main_program=None,
+                          filename=None):
         """
         This function filters out all variables with `persistable==True` from
         the give `main_program` and then saves these variables to the folder
@@ -140,7 +145,7 @@ class Collective(Fleet):
             "In fleet.save_inference_model() function, main_program " \
             "must be as Program type."
 
-        io.save_persistables(executor, dirname, main_program, None)
+        io.save_persistables(executor, dirname, main_program, filename=filename)
 
     def _save_train_status(self, path, train_status):
         d = {}
@@ -237,7 +242,10 @@ class Collective(Fleet):
         tmp_path = "{}.tmp".format(real_path)
 
         self.save_persistables(
-            executor=executor, dirname=tmp_path, main_program=main_program)
+            executor=executor,
+            dirname=tmp_path,
+            main_program=main_program,
+            filename=self._param_file_name)
         self._save_train_status(path=tmp_path, train_status=train_status)
 
         os.rename(tmp_path, real_path)
@@ -266,7 +274,10 @@ class Collective(Fleet):
 
         real_path = "{}/{}.{}".format(path, self._checkoint_prefix, max_no)
         io.load_persistables(
-            executor=executor, dirname=real_path, main_program=main_program)
+            executor=executor,
+            dirname=real_path,
+            main_program=main_program,
+            filename=self._param_file_name)
 
         return self._load_train_status(real_path)
 
