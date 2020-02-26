@@ -183,6 +183,7 @@ __all__ = [
     'hard_swish',
     'gather_tree',
     'uniform_random',
+    'tdm_sampler',
 ]
 
 
@@ -13891,6 +13892,97 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
     return helper.append_activation(out)
 
 
+def tdm_sampler(input,
+                neg_samples_num_list,
+                tree_travel_list,
+                tree_layer_list,
+                tree_travel_attr=None,
+                tree_layer_attr=None,
+                output_labels=False,
+                output_positive=False,
+                output_list=False,
+                seed=0,
+                dtype='int64'):
+    '''
+    used for tdm data reader, get neg sample at every layer
+    1. travel the tree, find path of input (root->node(input))
+    2. get neg sample at every layer
+    '''
+    helper = LayerHelper("tdm_sampler", **locals())
+    layer_nums = len(tree_layer_list)
+    sampling_nums = 0
+    for layer_sampling_nums in neg_samples_num_list:
+        sampling_nums += (layer_sampling_nums + int(output_positive))
+
+    leaf_node_nums = len(tree_travel_list)
+    travel_shape = [leaf_node_nums, layer_nums]
+    travel = helper.create_parameter(
+        attr=tree_travel_attr,
+        shape=travel_shape,
+        dtype='int32',
+        default_initializer=Constant(0))
+    travel.stop_gradient = True
+
+    node_nums = 0
+    tree_layer_offset_lod = [0]
+    for layer in tree_layer_list:
+        node_nums += len(layer)
+        tree_layer_offset_lod.append(node_nums)
+    layer_shape = [node_nums, 1]
+
+    layer = helper.create_parameter(
+        attr=tree_layer_attr,
+        shape=layer_shape,
+        dtype='int32',
+        default_initializer=Constant(0))
+    layer.stop_gradient = True
+
+    out = helper.create_variable_for_type_inference(dtype=dtype)
+    out.stop_gradient = True
+
+    labels = helper.create_variable_for_type_inference(dtype=dtype)
+    labels.stop_gradient = True
+
+    mask = helper.create_variable_for_type_inference(dtype=dtype)
+    mask.stop_gradient = True
+
+    helper.append_op(
+        type='tdm_sampler',
+        inputs={"Input": input,
+                "Travel": travel,
+                "Layer": layer},
+        outputs={'Out': out,
+                 'Labels': labels,
+                 'Mask': mask},
+        attrs={
+            'neg_samples_num_list': neg_samples_num_list,
+            'output_labels': output_labels,
+            'output_positive': output_positive,
+            'layer_offset_lod': tree_layer_offset_lod,
+            'seed': seed
+        })
+
+    if output_list:
+        output_list = []
+        start_offset = 0
+
+        for layer_sample_num in neg_samples_num_list:
+            end_offset = start_offset + layer_sample_num + int(output_positive)
+            layer_samples = slice(
+                out, axes=[1], starts=[start_offset], ends=[end_offset])
+            layer_samples = reshape(
+                layer_samples,
+                [-1, layer_sample_num + int(output_positive), 1])
+            layer_samples.stop_gradient = True
+            output_list.append(layer_samples)
+            start_offset = end_offset
+        out = output_list
+
+    if output_labels:
+        return out, labels, mask
+    return out, mask
+
+
 def tdm_child(input, tree_embedding, dtype='int64'):
     """
     used for tdm infer
@@ -13899,7 +13991,11 @@ def tdm_child(input, tree_embedding, dtype='int64'):
     child = helper.create_variable_for_type_inference(dtype=dtype)
 
     item_mask = helper.create_variable_for_type_inference(dtype=dtype)
-
+    compiled_prog = fluid.compiler.CompiledProgram(
+        fleet.main_program).with_data_parallel(
+            loss_name=loss.name,
+            build_strategy=strategy.get_build_strategy(),
+            exec_strategy=strategy.get_execute_strategy())
     helper.append_op(
         type='tdm_child',
         inputs={'Input': input,
