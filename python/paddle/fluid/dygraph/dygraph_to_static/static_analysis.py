@@ -23,15 +23,11 @@ import warnings
 __all__ = ['AstNodeWrapper', 'NodeVarType', 'StaticAnalysisVisitor']
 
 
-# TODO: _is_paddle_dygraph_api is duplicated in Yamei's utils.py. Merge the two
-# function code together when Yamei finish her PR.
 def _is_api_in_module_helper(obj, module_prefix):
     m = inspect.getmodule(obj)
     return m is not None and m.__name__.startswith(module_prefix)
 
 
-# TODO: is_dygraph_api is duplicated in Yamei's utils.py. Merge the two
-# function code together when Yamei finish her PR.
 def is_api_in_module(node, module_prefix):
     assert isinstance(node, gast.Call), "Input non-Call node for is_dygraph_api"
     func_str = astor.to_source(gast.gast_to_ast(node.func))

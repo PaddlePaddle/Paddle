@@ -160,7 +160,7 @@ class BasicApiTransformer(gast.NodeTransformer):
         self.wrapper_root = wrapper_root
         self.root = wrapper_root.node
         self.class_node_dict = {}
-        self.feed_name_to_arg_id = {}  # {name: id}
+        self.feed_name_to_arg_id = {}
 
     def ast_visit(self):
         self.visit(self.root)
@@ -228,6 +228,10 @@ class BasicApiTransformer(gast.NodeTransformer):
                 return False
 
             if is_dygraph_api(node_value):
+                dygraph_api = node_value.func.attr
+                if not dygraph_class_to_static_api.get(dygraph_api):
+                    return False
+
                 update_args_of_func(node_value, node_value, "__init__")
                 target_str = astor.to_source(gast.gast_to_ast(node.targets[0]))
                 self.class_node_dict[target_str] = node_value
@@ -238,11 +242,10 @@ class BasicApiTransformer(gast.NodeTransformer):
     def _update_feed_dict(self, node):
         assert isinstance(node, gast.Call)
 
-        # update feed_dict
-        var_name = None  # TODO: rename var_name
+        var_name = None
         for kw in node.keywords:
             if kw.arg == 'value':
-                var_name = kw.value.id  # eg: 'a' for " value=a "
+                var_name = kw.value.id  # eg: 'a' for "value=a "
         if not var_name:
             var_name = node.args[0].id
 
