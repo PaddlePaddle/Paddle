@@ -458,7 +458,7 @@ def name_scope(prefix=None):
     if in_dygraph_mode():
         yield
     else:
-        assert prefix, "namescope prefix canot be empty."
+        assert prefix, "namescope prefix can not be empty."
         global _name_scope
         _name_scope = _name_scope.child(prefix)
         yield
@@ -1495,7 +1495,7 @@ class Variable(object):
         if length < 0:
             raise ValueError("length should not be negative")
         if step == 0:
-            raise ValueError("slice step canot be zero")
+            raise ValueError("slice step can not be zero")
 
         # Find lower and upper bounds for start and stop.
         lower = -1 if step < 0 else 0
@@ -2965,7 +2965,7 @@ class IrVarNode(IrNode):
             shape(list): shape to be set.
         """
         assert self.node.var() is not None, \
-            "The node variable description canot be None."
+            "The node variable description can not be None."
         self.node.var().set_shape(shape)
 
     def persistable(self):
@@ -2976,7 +2976,7 @@ class IrVarNode(IrNode):
             bool: indicate whether the variable is persistable.
         """
         assert self.node.var() is not None, \
-            "The node variable description canot be None."
+            "The node variable description can not be None."
         return self.node.var().persistable()
 
     def type(self):
@@ -2987,7 +2987,7 @@ class IrVarNode(IrNode):
             core.VarDesc.VarType: the variable type.
         """
         assert self.node.var() is not None, \
-            "The node variable description canot be None."
+            "The node variable description can not be None."
         return self.node.var().type()
 
     def dtype(self):
@@ -2998,7 +2998,7 @@ class IrVarNode(IrNode):
             core.VarDesc.VarType: the variable data type.
         """
         assert self.node.var() is not None, \
-            "The node variable description canot be None."
+            "The node variable description can not be None."
         return self.node.var().dtype()
 
     def shape(self):
@@ -3009,7 +3009,7 @@ class IrVarNode(IrNode):
             list: the variable shape.
         """
         assert self.node.var() is not None, \
-            "The node variable description canot be None."
+            "The node variable description can not be None."
         return self.node.var().shape()
 
     @property
@@ -3059,7 +3059,7 @@ class IrOpNode(IrNode):
             new_input_name(str): the new input name.
         """
         assert self.node.op() is not None, \
-            "The node operator description canot be None."
+            "The node operator description can not be None."
         self.node.op()._rename_input(old_input_name, new_input_name)
 
     def rename_output(self, old_output_name, new_output_name):
@@ -3071,7 +3071,7 @@ class IrOpNode(IrNode):
             new_output_name(str): the new output name.
         """
         assert self.node.op() is not None, \
-            "The node operator description canot be None."
+            "The node operator description can not be None."
         print("op: {}, old: {}, new: {}\n".format(self.node.op().type(
         ), old_output_name, new_output_name))
         self.node.op()._rename_output(old_output_name, new_output_name)
@@ -3087,7 +3087,7 @@ class IrOpNode(IrNode):
             list(str): the argument name list.
         """
         assert self.node.op() is not None, \
-            "The node operator description canot be None."
+            "The node operator description can not be None."
         return self.node.op().input(name)
 
     def output(self, name):
@@ -3101,7 +3101,7 @@ class IrOpNode(IrNode):
             list(str): the argument name list.
         """
         assert self.node.op() is not None, \
-            "The node operator description canot be None."
+            "The node operator description can not be None."
         return self.node.op().output(name)
 
     def set_type(self, new_type):
@@ -3112,7 +3112,7 @@ class IrOpNode(IrNode):
             new_type(str): new operator type to be set.
         """
         assert self.node.op() is not None, \
-            "The node operator description canot be None."
+            "The node operator description can not be None."
         return self.node.op().set_type(new_type)
 
     def set_attr(self, name, val):
@@ -3130,7 +3130,7 @@ class IrOpNode(IrNode):
         Update the value of the op desc's attribute by attribute's name.
         """
         assert self.node.op() is not None, \
-            "The node operator description canot be None."
+            "The node operator description can not be None."
         desc = self.node.op()
         if isinstance(val, Block):
             desc.set_block_attr(name, val.desc)
@@ -3151,7 +3151,7 @@ class IrOpNode(IrNode):
             list(str): input arguments' names of this op node.
         """
         assert self.node.op() is not None, \
-            "The node operator description canot be None."
+            "The node operator description can not be None."
         return self.node.op().input_arg_names()
 
     def output_arg_names(self):
@@ -3162,7 +3162,7 @@ class IrOpNode(IrNode):
             list(str): output arguments' names of this op node.
         """
         assert self.node.op() is not None, \
-            "The node operator description canot be None."
+            "The node operator description can not be None."
         return self.node.op().output_arg_names()
 
     @property
@@ -3459,7 +3459,7 @@ class IrGraph(object):
         """
         Perform the topology sort operation on the graph.
 
-        Notes: the `graph` canot contain a circle.
+        Notes: the `graph` can not contain a circle.
 
         Returns:
             list(IrNode): nodes in topology order.
