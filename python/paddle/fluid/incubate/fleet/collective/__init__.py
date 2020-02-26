@@ -46,11 +46,15 @@ class DistFCConfig(object):
 
 
 class TrainStatus(object):
-    def __init__(self):
-        self.epoch_no = 0
+    def __init__(self, epoch_no=-1):
+        # completed epoch
+        self._epoch_no = epoch_no
+
+    def next(self):
+        return self._epoch_no + 1
 
     def __eq__(self, t):
-        return self.epoch_no == t.epoch_no
+        return self._epoch_no == t._epoch_no
 
     def __ne__(self, t):
         return not self == t
@@ -149,7 +153,7 @@ class Collective(Fleet):
 
     def _save_train_status(self, path, train_status):
         d = {}
-        d["epoch_no"] = train_status.epoch_no
+        d["epoch_no"] = train_status._epoch_no
 
         file_name = "{}/fleet_train_status".format(path)
         with open(file_name, 'w') as f:
@@ -168,8 +172,8 @@ class Collective(Fleet):
 
         assert "epoch_no" in d, "Can't find epoch_no in dict from train_status file:{}".format(
             d)
-        r.epoch_no = d["epoch_no"]
-        assert r.epoch_no >= 0, "Data in checkpoint file is not valid:{}".format(
+        r._epoch_no = d["epoch_no"]
+        assert r._epoch_no >= 0, "Data in checkpoint file is not valid:{}".format(
             d)
 
         return r

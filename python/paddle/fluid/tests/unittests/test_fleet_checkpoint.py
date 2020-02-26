@@ -46,8 +46,7 @@ class FleetTest(unittest.TestCase):
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_startup_program())
 
-        status = TrainStatus()
-        status.epoch_no = 2
+        status = TrainStatus(2)
         fleet.save_check_point(exe, dir_path, train_status=status)
         n1 = fleet._get_last_checkpoint_no(dir_path)
 
