@@ -463,8 +463,6 @@ def name_scope(prefix=None):
         _name_scope = _name_scope.child(prefix)
         yield
         _name_scope = _name_scope.parent()
-    else:
-        yield
 
 
 def _full_name_scope():
