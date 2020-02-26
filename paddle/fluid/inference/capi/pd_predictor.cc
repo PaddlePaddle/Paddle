@@ -265,17 +265,19 @@ void PD_GetZeroCopyOutput(PD_Predictor* predictor, PD_ZeroCopyTensor* tensor) {
   tensor->data.length = length;
 
   auto lod = output->lod();
-  tensor->lod.length = lod.front().size() * sizeof(size_t);
-  if (tensor->lod.capacity < lod.front().size()) {
-    if (tensor->lod.data) {
-      std::free(tensor->lod.data);
-    }
+  if (!lod.empty()) {
+    tensor->lod.length = lod.front().size() * sizeof(size_t);
+    if (tensor->lod.capacity < lod.front().size()) {
+      if (tensor->lod.data) {
+        std::free(tensor->lod.data);
+      }
 
-    tensor->lod.data = std::malloc(lod.front().size() * sizeof(size_t));
-    tensor->lod.capacity = lod.front().size() * sizeof(size_t);
+      tensor->lod.data = std::malloc(lod.front().size() * sizeof(size_t));
+      tensor->lod.capacity = lod.front().size() * sizeof(size_t);
+    }
+    std::copy(lod.front().begin(), lod.front().end(),
+              reinterpret_cast<size_t*>(tensor->lod.data));
   }
-  std::copy(lod.front().begin(), lod.front().end(),
-            reinterpret_cast<size_t*>(tensor->lod.data));
   switch (tensor->dtype) {
     case PD_FLOAT32:
       output->copy_to_cpu(reinterpret_cast<float*>(tensor->data.data));
