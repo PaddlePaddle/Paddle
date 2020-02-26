@@ -51,9 +51,11 @@ class DequantizeLogOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of DequantizeLogOp should not be null.");
+                      platform::errors::NotFound(
+                          "Input(X) of DequantizeLogOp is not found."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of DequantizeLogOp should not be null.");
+                      platform::errors::NotFound(
+                          "Output(Out) of DequantizeLogOp is not found."));
 
     ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
