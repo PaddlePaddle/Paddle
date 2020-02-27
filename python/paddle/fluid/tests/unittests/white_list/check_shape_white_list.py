@@ -23,7 +23,6 @@ NEED_TO_FIX_OP_LIST = [
     'hierarchical_sigmoid',
     'lstmp',
     'margin_rank_loss',
-    'matmul',
     'mul',
     'scatter',
     'smooth_l1_loss',

@@ -42,7 +42,6 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'lrn', \
     'margin_rank_loss', \
     'match_matrix_tensor', \
-    'matmul', \
     'max_pool2d_with_index', \
     'max_pool3d_with_index', \
     'minus', \
