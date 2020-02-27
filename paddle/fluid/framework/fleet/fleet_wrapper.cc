@@ -266,9 +266,11 @@ void FleetWrapper::PushDenseParamSync(
     const Scope& scope, const uint64_t table_id,
     const std::vector<std::string>& var_names) {
 #ifdef PADDLE_WITH_PSLIB
-  std::vector<float> buf;
+  std::vector<std::vector<float>> bufs;
+  bufs.resize(var_names.size());
   std::vector<paddle::ps::Region> regions;
-  for (auto& t : var_names) {
+  for (size_t i = 0; i < var_names.size(); ++i) {
+    auto& t = var_names[i];
     Variable* var = scope.FindVar(t);
     CHECK(var != nullptr) << "var[" << t << "] not found";
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
@@ -277,6 +279,7 @@ void FleetWrapper::PushDenseParamSync(
     int count = tensor->numel();
     #ifdef PADDLE_WITH_CUDA
     if (!platform::is_cpu_place(tensor->place())) {
+      auto& buf = bufs[i];
       if (int(buf.size()) < count) {
         buf.resize(count);
       }
@@ -313,7 +316,7 @@ void FleetWrapper::PushDenseVarsAsync(
     const paddle::platform::Place& place) {
 #ifdef PADDLE_WITH_PSLIB
   if (!platform::is_cpu_place(place)) {
-    platform::DeviceContextPool::Instance().Get(place)->Wait();
+    //platform::DeviceContextPool::Instance().Get(place)->Wait();
   }
   std::vector<paddle::ps::Region> regions;
   for (size_t i = 0; i < var_names.size(); ++i) {
@@ -403,7 +406,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
   if (!platform::is_cpu_place(place)) {
     
     in_cpu = false;
-    platform::DeviceContextPool::Instance().Get(place)->Wait();
+    //platform::DeviceContextPool::Instance().Get(place)->Wait();
   }
   for (size_t i = 0;
        i < sparse_key_names.size() && i < sparse_grad_names.size(); ++i) {
