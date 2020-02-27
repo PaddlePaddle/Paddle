@@ -57,10 +57,6 @@ struct Operation {
     return true;
   }
 
-  void AddInputName(const std::string input_name) {
-    input_names.push_back(input_name);
-  }
-
   int type;
   int num_operands;
   std::string op_type;
