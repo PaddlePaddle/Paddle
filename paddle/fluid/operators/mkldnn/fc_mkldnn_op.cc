@@ -288,7 +288,7 @@ class FCPrimitiveFactory {
     //     becuase we perform per-output-channel quantization
     int mask = CreateMask(0, scale_data.size() > 1);
     attributes.set_output_scales(mask, scale_data);
-    auto reorder = mkldnn::reorder({src_mem, dst_mem, attributes});
+    auto reorder = mkldnn::reorder(src_mem, dst_mem, attributes);
 
     mkldnn::stream astream(engine_);
     reorder.execute(astream,
@@ -479,7 +479,7 @@ GetPrimitiveFactory(const MKLDNNDeviceContext& dev_ctx,
                     const Tensor* weights,
                     const mkldnn::engine& mkldnn_engine) {
   const std::string key = platform::CreateKey(
-      platform::ThreadIDasStr(), input->format(),
+      platform::ThreadIDasStr(), input->format(), input->dims()[0],
       framework::vectorize<int>(weights->dims()), ctx.OutputName("Out"));
 
   auto prim_creator =

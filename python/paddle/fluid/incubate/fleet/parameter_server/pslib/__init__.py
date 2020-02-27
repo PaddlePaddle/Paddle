@@ -51,6 +51,9 @@ class PSLib(Fleet):
         self._client2client_connect_timeout_ms = connect_timeout_ms
         self._client2client_max_retry = max_retry
 
+    def set_pull_local_thread_num(self, thread_num):
+        self._fleet_ptr.set_pull_local_thread_num(thread_num)
+
     def init_worker(self):
         """
         init_worker(): will be called by user. When a user knows current process is_server(), he/she
@@ -615,7 +618,7 @@ class DownpourOptimizer(DistributedOptimizer):
         """
         minimize a program through loss, loss can be a list in DistributedOptimizer.
         Note that in parameter server mode, a worker will not get anything about optimize_os
-        Because optmizer algorithms run on pserver side. We will make this usable in pserver
+        Because optimizer algorithms run on pserver side. We will make this usable in pserver
         process, but currently the optimization part is written into Fleet(). A user does not
         need to care about how to startup a pserver node.
 

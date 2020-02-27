@@ -160,7 +160,7 @@ class DistributeTranspilerConfig(object):
           Minimum number of splitted elements in block, default is 8192.
 
           According to : https://github.com/PaddlePaddle/Paddle/issues/8638#issuecomment-369912156
-          We can use bandwidth effiently when data size is larger than 2MB.If you
+          We can use bandwidth efficiently when data size is larger than 2MB.If you
           want to change it, please be sure you have read the slice_variable function. You can find
           the definition of slice_variable in
           https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/fluid/transpiler/distribute_transpiler.py
@@ -192,6 +192,7 @@ class DistributeTranspilerConfig(object):
 
     # half_async
     half_async = False
+    completely_not_async = False
 
     # Geo-sgd algorithm
     geo_sgd_mode = False
@@ -201,7 +202,7 @@ class DistributeTranspilerConfig(object):
     #The picture here illustrates the principle:
     #https://github.com/PaddlePaddle/Paddle/pull/17263#discussion_r285411396
     use_hierarchical_allreduce = False
-    #Nccl ranks in a node when use hierarchical allreduce, it's setted to gpu cards' number in most cases.
+    #Nccl ranks in a node when use hierarchical allreduce, it's set to gpu cards' number in most cases.
     hierarchical_allreduce_inter_nranks = 0
 
     # if mode is collective
@@ -323,7 +324,7 @@ class DistributeTranspiler(object):
         if self.config.split_method is None:
             self.config.split_method = RoundRobin
 
-        if self.config.sync_mode:
+        if self.config.sync_mode or self.config.completely_not_async:
             self.distributed_mode = DistributedMode.SYNC
         elif self.config.runtime_split_send_recv:
             self.distributed_mode = DistributedMode.ASYNC
@@ -577,6 +578,15 @@ class DistributeTranspiler(object):
                     sync_mode=False,
                     current_endpoint="127.0.0.1:7000")
         """
+
+        err_msg = """
+
+API is deprecated since 2.0.0 Please use FleetAPI instead.
+WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
+
+        """
+        print(err_msg, file=sys.stderr)
+
         if program is None:
             program = default_main_program()
         if startup_program is None:
@@ -719,7 +729,14 @@ class DistributeTranspiler(object):
                     program.global_block().vars[splited_grad_varname]
                 ]
                 sections = self._get_splited_var_sections(splited_vars)
-                send_varnames = [var.name for var in splited_vars]
+
+                if self.config.completely_not_async:
+                    send_varnames = [
+                        "{}.trainer_{}".format(var.name, self.trainer_id)
+                        for var in splited_vars
+                    ]
+                else:
+                    send_varnames = [var.name for var in splited_vars]
             else:
                 send_input_vars = splited_vars
                 sections = []
@@ -1190,7 +1207,7 @@ class DistributeTranspiler(object):
                     type=v.type,
                     dtype=v.dtype,
                     shape=v.shape)
-            if self.sync_mode and self.trainer_num > 1:
+            if self.sync_mode or self.config.completely_not_async and self.trainer_num > 1:
                 for trainer_id in range(self.trainer_num):
                     var = pserver_program.global_block().create_var(
                         name="%s.trainer_%d" % (orig_var_name, trainer_id),
@@ -1443,7 +1460,7 @@ class DistributeTranspiler(object):
             endpoint (str): current pserver endpoint.
             pserver_program (Program): deprecated, call get_pserver_program first.
             startup_program (Program): deprecated, should pass startup_program
-                when initalizing
+                when initializing
 
         Returns:
             Program: parameter server side startup program.
@@ -2195,7 +2212,7 @@ class DistributeTranspiler(object):
 
         merged_var = pserver_block.vars[merged_var_name]
         grad_to_block_id.append(merged_var.name + ":" + str(optimize_block.idx))
-        if self.sync_mode and self.trainer_num > 1:
+        if self.sync_mode or self.config.completely_not_async and self.trainer_num > 1:
             vars2merge = []
             for i in range(self.trainer_num):
                 per_trainer_name = "%s.trainer_%d" % \

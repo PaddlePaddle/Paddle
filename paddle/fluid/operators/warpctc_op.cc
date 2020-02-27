@@ -123,10 +123,10 @@ An operator integrating the open-source
 https://arxiv.org/pdf/1512.02595v1.pdf),
 to compute Connectionist Temporal Classification (CTC) loss.
 It can be aliased as softmax with ctc, since a native softmax activation is
-interated to the warp-ctc library, to to normlize values for each row of the
+interated to the warp-ctc library, to to normalize values for each row of the
 input tensor.
 
-More detail of CTC loss can be found by refering to
+More detail of CTC loss can be found by referring to
 [Connectionist Temporal Classification: Labelling Unsegmented Sequence Data with
 Recurrent Neural Networks](
 http://machinelearning.wustl.edu/mlpapers/paper_files/icml2006_GravesFGS06.pdf).

@@ -497,7 +497,7 @@ def warpctc(input,
     (https://github.com/baidu-research/warp-ctc)
     to compute Connectionist Temporal Classification (CTC) loss.
     It can be aliased as softmax with CTC, since a native softmax activation is
-    interated to the Warp-CTC library to normlize values for each row of the
+    interated to the Warp-CTC library to normalize values for each row of the
     input tensor.
 
     Args:
@@ -523,7 +523,7 @@ def warpctc(input,
        norm_by_times(bool, default false): Whether to normalize the gradients
          by the number of time-step, which is also the sequence's length.
          There is no need to normalize the gradients if warpctc layer was
-         follewed by a mean_op.
+         followed by a mean_op.
        input_length(Variable): The length for each input sequence if it is 
          of Tensor type, it should have shape `[batch_size]` and dtype int64.
        label_length(Variable): The length for each label sequence if it is
@@ -663,12 +663,12 @@ def nce(input,
         num_neg_samples (int): ${num_neg_samples_comment}.
         name(str|None): For detailed information, please refer to 
             :ref:`api_guide_Name` . Usually name is no need to set and None by default.
-        sampler (str, optional): The sampler used to sample class from negtive classes.
+        sampler (str, optional): The sampler used to sample class from negative classes.
                        It can be 'uniform', 'log_uniform' or 'custom_dist'.
                        default: 'uniform'.
         custom_dist (nd.array|None): A numpy ndarray with size=num_total_classes.
                        It is used when sampler is set to 'custom_dist'.
-                       custom_dist[i] is the probsbility of i-th class to be sampled.
+                       custom_dist[i] is the probability of i-th class to be sampled.
                        default: None.
         seed (int, optional): The seed used in sampler. Default 0, means no random seed.
         is_sparse(bool, optional): The flag indicating whether to use sparse update, 
@@ -1194,7 +1194,7 @@ def softmax_with_cross_entropy(logits,
             Label is a ``Tensor``  in the same shape with :attr:`logits`. 
             If :attr:`soft_label` is set to :attr:`True`, Label is a ``Tensor`` 
             in the same shape with :attr:`logits` expect shape in dimension :attr:`axis` as 1.
-        soft_label (bool, optional): A flag to indicate whether to interpretate the given
+        soft_label (bool, optional): A flag to indicate whether to interpretant the given
             labels as soft labels. Default False.
         ignore_index (int, optional): Specifies a target value that is ignored and does
                                       not contribute to the input gradient. Only valid
@@ -1665,7 +1665,7 @@ def mse_loss(input, label):
 
     Parameters: 
         input (Variable): Input tensor, the data type should be float32.
-        label (Variable): Label tensor, the data type shoulf be float32.
+        label (Variable): Label tensor, the data type should be float32.
 
     Returns:
         Variable: The tensor variable storing the mean square error difference of input and label.

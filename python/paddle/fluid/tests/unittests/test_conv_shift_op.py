@@ -51,12 +51,10 @@ class TestConvShiftOp(OpTest):
         self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ignore_x(self):
-        self.check_grad(
-            ['Y'], 'Out', max_relative_error=0.05, no_grad_set=set("X"))
+        self.check_grad(['Y'], 'Out')
 
     def test_check_grad_ignore_y(self):
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=0.05, no_grad_set=set('Y'))
+        self.check_grad(['X'], 'Out')
 
 
 if __name__ == '__main__':

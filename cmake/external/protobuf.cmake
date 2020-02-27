@@ -194,7 +194,8 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
     IF(WIN32)
         SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} 
             "-DCMAKE_GENERATOR=${CMAKE_GENERATOR}"
-            "-DCMAKE_GENERATOR_PLATFORM=${CMAKE_GENERATOR_PLATFORM}")
+            "-DCMAKE_GENERATOR_PLATFORM=${CMAKE_GENERATOR_PLATFORM}"
+            "-Dprotobuf_MSVC_STATIC_RUNTIME=${MSVC_STATIC_CRT}")
     ENDIF()
 
     SET(PROTOBUF_REPOSITORY  https://github.com/protocolbuffers/protobuf.git)
@@ -224,7 +225,6 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
                         -DCMAKE_INSTALL_PREFIX=${PROTOBUF_INSTALL_DIR}
                         -DCMAKE_INSTALL_LIBDIR=lib
                         -DBUILD_SHARED_LIBS=OFF
-                        -Dprotobuf_MSVC_STATIC_RUNTIME=${MSVC_STATIC_CRT}
         CMAKE_CACHE_ARGS
                         -DCMAKE_INSTALL_PREFIX:PATH=${PROTOBUF_INSTALL_DIR}
                         -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}

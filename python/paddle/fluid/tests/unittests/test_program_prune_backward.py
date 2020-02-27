@@ -154,22 +154,23 @@ class TestProgramPruneBackward(unittest.TestCase):
         optimizer().minimize(loss)
         test_prog_prune = main_program.clone(for_test=True)
 
-        import paddle.fluid.transpiler.details.program_utils as pu
-        pu.program_to_code(test_prog_orig, skip_op_callstack=True)
-        pu.program_to_code(test_prog_prune, skip_op_callstack=True)
         self.program_compare(test_prog_orig, test_prog_prune)
 
-        place = core.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        places = [core.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(core.CUDAPlace(0))
 
-        loss_data_prune, = exe.run(test_prog_prune,
-                                   feed=feed_dict,
-                                   fetch_list=[loss.name])
-        loss_data_orig, = exe.run(test_prog_orig,
-                                  feed=feed_dict,
-                                  fetch_list=[loss.name])
-        self.assertEqual(loss_data_orig, loss_data_prune)
+        for place in places:
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+
+            loss_data_prune, = exe.run(test_prog_prune,
+                                       feed=feed_dict,
+                                       fetch_list=[loss.name])
+            loss_data_orig, = exe.run(test_prog_orig,
+                                      feed=feed_dict,
+                                      fetch_list=[loss.name])
+            self.assertEqual(loss_data_orig, loss_data_prune)
 
     def test_simple_fc_net(self):
         def optimizer():
@@ -258,7 +259,7 @@ class TestProgramPruneBackward(unittest.TestCase):
 
     def test_cond(self):
         def optimizer():
-            optimizer = fluid.optimizer.SGD(learning_rate=0.01, )
+            optimizer = fluid.optimizer.SGD(learning_rate=0.01)
             return optimizer
 
         with self.program_scope_guard():
@@ -294,11 +295,7 @@ class TestProgramPruneBackward(unittest.TestCase):
                                        feed=feed_dict,
                                        fetch_list=[loss.name])
 
-        import paddle.fluid.transpiler.details.program_utils as pu
-        pu.program_to_code(test_prog_orig, skip_op_callstack=True)
-        pu.program_to_code(test_prog_prune, skip_op_callstack=True)
         self.program_compare(test_prog_orig, test_prog_prune)
-
         self.assertEqual(loss_data_orig, loss_data_prune)
 
     @contextlib.contextmanager

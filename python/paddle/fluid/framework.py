@@ -458,7 +458,7 @@ def name_scope(prefix=None):
     if in_dygraph_mode():
         yield
     else:
-        assert prefix, "namescope prefix cannot be empty."
+        assert prefix, "namescope prefix can not be empty."
         global _name_scope
         _name_scope = _name_scope.child(prefix)
         yield
@@ -816,7 +816,7 @@ class Variable(object):
     There are many kinds of variables. Each kind of them has its own attributes
     and usages. Please refer to the `framework.proto <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/framework/framework.proto>`_ for details.
 
-    Most of a Variable's member variables can be setted to be None. It mean
+    Most of a Variable's member variables can be set to be None. It mean
     it is not available or will be specified later.
 
     Examples:
@@ -949,7 +949,7 @@ class Variable(object):
     def detach(self):
         """
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Returns a new Variable, detached from the current graph.
 
@@ -979,7 +979,7 @@ class Variable(object):
     def numpy(self):
         """
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Returns a numpy array shows the value of current :ref:`api_guide_Variable_en`
 
@@ -1011,7 +1011,7 @@ class Variable(object):
     def set_value(self, value):
         """
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Set a new value for this Variable.
 
@@ -1042,7 +1042,7 @@ class Variable(object):
     def backward(self, backward_strategy=None):
         """
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Run backward of current Graph which starts from current Variable
 
@@ -1080,7 +1080,7 @@ class Variable(object):
     def gradient(self):
         """
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Get the Gradient of Current Variable
 
@@ -1128,7 +1128,7 @@ class Variable(object):
     def clear_gradient(self):
         """
         **Notes**:
-            **1. This API is ONLY avaliable in Dygraph mode**
+            **1. This API is ONLY available in Dygraph mode**
 
             **2. Use it only Variable has gradient, normally we use this for Parameters since other temporal Variable will be deleted by Python's GC**
 
@@ -1495,7 +1495,7 @@ class Variable(object):
         if length < 0:
             raise ValueError("length should not be negative")
         if step == 0:
-            raise ValueError("slice step cannot be zero")
+            raise ValueError("slice step can not be zero")
 
         # Find lower and upper bounds for start and stop.
         lower = -1 if step < 0 else 0
@@ -2974,7 +2974,7 @@ class IrVarNode(IrNode):
             shape(list): shape to be set.
         """
         assert self.node.var() is not None, \
-            "The node variable description cannot be None."
+            "The node variable description can not be None."
         self.node.var().set_shape(shape)
 
     def persistable(self):
@@ -2985,7 +2985,7 @@ class IrVarNode(IrNode):
             bool: indicate whether the variable is persistable.
         """
         assert self.node.var() is not None, \
-            "The node variable description cannot be None."
+            "The node variable description can not be None."
         return self.node.var().persistable()
 
     def type(self):
@@ -2996,7 +2996,7 @@ class IrVarNode(IrNode):
             core.VarDesc.VarType: the variable type.
         """
         assert self.node.var() is not None, \
-            "The node variable description cannot be None."
+            "The node variable description can not be None."
         return self.node.var().type()
 
     def dtype(self):
@@ -3007,7 +3007,7 @@ class IrVarNode(IrNode):
             core.VarDesc.VarType: the variable data type.
         """
         assert self.node.var() is not None, \
-            "The node variable description cannot be None."
+            "The node variable description can not be None."
         return self.node.var().dtype()
 
     def shape(self):
@@ -3018,7 +3018,7 @@ class IrVarNode(IrNode):
             list: the variable shape.
         """
         assert self.node.var() is not None, \
-            "The node variable description cannot be None."
+            "The node variable description can not be None."
         return self.node.var().shape()
 
     @property
@@ -3068,7 +3068,7 @@ class IrOpNode(IrNode):
             new_input_name(str): the new input name.
         """
         assert self.node.op() is not None, \
-            "The node operator description cannot be None."
+            "The node operator description can not be None."
         self.node.op()._rename_input(old_input_name, new_input_name)
 
     def rename_output(self, old_output_name, new_output_name):
@@ -3080,7 +3080,7 @@ class IrOpNode(IrNode):
             new_output_name(str): the new output name.
         """
         assert self.node.op() is not None, \
-            "The node operator description cannot be None."
+            "The node operator description can not be None."
         print("op: {}, old: {}, new: {}\n".format(self.node.op().type(
         ), old_output_name, new_output_name))
         self.node.op()._rename_output(old_output_name, new_output_name)
@@ -3096,7 +3096,7 @@ class IrOpNode(IrNode):
             list(str): the argument name list.
         """
         assert self.node.op() is not None, \
-            "The node operator description cannot be None."
+            "The node operator description can not be None."
         return self.node.op().input(name)
 
     def output(self, name):
@@ -3110,7 +3110,7 @@ class IrOpNode(IrNode):
             list(str): the argument name list.
         """
         assert self.node.op() is not None, \
-            "The node operator description cannot be None."
+            "The node operator description can not be None."
         return self.node.op().output(name)
 
     def set_type(self, new_type):
@@ -3121,7 +3121,7 @@ class IrOpNode(IrNode):
             new_type(str): new operator type to be set.
         """
         assert self.node.op() is not None, \
-            "The node operator description cannot be None."
+            "The node operator description can not be None."
         return self.node.op().set_type(new_type)
 
     def set_attr(self, name, val):
@@ -3139,7 +3139,7 @@ class IrOpNode(IrNode):
         Update the value of the op desc's attribute by attribute's name.
         """
         assert self.node.op() is not None, \
-            "The node operator description cannot be None."
+            "The node operator description can not be None."
         desc = self.node.op()
         if isinstance(val, Block):
             desc.set_block_attr(name, val.desc)
@@ -3160,7 +3160,7 @@ class IrOpNode(IrNode):
             list(str): input arguments' names of this op node.
         """
         assert self.node.op() is not None, \
-            "The node operator description cannot be None."
+            "The node operator description can not be None."
         return self.node.op().input_arg_names()
 
     def output_arg_names(self):
@@ -3171,7 +3171,7 @@ class IrOpNode(IrNode):
             list(str): output arguments' names of this op node.
         """
         assert self.node.op() is not None, \
-            "The node operator description cannot be None."
+            "The node operator description can not be None."
         return self.node.op().output_arg_names()
 
     @property
@@ -3327,7 +3327,7 @@ class IrGraph(object):
             op_type(str): the type of the operator node.
             attrs(dict): the attributes of the operator node.
             inputs(dict): the inputs of the operator node.
-            outputs(dict): the outpus of the operator node.
+            outputs(dict): the outputs of the operator node.
 
         Returns:
             IrOpNode: the created operator node.
@@ -3468,7 +3468,7 @@ class IrGraph(object):
         """
         Perform the topology sort operation on the graph.
 
-        Notes: the `graph` cannot contain a circle.
+        Notes: the `graph` can not contain a circle.
 
         Returns:
             list(IrNode): nodes in topology order.
@@ -3814,9 +3814,9 @@ class Program(object):
 
                 prog = fluid.default_main_program()
                 prog_string = prog.to_string(throw_on_error=True, with_details=False)
-                print("program string without detial: {}".format(prog_string))
+                print("program string without detail: {}".format(prog_string))
                 prog_string_with_detail = prog.to_string(throw_on_error=True, with_details=True)
-                print("program string with detial: {}".format(prog_string_with_detail))
+                print("program string with detail: {}".format(prog_string_with_detail))
         """
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
                                                                bool)
@@ -4002,18 +4002,15 @@ class Program(object):
         """
         pruned_origin_block_id_map = None
         if for_test:
-            if self._appending_grad_times > 0:
-                forward_prog = Program()
-                forward_prog.desc, pruned_origin_block_id_map = core.prune_backward(
-                    self.desc)
-                forward_prog.blocks = [
-                    Block(forward_prog, i)
-                    for i in six.moves.range(forward_prog.desc.num_blocks())
-                ]
-                forward_prog._sync_with_cpp()
-                p = forward_prog._inference_optimize(prune_read_op=False)
-            else:
-                p = self._inference_optimize(prune_read_op=False)
+            forward_prog = Program()
+            forward_prog.desc, pruned_origin_block_id_map = core.prune_backward(
+                self.desc)
+            forward_prog.blocks = [
+                Block(forward_prog, i)
+                for i in six.moves.range(forward_prog.desc.num_blocks())
+            ]
+            forward_prog._sync_with_cpp()
+            p = forward_prog._inference_optimize(prune_read_op=False)
         else:
             p = Program()
             p.current_block_idx = self.current_block_idx
@@ -4515,7 +4512,7 @@ class Program(object):
         self._ps_endpoint = other._ps_endpoint
         self._distributed_lookup_table = other._distributed_lookup_table
 
-    def _copy_data_info_from(self, other, pruned_origin_block_id_map):
+    def _copy_data_info_from(self, other, pruned_origin_block_id_map=None):
         """
         Copy the information of data variables from other program.
 
@@ -4524,6 +4521,10 @@ class Program(object):
 
         Args:
             other(Program): Other program
+            pruned_origin_block_id_map(dict{int:int}): A dict which maps the block id in program
+            self to the block id in program other. For example, {0:0, 1:1, 2:3} means block 0 in self is 
+            cloned from block 0 in other, etc. Default is None, which means default mapped, 
+            {0:0, 1:1,..., n:n}.
 
         Returns:
             None
@@ -4531,6 +4532,12 @@ class Program(object):
         if not isinstance(other, Program):
             raise TypeError("_copy_data_info_from should be invoked with "
                             "Program")
+
+        if not pruned_origin_block_id_map:
+            pruned_origin_block_id_map = {
+                i: i
+                for i in six.moves.range(self.desc.num_blocks())
+            }
 
         # NOTE(zhiqiu): All vars in cloned program exist in original program.
         # The reverse is not true, due to backward pruning.
@@ -4647,7 +4654,7 @@ class Parameter(Variable):
             Default: {'learning_rate': 1.0}
         regularizer(WeightDecayRegularizer): The Regularizer which will
             be applied on the parameter. Default: None
-        gradient_clip_attr(BaseGradientClipAttr): The gradint clip strategy
+        gradient_clip_attr(BaseGradientClipAttr): The gradient clip strategy
             which will be applied on the parameter. Default: None
         do_model_average(bool): True if the model average strategy will
             be applied on this parameter.
@@ -4753,7 +4760,7 @@ class ParamBase(core.VarBase):
             Default: {'learning_rate': 1.0}
         regularizer(WeightDecayRegularizer): The Regularizer which will
             be applied on the ParamBase. Default: None
-        gradient_clip_attr(BaseGradientClipAttr): The gradint clip strategy
+        gradient_clip_attr(BaseGradientClipAttr): The gradient clip strategy
             which will be applied on the ParamBase. Default: None
         do_model_average(bool): True if the model average strategy will
             be applied on this ParamBase.
@@ -5063,7 +5070,7 @@ def load_op_library(lib_filename):
     Load a dynamic library, including custom operators and kernels.
     When library is loaded, ops and kernels registered in the library
     will be available in PaddlePaddle main process.
-    Please note, the type of custom operators cann't have the same type
+    Please note, the type of custom operators can't have the same type
     with the existing operators in the framework.
 
     Args:
