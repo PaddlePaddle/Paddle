@@ -71,7 +71,6 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'spectral_norm', \
     'squared_l2_distance', \
     'squared_l2_norm', \
-    'tanh', \
     'transpose2', \
     'trilinear_interp', \
     'var_conv_2d', \

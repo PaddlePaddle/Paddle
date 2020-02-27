@@ -122,7 +122,7 @@ class TestTanh(TestActivation):
         #TODO If dtype is float64, the output (Out) has diff at CPUPlace
         # when using and not using inplace. Therefore, set dtype as float32
         # for now.
-        self.dtype = np.float32
+        self.dtype = np.float64
 
 
 class TestAtan(TestActivation):
