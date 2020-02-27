@@ -26,7 +26,6 @@ NEED_TO_FIX_OP_LIST = [
     'matmul',
     'mul',
     'scatter',
-    'smooth_l1_loss',
     'soft_relu',
     'squared_l2_distance',
     'tree_conv',
