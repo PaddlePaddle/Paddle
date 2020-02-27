@@ -1806,22 +1806,22 @@ class Operator(object):
             op_attrs[namescope_var_name] = _full_name_scope()
 
             # set device for op with kernels, give warning for op without kernels
-            # when force_cpu's default value is changed, a deprecation warning will be given.
-            # TODO(zhangting2020): when force_cpu is removed, clear deprecation warning below.
+            # when force_cpu and device_guard are used at the same time, a warning will be given.
+            # TODO(zhangting2020): when force_cpu is removed, clear warning below.
             if _current_device is not None:
                 if self._has_kernel(type):
-                    if 'force_cpu' in op_attrs:
-                        if (type is 'less_than' and op_attrs['force_cpu'] !=
-                                None) or op_attrs['force_cpu'] != False:
-                            warnings.warn(
-                                "The Attr(force_cpu) of Op(%s) will be deprecated in the future, "
-                                "please use device_guard instead. Device_guard has higher priority "
-                                "when they are used at the same time." % type)
                     op_device = op_maker.kOpDeviceAttrName()
                     op_attrs[op_device] = _current_device
                 else:
                     warnings.warn("The Op(%s) is not support to set device." %
                                   type)
+                if 'force_cpu' in op_attrs:
+                    if (type is 'less_than' and op_attrs['force_cpu'] != None
+                        ) or op_attrs['force_cpu'] != False:
+                        warnings.warn(
+                            "The Attr(force_cpu) of Op(%s) will be deprecated in the future, "
+                            "please use 'device_guard' instead. 'device_guard' has higher priority when they are "
+                            "used at the same time." % type)
 
             def find_name(var_list, name):
                 for var_name in var_list:
@@ -5072,21 +5072,30 @@ def switch_device(device):
 @signature_safe_contextmanager
 def device_guard(device=None):
     """
-    A context manager that specifies the device on which the Op will be placed.
+    **Notes**:
+        **The API only supports static mode.**
+
+    A context manager that specifies the device on which the OP will be placed.
+
     Args:
-        device(str): Specify the device to use in the context. It supports 'cpu' or 'gpu',
-            Wnen it is set to 'cpu' or 'gpu', all Ops created in the context will be
+        device(str|None): Specify the device to use in the context. It should be 'cpu' or 'gpu',
+            When it is set to 'cpu' or 'gpu', all OPs created in the context will be
             placed on CPUPlace or CUDAPlace. When 'gpu' is set and the program runs on
             single-card, the device index will be the same as the device on which the
-            executor runs. Default: None, Ops in this context will be automatically
+            executor runs. Default: None, OPs in this context will be automatically
             assigned devices.
-
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            # the three Ops below will be automatically assigned to CUDAPlace(0)
+
+            support_gpu = fluid.is_compiled_with_cuda()
+            place = fluid.CPUPlace()
+            if support_gpu:
+                place = fluid.CUDAPlace(0)
+
+            # if GPU is supported, the three OPs below will be automatically assigned to CUDAPlace(0)
             data1 = fluid.layers.fill_constant(shape=[1, 3, 8, 8], value=0.5, dtype='float32')
             data2 = fluid.layers.fill_constant(shape=[1, 3, 5, 5], value=0.5, dtype='float32')
             shape = fluid.layers.shape(data2)
@@ -5095,19 +5104,18 @@ def device_guard(device=None):
                 # Ops created here will be placed on CPUPlace
                 shape = fluid.layers.slice(shape, axes=[0], starts=[0], ends=[4])
             with fluid.device_guard('gpu'):
-                # Ops created here will be placed on CUDAPlace(0)
+                # if GPU is supported, OPs created here will be placed on CUDAPlace(0), otherwise on CPUPlace
                 out = fluid.layers.crop_tensor(data1, shape=shape)
 
-            place = fluid.CUDAPlace(0)
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
             result = exe.run(fetch_list=[out])
     """
 
-    if device not in ['cpu', 'gpu', None]:
+    if device not in ['cpu', 'gpu', '', None]:
         raise ValueError(
-            "The Attr(device) should be 'cpu' or 'gpu', and it can also be None "
-            "when there is no need to specify device, but received %s" % device)
+            "The Attr(device) should be 'cpu' or 'gpu', and it can also be empty string or None "
+            "when there is no need to specify device. But received %s" % device)
     pre_device = switch_device(device)
     yield
     switch_device(pre_device)

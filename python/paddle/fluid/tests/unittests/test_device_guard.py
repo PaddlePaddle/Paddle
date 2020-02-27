@@ -108,6 +108,7 @@ class TestDeviceGuard(unittest.TestCase):
                         i = fluid.layers.increment(x=i, value=1, in_place=True)
                         fluid.layers.less_than(x=i, y=loop_len, cond=cond)
 
+        assert len(w) == 1
         all_ops = main_program.global_block().ops
         device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
         for op in all_ops:
@@ -125,17 +126,19 @@ class TestDeviceGuard(unittest.TestCase):
         self.assertRaises(ValueError, device_attr)
 
     def test_warning(self):
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-            with fluid.device_guard("gpu"):
-                x = fluid.layers.fill_constant(
-                    shape=[1], value=3.0, dtype='float32', force_cpu=True)
-                y = fluid.layers.fill_constant(
-                    shape=[1], value=4.0, dtype='float32')
-                result = fluid.layers.less_than(x=x, y=y, force_cpu=False)
+        main_program = fluid.Program()
+        startup_program = fluid.Program()
+        with fluid.program_guard(main_program, startup_program):
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                with fluid.device_guard("gpu"):
+                    x = fluid.layers.fill_constant(
+                        shape=[1], value=3.0, dtype='float32', force_cpu=True)
+                    y = fluid.layers.fill_constant(
+                        shape=[1], value=4.0, dtype='float32')
+                    result = fluid.layers.less_than(x=x, y=y, force_cpu=False)
 
         assert len(w) == 2
-        main_program = fluid.default_main_program()
         all_ops = main_program.global_block().ops
         device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
         for op in all_ops:

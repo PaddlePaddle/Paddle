@@ -439,8 +439,7 @@ class Optimizer(object):
             type=param.type if type is None else type,
             shape=shape,
             belong_to_optimizer=True)
-
-        device = self._param_device_map[param.name]
+        device = self._get_device_for_param(param.name)
         with device_guard(device):
             self.helper.set_variable_initializer(
                 var, initializer=Constant(value=float(fill_value)))
@@ -486,6 +485,12 @@ class Optimizer(object):
                             device_attr_name)
                     else:
                         self._param_device_map[param_name] = None
+
+    def _get_device_for_param(self, param_name):
+        device = None
+        if param_name in self._param_device_map:
+            device = self._param_device_map[param_name]
+        return device
 
     def _create_optimization_pass(self, parameters_and_grads):
         """Add optimization operators to update gradients to variables.
@@ -541,7 +546,8 @@ class Optimizer(object):
                 with param_and_grad[0].block.program._optimized_guard(
                         param_and_grad), name_scope("optimizer"):
                     if param_and_grad[0].trainable is True:
-                        device = self._param_device_map[param_and_grad[0].name]
+                        device = self._get_device_for_param(param_and_grad[0]
+                                                            .name)
                         with device_guard(device):
                             optimize_op = self._append_optimize_op(
                                 target_block, param_and_grad)
