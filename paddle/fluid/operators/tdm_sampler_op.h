@@ -52,7 +52,7 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
     auto &travel_lod_tensor = travel_var->Get<framework::LoDTensor>();
     auto &layer_lod_tensor = layer_var->Get<framework::LoDTensor>();
     auto travel_dim = travel_lod_tensor.dims();
-    auto layer_dim = layer_lod_tensor.dims();
+
     // get dimension
     int input_ids_num = input_tensor.numel();
     VLOG(1) << "TDM: input ids nums: " << input_ids_num;
@@ -131,8 +131,25 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
             layer_offset_lod[layer_idx + 1] - layer_offset_lod[layer_idx];
         VLOG(1) << "TDM: layer - " << layer_idx + 1
                 << " - has node_nums: " << node_nums;
+        int node_id_min = layer_offset_lod[layer_idx];
+        int node_id_max = layer_offset_lod[layer_idx + 1];
 
-        if (travel_data[start_offset + layer_idx] == 0) {
+        int positive_node_id = travel_data[start_offset + layer_idx];
+
+        PADDLE_ENFORCE_LT(
+            positive_node_id, node_id_max,
+            "Positive node id of OP(fluid.layers.tdm_sampler) at layer %ld "
+            "expected >= %ld and < %ld, but got %ld. Please check input "
+            "value.",
+            layer_idx, node_id_min, node_id_max, positive_node_id);
+        PADDLE_ENFORCE_LT(
+            node_id_min, positive_node_id,
+            "Positive node id of OP(fluid.layers.tdm_sampler) at layer %ld "
+            "expected >= %ld and < %ld, but got %ld. Please check input "
+            "value.",
+            layer_idx, node_id_min, node_id_max, positive_node_id);
+
+        if (positive_node_id == 0) {
           // skip padding
           VLOG(1) << "TDM: Skip padding ";
           for (int sample_index = 0;
@@ -156,26 +173,16 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
         Sampler *sampler = new math::UniformSampler(node_nums - 1, seed);
         VLOG(2) << "TDM: get sampler ";
 
-        int node_id_max = start_offset + node_nums;
-        PADDLE_ENFORCE_LT(
-            travel_data[start_offset + layer_idx], node_id_max,
-            "Positive node id of OP(fluid.layers.tdm_sampler) "
-            "expected >= %ld and < %ld, but got %ld. Please check input "
-            "tdm tree structure and tdm travel info.",
-            start_offset, node_id_max, travel_data[start_offset + layer_idx]);
-
         // If output positive, add itself
         if (output_positive_flag) {
-          output_vec[i * sample_res_length + offset] =
-              travel_data[start_offset + layer_idx];
+          output_vec[i * sample_res_length + offset] = positive_node_id;
           label_vec[i * sample_res_length + offset] = 1;
           mask_vec[i * sample_res_length + offset] = 1;
-          VLOG(1) << "TDM: node id: " << travel_data[start_offset + layer_idx]
-                  << " Res append positive "
+          VLOG(1) << "TDM: node id: " << positive_node_id << " Res append  "
                   << output_vec[i * sample_res_length + offset]
-                  << " Label append positive "
+                  << " Label append  "
                   << label_vec[i * sample_res_length + offset]
-                  << " Mask append value "
+                  << " Mask append  "
                   << mask_vec[i * sample_res_length + offset];
           offset += 1;
         }
@@ -186,7 +193,7 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
           int64_t sample_res = 0;
           do {
             sample_res = sampler->Sample();
-          } while (travel_data[start_offset + layer_idx] ==
+          } while (positive_node_id ==
                    layer_data[layer_offset_lod[layer_idx] + sample_res]);
 
           output_vec[i * sample_res_length + offset] =
@@ -203,10 +210,10 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
 
           PADDLE_ENFORCE_LT(
               layer_data[layer_offset_lod[layer_idx] + sample_res], node_id_max,
-              "Positive node id of OP(fluid.layers.tdm_sampler) "
+              "Negitive node id of OP(fluid.layers.tdm_sampler) at layer %ld"
               "expected >= %ld and < %ld, but got %ld. Please check input "
               "tdm tree structure and tdm travel info.",
-              start_offset, node_id_max,
+              layer_idx, node_id_min, node_id_max,
               layer_data[layer_offset_lod[layer_idx] + sample_res]);
 
           offset += 1;
