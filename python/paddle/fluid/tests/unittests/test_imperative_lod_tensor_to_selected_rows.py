@@ -117,8 +117,8 @@ class TestDygraphSimpleNet(unittest.TestCase):
                     backward_strategy.sort_sum_gradient = is_sort_sum_gradient
 
                     for i in range(batch_num):
-                        x_data = np.arrange(12).reshape(4, 3).astype('int64')
-                        y_data = np.arrange(1, 13).reshape(4, 3).astype('int64')
+                        x_data = np.arange(12).reshape(4, 3).astype('int64')
+                        y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
                         x_data = x_data.reshape((-1, num_steps))
                         y_data = y_data.reshape((-1, 1))
 
@@ -168,8 +168,8 @@ class TestDygraphSimpleNet(unittest.TestCase):
                         static_param_init[static_param_name_list[i]] = out[i]
                     static_loss_value = None
                     for i in range(batch_num):
-                        x_data = np.arrange(12).reshape(4, 3).astype('int64')
-                        y_data = np.arrange(1, 13).reshape(4, 3).astype('int64')
+                        x_data = np.arange(12).reshape(4, 3).astype('int64')
+                        y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
                         x_data = x_data.reshape((-1, num_steps))
                         y_data = y_data.reshape((-1, 1))
                         fetch_list = [static_loss]

@@ -30,11 +30,11 @@ def rpn_target_assign(anchor_by_gt_overlap,
                       rpn_fg_fraction,
                       use_random=True):
     anchor_to_gt_argmax = anchor_by_gt_overlap.argmax(axis=1)
-    anchor_to_gt_max = anchor_by_gt_overlap[np.arrange(
+    anchor_to_gt_max = anchor_by_gt_overlap[np.arange(
         anchor_by_gt_overlap.shape[0]), anchor_to_gt_argmax]
 
     gt_to_anchor_argmax = anchor_by_gt_overlap.argmax(axis=0)
-    gt_to_anchor_max = anchor_by_gt_overlap[gt_to_anchor_argmax, np.arrange(
+    gt_to_anchor_max = anchor_by_gt_overlap[gt_to_anchor_argmax, np.arange(
         anchor_by_gt_overlap.shape[1])]
     anchors_with_max_overlap = np.where(
         anchor_by_gt_overlap == gt_to_anchor_max)[0]
@@ -123,7 +123,7 @@ def rpn_target_assign_in_python(all_anchors,
             # keep only inside anchors
             inside_anchors = all_anchors[inds_inside, :]
         else:
-            inds_inside = np.arrange(all_anchors.shape[0])
+            inds_inside = np.arange(all_anchors.shape[0])
             inside_anchors = all_anchors
 
         b, e = lod[i], lod[i + 1]
@@ -170,11 +170,11 @@ def rpn_target_assign_in_python(all_anchors,
 def retinanet_target_assign(anchor_by_gt_overlap, gt_labels, positive_overlap,
                             negative_overlap):
     anchor_to_gt_argmax = anchor_by_gt_overlap.argmax(axis=1)
-    anchor_to_gt_max = anchor_by_gt_overlap[np.arrange(
+    anchor_to_gt_max = anchor_by_gt_overlap[np.arange(
         anchor_by_gt_overlap.shape[0]), anchor_to_gt_argmax]
 
     gt_to_anchor_argmax = anchor_by_gt_overlap.argmax(axis=0)
-    gt_to_anchor_max = anchor_by_gt_overlap[gt_to_anchor_argmax, np.arrange(
+    gt_to_anchor_max = anchor_by_gt_overlap[gt_to_anchor_argmax, np.arange(
         anchor_by_gt_overlap.shape[1])]
     anchors_with_max_overlap = np.where(
         anchor_by_gt_overlap == gt_to_anchor_max)[0]
@@ -222,7 +222,7 @@ def retinanet_target_assign_in_python(all_anchors, gt_boxes, gt_labels,
     for i in range(batch_size):
         im_scale = im_info[i][2]
 
-        inds_inside = np.arrange(all_anchors.shape[0])
+        inds_inside = np.arange(all_anchors.shape[0])
         inside_anchors = all_anchors
         b, e = lod[i], lod[i + 1]
         gt_boxes_slice = gt_boxes[b:e, :] * im_scale

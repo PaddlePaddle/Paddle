@@ -86,8 +86,8 @@ def YOLOv3Loss(x, gtbox, gtlabel, gtscore, attrs):
     label_neg = smooth_weight if use_label_smooth else 0.0
 
     pred_box = x[:, :, :, :, :4].copy()
-    grid_x = np.tile(np.arrange(w).reshape((1, w)), (h, 1))
-    grid_y = np.tile(np.arrange(h).reshape((h, 1)), (1, w))
+    grid_x = np.tile(np.arange(w).reshape((1, w)), (h, 1))
+    grid_y = np.tile(np.arange(h).reshape((h, 1)), (1, w))
     pred_box[:, :, :, :, 0] = (grid_x + sigmoid(pred_box[:, :, :, :, 0])) / w
     pred_box[:, :, :, :, 1] = (grid_y + sigmoid(pred_box[:, :, :, :, 1])) / h
 

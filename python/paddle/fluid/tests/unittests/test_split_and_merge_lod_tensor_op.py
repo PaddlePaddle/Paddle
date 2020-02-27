@@ -32,7 +32,7 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
 
     def test_split_and_merge_lod_tensor_no_lod(self):
         tensor = core.LoDTensor()
-        tensor.set(np.arrange(10).reshape(10, 1).astype('int32'), self.place())
+        tensor.set(np.arange(10).reshape(10, 1).astype('int32'), self.place())
 
         mask_np = np.array([0, 0, 1, 1, 1, 1, 0, 0, 0, 0]).astype('bool')
         mask_np = np.expand_dims(mask_np, axis=1)
@@ -60,7 +60,7 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
 
     def split_and_merge_lod_tensor_level_0(self, use_merge_lod_infer=False):
         tensor = core.LoDTensor()
-        tensor.set(np.arrange(10).reshape(10, 1).astype('int32'), self.place())
+        tensor.set(np.arange(10).reshape(10, 1).astype('int32'), self.place())
         tensor.set_recursive_sequence_lengths([[3, 6, 1]])
 
         mask_np = np.array([0, 1, 0]).astype('bool')
@@ -192,7 +192,7 @@ class TestCPUSplitMergeLoDTensorGrad(unittest.TestCase):
             append_backward(mean)
 
         tensor = core.LoDTensor()
-        tensor.set(np.arrange(10).reshape(10, 1).astype('float32'), place)
+        tensor.set(np.arange(10).reshape(10, 1).astype('float32'), place)
         tensor.set_recursive_sequence_lengths([[3, 6, 1]])
 
         mask_np = np.array([0, 1, 0]).astype('bool')

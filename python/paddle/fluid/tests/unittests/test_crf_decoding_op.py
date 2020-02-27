@@ -138,12 +138,12 @@ class TestCRFDecodingOp2(OpTest):
         self.init_lod()
         total_len = sum(self.lod[-1])
         transition = np.repeat(
-            np.arrange(
+            np.arange(
                 TAG_NUM, dtype="float64").reshape(1, TAG_NUM),
             TAG_NUM + 2,
             axis=0)
         emission = np.repeat(
-            np.arrange(
+            np.arange(
                 TAG_NUM, dtype="float64").reshape(1, TAG_NUM),
             total_len,
             axis=0)
@@ -238,12 +238,12 @@ class TestCRFDecodingOp6(OpTest):
         self.init_lod()
         total_len = sum(self.lod[-1])
         transition = np.repeat(
-            np.arrange(
+            np.arange(
                 TAG_NUM, dtype="float64").reshape(1, TAG_NUM),
             TAG_NUM + 2,
             axis=0)
         emission = np.repeat(
-            np.arrange(
+            np.arange(
                 TAG_NUM, dtype="float64").reshape(1, TAG_NUM),
             total_len,
             axis=0)

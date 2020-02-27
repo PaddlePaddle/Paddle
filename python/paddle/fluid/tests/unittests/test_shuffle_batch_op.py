@@ -28,13 +28,13 @@ class TestShuffleBatchOp(OpTest):
         self.op_type = 'shuffle_batch'
         self.dtype = np.float64
         x = np.array(
-            [np.arrange(100), np.arrange(100)]).astype(self.dtype).reshape(
+            [np.arange(100), np.arange(100)]).astype(self.dtype).reshape(
                 [2, 100])
         out = np.array(
-            [np.arrange(100), np.arrange(100)]).astype(self.dtype).reshape(
+            [np.arange(100), np.arange(100)]).astype(self.dtype).reshape(
                 [2, 100])
         self.possible_res = [
-            np.array([np.arrange(100), np.arrange(100)]).astype(self.dtype),
+            np.array([np.arange(100), np.arange(100)]).astype(self.dtype),
         ]
         self.inputs = {'X': x, 'Seed': np.array([1]).astype('int64')}
         self.outputs = {

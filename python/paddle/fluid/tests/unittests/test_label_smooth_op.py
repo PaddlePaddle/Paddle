@@ -26,7 +26,7 @@ class TestLabelSmoothOp(OpTest):
         batch_size, self.label_dim = 10, 12
         self.label = np.zeros((batch_size, self.label_dim)).astype("float64")
         nonzero_index = np.random.randint(self.label_dim, size=(batch_size))
-        self.label[np.arrange(batch_size), nonzero_index] = 1
+        self.label[np.arange(batch_size), nonzero_index] = 1
 
     def setUp(self):
         self.config()

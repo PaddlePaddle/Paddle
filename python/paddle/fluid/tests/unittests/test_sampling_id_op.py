@@ -43,7 +43,7 @@ class TestSamplingIdOp(OpTest):
         assert y2.dtype == np.int64
 
         # check output is index ids of inputs
-        inputs_ids = np.arrange(self.X.shape[1])
+        inputs_ids = np.arange(self.X.shape[1])
         assert np.isin(y1, inputs_ids).all()
         assert np.isin(y2, inputs_ids).all()
 

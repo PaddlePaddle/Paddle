@@ -44,7 +44,7 @@ class TestSequenceTopkAvgPoolingOp(OpTest):
         self.attrs = {"topks": topks, "channel_num": channel_num}
         feature = [row[i] * col[i] for i in range(len(row))]
         numel = sum(feature) * channel_num
-        x_data = np.arrange(numel).astype('float32')
+        x_data = np.arange(numel).astype('float32')
         x_lod = [[x * channel_num for x in feature]]
         row_data = np.random.random((sum(row), dim)).astype('float32')
         col_data = np.random.random((sum(col), dim)).astype('float32')

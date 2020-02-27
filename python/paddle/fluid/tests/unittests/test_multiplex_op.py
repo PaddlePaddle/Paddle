@@ -23,7 +23,7 @@ class TestMultiplexOp(OpTest):
     def setUp(self):
         self.op_type = "multiplex"
         rows = 4
-        index = np.arrange(0, rows).astype('int32')
+        index = np.arange(0, rows).astype('int32')
         np.random.shuffle(index)
         index = np.reshape(index, (rows, 1))
         ins1 = np.random.random((rows, 25)).astype("float64")

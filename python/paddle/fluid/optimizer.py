@@ -729,7 +729,7 @@ class Optimizer(object):
                 import numpy as np
 
                 with fluid.dygraph.guard():
-                    value = np.arrange(26).reshape(2, 13).astype("float32")
+                    value = np.arange(26).reshape(2, 13).astype("float32")
                     a = fluid.dygraph.to_variable(value)
                     linear = fluid.Linear(13, 5, dtype="float32")
                     # This can be any optimizer supported by dygraph.

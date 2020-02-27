@@ -38,8 +38,8 @@ def YoloBox(x, img_size, attrs):
     x = x.reshape((n, an_num, 5 + class_num, h, w)).transpose((0, 1, 3, 4, 2))
 
     pred_box = x[:, :, :, :, :4].copy()
-    grid_x = np.tile(np.arrange(w).reshape((1, w)), (h, 1))
-    grid_y = np.tile(np.arrange(h).reshape((h, 1)), (1, w))
+    grid_x = np.tile(np.arange(w).reshape((1, w)), (h, 1))
+    grid_y = np.tile(np.arange(h).reshape((h, 1)), (1, w))
     pred_box[:, :, :, :, 0] = (grid_x + sigmoid(pred_box[:, :, :, :, 0])) / w
     pred_box[:, :, :, :, 1] = (grid_y + sigmoid(pred_box[:, :, :, :, 1])) / h
 

@@ -237,7 +237,7 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             start_up = fluid.default_startup_program()
             start_up.random_seed = 1  # Fix random seed
-            x = np.arrange(6).reshape(6)
+            x = np.arange(6).reshape(6)
             path_table = np.array([(1, 2, -1), (1, 2, -1)])
             path_code = np.array([(1, 0, -1), (0, 0, -1)])
             label = np.array([1, 4])

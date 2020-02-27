@@ -11502,7 +11502,7 @@ def space_to_depth(x, blocksize, name=None):
     """
     Gives a blocksize to space_to_depth the input LoDtensor with Layout: [batch, channel, height, width]
 
-    This op rearranges blocks of spatial data, into depth. More specifically, this op outputs a copy of \
+    This op rearanges blocks of spatial data, into depth. More specifically, this op outputs a copy of \
         theinput LoDtensor where values from the height and width dimensions are moved to the channel \
         dimension.
     The attr blocksize indicates the input block size.
@@ -11511,7 +11511,7 @@ def space_to_depth(x, blocksize, name=None):
         according to blocksize to construct output with shape \
         [batch, channel * blocksize * blocksize, height/blocksize, width/blocksize]:
 
-    - Non-overlapping blocks of size block_size x block size are rearranged into depth at each location.
+    - Non-overlapping blocks of size block_size x block size are rearanged into depth at each location.
     - The Y, X coordinates within each block of the input become the high order component of the output channel index
     - channel should be divisible by square of blocksize
     - height, width should be divsible by blocksize
@@ -11562,7 +11562,7 @@ def space_to_depth(x, blocksize, name=None):
                 x=data, blocksize=2)
 
             exe = fluid.Executor(fluid.CPUPlace())
-            data_np = np.arrange(0,16).reshape((1,4,2,2)).astype('float32')
+            data_np = np.arange(0,16).reshape((1,4,2,2)).astype('float32')
 
             print(data_np)
             #array([[[[ 0.,  1.], [ 2.,  3.]],
@@ -12753,7 +12753,7 @@ def prroi_pool(input,
 def pixel_shuffle(x, upscale_factor):
     """
 
-    This op rearranges elements in a tensor of shape [N, C, H, W]
+    This op rearanges elements in a tensor of shape [N, C, H, W]
     to a tensor of shape [N, C/r**2, H*r, W*r].
     This is useful for implementing efficient sub-pixel convolution
     with a stride of 1/r.
@@ -13310,7 +13310,7 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
 
     This op returns a col buffer of sliding local blocks of input x, also known
     as im2col for batched 2D image tensors. For each block under the convolution filter,
-    all element will be rearranged as a column. While the convolution filter sliding over
+    all element will be rearanged as a column. While the convolution filter sliding over
     the input feature map, a series of such columns will be formed.
 
     For each input :math:`x` with shape [N, C, H, W], the output shape [N, Cout, Lout]

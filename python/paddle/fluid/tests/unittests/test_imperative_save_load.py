@@ -249,8 +249,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
             last_cell = None
 
             for i in range(batch_num):
-                x_data = np.arrange(12).reshape(4, 3).astype('int64')
-                y_data = np.arrange(1, 13).reshape(4, 3).astype('int64')
+                x_data = np.arange(12).reshape(4, 3).astype('int64')
+                y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
                 y_data = y_data.reshape((-1, 1))
                 init_hidden_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32')
@@ -332,8 +332,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
             last_cell = None
 
             for i in range(batch_num):
-                x_data = np.arrange(12).reshape(4, 3).astype('int64')
-                y_data = np.arrange(1, 13).reshape(4, 3).astype('int64')
+                x_data = np.arange(12).reshape(4, 3).astype('int64')
+                y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
                 y_data = y_data.reshape((-1, 1))
                 init_hidden_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32')
@@ -437,8 +437,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
             last_cell = None
 
             for i in range(batch_num):
-                x_data = np.arrange(12).reshape(4, 3).astype('int64')
-                y_data = np.arrange(1, 13).reshape(4, 3).astype('int64')
+                x_data = np.arange(12).reshape(4, 3).astype('int64')
+                y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
                 y_data = y_data.reshape((-1, 1))
                 init_hidden_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32')
@@ -541,8 +541,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
             last_cell = None
 
             for i in range(batch_num):
-                x_data = np.arrange(12).reshape(4, 3).astype('int64')
-                y_data = np.arrange(1, 13).reshape(4, 3).astype('int64')
+                x_data = np.arange(12).reshape(4, 3).astype('int64')
+                y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
                 y_data = y_data.reshape((-1, 1))
                 init_hidden_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32')
@@ -645,8 +645,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
             ptb_model.set_dict(self.state_dict)
 
             for i in range(1):
-                x_data = np.arrange(12).reshape(4, 3).astype('int64')
-                y_data = np.arrange(1, 13).reshape(4, 3).astype('int64')
+                x_data = np.arange(12).reshape(4, 3).astype('int64')
+                y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
                 y_data = y_data.reshape((-1, 1))
                 init_hidden_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32')
@@ -734,8 +734,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
             ptb_model.set_dict(state_dict)
 
             for i in range(1):
-                x_data = np.arrange(12).reshape(4, 3).astype('int64')
-                y_data = np.arrange(1, 13).reshape(4, 3).astype('int64')
+                x_data = np.arange(12).reshape(4, 3).astype('int64')
+                y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
                 y_data = y_data.reshape((-1, 1))
                 init_hidden_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32')
@@ -833,8 +833,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
             adam.set_dict(np_opti_dict)
             ptb_model.set_dict(np_state_dict)
             for i in range(1):
-                x_data = np.arrange(12).reshape(4, 3).astype('int64')
-                y_data = np.arrange(1, 13).reshape(4, 3).astype('int64')
+                x_data = np.arange(12).reshape(4, 3).astype('int64')
+                y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
                 y_data = y_data.reshape((-1, 1))
                 init_hidden_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32')

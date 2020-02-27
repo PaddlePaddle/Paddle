@@ -838,7 +838,7 @@ class Variable(object):
             import numpy as np
 
             with fluid.dygraph.guard():
-                new_variable = fluid.dygraph.to_variable(np.arrange(10))
+                new_variable = fluid.dygraph.to_variable(np.arange(10))
 
     """
 
@@ -1114,7 +1114,7 @@ class Variable(object):
                         size=[20, 32],
                         param_attr='emb.w',
                         is_sparse=True)
-                    x_data = np.arrange(12).reshape(4, 3).astype('int64')
+                    x_data = np.arange(12).reshape(4, 3).astype('int64')
                     x_data = x_data.reshape((-1, 3, 1))
                     x = fluid.dygraph.base.to_variable(x_data)
                     out = embedding(x)
@@ -1223,9 +1223,9 @@ class Variable(object):
             import numpy as np
 
             with fluid.dygraph.guard():
-                value0 = np.arrange(26).reshape(2, 13).astype("float32")
-                value1 = np.arrange(6).reshape(2, 3).astype("float32")
-                value2 = np.arrange(10).reshape(2, 5).astype("float32")
+                value0 = np.arange(26).reshape(2, 13).astype("float32")
+                value1 = np.arange(6).reshape(2, 3).astype("float32")
+                value2 = np.arange(10).reshape(2, 5).astype("float32")
                 linear = fluid.Linear(13, 5, dtype="float32")
                 linear2 = fluid.Linear(3, 3, dtype="float32")
                 a = fluid.dygraph.to_variable(value0)
