@@ -273,7 +273,7 @@ def reward_func(samples, sample_length):
         if discount == 1.:
             dmat = np.ones([batch_size, max_seq_length], dtype=dtype)
         else:
-            steps = np.tile(np.arange(max_seq_length), [batch_size, 1])
+            steps = np.tile(np.arrange(max_seq_length), [batch_size, 1])
             mask = np.asarray(
                 steps < (sequence_length - 1)[:, None], dtype=dtype)
             # Make each row = [discount, ..., discount, 1, ..., 1]
@@ -294,7 +294,7 @@ def reward_func(samples, sample_length):
         dtype = dtype or sequence.dtype
         if time_major:
             sequence = np.transpose(sequence, axes=[1, 0, 2])
-        steps = np.tile(np.arange(max_time), [batch_size, 1])
+        steps = np.tile(np.arrange(max_time), [batch_size, 1])
         mask = np.asarray(steps < sequence_length[:, None], dtype=dtype)
         for _ in range(2, rank):
             mask = np.expand_dims(mask, -1)

@@ -793,14 +793,14 @@ class BeamSearchDecoder(Decoder):
                 probs, (finished - 1), axis=0)
         return probs
 
-    def _gather(self, x, indices, batch_size):
+    def _gather(self, x, indexs, batch_size):
         """
-        Gather from the tensor `x` using `indices`.
+        Gather from the tensor `x` using `indexs`.
 
         Parameters:
             x(Variable): A tensor with shape `[batch_size, beam_size, ...]`.
-            indices(Variable): A `int64` tensor with shape `[batch_size, beam_size]`,
-                representing the indices that we use to gather.
+            indexs(Variable): A `int64` tensor with shape `[batch_size, beam_size]`,
+                representing the indexs that we use to gather.
             batch_size(Variable): A tensor with shape `[1]`. Its data type should
                 be int32 or int64.
 
@@ -811,14 +811,14 @@ class BeamSearchDecoder(Decoder):
         # TODO: compatibility of int32 and int64
         batch_size = tensor.cast(
             batch_size,
-            indices.dtype) if batch_size.dtype != indices.dtype else batch_size
+            indexs.dtype) if batch_size.dtype != indexs.dtype else batch_size
         batch_size.stop_gradient = True  # TODO: remove this
         batch_pos = nn.expand(
             nn.unsqueeze(
                 tensor.range(
-                    0, batch_size, 1, dtype=indices.dtype), [1]),
+                    0, batch_size, 1, dtype=indexs.dtype), [1]),
             [1, self.beam_size])
-        topk_coordinates = nn.stack([batch_pos, indices], axis=2)
+        topk_coordinates = nn.stack([batch_pos, indexs], axis=2)
         topk_coordinates.stop_gradient = True
         return nn.gather_nd(x, topk_coordinates)
 
@@ -940,28 +940,28 @@ class BeamSearchDecoder(Decoder):
         scores = log_probs
         scores = nn.reshape(scores, [-1, self.beam_size * self.vocab_size])
         # TODO: add grad for topk then this beam search can be used to train
-        topk_scores, topk_indices = nn.topk(input=scores, k=self.beam_size)
-        beam_indices = nn.elementwise_floordiv(topk_indices,
+        topk_scores, topk_indexs = nn.topk(input=scores, k=self.beam_size)
+        beam_indexs = nn.elementwise_floordiv(topk_indexs,
                                                self.vocab_size_tensor)
-        token_indices = nn.elementwise_mod(topk_indices, self.vocab_size_tensor)
+        token_indexs = nn.elementwise_mod(topk_indexs, self.vocab_size_tensor)
         next_log_probs = self._gather(
             nn.reshape(log_probs, [-1, self.beam_size * self.vocab_size]),
-            topk_indices, self.batch_size)
+            topk_indexs, self.batch_size)
         next_cell_states = map_structure(
-            lambda x: self._gather(x, beam_indices, self.batch_size),
+            lambda x: self._gather(x, beam_indexs, self.batch_size),
             next_cell_states)
-        next_finished = self._gather(beam_state.finished, beam_indices,
+        next_finished = self._gather(beam_state.finished, beam_indexs,
                                      self.batch_size)
-        next_lengths = self._gather(beam_state.lengths, beam_indices,
+        next_lengths = self._gather(beam_state.lengths, beam_indexs,
                                     self.batch_size)
         next_lengths = next_lengths + tensor.cast(
             nn.logical_not(next_finished), beam_state.lengths.dtype)
         next_finished = control_flow.logical_or(
             next_finished,
-            control_flow.equal(token_indices, self.end_token_tensor))
+            control_flow.equal(token_indexs, self.end_token_tensor))
 
-        beam_search_output = self.OutputWrapper(topk_scores, token_indices,
-                                                beam_indices)
+        beam_search_output = self.OutputWrapper(topk_scores, token_indexs,
+                                                beam_indexs)
         beam_search_state = self.StateWrapper(next_cell_states, next_log_probs,
                                               next_finished, next_lengths)
         return beam_search_output, beam_search_state
@@ -2469,10 +2469,10 @@ def dynamic_gru(input,
             See usage for details in :ref:`api_fluid_ParamAttr` .
         is_reverse(bool, optional): Whether to compute in the reversed order of
             input sequences. Default False.
-        gate_activation(str, optional): The activation fuction corresponding to
+        gate_activation(str, optional): The activation function corresponding to
             :math:`act_g` in the formula. "sigmoid", "tanh", "relu" and "identity"
             are supported. Default "sigmoid".
-        candidate_activation(str, optional): The activation fuction corresponding to
+        candidate_activation(str, optional): The activation function corresponding to
             :math:`act_c` in the formula. "sigmoid", "tanh", "relu" and "identity"
             are supported. Default "tanh".
         h_0 (Variable, optional): A Tensor representing the initial hidden state.
@@ -2618,10 +2618,10 @@ def gru_unit(input,
         bias_attr (ParamAttr, optional): To specify the bias parameter property.
             Default: None, which means the default bias parameter property is used.
             See usage for details in :ref:`api_fluid_ParamAttr` .
-        activation(str, optional): The activation fuction corresponding to
+        activation(str, optional): The activation function corresponding to
             :math:`act_c` in the formula. "sigmoid", "tanh", "relu" and "identity"
             are supported. Default "tanh".
-        gate_activation(str, optional): The activation fuction corresponding to
+        gate_activation(str, optional): The activation function corresponding to
             :math:`act_g` in the formula. "sigmoid", "tanh", "relu" and "identity"
             are supported. Default "sigmoid".
 
@@ -2746,7 +2746,7 @@ def beam_search(pre_ids,
             `[batch_size * beam_size, K]`, where `K` supposed to be greater than
             ``beam_size`` and the first dimension size (decrease as samples reach
             to the end) should be same as that of ``pre_ids`` . The data type
-            should be int64. It can be None, which use indice in ``scores`` as
+            should be int64. It can be None, which use index in ``scores`` as
             ids.
         scores(Variable): A LodTensor variable containing the accumulated
             scores corresponding to ``ids`` . Both its shape and lod are same as
@@ -2765,7 +2765,7 @@ def beam_search(pre_ids,
             to :ref:`api_guide_Name`. Usually name is no need to set and 
             None by default.
         return_parent_idx(bool, optional): Whether to return an extra Tensor variable
-            in output, which stores the selected ids' parent indice in
+            in output, which stores the selected ids' parent index in
             ``pre_ids`` and can be used to update RNN's states by gather operator.
             Default False.
 
@@ -2774,7 +2774,7 @@ def beam_search(pre_ids,
             representing the selected ids and the corresponding accumulated scores of \
             current step, have the same shape `[batch_size, beam_size]` and lod with 2 levels, \
             and have data types int64 and float32. If ``return_parent_idx`` is True, \
-            an extra Tensor variable preserving the selected ids' parent indice \
+            an extra Tensor variable preserving the selected ids' parent index \
             is included, whose shape is `[batch_size * beam_size]` and data type \
             is int64.
 
@@ -2794,7 +2794,7 @@ def beam_search(pre_ids,
                 name='pre_scores', shape=[None, 1], lod_level=2, dtype='float32')
             probs = fluid.data(
                 name='probs', shape=[None, 10000], dtype='float32')
-            topk_scores, topk_indices = fluid.layers.topk(probs, k=beam_size)
+            topk_scores, topk_indexs = fluid.layers.topk(probs, k=beam_size)
             accu_scores = fluid.layers.elementwise_add(
                 x=fluid.layers.log(x=topk_scores),
                 y=fluid.layers.reshape(pre_scores, shape=[-1]),
@@ -2802,7 +2802,7 @@ def beam_search(pre_ids,
             selected_ids, selected_scores = fluid.layers.beam_search(
                 pre_ids=pre_ids,
                 pre_scores=pre_scores,
-                ids=topk_indices,
+                ids=topk_indexs,
                 scores=accu_scores,
                 beam_size=beam_size,
                 end_id=end_id)

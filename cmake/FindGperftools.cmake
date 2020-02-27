@@ -4,7 +4,7 @@
 #
 #     find_package(Gperftools)
 #
-# Variables used by this module, they can change the default behaviour and need
+# Variables used by this module, they can change the default behavior and need
 # to be set before calling find_package:
 #
 #  Gperftools_ROOT_DIR  Set this variable to the root installation of

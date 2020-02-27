@@ -47,7 +47,7 @@ class Inferencer(object):
                 return y_predict
 
             place = fluid.CPUPlace()
-            inferencer = fluid.Inferencer(
+            inference = fluid.Inferencer(
                 infer_func=inference_program, param_path="/tmp/model", place=place)
 
     """
@@ -92,7 +92,7 @@ class Inferencer(object):
             .. code-block:: python
 
                 tensor_x = numpy.random.uniform(0, 10, [batch_size, 13]).astype("float32")
-                results = inferencer.infer({'x': tensor_x})
+                results = inference.infer({'x': tensor_x})
         """
         if not isinstance(inputs, dict):
             raise ValueError(

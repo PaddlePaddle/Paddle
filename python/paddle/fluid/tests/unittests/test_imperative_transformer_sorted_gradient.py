@@ -147,11 +147,11 @@ def position_encoding_init(n_position, d_pos_vec):
     Generate the initial values for the sinusoid position encoding table.
     """
     channels = d_pos_vec
-    position = np.arange(n_position)
+    position = np.arrange(n_position)
     num_timescales = channels // 2
     log_timescale_increment = (np.log(float(1e4) / float(1)) /
                                (num_timescales - 1))
-    inv_timescales = np.exp(np.arange(
+    inv_timescales = np.exp(np.arrange(
         num_timescales)) * -log_timescale_increment
     scaled_time = np.expand_dims(position, 1) * np.expand_dims(inv_timescales,
                                                                0)
@@ -316,7 +316,7 @@ sync = False
 batch_num = 5
 
 np.random.seed = 90
-src_word_np = np.arange(1, TrainTaskConfig.batch_size * seq_len + 1).reshape(
+src_word_np = np.arrange(1, TrainTaskConfig.batch_size * seq_len + 1).reshape(
     [TrainTaskConfig.batch_size, seq_len]).astype('int64')
 src_pos_np = np.random.randint(
     1, seq_len, size=(TrainTaskConfig.batch_size, seq_len), dtype='int64')
@@ -324,7 +324,7 @@ src_slf_attn_bias_np = np.random.randn(TrainTaskConfig.batch_size,
                                        ModelHyperParams.n_head, seq_len,
                                        seq_len).astype('float32')
 
-trg_word_np = np.arange(1, TrainTaskConfig.batch_size * seq_len + 1).reshape(
+trg_word_np = np.arrange(1, TrainTaskConfig.batch_size * seq_len + 1).reshape(
     [TrainTaskConfig.batch_size, seq_len]).astype('int64')
 trg_pos_np = np.random.randint(
     1, seq_len, size=(TrainTaskConfig.batch_size, seq_len), dtype='int64')

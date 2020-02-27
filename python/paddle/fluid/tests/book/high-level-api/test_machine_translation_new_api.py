@@ -23,13 +23,13 @@ import paddle.fluid as fluid
 
 try:
     from paddle.fluid.contrib.trainer import *
-    from paddle.fluid.contrib.inferencer import *
+    from paddle.fluid.contrib.inference import *
 except ImportError:
     print(
-        "In the fluid 1.0, the trainer and inferencer are moving to paddle.fluid.contrib",
+        "In the fluid 1.0, the trainer and inference are moving to paddle.fluid.contrib",
         file=sys.stderr)
     from paddle.fluid.trainer import *
-    from paddle.fluid.inferencer import *
+    from paddle.fluid.inference import *
 import paddle.fluid.framework as framework
 import paddle.fluid.layers as pd
 from paddle.fluid.executor import Executor

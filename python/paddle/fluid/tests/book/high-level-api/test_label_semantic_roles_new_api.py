@@ -19,13 +19,13 @@ import paddle.fluid as fluid
 import sys
 try:
     from paddle.fluid.contrib.trainer import *
-    from paddle.fluid.contrib.inferencer import *
+    from paddle.fluid.contrib.inference import *
 except ImportError:
     print(
-        "In the fluid 1.0, the trainer and inferencer are moving to paddle.fluid.contrib",
+        "In the fluid 1.0, the trainer and inference are moving to paddle.fluid.contrib",
         file=sys.stderr)
     from paddle.fluid.trainer import *
-    from paddle.fluid.inferencer import *
+    from paddle.fluid.inference import *
 import numpy as np
 
 WORD_DICT, VERB_DICT, LABEL_DICT = paddle.dataset.conll05.get_dict()
@@ -214,7 +214,7 @@ def train(use_cuda, train_program, params_dirname):
 
 def infer(use_cuda, inference_program, params_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    inferencer = Inferencer(
+    inference = Inferencer(
         inference_program, param_path=params_dirname, place=place)
 
     # Setup input by creating LoDTensor to represent sequence of words.
@@ -247,7 +247,7 @@ def infer(use_cuda, inference_program, params_dirname):
     mark = fluid.create_random_int_lodtensor(
         recursive_seq_lens, base_shape, place, low=0, high=MARK_DICT_LEN - 1)
 
-    results = inferencer.infer(
+    results = inference.infer(
         {
             'word_data': word,
             'ctx_n2_data': ctx_n2,

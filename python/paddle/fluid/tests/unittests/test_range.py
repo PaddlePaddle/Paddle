@@ -30,7 +30,7 @@ class TestRangeOp(OpTest):
         }
 
         self.outputs = {
-            'Out': np.arange(self.case[0], self.case[1],
+            'Out': np.arrange(self.case[0], self.case[1],
                              self.case[2]).astype(self.dtype)
         }
 

@@ -192,7 +192,7 @@ def _to_bytes(obj, encoding):
 # math related functions
 def round(x, d=0):
     """
-    Compatible round which act the same behaviour in Python3.
+    Compatible round which act the same behavior in Python3.
 
     Args:
         x(float) : The number to round halfway.
@@ -202,7 +202,7 @@ def round(x, d=0):
     """
     if six.PY3:
         # The official walkaround of round in Python3 is incorrect
-        # we implement accroding this answer: https://www.techforgeek.info/round_python.html
+        # we implement according this answer: https://www.techforgeek.info/round_python.html
         if x > 0.0:
             p = 10**d
             return float(math.floor((x * p) + math.copysign(0.5, x))) / p
@@ -218,7 +218,7 @@ def round(x, d=0):
 
 def floor_division(x, y):
     """
-    Compatible division which act the same behaviour in Python3 and Python2,
+    Compatible division which act the same behavior in Python3 and Python2,
     whose result will be a int value of floor(x / y) in Python3 and value of
     (x / y) in Python2.
 

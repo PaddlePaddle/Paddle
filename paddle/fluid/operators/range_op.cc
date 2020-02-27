@@ -55,7 +55,7 @@ class RangeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Step", "Spacing between values. It is a tensor with shape=[1].");
     AddOutput("Out", "A sequence of numbers.");
     AddComment(R"DOC(
-    Return evenly spaced values within a given interval. Values are generated within the half-open interval [start, stop) (in other words, the interval including start but excluding stop). Like arange function of numpy.
+    Return evenly spaced values within a given interval. Values are generated within the half-open interval [start, stop) (in other words, the interval including start but excluding stop). Like arrange function of numpy.
 )DOC");
   }
 };

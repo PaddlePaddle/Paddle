@@ -1020,7 +1020,7 @@ def append_fetch_ops(inference_program,
 
 
 def save_inference_model(dirname,
-                         feeded_var_names,
+                         fed_var_names,
                          target_vars,
                          executor,
                          main_program=None,
@@ -1043,7 +1043,7 @@ def save_inference_model(dirname,
 
     Args:
         dirname(str): The directory path to save the inference model.
-        feeded_var_names(list[str]): list of string. Names of variables that need to be feeded
+        fed_var_names(list[str]): list of string. Names of variables that need to be fed
                                      data during inference.
         target_vars(list[Variable]): list of Variable. Variables from which we can get 
                                      inference results.
@@ -1102,7 +1102,7 @@ def save_inference_model(dirname,
 
             # Save inference model. Note we don't save label and loss in this example
             fluid.io.save_inference_model(dirname=path,
-                                          feeded_var_names=['img'],
+                                          fed_var_names=['img'],
                                           target_vars=[predict],
                                           executor=exe)
 
@@ -1113,14 +1113,14 @@ def save_inference_model(dirname,
             # "./infer_model".
 
     """
-    if isinstance(feeded_var_names, six.string_types):
-        feeded_var_names = [feeded_var_names]
+    if isinstance(fed_var_names, six.string_types):
+        fed_var_names = [fed_var_names]
     elif export_for_deployment:
-        if len(feeded_var_names) > 0:
+        if len(fed_var_names) > 0:
             # TODO(paddle-dev): polish these code blocks
-            if not (bool(feeded_var_names) and all(
+            if not (bool(fed_var_names) and all(
                     isinstance(name, six.string_types)
-                    for name in feeded_var_names)):
+                    for name in fed_var_names)):
                 raise ValueError("'feed_var_names' should be a list of str.")
 
     if isinstance(target_vars, Variable):
@@ -1191,11 +1191,11 @@ def save_inference_model(dirname,
         main_program.desc.flush()
 
         main_program = main_program._prune_with_input(
-            feeded_var_names=feeded_var_names, targets=target_vars)
+            fed_var_names=fed_var_names, targets=target_vars)
         main_program = main_program._inference_optimize(prune_read_op=True)
         fetch_var_names = [v.name for v in target_vars]
 
-        prepend_feed_ops(main_program, feeded_var_names)
+        prepend_feed_ops(main_program, fed_var_names)
         append_fetch_ops(main_program, fetch_var_names)
 
         main_program.desc._set_version()
@@ -1287,7 +1287,7 @@ def load_inference_model(dirname,
 
             # Save the inference model
             path = "./infer_model"
-            fluid.io.save_inference_model(dirname=path, feeded_var_names=['img'],
+            fluid.io.save_inference_model(dirname=path, fed_var_names=['img'],
                          target_vars=[hidden_b], executor=exe, main_program=main_prog)
 
             # Demo one. Not need to set the distributed look up table, because the

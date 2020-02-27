@@ -872,7 +872,7 @@ def chunk_eval(input,
     It is often used in sequence tagging tasks, such as Named Entity Recognition(NER).
 
     For some basics of chunking, please refer to
-    `Chunking with Support Vector Machines <https://aclanthology.info/pdf/N/N01/N01-1025.pdf>`_ .
+    `Chunking with Support Vector Machines <https://acanthology.info/pdf/N/N01/N01-1025.pdf>`_ .
 
     This operator supports IOB, IOE, IOBES and IO (also known as plain) tagging schemes.
     Here is a NER example for the usage of these tagging schemes:
@@ -4650,11 +4650,11 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
 
 def topk(input, k, name=None):
     """
-    This OP is used to find values and indices of the k largest entries
+    This OP is used to find values and indexs of the k largest entries
     for the last dimension.
 
     If the input is a 1-D Tensor, finds the k largest entries and outputs
-    their values and indices.
+    their values and indexs.
 
     If the input is a Tensor with higher rank, this operator computes the top k
     entries along the last dimension.
@@ -4678,8 +4678,8 @@ def topk(input, k, name=None):
                       [6, 10]]
 
             The second output:
-            indices.shape = [3, 2]
-            indices.data = [[0, 1],
+            indexs.shape = [3, 2]
+            indexs.data = [[0, 1],
                        [2, 3],
                        [0, 2]]
 
@@ -4703,16 +4703,16 @@ def topk(input, k, name=None):
             import paddle.fluid.layers as layers
             # set batch size=None
             input = fluid.data(name="input", shape=[None, 13, 11], dtype='float32')
-            top5_values, top5_indices = layers.topk(input, k=5) # top5_values.shape[None, 13, 5], top5_indices.shape=[None, 13, 5]
+            top5_values, top5_indexs = layers.topk(input, k=5) # top5_values.shape[None, 13, 5], top5_indexs.shape=[None, 13, 5]
 
             # 1D Tensor
             input1 = fluid.data(name="input1", shape=[None, 13], dtype='float32')
-            top5_values, top5_indices = layers.topk(input1, k=5) #top5_values.shape=[None, 5], top5_indices.shape=[None, 5]
+            top5_values, top5_indexs = layers.topk(input1, k=5) #top5_values.shape=[None, 5], top5_indexs.shape=[None, 5]
 
             # k=Variable
             input2 = fluid.data(name="input2", shape=[None, 13, 11], dtype='float32')
             vk = fluid.data(name="vk", shape=[None, 1], dtype='int32') # save k in vk.data[0]
-            vk_values, vk_indices = layers.topk(input2, k=vk) #vk_values.shape=[None, 13, k], vk_indices.shape=[None, 13, k]
+            vk_values, vk_indexs = layers.topk(input2, k=vk) #vk_values.shape=[None, 13, k], vk_indexs.shape=[None, 13, k]
 
     """
     inputs = {"X": [input]}
@@ -4730,17 +4730,17 @@ def topk(input, k, name=None):
 
     helper = LayerHelper("top_k", **locals())
     values = helper.create_variable_for_type_inference(dtype=input.dtype)
-    indices = helper.create_variable_for_type_inference(dtype="int64")
+    indexs = helper.create_variable_for_type_inference(dtype="int64")
 
     helper.append_op(
         type="top_k",
         inputs=inputs,
         outputs={"Out": [values],
-                 "Indices": [indices]},
+                 "Indices": [indexs]},
         attrs=attrs)
     values.stop_gradient = True
-    indices.stop_gradient = True
-    return values, indices
+    indexs.stop_gradient = True
+    return values, indexs
 
 
 def ctc_greedy_decoder(input,
@@ -4874,7 +4874,7 @@ def ctc_greedy_decoder(input,
 
     """
     helper = LayerHelper("ctc_greedy_decoder", **locals())
-    _, topk_indices = topk(input, k=1)
+    _, topk_indexs = topk(input, k=1)
 
     # ctc align op
     ctc_out = helper.create_variable_for_type_inference(dtype="int64")
@@ -4882,14 +4882,14 @@ def ctc_greedy_decoder(input,
     if input_length is None:
         helper.append_op(
             type="ctc_align",
-            inputs={"Input": [topk_indices]},
+            inputs={"Input": [topk_indexs]},
             outputs={"Output": [ctc_out]},
             attrs={"merge_repeated": True,
                    "blank": blank})
         return ctc_out
     else:
         ctc_out_len = helper.create_variable_for_type_inference(dtype="int64")
-        ctc_input = squeeze(topk_indices, [2])
+        ctc_input = squeeze(topk_indexs, [2])
 
         helper.append_op(
             type="ctc_align",
@@ -4914,7 +4914,7 @@ def transpose(x, perm, name=None):
 
     Args:
         x (Variable): The input Tensor. It is a N-D Tensor of data types float32, float64, int32.
-        perm (list): Permute the input accoring to the data of perm.
+        perm (list): Permute the input according to the data of perm.
         name (str): The name of this layer. It is optional.
 
     Returns:
@@ -5384,7 +5384,7 @@ def one_hot(input, depth, allow_out_of_range=False):
         depth(scalar): An integer defining the :attr:`depth` of the one hot dimension. If input 
             is word id, depth is generally the dictionary size.
         allow_out_of_range(bool): A bool value indicating whether the input
-            indices could be out of range :math:`[0, depth)` . When input indices are
+            indexs could be out of range :math:`[0, depth)` . When input indexs are
             out of range, exceptions :code:`Illegal value` is raised if :attr:`allow_out_of_range`
             is False, or zero-filling representations is created if it is set True.
             Default: False.
@@ -5488,7 +5488,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
     be set -1.
 
     2. 0 means the actual dimension value is going to be copied from the
-    corresponding dimension of x. The indice of 0s in shape can not exceed
+    corresponding dimension of x. The index of 0s in shape can not exceed
     the dimension of x.
 
     Here are some examples to explain it.
@@ -5739,7 +5739,7 @@ def unsqueeze(input, axes, name=None):
     """
     Insert single-dimensional entries to the shape of a Tensor. Takes one
     required argument axes, a list of dimensions that will be inserted.
-    Dimension indices in axes are as seen in the output tensor.
+    Dimension indexs in axes are as seen in the output tensor.
 
     For example:
 
@@ -6484,7 +6484,7 @@ def image_resize(input,
     The input must be a 4-D Tensor of the shape (num_batches, channels, in_h, in_w) 
     or (num_batches, in_h, in_w, channels), or a 5-D Tensor of the shape 
     (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels), 
-    and the resizing only applies on the three dimensions(depth, hight and width).
+    and the resizing only applies on the three dimensions(depth, height and width).
 
     **Warning:** the parameter :attr:`actual_shape` will be deprecated in the
     future and only use :attr:`out_shape` instead.
@@ -7551,7 +7551,7 @@ def scatter(input, index, updates, name=None, overwrite=True):
     """
     **Scatter Layer**
 
-    Output is obtained by updating the input on selected indices based on updates.
+    Output is obtained by updating the input on selected indexs based on updates.
 
     .. code-block:: python
         import numpy as np
@@ -7583,7 +7583,7 @@ def scatter(input, index, updates, name=None, overwrite=True):
         index (Variable): The index 1-D Tensor. Data type can be int32, int64. The length of index cannot exceed updates's length, and the value in index cannot exceed input's length.
         updates (Variable): update input with updates parameter based on index. shape should be the same as input, and dim value with dim > 1 should be the same as input.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
-        overwrite (bool): The mode that updating the output when there are same indices.
+        overwrite (bool): The mode that updating the output when there are same indexs.
             If True, use the overwrite mode to update the output of the same index,
 	    if False, use the accumulate mode to update the output of the same index. 
 	    Default value is True.
@@ -8396,7 +8396,7 @@ def pad2d(input,
           data_format="NCHW",
           name=None):
     """
-    Pad 2-d images accordding to 'paddings' and 'mode'.
+    Pad 2-d images according to 'paddings' and 'mode'.
     If mode is 'reflect', paddings[0] and paddings[1] must be no greater
     than height-1. And the width dimension has the same condition.
 
@@ -8418,7 +8418,7 @@ def pad2d(input,
         name (str, optional) : The default value is None.  Normally there is no need for
                     user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
-    Returns: a 4-D Tensor padded accordding to paddings and mode and data type is same as input.
+    Returns: a 4-D Tensor padded according to paddings and mode and data type is same as input.
 
     Return Type: Variable
 
@@ -8533,13 +8533,13 @@ def elu(x, alpha=1.0, name=None):
 
 
 @templatedoc()
-def relu6(x, threshold=6.0, name=None):
+def relu6(x, threshould=6.0, name=None):
     """
     ${comment}
 
     Args:
         x(${x_type}): ${x_comment}
-        threshold(float, optional): ${threshold_comment}
+        threshould(float, optional): ${threshould_comment}
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
@@ -8556,7 +8556,7 @@ def relu6(x, threshold=6.0, name=None):
             in1 = np.array([[-1,0],[2.5,7.8]])
             with fluid.dygraph.guard():
                 x1 = fluid.dygraph.to_variable(in1)
-                out1 = fluid.layers.relu6(x=x1, threshold=6.0)
+                out1 = fluid.layers.relu6(x=x1, threshould=6.0)
                 print(out1.numpy())
                 # [[0.  0. ]
                 #  [2.5 6. ]]
@@ -8567,7 +8567,7 @@ def relu6(x, threshold=6.0, name=None):
         type='relu6',
         inputs={'X': x},
         outputs={'Out': out},
-        attrs={'threshold': threshold})
+        attrs={'threshould': threshould})
     return out
 
 
@@ -8928,15 +8928,15 @@ def leaky_relu(x, alpha=0.02, name=None):
     return out
 
 
-def soft_relu(x, threshold=40.0, name=None):
+def soft_relu(x, threshould=40.0, name=None):
     """
     SoftRelu Activation Operator.
 
-    $out = \ln(1 + \exp(\max(\min(x, threshold), -threshold)))$
+    $out = \ln(1 + \exp(\max(\min(x, threshould), -threshould)))$
 
     Args:
         x(Variable): Input of soft_relu operator. Data type can be float32, float64.
-        threshold(float, optional): The threshold value of soft_relu, default value being 40.0.
+        threshould(float, optional): The threshould value of soft_relu, default value being 40.0.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
@@ -8950,7 +8950,7 @@ def soft_relu(x, threshold=40.0, name=None):
             import numpy as np
 
             inputs = fluid.layers.data(name="x", shape=[2, 2], dtype="float32")
-            output = fluid.layers.soft_relu(inputs, threshold=20.0)
+            output = fluid.layers.soft_relu(inputs, threshould=20.0)
 
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(fluid.default_startup_program())
@@ -8966,7 +8966,7 @@ def soft_relu(x, threshold=40.0, name=None):
         type='soft_relu',
         inputs={'X': x},
         outputs={'Out': out},
-        attrs={'threshold': threshold})
+        attrs={'threshould': threshould})
     return out
 
 
@@ -9843,10 +9843,10 @@ def slice(input, axes, starts, ends):
                             It's optional. If it is not provides, it will be treated as :math:`[0,1,...,len(starts)-1]`.
         starts (list|tuple|Variable): The data type is ``int32`` . If ``starts`` is a list or tuple, the elements of
                 it should be integers or Tensors with shape [1]. If ``starts`` is an Variable, it should be an 1-D Tensor.
-                It represents starting indices of corresponding axis in ``axes``.
+                It represents starting indexs of corresponding axis in ``axes``.
         ends (list|tuple|Variable): The data type is ``int32`` . If ``ends`` is a list or tuple, the elements of
                 it should be integers or Tensors with shape [1]. If ``ends`` is an Variable, it should be an 1-D Tensor .
-                It represents ending indices of corresponding axis in ``axes``.
+                It represents ending indexs of corresponding axis in ``axes``.
 
     Returns:
         Variable:  A ``Tensor`` or ``LoDTensor``. The data type is same as ``input``.
@@ -10036,10 +10036,10 @@ def strided_slice(input, axes, starts, ends, strides):
                             It's optional. If it is not provides, it will be treated as :math:`[0,1,...,len(starts)-1]`.
         starts (list|tuple|Variable): The data type is ``int32`` . If ``starts`` is a list or tuple, the elements of
                 it should be integers or Tensors with shape [1]. If ``starts`` is an Variable, it should be an 1-D Tensor.
-                It represents starting indices of corresponding axis in ``axes``.
+                It represents starting indexs of corresponding axis in ``axes``.
         ends (list|tuple|Variable): The data type is ``int32`` . If ``ends`` is a list or tuple, the elements of
                 it should be integers or Tensors with shape [1]. If ``ends`` is an Variable, it should be an 1-D Tensor .
-                It represents ending indices of corresponding axis in ``axes``.
+                It represents ending indexs of corresponding axis in ``axes``.
         strides (list|tuple|Variable): The data type is ``int32`` . If ``strides`` is a list or tuple, the elements of
                 it should be integers or Tensors with shape [1]. If ``strides`` is an Variable, it should be an 1-D Tensor .
                 It represents slice step of corresponding axis in ``axes``.
@@ -11562,7 +11562,7 @@ def space_to_depth(x, blocksize, name=None):
                 x=data, blocksize=2)
 
             exe = fluid.Executor(fluid.CPUPlace())
-            data_np = np.arange(0,16).reshape((1,4,2,2)).astype('float32')
+            data_np = np.arrange(0,16).reshape((1,4,2,2)).astype('float32')
 
             print(data_np)
             #array([[[[ 0.,  1.], [ 2.,  3.]],
@@ -13346,7 +13346,7 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
                                   [padding_h, padding_w, padding_h, padding_w]. If an integer
                                   padding was given, [padding, padding, padding, padding] will
                                   be used. For default, paddings will be [0, 0, 0, 0]
-        dilations(int|list):      the dilations of convolution kernel, shold be
+        dilations(int|list):      the dilations of convolution kernel, should be
                                   [dilation_h, dilation_w], or an integer dilation treated as
                                   [dilation, dilation]. For default, it will be [1, 1].
         name(str, optional): The default value is None.  
@@ -13581,8 +13581,8 @@ def deformable_roi_pooling(input,
 
 def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     """
-    This operator recomputes the `input` indices according to the offset of the
-    shard. The length of the indices is evenly divided into N shards, and if
+    This operator recomputes the `input` indexs according to the offset of the
+    shard. The length of the indexs is evenly divided into N shards, and if
     the `shard_id` matches the shard with the input index inside, the index is
     recomputed on the basis of the shard offset, elsewise it is set to
     `ignore_value`. The detail is as follows:
@@ -13591,7 +13591,7 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
         shard_size = (index_num + nshards - 1) // nshards
         y = x % shard_size if x // shard_size == shard_id else ignore_value
 
-    NOTE: If the length of indices cannot be evely divided by the shard number,
+    NOTE: If the length of indexs cannot be evely divided by the shard number,
     the size of the last shard will be less than the calculated `shard_size`
 
     Examples:
@@ -13613,7 +13613,7 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
           Out.data = [[-1], [-1], [2], [9]]
     
     Args:
-        - **input** (Variable): Input indices, last dimension must be 1.
+        - **input** (Variable): Input indexs, last dimension must be 1.
         - **index_num** (scalar): An integer defining the range of the index.
         - **nshards** (scalar): The number of shards
         - **shard_id** (scalar): The index of the current shard
@@ -13655,7 +13655,7 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
 
 
 @templatedoc()
-def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
+def hard_swish(x, threshould=6.0, scale=6.0, offset=3.0, name=None):
     """
     This operator implements the hard_swish activation function.
     Hard_swish is proposed in MobileNetV3, and performs better in computational stability and efficiency compared to swish function.
@@ -13665,15 +13665,15 @@ def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
 
     .. math::
 
-        out = \\frac{x * (min(max(0, x+offset), threshold))}{scale}
+        out = \\frac{x * (min(max(0, x+offset), threshould))}{scale}
 
     In the above equation:
 
-    ``threshold`` and ``scale`` should be positive, ``offset`` can be positive or negative. It is recommended to use default parameters.
+    ``threshould`` and ``scale`` should be positive, ``offset`` can be positive or negative. It is recommended to use default parameters.
 
     Args:
         x (Variable): Input feature, multi-dimensional Tensor. The data type should be float32 or float64.
-        threshold (float, optional): The threshold in Relu function. Default: 6.0
+        threshould (float, optional): The threshould in Relu function. Default: 6.0
         scale (float, optional): The scale factor. Default: 6.0
         offset (float, optional): The offset factor. Default: 3.0
         name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` 
@@ -13708,7 +13708,7 @@ def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
         type='hard_swish',
         inputs={'X': x},
         outputs={'Out': out},
-        attrs={'threshold': threshold,
+        attrs={'threshould': threshould,
                'scale': scale,
                'offset': offset})
     return out

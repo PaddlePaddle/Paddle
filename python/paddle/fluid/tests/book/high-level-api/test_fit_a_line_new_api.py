@@ -19,13 +19,13 @@ import paddle.fluid as fluid
 import sys
 try:
     from paddle.fluid.contrib.trainer import *
-    from paddle.fluid.contrib.inferencer import *
+    from paddle.fluid.contrib.inference import *
 except ImportError:
     print(
-        "In the fluid 1.0, the trainer and inferencer are moving to paddle.fluid.contrib",
+        "In the fluid 1.0, the trainer and inference are moving to paddle.fluid.contrib",
         file=sys.stderr)
     from paddle.fluid.trainer import *
-    from paddle.fluid.inferencer import *
+    from paddle.fluid.inference import *
 import contextlib
 import numpy
 import unittest
@@ -101,13 +101,13 @@ def infer(use_cuda, inference_program, params_dirname=None):
         return
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    inferencer = Inferencer(
+    inference = Inferencer(
         infer_func=inference_program, param_path=params_dirname, place=place)
 
     batch_size = 10
     tensor_x = numpy.random.uniform(0, 10, [batch_size, 13]).astype("float32")
 
-    results = inferencer.infer({'x': tensor_x})
+    results = inference.infer({'x': tensor_x})
     print("infer results: ", results[0])
 
 
@@ -121,7 +121,7 @@ def infer_by_saved_model(use_cuda, save_dirname=None):
     inference_scope = fluid.core.Scope()
     with fluid.scope_guard(inference_scope):
         # Use fluid.io.load_inference_model to obtain the inference program desc,
-        # the feed_target_names (the names of variables that will be feeded
+        # the feed_target_names (the names of variables that will be fed
         # data using feed operators), and the fetch_targets (variables that
         # we want to obtain data from using fetch operators).
         [inference_program, feed_target_names,

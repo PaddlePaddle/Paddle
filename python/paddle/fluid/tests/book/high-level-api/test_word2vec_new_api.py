@@ -19,13 +19,13 @@ import paddle.fluid as fluid
 import sys
 try:
     from paddle.fluid.contrib.trainer import *
-    from paddle.fluid.contrib.inferencer import *
+    from paddle.fluid.contrib.inference import *
 except ImportError:
     print(
-        "In the fluid 1.0, the trainer and inferencer are moving to paddle.fluid.contrib",
+        "In the fluid 1.0, the trainer and inference are moving to paddle.fluid.contrib",
         file=sys.stderr)
     from paddle.fluid.trainer import *
-    from paddle.fluid.inferencer import *
+    from paddle.fluid.inference import *
 import numpy as np
 import math
 import sys
@@ -131,7 +131,7 @@ def train(use_cuda, train_program, params_dirname):
 
 def infer(use_cuda, inference_program, params_dirname=None):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    inferencer = Inferencer(
+    inference = Inferencer(
         infer_func=inference_program, param_path=params_dirname, place=place)
 
     # Setup inputs by creating 4 LoDTensors representing 4 words. Here each word 
@@ -153,7 +153,7 @@ def infer(use_cuda, inference_program, params_dirname=None):
     fourth_word = fluid.create_random_int_lodtensor(
         recursive_seq_lens, base_shape, place, low=0, high=dict_size - 1)
 
-    result = inferencer.infer(
+    result = inference.infer(
         {
             'firstw': first_word,
             'secondw': second_word,

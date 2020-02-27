@@ -47,7 +47,7 @@ from .dataset import *
 from .data import *
 
 from . import trainer_desc
-from . import inferencer
+from . import inference
 
 from . import io
 from . import evaluator
@@ -92,7 +92,7 @@ from .dygraph.varbase_patch_methods import monkey_patch_varbase
 Tensor = LoDTensor
 
 __all__ = framework.__all__ + executor.__all__ + \
-    trainer_desc.__all__ + inferencer.__all__ + transpiler.__all__ + \
+    trainer_desc.__all__ + inference.__all__ + transpiler.__all__ + \
     parallel_executor.__all__ + lod_tensor.__all__ + \
     data_feed_desc.__all__ + compiler.__all__ + backward.__all__  + [
         'io',

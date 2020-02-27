@@ -384,10 +384,10 @@ class DistributedAdam(DistributedOptimizerImplBase):
             ps_param.fs_client_param.user = strategy["fs_user"]
         elif ps_param.fs_client_param.user == "":
             ps_param.fs_client_param.user = "your_hdfs_user"
-        if strategy.get("fs_passwd") is not None:
-            ps_param.fs_client_param.passwd = strategy["fs_passwd"]
-        elif ps_param.fs_client_param.passwd == "":
-            ps_param.fs_client_param.passwd = "your_hdfs_passwd"
+        if strategy.get("fs_password") is not None:
+            ps_param.fs_client_param.password = strategy["fs_password"]
+        elif ps_param.fs_client_param.password == "":
+            ps_param.fs_client_param.password = "your_hdfs_password"
         if strategy.get("fs_hadoop_bin") is not None:
             ps_param.fs_client_param.hadoop_bin = strategy["fs_hadoop_bin"]
         elif ps_param.fs_client_param.hadoop_bin == "":

@@ -668,7 +668,7 @@ def fill_constant_batch_size_like(input,
                                   output_dim_idx=0,
                                   force_cpu=False):
     """
-    This OP creates a Tesnor accroding the shape and dtype, and initializes the
+    This OP creates a Tesnor according the shape and dtype, and initializes the
     Tensor with the constants provided in ``value``. When the input is LoDTensor
     and the input_dim_idx is 0, the output_dim_idx dimension is set to the value
     of the batch_size input by the input, the Stop_gradient attribute of the created
@@ -1333,7 +1333,7 @@ def diag(diagonal):
 
           import paddle.fluid as fluid
           import numpy as np
-          diagonal = np.arange(3, 6, dtype='int32')
+          diagonal = np.arrange(3, 6, dtype='int32')
           data = fluid.layers.diag(diagonal)
           # diagonal.shape=(3,) data.shape=(3, 3)
 
@@ -1420,7 +1420,7 @@ def eye(num_rows, num_columns=None, batch_shape=None, dtype='float32'):
             if batch_val <= 0:
                 raise TypeError("batch_shape should be a positive int list")
             else:
-                stack_vars = [out for _ in numpy.arange(batch_val)]
+                stack_vars = [out for _ in numpy.arrange(batch_val)]
                 out = stack(stack_vars, axis=0)
     return out
 

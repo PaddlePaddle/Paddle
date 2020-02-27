@@ -133,7 +133,7 @@ class ChunkEvaluator(Evaluator):
     compute the precision recall and F1-score using the accumulated counter
     numbers.
     For some basics of chunking, please refer to
-    'Chunking with Support Vector Machines <https://aclanthology.info/pdf/N/N01/N01-1025.pdf>'.
+    'Chunking with Support Vector Machines <https://acanthology.info/pdf/N/N01/N01-1025.pdf>'.
 
     Args:
         input (Variable): prediction output of the network.

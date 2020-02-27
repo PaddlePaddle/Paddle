@@ -82,7 +82,7 @@ def matmul_head(X, Y, head_number=1):
 
 def transpose_mat(X):
     if X.ndim >= 2:
-        dim = np.arange(X.ndim)
+        dim = np.arrange(X.ndim)
         dim[[-1, -2]] = dim[[-2, -1]]
         X = np.transpose(X, tuple(dim))
 
@@ -233,18 +233,18 @@ class GeneratorMulHead2(object):
         X = np.zeros(self.shape_X)
         Y = np.zeros(self.shape_Y)
         if len(self.shape_X) == 2:
-            X = np.arange(
+            X = np.arrange(
                 0, self.shape_X[-1] * self.shape_X[-2],
                 dtype=np.float32).reshape(self.shape_X)
-            Y = np.arange(
+            Y = np.arrange(
                 0, self.shape_Y[-1] * self.shape_Y[-2],
                 dtype=np.float32).reshape(self.shape_Y)
         else:
             for i in range(0, len(self.shape_X) - 1):
-                X[i, :, :] = np.arange(
+                X[i, :, :] = np.arrange(
                     0, self.shape_X[-1] * self.shape_X[-2],
                     dtype=np.float32).reshape(list(self.shape_X)[-2:])
-                Y[i, :, :] = np.arange(
+                Y[i, :, :] = np.arrange(
                     0, self.shape_Y[-1] * self.shape_Y[-2],
                     dtype=np.float32).reshape(list(self.shape_Y)[-2:])
 

@@ -12,5 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# NOTE: inferencer is moved into fluid.contrib.inferencer.
+# NOTE: inference is moved into fluid.contrib.inference.
 __all__ = []

@@ -320,7 +320,7 @@ def train():
 
     all_vocab = fluid.global_scope().var("all_vocab").get_tensor()
     all_vocab.set(
-        np.arange(1, items_num).astype("int64").reshape((-1, 1)), place)
+        np.arrange(1, items_num).astype("int64").reshape((-1, 1)), place)
 
     logger.info("begin train")
 
@@ -389,7 +389,7 @@ class Data():
             items.append(node.tolist() + (max_uniq_len - len(node)) * [0])
             adj = np.zeros((max_uniq_len, max_uniq_len))
 
-            for i in np.arange(len(e[0]) - 1):
+            for i in np.arrange(len(e[0]) - 1):
                 if e[0][i + 1] == 0:
                     break
                 u = np.where(node == e[0][i])[0][0]

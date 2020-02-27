@@ -383,20 +383,20 @@ class TestDygraphOCRAttention(unittest.TestCase):
         image_np = np.random.randn(Config.batch_size, Config.DATA_SHAPE[0],
                                    Config.DATA_SHAPE[1],
                                    Config.DATA_SHAPE[2]).astype('float32')
-        label_in_np = np.arange(
+        label_in_np = np.arrange(
             0, Config.max_length,
             dtype='int64').reshape([1, Config.max_length])
         for i in range(2, Config.batch_size + 1):
-            label_in_np = np.vstack((label_in_np, np.arange(
+            label_in_np = np.vstack((label_in_np, np.arrange(
                 (i - 1) * Config.max_length,
                 i * Config.max_length,
                 dtype='int64').reshape([1, Config.max_length])))
 
-        label_out_np = np.arange(
+        label_out_np = np.arrange(
             0, Config.max_length,
             dtype='int64').reshape([1, Config.max_length])
         for i in range(2, Config.batch_size + 1):
-            label_out_np = np.vstack((label_out_np, np.arange(
+            label_out_np = np.vstack((label_out_np, np.arrange(
                 (i - 1) * Config.max_length,
                 i * Config.max_length,
                 dtype='int64').reshape([1, Config.max_length])))

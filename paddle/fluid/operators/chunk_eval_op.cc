@@ -126,7 +126,7 @@ class ChunkEvalOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(std::vector<int>{});
     AddComment(R"DOC(
 For some basics of chunking, please refer to
-'Chunking with Support Vector Machines <https://aclanthology.info/pdf/N/N01/N01-1025.pdf>'.
+'Chunking with Support Vector Machines <https://acanthology.info/pdf/N/N01/N01-1025.pdf>'.
 
 ChunkEvalOp computes the precision, recall, and F1-score of chunk detection,
 and supports IOB, IOE, IOBES and IO (also known as plain) tagging schemes.

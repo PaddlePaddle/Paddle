@@ -448,7 +448,7 @@ class PSLib(Fleet):
                     model_proto_file(str): path of program desc proto binary
                                            file, can be local or hdfs/afs file
                     var_names(list): var name list
-                    load_combine(bool): load from a file or splited param files
+                    load_combine(bool): load from a file or split param files
                                         default False.
 
         Examples:
@@ -502,7 +502,7 @@ class PSLib(Fleet):
             model_proto_file(str): path of program desc proto binary file,
                                    can be local or hdfs/afs file
             var_names(list): load var names
-            load_combine(bool): load from a file or splited param files
+            load_combine(bool): load from a file or split param files
 
         """
         self._role_maker._barrier_worker()
@@ -510,7 +510,7 @@ class PSLib(Fleet):
             # get fs config from fleet_desc
             fs_name = self._opt_info["fleet_desc"].fs_client_param.uri
             fs_ugi = self._opt_info["fleet_desc"].fs_client_param.user + "," + \
-                     self._opt_info["fleet_desc"].fs_client_param.passwd
+                     self._opt_info["fleet_desc"].fs_client_param.password
             hadoop_bin = self._opt_info["fleet_desc"].fs_client_param.hadoop_bin
             # download model_path if it's hdfs/afs
             if model_path.startswith("hdfs:") or model_path.startswith("afs:"):

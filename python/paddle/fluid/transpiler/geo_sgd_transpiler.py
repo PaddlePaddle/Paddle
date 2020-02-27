@@ -106,19 +106,19 @@ class GeoSgdTranspiler(DistributeTranspiler):
         self.split_to_origin_mapping = collections.OrderedDict()
         self.delta_vars_list = []
         self.sparse_var_list = []
-        self.sparse_var_splited_list = []
+        self.sparse_var_split_list = []
 
-        # split and create vars, then put splited vars in dicts for later use.
-        # step 1. split and create vars, then put splited vars in dicts for later use.
-        self._init_splited_vars()
+        # split and create vars, then put split vars in dicts for later use.
+        # step 1. split and create vars, then put split vars in dicts for later use.
+        self._init_split_vars()
 
         # step 3. create send recv var (param after optimize)
         send_vars = []
         ps_dispatcher.reset()
         param_var_mapping_items = list(six.iteritems(self.param_var_mapping))
-        # send_vars is the parameter which splited by communicator and send to pserver,not the origin parameter
-        for _, splited_vars in param_var_mapping_items:
-            for _, var in enumerate(splited_vars):
+        # send_vars is the parameter which split by communicator and send to pserver,not the origin parameter
+        for _, split_vars in param_var_mapping_items:
+            for _, var in enumerate(split_vars):
                 send_vars.append(var)
 
         recv_vars = send_vars
@@ -223,7 +223,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
             param = pserver_block.vars[var_name]
 
             delta_var_name = "%s.delta" % (param.name)
-            if var.name in self.sparse_var_splited_list:
+            if var.name in self.sparse_var_split_list:
                 delta_type = core.VarDesc.VarType.SELECTED_ROWS
                 sparse_grad_to_param.append(":".join(
                     [delta_var_name, param.name]))
@@ -268,7 +268,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
         self.pserver_program = pserver_program
         return pserver_program
 
-    def _init_splited_vars(self):
+    def _init_split_vars(self):
         param_list = []
         grad_list = []
         param_grad_set = set()
@@ -292,8 +292,8 @@ class GeoSgdTranspiler(DistributeTranspiler):
                                       len(self.pserver_endpoints),
                                       self.config.min_block_size)
 
-        # step 3. Create splited param from split blocks
-        # origin_param_name -> [splited_param_vars]
+        # step 3. Create split param from split blocks
+        # origin_param_name -> [split_param_vars]
         # Todo: update _create_vars_from_blocklist
         self.param_var_mapping = self._create_vars_from_blocklist(
             self.origin_program, param_blocks)
@@ -309,11 +309,11 @@ class GeoSgdTranspiler(DistributeTranspiler):
         ]
 
         # step 5. Create delta var of Geo-Sgd & record vars information
-        for origin_name, splited_vars in self.param_var_mapping.items():
+        for origin_name, split_vars in self.param_var_mapping.items():
             origin_var = self.origin_program.global_block().var(origin_name)
             self.vars_info[origin_name] = collections.OrderedDict()
             self.vars_info[origin_name]["var_names"] = []
-            vars_section = self._get_splited_var_sections(splited_vars)
+            vars_section = self._get_split_var_sections(split_vars)
             self.vars_info[origin_name]["sections"] = [
                 str(i) for i in vars_section
             ]
@@ -336,25 +336,25 @@ class GeoSgdTranspiler(DistributeTranspiler):
 
             self.delta_vars_list.append(delta_var)
 
-            for splited_var in splited_vars:
+            for split_var in split_vars:
                 is_slice, block_id, offset = self._get_slice_var_info(
-                    splited_var)
+                    split_var)
                 self.vars_overview.add_distributed_var(
                     origin_var=origin_var,
-                    slice_var=splited_var,
+                    slice_var=split_var,
                     block_id=block_id,
                     offset=offset,
                     is_slice=is_slice,
                     vtype="Param")
-                self.split_to_origin_mapping[splited_var.name] = origin_name
+                self.split_to_origin_mapping[split_var.name] = origin_name
                 if origin_name in self.sparse_var_list:
-                    self.sparse_var_splited_list.append(splited_var.name)
+                    self.sparse_var_split_list.append(split_var.name)
                 self.vars_info[origin_name]["var_names"].append(
-                    splited_var.name)
-                if len(splited_vars) != 1:
+                    split_var.name)
+                if len(split_vars) != 1:
                     self.origin_program.global_block().create_var(
-                        name=".".join([splited_var.name, "delta"]),
+                        name=".".join([split_var.name, "delta"]),
                         persistable=False,
-                        dtype=splited_var.dtype,
+                        dtype=split_var.dtype,
                         type=delta_type,
-                        shape=splited_var.shape)
+                        shape=split_var.shape)

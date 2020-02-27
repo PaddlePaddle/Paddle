@@ -429,7 +429,7 @@ class TestLayer(LayerTest):
         self.assertTrue(np.allclose(n2, max_ret_value))
 
     def test_sequence_conv(self):
-        inp_np = np.arange(12).reshape([3, 4]).astype('float32')
+        inp_np = np.arrange(12).reshape([3, 4]).astype('float32')
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
         else:
@@ -474,7 +474,7 @@ class TestLayer(LayerTest):
             np.array_equal(np.array(static_rlt), np.array(static_rlt2)))
 
     def test_conv2d_transpose(self):
-        inp_np = np.arange(0, 24).reshape([2, 3, 2, 2]).astype('float32')
+        inp_np = np.arrange(0, 24).reshape([2, 3, 2, 2]).astype('float32')
         with self.static_graph():
             img = layers.data(name='pixel', shape=[3, 2, 2], dtype='float32')
             out = layers.conv2d_transpose(
@@ -1020,7 +1020,7 @@ class TestLayer(LayerTest):
                 np.array_equal(conv3d1.bias.numpy(), conv3d2.bias.numpy()))
 
     def test_row_conv(self):
-        input = np.arange(15).reshape([3, 5]).astype('float32')
+        input = np.arrange(15).reshape([3, 5]).astype('float32')
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
         else:
@@ -1278,7 +1278,7 @@ class TestLayer(LayerTest):
                 np.array_equal(treeConv1.bias.numpy(), treeConv2.bias.numpy()))
 
     def test_conv3d_transpose(self):
-        input_array = np.arange(0, 48).reshape(
+        input_array = np.arrange(0, 48).reshape(
             [2, 3, 2, 2, 2]).astype('float32')
 
         with self.static_graph():
@@ -1429,8 +1429,8 @@ class TestLayer(LayerTest):
         self.assertTrue(np.array_equal(static_ret[0], dy_ret[0].numpy()))
 
     def test_compare(self):
-        value_a = np.arange(3)
-        value_b = np.arange(3)
+        value_a = np.arrange(3)
+        value_b = np.arrange(3)
         # less than
         with self.static_graph():
             a = layers.data(name='a', shape=[1], dtype='int64')

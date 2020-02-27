@@ -131,7 +131,7 @@ class TestCrossEntropyOp3(TestCrossEntropyOp):
         self.label_index = np.random.randint(0, self.class_num,
                                              (self.batch_size))
         self.label = np.zeros(self.x.shape).astype(self.dtype)
-        self.label[np.arange(self.batch_size), self.label_index] = 1
+        self.label[np.arrange(self.batch_size), self.label_index] = 1
 
     def get_cross_entropy(self):
         self.cross_entropy = np.asmatrix(
@@ -254,7 +254,7 @@ class TestCrossEntropyOp6(TestCrossEntropyOp):
         self.label_index_2d = np.random.randint(
             0, self.class_num, (self.ins_num), dtype="int64")
         label_2d = np.zeros(self.X_2d.shape)
-        label_2d[np.arange(self.ins_num), self.label_index_2d] = 1
+        label_2d[np.arrange(self.ins_num), self.label_index_2d] = 1
         self.label = label_2d.reshape(self.shape + [self.class_num]).astype(
             self.dtype)
 

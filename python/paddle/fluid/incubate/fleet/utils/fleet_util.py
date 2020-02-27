@@ -392,7 +392,7 @@ class FleetUtil(object):
                                               pass_id=66,
                                               xbox_base_key=int(time.time()),
                                               hadoop_fs_name="hdfs://xxx",
-                                              hadoop_fs_ugi="user,passwd")
+                                              hadoop_fs_ugi="user,password")
 
         """
         day = str(day)
@@ -492,7 +492,7 @@ class FleetUtil(object):
                   xbox_base_key=int(time.time()),
                   data_path="hdfs:/my/data/",
                   hadoop_fs_name="hdfs://xxx",
-                  hadoop_fs_ugi="user,passwd",
+                  hadoop_fs_ugi="user,password",
                   monitor_data={}
                   )
 
@@ -602,7 +602,7 @@ class FleetUtil(object):
                   pass_id=1,
                   key_num=123456,
                   hadoop_fs_name="hdfs://xxx",
-                  hadoop_fs_ugi="user,passwd",
+                  hadoop_fs_ugi="user,password",
                   )
 
         """

@@ -222,10 +222,10 @@ TEST(math_function, gemm_notrans_cublas_fp32) {
   paddle::framework::TensorCopySync(input3_gpu, cpu_place, &input3);
 
   // numpy code:
-  // a = np.arange(6).reshape(2, 3)
-  // b = np.arange(12).reshape(3, 4)[:, 1:]
-  // c = np.arange(8).reshape(2, 4)[:, 1:]
-  // out = np.arange(8).reshape(2, 4)
+  // a = np.arrange(6).reshape(2, 3)
+  // b = np.arrange(12).reshape(3, 4)[:, 1:]
+  // c = np.arrange(8).reshape(2, 4)[:, 1:]
+  // out = np.arrange(8).reshape(2, 4)
   // out[:, 1:] = np.dot(a, b) + c
   context.Wait();
   EXPECT_EQ(input3_ptr[0], 0);
@@ -284,10 +284,10 @@ TEST(math_function, gemm_notrans_cublas_fp16) {
   paddle::framework::TensorCopySync(input3_gpu, cpu_place, &input3);
 
   // numpy code:
-  // a = np.arange(6).reshape(2, 3)
-  // b = np.arange(12).reshape(3, 4)[:, 1:]
-  // c = np.arange(8).reshape(2, 4)[:, 1:]
-  // out = np.arange(8).reshape(2, 4)
+  // a = np.arrange(6).reshape(2, 3)
+  // b = np.arrange(12).reshape(3, 4)[:, 1:]
+  // c = np.arrange(8).reshape(2, 4)[:, 1:]
+  // out = np.arrange(8).reshape(2, 4)
   // out[:, 1:] = np.dot(a, b) + c
   context.Wait();
   EXPECT_EQ(static_cast<float>(input3_ptr[0]), 0);

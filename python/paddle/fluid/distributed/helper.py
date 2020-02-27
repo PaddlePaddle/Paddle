@@ -20,7 +20,7 @@ class FileSystem(object):
     Args:
         fs_type (string): fs_type, for example is "afs"
         user (string): hadoop param
-        passwd (string): hadoop param
+        password (string): hadoop param
         hadoop bin (string): hadoop param
     Examples:
         fs = FileSystm()
@@ -30,16 +30,16 @@ class FileSystem(object):
                  fs_type="afs",
                  uri="afs://xx",
                  user=None,
-                 passwd=None,
+                 password=None,
                  hadoop_bin=""):
         assert user != None
-        assert passwd != None
+        assert password != None
         assert hadoop_bin != None
         import ps_pb2 as pslib
         self.fs_client = pslib.FsClientParameter()
         self.fs_client.uri = uri
         self.fs_client.user = user
-        self.fs_client.passwd = passwd
+        self.fs_client.password = password
         #self.fs_client.buffer_size = 0
         self.fs_client.hadoop_bin = hadoop_bin
         #self.fs_client.afs_conf = afs_conf if not afs_conf else ""

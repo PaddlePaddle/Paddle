@@ -517,14 +517,14 @@ class OperatorWithKernel : public OperatorBase {
                RuntimeContext* runtime_ctx) const;
 
   /**
-   * Transfer data from scope to a transfered scope. If there is no data need to
+   * Transfer data from scope to a transferred scope. If there is no data need to
    * be tranfered, it returns nullptr.
    *
-   * * transfered_inplace_vars is a output vector.
+   * * transferred_inplace_vars is a output vector.
    */
   Scope* PrepareData(const Scope& scope,
                      const OpKernelType& expected_kernel_key,
-                     std::vector<std::string>* transfered_inplace_vars,
+                     std::vector<std::string>* transferred_inplace_vars,
                      RuntimeContext* ctx) const;
 
   void TransferInplaceVarsBack(const Scope& scope,

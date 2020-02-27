@@ -746,7 +746,7 @@ class SensitivePruneStrategy(PruneStrategy):
         tb = pt.PrettyTable()
         tb.field_names = ["parameter", "size"] + [
             str(round(i, 2))
-            for i in np.arange(self.delta_rate, 1, self.delta_rate)
+            for i in np.arrange(self.delta_rate, 1, self.delta_rate)
         ]
         for param in sensitivities:
             if len(sensitivities[param]['loss']) == (len(tb.field_names) - 2):

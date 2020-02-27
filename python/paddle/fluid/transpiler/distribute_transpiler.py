@@ -16,11 +16,11 @@ from __future__ import print_function
 """
 Steps to transpile trainer:
 1. split variable to multiple blocks, aligned by product(dim[1:]) (width).
-2. rename splited grad variables to add trainer_id suffix ".trainer_%d".
+2. rename split grad variables to add trainer_id suffix ".trainer_%d".
 3. modify trainer program add split_op to each grad variable.
-4. append send_op to send splited variables to server and
-5. add recv_op to fetch params(splited blocks or origin param) from server.
-6. append concat_op to merge splited blocks to update local weights.
+4. append send_op to send split variables to server and
+5. add recv_op to fetch params(split blocks or origin param) from server.
+6. append concat_op to merge split blocks to update local weights.
 
 Steps to transpile pserver:
 1. create new program for parameter server.
@@ -106,7 +106,7 @@ def slice_variable(var_list, slice_count, min_block_size):
         var_list (list): List of variables.
         slice_count (int): Numel of count that variables will be sliced, which
             could be the pserver services' count.
-        min_block_size (int): Minimum splitted block size.
+        min_block_size (int): Minimum split block size.
     Returns:
         blocks (list[(varname, block_id, current_block_size)]): A list
             of VarBlocks. Each VarBlock specifies a shard of the var.
@@ -157,7 +157,7 @@ class DistributeTranspilerConfig(object):
 
     .. py:attribute:: min_block_size (int)
 
-          Minimum number of splitted elements in block, default is 8192.
+          Minimum number of split elements in block, default is 8192.
 
           According to : https://github.com/PaddlePaddle/Paddle/issues/8638#issuecomment-369912156
           We can use bandwidth efficiently when data size is larger than 2MB.If you
@@ -667,9 +667,9 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         self.origin_program._is_chief = self.trainer_id == 0
         self.origin_program._distributed_lookup_table = self.table_name if self.table_name else None
 
-        # split and create vars, then put splited vars in dicts for later use.
-        # step 1: split and create vars, then put splited vars in dicts for later use.
-        self._init_splited_vars()
+        # split and create vars, then put split vars in dicts for later use.
+        # step 1: split and create vars, then put split vars in dicts for later use.
+        self._init_split_vars()
 
         # step 2: insert send op to send gradient vars to parameter servers
         ps_dispatcher.reset()
@@ -688,36 +688,36 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
 
         self.grad_name_to_send_dummy_out = dict()
 
-        for grad_varname, splited_vars in grad_var_mapping_items:
-            eplist = ps_dispatcher.dispatch(splited_vars)
+        for grad_varname, split_vars in grad_var_mapping_items:
+            eplist = ps_dispatcher.dispatch(split_vars)
 
             if not self.config.slice_var_up:
-                assert (len(splited_vars) == 1)
+                assert (len(split_vars) == 1)
 
-            splited_grad_varname = grad_varname
-            if len(splited_vars) == 1:
-                splited_grad_varname = splited_vars[0].name
+            split_grad_varname = grad_varname
+            if len(split_vars) == 1:
+                split_grad_varname = split_vars[0].name
                 index = find_op_by_output_arg(
-                    program.global_block(), splited_grad_varname, reverse=True)
+                    program.global_block(), split_grad_varname, reverse=True)
 
-            elif len(splited_vars) > 1:
-                orig_var = program.global_block().vars[splited_grad_varname]
+            elif len(split_vars) > 1:
+                orig_var = program.global_block().vars[split_grad_varname]
                 index = find_op_by_output_arg(
-                    program.global_block(), splited_grad_varname, reverse=True)
+                    program.global_block(), split_grad_varname, reverse=True)
 
                 if not self.config.runtime_split_send_recv:
                     self._insert_split_op(program, orig_var, index,
-                                          splited_vars)
+                                          split_vars)
                     index += 1
             else:
                 AssertionError("Can not insert the send op by original "
-                               "variable name :", splited_grad_varname)
+                               "variable name :", split_grad_varname)
 
-            if splited_vars[0].type == core.VarDesc.VarType.SELECTED_ROWS:
+            if split_vars[0].type == core.VarDesc.VarType.SELECTED_ROWS:
                 sparse_param_name = self.grad_name_to_param_name[grad_varname]
                 if self._is_input_of_remote_sparse_update_op(sparse_param_name):
                     self.sparse_param_to_height_sections[sparse_param_name] = [
-                        splited_var.shape[0] for splited_var in splited_vars
+                        split_var.shape[0] for split_var in split_vars
                     ]
 
             dummy_output = program.global_block().create_var(
@@ -726,24 +726,24 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
 
             if self.config.runtime_split_send_recv:
                 send_input_vars = [
-                    program.global_block().vars[splited_grad_varname]
+                    program.global_block().vars[split_grad_varname]
                 ]
-                sections = self._get_splited_var_sections(splited_vars)
+                sections = self._get_split_var_sections(split_vars)
 
                 if self.config.completely_not_async:
                     send_varnames = [
                         "{}.trainer_{}".format(var.name, self.trainer_id)
-                        for var in splited_vars
+                        for var in split_vars
                     ]
                 else:
-                    send_varnames = [var.name for var in splited_vars]
+                    send_varnames = [var.name for var in split_vars]
             else:
-                send_input_vars = splited_vars
+                send_input_vars = split_vars
                 sections = []
                 send_varnames = []
 
-            # get send op_role_var, if not splited, the grad should have .trainer suffix
-            # if splited, grad should be the original grad var name (split_by_ref and send
+            # get send op_role_var, if not split, the grad should have .trainer suffix
+            # if split, grad should be the original grad var name (split_by_ref and send
             # will be on the same place). ParallelExecutor
             # will use op_role_var to get expected device place to run this op.
             program.global_block()._insert_op(
@@ -758,10 +758,10 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
                     OP_ROLE_VAR_ATTR_NAME: [
                         self.grad_name_to_param_name[grad_varname],
-                        splited_grad_varname
+                        split_grad_varname
                     ]
                 })
-            for _, var in enumerate(splited_vars):
+            for _, var in enumerate(split_vars):
                 send_vars.append(var)
 
         send_barrier_out = program.global_block().create_var(
@@ -846,10 +846,10 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
 
         # step4: Concat the parameters splits together after recv.
         all_recv_outputs = []
-        for param_varname, splited_var in six.iteritems(self.param_var_mapping):
+        for param_varname, split_var in six.iteritems(self.param_var_mapping):
             eps = []
             table_names = []
-            for var in splited_var:
+            for var in split_var:
                 index = [v.name for v in recv_vars].index(var.name)
                 eps.append(eplist[index])
                 table_names.append(var.name)
@@ -860,14 +860,14 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 recv_dep_in = self.grad_name_to_send_dummy_out[
                     self.param_name_to_grad_name[param_varname]]
 
-            # get recv op_role_var, if not splited, the grad should have .trainer suffix
-            # if splited, grad should be the original grad var name. ParallelExecutor
+            # get recv op_role_var, if not split, the grad should have .trainer suffix
+            # if split, grad should be the original grad var name. ParallelExecutor
             # will use op_role_var to get expected device place to run this op.
             orig_grad_name = self.param_name_to_grad_name[param_varname]
             recv_op_role_var_name = orig_grad_name
-            splited_trainer_grad = self.grad_var_mapping[orig_grad_name]
-            if len(splited_trainer_grad) == 1:
-                recv_op_role_var_name = splited_trainer_grad[0].name
+            split_trainer_grad = self.grad_var_mapping[orig_grad_name]
+            if len(split_trainer_grad) == 1:
+                recv_op_role_var_name = split_trainer_grad[0].name
 
             if param_varname in self.sparse_param_to_height_sections:
                 for table_name in table_names:
@@ -880,14 +880,14 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 recv_varnames = []
                 if self.config.runtime_split_send_recv:
                     orig_param = program.global_block().vars[param_varname]
-                    recv_varnames = [var.name for var in splited_var]
-                    splited_var = [orig_param]
-                all_recv_outputs.extend(splited_var)
+                    recv_varnames = [var.name for var in split_var]
+                    split_var = [orig_param]
+                all_recv_outputs.extend(split_var)
 
                 program.global_block().append_op(
                     type="recv",
                     inputs={"X": [recv_dep_in]},
-                    outputs={"Out": splited_var},
+                    outputs={"Out": split_var},
                     attrs={
                         "epmap": eps,
                         "recv_varnames": recv_varnames,
@@ -911,15 +911,15 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
 
-        for param_varname, splited_var in six.iteritems(self.param_var_mapping):
-            if len(splited_var) <= 1:
+        for param_varname, split_var in six.iteritems(self.param_var_mapping):
+            if len(split_var) <= 1:
                 continue
             orig_param = program.global_block().vars[param_varname]
             if param_varname not in self.sparse_param_to_height_sections:
                 if not self.config.runtime_split_send_recv:
                     program.global_block().append_op(
                         type="concat",
-                        inputs={"X": splited_var},
+                        inputs={"X": split_var},
                         outputs={"Out": [orig_param]},
                         attrs={
                             "axis": 0,
@@ -1074,16 +1074,16 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         # self._fake_init_sparsetable(sparse_table_names)
         #self._delete_trainer_optimizer(is_startup=True)
 
-        for varname, splited_var in six.iteritems(self.param_var_mapping):
+        for varname, split_var in six.iteritems(self.param_var_mapping):
             if varname in sparse_table_names:
                 continue
             # Get the eplist of recv vars
             eps = []
-            for var in splited_var:
+            for var in split_var:
                 index = [v.name for v in recv_vars].index(var.name)
                 eps.append(eplist[index])
 
-            for var in splited_var:
+            for var in split_var:
                 if startup_program.global_block().has_var(var.name):
                     continue
 
@@ -1098,7 +1098,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             op = startup_program.global_block().append_op(
                 type="recv",
                 inputs={"X": []},
-                outputs={"Out": splited_var},
+                outputs={"Out": split_var},
                 attrs={
                     "epmap": eps,
                     "trainer_id": self.trainer_id,
@@ -1117,11 +1117,11 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
             })
 
-        for varname, splited_var in six.iteritems(self.param_var_mapping):
+        for varname, split_var in six.iteritems(self.param_var_mapping):
             if varname in sparse_table_names:
                 continue
-            # add concat ops to merge splited parameters received from parameter servers.
-            if len(splited_var) <= 1:
+            # add concat ops to merge split parameters received from parameter servers.
+            if len(split_var) <= 1:
                 continue
             # NOTE: if enable memory optimization, origin vars maybe removed.
             if varname in startup_program.global_block().vars:
@@ -1137,7 +1137,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                     shape=origin_param_var.shape)
             startup_program.global_block().append_op(
                 type="concat",
-                inputs={"X": splited_var},
+                inputs={"X": split_var},
                 outputs={"Out": [orig_param]},
                 attrs={"axis": 0})
 
@@ -1485,11 +1485,11 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         s_prog.random_seed = orig_s_prog.random_seed
         params = self.param_grad_ep_mapping[endpoint]["params"]
 
-        def _get_splited_name_and_shape(varname):
-            for idx, splited_param in enumerate(params):
-                pname = splited_param.name
+        def _get_split_name_and_shape(varname):
+            for idx, split_param in enumerate(params):
+                pname = split_param.name
                 if same_or_split_var(pname, varname) and varname != pname:
-                    return pname, splited_param.shape
+                    return pname, split_param.shape
             return "", []
 
         # 1. create vars in pserver program to startup program
@@ -1507,7 +1507,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             # TODO(gongwb): remove this line.
             if op.type not in ["recv", "fetch_barrier", "concat"]:
                 for key in op.output_names:
-                    newname, _ = _get_splited_name_and_shape(op.output(key)[0])
+                    newname, _ = _get_split_name_and_shape(op.output(key)[0])
                     if newname:
                         op_on_pserver = True
                         new_outputs[key] = created_var_map[newname]
@@ -1600,7 +1600,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                         dist_var.slice.shape)
 
                     if new_shape == dist_var.slice.shape:
-                        splited_var = VarStruct(
+                        split_var = VarStruct(
                             name=origin_var.name,
                             shape=new_shape,
                             dtype=origin_var.dtype,
@@ -1610,7 +1610,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
 
                         self.vars_overview.add_distributed_var(
                             origin_var=origin_var,
-                            slice_var=splited_var,
+                            slice_var=split_var,
                             is_slice=dist_var.is_slice,
                             block_id=dist_var.block_id,
                             offset=dist_var.offset,
@@ -1668,10 +1668,10 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 ]
         return param_list, grad_list
 
-    def _init_splited_vars(self):
+    def _init_split_vars(self):
         # update these mappings for further transpile:
-        # 1. param_var_mapping: param var name -> [splited params vars]
-        # 2. grad_var_mapping: grad var name -> [splited grads vars]
+        # 1. param_var_mapping: param var name -> [split params vars]
+        # 2. grad_var_mapping: grad var name -> [split grads vars]
         # 3. grad_param_mapping: grad.blockx -> param.blockx
         # 4. param_grad_ep_mapping: ep -> {"params": [], "grads": []}
 
@@ -1710,31 +1710,31 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                                           self.config.min_block_size)
         assert (len(grad_blocks) == len(param_blocks))
 
-        # origin_param_name -> [splited_param_vars]
+        # origin_param_name -> [split_param_vars]
         self.param_var_mapping = self._create_vars_from_blocklist(
             self.origin_program, param_blocks)
 
-        for orig_name, splited_vars in self.param_var_mapping.items():
+        for orig_name, split_vars in self.param_var_mapping.items():
             orig_var = self.origin_program.global_block().var(orig_name)
 
-            for splited_var in splited_vars:
+            for split_var in split_vars:
                 is_slice, block_id, offset = self._get_slice_var_info(
-                    splited_var)
+                    split_var)
 
                 self.vars_overview.add_distributed_var(
                     origin_var=orig_var,
-                    slice_var=splited_var,
+                    slice_var=split_var,
                     block_id=block_id,
                     offset=offset,
                     is_slice=is_slice,
                     vtype="Param")
 
-        # origin_grad_name -> [splited_grad_vars]
+        # origin_grad_name -> [split_grad_vars]
         self.grad_var_mapping = self._create_vars_from_blocklist(
             self.origin_program,
             grad_blocks,
             add_trainer_suffix=self.trainer_num > 1)
-        # dict(grad_splited_var -> param_splited_var)
+        # dict(grad_split_var -> param_split_var)
         self.grad_param_mapping = collections.OrderedDict()
         for g, p in zip(grad_blocks, param_blocks):
             g_name, g_bid, _ = g.split(":")
@@ -1966,15 +1966,15 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 outputs={"Out": [grad_var]},
                 attrs={"use_mkldnn": False})
         else:
-            # in async_mode, for table gradient, it also need to be splited to each parameter server
+            # in async_mode, for table gradient, it also need to be split to each parameter server
             origin_grad_name = grad_var.name
-            splited_grad_name = self.trainer_side_table_grad_list[
+            split_grad_name = self.trainer_side_table_grad_list[
                 pserver_index].name
-            if not splited_grad_name.startswith(origin_grad_name):
-                raise ValueError("origin_grad_var: " + splited_grad_name +
+            if not split_grad_name.startswith(origin_grad_name):
+                raise ValueError("origin_grad_var: " + split_grad_name +
                                  " grad_var:" + grad_var.name)
             grad_var = pserver_program.global_block()._rename_var(
-                origin_grad_name, splited_grad_name)
+                origin_grad_name, split_grad_name)
 
         inputs = {
             "Param": [param_var],
@@ -2040,9 +2040,9 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 block_map[varname] = []
             block_map[varname].append((int(offset), int(size)))
 
-        for varname, splited in six.iteritems(block_map):
+        for varname, split in six.iteritems(block_map):
             orig_var = program.global_block().var(varname)
-            if len(splited) == 1:
+            if len(split) == 1:
                 if self.sync_mode and add_trainer_suffix:
                     new_var_name = "%s.trainer_%d" % \
                                    (orig_var.name, self.trainer_id)
@@ -2059,12 +2059,12 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             if len(orig_shape) >= 2:
                 orig_dim1_flatten = reduce(lambda x, y: x * y, orig_shape[1:])
 
-            for i, block in enumerate(splited):
+            for i, block in enumerate(split):
                 size = block[1]
                 rows = size // orig_dim1_flatten
-                splited_shape = [rows]
+                split_shape = [rows]
                 if len(orig_shape) >= 2:
-                    splited_shape.extend(orig_shape[1:])
+                    split_shape.extend(orig_shape[1:])
                 new_var_name = ""
                 if self.sync_mode and add_trainer_suffix:
                     new_var_name = "%s.block%d.trainer_%d" % \
@@ -2077,7 +2077,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                     persistable=False,
                     dtype=orig_var.dtype,
                     type=orig_var.type,
-                    shape=splited_shape)  # flattend splited var
+                    shape=split_shape)  # flattend split var
                 var_mapping[varname].append(var)
             program.global_block()._sync_with_cpp()
         return var_mapping
@@ -2092,14 +2092,14 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             persistable=persistable)
 
     @staticmethod
-    def _get_splited_var_sections(splited_vars):
+    def _get_split_var_sections(split_vars):
         height_sections = []
-        for v in splited_vars:
+        for v in split_vars:
             height_sections.append(v.shape[0])
         return height_sections
 
-    def _insert_split_op(self, program, orig_var, index, splited_vars):
-        height_sections = self._get_splited_var_sections(splited_vars)
+    def _insert_split_op(self, program, orig_var, index, split_vars):
+        height_sections = self._get_split_var_sections(split_vars)
 
         if orig_var.type == core.VarDesc.VarType.SELECTED_ROWS:
             sparse_param_name = self.grad_name_to_param_name[orig_var.name]
@@ -2110,7 +2110,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 index=index + 1,
                 type="split_selected_rows",
                 inputs={"X": orig_var},
-                outputs={"Out": splited_vars},
+                outputs={"Out": split_vars},
                 attrs={
                     "height_sections": height_sections,
                     RPC_OP_ROLE_ATTR_NAME: DIST_OP_ROLE_ATTR_VALUE
@@ -2120,7 +2120,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 index=index + 1,
                 type="split_byref",
                 inputs={"X": orig_var},
-                outputs={"Out": splited_vars},
+                outputs={"Out": split_vars},
                 attrs={
                     "sections": height_sections,
                     RPC_OP_ROLE_ATTR_NAME: DIST_OP_ROLE_ATTR_VALUE
@@ -2393,9 +2393,9 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         if the variable is not grad/param, e.g.
 
             a@GRAD -> a@GRAD.block0
-            a@GRAD -> a@GRAD (a is not splited)
+            a@GRAD -> a@GRAD (a is not split)
             fc_0.w_0 -> fc_0.w_0.block_0
-            fc_0.w_0 -> fc_0.w_0 (weight is not splited)
+            fc_0.w_0 -> fc_0.w_0 (weight is not split)
             _generated_var_123 -> None
         """
         grad_block = None
@@ -2403,7 +2403,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             if self._orig_varname(g.name) == self._orig_varname(var.name):
                 # skip per trainer vars
                 if g.name.find(".trainer_") == -1:
-                    # only param or grads have splited blocks
+                    # only param or grads have split blocks
                     if self._orig_varname(g.name) in self.grad_name_to_param_name or \
                             self._orig_varname(g.name) in self.param_name_to_grad_name:
                         grad_block = g
@@ -2442,7 +2442,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                 varlist = [varlist]
             for i in range(len(varlist)):
                 var = varlist[i]
-                # for ops like clipping and weight decay, get the splited var (xxx.block0)
+                # for ops like clipping and weight decay, get the split var (xxx.block0)
                 # for inputs/outputs
                 grad_block = self._get_pserver_grad_param_var(
                     var, program.global_block().vars)
