@@ -110,7 +110,7 @@ class DygraphToStaticAst(gast.NodeTransformer):
         # Transform basic api of dygraph to static graph
         basic_api_trans = BasicApiTransformer(node)
         basic_api_trans.ast_visit()
-        self.feed_name_to_arg_name = basic_api_trans._get_feed_name_to_arg_id()
+        self.feed_name_to_arg_name = basic_api_trans.get_feed_name_to_arg_id()
 
         # Transform all if/else statement of Dygraph into Static Graph.
         IfElseTransformer(node).ast_visit()
@@ -252,5 +252,5 @@ class BasicApiTransformer(gast.NodeTransformer):
         feed_var_name = unique_name.generate(var_name)  # eg: "a_0"
         self.feed_name_to_arg_id[feed_var_name] = var_name  # eg: "a_0" : "a"
 
-    def _get_feed_name_to_arg_id(self):
+    def get_feed_name_to_arg_id(self):
         return self.feed_name_to_arg_id

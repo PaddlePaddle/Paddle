@@ -29,6 +29,7 @@ from paddle.fluid import core
 from paddle.fluid.framework import Program, Block, Variable, _dygraph_tracer, dygraph_only, _dygraph_guard, _current_expected_place, in_dygraph_mode
 from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.compiler import CompiledProgram
+from paddle.fluid import program_guard, data
 
 
 def create_program_from_desc(program_desc):
@@ -79,10 +80,8 @@ def _dygraph_to_static_output_(dygraph_func):
                 feed_dict[feed_name] = args[idx]
 
             # Run static_func in static mode
-            import paddle.fluid as fluid
-            startup_program = fluid.default_startup_program()
-            main_program = fluid.default_main_program()
-
+            startup_program = Program()
+            main_program = Program()
             static_res = run_static_func(main_program, startup_program,
                                          static_func, args, kwargs, feed_dict,
                                          feed_name_to_idx)
@@ -95,19 +94,18 @@ def _dygraph_to_static_output_(dygraph_func):
 @switch_to_static_graph
 def run_static_func(main_program, startup_program, static_func, args, kwargs,
                     feed_dict, feed_name_to_idx):
-    import paddle.fluid as fluid
 
-    with fluid.program_guard(main_program, startup_program):
+    with program_guard(main_program, startup_program):
         args_list = list(args)
         for var_name, value in feed_dict.items():
             idx = feed_name_to_idx[var_name]
-            args_list[idx] = fluid.data(
+            args_list[idx] = data(
                 name=var_name, shape=value.shape, dtype=str(value.dtype))
         args = tuple(args_list)
         static_out = static_func(*args, **kwargs)
         if not isinstance(static_out, (list, tuple)):
             static_out = [static_out]
-        exe = fluid.Executor(fluid.CPUPlace())
+        exe = Executor(core.CPUPlace())
         exe.run(startup_program)
         static_res = exe.run(main_program,
                              fetch_list=static_out,
