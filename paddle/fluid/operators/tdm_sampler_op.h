@@ -136,19 +136,6 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
 
         int positive_node_id = travel_data[start_offset + layer_idx];
 
-        PADDLE_ENFORCE_LE(
-            positive_node_id, node_id_max,
-            "Positive node id of OP(fluid.layers.tdm_sampler) at layer %ld "
-            "expected >= %ld and <= %ld, but got %ld. Please check input "
-            "value.",
-            layer_idx, node_id_min, node_id_max, positive_node_id);
-        PADDLE_ENFORCE_LE(
-            node_id_min, positive_node_id,
-            "Positive node id of OP(fluid.layers.tdm_sampler) at layer %ld "
-            "expected >= %ld and <= %ld, but got %ld. Please check input "
-            "value.",
-            layer_idx, node_id_min, node_id_max, positive_node_id);
-
         if (positive_node_id == 0) {
           // skip padding
           VLOG(1) << "TDM: Skip padding ";
@@ -169,6 +156,19 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
           }
           continue;
         }
+
+        PADDLE_ENFORCE_LE(
+            positive_node_id, node_id_max,
+            "Positive node id of OP(fluid.layers.tdm_sampler) at layer %ld "
+            "expected >= %ld and <= %ld, but got %ld. Please check input "
+            "value.",
+            layer_idx, node_id_min, node_id_max, positive_node_id);
+        PADDLE_ENFORCE_LE(
+            node_id_min, positive_node_id,
+            "Positive node id of OP(fluid.layers.tdm_sampler) at layer %ld "
+            "expected >= %ld and <= %ld, but got %ld. Please check input "
+            "value.",
+            layer_idx, node_id_min, node_id_max, positive_node_id);
 
         Sampler *sampler = new math::UniformSampler(node_nums - 1, seed);
         VLOG(2) << "TDM: get sampler ";
