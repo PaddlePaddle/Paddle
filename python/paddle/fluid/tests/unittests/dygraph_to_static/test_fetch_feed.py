@@ -33,7 +33,12 @@ class Pool2D(fluid.dygraph.Layer):
     @dygraph_to_static_output
     def forward(self, x):
         inputs = fluid.dygraph.to_variable(x)
-        pre = self.pool2d(inputs)
+
+        # Add func `get_result` for testing arg_name_to_idx in ast transformation.
+        def get_result(x):
+            return self.pool2d(x)
+
+        pre = get_result(inputs)
         return pre
 
 

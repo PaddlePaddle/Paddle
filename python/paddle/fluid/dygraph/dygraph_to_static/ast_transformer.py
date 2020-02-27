@@ -100,6 +100,7 @@ class DygraphToStaticAst(gast.NodeTransformer):
         self.static_analysis_root = StaticAnalysisVisitor(
             root).get_node_wrapper_root()
         self.decorate_func_name = None
+        self.arg_name_to_idx = {}
         self.transfer_from_node_type(self.static_analysis_root)
         return self.static_analysis_root
 
@@ -118,10 +119,8 @@ class DygraphToStaticAst(gast.NodeTransformer):
     def visit_FunctionDef(self, node):
         if self.decorate_func_name is None:
             self.decorate_func_name = node.name
-
-        self.arg_name_to_idx = {}
-        for idx, arg in enumerate(node.args.args):
-            self.arg_name_to_idx[arg.id] = idx
+            for idx, arg in enumerate(node.args.args):
+                self.arg_name_to_idx[arg.id] = idx
 
         self.generic_visit(node)
         # Remove the decorated name of dygraph_to_static
