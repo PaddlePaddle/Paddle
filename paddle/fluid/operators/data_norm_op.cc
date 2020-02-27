@@ -189,10 +189,12 @@ class DataNormOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddInput("scale_w",
              "scale_w is a 1-dimensional tensor of size C "
-             "that is applied to the output");
+             "that is applied to the output")
+        .AsDispensable();
     AddInput("bias",
              "bias is a 1-dimensional tensor of size C "
-             "that is applied to the output");
+             "that is applied to the output")
+        .AsDispensable();
     AddAttr<std::string>("data_layout", "").SetDefault("NCHW");
     AddAttr<bool>("sync_stats", "(bool, default false) only used in multi-GPU")
         .SetDefault(false);
@@ -265,10 +267,11 @@ class DataNormKernel<platform::CPUDeviceContext, T>
     EigenVectorArrayMap<T> scales_arr(scales->mutable_data<T>(ctx.GetPlace()),
                                       C);
     means_arr = b_sum_arr / b_size_arr;
-    scales_arr = (b_size_arr / b_square_sum_arr).sqrt();
+    scales_arr = (b_size_arr / b_square_sum_arr).sqrt(); 
 
     const T *means_data = mean_out->data<T>();
     const T *x_data = x->data<T>();
+
     const T *scales_data = scales->data<T>();
     const int slot_dim = ctx.Attr<int>("slot_dim");
     T min_precision = 1e-7f;
@@ -277,7 +280,7 @@ class DataNormKernel<platform::CPUDeviceContext, T>
       case DataLayout::kNHWC: {
         // if slot_dim is set and batch size is larger than zero, we choose
         // to check if show number is zero, if so, skip normalization.
-        if (slot_dim > 0 && N > 0) {
+        if (slot_dim > 0 && N > 0 && (!ctx.Attr<bool>("enable_scale_and_shift"))) {
           const int item_size = x->numel() / N;
           // location of show number in one embedding
           int offset = 0;
@@ -298,16 +301,19 @@ class DataNormKernel<platform::CPUDeviceContext, T>
             offset += item_size;
           }
         } else {
-          if (!ctx.Attr<bool>("enable_scale_and_shift")) {
+          if (!ctx.Attr<bool>("enable_scale_and_shift") && slot_dim <= 0) {
             EigenArrayMap<T>(y_data, C, N) =
                 (ConstEigenArrayMap<T>(x->data<T>(), C, N).colwise() - means_arr)
                     .colwise() *
                 scales_arr;
-          } else {
+          } else if (ctx.Attr<bool>("enable_scale_and_shift") && slot_dim <= 0){
             const auto *scale_w = ctx.Input<Tensor>("scale_w");
             const auto *bias = ctx.Input<Tensor>("bias");
             ConstEigenVectorArrayMap<T> scale_w_arr(scale_w->data<T>(), C);
             ConstEigenVectorArrayMap<T> bias_arr(bias->data<T>(), C);
+            
+            
+
             Eigen::Array<T, Eigen::Dynamic, 1> new_scale = scales_arr * scale_w_arr;
             Eigen::Array<T, Eigen::Dynamic, 1> new_bias =
                 bias_arr - means_arr * scales_arr * scale_w_arr;
@@ -315,6 +321,34 @@ class DataNormKernel<platform::CPUDeviceContext, T>
                 (ConstEigenArrayMap<T>(x->data<T>(), C, N).colwise() * new_scale)
                     .colwise() +
                 new_bias;
+            
+
+
+          } else {
+            const int item_size = x->numel() / N;
+            const auto *scale_w = ctx.Input<Tensor>("scale_w");
+            const auto *bias = ctx.Input<Tensor>("bias");
+            const T *scale_w_data = scale_w->data<T>();
+            const T *bias_data = bias->data<T>();
+            // location of show number in one embedding
+            int offset = 0;
+            for (int k = 0; k < N; ++k) {
+              for (int i = 0; i < item_size; i += slot_dim) {
+                if (x_data[offset + i] > -min_precision &&
+                  x_data[offset + i] < min_precision) {
+                  // show = 0
+                  memset(y_data + offset + i, 0, sizeof(T) * slot_dim);
+                } else {
+                  for (int j = i; j < i + slot_dim; ++j) {
+                    y_data[offset + j] =
+                        ( (x_data[offset + j] - means_data[j]) * scales_data[j] ) * scale_w_data[j] + bias_data[j];
+                  }
+                }
+              } // end for i 
+
+              offset += item_size;
+            } // end for k
+        
           }
         }
         break;
@@ -333,7 +367,7 @@ class DataNormGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     // check input
     PADDLE_ENFORCE(ctx->HasInput("X"));
-    PADDLE_ENFORCE(ctx->HasInput("scale_w"), "Input(scale_w) should not be null.");
+    // PADDLE_ENFORCE(ctx->HasInput("scale_w"), "Input(scale_w) should not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Y")), "");
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("BatchSize"), true,
@@ -431,7 +465,6 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto *scales = ctx.Input<Tensor>("Scales");
     const auto *means = ctx.Input<Tensor>("Means");
-    const auto *scale_w = ctx.Input<Tensor>("scale_w");
 
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
     const DataLayout data_layout =
@@ -451,8 +484,7 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
     if (ctx.HasOutput(framework::GradVarName("X"))) {
       d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     }
-    auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("scale_w"));
-    auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("bias"));
+    
     auto *d_batch_size =
         ctx.Output<Tensor>(framework::GradVarName("BatchSize"));
     auto *d_batch_sum = ctx.Output<Tensor>(framework::GradVarName("BatchSum"));
@@ -461,36 +493,12 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
 
     const T *mean_data = means->data<T>();
     const T *inv_var_data = scales->data<T>();
-    ConstEigenVectorArrayMap<T> scale_arr(scale_w->data<T>(), C);
     ConstEigenVectorArrayMap<T> mean_arr(mean_data, C);
     ConstEigenVectorArrayMap<T> inv_var_arr(inv_var_data, C);
-    T *d_bias_data = nullptr;
-    T *d_scale_data = nullptr;
-    if (d_scale && d_bias) {
-      d_scale->mutable_data<T>(ctx.GetPlace());
-      d_bias->mutable_data<T>(ctx.GetPlace());
-      d_bias_data = d_bias->mutable_data<T>(ctx.GetPlace());
-      d_scale_data = d_scale->mutable_data<T>(ctx.GetPlace());
-    }
-    EigenVectorArrayMap<T> d_bias_arr(d_bias_data, C);
-    EigenVectorArrayMap<T> d_scale_arr(d_scale_data, C);
     //if (d_scale && d_bias) {
       // d_bias_arr.setZero();
       // d_scale_arr.setZero();
     //}
-    Tensor dy_sum;
-    dy_sum.Resize({C});
-    dy_sum.mutable_data<T>(ctx.GetPlace());
-    EigenVectorArrayMap<T> dy_sum_arr(dy_sum.mutable_data<T>(ctx.GetPlace()),
-                                      C);
-    Tensor dy_mul_x_sub_mean_mul_invstd_sum;
-    dy_mul_x_sub_mean_mul_invstd_sum.Resize({C});
-    dy_mul_x_sub_mean_mul_invstd_sum.mutable_data<T>(ctx.GetPlace());
-    EigenVectorArrayMap<T> dy_mul_x_sub_mean_mul_invstd_sum_arr(
-        dy_mul_x_sub_mean_mul_invstd_sum.mutable_data<T>(ctx.GetPlace()), C);
-
-    dy_sum_arr.setZero();
-    dy_mul_x_sub_mean_mul_invstd_sum_arr.setZero();
 
     T *d_batch_size_data = d_batch_size->mutable_data<T>(ctx.GetPlace());
     T *d_batch_sum_data = d_batch_sum->mutable_data<T>(ctx.GetPlace());
@@ -523,27 +531,81 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
               d_x_arr.col(nc) = d_y_arr.col(nc) * scales_arr;
             }
           } else {
-              for (int n = 0; n < N; ++n) {
-                dy_sum_arr += d_y_arr.col(n);
-                dy_mul_x_sub_mean_mul_invstd_sum_arr +=
-                    ((x_arr.col(n) - mean_arr) * inv_var_arr * d_y_arr.col(n));
-               }
-            /*
-             for (int nc = 0; nc < N * C; ++nc) {
-               int c = nc % C;  
-               dy_sum_arr(c) += d_y_arr.col(nc).sum();
-               dy_mul_x_sub_mean_mul_invstd_sum_arr(c) +=
-                   ((x_arr.col(nc) - mean_arr(c)) * inv_var_arr(c) * d_y_arr.col(c))
-                       .sum();
-             }
-             */
-             if (d_scale && d_bias) {
-               d_bias_arr = dy_sum_arr;
-               d_scale_arr = dy_mul_x_sub_mean_mul_invstd_sum_arr;
-             }
-             for (int nc = 0; nc < N; ++nc) {
-               d_x_arr.col(nc) = d_y_arr.col(nc) * scales_arr * scale_arr;
-             }
+
+              const auto *scale_w = ctx.Input<Tensor>("scale_w");
+              auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("scale_w"));
+              auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("bias"));
+              ConstEigenVectorArrayMap<T> scale_arr(scale_w->data<T>(), C);
+              T *d_bias_data = nullptr;
+              T *d_scale_data = nullptr;
+
+              //if (d_scale && d_bias) {
+                  d_scale->mutable_data<T>(ctx.GetPlace());
+                  d_bias->mutable_data<T>(ctx.GetPlace());
+                  d_bias_data = d_bias->mutable_data<T>(ctx.GetPlace());
+                  d_scale_data = d_scale->mutable_data<T>(ctx.GetPlace());
+
+                  EigenVectorArrayMap<T> d_bias_arr(d_bias_data, C);
+                  EigenVectorArrayMap<T> d_scale_arr(d_scale_data, C);
+              //}
+              Tensor dy_sum;
+              dy_sum.Resize({C});
+              dy_sum.mutable_data<T>(ctx.GetPlace());
+              EigenVectorArrayMap<T> dy_sum_arr(dy_sum.mutable_data<T>(ctx.GetPlace()),
+                                                C);
+              Tensor dy_mul_x_sub_mean_mul_invstd_sum;
+              dy_mul_x_sub_mean_mul_invstd_sum.Resize({C});
+              dy_mul_x_sub_mean_mul_invstd_sum.mutable_data<T>(ctx.GetPlace());
+              EigenVectorArrayMap<T> dy_mul_x_sub_mean_mul_invstd_sum_arr(
+                      dy_mul_x_sub_mean_mul_invstd_sum.mutable_data<T>(ctx.GetPlace()), C);
+
+              dy_sum_arr.setZero();
+              dy_mul_x_sub_mean_mul_invstd_sum_arr.setZero();
+
+
+              if (slot_dim <= 0){
+                  for (int n = 0; n < N; ++n) {
+                      dy_sum_arr += d_y_arr.col(n);
+                      dy_mul_x_sub_mean_mul_invstd_sum_arr +=
+                              ((x_arr.col(n) - mean_arr) * inv_var_arr * d_y_arr.col(n));
+                  }
+                  if (d_scale && d_bias) {
+                      d_bias_arr = dy_sum_arr;
+                      d_scale_arr = dy_mul_x_sub_mean_mul_invstd_sum_arr;
+                  }
+                  for (int nc = 0; nc < N; ++nc) {
+                      d_x_arr.col(nc) = d_y_arr.col(nc) * scales_arr * scale_arr;
+                  }
+              } else {
+                  int offset = 0;
+                  const int item_size = x->numel() / N;
+                   T *d_x_data = d_x->mutable_data<T>(ctx.GetPlace());
+                  T *d_scale_data = d_scale->mutable_data<T>(ctx.GetPlace());
+                  T *d_bias_data = d_bias->mutable_data<T>(ctx.GetPlace());
+                  const T *dy_data = d_y->data<T>();
+                  const T *scales_data = scales->data<T>();
+                  const T *scale_w_data = scale_w->data<T>();
+                  const T *x_data = x->data<T>();
+                  for (int i = 0; i < item_size; i++) {
+                      d_bias_data[i] = 0;
+                      d_scale_data[i] = 0;
+                  }
+                  for (int k = 0; k < N; ++k) {
+                      for (int i = 0; i < item_size; i += slot_dim) {
+                          if (!(x_data[offset + i] > -min_precision &&
+                                x_data[offset + i] < min_precision)) {
+                              // show != 0
+                              for (int j = i; j < i + slot_dim; ++j) {
+                                  d_x_data[offset+j] = dy_data[offset+j] * scales_data[j]* scale_w_data[j];
+                                  d_bias_data[j] += dy_data[offset+j];
+                                  d_scale_data[j] += (x_data[offset+j]-mean_data[j]) * inv_var_data[j] * dy_data[offset+j];
+                              }
+                          }
+                      }
+                      offset += item_size;
+                  }
+              }
+
           }
         }
 

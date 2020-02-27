@@ -2878,26 +2878,26 @@ def data_norm(input,
         batch_size_default = param_attr.get("batch_size", 1e4)
         batch_sum_default = param_attr.get("batch_sum", 0.0)
         batch_square_sum_default = param_attr.get("batch_square", 1e4)
-    # if enable_scale_and_shift:
-    scale_w_default = param_attr.get("scale_w", 1.0)
-    bias_default = param_attr.get("bias", 0.0)
+    if enable_scale_and_shift:
+        scale_w_default = param_attr.get("scale_w", 1.0)
+        bias_default = param_attr.get("bias", 0.0)
 
     # create scale and shift(bias) when enable_scale_and_shift is True
-    # if enable_scale_and_shift:
-    scale_w = helper.create_parameter(
-        attr=ParamAttr(
-            name=name + '.scale_w',
-            initializer=Constant(value=float(scale_w_default)),
-            trainable=True),
-        shape=param_shape,
-        dtype=input.dtype)
-    bias = helper.create_parameter(
-        attr=ParamAttr(
-            name=name + '.bias',
-            initializer=Constant(value=float(bias_default)),
-            trainable=True),
-        shape=param_shape,
-        dtype=input.dtype)
+    if enable_scale_and_shift:
+        scale_w = helper.create_parameter(
+            attr=ParamAttr(
+                name=name + '.scale_w',
+                initializer=Constant(value=float(scale_w_default)),
+                trainable=True),
+            shape=param_shape,
+            dtype=input.dtype)
+        bias = helper.create_parameter(
+            attr=ParamAttr(
+                name=name + '.bias',
+                initializer=Constant(value=float(bias_default)),
+                trainable=True),
+            shape=param_shape,
+            dtype=input.dtype)
     # create parameter
     batch_size = helper.create_parameter(
         attr=ParamAttr(
@@ -2934,9 +2934,9 @@ def data_norm(input,
         "BatchSum": batch_sum,
         "BatchSquareSum": batch_square_sum
     }
-    # if enable_scale_and_shift:
-    inputs["scale_w"] = scale_w
-    inputs["bias"] = bias
+    if enable_scale_and_shift:
+        inputs["scale_w"] = scale_w
+        inputs["bias"] = bias
     helper.append_op(
         type="data_norm",
         inputs=inputs,
