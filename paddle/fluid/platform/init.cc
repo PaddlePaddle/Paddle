@@ -93,7 +93,7 @@ void InitP2P(std::vector<int> devices) {
 }
 
 void InitCUDADriver() {
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32) && !defined(__APPLE__)
   // Initialize the CUDA driver API.
   // We must ensure it is called before any other function from the driver API.
   if (platform::dynload::HasCUDADriver()) {
