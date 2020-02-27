@@ -20,8 +20,8 @@ import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import paddle.compat as cpt
 import numpy as np
-import unittest.mock as mock
-'''
+
+
 class TestPrune(unittest.TestCase):
     def net(self):
         x = fluid.layers.data(name='x', shape=[2], dtype='float32')
@@ -95,7 +95,6 @@ class TestPrune(unittest.TestCase):
             self.assertEqual(
                 "All targets of prune() can only be Variable or Operator.",
                 cpt.get_exception_message(e))
-'''
 
 
 class TestExecutorRunAutoPrune(unittest.TestCase):

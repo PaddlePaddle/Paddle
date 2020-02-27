@@ -652,7 +652,8 @@ class Executor(object):
         targets = []
         has_optimize = False
         for item in fetch_list:
-            if isinstance(item, Variable) or isinstance(item, str):
+            if isinstance(item, Variable) or isinstance(
+                    item, str) or isinstance(item, six.string_types):
                 targets.append(item)
             elif isinstance(item, Operator):
                 if _is_optimize_op(item):
@@ -660,7 +661,8 @@ class Executor(object):
                 targets.append(item)
             elif isinstance(item, list):
                 for i in item:
-                    if isinstance(i, Variable) or isinstance(i, str):
+                    if isinstance(i, Variable) or isinstance(
+                            i, str) or isinstance(item, six.string_types):
                         res.append(i)
                     elif isinstance(i, Operator):
                         if _is_optimize_op(i):
@@ -761,13 +763,15 @@ class Executor(object):
         """
         res = []
         for item in fetch_list:
-            if isinstance(item, Variable) or isinstance(item, str):
+            if isinstance(item, Variable) or isinstance(
+                    item, str) or isinstance(item, six.string_types):
                 res.append(item)
             elif isinstance(item, Operator):
                 continue
             elif isinstance(item, list):
                 for i in item:
-                    if isinstance(i, Variable) or isinstance(i, str):
+                    if isinstance(i, Variable) or isinstance(
+                            i, str) or isinstance(item, six.string_types):
                         res.append(i)
                     elif isinstance(i, Operator):
                         continue
@@ -991,7 +995,9 @@ class Executor(object):
             scope = global_scope()
 
         if fetch_list is not None:
-            if isinstance(fetch_list, Variable) or isinstance(fetch_list, str):
+            if isinstance(fetch_list, Variable) or isinstance(
+                    fetch_list, str) or isinstance(fetch_list,
+                                                   six.string_types):
                 fetch_list = [fetch_list]
             assert isinstance(fetch_list, tuple) or isinstance(fetch_list, list), \
                 "Currently , The fetch_list type only should be list or tuple, \n"\
