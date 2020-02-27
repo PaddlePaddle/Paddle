@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-from paddle.fluid.dygraph.jit import dygraph_to_static_output, dygraph_to_static_graph
+from paddle.fluid.dygraph.jit import dygraph_to_static_output
 
 import numpy as np
 import unittest
