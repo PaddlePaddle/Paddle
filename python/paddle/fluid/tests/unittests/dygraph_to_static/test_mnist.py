@@ -138,8 +138,6 @@ class TestMNISTWithStaticMode(TestMNIST):
         main_prog = fluid.Program()
         with fluid.program_guard(main_prog):
             mnist = MNIST()
-            mnist.forward = dygraph_to_static_output(mnist.forward)
-            mnist.inference = dygraph_to_static_output(mnist.inference)
             adam = AdamOptimizer(
                 learning_rate=0.001, parameter_list=mnist.parameters())
 
