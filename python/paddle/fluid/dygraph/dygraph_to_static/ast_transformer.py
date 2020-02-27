@@ -25,7 +25,7 @@ from .static_analysis import AstNodeWrapper, StaticAnalysisVisitor
 
 __all__ = ['DygraphToStaticAst']
 
-DECORATOR_NAME = 'dygraph_to_static_output'
+DECORATOR_NAMES = ['dygraph_to_static_output', 'dygraph_to_static_graph']
 
 
 class IfElseTransformer(gast.NodeTransformer):
@@ -127,7 +127,7 @@ class DygraphToStaticAst(gast.NodeTransformer):
         # Remove the decorated name of dygraph_to_static
         if hasattr(node, 'decorator_list'):
             decorator_list = [
-                d for d in node.decorator_list if d.id != DECORATOR_NAME
+                d for d in node.decorator_list if d.id not in DECORATOR_NAMES
             ]
             node.decorator_list = decorator_list
         return node
@@ -170,7 +170,7 @@ class BasicApiTransformer(gast.NodeTransformer):
         self.generic_visit(node)
         if hasattr(node, 'decorator_list'):
             decorator_list = [
-                d for d in node.decorator_list if d.id != DECORATOR_NAME
+                d for d in node.decorator_list if d.id not in DECORATOR_NAMES
             ]
             node.decorator_list = decorator_list
         return node
