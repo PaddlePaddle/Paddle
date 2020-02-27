@@ -51,7 +51,7 @@ class SumOpVarTypeInference : public VarTypeInference {
       default_var_type = proto::VarType::LOD_TENSOR;
     }
 
-    ctx->SetType("Out", default_var_type);
+    ctx->SetOutputType("Out", default_var_type);
   }
 };
 

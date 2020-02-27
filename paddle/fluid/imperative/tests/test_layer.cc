@@ -47,13 +47,15 @@ TEST(test_layer, test_runtime_context) {
   imperative::NameVarBaseMap ins = {in_pair};
   imperative::NameVarBaseMap outs = {out_pair};
   framework::AttributeMap attrs;
+
   auto *ctx = new imperative::RuntimeInferVarTypeContext<imperative::VarBase>(
       ins, outs, attrs);
   ASSERT_TRUE(ctx->HasVar("vin"));
+
   ASSERT_TRUE(ctx->HasInput("X"));
   ASSERT_TRUE(ctx->HasOutput("Out"));
 
-  ASSERT_ANY_THROW(ctx->GetDataTypes("vin"));
+  ASSERT_ANY_THROW(ctx->GetInputDataType("vin"));
   std::vector<framework::proto::VarType::Type> NullType;
   ASSERT_ANY_THROW(ctx->SetDataTypes("vin", NullType));
   ASSERT_ANY_THROW(ctx->GetShape("vin"));
