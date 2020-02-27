@@ -80,7 +80,6 @@ class TestRegisterExitFunc(unittest.TestCase):
             test_process.start()
             time.sleep(3)
         except SystemExit as ex:
-            self.assertIn("17", cpt.get_exception_message(ex))
             exception = ex
         self.assertIsNotNone(exception)
 
