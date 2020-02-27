@@ -180,7 +180,7 @@ def api_test(dim_x, dim_y, trans_x, trans_y):
 
 
 skip_check_grad_dim1 = skip_check_grad_ci(
-    reason="when dim==1, shape>100, multiply-accumulatorin matmul make gradient diff too large"
+    reason="when dim==1, shape>100, multiply-accumulator in matmul make gradient diff too large"
 )
 
 
