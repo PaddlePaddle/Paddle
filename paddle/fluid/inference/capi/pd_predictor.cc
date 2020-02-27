@@ -180,7 +180,8 @@ PD_Predictor* PD_NewPredictor(const PD_AnalysisConfig* config) {
 }
 
 void PD_DeletePredictor(PD_Predictor* predictor) {
-  if (predictor == nullptr) {
+  if (predictor) {
+    predictor->predictor = nullptr;
     delete predictor;
     predictor = nullptr;
   }

@@ -41,6 +41,11 @@ class DistributeFpnProposalsOp : public framework::OperatorWithKernel {
     }
     ctx->SetOutputsDim("MultiFpnRois", outs_dims);
     ctx->SetOutputDim("RestoreIndex", {-1, 1});
+    if (!ctx->IsRuntime()) {
+      for (size_t i = 0; i < num_out_rois; ++i) {
+        ctx->SetLoDLevel("MultiFpnRois", ctx->GetLoDLevel("FpnRois"), i);
+      }
+    }
   }
 
  protected:

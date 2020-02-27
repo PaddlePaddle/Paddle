@@ -81,13 +81,13 @@ static void FullAssign(Type input_height, Type input_width, int input_dim,
       auto e_input = EigenVector<T>::Flatten(*input);
       auto e_indices = EigenVector<Type>::Flatten(*indices);
       for (Type j = 0; j < input_width; ++j) {
-        t_out[i * input_width + e_indices(j)] = e_input(e_indices(j));
+        t_out[i * input_width + e_indices(j)] = e_input(j);
       }
     } else {
       auto e_input = EigenMatrix<T>::Reshape(*input, input_dim - 1);
       auto e_indices = EigenMatrix<Type>::Reshape(*indices, input_dim - 1);
       for (Type j = 0; j < input_width; ++j) {
-        t_out[i * input_width + e_indices(i, j)] = e_input(i, e_indices(i, j));
+        t_out[i * input_width + e_indices(i, j)] = e_input(i, j);
       }
     }
   }

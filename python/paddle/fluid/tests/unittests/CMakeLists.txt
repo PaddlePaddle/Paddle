@@ -337,6 +337,7 @@ set_tests_properties(test_parallel_executor_seresnext_with_reduce_cpu PROPERTIES
 set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu PROPERTIES TIMEOUT 750)
 
 add_subdirectory(sequence)
+add_subdirectory(dygraph_to_static)
 
 if (WITH_NGRAPH)
     add_subdirectory(ngraph)
