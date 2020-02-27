@@ -13,8 +13,6 @@
 # limitations under the License.
 
 NEED_TO_FIX_OP_LIST = [
-    'elementwise_mul',
-    'elementwise_div',
     'fused_elemwise_activation',
     'bilinear_tensor_product',
     'conv2d_transpose',
@@ -24,7 +22,6 @@ NEED_TO_FIX_OP_LIST = [
     'lstmp',
     'margin_rank_loss',
     'matmul',
-    'mul',
     'scatter',
     'smooth_l1_loss',
     'soft_relu',
