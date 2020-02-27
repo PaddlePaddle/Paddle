@@ -331,7 +331,7 @@ class TestHSigmoidOpWithCostumTree(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['Bias', 'X', 'W'], ['Out'])
+        self.check_grad(['Bias', 'X', 'W'], ['Out'], no_grad_set=set('Label'))
 
 
 @skip_check_grad_ci(
@@ -375,7 +375,7 @@ class TestHSigmoidOpWithCostumTreeWithoutBias(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X', 'W'], ['Out'])
+        self.check_grad(['X', 'W'], ['Out'], no_grad_set=set('Label'))
 
 
 if __name__ == '__main__':
