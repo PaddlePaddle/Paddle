@@ -143,7 +143,7 @@ class DygraphToStaticAst(gast.NodeTransformer):
 
     def get_feed_name_to_idx(self):
         feed_name_to_idx = {}
-        for feed_name, arg_name in self.feed_name_to_arg_name.iteritems():
+        for feed_name, arg_name in self.feed_name_to_arg_name.items():
             feed_name_to_idx[feed_name] = self.arg_name_to_idx.get(arg_name)
         return feed_name_to_idx
 

@@ -75,7 +75,7 @@ def _dygraph_to_static_output_(dygraph_func):
         else:
             feed_name_to_idx = dygraph_to_static.get_feed_name_to_idx()
             feed_dict = {}
-            for feed_name, idx in feed_name_to_idx.iteritems():
+            for feed_name, idx in feed_name_to_idx.items():
                 feed_dict[feed_name] = args[idx]
 
             # Run static_func in static mode
@@ -99,7 +99,7 @@ def run_static_func(main_program, startup_program, static_func, args, kwargs,
 
     with fluid.program_guard(main_program, startup_program):
         args_list = list(args)
-        for var_name, value in feed_dict.iteritems():
+        for var_name, value in feed_dict.items():
             idx = feed_name_to_idx[var_name]
             args_list[idx] = fluid.data(
                 name=var_name, shape=value.shape, dtype=str(value.dtype))
