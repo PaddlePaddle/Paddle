@@ -42,7 +42,7 @@ class StructurePruner(Pruner):
             pruning_axis(dict): The key is the name of parameter to be pruned,
                                 '*' means all the parameters.
                                 The value is the axis to be used. Given a parameter
-                                with shape [3, 4], the result of pruning 50% on aixs 1
+                                with shape [3, 4], the result of pruning 50% on axis 1
                                 is a parameter with shape [3, 2].
             criterions(dict): The key is the name of parameter to be pruned,
                               '*' means all the parameters.

@@ -77,6 +77,14 @@ struct AnalysisConfig {
    */
   const std::string& params_file() const { return params_file_; }
 
+  // Padding related.
+  /** Turn off Padding.
+ */
+  void DisableFCPadding();
+  /** A bool state telling whether padding is turned on.
+   */
+  bool use_fc_padding() const { return use_fc_padding_; }
+
   // GPU related.
 
   /**
@@ -292,6 +300,9 @@ struct AnalysisConfig {
   uint64_t memory_pool_init_size_mb_{100};  // initial size is 100MB.
 
   bool use_cudnn_{false};
+
+  // Padding related
+  bool use_fc_padding_{true};
 
   // TensorRT related.
   bool use_tensorrt_{false};

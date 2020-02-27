@@ -311,7 +311,17 @@ class TestApiWhileLoop_Error(unittest.TestCase):
         def cond_returns_2d_tensor(i):
             return layers.less_than(i, ten_2d)
 
+        def cond_receives_two_args(i, ten):
+            return layers.less_than(i, ten)
+
         def body(i):
+            return layers.increment(i)
+
+        def body_returns_error_length(i):
+            i = layers.increment(i)
+            return [i, i]
+
+        def body_returns_error_type(i, ten):
             return layers.increment(i)
 
         main_program = Program()
@@ -366,6 +376,20 @@ class TestApiWhileLoop_Error(unittest.TestCase):
                 out = layers.while_loop(cond_returns_2d_tensor, body, [data_2d])
 
             self.assertRaises(TypeError, type_error_shape_cond_returns_2d)
+
+            # The length of `body` returns in Op(while_loop) must be same as `loop_vars`
+            def value_error_body_returns_error_length():
+                out = layers.while_loop(cond_returns_bool_tensor,
+                                        body_returns_error_length, [data])
+
+            self.assertRaises(ValueError, value_error_body_returns_error_length)
+
+            # The type of `body` returns in Op(while_loop) must be same as `loop_vars`
+            def value_error_body_returns_error_type():
+                out = layers.while_loop(cond_receives_two_args,
+                                        body_returns_error_type, [data, ten])
+
+            self.assertRaises(ValueError, value_error_body_returns_error_type)
 
 
 if __name__ == '__main__':

@@ -156,7 +156,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         """
         DownpounSGD is a distributed optimizer so
         that user can call minimize to generate backward
-        operators and optimization operators within minmize function
+        operators and optimization operators within minimize function
         Args:
             loss(Variable): loss variable defined by user
             startup_program(Program): startup program that defined by user
