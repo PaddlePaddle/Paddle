@@ -17,5 +17,9 @@ from __future__ import print_function
 from . import ast_transformer
 from .ast_transformer import *
 
+from . import static_analysis
+from .static_analysis import *
+
 __all__ = []
 __all__ += ast_transformer.__all__
+__all__ += static_analysis.__all__

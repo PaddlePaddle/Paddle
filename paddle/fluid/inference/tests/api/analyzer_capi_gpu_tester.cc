@@ -93,6 +93,8 @@ TEST(PD_AnalysisConfig, trt_fp16) {
                           false);
   bool trt_enable = PD_TensorrtEngineEnabled(config);
   CHECK(trt_enable) << "NO";
+  PD_Predictor *predictor = PD_NewPredictor(config);
+  PD_DeletePredictor(predictor);
   PD_DeleteAnalysisConfig(config);
 }
 

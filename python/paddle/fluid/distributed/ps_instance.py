@@ -110,7 +110,7 @@ class PaddlePSInstance(object):
 
     def gather_ips(self):
         """
-        Return all servers and workers ip throught mpi allgather 
+        Return all servers and workers ip through mpi allgather 
         """
         self._ips = self.dh.comm.allgather(self._ip)
         return self._ips

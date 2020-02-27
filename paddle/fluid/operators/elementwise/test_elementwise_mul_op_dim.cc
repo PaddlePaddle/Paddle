@@ -79,7 +79,7 @@ TEST(ElementwiseMulOpTester, correct_dims) {
   MainTest(test_data);
 }
 
-// Checks if AreDimsAndFormatCorrect fails when channel_num is not divisable by
+// Checks if AreDimsAndFormatCorrect fails when channel_num is not devisable by
 // 16
 TEST(ElementwiseMulOpTester, incorrect_channel_num) {
   TestData test_data;

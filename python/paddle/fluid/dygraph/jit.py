@@ -12,19 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 __all__ = ['TracedLayer', 'dygraph_to_static_output']
 
-import ast
+import gast
 import inspect
+import textwrap
 
 from ..wrapped_decorator import wrap_decorator
 from .base import program_desc_tracing_guard, switch_to_static_graph
 from .dygraph_to_static import DygraphToStaticAst
+from .dygraph_to_static.ast_utils import ast_to_func
 from .layers import Layer
 from paddle.fluid import core
 from paddle.fluid.framework import Program, Block, Variable, _dygraph_tracer, dygraph_only, _dygraph_guard, _current_expected_place, in_dygraph_mode
 from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.compiler import CompiledProgram
+from paddle.fluid import program_guard, data
 
 
 def create_program_from_desc(program_desc):
@@ -52,19 +57,60 @@ def extract_vars(inputs):
 
 def _dygraph_to_static_output_(dygraph_func):
     def __impl__(*args, **kwargs):
+
         # Get AST from dygraph function
         dygraph_code = inspect.getsource(dygraph_func)
-        root = ast.parse(dygraph_code)
+        dygraph_code = textwrap.dedent(dygraph_code)
+        root = gast.parse(dygraph_code)
 
-        root = DygraphToStaticAst().get_static_ast(root)
+        # Transform AST
+        dygraph_to_static = DygraphToStaticAst()
+        root_wrapper = dygraph_to_static.get_static_ast(root)
 
-        # TODO static_func should a callable from AST, like
-        # static_func = ast_to_func(root)
-        # currently just use dygraph_func
-        static_func = dygraph_func
-        return static_func(*args, **kwargs)
+        # Get static_func from AST
+        func_name = dygraph_to_static.get_module_name()
+        static_func, file_name = ast_to_func(root_wrapper.node, func_name)
+
+        if not in_dygraph_mode():
+            return static_func(*args, **kwargs)
+        else:
+            feed_name_to_idx = dygraph_to_static.get_feed_name_to_idx()
+            feed_dict = {}
+            for feed_name, idx in feed_name_to_idx.items():
+                feed_dict[feed_name] = args[idx]
+
+            # Run static_func in static mode
+            startup_program = Program()
+            main_program = Program()
+            static_res = run_static_func(main_program, startup_program,
+                                         static_func, args, kwargs, feed_dict,
+                                         feed_name_to_idx)
+
+        return static_res
 
     return __impl__
+
+
+@switch_to_static_graph
+def run_static_func(main_program, startup_program, static_func, args, kwargs,
+                    feed_dict, feed_name_to_idx):
+
+    with program_guard(main_program, startup_program):
+        args_list = list(args)
+        for var_name, value in feed_dict.items():
+            idx = feed_name_to_idx[var_name]
+            args_list[idx] = data(
+                name=var_name, shape=value.shape, dtype=str(value.dtype))
+        args = tuple(args_list)
+        static_out = static_func(*args, **kwargs)
+        if not isinstance(static_out, (list, tuple)):
+            static_out = [static_out]
+        exe = Executor(core.CPUPlace())
+        exe.run(startup_program)
+        static_res = exe.run(main_program,
+                             fetch_list=static_out,
+                             feed=feed_dict)
+    return static_res
 
 
 dygraph_to_static_output = wrap_decorator(_dygraph_to_static_output_)
@@ -105,17 +151,17 @@ def _trace(layer,
 
 class TracedLayer(object):
     """
-    TracedLayer is used to convert a forward dygraph model to a static 
-    graph model. This is mainly used to save the dygraph model for online 
-    inference using C++. Besides, users can also do inference in Python 
-    using the converted static graph model, which usually has better 
-    performance than the original dygraph model.  
+    TracedLayer is used to convert a forward dygraph model to a static
+    graph model. This is mainly used to save the dygraph model for online
+    inference using C++. Besides, users can also do inference in Python
+    using the converted static graph model, which usually has better
+    performance than the original dygraph model.
 
     TracedLayer would run the static graph model using :code:`Executor`
     and :code:`CompiledProgram` . The static graph model would share
     parameters with the dygraph model.
-    
-    All TracedLayer objects should not be created by constructor and should 
+
+    All TracedLayer objects should not be created by constructor and should
     be created by static method :code:`TracedLayer.trace(layer, inputs)` .
 
     The TracedLayer can only be used to convert the data-independent dygraph
@@ -156,7 +202,7 @@ class TracedLayer(object):
     @dygraph_only
     def trace(layer, inputs):
         """
-        This method is the only allowed method to create TracedLayer object. 
+        This method is the only allowed method to create TracedLayer object.
         It would call the :code:`layer(*inputs)` method to run the dygraph
         model and convert it into a static graph model.
 

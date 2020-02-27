@@ -16,46 +16,107 @@ from __future__ import print_function
 
 import numpy as np
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle.fluid.core as core
 import unittest
 
 from paddle.fluid.dygraph.jit import dygraph_to_static_output
 
 np.random.seed(1)
 
-
-def dyfunc(a, b):
-    with fluid.dygraph.guard():
-        x = fluid.dygraph.to_variable(a)
-        y = fluid.dygraph.to_variable(b)
-        x.stop_gradient = False
-        y.stop_gradient = False
-
-        inputs = {'X': [x], 'Y': [y]}
-        loss = core.ops.elementwise_mul(inputs)['Out'][0]
-
-        loss.backward()
-        x_grad = x.gradient()
-        y_grad = y.gradient()
-        return x_grad, y_grad
+if fluid.is_compiled_with_cuda():
+    place = fluid.CUDAPlace(0)
+else:
+    place = fluid.CPUPlace()
 
 
-@dygraph_to_static_output
-def dyfunc_to_static(a, b):
-    return dyfunc(a, b)
+def dyfunc_with_if_else(x_v, label=None):
+    if fluid.layers.mean(x_v).numpy()[0] > 5:
+        x_v = x_v - 1
+    else:
+        x_v = x_v + 1
+    # plain if in python
+    if label is not None:
+        loss = fluid.layers.cross_entropy(x_v, label)
+        return loss
+    return x_v
 
 
-class TestBasicModel(unittest.TestCase):
-    def test_dygraph_static_same_output(self):
-        a = np.random.uniform(
-            low=0.1, high=1, size=(3, 4, 5)).astype(np.float32)
-        b = np.random.uniform(
-            low=0.1, high=1, size=(3, 4, 5)).astype(np.float32)
-        dy_output = dyfunc(a, b)
-        static_output = dyfunc_to_static(a, b)
-        self.assertTrue(np.array_equal(dy_output[0], static_output[0]))
-        self.assertTrue(np.array_equal(dy_output[1], static_output[1]))
+def dyfunc_with_if_else2(x, col=100):
+    row = 0
+    # plain if in python
+    if abs(col) > x.shape[-1]:
+        col = -1
+    if fluid.layers.reduce_mean(x).numpy()[0] > x.numpy()[row][col]:
+        y = fluid.layers.relu(x)
+    else:
+        x_pow = fluid.layers.pow(x, 2)
+        y = fluid.layers.tanh(x_pow)
+    return y
+
+
+def nested_if_else(x_v):
+    batch_size = 16
+    feat_size = x_v.shape[-1]
+    bias = fluid.layers.fill_constant([feat_size], dtype='float32', value=1)
+    # plain if in python
+    if x_v.shape[0] != batch_size:
+        batch_size = x_v.shape[0]
+    if fluid.layers.mean(x_v).numpy()[0] < 0:
+        y = x_v + bias
+        w = fluid.layers.fill_constant([feat_size], dtype='float32', value=10)
+        if y.numpy()[0] < 10:
+            tmp = y * w
+            y = fluid.layers.relu(tmp)
+            if fluid.layers.mean(y).numpy()[0] < batch_size:
+                y = fluid.layers.abs(y)
+            else:
+                tmp = fluid.layers.fill_constant(
+                    [feat_size], dtype='float32', value=-1)
+                y = y - tmp
+    else:
+        y = x_v - bias
+    return y
+
+
+class TestDygraphIfElse(unittest.TestCase):
+    """
+    TestCase for the transformation from control flow `if/else`
+    dependent on tensor in Dygraph into Static `fluid.layers.cond`.
+    """
+
+    def setUp(self):
+        self.x = np.random.random([10, 16]).astype('float32')
+        self.dyfunc = dyfunc_with_if_else
+
+    def _run_static(self):
+        main_program = fluid.Program()
+        with fluid.program_guard(main_program):
+            x_v = fluid.layers.assign(self.x)
+            # Transform into static graph
+            out = dygraph_to_static_output(self.dyfunc)(x_v)
+            exe = fluid.Executor(place)
+            ret = exe.run(main_program, fetch_list=out)
+            return ret
+
+    def _run_dygraph(self):
+        with fluid.dygraph.guard(place):
+            x_v = fluid.dygraph.to_variable(self.x)
+            ret = self.dyfunc(x_v)
+            return ret.numpy()
+
+    def test_ast_to_func(self):
+        self.assertTrue((self._run_dygraph() == self._run_static()).all())
+
+
+class TestDygraphIfElse2(TestDygraphIfElse):
+    def setUp(self):
+        self.x = np.random.random([10, 16]).astype('float32')
+        self.dyfunc = dyfunc_with_if_else2
+
+
+class TestDygraphIfElse3(TestDygraphIfElse):
+    def setUp(self):
+        self.x = np.random.random([10, 16]).astype('float32')
+        self.dyfunc = nested_if_else
 
 
 if __name__ == '__main__':

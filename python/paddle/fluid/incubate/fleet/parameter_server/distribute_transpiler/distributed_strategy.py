@@ -69,6 +69,23 @@ class DistributedStrategy(object):
         self._execute_strategy.num_threads = num_threads
         if num_threads > 1:
             self._build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
+        self.debug_opt = None
+
+    def set_debug_opt(self, opt_info):
+        self.debug_opt = opt_info
+
+    def get_debug_opt(self):
+        opt_info = dict()
+        if self.debug_opt is not None and isinstance(self.debug_opt, dict):
+            opt_info["dump_slot"] = bool(self.debug_opt.get("dump_slot", 0))
+            opt_info["dump_converter"] = str(
+                self.debug_opt.get("dump_converter", ""))
+            opt_info["dump_fields"] = self.debug_opt.get("dump_fields", [])
+            opt_info["dump_file_num"] = self.debug_opt.get("dump_file_num", 16)
+            opt_info["dump_fields_path"] = self.debug_opt.get(
+                "dump_fields_path", "")
+            opt_info["dump_param"] = self.debug_opt.get("dump_param", [])
+        return opt_info
 
     def get_program_config(self):
         return self._program_config
@@ -164,9 +181,12 @@ class DistributedStrategy(object):
 class SyncStrategy(DistributedStrategy):
     def __init__(self):
         super(SyncStrategy, self).__init__()
-        self._program_config.sync_mode = True
-        self._program_config.runtime_split_send_recv = False
-        self._build_strategy.async_mode = False
+        self._program_config.sync_mode = False
+        self._program_config.runtime_split_send_recv = True
+        self._build_strategy.async_mode = True
+        self._program_config.half_async = True
+        self._program_config.completely_not_async = True
+        self._execute_strategy.use_thread_barrier = True
 
         num_threads = os.getenv("CPU_NUM", "1")
 

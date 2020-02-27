@@ -180,8 +180,6 @@ FeedFetchList AsyncSSAGraphExecutor::Run(
 
   if (places_.size() == 1) {
     exception_holder_.Clear();
-  } else {
-    HandleException();
   }
 
   FeedFetchList fetch_data;
