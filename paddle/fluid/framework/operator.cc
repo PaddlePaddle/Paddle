@@ -177,8 +177,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       RunImpl(scope, place);
     }
 
-    platform::Place execution_place = GetExecutionPlace(place);
-    VLOG(3) << execution_place << " " << DebugStringEx(&scope);
+    VLOG(3) << place << " " << DebugStringEx(&scope);
   } catch (platform::EnforceNotMet& exception) {
     framework::InsertCallStackInfo(Type(), Attrs(), &exception);
     throw std::move(exception);

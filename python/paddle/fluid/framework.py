@@ -5072,27 +5072,42 @@ def switch_device(device):
 @signature_safe_contextmanager
 def device_guard(device=None):
     """
-    Returns a context manager that specifies the device type to use.
+    A context manager that specifies the device on which the Op will be placed.
     Args:
-        device(str): Specify the device to use inside `"with"` statement.
-            Wnen it is set to "cpu" or "gpu", all operations constructed
-            inside `"with"` statement will be placed on CPUPlace or CUDAPlace to execute. Default: None.
+        device(str): Specify the device to use in the context. It supports 'cpu' or 'gpu',
+            Wnen it is set to 'cpu' or 'gpu', all Ops created in the context will be
+            placed on CPUPlace or CUDAPlace. When 'gpu' is set and the program runs on
+            single-card, the device index will be the same as the device on which the
+            executor runs. Default: None, Ops in this context will be automatically
+            assigned devices.
+
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
+            # the three Ops below will be automatically assigned to CUDAPlace(0)
             data1 = fluid.layers.fill_constant(shape=[1, 3, 8, 8], value=0.5, dtype='float32')
             data2 = fluid.layers.fill_constant(shape=[1, 3, 5, 5], value=0.5, dtype='float32')
             shape = fluid.layers.shape(data2)
+
             with fluid.device_guard("cpu"):
+                # Ops created here will be placed on CPUPlace
                 shape = fluid.layers.slice(shape, axes=[0], starts=[0], ends=[4])
-            out = fluid.layers.crop_tensor(data1, shape=shape)
+            with fluid.device_guard('gpu'):
+                # Ops created here will be placed on CUDAPlace(0)
+                out = fluid.layers.crop_tensor(data1, shape=shape)
+
+            place = fluid.CUDAPlace(0)
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            result = exe.run(fetch_list=[out])
     """
-    if device not in ['cpu', 'gpu', '', None]:
+
+    if device not in ['cpu', 'gpu', None]:
         raise ValueError(
-            "The Attr(device) should be 'cpu' or 'gpu', and it can also be an empty string or None "
-            "when there is no need to set device, but received %s" % device)
+            "The Attr(device) should be 'cpu' or 'gpu', and it can also be None "
+            "when there is no need to specify device, but received %s" % device)
     pre_device = switch_device(device)
     yield
     switch_device(pre_device)
