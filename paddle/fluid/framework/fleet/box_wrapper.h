@@ -27,12 +27,15 @@ limitations under the License. */
 #include <mutex>  // NOLINT
 #include <string>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/timer.h"
+#include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -188,21 +191,23 @@ class BoxWrapper {
     }
   }
 
-  void SaveBase(const char* batch_model_path, const char* xbox_model_path,
-                boxps::SaveModelStat& stat) {  // NOLINT
+  const std::string SaveBase(const char* batch_model_path,
+                             const char* xbox_model_path) {
     VLOG(3) << "Begin SaveBase";
-    if (nullptr != s_instance_) {
-      s_instance_->boxps_ptr_->SaveBase(batch_model_path, xbox_model_path,
-                                        stat);
-    }
+    std::string ret_str;
+    int ret = boxps_ptr_->SaveBase(batch_model_path, xbox_model_path, ret_str);
+    PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
+                                  "SaveBase failed in BoxPS."));
+    return ret_str;
   }
 
-  void SaveDelta(const char* xbox_model_path,
-                 boxps::SaveModelStat& stat) {  // NOLINT
+  const std::string SaveDelta(const char* xbox_model_path) {
     VLOG(3) << "Begin SaveDelta";
-    if (nullptr != s_instance_) {
-      s_instance_->boxps_ptr_->SaveDelta(xbox_model_path, stat);
-    }
+    std::string ret_str;
+    int ret = boxps_ptr_->SaveDelta(xbox_model_path, ret_str);
+    PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
+                                  "SaveDelta failed in BoxPS."));
+    return ret_str;
   }
 
   static std::shared_ptr<BoxWrapper> GetInstance() {
@@ -223,7 +228,7 @@ class BoxWrapper {
     return slot_name_omited_in_feedpass_;
   }
 
-  struct MetricMsg {
+  class MetricMsg {
    public:
     MetricMsg() {}
     MetricMsg(const std::string& label_varname, const std::string& pred_varname,
@@ -234,29 +239,212 @@ class BoxWrapper {
       calculator = new BasicAucCalculator();
       calculator->init(bucket_size);
     }
-    const std::string& LabelVarname() const { return label_varname_; }
-    const std::string& PredVarname() const { return pred_varname_; }
+    virtual ~MetricMsg() {}
+
     int IsJoin() const { return is_join_; }
     BasicAucCalculator* GetCalculator() { return calculator; }
+    virtual void add_data(const Scope* exe_scope) {
+      std::vector<int64_t> label_data;
+      get_data<int64_t>(exe_scope, label_varname_, &label_data);
+      std::vector<float> pred_data;
+      get_data<float>(exe_scope, pred_varname_, &pred_data);
+      auto cal = GetCalculator();
+      auto batch_size = label_data.size();
+      for (size_t i = 0; i < batch_size; ++i) {
+        cal->add_data(pred_data[i], label_data[i]);
+      }
+    }
+    template <class T = float>
+    static void get_data(const Scope* exe_scope, const std::string& varname,
+                         std::vector<T>* data) {
+      auto* var = exe_scope->FindVar(varname.c_str());
+      PADDLE_ENFORCE_NOT_NULL(
+          var, platform::errors::NotFound(
+                   "Error: var %s is not found in scope.", varname.c_str()));
+      auto& gpu_tensor = var->Get<LoDTensor>();
+      auto* gpu_data = gpu_tensor.data<T>();
+      auto len = gpu_tensor.numel();
+      data->resize(len);
+      cudaMemcpy(data->data(), gpu_data, sizeof(T) * len,
+                 cudaMemcpyDeviceToHost);
+    }
+    static inline std::pair<int, int> parse_cmatch_rank(uint64_t x) {
+      // first 32 bit store cmatch and second 32 bit store rank
+      return std::make_pair(static_cast<int>(x >> 32),
+                            static_cast<int>(x & 0xff));
+    }
 
-   private:
+   protected:
     std::string label_varname_;
     std::string pred_varname_;
     int is_join_;
     BasicAucCalculator* calculator;
   };
 
+  class MultiTaskMetricMsg : public MetricMsg {
+   public:
+    MultiTaskMetricMsg(const std::string& label_varname,
+                       const std::string& pred_varname_list, int is_join,
+                       const std::string& cmatch_rank_group,
+                       const std::string& cmatch_rank_varname,
+                       int bucket_size = 1000000) {
+      label_varname_ = label_varname;
+      cmatch_rank_varname_ = cmatch_rank_varname;
+      is_join_ = is_join;
+      calculator = new BasicAucCalculator();
+      calculator->init(bucket_size);
+      for (auto& cmatch_rank : string::split_string(cmatch_rank_group)) {
+        const std::vector<std::string>& cur_cmatch_rank =
+            string::split_string(cmatch_rank, "_");
+        PADDLE_ENFORCE_EQ(
+            cur_cmatch_rank.size(), 2,
+            platform::errors::PreconditionNotMet(
+                "illegal multitask auc spec: %s", cmatch_rank.c_str()));
+        cmatch_rank_v.emplace_back(atoi(cur_cmatch_rank[0].c_str()),
+                                   atoi(cur_cmatch_rank[1].c_str()));
+      }
+      for (const auto& pred_varname : string::split_string(pred_varname_list)) {
+        pred_v.emplace_back(pred_varname);
+      }
+      PADDLE_ENFORCE_EQ(cmatch_rank_v.size(), pred_v.size(),
+                        platform::errors::PreconditionNotMet(
+                            "cmatch_rank's size [%lu] should be equal to pred "
+                            "list's size [%lu], but ther are not equal",
+                            cmatch_rank_v.size(), pred_v.size()));
+    }
+    virtual ~MultiTaskMetricMsg() {}
+    void add_data(const Scope* exe_scope) override {
+      std::vector<int64_t> cmatch_rank_data;
+      get_data<int64_t>(exe_scope, cmatch_rank_varname_, &cmatch_rank_data);
+      std::vector<int64_t> label_data;
+      get_data<int64_t>(exe_scope, label_varname_, &label_data);
+      size_t batch_size = cmatch_rank_data.size();
+      PADDLE_ENFORCE_EQ(
+          batch_size, label_data.size(),
+          platform::errors::PreconditionNotMet(
+              "illegal batch size: batch_size[%lu] and label_data[%lu]",
+              batch_size, label_data.size()));
+
+      std::vector<std::vector<float>> pred_data_list(pred_v.size());
+      for (size_t i = 0; i < pred_v.size(); ++i) {
+        get_data<float>(exe_scope, pred_v[i], &pred_data_list[i]);
+      }
+      for (size_t i = 0; i < pred_data_list.size(); ++i) {
+        PADDLE_ENFORCE_EQ(
+            batch_size, pred_data_list[i].size(),
+            platform::errors::PreconditionNotMet(
+                "illegal batch size: batch_size[%lu] and pred_data[%lu]",
+                batch_size, pred_data_list[i].size()));
+      }
+      auto cal = GetCalculator();
+      for (size_t i = 0; i < batch_size; ++i) {
+        auto cmatch_rank_it =
+            std::find(cmatch_rank_v.begin(), cmatch_rank_v.end(),
+                      parse_cmatch_rank(cmatch_rank_data[i]));
+        if (cmatch_rank_it != cmatch_rank_v.end()) {
+          cal->add_data(pred_data_list[std::distance(cmatch_rank_v.begin(),
+                                                     cmatch_rank_it)][i],
+                        label_data[i]);
+        }
+      }
+    }
+
+   protected:
+    std::vector<std::pair<int, int>> cmatch_rank_v;
+    std::vector<std::string> pred_v;
+    std::string cmatch_rank_varname_;
+  };
+  class CmatchRankMetricMsg : public MetricMsg {
+   public:
+    CmatchRankMetricMsg(const std::string& label_varname,
+                        const std::string& pred_varname, int is_join,
+                        const std::string& cmatch_rank_group,
+                        const std::string& cmatch_rank_varname,
+                        int bucket_size = 1000000) {
+      label_varname_ = label_varname;
+      pred_varname_ = pred_varname;
+      cmatch_rank_varname_ = cmatch_rank_varname;
+      is_join_ = is_join;
+      calculator = new BasicAucCalculator();
+      calculator->init(bucket_size);
+      for (auto& cmatch_rank : string::split_string(cmatch_rank_group)) {
+        const std::vector<std::string>& cur_cmatch_rank =
+            string::split_string(cmatch_rank, "_");
+        PADDLE_ENFORCE_EQ(
+            cur_cmatch_rank.size(), 2,
+            platform::errors::PreconditionNotMet(
+                "illegal cmatch_rank auc spec: %s", cmatch_rank.c_str()));
+        cmatch_rank_v.emplace_back(atoi(cur_cmatch_rank[0].c_str()),
+                                   atoi(cur_cmatch_rank[1].c_str()));
+      }
+    }
+    virtual ~CmatchRankMetricMsg() {}
+    void add_data(const Scope* exe_scope) override {
+      std::vector<int64_t> cmatch_rank_data;
+      get_data<int64_t>(exe_scope, cmatch_rank_varname_, &cmatch_rank_data);
+      std::vector<int64_t> label_data;
+      get_data<int64_t>(exe_scope, label_varname_, &label_data);
+      std::vector<float> pred_data;
+      get_data<float>(exe_scope, pred_varname_, &pred_data);
+      size_t batch_size = cmatch_rank_data.size();
+      PADDLE_ENFORCE_EQ(
+          batch_size, label_data.size(),
+          platform::errors::PreconditionNotMet(
+              "illegal batch size: cmatch_rank[%lu] and label_data[%lu]",
+              batch_size, label_data.size()));
+      PADDLE_ENFORCE_EQ(
+          batch_size, pred_data.size(),
+          platform::errors::PreconditionNotMet(
+              "illegal batch size: cmatch_rank[%lu] and pred_data[%lu]",
+              batch_size, pred_data.size()));
+      auto cal = GetCalculator();
+      for (size_t i = 0; i < batch_size; ++i) {
+        const auto& cur_cmatch_rank = parse_cmatch_rank(cmatch_rank_data[i]);
+        for (size_t j = 0; j < cmatch_rank_v.size(); ++j) {
+          if (cmatch_rank_v[j] == cur_cmatch_rank) {
+            cal->add_data(pred_data[i], label_data[i]);
+            break;
+          }
+        }
+      }
+    }
+
+   protected:
+    std::vector<std::pair<int, int>> cmatch_rank_v;
+    std::string cmatch_rank_varname_;
+  };
+  const std::vector<std::string>& GetMetricNameList() const {
+    return metric_name_list_;
+  }
   int PassFlag() const { return pass_flag_; }
   void FlipPassFlag() { pass_flag_ = 1 - pass_flag_; }
-  bool NeedMetric() const { return need_metric_; }
-  std::map<std::string, MetricMsg>& GetMetricList() { return metric_lists_; }
+  std::map<std::string, MetricMsg*>& GetMetricList() { return metric_lists_; }
 
-  void InitMetric(const std::string& name, const std::string& label_varname,
-                  const std::string& pred_varname, bool is_join,
+  void InitMetric(const std::string& method, const std::string& name,
+                  const std::string& label_varname,
+                  const std::string& pred_varname,
+                  const std::string& cmatch_rank_varname, bool is_join,
+                  const std::string& cmatch_rank_group,
                   int bucket_size = 1000000) {
-    metric_lists_.emplace(name, MetricMsg(label_varname, pred_varname,
-                                          is_join ? 1 : 0, bucket_size));
-    need_metric_ = true;
+    if (method == "AucCalculator") {
+      metric_lists_.emplace(name, new MetricMsg(label_varname, pred_varname,
+                                                is_join ? 1 : 0, bucket_size));
+    } else if (method == "MultiTaskAucCalculator") {
+      metric_lists_.emplace(
+          name, new MultiTaskMetricMsg(label_varname, pred_varname,
+                                       is_join ? 1 : 0, cmatch_rank_group,
+                                       cmatch_rank_varname, bucket_size));
+    } else if (method == "CmatchRankAucCalculator") {
+      metric_lists_.emplace(
+          name, new CmatchRankMetricMsg(label_varname, pred_varname,
+                                        is_join ? 1 : 0, cmatch_rank_group,
+                                        cmatch_rank_varname, bucket_size));
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "PaddleBox only support AucCalculator, MultiTaskAucCalculator and "
+          "CmatchRankAucCalculator"));
+    }
+    metric_name_list_.emplace_back(name);
   }
 
   const std::vector<float> GetMetricMsg(const std::string& name) {
@@ -265,7 +453,7 @@ class BoxWrapper {
                       platform::errors::InvalidArgument(
                           "The metric name you provided is not registered."));
     std::vector<float> metric_return_values_(8, 0.0);
-    auto* auc_cal_ = iter->second.GetCalculator();
+    auto* auc_cal_ = iter->second->GetCalculator();
     auc_cal_->calculate_bucket_error();
     auc_cal_->compute();
     metric_return_values_[0] = auc_cal_->auc();
@@ -285,14 +473,15 @@ class BoxWrapper {
   static cudaStream_t stream_list_[8];
   static std::shared_ptr<boxps::BoxPSBase> boxps_ptr_;
   boxps::PSAgentBase* p_agent_ = nullptr;
+  // TODO(hutuxian): magic number, will add a config to specify
   const int feedpass_thread_num_ = 30;  // magic number
   static std::shared_ptr<BoxWrapper> s_instance_;
   std::unordered_set<std::string> slot_name_omited_in_feedpass_;
 
   // Metric Related
   int pass_flag_ = 1;  // join: 1, update: 0
-  bool need_metric_ = false;
-  std::map<std::string, MetricMsg> metric_lists_;
+  std::map<std::string, MetricMsg*> metric_lists_;
+  std::vector<std::string> metric_name_list_;
   std::vector<int> slot_vector_;
   std::vector<LoDTensor> keys_tensor;  // Cache for pull_sparse
 };
@@ -303,13 +492,17 @@ class BoxHelper {
   explicit BoxHelper(paddle::framework::Dataset* dataset) : dataset_(dataset) {}
   virtual ~BoxHelper() {}
 
+  void SetDate(int year, int month, int day) {
+    year_ = year;
+    month_ = month;
+    day_ = day;
+  }
   void BeginPass() {
 #ifdef PADDLE_WITH_BOX_PS
     auto box_ptr = BoxWrapper::GetInstance();
     box_ptr->BeginPass();
 #endif
   }
-
   void EndPass() {
 #ifdef PADDLE_WITH_BOX_PS
     auto box_ptr = BoxWrapper::GetInstance();
@@ -317,8 +510,18 @@ class BoxHelper {
 #endif
   }
   void LoadIntoMemory() {
+    platform::Timer timer;
+    VLOG(3) << "Begin LoadIntoMemory(), dataset[" << dataset_ << "]";
+    timer.Start();
     dataset_->LoadIntoMemory();
+    timer.Pause();
+    VLOG(0) << "download + parse cost: " << timer.ElapsedSec() << "s";
+
+    timer.Start();
     FeedPass();
+    timer.Pause();
+    VLOG(0) << "FeedPass cost: " << timer.ElapsedSec() << " s";
+    VLOG(3) << "End LoadIntoMemory(), dataset[" << dataset_ << "]";
   }
   void PreLoadIntoMemory() {
     dataset_->PreLoadIntoMemory();
@@ -326,33 +529,91 @@ class BoxHelper {
       dataset_->WaitPreLoadDone();
       FeedPass();
     }));
+    VLOG(3) << "After PreLoadIntoMemory()";
   }
   void WaitFeedPassDone() { feed_data_thread_->join(); }
+
+#ifdef PADDLE_WITH_BOX_PS
+  // notify boxps to feed this pass feasigns from SSD to memory
+  static void FeedPassThread(const std::deque<Record>& t, int begin_index,
+                             int end_index, boxps::PSAgentBase* p_agent,
+                             const std::unordered_set<int>& index_map,
+                             int thread_id) {
+    p_agent->AddKey(0ul, thread_id);
+    for (auto iter = t.begin() + begin_index; iter != t.begin() + end_index;
+         iter++) {
+      const auto& ins = *iter;
+      const auto& feasign_v = ins.uint64_feasigns_;
+      for (const auto feasign : feasign_v) {
+        if (index_map.find(feasign.slot()) != index_map.end()) {
+          continue;
+        }
+        p_agent->AddKey(feasign.sign().uint64_feasign_, thread_id);
+      }
+    }
+  }
+#endif
+  void FeedPass() {
+    VLOG(3) << "Begin FeedPass";
+#ifdef PADDLE_WITH_BOX_PS
+    struct std::tm b;
+    b.tm_year = year_ - 1900;
+    b.tm_mon = month_ - 1;
+    b.tm_mday = day_;
+    b.tm_min = b.tm_hour = b.tm_sec = 0;
+    std::time_t x = std::mktime(&b);
+
+    auto box_ptr = BoxWrapper::GetInstance();
+    auto input_channel_ =
+        dynamic_cast<MultiSlotDataset*>(dataset_)->GetInputChannel();
+    const std::deque<Record>& pass_data = input_channel_->GetData();
+
+    // get feasigns that FeedPass doesn't need
+    const std::unordered_set<std::string>& slot_name_omited_in_feedpass_ =
+        box_ptr->GetOmitedSlot();
+    std::unordered_set<int> slot_id_omited_in_feedpass_;
+    const auto& all_readers = dataset_->GetReaders();
+    PADDLE_ENFORCE_GT(all_readers.size(), 0,
+                      platform::errors::PreconditionNotMet(
+                          "Readers number must be greater than 0."));
+    const auto& all_slots_name = all_readers[0]->GetAllSlotAlias();
+    for (size_t i = 0; i < all_slots_name.size(); ++i) {
+      if (slot_name_omited_in_feedpass_.find(all_slots_name[i]) !=
+          slot_name_omited_in_feedpass_.end()) {
+        slot_id_omited_in_feedpass_.insert(i);
+      }
+    }
+    const size_t tnum = box_ptr->GetFeedpassThreadNum();
+    boxps::PSAgentBase* p_agent = box_ptr->GetAgent();
+    VLOG(3) << "Begin call BeginFeedPass in BoxPS";
+    box_ptr->BeginFeedPass(x / 86400, &p_agent);
+
+    std::vector<std::thread> threads;
+    size_t len = pass_data.size();
+    size_t len_per_thread = len / tnum;
+    auto remain = len % tnum;
+    size_t begin = 0;
+    for (size_t i = 0; i < tnum; i++) {
+      threads.push_back(
+          std::thread(FeedPassThread, std::ref(pass_data), begin,
+                      begin + len_per_thread + (i < remain ? 1 : 0), p_agent,
+                      std::ref(slot_id_omited_in_feedpass_), i));
+      begin += len_per_thread + (i < remain ? 1 : 0);
+    }
+    for (size_t i = 0; i < tnum; ++i) {
+      threads[i].join();
+    }
+    VLOG(3) << "Begin call EndFeedPass in BoxPS";
+    box_ptr->EndFeedPass(p_agent);
+#endif
+  }
 
  private:
   Dataset* dataset_;
   std::shared_ptr<std::thread> feed_data_thread_;
-  // notify boxps to feed this pass feasigns from SSD to memory
-  void FeedPass() {
-#ifdef PADDLE_WITH_BOX_PS
-    auto box_ptr = BoxWrapper::GetInstance();
-    auto input_channel_ =
-        dynamic_cast<MultiSlotDataset*>(dataset_)->GetInputChannel();
-    std::vector<Record> pass_data;
-    std::vector<uint64_t> feasign_to_box;
-    input_channel_->ReadAll(pass_data);
-    for (const auto& ins : pass_data) {
-      const auto& feasign_v = ins.uint64_feasigns_;
-      for (const auto feasign : feasign_v) {
-        feasign_to_box.push_back(feasign.sign().uint64_feasign_);
-      }
-    }
-    input_channel_->Open();
-    input_channel_->Write(pass_data);
-    input_channel_->Close();
-    box_ptr->FeedPass(feasign_to_box);
-#endif
-  }
+  int year_;
+  int month_;
+  int day_;
 };
 
 }  // end namespace framework

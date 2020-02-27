@@ -1,4 +1,4 @@
-#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +18,9 @@ import subprocess
 import multiprocessing
 import math
 import platform
+import inspect
+import paddle
+import paddle.fluid
 """
 please make sure to run in the tools path
 usage: python sample_test.py {arg1} 
@@ -197,7 +200,8 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
             print(msg)
             result = False
         # msg is the returned code execution report
-        os.remove("samplecode_temp/" + tfname)
+        #os.remove("samplecode_temp/" + tfname)
+
     return result
 
 
@@ -271,12 +275,11 @@ def srccoms_extract(srcfile, wlist):
         wlist(list): white list
 
     Returns:
-    result: True or False
+        result: True or False
     """
 
     process_result = True
     srcc = srcfile.read()
-
     # 2. get defs and classes header line number
     # set file pointer to its beginning
     srcfile.seek(0, 0)
@@ -284,7 +287,12 @@ def srccoms_extract(srcfile, wlist):
 
     # 1. fetch__all__ list
     allidx = srcc.find("__all__")
-
+    srcfile_new = srcfile.name
+    srcfile_new = srcfile_new.replace('.py', '')
+    srcfile_list = srcfile_new.split('/')
+    srcfile_str = ''
+    for i in range(4, len(srcfile_list)):
+        srcfile_str = srcfile_str + srcfile_list[i] + '.'
     if allidx != -1:
         alllist = []
         # get all list for layers/ops.py
@@ -312,7 +320,6 @@ def srccoms_extract(srcfile, wlist):
         api_alllist_count = len(alllist)
         api_count = 0
         handled = []
-
         # get src contents in layers/ops.py
         if srcfile.name.find("ops.py") != -1:
             for i in range(0, len(srcls)):
@@ -329,19 +336,18 @@ def srccoms_extract(srcfile, wlist):
                         opcom += srcls[j]
                         if srcls[j].find("\"\"\"") != -1:
                             break
-                    process_result = sampcd_extract_and_run(opcom, opname,
-                                                            "def", opname)
                     api_count += 1
                     handled.append(
                         opname)  # ops.py also has normal formatted functions
                     # use list 'handled'  to mark the functions have been handled here
                     # which will be ignored in the following step
-
         for i in range(0, len(srcls)):
             if srcls[i].startswith(
                     'def '):  # a function header is detected in line i
                 f_header = srcls[i].replace(" ", '')
                 fn = f_header[len('def'):f_header.find('(')]  # function name
+                if "%s%s" % (srcfile_str, fn) not in methods:
+                    continue
                 if fn in handled:
                     continue
                 if fn in alllist:
@@ -357,9 +363,12 @@ def srccoms_extract(srcfile, wlist):
                     else:
                         if not sampcd_extract_and_run(fcombody, fn, "def", fn):
                             process_result = False
+
             if srcls[i].startswith('class '):
                 c_header = srcls[i].replace(" ", '')
                 cn = c_header[len('class'):c_header.find('(')]  # class name
+                if '%s%s' % (srcfile_str, cn) not in methods:
+                    continue
                 if cn in handled:
                     continue
                 if cn in alllist:
@@ -371,6 +380,7 @@ def srccoms_extract(srcfile, wlist):
                     if classcom != "":
                         if not sampcd_extract_and_run(classcom, cn, "class",
                                                       cn):
+
                             process_result = False
                     else:
                         print("WARNING: no comments in class itself ", cn,
@@ -392,6 +402,10 @@ def srccoms_extract(srcfile, wlist):
                                 mn = thisl[indent + len('def '):thisl.find(
                                     '(')]  # method name
                                 name = cn + "." + mn  # full name
+                                if '%s%s' % (
+                                        srcfile_str, name
+                                ) not in methods:  # class method not in api.spec 
+                                    continue
                                 if mn.startswith('_'):
                                     continue
                                 if name in wlist or name + "@" + srcfile.name in wlist:
@@ -418,6 +432,7 @@ def srccoms_extract(srcfile, wlist):
                                     if not sampcd_extract_and_run(
                                             thismtdcom, name, "method", name):
                                         process_result = False
+
     return process_result
 
 
@@ -430,50 +445,71 @@ def test(file_list):
     return process_result
 
 
+def get_filenames(path):
+    '''
+    Given a path ``path``, this function will
+    get the modules that pending for check.
+
+    Args:
+        path(path): the path of API.spec
+
+    Returns:
+
+        list: the modules pending for check .
+
+    '''
+    filenames = []
+    global methods
+    methods = []
+    API_spec = '%s/%s' % (os.path.abspath(os.path.join(os.getcwd(), "..")),
+                          path)
+    with open(API_spec) as f:
+        for line in f.readlines():
+            api = line.split(' ', 1)[0]
+            try:
+                module = eval(api).__module__
+            except AttributeError:
+                continue
+            if len(module.split('.')) > 2:
+                filename = '../python/'
+                module_py = '%s.py' % module.split('.')[-1]
+                for i in range(0, len(module.split('.')) - 1):
+                    filename = filename + '%s/' % module.split('.')[i]
+                filename = filename + module_py
+            else:
+                print("\n----Exception in get api filename----\n")
+                print("\n" + api + 'module is ' + module + "\n")
+            if filename not in filenames:
+                filenames.append(filename)
+            # get all methods
+            method = ''
+            if inspect.isclass(eval(api)):
+                name = api.split('.')[-1]
+            elif inspect.isfunction(eval(api)):
+                name = api.split('.')[-1]
+            elif inspect.ismethod(eval(api)):
+                name = '%s.%s' % (api.split('.')[-2], api.split('.')[-1])
+            else:
+                name = ''
+                print("\n----Exception in get api methods----\n")
+                print("\n" + line + "\n")
+                print("\n" + api + ' method is None!!!' + "\n")
+            for j in range(2, len(module.split('.'))):
+                method = method + '%s.' % module.split('.')[j]
+            method = method + name
+            if method not in methods:
+                methods.append(method)
+    return filenames
+
+
 '''
 Important constant lists:
 
-    filenames : the modules pending for check .
     wlist : a list of API that should not trigger the example check .
             It is composed of wlist_temp + wlist_inneed + wlist_ignore.
     srcfile: the source .py code file
 '''
 
-filenames = [
-    "../python/paddle/fluid/layers/control_flow.py",
-    "../python/paddle/fluid/layers/io.py",
-    "../python/paddle/fluid/layers/nn.py",
-    "../python/paddle/fluid/layers/ops.py",
-    "../python/paddle/fluid/layers/tensor.py",
-    "../python/paddle/fluid/layers/learning_rate_scheduler.py",
-    "../python/paddle/fluid/layers/detection.py",
-    "../python/paddle/fluid/layers/metric_op.py"
-]
-filenames += [
-    "../python/paddle/fluid/dygraph/layers.py",
-    "../python/paddle/fluid/dygraph/base.py",
-    "../python/paddle/fluid/dygraph/nn.py",
-    "../python/paddle/fluid/dygraph/tracer.py",
-    "../python/paddle/fluid/dygraph/profiler.py",
-    "../python/paddle/fluid/dygraph/parallel.py",
-    "../python/paddle/fluid/dygraph/checkpoint.py",
-    "../python/paddle/fluid/dygraph/learning_rate_scheduler.py",
-    "../python/paddle/fluid/dygraph/backward_strategy.py"
-]
-filenames += [
-    "../python/paddle/fluid/data_feeder.py",
-    "../python/paddle/fluid/dataset.py", "../python/paddle/fluid/clip.py",
-    "../python/paddle/fluid/metrics.py", "../python/paddle/fluid/executor.py",
-    "../python/paddle/fluid/initializer.py", "../python/paddle/fluid/io.py",
-    "../python/paddle/fluid/nets.py", "../python/paddle/fluid/optimizer.py",
-    "../python/paddle/fluid/profiler.py",
-    "../python/paddle/fluid/regularizer.py",
-    "../python/paddle/fluid/backward.py", "../python/paddle/fluid/average.py",
-    "../python/paddle/fluid/unique_name.py",
-    "../python/paddle/fluid/framework.py",
-    "../python/paddle/fluid/evaluator.py",
-    "../python/paddle/fluid/param_attr.py"
-]
 wlist_inneed = [
     "append_LARS", "BuildStrategy.debug_graphviz_path",
     "BuildStrategy.enable_sequential_execution",
@@ -505,6 +541,58 @@ wlist_inneed = [
     'StaticRNN.output', "cuda_places", "CUDAPinnedPlace", "CUDAPlace",
     "Program.parse_from_string"
 ]
+
+wlist_nosample = [
+    'Compressor', 'Compressor.config', 'Compressor.run', 'run_check',
+    'HDFSClient.upload', 'HDFSClient.download', 'HDFSClient.is_exist',
+    'HDFSClient.is_dir', 'HDFSClient.delete', 'HDFSClient.rename',
+    'HDFSClient.makedirs', 'HDFSClient.ls', 'HDFSClient.lsr', 'multi_download',
+    'multi_upload', 'TrainingDecoder.block',
+    'QuantizeTranspiler.training_transpile',
+    'QuantizeTranspiler.freeze_program', 'AutoMixedPrecisionLists',
+    'Uniform.sample', 'Uniform.log_prob', 'Uniform.entropy',
+    'Categorical.kl_divergence', 'Categorical.entropy',
+    'MultivariateNormalDiag.entropy', 'MultivariateNormalDiag.kl_divergence',
+    'RNNCell', 'RNNCell.call', 'RNNCell.get_initial_states', 'GRUCell.call',
+    'LSTMCell.call', 'Decoder', 'Decoder.initialize', 'Decoder.step',
+    'Decoder.finalize', 'fused_elemwise_activation', 'search_pyramid_hash',
+    'convert_dist_to_sparse_program', 'load_persistables_for_increment',
+    'load_persistables_for_inference', 'cache', 'buffered', 'xmap_readers'
+]
+
+wlist_no_op_pass = ['gelu', 'erf']
+
+wlist_ci_nopass = [
+    'DecodeHelper', 'DecodeHelper.initialize', 'DecodeHelper.sample',
+    'DecodeHelper.next_inputs', 'TrainingHelper.initialize',
+    'TrainingHelper.sample', 'TrainingHelper.next_inputs',
+    'GreedyEmbeddingHelper.initialize', 'GreedyEmbeddingHelper.sample',
+    'GreedyEmbeddingHelper.next_inputs', 'LayerList.append', 'HDFSClient',
+    'InitState', 'TracedLayer', 'SampleEmbeddingHelper.sample',
+    'BasicDecoder.initialize', 'BasicDecoder.step', 'ParameterList.append',
+    'GreedyEmbeddingHelper', 'SampleEmbeddingHelper', 'BasicDecoder', 'lstm',
+    'partial_sum'
+]
+
+wlist_nopass = [
+    'StateCell', 'StateCell.compute_state', 'TrainingDecoder',
+    'TrainingDecoder.step_input', 'TrainingDecoder.static_input',
+    'TrainingDecoder.output', 'BeamSearchDecoder', 'GradClipByValue',
+    'GradClipByNorm', 'Variable.detach', 'Variable.numpy', 'Variable.set_value',
+    'Variable.gradient', 'BeamSearchDecoder.decode',
+    'BeamSearchDecoder.read_array', 'CompiledProgram',
+    'CompiledProgram.with_data_parallel', 'append_backward', 'guard',
+    'to_variable', 'op_freq_statistic', 'save_dygraph', 'load_dygraph',
+    'ParallelExecutor', 'ParallelExecutor.run',
+    'ParallelExecutor.drop_local_exe_scopes', 'GradClipByGlobalNorm',
+    'extend_with_decoupled_weight_decay', 'switch', 'Normal', 'memory_usage',
+    'decorate', 'PiecewiseDecay', 'InverseTimeDecay', 'PolynomialDecay',
+    'NoamDecay', 'start_profiler', 'profiler', 'tree_conv', 'multiclass_nms2',
+    'DataFeedDesc', 'Conv2D', 'Conv3D', 'Conv3DTranspose', 'Embedding', 'NCE',
+    'PRelu', 'BilinearTensorProduct', 'GroupNorm', 'SpectralNorm', 'TreeConv',
+    'prroi_pool'
+]
+
 wlist_temp = [
     'ChunkEvaluator',
     'EditDistance',
@@ -609,7 +697,8 @@ gpu_not_white = [
     "deformable_conv", "cuda_places", "CUDAPinnedPlace", "CUDAPlace",
     "cuda_profiler", 'DGCMomentumOptimizer'
 ]
-wlist = wlist_temp + wlist_inneed + wlist_ignore
+
+wlist = wlist_temp + wlist_inneed + wlist_ignore + wlist_nosample + wlist_nopass + wlist_no_op_pass + wlist_ci_nopass
 
 if len(sys.argv) < 2:
     print("Error: inadequate number of arguments")
@@ -630,17 +719,20 @@ else:
     print("sample_test running under python", platform.python_version())
     if not os.path.isdir("./samplecode_temp"):
         os.mkdir("./samplecode_temp")
-
     cpus = multiprocessing.cpu_count()
+    filenames = get_filenames('paddle/fluid/API_PR.spec')
+    filenames.remove('../python/paddle/fluid/core_avx.py')
     one_part_filenum = int(math.ceil(len(filenames) / cpus))
     divided_file_list = [
         filenames[i:i + one_part_filenum]
         for i in range(0, len(filenames), one_part_filenum)
     ]
+
     po = multiprocessing.Pool()
     results = po.map_async(test, divided_file_list)
     po.close()
     po.join()
+
     result = results.get()
 
     # delete temp files

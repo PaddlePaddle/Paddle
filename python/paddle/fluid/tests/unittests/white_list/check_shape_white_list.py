@@ -30,4 +30,5 @@ NEED_TO_FIX_OP_LIST = [
     'soft_relu',
     'squared_l2_distance',
     'tree_conv',
+    'cvm',
 ]
