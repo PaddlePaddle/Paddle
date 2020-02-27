@@ -27,7 +27,7 @@ def get_random_images_and_labels(image_shape, label_shape):
     return image, label
 
 
-class TestDygraphhDataLoaderWithException(unittest.TestCase):
+class TestDygraphDataLoaderWithException(unittest.TestCase):
     def setUp(self):
         self.batch_size = 8
         self.batch_num = 4

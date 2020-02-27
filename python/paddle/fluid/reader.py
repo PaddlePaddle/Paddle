@@ -72,8 +72,6 @@ def _register_exit_func(func, signals=[signal.SIGTERM]):
         for sig in signals:
             old_handler = signal.signal(sig, signal_wrapper)
             if old_handler not in (signal.SIG_DFL, signal.SIG_IGN):
-                if not callable(old_handler):
-                    continue
                 if (sig == signal.SIGINT and
                         old_handler is signal.default_int_handler):
                     continue

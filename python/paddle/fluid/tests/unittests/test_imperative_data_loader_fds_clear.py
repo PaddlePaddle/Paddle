@@ -1,4 +1,4 @@
-# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ def batch_generator_creator(batch_size, batch_num):
     return __reader__
 
 
-class TestDygraphhDataLoaderMmapFdsClear(unittest.TestCase):
+class TestDygraphDataLoaderMmapFdsClear(unittest.TestCase):
     def setUp(self):
         self.batch_size = 8
         self.batch_num = 100

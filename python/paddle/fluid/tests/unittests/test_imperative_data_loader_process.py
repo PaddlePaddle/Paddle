@@ -42,7 +42,7 @@ def batch_generator_creator(batch_size, batch_num):
 
 # NOTE: coverage CI can't cover child process code, so need these test.
 # Here test child process loop function in main process
-class TestDygraphhDataLoaderProcess(unittest.TestCase):
+class TestDygraphDataLoaderProcess(unittest.TestCase):
     def setUp(self):
         self.batch_size = 8
         self.batch_num = 4
