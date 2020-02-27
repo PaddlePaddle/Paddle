@@ -87,7 +87,8 @@ class FusedBatchNormActOpInferVarType
  protected:
   std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
       const override {
-    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Y"}};
+    std::unordered_map<std::string, std::string> m{{"X", /*->*/ "Y"}};
+    return m;
   }
 };
 
