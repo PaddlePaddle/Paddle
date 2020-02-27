@@ -56,6 +56,23 @@ def extract_vars(inputs):
     return result_list
 
 
+def to_static_func(dygraph_func):
+    # Get AST from dygraph function
+    dygraph_code = inspect.getsource(dygraph_func)
+    dygraph_code = textwrap.dedent(dygraph_code)
+    root = gast.parse(dygraph_code)
+
+    # Transform AST
+    dygraph_to_static = DygraphToStaticAst()
+    root_wrapper = dygraph_to_static.get_static_ast(root)
+
+    # Get static_func from AST
+    func_name = dygraph_to_static.get_module_name()
+    static_func, file_name = ast_to_func(root_wrapper.node, func_name)
+
+    return static_func, dygraph_to_static
+
+
 def _dygraph_to_static_graph_(dygraph_func):
     def __impl__(*args, **kwargs):
         if in_dygraph_mode():
@@ -63,20 +80,7 @@ def _dygraph_to_static_graph_(dygraph_func):
                 "The decorator 'dygraph_to_static_graph' doesn't work in dygraph mode."
                 " Please use it in static mode.")
             return dygraph_func(*args, **kwargs)
-
-        # Get AST from dygraph function
-        dygraph_code = inspect.getsource(dygraph_func)
-        dygraph_code = textwrap.dedent(dygraph_code)
-        root = gast.parse(dygraph_code)
-
-        # Transform AST
-        dygraph_to_static = DygraphToStaticAst()
-        root_wrapper = dygraph_to_static.get_static_ast(root)
-
-        # Get static_func from AST
-        func_name = dygraph_to_static.get_module_name()
-        static_func, file_name = ast_to_func(root_wrapper.node, func_name)
-
+        static_func, dygraph_to_static = to_static_func(dygraph_func)
         return static_func(*args, **kwargs)
 
     return __impl__
@@ -86,23 +90,11 @@ def _dygraph_to_static_output_(dygraph_func):
     def __impl__(*args, **kwargs):
         if in_dygraph_mode():
             warnings.warn(
-                "The decorator 'dygraph_to_static_graph' doesn't work in dygraph mode."
+                "The decorator 'dygraph_to_static_output' doesn't work in dygraph mode."
                 " Please use it in static mode.")
             return dygraph_func(*args, **kwargs)
 
-        # Get AST from dygraph function
-        dygraph_code = inspect.getsource(dygraph_func)
-        dygraph_code = textwrap.dedent(dygraph_code)
-        root = gast.parse(dygraph_code)
-
-        # Transform AST
-        dygraph_to_static = DygraphToStaticAst()
-        root_wrapper = dygraph_to_static.get_static_ast(root)
-
-        # Get static_func from AST
-        func_name = dygraph_to_static.get_module_name()
-        static_func, file_name = ast_to_func(root_wrapper.node, func_name)
-
+        static_func, dygraph_to_static = to_static_func(dygraph_func)
         feed_name_to_idx = dygraph_to_static.get_feed_name_to_idx()
         feed_dict = {}
         for feed_name, idx in feed_name_to_idx.items():
@@ -113,7 +105,6 @@ def _dygraph_to_static_output_(dygraph_func):
         main_program = default_startup_program()
         static_res = run_static_func(main_program, startup_program, static_func,
                                      args, kwargs, feed_dict, feed_name_to_idx)
-
         return static_res
 
     return __impl__
