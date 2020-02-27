@@ -2691,12 +2691,14 @@ class Block(object):
         if not isinstance(other, Block):
             raise TypeError(
                 "_copy_param_info_from should be invoked with Block")
-        for v in self.iter_parameters():
+        for p in other.iter_parameters():
             assert isinstance(p, Parameter)
-            p = other.vars.get(p.name, None)
-            if p is None:
-                raise ValueError("Parameter %s not found in origin program " %
-                                 v.name)
+            v = self.vars.get(p.name, None)
+            if v is None:
+                # if the Parameter is pruned, v may be None
+                continue
+                # raise ValueError("_copy_param_info_from should be invoked with "
+                #                  "same topology")
             assert isinstance(v, Variable)
             new_p = None
             if in_dygraph_mode():
@@ -4026,11 +4028,6 @@ class Program(object):
 
             p._sync_with_cpp()
 
-        if not pruned_origin_block_id_map:
-            pruned_origin_block_id_map = {
-                i: i
-                for i in six.moves.range(self.desc.num_blocks())
-            }
         p._copy_param_info_from(self)
         p._copy_data_info_from(self, pruned_origin_block_id_map)
         p._copy_dist_param_info_from(self)
