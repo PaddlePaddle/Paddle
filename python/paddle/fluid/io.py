@@ -1078,7 +1078,7 @@ def save_inference_model(dirname,
 
     Args:
         dirname(str): The directory path to save the inference model.
-        feeded_var_names(list[str]): list of string. Names of variables that need to be feeded
+        feeded_var_names(list[str]): list of string. Names of variables that need to be fed
                                      data during inference.
         target_vars(list[Variable]): list of Variable. Variables from which we can get 
                                      inference results.

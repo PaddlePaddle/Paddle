@@ -156,7 +156,7 @@ def basic_gru(input,
               dtype='float32',
               name='basic_gru'):
     """
-    GRU implementation using basic operator, supports multiple layers and bidirection gru.
+    GRU implementation using basic operator, supports multiple layers and bidirectional gru.
 
     .. math::
             u_t & = actGate(W_ux xu_{t} + W_uh h_{t-1} + b_u)
@@ -377,7 +377,7 @@ def basic_lstm(input,
                dtype='float32',
                name='basic_lstm'):
     """
-    LSTM implementation using basic operators, supports multiple layers and bidirection LSTM.
+    LSTM implementation using basic operators, supports multiple layers and bidirectional LSTM.
 
     .. math::
            i_t &= \sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + b_i)

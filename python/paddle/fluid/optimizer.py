@@ -3378,10 +3378,10 @@ class PipelineOptimizer(object):
     """
     Pipeline Optimizer
 
-    Train with pipeline mode. The program will be splited by cut_list. 
+    Train with pipeline mode. The program will be split by cut_list. 
 
     If the len of cut_list is k, then the whole program (including \
-    backward part) will be splited to 2*k-1 sections. 
+    backward part) will be split to 2*k-1 sections. 
     
     So the length of place_list and concurrency_list must be also 2*k-1.
 

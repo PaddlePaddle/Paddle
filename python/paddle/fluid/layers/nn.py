@@ -4918,7 +4918,7 @@ def transpose(x, perm, name=None):
 
     Args:
         x (Variable): The input Tensor. It is a N-D Tensor of data types float32, float64, int32.
-        perm (list): Permute the input accoring to the data of perm.
+        perm (list): Permute the input according to the data of perm.
         name (str): The name of this layer. It is optional.
 
     Returns:
@@ -5492,7 +5492,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
     be set -1.
 
     2. 0 means the actual dimension value is going to be copied from the
-    corresponding dimension of x. The indice of 0s in shape can not exceed
+    corresponding dimension of x. The index of 0s in shape can not exceed
     the dimension of x.
 
     Here are some examples to explain it.
@@ -6498,7 +6498,7 @@ def image_resize(input,
     The input must be a 4-D Tensor of the shape (num_batches, channels, in_h, in_w) 
     or (num_batches, in_h, in_w, channels), or a 5-D Tensor of the shape 
     (num_batches, channels, in_d, in_h, in_w) or (num_batches, in_d, in_h, in_w, channels), 
-    and the resizing only applies on the three dimensions(depth, hight and width).
+    and the resizing only applies on the three dimensions(depth, height and width).
 
     **Warning:** the parameter :attr:`actual_shape` will be deprecated in the
     future and only use :attr:`out_shape` instead.
@@ -8417,7 +8417,7 @@ def pad2d(input,
           data_format="NCHW",
           name=None):
     """
-    Pad 2-d images accordding to 'paddings' and 'mode'.
+    Pad 2-d images according to 'paddings' and 'mode'.
     If mode is 'reflect', paddings[0] and paddings[1] must be no greater
     than height-1. And the width dimension has the same condition.
 
@@ -8439,7 +8439,7 @@ def pad2d(input,
         name (str, optional) : The default value is None.  Normally there is no need for
                     user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
-    Returns: a 4-D Tensor padded accordding to paddings and mode and data type is same as input.
+    Returns: a 4-D Tensor padded according to paddings and mode and data type is same as input.
 
     Return Type: Variable
 
@@ -13388,8 +13388,8 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
                                   [padding_h, padding_w, padding_h, padding_w]. If an integer
                                   padding was given, [padding, padding, padding, padding] will
                                   be used. For default, paddings will be [0, 0, 0, 0]
-        dilations(int|list):      the dilations of convolution kernel, shold be
-                                  [dilation_h, dilation_w], or an integer dialtion treated as
+        dilations(int|list):      the dilations of convolution kernel, should be
+                                  [dilation_h, dilation_w], or an integer dilation treated as
                                   [dilation, dilation]. For default, it will be [1, 1].
         name(str, optional): The default value is None.  
                              Normally there is no need for user to set this property.  
