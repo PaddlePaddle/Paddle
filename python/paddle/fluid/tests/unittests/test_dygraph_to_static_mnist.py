@@ -66,7 +66,7 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
             global_pooling=global_pooling,
             use_cudnn=use_cudnn)
 
-    @dygraph_to_static_output(ff=1)
+    @dygraph_to_static_output
     def forward(self, inputs):
         x = self._conv2d(inputs)
         x = self._pool2d(x)
