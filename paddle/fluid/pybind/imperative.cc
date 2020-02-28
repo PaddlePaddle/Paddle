@@ -234,51 +234,51 @@ void BindImperative(py::module *m_ptr) {
         []() { imperative::ThrowErrorIfLoadProcessFailed(); });
 
   // Dygraph DataLoader reader process & thread related functions
-  m.def("_convert_to_tensor_list",
-        [](py::object &obj) -> py::list {
-          // 0. input data check
-          PADDLE_ENFORCE(
-              py::isinstance<py::tuple>(obj) || py::isinstance<py::list>(obj),
+  m.def(
+      "_convert_to_tensor_list",
+      [](py::object &obj) -> py::list {
+        // 0. input data check
+        PADDLE_ENFORCE(
+            py::isinstance<py::tuple>(obj) || py::isinstance<py::list>(obj),
+            platform::errors::InvalidArgument(
+                "The batch data read into DataLoader is illegal."
+                "Expected data type is tuple or list, but received %s",
+                obj.get_type()));
+        py::list batch = py::cast<py::list>(obj);
+        py::list tensors;
+        for (size_t i = 0; i < batch.size(); ++i) {
+          // 1. cast to python array
+          auto array = batch[i].cast<py::array>();
+          PADDLE_ENFORCE_NE(
+              string::Sprintf("%s", array.dtype()).compare("object"), 0,
               platform::errors::InvalidArgument(
-                  "The batch data read into DataLoader is illegal."
-                  "Expected data type is tuple or list, but received %s",
-                  obj.get_type()));
-          py::list batch = py::cast<py::list>(obj);
-          py::list tensors;
-          for (size_t i = 0; i < batch.size(); ++i) {
-            // 1. cast to python array
-            auto array = batch[i].cast<py::array>();
-            PADDLE_ENFORCE_NE(
-                string::Sprintf("%s", array.dtype()).compare("object"), 0,
-                platform::errors::InvalidArgument(
-                    "Faild to convert input data to a regular ndarray.\n  * "
-                    "Usually this means the input data contains nested "
-                    "lists with different lengths.\n  * Check the reader "
-                    "function passed to 'set_(sample/sample_list/batch)"
-                    "_generator' to locate the data causes this issue."));
-            // 2. construcct LoDTensor
-            framework::LoDTensor t;
-            SetTensorFromPyArray<platform::CPUPlace>(
-                &t, array, platform::CPUPlace(), true);
-            // 3. allocate shared memory
-            memory::allocation::MemoryMapAllocator allocator;
-            void *data_ptr = reinterpret_cast<void *>(
-                reinterpret_cast<uintptr_t>(t.Holder()->ptr()) + t.offset());
-            size_t data_size = t.memory_size();
-            auto shared_writer_holder = allocator.Allocate(data_size);
-            // 4. maintain mmap fd set & backup ipc_name
-            std::string ipc_name = shared_writer_holder->ipc_name();
-            memory::allocation::MemoryMapFdSet::Instance().Insert(ipc_name);
-            // 5. copy data & reset holder
-            memory::Copy(platform::CPUPlace(), shared_writer_holder->ptr(),
-                         platform::CPUPlace(), data_ptr, data_size);
-            t.ResetHolder(shared_writer_holder);
-            // 6. append to result list
-            tensors.append(t);
-          }
-          return tensors;
-        },
-        py::return_value_policy::take_ownership);
+                  "Faild to convert input data to a regular ndarray.\n  * "
+                  "Usually this means the input data contains nested "
+                  "lists with different lengths.\n  * Check the reader "
+                  "function passed to 'set_(sample/sample_list/batch)"
+                  "_generator' to locate the data causes this issue."));
+          // 2. construcct LoDTensor
+          framework::LoDTensor t;
+          SetTensorFromPyArray<platform::CPUPlace>(&t, array,
+                                                   platform::CPUPlace(), true);
+          // 3. allocate shared memory
+          void *data_ptr = t.data<void>();
+          size_t data_size = t.numel() * framework::SizeOfType(t.type());
+          auto shared_writer_holder =
+              memory::allocation::AllocateMemoryMapWriterAllocation(data_size);
+          // 4. maintain mmap fd set & backup ipc_name
+          const std::string &ipc_name = shared_writer_holder->ipc_name();
+          memory::allocation::MemoryMapFdSet::Instance().Insert(ipc_name);
+          // 5. copy data & reset holder
+          memory::Copy(platform::CPUPlace(), shared_writer_holder->ptr(),
+                       platform::CPUPlace(), data_ptr, data_size);
+          t.ResetHolder(shared_writer_holder);
+          // 6. append to result list
+          tensors.append(t);
+        }
+        return tensors;
+      },
+      py::return_value_policy::take_ownership);
 
   m.def("_remove_tensor_list_mmap_fds", [](py::list &tensor_list) {
     for (size_t i = 0; i < tensor_list.size(); ++i) {
@@ -286,6 +286,11 @@ void BindImperative(py::module *m_ptr) {
       auto *mmap_writer_allocation =
           dynamic_cast<memory::allocation::MemoryMapWriterAllocation *>(
               t.Holder().get());
+      PADDLE_ENFORCE_NOT_NULL(
+          mmap_writer_allocation,
+          platform::errors::NotFound("The shared memory of LoDTensor in "
+                                     "DataLoader's child process has been "
+                                     "released."));
       memory::allocation::MemoryMapFdSet::Instance().Remove(
           mmap_writer_allocation->ipc_name());
     }

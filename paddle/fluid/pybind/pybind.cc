@@ -893,10 +893,11 @@ PYBIND11_MODULE(core_noavx, m) {
             LoDTensor tensor;
 
             // 2. Rebuild Allocation
-            memory::allocation::MemoryMapAllocator alloctor;
-            std::string ipc_name = t[0].cast<std::string>();
+            const std::string &ipc_name = t[0].cast<std::string>();
             size_t size = t[1].cast<size_t>();
-            auto shared_reader_holder = alloctor.Rebuild(ipc_name, size);
+            auto shared_reader_holder =
+              memory::allocation::RebuildMemoryMapReaderAllocation(
+                ipc_name, size);
 
             // 3. Maintain global fd set
             VLOG(3) << "LoDTensor ipc name: " << ipc_name;
@@ -904,7 +905,7 @@ PYBIND11_MODULE(core_noavx, m) {
 
             // 4. Rebuild LoDTensor
             tensor.ResetHolderWithType(shared_reader_holder,
-                static_cast<proto::VarType::Type>(t[2].cast<int>()));
+              static_cast<proto::VarType::Type>(t[2].cast<int>()));
             tensor.Resize(make_ddim(t[3].cast<std::vector<int>>()));
             tensor.set_lod(t[4].cast<framework::LoD>());
 

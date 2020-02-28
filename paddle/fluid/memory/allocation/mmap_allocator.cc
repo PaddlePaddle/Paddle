@@ -25,6 +25,7 @@
 
 #include <random>
 #include <string>
+#include <utility>
 
 namespace paddle {
 namespace memory {
@@ -50,7 +51,7 @@ MemoryMapReaderAllocation::~MemoryMapReaderAllocation() {
   VLOG(3) << "~MemoryMapReaderAllocation: " << this->ipc_name();
 }
 
-std::string MemoryMapAllocator::GetIPCName() {
+std::string GetIPCName() {
   static std::random_device rd;
   std::string handle = "/paddle_";
 #ifdef _WIN32
@@ -60,12 +61,12 @@ std::string MemoryMapAllocator::GetIPCName() {
 #endif
   handle += "_";
   handle += std::to_string(rd());
-  return handle;
+  return std::move(handle);
 }
 
-std::shared_ptr<MemoryMapWriterAllocation> MemoryMapAllocator::Allocate(
+std::shared_ptr<MemoryMapWriterAllocation> AllocateMemoryMapWriterAllocation(
     size_t size) {
-  std::string ipc_name = GetIPCName();
+  const std::string &ipc_name = GetIPCName();
   int flags = O_RDWR | O_CREAT;
 
   int fd = shm_open(ipc_name.c_str(), flags, 0644);
@@ -85,8 +86,8 @@ std::shared_ptr<MemoryMapWriterAllocation> MemoryMapAllocator::Allocate(
   return std::make_shared<MemoryMapWriterAllocation>(ptr, size, ipc_name);
 }
 
-std::shared_ptr<MemoryMapReaderAllocation> MemoryMapAllocator::Rebuild(
-    std::string ipc_name, size_t size) {
+std::shared_ptr<MemoryMapReaderAllocation> RebuildMemoryMapReaderAllocation(
+    const std::string &ipc_name, size_t size) {
   int fd = shm_open(ipc_name.c_str(), O_RDONLY, 0644);
   PADDLE_ENFORCE_NE(
       fd, -1, platform::errors::Unavailable("File descriptor %s open failed",

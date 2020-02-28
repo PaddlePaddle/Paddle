@@ -44,74 +44,6 @@ QUEUE_GET_TIMEOUT = 60
 # from the child process will automatically clear the memory-mapped file.
 multiprocess_queue_set = set()
 
-_registered_exit_funcs = set()
-_executed_exit_funcs = set()
-
-
-# NOTE used for register a function to be executed at interpreter exit.
-def _register_exit_func(func, signals=[signal.SIGTERM]):
-    def func_wrapper():
-        if func not in _executed_exit_funcs:
-            try:
-                func()
-            finally:
-                _executed_exit_funcs.add(func)
-
-    def signal_wrapper(signum=None, frame=None):
-        func_wrapper()
-        if signum is not None:
-            if signum == signal.SIGINT:
-                raise KeyboardInterrupt
-            sys.exit(signum)
-
-    def register_func(func, signals):
-        if not callable(func):
-            raise TypeError("{!r} is not callable".format(func))
-        set([func])  # raise exc if obj is not hash-able
-        signals = set(signals)
-        for sig in signals:
-            old_handler = signal.signal(sig, signal_wrapper)
-            if old_handler not in (signal.SIG_DFL, signal.SIG_IGN):
-                if (sig == signal.SIGINT and
-                        old_handler is signal.default_int_handler):
-                    continue
-                if old_handler not in _registered_exit_funcs:
-                    atexit.register(old_handler)
-                    _registered_exit_funcs.add(old_handler)
-        if func not in _registered_exit_funcs or not signals:
-            atexit.register(func_wrapper)
-            _registered_exit_funcs.add(func)
-
-    register_func(func, signals)
-
-
-def _clear_multiprocess_queue_set():
-    global multiprocess_queue_set
-    for data_queue in multiprocess_queue_set:
-        if data_queue is None:
-            return
-        while True:
-            try:
-                data_queue.get_nowait()
-            except queue.Empty:
-                break
-
-
-# NOTE: main process clear function at exit
-def _cleanup():
-    # NOTE: inter-process Queue shared memory objects clear function
-    _clear_multiprocess_queue_set()
-    # NOTE: main process memory map files clear funciton
-    core._cleanup_mmap_fds()
-
-
-# NOTE: [ mmap files clear ] When the main process exits unexpectedly, the remaining
-# shared memory objects in the inter-process Queue and the main process (mostly in the
-# BlockingQueue) may not be completely released, resulting in the corresponding
-# memory-mapped file remaining on the disk (/dev/shm), so register this function
-# to clean up shared memory objects in these two queues before the python interpreter exits.
-_register_exit_func(_cleanup)
-
 __all__ = ['PyReader', 'DataLoader']
 
 data_loader_unique_name_generator = UniqueNameGenerator()
@@ -130,6 +62,82 @@ def _convert_places(places):
 
         ret.append(p)
     return ret
+
+
+def _clear_multiprocess_queue_set():
+    global multiprocess_queue_set
+    for data_queue in multiprocess_queue_set:
+        while True:
+            try:
+                data_queue.get_nowait()
+            except queue.Empty:
+                break
+
+
+# NOTE: main process clear function at exit
+def _cleanup():
+    # NOTE: inter-process Queue shared memory objects clear function
+    _clear_multiprocess_queue_set()
+    # NOTE: main process memory map files clear funciton
+    core._cleanup_mmap_fds()
+
+
+# NOTE used for register a function to be executed at interpreter exit.
+class CleanupFuncRegistrar():
+    # Record the cleanup functions that have been executed
+    _executed_func_set = set()
+    # Record the cleanup functions that have been registered
+    _registered_func_set = set()
+
+    @classmethod
+    def register(cls, function, signals=[signal.SIGTERM]):
+        def _func_exectuor():
+            if function not in cls._executed_func_set:
+                try:
+                    function()
+                finally:
+                    cls._executed_func_set.add(function)
+
+        def _func_register(function):
+            if not callable(function):
+                raise TypeError("%s is not callable object." % (function))
+            # check function object whether hash-able
+            set([function])
+            if function not in cls._registered_func_set:
+                atexit.register(_func_exectuor)
+                cls._registered_func_set.add(function)
+
+        def _signal_handler(signum=None, frame=None):
+            _func_exectuor()
+            if signum is not None:
+                if signum == signal.SIGINT:
+                    raise KeyboardInterrupt
+                sys.exit(signum)
+
+        def _signal_register(signals):
+            signals = set(signals)
+            for sig in signals:
+                orig_handler = signal.signal(sig, _signal_handler)
+                if orig_handler not in (signal.SIG_DFL, signal.SIG_IGN):
+                    if (sig == signal.SIGINT and
+                            orig_handler is signal.default_int_handler):
+                        continue
+                    if orig_handler not in cls._registered_func_set:
+                        atexit.register(orig_handler)
+                        cls._registered_func_set.add(orig_handler)
+
+        # deal with signals
+        _signal_register(signals)
+        # deal with function
+        _func_register(function)
+
+
+# NOTE: [ mmap files clear ] When the main process exits unexpectedly, the remaining
+# shared memory objects in the inter-process Queue and the main process (mostly in the
+# BlockingQueue) may not be completely released, resulting in the corresponding
+# memory-mapped file remaining on the disk (/dev/shm), so register this function
+# to clean up shared memory objects in these two queues before the python interpreter exits.
+CleanupFuncRegistrar.register(_cleanup)
 
 
 class DataLoaderBase(object):
@@ -457,6 +465,16 @@ class DygraphGeneratorLoader(DataLoaderBase):
     def iterable(self):
         return self._iterable
 
+    def _clear_and_remove_data_queue(self):
+        if self._data_queue is not None:
+            while True:
+                try:
+                    self._data_queue.get_nowait()
+                except queue.Empty:
+                    break
+            global multiprocess_queue_set
+            multiprocess_queue_set.remove(self._data_queue)
+
     def _wait_thread_ends(self):
         thread = self._thread
         if thread is not None:
@@ -501,8 +519,9 @@ class DygraphGeneratorLoader(DataLoaderBase):
 
     def _start(self):
         if self._use_multiprocess:
-            self._thread_done_event = threading.Event()
-            # Set data_queue and process
+            # clear old _data_queue and remove it from multiprocess_queue_set
+            self._clear_and_remove_data_queue()
+            # set data_queue and process
             self._data_queue = multiprocessing.Queue(self._capacity)
             # add _data_queue into global queue set
             global multiprocess_queue_set
@@ -521,6 +540,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
             self._set_child_signal_handler()
 
             # Set reader_thread
+            self._thread_done_event = threading.Event()
             self._thread = threading.Thread(
                 target=self._reader_thread_loop_with_process)
             self._thread.daemon = True
@@ -586,7 +606,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
             # some shared memory objects may have been applied for but have not yet
             # been put into the inter-process Queue. This part of the object needs
             # to be cleaned up when the process ends.
-            _register_exit_func(_cleanup)
+            CleanupFuncRegistrar.register(_cleanup)
 
             for batch in self._batch_reader():
                 tensor_list = core._convert_to_tensor_list(batch)

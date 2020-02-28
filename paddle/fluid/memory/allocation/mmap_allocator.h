@@ -20,6 +20,7 @@
 #include <mutex>  // NOLINT
 #include <string>
 #include <unordered_set>
+#include <utility>
 
 #include "paddle/fluid/memory/allocation/allocator.h"
 
@@ -31,9 +32,10 @@ class MemoryMapWriterAllocation : public Allocation {
  public:
   explicit MemoryMapWriterAllocation(void *ptr, size_t size,
                                      std::string ipc_name)
-      : Allocation(ptr, size, platform::CPUPlace()), ipc_name_(ipc_name) {}
+      : Allocation(ptr, size, platform::CPUPlace()),
+        ipc_name_(std::move(ipc_name)) {}
 
-  inline std::string ipc_name() const { return ipc_name_; }
+  inline const std::string &ipc_name() const { return ipc_name_; }
 
   ~MemoryMapWriterAllocation() override;
 
@@ -45,9 +47,10 @@ class MemoryMapReaderAllocation : public Allocation {
  public:
   explicit MemoryMapReaderAllocation(void *ptr, size_t size,
                                      std::string ipc_name)
-      : Allocation(ptr, size, platform::CPUPlace()), ipc_name_(ipc_name) {}
+      : Allocation(ptr, size, platform::CPUPlace()),
+        ipc_name_(std::move(ipc_name)) {}
 
-  inline std::string ipc_name() const { return ipc_name_; }
+  inline const std::string &ipc_name() const { return ipc_name_; }
 
   ~MemoryMapReaderAllocation() override;
 
@@ -55,19 +58,11 @@ class MemoryMapReaderAllocation : public Allocation {
   std::string ipc_name_;
 };
 
-class MemoryMapAllocator {
- public:
-  MemoryMapAllocator() {}
-  ~MemoryMapAllocator() {}
+std::shared_ptr<MemoryMapWriterAllocation> AllocateMemoryMapWriterAllocation(
+    size_t size);
 
-  std::shared_ptr<MemoryMapWriterAllocation> Allocate(size_t size);
-
-  std::shared_ptr<MemoryMapReaderAllocation> Rebuild(std::string ipc_name,
-                                                     size_t size);
-
- private:
-  std::string GetIPCName();
-};
+std::shared_ptr<MemoryMapReaderAllocation> RebuildMemoryMapReaderAllocation(
+    const std::string &ipc_name, size_t size);
 
 class MemoryMapFdSet {
  public:

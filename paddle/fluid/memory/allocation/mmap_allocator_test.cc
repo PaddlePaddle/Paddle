@@ -24,11 +24,10 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-TEST(MemoryMapAllocator, test_allocation_base) {
+TEST(MemoryMapAllocation, test_allocation_base) {
   size_t data_size = 4UL * 1024;
   // 1. allocate writer holader
-  MemoryMapAllocator allocator;
-  auto mmap_writer_holder = allocator.Allocate(data_size);
+  auto mmap_writer_holder = AllocateMemoryMapWriterAllocation(data_size);
   std::string ipc_name = mmap_writer_holder->ipc_name();
   // 2. write data
   auto* writer_ptr = static_cast<int32_t*>(mmap_writer_holder->ptr());
@@ -39,7 +38,8 @@ TEST(MemoryMapAllocator, test_allocation_base) {
   pid_t fpid = fork();
   if (fpid == 0) {
     // 4. rebuild reader holder
-    auto mmap_reader_holder = allocator.Rebuild(ipc_name, data_size);
+    auto mmap_reader_holder =
+        RebuildMemoryMapReaderAllocation(ipc_name, data_size);
     auto* reader_ptr = static_cast<int32_t*>(mmap_reader_holder->ptr());
     for (int32_t i = 0; i < 1024; ++i) {
       ASSERT_EQ(reader_ptr[i], i);

@@ -25,7 +25,7 @@ if sys.version_info[0] == 2:
 else:
     import queue
 
-from paddle.fluid.reader import multiprocess_queue_set, _register_exit_func, _cleanup
+from paddle.fluid.reader import multiprocess_queue_set, _cleanup, CleanupFuncRegistrar
 
 # NOTE: These special functions cannot be detected by the existing coverage mechanism,
 # so the following unittests are added for these internal functions.
@@ -34,12 +34,6 @@ from paddle.fluid.reader import multiprocess_queue_set, _register_exit_func, _cl
 class TestDygraphDataLoaderCleanUpFunc(unittest.TestCase):
     def setUp(self):
         self.capacity = 10
-
-    def test_clear_queue_set_with_none(self):
-        test_queue = None
-        global multiprocess_queue_set
-        multiprocess_queue_set.add(test_queue)
-        _cleanup()
 
     def test_clear_queue_set(self):
         test_queue = queue.Queue(self.capacity)
@@ -58,21 +52,23 @@ class TestRegisterExitFunc(unittest.TestCase):
     def test_not_callable_func(self):
         exception = None
         try:
-            _register_exit_func(5)
+            CleanupFuncRegistrar.register(5)
         except TypeError as ex:
             self.assertIn("is not callable", cpt.get_exception_message(ex))
             exception = ex
         self.assertIsNotNone(exception)
 
     def test_old_handler_for_sigint(self):
-        _register_exit_func(func=self.none_func, signals=[signal.SIGINT])
+        CleanupFuncRegistrar.register(
+            function=self.none_func, signals=[signal.SIGINT])
 
     def test_signal_wrapper_by_sigchld(self):
         # This function does not need to be implemented in this case
         def __test_process__():
             pass
 
-        _register_exit_func(func=self.none_func, signals=[signal.SIGCHLD])
+        CleanupFuncRegistrar.register(
+            function=self.none_func, signals=[signal.SIGCHLD])
 
         exception = None
         try:
