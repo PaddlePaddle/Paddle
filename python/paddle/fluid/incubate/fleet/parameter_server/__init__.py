@@ -16,6 +16,11 @@ from __future__ import print_function
 
 import version
 
+from python.paddle.fluid.incubate.fleet.parameter_server.distributed_strategy import TrainerRuntimeConfig
+from python.paddle.fluid.incubate.fleet.parameter_server.distributed_strategy import StrategyFactory
+
+__all__ = ['TrainerRuntimeConfig', 'StrategyFactory', 'fleet']
+
 fleet = None
 
 if version.is_transpiler():
