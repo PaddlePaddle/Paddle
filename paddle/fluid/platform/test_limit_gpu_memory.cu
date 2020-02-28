@@ -29,6 +29,11 @@ TEST(test_record_malloc, test_limit_gpu_memory) {
   FLAGS_gpu_memory_limit_mb = GPU_MEMORY_LIMIT_MB;
   size_t limit = FLAGS_gpu_memory_limit_mb << 20;
 
+  {
+    ASSERT_TRUE(IsCudaMallocRecorded(DEVICE_ID));
+    ASSERT_EQ(RecordedCudaMallocSize(DEVICE_ID), 0UL);
+  }
+
   size_t avail, total;
   {
     RecordedCudaMemGetInfo(&avail, &total, DEVICE_ID);
@@ -52,6 +57,8 @@ TEST(test_record_malloc, test_limit_gpu_memory) {
     ASSERT_EQ(err, cudaSuccess);
     ASSERT_EQ(cudaGetLastError(), cudaSuccess);
     ASSERT_NE(p1, nullptr);
+
+    ASSERT_EQ(RecordedCudaMallocSize(DEVICE_ID), size1);
   }
 
   void *p2 = nullptr;
@@ -61,17 +68,27 @@ TEST(test_record_malloc, test_limit_gpu_memory) {
     ASSERT_EQ(err, cudaErrorMemoryAllocation);
     ASSERT_EQ(cudaGetLastError(), cudaSuccess);
     ASSERT_EQ(p2, nullptr);
+
+    ASSERT_EQ(RecordedCudaMallocSize(DEVICE_ID), size1);
   }
 
-  platform::RecordedCudaFree(p1, size1, DEVICE_ID);
+  {
+    platform::RecordedCudaFree(p1, size1, DEVICE_ID);
+    ASSERT_EQ(RecordedCudaMallocSize(DEVICE_ID), 0UL);
+  }
+
   {
     err = platform::RecordedCudaMalloc(&p2, size2, DEVICE_ID);
     ASSERT_EQ(err, cudaSuccess);
     ASSERT_EQ(cudaGetLastError(), cudaSuccess);
     ASSERT_NE(p2, nullptr);
+    ASSERT_EQ(RecordedCudaMallocSize(DEVICE_ID), size2);
   }
 
-  platform::RecordedCudaFree(p2, size2, DEVICE_ID);
+  {
+    platform::RecordedCudaFree(p2, size2, DEVICE_ID);
+    ASSERT_EQ(RecordedCudaMallocSize(DEVICE_ID), 0UL);
+  }
 }
 
 }  // namespace platform
