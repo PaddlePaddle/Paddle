@@ -71,7 +71,7 @@ void zero_copy_run() {
   delete[] outputs;
 }
 
-TEST(PD_ZeroCopyRun, zero_copy_run) { zero_copy_run(); }
+TEST(PD_PredictorZeroCopyRun, zero_copy_run) { zero_copy_run(); }
 
 #ifdef PADDLE_WITH_MKLDNN
 TEST(PD_AnalysisConfig, profile_mkldnn) {

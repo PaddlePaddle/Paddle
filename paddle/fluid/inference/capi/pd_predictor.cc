@@ -232,7 +232,8 @@ void PD_SetZeroCopyInput(PD_Predictor* predictor,
 
   if (tensor->lod.length) {
     auto* lod_ptr = reinterpret_cast<size_t*>(tensor->lod.data);
-    std::vector<size_t> lod(lod_ptr, lod_ptr + tensor->lod.length);
+    std::vector<size_t> lod;
+    lod.assign(lod_ptr, lod_ptr + tensor->lod.length / sizeof(size_t));
     input->SetLoD({std::move(lod)});
   }
 }
