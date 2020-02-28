@@ -347,7 +347,7 @@ void InMemoryDataFeed<T>::LoadIntoMemory() {
       platform::Timer timeline;
       timeline.Start();
       while (ParseOneInstanceFromPipe(&instance)) {
-        writer << std::move(instance);
+        local_vec.push_back(std::move(instance));
         instance = T();
       }
       this->fp_.reset();
