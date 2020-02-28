@@ -18,11 +18,13 @@ from .optimizer_factory import *
 from google.protobuf import text_format
 import paddle.fluid as fluid
 from paddle.fluid.framework import Program
+from paddle.fluid.optimizer import Optimizer
 
 from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
 from paddle.fluid.incubate.fleet.base.fleet_base import Mode
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
+from paddle.fluid.incubate.fleet.parameter_server.distributed_strategy import TrainerRuntimeConfig, DistributedStrategy, SyncStrategy, AsyncStrategy, HalfAsyncStrategy, GeoStrategy, StrategyFactory
 
 
 class PSLib(Fleet):
@@ -222,6 +224,28 @@ class PSLib(Fleet):
             optimizer(DownpourOptimizer): downpour optimizer
 
         """
+
+        if not isinstance(optimizer, Optimizer):
+            raise ValueError("optimizer must be an instance of Optimizer")
+        if not fleet._is_initialized:
+            raise ValueError(
+                "use fleet.init(role) to initialize the role of current node before optimizer.minimize(loss)"
+            )
+        if strategy:
+            if isinstance(strategy, dict):
+                self._strategy = strategy
+            elif isinstance(strategy, DistributedStrategy):
+                if isinstance(strategy, AsyncStrategy):
+                    self._strategy = strategy.get_pslib_config()
+                else:
+                    raise TypeError(
+                        "In {} mode, strategy must be an instance of AsyncStrategy, or Dict".
+                        format(fleet._mode))
+            else:
+                raise TypeError(
+                    "In {} mode, strategy must be an instance of DistributeTranspilerConfig, SyncStrategy, HalfAsyncStrategy, AsyncStrategy, or GeoStrategy".
+                    format(fleet._mode))
+
         self._optimizer = DownpourOptimizer(optimizer, strategy)
         return self._optimizer
 
