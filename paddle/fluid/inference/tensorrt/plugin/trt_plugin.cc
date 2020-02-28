@@ -55,6 +55,7 @@ void PluginTensorRT::configureWithFormat(
   max_batch_size_ = max_batch_size;
 }
 
+#if IS_TRT_VERSION_GE(6000)
 void DynamicPluginTensorRT::serializeBase(void*& buffer) const {
   SerializeValue(&buffer, plugin_base_.c_str());
   SerializeValue(&buffer, name_space_.c_str());
@@ -74,6 +75,7 @@ size_t DynamicPluginTensorRT::getBaseSerializationSize() const {
   return SerializedSize(name_space_.c_str()) +
          SerializedSize(plugin_base_.c_str());
 }
+#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

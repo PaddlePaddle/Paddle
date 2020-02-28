@@ -21,7 +21,8 @@ namespace tensorrt {
 class MultiheadMatMulOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  const AttachInfo& info) override {
     VLOG(3) << "convert a fluid multihead_mamul op to a corresponding tensorrt "
                "network structure";
     framework::OpDesc op_desc(op, nullptr);
@@ -202,7 +203,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
 
     auto output_name = op_desc.Output("Out").front();
     RreplenishLayerAndOutput(qkv_transpose_reshape_layer, "multihead_matmul",
-                             {output_name}, test_mode);
+                             {output_name}, info.test_mode);
   }
 };
 

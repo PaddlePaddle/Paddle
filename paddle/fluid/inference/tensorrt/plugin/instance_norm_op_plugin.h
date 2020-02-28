@@ -27,6 +27,13 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
+#define INSTANCE_NORM_PLUGIN_COMMON_FUNC          \
+  const char* getPluginType() const override {    \
+    return "instance_norm_plugin";                \
+  }                                               \
+  int getNbOutputs() const override { return 1; } \
+  int initialize() override;
+
 class InstanceNormPlugin : public PluginTensorRT {
  private:
   float eps_;
@@ -48,7 +55,7 @@ class InstanceNormPlugin : public PluginTensorRT {
   // TRT will call this func when we need to serialize the configuration of
   // tensorrt.
   // It should not be called by users.
-  void serialize(void *buffer) override {
+  void serialize(void* buffer) override {
     SerializeValue(&buffer, getPluginType());
     serializeBase(buffer);
     SerializeValue(&buffer, eps_);
@@ -69,7 +76,7 @@ class InstanceNormPlugin : public PluginTensorRT {
 
   // It was used for tensorrt deserialization.
   // It should not be called by users.
-  InstanceNormPlugin(void const *serialData, size_t serialLength) {
+  InstanceNormPlugin(void const* serialData, size_t serialLength) {
     deserializeBase(serialData, serialLength);
     DeserializeValue(&serialData, &serialLength, &eps_);
     DeserializeValue(&serialData, &serialLength, &scale_);
@@ -77,18 +84,15 @@ class InstanceNormPlugin : public PluginTensorRT {
   }
 
   ~InstanceNormPlugin() {}
-  int initialize() override;
-
-  InstanceNormPlugin *clone() const override {
+  InstanceNormPlugin* clone() const override {
     return new InstanceNormPlugin(eps_, scale_, bias_);
   }
 
-  const char *getPluginType() const override { return "instance_norm_plugin"; }
-  int getNbOutputs() const override { return 1; }
-  nvinfer1::Dims getOutputDimensions(int index, const nvinfer1::Dims *inputs,
+  INSTANCE_NORM_PLUGIN_COMMON_FUNC;
+  nvinfer1::Dims getOutputDimensions(int index, const nvinfer1::Dims* inputs,
                                      int nbInputDims) override;
-  int enqueue(int batchSize, const void *const *inputs, void **outputs,
-              void *workspace, cudaStream_t stream) override;
+  int enqueue(int batchSize, const void* const* inputs, void** outputs,
+              void* workspace, cudaStream_t stream) override;
 
   bool supportsFormat(nvinfer1::DataType type,
                       nvinfer1::PluginFormat format) const override {
@@ -97,6 +101,81 @@ class InstanceNormPlugin : public PluginTensorRT {
             (format == nvinfer1::PluginFormat::kNCHW));
   }
 };
+
+#if IS_TRT_VERSION_GE(6000)
+class InstanceNormPluginDynamic : public DynamicPluginTensorRT {
+ public:
+  explicit InstanceNormPluginDynamic(const float eps,
+                                     const std::vector<float> scale,
+                                     const std::vector<float> bias)
+      : eps_(eps), scale_(scale), bias_(bias) {
+    PADDLE_ENFORCE_EQ(scale.size(), bias.size(),
+                      platform::errors::InvalidArgument(
+                          "The instanceNorm's scale and bias should be the "
+                          "same size. Got scale size = %d, but bias size = %d",
+                          scale.size(), bias.size()));
+  }
+
+  // It was used for tensorrt deserialization.
+  // It should not be called by users.
+  InstanceNormPluginDynamic(void const* serialData, size_t serialLength) {
+    deserializeBase(serialData, serialLength);
+    DeserializeValue(&serialData, &serialLength, &eps_);
+    DeserializeValue(&serialData, &serialLength, &scale_);
+    DeserializeValue(&serialData, &serialLength, &bias_);
+  }
+
+  ~InstanceNormPluginDynamic() {}
+
+  nvinfer1::IPluginV2DynamicExt* clone() const override {
+    return new InstanceNormPluginDynamic(eps_, scale_, bias_);
+  }
+
+  INSTANCE_NORM_PLUGIN_COMMON_FUNC;
+  size_t getSerializationSize() const override;
+  void serialize(void* buffer) const override;
+
+  nvinfer1::DimsExprs getOutputDimensions(
+      int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
+      nvinfer1::IExprBuilder& expr_builder) override;
+
+  bool supportsFormatCombination(int pos,
+                                 const nvinfer1::PluginTensorDesc* inOut,
+                                 int nbInputs, int nbOutputs) override;
+
+  void configurePlugin(const nvinfer1::DynamicPluginTensorDesc* in,
+                       int nbInputs,
+                       const nvinfer1::DynamicPluginTensorDesc* out,
+                       int nbOutputs) override {}
+
+  size_t getWorkspaceSize(const nvinfer1::PluginTensorDesc* inputs,
+                          int nbInputs,
+                          const nvinfer1::PluginTensorDesc* outputs,
+                          int nbOutputs) const override {
+    return 0;
+  }
+
+  int enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
+              const nvinfer1::PluginTensorDesc* outputDesc,
+              const void* const* inputs, void* const* outputs, void* workspace,
+              cudaStream_t stream) override;
+  nvinfer1::DataType getOutputDataType(int index,
+                                       const nvinfer1::DataType* inputTypes,
+                                       int nbInputs) const override;
+
+  void destroy() override { delete this; }
+
+ private:
+  float eps_;
+  std::vector<float> scale_;
+  std::vector<float> bias_;
+
+  framework::Tensor scale_t;
+  framework::Tensor bias_t;
+  cudnnHandle_t handle_;
+  cudnnTensorDescriptor_t x_desc_, y_desc_, b_desc_;
+};
+#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

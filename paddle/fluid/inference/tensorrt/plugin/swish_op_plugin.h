@@ -59,6 +59,7 @@ class SwishPlugin : public PluginTensorRT {
   float beta_;
 };
 
+#if IS_TRT_VERSION_GE(6000)
 class SwishPluginDynamic : public DynamicPluginTensorRT {
  public:
   explicit SwishPluginDynamic(const float beta) : beta_(beta) {}
@@ -67,7 +68,7 @@ class SwishPluginDynamic : public DynamicPluginTensorRT {
     DeserializeValue(&serialData, &serialLength, &beta_);
   }
   ~SwishPluginDynamic() {}
-  SwishPluginDynamic* clone() const override {
+  nvinfer1::IPluginV2DynamicExt* clone() const override {
     return new SwishPluginDynamic(beta_);
   }
 
@@ -76,8 +77,8 @@ class SwishPluginDynamic : public DynamicPluginTensorRT {
   void serialize(void* buffer) const override;
 
   nvinfer1::DimsExprs getOutputDimensions(
-      int outputIndex, const nvinfer1::DimsExprs* inputs, int nbInputs,
-      nvinfer1::IExprBuilder& exprBuilder) override;
+      int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
+      nvinfer1::IExprBuilder& expr_builder) override;
 
   bool supportsFormatCombination(int pos,
                                  const nvinfer1::PluginTensorDesc* inOut,
@@ -108,6 +109,7 @@ class SwishPluginDynamic : public DynamicPluginTensorRT {
  private:
   float beta_;
 };
+#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

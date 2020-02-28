@@ -139,8 +139,9 @@ class TRTConvertValidation {
   void SetOp(const framework::proto::OpDesc& desc) {
     op_ = framework::OpRegistry::CreateOp(desc);
 
+    AttachInfo info;
     Singleton<OpConverter>::Global().ConvertOp(
-        desc, parameters_, scope_, engine_.get(), true /*test_mode*/);
+        desc, parameters_, scope_, engine_.get(), info /*test_mode*/);
 
     engine_->FreezeNetwork();
 

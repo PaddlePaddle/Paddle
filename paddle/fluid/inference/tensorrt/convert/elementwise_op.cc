@@ -36,7 +36,8 @@ class ElementwiseWeightOpConverter : public OpConverter {
  public:
   ElementwiseWeightOpConverter() {}
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  const AttachInfo& info) override {
     // Here the two nullptr looks strange, that's because the
     // framework::OpDesc's constructor is strange.
     nvinfer1::ILayer* layer = nullptr;
@@ -113,7 +114,7 @@ class ElementwiseWeightOpConverter : public OpConverter {
 
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "elementwise_" + op_type_, {output_name},
-                             test_mode);
+                             info.test_mode);
     if (op_desc.HasAttr("enable_int8")) {
 #if IS_TRT_VERSION_GE(5000)
       CHECK(op_desc.HasAttr("X_scale"));
@@ -131,7 +132,8 @@ class ElementwiseTensorOpConverter : public OpConverter {
  public:
   ElementwiseTensorOpConverter() {}
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  const AttachInfo& info) override {
     auto op_pair = ops.find(op_type_);
     PADDLE_ENFORCE(op_pair != ops.end(), "Wrong elementwise op type!");
 
@@ -173,7 +175,8 @@ class ElementwiseTensorOpConverter : public OpConverter {
 
       layer = plugin_layer;
     }
-    RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
+    RreplenishLayerAndOutput(layer, "elementwise", {output_name},
+                             info.test_mode);
     if (op_desc.HasAttr("enable_int8")) {
 #if IS_TRT_VERSION_GE(5000)
       CHECK(op_desc.HasAttr("X_scale"));

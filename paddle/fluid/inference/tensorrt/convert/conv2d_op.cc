@@ -32,6 +32,7 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
 
   PADDLE_ENFORCE(engine != nullptr);
   auto* X = engine->GetITensor(op_desc.Input("Input").front());
+
   auto* Y_v = scope.FindVar(op_desc.Input("Filter").front());
   PADDLE_ENFORCE_NOT_NULL(Y_v);
   auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
@@ -98,9 +99,10 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
 class Conv2dOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  const AttachInfo& info) override {
     ConvertConv2d(
-        engine_, op, scope, test_mode,
+        engine_, op, scope, info.test_mode,
         [&](nvinfer1::ITensor* inputs, int n_output, /* Conv output maps */
             int n_input,                             /* Conv input maps */
             nvinfer1::DimsHW& ksize, TensorRTEngine::Weight& weight,
@@ -120,9 +122,10 @@ class Conv2dOpConverter : public OpConverter {
 class Deconv2dOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  const AttachInfo& info) override {
     ConvertConv2d(
-        engine_, op, scope, test_mode,
+        engine_, op, scope, info.test_mode,
         [&](nvinfer1::ITensor* inputs, int n_output, /* Deconv input maps */
             int n_input,                             /* Deconv output maps */
             nvinfer1::DimsHW& ksize, TensorRTEngine::Weight& weight,

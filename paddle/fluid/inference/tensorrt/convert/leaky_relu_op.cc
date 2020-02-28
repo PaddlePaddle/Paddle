@@ -22,7 +22,8 @@ namespace tensorrt {
 class LeakyReluOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  const AttachInfo& info) override {
     VLOG(4) << "convert fluid leaky_relu op to tensorrt layer";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -92,7 +93,7 @@ class LeakyReluOpConverter : public OpConverter {
 #endif
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(output_layer, "leaky_relu", {output_name},
-                             test_mode);
+                             info.test_mode);
   }
 };
 

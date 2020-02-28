@@ -24,7 +24,8 @@ namespace tensorrt {
 class MulOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  const AttachInfo& info) override {
     VLOG(3) << "convert a fluid mul op to tensorrt mul layer without bias";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -38,8 +39,8 @@ class MulOpConverter : public OpConverter {
 
     auto output_name = op_desc.Output("Out")[0];
     engine_->SetITensor(output_name, layer->getOutput(0));
-    if (test_mode) {  // the test framework can not determine which is the
-                      // output, so place the declaration inside.
+    if (info.test_mode) {  // the test framework can not determine which is the
+                           // output, so place the declaration inside.
       engine_->DeclareOutput(output_name);
     }
   }

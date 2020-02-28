@@ -24,7 +24,8 @@ namespace tensorrt {
 class ShuffleChannelOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  const AttachInfo& info) override {
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
@@ -46,7 +47,8 @@ class ShuffleChannelOpConverter : public OpConverter {
     reshape_layer->setReshapeDimensions(reshape_dim2);
 
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(reshape_layer, "concat", {output_name}, test_mode);
+    RreplenishLayerAndOutput(reshape_layer, "concat", {output_name},
+                             info.test_mode);
   }
 };
 

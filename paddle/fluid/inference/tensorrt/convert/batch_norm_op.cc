@@ -22,7 +22,8 @@ namespace tensorrt {
 class BatchNormOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  const AttachInfo& info) override {
     VLOG(3) << "convert a fluid batch norm op to tensorrt batch_norm";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -120,7 +121,7 @@ class BatchNormOpConverter : public OpConverter {
                         std::move(combile_bias_tensor));
     engine_->SetWeights(op_desc.Input("Scale").front(),
                         std::move(combile_scale_tensor));
-    RreplenishLayerAndOutput(layer, "pool2d", {output_name}, test_mode);
+    RreplenishLayerAndOutput(layer, "pool2d", {output_name}, info.test_mode);
   }
 };
 

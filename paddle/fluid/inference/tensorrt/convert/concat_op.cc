@@ -24,7 +24,8 @@ namespace tensorrt {
 class ConcatOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  const AttachInfo& info) override {
     VLOG(3) << "convert a fluid mul op to tensorrt mul layer without bias";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -42,7 +43,7 @@ class ConcatOpConverter : public OpConverter {
     axis = axis - 1;  // Remove batch dim
     layer->setAxis(axis);
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "concat", {output_name}, test_mode);
+    RreplenishLayerAndOutput(layer, "concat", {output_name}, info.test_mode);
   }
 };
 

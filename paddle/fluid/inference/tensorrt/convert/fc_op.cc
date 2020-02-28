@@ -50,7 +50,8 @@ void ReorderCKtoKC(TensorRTEngine::Weight& iweights,  // NOLINT
 class FcOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  const AttachInfo& info) override {
     VLOG(3) << "convert a fluid fc op to tensorrt fc layer without bias";
     framework::OpDesc op_desc(op, nullptr);
 
@@ -202,9 +203,9 @@ class FcOpConverter : public OpConverter {
       nvinfer1::IActivationLayer* relu_layer =
           TRT_ENGINE_ADD_LAYER(engine_, Activation, *(fc_layer->getOutput(0)),
                                nvinfer1::ActivationType::kRELU);
-      RreplenishLayerAndOutput(relu_layer, "fc", {output_name}, test_mode);
+      RreplenishLayerAndOutput(relu_layer, "fc", {output_name}, info.test_mode);
     } else {
-      RreplenishLayerAndOutput(fc_layer, "fc", {output_name}, test_mode);
+      RreplenishLayerAndOutput(fc_layer, "fc", {output_name}, info.test_mode);
     }
   }
 };

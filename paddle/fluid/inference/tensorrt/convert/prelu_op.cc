@@ -25,7 +25,8 @@ namespace tensorrt {
 class PReluOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  const AttachInfo& info) override {
     VLOG(4) << "convert fluid prelu op to tensorrt prelu layer";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -50,16 +51,24 @@ class PReluOpConverter : public OpConverter {
     TensorCopySync(*alpha_tensor, cpu_place, alpha_tensor_temp.get());
     float* alpha_data = alpha_tensor_temp->mutable_data<float>(cpu_place);
 
-    plugin::PReluPlugin* plugin =
-        new plugin::PReluPlugin(alpha_data, alpha_tensor_temp->numel(), mode);
-    nvinfer1::IPluginLayer* layer =
-        engine_->AddPlugin(&input, input_num, plugin);
+    nvinfer1::ILayer* layer = nullptr;
+    if (engine_->with_dynamic_shape()) {
+#if IS_TRT_VERSION_GE(6000)
+      plugin::PReluPluginDynamic* plugin = new plugin::PReluPluginDynamic(
+          alpha_data, alpha_tensor_temp->numel(), mode);
+      layer = engine_->AddPluginV2(&input, input_num, plugin);
+#endif
+    } else {
+      plugin::PReluPlugin* plugin =
+          new plugin::PReluPlugin(alpha_data, alpha_tensor_temp->numel(), mode);
+      layer = engine_->AddPlugin(&input, input_num, plugin);
+    }
     // keep alpha tensor to avoid release it's memory
     engine_->SetWeights(op_desc.Input("Alpha")[0],
                         std::move(alpha_tensor_temp));
 
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "prelu", {output_name}, test_mode);
+    RreplenishLayerAndOutput(layer, "prelu", {output_name}, info.test_mode);
   }
 };
 

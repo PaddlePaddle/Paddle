@@ -24,7 +24,8 @@ namespace tensorrt {
 class SoftMaxOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  const AttachInfo& info) override {
     VLOG(3)
         << "convert a fluid softmax op to tensorrt softmax layer without bias";
     framework::OpDesc op_desc(op, nullptr);
@@ -34,7 +35,7 @@ class SoftMaxOpConverter : public OpConverter {
                                        *const_cast<nvinfer1::ITensor*>(input1));
 
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "softmax", {output_name}, test_mode);
+    RreplenishLayerAndOutput(layer, "softmax", {output_name}, info.test_mode);
 
     // The trt will not run int for softmax.
     engine_->SetTensorDynamicRange(input1, 1.0);

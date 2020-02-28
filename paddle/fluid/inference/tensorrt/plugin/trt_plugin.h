@@ -41,7 +41,6 @@ namespace plugin {
   void terminate() override {}
 
 class PluginTensorRT;
-class PluginTensorRTDynamic;
 
 template <typename T>
 struct PluginDeserialize {
@@ -103,6 +102,7 @@ class PluginTensorRT : public nvinfer1::IPluginExt {
   std::vector<nvinfer1::ITensor*> inputs_;
 };
 
+#if IS_TRT_VERSION_GE(6000)
 class DynamicPluginTensorRT : public nvinfer1::IPluginV2DynamicExt {
  public:
   DynamicPluginTensorRT() {}
@@ -115,40 +115,42 @@ class DynamicPluginTensorRT : public nvinfer1::IPluginV2DynamicExt {
   virtual void serialize(void* buffer) const = 0;
 
   // The Func in IPluginV2
-  nvinfer1::IPluginV2DynamicExt* clone() const override;
-  nvinfer1::DimsExprs getOutputDimensions(
+  nvinfer1::IPluginV2DynamicExt* clone() const = 0;
+  virtual nvinfer1::DimsExprs getOutputDimensions(
       int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
-      nvinfer1::IExprBuilder& expr_builder) override;
+      nvinfer1::IExprBuilder& expr_builder) = 0;  // NOLINT
 
-  bool supportsFormatCombination(int pos,
-                                 const nvinfer1::PluginTensorDesc* in_out,
-                                 int nb_inputs, int nb_outputs) override;
+  virtual bool supportsFormatCombination(
+      int pos, const nvinfer1::PluginTensorDesc* in_out, int nb_inputs,
+      int nb_outputs) = 0;
 
-  void configurePlugin(const nvinfer1::DynamicPluginTensorDesc* in,
-                       int nb_inputs,
-                       const nvinfer1::DynamicPluginTensorDesc* out,
-                       int nb_outputs) override;
+  virtual void configurePlugin(const nvinfer1::DynamicPluginTensorDesc* in,
+                               int nb_inputs,
+                               const nvinfer1::DynamicPluginTensorDesc* out,
+                               int nb_outputs) = 0;
 
   size_t getWorkspaceSize(const nvinfer1::PluginTensorDesc* inputs,
                           int nb_inputs,
                           const nvinfer1::PluginTensorDesc* outputs,
-                          int nb_outputs) const override;
+                          int nb_outputs) const override {
+    return 0;
+  }
 
-  int enqueue(const nvinfer1::PluginTensorDesc* input_desc,
-              const nvinfer1::PluginTensorDesc* output_desc,
-              const void* const* inputs, void* const* outputs, void* workspace,
-              cudaStream_t stream) override;
+  virtual int enqueue(const nvinfer1::PluginTensorDesc* input_desc,
+                      const nvinfer1::PluginTensorDesc* output_desc,
+                      const void* const* inputs, void* const* outputs,
+                      void* workspace, cudaStream_t stream) = 0;
 
-  nvinfer1::DataType getOutputDataType(int index,
-                                       const nvinfer1::DataType* input_types,
-                                       int nb_inputs) const override;
+  virtual nvinfer1::DataType getOutputDataType(
+      int index, const nvinfer1::DataType* input_types,
+      int nb_inputs) const = 0;
   void setPluginNamespace(const char* plugin_namespace) override {
     name_space_ = plugin_namespace;
   }
   const char* getPluginNamespace() const override {
     return name_space_.c_str();
   }
-  void destroy() override;
+  virtual void destroy() = 0;
 
  protected:
   void deserializeBase(void const*& serial_data,  // NOLINT
@@ -160,6 +162,7 @@ class DynamicPluginTensorRT : public nvinfer1::IPluginV2DynamicExt {
   std::string name_space_{"paddle_trt"};
   std::string plugin_base_{"plugin_dynamic"};
 };
+#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

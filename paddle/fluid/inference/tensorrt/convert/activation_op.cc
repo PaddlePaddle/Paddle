@@ -23,7 +23,8 @@ class ActivationOpConverter : public OpConverter {
  public:
   ActivationOpConverter() {}
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  const AttachInfo& info) override {
     // Here the two nullptr looks strange, that's because the
     // framework::OpDesc's constructor is strange.
     framework::OpDesc op_desc(op, nullptr);
@@ -53,7 +54,7 @@ class ActivationOpConverter : public OpConverter {
 
     auto output_name = op_desc.Output("Out")[0];
 
-    RreplenishLayerAndOutput(layer, op_type_, {output_name}, test_mode);
+    RreplenishLayerAndOutput(layer, op_type_, {output_name}, info.test_mode);
     if (op_desc.HasAttr("out_scale")) {
 #if IS_TRT_VERSION_GE(5130)
       float out_scale = boost::get<float>(op_desc.GetAttr("out_scale"));

@@ -22,7 +22,8 @@ namespace tensorrt {
 class LayerNormOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  const AttachInfo& info) override {
     VLOG(4) << "convert a fluid layer_norm op to tensorrt layer_norm plugin";
     framework::OpDesc op_desc(op, nullptr);
     PADDLE_ENFORCE_EQ(
@@ -97,7 +98,7 @@ class LayerNormOpConverter : public OpConverter {
     engine_->SetWeights(op_desc.Input("Scale").front(),
                         std::move(scale_tensor));
     RreplenishLayerAndOutput(layernorm_layer, "layer_norm", {output_name},
-                             test_mode);
+                             info.test_mode);
   }
 };
 

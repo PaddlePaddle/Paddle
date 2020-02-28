@@ -30,6 +30,11 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
+typedef struct AttachInfo {
+  bool test_mode = false;
+  bool is_dynamic = false;
+} AttachInfo;
+
 /*
  * Convert Op from Fluid to TensorRT Engine.
  */
@@ -40,14 +45,13 @@ class OpConverter {
   // Converter logic for an op.
   virtual void operator()(const framework::proto::OpDesc& op,
                           const framework::Scope& scope,
-                          bool test_mode = false) {}
+                          const AttachInfo& info) {}
 
   // Convert a single fluid operator and add the corresponding layer to TRT.
-  // test_mode: whether the instance executes in an unit test.
   void ConvertOp(const framework::proto::OpDesc& op,
                  const std::unordered_set<std::string>& parameters,
                  const framework::Scope& scope, TensorRTEngine* engine,
-                 bool test_mode = false) {
+                 AttachInfo info) {
     framework::OpDesc op_desc(op, nullptr);
 
     OpConverter* it{nullptr};
@@ -99,18 +103,19 @@ class OpConverter {
     PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]",
                             op_desc.Type());
     it->SetEngine(engine);
-    (*it)(op, scope, test_mode);
+    (*it)(op, scope, info);
   }
 
   // Convert a fluid block to tensorrt network, NOTE it just convert operators,
   // the INetwork's inputs and outputs should specified in some other modules.
   void ConvertBlock(const framework::proto::BlockDesc& block,
                     const std::unordered_set<std::string>& parameters,
-                    const framework::Scope& scope, TensorRTEngine* engine) {
+                    const framework::Scope& scope, TensorRTEngine* engine,
+                    const AttachInfo& info) {
     std::unique_lock<std::mutex> lk(mut_);
     for (int i = 0; i < block.ops_size(); i++) {
       const auto& op = block.ops(i);
-      ConvertOp(op, parameters, scope, engine);
+      ConvertOp(op, parameters, scope, engine, info);
     }
   }
 
@@ -158,7 +163,10 @@ class OpConverter {
       }
     }
     framework::proto::BlockDesc* block_proto = block_desc->Proto();
-    ConvertBlock(*block_proto, parameters, scope, engine);
+
+    AttachInfo info;
+    info.is_dynamic = engine->with_dynamic_shape();
+    ConvertBlock(*block_proto, parameters, scope, engine, info);
     for (auto& output : outputs) {
       engine->DeclareOutput(output);
     }
@@ -168,8 +176,7 @@ class OpConverter {
 
   void RreplenishLayerAndOutput(
       nvinfer1::ILayer* layer, const std::string& layer_type,
-      const std::vector<std::string>& output_tensor_names,
-      bool test_mode = false) {
+      const std::vector<std::string>& output_tensor_names, bool test_mode) {
     size_t num_out = output_tensor_names.size();
     for (size_t i = 0; i < num_out; i++) {
       layer->getOutput(i)->setName(output_tensor_names[i].c_str());

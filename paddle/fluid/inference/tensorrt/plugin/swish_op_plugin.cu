@@ -72,7 +72,8 @@ __global__ void swish_kernel(int num, const T *input, T *output, T beta) {
 }
 
 size_t SwishPlugin::getSerializationSize() {
-  return getBaseSerializationSize() + SerializedSize(beta_);
+  return getBaseSerializationSize() + SerializedSize(beta_) +
+         SerializedSize(getPluginType());
 }
 
 void SwishPlugin::serialize(void *buffer) {
@@ -118,10 +119,13 @@ bool SwishPlugin::supportsFormat(nvinfer1::DataType type,
 }
 
 // Dynamic Plugin below.
+#if IS_TRT_VERSION_GE(6000)
+
 int SwishPluginDynamic::initialize() { return 0; }
 
 size_t SwishPluginDynamic::getSerializationSize() const {
-  return getBaseSerializationSize() + SerializedSize(beta_);
+  return getBaseSerializationSize() + SerializedSize(beta_) +
+         SerializedSize(getPluginType());
 }
 
 void SwishPluginDynamic::serialize(void *buffer) const {
@@ -131,8 +135,8 @@ void SwishPluginDynamic::serialize(void *buffer) const {
 }
 
 nvinfer1::DimsExprs SwishPluginDynamic::getOutputDimensions(
-    int outputIndex, const nvinfer1::DimsExprs *inputs, int nbInputs,
-    nvinfer1::IExprBuilder &exprBuilder) {
+    int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
+    nvinfer1::IExprBuilder &expr_builder) {
   return inputs[0];
 }
 
@@ -194,6 +198,7 @@ int SwishPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
   }
   return cudaGetLastError() != cudaSuccess;
 }
+#endif
 
 }  // namespace plugin
 }  // namespace tensorrt

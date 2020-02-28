@@ -24,7 +24,8 @@ namespace tensorrt {
 class DropoutOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  const AttachInfo& info) override {
     VLOG(3) << "convert a fluid dropout op to tensorrt dropout layer";
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
@@ -41,7 +42,7 @@ class DropoutOpConverter : public OpConverter {
         downgrade_in_infer == "upscale_in_train") {
       auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input1);
       auto output_name = op_desc.Output("Out")[0];
-      RreplenishLayerAndOutput(layer, "dropout", {output_name}, test_mode);
+      RreplenishLayerAndOutput(layer, "dropout", {output_name}, info.test_mode);
       return;
     }
 
@@ -70,7 +71,7 @@ class DropoutOpConverter : public OpConverter {
                         std::move(weight_tensor));
     auto output_name = op_desc.Output("Out")[0];
 
-    RreplenishLayerAndOutput(layer, "dropout", {output_name}, test_mode);
+    RreplenishLayerAndOutput(layer, "dropout", {output_name}, info.test_mode);
   }
 };
 

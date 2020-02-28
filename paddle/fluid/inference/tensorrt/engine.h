@@ -153,35 +153,6 @@ class TensorRTEngine {
 
   ~TensorRTEngine() {}
 
-  // TODO(Superjomn) implement it later when graph segmentation is supported.
-  void Build(const DescType& paddle_model);
-
-  void Execute(int batch_size, std::vector<void*>* buffers,
-               cudaStream_t stream = nullptr);
-
-  // Initialize the inference network, so that TensorRT layers can add to this
-  // network.
-  void InitNetwork() {
-    freshDeviceId();
-    infer_builder_.reset(createInferBuilder(&logger_));
-
-    if (with_dynamic_shape_) {
-#if IS_TRT_VERSION_GE(6000)
-      infer_networkv2_.reset(infer_builder_->createNetworkV2(
-          1U << static_cast<int>(
-              nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH)));
-      infer_builder_config_.reset(infer_builder_->createBuilderConfig());
-      infer_ptr<nvinfer1::IBuilderConfig> infer_builder_config_;
-      optim_profile_.reset(infer_builder_->createOptimizationProfile());
-#endif
-    } else {
-      infer_network_.reset(infer_builder_->createNetwork());
-    }
-  }
-  // After finishing adding ops, freeze this network and creates the execution
-  // environment.
-  void FreezeNetwork();
-
   // Add an input and set its name, data type and dimension.
   nvinfer1::ITensor* DeclareInput(const std::string& name,
                                   nvinfer1::DataType dtype,
@@ -196,16 +167,9 @@ class TensorRTEngine {
   void SetITensor(const std::string& name, nvinfer1::ITensor* tensor);
   // Get an ITensor called name.
   nvinfer1::ITensor* GetITensor(const std::string& name);
+  int GetRuntimeBatch() { return runtime_batch_; }
 
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
-  nvinfer1::INetworkDefinition* network() {
-    if (with_dynamic_shape_) {
-      return infer_networkv2_.get();
-    } else {
-      return infer_network_.get();
-    }
-  }
-
   nvinfer1::IExecutionContext* context() {
     const std::thread::id tid = std::this_thread::get_id();
     if (infer_context_.find(tid) == infer_context_.end()) {
@@ -217,12 +181,6 @@ class TensorRTEngine {
     }
     return infer_context_[tid].get();
   }
-
-  ShapeMapType min_input_shape() { return min_input_shape_; }
-  ShapeMapType max_input_shape() { return max_input_shape_; }
-  ShapeMapType optim_input_shape() { return optim_input_shape_; }
-
-  bool with_dynamic_shape() { return with_dynamic_shape_; }
 
   nvinfer1::IHostMemory* Serialize() {
     PADDLE_ENFORCE(infer_engine_ != nullptr,
@@ -243,7 +201,6 @@ class TensorRTEngine {
   }
 
   void SetRuntimeBatch(size_t batch_size);
-  int GetRuntimeBatch();
   int GetDeviceId() { return device_id_; }
   nvinfer1::IPluginLayer* AddPlugin(nvinfer1::ITensor* const* inputs,
                                     int num_inputs, plugin::PluginTensorRT*);
@@ -278,6 +235,36 @@ class TensorRTEngine {
     for (auto& weight_pair : weight_map) {
       weight_pair.second.reset(nullptr);
     }
+  }
+
+  // NOTE: The func bellow was modified to adapt the dynamic shape.
+  // Initialize the inference network, so that TensorRT layers can add to this
+  // network.
+  // After finishing adding ops, freeze this network and creates the execution
+  // environment.
+  void InitNetwork();
+  void FreezeNetwork();
+  void Execute(int batch_size, std::vector<void*>* buffers,
+               cudaStream_t stream = nullptr);
+
+  nvinfer1::INetworkDefinition* network() {
+    if (with_dynamic_shape_) {
+      return infer_networkv2_.get();
+    } else {
+      return infer_network_.get();
+    }
+  }
+
+  ShapeMapType min_input_shape() { return min_input_shape_; }
+  ShapeMapType max_input_shape() { return max_input_shape_; }
+  ShapeMapType optim_input_shape() { return optim_input_shape_; }
+  bool with_dynamic_shape() { return with_dynamic_shape_; }
+
+  nvinfer1::IPluginV2Layer* AddPluginV2(nvinfer1::ITensor* const* inputs,
+                                        int num_inputs,
+                                        plugin::DynamicPluginTensorRT* plugin) {
+    owned_pluginv2_.emplace_back(plugin);
+    return network()->addPluginV2(inputs, num_inputs, *plugin);
   }
 
  private:
@@ -335,6 +322,7 @@ class TensorRTEngine {
 #if IS_TRT_VERSION_GE(6000)
   infer_ptr<nvinfer1::IBuilderConfig> infer_builder_config_;
   std::unique_ptr<nvinfer1::IOptimizationProfile> optim_profile_;
+  std::vector<std::unique_ptr<plugin::DynamicPluginTensorRT>> owned_pluginv2_;
 #endif
   std::mutex mutex_;
 };  // class TensorRTEngine

@@ -22,7 +22,8 @@ namespace tensorrt {
 class InstanceNormOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  const AttachInfo& info) override {
     VLOG(4) << "convert fluid prelu op to tensorrt instance norm layer";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -58,13 +59,22 @@ class InstanceNormOpConverter : public OpConverter {
       bias_v.push_back(bias_d[i]);
     }
 
-    plugin::InstanceNormPlugin* plugin =
-        new plugin::InstanceNormPlugin(eps, scale_v, bias_v);
-    plugin->getPluginType();
-    nvinfer1::IPluginLayer* layer = engine_->AddPlugin(&input, 1, plugin);
+    nvinfer1::ILayer* layer = nullptr;
+    if (engine_->with_dynamic_shape()) {
+#if IS_TRT_VERSION_GE(6000)
+      plugin::InstanceNormPluginDynamic* plugin =
+          new plugin::InstanceNormPluginDynamic(eps, scale_v, bias_v);
+      layer = engine_->AddPluginV2(&input, 1, plugin);
+#endif
+    } else {
+      plugin::InstanceNormPlugin* plugin =
+          new plugin::InstanceNormPlugin(eps, scale_v, bias_v);
+      layer = engine_->AddPlugin(&input, 1, plugin);
+    }
 
     auto output_name = op_desc.Output("Y")[0];
-    RreplenishLayerAndOutput(layer, "instance_norm", {output_name}, test_mode);
+    RreplenishLayerAndOutput(layer, "instance_norm", {output_name},
+                             info.test_mode);
   }
 };
 

@@ -24,7 +24,8 @@ namespace tensorrt {
 class PadOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  const AttachInfo& info) override {
     VLOG(3) << "convert a fluid transpose op to tensorrt tranpose layer";
 
     framework::OpDesc op_desc(op, nullptr);
@@ -51,7 +52,7 @@ class PadOpConverter : public OpConverter {
 
     PADDLE_ENFORCE(layer != nullptr);
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "pad", {output_name}, test_mode);
+    RreplenishLayerAndOutput(layer, "pad", {output_name}, info.test_mode);
   }
 };
 
