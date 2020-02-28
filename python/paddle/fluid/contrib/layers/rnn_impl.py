@@ -181,7 +181,7 @@ def basic_gru(input,
         sequence_length (Variabe|None): A Tensor (shape [batch_size]) stores each real length of each instance,
                         This tensor will be convert to a mask to mask the padding ids
                         If it's None means NO padding ids
-        dropout_prob(float|0.0): Dropout prob, dropout ONLY works after rnn output of earch layers, 
+        dropout_prob(float|0.0): Dropout prob, dropout ONLY works after rnn output of each layers, 
                              NOT between time steps
         bidirectional (bool|False): If it is bidirectional
         batch_first (bool|True): The shape format of the input and output tensors. If true,
@@ -411,7 +411,7 @@ def basic_lstm(input,
         sequence_length (Variabe|None): A tensor (shape [batch_size]) stores each real length of each instance,
                         This tensor will be convert to a mask to mask the padding ids
                         If it's None means NO padding ids
-        dropout_prob(float|0.0): Dropout prob, dropout ONLY work after rnn output of earch layers, 
+        dropout_prob(float|0.0): Dropout prob, dropout ONLY work after rnn output of each layers, 
                              NOT between time steps
         bidirectional (bool|False): If it is bidirectional
         batch_first (bool|True): The shape format of the input and output tensors. If true,

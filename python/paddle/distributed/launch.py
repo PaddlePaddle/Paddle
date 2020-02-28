@@ -13,18 +13,18 @@
 # limitations under the License.
 """
 paddle.distributed.launch is a module that spawns multiple distributed 
-process on each trainning node for gpu trainning.
+process on each training node for gpu training.
 Usage:
     In both of single node training or multiple node training, this module 
 launch a process on each of the given gpu card.
-    1. for single node trainning with all visible gpu cards:
+    1. for single node training with all visible gpu cards:
        python -m paddle.distributed.launch \
          your_training_py (arg1 arg2 and all others)
     
-    2. for single node trainning with [0,4) cards
+    2. for single node training with [0,4) cards
        python -m paddle.distributed.launch --selected_gpus="0,1,2,3" \
          your_training_py (arg1 arg2 and all others)
-    3. for mulitple node training such as two node:192.168.0.16, 192.168.0.17
+    3. for multiple node training such as two node:192.168.0.16, 192.168.0.17
         on 192.168.0.16:
             python -m paddle.distributed.launch --cluster_node_ips="192.168.0.16,192.168.0.17" \
                 --node_ip=192.168.0.16 \
@@ -114,14 +114,14 @@ POD_IP (current node ip address, not needed for local training)
         "--selected_gpus",
         type=str,
         default=None,
-        help="It's for gpu trainning and the trainning process will run on the selected_gpus,"
-        "each process is bound to a single GPU. And if it's not setted, this module will use all the gpu cards for training."
+        help="It's for gpu training and the training process will run on the selected_gpus,"
+        "each process is bound to a single GPU. And if it's not set, this module will use all the gpu cards for training."
     )
 
     parser.add_argument(
         "--log_dir",
         type=str,
-        help="The path for each process's log.If it's not setted, the log will printed to default pipe."
+        help="The path for each process's log.If it's not set, the log will printed to default pipe."
     )
 
     #positional

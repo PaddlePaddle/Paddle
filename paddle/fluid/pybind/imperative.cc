@@ -226,7 +226,7 @@ void BindImperative(py::module *m_ptr) {
     BackwardStrategy is a descriptor of how to run the backward process.
 
     **Note**:
-        **This API is only avaliable in** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **Mode**
+        **This API is only available in** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **Mode**
 
     Attribute:
         **sort_sum_gradient**:
@@ -339,7 +339,7 @@ void BindImperative(py::module *m_ptr) {
            },
            R"DOC(
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Returns a numpy array shows the value of current :ref:`api_guide_Variable_en`
 
@@ -375,7 +375,7 @@ void BindImperative(py::module *m_ptr) {
            },
            py::return_value_policy::copy, R"DOC(
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Returns a new Variable, detached from the current graph.
 
@@ -402,7 +402,7 @@ void BindImperative(py::module *m_ptr) {
       .def("clear_gradient", &imperative::VarBase::ClearGradient, R"DOC(
 
         **Notes**:
-        **1. This API is ONLY avaliable in Dygraph mode**
+        **1. This API is ONLY available in Dygraph mode**
 
         **2. Use it only Variable has gradient, normally we use this for Parameters since other temporal Variable will be deleted by Python's GC**
 

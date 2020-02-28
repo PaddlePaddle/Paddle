@@ -648,7 +648,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
     PADDLE_ENFORCE_EQ(
         in_var_list.size(), out_var_list.size(),
         platform::errors::PreconditionNotMet(
-            "Op [%s]: Input var size should be equal with ouput var size",
+            "Op [%s]: Input var size should be equal with output var size",
             op_.Type()));
 
     auto& out_var_names = op_.Outputs(out);
