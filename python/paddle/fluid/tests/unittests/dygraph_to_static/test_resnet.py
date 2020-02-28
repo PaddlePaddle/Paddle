@@ -30,7 +30,7 @@ from __future__ import print_function
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
-from paddle.fluid.dygraph.jit import dygraph_to_static_output
+from paddle.fluid.dygraph.jit import dygraph_to_static_graph
 
 import unittest
 import time
@@ -93,7 +93,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
 
         self._batch_norm = BatchNorm(num_filters, act=act)
 
-    @dygraph_to_static_output
+    @dygraph_to_static_graph
     def forward(self, inputs):
         y = self._conv(inputs)
         y = self._batch_norm(y)
@@ -133,7 +133,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
 
         self._num_channels_out = num_filters * 4
 
-    @dygraph_to_static_output
+    @dygraph_to_static_graph
     def forward(self, inputs):
         y = self.conv0(inputs)
         conv1 = self.conv1(y)
@@ -203,7 +203,7 @@ class ResNet(fluid.dygraph.Layer):
             param_attr=fluid.param_attr.ParamAttr(
                 initializer=fluid.initializer.Uniform(-stdv, stdv)))
 
-    @dygraph_to_static_output
+    @dygraph_to_static_graph
     def forward(self, inputs, label):
         y = self.conv(inputs)
         y = self.pool2d_max(y)
@@ -281,61 +281,9 @@ def train_resnet_in_static_mode():
                 break
 
 
-def train_resnet_in_dygraph_mode():
-    """
-    If decorated model is trained in dygraph mode, a warning will be thrown and the model won't be transformed from dygraph to static graph.
-    """
-    with fluid.dygraph.guard(place):
-        resnet = ResNet()
-        optimizer = optimizer_setting(parameter_list=resnet.parameters())
-
-        train_reader = paddle.batch(
-            paddle.dataset.flowers.train(use_xmap=False), batch_size=batch_size)
-
-        for epoch in range(epoch_num):
-            total_loss = 0.0
-            total_acc1 = 0.0
-            total_acc5 = 0.0
-            total_sample = 0
-            resnet.train()
-            for batch_id, data in enumerate(train_reader()):
-                start_time = time.time()
-                dy_x_data = np.array(
-                    [x[0].reshape(3, 224, 224) for x in data]).astype('float32')
-                if len(np.array([x[1]
-                                 for x in data]).astype('int64')) != batch_size:
-                    continue
-                y_data = np.array([x[1] for x in data]).astype('int64').reshape(
-                    -1, 1)
-
-                pred, avg_loss, acc_top1, acc_top5 = resnet(dy_x_data, y_data)
-
-                avg_loss.backward()
-                optimizer.minimize(avg_loss)
-                resnet.clear_gradients()
-
-                total_loss += avg_loss.numpy()
-                total_acc1 += acc_top1.numpy()
-                total_acc5 += acc_top5.numpy()
-                total_sample += 1
-
-                end_time = time.time()
-                if batch_id % 2 == 0:
-                    print( "epoch %d | batch step %d, loss %0.3f, acc1 %0.3f, acc5 %0.3f, time %f" % \
-                           ( epoch, batch_id, total_loss / total_sample, \
-                             total_acc1 / total_sample, total_acc5 / total_sample, end_time-start_time))
-
-                if batch_id == 10:
-                    break
-
-
 class TestResnet(unittest.TestCase):
     def test_in_static_mode(self):
         train_resnet_in_static_mode()
-
-    # TODO(liym27): Test ResNet in dygraph mode after next PR merged
-    # def test_in_dygraph_mode(self):
-    #     train_resnet_in_dygraph_mode()
 
 
 if __name__ == '__main__':
