@@ -19,10 +19,8 @@ import version
 fleet = None
 
 if version.is_transpiler():
-    print("Trainspiler Mode")
     from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet as fleet_transpiler
     fleet = fleet_transpiler
 else:
-    print("PSLib       Mode")
     from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet as fleet_pslib
     fleet = fleet_pslib
