@@ -48,7 +48,7 @@ TEST(PD_ZeroCopyRun, zero_copy_run) {
   // inputs[0]: word
   PD_InitZeroCopyTensor(&inputs[0]);
   inputs[0].name = new char[5];
-  snprintf(inputs[0].name, sizeof(PD_GetInputName(predictor, 0)) + 1, "%s",
+  snprintf(inputs[0].name, strlen(PD_GetInputName(predictor, 0)) + 1, "%s",
            PD_GetInputName(predictor, 0));
 
   inputs[0].data.capacity = sizeof(int64_t) * 11 * 1;
@@ -74,7 +74,7 @@ TEST(PD_ZeroCopyRun, zero_copy_run) {
   // inputs[1]: mention
   PD_InitZeroCopyTensor(&inputs[1]);
   inputs[1].name = new char[8];
-  snprintf(inputs[1].name, sizeof(PD_GetInputName(predictor, 1)) + 1, "%s",
+  snprintf(inputs[1].name, strlen(PD_GetInputName(predictor, 1)) + 1, "%s",
            PD_GetInputName(predictor, 1));
 
   inputs[1].data.capacity = sizeof(int64_t) * 11 * 1;
@@ -100,7 +100,7 @@ TEST(PD_ZeroCopyRun, zero_copy_run) {
   PD_ZeroCopyTensor output;
   PD_InitZeroCopyTensor(&output);
   output.name = new char[21];
-  snprintf(output.name, sizeof("crf_decoding_0.tmp_0") + 1, "%s",
+  snprintf(output.name, strlen(PD_GetOutputName(predictor, 0)) + 1, "%s",
            PD_GetOutputName(predictor, 0));
 
   // not necessary, just for converage tests
