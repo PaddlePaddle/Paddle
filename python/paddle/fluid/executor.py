@@ -725,13 +725,15 @@ class Executor(object):
                 the input program is :code:`fluid.Program`, and the parameters(program, feed variable name
                 and fetch_list variable) of this interface remains unchanged during running.
                 The default is False.
-            return_merged(bool): This parameter indicates whether fetched variables (the variables specified
-                in the fetch list) should be merged according to the execution device dimension. If it is
-                False, the fetched results will not be merged. If :code:`return_numpy` and :code:`return_merged`
-                are both False, the type of the return value is a two-dimensional list of :code:`LoDTensor`.
-                If :code:`return_numpy` is False and :code:`return_merged` is True, the type of the return
-                value is a one-dimensional list of :code:`LoDTensor`. Please see Examples 2 for more details.
-                If the lengths of fetched results are variant, please set :code:`return_merged` as False. 
+            return_merged(bool): This parameter indicates whether fetched variables (the variables
+                specified in the fetch list) should be merged according to the execution device dimension.
+                If :code:`return_merged` is False, the type of the return value is a two-dimensional list
+                of :code:`Tensor` ( :code:`return_numpy` is False) or a two-dimensional list of
+                :code:`numpy.ndarray` ( :code:`return_numpy` is True). If :code:`return_merged` is True,
+                the type of the return value is an one-dimensional list of :code:`Tensor` ( :code:`return_numpy`
+                is False) or an one-dimensional list of :code:`numpy.ndarray` ( :code:`return_numpy` is True).
+                Please see Examples 2 for more details. If the lengths of fetched results are variant, please
+                set :code:`return_merged` as False, which denotes that the fetched results will not be merged.
                 The default is True, but it is just for the compatibility, and may use False as default value
                 in the future version.
                 
@@ -776,7 +778,6 @@ class Executor(object):
               outs = exe.run(feed={'X': x},
                              fetch_list=[loss.name])
 
-
         Examples 2:
             .. code-block:: python
 
@@ -788,7 +789,8 @@ class Executor(object):
                 exe = fluid.Executor(place)
 
                 data = fluid.data(name='X', shape=[None, 1], dtype='float32')
-                prediction = fluid.layers.fc(input=data, size=10)
+                class_dim = 2
+                prediction = fluid.layers.fc(input=data, size=class_dim)
                 loss = fluid.layers.mean(prediction)
                 adam = fluid.optimizer.Adam()
                 adam.minimize(loss)
@@ -798,23 +800,43 @@ class Executor(object):
                 build_strategy = fluid.BuildStrategy()
                 binary = fluid.CompiledProgram(fluid.default_main_program()).with_data_parallel(
                     loss_name=loss.name, build_strategy=build_strategy)
-
-                batch_size = 32
+                batch_size = 6
                 x = np.random.random(size=(batch_size, 1)).astype('float32')
-                unmerged_loss, unmerged_prediction = exe.run(binary, feed={'X': x},
-                    fetch_list=[loss.name, prediction.name],
+
+                # Set return_merged as False to fetch unmerged results:
+                unmerged_prediction, = exe.run(binary, feed={'X': x},
+                    fetch_list=[prediction.name],
                     return_merged=False)
-                # (GPU_CARD_NUM, 1)
-                print("The unmerged loss shape: {}".format(np.array(unmerged_loss).shape))
-                # (GPU_CARD_NUM, batch_size / GPU_CARD_NUM, 10)
+                # If the user uses two GPU cards to run this python code, the printed result will be
+                # (2, 3, class_dim). The first dimension value of the printed result is the number of used
+                # GPU cards, and the second dimension value is the quotient of batch_size and the
+                # number of used GPU cards.
                 print("The unmerged prediction shape: {}".format(np.array(unmerged_prediction).shape))
-                merged_loss, merged_prediction = exe.run(binary, feed={'X': x},
-                    fetch_list=[loss.name, prediction.name],
+                print(unmerged_prediction)
+
+                # Set return_merged as True to fetch merged results:
+                merged_prediction, = exe.run(binary, feed={'X': x},
+                    fetch_list=[prediction.name],
                     return_merged=True)
-                # (GPU_CARD_NUM, )
-                print("The merged loss shape: {}".format(np.array(merged_loss).shape))
-                # (batch_size, 10)
+                # If the user uses two GPU cards to run this python code, the printed result will be
+                # (6, class_dim). The first dimension value of the printed result is the batch_size.
                 print("The merged prediction shape: {}".format(np.array(merged_prediction).shape))
+                print(merged_prediction)
+
+                # Out:
+                # The unmerged prediction shape: (2, 3, 2)
+                # [array([[-0.37620035, -0.19752218],
+                #        [-0.3561043 , -0.18697084],
+                #        [-0.24129935, -0.12669306]], dtype=float32), array([[-0.24489994, -0.12858354],
+                #        [-0.49041364, -0.25748932],
+                #        [-0.44331917, -0.23276259]], dtype=float32)]
+                # The merged prediction shape: (6, 2)
+                # [[-0.37789783 -0.19921964]
+                #  [-0.3577645  -0.18863106]
+                #  [-0.24274671 -0.12814042]
+                #  [-0.24635398 -0.13003758]
+                #  [-0.49232286 -0.25939852]
+                #  [-0.44514108 -0.2345845 ]]
         """
         try:
             return self._run_impl(
