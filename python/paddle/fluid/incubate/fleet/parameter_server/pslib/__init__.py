@@ -448,7 +448,7 @@ class PSLib(Fleet):
                     model_proto_file(str): path of program desc proto binary
                                            file, can be local or hdfs/afs file
                     var_names(list): var name list
-                    load_combine(bool): load from a file or splited param files
+                    load_combine(bool): load from a file or split param files
                                         default False.
 
         Examples:
@@ -502,7 +502,7 @@ class PSLib(Fleet):
             model_proto_file(str): path of program desc proto binary file,
                                    can be local or hdfs/afs file
             var_names(list): load var names
-            load_combine(bool): load from a file or splited param files
+            load_combine(bool): load from a file or split param files
 
         """
         self._role_maker._barrier_worker()
