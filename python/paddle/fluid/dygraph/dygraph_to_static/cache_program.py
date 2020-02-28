@@ -20,10 +20,11 @@ import threading
 import numpy
 
 from paddle.fluid import framework
-from paddle.fluid import layers
-from paddle.fluid import core, Executor
+from paddle.fluid.layers import io
+from paddle.fluid import core, executor
 from paddle.fluid import optimizer as optim
 from paddle.fluid.dygraph.dygraph_to_static import convert_to_static
+
 __all__ = ['ProgramCache']
 
 
@@ -236,7 +237,7 @@ class ProgramCache(object):
         assert self.batch_data, "batch_data is empty."
 
         input_names = [in_var.name for in_var in self.inputs]
-        exe = Executor(core.CPUPlace())
+        exe = executor.Executor(core.CPUPlace())
         if self.need_startup:
             self.need_startup = False
             exe.run(framework.default_startup_program())
@@ -285,7 +286,7 @@ class ProgramCache(object):
                     batch_data, numpy.ndarray
                 ), "Input {} should be numpy.ndarray, but received {}.".format(
                     feed_name, type(batch_data))
-                feed_layer = layers.data(
+                feed_layer = io.data(
                     name=feed_name,
                     shape=list(batch_data.shape[1:]),
                     dtype=str(batch_data.dtype))
