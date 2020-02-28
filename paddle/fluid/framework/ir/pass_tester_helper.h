@@ -33,8 +33,9 @@ struct Layers {
   const ProgramDesc& main_program() { return program_; }
 
   VarDesc* data(std::string name, std::vector<int64_t> shape = {},
-                bool is_persistable = false) {
-    return lod_tensor(name, shape, is_persistable);
+                bool is_persistable = false,
+                proto::VarType::Type data_type = proto::VarType::FP32) {
+    return lod_tensor(name, shape, is_persistable, data_type);
   }
 
   VarDesc* conv2d(VarDesc* input, VarDesc* filter, VarDesc* bias,
@@ -379,9 +380,11 @@ struct Layers {
 
  private:
   VarDesc* lod_tensor(std::string name, std::vector<int64_t> shape = {},
-                      bool is_persistable = false) {
+                      bool is_persistable = false,
+                      proto::VarType::Type data_type = proto::VarType::FP32) {
     auto* var = program_.MutableBlock(0)->Var(name);
     var->SetType(proto::VarType::LOD_TENSOR);
+    var->SetDataType(data_type);
     var->SetShape(shape);
     var->SetPersistable(is_persistable);
     return var;

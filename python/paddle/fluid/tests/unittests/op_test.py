@@ -70,8 +70,6 @@ def get_numeric_gradient(place,
 
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.shape())
-    if tensor_size < 100:
-        get_numeric_gradient.is_large_shape = False
     tensor_to_check_dtype = tensor_to_check._dtype()
     if tensor_to_check_dtype == core.VarDesc.VarType.FP32:
         tensor_to_check_dtype = np.float32
@@ -147,12 +145,12 @@ def get_numeric_gradient(place,
 
 def skip_check_grad_ci(reason=None):
     """Decorator to skip check_grad CI.
-       
+
        Check_grad is required for Op test cases. However, there are some special
-       cases that do not need to do check_grad. This decorator is used to skip the 
+       cases that do not need to do check_grad. This decorator is used to skip the
        check_grad of the above cases.
-       
-       Note: the execution of unit test will not be skipped. It just avoids check_grad 
+
+       Note: the execution of unit test will not be skipped. It just avoids check_grad
        checking in tearDownClass method by setting a `no_need_check_grad` flag.
 
        Example:
@@ -178,13 +176,12 @@ class OpTest(unittest.TestCase):
         cls.call_once = False
         cls.dtype = None
         cls.outputs = {}
+        cls.input_shape_is_large = True
 
         np.random.seed(123)
         random.seed(124)
 
         cls._use_system_allocator = _set_use_system_allocator(True)
-
-        get_numeric_gradient.is_large_shape = True
 
     @classmethod
     def tearDownClass(cls):
@@ -210,6 +207,9 @@ class OpTest(unittest.TestCase):
         def is_mkldnn_op_test():
             return hasattr(cls, "use_mkldnn") and cls.use_mkldnn == True
 
+        def is_ngraph_op_test():
+            return hasattr(cls, "use_ngraph") and cls.use_ngraph == True
+
         if not hasattr(cls, "op_type"):
             raise AssertionError(
                 "This test do not have op_type in class attrs, "
@@ -229,12 +229,13 @@ class OpTest(unittest.TestCase):
             if cls.dtype in [np.float32, np.float64] \
                 and cls.op_type not in op_accuracy_white_list.NO_FP64_CHECK_GRAD_OP_LIST \
                 and not hasattr(cls, 'exist_fp64_check_grad') \
+                and not is_ngraph_op_test() \
                 and not is_mkldnn_op_test():
                 raise AssertionError(
                     "This test of %s op needs check_grad with fp64 precision." %
                     cls.op_type)
 
-            if not get_numeric_gradient.is_large_shape \
+            if not cls.input_shape_is_large \
                 and cls.op_type not in check_shape_white_list.NEED_TO_FIX_OP_LIST:
                 raise AssertionError(
                     "Input's shape should be large than or equal to 100 for " +
@@ -320,6 +321,10 @@ class OpTest(unittest.TestCase):
             (hasattr(self, "attrs") and "use_mkldnn" in self.attrs and \
                     self.attrs["use_mkldnn"] == True):
             self.__class__.use_mkldnn = True
+        if fluid.core.is_compiled_with_ngraph() and \
+            fluid.core.globals()['FLAGS_use_ngraph']:
+            self.__class__.use_ngraph = True
+
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
         "infer datatype from inputs and outputs for this test case"
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
@@ -341,7 +346,7 @@ class OpTest(unittest.TestCase):
             inputs=inputs,
             outputs=outputs,
             attrs=self.attrs if hasattr(self, "attrs") else dict())
-        # infer variable type and infer shape in compile-time 
+        # infer variable type and infer shape in compile-time
         op.desc.infer_var_type(block.desc)
         op.desc.infer_shape(block.desc)
 
@@ -555,8 +560,8 @@ class OpTest(unittest.TestCase):
         feed_map = self.feed_var(inputs, place)
 
         if for_inplace_test:
-            # Some variables' tensors hold no buffer (tensor's _holder is NULL), like XShape in reshape2 op, 
-            # and the shapes of those variables contain 0 (eg. Xshape.shape = [0, 2, 5]). 
+            # Some variables' tensors hold no buffer (tensor's _holder is NULL), like XShape in reshape2 op,
+            # and the shapes of those variables contain 0 (eg. Xshape.shape = [0, 2, 5]).
             # Set persistable for those variables in order to get them from global_scope for inplace grad test directly other than feed them,
             # since feed op calls check_memory_size() which fails when tensor's holder_ is NULL.
             for out_name in op.output_arg_names:
@@ -617,7 +622,7 @@ class OpTest(unittest.TestCase):
         """Compare expect outs and actual outs of an tested op.
 
         Args:
-            place (CPUPlace | CUDAPlace): The place where the op runs. 
+            place (CPUPlace | CUDAPlace): The place where the op runs.
             fetch_list (list): The outputs of tested op.
             expect_outs (list): The expect outs of tested op.
             actual_outs (list): The actual outs of tested op.
@@ -628,7 +633,7 @@ class OpTest(unittest.TestCase):
         """
         # compare expect_outs and actual_outs
         for i, name in enumerate(fetch_list):
-            # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure 
+            # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure
             # computational consistency.
             # When inplace_atol is not None, the inplace check uses numpy.allclose
             # to check inplace result instead of numpy.array_equal.
@@ -658,7 +663,7 @@ class OpTest(unittest.TestCase):
         Args:
             fwd_program (tuple): The program that contains grad_op_desc's corresponding forward op.
             grad_op_desc (OpDesc): The OpDesc of grad op.
-            op_grad_to_var (dict): The relation of variables in grad op and its forward op. 
+            op_grad_to_var (dict): The relation of variables in grad op and its forward op.
 
         Returns:
             grad_program (program): The program which contains the grad_op.
@@ -685,8 +690,8 @@ class OpTest(unittest.TestCase):
                 type=fwd_var.type,
                 persistable=False)
 
-            # Some variables' tensors hold no buffer (tensor's _holder is NULL), like XShape in reshape2 op, 
-            # and the shapes of those variables contain 0 (eg. Xshape.shape = [0, 2, 5]). 
+            # Some variables' tensors hold no buffer (tensor's _holder is NULL), like XShape in reshape2 op,
+            # and the shapes of those variables contain 0 (eg. Xshape.shape = [0, 2, 5]).
             # Set persistable for those variables in order to get them from global_scope for inplace grad test directly other than feed them,
             # since feed op calls check_memory_size() which fails when tensor's holder_ is NULL.
             if 0 in grad_var.shape:
@@ -702,11 +707,11 @@ class OpTest(unittest.TestCase):
         we use fwd outs (also inputs sometimes) to construct grad inputs.
 
         Args:
-            place (CPUPlace | CUDAPlace): The place where the op runs. 
+            place (CPUPlace | CUDAPlace): The place where the op runs.
             fwd_res (tuple): The outputs of its forward op, in the same form as returns of _calc_outputs() when for_inplace_test is True.
                 i.e., tuple(fwd_outs, fwd_fetch_list, fwd_feed_map, fwd_program, fwd_op_desc)
             grad_op_desc (OpDesc): The OpDesc of grad op.
-            op_grad_to_var (dict): The relation of variables in grad op and its fwd_op. 
+            op_grad_to_var (dict): The relation of variables in grad op and its fwd_op.
 
         Returns:
             grad_feed_map (dict): The feed_map of grad_op.
@@ -738,12 +743,12 @@ class OpTest(unittest.TestCase):
         An op needs to run druing inplace check if,
         (1) it has infer_inplace,
         (2) it has infer_inplace in its grad descendants. (since we need its outputs as to construct its grad's inputs)
-        
+
         Args:
-            op_desc (OpDesc): The op_desc of current op. 
-            fwd_op_desc (OpDesc): The op_desc of current op's forward op, None if current op has no forward op. 
+            op_desc (OpDesc): The op_desc of current op.
+            fwd_op_desc (OpDesc): The op_desc of current op's forward op, None if current op has no forward op.
                 Eg. relu's fwd_op is None, relu_grad's fwd_op is relu, relu_grad_grad's fwd_op is relu_grad, etc.
-            
+
         Returns:
             need_run_ops (list[(op_desc, fwd_op_desc)]): The ops that need to run during inplace test.
         """
@@ -758,7 +763,7 @@ class OpTest(unittest.TestCase):
             if not has_grad_op_maker:
                 has_infer_inplace_in_descendants = False
             else:
-                # get grad_op_desc 
+                # get grad_op_desc
                 grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
                     op_desc, set(), [])
                 if not grad_op_desc_list:
@@ -784,15 +789,15 @@ class OpTest(unittest.TestCase):
                                inplace_atol=None):
         """Chech the inplace correctness of given op (self.op_type).
         Run the op twice with same inputs, one enable inplace and another disable, compare their outputs.
-        
+
         Args:
-            place (CPUPlace | CUDAPlace): The place where the op runs. 
+            place (CPUPlace | CUDAPlace): The place where the op runs.
             no_check_set (list): The names of outputs that needn't check, like XShape of reshape op.
             inplace_atol (float): The tolerable error, only set when op doesn't ensure computational consistency, like group_norm op.
 
         Returns:
-            expect_res (tuple(outs, fetch_list, feed_map, program, op_desc)): The results of given op. 
-                We return this to construct grad_program and grad_feed_map for grad inplace check. 
+            expect_res (tuple(outs, fetch_list, feed_map, program, op_desc)): The results of given op.
+                We return this to construct grad_program and grad_feed_map for grad inplace check.
         """
         # _calc_output() returns in the form tuple(outs, fetch_list, feed_map, program, op_desc) when for_inplace_test=True.
         expect_res = self._calc_output(
@@ -825,7 +830,7 @@ class OpTest(unittest.TestCase):
         we use fwd outs (also inputs sometimes) to construct grad inputs.
 
         Args:
-            place (CPUPlace | CUDAPlace): The place where the op runs. 
+            place (CPUPlace | CUDAPlace): The place where the op runs.
             fwd_res (tuple): The outputs of its forward op, in the same form as returns of _calc_outputs() when for_inplace_test is True.
                 i.e., tuple(fwd_outs, fwd_fetch_list, fwd_feed_map, fwd_program, fwd_op_desc).
             grad_op_desc (OpDesc): The OpDesc of grad op.
@@ -869,15 +874,15 @@ class OpTest(unittest.TestCase):
         So we define a new function for grad, grad_grad, etc.
 
         Args:
-            place (CPUPlace | CUDAPlace): The place where the op runs. 
+            place (CPUPlace | CUDAPlace): The place where the op runs.
             fwd_res (tuple): The outputs of its forward op, in the same form as returns of _calc_outputs() when for_inplace_test is True.
                 i.e., tuple(fwd_outs, fwd_fetch_list, fwd_feed_map, fwd_program, fwd_op_desc).
             grad_op_desc (OpDesc): The OpDesc of grad op.
             inplace_atol (float): The tolerable error, only set when op doesn't ensure computational consistency, like group_norm op.
 
         Returns:
-            expect_res (tuple(outs, fetch_list, feed_map, program, op_desc)): The results of given op. 
-                We return this to construct grad_program and grad_feed_map for grad inplace check. 
+            expect_res (tuple(outs, fetch_list, feed_map, program, op_desc)): The results of given op.
+                We return this to construct grad_program and grad_feed_map for grad inplace check.
         """
         expect_res = self._calc_grad_output(
             place, fwd_res, grad_op_desc, enable_inplace=False)
@@ -901,7 +906,7 @@ class OpTest(unittest.TestCase):
         (2) Run op in need_run_ops, and do inplace check if it has infer_inplace.
 
         Args:
-            place (CPUPlace | CUDAPlace): The place where the op runs. 
+            place (CPUPlace | CUDAPlace): The place where the op runs.
             no_check_set (list): The names of outputs that needn't check, like XShape of reshape op.
             inplace_atol (float): The tolerable error, only set when op doesn't ensure computational consistency, like group_norm op.
 
@@ -936,14 +941,16 @@ class OpTest(unittest.TestCase):
                 attrs_use_mkldnn = hasattr(
                     self,
                     'attrs') and bool(self.attrs.get('use_mkldnn', False))
+                flags_use_ngraph = fluid.core.globals()["FLAGS_use_ngraph"]
+                attrs_use_ngraph = hasattr(
+                    self,
+                    'attrs') and bool(self.attrs.get('use_ngraph', False))
                 if flags_use_mkldnn or attrs_use_mkldnn:
                     warnings.warn(
                         "check inplace_grad for ops using mkldnn is not supported"
                     )
                     continue
-                use_ngraph = fluid.core.is_compiled_with_ngraph(
-                ) and fluid.core.globals()["FLAGS_use_ngraph"]
-                if use_ngraph:
+                if flags_use_ngraph or attrs_use_ngraph:
                     warnings.warn(
                         "check inplace_grad for ops using ngraph is not supported"
                     )
@@ -1093,10 +1100,10 @@ class OpTest(unittest.TestCase):
                             "Output (" + out_name + ") has different lod at " +
                             str(place) + " in dygraph mode")
 
-        # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure 
+        # Note(zhiqiu): inplace_atol should be only set when op doesn't ensure
         # computational consistency.
         # For example, group_norm uses AtomicAdd on CUDAPlace, which do not ensure
-        # computation order when multiple threads write the same address. So the 
+        # computation order when multiple threads write the same address. So the
         # result of group_norm is non-deterministic when datatype is float.
         # When inplace_atol is not None, the inplace check uses numpy.allclose
         # to check inplace result instead of numpy.array_equal.
@@ -1105,7 +1112,7 @@ class OpTest(unittest.TestCase):
                 "inplace_atol should only be set when op doesn't ensure computational consistency, please check it!"
             )
         # Check inplace for given op, its grad op, its grad_grad op, etc.
-        # No effect on original OpTest 
+        # No effect on original OpTest
         self.check_inplace_output_with_place(
             place, no_check_set=no_check_set, inplace_atol=inplace_atol)
 
@@ -1190,6 +1197,10 @@ class OpTest(unittest.TestCase):
             (hasattr(self, "attrs") and "use_mkldnn" in self.attrs and \
                     self.attrs["use_mkldnn"] == True):
             self.__class__.use_mkldnn = True
+        if fluid.core.is_compiled_with_ngraph() and \
+            fluid.core.globals()['FLAGS_use_ngraph']:
+            self.__class__.use_ngraph = True
+
         places = self._get_places()
         for place in places:
             res = self.check_output_with_place(place, atol, no_check_set,
@@ -1304,6 +1315,14 @@ class OpTest(unittest.TestCase):
                        no_grad_set_white_list.NOT_CHECK_OP_LIST):
                 raise AssertionError("no_grad_set must be None, op_type is " +
                                      self.op_type + " Op.")
+
+        for input_to_check in inputs_to_check:
+            set_input(self.scope, self.op, self.inputs, place)
+            tensor_to_check = self.scope.find_var(input_to_check).get_tensor()
+            tensor_size = six.moves.reduce(lambda a, b: a * b,
+                                           tensor_to_check.shape(), 1)
+            if tensor_size < 100:
+                self.__class__.input_shape_is_large = False
 
         if not type(output_names) is list:
             output_names = [output_names]

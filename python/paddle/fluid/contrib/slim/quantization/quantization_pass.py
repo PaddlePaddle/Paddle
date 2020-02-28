@@ -666,10 +666,10 @@ class QuantizationFreezePass(object):
                  quantizable_op_type=['conv2d', 'depthwise_conv2d', 'mul']):
         """
         The freeze pass is used to adjust the quantize operator order, for example:
-            1) `activation -> quant -> dequant -> conv2d` will be freezed into
+            1) `activation -> quant -> dequant -> conv2d` will be frozen into
             `activation -> quant -> conv2d -> dequant`
-            2) `weight -> quant -> dequant -> conv2d` will be freezed into `weight -> conv2d`,
-            and weight will be sacled offline.
+            2) `weight -> quant -> dequant -> conv2d` will be frozen into `weight -> conv2d`,
+            and weight will be scaled offline.
 
         Args:
             scope(fluid.Scope): scope is used to get the weight tensor values.
@@ -994,8 +994,8 @@ class ConvertToInt8Pass(object):
 
     def apply(self, graph):
         """
-        Convert weights' tpye of the graph. After that, the data type of the
-        graph weigths is int8_t.
+        Convert weights' type of the graph. After that, the data type of the
+        graph weights is int8_t.
 
         Args:
             graph(IrGraph): the applied graph.
@@ -1065,7 +1065,7 @@ class ConvertToInt8Pass(object):
 class TransformForMobilePass(object):
     def __init__(self):
         """
-        This pass is used to convert the freezed graph for paddle-mobile execution.
+        This pass is used to convert the frozen graph for paddle-mobile execution.
         """
         self._fake_quant_op_names = _fake_quant_op_list
         self._fake_dequant_op_names = _fake_dequant_op_list

@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/parameter_recv.h"
 #include "paddle/fluid/operators/distributed/parameter_send.h"
+#include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/split.h"
 
 namespace paddle {
@@ -64,7 +65,6 @@ std::shared_ptr<Communicator> Communicator::communicator_(nullptr);
 void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
                                  const RpcCtxMap &recv_varname_to_ctx,
                                  Scope *recv_scope) {
-  VLOG(0) << "AsyncCommunicator Initializing";
   send_varname_to_ctx_ = std::move(send_varname_to_ctx);
   recv_varname_to_ctx_ = std::move(recv_varname_to_ctx);
   recv_scope_ = std::move(recv_scope);
@@ -90,7 +90,6 @@ void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
 
 void AsyncCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
                                  Scope *param_scope) {
-  VLOG(0) << "AsyncCommunicator Initializing";
   RpcCtxMap send_varname_to_ctx;
   RpcCtxMap recv_varname_to_ctx;
   for (auto *op : program.Block(0).AllOps()) {
@@ -332,8 +331,6 @@ GeoSgdCommunicator::~GeoSgdCommunicator() {
 
 void GeoSgdCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
                                   Scope *recv_scope) {
-  VLOG(0) << "GeoCommunicator Initializing";
-
   training_scope_ = std::move(recv_scope);
 
   auto geo_send_varnames = envs["geo_send_varnames"];
@@ -546,7 +543,7 @@ std::unordered_set<int64_t> GeoSgdCommunicator::SparseIdsMerge(
     const std::string &splited_var_name) {
   // every batch has some sparse id, merge them into one unoredered_set
   VLOG(4) << "Sparse Ids merge var: " << var_name
-          << " splited var: " << splited_var_name;
+          << " split var: " << splited_var_name;
   auto before_run_ids_merge_ = GetCurrentUS();
   auto origin_var_name = DeltaVarToVar(var_name);
   auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
@@ -570,9 +567,8 @@ void GeoSgdCommunicator::SendUpdateDenseVars(
   // var_name: param.delta
   auto origin_var_name = DeltaVarToVar(var_name);
   auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
-  VLOG(4) << "Dense var: " << var_name
-          << " 's splited var: " << splited_var_name
-          << " splited var index: " << splited_var_index;
+  VLOG(4) << "Dense var: " << var_name << " 's split var: " << splited_var_name
+          << " split var index: " << splited_var_index;
   auto before_run_send_dense = GetCurrentUS();
   auto cpu_ctx = paddle::platform::CPUDeviceContext();
 
@@ -595,7 +591,7 @@ void GeoSgdCommunicator::SendUpdateDenseVars(
     begin_loc = absolute_section_[origin_var_name][splited_var_index];
     dimension = total_element / vars_first_dimension_[origin_var_name];
     total_element = section * dimension;
-    VLOG(4) << "Dense splited var: " << splited_var_name
+    VLOG(4) << "Dense split var: " << splited_var_name
             << " section: " << section << " dimension: " << dimension
             << " begin loc: " << begin_loc << " total_element "
             << total_element;
@@ -603,12 +599,12 @@ void GeoSgdCommunicator::SendUpdateDenseVars(
 
   auto *var_x_data = var_x_tensor.mutable_data<float>(var_x_tensor.place()) +
                      begin_loc * dimension;
-  VLOG(4) << "Dense splited var: " << splited_var_name << " var_x_data[0] "
+  VLOG(4) << "Dense split var: " << splited_var_name << " var_x_data[0] "
           << var_x_data[0] << " var_x_data[end] "
           << var_x_data[total_element - 1];
   auto *var_y_data = var_y_tensor.mutable_data<float>(var_y_tensor.place()) +
                      begin_loc * dimension;
-  VLOG(4) << "Dense splited var: " << splited_var_name << " var_y_data[0] "
+  VLOG(4) << "Dense split var: " << splited_var_name << " var_y_data[0] "
           << var_y_data[0] << " var_y_data[end] "
           << var_y_data[total_element - 1];
 
@@ -619,14 +615,14 @@ void GeoSgdCommunicator::SendUpdateDenseVars(
   var_z_tensor->mutable_data<float>(dims, cpu_ctx.GetPlace());
   auto *var_z_data = var_z_tensor->mutable_data<float>(cpu_ctx.GetPlace());
 
-  VLOG(4) << "Dense splited var: " << splited_var_name << "var_z_data[0] "
+  VLOG(4) << "Dense split var: " << splited_var_name << "var_z_data[0] "
           << var_z_data[0] << " var_z_data[end] "
           << var_z_data[total_element - 1];
 
   // calc sub = var_training - var_old
   auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, float>(cpu_ctx);
   blas.VSUB(total_element, var_x_data, var_y_data, var_z_data);
-  VLOG(4) << "Dense splited var: " << splited_var_name << " var_z_data[0] "
+  VLOG(4) << "Dense split var: " << splited_var_name << " var_z_data[0] "
           << var_z_data[0] << " var_z_data[end] "
           << var_z_data[total_element - 1];
 
@@ -636,7 +632,7 @@ void GeoSgdCommunicator::SendUpdateDenseVars(
 
   // calc var_old += var_delta
   blas.VADD(total_element, var_y_data, var_z_data, var_y_data);
-  VLOG(4) << "Dense splited var: " << splited_var_name << " var_y_data[0] "
+  VLOG(4) << "Dense split var: " << splited_var_name << " var_y_data[0] "
           << var_y_data[0] << " var_y_data[end] "
           << var_y_data[total_element - 1];
 
@@ -766,7 +762,7 @@ void GeoSgdCommunicator::RecvUpdateDenseVars(
     section = dims[0];
     begin_loc = absolute_section_[origin_var_name][splited_var_index];
     dimension = total_element / section;
-    VLOG(4) << "Dense splited var: " << splited_var_name
+    VLOG(4) << "Dense split var: " << splited_var_name
             << " section: " << section << " dimension: " << dimension
             << " begin loc: " << begin_loc << " total_element "
             << total_element;
@@ -774,18 +770,18 @@ void GeoSgdCommunicator::RecvUpdateDenseVars(
 
   auto *var_x_data = var_x_tensor.mutable_data<float>(var_x_tensor.place()) +
                      begin_loc * dimension;
-  VLOG(4) << "Dense splited var: " << splited_var_name << " var_x_data[0] "
+  VLOG(4) << "Dense split var: " << splited_var_name << " var_x_data[0] "
           << var_x_data[0] << " var_x_data[end] "
           << var_x_data[total_element - 1];
 
   auto *var_y_data = var_y_tensor.mutable_data<float>(var_y_tensor.place()) +
                      begin_loc * dimension;
-  VLOG(4) << "Dense splited var: " << splited_var_name << " var_y_data[0] "
+  VLOG(4) << "Dense split var: " << splited_var_name << " var_y_data[0] "
           << var_y_data[0] << " var_y_data[end] "
           << var_y_data[total_element - 1];
 
   auto *var_z_data = var_z_tensor.mutable_data<float>(cpu_ctx.GetPlace());
-  VLOG(4) << "Dense splited var: " << splited_var_name << " var_z_data[0] "
+  VLOG(4) << "Dense split var: " << splited_var_name << " var_z_data[0] "
           << var_z_data[0] << " var_z_data[end] "
           << var_z_data[total_element - 1];
 
@@ -796,7 +792,7 @@ void GeoSgdCommunicator::RecvUpdateDenseVars(
   auto *var_y_sub_data =
       var_y_sub_tensor->mutable_data<float>(cpu_ctx.GetPlace());
 
-  VLOG(4) << "Dense splited var: " << splited_var_name << " var_y_sub_data[0] "
+  VLOG(4) << "Dense split var: " << splited_var_name << " var_y_sub_data[0] "
           << var_y_sub_data[0] << " var_y_sub_data[end] "
           << var_y_sub_data[total_element - 1];
 
@@ -804,19 +800,19 @@ void GeoSgdCommunicator::RecvUpdateDenseVars(
 
   // calc sub = pserver - old
   blas.VSUB(total_element, var_z_data, var_y_data, var_y_sub_data);
-  VLOG(4) << "Dense splited var: " << splited_var_name << " var_y_sub_data[0] "
+  VLOG(4) << "Dense split var: " << splited_var_name << " var_y_sub_data[0] "
           << var_y_sub_data[0] << " var_y_sub_data[end] "
           << var_y_sub_data[total_element - 1];
 
   // calc train += sub
   blas.VADD(total_element, var_x_data, var_y_sub_data, var_x_data);
-  VLOG(4) << "Dense splited var: " << splited_var_name << " var_x_data[0] "
+  VLOG(4) << "Dense split var: " << splited_var_name << " var_x_data[0] "
           << var_x_data[0] << " var_x_data[end] "
           << var_x_data[total_element - 1];
 
   // calc old = pserver
   blas.VCOPY(total_element, var_z_data, var_y_data);
-  VLOG(4) << "Dense splited var: " << splited_var_name << " var_y_data[0] "
+  VLOG(4) << "Dense split var: " << splited_var_name << " var_y_data[0] "
           << var_y_data[0] << " var_y_data[end] "
           << var_y_data[total_element - 1];
 
@@ -827,7 +823,7 @@ void GeoSgdCommunicator::RecvUpdateDenseVars(
 
 void GeoSgdCommunicator::RecvUpdateSparseVars(
     const std::string &var_name, const std::string &splited_var_name) {
-  // step 1: recv splited var from pserver
+  // step 1: recv split var from pserver
   auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
   auto origin_var_name = DeltaVarToVar(var_name);
   auto origin_splited_var_name = DeltaVarToVar(splited_var_name);
@@ -954,7 +950,6 @@ void GeoSgdCommunicator::Recv() {}
 void HalfAsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
                                      const RpcCtxMap &recv_varname_to_ctx,
                                      Scope *recv_scope) {
-  VLOG(0) << "HalfAsyncCommunicator Initializing";
   send_varname_to_ctx_ = std::move(send_varname_to_ctx);
   recv_varname_to_ctx_ = std::move(recv_varname_to_ctx);
   recv_scope_ = std::move(recv_scope);
@@ -1011,6 +1006,8 @@ void HalfAsyncCommunicator::InitImpl(
       auto trainer_id = boost::get<int>(op->GetNullableAttr("trainer_id"));
       recv_varname_to_ctx[recv_var_name] = operators::distributed::RpcContext(
           recv_var_name, recv_varnames, epmap, {}, trainer_id);
+      VLOG(3) << "find and init an recv op: "
+              << recv_varname_to_ctx[recv_var_name];
     }
   }
 
@@ -1032,7 +1029,8 @@ void HalfAsyncCommunicator::ConsumeThread() {
   VLOG(3) << "ConsumeThread start!";
   while (running_) {
     while (running_) {
-      if (barrier_counter_.load() >= barrier_trigger_.load()) {
+      if (barrier_counter_.load() >= barrier_trigger_.load() &&
+          barrier_trigger_.load() != 0) {
         break;
       } else {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -1096,8 +1094,10 @@ void HalfAsyncCommunicator::ConsumeThread() {
 
     VLOG(3) << "run send graph use time "
             << after_run_send_graph - before_run_send_graph;
-    Recv();
 
+    BarrierSend();
+    Recv();
+    BarrierRecv();
     BarrierWeakUp();
   }
   VLOG(0) << "communicator stopped, send thread exit";
@@ -1200,6 +1200,49 @@ void HalfAsyncCommunicator::Stop() {
   VLOG(0) << "Communicator stop done";
 }
 
+void SyncCommunicator::BarrierSend() {
+  if (!running_) return;
+
+  distributed::RPCClient *rpc_client =
+      distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id_);
+
+  std::vector<distributed::VarHandlePtr> rets;
+
+  for (auto &ep : pserver_endpoints_) {
+    rets.push_back(rpc_client->AsyncSendBatchBarrier(ep));
+  }
+
+  for (size_t i = 0; i < rets.size(); i++) {
+    PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, platform::errors::External(
+                                               "internal error in RPCClient"));
+  }
+
+  VLOG(4) << "BarrierSend with SyncCommunicator";
+}
+
+void SyncCommunicator::BarrierRecv() {
+  if (!running_) return;
+
+  distributed::RPCClient *rpc_client =
+      distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id_);
+
+  std::vector<distributed::VarHandlePtr> rets;
+  for (auto &ep : pserver_endpoints_) {
+    rets.push_back(rpc_client->AsyncSendFetchBarrier(ep));
+  }
+
+  for (size_t i = 0; i < rets.size(); i++) {
+    PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, platform::errors::External(
+                                               "internal error in RPCClient"));
+  }
+
+  VLOG(4) << "BarrierRecv with SyncCommunicator";
+}
+
+SyncCommunicator::~SyncCommunicator() {
+  running_ = false;
+  if (consume_thread_) consume_thread_->join();
+}
 }  // namespace distributed
 }  // namespace operators
 }  // namespace paddle

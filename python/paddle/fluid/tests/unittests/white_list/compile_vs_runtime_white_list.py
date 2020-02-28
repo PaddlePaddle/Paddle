@@ -19,10 +19,8 @@
 # reasons for skipping compile_vs_runtime test or be fixed later.
 
 COMPILE_RUN_OP_WHITE_LIST = [
-    'lod_reset', \
     'sequence_pool', \
     'sequence_slice', \
-    'generate_mask_labels', \
     'generate_proposals', \
     'mine_hard_examples', \
     'retinanet_detection_output', \
@@ -32,11 +30,8 @@ COMPILE_RUN_OP_WHITE_LIST = [
     'rpn_target_assign', \
     'retinanet_target_assign', \
     'filter_by_instag', \
-    'multiclass_nms', \
-    'multiclass_nms2', \
     'im2sequence', \
     'generate_proposal_labels', \
-    'distribute_fpn_proposals', \
     'detection_map', \
     'locality_aware_nms', \
     'var_conv_2d'

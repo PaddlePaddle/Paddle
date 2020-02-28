@@ -782,7 +782,7 @@ class BilinearInitializer(Initializer):
         super(BilinearInitializer, self).__init__()
 
     def __call__(self, var, block):
-        """Add biliear initialization ops for a variable
+        """Add bilinear initialization ops for a variable
 
         Args:
             var (Variable): Variable that needs to be initialized.
