@@ -11,9 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-__version__ = '0.1.0'
-
 from __future__ import print_function
+
 from . import base
 from .base import *
 
