@@ -19,10 +19,10 @@ import textwrap
 import threading
 import numpy
 
-from paddle.fluid.optimizer import Optimizer
 from paddle.fluid import framework
 from paddle.fluid import layers
 from paddle.fluid import core, Executor
+from paddle.fluid import optimizer as optim
 from paddle.fluid.dygraph.dygraph_to_static import convert_to_static
 __all__ = ['ProgramCache']
 
@@ -250,7 +250,7 @@ class ProgramCache(object):
         """
         self._check_cache_valid()
 
-        if not isinstance(optimizer, Optimizer):
+        if not isinstance(optimizer, optim.Optimizer):
             raise ValueError(
                 '{} is not fluid.optimizer.Optimizer, received {}.'.format(
                     optimizer, type(optimizer)))
