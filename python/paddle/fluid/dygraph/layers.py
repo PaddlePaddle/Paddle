@@ -83,7 +83,7 @@ class Layer(core.Layer):
         framework._dygraph_tracer().train_mode()
         # for dynamic graph
         self.training = True
-        for layer in self.sublayers(include_sublayers=False):
+        for layer in self.sublayers():
             layer.train()
 
     def eval(self):
