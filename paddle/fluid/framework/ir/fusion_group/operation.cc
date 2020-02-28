@@ -160,10 +160,10 @@ void OperationMap::InsertSpecialElementwiseOperations() {
     int type = 0;
     int num_oprands = -1;
     // here ... represent the number of input is changed
-    Insert(type, num_oprands, op_type, expr, grad_exprs, {}, {"Out"});
+    Insert(type, num_oprands, op_type, expr, grad_exprs, {"X"}, {"Out"});
   };
 
-  insert_handler("sum", "${...} + ", {});
+  insert_handler("sum", "${0}[ + ${?}]", {});
 }
 
 }  // namespace fusion_group

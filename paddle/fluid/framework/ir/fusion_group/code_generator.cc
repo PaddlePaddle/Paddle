@@ -62,26 +62,20 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
       std::vector<int> input_ids;
       auto operation = OperationMap::Instance().Get(op->Type());
       std::vector<std::string> input_names = operation.input_names;
-      // TODO(wangchaochaohu) : here to add code to refine the input name
-      // and make it for all elementwise op
-      if (input_names.size() == 0 && op->Type() == "sum") {
-        size_t input_size = node->inputs.size();
-        for (size_t i = 0; i < input_size; i++) {
-          std::string input_name = "X" + std::to_string(i);
-          op->SetInput(input_name, {node->inputs[i]->Name()});
-          input_names.push_back("X" + std::to_string(i));
-        }
-      }
+
       for (auto& name : input_names) {
         // Some input vars are not used in grad ops, such as
         // "elementwise_add_grad", where "X", "Y" and "Out" are not used.
-        if (((HasInput(node, name)) && op->Input(name).size() >= 1U)) {
-          // TODO(liuyiqun): support duplicated input.
-          PADDLE_ENFORCE_NE(
-              var_ids.find(op->Input(name)[0]), var_ids.end(),
-              platform::errors::InvalidArgument(
-                  "Input(%s) of operation %s is not set.", name, op->Type()));
-          input_ids.push_back(var_ids[op->Input(name)[0]]);
+        size_t op_input_size = op->Input(name).size();
+
+        if ((HasInput(node, name) && op_input_size >= 1U)) {
+          for (size_t i = 0; i < op_input_size; i++) {
+            PADDLE_ENFORCE_NE(
+                var_ids.find(op->Input(name)[i]), var_ids.end(),
+                platform::errors::InvalidArgument(
+                    "Input(%s) of operation %s is not set.", name, op->Type()));
+            input_ids.push_back(var_ids[op->Input(name)[i]]);
+          }
         } else {
           input_ids.push_back(-1);
         }
