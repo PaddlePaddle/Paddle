@@ -26,7 +26,7 @@ namespace fusion_group {
 
 static std::unordered_set<std::string> binary_op_types;
 static std::unordered_set<std::string> unary_op_types;
-static std::unordered_set<std::string> special_op_types;
+static std::unordered_set<std::string> multivariate_op_types;
 
 static std::unordered_set<std::string>& GetBinaryOpTypes() {
   if (binary_op_types.empty()) {
@@ -44,12 +44,12 @@ static std::unordered_set<std::string>& GetUnaryOpTypes() {
   return unary_op_types;
 }
 
-static std::unordered_set<std::string>& GetSpecialOpTypes() {
-  if (special_op_types.empty()) {
-    special_op_types =
+static std::unordered_set<std::string>& GetMultivariateOpTypes() {
+  if (multivariate_op_types.empty()) {
+    multivariate_op_types =
         OperationMap::Instance().Find(/* type= */ 0, /* num_operands= */ -1);
   }
-  return special_op_types;
+  return multivariate_op_types;
 }
 
 static bool IsSpecifiedOp(const std::unordered_set<std::string>& op_types,
@@ -111,8 +111,8 @@ static bool IsUnaryOp(const Node* n) {
   return IsSpecifiedOp(GetUnaryOpTypes(), n);
 }
 
-static bool IsSpecialOp(const Node* n) {
-  if (IsSpecifiedOp(GetSpecialOpTypes(), n)) {
+static bool IsMultivariateOp(const Node* n) {
+  if (IsSpecifiedOp(GetMultivariateOpTypes(), n)) {
     std::vector<int64_t> shape_0;
     for (size_t i = 0; i < n->inputs.size(); ++i) {
       auto* in_i = n->inputs[i];
@@ -135,7 +135,7 @@ static bool IsSpecialOp(const Node* n) {
 }
 
 bool ElementwiseGroupDetector::IsElementwiseOp(const Node* n) {
-  return IsBinaryOp(n) || IsUnaryOp(n) || IsSpecialOp(n);
+  return IsBinaryOp(n) || IsUnaryOp(n) || IsMultivariateOp(n);
 }
 
 std::vector<std::vector<Node*>> ElementwiseGroupDetector::operator()(

@@ -25,7 +25,7 @@ OperationMap* OperationMap::map = nullptr;
 OperationMap::OperationMap() {
   InsertUnaryElementwiseOperations();
   InsertBinaryElementwiseOperations();
-  InsertSpecialElementwiseOperations();
+  InsertMultivariateElementwiseOperations();
 }
 
 std::unordered_set<std::string> OperationMap::Find(int type, int num_operands) {
@@ -154,7 +154,7 @@ void OperationMap::InsertBinaryElementwiseOperations() {
                  {"${3} * (${0} > ${1})", "${3} * (${0} <= ${1})"});
 }
 
-void OperationMap::InsertSpecialElementwiseOperations() {
+void OperationMap::InsertMultivariateElementwiseOperations() {
   auto insert_handler = [&](std::string op_type, std::string expr,
                             std::vector<std::string> grad_exprs) {
     int type = 0;

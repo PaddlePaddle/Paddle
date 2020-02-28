@@ -33,8 +33,8 @@ static T StringTo(const std::string& str) {
   return value;
 }
 
-static std::string GetSumExpectedRHS(const std::string rhs,
-                                     const size_t input_size) {
+static std::string GetMultivariateRHS(const std::string rhs,
+                                      const size_t input_size) {
   int start_pos = rhs.find("[", 0);
   int end_pos = rhs.find("]", 0);
   std::string sum_rhs = rhs.substr(0, start_pos);
@@ -53,9 +53,10 @@ static std::string GetSumExpectedRHS(const std::string rhs,
 std::string OperationExpression::GetRHS(std::unordered_set<int>* used,
                                         size_t exprs_index) const {
   auto rhs = OperationMap::Instance().Get(op_type_).exprs[exprs_index];
-  if (op_type_ == "sum") {
+  auto num_operands = OperationMap::Instance().Get(op_type_).num_operands;
+  if (num_operands == -1) {
     size_t input_size = input_ids_.size();
-    rhs = GetSumExpectedRHS(rhs, input_size);
+    rhs = GetMultivariateRHS(rhs, input_size);
   }
 
   for (size_t i = 0; i < rhs.size(); i++) {

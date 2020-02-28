@@ -106,7 +106,7 @@ class OperationMap {
 
   void InsertUnaryElementwiseOperations();
   void InsertBinaryElementwiseOperations();
-  void InsertSpecialElementwiseOperations();
+  void InsertMultivariateElementwiseOperations();
 
  private:
   static OperationMap* map;
