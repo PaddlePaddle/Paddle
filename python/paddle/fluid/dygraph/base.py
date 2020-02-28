@@ -74,9 +74,7 @@ def enabled():
         .. code-block:: python
 
             import paddle.fluid as fluid
-            import numpy as np
 
-            data = np.random.uniform( -1, 1, [30, 10, 32] ).astype('float32')
             fluid.enable_dygraph()  # Now we are in dygragh mode
             print(fluid.dygraph.enabled())  # True
             fluid.disable_dygraph()
@@ -100,14 +98,11 @@ def enable_dygraph(place=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            import numpy as np
 
-            data = np.random.uniform( -1, 1, [30, 10, 32] ).astype('float32')
             fluid.enable_dygraph()  # Now we are in dygragh mode
-            data = fluid.dygraph.to_variable(data, name='data')
-            print(fluid.dygraph.enabled())  # True
+            print(fluid.in_dygraph_mode())  # True
             fluid.disable_dygraph()
-            data = fluid.dygraph.to_variable(data, name='data')  # AssertionError
+            print(fluid.in_dygraph_mode())  # False
     """
     global _functional_dygraph_context_manager
     _functional_dygraph_context_manager = guard(place=place)
@@ -125,14 +120,11 @@ def disable_dygraph():
         .. code-block:: python
 
             import paddle.fluid as fluid
-            import numpy as np
 
-            data = np.random.uniform( -1, 1, [30, 10, 32] ).astype('float32')
             fluid.enable_dygraph()  # Now we are in dygragh mode
-            data = fluid.dygraph.to_variable(data, name='data')
-            print(fluid.dygraph.enabled())  # True
+            print(fluid.in_dygraph_mode())  # True
             fluid.disable_dygraph()
-            data = fluid.dygraph.to_variable(data, name='data')  # AssertionError
+            print(fluid.in_dygraph_mode())  # False
     """
     global _functional_dygraph_context_manager
     if _functional_dygraph_context_manager is not None:

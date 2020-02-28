@@ -184,13 +184,11 @@ def in_dygraph_mode():
         .. code-block:: python
 
             import paddle.fluid as fluid
-            import numpy as np
 
-            data = np.random.uniform( -1, 1, [30, 10, 32] ).astype('float32')
-            fluid.dygraph.enable()  # Now we are in dygragh mode
+            fluid.enable_dygraph()  # Now we are in dygragh mode
             print(fluid.in_dygraph_mode())  # True
-            fluid.dygraph.disable()
-            data = fluid.dygraph.to_variable(data, name='data')  # AssertionError
+            fluid.disable_dygraph()
+            print(fluid.in_dygraph_mode())  # False
     """
     return _dygraph_tracer_ is not None
 
