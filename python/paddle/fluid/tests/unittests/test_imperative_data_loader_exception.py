@@ -81,8 +81,6 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
                 for _ in loader():
                     print("test_multi_process_with_thread_expection")
             except core.EnforceNotMet as ex:
-                self.assertIn("FatalError: DataLoader process",
-                              cpt.get_exception_message(ex))
                 exception = ex
             self.assertIsNotNone(exception)
 
