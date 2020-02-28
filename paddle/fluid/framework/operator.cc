@@ -166,16 +166,17 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
 #endif
     }
 
-    // The profile has a process-wide mutex, results in serious performance
-    // issue
-    // in concurrency scenerio. Here use an `if` to fix this issue.
-    // Please not remove the `if`, ask @Superjomn if there are any concern.
-    if (platform::IsProfileEnabled()) {
-      platform::RecordEvent record_event(Type());
-      RunImpl(scope, place);
-    } else {
+    {
+      // TODO(wangchaochaohu) : refine code to use only one RecordEvent)
+      // in order to record different op type cost time
+      // and different op name cost time,we set two event.
+      platform::RecordEvent op_type_record_event(Type());
+      auto op_name = platform::OpName(outputs_, Type());
+      platform::RecordEvent op_name_record_event(
+          op_name, platform::RecordRole::kUniqueOp);
       RunImpl(scope, place);
     }
+
     VLOG(3) << place << " " << DebugStringEx(&scope);
   } catch (platform::EnforceNotMet& exception) {
     framework::InsertCallStackInfo(Type(), Attrs(), &exception);
@@ -653,7 +654,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
     PADDLE_ENFORCE_EQ(
         in_var_list.size(), out_var_list.size(),
         platform::errors::PreconditionNotMet(
-            "Op [%s]: Input var size should be equal with ouput var size",
+            "Op [%s]: Input var size should be equal with output var size",
             op_.Type()));
 
     auto& out_var_names = op_.Outputs(out);
@@ -953,9 +954,13 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
   // do data transformScope &transfer_scope;
   std::vector<std::string> transfered_inplace_vars;
-  auto* transfer_scope =
-      PrepareData(scope, *kernel_type_, &transfered_inplace_vars, runtime_ctx);
-
+  Scope* transfer_scope = nullptr;
+  {
+    platform::RecordEvent record_event("prepare_data",
+                                       platform::RecordRole::kInnerOp);
+    transfer_scope = PrepareData(scope, *kernel_type_, &transfered_inplace_vars,
+                                 runtime_ctx);
+  }
   // exec scope is the scope that kernel actually executed on.
   const Scope& exec_scope =
       (transfer_scope == nullptr ? scope : *transfer_scope);
@@ -965,6 +970,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 
   if (!all_kernels_must_compute_runtime_shape_) {
+    platform::RecordEvent record_event("infer_shape",
+                                       platform::RecordRole::kInnerOp);
     RuntimeInferShapeContext infer_shape_ctx(*this, *runtime_ctx);
     this->InferShape(&infer_shape_ctx);
   }
@@ -975,8 +982,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
-  (*kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx,
-                                   kernel_configs));
+  {
+    platform::RecordEvent record_event("compute",
+                                       platform::RecordRole::kInnerOp);
+    (*kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx,
+                                     kernel_configs));
+  }
 
   if (!transfered_inplace_vars.empty()) {
     // there is inplace variable has been transfered.
@@ -1084,7 +1095,9 @@ void OperatorWithKernel::TransferInplaceVarsBack(
     PADDLE_ENFORCE_NOT_NULL(var, "The var[%s] should not be nullptr.",
                             var_name);
     auto* transformed_tensor = GetLoDTensorOrSelectedRowsValueFromVar(*var);
+    auto original_dims = original_tensor->dims();
     original_tensor->ShareDataWith(*transformed_tensor);
+    original_tensor->Resize(original_dims);
   }
 }
 
@@ -1230,7 +1243,7 @@ Scope* OperatorWithKernel::PrepareData(
 void OperatorWithKernel::ParseInputDataType(
     const ExecutionContext& ctx, const std::string& name,
     proto::VarType::Type* data_type) const {
-  proto::VarType::Type dafault_data_type =
+  proto::VarType::Type default_data_type =
       static_cast<proto::VarType::Type>(-1);
   const std::vector<Variable*> vars = ctx.MultiInputVar(name);
   for (size_t i = 0; i < vars.size(); ++i) {
@@ -1243,6 +1256,13 @@ void OperatorWithKernel::ParseInputDataType(
         t = &var->Get<LoDTensor>();
       } else if (var->IsType<SelectedRows>()) {
         t = &(var->Get<SelectedRows>().value());
+      } else if (var->IsType<LoDTensorArray>()) {
+        auto t_arr = var->Get<LoDTensorArray>();
+        for (size_t j = 0; j < t_arr.size(); j++) {
+          if (t_arr[j].IsInitialized()) {
+            t = &(t_arr[j]);
+          }
+        }
       }
       if (t != nullptr) {
         PADDLE_ENFORCE_EQ(
@@ -1253,7 +1273,7 @@ void OperatorWithKernel::ParseInputDataType(
                 Type(), name, ctx.InputNames(name).at(i)));
         proto::VarType::Type tmp = t->type();
         PADDLE_ENFORCE(
-            tmp == *data_type || *data_type == dafault_data_type,
+            tmp == *data_type || *data_type == default_data_type,
             platform::errors::InvalidArgument(
                 "The DataType of %s Op's duplicable Variable %s must be "
                 "consistent. The current variable type is (%s), but the "

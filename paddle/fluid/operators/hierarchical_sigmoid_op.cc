@@ -144,7 +144,7 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsIntermediate();
     AddOutput(
         "W_Out",
-        "(LoDTensor, optinal) using input 'W' as Output to make it mutable"
+        "(LoDTensor, optional) using input 'W' as Output to make it mutable"
         "When we are using prefetch")
         .AsIntermediate();
     AddAttr<AttrType>("num_classes", "(int, optional), The number of classes")
@@ -290,6 +290,9 @@ class HierarchicalSigmoidGradOpGradVarTypeInference
   }
 };
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
+    HierarchicalSigmoidGradOpNoNeedBufferVarInference, "Bias");
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -300,7 +303,8 @@ REGISTER_OPERATOR(
     ops::HierarchicalSigmoidGradMaker<paddle::framework::OpDesc>,
     ops::HierarchicalSigmoidGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(hierarchical_sigmoid_grad, ops::HierarchicalSigmoidGradOp,
-                  ops::HierarchicalSigmoidGradOpGradVarTypeInference);
+                  ops::HierarchicalSigmoidGradOpGradVarTypeInference,
+                  ops::HierarchicalSigmoidGradOpNoNeedBufferVarInference);
 REGISTER_OP_CPU_KERNEL(
     hierarchical_sigmoid,
     ops::HierarchicalSigmoidOpKernel<paddle::platform::CPUDeviceContext, float>,

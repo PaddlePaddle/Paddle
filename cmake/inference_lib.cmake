@@ -104,6 +104,11 @@ function(copy_part_of_thrid_party TARGET DST)
     copy(${TARGET}
             SRCS ${GLOG_INCLUDE_DIR} ${GLOG_LIBRARIES}
             DSTS ${dst_dir} ${dst_dir}/lib)
+
+    set(dst_dir "${DST}/third_party/install/xxhash")
+    copy(${TARGET}
+        SRCS ${XXHASH_INCLUDE_DIR} ${XXHASH_LIBRARIES}
+        DSTS ${dst_dir} ${dst_dir}/lib)    
             
     if (NOT PROTOBUF_FOUND OR WIN32)
         set(dst_dir "${DST}/third_party/install/protobuf")
@@ -119,49 +124,23 @@ function(copy_part_of_thrid_party TARGET DST)
                 DSTS ${dst_dir} ${dst_dir})
     endif ()
 
-    if (TENSORRT_FOUND)
-        set(dst_dir "${DST}/third_party/install/tensorrt")
+    if (LITE_BINARY_DIR)
+        set(dst_dir "${DST}/third_party/install/lite")
         copy(${TARGET}
-                SRCS ${TENSORRT_INCLUDE_DIR}/Nv*.h ${TENSORRT_LIBRARY_DIR}/*nvinfer*
-                DSTS ${dst_dir}/include ${dst_dir}/lib)
-    endif ()
-
-    if (ANAKIN_FOUND)
-        set(dst_dir "${DST}/third_party/install/anakin")
-        copy(${TARGET}
-                SRCS ${ANAKIN_ROOT}/*
+                SRCS ${LITE_BINARY_DIR}/inference_lite_lib/*
                 DSTS ${dst_dir})
-    endif ()
+    endif()
 endfunction()
 
 # inference library for only inference
-set(inference_lib_deps third_party paddle_fluid paddle_fluid_shared paddle_fluid_c paddle_fluid_c_shared)
+set(inference_lib_deps third_party paddle_fluid paddle_fluid_c paddle_fluid_shared paddle_fluid_c_shared)
 add_custom_target(inference_lib_dist DEPENDS ${inference_lib_deps})
 
-set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/eigen3")
-copy(inference_lib_dist
-        SRCS ${EIGEN_INCLUDE_DIR}/Eigen/Core ${EIGEN_INCLUDE_DIR}/Eigen/src ${EIGEN_INCLUDE_DIR}/unsupported/Eigen
-        DSTS ${dst_dir}/Eigen ${dst_dir}/Eigen ${dst_dir}/unsupported)
 
-set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/boost")
+set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/threadpool")
 copy(inference_lib_dist
-        SRCS ${BOOST_INCLUDE_DIR}/boost
+        SRCS ${THREADPOOL_INCLUDE_DIR}/ThreadPool.h
         DSTS ${dst_dir})
-
-set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/dlpack")
-copy(inference_lib_dist
-        SRCS ${DLPACK_INCLUDE_DIR}/dlpack
-        DSTS ${dst_dir})
-
-set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/install/xxhash")
-copy(inference_lib_dist
-        SRCS ${XXHASH_INCLUDE_DIR} ${XXHASH_LIBRARIES}
-        DSTS ${dst_dir} ${dst_dir}/lib)
-
-set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/install/zlib")
-copy(inference_lib_dist
-        SRCS ${ZLIB_INCLUDE_DIR} ${ZLIB_LIBRARIES}
-        DSTS ${dst_dir} ${dst_dir}/lib)
 
 copy(inference_lib_dist
         SRCS ${CMAKE_CURRENT_BINARY_DIR}/CMakeCache.txt
@@ -171,7 +150,7 @@ copy_part_of_thrid_party(inference_lib_dist ${FLUID_INFERENCE_INSTALL_DIR})
 
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
 if(WIN32)
-    set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/libpaddle_fluid.*)
+    set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/${CMAKE_BUILD_TYPE}/*paddle_fluid.*)
 else(WIN32)
     set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*)
 endif(WIN32)
@@ -180,6 +159,9 @@ copy(inference_lib_dist
         SRCS  ${src_dir}/inference/api/paddle_*.h ${paddle_fluid_lib}
         DSTS  ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include ${FLUID_INFERENCE_INSTALL_DIR}/paddle/lib)
 
+copy(inference_lib_dist
+        SRCS  ${CMAKE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h
+        DSTS  ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include/internal)
 
 # CAPI inference library for only inference
 set(FLUID_INFERENCE_C_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_inference_c_install_dir" CACHE STRING
@@ -188,22 +170,14 @@ copy_part_of_thrid_party(inference_lib_dist ${FLUID_INFERENCE_C_INSTALL_DIR})
 
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
 if(WIN32)
-    set(paddle_fluid_c_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi/${CMAKE_BUILD_TYPE}/paddle_fluid_c.dll
-        ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi/${CMAKE_BUILD_TYPE}/paddle_fluid_c.lib)
+    set(paddle_fluid_c_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi/${CMAKE_BUILD_TYPE}/paddle_fluid_c.*)
 else(WIN32)
-    set(paddle_fluid_c_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*)
+    set(paddle_fluid_c_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi/libpaddle_fluid_c.*)
 endif(WIN32)
 
-if(WIN32)
-    copy(inference_lib_dist
-            SRCS  ${src_dir}/inference/capi/c_api.h ${paddle_fluid_c_lib}
-            DSTS  ${FLUID_INFERENCE_C_INSTALL_DIR}/paddle/include ${FLUID_INFERENCE_C_INSTALL_DIR}/paddle/lib
-                  ${FLUID_INFERENCE_C_INSTALL_DIR}/paddle/lib)
-else()
-    copy(inference_lib_dist
-        SRCS  ${src_dir}/inference/capi/c_api.h ${paddle_fluid_c_lib}
+copy(inference_lib_dist
+        SRCS  ${src_dir}/inference/capi/paddle_c_api.h  ${paddle_fluid_c_lib}
         DSTS  ${FLUID_INFERENCE_C_INSTALL_DIR}/paddle/include ${FLUID_INFERENCE_C_INSTALL_DIR}/paddle/lib)
-endif()
 
 # fluid library for both train and inference
 set(fluid_lib_deps inference_lib_dist)
@@ -262,6 +236,26 @@ copy(fluid_lib_dist
         DSTS ${dst_dir}/${module}
         )
 
+set(dst_dir "${FLUID_INSTALL_DIR}/third_party/eigen3")
+copy(inference_lib_dist
+        SRCS ${EIGEN_INCLUDE_DIR}/Eigen/Core ${EIGEN_INCLUDE_DIR}/Eigen/src ${EIGEN_INCLUDE_DIR}/unsupported/Eigen
+        DSTS ${dst_dir}/Eigen ${dst_dir}/Eigen ${dst_dir}/unsupported)
+
+set(dst_dir "${FLUID_INSTALL_DIR}/third_party/boost")
+copy(inference_lib_dist
+        SRCS ${BOOST_INCLUDE_DIR}/boost
+        DSTS ${dst_dir})
+
+set(dst_dir "${FLUID_INSTALL_DIR}/third_party/dlpack")
+copy(inference_lib_dist
+        SRCS ${DLPACK_INCLUDE_DIR}/dlpack
+        DSTS ${dst_dir})
+
+set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/zlib")
+copy(inference_lib_dist
+        SRCS ${ZLIB_INCLUDE_DIR} ${ZLIB_LIBRARIES}
+        DSTS ${dst_dir} ${dst_dir}/lib)
+
 # CMakeCache Info
 copy(fluid_lib_dist
         SRCS ${FLUID_INFERENCE_INSTALL_DIR}/third_party ${CMAKE_CURRENT_BINARY_DIR}/CMakeCache.txt
@@ -279,11 +273,16 @@ function(version version_file)
             "WITH_MKL: ${WITH_MKL}\n"
             "WITH_MKLDNN: ${WITH_MKLDNN}\n"
             "WITH_GPU: ${WITH_GPU}\n")
-    if (WITH_GPU)
+    if(WITH_GPU)
         file(APPEND ${version_file}
                 "CUDA version: ${CUDA_VERSION}\n"
                 "CUDNN version: v${CUDNN_MAJOR_VERSION}\n")
-    endif ()
+    endif()
+    if(TENSORRT_FOUND)
+        file(APPEND ${version_file}
+                "WITH_TENSORRT: ${TENSORRT_FOUND}\n")
+    endif()
+    
 endfunction()
 version(${FLUID_INSTALL_DIR}/version.txt)
 version(${FLUID_INFERENCE_INSTALL_DIR}/version.txt)

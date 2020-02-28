@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid import layers
+from paddle.fluid import layers, unique_name
 from paddle.fluid.dygraph import Layer
+from paddle.fluid.dygraph.layer_object_helper import LayerObjectHelper
 from paddle.fluid.layers.control_flow import StaticRNN
 
 __all__ = ['BasicGRUUnit', 'basic_gru', 'BasicLSTMUnit', 'basic_lstm']
@@ -80,6 +81,10 @@ class BasicGRUUnit(Layer):
                  activation=None,
                  dtype='float32'):
         super(BasicGRUUnit, self).__init__(name_scope, dtype)
+        # reserve old school _full_name and _helper for static graph save load
+        self._full_name = unique_name.generate(name_scope + "/" +
+                                               self.__class__.__name__)
+        self._helper = LayerObjectHelper(self._full_name)
 
         self._name = name_scope
         self._hiden_size = hidden_size
@@ -176,7 +181,7 @@ def basic_gru(input,
         sequence_length (Variabe|None): A Tensor (shape [batch_size]) stores each real length of each instance,
                         This tensor will be convert to a mask to mask the padding ids
                         If it's None means NO padding ids
-        dropout_prob(float|0.0): Dropout prob, dropout ONLY works after rnn output of earch layers, 
+        dropout_prob(float|0.0): Dropout prob, dropout ONLY works after rnn output of each layers, 
                              NOT between time steps
         bidirectional (bool|False): If it is bidirectional
         batch_first (bool|True): The shape format of the input and output tensors. If true,
@@ -406,7 +411,7 @@ def basic_lstm(input,
         sequence_length (Variabe|None): A tensor (shape [batch_size]) stores each real length of each instance,
                         This tensor will be convert to a mask to mask the padding ids
                         If it's None means NO padding ids
-        dropout_prob(float|0.0): Dropout prob, dropout ONLY work after rnn output of earch layers, 
+        dropout_prob(float|0.0): Dropout prob, dropout ONLY work after rnn output of each layers, 
                              NOT between time steps
         bidirectional (bool|False): If it is bidirectional
         batch_first (bool|True): The shape format of the input and output tensors. If true,
@@ -710,6 +715,10 @@ class BasicLSTMUnit(Layer):
                  forget_bias=1.0,
                  dtype='float32'):
         super(BasicLSTMUnit, self).__init__(name_scope, dtype)
+        # reserve old school _full_name and _helper for static graph save load
+        self._full_name = unique_name.generate(name_scope + "/" +
+                                               self.__class__.__name__)
+        self._helper = LayerObjectHelper(self._full_name)
 
         self._name = name_scope
         self._hiden_size = hidden_size

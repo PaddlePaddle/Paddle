@@ -100,7 +100,7 @@ class DatasetBase(object):
         Args:
             record_candidate_size(int): size of instances candidate to shuffle 
                                         one slot
-            fea_eval(bool): wheather enable fea eval mode to enable slots shuffle.
+            fea_eval(bool): whether enable fea eval mode to enable slots shuffle.
                             default is True.
             
         Examples:
@@ -314,12 +314,12 @@ class InMemoryDataset(DatasetBase):
 
     def _dynamic_adjust_before_train(self, thread_num):
         if not self.is_user_set_queue_num:
-            self.dataset.dynamic_adjust_channel_num(thread_num)
+            self.dataset.dynamic_adjust_channel_num(thread_num, False)
         self.dataset.dynamic_adjust_readers_num(thread_num)
 
     def _dynamic_adjust_after_train(self):
         if not self.is_user_set_queue_num:
-            self.dataset.dynamic_adjust_channel_num(self.thread_num)
+            self.dataset.dynamic_adjust_channel_num(self.thread_num, False)
         self.dataset.dynamic_adjust_readers_num(self.thread_num)
 
     def set_queue_num(self, queue_num):
@@ -428,6 +428,16 @@ class InMemoryDataset(DatasetBase):
         self.merge_by_lineid = True
         self.parse_ins_id = True
 
+    def set_generate_unique_feasigns(self, generate_uni_feasigns, shard_num):
+        self.dataset.set_generate_unique_feasigns(generate_uni_feasigns)
+        self.gen_uni_feasigns = generate_uni_feasigns
+        self.local_shard_num = shard_num
+
+    def generate_local_tables_unlock(self, table_id, fea_dim, read_thread_num,
+                                     consume_thread_num, shard_num):
+        self.dataset.generate_local_tables_unlock(
+            table_id, fea_dim, read_thread_num, consume_thread_num, shard_num)
+
     def load_into_memory(self):
         """
         Load data into memory
@@ -526,7 +536,7 @@ class InMemoryDataset(DatasetBase):
         """
         trainer_num = 1
         if fleet is not None:
-            fleet._role_maker._barrier_worker()
+            fleet._role_maker.barrier_worker()
             trainer_num = fleet.worker_num()
         if self.fleet_send_batch_size is None:
             self.fleet_send_batch_size = 1024
@@ -537,14 +547,14 @@ class InMemoryDataset(DatasetBase):
         self.dataset.set_fleet_send_batch_size(self.fleet_send_batch_size)
         self.dataset.set_fleet_send_sleep_seconds(self.fleet_send_sleep_seconds)
         if fleet is not None:
-            fleet._role_maker._barrier_worker()
+            fleet._role_maker.barrier_worker()
         self.dataset.global_shuffle(thread_num)
         if fleet is not None:
-            fleet._role_maker._barrier_worker()
+            fleet._role_maker.barrier_worker()
         if self.merge_by_lineid:
             self.dataset.merge_by_lineid()
         if fleet is not None:
-            fleet._role_maker._barrier_worker()
+            fleet._role_maker.barrier_worker()
 
     def release_memory(self):
         """
@@ -599,8 +609,8 @@ class InMemoryDataset(DatasetBase):
         local_data_size = np.array([local_data_size])
         if fleet is not None:
             global_data_size = local_data_size * 0
-            fleet._role_maker._node_type_comm.Allreduce(local_data_size,
-                                                        global_data_size)
+            fleet._role_maker.all_reduce_worker(local_data_size,
+                                                global_data_size)
             return global_data_size[0]
         return local_data_size[0]
 
@@ -637,8 +647,8 @@ class InMemoryDataset(DatasetBase):
         local_data_size = np.array([local_data_size])
         if fleet is not None:
             global_data_size = local_data_size * 0
-            fleet._role_maker._node_type_comm.Allreduce(local_data_size,
-                                                        global_data_size)
+            fleet._role_maker.all_reduce_worker(local_data_size,
+                                                global_data_size)
             return global_data_size[0]
         return local_data_size[0]
 
@@ -783,6 +793,15 @@ class BoxPSDataset(InMemoryDataset):
         super(BoxPSDataset, self).__init__()
         self.boxps = core.BoxPS(self.dataset)
 
+    def set_date(self, date):
+        """
+        Workaround for date
+        """
+        year = int(date[:4])
+        month = int(date[4:6])
+        day = int(date[6:])
+        self.boxps.set_date(year, month, day)
+
     def begin_pass(self):
         """
         Begin Pass
@@ -812,7 +831,7 @@ class BoxPSDataset(InMemoryDataset):
 
     def wait_preload_done(self):
         """
-        Wait async proload done
+        Wait async preload done
         Wait Until Feed Pass Done
         Examples:
             .. code-block:: python
@@ -855,3 +874,8 @@ class BoxPSDataset(InMemoryDataset):
         """
         self._prepare_to_run()
         self.boxps.preload_into_memory()
+
+    def _dynamic_adjust_before_train(self, thread_num):
+        if not self.is_user_set_queue_num:
+            self.dataset.dynamic_adjust_channel_num(thread_num, True)
+        self.dataset.dynamic_adjust_readers_num(thread_num)

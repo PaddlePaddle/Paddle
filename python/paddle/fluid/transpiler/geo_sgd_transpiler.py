@@ -38,7 +38,7 @@ from ..framework import Program, default_main_program, \
 from .details import wait_server_ready, VarsDistributed
 from .details import delete_ops
 from ..distribute_lookup_table import find_distributed_lookup_table
-from .distribute_transpiler import DistributeTranspiler, DistributeTranspilerConfig, slice_variable, same_or_split_var, ServerRuntimeConfig
+from .distribute_transpiler import DistributeTranspiler, DistributeTranspilerConfig, slice_variable, same_or_split_var, ServerRuntimeConfig, DistributedMode
 
 RPC_OP_ROLE_ATTR_NAME = op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(
 )
@@ -247,7 +247,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
             "optimize_blocks": optimize_block,
             "endpoint": endpoint,
             "Fanin": self.trainer_num,
-            "sync_mode": self.sync_mode,
+            "distributed_mode": DistributedMode.GEO,
             "grad_to_block_id": param_to_block_id,
             "sparse_grad_to_param": sparse_grad_to_param,
             "rpc_get_thread_num": self.server_config._rpc_get_thread_num,
@@ -308,7 +308,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
             }) for ep in self.pserver_endpoints
         ]
 
-        # step 5. Create delta var of Geo-Sgd & record vars infomation
+        # step 5. Create delta var of Geo-Sgd & record vars information
         for origin_name, splited_vars in self.param_var_mapping.items():
             origin_var = self.origin_program.global_block().var(origin_name)
             self.vars_info[origin_name] = collections.OrderedDict()

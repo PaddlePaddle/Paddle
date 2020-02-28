@@ -43,7 +43,11 @@ void OperationMap::Insert(int type, int num_operands, std::string op_type,
                           std::vector<std::string> input_names,
                           std::vector<std::string> output_names) {
   Operation op(type, num_operands, op_type, {expr}, input_names, output_names);
-  PADDLE_ENFORCE_EQ(op.IsValid(), true, "Operation %s is invalid.", op_type);
+  PADDLE_ENFORCE_EQ(op.IsValid(), true,
+                    platform::errors::InvalidArgument(
+                        "Operation %s is invalid. Please set correct "
+                        "expression for forward calculation.",
+                        op_type));
   operations_[op_type] = op;
 
   if (grad_exprs.size() > 0U) {
@@ -63,8 +67,11 @@ void OperationMap::Insert(int type, int num_operands, std::string op_type,
     }
     Operation grad_op(type, num_operands, grad_op_type, grad_exprs,
                       grad_input_names, grad_output_names);
-    PADDLE_ENFORCE_EQ(grad_op.IsValid(), true, "Operation %s is invalid.",
-                      grad_op_type);
+    PADDLE_ENFORCE_EQ(grad_op.IsValid(), true,
+                      platform::errors::InvalidArgument(
+                          "Operation %s is invalid. Please set correct "
+                          "expression for backward calculation.",
+                          grad_op_type));
     operations_[grad_op_type] = grad_op;
   }
 }
@@ -83,8 +90,8 @@ void OperationMap::InsertUnaryElementwiseOperations() {
 
   // relu:
   //  out = f(x) = x > 0 ? x : 0
-  //  dx = dout * (out > 0 ? 1 : 0) = dout * (x > 0 ? 1 : 0)
-  insert_handler("relu", "real_max(${0}, 0)", {"${0} > 0 ? ${2} : 0"});
+  //  dx = dout * (out > 0 ? 1 : 0)
+  insert_handler("relu", "${0} > 0 ? ${0} : 0", {"${1} > 0 ? ${2} : 0"});
   // sigmoid:
   //  out = f(x) = 1.0 / (1.0 + exp(-x))
   //  dx = dout * out * (1 - out)
@@ -126,9 +133,24 @@ void OperationMap::InsertBinaryElementwiseOperations() {
   //  dy = dout * x
   insert_handler("elementwise_mul", "${0} * ${1}",
                  {"${3} * ${1}", "${3} * ${0}"});
-  insert_handler("elementwise_div", "${0} / ${1}", {});
-  insert_handler("elementwise_min", "real_min(${0}, ${1})", {});
-  insert_handler("elementwise_max", "real_max(${0}, ${1})", {});
+  // elementwise_div:
+  //  out = x / y
+  //  dx = dout / y
+  //  dy = - dout * out / y
+  insert_handler("elementwise_div", "${0} / ${1}",
+                 {"${3} / ${1}", "- ${3} * ${2} / ${1}"});
+  // elementwise_min:
+  //  out = x < y ? x : y
+  //  dx = dout * (x < y)
+  //  dy = dout * (x >= y)
+  insert_handler("elementwise_min", "${0} < ${1} ? ${0} : ${1}",
+                 {"${3} * (${0} < ${1})", "${3} * (${0} >= ${1})"});
+  // elementwise_max:
+  //  out = x > y ? x : y
+  //  dx = dout * (x > y)
+  //  dy = dout * (x <= y)
+  insert_handler("elementwise_max", "${0} > ${1} ? ${0} : ${1}",
+                 {"${3} * (${0} > ${1})", "${3} * (${0} <= ${1})"});
 }
 
 }  // namespace fusion_group

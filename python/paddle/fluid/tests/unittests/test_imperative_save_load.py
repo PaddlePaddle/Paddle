@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import os
 import unittest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -131,14 +132,13 @@ class SimpleLSTMRNN(fluid.Layer):
 
 class PtbModel(fluid.Layer):
     def __init__(self,
-                 name_scope,
                  hidden_size,
                  vocab_size,
                  num_layers=2,
                  num_steps=20,
                  init_scale=0.1,
                  dropout=None):
-        super(PtbModel, self).__init__(name_scope)
+        super(PtbModel, self).__init__()
         self.hidden_size = hidden_size
         self.vocab_size = vocab_size
         self.init_scale = init_scale
@@ -160,7 +160,18 @@ class PtbModel(fluid.Layer):
                 initializer=fluid.initializer.UniformInitializer(
                     low=-init_scale, high=init_scale)))
 
-        self.out_project = Linear(self.hidden_size, self.vocab_size)
+        self.softmax_weight = self.create_parameter(
+            attr=fluid.ParamAttr(),
+            shape=[self.hidden_size, self.vocab_size],
+            dtype="float32",
+            default_initializer=fluid.initializer.UniformInitializer(
+                low=-self.init_scale, high=self.init_scale))
+        self.softmax_bias = self.create_parameter(
+            attr=fluid.ParamAttr(),
+            shape=[self.vocab_size],
+            dtype="float32",
+            default_initializer=fluid.initializer.UniformInitializer(
+                low=-self.init_scale, high=self.init_scale))
 
     def forward(self, input, label, init_hidden, init_cell):
         init_h = fluid.layers.reshape(
@@ -182,7 +193,8 @@ class PtbModel(fluid.Layer):
         rnn_out = fluid.layers.reshape(
             rnn_out, shape=[-1, self.num_steps, self.hidden_size])
 
-        projection = self.out_project(rnn_out)
+        projection = fluid.layers.matmul(rnn_out, self.softmax_weight)
+        projection = fluid.layers.elementwise_add(projection, self.softmax_bias)
         projection = fluid.layers.reshape(
             projection, shape=[-1, self.vocab_size])
         loss = fluid.layers.softmax_with_cross_entropy(
@@ -210,7 +222,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
             fluid.default_main_program().random_seed = seed
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
-                "ptb_model",
                 hidden_size=hidden_size,
                 vocab_size=vocab_size,
                 num_layers=num_layers,
@@ -294,7 +305,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
             fluid.default_main_program().random_seed = seed
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
-                "ptb_model",
                 hidden_size=hidden_size,
                 vocab_size=vocab_size,
                 num_layers=num_layers,
@@ -400,7 +410,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
             fluid.default_main_program().random_seed = seed
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
-                "ptb_model",
                 hidden_size=hidden_size,
                 vocab_size=vocab_size,
                 num_layers=num_layers,
@@ -505,7 +514,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
             fluid.default_main_program().random_seed = seed
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
-                "ptb_model",
                 hidden_size=hidden_size,
                 vocab_size=vocab_size,
                 num_layers=num_layers,
@@ -614,7 +622,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
             fluid.default_main_program().random_seed = seed
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
-                "ptb_model",
                 hidden_size=hidden_size,
                 vocab_size=vocab_size,
                 num_layers=num_layers,
@@ -694,7 +701,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
             fluid.default_main_program().random_seed = seed
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
-                "ptb_model",
                 hidden_size=hidden_size,
                 vocab_size=vocab_size,
                 num_layers=num_layers,
@@ -786,7 +792,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
             fluid.default_main_program().random_seed = seed
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
-                "ptb_model",
                 hidden_size=hidden_size,
                 vocab_size=vocab_size,
                 num_layers=num_layers,
@@ -875,9 +880,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
         with fluid.dygraph.guard():
             emb = fluid.dygraph.Embedding([10, 10])
             state_dict = emb.state_dict()
-            fluid.save_dygraph(state_dict, "emb_dy")
+            fluid.save_dygraph(state_dict, os.path.join('saved_dy', 'emb_dy'))
 
-            para_state_dict, opti_state_dict = fluid.load_dygraph("emb_dy")
+            para_state_dict, opti_state_dict = fluid.load_dygraph(
+                os.path.join('saved_dy', 'emb_dy'))
 
             self.assertTrue(opti_state_dict == None)
 

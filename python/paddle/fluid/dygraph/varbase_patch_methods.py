@@ -27,7 +27,7 @@ def monkey_patch_varbase():
     def set_value(self, value):
         """
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Set a new value for this Variable.
 
@@ -39,17 +39,17 @@ def monkey_patch_varbase():
 
                 import paddle.fluid as fluid
                 from paddle.fluid.dygraph.base import to_variable
-                from paddle.fluid.dygraph import FC
+                from paddle.fluid.dygraph import Linear
                 import numpy as np
 
-                data = np.ones([3, 32, 32], dtype='float32')
+                data = np.ones([3, 1024], dtype='float32')
                 with fluid.dygraph.guard():
-                    fc = fluid.dygraph.FC("fc", 4)
+                    linear = fluid.dygraph.Linear(1024, 4)
                     t = to_variable(data)
-                    fc(t)  # call with default weight
+                    linear(t)  # call with default weight
                     custom_weight = np.random.randn(1024, 4).astype("float32")
-                    fc.weight.set_value(custom_weight)  # change existing weight
-                    out = fc(t)  # call with different weight
+                    linear.weight.set_value(custom_weight)  # change existing weight
+                    out = linear(t)  # call with different weight
 
         """
         assert isinstance(value, (np.ndarray, core.VarBase)), \
@@ -76,7 +76,7 @@ def monkey_patch_varbase():
     def backward(self, backward_strategy=None):
         """
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Run backward of current Graph which starts from current Variable
 
@@ -116,13 +116,13 @@ def monkey_patch_varbase():
             self._run_backward(backward_strategy, framework._dygraph_tracer())
         else:
             raise ValueError(
-                "Variable.backward() is only avaliable in DyGraph mode")
+                "Variable.backward() is only available in DyGraph mode")
 
     @framework.dygraph_only
     def gradient(self):
         """
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Get the Gradient of Current Variable
 

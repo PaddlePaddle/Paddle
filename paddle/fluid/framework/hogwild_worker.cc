@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
+#include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
 
@@ -29,6 +30,21 @@ void HogwildWorker::Initialize(const TrainerDesc &desc) {
     skip_ops_[i] = param_.skip_ops(i);
   }
   use_cvm_ = desc.use_cvm();
+  thread_barrier_ = desc.thread_barrier();
+
+  dump_fields_.resize(desc.dump_fields_size());
+  for (int i = 0; i < desc.dump_fields_size(); ++i) {
+    dump_fields_[i] = desc.dump_fields(i);
+  }
+
+  need_dump_param_ = false;
+  dump_param_.resize(desc.dump_param_size());
+  for (int i = 0; i < desc.dump_param_size(); ++i) {
+    dump_param_[i] = desc.dump_param(i);
+  }
+  if (desc.dump_param_size() != 0) {
+    need_dump_param_ = true;
+  }
 }
 
 void HogwildWorker::CreateThreadOperators(const ProgramDesc &program) {
@@ -141,6 +157,49 @@ void HogwildWorker::TrainFilesWithProfiler() {
       op_total_time[i] += timeline.ElapsedSec();
       total_time += timeline.ElapsedSec();
     }
+
+    if (need_dump_field_) {
+      size_t batch_size = device_reader_->GetCurBatchSize();
+      std::vector<std::string> ars(batch_size);
+      for (auto &ar : ars) {
+        ar.clear();
+      }
+      auto &ins_id_vec = device_reader_->GetInsIdVec();
+      auto &ins_content_vec = device_reader_->GetInsContentVec();
+      for (size_t i = 0; i < ins_id_vec.size(); i++) {
+        ars[i] += ins_id_vec[i];
+        ars[i] = ars[i] + "\t" + ins_content_vec[i];
+      }
+      for (auto &field : dump_fields_) {
+        Variable *var = thread_scope_->FindVar(field);
+        if (var == nullptr) {
+          continue;
+        }
+        LoDTensor *tensor = var->GetMutable<LoDTensor>();
+        if (!CheckValidOutput(tensor, batch_size)) {
+          continue;
+        }
+        for (size_t i = 0; i < batch_size; ++i) {
+          auto output_dim = tensor->dims()[1];
+          std::string output_dimstr =
+              boost::lexical_cast<std::string>(output_dim);
+          ars[i] = ars[i] + "\t" + field + ":" + output_dimstr;
+          auto bound = GetTensorBound(tensor, i);
+          ars[i] += PrintLodTensor(tensor, bound.first, bound.second);
+        }
+      }
+      // #pragma omp parallel for
+      for (size_t i = 0; i < ars.size(); i++) {
+        if (ars[i].length() == 0) {
+          continue;
+        }
+        writer_ << ars[i];
+      }
+      if (need_dump_param_ && thread_id_ == 0) {
+        DumpParam(batch_cnt);
+      }
+    }
+
     total_inst += cur_batch;
     ++batch_cnt;
     PrintFetchVars();
@@ -158,6 +217,21 @@ void HogwildWorker::TrainFilesWithProfiler() {
     thread_scope_->DropKids();
     timeline.Start();
   }
+
+  if (need_dump_field_) {
+    writer_.Flush();
+  }
+
+#ifdef PADDLE_WITH_DISTRIBUTE
+  if (thread_barrier_) {
+    operators::distributed::Communicator::GetInstance()
+        ->BarrierTriggerDecrement();
+  }
+#endif
+}
+
+void HogwildWorker::SetChannelWriter(ChannelObject<std::string> *queue) {
+  writer_.Reset(queue);
 }
 
 void HogwildWorker::TrainFiles() {
@@ -183,6 +257,12 @@ void HogwildWorker::TrainFiles() {
     PrintFetchVars();
     thread_scope_->DropKids();
   }
+#ifdef PADDLE_WITH_DISTRIBUTE
+  if (thread_barrier_) {
+    operators::distributed::Communicator::GetInstance()
+        ->BarrierTriggerDecrement();
+  }
+#endif
 }
 
 void HogwildWorker::PrintFetchVars() {
@@ -197,6 +277,26 @@ void HogwildWorker::PrintFetchVars() {
                            fetch_config_.fetch_var_str_format(i));
       }
     }
+  }
+}
+
+void HogwildWorker::SetNeedDump(bool need_dump_field) {
+  need_dump_field_ = need_dump_field;
+}
+
+void HogwildWorker::DumpParam(const int batch_id) {
+  std::ostringstream os;
+  for (auto &param : dump_param_) {
+    os.str("");
+    Variable *var = thread_scope_->FindVar(param);
+    if (var == nullptr) {
+      continue;
+    }
+    LoDTensor *tensor = var->GetMutable<LoDTensor>();
+    int64_t len = tensor->numel();
+    os << "(" << batch_id << "," << param << ")"
+       << PrintLodTensor(tensor, 0, len);
+    writer_ << os.str();
   }
 }
 
