@@ -1189,17 +1189,9 @@ def save_inference_model(dirname,
             global_block._remove_op(index)
 
         main_program.desc.flush()
-        print('before prune')
-        import paddle.fluid.transpiler.details.program_utils as pu
-        pu.program_to_code(main_program, skip_op_callstack=True)
 
         main_program = main_program._prune_with_input(
             feeded_var_names=feeded_var_names, targets=target_vars)
-        print('after prune')
-        for block in main_program.blocks:
-            print([op.type for op in block.ops])
-        pu.program_to_code(main_program, skip_op_callstack=True)
-
         main_program = main_program._inference_optimize(prune_read_op=True)
         fetch_var_names = [v.name for v in target_vars]
 

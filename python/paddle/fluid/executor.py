@@ -678,22 +678,7 @@ class Executor(object):
                     if _is_optimize_op(op):
                         targets.append(op)
 
-        print('targets')
-        for t in targets:
-            if isinstance(t, Operator):
-                print(t.type)
-            elif isinstance(t, Variable):
-                print(t.name)
-            else:
-                print(t)
-
         pruned_program = origin_program._prune_with_input(feed_names, targets)
-
-        import paddle.fluid.transpiler.details.program_utils as pu
-        pu.program_to_code(pruned_program, skip_op_callstack=True)
-
-        for block in pruned_program.blocks:
-            print([op.type for op in block.ops])
 
         if compiled:
             program._program = pruned_program
@@ -808,7 +793,6 @@ class Executor(object):
         need_check_feed = program._program is not None
         if need_check_feed:
             global_block = program._program.global_block()
-            print([op.type for op in global_block.ops])
         if isinstance(feed, dict):
             feed_tensor_dict = dict()
             for feed_name in feed:

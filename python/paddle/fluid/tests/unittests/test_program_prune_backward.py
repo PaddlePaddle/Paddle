@@ -134,7 +134,6 @@ class TestProgramPruneBackward(unittest.TestCase):
 
         self.assertEqual(len(program_a.blocks), len(program_b.blocks))
         for idx in range(len(program_a.blocks)):
-            print(idx)
             block_a = program_a.blocks[idx]
             block_b = program_b.blocks[idx]
             self.assertEqual(len(block_a.ops), len(block_b.ops))
@@ -143,7 +142,6 @@ class TestProgramPruneBackward(unittest.TestCase):
                 self.assertEqual(block_a.ops[op_idx].type,
                                  block_b.ops[op_idx].type)
             for var_key in list(block_a.vars.keys()):
-                print(var_key)
                 self.assertTrue(block_b.has_var(var_key))
 
     def check_prune_correctness(self, method, feed_dict, optimizer):
@@ -288,6 +286,7 @@ class TestProgramPruneBackward(unittest.TestCase):
             loss = optimization_in_cond_net(True)
             main_program = fluid.default_main_program()
             test_prog_prune = main_program.clone(for_test=True)
+
             place = core.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())

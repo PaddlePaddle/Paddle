@@ -205,17 +205,8 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
       }
 
       should_run.push_back(true);
-      std::cout << op_desc.type() << " " << IsTarget(op_desc) << " "
-                << HasDependentOutputVar(op_desc, *dependent_vars) << " "
-                << GetOpRole(op_desc) << "true" << std::endl;
-      for (auto var : *dependent_vars) {
-        std::cout << var << " ";
-      }
-      std::cout << std::endl;
     } else {
       should_run.push_back(false);
-      std::cout << op_desc.type() << " "
-                << "false" << std::endl;
     }
   }
 
@@ -233,7 +224,7 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
   output_block->set_parent_idx(parent_block_id);
 
   (*pruned_origin_block_id_map)[output_block_id] = block_id;
-  std::cout << "map " << output_block_id << " " << block_id << std::endl;
+
   auto* op_field = output_block->mutable_ops();
   op_field->Clear();
 
@@ -333,8 +324,6 @@ std::map<int, int> Prune(const proto::ProgramDesc& input,
       auto& op_desc = *op_iter;
       if (HasSubBlock(op_desc)) {
         int origin_sub_idx = GetSubBlockIndex(op_desc);
-        std::cout << "idx " << i << " origin_sub_idx " << origin_sub_idx
-                  << std::endl;
         auto sub_idx =
             FindMapByValue(pruned_origin_block_id_map, origin_sub_idx);
         PADDLE_ENFORCE_NE(sub_idx, -1,
@@ -393,8 +382,8 @@ void PruneBackwardImpl(proto::BlockDesc* origin, proto::BlockDesc* pruned) {
   var_names.insert(op_output_vars.begin(), op_output_vars.end());
   for (const auto& name : var_names) {
     if (var_map.count(name)) {
-      // NOTE(zhiqiu): For operator in a conditional block, the related vars may
-      // not exist in current block, but in its futher block.
+      // NOTE(zhiqiu): For operator in a conditional block, the related vars
+      // may not exist in current block, but in its futher block.
       *pruned_vars->Add() = var_map[name];
     }
   }

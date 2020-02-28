@@ -3747,7 +3747,7 @@ class Program(object):
         self._current_role = tmp_role
 
     @signature_safe_contextmanager
-    def _lr_schedule_guard(self, is_with_opt=True):
+    def _lr_schedule_guard(self, is_with_opt=False):
         """
         A with guard to set :code:`LRSched` :code:`OpRole` and
         :code:`OpRoleVar` automatically. The :code:`OpRoleVar` is
@@ -4156,9 +4156,8 @@ class Program(object):
                 if t is None:
                     raise ValueError("The target variable must have an "
                                      "associated operator that generates it.")
-
             targets_idx.append([t.block.idx, t.idx])
-        print('target_idx', targets_idx)
+
         res = Program()
         res.desc, pruned_origin_block_id_map = core.prune(self.desc,
                                                           set(feeded_var_names),
@@ -4168,11 +4167,6 @@ class Program(object):
         ]
         res._sync_with_cpp()
 
-        # import paddle.fluid.transpiler.details.program_utils as pu
-        # pu.program_to_code(self, skip_op_callstack=True)
-        # print('111')
-        # pu.program_to_code(res, skip_op_callstack=True)
-        # print('222')
         res._copy_param_info_from(self)
         res._copy_data_info_from(self, pruned_origin_block_id_map)
         res._copy_dist_param_info_from(self)
