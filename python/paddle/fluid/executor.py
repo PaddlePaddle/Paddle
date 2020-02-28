@@ -164,8 +164,8 @@ def dimension_is_compatible_with(first, second):
 
     A dimension is compatible with the other if:
     1. The length of the dimensions are same.
-    2. Each non-negative number of the two dimentions are same.
-    3. For negative number or 'None' in a dimention, it means unknown so it
+    2. Each non-negative number of the two dimensions are same.
+    3. For negative number or 'None' in a dimension, it means unknown so it
        is compatible with any number.
 
     Args:
@@ -200,8 +200,8 @@ def check_feed_shape_type(var, feed, num_places=1):
 
     A dimension is compatible with the other if:
     1. The length of the dimensions are same.
-    2. Each non-negative number of the two dimentions are same.
-    3. For negative number or 'None' in a dimention, it means unknown so it
+    2. Each non-negative number of the two dimensions are same.
+    3. For negative number or 'None' in a dimension, it means unknown so it
        is compatible with any number.
     
     Args:

@@ -132,10 +132,10 @@ struct BuildStrategy {
   // The picture is here:
   // https://github.com/PaddlePaddle/Paddle/pull/17263#discussion_r285411396
   bool use_hierarchical_allreduce_{false};
-  // Nccl ranks in a node when use hierarchical allreduce, it's setted to gpu
+  // Nccl ranks in a node when use hierarchical allreduce, it's set to gpu
   // cards' number in most cases.
   size_t hierarchical_allreduce_inter_nranks_{0};
-  // Nccl ranks bewteen nodes when use hierarchical allreduce, it's setted to
+  // Nccl ranks bewteen nodes when use hierarchical allreduce, it's set to
   // nodes number.
   size_t hierarchical_allreduce_exter_nranks_{0};
 
