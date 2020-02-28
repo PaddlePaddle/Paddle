@@ -330,27 +330,50 @@ void InMemoryDataFeed<T>::LoadIntoMemory() {
 #ifdef _LINUX
   VLOG(3) << "LoadIntoMemory() begin, thread_id=" << thread_id_;
   std::string filename;
+  std::vector<T> local_vec;
   while (this->PickOneFile(&filename)) {
     VLOG(3) << "PickOneFile, filename=" << filename
             << ", thread_id=" << thread_id_;
-    int err_no = 0;
-    this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_);
-    CHECK(this->fp_ != nullptr);
-    __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
-    paddle::framework::ChannelWriter<T> writer(input_channel_);
-    T instance;
-    platform::Timer timeline;
-    timeline.Start();
-    while (ParseOneInstanceFromPipe(&instance)) {
-      writer << std::move(instance);
-      instance = T();
-    }
-    writer.Flush();
-    timeline.Pause();
-    VLOG(3) << "LoadIntoMemory() read all lines, file=" << filename
-            << ", cost time=" << timeline.ElapsedSec()
-            << " seconds, thread_id=" << thread_id_;
+
+    int max_retry = 100;
+    int retry = 0;
+    do {
+      local_vec.clear();
+      int err_no = 0;
+      this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_);
+      CHECK(this->fp_ != nullptr);
+      __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
+      T instance;
+      platform::Timer timeline;
+      timeline.Start();
+      while (ParseOneInstanceFromPipe(&instance)) {
+        writer << std::move(instance);
+        instance = T();
+      }
+      this->fp_.reset();
+      if (err_no == -1) {
+        ++retry;
+        if (retry > max_retry) {
+            LOG(ERROR) << "read failed, retry reach limit, filename=" << filename;
+            exit(-1);
+        }
+        LOG(WARNING) << "read failed, retry" << retry << ",  filename=" << filename;
+        sleep(15);
+        continue;
+      }
+      paddle::framework::ChannelWriter<T> writer(input_channel_);
+      for (auto& i : local_vec) {
+         writer << std::move(i);
+      }
+      writer.Flush();
+      timeline.Pause();
+      VLOG(3) << "LoadIntoMemory() read all lines, file=" << filename
+              << ", cost time=" << timeline.ElapsedSec()
+              << " seconds, thread_id=" << thread_id_;
+      break;
+    } while(true);
   }
+  std::vector<T>().swap(local_vec);
   VLOG(3) << "LoadIntoMemory() end, thread_id=" << thread_id_;
 #endif
 }
