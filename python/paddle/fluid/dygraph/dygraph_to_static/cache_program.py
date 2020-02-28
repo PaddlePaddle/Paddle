@@ -35,6 +35,7 @@ class FunctionCache(object):
 
     def __init__(self):
         self._cache_funcs = collections.OrderedDict()
+
         self._func_to_transformer = collections.OrderedDict()
 
     def __call__(self, func):
