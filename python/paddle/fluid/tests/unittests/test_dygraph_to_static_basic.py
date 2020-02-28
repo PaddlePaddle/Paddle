@@ -18,7 +18,7 @@ import numpy as np
 import paddle.fluid as fluid
 import unittest
 
-from paddle.fluid.dygraph.jit import dygraph_to_static_output
+from paddle.fluid.dygraph.jit import dygraph_to_static_graph
 
 np.random.seed(1)
 
@@ -92,7 +92,7 @@ class TestDygraphIfElse(unittest.TestCase):
         with fluid.program_guard(main_program):
             x_v = fluid.layers.assign(self.x)
             # Transform into static graph
-            out = dygraph_to_static_output(self.dyfunc)(x_v)
+            out = dygraph_to_static_graph(self.dyfunc)(x_v)
             exe = fluid.Executor(place)
             ret = exe.run(main_program, fetch_list=out)
             return ret
