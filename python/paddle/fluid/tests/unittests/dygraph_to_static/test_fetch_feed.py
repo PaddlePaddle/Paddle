@@ -71,6 +71,9 @@ class TestPool2D(unittest.TestCase):
         with fluid.dygraph.guard():
             dy_layer = self.dygraph_class()
             prediction = dy_layer(x=self.data)
+            if isinstance(prediction, (list, tuple)):
+                prediction = prediction[0]
+
             return prediction.numpy()
 
     def run_static_mode(self):

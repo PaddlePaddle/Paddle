@@ -18,13 +18,12 @@ import inspect
 import textwrap
 import threading
 import numpy
-from dygraph_to_static import convert_to_static
 
 from paddle.fluid.optimizer import Optimizer
 from paddle.fluid import framework
 from paddle.fluid import layers
 from paddle.fluid import core, Executor
-
+from paddle.fluid.dygraph.dygraph_to_static import convert_to_static
 __all__ = ['ProgramCache']
 
 
@@ -87,7 +86,7 @@ class ProgramCache(object):
     @synchronized
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
-            cls._instance = super().__new__(cls, *args, *kwargs)
+            cls._instance = super().__new__(cls, *args, **kwargs)
         return cls._instance
 
     @classmethod
