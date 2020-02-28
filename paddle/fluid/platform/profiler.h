@@ -198,9 +198,9 @@ struct EventList {
 
 void Mark(const std::string& name);
 void PushMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
-                  const Place& place);
+                  const Place& place, const std::string& annotation);
 void PopMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
-                 const Place& place);
+                 const Place& place, const std::string& annotation);
 Event* PushEvent(const std::string& name);
 void PopEvent(const std::string& name);
 // Return the event list of all threads. Assumed the returned value calls

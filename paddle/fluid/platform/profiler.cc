@@ -60,30 +60,6 @@ double Event::CudaElapsedMs(const Event &e) const {
 #endif
 }
 
-void PushMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
-                  const Place &place, const std::string &annotation) {
-  GetMemEventList().Record(EventType::kPushRange, start_ns, end_ns, bytes,
-                           place, g_mem_thread_id, annotation);
-}
-
-void PopMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
-                 const Place &place, const std::string &annotation) {
-  GetMemEventList().Record(EventType::kPopRange, start_ns, end_ns, bytes, place,
-                           g_mem_thread_id, annotation);
-}
-
-void Mark(const std::string &name) {
-  GetEventList().Record(EventType::kMark, name, g_thread_id);
-}
-
-Event *PushEvent(const std::string &name) {
-  return GetEventList().Record(EventType::kPushRange, name, g_thread_id);
-}
-
-void PopEvent(const std::string &name) {
-  GetEventList().Record(EventType::kPopRange, name, g_thread_id);
-}
-
 RecordEvent::RecordEvent(const std::string &name, const RecordRole role)
     : is_enabled_(false), start_ns_(PosixInNsec()), role_(role) {
   if (g_state == ProfilerState::kDisabled || name.empty()) return;
@@ -182,6 +158,29 @@ RecordBlock::~RecordBlock() {
   ClearCurBlock();
 }
 
+void PushMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
+                  const Place &place, const std::string &annotation) {
+  GetMemEventList().Record(EventType::kPushRange, start_ns, end_ns, bytes,
+                           place, g_mem_thread_id, annotation);
+}
+
+void PopMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
+                 const Place &place, const std::string &annotation) {
+  GetMemEventList().Record(EventType::kPopRange, start_ns, end_ns, bytes, place,
+                           g_mem_thread_id, annotation);
+}
+
+void Mark(const std::string &name) {
+  GetEventList().Record(EventType::kMark, name, g_thread_id);
+}
+
+Event *PushEvent(const std::string &name) {
+  return GetEventList().Record(EventType::kPushRange, name, g_thread_id);
+}
+
+void PopEvent(const std::string &name) {
+  GetEventList().Record(EventType::kPopRange, name, g_thread_id);
+}
 void EnableProfiler(ProfilerState state) {
   PADDLE_ENFORCE(state != ProfilerState::kDisabled,
                  "Can't enable profiling, since the input state is ",
@@ -252,6 +251,7 @@ void DisableProfiler(EventSortingKey sorted_key,
   g_state = ProfilerState::kDisabled;
   should_send_profile_state = true;
 }
+
 std::vector<std::vector<Event>> GetAllEvents() {
   std::lock_guard<std::mutex> guard(g_all_event_lists_mutex);
   std::vector<std::vector<Event>> result;
@@ -263,16 +263,8 @@ std::vector<std::vector<Event>> GetAllEvents() {
 }
 
 bool IsProfileEnabled() { return g_state != ProfilerState::kDisabled; }
-bool ShouldSendProfileState() { return should_send_profile_state; }
 
-void SetProfileListener() {
-  std::mt19937 rng;
-  rng.seed(std::random_device()());
-  std::uniform_int_distribution<std::mt19937::result_type> dist6(
-      1, std::numeric_limits<int>::max());
-  profiler_lister_id = dist6(rng);
-}
-int64_t ListenerId() { return profiler_lister_id; }
+bool ShouldSendProfileState() { return should_send_profile_state; }
 
 std::string OpName(const framework::VariableNameMap &name_map,
                    const std::string &type_name) {
@@ -298,5 +290,16 @@ void SetTracerOption(TracerOption option) {
 }
 
 platform::TracerOption GetTracerOption() { return g_tracer_option; }
+
+void SetProfileListener() {
+  std::mt19937 rng;
+  rng.seed(std::random_device()());
+  std::uniform_int_distribution<std::mt19937::result_type> dist6(
+      1, std::numeric_limits<int>::max());
+  profiler_lister_id = dist6(rng);
+}
+
+int64_t ListenerId() { return profiler_lister_id; }
+
 }  // namespace platform
 }  // namespace paddle

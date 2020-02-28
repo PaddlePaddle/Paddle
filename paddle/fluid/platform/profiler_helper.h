@@ -206,6 +206,39 @@ void DealWithShowName() {
   }
 }
 
+// print the reu
+void PrintOverHead(const OverHead &overhead, const size_t data_width) {
+  double compute_time = overhead.total_time * overhead.compute_ratio;
+  double framework_time = overhead.total_time * overhead.framework_ratio;
+  std::cout.setf(std::ios::left);
+  std::cout << "Total time: " << overhead.total_time << std::endl;
+  std::cout << std::setw(25) << "  Computation time"
+            << "Total: " << std::setw(data_width) << compute_time
+            << "Ratio: " << overhead.compute_ratio * 100 << "%" << std::endl;
+  std::cout << std::setw(25) << "  Framework overhead"
+            << "Total: " << std::setw(data_width) << framework_time
+            << "Ratio: " << overhead.framework_ratio * 100 << "%" << std::endl;
+
+  std::cout << "\n-------------------------"
+            << "     GpuMemCpy Summary     "
+            << "-------------------------\n\n";
+  std::cout << std::setw(25) << "GpuMemcpy"
+            << "Calls: " << std::setw(data_width) << overhead.memcpy_item.calls
+            << "Total: " << std::setw(data_width)
+            << overhead.memcpy_item.total_time
+            << "Ratio: " << overhead.memcpy_item.ratio * 100 << "%"
+            << std::endl;
+  for (size_t i = 0; i < overhead.sub_memcpy_items.size(); ++i) {
+    EventItem item = overhead.sub_memcpy_items[i];
+    if (item.calls != 0) {
+      std::cout << std::setw(25) << "  " + item.name
+                << "Calls: " << std::setw(data_width) << item.calls
+                << "Total: " << std::setw(data_width) << item.total_time
+                << "Ratio: " << item.ratio * 100 << "%" << std::endl;
+    }
+  }
+}
+
 // Print results
 void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
                    const std::multimap<std::string, EventItem> &child_map,
@@ -240,38 +273,7 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
               << " in descending order in the same thread\n\n";
 
     if (overhead.print) {
-      double compute_time = overhead.total_time * overhead.compute_ratio;
-      double framework_time = overhead.total_time * overhead.framework_ratio;
-      std::cout.setf(std::ios::left);
-      std::cout << "Total time: " << overhead.total_time << std::endl;
-      std::cout << std::setw(25) << "  Computation time"
-                << "Total: " << std::setw(data_width) << compute_time
-                << "Ratio: " << overhead.compute_ratio * 100 << "%"
-                << std::endl;
-      std::cout << std::setw(25) << "  Framework overhead"
-                << "Total: " << std::setw(data_width) << framework_time
-                << "Ratio: " << overhead.framework_ratio * 100 << "%"
-                << std::endl;
-
-      std::cout << "\n-------------------------"
-                << "     GpuMemCpy Summary     "
-                << "-------------------------\n\n";
-      std::cout << std::setw(25) << "GpuMemcpy"
-                << "Calls: " << std::setw(data_width)
-                << overhead.memcpy_item.calls
-                << "Total: " << std::setw(data_width)
-                << overhead.memcpy_item.total_time
-                << "Ratio: " << overhead.memcpy_item.ratio * 100 << "%"
-                << std::endl;
-      for (size_t i = 0; i < overhead.sub_memcpy_items.size(); ++i) {
-        EventItem item = overhead.sub_memcpy_items[i];
-        if (item.calls != 0) {
-          std::cout << std::setw(25) << "  " + item.name
-                    << "Calls: " << std::setw(data_width) << item.calls
-                    << "Total: " << std::setw(data_width) << item.total_time
-                    << "Ratio: " << item.ratio * 100 << "%" << std::endl;
-        }
-      }
+      PrintOverHead(overhead, data_width);
     }
     std::cout << "\n-------------------------"
               << "       Event Summary       "
@@ -566,7 +568,6 @@ void AnalyzeEvent(
         total += event_items[j].total_time;
       }
     }
-
     // average time
     for (auto &item : main_event_items) {
       item.ave_time = item.total_time / item.calls;
@@ -576,14 +577,12 @@ void AnalyzeEvent(
       it->second.ratio = it->second.total_time / total;
       it->second.ave_time = it->second.total_time / it->second.calls;
     }
-
     // When multi-threaded, overhead are printed only if merge_thread is true
     if ((*analyze_events).size() == 1) {
       overhead->total_time = total;
       overhead->print = true;
       ComputeOverhead(sub_child_map, overhead);
     }
-
     // sort
     if (sorted_by != EventSortingKey::kDefault) {
       std::sort(main_event_items.begin(), main_event_items.end(), sorted_func);
