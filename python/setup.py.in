@@ -106,8 +106,7 @@ write_version_py(filename='@PADDLE_BINARY_DIR@/python/paddle/version.py')
 
 
 def write_distributed_training_mode_py(filename='paddle/fluid/incubate/fleet/parameter_server/version.py'):
-    cnt = '''
-from __future__ import print_function
+    cnt = '''from __future__ import print_function
 
 # THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
 
@@ -116,7 +115,7 @@ from paddle.fluid.incubate.fleet.base.fleet_base import Mode
 BUILD_MODE=Mode.%(mode)s
 
 def is_transpiler():
-    return Mode.Transpiler == BUILD_MODE
+    return Mode.TRANSPILER == BUILD_MODE
 
 '''
 

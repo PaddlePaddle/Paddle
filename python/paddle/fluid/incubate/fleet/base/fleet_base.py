@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import abc
 
-import paddle.fluid as fluid
+from paddle.fluid.core import CPUPlace
 from paddle.fluid.executor import Executor
 from paddle.fluid.optimizer import SGD
 
