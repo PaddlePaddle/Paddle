@@ -74,9 +74,7 @@ class OrderedMultiDeviceLoDTensorBlockingQueue {
  public:
   OrderedMultiDeviceLoDTensorBlockingQueue(size_t capacity,
                                            bool speed_test_mode = false)
-      : capacity_(capacity), speed_test_mode_(speed_test_mode) {
-    LOG(INFO) << "Use keep_order=True DataLoader";
-  }
+      : capacity_(capacity), speed_test_mode_(speed_test_mode) {}
 
   ~OrderedMultiDeviceLoDTensorBlockingQueue() {
     VLOG(10) << "Destruct OrderedMultiDeviceLoDTensorBlockingQueue";
