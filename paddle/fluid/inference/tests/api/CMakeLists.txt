@@ -226,15 +226,18 @@ if(WITH_MKLDNN)
 
   set(INT8_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/int8v2")
 
-  ### Image classification tests
-  set(IMAGENET_DATA_PATH "${INT8_DATA_DIR}/data.bin")
-  set(INT8_IMG_CLASS_TEST_APP "test_analyzer_int8_image_classification")
-  set(INT8_IMG_CLASS_TEST_APP_SRC "analyzer_int8_image_classification_tester.cc")
+  ## Image classification models
 
-  # download dataset if necessary
-  download_int8_data(${INT8_DATA_DIR} "imagenet_val_100_tail.tar.gz")
+  # ImageNet small dataset
+  # May be already downloaded for INT8 QAT unit tests
+  set(IMAGENET_DATA_ARCHIVE "imagenet_val_100_tail.tar.gz")
+  set(IMAGENET_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/imagenet")
+  set(IMAGENET_DATA_PATH "${IMAGENET_DATA_DIR}/data.bin")
+  download_int8_data(${IMAGENET_DATA_DIR} ${IMAGENET_DATA_ARCHIVE})
 
   # build test binary to be used in subsequent tests
+  set(INT8_IMG_CLASS_TEST_APP "test_analyzer_int8_image_classification")
+  set(INT8_IMG_CLASS_TEST_APP_SRC "analyzer_int8_image_classification_tester.cc")
   inference_analysis_api_test_build(${INT8_IMG_CLASS_TEST_APP} ${INT8_IMG_CLASS_TEST_APP_SRC})
 
   # resnet50 int8
@@ -296,7 +299,7 @@ if(WITH_MKLDNN)
 
   ### optimized FP32 vs. QAT INT8 tests
   
-  set(QAT_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/int8v2")
+  set(QAT_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/qat")
   set(QAT_IMG_CLASS_TEST_APP "test_analyzer_qat_image_classification")
   set(QAT_IMG_CLASS_TEST_APP_SRC "analyzer_qat_image_classification_tester.cc")
 
@@ -304,8 +307,8 @@ if(WITH_MKLDNN)
   inference_analysis_api_test_build(${QAT_IMG_CLASS_TEST_APP} ${QAT_IMG_CLASS_TEST_APP_SRC})
 
   # MobileNet FP32 vs. QAT INT8
+  # The FP32 model should already be downloaded for slim QAT unit tests
   set(QAT2_MobileNet_MODEL_DIR "${QAT_DATA_DIR}/MobileNet_qat_perf")
-  download_qat_data(${QAT2_MobileNet_MODEL_DIR} "MobileNet_qat_perf.tar.gz")
   set(QAT2_INT8_MobileNet_MODEL_DIR "${QAT_DATA_DIR}/MobileNet_qat_perf_int8")
   download_qat_data(${QAT2_INT8_MobileNet_MODEL_DIR} "MobileNet_qat_perf_int8.tar.gz")
   inference_analysis_api_qat_test_run(test_analyzer_qat_performance_benchmark ${QAT_IMG_CLASS_TEST_APP} ${QAT2_MobileNet_MODEL_DIR}/MobileNet_qat_perf/float ${QAT2_INT8_MobileNet_MODEL_DIR}/MobileNet_qat_perf_int8 ${IMAGENET_DATA_PATH})

@@ -101,18 +101,18 @@ class ParallelExecutorPrivate {
   inline bool HasGarbageCollectors() const { return !gcs_.empty(); }
 
   /**
-   * NOTE(zengjinle): the feeded variables of users should not be reused,
-   * because users may feed them into another network. Changing the feeded
+   * NOTE(zengjinle): the fed variables of users should not be reused,
+   * because users may feed them into another network. Changing the fed
    * variables that users can visit may cause calculation wrong, which is
    * a very subtle bug when traning networks. However, these variables
    * can be garbage collected.
    *
    * ParallelExecutor provides 2 methods to feed variables:
    *
-   *  - FeedTensorsIntoLocalScopes: this method would share memory of feeded
+   *  - FeedTensorsIntoLocalScopes: this method would share memory of fed
    *                                variables, so we have to skip these.
    *
-   *  - FeedAndSplitTensorIntoLocalScopes: this method would copy data of feeded
+   *  - FeedAndSplitTensorIntoLocalScopes: this method would copy data of fed
    *                                       variables, so we do not need to skip
    *                                       them.
    */
@@ -261,7 +261,7 @@ class ParallelExecutorPrivate {
 
   std::unordered_map<std::string, bool> is_persistable_;
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
   platform::NCCLCommunicator *nccl_ctxs_{nullptr};
 #endif
   bool own_local_scope_;
@@ -468,6 +468,16 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   }
 #endif
 
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_NCCL)
+  PADDLE_ENFORCE_EQ(
+      places.size(), 1,
+      platform::errors::PermissionDenied(
+          "Your machine has multiple cards, "
+          "but the WITH_NCCL option is not turned on during compilation, "
+          "and you cannot use multi-card training or prediction. "
+          "Please recompile and turn on the WITH_NCCL option."));
+#endif
+
   LOG(INFO) << string::Sprintf(
       "The Program will be executed on %s using ParallelExecutor, %lu "
       "cards are used, so %lu programs are executed in parallel.",
@@ -557,7 +567,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   // Step 2. Convert main_program to SSA form and dependency graph. Also, insert
   // ncclOp
   std::vector<ir::Graph *> async_graphs(places.size());
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
   if (member_->build_strategy_.async_mode_) {
     VLOG(3) << "use local async mode";
     graph = member_->build_strategy_.Apply(

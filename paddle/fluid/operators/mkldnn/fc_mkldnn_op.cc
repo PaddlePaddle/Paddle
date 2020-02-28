@@ -55,11 +55,12 @@ class FCPrimitiveFactory {
     }  // Otherwise, create a new one.
 
     auto in_col_dims = ctx.Attr<int>("in_num_col_dims");
-    PADDLE_ENFORCE_LE(in_col_dims, 2,
-                      platform::errors::Unimplemented(
-                          "DNNL FC doesn't support in_num_col_dims paramter to "
-                          "be higher than "
-                          "2."));
+    PADDLE_ENFORCE_LE(
+        in_col_dims, 2,
+        platform::errors::Unimplemented(
+            "DNNL FC doesn't support in_num_col_dims parameter to "
+            "be higher than "
+            "2."));
     if (in_col_dims == 2) {
       PADDLE_ENFORCE_EQ(
           input->dims().size(), 3,
@@ -288,7 +289,7 @@ class FCPrimitiveFactory {
     //     becuase we perform per-output-channel quantization
     int mask = CreateMask(0, scale_data.size() > 1);
     attributes.set_output_scales(mask, scale_data);
-    auto reorder = mkldnn::reorder({src_mem, dst_mem, attributes});
+    auto reorder = mkldnn::reorder(src_mem, dst_mem, attributes);
 
     mkldnn::stream astream(engine_);
     reorder.execute(astream,
@@ -479,7 +480,7 @@ GetPrimitiveFactory(const MKLDNNDeviceContext& dev_ctx,
                     const Tensor* weights,
                     const mkldnn::engine& mkldnn_engine) {
   const std::string key = platform::CreateKey(
-      platform::ThreadIDasStr(), input->format(),
+      platform::ThreadIDasStr(), input->format(), input->dims()[0],
       framework::vectorize<int>(weights->dims()), ctx.OutputName("Out"));
 
   auto prim_creator =

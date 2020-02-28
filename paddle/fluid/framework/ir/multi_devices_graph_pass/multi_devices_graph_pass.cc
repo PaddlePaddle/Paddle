@@ -857,7 +857,7 @@ int DistSSAGraphBuilder::CreateRPCOp(ir::Graph *result, ir::Node *node) const {
     op_dev_id = GetVarDeviceID(node->inputs[0]->Name());
     PADDLE_ENFORCE(!ir::IsControlDepVar(*node->inputs[0]),
                    "This hack no longer holds, please fix.");
-    // the variable name which contains .block means it was splited by
+    // the variable name which contains .block means it was split by
     // split_byref op
     if (strategy_.reduce_ ==
             details::BuildStrategy::ReduceStrategy::kAllReduce &&
@@ -1041,7 +1041,7 @@ void DistSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
     // There are 4 conditions:
     // 1. GPU && Reduce: Reduce gradient then broadcast gradient to other GPUS.
     // Need to broadcast received parameters to other GPU.
-    // 2. GPU && AllReduce: AllReduce all graident to each GPU. Need to
+    // 2. GPU && AllReduce: AllReduce all gradient to each GPU. Need to
     // broadcast received parameters to other GPU.
     // 3. CPU && AllReduce: AllReduce all gradient to each thread. Need to
     // broadcast received parameters to other scope.

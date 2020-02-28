@@ -41,6 +41,20 @@ class LoDResetOp : public framework::OperatorWithKernel {
     if (append) {
       ctx->ShareLoD("X", /*->*/ "Out");
     }
+
+    if (ctx->HasInput("Y")) {
+      if (!ctx->IsRuntime()) {
+        ctx->SetLoDLevel("Out", std::max(ctx->GetLoDLevel("Y"), 1));
+      }
+    } else if (append) {
+      if (!ctx->IsRuntime()) {
+        ctx->SetLoDLevel("Out", std::max(ctx->GetLoDLevel("X") + 1, 1));
+      }
+    } else {
+      if (!ctx->IsRuntime()) {
+        ctx->SetLoDLevel("Out", 1);
+      }
+    }
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
   }
 
