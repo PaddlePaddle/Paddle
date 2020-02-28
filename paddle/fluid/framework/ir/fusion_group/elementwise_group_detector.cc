@@ -79,39 +79,7 @@ static bool IsEqualAndNotEmpty(const std::vector<int64_t>& l,
   return l.size() != 0U && r.size() != 0U && l == r;
 }
 
-static bool IsBinaryOp(const Node* n) {
-  if (IsSpecifiedOp(GetBinaryOpTypes(), n)) {
-    if ((!IsGradOp(n) && n->inputs.size() != 2U) || n->inputs.size() == 0U) {
-      return false;
-    }
-
-    // The shape of all inputs should be the same.
-    std::vector<int64_t> shape_0;
-    for (size_t i = 0; i < n->inputs.size(); ++i) {
-      auto* in_i = n->inputs[i];
-      if (!(in_i && in_i->IsVar() && in_i->Var())) {
-        return false;
-      }
-
-      std::vector<int64_t> shape_i = in_i->Var()->GetShape();
-      if (i == 0U) {
-        shape_0 = shape_i;
-      } else {
-        if (!IsEqualAndNotEmpty(shape_0, shape_i)) {
-          return false;
-        }
-      }
-    }
-    return true;
-  }
-  return false;
-}
-
-static bool IsUnaryOp(const Node* n) {
-  return IsSpecifiedOp(GetUnaryOpTypes(), n);
-}
-
-static bool IsMultivariateOp(const Node* n) {
+bool ElementwiseGroupDetector::IsElementwiseOp(const Node* n) {
   if (IsSpecifiedOp(GetMultivariateOpTypes(), n)) {
     std::vector<int64_t> shape_0;
     for (size_t i = 0; i < n->inputs.size(); ++i) {
@@ -132,10 +100,6 @@ static bool IsMultivariateOp(const Node* n) {
     return true;
   }
   return false;
-}
-
-bool ElementwiseGroupDetector::IsElementwiseOp(const Node* n) {
-  return IsBinaryOp(n) || IsUnaryOp(n) || IsMultivariateOp(n);
 }
 
 std::vector<std::vector<Node*>> ElementwiseGroupDetector::operator()(
