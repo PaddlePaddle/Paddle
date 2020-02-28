@@ -28,11 +28,10 @@ OperationMap::OperationMap() {
   InsertMultivariateElementwiseOperations();
 }
 
-std::unordered_set<std::string> OperationMap::Find(int type, int num_operands) {
+std::unordered_set<std::string> OperationMap::Find(int type) {
   std::unordered_set<std::string> res;
   for (auto& t : operations_) {
-    if ((t.second.type == type) &&
-        (num_operands < 0 || t.second.num_operands == num_operands)) {
+    if (t.second.type == type) {
       res.insert(t.first);
     }
   }
