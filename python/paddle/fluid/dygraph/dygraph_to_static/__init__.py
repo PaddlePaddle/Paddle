@@ -20,6 +20,10 @@ from .ast_transformer import *
 from . import static_analysis
 from .static_analysis import *
 
+from . import cache_program
+from .cache_program import *
+
 __all__ = []
 __all__ += ast_transformer.__all__
 __all__ += static_analysis.__all__
+__all__ += cache_program.__all__
