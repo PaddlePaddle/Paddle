@@ -33,8 +33,8 @@ static T StringTo(const std::string& str) {
   return value;
 }
 
-static std::string GetMultivariateRHS(const std::string rhs,
-                                      const size_t input_size) {
+static std::string ExpandMultivariateTemplate(const std::string rhs,
+                                              const size_t input_size) {
   int start_pos = rhs.find("[", 0);
   int end_pos = rhs.find("]", 0);
   std::string sum_rhs = rhs.substr(0, start_pos);
@@ -56,7 +56,7 @@ std::string OperationExpression::GetRHS(std::unordered_set<int>* used,
   auto num_operands = OperationMap::Instance().Get(op_type_).num_operands;
   if (num_operands == -1) {
     size_t input_size = input_ids_.size();
-    rhs = GetMultivariateRHS(rhs, input_size);
+    rhs = ExpandMultivariateTemplate(rhs, input_size);
   }
 
   for (size_t i = 0; i < rhs.size(); i++) {
