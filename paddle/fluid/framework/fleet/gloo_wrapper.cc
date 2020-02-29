@@ -35,24 +35,24 @@ void HdfsStore::set(const std::string& key, const std::vector<char>& data) {
   }
   int err_no = 0;
   for (int i = 1; i <= retry_times_; ++i) {
+    err_no = 0;
     std::shared_ptr<FILE> fp =
         paddle::framework::fs_open_write(tmp, &err_no, "");
-    if (err_no != 0) {
-      VLOG(0) << "fs_open_write failed, retry times " << i << " err no "
-              << err_no;
-      fp.reset();
-      sleep(wait_sleep_ms_ / 1000);
-      continue;
-    }
     size_t write_count = fwrite_unlocked(data.data(), 1, data.size(), fp.get());
     if (write_count != data.size()) {
       VLOG(0) << "fwrite_unlocked failed, retry times " << i << " write_count "
               << write_count << " data.size() " << data.size();
       fp.reset();
-      sleep(2);
+      sleep(wait_sleep_ms_ / 1000);
       continue;
     }
     fp.reset();
+    if (err_no != 0) {
+      VLOG(0) << "fs_open_write failed, retry times " << i << " err no "
+              << err_no;
+      sleep(wait_sleep_ms_ / 1000);
+      continue;
+    }
     break;
   }
   paddle::framework::fs_mv(tmp, path);
@@ -105,6 +105,10 @@ void HdfsStore::wait(const std::vector<std::string>& keys,
 #endif
 }
 
+void HdfsStore::SetTimeoutSeconds(int timeout_seconds) {
+  wait_timeout_ = std::chrono::seconds(timeout_seconds);
+}
+
 std::string HdfsStore::EncodeName(const std::string& name) {
   thread_local std::hash<std::string> hash_func;
   return std::to_string(hash_func(name));
@@ -141,27 +145,32 @@ bool HdfsStore::Check(const std::vector<std::string>& keys) {
 namespace paddle {
 namespace framework {
 
-void GlooWrapper::Init(int rank, int size, const std::string& path,
-                       const std::string& fs_name, const std::string& fs_ugi,
-                       const std::string& iface, const std::string& prefix) {
+void GlooWrapper::Init() {
   if (is_initialized_) {
     return;
   }
-  rank_ = rank;
-  size_ = size;
   std::string cmd = std::string("${HADOOP_HOME}/bin/hadoop fs");
-  cmd += " -D fs.default.name=" + fs_name;
-  cmd += " -D hadoop.job.ugi=" + fs_ugi;
+  cmd += " -D fs.default.name=" + hdfs_name_;
+  cmd += " -D hadoop.job.ugi=" + hdfs_ugi_;
   paddle::framework::hdfs_set_command(cmd);
 #ifdef PADDLE_WITH_GLOO
   gloo::transport::tcp::attr attr;
-  attr.iface = iface;
-  auto file_store = gloo::rendezvous::HdfsStore(path);
-  auto prefix_store = gloo::rendezvous::PrefixStore(prefix, file_store);
+  attr.iface = iface_;
+  switch (store_type_) {
+    case GlooStoreType::HDFS: {
+      auto file_store = gloo::rendezvous::HdfsStore(hdfs_path_);
+      file_store.SetTimeoutSeconds(init_timeout_.count());
+      prefix_store_ = std::make_shared<gloo::rendezvous::PrefixStore>(prefix_, file_store);
+      break;
+    }
+    default:
+      PADDLE_THROW("unknown store type: " + std::to_string(store_type_));
+  };
+  CHECK(prefix_store_ != nullptr) << "store should not be null";  // NOLINT
   auto dev = gloo::transport::tcp::CreateDevice(attr);
-  auto context = std::make_shared<gloo::rendezvous::Context>(rank, size);
-  context->setTimeout(file_store.wait_timeout_);
-  context->connectFullMesh(prefix_store, dev);
+  auto context = std::make_shared<gloo::rendezvous::Context>(rank_, size_);
+  context->setTimeout(wait_timeout_);
+  context->connectFullMesh(*prefix_store_, dev);
   context_ = std::move(context);
 #endif
   is_initialized_ = true;
@@ -169,6 +178,9 @@ void GlooWrapper::Init(int rank, int size, const std::string& path,
 
 template std::vector<int64_t> GlooWrapper::AllReduce<int64_t>(
     std::vector<int64_t>& sendbuf,  // NOLINT
+    const std::string& mode);
+template std::vector<float> GlooWrapper::AllReduce<float>(
+    std::vector<float>& sendbuf,  // NOLINT
     const std::string& mode);
 template std::vector<double> GlooWrapper::AllReduce<double>(
     std::vector<double>& sendbuf,  // NOLINT
@@ -180,6 +192,8 @@ template std::vector<int64_t> GlooWrapper::AllGather<int64_t>(
     int64_t& input);  // NOLINT
 template std::vector<uint64_t> GlooWrapper::AllGather<uint64_t>(
     uint64_t& input);  // NOLINT
+template std::vector<float> GlooWrapper::AllGather<float>(
+    float& input);  // NOLINT
 template std::vector<double> GlooWrapper::AllGather<double>(
     double& input);  // NOLINT
 

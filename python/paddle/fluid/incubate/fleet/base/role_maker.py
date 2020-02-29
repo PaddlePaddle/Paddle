@@ -557,6 +557,8 @@ class GeneralRoleMaker(RoleMakerBase):
         self._hdfs_name = kwargs.get("hdfs_name", "")
         self._hdfs_ugi = kwargs.get("hdfs_ugi", "")
         self._hdfs_path = kwargs.get("path", "")
+        self._init_timeout_seconds = kwargs.get("init_timeout_seconds", 1e9)
+        self._run_timeout_seconds = kwargs.get("run_timeout_seconds", 1e9)
         self._iface = self.__get_default_iface()
         # this environment variable can be empty
         self._prefix = os.getenv("SYS_JOB_ID", "")
@@ -578,11 +580,14 @@ class GeneralRoleMaker(RoleMakerBase):
                 self._node_type = 1
                 self._cur_endpoint = worker_endpoints[current_id]
                 gloo = fluid.core.Gloo()
-                gloo.init(current_id,
-                          len(worker_endpoints),
-                          self._hdfs_path.rstrip("/") + "/trainer",
-                          self._hdfs_name, self._hdfs_ugi, self._iface,
-                          self._prefix)
+                gloo.set_rank(current_id)
+                gloo.set_size(len(worker_endpoints))
+                gloo.set_hdfs_store(self._hdfs_path.rstrip("/") + "/trainer",
+                                    self._hdfs_name, self._hdfs_ugi)
+                gloo.set_prefix(self._prefix)
+                gloo.set_timeout_seconds(
+                    self._init_timeout_seconds, self._run_timeout_seconds)
+                gloo.init()
                 self._node_type_comm = gloo
             elif training_role == "PSERVER":
                 role = Role.SERVER
@@ -598,20 +603,25 @@ class GeneralRoleMaker(RoleMakerBase):
                 self._node_type = 0
                 self._cur_endpoint = cur_endpoint
                 gloo = fluid.core.Gloo()
-                gloo.init(current_id,
-                          len(eplist),
-                          self._hdfs_path.rstrip("/") + "/pserver",
-                          self._hdfs_name, self._hdfs_ugi, self._iface,
-                          self._prefix)
+                gloo.set_rank(current_id)
+                gloo.set_size(len(eplist))
+                gloo.set_hdfs_store(self._hdfs_path.rstrip("/") + "/pserver",
+                                    self._hdfs_name, self._hdfs_ugi)
+                gloo.set_prefix(self._prefix)
+                gloo.set_timeout_seconds(
+                    self._init_timeout_seconds, self._run_timeout_seconds)
                 self._node_type_comm = gloo
 
             gloo = fluid.core.Gloo()
             all_list = worker_endpoints + eplist
-            gloo.init(
-                all_list.index(self._cur_endpoint),
-                len(all_list),
-                self._hdfs_path.rstrip("/") + "/all", self._hdfs_name,
-                self._hdfs_ugi, self._iface, self._prefix)
+            gloo.set_rank(all_list.index(self._cur_endpoint))
+            gloo.set_size(len(all_list))
+            gloo.set_hdfs_store(self._hdfs_path.rstrip("/") + "/all",
+                                self._hdfs_name, self._hdfs_ugi)
+            gloo.set_prefix(self._prefix)
+            gloo.set_timeout_seconds(
+                self._init_timeout_seconds, self._run_timeout_seconds)
+            gloo.init()
             self._all_comm = gloo
             self._trainers_num = trainers_num
             self._server_endpoints = eplist

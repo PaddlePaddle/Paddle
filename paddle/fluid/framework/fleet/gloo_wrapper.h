@@ -59,6 +59,8 @@ class HdfsStore {
   virtual void wait(const std::vector<std::string>& keys,
                     const std::chrono::milliseconds& timeout);
 
+  virtual void SetTimeoutSeconds(int timeout_seconds);
+
   std::string EncodeName(const std::string& name);
 
   std::string TmpPath(const std::string& name);
@@ -79,25 +81,42 @@ class HdfsStore {
 namespace paddle {
 namespace framework {
 
+enum GlooStoreType {
+  HDFS
+};
+
 class GlooWrapper {
  public:
   GlooWrapper() {}
 
   virtual ~GlooWrapper() {}
 
-  void Init(int rank, int size, const std::string& path,
-            const std::string& fs_name, const std::string& fs_ugi,
-            const std::string& iface, const std::string& prefix);
+  void Init();
 
-  int Rank() {
-    CHECK_EQ(is_initialized_, true);
-    return rank_;
+  void SetTimeoutSeconds(int init_seconds, int wait_seconds) {
+    init_timeout_ = std::chrono::seconds(init_seconds);
+    wait_timeout_ = std::chrono::seconds(wait_seconds);
   }
 
-  int Size() {
-    CHECK_EQ(is_initialized_, true);
-    return size_;
+  void SetRank(int rank) { rank_ = rank; }
+
+  void SetSize(int size) { size_ = size; }
+
+  void SetIface(const std::string& iface) { iface_ = iface; }
+
+  void SetPrefix(const std::string& prefix) { prefix_ = prefix; }
+
+  void SetHdfsStrore(const std::string& path, const std::string& fs_name,
+                     const std::string& fs_ugi) {
+    store_type_ = GlooStoreType::HDFS;
+    hdfs_path_ = path;
+    hdfs_name_ = fs_name;
+    hdfs_ugi_ = fs_ugi;
   }
+
+  int Rank() { return rank_; }
+
+  int Size() { return size_; }
 
   void Barrier() {
     CHECK_EQ(is_initialized_, true);
@@ -153,11 +172,20 @@ class GlooWrapper {
 
  protected:
   bool is_initialized_ = false;
+  std::chrono::seconds init_timeout_ = std::chrono::seconds(999999999);
+  std::chrono::seconds wait_timeout_ = std::chrono::seconds(999999999);
 #ifdef PADDLE_WITH_GLOO
   std::shared_ptr<gloo::Context> context_ = nullptr;
+  std::shared_ptr<gloo::rendezvous::PrefixStore> prefix_store_ = nullptr;
 #endif
   int rank_ = 0;
   int size_ = 0;
+  std::string iface_ = "lo";
+  std::string prefix_ = "";
+  std::string hdfs_path_ = "";
+  std::string hdfs_name_ = "";
+  std::string hdfs_ugi_ = "";
+  GlooStoreType store_type_ = GlooStoreType::HDFS;
 };
 
 }  // namespace framework
