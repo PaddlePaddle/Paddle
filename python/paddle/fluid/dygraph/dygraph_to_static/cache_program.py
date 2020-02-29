@@ -22,7 +22,6 @@ import numpy
 from paddle.fluid import framework
 from paddle.fluid.layers import io
 from paddle.fluid import core, executor
-from paddle.fluid import optimizer as optim
 from paddle.fluid.dygraph.dygraph_to_static import convert_to_static
 
 __all__ = ['ProgramCache']
@@ -122,8 +121,6 @@ class ProgramCache(object):
         """
         Calls the main_program specialized to the inputs.
         """
-        args, kwargs = self._reform_args_kwargs(self.traced_funcs[-1], args,
-                                                kwargs)
 
         # 1. Adds `fluid.data` layers for input or updates batch_data
         self._prepare(args, kwargs)
@@ -141,28 +138,6 @@ class ProgramCache(object):
             outputs = self._run(args, kwargs)
 
         return outputs
-
-    def _reform_args_kwargs(self, func, args, kwargs):
-        """
-        Moves input argument in kwargs into args.
-        Example:
-            For function: foo(0, y=1, z=2)
-            Before:
-                args=[0], kwargs={'y':1, 'z': 2}
-            After:
-                args=[0, 1, 2], kwargs={}
-        """
-        fullargspec = inspect.getfullargspec(func)
-
-        if len(args) < len(fullargspec.args):
-            new_arg_names = fullargspec.args[len(args):]
-            args = list(args)
-            for arg in new_arg_names:
-                if arg in kwargs:
-                    args.append(kwargs[arg])
-                    del kwargs[arg]
-
-        return tuple(args), kwargs
 
     def _check_cache_valid(self):
         """
@@ -251,10 +226,6 @@ class ProgramCache(object):
         """
         self._check_cache_valid()
 
-        if not isinstance(optimizer, optim.Optimizer):
-            raise ValueError(
-                '{} is not fluid.optimizer.Optimizer, received {}.'.format(
-                    optimizer, type(optimizer)))
         if not self.optimizer or force_update:
             self.optimizer = optimizer
         else:
