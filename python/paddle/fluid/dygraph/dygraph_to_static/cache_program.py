@@ -86,7 +86,8 @@ class ProgramCache(object):
     @synchronized
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
-            cls._instance = super(ProgramCache).__new__(cls, *args, **kwargs)
+            cls._instance = object.__new__(cls, *args, **kwargs)
+            cls._instance.__initialized = False
         return cls._instance
 
     @classmethod
@@ -98,9 +99,14 @@ class ProgramCache(object):
     @classmethod
     def reset(cls):
         if cls._instance is not None:
+            cls._instance.__initialized = False
             cls._instance.__init__()
 
     def __init__(self):
+        # To make sure that calls __init__ only once.
+        if self.__initialized:
+            return
+        self.__initialized = True
         self.inputs = []
         self.outputs = []
         self.batch_data = []
@@ -121,10 +127,8 @@ class ProgramCache(object):
         """
         Calls the main_program specialized to the inputs.
         """
-
         # 1. Adds `fluid.data` layers for input or updates batch_data
         self._prepare(args, kwargs)
-
         # 2. Run cached program to avoid inserting forward ops repeatedly.
         if self.is_repeated:
             return self._run(args, kwargs)

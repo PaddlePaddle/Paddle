@@ -66,11 +66,11 @@ def _dygraph_to_static_graph_(dygraph_func):
 
 dygraph_to_static_graph = wrap_decorator(_dygraph_to_static_graph_)
 
-# Singleton object to cache main_program to avoid inserting ops repeatedly.
-cached_program = ProgramCache()
-
 
 def _dygraph_to_static_output_(dygraph_func):
+    # Singleton object to cache main_program to avoid inserting ops repeatedly.
+    cached_program = ProgramCache()
+
     def __impl__(*args, **kwargs):
         if in_dygraph_mode():
             warnings.warn(
