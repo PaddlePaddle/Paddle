@@ -236,17 +236,20 @@ class PSLib(Fleet):
                 self._strategy = strategy
             elif isinstance(strategy, DistributedStrategy):
                 if isinstance(strategy, AsyncStrategy):
-                    self._strategy = strategy.get_pslib_config()
+                    self._strategy = strategy.get_pslib_runtime_config(
+                    ).get_runtime_configs()
                 else:
                     raise TypeError(
                         "In {} mode, strategy must be an instance of AsyncStrategy, or Dict".
                         format(fleet._mode))
             else:
                 raise TypeError(
-                    "In {} mode, strategy must be an instance of DistributeTranspilerConfig, SyncStrategy, HalfAsyncStrategy, AsyncStrategy, or GeoStrategy".
+                    "In {} mode, strategy must be an instance of AsyncStrategy, or Dict".
                     format(fleet._mode))
+        else:
+            self._strategy = {}
 
-        self._optimizer = DownpourOptimizer(optimizer, strategy)
+        self._optimizer = DownpourOptimizer(optimizer, self._strategy)
         return self._optimizer
 
     def save_inference_model(self,
