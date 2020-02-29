@@ -2419,7 +2419,9 @@ def batch_norm(input,
                moving_mean_name=None,
                moving_variance_name=None,
                do_model_average_for_mean_and_var=True,
-               use_global_stats=False):
+               fuse_with_relu=False,
+               use_global_stats=False,
+               act_alpha=1.0):
     """
     **Batch Normalization Layer**
 
@@ -2493,10 +2495,7 @@ def batch_norm(input,
 	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr. 
 	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
 	     Default: None.
-        data_layout (str, optional): Specify the data format of the input, and the data format of the output 
-            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
-            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`.
+        data_layout(str, default NCHW): the data_layout of input, is NCHW or NHWC.
         in_place(bool, Default False): Make the input and output of batch norm reuse memory.
         name(str|None): For detailed information, please refer to :ref:`api_guide_Name`. 
             Usually name is no need to set and None by default. 
@@ -2513,7 +2512,9 @@ def batch_norm(input,
             or is_test to true, and the behavior is equivalent.
             In train mode, when setting use_global_stats True, the global mean
             and variance are also used during train period.
-
+        act_alpha(float, Default 1.0): when enable_inpalce is set in build strategy and activation is in 
+            ['elu', 'identity', 'leaky_relu'], inplace activative batch normalization will be used, and alpha
+            parameter for activation can be given by this parameter.
     Returns:
         A Variable holding Tensor which is the result after applying batch normalization on the input, 
         has same shape and data type with input. 
@@ -2621,6 +2622,21 @@ def batch_norm(input,
     saved_variance = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
 
+    if act in ['identity', 'elu', 'leaky_relu'] and \
+            convert_dtype(input.dtype) in ['float32', 'float64']:
+        op_type = "inplace_abn"
+        # use fused-activation by default and disable mkldnn
+        fuse_with_relu = False
+        use_fused_act = True
+    else:
+        op_type = "batch_norm"
+        use_fused_act = False
+
+    # if op_type == "batch_norm":
+    #     batch_norm_out = helper.create_variable_for_type_inference(dtype)
+    # else:
+    #     batch_norm_out = input
+
     reserve_space = None
     if has_reserve_space:
         reserve_space = helper.create_variable_for_type_inference(
@@ -2659,10 +2675,12 @@ def batch_norm(input,
     if reserve_space is not None:
         outputs["ReserveSpace"] = reserve_space
 
-    helper.append_op(
-        type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs)
+    helper.append_op(type=op_type, inputs=inputs, outputs=outputs, attrs=attrs)
 
-    return helper.append_activation(batch_norm_out)
+    if use_fused_act:
+        return batch_norm_out
+    else:
+        return helper.append_activation(batch_norm_out)
 
 
 def instance_norm(input,

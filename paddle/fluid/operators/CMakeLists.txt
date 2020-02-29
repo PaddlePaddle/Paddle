@@ -59,7 +59,7 @@ if(WITH_COVERAGE OR NOT WITH_AVX OR WIN32)
 endif()
 
 register_operators(EXCLUDES py_func_op warpctc_op dgc_op
-	sync_batch_norm_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
+    sync_batch_norm_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
 
 if (WITH_GPU)
     # warpctc_op needs cudnn 7 above
