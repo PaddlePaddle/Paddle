@@ -28,6 +28,8 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/platform/device_tracer.h"
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler_helper.h"
@@ -88,7 +90,11 @@ void MemEvenRecorder::PushMemRecord(const void *ptr, const Place &place,
   if (g_state == ProfilerState::kDisabled) return;
   std::lock_guard<std::mutex> guard(mtx_);
   auto &events = address_memevent_[place];
-  PADDLE_ENFORCE(events.count(ptr) == 0, "");
+  PADDLE_ENFORCE_EQ(events.count(ptr), 0,
+                    platform::errors::InvalidArgument(
+                        "The Size out MemRecord must to be zero,"
+                        "but got %d",
+                        events.count(ptr)));
   events.emplace(ptr, std::unique_ptr<RecordMemEvent>(
                           new MemEvenRecorder::RecordMemEvent(place, size)));
 }
@@ -182,9 +188,10 @@ void PopEvent(const std::string &name) {
   GetEventList().Record(EventType::kPopRange, name, g_thread_id);
 }
 void EnableProfiler(ProfilerState state) {
-  PADDLE_ENFORCE(state != ProfilerState::kDisabled,
-                 "Can't enable profiling, since the input state is ",
-                 "ProfilerState::kDisabled");
+  PADDLE_ENFORCE_NE(state, ProfilerState::kDisabled,
+                    platform::errors::InvalidArgument(
+                        "Can't enable profiling, since the input state is"
+                        "ProfilerState::kDisabled"));
   SynchronizeAllDevice();
   std::lock_guard<std::mutex> l(profiler_mu);
   if (state == g_state) {

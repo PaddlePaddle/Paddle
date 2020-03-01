@@ -105,7 +105,7 @@ void SynchronizeAllDevice() {
   int count = GetCUDADeviceCount();
   for (int i = 0; i < count; i++) {
     SetDeviceId(i);
-    PADDLE_ENFORCE(cudaDeviceSynchronize());
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaDeviceSynchronize());
   }
 #endif
 }
