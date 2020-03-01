@@ -353,15 +353,23 @@ static __global__ void KeBNBackwardData(
 template <typename DeviceContext, typename T>
 void SyncBatchNormGradFunctor(
     const framework::ExecutionContext &ctx, const DataLayout layout,
-    const framework::Tensor *x, const framework::Tensor *scale,
-    const framework::Tensor *bias, framework::Tensor *d_x,
-    const framework::Tensor *d_y, framework::Tensor *d_scale,
-    framework::Tensor *d_bias, const framework::Tensor *mean,
-    const framework::Tensor *variance, const double epsilon) {
-  bool is_inplace = false;
+    const framework::Tensor *scale, const framework::Tensor *bias,
+    framework::Tensor *d_x, const framework::Tensor *d_y,
+    framework::Tensor *d_scale, framework::Tensor *d_bias,
+    const framework::Tensor *mean, const framework::Tensor *variance,
+    const double epsilon) {
+  // sync_batch_norm with inplace as false will take X as grad input, which
+  // is same as cuDNN batch_norm backward calculation, batch_norm
+  // with inplace as true only take Y as input and X should be calculate
+  // by inverse operation of batch_norm on Y
+  const Tensor *x;
+  bool is_inplace;
   if (ctx.HasInput("Y")) {
-    auto *y = ctx.Input<Tensor>("Y");
-    is_inplace = (y != nullptr && x->data<T>() == y->data<T>());
+    x = ctx.Input<Tensor>("Y");
+    is_inplace = true;
+  } else {
+    x = ctx.Input<Tensor>("X");
+    is_inplace = false;
   }
 
   const auto &x_dims = x->dims();

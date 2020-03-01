@@ -465,6 +465,9 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
                       "in gradient op kernel of batch_norm_mkldnn_op now.");
   }
 
+  // batch_norm_grad with inplace takes Y as input, without inplace
+  // takes X as input. HasInput will throw exception in compile time,
+  // so only infer shape in run time here.
   if (ctx->IsRuntime()) {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X") || ctx->HasInput("Y"), true,
                       "Input(X) and Input(Y) should not be all null.");

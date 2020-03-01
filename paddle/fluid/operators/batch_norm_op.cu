@@ -462,6 +462,10 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
 
+    // batch_norm with inplace as false will take X as grad input, which
+    // is same as cuDNN batch_norm backward calculation, batch_norm
+    // with inplace as true only take Y as input and X should be calculate
+    // by inverse operation of batch_norm on Y
     const Tensor *x;
     bool is_inplace;
     if (ctx.HasInput("Y")) {
