@@ -81,9 +81,7 @@ class HdfsStore {
 namespace paddle {
 namespace framework {
 
-enum GlooStoreType {
-  HDFS
-};
+enum GlooStoreType { HDFS };
 
 class GlooWrapper {
  public:

@@ -583,7 +583,8 @@ class GeneralRoleMaker(RoleMakerBase):
                 gloo.set_rank(current_id)
                 gloo.set_size(len(worker_endpoints))
                 gloo.set_hdfs_store(self._hdfs_path.rstrip("/") + "/trainer",
-                                    self._hdfs_name, self._hdfs_ugi)
+                                    self._hdfs_name,
+                                    self._hdfs_ugi)
                 gloo.set_prefix(self._prefix)
                 gloo.set_timeout_seconds(
                     self._init_timeout_seconds, self._run_timeout_seconds)
@@ -606,7 +607,8 @@ class GeneralRoleMaker(RoleMakerBase):
                 gloo.set_rank(current_id)
                 gloo.set_size(len(eplist))
                 gloo.set_hdfs_store(self._hdfs_path.rstrip("/") + "/pserver",
-                                    self._hdfs_name, self._hdfs_ugi)
+                                    self._hdfs_name,
+                                    self._hdfs_ugi)
                 gloo.set_prefix(self._prefix)
                 gloo.set_timeout_seconds(
                     self._init_timeout_seconds, self._run_timeout_seconds)

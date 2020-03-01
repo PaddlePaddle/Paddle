@@ -160,12 +160,13 @@ void GlooWrapper::Init() {
     case GlooStoreType::HDFS: {
       auto file_store = gloo::rendezvous::HdfsStore(hdfs_path_);
       file_store.SetTimeoutSeconds(init_timeout_.count());
-      prefix_store_ = std::make_shared<gloo::rendezvous::PrefixStore>(prefix_, file_store);
+      prefix_store_ =
+          std::make_shared<gloo::rendezvous::PrefixStore>(prefix_, file_store);
       break;
     }
     default:
       PADDLE_THROW("unknown store type: " + std::to_string(store_type_));
-  };
+  }
   CHECK(prefix_store_ != nullptr) << "store should not be null";  // NOLINT
   auto dev = gloo::transport::tcp::CreateDevice(attr);
   auto context = std::make_shared<gloo::rendezvous::Context>(rank_, size_);
