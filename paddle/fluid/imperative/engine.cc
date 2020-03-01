@@ -156,15 +156,6 @@ void BasicEngine::PrepareDeps() {
     SetBackwardOutputs(cur_op);
 
     PrepareGradAccumulators(cur_op);
-    /*
-    for (const auto& pair : cur_op->GetOutsMap()) {
-      for (const auto& var : pair.second) {
-        if (!var) continue;
-
-        map_all_var[var.get()]++;
-      }
-    }
-    */
 
     auto& grad_pending_ops = cur_op->GradPendingOps();
     for (auto* grad_pending_op : grad_pending_ops) {
@@ -176,22 +167,6 @@ void BasicEngine::PrepareDeps() {
       }
     }
   }
-  /*
-  for (auto& it : map_all_var) {
-      if (it.second > 1) {
-        auto& accumulator = accumulators_[it.first];
-        if (!accumulator) {
-          if (backward_strategy_.sorted_sum_gradient_) {
-            accumulator.reset(new SortedGradientAccumulator(it.first));
-          } else {
-            accumulator.reset(new EagerGradientAccumulator(it.first));
-          }
-        }
-
-        accumulator->set_ref(it.second);
-      }
-  }
-  */
 }
 
 void BasicEngine::SumGradient(OpBase* op, std::shared_ptr<VarBase> src,
@@ -223,7 +198,6 @@ void BasicEngine::Execute() {
     NameVarBaseMap tmp_outs(bwd_outs);
     // 1. construct the output map 2. replace the element in the map
     // A var may be coresponding to several grad var in one op
-    need_accu_var_list.clear();
     for (auto it = tmp_outs.begin(); it != tmp_outs.end(); ++it) {
       for (size_t i = 0; i < it->second.size(); ++i) {
         auto tmp_var =
@@ -232,7 +206,7 @@ void BasicEngine::Execute() {
         auto var = it->second[i];
         it->second[i] = tmp_var;
         if (var) {
-          need_accu_var_list.emplace_back(
+          need_accu_var_list_.emplace_back(
               make_pair(var.get(), std::move(tmp_var)));
           var->ClearGradOps();
         }
@@ -243,11 +217,13 @@ void BasicEngine::Execute() {
     RunOp(cur_op, bwd_ins, tmp_outs, cur_op->place());
     // Step 2: Sum Gradient
 
-    if (need_accu_var_list.size() > 0) {
-      for (auto& pair : need_accu_var_list) {
+    if (need_accu_var_list_.size() > 0) {
+      for (auto& pair : need_accu_var_list_) {
         SumGradient(cur_op, std::move(pair.second), pair.first);
       }
     }
+
+    need_accu_var_list_.clear();
 
     // Step 3: Collect ready ops
 
