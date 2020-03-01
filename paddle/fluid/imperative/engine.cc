@@ -34,7 +34,7 @@ void Engine::RunOp(paddle::imperative::OpBase* op,
                    const paddle::imperative::NameVarBaseMap& ins,
                    const paddle::imperative::NameVarBaseMap& outs,
                    const paddle::platform::Place& place) {
-  platform::RecordEvent event(op->Type());
+  // platform::RecordEvent event(op->Type());
 
   op->Run(ins, outs);
 }
@@ -62,7 +62,7 @@ void BasicEngine::Init(VarBase* var, const detail::BackwardStrategy& strategy) {
     }
   }
   init_ops_ = ops;
-  platform::RecordEvent record_event("Imperative Backward");
+  // platform::RecordEvent record_event("Imperative Backward");
   VLOG(3) << "start backward";
 
   PADDLE_ENFORCE_EQ(var->HasGradVar(), true,
@@ -155,7 +155,8 @@ void BasicEngine::PrepareDeps() {
 
     SetBackwardOutputs(cur_op);
 
-    // PrepareGradAccumulators(cur_op);
+    PrepareGradAccumulators(cur_op);
+    /*
     for (const auto& pair : cur_op->GetOutsMap()) {
       for (const auto& var : pair.second) {
         if (!var) continue;
@@ -163,6 +164,7 @@ void BasicEngine::PrepareDeps() {
         map_all_var[var.get()]++;
       }
     }
+    */
 
     auto& grad_pending_ops = cur_op->GradPendingOps();
     for (auto* grad_pending_op : grad_pending_ops) {
@@ -173,8 +175,9 @@ void BasicEngine::PrepareDeps() {
         q.push(grad_pending_op);
       }
     }
-
-    for (auto& it : map_all_var) {
+  }
+  /*
+  for (auto& it : map_all_var) {
       if (it.second > 1) {
         auto& accumulator = accumulators_[it.first];
         if (!accumulator) {
@@ -187,8 +190,8 @@ void BasicEngine::PrepareDeps() {
 
         accumulator->set_ref(it.second);
       }
-    }
   }
+  */
 }
 
 void BasicEngine::SumGradient(OpBase* op, std::shared_ptr<VarBase> src,
@@ -217,47 +220,27 @@ void BasicEngine::Execute() {
     auto& bwd_ins = cur_op->GetInsMap();
     auto& bwd_outs = cur_op->GetOutsMap();
 
-    /*
-    NameVarBaseMap tmp_outs;
+    NameVarBaseMap tmp_outs(bwd_outs);
+    // 1. construct the output map 2. replace the element in the map
     // A var may be coresponding to several grad var in one op
-    std::unordered_map<VarBase*, std::vector<std::shared_ptr<VarBase>>> var_map;
-    for (auto& bwd_out : bwd_outs) {
-      auto& tmp_var_list = tmp_outs[bwd_out.first];
-      tmp_var_list.reserve(bwd_out.second.size());
-      for (auto& var : bwd_out.second) {
+    need_accu_var_list.clear();
+    for (auto it = tmp_outs.begin(); it != tmp_outs.end(); ++it) {
+      for (size_t i = 0; i < it->second.size(); ++i) {
         auto tmp_var =
             std::make_shared<VarBase>(false, "Gtmp@");  // Do not need grad
-        tmp_var_list.emplace_back(tmp_var);
+
+        auto var = it->second[i];
+        it->second[i] = tmp_var;
         if (var) {
-          var_map[var.get()].emplace_back(std::move(tmp_var));
-
+          need_accu_var_list.emplace_back(
+              make_pair(var.get(), std::move(tmp_var)));
           var->ClearGradOps();
-        }
-      }
-    }
-    */
-
-    auto* backward_outs = cur_op->GetMutableOutsMap();
-    std::vector<std::pair<VarBase*, std::shared_ptr<VarBase>>>
-        need_accu_var_list;
-    for (auto& backward_iter : *backward_outs) {
-      auto& var_list = backward_iter.second;
-      for (size_t i = 0; i < var_list.size(); ++i) {
-        if (accumulators_.count(var_list[i].get())) {
-          // need acccumulate
-          auto tmp_var =
-              std::make_shared<VarBase>(false, "Gtmp@");  // Do not need grad
-          VarBase* t_var = var_list[i].get();
-
-          var_list[i] = tmp_var;
-
-          need_accu_var_list.emplace_back(make_pair(t_var, std::move(tmp_var)));
         }
       }
     }
 
     VLOG(3) << "Start to execute grad op " << cur_op->Type();
-    RunOp(cur_op, bwd_ins, bwd_outs, cur_op->place());
+    RunOp(cur_op, bwd_ins, tmp_outs, cur_op->place());
     // Step 2: Sum Gradient
 
     if (need_accu_var_list.size() > 0) {
@@ -265,21 +248,6 @@ void BasicEngine::Execute() {
         SumGradient(cur_op, std::move(pair.second), pair.first);
       }
     }
-
-    /*
-    {
-      platform::RecordEvent record_event("merge_grads");
-      for (auto& var_pair : var_map) {
-        auto* dst_var = var_pair.first;
-        if (dst_var == nullptr) continue;
-        for (auto& src_var : var_pair.second) {
-          VLOG(3) << "Sum gradient of variable " << dst_var->Name()
-                  << " after op " << cur_op->Type();
-          SumGradient(cur_op, std::move(src_var), dst_var);
-        }
-      }
-    }
-    */
 
     // Step 3: Collect ready ops
 
