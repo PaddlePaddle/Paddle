@@ -111,6 +111,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
 
     IR_NODE_LINK_TO(lookup_table1_w, embedding_eltwise_layernorm);
     IR_NODE_LINK_TO(lookup_table2_w, embedding_eltwise_layernorm);
+    IR_NODE_LINK_TO(lookup_table3_w, embedding_eltwise_layernorm);
     IR_NODE_LINK_TO(layer_norm_bias, embedding_eltwise_layernorm);
     IR_NODE_LINK_TO(layer_norm_scale, embedding_eltwise_layernorm);
     IR_NODE_LINK_TO(embedding_eltwise_layernorm, layer_norm_out);

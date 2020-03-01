@@ -49,7 +49,8 @@ struct PairForLayerNormAddFunctor {
 template <typename T, bool DoRelu, int BlockDim>
 __global__ void InplaceAddReluAddLayerNormKernel(const T* y, const T* bias_0,
                                                  const T* bias_1,
-                                                 const T* scale, T* out, int M,
+                                                 const T* scale, T* out,
+                                                 T* mean, T* variance, int M,
                                                  int N, float epsilon) {
   using BlockReduce = cub::BlockReduce<PairForLayerNorm<T>, BlockDim>;
   __shared__ typename BlockReduce::TempStorage temp_storage;
@@ -94,6 +95,12 @@ __global__ void InplaceAddReluAddLayerNormKernel(const T* y, const T* bias_0,
       T variance_i = static_cast<T>(pair.second_ / N - mean_i * mean_i);
       shared_mem[BlockDim] = mean_i;
       shared_mem[BlockDim + 1] = variance_i;
+      if (mean) {
+        mean[blockIdx.x] = mean_i;
+      }
+      if (variance) {
+        variance[blockIdx.x] = variance_i;
+      }
     }
     __syncthreads();
     T mean_i = shared_mem[BlockDim];
@@ -149,6 +156,13 @@ class FusedFCElementwiseLayerNormOpKernel : public framework::OpKernel<T> {
     const T* bias_1_data = bias_1 ? bias_1->data<T>() : nullptr;
     const T* scale_data = scale ? scale->data<T>() : nullptr;
 
+    auto* mean = ctx.Output<framework::Tensor>("Mean");
+    auto* variance = ctx.Output<framework::Tensor>("Variance");
+
+    T* mean_data = mean ? mean->mutable_data<T>(ctx.GetPlace()) : nullptr;
+    T* variance_data =
+        variance ? variance->mutable_data<T>(ctx.GetPlace()) : nullptr;
+
     bool with_relu =
         (ctx.Attr<std::string>("activation_type") == "relu") ? true : false;
     float epsilon = ctx.Attr<float>("epsilon");
@@ -161,8 +175,8 @@ class FusedFCElementwiseLayerNormOpKernel : public framework::OpKernel<T> {
                 T, true,
                 kPowerOfTwoDim><<<std::max(max_threads / kPowerOfTwoDim, 1),
                                   kPowerOfTwoDim, 0, dev_ctx.stream()>>>(
-                y_data, bias_0_data, bias_1_data, scale_data, out_data, M, N,
-                epsilon));
+                y_data, bias_0_data, bias_1_data, scale_data, out_data,
+                mean_data, variance_data, M, N, epsilon));
       }
     } else {
       switch (platform::RoundToPowerOfTwo(N)) {
@@ -171,8 +185,8 @@ class FusedFCElementwiseLayerNormOpKernel : public framework::OpKernel<T> {
                 T, false,
                 kPowerOfTwoDim><<<std::max(max_threads / kPowerOfTwoDim, 1),
                                   kPowerOfTwoDim, 0, dev_ctx.stream()>>>(
-                y_data, bias_0_data, bias_1_data, scale_data, out_data, M, N,
-                epsilon));
+                y_data, bias_0_data, bias_1_data, scale_data, out_data,
+                mean_data, variance_data, M, N, epsilon));
       }
     }
   }

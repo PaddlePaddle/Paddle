@@ -66,12 +66,12 @@ __global__ void emb_eltwise_layernorm_kernel(
   // blockIdx.y: batch
   // gridDim.x: Seq
   // gridDim.y: Batch
-  __shared__ int word_id;
-  __shared__ int pos_id;
-  __shared__ int sent_id;
+  __shared__ int64_t word_id;
+  __shared__ int64_t pos_id;
+  __shared__ int64_t sent_id;
 
   const T rhidden = T(1.f) / T(hidden);
-  const int seq_pos = blockIdx.y + blockIdx.x * gridDim.y;
+  const int64_t seq_pos = blockIdx.y + blockIdx.x * gridDim.y;
   if (threadIdx.x == 0) {
     word_id = word_id_d[seq_pos];
     pos_id = pos_id_d[seq_pos];
@@ -80,15 +80,16 @@ __global__ void emb_eltwise_layernorm_kernel(
   __syncthreads();
 
   // load word, pos, sentence embeddings and add them toghether
-  const int woffset = word_id * hidden;
-  const int poffset = pos_id * hidden;
-  const int soffset = sent_id * hidden;
-  const int out_offset = seq_pos * hidden;
+  const int64_t woffset = word_id * hidden;
+  const int64_t poffset = pos_id * hidden;
+  const int64_t soffset = sent_id * hidden;
+  const int64_t out_offset = seq_pos * hidden;
 
   cv2<T> thread_data;
   thread_data.x = 0;
   thread_data.y = 0;
 
+#pragma unroll
   for (int it = threadIdx.x; it < hidden; it += TPB) {
     const T w(word_emb[woffset + it]);
     const T p(pos_emb[poffset + it]);
