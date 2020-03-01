@@ -192,7 +192,7 @@ class GradientClipByNorm(BaseGradientClipAttr):
     """
     Convert the input multidimensional Tensor :math:`X` to a multidimensional Tensor whose L2 norm does not exceed the given two-norm maximum ( :math:`clip\_norm` ).
 
-    The tensor is not passed through this class, but passed through the parametre of ``main_program`` in ``fluid.program_guard``.
+    The tensor is not passed through this class, but passed through the parameter of ``main_program`` in ``fluid.program_guard``.
 
     This class limits the L2 norm of the input :math:`X` within :math:`clip\_norm`.
 

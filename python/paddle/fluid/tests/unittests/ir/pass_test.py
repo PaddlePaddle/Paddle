@@ -130,7 +130,7 @@ class PassTest(unittest.TestCase):
 
         if startup_on_cpu and not isinstance(place, fluid.CPUPlace):
             warnings.warn(
-                "Parameters are on CPU, and will be transfered to GPU "
+                "Parameters are on CPU, and will be transferred to GPU "
                 "automatically by data transform.")
 
         outs_opt, lods_opt = self._run_program(executor, opt_program)
