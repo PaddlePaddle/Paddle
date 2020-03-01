@@ -106,5 +106,46 @@ TEST(InferVarType, sum_op_without_infer_var_type) {
             prog.MutableBlock(0)->Var("test2_out")->GetType());
 }
 
+TEST(InferVarType, multiple_api) {
+  ProgramDesc prog;
+
+  auto *block = prog.MutableBlock(0);
+  auto *op = block->AppendOp();
+  op->SetType("sum_without_infer_var_type");
+  op->SetInput("X", {"test2_a", "test2_b"});
+  op->SetOutput("Out", {"test2_a_out", "test2_b_out"});
+
+  block->Var("test2_a")->SetType(proto::VarType::SELECTED_ROWS);
+  block->Var("test2_b")->SetType(proto::VarType::SELECTED_ROWS);
+  block->Var("test2_a_out");
+  block->Var("test2_b_out");
+
+  InferVarTypeContext ctx(op, block);
+
+  ASSERT_EQ(proto::VarType::SELECTED_ROWS, ctx.GetInputType("X"));
+  ASSERT_EQ(ctx.GetInputType("X"), ctx.GetType("test2_a"));
+
+  ASSERT_TRUE(ctx.InputTypeAllOf("X", proto::VarType::SELECTED_ROWS));
+  ASSERT_FALSE(ctx.InputTypeAnyOf("X", proto::VarType::LOD_TENSOR));
+
+  ctx.SyncTypeAndDataType("X", "Out");
+
+  ASSERT_EQ(proto::VarType::SELECTED_ROWS,
+            prog.MutableBlock(0)->Var("test2_a_out")->GetType());
+  ASSERT_EQ(proto::VarType::LOD_TENSOR,
+            prog.MutableBlock(0)->Var("test2_b_out")->GetType());
+
+  ctx.SetOutputType("Out", proto::VarType::SELECTED_ROWS, 1);
+  ASSERT_EQ(proto::VarType::SELECTED_ROWS,
+            prog.MutableBlock(0)->Var("test2_b_out")->GetType());
+
+  ASSERT_EQ(0, ctx.GetInputDataType("X"));
+
+  ctx.SetOutputDataType("Out", proto::VarType::FP32);
+  ASSERT_EQ(proto::VarType::FP32, ctx.GetOutputDataType("Out"));
+
+  ASSERT_FALSE(ctx.IsDygraph());
+}
+
 }  // namespace framework
 }  // namespace paddle

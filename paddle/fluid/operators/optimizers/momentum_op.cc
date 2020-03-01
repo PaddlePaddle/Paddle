@@ -26,7 +26,8 @@ class MomentumOpInferVarType : public framework::VarTypeInference {
     PADDLE_ENFORCE(
         in_var_type == framework::proto::VarType::SELECTED_ROWS ||
             in_var_type == framework::proto::VarType::LOD_TENSOR,
-        "Only support LodTensor and SelectedRows, Unexpected Input Type.");
+        platform::errors::InvalidArgument(
+            "Only support LodTensor and SelectedRows, Unexpected Input Type."));
 
     ctx->SetOutputType("ParamOut", in_var_type, framework::ALL_ELEMENTS);
   }

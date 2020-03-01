@@ -63,7 +63,8 @@ class InferVarTypeContext {
 
   virtual bool InputTypeAnyOf(const std::string& name,
                               proto::VarType::Type type) const {
-    PADDLE_ENFORCE_NOT_NULL(op_);
+    PADDLE_ENFORCE_NOT_NULL(
+        op_, platform::errors::PreconditionNotMet("op_ should not be null"));
     auto& inputs = op_->Input(name);
     return std::any_of(inputs.begin(), inputs.end(),
                        [this, &type](const std::string& name) {
@@ -73,7 +74,8 @@ class InferVarTypeContext {
 
   virtual bool InputTypeAllOf(const std::string& name,
                               proto::VarType::Type type) const {
-    PADDLE_ENFORCE_NOT_NULL(op_);
+    PADDLE_ENFORCE_NOT_NULL(
+        op_, platform::errors::PreconditionNotMet("op_ should not be null"));
     auto& inputs = op_->Input(name);
     return std::all_of(inputs.begin(), inputs.end(),
                        [this, &type](const std::string& name) {
@@ -83,20 +85,24 @@ class InferVarTypeContext {
 
   // not available in dygraph mode
   virtual const std::vector<std::string>& Input(const std::string& name) const {
-    PADDLE_ENFORCE_NOT_NULL(op_);
+    PADDLE_ENFORCE_NOT_NULL(
+        op_, platform::errors::PreconditionNotMet("op_ should not be null"));
     return op_->Input(name);
   }
 
   // not available in dygraph mode
   virtual const std::vector<std::string>& Output(
       const std::string& name) const {
-    PADDLE_ENFORCE_NOT_NULL(op_);
+    PADDLE_ENFORCE_NOT_NULL(
+        op_, platform::errors::PreconditionNotMet("op_ should not be null"));
     return op_->Output(name);
   }
 
   virtual void SyncTypeAndDataType(const std::string& input_name,
                                    const std::string& output_name,
                                    int index = 0) {
+    PADDLE_ENFORCE_NOT_NULL(
+        op_, platform::errors::PreconditionNotMet("op_ should not be null"));
     auto& x_name = op_->Input(input_name).at(index);
     auto& out_name = op_->Output(output_name).at(index);
 
@@ -122,80 +128,98 @@ class InferVarTypeContext {
   // legacy function, maybe removed in the future, don't use in new code
   // use SetOutputType instead
   virtual void SetType(const std::string& name, proto::VarType::Type type) {
-    PADDLE_ENFORCE_NOT_NULL(block_);
+    PADDLE_ENFORCE_NOT_NULL(
+        block_, platform::errors::PreconditionNotMet("op_ should not be null"));
     block_->FindRecursiveOrCreateVar(name).SetType(type);
   }
 
   virtual proto::VarType::Type GetInputType(const std::string& name,
                                             const int& index = 0) const {
+    PADDLE_ENFORCE_NOT_NULL(
+        op_, platform::errors::PreconditionNotMet("op_ should not be null"));
     return this->GetType(op_->Input(name).at(index));
   }
 
   // not available in dygraph mode
   virtual proto::VarType::Type GetType(const std::string& name) const {
-    PADDLE_ENFORCE_NOT_NULL(block_);
+    PADDLE_ENFORCE_NOT_NULL(block_, platform::errors::PreconditionNotMet(
+                                        "block_ should not be null"));
     return block_->FindRecursiveOrCreateVar(name).GetType();
   }
 
   virtual proto::VarType::Type GetInputDataType(const std::string& name,
                                                 const int& index = 0) const {
+    PADDLE_ENFORCE_NOT_NULL(
+        op_, platform::errors::PreconditionNotMet("op_ should not be null"));
     return this->GetDataType(op_->Input(name).at(index));
   }
 
   virtual proto::VarType::Type GetOutputDataType(const std::string& name,
                                                  const int& index = 0) const {
+    PADDLE_ENFORCE_NOT_NULL(
+        op_, platform::errors::PreconditionNotMet("op_ should not be null"));
     return this->GetDataType(op_->Output(name).at(index));
   }
 
   // not available in dygraph mode
   virtual proto::VarType::Type GetDataType(const std::string& name) const {
-    PADDLE_ENFORCE_NOT_NULL(block_);
+    PADDLE_ENFORCE_NOT_NULL(block_, platform::errors::PreconditionNotMet(
+                                        "block_ should not be null"));
     return block_->FindRecursiveOrCreateVar(name).GetDataType();
   }
 
   virtual void SetOutputDataType(const std::string& name,
                                  proto::VarType::Type type, int index = 0) {
+    PADDLE_ENFORCE_NOT_NULL(
+        op_, platform::errors::PreconditionNotMet("op_ should not be null"));
     auto& var_name = op_->Output(name).at(index);
     this->SetDataType(var_name, type);
   }
 
   // not available in dygraph mode
   virtual void SetDataType(const std::string& name, proto::VarType::Type type) {
-    PADDLE_ENFORCE_NOT_NULL(block_);
+    PADDLE_ENFORCE_NOT_NULL(block_, platform::errors::PreconditionNotMet(
+                                        "block_ should not be null"));
     block_->FindRecursiveOrCreateVar(name).SetDataType(type);
   }
 
   virtual std::vector<proto::VarType::Type> GetDataTypes(
       const std::string& name) const {
-    PADDLE_ENFORCE_NOT_NULL(block_);
+    PADDLE_ENFORCE_NOT_NULL(block_, platform::errors::PreconditionNotMet(
+                                        "block_ should not be null"));
     return block_->FindRecursiveOrCreateVar(name).GetDataTypes();
   }
 
   virtual void SetDataTypes(
       const std::string& name,
       const std::vector<proto::VarType::Type>& multiple_data_type) {
-    PADDLE_ENFORCE_NOT_NULL(block_);
+    PADDLE_ENFORCE_NOT_NULL(block_, platform::errors::PreconditionNotMet(
+                                        "block_ should not be null"));
     block_->FindRecursiveOrCreateVar(name).SetDataTypes(multiple_data_type);
   }
 
   virtual std::vector<int64_t> GetShape(const std::string& name) const {
-    PADDLE_ENFORCE_NOT_NULL(block_);
+    PADDLE_ENFORCE_NOT_NULL(block_, platform::errors::PreconditionNotMet(
+                                        "block_ should not be null"));
     return block_->FindRecursiveOrCreateVar(name).GetShape();
   }
 
   virtual void SetShape(const std::string& name,
                         const std::vector<int64_t>& dims) {
-    PADDLE_ENFORCE_NOT_NULL(block_);
+    PADDLE_ENFORCE_NOT_NULL(block_, platform::errors::PreconditionNotMet(
+                                        "block_ should not be null"));
     block_->FindRecursiveOrCreateVar(name).SetShape(dims);
   }
 
   virtual int32_t GetLoDLevel(const std::string& name) const {
-    PADDLE_ENFORCE_NOT_NULL(block_);
+    PADDLE_ENFORCE_NOT_NULL(block_, platform::errors::PreconditionNotMet(
+                                        "block_ should not be null"));
     return block_->FindRecursiveOrCreateVar(name).GetLoDLevel();
   }
 
   virtual void SetLoDLevel(const std::string& name, int32_t lod_level) {
-    PADDLE_ENFORCE_NOT_NULL(block_);
+    PADDLE_ENFORCE_NOT_NULL(block_, platform::errors::PreconditionNotMet(
+                                        "block_ should not be null"));
     block_->FindRecursiveOrCreateVar(name).SetLoDLevel(lod_level);
   }
 

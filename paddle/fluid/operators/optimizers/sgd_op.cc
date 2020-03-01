@@ -78,9 +78,10 @@ class SGDOpInferVarType : public framework::VarTypeInference {
     auto in_var_type = ctx->GetInputType("Param");
     PADDLE_ENFORCE(in_var_type == framework::proto::VarType::SELECTED_ROWS ||
                        in_var_type == framework::proto::VarType::LOD_TENSOR,
-                   "The input Var's type should be LoDtensor or SelectedRows,"
-                   " but the received type is %s",
-                   in_var_type);
+                   platform::errors::InvalidArgument(
+                       "The input Var's type should be LoDtensor or "
+                       "SelectedRows, but the received type is %s",
+                       in_var_type));
 
     ctx->SetOutputType("ParamOut", in_var_type, framework::ALL_ELEMENTS);
   }

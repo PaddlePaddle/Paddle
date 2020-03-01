@@ -40,10 +40,14 @@ using var_pair = std::pair<std::string, vb_vector>;
 TEST(test_layer, test_runtime_context) {
   std::shared_ptr<imperative::VarBase> vin(
       new imperative::VarBase(false, "vin"));
+  std::shared_ptr<imperative::VarBase> vin_b(
+      new imperative::VarBase(false, "vin_b"));
   std::shared_ptr<imperative::VarBase> vout(
       new imperative::VarBase(false, "vout"));
-  var_pair in_pair = var_pair("X", vb_vector(1, vin));
-  var_pair out_pair = var_pair("Out", vb_vector(1, vout));
+  std::shared_ptr<imperative::VarBase> vout_b(
+      new imperative::VarBase(false, "vout_b"));
+  var_pair in_pair = var_pair("X", {vin, vin_b});
+  var_pair out_pair = var_pair("Out", {vout, vout_b});
   imperative::NameVarBaseMap ins = {in_pair};
   imperative::NameVarBaseMap outs = {out_pair};
   framework::AttributeMap attrs;
@@ -54,7 +58,27 @@ TEST(test_layer, test_runtime_context) {
 
   ASSERT_TRUE(ctx->HasInput("X"));
   ASSERT_TRUE(ctx->HasOutput("Out"));
+  ASSERT_TRUE(ctx->InputTypeAnyOf("X", framework::proto::VarType::LOD_TENSOR));
+  ASSERT_TRUE(ctx->InputTypeAllOf("X", framework::proto::VarType::LOD_TENSOR));
 
+  ctx->SyncTypeAndDataType("X", "Out");
+
+  ASSERT_EQ(framework::proto::VarType::LOD_TENSOR, ctx->GetInputType("X"));
+  ASSERT_EQ(framework::proto::VarType::FP32, ctx->GetInputDataType("X"));
+  ASSERT_EQ(framework::proto::VarType::FP32, ctx->GetOutputDataType("Out"));
+
+  ctx->SetOutputType("Out", framework::proto::VarType::SELECTED_ROWS);
+  ctx->SetOutputDataType("Out", framework::proto::VarType::FP64,
+                         framework::ALL_ELEMENTS);
+  ctx->SetOutputDataType("Out", framework::proto::VarType::INT8);
+
+  ASSERT_EQ(framework::proto::VarType::INT8, ctx->GetOutputDataType("Out"));
+  ASSERT_EQ(framework::proto::VarType::FP64, ctx->GetOutputDataType("Out", 1));
+
+  ASSERT_ANY_THROW(ctx->Input("X"));
+  ASSERT_ANY_THROW(ctx->Output("Out"));
+  ASSERT_ANY_THROW(ctx->GetType("vin"));
+  ASSERT_ANY_THROW(ctx->GetDataType("vin"));
   ASSERT_ANY_THROW(ctx->GetInputDataType("vin"));
   std::vector<framework::proto::VarType::Type> NullType;
   ASSERT_ANY_THROW(ctx->SetDataTypes("vin", NullType));
