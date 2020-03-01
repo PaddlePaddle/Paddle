@@ -436,7 +436,6 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
 
 void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
   // check input
-  PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) should not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasInput("Scale"), true,
                     "Input(scale) should not be null.");
   PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Y")), true,
@@ -466,20 +465,26 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
                       "in gradient op kernel of batch_norm_mkldnn_op now.");
   }
 
-  const auto x_dims = ctx->GetInputDim("X");
-  const DataLayout data_layout = framework::StringToDataLayout(
-      ctx->Attrs().Get<std::string>("data_layout"));
+  if (ctx->IsRuntime()) {
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X") || ctx->HasInput("Y"), true,
+                      "Input(X) and Input(Y) should not be all null.");
+    auto input_name = "Y";
+    if (ctx->HasInput("X")) input_name = "X";
+    const auto x_dims = ctx->GetInputDim(input_name);
+    const DataLayout data_layout = framework::StringToDataLayout(
+        ctx->Attrs().Get<std::string>("data_layout"));
 
-  const int C =
-      ((this->IsMKLDNNType() == true) || (data_layout == DataLayout::kNCHW)
-           ? x_dims[1]
-           : x_dims[x_dims.size() - 1]);
+    const int C =
+        ((this->IsMKLDNNType() == true) || (data_layout == DataLayout::kNCHW)
+             ? x_dims[1]
+             : x_dims[x_dims.size() - 1]);
 
-  ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
-  // has_scale_grad == has_bias_grad, judge has_scale_grad is enough
-  if (has_scale_grad) {
-    ctx->SetOutputDim(framework::GradVarName("Scale"), {C});
-    ctx->SetOutputDim(framework::GradVarName("Bias"), {C});
+    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+    // has_scale_grad == has_bias_grad, judge has_scale_grad is enough
+    if (has_scale_grad) {
+      ctx->SetOutputDim(framework::GradVarName("Scale"), {C});
+      ctx->SetOutputDim(framework::GradVarName("Bias"), {C});
+    }
   }
 }
 
@@ -546,7 +551,6 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    const auto *x = ctx.Input<Tensor>("X");
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
@@ -559,10 +563,19 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     const float epsilon = ctx.Attr<float>("epsilon");
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
-    bool is_inplace = false;
+
+    // batch_norm with inplace as false will take X as grad input, which
+    // is same as cuDNN batch_norm backward calculation, batch_norm
+    // with inplace as true only take Y as input and X should be calculate
+    // by inverse operation of batch_norm on Y
+    const Tensor *x;
+    bool is_inplace;
     if (ctx.HasInput("Y")) {
-      auto *y = ctx.Input<Tensor>("Y");
-      is_inplace = (y != nullptr && x->data<T>() == y->data<T>());
+      x = ctx.Input<Tensor>("Y");
+      is_inplace = true;
+    } else {
+      x = ctx.Input<Tensor>("X");
+      is_inplace = false;
     }
 
     PADDLE_ENFORCE_EQ(
@@ -681,7 +694,6 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
         ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), sample_size, N * C);
         EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()),
                                  sample_size, N * C);
-        d_x_arr.setZero();
 
         for (int nc = 0; nc < N * C; ++nc) {
           int c = nc % C;
@@ -729,7 +741,6 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
         ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), C, N * sample_size);
         EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()), C,
                                  N * sample_size);
-        d_x_arr.setZero();
 
         for (int nhw = 0; nhw < N * sample_size; ++nhw) {
           dy_sum_arr += d_y_arr.col(nhw);

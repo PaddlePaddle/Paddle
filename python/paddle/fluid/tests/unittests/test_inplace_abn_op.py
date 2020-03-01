@@ -64,6 +64,7 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                     moving_variance_name='bn_moving_variance',
                     data_layout=layout,
                     is_test=only_forward,
+                    in_place=inplace,
                     act_alpha=alpha)
                 # NOTE: in inplace mode input and output of bn
                 # may have same name, multiply 1. to generate 
@@ -86,7 +87,13 @@ class TestInplaceANBOpTraining(unittest.TestCase):
         fetch_names = []
         for inplace in [False, True]:
             main, startup, outs = self.build_program(
-                place, layout, seed, only_forward, activation, alpha)
+                place,
+                layout,
+                seed,
+                only_forward,
+                activation,
+                alpha,
+                inplace=inplace)
             exe = fluid.Executor(place)
             exe.run(startup)
 
@@ -140,7 +147,7 @@ class TestInplaceANBOpTraining(unittest.TestCase):
             for layout in layouts:
                 for activation, alpha in zip([None, 'elu', 'leaky_relu'],
                                              [0., 1., 0.02]):
-                    for infer_only in [False, True]:
+                    for infer_only in [True, False]:
                         self.compare(place, layout, infer_only, activation,
                                      alpha, use_cuda)
 

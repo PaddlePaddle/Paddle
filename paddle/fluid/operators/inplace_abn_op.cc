@@ -62,7 +62,7 @@ class InplaceABNGradOp : public paddle::operators::BatchNormGradOp {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     const auto* var = ctx.InputVar(framework::GradVarName("Y"));
-    auto input_data_type = ctx.Input<Tensor>("X")->type();
+    auto input_data_type = ctx.Input<Tensor>("Y")->type();
     if (var == nullptr) {
       PADDLE_THROW("can't find Y@GRAD");
     }
@@ -114,7 +114,6 @@ class InplaceABNOpGradMaker : public framework::SingleGradOpMaker<T> {
   std::unique_ptr<T> Apply() const override {
     auto* op = new T();
     op->SetType(this->ForwardOpType() + "_grad");
-    op->SetInput("X", this->Input("X"));
     op->SetInput("Y", this->Output("Y"));
     op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
 
@@ -138,6 +137,11 @@ class InplaceABNOpGradMaker : public framework::SingleGradOpMaker<T> {
     return std::unique_ptr<T>(op);
   }
 };
+
+DECLARE_INPLACE_OP_INFERER(InplaceABNInplaceInferer, {"X", "Y"});
+DECLARE_INPLACE_OP_INFERER(InplaceABNGradInplaceInferer,
+                           {framework::GradVarName("Y"),
+                            framework::GradVarName("X")});
 
 template <typename DeviceContext, typename T>
 class InplaceABNKernel
@@ -178,11 +182,6 @@ class InplaceABNGradKernel
     BatchNormGradKernel<DeviceContext, T>::Compute(ctx);
   }
 };
-
-DECLARE_INPLACE_OP_INFERER(InplaceABNInplaceInferer, {"X", "Y"});
-DECLARE_INPLACE_OP_INFERER(InplaceABNGradInplaceInferer,
-                           {framework::GradVarName("Y"),
-                            framework::GradVarName("X")});
 
 }  // namespace operators
 }  // namespace paddle
