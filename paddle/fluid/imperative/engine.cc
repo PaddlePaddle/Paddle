@@ -34,8 +34,6 @@ void Engine::RunOp(paddle::imperative::OpBase* op,
                    const paddle::imperative::NameVarBaseMap& ins,
                    const paddle::imperative::NameVarBaseMap& outs,
                    const paddle::platform::Place& place) {
-  // platform::RecordEvent event(op->Type());
-
   op->Run(ins, outs);
 }
 
@@ -62,7 +60,6 @@ void BasicEngine::Init(VarBase* var, const detail::BackwardStrategy& strategy) {
     }
   }
   init_ops_ = ops;
-  // platform::RecordEvent record_event("Imperative Backward");
   VLOG(3) << "start backward";
 
   PADDLE_ENFORCE_EQ(var->HasGradVar(), true,
