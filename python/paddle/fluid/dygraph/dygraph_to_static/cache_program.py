@@ -29,7 +29,7 @@ __all__ = ['ProgramCache']
 
 class FunctionCache(object):
     """
-    Caches the transformed functions to avoid redundant conversions to the same function.
+    Caches the transformed functions to avoid redundant conversions of the same function.
     """
 
     def __init__(self):
@@ -83,7 +83,7 @@ class ProgramCache(object):
 
     _instance = None
 
-    # @synchronized
+    @synchronized
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
             cls._instance = object.__new__(cls, *args, **kwargs)
@@ -125,15 +125,15 @@ class ProgramCache(object):
 
     def __call__(self, *args, **kwargs):
         """
-        Calls the main_program specialized to the inputs.
+        Executes the main_program with specialized inputs.
         """
-        # 1. Adds `fluid.data` layers for input or updates batch_data
+        # 1. Adds `fluid.data` layers for input and updates batch_data
         self._prepare(args, kwargs)
-        # 2. Run cached program to avoid inserting forward ops repeatedly.
+        # 2. Runs cached program to avoid inserting forward ops repeatedly.
         if self.is_repeated:
             return self._run(args, kwargs)
 
-        # 3. Build program once.
+        # 3. Builds program only once.
         last_func = self.traced_funcs.pop()
         outputs = self._get_or_build_program(last_func, args, kwargs)
         self.func_outputs_cache[last_func] = outputs
@@ -147,7 +147,7 @@ class ProgramCache(object):
         """
         Checks whether the current program is consistent with `default_main_program`.
         In some models and unittest, program will be switched frequently by `program_guard`.
-        If does, the cached information is not available and should be reset.
+        If does, the cached program and other properties are not available and should be reset.
         """
         if self.program:
             if self.program != framework.default_main_program():
@@ -159,7 +159,7 @@ class ProgramCache(object):
 
     def _prepare(self, args, kwargs):
         """
-        Prepares batch_data and Adds `fluid.data` layer into program.
+        Prepares batch_data and adds `fluid.data` layers into program.
         """
         if not self.inputs:
             self._add_feed_layers(args, kwargs)
@@ -174,7 +174,7 @@ class ProgramCache(object):
         self._check_cache_valid()
         static_func = self.func_cache(dyfunc)
         # self._forward_func is entry function of Net or Model.
-        # It can be called multiple times, but layers from thess function
+        # It can be called for multiple times, but layers from these functions
         # call stack will be added into self._program only once.
         # After that, cached program will be always returned by default.
         if static_func == self.forward_func:
@@ -189,7 +189,7 @@ class ProgramCache(object):
 
     def _get_or_build_program(self, func, args, kwargs):
         """
-        Returns program for the inputs. If called at first time,
+        Returns program of the input function. If called at first time,
         builds a new program and caches it.
         """
         with framework.program_guard(self.program):
@@ -210,7 +210,7 @@ class ProgramCache(object):
 
     def _run(self, args, kwargs):
         """
-        Executes the main_program and returns Tensor of fetch_list
+        Executes the main_program and returns Tensors of fetch_list
         """
         assert self.inputs, "inputs is not initialized."
         assert self.batch_data, "batch_data is empty."
@@ -251,7 +251,7 @@ class ProgramCache(object):
     def _add_feed_layers(self, args, kwargs):
         """
         Adds `fluid.data` if the input `numpy.ndarray` is converted into `Variable`
-        by `to_variable()`, it make program to be executed dynamically.
+        by `to_variable()`, it makes program to be executed dynamically.
         """
         feed_name_to_idx = self._feed_name_to_idx(self.forward_func)
         with framework.program_guard(self.program):
@@ -284,7 +284,7 @@ class ProgramCache(object):
 
     def _feed_name_to_idx(self, func):
         """
-        Returns names and index of input args from `forward(args)`
+        Returns name and index of input args from `forward(args)`
         that need to be replaced with `fluid.data`.
         """
         transformer = self.func_cache.transformer(func)
