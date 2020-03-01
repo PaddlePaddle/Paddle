@@ -92,13 +92,14 @@ void HdfsStore::wait(const std::vector<std::string>& keys,
                      const std::chrono::milliseconds&) {  // NOLINT
 #ifdef PADDLE_WITH_GLOO
   auto start = std::chrono::steady_clock::now();
-  while (!Check(keys)) {
+  int last_check_rank = -1;
+  while (!Check(keys, &last_check_rank)) {
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::steady_clock::now() - start);
     if (wait_timeout_ != gloo::kNoTimeout && elapsed > wait_timeout_) {
-      PADDLE_ENFORCE_EQ(0, 1, paddle::platform::errors::ExecutionTimeout(
-                                  "HdfsStore::wait, Wait timeout for key(s): " +
-                                  ::gloo::MakeString(keys)));
+      throw ::gloo::TimeoutException(
+          "TIMEOUT self_rank = " + std::to_string(self_rank_) +
+          " pair_rank = " +  std::to_string(last_check_rank));
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(wait_sleep_ms_));
   }
@@ -122,18 +123,28 @@ std::string HdfsStore::ObjectPath(const std::string& name) {
   return path_ + "/" + EncodeName(name);
 }
 
-bool HdfsStore::Check(const std::vector<std::string>& keys) {
+bool HdfsStore::Check(const std::vector<std::string>& keys,
+                      int* last_check_rank) {
 #ifdef PADDLE_WITH_GLOO
   std::vector<std::string> paths;
   for (const auto& key : keys) {
     paths.push_back(ObjectPath(key));
   }
+  int index = -1;
   for (const auto& path : paths) {
+    ++index;
     bool is_exists = paddle::framework::fs_exists(path);
     VLOG(3) << "HdfsStore::Check " << is_exists << " path " << path;
     if (!is_exists) {
+      if (last_check_rank) {
+        if (index >= self_rank_) { ++index; }
+        *last_check_rank = index;
+      }
       return false;
     }
+  }
+  if (last_check_rank) {
+    *last_check_rank = -1;
   }
 #endif
   return true;
@@ -156,12 +167,14 @@ void GlooWrapper::Init() {
 #ifdef PADDLE_WITH_GLOO
   gloo::transport::tcp::attr attr;
   attr.iface = iface_;
+  std::shared_ptr<gloo::rendezvous::HdfsStore> file_store = nullptr;
   switch (store_type_) {
     case GlooStoreType::HDFS: {
-      auto file_store = gloo::rendezvous::HdfsStore(hdfs_path_);
-      file_store.SetTimeoutSeconds(init_timeout_.count());
+      file_store = std::make_shared<gloo::rendezvous::HdfsStore>(hdfs_path_);
+      file_store->SetTimeoutSeconds(init_timeout_.count());
+      file_store->SetRank(rank_);
       prefix_store_ =
-          std::make_shared<gloo::rendezvous::PrefixStore>(prefix_, file_store);
+          std::make_shared<gloo::rendezvous::PrefixStore>(prefix_, *file_store);
       break;
     }
     default:

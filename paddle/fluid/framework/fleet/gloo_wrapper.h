@@ -29,6 +29,7 @@ limitations under the License. */
 #include <gloo/allgather.h>
 #include <gloo/allreduce.h>
 #include <gloo/barrier.h>
+#include <gloo/common/error.h>
 #include <gloo/rendezvous/context.h>
 #include <gloo/rendezvous/file_store.h>
 #include <gloo/rendezvous/prefix_store.h>
@@ -67,12 +68,16 @@ class HdfsStore {
 
   std::string ObjectPath(const std::string& name);
 
-  bool Check(const std::vector<std::string>& keys);
+  bool Check(const std::vector<std::string>& keys,
+             int* last_check_rank=nullptr);
+
+  void SetRank(int rank) { self_rank_ = rank; }
 
   std::string path_;
   int wait_sleep_ms_;
   std::chrono::seconds wait_timeout_;
   int retry_times_;
+  int self_rank_;
 };
 
 }  // namespace rendezvous
