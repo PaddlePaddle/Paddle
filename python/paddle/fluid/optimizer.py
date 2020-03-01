@@ -406,7 +406,7 @@ class Optimizer(object):
                          fill_value=0.0,
                          shape=None,
                          type=None,
-                         force_cpu=False):
+                         device=None):
         """Utility function to add an accumulator for a parameter
 
         Args:
@@ -439,7 +439,8 @@ class Optimizer(object):
             type=param.type if type is None else type,
             shape=shape,
             belong_to_optimizer=True)
-        device = self._get_device_for_param(param.name)
+        if device is None:
+            device = self._get_device_for_param(param.name)
         with device_guard(device):
             self.helper.set_variable_initializer(
                 var, initializer=Constant(value=float(fill_value)))
@@ -1820,14 +1821,14 @@ class AdamOptimizer(Optimizer):
                 fill_value=0.9 if isinstance(self._beta1, Variable) \
                         else self._beta1,
                 shape=[1],
-                type=core.VarDesc.VarType.LOD_TENSOR, force_cpu=True)
+                type=core.VarDesc.VarType.LOD_TENSOR, device='cpu')
             self._add_accumulator(
                 name=self._beta2_pow_acc_str,
                 param=p,
                 fill_value=0.999 if isinstance(self._beta2, Variable) \
                         else self._beta2,
                 shape=[1],
-                type=core.VarDesc.VarType.LOD_TENSOR, force_cpu=True)
+                type=core.VarDesc.VarType.LOD_TENSOR, device='cpu')
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
