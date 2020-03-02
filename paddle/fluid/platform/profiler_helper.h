@@ -394,6 +394,38 @@ void GetChildMap(const std::multimap<std::string, EventItem> &sub_child_map,
   }
 }
 
+void PrintOverHead(const OverHead &overhead, const size_t data_width) {
+  double compute_time = overhead.total_time * overhead.compute_ratio;
+  double framework_time = overhead.total_time * overhead.framework_ratio;
+  std::cout.setf(std::ios::left);
+  std::cout << "Total time: " << overhead.total_time << std::endl;
+  std::cout << std::setw(25) << "  Computation time"
+            << "Total: " << std::setw(data_width) << compute_time
+            << "Ratio: " << overhead.compute_ratio * 100 << "%" << std::endl;
+  std::cout << std::setw(25) << "  Framework overhead"
+            << "Total: " << std::setw(data_width) << framework_time
+            << "Ratio: " << overhead.framework_ratio * 100 << "%" << std::endl;
+
+  std::cout << "\n-------------------------"
+            << "     GpuMemCpy Summary     "
+            << "-------------------------\n\n";
+  std::cout << std::setw(25) << "GpuMemcpy"
+            << "Calls: " << std::setw(data_width) << overhead.memcpy_item.calls
+            << "Total: " << std::setw(data_width)
+            << overhead.memcpy_item.total_time
+            << "Ratio: " << overhead.memcpy_item.ratio * 100 << "%"
+            << std::endl;
+  for (size_t i = 0; i < overhead.sub_memcpy_items.size(); ++i) {
+    EventItem item = overhead.sub_memcpy_items[i];
+    if (item.calls != 0) {
+      std::cout << std::setw(25) << "  " + item.name
+                << "Calls: " << std::setw(data_width) << item.calls
+                << "Total: " << std::setw(data_width) << item.total_time
+                << "Ratio: " << item.ratio * 100 << "%" << std::endl;
+    }
+  }
+}
+
 // Print results
 void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
                    const std::multimap<std::string, EventItem> &child_map,
@@ -428,38 +460,7 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
               << " in descending order in the same thread\n\n";
 
     if (overhead.print) {
-      double compute_time = overhead.total_time * overhead.compute_ratio;
-      double framework_time = overhead.total_time * overhead.framework_ratio;
-      std::cout.setf(std::ios::left);
-      std::cout << "Total time: " << overhead.total_time << std::endl;
-      std::cout << std::setw(25) << "  Computation time"
-                << "Total: " << std::setw(data_width) << compute_time
-                << "Ratio: " << overhead.compute_ratio * 100 << "%"
-                << std::endl;
-      std::cout << std::setw(25) << "  Framework overhead"
-                << "Total: " << std::setw(data_width) << framework_time
-                << "Ratio: " << overhead.framework_ratio * 100 << "%"
-                << std::endl;
-
-      std::cout << "\n-------------------------"
-                << "     GpuMemCpy Summary     "
-                << "-------------------------\n\n";
-      std::cout << std::setw(25) << "GpuMemcpy"
-                << "Calls: " << std::setw(data_width)
-                << overhead.memcpy_item.calls
-                << "Total: " << std::setw(data_width)
-                << overhead.memcpy_item.total_time
-                << "Ratio: " << overhead.memcpy_item.ratio * 100 << "%"
-                << std::endl;
-      for (size_t i = 0; i < overhead.sub_memcpy_items.size(); ++i) {
-        EventItem item = overhead.sub_memcpy_items[i];
-        if (item.calls != 0) {
-          std::cout << std::setw(25) << "  " + item.name
-                    << "Calls: " << std::setw(data_width) << item.calls
-                    << "Total: " << std::setw(data_width) << item.total_time
-                    << "Ratio: " << item.ratio * 100 << "%" << std::endl;
-        }
-      }
+      PrintOverHead(overhead, data_width);
     }
     std::cout << "\n-------------------------"
               << "       Event Summary       "
@@ -522,6 +523,85 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
   }
 }
 
+void AnalyzeEvent(
+    const std::vector<std::vector<Event>> *analyze_events,
+    std::vector<std::vector<EventItem>> *events_table,
+    std::multimap<std::string, EventItem> *child_map,
+    std::function<bool(const EventItem &, const EventItem &)> sorted_func,
+    EventSortingKey sorted_by, size_t *max_name_width, OverHead *overhead,
+    bool merge_thread) {
+  for (size_t i = 0; i < (*analyze_events).size(); i++) {
+    double total = 0.;  // the total time in one thread
+    std::list<Event> pushed_events;
+    std::vector<EventItem> event_items;
+    std::vector<EventItem> main_event_items;
+    std::unordered_map<std::string, int> event_idx;
+    std::multimap<std::string, EventItem> sub_child_map;
+
+    for (size_t j = 0; j < (*analyze_events)[i].size(); j++) {
+      Event analyze_event = (*analyze_events)[i][j];
+      SetEvent(merge_thread, analyze_event, max_name_width, &pushed_events,
+               &event_items, &event_idx);
+    }
+
+    auto table_size = event_items.size();
+    std::vector<int> child_index(table_size, 0);
+    for (size_t j = 0; j < table_size; ++j) {
+      std::string fname = event_items[j].name;
+      std::string grad_name = event_items[j].name + "_grad";
+      for (size_t k = 0; k < table_size; ++k) {
+        std::string cname = event_items[k].name;
+        bool condition = cname.length() > fname.length() &&
+                         cname.rfind(fname, 0) == 0 &&
+                         !cname.rfind(grad_name, 0) == 0 &&
+                         (cname[fname.length()] == '/' &&
+                          cname.rfind('/') == fname.length());
+        if (condition) {
+          sub_child_map.insert(
+              std::pair<std::string, EventItem>(fname, event_items[k]));
+          child_index[k] = 1;
+        }
+      }
+    }
+
+    for (size_t j = 0; j < table_size; ++j) {
+      if (child_index[j] == 0) {
+        main_event_items.push_back(event_items[j]);
+        total += event_items[j].total_time;
+      }
+    }
+    // average time
+    for (auto &item : main_event_items) {
+      item.ave_time = item.total_time / item.calls;
+      item.ratio = item.total_time / total;
+    }
+    for (auto it = sub_child_map.begin(); it != sub_child_map.end(); it++) {
+      it->second.ratio = it->second.total_time / total;
+      it->second.ave_time = it->second.total_time / it->second.calls;
+    }
+    // When multi-threaded, overhead are printed only if merge_thread is true
+    if ((*analyze_events).size() == 1) {
+      overhead->total_time = total;
+      overhead->print = true;
+      ComputeOverhead(sub_child_map, overhead);
+    }
+    // sort
+    if (sorted_by != EventSortingKey::kDefault) {
+      std::sort(main_event_items.begin(), main_event_items.end(), sorted_func);
+    }
+
+    events_table->push_back(main_event_items);
+    // log warning if there are events with `push` but without `pop`
+    std::list<Event>::reverse_iterator rit = pushed_events.rbegin();
+    while (rit != pushed_events.rend()) {
+      LOG(WARNING) << "Cannot find the pop marker of event \'" << rit->name()
+                   << "\', which will be ignored in profiling report.";
+      ++rit;
+    }
+
+    GetChildMap(sub_child_map, child_map);
+  }
+}
 // Parse the event list and output the profiling report
 void ParseEvents(const std::vector<std::vector<Event>> &events,
                  bool merge_thread,
@@ -553,80 +633,8 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
   size_t max_name_width = 0;
   OverHead overhead;
 
-  for (size_t i = 0; i < (*analyze_events).size(); i++) {
-    double total = 0.;  // the total time in one thread
-    std::list<Event> pushed_events;
-    std::vector<EventItem> event_items;
-    std::vector<EventItem> main_event_items;
-    std::unordered_map<std::string, int> event_idx;
-    std::multimap<std::string, EventItem> sub_child_map;
-
-    for (size_t j = 0; j < (*analyze_events)[i].size(); j++) {
-      Event analyze_event = (*analyze_events)[i][j];
-      SetEvent(merge_thread, analyze_event, &max_name_width, &pushed_events,
-               &event_items, &event_idx);
-    }
-
-    auto table_size = event_items.size();
-    std::vector<int> child_index(table_size, 0);
-    for (size_t j = 0; j < table_size; ++j) {
-      std::string fname = event_items[j].name;
-      std::string grad_name = event_items[j].name + "_grad";
-      for (size_t k = 0; k < table_size; ++k) {
-        std::string cname = event_items[k].name;
-        bool condition = cname.length() > fname.length() &&
-                         cname.rfind(fname, 0) == 0 &&
-                         !cname.rfind(grad_name, 0) == 0 &&
-                         (cname[fname.length()] == '/' &&
-                          cname.rfind('/') == fname.length());
-        if (condition) {
-          sub_child_map.insert(
-              std::pair<std::string, EventItem>(fname, event_items[k]));
-          child_index[k] = 1;
-        }
-      }
-    }
-
-    for (size_t j = 0; j < table_size; ++j) {
-      if (child_index[j] == 0) {
-        main_event_items.push_back(event_items[j]);
-        total += event_items[j].total_time;
-      }
-    }
-
-    // average time
-    for (auto &item : main_event_items) {
-      item.ave_time = item.total_time / item.calls;
-      item.ratio = item.total_time / total;
-    }
-    for (auto it = sub_child_map.begin(); it != sub_child_map.end(); it++) {
-      it->second.ratio = it->second.total_time / total;
-      it->second.ave_time = it->second.total_time / it->second.calls;
-    }
-
-    // When multi-threaded, overhead are printed only if merge_thread is true
-    if ((*analyze_events).size() == 1) {
-      overhead.total_time = total;
-      overhead.print = true;
-      ComputeOverhead(sub_child_map, &overhead);
-    }
-
-    // sort
-    if (sorted_by != EventSortingKey::kDefault) {
-      std::sort(main_event_items.begin(), main_event_items.end(), sorted_func);
-    }
-
-    events_table.push_back(main_event_items);
-    // log warning if there are events with `push` but without `pop`
-    std::list<Event>::reverse_iterator rit = pushed_events.rbegin();
-    while (rit != pushed_events.rend()) {
-      LOG(WARNING) << "Cannot find the pop marker of event \'" << rit->name()
-                   << "\', which will be ignored in profiling report.";
-      ++rit;
-    }
-
-    GetChildMap(sub_child_map, &child_map);
-  }
+  AnalyzeEvent(analyze_events, &events_table, &child_map, sorted_func,
+               sorted_by, &max_name_width, &overhead, merge_thread);
 
   // Print report
   PrintProfiler(events_table, child_map, overhead, sorted_domain,
