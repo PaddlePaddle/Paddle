@@ -22,6 +22,7 @@ import os
 import tempfile
 import six
 import imp
+import warnings
 
 dygraph_class_to_static_api = {
     "BatchNorm": "batch_norm",
@@ -175,3 +176,39 @@ def update_args_of_func(node, dygraph_node, method_name):
 
     node.args = []
     node.keywords = added_keywords + node.keywords
+
+
+def insert_gast_stmt_before_node(cur_node_wrapper, pre_nodes=[], post_nodes=[]):
+    parent_node = node_wrapper.parent.node
+    cur_node = cur_node_wrapper.node
+    insert_success = False
+    if hasattr(parent_node, 'body'):
+        try:
+            cur_index = parent_node.body.index(cur_node)
+            for node in pre_nodes:
+                parent_node.body.insert(cur_index, node)
+                cur_index += 1
+            for node in post_nodes:
+                parent_node.body.insert(cur_index + 1, node)
+                cur_index += 1
+            insert_success = True
+        except ValueError as e:
+            insert_success = False
+
+    if (not insert_success) and hasattr(parent_node, 'orelse'):
+        try:
+            cur_index = parent_node.orlese.index(cur_node)
+            for node in pre_nodes:
+                parent_node.orelse.insert(cur_index, node)
+                cur_index += 1
+            for node in post_nodes:
+                parent_node.orlese.insert(cur_index + 1, node)
+                cur_index += 1
+            insert_success = True
+        except ValueError as e:
+            insert_success = False
+
+    if not insert_success:
+        warnings.warn("Cannot insert stmt for node " + gast.dump(cur_node))
+
+    return insert_success
