@@ -53,8 +53,8 @@ constexpr char kEmptyVarName[] = "@EMPTY@";
 constexpr char kTempVarName[] = "@TEMP@";
 
 /// If a variable's name has a certain suffix, it means that the
-/// variable is the gradient of another varibale.
-/// e.g. Variable "x@GRAD" is the gradient of varibale "x".
+/// variable is the gradient of another variable.
+/// e.g. Variable "x@GRAD" is the gradient of variable "x".
 constexpr char kGradVarSuffix[] = "@GRAD";
 
 constexpr size_t kGradVarSuffixSize = 5U;
@@ -517,7 +517,8 @@ class OperatorWithKernel : public OperatorBase {
                RuntimeContext* runtime_ctx) const;
 
   /**
-   * Transfer data from scope to a transfered scope. If there is no data need to
+   * Transfer data from scope to a transferred scope. If there is no data need
+   * to
    * be tranfered, it returns nullptr.
    *
    * * transfered_inplace_vars is a output vector.

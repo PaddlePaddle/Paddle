@@ -37,6 +37,9 @@ class SequenceReshapeOp : public framework::OperatorWithKernel {
     } else {
       // when compiling, the batch size is undetermined, just set to -1
       ctx->SetOutputDim("Out", {-1, static_cast<int64_t>(new_dim)});
+      // when compiling, the LodLevel of Out is set to be 1, which is consistent
+      // with that in running time.
+      ctx->SetLoDLevel("Out", 1);
     }
   }
 };

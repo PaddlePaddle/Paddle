@@ -1393,6 +1393,41 @@ class TestLayer(LayerTest):
 
         self.assertTrue(np.allclose(static_ret, dy_ret_rlt))
 
+    def test_while_loop(self):
+        with self.static_graph():
+            i = layers.fill_constant(shape=[1], dtype='int64', value=0)
+            ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
+
+            def cond(i):
+                return layers.less_than(i, ten)
+
+            def body(i):
+                return i + 1
+
+            out = layers.while_loop(cond, body, [i])
+            static_ret = self.get_static_graph_result(feed={}, fetch_list=out)
+
+        with self.dynamic_graph():
+            i = layers.fill_constant(shape=[1], dtype='int64', value=0)
+            ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
+
+            def cond(i):
+                return layers.less_than(i, ten)
+
+            def body(i):
+                return i + 1
+
+            dy_ret = layers.while_loop(cond, body, [i])
+            with self.assertRaises(ValueError):
+                j = layers.fill_constant(shape=[1], dtype='int64', value=0)
+
+                def body2(i):
+                    return i + 1, i + 2
+
+                layers.while_loop(cond, body2, [j])
+
+        self.assertTrue(np.array_equal(static_ret[0], dy_ret[0].numpy()))
+
     def test_compare(self):
         value_a = np.arange(3)
         value_b = np.arange(3)
@@ -1491,6 +1526,43 @@ class TestLayer(LayerTest):
 
             for i in range(len(static_ret5)):
                 self.assertTrue(dcond5.numpy()[i] == static_ret5[i])
+
+    def test_cond(self):
+        def less_than_branch(a, b):
+            return fluid.layers.elementwise_add(a, b)
+
+        def greater_equal_branch(a, b):
+            return fluid.layers.elementwise_sub(a, b)
+
+        with self.static_graph():
+            a = fluid.layers.fill_constant(
+                shape=[1], dtype='float32', value=0.1)
+            b = fluid.layers.fill_constant(
+                shape=[1], dtype='float32', value=0.23)
+            out = fluid.layers.cond(a >= b, lambda: greater_equal_branch(a, b),
+                                    lambda: less_than_branch(a, b))
+            place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+            ) else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            ret = exe.run(fetch_list=[out])
+            static_res = ret[0]
+
+        with self.dynamic_graph():
+            a = fluid.dygraph.to_variable(np.array([0.1]).astype('float32'))
+            b = fluid.dygraph.to_variable(np.array([0.23]).astype('float32'))
+            out = layers.cond(a < b, lambda: less_than_branch(a, b),
+                              lambda: greater_equal_branch(a, b))
+            out2 = layers.cond(a >= b, lambda: greater_equal_branch(a, b),
+                               lambda: less_than_branch(a, b))
+            dynamic_res = out.numpy()
+            dynamic_res2 = out2.numpy()
+            self.assertTrue(np.array_equal(dynamic_res, dynamic_res2))
+            with self.assertRaises(TypeError):
+                layers.cond(a < b, 'str', 'str')
+            with self.assertRaises(TypeError):
+                layers.cond(a >= b, 'str', 'str')
+
+        self.assertTrue(np.array_equal(static_res, dynamic_res))
 
     def test_crop_tensor(self):
         with self.static_graph():
@@ -2790,6 +2862,14 @@ class TestBook(LayerTest):
             self.assertIsNotNone(out2)
             return (out1)
 
+    def test_partial_sum(self):
+        with self.static_graph():
+            x = fluid.data(name="x", shape=[None, 3], dtype="float32")
+            y = fluid.data(name="y", shape=[None, 3], dtype="float32")
+            sum = fluid.contrib.layers.partial_sum(
+                [x, y], start_index=0, length=2)
+            return (sum)
+
     def test_roi_pool(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
@@ -2911,6 +2991,16 @@ class TestBook(LayerTest):
             x = layers.data(name='x', shape=[3, 20, 20], dtype='float32')
             out = layers.unfold(x, [3, 3], 1, 1, 1)
             return (out)
+
+    def test_partial_concat(self):
+        with self.static_graph():
+            x = fluid.data(name="x", shape=[None, 3], dtype="float32")
+            y = fluid.data(name="y", shape=[None, 3], dtype="float32")
+            concat1 = fluid.contrib.layers.partial_concat(
+                [x, y], start_index=0, length=2)
+            concat2 = fluid.contrib.layers.partial_concat(
+                x, start_index=0, length=-1)
+            return concat1, concat2
 
     def test_deform_roi_pooling(self):
         with program_guard(fluid.default_main_program(),

@@ -287,7 +287,7 @@ class ParallelExecutor(object):
                                                  loss_name=loss.name)
 
               # If the feed is a dict:
-              # the image will be splitted into devices. If there is two devices
+              # the image will be split into devices. If there is two devices
               # each device will process an image with shape (5, 1)
               x = numpy.random.random(size=(10, 1)).astype('float32')
               loss_data, = train_exe.run(feed={"X": x},

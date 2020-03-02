@@ -95,7 +95,13 @@ class ElementwiseOp : public framework::OperatorWithKernel {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #ifdef PADDLE_WITH_MKLDNN
-    if (platform::CanMKLDNNBeUsed(ctx)) {
+    // If broadcasting is needed, use native implementation
+    auto CanMKLDNNElementwiseAddBeUsed = [&]() {
+      return ctx.Input<Tensor>("X")->dims() == ctx.Input<Tensor>("Y")->dims();
+    };
+
+    if (platform::CanMKLDNNBeUsed(ctx) &&
+        (ctx.Type() != "elementwise_add" || CanMKLDNNElementwiseAddBeUsed())) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);
@@ -227,7 +233,16 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
         ctx, framework::GradVarName("Out"));
 
 #ifdef PADDLE_WITH_MKLDNN
-    if (platform::CanMKLDNNBeUsed(ctx)) {
+    // If broadcasting is needed, use native implementation
+    auto CanMKLDNNElementwiseAddGradBeUsed = [&]() {
+      auto dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+      auto dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+      return (dx != nullptr && dy != nullptr && dx->dims() == dy->dims());
+    };
+
+    if (platform::CanMKLDNNBeUsed(ctx) &&
+        (ctx.Type() != "elementwise_add_grad" ||
+         CanMKLDNNElementwiseAddGradBeUsed())) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                      framework::DataLayout::kMKLDNN,
                                      framework::LibraryType::kMKLDNN);

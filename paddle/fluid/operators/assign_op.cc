@@ -112,6 +112,7 @@ DECLARE_INPLACE_OP_INFERER(AssignOpInplaceInferer, {"X", "Out"});
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 REGISTER_OPERATOR(assign, ops::AssignOp,
                   ops::AssignGradMaker<paddle::framework::OpDesc>,
                   ops::AssignGradMaker<paddle::imperative::OpBase>,
@@ -120,11 +121,13 @@ REGISTER_OPERATOR(assign, ops::AssignOp,
 REGISTER_OP_CPU_KERNEL_FUNCTOR(assign, float, ops::AssignKernel, double,
                                ops::AssignKernel, int, ops::AssignKernel,
                                int64_t, ops::AssignKernel, bool,
+                               ops::AssignKernel, plat::float16,
                                ops::AssignKernel);
 
 #ifdef PADDLE_WITH_CUDA
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(assign, float, ops::AssignKernel, double,
                                 ops::AssignKernel, int, ops::AssignKernel,
                                 int64_t, ops::AssignKernel, bool,
+                                ops::AssignKernel, plat::float16,
                                 ops::AssignKernel);
 #endif

@@ -31,7 +31,7 @@ class SoftmaxWithCrossEntropyOpMaker
              "by softmax.");
     AddInput(
         "Label",
-        "(Tensor) The input tesnor of groud truth label. If :attr:`soft_label` "
+        "(Tensor) The input tensor of groud truth label. If :attr:`soft_label` "
         "is set to false, Label is a Tensor<int64> in same shape with "
         "Input(Logits) except the shape in dimension :attr:`axis` as 1. If "
         "soft_label is set to true, Label is a Tensor<float/double> in same "
@@ -50,7 +50,7 @@ class SoftmaxWithCrossEntropyOpMaker
               "entropy loss.");
     AddAttr<bool>(
         "soft_label",
-        "(bool, default: false), A flag to indicate whether to interpretate "
+        "(bool, default: false), A flag to indicate whether to interpretant "
         "the given labels as soft labels.")
         .SetDefault(false);
     AddAttr<bool>(

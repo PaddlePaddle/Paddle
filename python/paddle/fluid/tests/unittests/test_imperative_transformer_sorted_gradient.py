@@ -266,7 +266,7 @@ input_descs = {
     # The actual data shape of label_word is:
     # [batch_size * max_trg_len_in_batch, 1]
     "lbl_word": [(batch_size * seq_len, 1), "int64"],
-    # This input is used to mask out the loss of paddding tokens.
+    # This input is used to mask out the loss of padding tokens.
     # The actual data shape of label_weight is:
     # [batch_size * max_trg_len_in_batch, 1]
     "lbl_weight": [(batch_size * seq_len, 1), "float32"],

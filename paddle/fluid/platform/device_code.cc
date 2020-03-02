@@ -13,10 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/device_code.h"
+#include <sys/stat.h>
 #include <algorithm>
 #include <set>
 #include <utility>
 #include "paddle/fluid/platform/enforce.h"
+
+DECLARE_string(cuda_dir);
 
 namespace paddle {
 namespace platform {
@@ -79,6 +82,46 @@ DeviceCodePool::DeviceCodePool(const std::vector<platform::Place>& places) {
 }
 
 #ifdef PADDLE_WITH_CUDA
+static std::string FindCUDAIncludePath() {
+  auto EndWith = [](std::string str, std::string substr) -> bool {
+    size_t pos = str.rfind(substr);
+    return pos != std::string::npos && pos == (str.length() - substr.length());
+  };
+
+  struct stat st;
+  std::string cuda_include_path;
+  if (!FLAGS_cuda_dir.empty()) {
+    cuda_include_path = FLAGS_cuda_dir;
+    if (EndWith(cuda_include_path, "/")) {
+      cuda_include_path.erase(cuda_include_path.end() - 1);
+    }
+    for (std::string suffix : {"/lib", "/lib64"}) {
+      if (EndWith(FLAGS_cuda_dir, suffix)) {
+        cuda_include_path.erase(cuda_include_path.end() - suffix.length());
+        break;
+      }
+    }
+
+    if (!EndWith(cuda_include_path, "include")) {
+      cuda_include_path += "/include";
+    }
+    // Whether the cuda_include_path exists on the file system.
+    if (stat(cuda_include_path.c_str(), &st) == 0) {
+      return cuda_include_path;
+    }
+  }
+
+  cuda_include_path = "/usr/local/cuda/include";
+  if (stat(cuda_include_path.c_str(), &st) == 0) {
+    return cuda_include_path;
+  }
+  LOG(WARNING) << "Cannot find CUDA include path."
+               << "Please check whether CUDA is installed in the default "
+                  "installation path, or specify it by export "
+                  "FLAGS_cuda_dir=xxx.";
+  return "";
+}
+
 CUDADeviceCode::CUDADeviceCode(const Place& place, const std::string& name,
                                const std::string& kernel) {
   if (!is_gpu_place(place)) {
@@ -91,7 +134,7 @@ CUDADeviceCode::CUDADeviceCode(const Place& place, const std::string& name,
   kernel_ = kernel;
 }
 
-bool CUDADeviceCode::Compile() {
+bool CUDADeviceCode::Compile(bool include_path) {
   is_compiled_ = false;
   if (!dynload::HasNVRTC() || !dynload::HasCUDADriver()) {
     LOG(WARNING)
@@ -116,8 +159,14 @@ bool CUDADeviceCode::Compile() {
   int compute_capability = dev_ctx->GetComputeCapability();
   std::string compute_flag =
       "--gpu-architecture=compute_" + std::to_string(compute_capability);
-  const std::vector<const char*> options = {"--std=c++11",
-                                            compute_flag.c_str()};
+  std::vector<const char*> options = {"--std=c++11", compute_flag.c_str()};
+  if (include_path) {
+    std::string cuda_include_path = FindCUDAIncludePath();
+    if (!cuda_include_path.empty()) {
+      std::string include_option = "--include-path=" + cuda_include_path;
+      options.push_back(include_option.c_str());
+    }
+  }
   nvrtcResult compile_result =
       dynload::nvrtcCompileProgram(program,          // program
                                    options.size(),   // numOptions

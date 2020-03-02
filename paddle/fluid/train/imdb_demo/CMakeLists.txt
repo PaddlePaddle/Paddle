@@ -20,6 +20,7 @@ include_directories("${PADDLE_LIB}/third_party/install/zlib/include")
 
 include_directories("${PADDLE_LIB}/third_party/boost")
 include_directories("${PADDLE_LIB}/third_party/eigen3")
+include_directories("${PADDLE_LIB}/third_party/threadpool")
 include_directories("${PADDLE_LIB}/third_party/dlpack")
 
 link_directories("${PADDLE_LIB}/third_party/install/protobuf/lib")
