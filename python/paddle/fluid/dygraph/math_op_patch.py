@@ -169,10 +169,9 @@ def monkey_patch_math_varbase():
 
             axis = -1
             op = getattr(core.ops, op_type)
-            inputs = {'X': [self], 'Y': [other_var]}
-            attrs = {'axis': axis}
-            outs = op(inputs, attrs)
-            return outs['Out'][0]
+            # inputs = {'X': [self], 'Y': [other_var]}
+            # attrs = {'axis': axis}
+            return op(self, other_var, axis, False)
 
         comment = OpProtoHolder.instance().get_op_proto(op_type).comment
 

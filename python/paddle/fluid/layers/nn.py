@@ -192,11 +192,10 @@ def _elementwise_op_in_dygraph(x,
                                act=None,
                                use_mkldnn=False,
                                op_name=None):
-    attrs = {'axis': axis, 'use_mkldnn': use_mkldnn}
-    inputs = {'X': [x], 'Y': [y]}
+    # attrs = {'axis': axis, 'use_mkldnn': use_mkldnn}
+    # inputs = {'X': [x], 'Y': [y]}
     op = getattr(core.ops, op_name)
-    outs = op(inputs, attrs)
-    out = outs['Out'][0]
+    out = op(x, y, axis, use_mkldnn)
 
     return dygraph_utils._append_activation_in_dygraph(
         out, act, use_mkldnn=use_mkldnn)
@@ -4335,16 +4334,23 @@ def split(input, num_or_sections, dim=-1, name=None):
     if in_dygraph_mode():
         inputs = {'X': [input]}
         attrs = {}
+        axis_tensor = None
+        axis = None
+        num = None
+        sections = None
+
         if isinstance(dim, int):
             dim = (len(input.shape) + dim) if dim < 0 else dim
-            attrs['axis'] = dim
+            #attrs['axis'] = dim
+            axis = dim
         else:
             dim.stop_gradient = True
-            inputs['AxisTensor'] = [dim]
+            #inputs['AxisTensor'] = [dim]
+            axis_tensor = dim
 
         if isinstance(num_or_sections, int):
             num = num_or_sections
-            attrs['num'] = num_or_sections
+            #attrs['num'] = num_or_sections
         elif isinstance(num_or_sections, (list, tuple)):
             num = len(num_or_sections)
             if utils._contain_var(num_or_sections):
@@ -4353,14 +4359,17 @@ def split(input, num_or_sections, dim=-1, name=None):
                     "received %s, which contains Variable." %
                     (type(num_or_sections)))
             else:
-                attrs['sections'] = list(num_or_sections)
+                #attrs['sections'] = list(num_or_sections)
+                sections = list(num_or_sections)
         else:
             raise TypeError(
                 "The type of 'num_or_sections' in split must be int or list in Dygraph mode, but "
                 "received %s." % (type(num_or_sections)))
 
-        res = core.ops.split(inputs, attrs, {}, {'Out': num})
-        return res['Out']
+        return core.ops.split(input, axis_tensor, axis, num, sections, num)
+
+        # res = core.ops.split(inputs, attrs, {}, {'Out': num})
+        # return res['Out']
 
     if not isinstance(num_or_sections, (int, list, tuple)):
         raise TypeError(

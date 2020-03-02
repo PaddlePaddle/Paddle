@@ -259,8 +259,7 @@ def monkey_patch_varbase():
                 'ends': slice_end,
                 'decrease_axis': decrease_axis
             }
-            outs = core.ops.slice(inputs, attrs)
-            out = outs['Out'][0]
+            out = core.ops.slice(inputs, attrs)
 
         if len(reverse_axis) > 0:
             inputs = {'X': [out]}

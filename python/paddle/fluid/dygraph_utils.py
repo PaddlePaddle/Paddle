@@ -34,11 +34,10 @@ def _append_activation_in_dygraph(input,
     if not act:
         return input
 
-    attrs = {'use_cudnn': use_cudnn, 'use_mkldnn': use_mkldnn}
-    inputs = {"X": [input]}
+    # attrs = {'use_cudnn': use_cudnn, 'use_mkldnn': use_mkldnn}
+    # inputs = {"X": [input]}
     act_op = getattr(core.ops, act)
-    res = act_op(inputs, attrs)
-    return res['Out'][0]
+    return act_op(input, use_cudnn, use_mkldnn)
 
 
 @dygraph_only

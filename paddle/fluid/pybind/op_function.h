@@ -28,3 +28,4 @@
 
 // This include must be the last line
 #include "paddle/fluid/pybind/op_function_impl.h"
+#include "paddle/fluid/pybind/op_function_impl2.h"

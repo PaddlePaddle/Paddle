@@ -255,13 +255,10 @@ def concat(input, axis=0, name=None):
     """
 
     if in_dygraph_mode():
-        inputs = {'X': input}
         if not isinstance(axis, int):
             raise TypeError(
                 "Input 'axis' in concat must be int in Dygraph mode.")
-        attrs = {'axis': axis}
-        outs = core.ops.concat(inputs, attrs)
-        return outs['Out'][0]
+        return core.ops.concat(input, axis)
 
     if not isinstance(input, list):
         warnings.warn(
