@@ -16,6 +16,7 @@ import sys
 import unittest
 import numpy as np
 import paddle.fluid as fluid
+from paddle.fluid import core
 
 if sys.version_info[0] == 2:
     import Queue as queue
@@ -41,7 +42,7 @@ def batch_generator_creator(batch_size, batch_num):
 
 # NOTE: coverage CI can't cover child process code, so need these test.
 # Here test child process loop function in main process
-class TestDygraphhDataLoaderProcess(unittest.TestCase):
+class TestDygraphDataLoaderProcess(unittest.TestCase):
     def setUp(self):
         self.batch_size = 8
         self.batch_num = 4
@@ -77,7 +78,7 @@ class TestDygraphhDataLoaderProcess(unittest.TestCase):
             exception = None
             try:
                 loader._reader_process_loop()
-            except AttributeError as ex:
+            except core.EnforceNotMet as ex:
                 exception = ex
             self.assertIsNotNone(exception)
 
