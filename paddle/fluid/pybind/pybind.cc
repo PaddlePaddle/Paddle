@@ -47,6 +47,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
+#include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
@@ -860,7 +861,58 @@ PYBIND11_MODULE(core_noavx, m) {
         }
         dst.set_lod(self.lod());
         return dst;
+#ifdef _WIN32
       });
+#else
+           })
+      .def(py::pickle(
+          [](const LoDTensor &t) {  // __getstate__
+            auto holder = t.Holder();
+            PADDLE_ENFORCE_EQ(
+              platform::is_cpu_place(holder->place()), true,
+              platform::errors::PreconditionNotMet(
+                  "LoDTensor is not on CPU."
+                  "Now only LoDTensor on CPU can be serialized."));
+            auto* mmap_writer_allocation =
+              dynamic_cast<memory::allocation::MemoryMapWriterAllocation *>(
+                holder.get());
+            PADDLE_ENFORCE_NOT_NULL(mmap_writer_allocation,
+              platform::errors::PreconditionNotMet(
+                "LoDTensor is not in shared memory."
+                "Now only LoDTensor on shared memory can be serialized."));
+            int type_idx = static_cast<int>(t.type());
+
+            return py::make_tuple(mmap_writer_allocation->ipc_name(),
+                                  mmap_writer_allocation->size(),
+                                  type_idx, vectorize(t.dims()), t.lod());
+          },
+          [](py::tuple t) {  // __setstate__
+            if (t.size() != 5)
+              throw std::runtime_error("Invalid LoDTensor state!");
+
+            // 1. Create a new C++ instance
+            LoDTensor tensor;
+
+            // 2. Rebuild Allocation
+            const std::string &ipc_name = t[0].cast<std::string>();
+            size_t size = t[1].cast<size_t>();
+            auto shared_reader_holder =
+              memory::allocation::RebuildMemoryMapReaderAllocation(
+                ipc_name, size);
+
+            // 3. Maintain global fd set
+            VLOG(3) << "LoDTensor ipc name: " << ipc_name;
+            memory::allocation::MemoryMapFdSet::Instance().Insert(ipc_name);
+
+            // 4. Rebuild LoDTensor
+            tensor.ResetHolderWithType(shared_reader_holder,
+              static_cast<proto::VarType::Type>(t[2].cast<int>()));
+            tensor.Resize(make_ddim(t[3].cast<std::vector<int>>()));
+            tensor.set_lod(t[4].cast<framework::LoD>());
+
+            return tensor;
+          }));
+#endif
 
   py::class_<SelectedRows>(m, "SelectedRows")
       .def("__init__",

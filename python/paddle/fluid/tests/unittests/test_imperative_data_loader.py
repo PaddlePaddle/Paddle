@@ -44,7 +44,7 @@ def batch_generator_creator(batch_size, batch_num):
     return __reader__
 
 
-class TestDygraphhDataLoader(unittest.TestCase):
+class TestDygraphDataLoader(unittest.TestCase):
     def setUp(self):
         self.batch_size = 8
         self.batch_num = 4
