@@ -404,15 +404,6 @@ class ExecutionContext {
     return temp_tensor;
   }
 
-  template <typename T>
-  T& GetKernelConfig(size_t idx) const {
-    PADDLE_ENFORCE(
-        kernel_configs_ && kernel_configs_->size() > static_cast<size_t>(idx),
-        "%s selected kernel doesn't have kernel config %lu <= %lu",
-        op_.Type().c_str(), kernel_configs_->size(), idx);
-    return *boost::get<std::shared_ptr<T>>((*kernel_configs_)[idx]);
-  }
-
   const RuntimeContext Context() const { return ctx_; }
 
   std::string DebugString() const { return op_.DebugString(); }
