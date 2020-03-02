@@ -35,7 +35,7 @@ class DensityPriorBoxOp : public framework::OperatorWithKernel {
           platform::errors::InvalidArgument(
               "The input tensor Input's height"
               "of DensityPriorBoxOp should be smaller than input tensor Image's"
-              "hight. But received Input's height = %d, Image's height = %d",
+              "height. But received Input's height = %d, Image's height = %d",
               input_dims[2], image_dims[2]));
 
       PADDLE_ENFORCE_LT(
