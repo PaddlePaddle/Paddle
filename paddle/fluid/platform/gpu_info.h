@@ -111,7 +111,8 @@ cudaError_t RecordedCudaMalloc(void **ptr, size_t size, int dev_id);
 void RecordedCudaFree(void *p, size_t size, int dev_id);
 
 //! Get available and total gpu memory with considering limitation
-void RecordedCudaMemGetInfo(size_t *avail, size_t *total, int dev_id);
+bool RecordedCudaMemGetInfo(size_t *avail, size_t *total, size_t *actual_avail,
+                            size_t *actual_total, int dev_id);
 
 //! Get recorded cudaMalloc size. If record is disabled, return 0.
 uint64_t RecordedCudaMallocSize(int dev_id);

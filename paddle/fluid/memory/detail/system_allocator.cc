@@ -118,8 +118,20 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
     gpu_alloc_size_ += size;
     return p;
   } else {
-    size_t avail, total;
-    platform::RecordedCudaMemGetInfo(&avail, &total, gpu_id_);
+    size_t avail, total, actual_avail, actual_total;
+    bool is_limited = platform::RecordedCudaMemGetInfo(
+        &avail, &total, &actual_avail, &actual_total, gpu_id_);
+
+    std::string err_msg;
+    if (is_limited) {
+      auto limit_size = (total >> 20);
+      err_msg = string::Sprintf(
+          "\n   3) Set environment variable `FLAGS_gpu_memory_limit_mb` to a "
+          "larger value. Currently `FLAGS_gpu_memory_limit_mb` is %d, so the "
+          "maximum GPU memory usage is limited to %d MB.\n"
+          "      The command is `export FLAGS_gpu_memory_limit_mb=xxx`.",
+          limit_size, limit_size);
+    }
 
     PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
         "\n\nOut of memory error on GPU %d. "
@@ -132,10 +144,10 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
         "   2) FLAGS_fraction_of_gpu_memory_to_use is %.2lf now, "
         "please set it to a higher value but less than 1.0.\n"
         "      The command is "
-        "`export FLAGS_fraction_of_gpu_memory_to_use=xxx`.\n\n",
+        "`export FLAGS_fraction_of_gpu_memory_to_use=xxx`.%s\n\n",
         gpu_id_, string::HumanReadableSize(size), gpu_id_,
         string::HumanReadableSize(avail), gpu_id_,
-        FLAGS_fraction_of_gpu_memory_to_use));
+        FLAGS_fraction_of_gpu_memory_to_use, err_msg));
   }
 }
 
