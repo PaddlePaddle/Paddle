@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator_kernel_configs.h"
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/platform/cudnn_desc.h"
-#include "paddle/fluid/platform/device_context.h"
+// #include "paddle/fluid/platform/device_context.h"
 namespace paddle {
 namespace operators {
 
@@ -90,7 +90,7 @@ std::ostream& operator<<(std::ostream& out, const std::vector<T>& v) {
   return out;
 }
 
-using framework::AlgorithmsCache;
+// using framework::AlgorithmsCache;
 
 class ConvSearchCache {
  public:
@@ -118,6 +118,7 @@ class ConvSearchCache {
   ~ConvSearchCache() {}
   ConvSearchCache(const ConvSearchCache&) {}
   ConvSearchCache& operator=(const ConvSearchCache&) {}
+
   framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t> forward_cache_;
   framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>
       backward_data_cache_;
