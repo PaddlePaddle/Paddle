@@ -23,7 +23,8 @@ import inspect
 # See details in https://github.com/serge-sans-paille/gast/
 from .ast_utils import is_control_flow_if, create_cond_node, transform_if_else, ast_to_func
 from paddle.fluid import unique_name
-from .static_analysis import AstNodeWrapper, StaticAnalysisVisitor
+from .static_analysis import AstNodeWrapper, StaticAnalysisVisitor, NodeVarType
+import copy
 
 __all__ = ['DygraphToStaticAst', 'convert_to_static']
 
@@ -117,8 +118,11 @@ class DygraphToStaticAst(gast.NodeTransformer):
     def get_static_ast(self, root):
         # save root for some analysis may need global AST
         self.root = root
-        self.static_analysis_root = StaticAnalysisVisitor(
-            root).get_node_wrapper_root()
+        self.static_analysis_visitor = StaticAnalysisVisitor(root)
+        self.static_analysis_root = self.static_analysis_visitor.get_node_wrapper_root(
+        )
+        # self.static_analysis_root = StaticAnalysisVisitor(
+        #     root).get_node_wrapper_root()
         self.decorate_func_name = None
         self.arg_name_to_idx = {}
         self.transfer_from_node_type(self.static_analysis_root)
@@ -129,7 +133,8 @@ class DygraphToStaticAst(gast.NodeTransformer):
         self.visit(node.node)
 
         # Transform basic api of dygraph to static graph
-        basic_api_trans = BasicApiTransformer(node)
+        basic_api_trans = BasicApiTransformer(node,
+                                              self.static_analysis_visitor)
         basic_api_trans.ast_visit()
         self.feed_name_to_arg_name = basic_api_trans.get_feed_name_to_arg_id()
 
@@ -172,17 +177,21 @@ class BasicApiTransformer(gast.NodeTransformer):
     Class to transform basic API from dygraph to static graph.
     """
 
-    def __init__(self, wrapper_root):
+    def __init__(self, wrapper_root, static_analysis_visitor):
         assert isinstance(
             wrapper_root, AstNodeWrapper
         ), "Input non-AstNodeWrapper node for the initialization of BasicApiTransformer."
+
         self.wrapper_root = wrapper_root
         self.root = wrapper_root.node
+        self.static_analysis_visitor = static_analysis_visitor
         self.class_node_dict = {}
         self.feed_name_to_arg_id = {}
 
     def ast_visit(self):
         self.visit(self.root)
+        # print("* -" *20)
+        # print("wrapper root var type: ", self.wrapper_root.node_var_type)
         return self.wrapper_root
 
     def visit_FunctionDef(self, node):
@@ -197,7 +206,7 @@ class BasicApiTransformer(gast.NodeTransformer):
     def visit_Assign(self, node):
         if self._update_class_node_dict(node):
             return None
-
+        # Todo:(0302) mark Tensor.shape
         value_node = node.value
         for child_node in gast.walk(value_node):
             if isinstance(child_node, gast.Call):
@@ -216,6 +225,43 @@ class BasicApiTransformer(gast.NodeTransformer):
 
         return node
 
+    # def visit_Name(self, node):
+    #     # todo: To determin ast.Nmae only exits in args/keywards of call?
+    #
+    #     return
+    #
+    # def visit_keyword(self, node):
+    #     # todo: To determin ast.Nmae only exits in args/keywards of call?
+    #
+    #     return
+
+    def to_layers_shape(self, node):
+        assert isinstance(node, gast.Attribute)
+        value_id = node.value.id  # eg: 'x'
+        var_env = self.static_analysis_visitor.get_var_env()
+
+        # pre_cur_scope = copy.deepcopy(var_env.cur_scope)
+        pre_cur_scope = var_env.cur_scope
+        var_env.cur_scope = var_env.cur_scope.sub_scopes[0]
+        var_type_set = var_env.get_var_type(value_id)
+        # print(" var type: ",value_id, var_type_set)
+        var_env.cur_scope = pre_cur_scope
+
+        if NodeVarType.NUMPY_NDARRAY in var_type_set:
+            # print("NodeVarType.NUMPY_NDARRAY")
+            return node
+
+        if NodeVarType.TENSOR not in var_type_set and NodeVarType.PADDLE_RETURN_TYPES not in var_type_set:
+            # print("NodeVarType.TENSOR")
+            return node
+        # print(" * - "*20)
+        # var_env.cur_scope = var_env.cur_scope.parent_scope
+        new_node = gast.Call(
+            func=gast.parse('fluid.layers.shape').body[0].value,
+            args=[node.value],
+            keywords=[])
+        return new_node
+
     def _visit_Call(self, node):
         assert isinstance(node, gast.Call)
 
@@ -224,6 +270,20 @@ class BasicApiTransformer(gast.NodeTransformer):
             self._update_feed_dict(node)
             node = to_assign_node(node)
             return node
+
+        # self.transform_tensor_shape_node(node)
+        if is_paddle_api(node):
+            # and not is_dygraph_api(node):
+            for idx, arg in enumerate(node.args):
+                if isinstance(arg, gast.Attribute):
+                    if arg.attr == 'shape':
+                        node.args[idx] = self.to_layers_shape(arg)
+
+            for idx, keyword in enumerate(node.keywords):
+                value = keyword.value
+                if isinstance(value, gast.Attribute):
+                    if value.attr == 'shape':
+                        node.keywords[idx].value = self.to_layers_shape(value)
 
         func_name = astor.to_source(gast.gast_to_ast(node.func))
         if self._is_dygraph_forward(func_name):

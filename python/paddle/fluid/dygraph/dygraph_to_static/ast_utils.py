@@ -360,7 +360,9 @@ def ast_to_func(ast_root, func_name, delete_on_exit=True):
     # TODO(Aurelius84): more elegant way to transform ast into callable object
     import_str = "import paddle\n" \
                  "import paddle.fluid as fluid\n" \
-                 "import paddle.fluid.layers as layers\n"
+                 "import paddle.fluid.layers as layers\n" \
+                 "import numpy as np\n" \
+                 "import numpy\n"
     with f:
         module_name = os.path.basename(f.name[:-3])
         f.write(import_str)
