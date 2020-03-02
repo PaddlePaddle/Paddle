@@ -17,42 +17,62 @@ from __future__ import print_function
 import inspect
 import gast
 import astor
-import atexit
-import os
-import tempfile
-import six
-import imp
-import warnings
 
 dygraph_class_to_static_api = {
-    "BatchNorm": "batch_norm",
-    "BilinearTensorProduct": "bilinear_tensor_product",
-    "Conv2D": "conv2d",
-    "Conv3D": "conv3d",
-    "Conv2DTranspose": "conv2d_transpose",
-    "Conv3DTranspose": "conv3d_transpose",
     "CosineDecay": "cosine_decay",
-    "Embedding": "embedding",
     "ExponentialDecay": "exponential_decay",
-    "GroupNorm": "group_norm",
-    "GRUUnit": "gru_unit",
     "InverseTimeDecay": "inverse_time_decay",
-    "LayerNorm": "layer_norm",
-    "Linear": "fc",
     "NaturalExpDecay": "natural_exp_decay",
-    "NCE": "nce",
     "NoamDecay": "noam_decay",
     "PiecewiseDecay": "piecewise_decay",
     "PolynomialDecay": "polynomial_decay",
-    "Pool2D": "pool2d",
-    "PRelu": "prelu",
-    "SpectralNorm": "spectral_norm",
 }
+
+
+def _is_api_in_module_helper(obj, module_prefix):
+    m = inspect.getmodule(obj)
+    return m is not None and m.__name__.startswith(module_prefix)
+
+
+def is_api_in_module(node, module_prefix):
+    assert isinstance(node, gast.Call), "Input non-Call node for is_dygraph_api"
+    func_str = astor.to_source(gast.gast_to_ast(node.func))
+    try:
+        import paddle.fluid as fluid
+        import paddle
+        return eval("_is_api_in_module_helper({}, '{}')".format(func_str,
+                                                                module_prefix))
+    except NameError:
+        return False
+
+
+def is_dygraph_api(node):
+    return is_api_in_module(node, "paddle.fluid.dygraph")
+
+
+def is_paddle_api(node):
+    return is_api_in_module(node, "paddle.fluid")
+
+
+# Is numpy_api cannot reuse is_api_in_module because of numpy module problem
+def is_numpy_api(node):
+    assert isinstance(node, gast.Call), "Input non-Call node for is_numpy_api"
+    func_str = astor.to_source(gast.gast_to_ast(node.func))
+    try:
+        import numpy as np
+        module_result = eval("_is_api_in_module_helper({}, '{}')".format(
+            func_str, "numpy"))
+        # BUG: np.random.uniform doesn't have module and cannot be analyzed
+        # TODO: find a better way
+        if not module_result:
+            return func_str.startswith("numpy.") or func_str.startswith("np.")
+    except NameError:
+        return False
 
 
 def _delete_keywords_from(node):
     assert isinstance(node, gast.Call)
-    func_src = astor.to_source(node.func)
+    func_src = astor.to_source(gast.gast_to_ast(node.func))
     import paddle.fluid as fluid
     full_args = eval("inspect.getargspec({})".format(func_src))
     full_args_name = full_args[0]
@@ -93,21 +113,6 @@ def _add_keywords_to(node, dygraph_api_name):
             if ast_keyword.arg == "input":
                 ast_keyword.arg = "x"
     return
-
-
-def _is_paddle_dygraph_api(obj):
-    m = inspect.getmodule(obj)
-    return m is not None and m.__name__.startswith("paddle.fluid.dygraph")
-
-
-def is_dygraph_api(node):
-    assert isinstance(node, gast.Call)
-    func_src = astor.to_source(node.func)
-    try:
-        import paddle.fluid as fluid
-        return eval("_is_paddle_dygraph_api({})".format(func_src))
-    except NameError:
-        return False
 
 
 def is_to_variable(node):
@@ -159,7 +164,7 @@ def update_args_of_func(node, dygraph_node, method_name):
             "The method name of class to update args should be '__init__' or 'forward'"
         )
 
-    class_src = astor.to_source(dygraph_node.func)
+    class_src = astor.to_source(gast.gast_to_ast(dygraph_node.func))
     import paddle.fluid as fluid
     if method_name == "__init__" or eval(
             "issubclass({}, fluid.dygraph.Layer)".format(class_src)):

@@ -96,6 +96,16 @@ void DatasetImpl<T>::SetHdfsConfig(const std::string& fs_name,
 }
 
 template <typename T>
+void DatasetImpl<T>::SetDownloadCmd(const std::string& download_cmd) {
+  paddle::framework::set_download_command(download_cmd);
+}
+
+template <typename T>
+std::string DatasetImpl<T>::GetDownloadCmd() {
+  return paddle::framework::download_cmd();
+}
+
+template <typename T>
 void DatasetImpl<T>::SetDataFeedDesc(const std::string& data_feed_desc_str) {
   google::protobuf::TextFormat::ParseFromString(data_feed_desc_str,
                                                 &data_feed_desc_);
