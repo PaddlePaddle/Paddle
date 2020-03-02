@@ -145,7 +145,7 @@ def start_profiler(state, tracer_option='Default'):
 
     Raises:
         ValueError: If `state` is not in ['CPU', 'GPU', 'All'] or `tracer_option` 
-        is not in ['Default', 'OpDetail', 'AllOpDetail'].
+            is not in ['Default', 'OpDetail', 'AllOpDetail'].
 
     Examples:
 
