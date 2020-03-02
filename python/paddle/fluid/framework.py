@@ -458,7 +458,7 @@ def name_scope(prefix=None):
     if in_dygraph_mode():
         yield
     else:
-        assert prefix, "namescope prefix canot be empty."
+        assert prefix, "namescope prefix can not be empty."
         global _name_scope
         _name_scope = _name_scope.child(prefix)
         yield
@@ -1495,7 +1495,7 @@ class Variable(object):
         if length < 0:
             raise ValueError("length should not be negative")
         if step == 0:
-            raise ValueError("slice step canot be zero")
+            raise ValueError("slice step can not be zero")
 
         # Find lower and upper bounds for start and stop.
         lower = -1 if step < 0 else 0
@@ -2965,7 +2965,7 @@ class IrVarNode(IrNode):
             shape(list): shape to be set.
         """
         assert self.node.var() is not None, \
-            "The node variable description canot be None."
+            "The node variable description can not be None."
         self.node.var().set_shape(shape)
 
     def persistable(self):
@@ -2976,7 +2976,7 @@ class IrVarNode(IrNode):
             bool: indicate whether the variable is persistable.
         """
         assert self.node.var() is not None, \
-            "The node variable description canot be None."
+            "The node variable description can not be None."
         return self.node.var().persistable()
 
     def type(self):
@@ -2987,7 +2987,7 @@ class IrVarNode(IrNode):
             core.VarDesc.VarType: the variable type.
         """
         assert self.node.var() is not None, \
-            "The node variable description canot be None."
+            "The node variable description can not be None."
         return self.node.var().type()
 
     def dtype(self):
@@ -2998,7 +2998,7 @@ class IrVarNode(IrNode):
             core.VarDesc.VarType: the variable data type.
         """
         assert self.node.var() is not None, \
-            "The node variable description canot be None."
+            "The node variable description can not be None."
         return self.node.var().dtype()
 
     def shape(self):
@@ -3009,7 +3009,7 @@ class IrVarNode(IrNode):
             list: the variable shape.
         """
         assert self.node.var() is not None, \
-            "The node variable description canot be None."
+            "The node variable description can not be None."
         return self.node.var().shape()
 
     @property
@@ -3059,7 +3059,7 @@ class IrOpNode(IrNode):
             new_input_name(str): the new input name.
         """
         assert self.node.op() is not None, \
-            "The node operator description canot be None."
+            "The node operator description can not be None."
         self.node.op()._rename_input(old_input_name, new_input_name)
 
     def rename_output(self, old_output_name, new_output_name):
@@ -3071,7 +3071,7 @@ class IrOpNode(IrNode):
             new_output_name(str): the new output name.
         """
         assert self.node.op() is not None, \
-            "The node operator description canot be None."
+            "The node operator description can not be None."
         print("op: {}, old: {}, new: {}\n".format(self.node.op().type(
         ), old_output_name, new_output_name))
         self.node.op()._rename_output(old_output_name, new_output_name)
@@ -3087,7 +3087,7 @@ class IrOpNode(IrNode):
             list(str): the argument name list.
         """
         assert self.node.op() is not None, \
-            "The node operator description canot be None."
+            "The node operator description can not be None."
         return self.node.op().input(name)
 
     def output(self, name):
@@ -3101,7 +3101,7 @@ class IrOpNode(IrNode):
             list(str): the argument name list.
         """
         assert self.node.op() is not None, \
-            "The node operator description canot be None."
+            "The node operator description can not be None."
         return self.node.op().output(name)
 
     def set_type(self, new_type):
@@ -3112,7 +3112,7 @@ class IrOpNode(IrNode):
             new_type(str): new operator type to be set.
         """
         assert self.node.op() is not None, \
-            "The node operator description canot be None."
+            "The node operator description can not be None."
         return self.node.op().set_type(new_type)
 
     def set_attr(self, name, val):
@@ -3130,7 +3130,7 @@ class IrOpNode(IrNode):
         Update the value of the op desc's attribute by attribute's name.
         """
         assert self.node.op() is not None, \
-            "The node operator description canot be None."
+            "The node operator description can not be None."
         desc = self.node.op()
         if isinstance(val, Block):
             desc.set_block_attr(name, val.desc)
@@ -3151,7 +3151,7 @@ class IrOpNode(IrNode):
             list(str): input arguments' names of this op node.
         """
         assert self.node.op() is not None, \
-            "The node operator description canot be None."
+            "The node operator description can not be None."
         return self.node.op().input_arg_names()
 
     def output_arg_names(self):
@@ -3162,7 +3162,7 @@ class IrOpNode(IrNode):
             list(str): output arguments' names of this op node.
         """
         assert self.node.op() is not None, \
-            "The node operator description canot be None."
+            "The node operator description can not be None."
         return self.node.op().output_arg_names()
 
     @property
@@ -3459,7 +3459,7 @@ class IrGraph(object):
         """
         Perform the topology sort operation on the graph.
 
-        Notes: the `graph` canot contain a circle.
+        Notes: the `graph` can not contain a circle.
 
         Returns:
             list(IrNode): nodes in topology order.
@@ -3991,18 +3991,22 @@ class Program(object):
 
         The two code snippets above will generate and print same programs.
         """
+
+        #NOTE(zhiqiu): we sync the original program first, since its program may diff with
+        # its desc due to modifying desc in c++ space. E.g. save op will add kLookupTablePath in desc.
+        self._sync_with_cpp()
+
+        pruned_origin_block_id_map = None
         if for_test:
-            if self._appending_grad_times > 0:
-                forward_prog = Program()
-                forward_prog.desc = core.prune_backward(self.desc)
-                forward_prog.blocks = [
-                    Block(forward_prog, i)
-                    for i in six.moves.range(forward_prog.desc.num_blocks())
-                ]
-                forward_prog._sync_with_cpp()
-                p = forward_prog._inference_optimize(prune_read_op=False)
-            else:
-                p = self._inference_optimize(prune_read_op=False)
+            forward_prog = Program()
+            forward_prog.desc, pruned_origin_block_id_map = core.prune_backward(
+                self.desc)
+            forward_prog.blocks = [
+                Block(forward_prog, i)
+                for i in six.moves.range(forward_prog.desc.num_blocks())
+            ]
+            forward_prog._sync_with_cpp()
+            p = forward_prog._inference_optimize(prune_read_op=False)
         else:
             p = Program()
             p.current_block_idx = self.current_block_idx
@@ -4016,10 +4020,12 @@ class Program(object):
             p.__op_role_var = self.__op_role_var
             p._appending_grad_times = self._appending_grad_times
 
+            #NOTE(zhiqiu): we sync the cloned program, to update its program by
+            # its desc.
             p._sync_with_cpp()
 
         p._copy_param_info_from(self)
-        p._copy_data_info_from(self)
+        p._copy_data_info_from(self, pruned_origin_block_id_map)
         p._copy_dist_param_info_from(self)
         return p
 
@@ -4038,6 +4044,10 @@ class Program(object):
         Returns:
             Program:  A new, pruned program.
         """
+
+        #NOTE(zhiqiu): we sync the original program first, since its program may diff with
+        # its desc due to modifying desc in c++ space. E.g. save op will add kLookupTablePath in desc.
+        self._sync_with_cpp()
 
         if not isinstance(targets, list):
             targets = [targets]
@@ -4093,6 +4103,10 @@ class Program(object):
         Returns:
             Program:  A new, pruned program.
         """
+
+        #NOTE(zhiqiu): we sync the original program first, since its program may diff with
+        # its desc due to modifying desc in c++ space. E.g. save op will add kLookupTablePath in desc.
+        self._sync_with_cpp()
 
         if not isinstance(feeded_var_names, list):
             feeded_var_names = [feeded_var_names]
@@ -4445,9 +4459,6 @@ class Program(object):
             raise TypeError("_copy_param_info_from should be invoked with "
                             "Program")
 
-        if len(self.blocks) != len(other.blocks):
-            raise ValueError("_copy_param_info_from should be invoked with two "
-                             "program, with represent the same topology")
         self.global_block()._copy_param_info_from(other.global_block())
 
     def _copy_dist_param_info_from(self, other):
@@ -4470,7 +4481,7 @@ class Program(object):
         self._ps_endpoint = other._ps_endpoint
         self._distributed_lookup_table = other._distributed_lookup_table
 
-    def _copy_data_info_from(self, other):
+    def _copy_data_info_from(self, other, pruned_origin_block_id_map=None):
         """
         Copy the information of data variables from other program.
 
@@ -4479,6 +4490,10 @@ class Program(object):
 
         Args:
             other(Program): Other program
+            pruned_origin_block_id_map(dict{int:int}): A dict which maps the block id in program
+            self to the block id in program other. For example, {0:0, 1:1, 2:3} means block 0 in self is 
+            cloned from block 0 in other, etc. Default is None, which means default mapped, 
+            {0:0, 1:1,..., n:n}.
 
         Returns:
             None
@@ -4487,22 +4502,24 @@ class Program(object):
             raise TypeError("_copy_data_info_from should be invoked with "
                             "Program")
 
-        if len(self.blocks) != len(other.blocks):
-            raise ValueError("_copy_data_info_from should be invoked with two "
-                             "program, with represent the same topology")
+        if not pruned_origin_block_id_map:
+            pruned_origin_block_id_map = {
+                i: i
+                for i in six.moves.range(self.desc.num_blocks())
+            }
 
         # NOTE(zhiqiu): All vars in cloned program exist in original program.
         # The reverse is not true, due to backward pruning.
-        for i, block in enumerate(other.blocks):
+        for i, block in enumerate(self.blocks):
+            other_block = other.blocks[pruned_origin_block_id_map[i]]
             for var in list(block.vars.values()):
-                if not self.blocks[i].has_var(var.name):
-                    continue
-                if var.is_data:
-                    self.blocks[i].var(var.name).is_data = True
-                if var.desc.need_check_feed():
-                    self.blocks[i].var(var.name).desc.set_need_check_feed(True)
-                if var.stop_gradient:
-                    self.blocks[i].var(var.name).stop_gradient = True
+                other_var = other_block.var(var.name)
+                if other_var.is_data:
+                    var.is_data = True
+                if other_var.desc.need_check_feed():
+                    var.desc.set_need_check_feed(True)
+                if other_var.stop_gradient:
+                    var.stop_gradient = True
 
     @dygraph_not_support
     def list_vars(self):

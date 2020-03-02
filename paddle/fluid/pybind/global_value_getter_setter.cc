@@ -36,6 +36,7 @@ DECLARE_bool(free_when_no_cache_hit);
 DECLARE_uint64(gpu_memory_limit_mb);
 #endif
 DECLARE_string(allocator_strategy);
+DECLARE_bool(enable_parallel_graph);
 
 namespace paddle {
 namespace pybind {
@@ -174,6 +175,7 @@ static void RegisterGlobalVarGetterSetter() {
   REGISTER_GLOBAL_VAR_GETTER_SETTER(FLAGS_eager_delete_tensor_gb);
   REGISTER_GLOBAL_VAR_GETTER_SETTER(FLAGS_use_system_allocator);
   REGISTER_GLOBAL_VAR_GETTER_SETTER(FLAGS_allocator_strategy);
+  REGISTER_GLOBAL_VAR_GETTER_SETTER(FLAGS_enable_parallel_graph);
   REGISTER_GLOBAL_VAR_GETTER_ONLY(FLAGS_free_idle_chunk);
   REGISTER_GLOBAL_VAR_GETTER_ONLY(FLAGS_free_when_no_cache_hit);
 #ifdef PADDLE_WITH_CUDA
