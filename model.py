@@ -26,6 +26,7 @@ from paddle.fluid.framework import in_dygraph_mode, Variable
 from paddle.fluid.executor import global_scope
 from paddle.fluid.io import is_belong_to_optimizer
 from paddle.fluid.dygraph.base import to_variable
+from metrics.metric import Metric
 
 __all__ = ['shape_hints', 'Model', 'Loss', 'CrossEntropy']
 
@@ -277,15 +278,32 @@ class StaticGraphAdapter(object):
                 feed[v.name] = labels[idx]
 
         endpoints = self._endpoints[self.mode]
-        fetch_list = endpoints['output'] + endpoints['loss']
+        fetch_list = endpoints['output'] + endpoints['label'] + endpoints['loss']
         num_output = len(endpoints['output'])
-        out = self._executor.run(
+        num_label = len(endpoints['label'])
+        rets = self._executor.run(
             compiled_prog, feed=feed,
-            fetch_list=fetch_list)
+            fetch_list=fetch_list,
+            return_numpy=False)
+        # rets = [(np.array(v), v.recursive_sequence_lengths()) if v.lod() for v in rets]
+        np_rets = []
+        for ret in rets:
+            seq_len = ret.recursive_sequence_lengths()
+            if len(seq_len) == 0:
+                np_rets.append(np.array(ret))
+            else:
+                np_rets.append((np.array(ret), seq_len))
+        outputs = np_rets[:num_output]
+        labels = np_rets[num_output:num_output+num_label]
+        losses = np_rets[num_output+num_label:]
         if self.mode == 'test':
-            return out[:num_output]
-        else:
-            return out[:num_output], out[num_output:]
+            return outputs
+        elif self.mode == 'eval':
+            for metric in self.model._metrics:
+                metric.update(outputs, labels)
+            return outputs, losses
+        else: # train
+            return outputs, losses
 
     def _make_program(self, inputs):
         prog = self._orig_prog.clone()
@@ -299,7 +317,7 @@ class StaticGraphAdapter(object):
             if self.mode != 'test':
                 label_vars = self._infer_label_vars(outputs)
                 self._label_vars[self.mode] = label_vars
-                losses = self.model._loss_function(outputs, label_vars)
+                losses = self.model._loss_function(outputs[0], label_vars)
                 if self.mode == 'train':
                     self._loss_endpoint = fluid.layers.sum(losses)
                     self.model._optimizer.minimize(self._loss_endpoint)
@@ -307,8 +325,9 @@ class StaticGraphAdapter(object):
             prog = prog.clone(for_test=True)
         self._progs[self.mode] = prog
         self._endpoints[self.mode] = {
-            "output": outputs,
-            "loss": losses
+            "output": outputs[1:],
+            "label": label_vars,
+            "loss": losses,
         }
 
     def _infer_input_vars(self, inputs):
@@ -406,7 +425,7 @@ class DynamicGraphAdapter(object):
         self.mode = 'train'
         inputs = to_list(inputs)
         labels = to_list(labels)
-        outputs = self.model.forward(*[to_variable(x) for x in inputs])
+        outputs = self.model.forward(*[to_variable(x) for x in inputs])[0]
         losses = self.model._loss_function(outputs, labels)
         final_loss = fluid.layers.sum(losses)
         final_loss.backward()
@@ -423,16 +442,16 @@ class DynamicGraphAdapter(object):
         inputs = to_list(inputs)
         labels = to_list(labels)
         outputs = self.model.forward(*[to_variable(x) for x in inputs])
-        losses = self.model._loss_function(outputs, labels)
-        return [to_numpy(o) for o in to_list(outputs)], \
+        losses = self.model._loss_function(outputs[0], labels)
+        return [to_numpy(o) for o in to_list(outputs[0])], \
             [to_numpy(l) for l in losses]
 
     def test(self, inputs, device='CPU', device_ids=None):
         super(Model, self.model).eval()
         self.mode = 'test'
         inputs = [to_variable(x) for x in to_list(inputs)]
-        outputs = self.model.forward(*inputs)
-        return [to_numpy(o) for o in to_list(outputs)]
+        outputs = self.model.forward(*inputs)[1:]
+        return [to_numpy(o) for o in to_list(outputs[1:])]
 
     def parameters(self, *args, **kwargs):
         return super(Model, self.model).parameters(*args, **kwargs)
@@ -481,11 +500,15 @@ class Model(fluid.dygraph.Layer):
     def load(self, *args, **kwargs):
         return self._adapter.load(*args, **kwargs)
 
-    def prepare(self, optimizer, loss_function):
+    def prepare(self, optimizer, loss_function, metrics=[]):
         self._optimizer = optimizer
         assert isinstance(loss_function, Loss), \
             "'loss_function' must be sub classes of 'Loss'"
         self._loss_function = loss_function
+        for metric in to_list(metrics):
+            assert isinstance(metric, Metric), \
+                "{} is not sub class of Metric".format(metric.__class__.__name__)
+        self._metrics = to_list(metrics)
 
     def parameters(self, *args, **kwargs):
         return self._adapter.parameters(*args, **kwargs)
