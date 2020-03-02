@@ -23,9 +23,10 @@ class MomentumOpInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const override {
     auto in_var_type = ctx->GetInputType("Param");
-    PADDLE_ENFORCE(
+    PADDLE_ENFORCE_EQ(
         in_var_type == framework::proto::VarType::SELECTED_ROWS ||
             in_var_type == framework::proto::VarType::LOD_TENSOR,
+        true,
         platform::errors::InvalidArgument(
             "Only support LodTensor and SelectedRows, Unexpected Input Type."));
 
