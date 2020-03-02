@@ -61,6 +61,18 @@ static std::mutex g_all_mem_event_lists_mutex;
 static thread_local int32_t g_mem_thread_id;
 static uint32_t g_mem_next_thread_id = 0;
 
+static int FindNthReversePos(const std::string &s, const char ch, const int N) {
+  int found_pos = -1;
+  auto pos = s.rfind('/', s.length() - 1);
+  int pos_number = 1;
+  while (pos != std::string::npos && pos_number < N) {
+    pos = s.rfind(ch, pos - 1);
+    pos_number++;
+  }
+  if (pos != std::string::npos) found_pos = pos;
+  return found_pos;
+}
+
 inline uint64_t GetTimeInNsec() {
   using clock = std::conditional<std::chrono::high_resolution_clock::is_steady,
                                  std::chrono::high_resolution_clock,
@@ -295,12 +307,15 @@ void SetEvent(bool merge_thread, Event analyze_event, size_t *max_name_width,
       std::string event_name;
       if (merge_thread) {
         event_name = rit->name();
-        *max_name_width = std::max(*max_name_width, event_name.size());
       } else {
         event_name =
             "thread" + std::to_string(rit->thread_id()) + "::" + rit->name();
-        *max_name_width = std::max(*max_name_width, event_name.size());
       }
+      auto print_name_size = event_name.size();
+      int found_pos = 0;
+      if ((found_pos = FindNthReversePos(event_name, '/', 2)) != -1)
+        print_name_size = event_name.size() - (found_pos + 1);
+      *max_name_width = std::max(*max_name_width, print_name_size);
 
       if (event_idx->find(event_name) == event_idx->end()) {
         event_idx->insert({event_name, event_items->size()});
@@ -431,7 +446,7 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
                    const std::multimap<std::string, EventItem> &child_map,
                    const OverHead &overhead, const std::string &sorted_domain,
                    const size_t name_width, const size_t data_width,
-                   bool merge_thread, int print_depth, int remove_len) {
+                   bool merge_thread, int print_depth) {
   if (print_depth == 0) {
     // Output header information
     std::cout << "\n------------------------->"
@@ -490,9 +505,16 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
           table.push_back(it->second);
         }
       }
-      child_table.push_back(table);
+      if (!table.empty()) child_table.push_back(table);
 
       auto name_len = event_item.name.length();
+      int remove_len = 0;
+      int Nth = 1;
+      int found_pos = 0;
+      if (child_table.empty() && print_depth > 1) Nth = 2;
+      found_pos = FindNthReversePos(event_item.name, '/', Nth);
+      if (found_pos != -1) remove_len = found_pos + 1;
+
       std::string print_name = event_item.name.substr(remove_len, name_len);
       std::string delimiter;
       for (int i = 0; i < print_depth; i++) {
@@ -517,8 +539,9 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
                 << std::setw(data_width) << event_item.max_time
                 << std::setw(data_width) << event_item.ave_time
                 << std::setw(data_width) << event_item.ratio << std::endl;
+
       PrintProfiler(child_table, child_map, overhead, sorted_domain, name_width,
-                    data_width, merge_thread, print_depth + 1, 0);
+                    data_width, merge_thread, print_depth + 1);
     }
   }
 }
@@ -638,7 +661,7 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
 
   // Print report
   PrintProfiler(events_table, child_map, overhead, sorted_domain,
-                max_name_width + 8, 12, merge_thread, 0, 0);
+                max_name_width + 8, 12, merge_thread, 0);
 }
 
 }  // namespace platform
