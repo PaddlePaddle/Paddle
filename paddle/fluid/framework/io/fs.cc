@@ -196,6 +196,13 @@ void localfs_mkdir(const std::string& path) {
   shell_execute(string::format_string("mkdir -p %s", path.c_str()));
 }
 
+void localfs_mv(const std::string& src, const std::string& dest) {
+  if (src == "" || dest == "") {
+    return;
+  }
+  shell_execute(string::format_string("mv %s %s", src.c_str(), dest.c_str()));
+}
+
 static size_t& hdfs_buffer_size_internal() {
   static size_t x = 0;
   return x;
@@ -214,14 +221,30 @@ const std::string& hdfs_command() { return hdfs_command_internal(); }
 
 void hdfs_set_command(const std::string& x) { hdfs_command_internal() = x; }
 
+static std::string& customized_download_cmd_internal() {
+  static std::string x = "";
+  return x;
+}
+
+const std::string& download_cmd() { return customized_download_cmd_internal(); }
+
+void set_download_command(const std::string& x) {
+  customized_download_cmd_internal() = x;
+}
+
 std::shared_ptr<FILE> hdfs_open_read(std::string path, int* err_no,
                                      const std::string& converter) {
   if (fs_end_with_internal(path, ".gz")) {
     path = string::format_string("%s -text \"%s\"", hdfs_command().c_str(),
                                  path.c_str());
   } else {
+    const std::string file_path = path;
     path = string::format_string("%s -cat \"%s\"", hdfs_command().c_str(),
-                                 path.c_str());
+                                 file_path.c_str());
+    if (download_cmd() != "") {  // use customized download command
+      path = string::format_string("%s \"%s\"", download_cmd().c_str(),
+                                   file_path.c_str());
+    }
   }
 
   bool is_pipe = true;
@@ -312,6 +335,14 @@ void hdfs_mkdir(const std::string& path) {
 
   shell_execute(string::format_string("%s -mkdir %s; true",
                                       hdfs_command().c_str(), path.c_str()));
+}
+
+void hdfs_mv(const std::string& src, const std::string& dest) {
+  if (src == "" || dest == "") {
+    return;
+  }
+  shell_execute(string::format_string(
+      "%s -mv %s %s; true", hdfs_command().c_str(), src.c_str(), dest.c_str()));
 }
 
 int fs_select_internal(const std::string& path) {
@@ -452,5 +483,19 @@ void fs_mkdir(const std::string& path) {
       LOG(FATAL) << "Not supported";
   }
 }
+
+void fs_mv(const std::string& src, const std::string& dest) {
+  int s = fs_select_internal(src);
+  int d = fs_select_internal(dest);
+  CHECK_EQ(s, d);
+  switch (s) {
+    case 0:
+      return localfs_mv(src, dest);
+
+    case 1:
+      return hdfs_mv(src, dest);
+  }
+}
+
 }  // end namespace framework
 }  // end namespace paddle

@@ -174,7 +174,7 @@ if(${CMAKE_VERSION} VERSION_GREATER "3.5.2")
     set(SHALLOW_CLONE "GIT_SHALLOW TRUE") # adds --depth=1 arg to git clone of External_Projects
 endif()
 
-########################### include third_party accoring to flags ###############################
+########################### include third_party according to flags ###############################
 include(external/zlib)      # download, build, install zlib
 include(external/gflags)    # download, build, install gflags
 include(external/glog)      # download, build, install glog
@@ -240,6 +240,11 @@ if(WITH_PSLIB)
         list(APPEND third_party_deps extern_pslib_brpc)
     endif()
 endif(WITH_PSLIB)
+
+if(NOT WIN32 AND NOT APPLE)
+    include(external/gloo)
+    list(APPEND third_party_deps extern_gloo)
+endif()
 
 if(WITH_BOX_PS)
     include(external/box_ps)

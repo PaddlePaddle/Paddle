@@ -17,29 +17,28 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import six
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 
 
 class PReluTest(OpTest):
     def setUp(self):
+        self.init_input_shape()
+        self.init_attr()
         self.op_type = "prelu"
-        self.initTestCase()
-        x_np = np.random.normal(size=(3, 5, 5, 10)).astype("float32")
 
+        x_np = np.random.uniform(-1, 1, self.x_shape)
         # Since zero point in prelu is not differentiable, avoid randomize
         # zero.
         x_np[np.abs(x_np) < 0.005] = 0.02
 
         if self.attrs == {'mode': "all"}:
-            alpha_np = np.random.rand(1).astype("float32")
-            self.inputs = {'X': x_np, 'Alpha': alpha_np}
+            alpha_np = np.random.uniform(-1, -0.5, (1))
         elif self.attrs == {'mode': "channel"}:
-            alpha_np = np.random.rand(1, x_np.shape[1], 1, 1).astype("float32")
-            self.inputs = {'X': x_np, 'Alpha': alpha_np}
+            alpha_np = np.random.uniform(-1, -0.5, (1, x_np.shape[1], 1, 1))
         else:
-            alpha_np = np.random.rand(1, x_np.shape[1], x_np.shape[2], \
-                x_np.shape[3]).astype("float32")
-            self.inputs = {'X': x_np, 'Alpha': alpha_np}
+            alpha_np = np.random.uniform(-1, -0.5, \
+                (1, x_np.shape[1], x_np.shape[2], x_np.shape[3]))
+        self.inputs = {'X': x_np, 'Alpha': alpha_np}
 
         out_np = np.maximum(self.inputs['X'], 0.)
         out_np = out_np + np.minimum(self.inputs['X'],
@@ -47,35 +46,37 @@ class PReluTest(OpTest):
         assert out_np is not self.inputs['X']
         self.outputs = {'Out': out_np}
 
-    def initTestCase(self):
+    def init_input_shape(self):
+        self.x_shape = (2, 100, 3, 4)
+
+    def init_attr(self):
         self.attrs = {'mode': "channel"}
 
     def test_check_output(self):
         self.check_output()
 
-    def test_check_grad_1_ignore_x(self):
-        self.check_grad(['Alpha'], 'Out', no_grad_set=set('X'))
-
-    def test_check_grad_2(self):
+    def test_check_grad(self):
         self.check_grad(['X', 'Alpha'], 'Out')
-
-    def test_check_grad_3_ignore_alpha(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Alpha'))
 
 
 # TODO(minqiyang): Resume these test cases after fixing Python3 CI job issues
 if six.PY2:
 
-    class TestCase1(PReluTest):
-        def initTestCase(self):
+    @skip_check_grad_ci(
+        reason="[skip shape check] Input(Alpha) must be 1-D and only has one data in 'all' mode"
+    )
+    class TestModeAll(PReluTest):
+        def init_input_shape(self):
+            self.x_shape = (2, 3, 4, 5)
+
+        def init_attr(self):
             self.attrs = {'mode': "all"}
 
-    class TestCase2(PReluTest):
-        def initTestCase(self):
-            self.attrs = {'mode': "channel"}
+    class TestModeElt(PReluTest):
+        def init_input_shape(self):
+            self.x_shape = (3, 2, 5, 10)
 
-    class TestCase3(PReluTest):
-        def initTestCase(self):
+        def init_attr(self):
             self.attrs = {'mode': "element"}
 
 

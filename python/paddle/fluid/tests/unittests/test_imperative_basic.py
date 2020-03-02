@@ -37,6 +37,7 @@ class MyLayer(fluid.Layer):
 class MLP(fluid.Layer):
     def __init__(self, input_size):
         super(MLP, self).__init__()
+        self._linear1 = None
         self._linear1 = Linear(
             input_size,
             3,
@@ -71,6 +72,7 @@ class SimpleRNNCell(fluid.Layer):
         i2h_param_shape = [self.step_input_size, self.hidden_size]
         h2h_param_shape = [self.hidden_size, self.hidden_size]
         h2o_param_shape = [self.output_size, self.hidden_size]
+        self._i2h_w = None
         self._i2h_w = self.create_parameter(
             attr=self.param_attr,
             shape=i2h_param_shape,
@@ -494,6 +496,19 @@ class TestImperative(unittest.TestCase):
         self.assertFalse(hasattr(layer, "whatever"))
         self.assertTrue(hasattr(layer, "test_attr"))
         self.assertEqual(layer.test_attr, 1)
+
+        my_layer = MyLayer()
+        my_layer.w1 = my_layer.create_parameter([3, 3])
+        my_layer.add_parameter('w2', None)
+        self.assertEqual(len(my_layer.parameters()), 1)
+        self.assertRaises(TypeError, my_layer.__setattr__, 'w1', 'str')
+        my_layer.w1 = None
+        self.assertEqual(len(my_layer.parameters()), 0)
+        my_layer.l1 = fluid.dygraph.Linear(3, 3)
+        self.assertEqual(len(my_layer.sublayers()), 1)
+        self.assertRaises(TypeError, my_layer.__setattr__, 'l1', 'str')
+        my_layer.l1 = None
+        self.assertEqual(len(my_layer.sublayers()), 0)
 
 
 if __name__ == '__main__':

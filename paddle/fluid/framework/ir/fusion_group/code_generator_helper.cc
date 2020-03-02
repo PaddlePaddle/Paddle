@@ -33,9 +33,32 @@ static T StringTo(const std::string& str) {
   return value;
 }
 
+static std::string ExpandMultivariateTemplate(const std::string rhs,
+                                              const size_t input_size) {
+  int start_pos = rhs.find("[", 0);
+  int end_pos = rhs.find("]", 0);
+  std::string sum_rhs = rhs.substr(0, start_pos);
+  std::string sum_rhs_component =
+      rhs.substr(start_pos + 1, (end_pos - start_pos - 1));
+  int replace_pos = sum_rhs_component.find("?", 0);
+
+  for (size_t i = 1; i < input_size; i++) {
+    std::string append_str =
+        sum_rhs_component.replace(replace_pos, 1, std::to_string(i));
+    sum_rhs = sum_rhs + append_str;
+  }
+  return sum_rhs;
+}
+
 std::string OperationExpression::GetRHS(std::unordered_set<int>* used,
-                                        size_t i) const {
-  auto rhs = OperationMap::Instance().Get(op_type_).exprs[i];
+                                        size_t exprs_index) const {
+  auto rhs = OperationMap::Instance().Get(op_type_).exprs[exprs_index];
+  auto num_operands = OperationMap::Instance().Get(op_type_).num_operands;
+  if (num_operands == -1) {
+    size_t input_size = input_ids_.size();
+    rhs = ExpandMultivariateTemplate(rhs, input_size);
+  }
+
   for (size_t i = 0; i < rhs.size(); i++) {
     size_t pos = i;
     if (rhs[pos] == '$' && rhs[pos + 1] == '{') {
