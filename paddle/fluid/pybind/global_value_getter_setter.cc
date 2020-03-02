@@ -32,6 +32,7 @@ DECLARE_bool(use_ngraph);
 DECLARE_bool(use_system_allocator);
 DECLARE_bool(free_idle_chunk);
 DECLARE_bool(free_when_no_cache_hit);
+DECLARE_bool(enable_parallel_graph);
 
 namespace paddle {
 namespace pybind {
@@ -169,6 +170,7 @@ static void RegisterGlobalVarGetterSetter() {
   REGISTER_GLOBAL_VAR_GETTER_ONLY(FLAGS_use_ngraph);
   REGISTER_GLOBAL_VAR_GETTER_SETTER(FLAGS_eager_delete_tensor_gb);
   REGISTER_GLOBAL_VAR_GETTER_SETTER(FLAGS_use_system_allocator);
+  REGISTER_GLOBAL_VAR_GETTER_SETTER(FLAGS_enable_parallel_graph);
   REGISTER_GLOBAL_VAR_GETTER_ONLY(FLAGS_free_idle_chunk);
   REGISTER_GLOBAL_VAR_GETTER_ONLY(FLAGS_free_when_no_cache_hit);
 }
