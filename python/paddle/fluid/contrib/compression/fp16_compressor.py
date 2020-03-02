@@ -165,12 +165,15 @@ def fp16_compression(optimizer):
     Examples:
 	.. code-block:: python
 
-	    loss = network()
+            import paddle.fluid as fluid
+
+            x = fluid.data(name='x', shape=[None, 10], dtype='float32')
+            trans = fluid.layers.fc(x, 100)
+            loss = fluid.layers.reduce_mean(trans)
+
             optimizer = fluid.optimizer.Adam(learning_rate=0.001)
-	
             optimizer = fluid.contrib.fp16_compression(
-	              optimizer=optimizer)
-	
+                optimizer=optimizer)
             ops, param_grads = optimizer.minimize(loss)
     """
 
