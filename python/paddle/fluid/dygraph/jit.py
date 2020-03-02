@@ -20,7 +20,7 @@ import warnings
 
 from ..wrapped_decorator import wrap_decorator
 from .base import program_desc_tracing_guard, switch_to_static_graph
-from .dygraph_to_static import ProgramCache, convert_to_static
+from .dygraph_to_static import AutoTracer, convert_to_static
 from .layers import Layer
 from paddle.fluid import core
 from paddle.fluid.framework import Program, Block, Variable, _dygraph_tracer, dygraph_only, _dygraph_guard, _current_expected_place, in_dygraph_mode
@@ -69,7 +69,8 @@ dygraph_to_static_graph = wrap_decorator(_dygraph_to_static_graph_)
 
 def _dygraph_to_static_output_(dygraph_func):
     # Singleton object to cache main_program to avoid inserting ops repeatedly.
-    cached_program = ProgramCache()
+    # TODO: Need a better class name
+    auto_tracer = AutoTracer()
 
     def __impl__(*args, **kwargs):
         if in_dygraph_mode():
@@ -78,8 +79,14 @@ def _dygraph_to_static_output_(dygraph_func):
                 " Please use it in static mode.")
             return dygraph_func(*args, **kwargs)
 
-        cached_program.add_layers(dygraph_func)
-        return cached_program(*args, **kwargs)
+        cached_program = auto_tracer.get_cached_program()
+        outputs = cached_program(dygraph_func, *args, **kwargs)
+
+        # Run program to fetch output Tensors once building successfully.
+        if not cached_program.in_build_process:
+            outputs = auto_tracer.run(*args, **kwargs)
+
+        return outputs
 
     return __impl__
 
