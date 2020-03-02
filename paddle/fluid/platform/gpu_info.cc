@@ -246,7 +246,9 @@ void SetDeviceId(int id) {
 }
 
 void GpuMemoryUsage(size_t *available, size_t *total) {
-  RecordedCudaMemGetInfo(available, total, platform::GetCurrentDeviceId());
+  size_t actual_available, actual_total;
+  RecordedCudaMemGetInfo(available, total, &actual_available, &actual_total,
+                         platform::GetCurrentDeviceId());
 }
 
 size_t GpuAvailableMemToAlloc() {
@@ -397,11 +399,14 @@ class RecordedCudaMallocHelper {
       }
     });
 
-    PADDLE_ENFORCE_GE(dev_id, 0, platform::errors::OutOfRange(
-                                     "Device id must be not less than 0"));
+    PADDLE_ENFORCE_GE(
+        dev_id, 0,
+        platform::errors::OutOfRange(
+            "Device id must be not less than 0, but got %d", dev_id));
     PADDLE_ENFORCE_LT(
         dev_id, instances_.size(),
-        platform::errors::OutOfRange("Device id exceeds gpu card number"));
+        platform::errors::OutOfRange("Device id %d exceeds gpu card number %d",
+                                     dev_id, instances_.size()));
     return instances_[dev_id].get();
   }
 
@@ -456,20 +461,26 @@ class RecordedCudaMallocHelper {
     }
   }
 
-  void GetMemInfo(size_t *avail, size_t *total) {
+  bool GetMemInfo(size_t *avail, size_t *total, size_t *actual_avail,
+                  size_t *actual_total) {
     {
       CUDADeviceGuard guard(dev_id_);
-      auto result = cudaMemGetInfo(avail, total);
+      auto result = cudaMemGetInfo(actual_avail, actual_total);
       if (result != cudaSuccess) {
-        *avail = 0;
+        *actual_avail = 0;
       }
       RaiseNonOutOfMemoryError(&result);
     }
 
     if (NeedRecord()) {
       std::lock_guard<std::mutex> guard(*mtx_);
-      *avail = std::min(*avail, limit_size_ - cur_size_);
-      *total = std::min(*total, limit_size_);
+      *avail = std::min(*actual_avail, limit_size_ - cur_size_);
+      *total = std::min(*actual_total, limit_size_);
+      return *total < *actual_total;
+    } else {
+      *avail = *actual_avail;
+      *total = *actual_total;
+      return false;
     }
   }
 
@@ -479,6 +490,8 @@ class RecordedCudaMallocHelper {
     LockGuardPtr<std::mutex> lock(mtx_);
     return NeedRecord() ? cur_size_ : 0;
   }
+
+  uint64_t LimitSize() const { return limit_size_; }
 
  private:
   const int dev_id_;
@@ -503,8 +516,10 @@ void RecordedCudaFree(void *p, size_t size, int dev_id) {
   return RecordedCudaMallocHelper::Instance(dev_id)->Free(p, size);
 }
 
-void RecordedCudaMemGetInfo(size_t *avail, size_t *total, int dev_id) {
-  RecordedCudaMallocHelper::Instance(dev_id)->GetMemInfo(avail, total);
+bool RecordedCudaMemGetInfo(size_t *avail, size_t *total, size_t *actual_avail,
+                            size_t *actual_total, int dev_id) {
+  return RecordedCudaMallocHelper::Instance(dev_id)->GetMemInfo(
+      avail, total, actual_avail, actual_total);
 }
 
 uint64_t RecordedCudaMallocSize(int dev_id) {

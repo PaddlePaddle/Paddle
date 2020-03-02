@@ -36,7 +36,9 @@ TEST(test_record_malloc, test_limit_gpu_memory) {
 
   size_t avail, total;
   {
-    RecordedCudaMemGetInfo(&avail, &total, DEVICE_ID);
+    size_t actual_avail, actual_total;
+    RecordedCudaMemGetInfo(&avail, &total, &actual_avail, &actual_total,
+                           DEVICE_ID);
     ASSERT_EQ(total, limit);
     ASSERT_EQ(cudaGetLastError(), cudaSuccess);
   }
