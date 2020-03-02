@@ -97,9 +97,8 @@ void HdfsStore::wait(const std::vector<std::string>& keys,
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::steady_clock::now() - start);
     if (wait_timeout_ != gloo::kNoTimeout && elapsed > wait_timeout_) {
-      throw ::gloo::TimeoutException(
-          "TIMEOUT self_rank = " + std::to_string(self_rank_) +
-          " pair_rank = " +  std::to_string(last_check_rank));
+      PADDLE_THROW("TIMEOUT self_rank = " + std::to_string(self_rank_)
+                   + " pair_rank = " +  std::to_string(last_check_rank));
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(wait_sleep_ms_));
   }

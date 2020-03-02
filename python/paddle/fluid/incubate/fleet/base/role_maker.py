@@ -612,6 +612,7 @@ class GeneralRoleMaker(RoleMakerBase):
                 gloo.set_prefix(self._prefix)
                 gloo.set_timeout_seconds(
                     self._init_timeout_seconds, self._run_timeout_seconds)
+                gloo.init()
                 self._node_type_comm = gloo
 
             gloo = fluid.core.Gloo()
