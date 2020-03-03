@@ -179,21 +179,23 @@ class TestDygraphIfElseNet(unittest.TestCase):
 
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
-        self.net = NetWithControlFlowIf()
+        self.Net = NetWithControlFlowIf
 
     def _run_static(self):
         main_program = fluid.Program()
         with fluid.program_guard(main_program):
+            net = self.Net()
             x_v = fluid.layers.assign(self.x)
             # Transform into static graph
-            out = dygraph_to_static_graph(self.net.forward)(self.net, x_v)
+            out = dygraph_to_static_graph(net.forward)(net, x_v)
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
             ret = exe.run(main_program, fetch_list=out)
-            return ret
+            return ret[0]
 
     def _run_dygraph(self):
         with fluid.dygraph.guard(place):
+            net = self.Net()
             x_v = fluid.dygraph.to_variable(self.x)
             ret = self.net(x_v)
             return ret.numpy()
