@@ -8,7 +8,7 @@ Notes:
 * INT8 accuracy is best on CPU servers supporting AVX512 VNNI extension.
 
 ## 0. Prerequisite
-You need to install at least PaddlePaddle-1.7 python package `pip install paddlepaddle==1.7`.
+You need to install at least PaddlePaddle-1.7.1 python package `pip install paddlepaddle==1.7.1`.
 
 ## 1. How to generate INT8 MKL-DNN QAT model
 You can refer to the unit test in [test_quantization_mkldnn_pass.py](test_quantization_mkldnn_pass.py). Users firstly use PaddleSlim quantization strategy to get a saved fake QAT model by [QuantizationFreezePass](https://github.com/PaddlePaddle/models/tree/develop/PaddleSlim/quant_low_level_api), then use the `QatInt8MkldnnPass` (from QAT1.0 MKL-DNN) to get a graph which can be run with MKL-DNN INT8 kernel. In Paddle Release 1.6, this pass supports `conv2d` and `depthwise_conv2d` ops with channel-wise quantization for weights. Apart from it, another pass called `Qat2Int8MkldnnPass` (from QAT2.0 MKL-DNN) is available for use. In Release 1.6, this pass additionally supports `pool2d` op and allows users to transform their QAT model into a highly performance-optimized INT8 model that is ran using INT8 MKL-DNN kernels. In Release 1.7, a support for `fc`, `reshape2` and `transpose2` ops was added to the pass.
@@ -83,21 +83,21 @@ Notes:
 
 |     Model    |  FP32 Accuracy | QAT INT8 Accuracy | Accuracy Diff |
 |:------------:|:----------------------:|:----------------------:|:---------:|
-|   Ernie      |      79.76%            |         79.28%         |  -0.48%   |
+|   Ernie      |      80.20%            |        79.96%         |  -0.24%   |               
 
 
 >**V. Ernie QAT2.0 MKL-DNN Performance on Intel(R) Xeon(R) Gold 6271**
 
-|     Threads  | FP32 Latency (ms) | QAT INT8 Latency (ms)    | Latency Diff |
+|     Threads  | FP32 Latency (ms) | QAT INT8 Latency (ms)    | Ratio (FP32/INT8) |
 |:------------:|:----------------------:|:-------------------:|:---------:|
 | 1 thread     |        252.131         |         93.8023    |     2.687x   |
 | 20 threads   |        29.1853         |         17.3765    |     1.680x   |
 
 ## 3. How to reproduce the results
-Three steps are needed to reproduce the above-mentioned accuracy and performance results.  Below we explain the steps taking ResNet50 as an example of image classification models. In order to reproduce NLP results, please follow [this guide](https://github.com/PaddlePaddle/benchmark/tree/master/Inference/c%2B%2B/ernie/mkldnn/README.md).
-### Prepare dataset
+To reproduce the above-mentioned Image Classification models accuracy and performance, follow steps as below (taking ResNet50 as an example).
+To reproduce NLP models results (Ernie), please follow [How to reproduce Ernie QAT results on MKL-DNN](https://github.com/PaddlePaddle/benchmark/tree/master/Inference/c%2B%2B/ernie/mkldnn/README.md).
 
-#### Image classification
+### Prepare dataset
 
 In order to download the dataset for image classification models benchmarking, execute:
 
@@ -109,7 +109,6 @@ The converted data binary file is saved by default in `$HOME/.cache/paddle/datas
 
 ### Prepare model
 
-#### Image classification
 You can run the following commands to download ResNet50 model. The exemplary code snippet provided below downloads a ResNet50 QAT model. The reason for having two different versions of the same model originates from having two different QAT training strategies: One for an non-optimized and second for an optimized graph transform which correspond to QAT1.0 and QAT2.0 respectively.
 
 ```bash
@@ -134,7 +133,6 @@ MODEL_NAME=resnet50, resnet101, mobilenetv1, mobilenetv2, vgg16, vgg19
 ```
 ### Commands to reproduce benchmark
 
-#### Image classification
 You can use the `qat_int8_image_classification_comparison.py` script to reproduce the accuracy result on ResNet50. The difference between commands usedin the QAT1.0 MKL-DNN and QAT2.0 MKL-DNN is that for QAT2.0 MKL-DNN two additional options are required: the `--qat2` option to enable QAT2.0 MKL-DNN, and the `--quantized_ops` option with a comma-separated list of operators to be quantized. To perform the QAT2.0 MKL-DNN performance test, the environment variable `OMP_NUM_THREADS=1` and `--batch_size=1` option should be set.
 >*QAT1.0*
 
