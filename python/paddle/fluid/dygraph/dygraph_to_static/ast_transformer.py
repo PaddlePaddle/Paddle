@@ -185,6 +185,8 @@ class BasicApiTransformer(gast.NodeTransformer):
         self.wrapper_root = wrapper_root
         self.root = wrapper_root.node
         self.static_analysis_visitor = static_analysis_visitor
+        self.node_to_wrapper_map = self.static_analysis_visitor.get_node_to_wrapper_map(
+        )
         self.class_node_dict = {}
         self.feed_name_to_arg_id = {}
 
@@ -235,7 +237,7 @@ class BasicApiTransformer(gast.NodeTransformer):
     #
     #     return
 
-    def to_layers_shape(self, node):
+    def _to_layers_shape(self, node):
         assert isinstance(node, gast.Attribute)
         value_id = node.value.id  # eg: 'x'
         var_env = self.static_analysis_visitor.get_var_env()
@@ -256,10 +258,17 @@ class BasicApiTransformer(gast.NodeTransformer):
             return node
         # print(" * - "*20)
         # var_env.cur_scope = var_env.cur_scope.parent_scope
+
         new_node = gast.Call(
             func=gast.parse('fluid.layers.shape').body[0].value,
             args=[node.value],
             keywords=[])
+        parent_node = self.node_to_wrapper_map[node].parent.node
+
+        parent_node.value = new_node
+        # print(" * -"*20)
+        # print(astor.to_source(gast.gast_to_ast(node)))
+        # print(" * -"*20)
         return new_node
 
     def _visit_Call(self, node):
@@ -275,15 +284,18 @@ class BasicApiTransformer(gast.NodeTransformer):
         if is_paddle_api(node):
             # and not is_dygraph_api(node):
             for idx, arg in enumerate(node.args):
-                if isinstance(arg, gast.Attribute):
-                    if arg.attr == 'shape':
-                        node.args[idx] = self.to_layers_shape(arg)
+                for child_node in gast.walk(arg):
+                    if isinstance(child_node, gast.Attribute):
+                        if child_node.attr == 'shape':
+                            self._to_layers_shape(child_node)
 
             for idx, keyword in enumerate(node.keywords):
                 value = keyword.value
-                if isinstance(value, gast.Attribute):
-                    if value.attr == 'shape':
-                        node.keywords[idx].value = self.to_layers_shape(value)
+                for child_node in gast.walk(value):
+                    if isinstance(child_node, gast.Attribute):
+                        if child_node.attr == 'shape':
+                            print("* - " * 20)
+                            self._to_layers_shape(child_node)
 
         func_name = astor.to_source(gast.gast_to_ast(node.func))
         if self._is_dygraph_forward(func_name):

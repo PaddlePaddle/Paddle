@@ -23,8 +23,11 @@ SEED = 2020
 numpy.random.seed(SEED)
 
 # def dyfunc_tensor_shape(x):
-#     expand_times = [1] * len(x.shape)
+#
+#
 #     x = fluid.dygraph.to_variable(x)
+#     expand_times = [1] * len(x.shape)
+#     fluid.layers.reshape(x, shape=(-1, x.shape[0]))
 #     a = x.shape
 #     res1 = fluid.layers.reshape(x, shape=x.shape)
 #     b = numpy.ones(5)
@@ -52,10 +55,18 @@ def dyfunc_tensor_shape_3(x):
     return res
 
 
-# test_funcs = [dyfunc_tensor_shape]
-test_funcs = [
-    dyfunc_tensor_shape_1, dyfunc_tensor_shape_2, dyfunc_tensor_shape_3
-]
+def dyfunc_tensor_shape(x):
+    x = fluid.dygraph.to_variable(x)
+    res = fluid.layers.reshape(x, shape=(-1, len(x.shape[0])))
+    res = fluid.layers.reshape(x, shape=(-1, x.shape))
+    return res
+
+
+test_funcs = [dyfunc_tensor_shape]
+
+# test_funcs = [
+#     dyfunc_tensor_shape_1, dyfunc_tensor_shape_2, dyfunc_tensor_shape_3,dyfunc_tensor_shape_4
+# ]
 
 
 class TestTensorShape(unittest.TestCase):
@@ -81,8 +92,8 @@ class TestTensorShape(unittest.TestCase):
     def test_transformed_static_result(self):
         for func in test_funcs:
             self.dygraph_func = func
-            dygraph_res = self.get_dygraph_output()
             static_res = self.get_static_output()
+            dygraph_res = self.get_dygraph_output()
             self.assertTrue(
                 numpy.allclose(dygraph_res, static_res),
                 msg='dygraph res is {}\nstatic_res is {}'.format(dygraph_res,
