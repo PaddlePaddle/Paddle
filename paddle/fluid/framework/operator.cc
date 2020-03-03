@@ -1056,6 +1056,22 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
 
   auto expected_kernel_key = this->GetExpectedKernelType(
       ExecutionContext(*this, scope, *dev_ctx, ctx, nullptr));
+  if (HasAttr("op_device")) {
+    if (Attr<std::string>("op_device") == "cpu") {
+      expected_kernel_key.place_ = platform::CPUPlace();
+    } else if (Attr<std::string>("op_device") == "gpu") {
+      // when the Op that only has CPUKernel is assigned to GPU, the CPUKernel
+      // will be executed and a warning will be given at the same time.
+      if (SupportGPU()) {
+        expected_kernel_key.place_ = dev_ctx->GetPlace();
+      } else {
+        expected_kernel_key.place_ = platform::CPUPlace();
+        LOG_FIRST_N(WARNING, 1)
+            << "Op(" << type_
+            << ") has no CUDA implementation. It will be assigned to CPUPlace.";
+      }
+    }
+  }
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
   auto kernel_iter = kernels.find(expected_kernel_key);

@@ -86,7 +86,8 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
   AddAttr<std::vector<std::string>>(OpCreationCallstackAttrName(),
                                     "Callstack for Op Creatation.")
       .SetDefault({});
-
+  AddAttr<std::string>(OpDeviceAttrName(), "Device type of this operator.")
+      .SetDefault("");
   Validate();
 }
 
