@@ -144,7 +144,6 @@ void BasicEngine::PrepareDeps() {
     visited.insert(init_op);
   }
 
-  std::unordered_map<VarBase*, int> map_all_var;
   while (!q.empty()) {
     auto* cur_op = q.front();
     q.pop();
