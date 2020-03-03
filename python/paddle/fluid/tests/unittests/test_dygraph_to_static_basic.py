@@ -184,10 +184,11 @@ class TestDygraphIfElseNet(unittest.TestCase):
     def _run_static(self):
         main_program = fluid.Program()
         with fluid.program_guard(main_program):
+            self.Net.forward = dygraph_to_static_graph(self.Net.forward)
             net = self.Net()
             x_v = fluid.layers.assign(self.x)
             # Transform into static graph
-            out = dygraph_to_static_graph(net.forward)(net, x_v)
+            out = net(x_v)
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
             ret = exe.run(main_program, fetch_list=out)
@@ -197,7 +198,7 @@ class TestDygraphIfElseNet(unittest.TestCase):
         with fluid.dygraph.guard(place):
             net = self.Net()
             x_v = fluid.dygraph.to_variable(self.x)
-            ret = self.net(x_v)
+            ret = net(x_v)
             return ret.numpy()
 
     def test_ast_to_func(self):
