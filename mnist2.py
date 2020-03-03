@@ -76,7 +76,7 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
 
 
 class MNIST(Model):
-    def __init__(self, inputs):
+    def __init__(self, inputs=None):
         super(MNIST, self).__init__(inputs)
         self._simple_img_conv_pool_1 = SimpleImgConvPool(
             1, 20, 5, 2, 2, act="relu")
@@ -146,8 +146,9 @@ def main():
     with guard:
         inputs = [
             Input(
-                [None, 1, 28, 28], 'float32', name='image'), Input(
-                    [None, 1], 'int64', name='label')
+                [None, 1, 28, 28], 'float32', name='image'),
+            Input(
+                [None, 1], 'int64', name='label'),
         ]
         model = MNIST(inputs)
         optim = Momentum(

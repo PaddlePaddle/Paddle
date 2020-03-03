@@ -76,7 +76,7 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
 
 
 class MNIST(Model):
-    def __init__(self, inputs, targets=None):
+    def __init__(self, inputs=None, targets=None):
         super(MNIST, self).__init__(inputs, targets)
         self._simple_img_conv_pool_1 = SimpleImgConvPool(
             1, 20, 5, 2, 2, act="relu")
@@ -87,12 +87,13 @@ class MNIST(Model):
         pool_2_shape = 50 * 4 * 4
         SIZE = 10
         scale = (2.0 / (pool_2_shape**2 * SIZE))**0.5
-        self._fc = Linear(800,
-                          10,
-                          param_attr=fluid.param_attr.ParamAttr(
-                              initializer=fluid.initializer.NormalInitializer(
-                                  loc=0.0, scale=scale)),
-                          act="softmax")
+        self._fc = Linear(
+            800,
+            10,
+            param_attr=fluid.param_attr.ParamAttr(
+                initializer=fluid.initializer.NormalInitializer(
+                    loc=0.0, scale=scale)),
+            act="softmax")
 
     def forward(self, inputs):
         x = self._simple_img_conv_pool_1(inputs)
@@ -139,11 +140,14 @@ def main():
     device_ids = list(range(FLAGS.num_devices))
 
     with guard:
-        inputs=[Input([None, 1, 28, 28], 'float32', name='image')]
-        labels=[Input([None, 1], 'int64', name='label')]
+        inputs = [Input([None, 1, 28, 28], 'float32', name='image')]
+        labels = [Input([None, 1], 'int64', name='label')]
         model = MNIST(inputs, labels)
-        optim = Momentum(learning_rate=FLAGS.lr, momentum=.9,
-                         parameter_list=model.parameters())
+        #model = MNIST()
+        optim = Momentum(
+            learning_rate=FLAGS.lr,
+            momentum=.9,
+            parameter_list=model.parameters())
         model.prepare(optim, CrossEntropy())
         if FLAGS.resume is not None:
             model.load(FLAGS.resume)
@@ -155,8 +159,8 @@ def main():
             val_acc = 0.0
             print("======== train epoch {} ========".format(e))
             for idx, batch in enumerate(train_loader()):
-                outputs, losses = model.train(batch[0], batch[1], device='gpu',
-                                              device_ids=device_ids)
+                outputs, losses = model.train(
+                    batch[0], batch[1], device='gpu', device_ids=device_ids)
 
                 acc = accuracy(outputs[0], batch[1])[0]
                 train_loss += np.sum(losses)
@@ -167,8 +171,8 @@ def main():
 
             print("======== eval epoch {} ========".format(e))
             for idx, batch in enumerate(val_loader()):
-                outputs, losses = model.eval(batch[0], batch[1], device='gpu',
-                                             device_ids=device_ids)
+                outputs, losses = model.eval(
+                    batch[0], batch[1], device='gpu', device_ids=device_ids)
 
                 acc = accuracy(outputs[0], batch[1])[0]
                 val_loss += np.sum(losses)
@@ -186,14 +190,21 @@ if __name__ == '__main__':
     parser.add_argument(
         "-e", "--epoch", default=100, type=int, help="number of epoch")
     parser.add_argument(
-        '--lr', '--learning-rate', default=1e-3, type=float, metavar='LR',
+        '--lr',
+        '--learning-rate',
+        default=1e-3,
+        type=float,
+        metavar='LR',
         help='initial learning rate')
     parser.add_argument(
         "-b", "--batch_size", default=128, type=int, help="batch size")
     parser.add_argument(
         "-n", "--num_devices", default=4, type=int, help="number of devices")
     parser.add_argument(
-        "-r", "--resume", default=None, type=str,
+        "-r",
+        "--resume",
+        default=None,
+        type=str,
         help="checkpoint path to resume")
     FLAGS = parser.parse_args()
     main()

@@ -41,6 +41,8 @@ class Input(fluid.dygraph.Layer):
 
 
 def to_list(value):
+    if value is None:
+        return value
     if isinstance(value, (list, tuple)):
         return value
     return [value]
@@ -443,11 +445,25 @@ class DynamicGraphAdapter(object):
 
 
 class Model(fluid.dygraph.Layer):
+    """
+    FIXME: add more comments and usage
+
+    Args:
+        inputs (Input|list of Input|None): inputs, entry points of network,
+            could be a Input layer of lits of Input layers, or None.
+            For static graph, inputs must be set. For dynamic graph, it could
+            be None.
+        labels (Input|list of Input|None): labels, entry points of network,
+            could be a Input layer of lits of Input layers, or None.
+            For static graph, if set loss_function in Model.prepare(), it
+            must be set. Otherwise, it could be None.
+    """
+
     def __init__(self, inputs=None, labels=None):
         super(Model, self).__init__(self.__class__.__name__)
         self.mode = 'train'
-        self._inputs = inputs
-        self._labels = labels
+        self._inputs = to_list(inputs)
+        self._labels = to_list(labels)
         self._loss_function = None
         self._loss_weights = None
         self._loss = None
