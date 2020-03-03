@@ -3617,6 +3617,7 @@ class Program(object):
 
             print("main program is: {}".format(main_program))
             print("start up program is: {}".format(startup_program))
+            print("diff api testtest~~~~~~~")
 
     """
 
@@ -3867,6 +3868,7 @@ class Program(object):
                 # Here we use clone before Momentum
                 optimizer = fluid.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
                 optimizer.minimize()
+                print("testxxxxxclone")
 
         Args:
 
@@ -3899,6 +3901,7 @@ class Program(object):
                         for key, value in sorted(six.iteritems(op.all_attrs())):
                             if key not in ['op_callstack', 'op_role_var']:
                                 print(" [ attrs: {}:   {} ]".format(key, value))
+                                print("testxxxxxclonea")
 
 
         1. To clone a test program, the sample code is:
@@ -3988,6 +3991,7 @@ class Program(object):
                         with fluid.unique_name.guard():
                             loss = network(is_test=True)
                     print(test_program_2)
+                    print("testxxxxxclonebbbb")
 
         The two code snippets above will generate and print same programs.
         """
