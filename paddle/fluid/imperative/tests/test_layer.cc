@@ -201,8 +201,8 @@ TEST(test_layer, test_dygraph_execution_context) {
   paddle::framework::RuntimeContext ctx({}, {});
   framework::Scope scope;
 
-  DygraphExecutionContext dy_exe_context(*(op.get()), scope, *dev_ctx, ctx,
-                                         nullptr, ins, outs, &concat_att_map);
+  DygraphExecutionContext dy_exe_context(*(op.get()), scope, *dev_ctx, ctx, ins,
+                                         outs, &concat_att_map);
 
   ASSERT_EQ(dy_exe_context.InputSize("X"), 1u);
   ASSERT_EQ(dy_exe_context.InputName("X"), "vin");

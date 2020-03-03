@@ -50,15 +50,13 @@ class PreparedOp {
   PreparedOp(const framework::OperatorBase& op,
              const framework::RuntimeContext& ctx,
              framework::OperatorWithKernel::OpKernelFunc func,
-             platform::DeviceContext* dev_ctx,
-             std::vector<framework::KernelConfig>* kernel_configs);
+             platform::DeviceContext* dev_ctx);
 
  private:
   const framework::OperatorBase& op_;
   const framework::RuntimeContext& ctx_;
   framework::OperatorWithKernel::OpKernelFunc func_;
   platform::DeviceContext* dev_ctx_;
-  std::vector<framework::KernelConfig>* kernel_configs_;
 };
 
 }  // namespace imperative

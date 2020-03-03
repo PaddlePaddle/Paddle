@@ -21,19 +21,21 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-// Not thread-safe. Should be owned per-kernel.
+// thread-safe.
 template <typename TAlgorithm>
 class AlgorithmsCache {
  public:
   AlgorithmsCache() : search_times_(0) { hash_.clear(); }
   // Caches the best algorithm for a given
   // combination of tensor dimensions & compute data type.
-  TAlgorithm GetAlgorithm(
-      const std::vector<int64_t>& dims1, const std::vector<int64_t>& dims2,
-      const std::vector<int>& strides, const std::vector<int>& paddings,
-      const std::vector<int>& dilations,
-      int algorithmFlags,  // can set for different data type
-      int64_t cudnn_dtype, std::function<TAlgorithm()> gen_func);
+  // cudnn_dtype set for different data type
+  TAlgorithm GetAlgorithm(const std::vector<int64_t>& dims1,
+                          const std::vector<int64_t>& dims2,
+                          const std::vector<int>& strides,
+                          const std::vector<int>& paddings,
+                          const std::vector<int>& dilations, int algorithmFlags,
+                          int64_t cudnn_dtype,
+                          std::function<TAlgorithm()> gen_func);
 
   TAlgorithm GetAlgorithm(int64_t area, int search_times, int algorithmFlags,
                           std::function<TAlgorithm()> gen_func);

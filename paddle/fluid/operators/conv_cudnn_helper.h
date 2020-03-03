@@ -90,8 +90,9 @@ std::ostream& operator<<(std::ostream& out, const std::vector<T>& v) {
   return out;
 }
 
-// using framework::AlgorithmsCache;
-
+// ConvSearchCache using framework::AlgorithmsCache to search
+// cudnnConvolutionFwdAlgo_t, cudnnConvolutionBwdDataAlgo_t or
+// cudnnConvolutionBwdFilterAlgo_t
 class ConvSearchCache {
  public:
   static ConvSearchCache& Instance() {
@@ -127,13 +128,6 @@ class ConvSearchCache {
   framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t> fusion_forward_cache_;
 };
 
-// static framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t>
-// global_forward_cache;
-// static framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>
-// global_bwddata_cache;
-// static framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>
-// global_bwdfilter_cache;
-
 struct ConvArgs {
   cudnnHandle_t handle;
   platform::TensorDescriptor idesc, odesc;
@@ -166,7 +160,7 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
 
   template <typename T>
   static algo_t Find(const ConvArgs& args, bool exhaustive_search,
-                     bool deterministic, int algo_cache_id,
+                     bool deterministic,
                      const framework::ExecutionContext& ctx) {
     auto dtype = platform::CudnnDataType<T>::type;
     bool has_got_workspace_size = true;
@@ -228,26 +222,20 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
 #endif
       VLOG(3) << "choose algo " << algo;
     } else {
-      // AlgorithmsCache<algo_t>& algo_cache =
-      //    ctx.GetKernelConfig<AlgorithmsCache<algo_t>>(algo_cache_id);
       auto& dev_ctx =
           ctx.template device_context<platform::CUDADeviceContext>();
       auto workspace_handle = dev_ctx.cudnn_workspace_handle();
 
       auto& temp = ctx.cuda_device_context();
-      // AlgorithmsCache<algo_t>& algo_cache =
-      // temp.GetKernelList<AlgorithmsCache<algo_t>>( ctx.Type(),
-      //        framework::DataLayout::kNCHW, algo_cache_id);
       AlgorithmsCache<algo_t>& algo_cache =
           *(ConvSearchCache::Instance().GetForward());
 
       auto x_dims = framework::vectorize(args.x->dims());
       auto w_dims = framework::vectorize(args.w->dims());
 
-      VLOG(10) << "cudnnConvolutionFwdAlgoPerf_t algo_cache_id:"
-               << algo_cache_id << ", x_dims:" << x_dims
-               << ", w_dims:" << w_dims << ", args.s" << args.s << ", args.p"
-               << args.p << ", args.d" << args.d;
+      VLOG(10) << "cudnnConvolutionFwdAlgoPerf_t:"
+               << ", x_dims:" << x_dims << ", w_dims:" << w_dims << ", args.s"
+               << args.s << ", args.p" << args.p << ", args.d" << args.d;
 
       algo = algo_cache.GetAlgorithm(
           x_dims, w_dims, args.s, args.p, args.d, 0,
@@ -297,7 +285,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
 
   template <typename T>
   static algo_t Find(const ConvArgs& args, bool exhaustive_search,
-                     bool deterministic, int algo_cache_id,
+                     bool deterministic,
                      const framework::ExecutionContext& ctx) {
     auto dtype = platform::CudnnDataType<T>::type;
     bool exhaustive = (exhaustive_search) & (dtype != CUDNN_DATA_HALF);
@@ -374,28 +362,19 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
     } else if (deterministic) {
       return CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
     } else {
-      // AlgorithmsCache<algo_t>& algo_cache =
-      //    ctx.GetKernelConfig<AlgorithmsCache<algo_t>>(algo_cache_id);
       auto& dev_ctx =
           ctx.template device_context<platform::CUDADeviceContext>();
       auto workspace_handle = dev_ctx.cudnn_workspace_handle();
 
       AlgorithmsCache<algo_t>& algo_cache =
           *(ConvSearchCache::Instance().GetBackwardData());
-      /*
-      AlgorithmsCache<algo_t>& algo_cache =
-          dev_ctx.GetKernelList<AlgorithmsCache<algo_t>>( ctx.Type(),
-                  framework::DataLayout::kNCHW,
-                  algo_cache_id);
-      */
 
       auto x_dims = framework::vectorize(args.x->dims());
       auto w_dims = framework::vectorize(args.w->dims());
 
-      VLOG(10) << "cudnnConvolutionFwdAlgoPerf_t algo_cache_id:"
-               << algo_cache_id << ", x_dims:" << x_dims
-               << ", w_dims:" << w_dims << ", args.s" << args.s << ", args.p"
-               << args.p << ", args.d" << args.d;
+      VLOG(10) << "cudnnConvolutionFwdAlgoPerf_t"
+               << ", x_dims:" << x_dims << ", w_dims:" << w_dims << ", args.s"
+               << args.s << ", args.p" << args.p << ", args.d" << args.d;
 
       algo = algo_cache.GetAlgorithm(
           x_dims, w_dims, args.s, args.p, args.d, 0,
@@ -448,7 +427,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
 
   template <typename T>
   static algo_t Find(const ConvArgs& args, bool exhaustive_search,
-                     bool deterministic, int algo_cache_id,
+                     bool deterministic,
                      const framework::ExecutionContext& ctx) {
     auto dtype = platform::CudnnDataType<T>::type;
     bool exhaustive = (exhaustive_search) & (dtype != CUDNN_DATA_HALF);
@@ -512,27 +491,18 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
     } else if (deterministic) {
       return CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1;
     } else {
-      // AlgorithmsCache<algo_t>& algo_cache =
-      //    ctx.GetKernelConfig<AlgorithmsCache<algo_t>>(algo_cache_id);
       auto& dev_ctx =
           ctx.template device_context<platform::CUDADeviceContext>();
       auto workspace_handle = dev_ctx.cudnn_workspace_handle();
-      /*
-      AlgorithmsCache<algo_t>& algo_cache =
-          dev_ctx.GetKernelList<AlgorithmsCache<algo_t>>( ctx.Type(),
-                  framework::DataLayout::kNCHW,
-                              algo_cache_id);
-     */
       AlgorithmsCache<algo_t>& algo_cache =
           *(ConvSearchCache::Instance().GetBackwardFilter());
 
       auto x_dims = framework::vectorize(args.x->dims());
       auto w_dims = framework::vectorize(args.w->dims());
 
-      VLOG(10) << "cudnnConvolutionFwdAlgoPerf_t algo_cache_id:"
-               << algo_cache_id << ", x_dims:" << x_dims
-               << ", w_dims:" << w_dims << ", args.s" << args.s << ", args.p"
-               << args.p << ", args.d" << args.d;
+      VLOG(10) << "cudnnConvolutionFwdAlgoPerf_t:"
+               << ", x_dims:" << x_dims << ", w_dims:" << w_dims << ", args.s"
+               << args.s << ", args.p" << args.p << ", args.d" << args.d;
 
       algo = algo_cache.GetAlgorithm(
           x_dims, w_dims, args.s, args.p, args.d, 0,

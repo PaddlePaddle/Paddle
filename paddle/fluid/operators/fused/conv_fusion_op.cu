@@ -232,7 +232,6 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
         }
         return fwd_perf_stat[0].algo;
       };
-
       AlgorithmsCache<cudnnConvolutionFwdAlgo_t>& algo_cache =
           *(ConvSearchCache::Instance().GetConvFusion());
       int search_times = ctx.Attr<int>("search_times");
