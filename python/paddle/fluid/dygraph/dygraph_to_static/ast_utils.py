@@ -14,8 +14,8 @@
 
 from __future__ import print_function
 
-import astor
 import ast
+import astor
 import gast
 import six
 import copy

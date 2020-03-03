@@ -16,18 +16,19 @@ from __future__ import print_function
 
 import gast
 
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
+from paddle.fluid.layers import fill_constant
+
+__all__ = ['to_static_variable_gast_node', 'create_static_variable_gast_node']
 
 
 def to_static_variable_gast_node(name):
-    func_code = "%s = fluid.dygraph.dygraph_to_static.to_static_variable(%s)".format(
+    func_code = "{} = fluid.dygraph.dygraph_to_static.variable_trans_func.to_static_variable({})".format(
         name, name)
     return gast.parse(func_code)
 
 
 def create_static_variable_gast_node(name):
-    func_code = "%s = fluid.layers.data(name='%s', shape=[-1], dtype='float32')".format(
+    func_code = "{} = fluid.layers.data(name='{}', shape=[-1], dtype='float32')".format(
         name, name)
     return gast.parse(func_code)
 
@@ -37,9 +38,9 @@ def to_static_variable(x):
     Translate a Python variable to PaddlePaddle static graph variable
     '''
     if isinstance(x, bool):
-        return layers.fill_constant(shape=[1], dtype='bool', value=x)
+        return fill_constant(shape=[1], dtype='bool', value=x)
     if isinstance(x, int):
-        return layers.fill_constant(shape=[1], dtype='int64', value=x)
+        return fill_constant(shape=[1], dtype='int64', value=x)
     if isinstance(x, float):
-        return layers.fill_constant(shape=[1], dtype='float64', value=x)
+        return fill_constant(shape=[1], dtype='float64', value=x)
     return x
