@@ -958,8 +958,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   {
     platform::RecordEvent record_event("prepare_data",
                                        platform::EventRole::kInnerOp);
-    transfer_scope = PrepareData(scope, *kernel_type_, &transfered_inplace_vars,
-                                 runtime_ctx);
+    if (need_prepare_data_) {
+      transfer_scope = PrepareData(scope, *kernel_type_,
+                                   &transfered_inplace_vars, runtime_ctx);
+    }
   }
   // exec scope is the scope that kernel actually executed on.
   const Scope& exec_scope =
@@ -1252,6 +1254,17 @@ Scope* OperatorWithKernel::PrepareData(
       SetTensorToVariable(*var, out, trans_var);
     }
   }
+  // If new_scope = nullptr, it means that for each input of this Op, there is
+  // no need to do PrepareData. However, after the Op is completed, its input
+  // may change in subsequent Ops.
+  // Therefore, we determine whether the operator needs to prepare data at the
+  // second iteration.
+  // PrepareData could be skipped only at the third and the rest iterations of
+  // this Op's execution to save the elapsed time.
+  if (new_scope == nullptr && !run_at_the_first_iter_) {
+    need_prepare_data_ = false;
+  }
+  run_at_the_first_iter_ = false;
 
   return new_scope;
 }
