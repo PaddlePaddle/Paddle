@@ -515,7 +515,7 @@ def main():
                 coco2017(FLAGS.data, 'val'),
                 process_num=8,
                 buffer_size=4 * batch_size),
-            batch_size=batch_size),
+            batch_size=1),
         process_num=2, buffer_size=4)
 
     if not os.path.exists('yolo_checkpoints'):
@@ -536,14 +536,15 @@ def main():
                       metrics=COCOMetric(anno_path, with_background=False))
 
         for e in range(epoch):
-            logger.info("======== train epoch {} ========".format(e))
-            run(model, train_loader)
-            model.save('yolo_checkpoints/{:02d}'.format(e))
+            # logger.info("======== train epoch {} ========".format(e))
+            # run(model, train_loader)
+            # model.save('yolo_checkpoints/{:02d}'.format(e))
             logger.info("======== eval epoch {} ========".format(e))
             run(model, val_loader, mode='eval')
             # should be called in fit()
             for metric in model._metrics:
                 metric.accumulate()
+                metric.reset()
 
 
 if __name__ == '__main__':

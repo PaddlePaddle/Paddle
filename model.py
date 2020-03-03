@@ -285,17 +285,11 @@ class StaticGraphAdapter(object):
             compiled_prog, feed=feed,
             fetch_list=fetch_list,
             return_numpy=False)
-        # rets = [(np.array(v), v.recursive_sequence_lengths()) if v.lod() for v in rets]
-        np_rets = []
-        for ret in rets:
-            seq_len = ret.recursive_sequence_lengths()
-            if len(seq_len) == 0:
-                np_rets.append(np.array(ret))
-            else:
-                np_rets.append((np.array(ret), seq_len))
-        outputs = np_rets[:num_output]
-        labels = np_rets[num_output:num_output+num_label]
-        losses = np_rets[num_output+num_label:]
+        # LoDTensor cannot be fetch as numpy directly
+        rets = [np.array(v) for v in rets]
+        outputs = rets[:num_output]
+        labels = rets[num_output:num_output+num_label]
+        losses = rets[num_output+num_label:]
         if self.mode == 'test':
             return outputs
         elif self.mode == 'eval':
@@ -443,6 +437,8 @@ class DynamicGraphAdapter(object):
         labels = to_list(labels)
         outputs = self.model.forward(*[to_variable(x) for x in inputs])
         losses = self.model._loss_function(outputs[0], labels)
+        for metric in self.model._metrics:
+            metric.update([to_numpy(o) for o in outputs[1:]], labels)
         return [to_numpy(o) for o in to_list(outputs[0])], \
             [to_numpy(l) for l in losses]
 

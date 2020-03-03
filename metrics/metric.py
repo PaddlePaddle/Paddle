@@ -17,6 +17,11 @@ from __future__ import absolute_import
 import six
 import abc
 
+import logging
+FORMAT = '%(asctime)s-%(levelname)s: %(message)s'
+logging.basicConfig(level=logging.INFO, format=FORMAT)
+logger = logging.getLogger(__name__)
+
 __all__ = ['Metric']
 
 
@@ -32,15 +37,12 @@ class Metric(object):
     m.accumulate()
     """
 
-    def __init__(self, **kwargs):
-        self.reset()
-
+    @abc.abstractmethod
     def reset(self):
         """
         Reset states and result
         """
-        self.states = {}
-        self.result = None
+        raise NotImplementedError("function 'reset' not implemented in {}.".format(self.__class__.__name__))
 
     @abc.abstractmethod
     def update(self, *args, **kwargs):
