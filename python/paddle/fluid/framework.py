@@ -3991,6 +3991,11 @@ class Program(object):
 
         The two code snippets above will generate and print same programs.
         """
+
+        #NOTE(zhiqiu): we sync the original program first, since its program may diff with
+        # its desc due to modifying desc in c++ space. E.g. save op will add kLookupTablePath in desc.
+        self._sync_with_cpp()
+
         pruned_origin_block_id_map = None
         if for_test:
             forward_prog = Program()
@@ -4015,6 +4020,8 @@ class Program(object):
             p.__op_role_var = self.__op_role_var
             p._appending_grad_times = self._appending_grad_times
 
+            #NOTE(zhiqiu): we sync the cloned program, to update its program by
+            # its desc.
             p._sync_with_cpp()
 
         p._copy_param_info_from(self)
@@ -4037,6 +4044,10 @@ class Program(object):
         Returns:
             Program:  A new, pruned program.
         """
+
+        #NOTE(zhiqiu): we sync the original program first, since its program may diff with
+        # its desc due to modifying desc in c++ space. E.g. save op will add kLookupTablePath in desc.
+        self._sync_with_cpp()
 
         if not isinstance(targets, list):
             targets = [targets]
@@ -4092,6 +4103,10 @@ class Program(object):
         Returns:
             Program:  A new, pruned program.
         """
+
+        #NOTE(zhiqiu): we sync the original program first, since its program may diff with
+        # its desc due to modifying desc in c++ space. E.g. save op will add kLookupTablePath in desc.
+        self._sync_with_cpp()
 
         if not isinstance(feeded_var_names, list):
             feeded_var_names = [feeded_var_names]
