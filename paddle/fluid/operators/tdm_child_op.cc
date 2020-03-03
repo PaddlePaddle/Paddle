@@ -23,10 +23,12 @@ namespace operators {
 class TDMChildOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
-    AddInput("Input", "Input(Tensor), dtype support int64",
-             "Input variable is the node id of TDM-Tree");
-    AddInput("Tree_embedding", "Tree_embedding(Tensor), dtype support int64",
-             "stores the tree structure by node");
+    AddInput("Input",
+             "Input(Tensor), dtype support int64 Input variable is the node id "
+             "of TDM-Tree");
+    AddInput("Tree_embedding",
+             "Tree_embedding(Tensor), dtype support int64 stores the tree "
+             "structure by node");
     AddAttr<int>("Ancestor_nums", "Ancestor_nums(int)",
                  "The nums of input (batch_size, ancestor_nums)");
     AddAttr<int>("Child_nums", "Child_nums(int)",
@@ -50,10 +52,10 @@ class TDMChildOp : public framework::OperatorWithKernel {
                       "Inputs(Input) of TdmChild should not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("Tree_embedding"), true,
                       "Inputs(Tree_embedding) of TdmChild should not be null.");
-    auto ancestor_nums = ctx->Attrs().Get<int>("Ancestor_nums");
-    auto child_nums = ctx->Attrs().Get<int>("Child_nums");
+    int ancestor_nums = ctx->Attrs().Get<int>("Ancestor_nums");
+    int child_nums = ctx->Attrs().Get<int>("Child_nums");
 
-    auto ddim = framework::make_ddim({-1, ancesotr_nums, child_nums});
+    auto ddim = framework::make_ddim({-1, ancestor_nums, child_nums});
     if (ctx->IsRuntime()) {
       // do something in Runtime
     } else {
@@ -79,7 +81,7 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
-    tdm_child, ops::TDMSamplerKernel<paddle::platform::CPUPlace, float>,
+    tdm_child, ops::TDMChildKernel<paddle::platform::CPUPlace, float>,
     ops::TDMChildKernel<paddle::platform::CPUPlace, double>,
     ops::TDMChildKernel<paddle::platform::CPUPlace, int>,
     ops::TDMChildKernel<paddle::platform::CPUPlace, int64_t>);

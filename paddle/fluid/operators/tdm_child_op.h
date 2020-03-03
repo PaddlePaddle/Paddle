@@ -104,9 +104,9 @@ class TDMChildKernel : public framework::OpKernel<T> {
     auto *item_mask_tensor = item_mask_var->GetMutable<framework::LoDTensor>();
     item_mask_tensor->Resize(ddim);
 
-    auto *child_data = child_tensor->mutable_data<int64_t>(context.GetPlace());
+    auto *child_data = child_tensor->mutable_data<int64_t>(ctx.GetPlace());
     auto *item_mask_data =
-        item_mask_tensor->mutable_data<int64_t>(context.GetPlace());
+        item_mask_tensor->mutable_data<int64_t>(ctx.GetPlace());
 
     memcpy(child_data, &child_vec[0], sizeof(int64_t) * output_nums);
     memcpy(item_mask_data, &item_mask_vec[0], sizeof(int64_t) * output_nums);
