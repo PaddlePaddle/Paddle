@@ -86,8 +86,14 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::LoDTensor *t,
     return false;
   }
 
-  PADDLE_ENFORCE_NOT_NULL(input_ptr);
-  PADDLE_ENFORCE_NOT_NULL(pt.data.data());
+  PADDLE_ENFORCE_NOT_NULL(
+      input_ptr,
+      paddle::platform::errors::Fatal(
+          "Cannot convert to LoDTensor because LoDTensor creation failed."));
+  PADDLE_ENFORCE_NOT_NULL(
+      pt.data.data(),
+      paddle::platform::errors::InvalidArgument(
+          "The data contained in the input PaddleTensor is illegal."));
 
   if (platform::is_cpu_place(place)) {
     // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
@@ -103,7 +109,8 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::LoDTensor *t,
                  platform::CPUPlace(), pt.data.data(), pt.data.length(),
                  dev_ctx->stream());
 #else
-    PADDLE_THROW("Not compile with CUDA, should not reach here.");
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "Not compile with CUDA, should not reach here."));
 #endif
   }
   // TODO(Superjomn) Low performance, need optimization for heavy LoD copy.

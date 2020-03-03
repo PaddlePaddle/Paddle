@@ -15,18 +15,10 @@
 #include "paddle/fluid/inference/utils/io_utils.h"
 #include <string>
 #include <vector>
+#include "paddle/fluid/inference/analysis/helper.h"
 
 namespace paddle {
 namespace inference {
-
-template <>
-PaddleDType GetPaddleDType<float>() {
-  return PaddleDType::FLOAT32;
-}
-template <>
-PaddleDType GetPaddleDType<int64_t>() {
-  return PaddleDType::INT64;
-}
 
 // =========================================================
 //       Item        |        Type       |      Bytes
@@ -114,5 +106,58 @@ void DeserializePDTensorToStream(std::istream &is, PaddleTensor *tensor) {
   tensor->data.Resize(length);
   is.read(reinterpret_cast<char *>(tensor->data.data()), length);
 }
+
+// =========================================================
+//       Item        |        Type       |      Bytes
+// ---------------------------------------------------------
+//      Version      |      uint32_t     |        4
+// ---------------------------------------------------------
+//   Size of Tensors |      uint64_t     |        8
+//      Tensors      |        ----       |       ---
+// ---------------------------------------------------------
+void SerializePDTensorsToStream(std::ostream *os,
+                                const std::vector<PaddleTensor> &tensors) {
+  // 1. Version
+  os->write(reinterpret_cast<const char *>(&kCurPDTensorVersion),
+            sizeof(kCurPDTensorVersion));
+  // 2. Tensors
+  uint64_t num = tensors.size();
+  os->write(reinterpret_cast<char *>(&num), sizeof(num));
+  for (const auto &tensor : tensors) {
+    SerializePDTensorToStream(os, tensor);
+  }
+}
+
+void DeserializePDTensorsToStream(std::istream &is,
+                                  std::vector<PaddleTensor> *tensors) {
+  // 1. Version
+  uint32_t version;
+  is.read(reinterpret_cast<char *>(&version), sizeof(version));
+  // 2. Tensors
+  uint64_t num;
+  is.read(reinterpret_cast<char *>(&num), sizeof(num));
+  tensors->resize(num);
+  for (auto &tensor : *tensors) {
+    DeserializePDTensorToStream(is, &tensor);
+  }
+}
+
+void SerializePDTensorsToFile(const std::string &path,
+                              const std::vector<PaddleTensor> &tensors) {
+  std::ofstream fout(path, std::ios::binary);
+  SerializePDTensorsToStream(&fout, tensors);
+  fout.close();
+}
+
+void DeserializePDTensorsToFile(const std::string &path,
+                                std::vector<PaddleTensor> *tensors) {
+  bool is_present = analysis::FileExists(path);
+  PADDLE_ENFORCE_EQ(is_present, true, platform::errors::InvalidArgument(
+                                          "Cannot open %s to read", path));
+  std::ifstream fin(path, std::ios::binary);
+  DeserializePDTensorsToStream(fin, tensors);
+  fin.close();
+}
+
 }  // namespace inference
 }  // namespace paddle

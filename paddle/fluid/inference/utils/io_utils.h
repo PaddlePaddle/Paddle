@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <string>
+#include <vector>
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/inference/api/paddle_api.h"
 
@@ -22,10 +24,17 @@ namespace inference {
 
 constexpr uint32_t kCurPDTensorVersion = 0;
 
-template <typename T>
-PaddleDType GetPaddleDType();
-
 void SerializePDTensorToStream(std::ostream* os, const PaddleTensor& tensor);
 void DeserializePDTensorToStream(std::istream& is, PaddleTensor* tensor);
+
+void SerializePDTensorsToStream(std::ostream* os,
+                                const std::vector<PaddleTensor>& tensors);
+void DeserializePDTensorsToStream(std::istream& is,
+                                  std::vector<PaddleTensor>* tensors);
+
+void SerializePDTensorsToFile(const std::string& path,
+                              const std::vector<PaddleTensor>& tensors);
+void DeserializePDTensorsToFile(const std::string& path,
+                                std::vector<PaddleTensor>* tensors);
 }  // namespace inference
 }  // namespace paddle
