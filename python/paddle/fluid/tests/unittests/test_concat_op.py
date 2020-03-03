@@ -139,8 +139,6 @@ create_test_AxisTensor(TestConcatOp5)
 
 
 def create_test_fp16(parent):
-    @unittest.skipIf(not core.is_compiled_with_cuda(),
-                     "core is not compiled with CUDA")
     class TestConcatFp16(parent):
         def get_dtype(self):
             return np.float16
