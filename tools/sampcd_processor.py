@@ -753,7 +753,10 @@ else:
         exit(0)
     elif '../python/paddle/fluid/core_avx.py' in filenames:
         filenames.remove('../python/paddle/fluid/core_avx.py')
+    print("API_PR is diff from API_DEV: %s" % filenames)
     one_part_filenum = int(math.ceil(len(filenames) / cpus))
+    if one_part_filenum == 0:
+        one_part_filenum = 1
     divided_file_list = [
         filenames[i:i + one_part_filenum]
         for i in range(0, len(filenames), one_part_filenum)
