@@ -236,6 +236,22 @@ class DatasetBase(object):
         """
         self.dataset.set_hdfs_config(fs_name, fs_ugi)
 
+    def set_download_cmd(self, download_cmd):
+        """
+        Set customized download cmd: download_cmd
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset()
+              dataset.set_download_cmd("./read_from_afs")
+
+        Args:
+            download_cmd(str): customized download command
+        """
+        self.dataset.set_download_cmd(download_cmd)
+
     def _prepare_to_run(self):
         """
         Set data_feed_desc before load or shuffle,

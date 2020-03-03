@@ -20,7 +20,6 @@ NEED_TO_FIX_OP_LIST = [
     'conv2d_transpose',
     'depthwise_conv2d_transpose',
     'grid_sampler',
-    'hierarchical_sigmoid',
     'lstmp',
     'margin_rank_loss',
     'matmul',

@@ -145,8 +145,8 @@ std::vector<ir::Graph *> ParallelSSAGraphExecutor::Graphs() {
 
 enum ExceptionStatus { kSuccess = 0, kEOF, kOther };
 
-FeedFetchList ParallelSSAGraphExecutor::Run(
-    const std::vector<std::string> &fetch_tensors) {
+FetchResultType ParallelSSAGraphExecutor::Run(
+    const std::vector<std::string> &fetch_tensors, bool return_merged) {
   size_t feed_num = std::count(feed_status_.begin(), feed_status_.end(),
                                FeedStatus::kHasFeed);
   bool has_feed = (feed_num > 0);
@@ -155,25 +155,20 @@ FeedFetchList ParallelSSAGraphExecutor::Run(
 
   size_t place_num = places_.size();
 
-  std::vector<std::future<FeedFetchList>> run_futures;
+  std::vector<std::future<FetchResultType>> run_futures;
   std::vector<ExceptionStatus> exception_status(place_num,
                                                 ExceptionStatus::kSuccess);
 
-  std::vector<FeedFetchList> fetch_data;
-  FeedFetchList ret;
-
+  std::vector<FetchResultType> fetch_data;
   fetch_data.reserve(place_num);
-  ret.reserve(place_num);
   exception_holder_.Clear();
 
   for (size_t i = 0; i < place_num; ++i) {
-    auto call = [&, i]() -> FeedFetchList {
+    auto call = [&, i]() -> FetchResultType {
       try {
         if (!support_partial_feed_ || !has_feed ||
             feed_status_[i] == FeedStatus::kHasFeed) {
-          return executors_[i]->Run(fetch_tensors);
-        } else {
-          return FeedFetchList();
+          return executors_[i]->Run(fetch_tensors, return_merged);
         }
       } catch (platform::EOFException &) {
         exception_status[i] = ExceptionStatus::kEOF;
@@ -182,7 +177,12 @@ FeedFetchList ParallelSSAGraphExecutor::Run(
         exception_status[i] = ExceptionStatus::kOther;
         exception_holder_.Catch(std::current_exception());
       }
-      return FeedFetchList();
+
+      if (return_merged) {
+        return FeedFetchList();
+      } else {
+        return FetchUnmergedList();
+      }
     };
 
     if (pool_) {
@@ -244,19 +244,46 @@ FeedFetchList ParallelSSAGraphExecutor::Run(
     exception_holder_.ReThrow();
   }
 
-  for (size_t fetch_idx = 0; fetch_idx < fetch_tensors.size(); ++fetch_idx) {
-    std::vector<const LoDTensor *> lodtensor_ptrs;
-    lodtensor_ptrs.reserve(place_num);
-    for (size_t scope_idx = 0; scope_idx < place_num; ++scope_idx) {
-      if (!is_valid[scope_idx]) {
-        continue;
+  if (return_merged) {
+    FeedFetchList ret;
+    ret.reserve(fetch_tensors.size());
+
+    for (size_t fetch_idx = 0; fetch_idx < fetch_tensors.size(); ++fetch_idx) {
+      std::vector<const LoDTensor *> lodtensor_ptrs;
+      lodtensor_ptrs.reserve(place_num);
+      for (size_t scope_idx = 0; scope_idx < place_num; ++scope_idx) {
+        if (!is_valid[scope_idx]) {
+          continue;
+        }
+        const auto &fetch_list =
+            boost::get<FeedFetchList>(fetch_data[scope_idx]);
+        lodtensor_ptrs.push_back(&fetch_list[fetch_idx]);
       }
-      lodtensor_ptrs.push_back(&fetch_data.at(scope_idx).at(fetch_idx));
+      ret.emplace_back();
+      ret.back().MergeLoDTensor(lodtensor_ptrs, platform::CPUPlace());
     }
-    ret.emplace_back();
-    ret.back().MergeLoDTensor(lodtensor_ptrs, platform::CPUPlace());
+    return ret;
+  } else {
+    FetchUnmergedList ret;
+    ret.reserve(fetch_tensors.size());
+    for (size_t fetch_idx = 0; fetch_idx < fetch_tensors.size(); ++fetch_idx) {
+      ret.emplace_back();
+      for (size_t scope_idx = 0; scope_idx < local_scopes_.size();
+           ++scope_idx) {
+        if (!is_valid[scope_idx]) {
+          continue;
+        }
+        const auto &fetch_list =
+            boost::get<FetchUnmergedList>(fetch_data[scope_idx]);
+        PADDLE_ENFORCE_EQ(
+            fetch_list[fetch_idx].size(), 1,
+            platform::errors::Fatal(
+                "Each place must have only one fetched LoDTensor!"));
+        ret.back().emplace_back(fetch_list[fetch_idx][0]);
+      }
+    }
+    return ret;
   }
-  return ret;
 }
 
 }  // namespace details

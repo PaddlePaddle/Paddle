@@ -52,7 +52,8 @@ class ParallelSSAGraphExecutor : public SSAGraphExecutor {
 
   std::vector<ir::Graph *> Graphs();
 
-  FeedFetchList Run(const std::vector<std::string> &fetch_tensors) override;
+  FetchResultType Run(const std::vector<std::string> &fetch_tensors,
+                      bool return_merged) override;
 
   void SetHasFeed(size_t dev_idx, bool has_feed) {
     feed_status_[dev_idx] = has_feed ? FeedStatus::kHasFeed : FeedStatus::kNone;
