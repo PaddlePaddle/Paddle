@@ -61,13 +61,21 @@ TEST(test_layer, test_runtime_context) {
   ASSERT_TRUE(ctx->InputTypeAnyOf("X", framework::proto::VarType::LOD_TENSOR));
   ASSERT_TRUE(ctx->InputTypeAllOf("X", framework::proto::VarType::LOD_TENSOR));
 
-  ctx->SyncTypeAndDataType("X", "Out");
-
   ASSERT_EQ(framework::proto::VarType::LOD_TENSOR, ctx->GetInputType("X"));
   ASSERT_EQ(framework::proto::VarType::FP32, ctx->GetInputDataType("X"));
+
+  ctx->SyncTypeAndDataType("X", "Out");
+
   ASSERT_EQ(framework::proto::VarType::FP32, ctx->GetOutputDataType("Out"));
 
-  ctx->SetOutputType("Out", framework::proto::VarType::SELECTED_ROWS);
+  ASSERT_EQ(framework::proto::VarType::LOD_TENSOR, vout->Type());
+
+  ctx->SetOutputType("Out", framework::proto::VarType::SELECTED_ROWS,
+                     framework::ALL_ELEMENTS);
+  ctx->SetOutputType("Out", framework::proto::VarType::LOD_TENSOR_ARRAY);
+  ASSERT_EQ(framework::proto::VarType::LOD_TENSOR_ARRAY, vout->Type());
+  ASSERT_EQ(framework::proto::VarType::SELECTED_ROWS, vout_b->Type());
+
   ctx->SetOutputDataType("Out", framework::proto::VarType::FP64,
                          framework::ALL_ELEMENTS);
   ctx->SetOutputDataType("Out", framework::proto::VarType::INT8);
@@ -75,16 +83,24 @@ TEST(test_layer, test_runtime_context) {
   ASSERT_EQ(framework::proto::VarType::INT8, ctx->GetOutputDataType("Out"));
   ASSERT_EQ(framework::proto::VarType::FP64, ctx->GetOutputDataType("Out", 1));
 
+  // no throw, but do nothing
+  ASSERT_NO_THROW(ctx->SetType("vout", framework::proto::VarType::LOD_TENSOR));
+  ASSERT_EQ(framework::proto::VarType::LOD_TENSOR_ARRAY, vout->Type());
+
+  ASSERT_ANY_THROW(ctx->HasVar("vin"));
   ASSERT_ANY_THROW(ctx->Input("X"));
   ASSERT_ANY_THROW(ctx->Output("Out"));
   ASSERT_ANY_THROW(ctx->GetType("vin"));
   ASSERT_ANY_THROW(ctx->GetDataType("vin"));
+  ASSERT_ANY_THROW(ctx->SetDataType("vout", framework::proto::VarType::FP32));
   ASSERT_ANY_THROW(ctx->GetInputDataType("vin"));
   std::vector<framework::proto::VarType::Type> NullType;
   ASSERT_ANY_THROW(ctx->SetDataTypes("vin", NullType));
   ASSERT_ANY_THROW(ctx->GetShape("vin"));
   ASSERT_ANY_THROW(ctx->GetLoDLevel("vin"));
   ASSERT_ANY_THROW(ctx->SetLoDLevel("vin", 2));
+
+  ASSERT_TRUE(ctx->IsDygraph());
 }
 
 std::string LayerDebugString(const std::string &op_type,

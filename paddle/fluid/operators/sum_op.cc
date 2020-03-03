@@ -228,7 +228,8 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
               os << "    " << each << " type is " << ctx->GetType(each) << "\n";
             }
           }
-          PADDLE_THROW("Not all inputs are tensor array:\n%s", os.str());
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Not all inputs are tensor array:\n%s", os.str()));
         }
         var_type = framework::proto::VarType::LOD_TENSOR_ARRAY;
       } else if (ctx->InputTypeAnyOf("X",

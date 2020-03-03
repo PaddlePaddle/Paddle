@@ -135,14 +135,19 @@ TEST(InferVarType, multiple_api) {
   ASSERT_EQ(proto::VarType::LOD_TENSOR,
             prog.MutableBlock(0)->Var("test2_b_out")->GetType());
 
-  ctx.SetOutputType("Out", proto::VarType::SELECTED_ROWS, 1);
+  ctx.SetOutputType("Out", proto::VarType::SELECTED_ROWS, ALL_ELEMENTS);
+  ctx.SetOutputType("Out", proto::VarType::LOD_TENSOR, 1);
   ASSERT_EQ(proto::VarType::SELECTED_ROWS,
+            prog.MutableBlock(0)->Var("test2_a_out")->GetType());
+  ASSERT_EQ(proto::VarType::LOD_TENSOR,
             prog.MutableBlock(0)->Var("test2_b_out")->GetType());
 
   ASSERT_EQ(0, ctx.GetInputDataType("X"));
 
-  ctx.SetOutputDataType("Out", proto::VarType::FP32);
+  ctx.SetOutputDataType("Out", proto::VarType::FP32, ALL_ELEMENTS);
+  ctx.SetOutputDataType("Out", proto::VarType::INT8, 1);
   ASSERT_EQ(proto::VarType::FP32, ctx.GetOutputDataType("Out"));
+  ASSERT_EQ(proto::VarType::INT8, ctx.GetOutputDataType("Out", 1));
 
   ASSERT_FALSE(ctx.IsDygraph());
 }

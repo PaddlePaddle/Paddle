@@ -172,8 +172,14 @@ class InferVarTypeContext {
                                  proto::VarType::Type type, int index = 0) {
     PADDLE_ENFORCE_NOT_NULL(
         op_, platform::errors::PreconditionNotMet("op_ should not be null"));
-    auto& var_name = op_->Output(name).at(index);
-    this->SetDataType(var_name, type);
+    if (ALL_ELEMENTS == index) {
+      for (const auto& var_name : op_->Output(name)) {
+        this->SetDataType(var_name, type);
+      }
+    } else {
+      auto& var_name = op_->Output(name).at(index);
+      this->SetDataType(var_name, type);
+    }
   }
 
   // not available in dygraph mode
