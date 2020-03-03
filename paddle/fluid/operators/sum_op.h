@@ -130,13 +130,13 @@ class SumKernel : public framework::OpKernel<T> {
       auto *out = out_var->GetMutable<framework::LoDTensor>();
       auto *out_ptr = out->mutable_data<T>(context.GetPlace());
 
-      std::vector<T *> tensor;
+      std::vector<const T *> tensor;
       std::vector<size_t> select_row;
       for (size_t i = 0; i < in_num; i++) {
         if (in_vars[i]->IsType<framework::LoDTensor>()) {
-          auto in_tensor = in_vars[i]->Get<framework::LoDTensor>();
+          const auto &in_tensor = in_vars[i]->Get<framework::LoDTensor>();
           if (in_tensor.numel()) {
-            auto in_data = in_tensor.data<T>();
+            const T *in_data = in_tensor.data<T>();
             tensor.push_back(in_data);
             item_size = in_tensor.numel();
           }
@@ -150,7 +150,7 @@ class SumKernel : public framework::OpKernel<T> {
         for (size_t i = 0; i < item_size; ++i) {
           T result_temp = tensor[0][i];
           for (size_t j = 1; j < tensor.size(); ++j) {
-            auto in0_ptr = tensor[j];
+            auto *in0_ptr = tensor[j];
             result_temp = result_temp + in0_ptr[i];
           }
           out_ptr[i] = result_temp;
