@@ -204,7 +204,7 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
           } while (positive_node_id ==
                        layer_data[layer_offset_lod[layer_idx] + sample_res] &&
                    find(sample_res_vec.begin(), sample_res_vec.end(),
-                        sample_res) != sample_res.end());
+                        sample_res) != sample_res_vec.end());
           sample_res_vec.push_back(sample_res);
 
           output_vec[i * sample_res_length + offset] =
