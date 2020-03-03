@@ -49,6 +49,10 @@ class TestInferencePartialFeed(unittest.TestCase):
         gen_random = lambda shape:np.random.uniform(low=-1.0, high=1.0, size=shape).astype('float32')
         assert_result = lambda feed, result: self.assertTrue(np.array_equal(np.maximum(0, feed), result))
 
+        def assert_merged_unmerged(merged, unmerged):
+            unmerged = np.concatenate(unmerged, axis=0)
+            self.assertTrue(np.array_equal(merged, unmerged))
+
         def feed_split_test():
             for place_num in six.moves.range(1, len(places) * 3):
                 x_np = gen_random([place_num, self.size])
@@ -58,12 +62,18 @@ class TestInferencePartialFeed(unittest.TestCase):
                 else:
                     lr_np = gen_random([1])
 
+                feed = {x.name: x_np, y.name: y_np, lr.name: lr_np}
+                fetch_list = [relu_x, relu_y, relu_lr]
+
                 relu_x_np, relu_y_np, relu_lr_np = exe.run(
-                    prog,
-                    feed={x.name: x_np,
-                          y.name: y_np,
-                          lr.name: lr_np},
-                    fetch_list=[relu_x, relu_y, relu_lr])
+                    prog, feed=feed, fetch_list=fetch_list, return_merged=True)
+
+                relu_x_np_unmerged, relu_y_np_unmerged, relu_lr_np_unmerged = exe.run(
+                    prog, feed=feed, fetch_list=fetch_list, return_merged=False)
+
+                assert_merged_unmerged(relu_x_np, relu_x_np_unmerged)
+                assert_merged_unmerged(relu_y_np, relu_y_np_unmerged)
+                assert_merged_unmerged(relu_lr_np, relu_lr_np_unmerged)
 
                 assert_result(x_np, relu_x_np)
                 assert_result(y_np, relu_y_np)
@@ -93,8 +103,22 @@ class TestInferencePartialFeed(unittest.TestCase):
                         lr.name: lr_np
                     })
 
+                fetch_list = [relu_x, relu_y, relu_lr]
                 relu_x_np, relu_y_np, relu_lr_np = exe.run(
-                    prog, feed=feed_list, fetch_list=[relu_x, relu_y, relu_lr])
+                    prog,
+                    feed=feed_list,
+                    fetch_list=fetch_list,
+                    return_merged=True)
+
+                relu_x_np_unmerged, relu_y_np_unmerged, relu_lr_np_unmerged = exe.run(
+                    prog,
+                    feed=feed_list,
+                    fetch_list=fetch_list,
+                    return_merged=False)
+
+                assert_merged_unmerged(relu_x_np, relu_x_np_unmerged)
+                assert_merged_unmerged(relu_y_np, relu_y_np_unmerged)
+                assert_merged_unmerged(relu_lr_np, relu_lr_np_unmerged)
 
                 x_np = np.concatenate(x_np_list)
                 y_np = np.concatenate(y_np_list)
