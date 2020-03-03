@@ -131,6 +131,14 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
             layer_offset_lod[layer_idx + 1] - layer_offset_lod[layer_idx];
         VLOG(1) << "TDM: layer - " << layer_idx + 1
                 << " - has node_nums: " << node_nums;
+
+        PADDLE_ENFORCE_LE(
+            sample_num, node_nums - 1,
+            "Neg sample nums id of OP(fluid.layers.tdm_sampler) at layer %ld "
+            "expected <= %ld - 1 (positive included), but got %ld. Please "
+            "check neg_samples_num_list.",
+            layer_idx, node_nums, sample_num);
+
         int node_id_min = layer_offset_lod[layer_idx];
         int node_id_max = layer_offset_lod[layer_idx + 1];
 
@@ -186,7 +194,7 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
                   << mask_vec[i * sample_res_length + offset];
           offset += 1;
         }
-
+        std::vector<int64_t> sample_res_vec{};
         // Sampling at layer, until samples enough
         for (int sample_index = 0; sample_index < sample_num; ++sample_index) {
           // Avoid sampling to positive samples
@@ -194,7 +202,10 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
           do {
             sample_res = sampler->Sample();
           } while (positive_node_id ==
-                   layer_data[layer_offset_lod[layer_idx] + sample_res]);
+                       layer_data[layer_offset_lod[layer_idx] + sample_res] &&
+                   find(sample_res_vec.begin(), sample_res_vec.end(),
+                        sample_res) != sample_res.end());
+          sample_res_vec.push_back(sample_res);
 
           output_vec[i * sample_res_length + offset] =
               layer_data[layer_offset_lod[layer_idx] + sample_res];
