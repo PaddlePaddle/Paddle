@@ -2727,8 +2727,7 @@ class GFtrlOptimizer(Optimizer):
             parameter_list=parameter_list,
             regularization=regularization,
             name=name)
-        if learning_rate is None:
-            raise ValueError("learning_rate is not set.")
+        assert learning_rate is not None
 
         self.type = "gftrl"
         self._l1 = l1
@@ -2736,16 +2735,14 @@ class GFtrlOptimizer(Optimizer):
         self._lr_power = lr_power
 
     def _create_accumulators(self, block, parameters):
-        if not isinstance(block, framework.Block):
-            raise TypeError("block is not instance of framework.Block.")
+        assert isinstance(block, framework.Block)
 
         for p in parameters:
             self._add_accumulator(self._squared_acc_str, p)
             self._add_accumulator(self._linear_acc_str, p)
 
     def _append_optimize_op(self, block, param_and_grad):
-        if not isinstance(block, framework.Block):
-            raise TypeError("block is not instance of framework.Block.")
+        assert isinstance(block, framework.Block)
 
         squared_acc = self._get_accumulator(self._squared_acc_str,
                                             param_and_grad[0])
