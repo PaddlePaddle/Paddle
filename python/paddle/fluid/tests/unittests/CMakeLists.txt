@@ -205,10 +205,6 @@ if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_imperative_signal_handler)
 endif()
 
-if(NOT WIN32 AND NOT APPLE)
-  set_tests_properties(test_imperative_data_loader PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
-endif()
-
 if(NOT WITH_GPU OR WIN32 OR APPLE)
   list(REMOVE_ITEM TEST_OPS test_build_strategy_fusion_group_pass)
 endif()
@@ -368,3 +364,7 @@ set_tests_properties(test_parallel_executor_test_while_train test_parallel_execu
         test_data_norm_op test_imperative_using_non_zero_gpu test_fuse_bn_act_pass
         test_optimizer_in_control_flow test_fetch_unmerged
         test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
+
+if(NOT WIN32 AND NOT APPLE)
+    set_tests_properties(test_imperative_data_loader PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
+endif()
