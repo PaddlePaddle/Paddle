@@ -42,8 +42,9 @@ namespace platform {
 
 MemEvenRecorder MemEvenRecorder::recorder;
 
-Event::Event(EventType type, std::string name, uint32_t thread_id)
-    : type_(type), name_(name), thread_id_(thread_id) {
+Event::Event(EventType type, std::string name, uint32_t thread_id,
+             EventRole role)
+    : type_(type), name_(name), thread_id_(thread_id), role_(role) {
   cpu_ns_ = GetTimeInNsec();
 }
 
@@ -62,12 +63,12 @@ double Event::CudaElapsedMs(const Event &e) const {
 #endif
 }
 
-RecordEvent::RecordEvent(const std::string &name, const RecordRole role)
+RecordEvent::RecordEvent(const std::string &name, const EventRole role)
     : is_enabled_(false), start_ns_(PosixInNsec()), role_(role) {
   if (g_state == ProfilerState::kDisabled || name.empty()) return;
   // lock is not needed, the code below is thread-safe
   is_enabled_ = true;
-  Event *e = PushEvent(name);
+  Event *e = PushEvent(name, role);
   // Maybe need the same push/pop behavior.
   SetCurAnnotation(e);
   name_ = e->name();
@@ -179,8 +180,8 @@ void Mark(const std::string &name) {
   GetEventList().Record(EventType::kMark, name, g_thread_id);
 }
 
-Event *PushEvent(const std::string &name) {
-  return GetEventList().Record(EventType::kPushRange, name, g_thread_id);
+Event *PushEvent(const std::string &name, const EventRole role) {
+  return GetEventList().Record(EventType::kPushRange, name, g_thread_id, role);
 }
 
 void PopEvent(const std::string &name) {

@@ -25,18 +25,27 @@ namespace platform {
 
 enum class EventType { kMark, kPushRange, kPopRange };
 
+enum class EventRole {
+  kOrdinary,  // only record op time with op type key
+  kInnerOp,   // record op detail time with op type key
+  kUniqueOp,  // record op detail time with op unique name key
+};
+
 class Event {
  public:
   // The DeviceContext is used to get the cuda stream.
   // If CPU profiling mode, can pass nullptr.
-  Event(EventType type, std::string name, uint32_t thread_id);
+  Event(EventType type, std::string name, uint32_t thread_id,
+        EventRole role = EventRole::kOrdinary);
 
   const EventType& type() const;
   Event* parent() const { return parent_; }
   void set_parent(Event* parent) { parent_ = parent; }
   std::string name() const { return name_; }
+  EventRole role() const { return role_; }
   uint32_t thread_id() const { return thread_id_; }
   void set_name(std::string name) { name_ = name; }
+  void set_role(EventRole role) { role_ = role; }
 
 #ifdef PADDLE_WITH_CUDA
 #ifndef PADDLE_WITH_CUPTI
@@ -53,6 +62,7 @@ class Event {
   std::string name_{};
   Event* parent_{nullptr};
   uint32_t thread_id_;
+  EventRole role_{};
   int64_t cpu_ns_;
   bool visited_status_{false};
 #ifdef PADDLE_WITH_CUDA
