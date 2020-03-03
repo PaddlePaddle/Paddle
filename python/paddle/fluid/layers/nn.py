@@ -184,6 +184,7 @@ __all__ = [
     'gather_tree',
     'uniform_random',
     'tdm_sampler',
+    'tdm_child',
 ]
 
 
@@ -13983,7 +13984,8 @@ def tdm_sampler(input,
     return out, mask
 
 
-def tdm_child(input, tree_embedding, dtype='int64'):
+def tdm_child(input, tree_embedding, child_nums, param_attr=None,
+              dtype='int64'):
     """
     used for tdm infer
     """
@@ -13991,16 +13993,13 @@ def tdm_child(input, tree_embedding, dtype='int64'):
     child = helper.create_variable_for_type_inference(dtype=dtype)
 
     item_mask = helper.create_variable_for_type_inference(dtype=dtype)
-    compiled_prog = fluid.compiler.CompiledProgram(
-        fleet.main_program).with_data_parallel(
-            loss_name=loss.name,
-            build_strategy=strategy.get_build_strategy(),
-            exec_strategy=strategy.get_execute_strategy())
+
     helper.append_op(
         type='tdm_child',
         inputs={'Input': input,
                 'Tree_embedding': tree_embedding},
         outputs={'Child': child,
                  'Item_mask': item_mask},
+        attrs={'Child_nums': child_nums},
         stop_gradient=True)
     return child, item_mask

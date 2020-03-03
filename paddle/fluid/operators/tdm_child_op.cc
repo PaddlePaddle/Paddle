@@ -27,6 +27,11 @@ class TDMChildOpMaker : public framework::OpProtoAndCheckerMaker {
              "Input variable is the node id of TDM-Tree");
     AddInput("Tree_embedding", "Tree_embedding(Tensor), dtype support int64",
              "stores the tree structure by node");
+    AddAttr<int>("Ancestor_nums", "Ancestor_nums(int)",
+                 "The nums of input (batch_size, ancestor_nums)");
+    AddAttr<int>("Child_nums", "Child_nums(int)",
+                 "The output nums of child, if the node hasn't enough child, "
+                 "it will padding 0 until child nums = Child_nums");
     AddOutput("Child",
               "Return thr child node id of input, "
               "if input don't have child,return nothing");
@@ -45,8 +50,10 @@ class TDMChildOp : public framework::OperatorWithKernel {
                       "Inputs(Input) of TdmChild should not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("Tree_embedding"), true,
                       "Inputs(Tree_embedding) of TdmChild should not be null.");
+    auto ancestor_nums = ctx->Attrs().Get<int>("Ancestor_nums");
+    auto child_nums = ctx->Attrs().Get<int>("Child_nums");
 
-    auto ddim = framework::make_ddim({-1, 1});
+    auto ddim = framework::make_ddim({-1, ancesotr_nums, child_nums});
     if (ctx->IsRuntime()) {
       // do something in Runtime
     } else {

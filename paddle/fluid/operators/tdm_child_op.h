@@ -38,6 +38,8 @@ class TDMChildKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto *input_var = ctx.InputVar("Input");
     auto *tree_emb_var = ctx.InputVar("Tree_embedding");
+    auto ancestor_nums = ctx.Attr<int>("Ancestor_nums");
+    auto child_nums = ctx.Attr<int>("Child_nums");
 
     auto &input_tensor = input_var->Get<LoDTensor>();
     auto &tree_emb_tensor = tree_emb_var->Get<LoDTensor>();
@@ -46,6 +48,7 @@ class TDMChildKernel : public framework::OpKernel<T> {
     int length = dims[1];
 
     int input_ids_num = input_tensor.numel();
+    int batch_size = input_tensor.dims()[0];
     VLOG(1) << "TDM child : input numel -> " << input_ids_num;
 
     std::vector<int64_t> child_vec{};
@@ -56,19 +59,25 @@ class TDMChildKernel : public framework::OpKernel<T> {
     // Tree_emb: node_id : item_id; layer_id; ancestor_id; child_id
     for (int input_ids = 0; input_ids < input_ids_num; ++input_ids) {
       // if input_data[input_ids]>node_nums return false
-      bool has_child =
-          tree_emb_data[input_data[input_ids] * length + 3] == 0 ? false : true;
+      bool has_child = true;
+      // if (input_data[input_ids] == 0 ||
+      //     tree_emb_data[input_data[input_ids] * length + 3] == 0) {
+      //       has_child = false;
+      // }
+
       if (has_child) {
         for (int child_ids = 3; child_ids < length; ++child_ids) {
           int64_t child_id =
               tree_emb_data[input_data[input_ids] * length + child_ids];
-          if (child_id) {
-            child_vec.push_back(
-                tree_emb_data[input_data[input_ids] * length + child_ids]);
-            bool child_is_item =
-                tree_emb_data[child_id * length] == 0 ? false : true;
-            item_mask_vec.push_back(static_cast<int64_t>(child_is_item));
-          }
+          child_vec.push_back(
+              tree_emb_data[input_data[input_ids] * length + child_ids]);
+          int64_t child_is_item = tree_emb_data[child_id * length] == 0 ? 0 : 1;
+          item_mask_vec.push_back(child_is_item);
+        }
+      } else {
+        for (int child_ids = 3; child_ids < length; ++child_ids) {
+          child_vec.push_back(0);
+          item_mask_vec.push_back(0);
         }
       }
     }
