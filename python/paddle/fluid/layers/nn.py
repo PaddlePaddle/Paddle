@@ -13984,14 +13984,24 @@ def tdm_sampler(input,
     return out, mask
 
 
-def tdm_child(input, tree_embedding, child_nums, param_attr=None,
+def tdm_child(input,
+              size,
+              ancestor_nums,
+              child_nums,
+              param_attr=None,
               dtype='int64'):
     """
     used for tdm infer
     """
     helper = LayerHelper("tdm_child", **locals())
-    child = helper.create_variable_for_type_inference(dtype=dtype)
+    tree_embedding = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=size,
+        dtype='int32',
+        default_initializer=Constant(0))
+    travel.stop_gradient = True
 
+    child = helper.create_variable_for_type_inference(dtype=dtype)
     item_mask = helper.create_variable_for_type_inference(dtype=dtype)
 
     helper.append_op(
@@ -14000,6 +14010,7 @@ def tdm_child(input, tree_embedding, child_nums, param_attr=None,
                 'Tree_embedding': tree_embedding},
         outputs={'Child': child,
                  'Item_mask': item_mask},
-        attrs={'Child_nums': child_nums},
+        attrs={'Child_nums': child_nums,
+               'Ancestor_nums': ancestor_nums},
         stop_gradient=True)
     return child, item_mask

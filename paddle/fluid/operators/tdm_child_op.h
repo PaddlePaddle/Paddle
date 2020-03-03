@@ -59,23 +59,34 @@ class TDMChildKernel : public framework::OpKernel<T> {
     // Tree_emb: node_id : item_id; layer_id; ancestor_id; child_id
     for (int input_ids = 0; input_ids < input_ids_num; ++input_ids) {
       // if input_data[input_ids]>node_nums return false
-      bool has_child = true;
-      // if (input_data[input_ids] == 0 ||
-      //     tree_emb_data[input_data[input_ids] * length + 3] == 0) {
-      //       has_child = false;
-      // }
+      PADDLE_ENFORCE_LT(
+          input_data[input_ids], node_nums,
+          "input id of OP(fluid.layers.tdm_child) "
+          "expected >= 0 and < %ld, but got %ld. Please check input "
+          "value.",
+          node_nums, input_data[input_ids]);
+      PADDLE_ENFORCE_LE(
+          0, input_data[input_ids],
+          "input id of OP(fluid.layers.tdm_child) "
+          "expected >= 0 and < %ld, but got %ld. Please check input "
+          "value.",
+          node_nums, input_data[input_ids]);
+
+      bool has_child = (input_data[input_ids] == 0 ||
+                        tree_emb_data[input_data[input_ids] * length + 3] == 0)
+                           ? false
+                           : true;
 
       if (has_child) {
-        for (int child_ids = 3; child_ids < length; ++child_ids) {
+        for (int child_ids = 0; child_ids < child_nums; ++child_ids) {
           int64_t child_id =
-              tree_emb_data[input_data[input_ids] * length + child_ids];
-          child_vec.push_back(
-              tree_emb_data[input_data[input_ids] * length + child_ids]);
+              tree_emb_data[input_data[input_ids] * length + 3 + child_ids];
+          child_vec.push_back(child_id);
           int64_t child_is_item = tree_emb_data[child_id * length] == 0 ? 0 : 1;
           item_mask_vec.push_back(child_is_item);
         }
       } else {
-        for (int child_ids = 3; child_ids < length; ++child_ids) {
+        for (int child_ids = 0; child_ids < child_nums; ++child_ids) {
           child_vec.push_back(0);
           item_mask_vec.push_back(0);
         }
@@ -86,7 +97,7 @@ class TDMChildKernel : public framework::OpKernel<T> {
     auto *item_mask_var = ctx.OutputVar("Item_mask");
 
     int output_nums = child_vec.size();
-    auto ddim = framework::make_ddim({output_nums, 1});
+    auto ddim = framework::make_ddim({batch_size, ancestor_nums, child_nums});
 
     auto *child_tensor = child_var->GetMutable<framework::LoDTensor>();
     child_tensor->Resize(ddim);
