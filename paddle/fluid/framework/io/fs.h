@@ -61,6 +61,10 @@ extern const std::string& hdfs_command();
 
 extern void hdfs_set_command(const std::string& x);
 
+extern const std::string& download_cmd();
+
+extern void set_download_command(const std::string& x);
+
 extern std::shared_ptr<FILE> hdfs_open_read(std::string path, int* err_no,
                                             const std::string& converter);
 

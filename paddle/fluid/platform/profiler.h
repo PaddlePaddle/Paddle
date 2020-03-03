@@ -33,17 +33,14 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
+const int kEnableProfiler = 1;
+const int kDisableProfiler = 2;
+
 enum class ProfilerState {
   kDisabled,  // disabled state
   kCPU,       // CPU profiling state
   kCUDA,      // GPU profiling state
   kAll,       // Profile both CPU and GPU. (Currently experimental).
-};
-
-enum class RecordRole {
-  kOrdinary,  // only record op time with op type key
-  kInnerOp,   // record op detail time with op type key
-  kUniqueOp,  // record op detail time with op unique name key
 };
 
 // it is the flag to control to print the profiling result
@@ -53,12 +50,47 @@ enum class TracerOption {
   kAllOpDetail,  // print the detail profiling result of different op name
 };
 
-void Mark(const std::string& name);
+// Candidate keys to sort the profiling report
+enum class EventSortingKey {
+  kDefault,
+  kCalls,
+  kTotal,
+  kMin,
+  kMax,
+  kAve,
+  kCPUTime,
+  kGPUTime
+};
 
-void PushMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
-                  const Place& place);
-void PopMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
-                 const Place& place);
+struct MemoryProfierReport {
+  size_t alloc_times{0};
+  size_t alloc_size{0};
+  size_t free_times{0};
+  size_t free_size{0};
+};
+
+// The information of each event given in the profiling report
+struct EventItem {
+  std::string name;
+  int calls;
+  double total_time;
+  double max_time;
+  double ave_time;
+  double min_time;
+  double cpu_time;
+  double gpu_time;
+  float ratio;
+  EventRole role;
+};
+
+struct OverHead {
+  bool print = false;
+  double total_time = 0.;
+  float compute_ratio = 0.0f;
+  float framework_ratio = 0.0f;
+  EventItem memcpy_item;
+  std::vector<EventItem> sub_memcpy_items;
+};
 
 struct MemEvenRecorder {
  public:
@@ -89,12 +121,9 @@ struct MemEvenRecorder {
   DISABLE_COPY_AND_ASSIGN(MemEvenRecorder);
 };
 
-Event* PushEvent(const std::string& name);
-void PopEvent(const std::string& name);
-
 struct RecordEvent {
   RecordEvent(const std::string& name,
-              const RecordRole role = RecordRole::kOrdinary);
+              const EventRole role = EventRole::kOrdinary);
 
   ~RecordEvent();
 
@@ -105,7 +134,7 @@ struct RecordEvent {
   // Need to distinguish name by op type, block_id, program_id and perhaps
   // different kernel invocations within an op.
   std::string full_name_;
-  RecordRole role_{RecordRole::kOrdinary};
+  EventRole role_{EventRole::kOrdinary};
 };
 
 class RecordRPCEvent {
@@ -125,22 +154,6 @@ struct RecordBlock {
   bool is_enabled_;
   std::string name_;
   uint64_t start_ns_;
-};
-
-// Return the event list of all threads. Assumed the returned value calls
-// event_lists, event_lists[i][j] represents the j-th Event of i-th thread.
-std::vector<std::vector<Event>> GetAllEvents();
-
-// Candidate keys to sort the profiling report
-enum class EventSortingKey {
-  kDefault,
-  kCalls,
-  kTotal,
-  kMin,
-  kMax,
-  kAve,
-  kCPUTime,
-  kGPUTime
 };
 
 template <typename T>
@@ -178,25 +191,27 @@ struct EventList {
   std::forward_list<std::vector<T>> event_blocks;
 };
 
+void Mark(const std::string& name);
+void PushMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
+                  const Place& place, const std::string& annotation);
+void PopMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
+                 const Place& place, const std::string& annotation);
+Event* PushEvent(const std::string& name, const EventRole role);
+void PopEvent(const std::string& name);
+// Return the event list of all threads. Assumed the returned value calls
+// event_lists, event_lists[i][j] represents the j-th Event of i-th thread.
+std::vector<std::vector<Event>> GetAllEvents();
+
 // Enable the profiling function.
 void EnableProfiler(ProfilerState state);
-
 // Clear the g_all_event_lists, which is total event lists of all threads.
 void ResetProfiler();
-
 void DisableProfiler(EventSortingKey sorted_key,
                      const std::string& profile_path);
-
-const int kEnableProfiler = 1;
-const int kDisableProfiler = 2;
 // Test if the profiler is currently enabled.
 bool IsProfileEnabled();
 // Whether the trainer should send profiling state to PS.
 bool ShouldSendProfileState();
-// Mark current process as PS by assigning a lister id.
-void SetProfileListener();
-int64_t ListenerId();
-
 std::string OpName(const framework::VariableNameMap& name_map,
                    const std::string& type_name);
 void SetTracerOption(TracerOption option);
@@ -204,6 +219,10 @@ platform::TracerOption GetTracerOption();
 #ifdef PADDLE_WITH_CUDA
 void DummyKernelAndEvent();
 #endif
+
+// Mark current process as PS by assigning a lister id.
+void SetProfileListener();
+int64_t ListenerId();
 
 }  // namespace platform
 }  // namespace paddle
