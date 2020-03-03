@@ -86,6 +86,7 @@ from paddle.fluid.layers.math_op_patch import monkey_patch_variable
 from . import install_check
 from .dygraph.nn import *
 from .dygraph.layers import *
+from .dygraph.base import enable_dygraph, disable_dygraph
 from .io import save, load, load_program_state, set_program_state
 from .dygraph.checkpoint import save_dygraph, load_dygraph
 from .dygraph.varbase_patch_methods import monkey_patch_varbase
@@ -103,6 +104,8 @@ __all__ = framework.__all__ + executor.__all__ + \
         'contrib',
         'data',
         'dygraph',
+        'enable_dygraph',
+        'disable_dygraph',
         'transpiler',
         'nets',
         'optimizer',
