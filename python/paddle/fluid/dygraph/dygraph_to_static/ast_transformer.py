@@ -189,11 +189,17 @@ class BasicApiTransformer(gast.NodeTransformer):
         )
         self.class_node_dict = {}
         self.feed_name_to_arg_id = {}
+        self._run_static_visitor()
+
+    # todo: change func name
+    def _run_static_visitor(self):
+        # todo: if Tensor.shape used in sub function
+        var_env = self.static_analysis_visitor.get_var_env()
+        var_env.cur_scope = var_env.cur_scope.sub_scopes[0]
+        self.scope_var_type_dict = var_env.get_scope_var_type()
 
     def ast_visit(self):
         self.visit(self.root)
-        # print("* -" *20)
-        # print("wrapper root var type: ", self.wrapper_root.node_var_type)
         return self.wrapper_root
 
     def visit_FunctionDef(self, node):
@@ -227,76 +233,15 @@ class BasicApiTransformer(gast.NodeTransformer):
 
         return node
 
-    # def visit_Name(self, node):
-    #     # todo: To determin ast.Nmae only exits in args/keywards of call?
-    #
-    #     return
-    #
-    # def visit_keyword(self, node):
-    #     # todo: To determin ast.Nmae only exits in args/keywards of call?
-    #
-    #     return
-
-    def _to_layers_shape(self, node):
-        assert isinstance(node, gast.Attribute)
-        value_id = node.value.id  # eg: 'x'
-        var_env = self.static_analysis_visitor.get_var_env()
-
-        # pre_cur_scope = copy.deepcopy(var_env.cur_scope)
-        pre_cur_scope = var_env.cur_scope
-        var_env.cur_scope = var_env.cur_scope.sub_scopes[0]
-        var_type_set = var_env.get_var_type(value_id)
-        # print(" var type: ",value_id, var_type_set)
-        var_env.cur_scope = pre_cur_scope
-
-        if NodeVarType.NUMPY_NDARRAY in var_type_set:
-            # print("NodeVarType.NUMPY_NDARRAY")
-            return node
-
-        if NodeVarType.TENSOR not in var_type_set and NodeVarType.PADDLE_RETURN_TYPES not in var_type_set:
-            # print("NodeVarType.TENSOR")
-            return node
-        # print(" * - "*20)
-        # var_env.cur_scope = var_env.cur_scope.parent_scope
-
-        new_node = gast.Call(
-            func=gast.parse('fluid.layers.shape').body[0].value,
-            args=[node.value],
-            keywords=[])
-        parent_node = self.node_to_wrapper_map[node].parent.node
-
-        parent_node.value = new_node
-        # print(" * -"*20)
-        # print(astor.to_source(gast.gast_to_ast(node)))
-        # print(" * -"*20)
-        return new_node
-
     def _visit_Call(self, node):
         assert isinstance(node, gast.Call)
-
         # Replace API `to_variable` with `fluid.layers.assign`
         if is_to_variable(node):
             self._update_feed_dict(node)
             node = to_assign_node(node)
             return node
 
-        # self.transform_tensor_shape_node(node)
-        if is_paddle_api(node):
-            # and not is_dygraph_api(node):
-            for idx, arg in enumerate(node.args):
-                for child_node in gast.walk(arg):
-                    if isinstance(child_node, gast.Attribute):
-                        if child_node.attr == 'shape':
-                            self._to_layers_shape(child_node)
-
-            for idx, keyword in enumerate(node.keywords):
-                value = keyword.value
-                for child_node in gast.walk(value):
-                    if isinstance(child_node, gast.Attribute):
-                        if child_node.attr == 'shape':
-                            print("* - " * 20)
-                            self._to_layers_shape(child_node)
-
+        self.generic_visit(node)
         func_name = astor.to_source(gast.gast_to_ast(node.func))
         if self._is_dygraph_forward(func_name):
             class_node = self._get_class_node(func_name)
@@ -304,6 +249,51 @@ class BasicApiTransformer(gast.NodeTransformer):
             return static_node
         else:
             return node
+
+    def is_tensor_shape(self, node):
+        assert isinstance(node, gast.Attribute)
+        if node.attr != 'shape':
+            return False
+        try:
+            value_id = node.value.id
+        except AttributeError:
+            return False
+        var_type_set = self.scope_var_type_dict[value_id]
+        if NodeVarType.NUMPY_NDARRAY in var_type_set:
+            return False
+
+        if NodeVarType.TENSOR not in var_type_set and NodeVarType.PADDLE_RETURN_TYPES not in var_type_set:
+            return False
+        return True
+
+    def used_by_paddle_api(self, node):
+        assert isinstance(node, gast.Attribute)
+        wrapper_node = self.node_to_wrapper_map[node]
+        while wrapper_node.parent:
+
+            parent_code = wrapper_node.parent.node
+            if isinstance(parent_code, gast.Call):
+                if is_paddle_api(parent_code):
+                    return True
+                else:
+                    return False
+            wrapper_node = wrapper_node.parent
+
+        return False
+
+    def visit_Attribute(self, node):
+        assert isinstance(node, gast.Attribute)
+
+        if self.is_tensor_shape(node):
+            if self.used_by_paddle_api(node):
+                new_node = gast.Call(
+                    func=gast.parse('fluid.layers.shape').body[0].value,
+                    args=[node.value],
+                    keywords=[])
+
+                return new_node
+
+        return node
 
     def _is_dygraph_forward(self, func_id):
         return func_id in self.class_node_dict

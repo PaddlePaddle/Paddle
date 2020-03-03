@@ -55,10 +55,17 @@ def dyfunc_tensor_shape_3(x):
     return res
 
 
+def dyfunc_tensor_shape_4(x):
+    x = fluid.dygraph.to_variable(x)
+    # res = fluid.layers.reshape(x, shape=(-1, len(x.shape[0])))
+    res = fluid.layers.reshape(x, shape=(-1, x.shape[0]))
+    return res
+
+
 def dyfunc_tensor_shape(x):
     x = fluid.dygraph.to_variable(x)
-    res = fluid.layers.reshape(x, shape=(-1, len(x.shape[0])))
-    res = fluid.layers.reshape(x, shape=(-1, x.shape))
+    s = x.shape[0]
+    res = fluid.layers.reshape(x, shape=(-1, s))
     return res
 
 
