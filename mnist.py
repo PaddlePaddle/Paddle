@@ -26,7 +26,7 @@ from paddle import fluid
 from paddle.fluid.optimizer import Momentum
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
 
-from model import Model, CrossEntropy
+from model import Model, CrossEntropy, Input
 
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
@@ -76,9 +76,8 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
 
 
 class MNIST(Model):
-    def __init__(self):
-        super(MNIST, self).__init__()
-
+    def __init__(self, inputs, targets=None):
+        super(MNIST, self).__init__(inputs, targets)
         self._simple_img_conv_pool_1 = SimpleImgConvPool(
             1, 20, 5, 2, 2, act="relu")
 
@@ -140,7 +139,9 @@ def main():
     device_ids = list(range(FLAGS.num_devices))
 
     with guard:
-        model = MNIST()
+        inputs=[Input([None, 1, 28, 28], 'float32', name='image')]
+        labels=[Input([None, 1], 'int64', name='label')]
+        model = MNIST(inputs, labels)
         optim = Momentum(learning_rate=FLAGS.lr, momentum=.9,
                          parameter_list=model.parameters())
         model.prepare(optim, CrossEntropy())

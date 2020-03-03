@@ -27,7 +27,17 @@ from paddle.fluid.executor import global_scope
 from paddle.fluid.io import is_belong_to_optimizer
 from paddle.fluid.dygraph.base import to_variable
 
-__all__ = ['shape_hints', 'Model', 'Loss', 'CrossEntropy']
+__all__ = ['Model', 'Loss', 'CrossEntropy', 'Input']
+
+
+class Input(fluid.dygraph.Layer):
+    def __init__(self, shape=None, dtype=None, name=None):
+        self.shape = shape
+        self.dtype = dtype
+        self.name = name
+
+    def forward(self):
+        return fluid.data(self.name, shape=self.shape, dtype=self.dtype)
 
 
 def to_list(value):
@@ -44,39 +54,10 @@ def to_numpy(var):
     return np.array(t)
 
 
-def extract_args(func):
-    if hasattr(inspect, 'getfullargspec'):
-        return inspect.getfullargspec(func)[0]
-    else:
-        return inspect.getargspec(func)[0]
-
-
-def shape_hints(**hints):
-    assert hints, "hints can not be empty"
-    assert all(isinstance(h, (list, tuple)) for h in hints.values()), \
-        "shape hint must be a list or tuple"
-
-    def wrapper(func):
-        args = extract_args(func)
-        invalid = set(hints.keys()) - set(args)
-        assert not invalid, \
-            "shape hint for arguments that are not present in forward method" \
-            + ": ({})".format(", ".join(invalid))
-        func.shape_hints = hints
-        return func
-    return wrapper
-
-
 class Loss(object):
     def __init__(self, average=True):
         super(Loss, self).__init__()
         self.average = average
-
-    def infer_shape(self, outputs):
-        return [o.shape for o in outputs]
-
-    def infer_dtype(self, outputs):
-        return [o.dtype for o in outputs]
 
     def forward(self, outputs, labels):
         raise NotImplementedError()
@@ -86,24 +67,21 @@ class Loss(object):
         if in_dygraph_mode():
             labels = [to_variable(l) for l in labels]
         losses = to_list(self.forward(to_list(outputs), labels))
-        if not self.average:
-            return losses
-        return [fluid.layers.reduce_mean(l) for l in losses]
+        if self.average:
+            losses = [fluid.layers.reduce_mean(l) for l in losses]
+        else:
+            losses = [fluid.layers.reduce_sum(l) for l in losses]
+        return losses
 
 
 class CrossEntropy(Loss):
-    def __init__(self):
+    def __init__(self, average=True):
         super(CrossEntropy, self).__init__()
 
-    def infer_shape(self, outputs):
-        return [o.shape[:-1] + (1, ) for o in outputs]
-
-    def infer_dtype(self, outputs):
-        return ['int64' for _ in outputs]
-
     def forward(self, outputs, labels):
-        return [fluid.layers.cross_entropy(o, l) for o, l in zip(
-            outputs, labels)]
+        return [
+            fluid.layers.cross_entropy(o, l) for o, l in zip(outputs, labels)
+        ]
 
 
 class StaticGraphAdapter(object):
@@ -116,6 +94,7 @@ class StaticGraphAdapter(object):
         self._orig_prog = fluid.default_main_program()
 
         self._label_vars = {}  # label variables
+        self._input_vars = {}  # label variables
         self._endpoints = {}
         self._loss_endpoint = None
         self._executor = None
@@ -123,13 +102,6 @@ class StaticGraphAdapter(object):
         self._compiled_progs = {}
 
         self._lazy_load_optimizer = None
-
-        # parse shape hints
-        self._input_desc = OrderedDict([
-            (n, None) for n in extract_args(self.model.forward) if n != 'self'
-        ])
-        if hasattr(self.model.forward, 'shape_hints'):
-            self._input_desc.update(self.model.forward.shape_hints)
 
     @property
     def mode(self):
@@ -139,15 +111,13 @@ class StaticGraphAdapter(object):
     def mode(self, value):
         self.model.mode = value
 
-    def train(self, inputs, labels, device='CPU', device_ids=None):
-        assert self.model._optimizer and self.model._loss_function, \
+    def train(self, inputs, labels=None, device='CPU', device_ids=None):
+        assert self.model._optimizer, \
             "model not ready, please call `model.prepare()` first"
         self.mode = 'train'
         return self._run(inputs, labels, device, device_ids)
 
-    def eval(self, inputs, labels, device='CPU', device_ids=None):
-        assert self.model._loss_function, \
-            "model not ready, please call `model.prepare()` first"
+    def eval(self, inputs, labels=None, device='CPU', device_ids=None):
         self.mode = 'eval'
         return self._run(inputs, labels, device, device_ids)
 
@@ -162,8 +132,10 @@ class StaticGraphAdapter(object):
         def _save(state, path):
             if not state:
                 return
-            state = {k: to_numpy(v) if isinstance(v, Variable) else v
-                     for k, v in state.items()}
+            state = {
+                k: to_numpy(v) if isinstance(v, Variable) else v
+                for k, v in state.items()
+            }
             with open(path, 'wb') as f:
                 pickle.dump(state, f)
 
@@ -176,8 +148,10 @@ class StaticGraphAdapter(object):
             return
         # XXX `optimizer.state_dict()` only work in dygraph mode
         optim_path = path + ".pdopt"
-        optim = {p.name: p for p in filter(
-            is_belong_to_optimizer, prog.list_vars())}
+        optim = {
+            p.name: p
+            for p in filter(is_belong_to_optimizer, prog.list_vars())
+        }
         if not optim:
             return
         # HACK this is contrived, optimizer state is not the same for
@@ -221,9 +195,9 @@ class StaticGraphAdapter(object):
             "optimizer saved in dygraph mode is not usable in static graph"
 
         if self._executor is not None:
-           self._load_optimizer(optim_state)
+            self._load_optimizer(optim_state)
         else:
-           self._lazy_load_optimizer = optim_state
+            self._lazy_load_optimizer = optim_state
 
     def _load_optimizer(self, state):
         prog = self._progs.get('train', None)
@@ -231,8 +205,9 @@ class StaticGraphAdapter(object):
         if not optim:
             return
 
-        fluid.core._create_loaded_parameter(
-            optim, global_scope(), self._executor._default_executor)
+        fluid.core._create_loaded_parameter(optim,
+                                            global_scope(),
+                                            self._executor._default_executor)
 
         for var in optim:
             assert var.name in state, \
@@ -257,17 +232,22 @@ class StaticGraphAdapter(object):
         inputs = to_list(inputs)
         if labels is not None:
             labels = to_list(labels)
-        assert len(inputs) == len(self._input_desc), "number of inputs" \
+        assert len(inputs) == len(self.model._inputs), "number of inputs" \
             + " does not match number of arguments of `forward` method"
 
         if self._progs.get(self.mode, None) is None:
-            self._make_program(self._infer_input_vars(inputs))
+            if self.model._inputs is None:
+                raise ValueError("The inputs of Model must be not None.")
+            self._input_vars = [
+                k.forward() for k in to_list(self.model._inputs)
+            ]
+            self._make_program(self._input_vars)
 
-        compiled_prog = self._compile_and_initialize(
-            self._progs[self.mode], device, device_ids)
+        compiled_prog = self._compile_and_initialize(self._progs[self.mode],
+                                                     device, device_ids)
 
         feed = {}
-        input_names = [name for name in self._input_desc.keys()]
+        input_names = [v.name for v in self._input_vars]
         for idx, n in enumerate(input_names):
             # train and test may take different arguments
             if inputs[idx] is not None:
@@ -277,11 +257,13 @@ class StaticGraphAdapter(object):
                 feed[v.name] = labels[idx]
 
         endpoints = self._endpoints[self.mode]
-        fetch_list = endpoints['output'] + endpoints['loss']
+        fetch_list = endpoints['output']
+        if 'loss' in endpoints:
+            fetch_list += endpoints['loss']
         num_output = len(endpoints['output'])
-        out = self._executor.run(
-            compiled_prog, feed=feed,
-            fetch_list=fetch_list)
+        out = self._executor.run(compiled_prog,
+                                 feed=feed,
+                                 fetch_list=fetch_list)
         if self.mode == 'test':
             return out[:num_output]
         else:
@@ -297,9 +279,7 @@ class StaticGraphAdapter(object):
         with fluid.program_guard(prog, self._startup_prog):
             outputs = to_list(self.model.forward(*inputs))
             if self.mode != 'test':
-                label_vars = self._infer_label_vars(outputs)
-                self._label_vars[self.mode] = label_vars
-                losses = self.model._loss_function(outputs, label_vars)
+                losses = self._get_loss(outputs)
                 if self.mode == 'train':
                     self._loss_endpoint = fluid.layers.sum(losses)
                     self.model._optimizer.minimize(self._loss_endpoint)
@@ -309,38 +289,35 @@ class StaticGraphAdapter(object):
         self._endpoints[self.mode] = {
             "output": outputs,
             "loss": losses
+        } if self.model._loss_function else {
+            'output': outputs
         }
 
-    def _infer_input_vars(self, inputs):
-        input_vars = []
-        for idx, i in enumerate(inputs):
-            if i is None:  # train and test may take different arguments
-                input_vars.append(None)
-                continue
-            ndarray = np.array(i)
-            name = list(self._input_desc.keys())[idx]
-            shape = list(self._input_desc.values())[idx]
-            if shape is None:
-                shape = (None, ) + ndarray.shape[1:]
-            input_vars.append(fluid.data(name, shape, ndarray.dtype))
-        return input_vars
-
-    def _infer_label_vars(self, outputs):
-        shapes = self.model._loss_function.infer_shape(outputs)
-        dtypes = self.model._loss_function.infer_dtype(outputs)
-        label_vars = []
-        for idx, (shape, dtype) in enumerate(zip(shapes, dtypes)):
-            name = '__label{}'.format(idx)
-            label_vars.append(fluid.data(name, shape, dtype))
-        return label_vars
+    def _get_loss(self, outputs):
+        if self.model._loss_function and self.model._loss:
+            raise ValueError(
+                "Do not set loss by model.set_loss() and "
+                "loss_function in model.prepare() at the same time.")
+        if self.model._loss_function is not None:
+            if self.model._labels is None:
+                raise ValueError("The labels of Model must be not None.")
+            label_vars = [k.forward() for k in to_list(self.model._labels)]
+            self._label_vars[self.mode] = label_vars
+            losses = self.model._loss_function(outputs, label_vars)
+        else:
+            assert self.model._loss
+            losses = to_list(self.model._loss)
+        return losses
 
     def _compile_and_initialize(self, prog, device='CPU', device_ids=None):
         compiled_prog = self._compiled_progs.get(self.mode, None)
         if compiled_prog is not None:
             return compiled_prog
 
-        places = [device.lower() == 'gpu' and fluid.CUDAPlace(i)
-                  or fluid.CPUPlace() for i in device_ids]
+        places = [
+            device.lower() == 'gpu' and fluid.CUDAPlace(i) or fluid.CPUPlace()
+            for i in device_ids
+        ]
 
         # XXX *ALL WEIGHTS* should be initialized upon model construction
         # even if `forward()` may run different code path for different mode
@@ -378,7 +355,8 @@ class StaticGraphAdapter(object):
                 del self._compiled_progs['eval']
 
             compiled_prog = compiled_prog.with_data_parallel(
-                loss_name=loss_name, places=places,
+                loss_name=loss_name,
+                places=places,
                 share_vars_from=share_vars_from)
 
         self._compiled_progs[self.mode] = compiled_prog
@@ -399,15 +377,16 @@ class DynamicGraphAdapter(object):
         self.model.mode = value
 
     # TODO multi device in dygraph mode not implemented at present time
-    def train(self, inputs, labels, device='CPU', device_ids=None):
-        assert self.model._optimizer and self.model._loss_function, \
+    def train(self, inputs, labels=None, device='CPU', device_ids=None):
+        assert self.model._optimizer, \
             "model not ready, please call `model.prepare()` first"
         super(Model, self.model).train()
         self.mode = 'train'
         inputs = to_list(inputs)
-        labels = to_list(labels)
+        if labels is not None:
+            labels = to_list(labels)
         outputs = self.model.forward(*[to_variable(x) for x in inputs])
-        losses = self.model._loss_function(outputs, labels)
+        losses = self._get_loss(outputs, labels)
         final_loss = fluid.layers.sum(losses)
         final_loss.backward()
         self.model._optimizer.minimize(final_loss)
@@ -415,15 +394,14 @@ class DynamicGraphAdapter(object):
         return [to_numpy(o) for o in to_list(outputs)], \
             [to_numpy(l) for l in losses]
 
-    def eval(self, inputs, labels, device='CPU', device_ids=None):
-        assert self.model._loss_function, \
-            "model not ready, please call `model.prepare()` first"
+    def eval(self, inputs, labels=None, device='CPU', device_ids=None):
         super(Model, self.model).eval()
         self.mode = 'eval'
         inputs = to_list(inputs)
-        labels = to_list(labels)
+        if labels is not None:
+            labels = to_list(labels)
         outputs = self.model.forward(*[to_variable(x) for x in inputs])
-        losses = self.model._loss_function(outputs, labels)
+        losses = self._get_loss(outputs, labels)
         return [to_numpy(o) for o in to_list(outputs)], \
             [to_numpy(l) for l in losses]
 
@@ -433,6 +411,16 @@ class DynamicGraphAdapter(object):
         inputs = [to_variable(x) for x in to_list(inputs)]
         outputs = self.model.forward(*inputs)
         return [to_numpy(o) for o in to_list(outputs)]
+
+    def _get_loss(self, outputs, labels):
+        if self.model._loss_function and self.model._loss:
+            raise ValueError(
+                "Do not set loss by model.set_loss() and "
+                "loss_function in model.prepare() at the same time.")
+        if self.model._loss_function is not None:
+            return self.model._loss_function(outputs, labels)
+        else:
+            return to_list(self.model._loss)
 
     def parameters(self, *args, **kwargs):
         return super(Model, self.model).parameters(*args, **kwargs)
@@ -455,11 +443,14 @@ class DynamicGraphAdapter(object):
 
 
 class Model(fluid.dygraph.Layer):
-    def __init__(self):
+    def __init__(self, inputs=None, labels=None):
         super(Model, self).__init__(self.__class__.__name__)
         self.mode = 'train'
+        self._inputs = inputs
+        self._labels = labels
         self._loss_function = None
         self._loss_weights = None
+        self._loss = None
         self._optimizer = None
         if in_dygraph_mode():
             self._adapter = DynamicGraphAdapter(self)
@@ -481,11 +472,22 @@ class Model(fluid.dygraph.Layer):
     def load(self, *args, **kwargs):
         return self._adapter.load(*args, **kwargs)
 
-    def prepare(self, optimizer, loss_function):
+    def prepare(self, optimizer, loss_function=None):
         self._optimizer = optimizer
-        assert isinstance(loss_function, Loss), \
-            "'loss_function' must be sub classes of 'Loss'"
+        if loss_function:
+            if not isinstance(loss_function, Loss):
+                raise TypeError(
+                    "'loss_function' must be sub classes of 'Loss'")
         self._loss_function = loss_function
 
     def parameters(self, *args, **kwargs):
         return self._adapter.parameters(*args, **kwargs)
+
+    def set_loss(self, loss):
+        if loss and self._loss_function:
+            raise ValueError(
+                "Do not set loss by model.set_loss() and "
+                "loss_function in model.prepare() at the same time.")
+        if not isinstance(loss, (Variable, fluid.core.VarBase)):
+            raise TypeError("loss type should be a Variable or VarBase.")
+        self._loss = loss
