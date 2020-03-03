@@ -69,7 +69,7 @@ class HdfsStore {
   std::string ObjectPath(const std::string& name);
 
   bool Check(const std::vector<std::string>& keys,
-             int* last_check_rank=nullptr);
+             int* last_check_rank = nullptr);
 
   void SetRank(int rank) { self_rank_ = rank; }
 

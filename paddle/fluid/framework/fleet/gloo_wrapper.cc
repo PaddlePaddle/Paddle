@@ -97,8 +97,8 @@ void HdfsStore::wait(const std::vector<std::string>& keys,
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::steady_clock::now() - start);
     if (wait_timeout_ != gloo::kNoTimeout && elapsed > wait_timeout_) {
-      PADDLE_THROW("TIMEOUT self_rank = " + std::to_string(self_rank_)
-                   + " pair_rank = " +  std::to_string(last_check_rank));
+      PADDLE_THROW("TIMEOUT self_rank = " + std::to_string(self_rank_) +
+                   " pair_rank = " +  std::to_string(last_check_rank));
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(wait_sleep_ms_));
   }
@@ -136,7 +136,9 @@ bool HdfsStore::Check(const std::vector<std::string>& keys,
     VLOG(3) << "HdfsStore::Check " << is_exists << " path " << path;
     if (!is_exists) {
       if (last_check_rank) {
-        if (index >= self_rank_) { ++index; }
+        if (index >= self_rank_) {
+          ++index;
+        }
         *last_check_rank = index;
       }
       return false;
