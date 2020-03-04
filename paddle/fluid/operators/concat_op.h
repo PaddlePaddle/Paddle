@@ -104,17 +104,32 @@ class ConcatKernel : public framework::OpKernel<T> {
 
     // If axis is 0, the lod of the output is not the same as inputs.
     if (axis == 0 && ins[0]->lod().size()) {
-      auto out_lod = ins[0]->lod();
-      for (size_t i = 1; i < ins.size(); ++i) {
-        const auto& in_lod = ins[i]->lod();
-        for (size_t j = 0; j < in_lod.size(); j++) {
-          size_t lod_s = out_lod[j][out_lod[j].size() - 1];
-          for (size_t k = 1; k < in_lod[j].size(); k++) {
-            out_lod[j].push_back(lod_s + in_lod[j][k]);
+      bool lod_size = 1;
+      for (size_t i = 0; i < ins.size(); ++i) {
+        if (ins[i]->lod().size() == 0) {
+          lod_size = 0;
+        }
+        if (i < ins.size() - 1) {
+          PADDLE_ENFORCE_EQ(
+              ins[i]->lod().size(), ins[i + 1]->lod().size(),
+              platform::errors::Unimplemented(
+                  "The lod level of all input LoDTensors should be same. "
+                  "Maybe different lod level of input LoDTensors can concat,"
+                  " it is not supported currently."));
+        }
+      }
+      if (lod_size) {
+        auto& out_lod = *out->mutable_lod();
+        for (size_t i = 1; i < ins.size(); ++i) {
+          const auto& in_lod = ins[i]->lod();
+          for (size_t j = 0; j < in_lod.size(); j++) {
+            auto lod_s = out_lod[j][out_lod[j].size() - 1];
+            for (size_t k = 1; k < in_lod[j].size(); k++) {
+              out_lod[j].push_back(lod_s + in_lod[j][k]);
+            }
           }
         }
       }
-      out->set_lod(out_lod);
     }
 
     // Sometimes direct copies will be faster, this maybe need deeply analysis.
