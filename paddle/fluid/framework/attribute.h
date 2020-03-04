@@ -367,7 +367,8 @@ class OpAttrChecker {
   // for explicit attribute, we mean the attribute added in the customized
   // op makers, usually it's defined in the overloaded Make method.
   // for implicit attribute, we mean the attribute added outside of the Make
-  // method like "op_role", "op_role_var"
+  // method like "op_role", "op_role_var", and they are useless in dynamic graph
+  // mode
   size_t explicit_checker_num_;
 };
 
