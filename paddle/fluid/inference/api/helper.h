@@ -39,6 +39,24 @@ extern std::string paddle::framework::DataTypeToString(
 namespace paddle {
 namespace inference {
 
+template <typename T>
+constexpr PaddleDType PaddleTensorGetDType();
+
+template <>
+constexpr PaddleDType PaddleTensorGetDType<int32_t>() {
+  return PaddleDType::INT32;
+}
+
+template <>
+constexpr PaddleDType PaddleTensorGetDType<int64_t>() {
+  return PaddleDType::INT64;
+}
+
+template <>
+constexpr PaddleDType PaddleTensorGetDType<float>() {
+  return PaddleDType::FLOAT32;
+}
+
 using paddle::framework::DataTypeToString;
 
 // Timer for timer
