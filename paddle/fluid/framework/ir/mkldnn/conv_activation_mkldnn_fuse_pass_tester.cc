@@ -40,6 +40,8 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
       op->SetAttr("alpha", 0.02f);
     } else if (type == "relu6") {
       op->SetAttr("threshold", 6.0f);
+    } else if (type == "swish") {
+      op->SetAttr("beta", 1);
     }
   }
   op->SetOutput("Out", outputs);
@@ -133,6 +135,7 @@ TEST(ConvActivationFusePass, conv_leaky_relu_fuse_pass) {
   MainTest("leaky_relu");
 }
 TEST(ConvActivationFusePass, conv_relu6_fuse_pass) { MainTest("relu6"); }
+TEST(ConvActivationFusePass, conv_swish_fuse_pass) { MainTest("swish"); }
 
 }  // namespace ir
 }  // namespace framework
