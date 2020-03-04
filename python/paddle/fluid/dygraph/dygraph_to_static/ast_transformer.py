@@ -13,17 +13,21 @@
 # limitations under the License.
 
 from __future__ import print_function
-from .utils import *
-import gast
-import textwrap
-import inspect
+
+import astor
 # gast is a generic AST to represent Python2 and Python3's Abstract Syntax Tree(AST).
 # It provides a compatibility layer between the AST of various Python versions,
 # as produced by ast.parse from the standard ast module.
 # See details in https://github.com/serge-sans-paille/gast/
-from .ast_utils import is_control_flow_if, create_cond_node, transform_if_else, ast_to_func
+import gast
+import textwrap
+import inspect
+
 from paddle.fluid import unique_name
+from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import LoopTransformer
+from .ast_utils import is_control_flow_if, create_cond_node, transform_if_else, ast_to_func
 from .static_analysis import AstNodeWrapper, StaticAnalysisVisitor
+from .utils import *
 
 __all__ = ['DygraphToStaticAst', 'convert_to_static']
 
@@ -106,17 +110,19 @@ class DygraphToStaticAst(gast.NodeTransformer):
         self.transfer_from_node_type(self.static_analysis_root)
         return self.static_analysis_root
 
-    def transfer_from_node_type(self, node):
+    def transfer_from_node_type(self, node_wrapper):
         # Generic transformation
-        self.visit(node.node)
+        self.visit(node_wrapper.node)
 
         # Transform basic api of dygraph to static graph
-        basic_api_trans = BasicApiTransformer(node)
+        basic_api_trans = BasicApiTransformer(node_wrapper)
         basic_api_trans.ast_visit()
         self.feed_name_to_arg_name = basic_api_trans.get_feed_name_to_arg_id()
 
         # Transform all if/else statement of Dygraph into Static Graph.
-        IfElseTransformer(node).ast_visit()
+        IfElseTransformer(node_wrapper).ast_visit()
+
+        LoopTransformer(node_wrapper).transform()
 
     def visit_FunctionDef(self, node):
         if self.decorate_func_name is None:
