@@ -75,10 +75,10 @@ std::shared_ptr<std::vector<PaddleTensor>> GetWarmupData(
   PADDLE_ENFORCE_LE(static_cast<size_t>(num_images), all_test_data_size,
                     platform::errors::InvalidArgument(
                         "The requested quantization warmup data size must be "
-                        "smaller than the test data size. But received warmup "
-                        "size is %d and test data size is %d. Please use "
-                        "--warmup_batch_size parameter to set smaller warmup "
-                        "batch size.",
+                        "lower or equal to the test data size. But received"
+                        "warmup size is %d and test data size is %d. Please "
+                        "use --warmup_batch_size parameter to set smaller "
+                        "warmup batch size.",
                         num_images, all_test_data_size));
 
   PaddleTensor images;
