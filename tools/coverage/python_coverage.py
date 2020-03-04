@@ -28,8 +28,8 @@ for clazz in root.findall('packages/package/classes/class'):
     if not path.exists(clazz_filename):
         continue
 
-    print 'TN:'
-    print 'SF:{}'.format(clazz_filename)
+    print('TN:')
+    print('SF:{}'.format(clazz_filename))
 
     branch_index = 0
 
@@ -50,16 +50,16 @@ for clazz in root.findall('packages/package/classes/class'):
             taken = int(taken)
 
             for _ in range(taken):
-                print 'BRDA:{},{},{},{}'.format(line_number, 0, branch_index,
-                                                line_hits)
+                print('BRDA:{},{},{},{}'.format(line_number, 0, branch_index,
+                                                line_hits))
                 branch_index += 1
 
             if line_missing_branches:
                 for missing_branch in line_missing_branches.split(','):
-                    print 'BRDA:{},{},{},{}'.format(line_number, 0,
-                                                    branch_index, 0)
+                    print('BRDA:{},{},{},{}'.format(line_number, 0,
+                                                    branch_index, 0))
                     branch_index += 1
 
-        print 'DA:{},{}'.format(line_number, line_hits)
+        print('DA:{},{}'.format(line_number, line_hits))
 
-    print 'end_of_record'
+    print('end_of_record')
