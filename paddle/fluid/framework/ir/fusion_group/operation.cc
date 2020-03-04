@@ -106,7 +106,7 @@ void OperationMap::InsertUnaryElementwiseOperations() {
   // cast
   // out = static_cast<T>(d)
   // dx = static_cast<T>(d_out)
-  // insert_handler("cast", "${0}", {"${0}"});
+  insert_handler("cast", "${0}", {"${0}"});
 }
 
 void OperationMap::InsertBinaryElementwiseOperations() {
@@ -163,10 +163,10 @@ void OperationMap::InsertMultivariateElementwiseOperations() {
                             std::vector<std::string> grad_exprs) {
     int type = 0;
     int num_oprands = -1;
-    // here ... represent the number of input is changed
     Insert(type, num_oprands, op_type, expr, grad_exprs, {"X"}, {"Out"});
   };
 
+  // here ? represent the number of input is positive
   insert_handler("sum", "${0}[ + ${?}]", {});
 }
 

@@ -30,8 +30,8 @@ namespace fusion_group {
 static inline std::string ArgName(int index) {
   return "arg" + std::to_string(index);
 }
-static inline std::string TmpName(int index) {
-  return "tmp" + std::to_string(index);
+static inline std::string VarName(int index) {
+  return "arg" + std::to_string(index) + "[idx]";
 }
 
 class OperationExpression {

@@ -156,11 +156,14 @@ std::string CodeGenerator::Generate(
     all_dtype.insert(type.second);
   }
   std::string predefined_cuda_functions = "";
-  if (all_dtype.find("float") != all_dtype.end()) {
+  if (all_dtype.find("float") != all_dtype.end() &&
+      all_dtype.find("float16") == all_dtype.end()) {
     predefined_cuda_functions += predefined_cuda_functions_fp32;
-  } else if (all_dtype.find("double") != all_dtype.end()) {
+  }
+  if (all_dtype.find("double") != all_dtype.end()) {
     predefined_cuda_functions += predefined_cuda_functions_fp64;
-  } else if (all_dtype.find("float16") != all_dtype.end()) {
+  }
+  if (all_dtype.find("float16") != all_dtype.end()) {
     predefined_cuda_functions += predefined_cuda_functions_fp16;
   }
   return predefined_cuda_functions + code_templates_[0].Format(template_var);
@@ -209,7 +212,7 @@ std::unordered_map<int, std::string> CodeGenerator::DistilDtypes(
     }
     for (auto id : expression.GetOutputIds()) {
       auto found = dtypes.find(id);
-      auto dtype = expression.GetRHSType();
+      auto dtype = expression.GetLHSType();
       if (found == dtypes.end()) {
         dtypes[id] = dtype;
       } else {
@@ -260,33 +263,28 @@ std::string CodeGenerator::EmitComputeBody(
     VLOG(3) << DebugString(expressions[i]);
     compute << expressions[i].GetExpression(&used);
   }
-
-  // Load input to temporal variables.
-  std::ostringstream load;
-  for (auto id : input_ids) {
-    if (output_ids.find(id) == output_ids.end() &&
-        used.find(id) != used.end()) {
-      if (dtypes[id] == "float16") {
-        load << "float " << TmpName(id) << " = __half2float(" << ArgName(id)
-             << "[idx]);";
-      } else {
-        load << dtypes[id] << " " << TmpName(id) << " = " << ArgName(id)
-             << "[idx];";
+  /*
+    // Load input to temporal variables.
+    std::ostringstream load;
+    for (auto id : input_ids) {
+      if (output_ids.find(id) == output_ids.end() &&
+          used.find(id) != used.end()) {
+          load << dtypes[id] << " " << TmpName(id) << " = " << ArgName(id)
+               << "[idx];";
       }
     }
-  }
 
-  // Store temporal variables to memory.
-  std::ostringstream store;
-  for (auto id : output_ids) {
-    if (dtypes[id] == "float16") {
-      store << ArgName(id) << "[idx] = __float2half(" << TmpName(id) << ");";
-    } else {
-      store << ArgName(id) << "[idx] = " << TmpName(id) << ";";
+    // Store temporal variables to memory.
+    std::ostringstream store;
+    for (auto id : output_ids) {
+      if (dtypes[id] == "float16") {
+        store << ArgName(id) << "[idx] = __float2half(" << TmpName(id) << ");";
+      } else {
+        store << ArgName(id) << "[idx] = " << TmpName(id) << ";";
+      }
     }
-  }
-
-  return load.str() + compute.str() + store.str();
+  */
+  return compute.str();
 }
 
 std::unordered_map<std::string, int> CodeGenerator::EncodeVarNodes(

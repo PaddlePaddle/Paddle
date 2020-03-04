@@ -135,7 +135,7 @@ class FusionGroupPassTestFP16(FusionGroupPassTest):
             tmp_5 = layers.cast(tmp_4, dtype=dtype)
 
         self.fetch_list = [tmp_5]
-        self.num_fused_ops = 1
+        self.num_fused_ops = 2
 
 
 class FusionGroupPassSumTest(FusionGroupPassTest):

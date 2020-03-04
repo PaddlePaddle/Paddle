@@ -78,7 +78,14 @@ std::string OperationExpression::GetRHS(std::unordered_set<int>* used,
           platform::errors::InvalidArgument(
               "Expected %d-th input id > 0 for operation < %s >. Received %d.",
               index, op_type_, input_ids_[index]));
-      rhs.replace(pos, length + 3, TmpName(input_ids_[index]));
+      // TODO(wangchaochaohu): Here fp16 convert to float to do comupte, we need
+      // to add general fp16 compute later.
+      std::string var_name;
+      if (rhs_type_ == "float16")
+        var_name = "__half2float(" + VarName(input_ids_[index]) + ")";
+      else
+        var_name = VarName(input_ids_[index]);
+      rhs.replace(pos, length + 3, var_name);
       used->insert(input_ids_[index]);
     }
   }
@@ -87,7 +94,7 @@ std::string OperationExpression::GetRHS(std::unordered_set<int>* used,
 
 std::string OperationExpression::GetLHS(size_t i) const {
   std::stringstream ret;
-  ret << TmpName(output_ids_[i]);
+  ret << VarName(output_ids_[i]);
   return ret.str();
 }
 
@@ -103,19 +110,17 @@ std::string OperationExpression::GetExpression(
   if (IsSupport()) {
     for (size_t i = 0; i < output_ids_.size(); ++i) {
       std::string cast_str = "";
-      std::string lhs_type = lhs_type_;
-      std::string rhs_type = rhs_type_;
-      // TODO(wangchaochaohu): Here fp16 convert to float to do comupte, we need
-      // to
-      // add general fp16 compute later.
-      if (lhs_type_ == "float16") lhs_type = rhs_type = "float";
-
-      if (lhs_type != rhs_type) {
-        cast_str = "static_cast<" + lhs_type_ + ">";
-        ret << lhs_type << " " << GetLHS(i) << " = " << cast_str << "("
-            << GetRHS(used, i) << ");";
+      if (lhs_type_ == rhs_type_ && rhs_type_ != "float16") {
+        ret << "  " << GetLHS(i) << " = " << GetRHS(used, i) << ";";
       } else {
-        ret << lhs_type << " " << GetLHS(i) << " = " << GetRHS(used, i) << ";";
+        if ((lhs_type_ == rhs_type_ && rhs_type_ == "float16") ||
+            lhs_type_ == "float16") {
+          cast_str = "__float2half";
+        } else {
+          cast_str = "static_cast<" + lhs_type_ + ">";
+        }
+        ret << "  " << GetLHS(i) << " = " << cast_str << "(" << GetRHS(used, i)
+            << ");";
       }
     }
   }
