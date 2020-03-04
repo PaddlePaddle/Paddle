@@ -1312,6 +1312,8 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
   }
   PADDLE_ENFORCE_NE(data_type, dafault_data_type,
                     "DataType should be indicated by input Variable.");
+  PADDLE_ENFORCE_NE(data_type, dafault_data_type,
+                    "DataType should be indicated by input Variable.");
   return data_type;
 }
 
@@ -1326,6 +1328,7 @@ proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
       "The Input Variable(%s) of %s Op used to determine kernel data type "
       "is empty or not LoDTensor or SelectedRows.",
       name, Type());
+  VLOG(3) << "Test ";
   return data_type;
 }
 
