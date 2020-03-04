@@ -259,8 +259,9 @@ def cross_entropy2(input, label, ignore_index=kIgnoreIndex):
     attrs = {'ignore_index': ignore_index}
 
     if in_dygraph_mode():
-        outs = core.ops.cross_entropy2(inputs, attrs)
-        return outs['Y'][0]
+        # outs = core.ops.cross_entropy2(inputs, attrs)
+        # return outs['Y'][0]
+        return core.ops.cross_entropy2(input, label, ignore_index)
 
     check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
                              'cross_entropy2')
@@ -1241,12 +1242,14 @@ def softmax_with_cross_entropy(logits,
     }
 
     if in_dygraph_mode():
-        inputs = {'Logits': [logits], 'Label': [label]}
-        outs = core.ops.softmax_with_cross_entropy(inputs, attrs)
+        # inputs = {'Logits': [logits], 'Label': [label]}
+        # outs = core.ops.softmax_with_cross_entropy(inputs, attrs)
+        softmax, loss = core.ops.softmax_with_cross_entropy(
+            logits, label, soft_label, ignore_index, numeric_stable_mode, axis)
         if not return_softmax:
-            return outs['Loss'][0]
+            return loss
         else:
-            return outs['Loss'][0], outs['Softmax'][0]
+            return loss, softmax
 
     helper = LayerHelper('softmax_with_cross_entropy', **locals())
     softmax = helper.create_variable_for_type_inference(dtype=logits.dtype)

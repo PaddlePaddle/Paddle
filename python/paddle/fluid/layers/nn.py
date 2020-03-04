@@ -1117,12 +1117,14 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
                              fetch_list=[result[0]])
             print(output)
     """
-    inputs = {"X": [input]}
-    attrs = {"axis": axis, "use_cudnn": use_cudnn}
 
     if in_dygraph_mode():
-        outs = core.ops.softmax(inputs, attrs)
-        return outs['Out'][0]
+        return core.ops.softmax(input, axis, use_cudnn)
+        # outs = core.ops.softmax(inputs, attrs)
+        # return outs['Out'][0]
+
+    inputs = {"X": [input]}
+    attrs = {"axis": axis, "use_cudnn": use_cudnn}
 
     helper = LayerHelper('softmax', **locals())
     check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
@@ -3893,9 +3895,11 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
     }
 
     if in_dygraph_mode():
-        inputs = {'X': [input]}
-        outs = core.ops.reduce_sum(inputs, attrs)
-        return outs['Out'][0]
+        return core.ops.reduce_sum(input, attrs['dim'], keep_dim,
+                                   attrs['reduce_all'])
+        # inputs = {'X': [input]}
+        # outs = core.ops.reduce_sum(inputs, attrs)
+        # return outs['Out'][0]
 
     check_variable_and_dtype(
         input, 'input', ['float32', 'float64', 'int32', 'int64'], 'reduce_sum')
@@ -3968,9 +3972,10 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
     }
 
     if in_dygraph_mode():
-        inputs = {'X': [input]}
-        outs = core.ops.reduce_mean(inputs, attrs)
-        return outs['Out'][0]
+        #inputs = {'X': [input]}
+        #outs = core.ops.reduce_mean(inputs, attrs)
+        return core.ops.reduce_mean(input, attrs['dim'], keep_dim,
+                                    attrs['reduce_all'])
 
     check_variable_and_dtype(
         input, 'input', ['float32', 'float64', 'int32', 'int64'], 'reduce_mean')
@@ -4365,8 +4370,7 @@ def split(input, num_or_sections, dim=-1, name=None):
             raise TypeError(
                 "The type of 'num_or_sections' in split must be int or list in Dygraph mode, but "
                 "received %s." % (type(num_or_sections)))
-
-        return core.ops.split(input, axis_tensor, axis, num, sections, num)
+        return core.ops.split(input, axis, num, num)
 
         # res = core.ops.split(inputs, attrs, {}, {'Out': num})
         # return res['Out']
@@ -4604,9 +4608,10 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
     }
 
     if in_dygraph_mode():
-        inputs = {'X': [x], 'Y': [y]}
-        outs = core.ops.matmul(inputs, attrs)
-        return outs['Out'][0]
+        # inputs = {'X': [x], 'Y': [y]}
+        # outs = core.ops.matmul(inputs, attrs)
+        # return outs['Out'][0]
+        return core.ops.matmul(x, y, transpose_x, transpose_y, float(alpha))
 
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
@@ -4967,10 +4972,11 @@ def transpose(x, perm, name=None):
 
     """
     if in_dygraph_mode():
-        attrs = {'axis': perm}
-        inputs = {'X': [x]}
-        outs = core.ops.transpose2(inputs, attrs)
-        return outs['Out'][0]
+        # attrs = {'axis': perm}
+        # inputs = {'X': [x]}
+        # outs = core.ops.transpose2(inputs, attrs)
+        # return outs['Out'][0]
+        return core.ops.transpose2(x, perm)
 
     check_variable_and_dtype(
         x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'],
@@ -5594,9 +5600,10 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                 "The type of 'shape' in reshape must be list[int] or tuple(int) in Dygraph mode, but "
                 "received %s." % type(shape))
 
-        inputs = {'X': [x]}
-        outs = core.ops.reshape2(inputs, attrs)
-        out = outs['Out'][0]
+        # inputs = {'X': [x]}
+        # outs = core.ops.reshape2(inputs, attrs)
+        # out = outs['Out'][0]
+        out = core.ops.reshape2(x, shape)
         return dygraph_utils._append_activation_in_dygraph(out, act)
 
     check_variable_and_dtype(
@@ -11349,9 +11356,10 @@ def mean(x, name=None):
             mean = fluid.layers.mean(input)
     """
     if in_dygraph_mode():
-        inputs = {"X": [x]}
-        outs = core.ops.mean(inputs)
-        return outs['Out'][0]
+        # inputs = {"X": [x]}
+        # outs = core.ops.mean(inputs)
+        # return outs['Out'][0]
+        return core.ops.mean(x)
 
     helper = LayerHelper("mean", **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'mean')

@@ -95,16 +95,12 @@ const std::vector<std::string> specialization = {
     "elementwise_mul",
     //  "fill_constant",
     //  "lookup_table",
-    "matmul",
-    //  "reduce_mean",
-    //  "reduce_sum",
-    //  "reshape2",
-    //  "sgd",
-    "sigmoid", "slice",
-    //  "softmax_with_cross_entropy",
-    "split", "square", "sqrt", "tanh",
-    //  "transpose2",
+    "matmul", "reduce_mean", "reduce_sum", "reshape2", "sgd", "sigmoid",
+    "slice", "softmax_with_cross_entropy", "split", "square", "sqrt", "tanh",
+    "transpose2",
     //  "uniform_random"
+    "conv2d", "cross_entropy2", "mean", "pool2d", "relu", "softmax",
+    // "batch_norm", "top_k", "accuracy", "gaussian_random"
 };
 
 static std::tuple<std::vector<std::string>, std::vector<std::string>>

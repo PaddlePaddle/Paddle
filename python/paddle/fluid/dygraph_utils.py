@@ -37,7 +37,10 @@ def _append_activation_in_dygraph(input,
     # attrs = {'use_cudnn': use_cudnn, 'use_mkldnn': use_mkldnn}
     # inputs = {"X": [input]}
     act_op = getattr(core.ops, act)
-    return act_op(input, use_cudnn, use_mkldnn)
+    if act == 'softmax':
+        return act_op(input, use_cudnn, use_mkldnn)
+    else:
+        return act_op(input)
 
 
 @dygraph_only
@@ -57,7 +60,9 @@ def _append_bias_in_dygraph(
     if not bias:
         return input
 
-    attrs = {'axis': axis}
-    inputs = {'X': [input], 'Y': [bias]}
-    outs = core.ops.elementwise_add(inputs, attrs)
-    return outs['Out'][0]
+    # attrs = {'axis': axis}
+    # inputs = {'X': [input], 'Y': [bias]}
+    # outs = core.ops.elementwise_add(inputs, attrs)
+    # return outs['Out'][0]
+
+    return core.ops.elementwise_add(input, bias, axis, False)

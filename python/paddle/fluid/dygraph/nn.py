@@ -218,6 +218,19 @@ class Conv2D(layers.Layer):
             is_bias=True)
 
     def forward(self, input):
+        if in_dygraph_mode() and self._l_type == 'conv2d':
+            out = core.ops.conv2d(input, self.weight, self._stride,
+                                  self._padding, self._dilation, self._groups if
+                                  self._groups else 1, self._use_cudnn, False)
+            # outs = core.ops.conv2d(inputs, attrs)
+            # pre_bias = outs['Output'][0]
+            pre_bias = out
+
+            pre_act = dygraph_utils._append_bias_in_dygraph(pre_bias, self.bias,
+                                                            1)
+
+            return dygraph_utils._append_activation_in_dygraph(pre_act,
+                                                               self._act)
         inputs = {
             'Input': [input],
             'Filter': [self.weight],
@@ -230,17 +243,6 @@ class Conv2D(layers.Layer):
             'use_cudnn': self._use_cudnn,
             'use_mkldnn': False,
         }
-
-        if in_dygraph_mode() and self._l_type == 'conv2d':
-            outs = core.ops.conv2d(inputs, attrs)
-            pre_bias = outs['Output'][0]
-
-            pre_act = dygraph_utils._append_bias_in_dygraph(pre_bias, self.bias,
-                                                            1)
-
-            return dygraph_utils._append_activation_in_dygraph(pre_act,
-                                                               self._act)
-
         pre_bias = self._helper.create_variable_for_type_inference(
             dtype=self._dtype)
 
@@ -825,6 +827,13 @@ class Pool2D(layers.Layer):
         self._l_type = 'pool2d'
 
     def forward(self, input):
+        if in_dygraph_mode():
+            # outs = core.ops.pool2d(inputs, attrs)
+            # return outs['Out'][0]
+            return core.ops.pool2d(input, self._pool_type, self._pool_size,
+                                   self._global_pooling, self._pool_stride,
+                                   self._pool_padding, self._use_cudnn,
+                                   self._ceil_mode, False, self._exclusive)
         attrs = {
             "pooling_type": self._pool_type,
             "ksize": self._pool_size,
@@ -837,10 +846,6 @@ class Pool2D(layers.Layer):
             "exclusive": self._exclusive,
         }
         inputs = {"X": [input]}
-
-        if in_dygraph_mode():
-            outs = core.ops.pool2d(inputs, attrs)
-            return outs['Out'][0]
 
         pool_out = self._helper.create_variable_for_type_inference(self._dtype)
 

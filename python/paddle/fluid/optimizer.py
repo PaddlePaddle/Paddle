@@ -863,15 +863,18 @@ class SGDOptimizer(Optimizer):
     @no_grad
     def _append_optimize_op(self, block, param_and_grad):
         if framework.in_dygraph_mode():
-            inputs = {
-                "Param": [param_and_grad[0]],
-                "Grad": [param_and_grad[1]],
-                "LearningRate": [self._create_param_lr(param_and_grad)]
-            }
-            attrs = {}
-            outputs = {'ParamOut': [param_and_grad[0]]}
-            outs = core.ops.sgd(inputs, attrs, outputs)
-            return outs['ParamOut'][0]
+            # inputs = {
+            #     "Param": [param_and_grad[0]],
+            #     "Grad": [param_and_grad[1]],
+            #     "LearningRate": [self._create_param_lr(param_and_grad)]
+            # }
+            # attrs = {}
+            # outputs = {'ParamOut': [param_and_grad[0]]}
+            # outs = core.ops.sgd(inputs, attrs, outputs)
+            # return outs['ParamOut'][0]
+            return core.ops.sgd(param_and_grad[0], param_and_grad[1],
+                                self._create_param_lr(param_and_grad),
+                                param_and_grad[0])
 
         assert isinstance(block, framework.Block)
         # create the optimize op
