@@ -21,7 +21,7 @@ import paddle.fluid as fluid
 import unittest
 
 from paddle.fluid.dygraph.jit import dygraph_to_static_graph
-#from paddle.fluid.dygraph.dygraph_to_static import NameVistor
+from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import NameVisitor
 
 SEED = 2020
 np.random.seed(SEED)
@@ -37,8 +37,15 @@ def while_loop_dyfunc(x):
 
 class TestNameVisitor(unittest.TestCase):
     def test_loop_vars(self):
-        #TODO
-        pass
+        test_func = inspect.getsource(while_loop_dyfunc)
+        gast_root = gast.parse(test_func)
+        name_visitor = NameVisitor(gast_root)
+        for node in gast.walk(gast_root):
+            if isinstance(node, gast.While):
+                loop_var_names, create_var_names = name_visitor.get_loop_var_names(
+                    node)
+                self.assertEqual(loop_var_names, set(["i", "x"]))
+                self.assertEqual(create_var_names, set())
 
 
 class TestTransformWhile(unittest.TestCase):
