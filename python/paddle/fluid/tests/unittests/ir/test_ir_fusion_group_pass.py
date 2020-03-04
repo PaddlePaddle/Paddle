@@ -125,12 +125,10 @@ class FusionGroupPassTestFP16(FusionGroupPassTest):
                 fluid.data(
                     name="data2", shape=[128, 128], dtype=dtype))
 
-            # subgraph with only 1 op node
             tmp_0 = self.feed_vars[0] * self.feed_vars[1]
             tmp_1 = layers.mul(tmp_0, self.feed_vars[2])
             tmp_2 = layers.cast(tmp_0, dtype="float16")
             tmp_3 = layers.cast(tmp_1, dtype="float16")
-            # subgraph with 2 op nodes
             tmp_4 = layers.relu(tmp_2 + tmp_3)
             tmp_5 = layers.cast(tmp_4, dtype=dtype)
 
@@ -148,6 +146,19 @@ class FusionGroupPassSumTest(FusionGroupPassTest):
             tmp_2 = layers.sum([tmp_1, self.feed_vars[4]])
 
         self.fetch_list = [tmp_0, tmp_1, tmp_2]
+        self.num_fused_ops = 1
+
+
+class FusionGroupPassCastTest(FusionGroupPassTest):
+    def build_program(self, dtype):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            self.feed_vars = self._prepare_feed_vars([2, 2], dtype, 2)
+
+            tmp_0 = layers.elementwise_add(self.feed_vars[0], self.feed_vars[1])
+            tmp_1 = layers.cast(tmp_0, dtype="float16")
+            tmp_2 = layers.cast(tmp_1, dtype="float32")
+
+        self.fetch_list = [tmp_2]
         self.num_fused_ops = 1
 
 

@@ -263,27 +263,6 @@ std::string CodeGenerator::EmitComputeBody(
     VLOG(3) << DebugString(expressions[i]);
     compute << expressions[i].GetExpression(&used);
   }
-  /*
-    // Load input to temporal variables.
-    std::ostringstream load;
-    for (auto id : input_ids) {
-      if (output_ids.find(id) == output_ids.end() &&
-          used.find(id) != used.end()) {
-          load << dtypes[id] << " " << TmpName(id) << " = " << ArgName(id)
-               << "[idx];";
-      }
-    }
-
-    // Store temporal variables to memory.
-    std::ostringstream store;
-    for (auto id : output_ids) {
-      if (dtypes[id] == "float16") {
-        store << ArgName(id) << "[idx] = __float2half(" << TmpName(id) << ");";
-      } else {
-        store << ArgName(id) << "[idx] = " << TmpName(id) << ";";
-      }
-    }
-  */
   return compute.str();
 }
 

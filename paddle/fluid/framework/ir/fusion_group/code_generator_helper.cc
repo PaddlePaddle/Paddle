@@ -111,7 +111,7 @@ std::string OperationExpression::GetExpression(
     for (size_t i = 0; i < output_ids_.size(); ++i) {
       std::string cast_str = "";
       if (lhs_type_ == rhs_type_ && rhs_type_ != "float16") {
-        ret << "  " << GetLHS(i) << " = " << GetRHS(used, i) << ";";
+        ret << GetLHS(i) << " = " << GetRHS(used, i) << ";";
       } else {
         if ((lhs_type_ == rhs_type_ && rhs_type_ == "float16") ||
             lhs_type_ == "float16") {
@@ -119,12 +119,10 @@ std::string OperationExpression::GetExpression(
         } else {
           cast_str = "static_cast<" + lhs_type_ + ">";
         }
-        ret << "  " << GetLHS(i) << " = " << cast_str << "(" << GetRHS(used, i)
-            << ");";
+        ret << GetLHS(i) << " = " << cast_str << "(" << GetRHS(used, i) << ");";
       }
     }
   }
-
   return ret.str();
 }
 
