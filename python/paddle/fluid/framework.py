@@ -51,6 +51,7 @@ __all__ = [
     'Variable',
     'load_op_library',
     'require_version',
+    'set_paddle_flags',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -5054,3 +5055,24 @@ def load_op_library(lib_filename):
     """
     core.load_op_library(lib_filename)
     OpProtoHolder.instance().update_op_proto()
+
+
+def set_paddle_flags(flags):
+    """
+    This function is used to update GFlags value in Paddle.
+
+    Args:
+        flags (dict): A dict contains flags and it's value.
+
+    Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                fluid.set_paddle_flags({'FLAGS_cuda_places': 0})
+    """
+    for key, value in flags.items():
+        if key is None:
+            raise ValueError("Flags shouldn't be none.")
+        if 'FLAGS_' in key:
+            key = key.replace('FLAGS_', '')
+        core.update_gflags(key, str(value))
