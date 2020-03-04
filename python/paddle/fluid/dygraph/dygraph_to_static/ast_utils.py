@@ -252,8 +252,7 @@ def create_funcDef_node(nodes, name, input_args, return_name_ids):
     """
     nodes = copy.copy(nodes)
     # add return statement
-    if not return_name_ids:
-        nodes.append(gast.Return(value=generate_name_node(return_name_ids)))
+    nodes.append(gast.Return(value=generate_name_node(return_name_ids)))
     func_def_node = gast.FunctionDef(
         name=name,
         args=input_args,
