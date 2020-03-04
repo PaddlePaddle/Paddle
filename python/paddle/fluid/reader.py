@@ -137,7 +137,9 @@ class CleanupFuncRegistrar():
 # BlockingQueue) may not be completely released, resulting in the corresponding
 # memory-mapped file remaining on the disk (/dev/shm), so register this function
 # to clean up shared memory objects in these two queues before the python interpreter exits.
-CleanupFuncRegistrar.register(_cleanup)
+# NOTE: Currently multi-process DataLoader only supports Linux platform
+if not (sys.platform == 'darwin' or sys.platform == 'win32'):
+    CleanupFuncRegistrar.register(_cleanup)
 
 
 class DataLoaderBase(object):
