@@ -133,6 +133,7 @@ class NetWithControlFlowIf(fluid.dygraph.Layer):
         self.alpha = 10.
         self.constant_vars = {}
 
+    @dygraph_to_static_graph
     def forward(self, input):
         hidden_dim = input.shape[-1]
         # Plain `if` statement in Python
@@ -184,7 +185,6 @@ class TestDygraphIfElseNet(unittest.TestCase):
     def _run_static(self):
         main_program = fluid.Program()
         with fluid.program_guard(main_program):
-            self.Net.forward = dygraph_to_static_graph(self.Net.forward)
             net = self.Net()
             x_v = fluid.layers.assign(self.x)
             # Transform into static graph
