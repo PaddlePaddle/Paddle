@@ -62,18 +62,21 @@ def dyfunc_tensor_shape_4(x):
     return res
 
 
-def dyfunc_tensor_shape(x):
+def dyfunc_tensor_shape_5(x):
     x = fluid.dygraph.to_variable(x)
-    s = x.shape[0]
-    res = fluid.layers.reshape(x, shape=(-1, s))
+    s1 = x.shape[0]
+    res = fluid.layers.reshape(x, shape=(-1, s1))
+    s2 = x.shape
+    res2 = fluid.layers.reshape(x, shape=s2)
     return res
 
 
-test_funcs = [dyfunc_tensor_shape]
+# test_funcs = [dyfunc_tensor_shape]
 
-# test_funcs = [
-#     dyfunc_tensor_shape_1, dyfunc_tensor_shape_2, dyfunc_tensor_shape_3,dyfunc_tensor_shape_4
-# ]
+test_funcs = [
+    dyfunc_tensor_shape_1, dyfunc_tensor_shape_2, dyfunc_tensor_shape_3,
+    dyfunc_tensor_shape_4, dyfunc_tensor_shape_5
+]
 
 
 class TestTensorShape(unittest.TestCase):
