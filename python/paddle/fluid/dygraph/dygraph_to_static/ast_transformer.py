@@ -15,7 +15,6 @@
 from __future__ import print_function
 from .utils import *
 import gast
-import six
 # gast is a generic AST to represent Python2 and Python3's Abstract Syntax Tree(AST).
 # It provides a compatibility layer between the AST of various Python versions,
 # as produced by ast.parse from the standard ast module.
