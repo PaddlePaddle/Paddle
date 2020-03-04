@@ -156,6 +156,9 @@ class LoopTransformer(gast.NodeTransformer):
         return node
 
     def replace_stmt_list(self, body_list):
+        if not isinstance(body_list, list):
+            return
+
         i = 0
         while i < len(body_list):
             if isinstance(body_list[i], gast.While):
@@ -173,7 +176,7 @@ class LoopTransformer(gast.NodeTransformer):
         # self.generic_visit(node)
 
         if not self.name_visitor.is_control_flow_loop(node):
-            return
+            return [node]
 
         loop_var_names, create_var_names = self.name_visitor.get_loop_var_names(
             node)
