@@ -15,15 +15,17 @@
 from __future__ import print_function
 from .utils import *
 import gast
+import textwrap
+import inspect
 # gast is a generic AST to represent Python2 and Python3's Abstract Syntax Tree(AST).
 # It provides a compatibility layer between the AST of various Python versions,
 # as produced by ast.parse from the standard ast module.
 # See details in https://github.com/serge-sans-paille/gast/
-from .ast_utils import is_control_flow_if, create_cond_node, transform_if_else
+from .ast_utils import is_control_flow_if, create_cond_node, transform_if_else, ast_to_func
 from paddle.fluid import unique_name
 from .static_analysis import AstNodeWrapper, StaticAnalysisVisitor
 
-__all__ = ['DygraphToStaticAst']
+__all__ = ['DygraphToStaticAst', 'convert_to_static']
 
 DECORATOR_NAMES = ['dygraph_to_static_output', 'dygraph_to_static_graph']
 
@@ -253,3 +255,22 @@ class BasicApiTransformer(gast.NodeTransformer):
 
     def get_feed_name_to_arg_id(self):
         return self.feed_name_to_arg_id
+
+
+def convert_to_static(dyfunc):
+    """
+    Converts dygraph function into static function.
+    """
+    # Get AST from dygraph function
+    raw_code = inspect.getsource(dyfunc)
+    code = textwrap.dedent(raw_code)
+    root = gast.parse(code)
+
+    # Transform AST
+    dygraph_to_static = DygraphToStaticAst()
+    root_wrapper = dygraph_to_static.get_static_ast(root)
+
+    # Get static_func from AST
+    func_name = dygraph_to_static.get_module_name()
+    static_func, file_name = ast_to_func(root_wrapper.node, func_name)
+    return static_func, dygraph_to_static
