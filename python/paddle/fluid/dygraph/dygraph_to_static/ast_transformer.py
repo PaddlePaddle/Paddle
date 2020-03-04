@@ -185,17 +185,22 @@ class BasicApiTransformer(gast.NodeTransformer):
 
         self.wrapper_root = wrapper_root
         self.root = wrapper_root.node
+        self.class_node_dict = {}
+
+        # Used for transformation of data feed
+        self.feed_name_to_arg_id = {}
+        self.name_to_tensor_shape = {}
+
+        # Used for transformation of Tensor.shape
         self.static_analysis_visitor = static_analysis_visitor
         self.node_to_wrapper_map = self.static_analysis_visitor.get_node_to_wrapper_map(
         )
-        self.class_node_dict = {}
-        self.feed_name_to_arg_id = {}
+        self.scope_var_type_dict = {}
         self._run_static_visitor()
-        self.name_to_tensor_shape = {}
 
     def _run_static_visitor(self):
-        # TODO: If Tensor.shape used in sub function
-        var_env = self.static_analysis_visitor.get_var_env()
+        var_env = copy.deepcopy(self.static_analysis_visitor.get_var_env())
+        # TODO: Consider that Tensor.shape is used in sub function and sub_scopes is empty
         var_env.cur_scope = var_env.cur_scope.sub_scopes[0]
         self.scope_var_type_dict = var_env.get_scope_var_type()
 
@@ -235,14 +240,14 @@ class BasicApiTransformer(gast.NodeTransformer):
         return node
 
     def visit_Attribute(self, node):
-        if self.used_by_paddle_api(node):
+        if self._used_by_paddle_api(node):
             if self.is_tensor_shape(node):
                 return create_api_shape_node(node)
         return node
 
     def visit_Name(self, node):
         if node.id in self.name_to_tensor_shape:
-            if self.used_by_paddle_api(node):
+            if self._used_by_paddle_api(node):
                 tensor_shape_node = self.name_to_tensor_shape[node.id]
                 if isinstance(tensor_shape_node, gast.Attribute):
                     return create_api_shape_node(tensor_shape_node)
@@ -304,16 +309,16 @@ class BasicApiTransformer(gast.NodeTransformer):
 
         return True
 
-    def used_by_paddle_api(self, node):
+    def _used_by_paddle_api(self, node):
         assert isinstance(node, (gast.Attribute, gast.Name))
         wrapper_node = self.node_to_wrapper_map.get(node)
         if not wrapper_node:
             # Transformed node is not in node_to_wrapper_map
             return False
         while wrapper_node.parent:
-            parent_code = wrapper_node.parent.node
-            if isinstance(parent_code, gast.Call):
-                if is_paddle_api(parent_code):
+            parent_node = wrapper_node.parent.node
+            if isinstance(parent_node, gast.Call):
+                if is_paddle_api(parent_node):
                     return True
                 else:
                     return False
@@ -364,9 +369,13 @@ class BasicApiTransformer(gast.NodeTransformer):
 
     def _update_name_to_tensor_shape(self, node):
         assert isinstance(node, gast.Assign)
+        # TODO: Consider node has more than one target. eg: x, y = a, Tensor.shape[1]
         target_node = node.targets[0]
+        try:
+            target_id = target_node.id
+        except AttributeError:
+            return False
         value_node = node.value
-        target_id = target_node.id
 
         if isinstance(value_node, gast.Name):
             if value_node.id in self.name_to_tensor_shape:
@@ -383,6 +392,7 @@ class BasicApiTransformer(gast.NodeTransformer):
                     self.name_to_tensor_shape[target_id] = value_node
                     return True
         return False
+
 
 def convert_to_static(dyfunc):
     """
