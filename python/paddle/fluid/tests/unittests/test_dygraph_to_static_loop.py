@@ -28,7 +28,6 @@ np.random.seed(SEED)
 
 
 def while_loop_dyfunc(x):
-    # x is numpy.zeros(shape=(1), dtype=np.int32)
     i = fluid.dygraph.to_variable(x)
     while x < 10:
         i = i + x
@@ -38,6 +37,7 @@ def while_loop_dyfunc(x):
 
 class TestNameVisitor(unittest.TestCase):
     def test_loop_vars(self):
+        #TODO
         pass
 
 
@@ -64,14 +64,16 @@ class TestTransformWhile(unittest.TestCase):
             return ret.numpy()
 
     def test_ast_to_func(self):
-        print("Before static")
-        print(self._run_static())
-        print("After static")
+        static_numpy = self._run_static()
+        self.assertTrue(
+            np.allclose(
+                np.full(
+                    shape=(1), fill_value=45, dtype=np.int32), static_numpy))
 
-        print("Before dygraph")
-        print(self._run_dygraph())
-        print("After dygraph")
-        self.assertTrue(np.allclose(self._run_dygraph(), self._run_static()))
+        # Enable next lines after Paddle dygraph supports while x < 10 
+        #
+        # self._run_dygraph()
+        # self.assertTrue(np.allclose(self._run_dygraph(), self._run_static()))
 
 
 if __name__ == '__main__':
