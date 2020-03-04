@@ -13,7 +13,8 @@
 # limitations under the License.
 
 from __future__ import print_function
-from .utils import *
+
+import copy
 import gast
 import textwrap
 import inspect
@@ -21,10 +22,10 @@ import inspect
 # It provides a compatibility layer between the AST of various Python versions,
 # as produced by ast.parse from the standard ast module.
 # See details in https://github.com/serge-sans-paille/gast/
-from .ast_utils import is_control_flow_if, create_cond_node, transform_if_else, ast_to_func
 from paddle.fluid import unique_name
-from .static_analysis import AstNodeWrapper, StaticAnalysisVisitor, NodeVarType
-import copy
+from .ast_utils import create_cond_node, is_control_flow_if, transform_if_else, ast_to_func
+from .static_analysis import AstNodeWrapper, NodeVarType, StaticAnalysisVisitor
+from .utils import *
 
 __all__ = ['DygraphToStaticAst', 'convert_to_static']
 
@@ -190,7 +191,7 @@ class BasicApiTransformer(gast.NodeTransformer):
         self.class_node_dict = {}
         self.feed_name_to_arg_id = {}
         self._run_static_visitor()
-        self.values_assigned_by_tensor_shape = {}
+        self.name_to_tensor_shape = {}
 
     # todo: change func name
     def _run_static_visitor(self):
@@ -215,26 +216,11 @@ class BasicApiTransformer(gast.NodeTransformer):
     def visit_Assign(self, node):
         if self._update_class_node_dict(node):
             return None
-        value_node = node.value
-        # mark Tensor.shape
-        target_id = node.targets[0].id
-        if isinstance(value_node, gast.Name):
-            if value_node.id in self.values_assigned_by_tensor_shape:
-                self.values_assigned_by_tensor_shape[
-                    target_id] = self.values_assigned_by_tensor_shape[
-                        node.value.id]
 
-        elif isinstance(value_node, gast.Attribute):
-            if self.is_tensor_shape(value_node):
-                self.values_assigned_by_tensor_shape[node.targets[0]
-                                                     .id] = value_node
-        elif isinstance(value_node, gast.Subscript):  # eg: x[0]
-            if isinstance(value_node.value, gast.Attribute):
-                if self.is_tensor_shape(value_node.value, ):
-                    self.values_assigned_by_tensor_shape[node.targets[0]
-                                                         .id] = value_node
+        if self._update_name_to_tensor_shape(node):
+            return node
 
-        for child_node in gast.walk(value_node):
+        for child_node in gast.walk(node.value):
             if isinstance(child_node, gast.Call):
                 self._visit_Call(child_node)
         return node
@@ -252,32 +238,27 @@ class BasicApiTransformer(gast.NodeTransformer):
     def visit_Attribute(self, node):
         if self.is_tensor_shape(node):
             if self.used_by_paddle_api(node):
-                new_node = gast.Call(
-                    func=gast.parse('fluid.layers.shape').body[0].value,
-                    args=[node.value],
-                    keywords=[])
-
-                return new_node
-
+                return create_api_shape_node(node)
         return node
 
-    def visit_Name(self, node):
-        if node.id in self.values_assigned_by_tensor_shape:
-            if self.used_by_paddle_api(node):
-                new_node = self.values_assigned_by_tensor_shape[node.id]
-                if isinstance(new_node, gast.Attribute):
-                    new_node = gast.Call(
-                        func=gast.parse('fluid.layers.shape').body[0].value,
-                        args=[new_node.value],
-                        keywords=[])
-                    return new_node
-                elif isinstance(new_node, gast.Subscript):
-                    result_node = copy.deepcopy(new_node)
-                    result_node.value.value = gast.Call(
-                        func=gast.parse('fluid.layers.shape').body[0].value,
-                        args=[new_node.value.value],
-                        keywords=[])
+    def create_api_shape_node(self, tensor_shape_node):
+        assert isinstance(tensor_shape_node, gast.Attribute)
+        api_shape_node = gast.Call(
+            func=gast.parse('fluid.layers.shape').body[0].value,
+            args=[tensor_shape_node.value],
+            keywords=[])
+        return api_shape_node
 
+    def visit_Name(self, node):
+        if node.id in self.name_to_tensor_shape:
+            if self.used_by_paddle_api(node):
+                tensor_shape_node = self.name_to_tensor_shape[node.id]
+                if isinstance(tensor_shape_node, gast.Attribute):
+                    return create_api_shape_node(tensor_shape_node)
+                elif isinstance(tensor_shape_node, gast.Subscript):
+                    result_node = copy.deepcopy(tensor_shape_node)
+                    result_node.value.value = create_api_shape_node(
+                        tensor_shape_node.value)
                     return result_node
         return node
 
@@ -290,6 +271,7 @@ class BasicApiTransformer(gast.NodeTransformer):
             return node
 
         if is_paddle_api(node):
+            # Visit gast.Attribute and gast.Name to replace tensor.shape if necessary
             self.generic_visit(node)
 
         func_name = astor.to_source(gast.gast_to_ast(node.func))
@@ -311,22 +293,22 @@ class BasicApiTransformer(gast.NodeTransformer):
         except AttributeError:
             return False
 
-        if value_id in self.values_assigned_by_tensor_shape:
+        if value_id in self.name_to_tensor_shape:
             return True
 
         var_type_set = self.scope_var_type_dict[value_id]
 
         if NodeVarType.NUMPY_NDARRAY in var_type_set:
             return False
-
         if NodeVarType.TENSOR not in var_type_set and NodeVarType.PADDLE_RETURN_TYPES not in var_type_set:
             return False
+
         return True
 
     def used_by_paddle_api(self, node):
+        assert isinstance(node, (gast.Attribute, gast.Name))
         wrapper_node = self.node_to_wrapper_map[node]
         while wrapper_node.parent:
-
             parent_code = wrapper_node.parent.node
             if isinstance(parent_code, gast.Call):
                 if is_paddle_api(parent_code):
@@ -378,6 +360,27 @@ class BasicApiTransformer(gast.NodeTransformer):
     def get_feed_name_to_arg_id(self):
         return self.feed_name_to_arg_id
 
+    def _update_name_to_tensor_shape(self, node):
+        assert isinstance(node, gast.Assign)
+        target_node = node.targets[0]  # todo: targets may more than one
+        value_node = node.value
+        target_id = target_node.id
+
+        if isinstance(value_node, gast.Name):
+            if value_node.id in self.name_to_tensor_shape:
+                self.name_to_tensor_shape[
+                    target_id] = self.name_to_tensor_shape[value_node.id]
+                return True
+        if isinstance(value_node, gast.Attribute):
+            if self.is_tensor_shape(value_node):  # eg: x.shape
+                self.name_to_tensor_shape[target_id] = value_node
+                return True
+        if isinstance(value_node, gast.Subscript):
+            if isinstance(value_node.value, gast.Attribute):
+                if self.is_tensor_shape(value_node.value):  # eg: x.shape[0]
+                    self.name_to_tensor_shape[target_id] = value_node
+                    return True
+        return False
 
 def convert_to_static(dyfunc):
     """
