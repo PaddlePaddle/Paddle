@@ -55,7 +55,6 @@ void TensorRTEngine::Execute(int batch_size, std::vector<void *> *buffers,
   } else {
     infer_context->enqueueV2(buffers->data(), stream, nullptr);
   }
-  cudaStreamSynchronize(stream);
   SetRuntimeBatch(batch_size);
 }
 
