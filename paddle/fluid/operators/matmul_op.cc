@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/operators/transpose_op.h"
 
 namespace paddle {
 namespace operators {
@@ -54,6 +55,37 @@ static framework::DDim ColumnMatrixFromVector(const framework::DDim &y_dim) {
   return framework::make_ddim({y_dim[0], 1});
 }
 
+// Reshape a rank-3 tensor from P x M x N to (P * M) x N.
+// Identity op if the tensor is not of rank 3.
+static framework::Tensor FoldInitDims(const framework::Tensor &input) {
+  auto output = input;
+  auto in_dims = input.dims();
+  if (in_dims.size() == 3) {
+    output.Resize({in_dims[0] * in_dims[1], in_dims[2]});
+  }
+  return output;
+}
+
+template <typename DeviceContext, typename T>
+static framework::Tensor Transpose3DTensor(
+       const framework::ExecutionContext& ctx,
+       const framework::Tensor& input) {
+  const auto& in_dims = input.dims();
+  framework::DDim trans_dims(in_dims);
+  int a[3] = {0, 2, 1};
+  std::vector<int> trans(a, a+3);
+  for (size_t i = 0; i < trans.size(); i++) {
+    trans_dims[i] = in_dims[trans[i]];
+  }
+  framework::Tensor trans_inp;
+  trans_inp.mutable_data<T>(trans_dims, ctx.GetPlace());
+  int ndims = trans.size();
+  auto& dev_ctx = ctx.template device_context<DeviceContext>();
+  TransCompute<DeviceContext, T>(ndims, dev_ctx, input,
+                                    &trans_inp, trans);
+  return trans_inp;
+}
+
 template <typename DeviceContext, typename T>
 class MatMulKernel : public framework::OpKernel<T> {
  public:
@@ -65,39 +97,68 @@ class MatMulKernel : public framework::OpKernel<T> {
     auto *out = context.Output<framework::Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
 
-    auto blas = math::GetBlas<DeviceContext, T>(context);
-    auto mat_dim_a = math::CreateMatrixDescriptor(
-        RowMatrixFromVector(x.dims()), 0, context.Attr<bool>("transpose_X"));
+    const auto& x_dims = x.dims();
+    const auto& y_dims = y.dims();
+
+    int head_number = 1;
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+    head_number = context.Attr<int>("head_number");
+#endif
+    framework::Tensor trans_tensor_x;
+    // when the head number is 0, and the X_dim == 3 & Y_dim <= 2, we will
+    // use the gemm function to replace the batch gemm, speed up
+    // first step, we need transpose the input X,
+    // if the attribute `transpose_X` is true
+    bool use_trans_x = false;
+    bool flag_trans_x = context.Attr<bool>("transpose_X");
+    if (head_number <= 1 && x_dims.size() == 3 && y_dims.size() <= 2) {
+       if (flag_trans_x) {
+         trans_tensor_x =  Transpose3DTensor<DeviceContext, T>(context, x);
+         use_trans_x = true;
+       }
+    }
+
+    math::MatDescriptor mat_dim_a;
+    if (use_trans_x) {
+      mat_dim_a = math::CreateMatrixDescriptor(
+          RowMatrixFromVector(trans_tensor_x.dims()), 0, false);
+    } else {
+      mat_dim_a = math::CreateMatrixDescriptor(
+          RowMatrixFromVector(x_dims), 0, context.Attr<bool>("transpose_X"));
+    }
     auto mat_dim_b = math::CreateMatrixDescriptor(
         ColumnMatrixFromVector(y.dims()), 0, context.Attr<bool>("transpose_Y"));
+
+    // second step, we need to combine the batch size to the fisrt dim
+    auto blas = math::GetBlas<DeviceContext, T>(context);
+    if (head_number <= 1 && x_dims.size() == 3 && y_dims.size() <= 2) {
+       mat_dim_a.height_ *= mat_dim_a.batch_size_;
+       mat_dim_a.batch_size_ = 0;
+    }
     auto scale = static_cast<T>(context.Attr<float>("alpha"));
 
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
-    int head_number = context.Attr<int>("head_number");
     bool split_vertical_y = (mat_dim_a.width_ != mat_dim_b.height_);
 
     if (head_number > 1) {
       blas.MatMulWithHead(x, mat_dim_a, y, mat_dim_b, scale, head_number, out,
                           T(0), split_vertical_y);
     } else {
-      blas.MatMul(x, mat_dim_a, y, mat_dim_b, scale, out, T(0));
+      if (use_trans_x) {
+        blas.MatMul(trans_tensor_x, mat_dim_a, y, mat_dim_b, scale, out, T(0));
+      } else {
+        blas.MatMul(x, mat_dim_a, y, mat_dim_b, scale, out, T(0));
+      }
     }
 #else
-    blas.MatMul(x, mat_dim_a, y, mat_dim_b, scale, out, T(0));
+    if (use_trans_x) {
+      blas.MatMul(trans_tensor_x, mat_dim_a, y, mat_dim_b, scale, out, T(0));
+    } else {
+      blas.MatMul(x, mat_dim_a, y, mat_dim_b, scale, out, T(0));
+    }
 #endif
   }
 };
-
-// Reshape a rank-3 tensor from P x M x N to (P * M) x N.
-// Identity op if the tensor is not of rank 3.
-static framework::Tensor FoldInitDims(const framework::Tensor &input) {
-  auto output = input;
-  auto in_dims = input.dims();
-  if (in_dims.size() == 3) {
-    output.Resize({in_dims[0] * in_dims[1], in_dims[2]});
-  }
-  return output;
-}
 
 // Reshape a rank-3 tensor from P x M x N to M x (P * N).
 // (Warning: This requires transposing data and writes into new memory.)
