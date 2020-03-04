@@ -24,6 +24,9 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "paddle/fluid/platform/stream/gpu_event_impl.h"
+#include "paddle/fluid/platform/stream/gpu_stream.h"
+
 namespace paddle {
 namespace memory {
 
@@ -388,6 +391,16 @@ MKLDNNDeviceContext::MKLDNNDeviceContext(CPUPlace place)
       p_blobmap_() {
   p_blobmap_.reset(new BlobMap());
   p_mutex_.reset(new std::mutex());
+}
+
+std::unique_ptr<si::StreamInterface>
+CUDADeviceContext::GetStreamImplementation() {
+  return std::unique_ptr<si::StreamInterface>(new stream::GpuStream());
+}
+
+std::unique_ptr<si::EventInterface>
+CUDADeviceContext::CreateEventImplementation() {
+  return std::unique_ptr<si::EventInterface>(new stream::GpuEvent());
 }
 
 namespace {

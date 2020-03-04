@@ -874,6 +874,30 @@ bool ParallelExecutor::EnableParallelGraphExecution(
   return enable_parallel_graph;
 }
 
+static pfs::GpuEvent *GetGpuEvent(pfs::Event *event) {
+  return static_cast<pfs::GpuEvent *>(event->implementation());
+}
+
+bool ParallelExecutor::AllocateStream(pfs::BaseStream *stream) {
+  return pfs::GetGpuStream(stream)->Init();
+}
+
+bool ParallelExecutor::AllocateEvent(pfs::Event *event) {
+  return GetGpuEvent(event)->Init();
+}
+
+std::unique_ptr<pfs::internal::StreamInterface> CreateStreamImplementation() {
+  return std::unique_ptr<pfs::internal::StreamInterface>(new pfs::GpuStream());
+}
+
+std::unique_ptr<pfs::internal::EventInterface> CreateEventImplementation() {
+  return std::unique_ptr<pfs::internal::EventInterface>(new pfs::GpuEvent());
+}
+
+pfs::Event::Status ParallelExecutor::PollForStatus(pfs::Event *event) {
+  return GetGpuEvent(event)->GetEventStatus();
+}
+
 }  // namespace framework
 }  // namespace paddle
 

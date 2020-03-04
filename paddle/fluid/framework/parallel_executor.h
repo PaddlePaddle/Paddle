@@ -36,6 +36,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
+#include "paddle/fluid/platform/stream/gpu_event_impl.h"
+#include "paddle/fluid/platform/stream/gpu_stream.h"
+#include "paddle/fluid/platform/stream/stream_internal.h"
+
 namespace paddle {
 namespace framework {
 
@@ -43,6 +47,7 @@ class ParallelExecutorPrivate;
 
 using details::BuildStrategy;
 using details::ExecutionStrategy;
+namespace pfs = paddle::platform::stream;
 
 class ParallelExecutor {
   DISABLE_COPY_AND_ASSIGN(ParallelExecutor);
@@ -78,6 +83,14 @@ class ParallelExecutor {
       const std::unordered_map<std::string, LoDTensor> &tensors);
 
   FeedFetchList Run(const std::vector<std::string> &fetch_tensors);
+
+  // use pe to manage stream
+  bool AllocateStream(pfs::BaseStream *stream);
+  bool AllocateEvent(pfs::Event *event);
+
+  std::unique_ptr<pfs::internal::StreamInterface> CreateStreamImplementation();
+  std::unique_ptr<pfs::internal::EventInterface> CreateEventImplementation();
+  pfs::Event::Status PollForStatus(pfs::Event *event);
 
  private:
   // broadcast the parameters from the 0th device.

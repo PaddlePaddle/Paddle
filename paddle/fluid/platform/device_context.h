@@ -42,13 +42,18 @@ limitations under the License. */
 #endif
 #include "unsupported/Eigen/CXX11/Tensor"
 
+#include "paddle/fluid/platform/stream/stream_internal.h"
+
 namespace paddle {
 namespace platform {
 
+namespace si = stream::internal;
 class DeviceContext {
  public:
   virtual ~DeviceContext() PADDLE_MAY_THROW {}
   virtual Place GetPlace() const = 0;
+  virtual std::unique_ptr<si::StreamInterface> GetStreamImplementation() = 0;
+  virtual std::unique_ptr<si::EventInterface> CreateEventImplementation() = 0;
 
   virtual void Wait() const {}
 };
@@ -61,6 +66,16 @@ class CPUDeviceContext : public DeviceContext {
   Eigen::DefaultDevice* eigen_device() const;
 
   Place GetPlace() const override;
+  std::unique_ptr<si::StreamInterface> GetStreamImplementation() override {
+    VLOG(3) << "Not Implemented Now";
+    return std::unique_ptr<si::StreamInterface>(
+        static_cast<si::StreamInterface*>(nullptr));
+  }
+  std::unique_ptr<si::EventInterface> CreateEventImplementation() override {
+    VLOG(3) << "Not Implemented Now";
+    return std::unique_ptr<si::EventInterface>(
+        static_cast<si::EventInterface*>(nullptr));
+  }
 
  private:
   CPUPlace place_;
@@ -165,6 +180,9 @@ class CUDADeviceContext : public DeviceContext {
 
   void WaitStreamCallback() const { callback_manager_->Wait(); }
 
+  std::unique_ptr<si::StreamInterface> GetStreamImplementation();
+  std::unique_ptr<si::EventInterface> CreateEventImplementation();
+
  private:
   CUDAPlace place_;
 
@@ -266,6 +284,17 @@ class CUDAPinnedDeviceContext : public DeviceContext {
   Place GetPlace() const override;
 
   Eigen::DefaultDevice* eigen_device() const;
+
+  std::unique_ptr<si::StreamInterface> GetStreamImplementation() override {
+    VLOG(3) << "Not Implemented Now";
+    return std::unique_ptr<si::StreamInterface>(
+        static_cast<si::StreamInterface*>(nullptr));
+  }
+  std::unique_ptr<si::EventInterface> CreateEventImplementation() override {
+    VLOG(3) << "Not Implemented Now";
+    return std::unique_ptr<si::EventInterface>(
+        static_cast<si::EventInterface*>(nullptr));
+  }
 
  private:
   CUDAPinnedPlace place_;
