@@ -43,12 +43,6 @@ enum class ProfilerState {
   kAll,       // Profile both CPU and GPU. (Currently experimental).
 };
 
-enum class RecordRole {
-  kOrdinary,  // only record op time with op type key
-  kInnerOp,   // record op detail time with op type key
-  kUniqueOp,  // record op detail time with op unique name key
-};
-
 // it is the flag to control to print the profiling result
 enum class TracerOption {
   kDefault,      // print the different op type profiling result
@@ -86,6 +80,7 @@ struct EventItem {
   double cpu_time;
   double gpu_time;
   float ratio;
+  EventRole role;
 };
 
 struct OverHead {
@@ -128,7 +123,7 @@ struct MemEvenRecorder {
 
 struct RecordEvent {
   RecordEvent(const std::string& name,
-              const RecordRole role = RecordRole::kOrdinary);
+              const EventRole role = EventRole::kOrdinary);
 
   ~RecordEvent();
 
@@ -139,7 +134,7 @@ struct RecordEvent {
   // Need to distinguish name by op type, block_id, program_id and perhaps
   // different kernel invocations within an op.
   std::string full_name_;
-  RecordRole role_{RecordRole::kOrdinary};
+  EventRole role_{EventRole::kOrdinary};
 };
 
 class RecordRPCEvent {
@@ -201,7 +196,7 @@ void PushMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
                   const Place& place, const std::string& annotation);
 void PopMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
                  const Place& place, const std::string& annotation);
-Event* PushEvent(const std::string& name);
+Event* PushEvent(const std::string& name, const EventRole role);
 void PopEvent(const std::string& name);
 // Return the event list of all threads. Assumed the returned value calls
 // event_lists, event_lists[i][j] represents the j-th Event of i-th thread.

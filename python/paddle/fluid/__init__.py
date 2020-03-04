@@ -86,6 +86,7 @@ from paddle.fluid.layers.math_op_patch import monkey_patch_variable
 from . import install_check
 from .dygraph.nn import *
 from .dygraph.layers import *
+from .dygraph.base import enable_dygraph, disable_dygraph
 from .io import save, load, load_program_state, set_program_state
 from .dygraph.checkpoint import save_dygraph, load_dygraph
 from .dygraph.varbase_patch_methods import monkey_patch_varbase
@@ -103,6 +104,8 @@ __all__ = framework.__all__ + executor.__all__ + \
         'contrib',
         'data',
         'dygraph',
+        'enable_dygraph',
+        'disable_dygraph',
         'transpiler',
         'nets',
         'optimizer',
@@ -211,7 +214,7 @@ def __bootstrap__():
             'enable_cublas_tensor_op_math', 'conv_workspace_size_limit',
             'cudnn_exhaustive_search', 'selected_gpus', 'sync_nccl_allreduce',
             'cudnn_batchnorm_spatial_persistent', 'gpu_allocator_retry_time',
-            'local_exe_sub_scope_limit'
+            'local_exe_sub_scope_limit', 'gpu_memory_limit_mb'
         ]
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])

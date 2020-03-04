@@ -364,3 +364,7 @@ set_tests_properties(test_parallel_executor_test_while_train test_parallel_execu
         test_data_norm_op test_imperative_using_non_zero_gpu test_fuse_bn_act_pass
         test_optimizer_in_control_flow test_fetch_unmerged
         test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
+
+if(NOT WIN32 AND NOT APPLE)
+    set_tests_properties(test_imperative_data_loader PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
+endif()
