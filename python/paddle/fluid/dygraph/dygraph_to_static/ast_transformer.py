@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import copy
+
 import gast
 import textwrap
 import inspect
@@ -236,18 +237,11 @@ class BasicApiTransformer(gast.NodeTransformer):
         return node
 
     def visit_Attribute(self, node):
-        if self.is_tensor_shape(node):
-            if self.used_by_paddle_api(node):
+        print("visit_Attribute : ", astor.to_source(gast.gast_to_ast(node)))
+        if self.used_by_paddle_api(node):
+            if self.is_tensor_shape(node):
                 return create_api_shape_node(node)
         return node
-
-    def create_api_shape_node(self, tensor_shape_node):
-        assert isinstance(tensor_shape_node, gast.Attribute)
-        api_shape_node = gast.Call(
-            func=gast.parse('fluid.layers.shape').body[0].value,
-            args=[tensor_shape_node.value],
-            keywords=[])
-        return api_shape_node
 
     def visit_Name(self, node):
         if node.id in self.name_to_tensor_shape:
@@ -284,6 +278,9 @@ class BasicApiTransformer(gast.NodeTransformer):
             return node
 
     def is_tensor_shape(self, node):
+        """
+        Return True if node is like `x.shape` and x is Tensor, return False otherwise.
+        """
         assert isinstance(node, gast.Attribute)
         if node.attr != 'shape':
             return False
@@ -296,7 +293,12 @@ class BasicApiTransformer(gast.NodeTransformer):
         if value_id in self.name_to_tensor_shape:
             return True
 
-        var_type_set = self.scope_var_type_dict[value_id]
+        # TODO: `value_id` may be not in scope_var_type_dict if `value_id` is the arg of decorated function
+        # Need a better way to confirm whether `value_id` is a Tensor.
+        try:
+            var_type_set = self.scope_var_type_dict[value_id]
+        except KeyError:
+            return False
 
         if NodeVarType.NUMPY_NDARRAY in var_type_set:
             return False
