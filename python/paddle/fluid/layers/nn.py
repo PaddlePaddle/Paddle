@@ -13999,7 +13999,7 @@ def tdm_child(input,
         shape=size,
         dtype='int32',
         default_initializer=Constant(0))
-    travel.stop_gradient = True
+    tree_embedding.stop_gradient = True
 
     child = helper.create_variable_for_type_inference(dtype=dtype)
     item_mask = helper.create_variable_for_type_inference(dtype=dtype)
@@ -14014,3 +14014,19 @@ def tdm_child(input,
                'Ancestor_nums': ancestor_nums},
         stop_gradient=True)
     return child, item_mask
+
+
+def find_by_index(input, index, dtype='int64'):
+    """
+    used for tdm infer
+    """
+    helper = LayerHelper("find_by_index", **locals())
+    out = helper.create_variable_for_type_inference(dtype=dtype)
+
+    helper.append_op(
+        type='find_by_index',
+        inputs={'Input': input,
+                'Index': index},
+        outputs={'Out': out},
+        stop_gradient=True)
+    return out
