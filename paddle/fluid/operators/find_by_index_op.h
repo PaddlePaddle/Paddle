@@ -45,10 +45,10 @@ class FindByIndexKernel : public framework::OpKernel<T> {
     auto index_dims = index_tensor.dims();
 
     auto batch_size = input_dims[0];
-    auto value_length = input_dims[1];
+    // auto value_length = input_dims[1];
     auto index_length = index_dims[1];
 
-    int input_ids_num = input_tensor.numel();
+    // int input_ids_num = input_tensor.numel();
     int index_ids_num = index_tensor.numel();
 
     std::vector<int64_t> res{};
