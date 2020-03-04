@@ -123,8 +123,7 @@ class DygraphToStaticAst(gast.NodeTransformer):
         self.static_analysis_visitor = StaticAnalysisVisitor(root)
         self.static_analysis_root = self.static_analysis_visitor.get_node_wrapper_root(
         )
-        # self.static_analysis_root = StaticAnalysisVisitor(
-        #     root).get_node_wrapper_root()
+
         self.decorate_func_name = None
         self.arg_name_to_idx = {}
         self.transfer_from_node_type(self.static_analysis_root)
@@ -194,9 +193,8 @@ class BasicApiTransformer(gast.NodeTransformer):
         self._run_static_visitor()
         self.name_to_tensor_shape = {}
 
-    # todo: change func name
     def _run_static_visitor(self):
-        # todo: if Tensor.shape used in sub function
+        # TODO: If Tensor.shape used in sub function
         var_env = self.static_analysis_visitor.get_var_env()
         var_env.cur_scope = var_env.cur_scope.sub_scopes[0]
         self.scope_var_type_dict = var_env.get_scope_var_type()
@@ -364,7 +362,7 @@ class BasicApiTransformer(gast.NodeTransformer):
 
     def _update_name_to_tensor_shape(self, node):
         assert isinstance(node, gast.Assign)
-        target_node = node.targets[0]  # todo: targets may more than one
+        target_node = node.targets[0]
         value_node = node.value
         target_id = target_node.id
 
