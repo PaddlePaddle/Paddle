@@ -235,7 +235,6 @@ class BasicApiTransformer(gast.NodeTransformer):
         return node
 
     def visit_Attribute(self, node):
-        print("visit_Attribute : ", astor.to_source(gast.gast_to_ast(node)))
         if self.used_by_paddle_api(node):
             if self.is_tensor_shape(node):
                 return create_api_shape_node(node)
@@ -249,7 +248,7 @@ class BasicApiTransformer(gast.NodeTransformer):
                     return create_api_shape_node(tensor_shape_node)
                 elif isinstance(tensor_shape_node, gast.Subscript):
                     result_node = copy.deepcopy(tensor_shape_node)
-                    result_node.value.value = create_api_shape_node(
+                    result_node.value = create_api_shape_node(
                         tensor_shape_node.value)
                     return result_node
         return node
@@ -307,7 +306,10 @@ class BasicApiTransformer(gast.NodeTransformer):
 
     def used_by_paddle_api(self, node):
         assert isinstance(node, (gast.Attribute, gast.Name))
-        wrapper_node = self.node_to_wrapper_map[node]
+        wrapper_node = self.node_to_wrapper_map.get(node)
+        if not wrapper_node:
+            # Transformed node is not in node_to_wrapper_map
+            return False
         while wrapper_node.parent:
             parent_code = wrapper_node.parent.node
             if isinstance(parent_code, gast.Call):

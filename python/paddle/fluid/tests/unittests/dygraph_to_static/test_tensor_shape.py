@@ -15,25 +15,10 @@
 from __future__ import print_function
 
 import numpy
-import paddle.fluid as fluid
+
 import unittest
+import paddle.fluid as fluid
 from paddle.fluid.dygraph.jit import dygraph_to_static_graph
-
-SEED = 2020
-numpy.random.seed(SEED)
-
-# def dyfunc_tensor_shape(x):
-#
-#
-#     x = fluid.dygraph.to_variable(x)
-#     expand_times = [1] * len(x.shape)
-#     fluid.layers.reshape(x, shape=(-1, x.shape[0]))
-#     a = x.shape
-#     res1 = fluid.layers.reshape(x, shape=x.shape)
-#     b = numpy.ones(5)
-#     c = fluid.layers.reshape(x, shape=b.shape)
-#     res3 = fluid.layers.reshape(x, x.shape)
-#     return res1
 
 
 def dyfunc_tensor_shape_1(x):
@@ -49,6 +34,7 @@ def dyfunc_tensor_shape_2(x):
 
 
 def dyfunc_tensor_shape_3(x):
+    # Don't transform y.shape because y is numpy.ndarray
     x = fluid.dygraph.to_variable(x)
     y = numpy.ones(5)
     res = fluid.layers.reshape(x, shape=y.shape)
@@ -57,21 +43,18 @@ def dyfunc_tensor_shape_3(x):
 
 def dyfunc_tensor_shape_4(x):
     x = fluid.dygraph.to_variable(x)
-    # res = fluid.layers.reshape(x, shape=(-1, len(x.shape[0])))
-    res = fluid.layers.reshape(x, shape=(-1, x.shape[0]))
+    res = fluid.layers.reshape(x, shape=(-1, x.shape[0], len(x.shape)))
     return res
 
 
 def dyfunc_tensor_shape_5(x):
+    # `res = fluid.layers.reshape(x, shape=(-1, s))` to
+    # `res = fluid.layers.reshape(x, shape=(-1, fluid.layers.shape(x)[0]))`
     x = fluid.dygraph.to_variable(x)
-    s1 = x.shape[0]
-    res = fluid.layers.reshape(x, shape=(-1, s1))
-    s2 = x.shape
-    res2 = fluid.layers.reshape(x, shape=s2)
+    s = x.shape[0]
+    res = fluid.layers.reshape(x, shape=(-1, s))
     return res
 
-
-# test_funcs = [dyfunc_tensor_shape]
 
 test_funcs = [
     dyfunc_tensor_shape_1, dyfunc_tensor_shape_2, dyfunc_tensor_shape_3,
@@ -90,7 +73,6 @@ class TestTensorShape(unittest.TestCase):
 
     def get_static_output(self):
         main_program = fluid.Program()
-        main_program.random_seed = SEED
         with fluid.program_guard(main_program):
             static_out = dygraph_to_static_graph(self.dygraph_func)(self.input)
 
