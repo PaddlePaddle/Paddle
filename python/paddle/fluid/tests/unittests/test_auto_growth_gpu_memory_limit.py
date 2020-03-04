@@ -31,11 +31,13 @@ class TestBase(unittest.TestCase):
         if not fluid.is_compiled_with_cuda():
             return
 
-        other_dim = 1024 * 1024 / 4
+        other_dim = int(1024 * 1024 / 4)
 
         place = fluid.CUDAPlace(0)
         t = fluid.LoDTensor()
-        t.set(np.ndarray([self._limit / 2, other_dim], dtype='float32'), place)
+        t.set(np.ndarray(
+            [int(self._limit / 2), other_dim], dtype='float32'),
+              place)
         del t
 
         t = fluid.LoDTensor()
