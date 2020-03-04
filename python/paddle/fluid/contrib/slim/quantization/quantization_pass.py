@@ -35,6 +35,10 @@ _fake_dequant_op_list = [
     'fake_dequantize_max_abs', 'fake_channel_wise_dequantize_max_abs'
 ]
 
+_fake_quant_dequant_op_list = [
+    'fake_quantize_dequantize_moving_average_abs_max'
+]
+
 _out_scale_op_list = [
     "mul", "conv2d", "pool2d", "relu", "softmax", "sigmoid", "depthwise_conv2d",
     "batch_norm", "concat", "tanh", "pad", "elementwise_add", "elementwise_mul",
@@ -291,6 +295,7 @@ class QuantizationTransformPass(object):
         for op in ops:
             if op.name() in self._quantizable_ops:
                 if not QuantizationTransformPass._is_skip_quant(graph, op):
+                    op.op()._set_attr("is_quantized_with_weight", True)
                     _transform_forward(graph, op)
         # The loop for renaming the inputs of backward op.
         for op in ops:
@@ -654,9 +659,6 @@ class QuantizationTransformPass(object):
 
 
 class QuantizationFreezePass(object):
-    _supported_quantizable_op_type = \
-        QuantizationTransformPass._supported_quantizable_op_type
-
     def __init__(self,
                  scope,
                  place,
@@ -692,16 +694,14 @@ class QuantizationFreezePass(object):
         self._weight_bits = weight_bits
         self._activation_bits = activation_bits
         self._weight_quantize_type = weight_quantize_type
-        self._quantizable_ops = quantizable_op_type
-        for op in self._quantizable_ops:
-            assert op in QuantizationFreezePass._supported_quantizable_op_type, \
-                op + " is not supported for quantization."
         self._conv_ops = ['conv2d', 'depthwise_conv2d']
         self._fake_quant_op_names = _fake_quant_op_list
         self._fake_dequant_op_names = _fake_dequant_op_list
+        self._fake_quant_dequant_op_names = _fake_quant_dequant_op_list
         self._op_input_rename_map = collections.OrderedDict()
         self._op_output_rename_map = collections.OrderedDict()
-        self._var_scale_map = collections.OrderedDict()
+        self._quant_var_scale_map = collections.OrderedDict()
+        self._quant_dequant_var_scale_map = collections.OrderedDict()
 
     def apply(self, graph):
         """
@@ -721,19 +721,19 @@ class QuantizationFreezePass(object):
                 if input_arg_name in persistable_vars:
                     if self._weight_quantize_type == 'abs_max':
                         param = self._load_var(input_arg_name)
-                        scale_v = np.max(np.abs(param))
+                        scale_v = float(np.max(np.abs(param)))
                     elif self._weight_quantize_type == 'channel_wise_abs_max':
                         param = self._load_var(input_arg_name)
                         if len(param.shape) == 4:  # conv2d or depthwise_conv2d
                             scale_v = []
                             for i in range(param.shape[0]):
-                                scale_v.append(np.max(np.abs(param[i])))
+                                scale_v.append(float(np.max(np.abs(param[i]))))
                         else:
-                            scale_v = np.max(np.abs(param))
+                            scale_v = float(np.max(np.abs(param)))
                     else:
-                        scale_v = self._load_var(
-                            op_node.output('OutScale')[0])[0]
-                    self._var_scale_map[input_arg_name] = scale_v
+                        scale_v = float(
+                            self._load_var(op_node.output('OutScale')[0])[0])
+                    self._quant_var_scale_map[input_arg_name] = scale_v
                     self._remove_fake_quant_and_dequant_op(graph, op_node)
                     # quantize weight and restore
                     param_v = self._load_var(input_arg_name)
@@ -743,7 +743,12 @@ class QuantizationFreezePass(object):
                 else:
                     scale_v = graph._find_node_by_name(
                         op_node.outputs, op_node.output('OutScale')[0])
-                    self._var_scale_map[input_arg_name] = scale_v
+                    self._quant_var_scale_map[input_arg_name] = scale_v
+            if op_name in self._fake_quant_dequant_op_names:
+                scale_v = float(
+                    self._load_var(op_node.output('OutScale')[0])[0])
+                input_arg_name = op_node.input('X')[0]
+                self._quant_dequant_var_scale_map[input_arg_name] = scale_v
 
         ops = graph.all_op_nodes()
         for op_node in ops:
@@ -753,19 +758,30 @@ class QuantizationFreezePass(object):
 
         ops = graph.all_op_nodes()
         for op_node in ops:
-            op_name = op_node.name()
-            if op_name in self._quantizable_ops:
-                # only process the node that is quantized by QuantizationTransformPass
-                is_op_node_quantized = False
-                for var_node in op_node.inputs:
-                    var_name = var_node.name()
-                    if var_name.endswith('.dequantized'):
-                        is_op_node_quantized = True
-                if is_op_node_quantized:
-                    if self._weight_quantize_type == 'channel_wise_abs_max' and op_name in self._conv_ops:
-                        self._insert_post_channel_dequant_op(graph, op_node)
+            if op_node.op().has_attr("is_quantized_with_weight") and \
+                op_node.op().attr("is_quantized_with_weight"):
+                for input_arg_name in op_node.input_arg_names():
+                    original_var_name = self._original_var_name(input_arg_name)
+                    scale_item = self._quant_var_scale_map[original_var_name]
+                    if isinstance(scale_item, IrNode):
+                        scale_value = float(
+                            self._load_var(scale_item.name())[0])
                     else:
-                        self._insert_post_dequant_op(graph, op_node)
+                        scale_value = scale_item
+                    op_node.op()._set_attr(original_var_name + "_input_scale",
+                                           scale_value)
+                if self._weight_quantize_type == 'channel_wise_abs_max' and op_node.name(
+                ) in self._conv_ops:
+                    self._insert_post_channel_dequant_op(graph, op_node)
+                else:
+                    self._insert_post_dequant_op(graph, op_node)
+            if op_node.op().has_attr("is_quantized_without_weight") and \
+                op_node.op().attr("is_quantized_without_weight"):
+                for input_arg_name in op_node.input_arg_names():
+                    original_var_name = self._original_var_name(input_arg_name)
+                    op_node.op()._set_attr(
+                        original_var_name + "_input_scale",
+                        self._quant_dequant_var_scale_map[original_var_name])
 
         for op_node in ops:
             # insert dequant_op after fc/conv, need to rename inputs of the followed ops
@@ -802,7 +818,7 @@ class QuantizationFreezePass(object):
                 new_in.clear_outputs()
                 graph.update_input_link(old_in, new_in, op_node)
             original_var_name = self._original_var_name(name)
-            scale_v = self._var_scale_map[original_var_name]
+            scale_v = self._quant_var_scale_map[original_var_name]
             if original_var_name in persistable_vars:
                 assert isinstance(
                     scale_v,
@@ -811,7 +827,7 @@ class QuantizationFreezePass(object):
                 channel_scale = np.array(scale_v)
             else:
                 assert isinstance(scale_v, IrNode)
-                scale_var_node = self._var_scale_map[original_var_name]
+                scale_var_node = self._quant_var_scale_map[original_var_name]
 
         if len(op_node.output_arg_names()) != 1:
             raise ValueError("Only support one output, but op %s has"
@@ -867,7 +883,7 @@ class QuantizationFreezePass(object):
                 new_in.clear_outputs()
                 graph.update_input_link(old_in, new_in, op_node)
             original_var_name = self._original_var_name(name)
-            scale_v = self._var_scale_map[original_var_name]
+            scale_v = self._quant_var_scale_map[original_var_name]
             if original_var_name in persistable_vars:
                 assert self._is_float(
                     scale_v), 'The scale of parameter %s is not a float.' % (
@@ -876,7 +892,7 @@ class QuantizationFreezePass(object):
             else:
                 max_range *= act_range
                 assert isinstance(scale_v, IrNode)
-                scale_var_node = self._var_scale_map[original_var_name]
+                scale_var_node = self._quant_var_scale_map[original_var_name]
 
         if len(op_node.output_arg_names()) != 1:
             raise ValueError("Only support one output, but op %s has"
@@ -940,6 +956,8 @@ class QuantizationFreezePass(object):
             return var_name[:-len('.dequantized')]
         if var_name.endswith('.scale'):
             return var_name[:-len('.scale')]
+        if var_name.endswith('.quant_dequant'):
+            return var_name[:-len('.quant_dequant')]
         else:
             return var_name
 
@@ -1259,9 +1277,9 @@ class AddQuantDequantPass(object):
         "equal", "gather", "greater_equal", "greater_than", "less_equal",
         "less_than", "mean", "not_equal", "reshape", "reshape2",
         "bilinear_interp", "nearest_interp", "trilinear_interp", "slice",
-        "squeeze", "elementwise_sub", "mul", "matmul"
+        "squeeze", "elementwise_sub", "mul", "matmul", "relu", "relu6",
+        "leaky_relu", "tanh", "swish"
     ]
-    _activation_type = ["relu", "relu6", "leaky_relu", "tanh", "swish"]
 
     def __init__(self,
                  scope=None,
@@ -1307,8 +1325,7 @@ class AddQuantDequantPass(object):
         else:
             self._quantizable_op_type = quantizable_op_type
             for op_type in quantizable_op_type:
-                assert op_type in AddQuantDequantPass._supported_quantizable_op_type + \
-                    AddQuantDequantPass._activation_type, \
+                assert op_type in AddQuantDequantPass._supported_quantizable_op_type, \
                     op_type + " is not supported for quantization."
         self._quantizable_grad_op_type = [
             '%s_grad' % (op) for op in self._quantizable_op_type
@@ -1343,17 +1360,13 @@ class AddQuantDequantPass(object):
                 elif isinstance(self._skip_pattern, str):
                     is_skip = op_node.op().has_attr("op_namescope") and \
                                    op_node.op().attr("op_namescope").find(self._skip_pattern) != -1
-
-                is_op_node_quantized = False
-                for var_node in op_node.inputs:
-                    var_name = var_node.name()
-                    if var_name.endswith('.dequantized'):
-                        is_op_node_quantized = True
-
-                if is_skip or is_op_node_quantized or \
+                is_quantized = op_node.op().has_attr("is_quantized_with_weight") and \
+                    op_node.op().attr("is_quantized_with_weight")
+                if is_skip or is_quantized or \
                     (not _is_input_all_not_persistable(graph, op_node)):
                     continue
 
+                op_node.op()._set_attr("is_quantized_without_weight", True)
                 input_name_list = _op_real_in_out_name[op_node.name()][0]
                 arg_names = []
                 for input_name in input_name_list:

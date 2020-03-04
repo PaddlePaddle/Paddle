@@ -182,8 +182,7 @@ class PostTrainingQuantization(object):
         else:
             self._quantizable_op_type = quantizable_op_type
             for op_type in self._quantizable_op_type:
-                assert op_type in supported_quantizable_op_type + \
-                    AddQuantDequantPass._activation_type, \
+                assert op_type in supported_quantizable_op_type, \
                     op_type + " is not supported for quantization."
 
         self._place = self._executor.place
