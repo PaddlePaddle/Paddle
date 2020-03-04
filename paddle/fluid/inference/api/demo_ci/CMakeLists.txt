@@ -121,10 +121,9 @@ endif()
 
 if(WITH_STATIC_LIB)
   if(WIN32)
-    set(DEPS ${PADDLE_LIB}/paddle/lib/paddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX})
-  else()
-    set(DEPS ${PADDLE_LIB}/paddle/lib/libpaddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX})
+    add_definitions("/DPD_INFER_EXPORT=")
   endif()
+  set(DEPS ${PADDLE_LIB}/paddle/lib/libpaddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX})
 else()
   if(WIN32)
     set(DEPS ${PADDLE_LIB}/paddle/lib/paddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX})
@@ -187,7 +186,9 @@ if(WIN32)
           COMMAND ${CMAKE_COMMAND} -E copy ${OPENBLAS_LIB_PATH}/lib/openblas.dll ${CMAKE_BINARY_DIR}/Release
     )
   endif()
-  add_custom_command(TARGET ${DEMO_NAME} POST_BUILD 
-    COMMAND ${CMAKE_COMMAND} -E copy "${PADDLE_LIB}/paddle/lib/paddle_fluid.dll" ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
-    )
+  if(NOT WITH_STATIC_LIB)
+    add_custom_command(TARGET ${DEMO_NAME} POST_BUILD 
+      COMMAND ${CMAKE_COMMAND} -E copy "${PADDLE_LIB}/paddle/lib/paddle_fluid.dll" ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+      )
+  endif()
 endif()

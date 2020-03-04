@@ -19,11 +19,13 @@
 #include <vector>
 
 #if defined(_WIN32)
+#ifndef PD_INFER_EXPORT
 #ifdef PADDLE_DLL_INFERENCE
 #define PD_INFER_EXPORT __declspec(dllexport)
 #else
 #define PD_INFER_EXPORT __declspec(dllimport)
 #endif  // PADDLE_DLL_INFERENCE
+#endif  // PD_INFER_EXPORT
 #else
 #define PD_INFER_EXPORT __attribute__((visibility("default")))
 #endif  // _WIN32
