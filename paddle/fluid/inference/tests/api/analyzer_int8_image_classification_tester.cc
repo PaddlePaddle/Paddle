@@ -156,15 +156,18 @@ TEST(Analyzer_int8_image_classification, quantization) {
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
 
-  // prepare warmup batch from input data read earlier
-  // warmup batch size can be different than batch size
-  std::shared_ptr<std::vector<PaddleTensor>> warmup_data =
-      GetWarmupData(input_slots_all);
+  if (FLAGS_enable_int8) {
+    // prepare warmup batch from input data read earlier
+    // warmup batch size can be different than batch size
+    std::shared_ptr<std::vector<PaddleTensor>> warmup_data =
+        GetWarmupData(input_slots_all);
 
-  // configure quantizer
-  q_cfg.EnableMkldnnQuantizer();
-  q_cfg.mkldnn_quantizer_config()->SetWarmupData(warmup_data);
-  q_cfg.mkldnn_quantizer_config()->SetWarmupBatchSize(FLAGS_warmup_batch_size);
+    // configure quantizer
+    q_cfg.EnableMkldnnQuantizer();
+    q_cfg.mkldnn_quantizer_config()->SetWarmupData(warmup_data);
+    q_cfg.mkldnn_quantizer_config()->SetWarmupBatchSize(
+        FLAGS_warmup_batch_size);
+  }
 
   CompareQuantizedAndAnalysis(&cfg, &q_cfg, input_slots_all);
 }
