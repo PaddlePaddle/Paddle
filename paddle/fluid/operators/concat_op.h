@@ -105,7 +105,7 @@ class ConcatKernel : public framework::OpKernel<T> {
     // If axis is 0, the lod of the output is not the same as inputs.
     if (axis == 0 && ins[0]->lod().size()) {
       bool lod_size = 1;
-      for (size_t i = 0; i < ins.size(); ++i) {
+      for (size_t i = 1; i < ins.size(); ++i) {
         if (ins[i]->lod().size() == 0) {
           lod_size = 0;
         }
