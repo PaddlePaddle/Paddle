@@ -65,6 +65,8 @@ test_funcs = [
 class TestTensorShape(unittest.TestCase):
     def setUp(self):
         self.input = numpy.ones(5).astype("int32")
+        self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
 
     def get_dygraph_output(self):
         with fluid.dygraph.guard():
@@ -76,7 +78,7 @@ class TestTensorShape(unittest.TestCase):
         with fluid.program_guard(main_program):
             static_out = dygraph_to_static_graph(self.dygraph_func)(self.input)
 
-        exe = fluid.Executor(fluid.CPUPlace())
+        exe = fluid.Executor(self.place)
         static_res = exe.run(main_program, fetch_list=static_out)
 
         return static_res[0]
