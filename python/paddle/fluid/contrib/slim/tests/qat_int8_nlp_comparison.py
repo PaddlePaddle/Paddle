@@ -53,10 +53,6 @@ def parse_args():
         default='',
         help='A path to an FP32 model. If empty, the QAT model will be used for FP32 inference.'
     )
-    parser.add_argument(
-        '--save_model',
-        action='store_true',
-        help='If used, the QAT model will be saved after all transformations')
     parser.add_argument('--infer_data', type=str, default='', help='Data file.')
     parser.add_argument(
         '--labels', type=str, default='', help='File with labels.')
