@@ -30,7 +30,7 @@ class CodeGenerator {
  public:
   CodeGenerator();
 
-  std::string Generate(std::string func_name, std::string dtype,
+  std::string Generate(std::string func_name,
                        const std::vector<OperationExpression>& expressions);
 
   std::string Generate(SubGraph* subgraph);
@@ -42,16 +42,18 @@ class CodeGenerator {
       const std::vector<OperationExpression>& expressions);
   std::set<int> DistilOutputIds(
       const std::vector<OperationExpression>& expressions);
+  std::unordered_map<int, std::string> DistilDtypes(
+      const std::vector<OperationExpression>& expressions);
 
   // we get the parameter list code for the expression information
   std::string EmitParameters(const std::set<int>& input_ids,
                              const std::set<int>& output_ids,
-                             std::string dtype);
+                             std::unordered_map<int, std::string> dtypes);
 
   std::string EmitComputeBody(
       const std::vector<OperationExpression>& expressions,
       const std::set<int>& input_ids, const std::set<int>& output_ids,
-      std::string dtype);
+      std::unordered_map<int, std::string> dtypes);
 
   // Encode all var nodes in the subgraph with an unique number.
   std::unordered_map<std::string, int> EncodeVarNodes(SubGraph* subgraph);

@@ -98,11 +98,25 @@ bool OperationExpression::IsSupport() const {
 // we Traverse the graph and get the group , all input id and output id is
 // unique for the node which belong the group
 std::string OperationExpression::GetExpression(
-    std::string dtype, std::unordered_set<int>* used) const {
+    std::unordered_set<int>* used) const {
   std::stringstream ret;
   if (IsSupport()) {
     for (size_t i = 0; i < output_ids_.size(); ++i) {
-      ret << dtype << " " << GetLHS(i) << " = " << GetRHS(used, i) << ";";
+      std::string cast_str = "";
+      std::string lhs_type = lhs_type_;
+      std::string rhs_type = rhs_type_;
+      // TODO(wangchaochaohu): Here fp16 convert to float to do comupte, we need
+      // to
+      // add general fp16 compute later.
+      if (lhs_type_ == "float16") lhs_type = rhs_type = "float";
+
+      if (lhs_type != rhs_type) {
+        cast_str = "static_cast<" + lhs_type_ + ">";
+        ret << lhs_type << " " << GetLHS(i) << " = " << cast_str << "("
+            << GetRHS(used, i) << ");";
+      } else {
+        ret << lhs_type << " " << GetLHS(i) << " = " << GetRHS(used, i) << ";";
+      }
     }
   }
 

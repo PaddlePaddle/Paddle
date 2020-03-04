@@ -102,6 +102,11 @@ void OperationMap::InsertUnaryElementwiseOperations() {
   //  dx = dout * (1 - out * out)
   insert_handler("tanh", "2.0 / (1.0 + real_exp(-2.0 * ${0})) - 1.0",
                  {"${2} * (1.0 - ${1} * ${1})"});
+
+  // cast
+  // out = static_cast<T>(d)
+  // dx = static_cast<T>(d_out)
+  // insert_handler("cast", "${0}", {"${0}"});
 }
 
 void OperationMap::InsertBinaryElementwiseOperations() {

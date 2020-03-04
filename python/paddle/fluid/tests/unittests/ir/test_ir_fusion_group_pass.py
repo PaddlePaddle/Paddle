@@ -147,7 +147,7 @@ class FusionGroupPassSumTest(FusionGroupPassTest):
             tmp_1 = layers.sum([tmp_0, self.feed_vars[2], self.feed_vars[3]])
             tmp_2 = layers.sum([tmp_1, self.feed_vars[4]])
 
-        self.fetch_list = [tmp_0, tmp_1]
+        self.fetch_list = [tmp_0, tmp_1, tmp_2]
         self.num_fused_ops = 1
 
 
