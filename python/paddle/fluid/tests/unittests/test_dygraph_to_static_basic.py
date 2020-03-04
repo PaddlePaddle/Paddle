@@ -119,5 +119,91 @@ class TestDygraphIfElse3(TestDygraphIfElse):
         self.dyfunc = nested_if_else
 
 
+class NetWithControlFlowIf(fluid.dygraph.Layer):
+    def __init__(self, hidden_dim=16):
+        super(NetWithControlFlowIf, self).__init__()
+        self.hidden_dim = hidden_dim
+        self.fc = fluid.dygraph.Linear(
+            input_dim=hidden_dim,
+            output_dim=5,
+            param_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.99)),
+            bias_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.5)))
+        self.alpha = 10.
+        self.constant_vars = {}
+
+    @dygraph_to_static_graph
+    def forward(self, input):
+        hidden_dim = input.shape[-1]
+        # Plain `if` statement in Python
+        if hidden_dim != self.hidden_dim:
+            raise ValueError(
+                "hidden_dim {} of input is not equal to FC.weight[0]: {}"
+                .format(hidden_dim, self.hidden_dim))
+
+        self.constant_vars['bias'] = fluid.layers.fill_constant(
+            [5], dtype='float32', value=1)
+        # Control flow `if` statement
+        fc_out = self.fc(input)
+        if fluid.layers.mean(fc_out).numpy()[0] < 0:
+            y = fc_out + self.constant_vars['bias']
+            self.constant_vars['w'] = fluid.layers.fill_constant(
+                [5], dtype='float32', value=10)
+            if y.numpy()[0] < self.alpha:
+                # Create new var, but is not used.
+                x = 10
+                tmp = y * self.constant_vars['w']
+                y = fluid.layers.relu(tmp)
+                # Nested `if/else`
+                if y.numpy()[-1] < self.alpha:
+                    # Modify variable of class
+                    self.constant_vars['w'] = fluid.layers.fill_constant(
+                        [hidden_dim], dtype='float32', value=9)
+                    y = fluid.layers.abs(y)
+                else:
+                    tmp = fluid.layers.fill_constant(
+                        [5], dtype='float32', value=-1)
+                    y = y - tmp
+        else:
+            y = fc_out - self.constant_vars['bias']
+
+        loss = fluid.layers.mean(y)
+        return loss
+
+
+class TestDygraphIfElseNet(unittest.TestCase):
+    """
+    TestCase for the transformation from control flow `if/else`
+    dependent on tensor in Dygraph into Static `fluid.layers.cond`.
+    """
+
+    def setUp(self):
+        self.x = np.random.random([10, 16]).astype('float32')
+        self.Net = NetWithControlFlowIf
+
+    def _run_static(self):
+        main_program = fluid.Program()
+        with fluid.program_guard(main_program):
+            net = self.Net()
+            x_v = fluid.layers.assign(self.x)
+            # Transform into static graph
+            out = net(x_v)
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            ret = exe.run(main_program, fetch_list=out)
+            return ret[0]
+
+    def _run_dygraph(self):
+        with fluid.dygraph.guard(place):
+            net = self.Net()
+            x_v = fluid.dygraph.to_variable(self.x)
+            ret = net(x_v)
+            return ret.numpy()
+
+    def test_ast_to_func(self):
+        self.assertTrue((self._run_dygraph() == self._run_static()).all())
+
+
 if __name__ == '__main__':
     unittest.main()

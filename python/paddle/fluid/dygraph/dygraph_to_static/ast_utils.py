@@ -104,7 +104,7 @@ def get_name_ids(nodes, not_name_set=None, node_black_list=None):
 
     name_ids = defaultdict(list)
     for node in nodes:
-        if node_black_list and node in node_black_list: continue
+        if node_black_list and node in node_black_list: break
         if isinstance(node, gast.AST):
             # In two case, the ast.Name should be filtered.
             # 1. Function name like `my_func` of my_func(x)
