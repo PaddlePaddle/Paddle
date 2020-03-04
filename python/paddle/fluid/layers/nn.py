@@ -185,6 +185,7 @@ __all__ = [
     'uniform_random',
     'tdm_sampler',
     'tdm_child',
+    'find_by_index',
 ]
 
 
