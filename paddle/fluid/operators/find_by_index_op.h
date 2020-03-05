@@ -54,11 +54,12 @@ class FindByIndexKernel : public framework::OpKernel<T> {
     std::vector<T> res{};
 
     auto *input_data = input_tensor.data<T>();
-    auto *index_data = index_tensor.data<int64_t>();
+    auto *index_data = index_tensor.data<T>();
     for (int i = 0; i < index_ids_num; i++) {
       int b = floor(i / batch_size);
       int v_i = b * batch_size + static_cast<int>(index_data[i]);
       T v = input_data[v_i];
+      VLOG(1) << "Find by index: b= " << b << " v_i= " << v_i << " v= " << v;
       res.push_back(v);
     }
 

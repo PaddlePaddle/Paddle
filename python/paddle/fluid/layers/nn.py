@@ -13990,7 +13990,7 @@ def tdm_child(input,
               ancestor_nums,
               child_nums,
               param_attr=None,
-              dtype='int32'):
+              dtype='int64'):
     """
     used for tdm infer
     """

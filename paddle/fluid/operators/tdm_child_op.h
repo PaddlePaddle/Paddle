@@ -54,7 +54,7 @@ class TDMChildKernel : public framework::OpKernel<T> {
     std::vector<T> child_vec{};
     std::vector<T> item_mask_vec{};
     auto *input_data = input_tensor.data<T>();
-    auto *tree_emb_data = tree_emb_tensor.data<T>();
+    auto *tree_emb_data = tree_emb_tensor.data<int>();
 
     // Tree_emb: node_id : item_id; layer_id; ancestor_id; child_id
     for (int input_ids = 0; input_ids < input_ids_num; ++input_ids) {
