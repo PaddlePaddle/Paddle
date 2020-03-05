@@ -7900,8 +7900,9 @@ def relu(x, name=None):
 """
     inputs = {'X': [x]}
     if in_dygraph_mode():
-        outs = core.ops.relu(inputs)
-        return outs['Out'][0]
+        # outs = core.ops.relu(inputs)
+        # return outs['Out'][0]
+        return core.ops.relu(x)
 
     helper = LayerHelper('relu', **locals())
     dtype = helper.input_dtype(input_param_name='x')
@@ -9923,8 +9924,9 @@ def slice(input, axes, starts, ends):
             'ends': ends,
             'infer_flags': infer_flags
         }
-        outs = core.ops.slice(inputs, attrs)
-        return outs['Out'][0]
+        return core.ops.slice(input, axes, starts, ends, [])
+        # outs = core.ops.slice(inputs, attrs)
+        # return outs['Out'][0]
 
     if not isinstance(starts, (list, tuple, Variable)):
         raise ValueError(
