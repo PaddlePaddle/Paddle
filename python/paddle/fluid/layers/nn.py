@@ -9183,7 +9183,7 @@ def filter_by_instag(ins, ins_tag, filter_tag, is_lod, out_val_ifempty=0):
                         list that holds the tags.
         is_lod (Bool): Boolean value to indicate ins is lod tensor or not.
         out_val_ifempty(Int64): If the output after filter is empty, this value
-                        will be set to Out tensor.
+                        will be set to Output tensor.
 
     Returns:
         Variable: filtered ins (LoDTensor) and loss weight (Tensor)
