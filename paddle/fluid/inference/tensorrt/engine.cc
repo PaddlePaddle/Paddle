@@ -53,7 +53,9 @@ void TensorRTEngine::Execute(int batch_size, std::vector<void *> *buffers,
   if (!with_dynamic_shape()) {
     infer_context->enqueue(batch_size, buffers->data(), stream, nullptr);
   } else {
+#if IS_TRT_VERSION_GE(6000)
     infer_context->enqueueV2(buffers->data(), stream, nullptr);
+#endif
   }
   SetRuntimeBatch(batch_size);
 }
@@ -63,8 +65,9 @@ void TensorRTEngine::FreezeNetwork() {
   VLOG(3) << "TRT to freeze network";
   PADDLE_ENFORCE(infer_builder_ != nullptr,
                  "Call InitNetwork first to initialize network.");
-  PADDLE_ENFORCE(network() != nullptr,
-                 "Call InitNetwork first to initialize network.");
+  PADDLE_ENFORCE_EQ(network() != nullptr, true,
+                    platform::errors::InvalidArgument(
+                        "Call InitNetwork first to initialize network."));
   // build engine.
   infer_builder_->setMaxBatchSize(max_batch_);
   infer_builder_->setMaxWorkspaceSize(max_workspace_);
@@ -169,7 +172,9 @@ void TensorRTEngine::FreezeNetwork() {
 nvinfer1::ITensor *TensorRTEngine::DeclareInput(const std::string &name,
                                                 nvinfer1::DataType dtype,
                                                 const nvinfer1::Dims &dims) {
-  PADDLE_ENFORCE(network() != nullptr, "should initnetwork first");
+  PADDLE_ENFORCE_EQ(network() != nullptr, true,
+                    platform::errors::InvalidArgument(
+                        "The TRT network should be initialized first."));
   auto *input = network()->addInput(name.c_str(), dtype, dims);
   PADDLE_ENFORCE(input, "infer network add input %s failed", name);
   PADDLE_ENFORCE(input->isNetworkInput());

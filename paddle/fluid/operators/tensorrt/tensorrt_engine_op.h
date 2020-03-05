@@ -222,7 +222,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
     }
     const int num_bindings = num_inputs + Outputs("Ys").size();
     std::vector<void *> buffers(num_bindings);
-    auto *trt_context = engine->context();
 
     // Bind input tensor to TRT.
     for (const auto &x : Inputs("Xs")) {
@@ -247,8 +246,11 @@ class TensorRTEngineOp : public framework::OperatorBase {
           RuntimeStaticShapeCheck(runtime_input_shape, model_input_shape);
         }
       } else {
+#if IS_TRT_VERSION_GE(6000)
+        auto *trt_context = engine->context();
         trt_context->setBindingDimensions(
             bind_index, inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
+#endif
       }
       buffers[bind_index] = static_cast<void *>(t.data<float>());
     }
@@ -268,9 +270,11 @@ class TensorRTEngineOp : public framework::OperatorBase {
           ddim.push_back(dims.d[i]);
         }
       } else {
+#if IS_TRT_VERSION_GE(6000)
+        auto *trt_context = engine->context();
         auto dims = trt_context->getBindingDimensions(bind_index);
-        PADDLE_ENFORCE_NE(dims.nbDims, -1, "Invalid dims.");
         for (int i = 0; i < dims.nbDims; i++) ddim.push_back(dims.d[i]);
+#endif
       }
       auto *fluid_v = scope.FindVar(y);
       PADDLE_ENFORCE_NOT_NULL(fluid_v, "no output variable called %s", y);

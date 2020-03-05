@@ -413,8 +413,12 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("min_subgraph_size") = 3,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
            py::arg("use_static") = false, py::arg("use_calib_mode") = true,
-           py::arg("min_input_shape") = {}, py::arg("max_input_shape") = {},
-           py::arg("optim_input_shape") = {})
+           py::arg("min_input_shape") =
+               std::map<std::string, std::vector<int>>({}),
+           py::arg("max_input_shape") =
+               std::map<std::string, std::vector<int>>({}),
+           py::arg("optim_input_shape") =
+               std::map<std::string, std::vector<int>>({}))
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
       .def("switch_ir_debug", &AnalysisConfig::SwitchIrDebug,
            py::arg("x") = true)

@@ -269,6 +269,27 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   std::copy(params_not_shared.begin(), params_not_shared.end(),
             std::back_inserter(*repetitive_params));
 
+  // Check trt version for dynamic shape input.
+
+  if (min_input_shape.size() > 0 && TRT_VERSION < 6000) {
+    std::cout << "hello";
+    LOG_FIRST_N(WARNING, 1) << "You are using the dynamic size input mode of "
+                               "Paddle-TRT, but we found that the version of "
+                               "the TensorRT is less than 6.0, so we use the "
+                               "static shape mode instead.";
+    min_input_shape = {};
+    max_input_shape = {};
+    opt_input_shape = {};
+  }
+
+  if (min_input_shape.size() > 0 && TRT_VERSION > 6000) {
+    LOG_FIRST_N(WARNING, 1)
+        << "The Paddle lib links the " << TRT_VERSION / 1000.
+        << " version TensorRT, "
+        << "make sure the runtime TensorRT you are using is no less than this "
+           "version, otherwise, there might be Segfault!";
+  }
+
   tensorrt::TensorRTEngine *trt_engine =
       inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
           .Create(engine_key + std::to_string(predictor_id),

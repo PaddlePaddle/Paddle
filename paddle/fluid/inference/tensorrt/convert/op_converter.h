@@ -142,7 +142,10 @@ class OpConverter {
           } else {
             input_shape.push_back(min_input_shape[i]);
             // the i dimension should be same.
-            PADDLE_ENFORCE_EQ(min_input_shape[i], optim_input_shape[i]);
+            PADDLE_ENFORCE_EQ(min_input_shape[i], optim_input_shape[i],
+                              platform::errors::InvalidArgument(
+                                  "The dim (%d) of the min_input_shape and "
+                                  "optim_input_shape should be same."));
           }
         }
         engine->DeclareInput(

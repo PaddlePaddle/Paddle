@@ -136,12 +136,18 @@ class TensorRTEngine {
         logger_(logger) {
     if (min_input_shape_.size() != 0 && max_input_shape_.size() != 0 &&
         optim_input_shape_.size() != 0) {
-      PADDLE_ENFORCE_EQ(min_input_shape_.size(), max_input_shape_.size(),
-                        "The min_input_shape_'s size should be equal to the "
-                        "size of max_input_shape_");
-      PADDLE_ENFORCE_EQ(min_input_shape_.size(), optim_input_shape_.size(),
-                        "The min_input_shape_'s size should be equal to the "
-                        "size of optim_input_shape_");
+      PADDLE_ENFORCE_EQ(
+          min_input_shape_.size(), max_input_shape_.size(),
+          platform::errors::InvalidArgument(
+              "The min_input_shape_'s size(%d) should be equal to the "
+              "size(%d) of max_input_shape_",
+              min_input_shape_.size(), max_input_shape_.size()));
+      PADDLE_ENFORCE_EQ(
+          min_input_shape_.size(), optim_input_shape_.size(),
+          platform::errors::InvalidArgument(
+              "The min_input_shape_'s size(%d) should be equal to the "
+              "size(%d) of optim_input_shape_",
+              min_input_shape_.size(), optim_input_shape_.size()));
 #if IS_TRT_VERSION_GE(6000)
       with_dynamic_shape_ = true;
 #else
@@ -175,7 +181,8 @@ class TensorRTEngine {
     if (infer_context_.find(tid) == infer_context_.end()) {
       PADDLE_ENFORCE_NOT_NULL(
           infer_engine_,
-          "You should build engine first and then set the context.");
+          platform::errors::InvalidArgument(
+              "You should build engine first and then set the context."));
       infer_context_[tid].reset(infer_engine_->createExecutionContext());
     }
     return infer_context_[tid].get();

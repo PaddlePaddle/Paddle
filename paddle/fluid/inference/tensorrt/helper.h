@@ -31,6 +31,10 @@ namespace tensorrt {
   ((NV_TENSORRT_MAJOR * 1000 + NV_TENSORRT_MINOR * 100 + \
     NV_TENSORRT_PATCH * 10 + NV_TENSORRT_BUILD) >= version)
 
+#define TRT_VERSION                                    \
+  NV_TENSORRT_MAJOR * 1000 + NV_TENSORRT_MINOR * 100 + \
+      NV_TENSORRT_PATCH * 10 + NV_TENSORRT_BUILD
+
 namespace dy = paddle::platform::dynload;
 
 // TensorRT data type to size
