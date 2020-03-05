@@ -333,25 +333,37 @@ void SetEvent(bool merge_thread, Event analyze_event, size_t *max_name_width,
   }
 }
 
-void ComputeOverhead(const std::multimap<std::string, EventItem> &sub_child_map,
+void UpdateGpuMemcpy(const EventItem &item, EventItem *memcpy_async,
+                     EventItem *memcpy_sync) {
+  if (item.name.find("GpuMemcpyAsync") != std::string::npos) {
+    memcpy_async->calls += item.calls;
+    memcpy_async->total_time += item.total_time;
+    memcpy_async->ratio += item.ratio;
+  } else if (item.name.find("GpuMemcpySync") != std::string::npos) {
+    memcpy_sync->calls += item.calls;
+    memcpy_sync->total_time += item.total_time;
+    memcpy_sync->ratio += item.ratio;
+  }
+}
+
+void ComputeOverhead(const std::vector<EventItem> &main_event_items,
+                     const std::multimap<std::string, EventItem> &sub_child_map,
                      OverHead *overhead) {
   EventItem memcpy_async = {
       "GpuMemcpyAsync", 0, 0., 0., 0., 0., 0., 0., 0.0f, EventRole::kOrdinary};
   EventItem memcpy_sync = {"GpuMemcpySync",     0, 0., 0., 0., 0., 0., 0., 0.0f,
                            EventRole::kOrdinary};
+  // GpuMemcpy may be in main_event_items
+  for (auto &item : main_event_items) {
+    UpdateGpuMemcpy(item, &memcpy_async, &memcpy_sync);
+  }
+
   for (auto it = sub_child_map.begin(); it != sub_child_map.end(); it++) {
-    if (it->second.name.find("compute") != std::string::npos) {
+    if (it->second.name.find("compute") != std::string::npos &&
+        it->second.name.find("compute/") == std::string::npos) {
       overhead->compute_ratio += it->second.ratio;
     }
-    if (it->second.name.find("GpuMemcpyAsync") != std::string::npos) {
-      memcpy_async.calls += it->second.calls;
-      memcpy_async.total_time += it->second.total_time;
-      memcpy_async.ratio += it->second.ratio;
-    } else if (it->second.name.find("GpuMemcpySync") != std::string::npos) {
-      memcpy_sync.calls += it->second.calls;
-      memcpy_sync.total_time += it->second.total_time;
-      memcpy_sync.ratio += it->second.ratio;
-    }
+    UpdateGpuMemcpy(it->second, &memcpy_async, &memcpy_sync);
   }
   overhead->framework_ratio = 1.0f - overhead->compute_ratio;
   overhead->memcpy_item.calls = memcpy_async.calls + memcpy_sync.calls;
@@ -607,7 +619,7 @@ void AnalyzeEvent(
     if ((*analyze_events).size() == 1) {
       overhead->total_time = total;
       overhead->print = true;
-      ComputeOverhead(sub_child_map, overhead);
+      ComputeOverhead(main_event_items, sub_child_map, overhead);
     }
     // sort
     if (sorted_by != EventSortingKey::kDefault) {
