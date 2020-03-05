@@ -51,10 +51,10 @@ class TDMChildKernel : public framework::OpKernel<T> {
     int batch_size = input_tensor.dims()[0];
     VLOG(1) << "TDM child : input numel -> " << input_ids_num;
 
-    std::vector<int64_t> child_vec{};
-    std::vector<int64_t> item_mask_vec{};
-    auto *input_data = input_tensor.data<int64_t>();
-    auto *tree_emb_data = tree_emb_tensor.data<int64_t>();
+    std::vector<T> child_vec{};
+    std::vector<T> item_mask_vec{};
+    auto *input_data = input_tensor.data<T>();
+    auto *tree_emb_data = tree_emb_tensor.data<T>();
 
     // Tree_emb: node_id : item_id; layer_id; ancestor_id; child_id
     for (int input_ids = 0; input_ids < input_ids_num; ++input_ids) {
@@ -79,10 +79,10 @@ class TDMChildKernel : public framework::OpKernel<T> {
 
       if (has_child) {
         for (int child_ids = 0; child_ids < child_nums; ++child_ids) {
-          int64_t child_id =
+          T child_id =
               tree_emb_data[input_data[input_ids] * length + 3 + child_ids];
           child_vec.push_back(child_id);
-          int64_t child_is_item = tree_emb_data[child_id * length] == 0 ? 0 : 1;
+          T child_is_item = tree_emb_data[child_id * length] == 0 ? 0 : 1;
           item_mask_vec.push_back(child_is_item);
         }
       } else {
@@ -104,12 +104,11 @@ class TDMChildKernel : public framework::OpKernel<T> {
     auto *item_mask_tensor = item_mask_var->GetMutable<framework::LoDTensor>();
     item_mask_tensor->Resize(ddim);
 
-    auto *child_data = child_tensor->mutable_data<int64_t>(ctx.GetPlace());
-    auto *item_mask_data =
-        item_mask_tensor->mutable_data<int64_t>(ctx.GetPlace());
+    auto *child_data = child_tensor->mutable_data<T>(ctx.GetPlace());
+    auto *item_mask_data = item_mask_tensor->mutable_data<T>(ctx.GetPlace());
 
-    memcpy(child_data, &child_vec[0], sizeof(int64_t) * output_nums);
-    memcpy(item_mask_data, &item_mask_vec[0], sizeof(int64_t) * output_nums);
+    memcpy(child_data, &child_vec[0], sizeof(T) * output_nums);
+    memcpy(item_mask_data, &item_mask_vec[0], sizeof(T) * output_nums);
   }
 };
 
