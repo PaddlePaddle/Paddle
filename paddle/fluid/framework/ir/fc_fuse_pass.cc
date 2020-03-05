@@ -74,54 +74,9 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     OpDesc desc;
     desc.SetType("fc");
 
-    // This is to add padding for dimension 128 on concern of MKL performance
-    bool use_gpu = Has("use_gpu") ? Get<bool>("use_gpu") : false;
-    bool use_fc_padding =
-        Has("use_fc_padding") ? Get<bool>("use_fc_padding") : true;
-    if (!use_gpu && use_fc_padding) {
-      auto* scope = param_scope();
-      const std::string& w_name = patterns::UniqueKey("fc_weight");
-      auto* w_var = scope->Var(w_name);
-      auto* w_tensor = w_var->GetMutable<framework::LoDTensor>();
-
-      auto* fc_w_var = scope->FindVar(w->Name());
-      const auto& fc_w_tensor = fc_w_var->Get<framework::LoDTensor>();
-
-      w_tensor->Resize(fc_w_tensor.dims());
-      auto* data = w_tensor->mutable_data<float>(platform::CPUPlace());
-      for (int i = 0; i < w_tensor->numel(); i++) {
-        data[i] = fc_w_tensor.data<float>()[i];
-      }
-      desc.SetInput("W", {w_name});
-
-      auto* weight = scope->FindVar(w_name)->GetMutable<LoDTensor>();
-      auto* weight_data = weight->data<float>();
-      auto weight_dims = weight->dims();
-      int weight_num = product(weight_dims);
-      int w_h = weight_dims[0];
-      int w_w = weight_dims[1];
-      if (w_h % 128 == 0 && w_w % 128 == 0) {
-        auto* weight_data_tmp = new float[weight_num];
-        for (int i = 0; i < w_h; i++) {
-          memcpy(weight_data_tmp + i * w_w, weight_data + i * w_w,
-                 w_w * sizeof(float));
-        }
-        weight->Resize(DDim{weight_dims[0] + 4, weight_dims[1] + 4});
-        auto* weight_data_new =
-            weight->mutable_data<float>(platform::CPUPlace());
-        for (int i = 0; i < w_h; i++) {
-          memcpy(weight_data_new + i * (w_w + 4), weight_data_tmp + i * w_w,
-                 w_w * sizeof(float));
-        }
-        delete[] weight_data_tmp;
-        desc.SetAttr("padding_weights", true);
-      }
-    } else {
-      desc.SetInput("W", {w->Name()});
-    }
-
     // Set inputs of fc
     desc.SetInput("Input", {subgraph.at(x)->Name()});
+    desc.SetInput("W", {w->Name()});
     desc.SetInput("Bias", {bias->Name()});
 
     // Set output of fc
@@ -133,6 +88,41 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     desc.SetAttr("in_num_col_dims", mul->Op()->GetAttr("x_num_col_dims"));
     std::string activation_type = with_relu ? "relu" : "";
     desc.SetAttr("activation_type", activation_type);
+
+    // This is to add padding for dimension 128 on concern of MKL performance
+    bool use_gpu = Has("use_gpu") ? Get<bool>("use_gpu") : false;
+    bool use_fc_padding =
+        Has("use_fc_padding") ? Get<bool>("use_fc_padding") : true;
+    if (!use_gpu && use_fc_padding) {
+      auto* scope = param_scope();
+      auto* weight = scope->FindVar(w->Name())->GetMutable<LoDTensor>();
+      auto* weight_data = weight->data<float>();
+      auto weight_dims = weight->dims();
+      int weight_num = product(weight_dims);
+      int w_h = weight_dims[0];
+      int w_w = weight_dims[1];
+      if (w_h % 128 == 0 && w_w % 128 == 0) {
+        const std::string& w_name = patterns::UniqueKey(w->Name());
+        auto* w_var = scope->Var(w_name);
+        auto* w_tensor = w_var->GetMutable<framework::LoDTensor>();
+
+        auto* weight_data_tmp = new float[weight_num];
+        for (int i = 0; i < w_h; i++) {
+          memcpy(weight_data_tmp + i * w_w, weight_data + i * w_w,
+                 w_w * sizeof(float));
+        }
+        w_tensor->Resize(DDim{weight_dims[0] + 4, weight_dims[1] + 4});
+        auto* weight_data_new =
+            w_tensor->mutable_data<float>(platform::CPUPlace());
+        for (int i = 0; i < w_h; i++) {
+          memcpy(weight_data_new + i * (w_w + 4), weight_data_tmp + i * w_w,
+                 w_w * sizeof(float));
+        }
+        delete[] weight_data_tmp;
+        desc.SetInput("W", {w_name});
+        desc.SetAttr("padding_weights", true);
+      }
+    }
 
     // For anakin subgraph int8
     // When in anakin subgraph int8 mode, the pattern like "fake_quant + mul +
