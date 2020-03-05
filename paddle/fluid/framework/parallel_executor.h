@@ -84,6 +84,10 @@ class ParallelExecutor {
 
   FeedFetchList Run(const std::vector<std::string> &fetch_tensors);
 
+  /*
+   * Maybe need a seperate class inherit PE to process stream, and also add some
+   * platform independent functions.
+   */
   // use pe to manage stream
   bool AllocateStream(pfs::BaseStream *stream);
   bool AllocateEvent(pfs::Event *event);
@@ -91,6 +95,8 @@ class ParallelExecutor {
   std::unique_ptr<pfs::internal::StreamInterface> CreateStreamImplementation();
   std::unique_ptr<pfs::internal::EventInterface> CreateEventImplementation();
   pfs::Event::Status PollForStatus(pfs::Event *event);
+  bool CreateStreamDependency(pfs::BaseStream *dependent,
+                              pfs::BaseStream *other);
 
  private:
   // broadcast the parameters from the 0th device.

@@ -898,6 +898,17 @@ pfs::Event::Status ParallelExecutor::PollForStatus(pfs::Event *event) {
   return GetGpuEvent(event)->GetEventStatus();
 }
 
+// Make dependent wait other to finish, suppose this hold gpu device
+bool ParallelExecutor::CreateStreamDependency(pfs::BaseStream *dependent,
+                                              pfs::BaseStream *other) {
+  const cudaEvent_t &event_finished = GetGpuStream(other)->finish_event();
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      cudaEventRecord(event_finished, pfs::GetCUDAStream(other)));
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      cudaStreamWaitEvent(pfs::GetCUDAStream(dependent), event_finished, 0));
+  return true;
+}
+
 }  // namespace framework
 }  // namespace paddle
 

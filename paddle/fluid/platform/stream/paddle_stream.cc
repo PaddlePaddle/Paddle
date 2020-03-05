@@ -36,6 +36,14 @@ BaseStream& BaseStream::Init() {
   return *this;
 }
 
+BaseStream& BaseStream::WaitForOtherStream(BaseStream* other) {
+  PADDLE_ENFORCE_NE(this, other, "should wait on different stream");
+  PADDLE_ENFORCE_NE(pe_, nullptr, "PE should not be nullptr");
+  PADDLE_ENFORCE_EQ(pe_->CreateStreamDependency(this, other), true,
+                    "wait dependency should be ok");
+  return *this;
+}
+
 }  // namespace stream
 }  // namespace platform
 }  // namespace paddle

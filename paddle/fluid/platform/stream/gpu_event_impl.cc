@@ -36,7 +36,18 @@ GpuEvent::GpuEvent() : gpu_event_(nullptr) {}
 
 GpuEvent::~GpuEvent() {}
 
-Event::Status GpuEvent::GetEventStatus() { return Event::Status::kComplete; }
+Event::Status GpuEvent::GetEventStatus() {
+  auto res = cudaEventQuery(gpu_event_);
+  switch (res) {
+    case cudaSuccess:
+      return Event::Status::kComplete;
+    case cudaErrorNotReady:
+      return Event::Status::kPending;
+    default:
+      LOG(INFO) << "Error returned for event status: " << res;
+      return Event::Status::kError;
+  }
+}
 
 }  // namespace stream
 }  // namespace platform
