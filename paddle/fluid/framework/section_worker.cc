@@ -211,8 +211,19 @@ void SectionWorker::TrainFiles() {
     auto& metric_list = box_ptr->GetMetricList();
     for (auto iter = metric_list.begin(); iter != metric_list.end(); iter++) {
       auto* metric_msg = iter->second;
-      if (metric_msg->IsJoin() != box_ptr->PassFlag()) {
-        continue;
+      if (box_ptr->Mode() == 1) {
+        auto pos = iter->first.find("###");
+        PADDLE_ENFORCE_NE(pos, std::string::npos,
+                          platform::errors::PreconditionNotMet(
+                              "Metric name in AunRunner must contain ###"));
+        int id = stoi(iter->first.substr(pos + 3));
+        if (id != box_ptr->PassFlag()) {
+          continue;
+        }
+      } else {
+        if (metric_msg->IsJoin() != box_ptr->PassFlag()) {
+          continue;
+        }
       }
       metric_msg->add_data(exe_scope);
     }

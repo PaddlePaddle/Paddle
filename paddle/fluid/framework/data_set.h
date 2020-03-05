@@ -109,9 +109,13 @@ class Dataset {
   // global shuffle data
   virtual void GlobalShuffle(int thread_num = -1) = 0;
   // for slots shuffle
+  virtual void PreprocessChannel(
+      const std::set<std::string>& slots_to_replace,
+      std::unordered_set<uint16_t>& index_slot) = 0;  // NOLINT
   virtual void SlotsShuffle(const std::set<std::string>& slots_to_replace) = 0;
-  virtual void GetRandomData(const std::set<uint16_t>& slots_to_replace,
-                             std::vector<Record>* result) = 0;
+  virtual void GetRandomData(
+      const std::unordered_set<uint16_t>& slots_to_replace,
+      std::vector<Record>* result) = 0;
   // create readers
   virtual void CreateReaders() = 0;
   // destroy readers
@@ -183,6 +187,9 @@ class DatasetImpl : public Dataset {
   virtual int GetThreadNum() { return thread_num_; }
   virtual int GetTrainerNum() { return trainer_num_; }
   virtual Channel<T> GetInputChannel() { return input_channel_; }
+  virtual void SetInputChannel(const Channel<T>& input_channel) {
+    input_channel_ = input_channel;
+  }
   virtual int64_t GetFleetSendBatchSize() { return fleet_send_batch_size_; }
   virtual std::pair<std::string, std::string> GetHdfsConfig() {
     return std::make_pair(fs_name_, fs_ugi_);
@@ -201,9 +208,17 @@ class DatasetImpl : public Dataset {
   virtual void ReleaseMemory();
   virtual void LocalShuffle();
   virtual void GlobalShuffle(int thread_num = -1);
+  virtual void PreprocessChannel(
+      const std::set<std::string>& slots_to_replace,
+      std::unordered_set<uint16_t>& index_slot) {  // NOLINT
+  }
   virtual void SlotsShuffle(const std::set<std::string>& slots_to_replace) {}
-  virtual void GetRandomData(const std::set<uint16_t>& slots_to_replace,
-                             std::vector<Record>* result) {}
+  virtual void GetRandomData(
+      const std::unordered_set<uint16_t>& slots_to_replace,
+      std::vector<Record>* result) {}
+  virtual const std::vector<T>& GetSlotsOriginalData() {
+    return slots_shuffle_original_data_;
+  }
   virtual void CreateReaders();
   virtual void DestroyReaders();
   virtual int64_t GetMemoryDataSize();
@@ -293,9 +308,13 @@ class MultiSlotDataset : public DatasetImpl<Record> {
     }
     std::vector<std::unordered_set<uint64_t>>().swap(local_tables_);
   }
+  virtual void PreprocessChannel(
+      const std::set<std::string>& slots_to_replace,
+      std::unordered_set<uint16_t>& index_slot);  // NOLINT
   virtual void SlotsShuffle(const std::set<std::string>& slots_to_replace);
-  virtual void GetRandomData(const std::set<uint16_t>& slots_to_replace,
-                             std::vector<Record>* result);
+  virtual void GetRandomData(
+      const std::unordered_set<uint16_t>& slots_to_replace,
+      std::vector<Record>* result);
   virtual ~MultiSlotDataset() {}
 };
 

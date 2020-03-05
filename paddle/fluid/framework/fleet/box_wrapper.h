@@ -31,10 +31,12 @@ limitations under the License. */
 #include <map>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <set>
 #include <string>
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
@@ -686,7 +688,13 @@ class BoxWrapper {
     return metric_name_list_;
   }
   int PassFlag() const { return pass_flag_; }
-  void FlipPassFlag() { pass_flag_ = 1 - pass_flag_; }
+  void FlipPassFlag() {
+    if (mode_ == 1) {  // auc_runner
+      pass_flag_ = (pass_flag_ + 1) % runner_group_;
+    } else {
+      pass_flag_ = 1 - pass_flag_;
+    }
+  }
   std::map<std::string, MetricMsg*>& GetMetricList() { return metric_lists_; }
 
   void InitMetric(const std::string& method, const std::string& name,
@@ -762,6 +770,61 @@ class BoxWrapper {
 
  public:
   static AfsManager* afs_manager;
+
+  // Auc Runner
+ public:
+  void CheckAucRunnerInitDone(paddle::framework::Dataset* dataset) {
+    if (init_done_) {
+      return;
+    }
+    const auto& data_feed_desc = dataset->GetDataFeedDesc();
+    const auto& multi_slot_desc = data_feed_desc.multi_slot_desc();
+    for (int i = 0; i < multi_slot_desc.slots_size(); ++i) {
+      std::string cur_slot = multi_slot_desc.slots(i).name();
+      if (slot_info_.find(cur_slot) != slot_info_.end()) {
+        slot_index_to_replace_.insert(i);
+      }
+    }
+    VLOG(0) << "Slots that need to be evaluated:";
+    for (auto e : slot_index_to_replace_) {
+      VLOG(0) << multi_slot_desc.slots(e).name();
+    }
+    for (int i = 0; i < auc_runner_thread_num_; ++i) {
+      random_ins_pool_list[i].SetSlotIndexToReplace(slot_index_to_replace_);
+    }
+    init_done_ = true;
+  }
+  void InitializeAucRunner(std::vector<std::vector<std::string>> slot_info,
+                           int thread_num, int pool_size) {
+    mode_ = 1;
+    runner_group_ = static_cast<int>(slot_info.size());
+    pass_flag_ = runner_group_ - 1;
+    auc_runner_thread_num_ = thread_num;
+    for (size_t i = 0; i < slot_info.size(); ++i) {
+      for (const auto& slot : slot_info[i]) {
+        slot_info_.insert(slot);
+      }
+    }
+    random_ins_pool_list.resize(thread_num);
+    VLOG(0) << "AucRunner configuration: thread number[" << thread_num
+            << "], pool size[" << pool_size << "]";
+  }
+  void GetRandomReplace(const std::vector<Record>& pass_data);
+  void AddReplaceFeasign(boxps::PSAgentBase* p_agent, int feed_pass_thread_num);
+  void GetRandomData(const std::vector<Record>& pass_data,
+                     const std::unordered_set<uint16_t>& slots_to_replace,
+                     std::vector<Record>* result);
+  int Mode() const { return mode_; }
+
+ private:
+  int mode_ = 0;  // 0 means train/test 1 means auc_runner
+  int auc_runner_thread_num_ = 1;
+  int runner_group_ = 0;
+  bool init_done_ = false;
+  std::unordered_set<std::string> slot_info_;
+  std::unordered_set<uint16_t> slot_index_to_replace_;
+  std::vector<RecordCandidateList> random_ins_pool_list;
+  std::vector<size_t> replace_idx_;
 };
 #endif
 
@@ -810,7 +873,35 @@ class BoxHelper {
     VLOG(3) << "After PreLoadIntoMemory()";
   }
   void WaitFeedPassDone() { feed_data_thread_->join(); }
+  void SlotsShuffle(const std::set<std::string>& slots_to_replace) {
+#ifdef PADDLE_WITH_BOX_PS
+    auto box_ptr = BoxWrapper::GetInstance();
+    PADDLE_ENFORCE_EQ(box_ptr->Mode(), 1,
+                      platform::errors::PreconditionNotMet(
+                          "Should call InitForAucRunner first."));
+    box_ptr->FlipPassFlag();
+    box_ptr->CheckAucRunnerInitDone(dataset_);
 
+    std::unordered_set<uint16_t> index_slots;
+    dataset_->PreprocessChannel(slots_to_replace, index_slots);
+    const std::vector<Record>& pass_data =
+        dynamic_cast<MultiSlotDataset*>(dataset_)->GetSlotsOriginalData();
+    if (!get_random_replace_done_) {
+      box_ptr->GetRandomReplace(pass_data);
+      get_random_replace_done_ = true;
+    }
+    std::vector<Record> random_data;
+    random_data.resize(pass_data.size());
+    box_ptr->GetRandomData(pass_data, index_slots, &random_data);
+
+    auto new_input_channel = paddle::framework::MakeChannel<Record>();
+    new_input_channel->Open();
+    new_input_channel->Write(std::move(random_data));
+    new_input_channel->Close();
+    dynamic_cast<MultiSlotDataset*>(dataset_)->SetInputChannel(
+        new_input_channel);
+#endif
+  }
 #ifdef PADDLE_WITH_BOX_PS
   // notify boxps to feed this pass feasigns from SSD to memory
   static void FeedPassThread(const std::deque<Record>& t, int begin_index,
@@ -881,6 +972,10 @@ class BoxHelper {
     for (size_t i = 0; i < tnum; ++i) {
       threads[i].join();
     }
+
+    if (box_ptr->Mode() == 1) {
+      box_ptr->AddReplaceFeasign(p_agent, tnum);
+    }
     VLOG(3) << "Begin call EndFeedPass in BoxPS";
     box_ptr->EndFeedPass(p_agent);
 #endif
@@ -892,6 +987,7 @@ class BoxHelper {
   int year_;
   int month_;
   int day_;
+  bool get_random_replace_done_ = false;
 };
 
 }  // end namespace framework
