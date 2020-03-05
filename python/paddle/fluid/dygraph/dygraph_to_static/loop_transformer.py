@@ -22,6 +22,7 @@ from paddle.fluid import unique_name
 from paddle.fluid.dygraph.dygraph_to_static.ast_utils import create_funcDef_node
 from paddle.fluid.dygraph.dygraph_to_static.ast_utils import generate_name_node
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
+from paddle.fluid.dygraph.dygraph_to_static.utils import get_constant_variable_node
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_static_variable_gast_node
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable_gast_node
 
@@ -29,6 +30,9 @@ __all__ = ['LoopTransformer', 'NameVisitor']
 
 WHILE_CONDITION_PREFIX = 'while_condition'
 WHILE_BODY_PREFIX = 'while_body'
+
+FOR_CONDITION_PREFIX = 'for_loop_condition'
+FOR_BODY_PREFIX = 'for_loop_body'
 
 
 def create_while_node(condition_name, body_name, loop_var_names):
@@ -141,11 +145,6 @@ class LoopTransformer(gast.NodeTransformer):
     def transform(self):
         self.visit(self.root)
 
-    def get_for_stmt_nodes(self, node):
-        self.generic_visit(node)
-        # TODO
-        return node
-
     def visit(self, node):
         self.generic_visit(node)
         # All parent nodes that may contain gast.While/gast.For
@@ -166,15 +165,161 @@ class LoopTransformer(gast.NodeTransformer):
                 body_list[i:i + 1] = new_stmts
                 i += len(new_stmts)
             elif isinstance(body_list[i], gast.For):
-                # TODO
+                new_stmts = self.get_while_stmt_nodes(body_list[i])
+                body_list[i:i + 1] = new_stmts
+                i += len(new_stmts)
                 i += 1
             else:
                 i += 1
 
+    def get_for_range_node(self, node):
+        if not isinstance(node.iter, gast.Call):
+            return None
+        if not isinstance(node.iter.func, gast.Name):
+            return None
+        if node.iter.func.id != "range":
+            return None
+        return node.iter
+
+    def get_for_args_stmts(self, iter_name, args_list):
+        '''
+        Returns 3 gast stmt nodes for argument.
+        1. Initailize of iterate variable
+        2. Condition for the loop
+        3. Statement for changing of iterate variable during the loop
+        NOTE(TODO): Python allows to access iteration variable after loop, such
+           as "for i in range(10)" will create i = 9 after the loop. But using
+           current conversion will make i = 10. We should find a way to change it
+        '''
+        len_range_args = len(range_args)
+        assert len_range_args >= 1 and len_range_args <= 3, "range() function takes 1 to 3 arguments"
+        if len_range_args == 1:
+            init_stmt = get_constant_variable_node(iter_name, 0)
+        else:
+            init_stmt = gast.Assign(
+                targets=[
+                    gast.Name(
+                        id=iter_name,
+                        ctx=gast.Store(),
+                        annotation=None,
+                        type_comment=None)
+                ],
+                value=args_list[0])
+
+        range_max_node = args_list[0] if len_range_args == 1 else args_list[1]
+        step_node = args_list[2] if len_range_args == 3 else Constant(
+            value=1, kind=None)
+
+        cond_stmt = gast.Compare(left=gast.BinOp(
+            left=gast.Name(
+                id=iter_name,
+                ctx=gast.Load(),
+                annotation=None,
+                type_comment=None),
+            op=gast.Add(),
+            right=step_node,
+            ops=[gast.Lt()],
+            comparators=[range_max_node]))
+
+        change_stmt = gast.AugAssign(
+            target=gast.Name(
+                id=iter_name,
+                ctx=gast.Store(),
+                annotation=None,
+                type_comment=None),
+            op=gast.Add(),
+            value=step_node)
+
+        return init_stmt, cond_stmt, change_stmt
+
+    def get_for_stmt_nodes(self, node):
+        # TODO: consider for - else in python
+        if not self.name_visitor.is_control_flow_loop(node):
+            return [node]
+
+        # TODO: support non-range case
+        range_call_node = self.get_for_range_node(node)
+        if range_call_node is None:
+            return [node]
+
+        if not instance(node.target, gast.Name):
+            return [node]
+        iter_var_name = node.target.id
+
+        init_stmt, cond_stmt, change_stmt = self.get_for_args_stmts(
+            iter_var_name, range_call_node.args)
+
+        loop_var_names, create_var_names = self.name_visitor.get_loop_var_names(
+            node)
+        new_stmts = []
+        # Python can create variable in loop and use it out of loop, E.g.
+        #
+        # for x in range(10):
+        #     y += x
+        # print(x) # x = 10
+        #
+        # We need to create static variable for those variables
+        for name in create_var_names:
+            new_stmts.append(create_static_variable_gast_node(name))
+        new_stmts.append(init_stmt)
+
+        condition_func_node = gast.FunctionDef(
+            name=unique_name.generate(FOR_CONDITION_PREFIX),
+            args=gast.arguments(
+                args=[
+                    gast.Name(
+                        id=name,
+                        ctx=gast.Param(),
+                        annotation=None,
+                        type_comment=None) for name in loop_var_names
+                ],
+                posonlyargs=[],
+                vararg=None,
+                kwonlyargs=[],
+                kw_defaults=None,
+                kwarg=None,
+                defaults=[]),
+            body=[gast.Return(value=cond_stmt)],
+            decorator_list=[],
+            returns=None,
+            type_comment=None)
+        new_stmts.append(condition_func_node)
+
+        new_body = node.body
+        new_body.append(change_stmt)
+        new_body.append(
+            gast.Return(value=generate_name_node(
+                loop_var_names, ctx=gast.Load())))
+        body_func_node = gast.FunctionDef(
+            name=unique_name.generate(WHILE_BODY_PREFIX),
+            args=gast.arguments(
+                args=[
+                    gast.Name(
+                        id=name,
+                        ctx=gast.Param(),
+                        annotation=None,
+                        type_comment=None) for name in loop_var_names
+                ],
+                posonlyargs=[],
+                vararg=None,
+                kwonlyargs=[],
+                kw_defaults=None,
+                kwarg=None,
+                defaults=[]),
+            body=new_body,
+            decorator_list=[],
+            returns=None,
+            type_comment=None)
+        new_stmts.append(body_func_node)
+
+        while_loop_node = create_while_node(condition_func_node.name,
+                                            body_func_node.name, loop_var_names)
+        new_stmts.append(while_loop_node)
+
+        return new_stmts
+
     def get_while_stmt_nodes(self, node):
         # TODO: consider while - else in python
-        # self.generic_visit(node)
-
         if not self.name_visitor.is_control_flow_loop(node):
             return [node]
 

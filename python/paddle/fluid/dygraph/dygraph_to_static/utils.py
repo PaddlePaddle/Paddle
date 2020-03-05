@@ -181,3 +181,8 @@ def update_args_of_func(node, dygraph_node, method_name):
 
     node.args = []
     node.keywords = added_keywords + node.keywords
+
+
+def get_constant_variable_node(name, value, shape=[1], dtype='int64'):
+    return gast.parse('%s = fluid.layers.fill_constant(%s, %s, %s)' %
+                      (name, str(shape), dtype, str(value)))
