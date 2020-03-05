@@ -62,6 +62,7 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
   proto_ = proto;
   op_checker_ = attr_checker;
   Make();
+  op_checker_->RecordExplicitCheckerNum();
 
   AddAttr<int>(OpRoleAttrName(), "The role of this operator")
       .InEnum(

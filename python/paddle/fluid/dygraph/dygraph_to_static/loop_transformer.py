@@ -168,7 +168,6 @@ class LoopTransformer(gast.NodeTransformer):
                 new_stmts = self.get_while_stmt_nodes(body_list[i])
                 body_list[i:i + 1] = new_stmts
                 i += len(new_stmts)
-                i += 1
             else:
                 i += 1
 
