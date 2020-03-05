@@ -15,15 +15,17 @@
 from __future__ import print_function
 from .utils import *
 import gast
+import textwrap
+import inspect
 # gast is a generic AST to represent Python2 and Python3's Abstract Syntax Tree(AST).
 # It provides a compatibility layer between the AST of various Python versions,
 # as produced by ast.parse from the standard ast module.
 # See details in https://github.com/serge-sans-paille/gast/
-from .ast_utils import is_control_flow_if, create_cond_node, transform_if_else
+from .ast_utils import is_control_flow_if, create_cond_node, transform_if_else, ast_to_func
 from paddle.fluid import unique_name
 from .static_analysis import AstNodeWrapper, StaticAnalysisVisitor
 
-__all__ = ['DygraphToStaticAst']
+__all__ = ['DygraphToStaticAst', 'convert_to_static']
 
 DECORATOR_NAMES = ['dygraph_to_static_output', 'dygraph_to_static_graph']
 
@@ -40,7 +42,7 @@ class IfElseTransformer(gast.NodeTransformer):
             wrapper_root)
         self.wrapper_root = wrapper_root
         self.root = wrapper_root.node
-        self.new_func_nodes = []
+        self.new_func_nodes = {}
 
     def ast_visit(self):
         """
@@ -57,10 +59,10 @@ class IfElseTransformer(gast.NodeTransformer):
             pred_node = node.test
             true_func_node, false_func_node, return_name_ids = transform_if_else(
                 node, self.root)
-            self.new_func_nodes += [true_func_node, false_func_node]
             # create layers.cond
             new_node = create_cond_node(return_name_ids, pred_node,
                                         true_func_node, false_func_node)
+            self.new_func_nodes[new_node] = [true_func_node, false_func_node]
             return new_node
         else:
             return node
@@ -80,10 +82,28 @@ class IfElseTransformer(gast.NodeTransformer):
         It can be used to add the created `true_fn/false_fn` in front of
         the node.body before they are called in cond layer.
         """
-        assert hasattr(node, 'body')
-        # add new ast.funcDef of `if/else`
-        if self.new_func_nodes:
-            node.body = self.new_func_nodes + node.body
+        self._insert_func_nodes(node)
+
+    def _insert_func_nodes(self, parent_node):
+        """
+        Defined `true_func` and `false_func` will be inserted in front of corresponding
+        `layers.cond` statement instead of inserting them all into body of parent node.
+        Because private variables of class or other external scope will be modified.
+        For example, `self.var_dict["key"]`. In this case, nested structure of newly
+        defined functions is easier to understand.
+        """
+        if not (self.new_func_nodes and hasattr(parent_node, 'body')):
+            return
+        idx = len(parent_node.body) - 1
+        while idx >= 0:
+            child_node = parent_node.body[idx]
+            if child_node in self.new_func_nodes:
+                parent_node.body[idx:idx] = self.new_func_nodes[child_node]
+                idx = idx + len(self.new_func_nodes[child_node]) - 1
+                del self.new_func_nodes[child_node]
+            else:
+                self._insert_func_nodes(child_node)
+                idx = idx - 1
 
     def get_new_func_nodes(self):
         return self.new_func_nodes
@@ -253,3 +273,22 @@ class BasicApiTransformer(gast.NodeTransformer):
 
     def get_feed_name_to_arg_id(self):
         return self.feed_name_to_arg_id
+
+
+def convert_to_static(dyfunc):
+    """
+    Converts dygraph function into static function.
+    """
+    # Get AST from dygraph function
+    raw_code = inspect.getsource(dyfunc)
+    code = textwrap.dedent(raw_code)
+    root = gast.parse(code)
+
+    # Transform AST
+    dygraph_to_static = DygraphToStaticAst()
+    root_wrapper = dygraph_to_static.get_static_ast(root)
+
+    # Get static_func from AST
+    func_name = dygraph_to_static.get_module_name()
+    static_func, file_name = ast_to_func(root_wrapper.node, func_name)
+    return static_func, dygraph_to_static

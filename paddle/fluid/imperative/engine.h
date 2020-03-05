@@ -68,6 +68,9 @@ class BasicEngine : public Engine {
   std::unordered_map<OpBase*, size_t> op_deps_;
   std::unordered_map<VariableWrapper*, std::unique_ptr<GradientAccumulator>>
       accumulators_;
+
+  std::vector<std::pair<VariableWrapper*, std::shared_ptr<VariableWrapper>>>
+      need_accu_var_list_;
 };
 
 }  // namespace imperative

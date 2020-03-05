@@ -53,14 +53,8 @@ void BasicEngine::Init(VarBase* var, const detail::BackwardStrategy& strategy) {
     }
   }
 
-  init_ops_.clear();
-  init_ops_.reserve(ops.size());
-  for (auto& op : ops) {
-    init_ops_.emplace_back(std::move(op));
-  }
-
+  init_ops_ = ops;
   var->GradVarBase()->ClearGradOps();
-  platform::RecordEvent record_event("Imperative Backward");
   VLOG(3) << "start backward";
 
   PADDLE_ENFORCE_EQ(var->HasGradVar(), true,
@@ -198,43 +192,37 @@ void BasicEngine::Execute() {
     auto& bwd_ins = cur_op->GetInsMap();
     auto& bwd_outs = cur_op->GetOutsMap();
 
-    NameVarMap<VariableWrapper> tmp_outs;
+    NameVarMap<VariableWrapper> tmp_outs(bwd_outs);
+    // 1. construct the output map 2. replace the element in the map
     // A var may be coresponding to several grad var in one op
-    std::unordered_map<VariableWrapper*,
-                       std::vector<std::shared_ptr<VariableWrapper>>>
-        var_map;
-    for (auto& bwd_out : bwd_outs) {
-      auto& tmp_var_list = tmp_outs[bwd_out.first];
-      tmp_var_list.reserve(bwd_out.second.size());
-      for (auto& var : bwd_out.second) {
-        auto tmp_var = std::make_shared<VariableWrapper>("Gtmp@");
-        tmp_var_list.emplace_back(tmp_var);
+    for (auto it = tmp_outs.begin(); it != tmp_outs.end(); ++it) {
+      for (size_t i = 0; i < it->second.size(); ++i) {
+        auto tmp_var =
+            std::make_shared<VariableWrapper>("Gtmp@");  // Do not need grad
+
+        auto var = it->second[i];
+        it->second[i] = tmp_var;
         if (var) {
-          var_map[var.get()].emplace_back(std::move(tmp_var));
+          need_accu_var_list_.emplace_back(var.get(), std::move(tmp_var));
         }
       }
     }
 
     {
       VLOG(3) << "Start to execute grad op " << cur_op->Type();
-      platform::RecordEvent event(cur_op->Type());
       OpBase::Run(cur_op->InnerOp(), bwd_ins, tmp_outs, cur_op->Attrs(),
                   cur_op->place());
     }
 
     // Step 2: Sum Gradient
-    {
-      platform::RecordEvent record_event("merge_grads");
-      for (auto& var_pair : var_map) {
-        auto* dst_var = var_pair.first;
-        if (dst_var == nullptr) continue;
-        for (auto& src_var : var_pair.second) {
-          VLOG(3) << "Sum gradient of variable " << dst_var->Name()
-                  << " after op " << cur_op->Type();
-          SumGradient(cur_op, std::move(src_var), dst_var);
-        }
+
+    if (need_accu_var_list_.size() > 0) {
+      for (auto& pair : need_accu_var_list_) {
+        SumGradient(cur_op, std::move(pair.second), pair.first);
       }
     }
+
+    need_accu_var_list_.clear();
 
     // Step 3: Collect ready ops
 
