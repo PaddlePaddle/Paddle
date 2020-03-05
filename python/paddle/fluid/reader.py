@@ -544,11 +544,12 @@ class DygraphGeneratorLoader(DataLoaderBase):
             # Set reader_thread
             self._thread_done_event = threading.Event()
             self._thread = threading.Thread(
-                target=self._reader_thread_loop_with_process)
+                target=self._reader_thread_loop_for_multiprocess)
             self._thread.daemon = True
             self._thread.start()
         else:
-            self._thread = threading.Thread(target=self._reader_thread_loop)
+            self._thread = threading.Thread(
+                target=self._reader_thread_loop_for_singleprocess)
             self._thread.daemon = True
             self._thread.start()
 
@@ -621,7 +622,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
         except:
             six.reraise(*sys.exc_info())
 
-    def _reader_thread_loop_with_process(self):
+    def _reader_thread_loop_for_multiprocess(self):
         while not self._thread_done_event.is_set():
             try:
                 # NOTE: [ avoid hanging ] Even with carefully designed data dependencies 
@@ -641,6 +642,12 @@ class DygraphGeneratorLoader(DataLoaderBase):
                 raise RuntimeError(
                     "DataLoader reader thread has not read data for a long time (60s)."
                 )
+            except:
+                # NOTE [ avoid handing ] After adding the shared memory mechanism, not only
+                # the queue.Empty exception will occur here, but other exceptions will also
+                # occur, such as mmap failure. If it is not handled here, it will hang.
+                self._exit_thread_unexpectedly()
+                six.reraise(*sys.exc_info())
 
             if not self._thread_done_event.is_set():
                 if tensor_list is not None:
@@ -656,7 +663,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
                 else:
                     self._exit_thread_expectedly()
 
-    def _reader_thread_loop(self):
+    def _reader_thread_loop_for_singleprocess(self):
         try:
             for sample in self._batch_reader():
                 array = core.LoDTensorArray()
