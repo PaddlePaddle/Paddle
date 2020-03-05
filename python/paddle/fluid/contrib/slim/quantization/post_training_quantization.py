@@ -182,8 +182,7 @@ class PostTrainingQuantization(object):
         else:
             self._quantizable_op_type = quantizable_op_type
             for op_type in self._quantizable_op_type:
-                assert op_type in supported_quantizable_op_type + \
-                    AddQuantDequantPass._activation_type, \
+                assert op_type in supported_quantizable_op_type, \
                     op_type + " is not supported for quantization."
 
         self._place = self._executor.place
@@ -454,7 +453,7 @@ class PostTrainingQuantization(object):
         '''
         Save output scale to the quantized op.
         '''
-        output_scale_name = "output_scale"
+        output_scale_name = "output_threshold"
         for op in self._program.global_block().ops:
             if op.type in self._quantizable_op_type:
                 output_name_list = self._op_real_in_out_name[op.type][1]

@@ -310,7 +310,7 @@ class TestPostTrainingForMobilenetv1(TestPostTrainingQuantization):
         quantizable_op_type = [
             "conv2d", "depthwise_conv2d", "mul", "pool2d", "elementwise_add"
         ]
-        is_full_quantize = True
+        is_full_quantize = False
         is_use_cache_file = False
         self.run_test(model, algo, data_urls, data_md5s, quantizable_op_type,
                       is_full_quantize, is_use_cache_file)
