@@ -100,7 +100,7 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
       int layer_node_nums =
           layer_offset_lod[layer_index + 1] - layer_offset_lod[layer_index];
       Sampler *sampler = new math::UniformSampler(layer_node_nums - 1, seed);
-      sampler_vec.push_back(Sampler);
+      sampler_vec.push_back(sampler);
     }
     VLOG(2) << "TDM: get sampler ";
 
