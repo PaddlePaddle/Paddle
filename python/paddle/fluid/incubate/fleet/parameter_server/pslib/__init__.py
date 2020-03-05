@@ -556,6 +556,18 @@ class PSLib(Fleet):
         """
         self._opt_info = opt_info
 
+    def confirm():
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.confirm()
+        self._role_maker._barrier_worker()
+
+    def revert():
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.revert()
+        self._role_maker._barrier_worker()
+
 
 fleet = PSLib()
 

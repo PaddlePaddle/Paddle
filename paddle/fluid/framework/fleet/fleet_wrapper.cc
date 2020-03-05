@@ -946,5 +946,19 @@ int32_t FleetWrapper::CopyTableByFeasign(
 #endif
 }
 
+void Confirm() {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret = pslib_ptr_->_worker_ptr->confirm();
+  ret.wait();
+#endif
+}
+
+void Revert() {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret = pslib_ptr_->_worker_ptr->revert();
+  ret.wait();
+#endif
+}
+
 }  // end namespace framework
 }  // end namespace paddle

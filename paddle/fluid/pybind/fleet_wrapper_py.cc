@@ -79,7 +79,10 @@ void BindFleetWrapper(py::module* m) {
            &framework::FleetWrapper::SetPullLocalThreadNum)
       .def("copy_table", &framework::FleetWrapper::CopyTable)
       .def("copy_table_by_feasign",
-           &framework::FleetWrapper::CopyTableByFeasign);
+           &framework::FleetWrapper::CopyTableByFeasign)
+      .def("confirm", &framework::FleetWrapper::Confirm)
+      .def("revert", &framework::FleetWrapper::Revert);
+
 }  // end FleetWrapper
 }  // end namespace pybind
 }  // end namespace paddle
