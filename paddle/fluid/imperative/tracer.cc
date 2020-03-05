@@ -92,7 +92,7 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   const auto& op_info = op->Info();
   auto* attr_checker = op_info.Checker();
   if (attr_checker) {
-    attr_checker->Check(&attrs);
+    attr_checker->Check(&attrs, true);
   }
 
   OpBase::Run(*op, ins, outs, attrs, place);
