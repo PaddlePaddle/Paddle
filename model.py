@@ -346,6 +346,14 @@ class StaticGraphAdapter(object):
 
     def _make_program(self, inputs):
         prog = self._orig_prog.clone()
+        # change inputs to the same var in cloned program
+        inputs = fluid.layers.utils.map_structure(
+            lambda var: prog.global_block().var(var.name), inputs)
+        # prune unraleted ops in test program, mainly for ops inserted
+        # by learning rate scheduling
+        if self.mode != 'train':
+            for op in list(prog.global_block().ops):
+                prog.global_block()._remove_op(0)
         if self.mode == 'train' and self.model._optimizer._learning_rate_map:
             # HACK workaround learning rate map issue
             lr_var = self.model._optimizer._learning_rate_map[self._orig_prog]
