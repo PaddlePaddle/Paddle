@@ -50,11 +50,12 @@ std::string ExtractDataType(std::vector<Node*> nodes) {
   } else if (data_type == proto::VarType::FP16) {
     dtype_str = "float16";
   } else {
-    PADDLE_ENFORCE(data_type, platform::errors::Unimplemented(
-                                  "The support of %s is not"
-                                  "implemented, now only support fp32, fp64 "
-                                  "and fp16 in fusion_group.",
-                                  data_type));
+    PADDLE_ENFORCE_EQ(
+        (data_type == proto::VarType::FP32 ||
+         data_type == proto::VarType::FP64 ||
+         data_type == proto::VarType::FP16),
+        true, platform::errors::Unimplemented("Now only support fp32, fp64 "
+                                              "and fp16 in fusion_group."));
     return dtype_str;
   }
   return dtype_str;
