@@ -17,6 +17,7 @@ limitations under the License. */
 #include <NvInfer.h>
 #include <map>
 #include <memory>
+#include <mutex>  // NOLINT
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -35,6 +36,10 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 namespace tensorrt {
+
+#define IS_TRT_VERSION_GE(version)                       \
+  ((NV_TENSORRT_MAJOR * 1000 + NV_TENSORRT_MINOR * 100 + \
+    NV_TENSORRT_PATCH * 10 + NV_TENSORRT_BUILD) >= version)
 
 class TRTInt8Calibrator;
 /*
@@ -83,14 +88,19 @@ class TensorRTEngine {
         optim_input_shape_(optim_input_shape),
         logger_(logger) {
     if (min_input_shape_.size() != 0 && max_input_shape_.size() != 0 &&
-        optim_input_shape.size() != 0) {
+        optim_input_shape_.size() != 0) {
       PADDLE_ENFORCE_EQ(min_input_shape_.size(), max_input_shape_.size(),
                         "The min_input_shape_'s size should be equal to the "
                         "size of max_input_shape_");
       PADDLE_ENFORCE_EQ(min_input_shape_.size(), optim_input_shape_.size(),
                         "The min_input_shape_'s size should be equal to the "
                         "size of optim_input_shape_");
+#if IS_TRT_VERSION_GE(6000)
       with_dynamic_shape_ = true;
+#else
+      LOG(WARNING) << "Using dynamic shape of TRT need ensure that the TRT "
+                      "version should be at least 6.";
+#endif
     }
   }
 
@@ -109,9 +119,14 @@ class TensorRTEngine {
     infer_builder_.reset(createInferBuilder(&logger_));
 
     if (with_dynamic_shape_) {
+#if IS_TRT_VERSION_GE(6000)
       infer_networkv2_.reset(infer_builder_->createNetworkV2(
           1U << static_cast<int>(
               nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH)));
+      infer_builder_config_.reset(infer_builder_->createBuilderConfig());
+      infer_ptr<nvinfer1::IBuilderConfig> infer_builder_config_;
+      optim_profile_.reset(infer_builder_->createOptimizationProfile());
+#endif
     } else {
       infer_network_.reset(infer_builder_->createNetwork());
     }
@@ -142,6 +157,18 @@ class TensorRTEngine {
     } else {
       return infer_network_.get();
     }
+  }
+
+  nvinfer1::IExecutionContext* context() {
+    std::unique_lock<std::mutex> lock(mutex_);
+    const std::thread::id tid = std::this_thread::get_id();
+    if (infer_context_.find(tid) == infer_context_.end()) {
+      PADDLE_ENFORCE_NOT_NULL(
+          infer_engine_,
+          "You should build engine first and then set the context.");
+      infer_context_[tid].reset(infer_engine_->createExecutionContext());
+    }
+    return infer_context_[tid].get();
   }
 
   ShapeMapType min_input_shape() { return min_input_shape_; }
@@ -258,11 +285,12 @@ class TensorRTEngine {
   // For dynamic shape
   bool with_dynamic_shape_{false};
   infer_ptr<nvinfer1::INetworkDefinition> infer_networkv2_;
+#if IS_TRT_VERSION_GE(6000)
+  infer_ptr<nvinfer1::IBuilderConfig> infer_builder_config_;
+  std::unique_ptr<nvinfer1::IOptimizationProfile> optim_profile_;
+#endif
+  std::mutex mutex_;
 };  // class TensorRTEngine
-
-#define IS_TRT_VERSION_GE(version)                       \
-  ((NV_TENSORRT_MAJOR * 1000 + NV_TENSORRT_MINOR * 100 + \
-    NV_TENSORRT_PATCH * 10 + NV_TENSORRT_BUILD) >= version)
 
 // Add a layer__ into engine__ with args ARGS.
 // For example:
