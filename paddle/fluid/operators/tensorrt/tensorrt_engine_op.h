@@ -250,7 +250,14 @@ class TensorRTEngineOp : public framework::OperatorBase {
         trt_context->setBindingDimensions(
             bind_index, inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
       }
-      buffers[bind_index] = static_cast<void *>(t.data<float>());
+      auto type = t.type();
+      if (type == framework::proto::VarType::FP32) {
+        buffers[bind_index] = static_cast<void *>(t.data<float>());
+      } else if (type == framework::proto::VarType::INT64) {
+        buffers[bind_index] = static_cast<void *>(t.data<int64_t>());
+      } else {
+        PADDLE_THROW("The TRT Engine OP only support float and int64_t input.");
+      }
     }
 
     // Bind output tensor to TRT.
@@ -265,7 +272,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         auto dims = engine->engine()->getBindingDimensions(bind_index);
         ddim.push_back(runtime_batch);
         for (int i = 0; i < dims.nbDims; i++) {
-          ddim.push_back(dims.d[i]);
+          if (dims.d[i] != 1 && i != 0) ddim.push_back(dims.d[i]);
         }
       } else {
         auto dims = trt_context->getBindingDimensions(bind_index);

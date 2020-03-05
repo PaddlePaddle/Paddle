@@ -135,19 +135,27 @@ class OpConverter {
       auto var_shape = var->GetShape();
       if (engine->with_dynamic_shape()) {
 #if IS_TRT_VERSION_GE(6000)
-        auto min_input_shape = engine->min_input_shape()[input];
-        auto max_input_shape = engine->max_input_shape()[input];
-        auto optim_input_shape = engine->optim_input_shape()[input];
-        size_t ranks = min_input_shape.size();
         std::vector<int64_t> input_shape;
-        input_shape.push_back(-1);
-        for (size_t i = 1; i < ranks; i++) {
-          if (min_input_shape[i] != max_input_shape[i]) {
+        if (engine->min_input_shape().count(input)) {
+          auto min_input_shape = engine->min_input_shape()[input];
+          auto max_input_shape = engine->max_input_shape()[input];
+          auto optim_input_shape = engine->optim_input_shape()[input];
+          size_t ranks = min_input_shape.size();
+          input_shape.push_back(-1);
+          for (size_t i = 1; i < ranks; i++) {
+            if (min_input_shape[i] != max_input_shape[i]) {
+              input_shape.push_back(-1);
+            } else {
+              input_shape.push_back(min_input_shape[i]);
+              // the i dimension should be same.
+              PADDLE_ENFORCE_EQ(min_input_shape[i], optim_input_shape[i]);
+            }
+          }
+        } else {
+          // exist a situation: the input's shape is not setted, set all to (-1,
+          // ..., -1, -1)
+          for (size_t k = 0; k < var_shape.size(); k++) {
             input_shape.push_back(-1);
-          } else {
-            input_shape.push_back(min_input_shape[i]);
-            // the i dimension should be same.
-            PADDLE_ENFORCE_EQ(min_input_shape[i], optim_input_shape[i]);
           }
         }
         engine->DeclareInput(

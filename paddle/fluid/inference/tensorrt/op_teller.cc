@@ -24,6 +24,35 @@ struct SimpleOpTypeSetTeller : public Teller {
 #if IS_TRT_VERSION_GE(5130)
     teller_set.insert("relu6");
 #endif
+
+    /*
+        teller_set.insert("mul");
+        teller_set.insert("conv2d");
+        teller_set.insert("pool2d");
+        teller_set.insert("relu");
+        teller_set.insert("softmax");
+        teller_set.insert("sigmoid");
+        teller_set.insert("depthwise_conv2d");
+        teller_set.insert("batch_norm");
+        teller_set.insert("concat");
+        teller_set.insert("tanh");
+        teller_set.insert("pad");
+        teller_set.insert("elementwise_add");
+        teller_set.insert("elementwise_mul");
+        teller_set.insert("dropout");
+        teller_set.insert("prelu");
+        teller_set.insert("conv2d_transpose");
+        teller_set.insert("leaky_relu");
+        teller_set.insert("fc");
+        teller_set.insert("shuffle_channel");
+        teller_set.insert("swish");
+        teller_set.insert("split");
+        teller_set.insert("instance_norm");
+        teller_set.insert("gelu");
+        teller_set.insert("layer_norm");
+        teller_set.insert("multihead_matmul");
+    */
+    teller_set.insert("fused_embedding_eltwise_layernorm");
   }
 
   bool operator()(const std::string& op_type, const framework::OpDesc& desc,
@@ -40,33 +69,7 @@ struct SimpleOpTypeSetTeller : public Teller {
   std::unordered_set<std::string> int8_teller_set{
       {"mul", "conv2d", "pool2d", "relu", "depthwise_conv2d", "softmax",
        "batch_norm", "elementwise_add", "leaky_relu", "fc"}};
-  std::unordered_set<std::string> teller_set{{
-      "mul",
-      "conv2d",
-      "pool2d",
-      "relu",
-      "softmax",
-      "sigmoid",
-      "depthwise_conv2d",
-      "batch_norm",
-      "concat",
-      "tanh",
-      "pad",
-      "elementwise_add",
-      "elementwise_mul",
-      "dropout",
-      "prelu",
-      "conv2d_transpose",
-      "leaky_relu",
-      "fc",
-      "shuffle_channel",
-      "swish",
-      "split",
-      "instance_norm",
-      "gelu",
-      "layer_norm",
-      "multihead_matmul",
-  }};
+  std::unordered_set<std::string> teller_set;
 };
 
 bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc,
@@ -77,7 +80,6 @@ bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc,
            "/skip_quant_2/") ||
       desc.HasAttr("skip_quant"))
     return false;
-
   for (auto& teller : tellers_) {
     if (op_type == "pool2d" || op_type == "conv2d" ||
         op_type == "depthwise_conv2d" || op_type == "conv2d_transpose") {
