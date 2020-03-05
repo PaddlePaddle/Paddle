@@ -72,17 +72,21 @@ class TDMChildKernel : public framework::OpKernel<T> {
           "value.",
           node_nums, input_data[input_ids]);
 
-      bool has_child = (input_data[input_ids] == 0 ||
-                        tree_emb_data[input_data[input_ids] * length + 3] == 0)
-                           ? false
-                           : true;
+      bool has_child =
+          (input_data[input_ids] == 0 ||
+           tree_emb_data[static_cast<int>(input_data[input_ids]) * length +
+                         3] == 0)
+              ? false
+              : true;
 
       if (has_child) {
         for (int child_ids = 0; child_ids < child_nums; ++child_ids) {
           T child_id =
-              tree_emb_data[input_data[input_ids] * length + 3 + child_ids];
+              tree_emb_data[static_cast<int>(input_data[input_ids]) * length +
+                            3 + child_ids];
           child_vec.push_back(child_id);
-          T child_is_item = tree_emb_data[child_id * length] == 0 ? 0 : 1;
+          T child_is_item =
+              tree_emb_data[static_cast<int>(child_id) * length] == 0 ? 0 : 1;
           item_mask_vec.push_back(child_is_item);
         }
       } else {
