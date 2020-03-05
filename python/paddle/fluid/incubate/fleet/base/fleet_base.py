@@ -146,6 +146,41 @@ class Fleet(object):
         """
         return self._role_maker.is_server()
 
+    def split_files_by_size(self, files):
+        """
+        split files by file sizebefore distributed training,
+
+        Args:
+            files(list[list]): [file_size,file] list need to be read.
+
+        Returns:
+            list: files belongs to this worker.
+        """
+        files.sort(key = lambda x: x[0], reverse=False)
+        return_list = {}
+        sort_list = []
+        trainer_id = self.worker_index()
+        trainer_num = self.worker_num()
+        #init return list
+        for i in range(trainer_num):
+            cur_pair = files.pop()
+            return_list[i]=[cur_pair[1]]
+            sort_list.append([i,cur_pair[0]])
+            if len(files)==0:
+                break
+        #start greedy allocate
+        while (len(files)):
+            sort_list.sort(key = lambda x: x[1])
+            for i in range(trainer_num):
+                cur_pair = files.pop()
+                cur_trainer_id = sort_list[i][0]
+                sort_list[i][1] += cur_pair[0]
+                return_list[cur_trainer_id].append(cur_pair[1])
+                if len(files)==0:
+                    break
+    
+    return return_list[trainer_id], sort_list[trainer_id]
+    
     def split_files(self, files):
         """
         split files before distributed training,

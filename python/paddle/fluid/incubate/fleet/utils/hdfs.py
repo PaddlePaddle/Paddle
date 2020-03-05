@@ -314,6 +314,41 @@ class HDFSClient(object):
             _logger.info("HDFS mkdir path: {} successfully".format(hdfs_path))
             return True
 
+    def du(self, hdfs_path):
+        """
+        ls directory contents about HDFS hdfs_path
+
+        Args:
+            hdfs_path(str): Remote HDFS path will be ls.
+
+        Returns:
+            List: a contents list about [file_size, hdfs_path].
+        """
+        assert hdfs_path is not None
+
+        if not self.is_exist(hdfs_path):
+            return []
+
+        ls_commands = ['-ls', hdfs_path]
+        returncode, output, errors = self.__run_hdfs_cmd(
+            ls_commands, retry_times=6)
+
+        if returncode:
+            _logger.error("HDFS list path: {} failed".format(hdfs_path))
+            return [-1]
+        else:
+            _logger.info("HDFS list path: {} successfully".format(hdfs_path))
+
+            ret_lines = []
+            regex = re.compile('\s+')
+            out_lines = output.strip().split("\n")
+            for line in out_lines:
+                re_line = regex.split(line)
+                if len(re_line) == 8:
+                    size = float(re_line[4]) / 1024 / 1024 
+                    ret_lines.append([size, re_line[7]])
+            return ret_lines
+    
     def ls(self, hdfs_path):
         """
         ls directory contents about HDFS hdfs_path
