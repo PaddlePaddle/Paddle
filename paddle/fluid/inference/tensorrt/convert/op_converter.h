@@ -167,11 +167,28 @@ class OpConverter {
       PADDLE_ENFORCE_EQ(var->GetType(), FluidDT::VarType_Type_LOD_TENSOR,
                         "TensorRT engine only takes LoDTensor as input");
       auto var_shape = var->GetShape();
-
-      engine->DeclareInput(
-          input, FluidDataType2TRT(
-                     var->Proto()->type().lod_tensor().tensor().data_type()),
-          Vec2TRT_Dims(var_shape, input));
+      if (engine->with_dynamic_shape()) {
+        auto min_input_shape = engine->min_input_shape()[input];
+        auto max_input_shape = engine->max_input_shape()[input];
+        auto optim_input_shape = engine->optim_input_shape()[input];
+        size_t ranks = min_input_shape.size();
+        std::vector<int64_t> input_shape;
+        input_shape.push_back(-1);
+        for (size_t i = 1; i < ranks; i++) {
+          if (min_input_shape[i] != max_input_shape[i]) {
+            input_shape.push_back(-1);
+          } else {
+            input_shape.push_back(min_input_shape[i]);
+            // the i dimension should be same.
+            PADDLE_ENFORCE_EQ(min_input_shape[i], optim_input_shape[i]);
+          }
+        }
+      } else {
+        engine->DeclareInput(
+            input, FluidDataType2TRT(
+                       var->Proto()->type().lod_tensor().tensor().data_type()),
+            Vec2TRT_Dims(var_shape));
+      }
     }
     framework::proto::BlockDesc* block_proto = block_desc->Proto();
     ConvertBlock(*block_proto, parameters, scope, engine);
