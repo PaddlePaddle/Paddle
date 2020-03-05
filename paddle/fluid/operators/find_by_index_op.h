@@ -51,14 +51,14 @@ class FindByIndexKernel : public framework::OpKernel<T> {
     // int input_ids_num = input_tensor.numel();
     int index_ids_num = index_tensor.numel();
 
-    std::vector<int64_t> res{};
+    std::vector<T> res{};
 
-    auto *input_data = input_tensor.data<int64_t>();
+    auto *input_data = input_tensor.data<T>();
     auto *index_data = index_tensor.data<int64_t>();
     for (int i = 0; i < index_ids_num; i++) {
       int b = floor(i / batch_size);
       int v_i = b * batch_size + static_cast<int>(index_data[i]);
-      int64_t v = input_data[v_i];
+      T v = input_data[v_i];
       res.push_back(v);
     }
 
@@ -66,9 +66,9 @@ class FindByIndexKernel : public framework::OpKernel<T> {
     auto *out_tensor = out_var->GetMutable<framework::LoDTensor>();
     auto ddim = framework::make_ddim({batch_size, index_length});
     out_tensor->Resize(ddim);
-    auto *out_data = out_tensor->mutable_data<int64_t>(ctx.GetPlace());
+    auto *out_data = out_tensor->mutable_data<T>(ctx.GetPlace());
 
-    memcpy(out_data, &res[0], sizeof(int64_t) * index_ids_num);
+    memcpy(out_data, &res[0], sizeof(T) * index_ids_num);
   }
 };
 
