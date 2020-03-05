@@ -267,15 +267,20 @@ class BasicApiTransformer(gast.NodeTransformer):
     def _update_feed_dict(self, node):
         assert isinstance(node, gast.Call)
 
-        var_name = None
+        value_node = None
         for kw in node.keywords:
             if kw.arg == 'value':
-                var_name = kw.value.id  # eg: 'a' for "value=a "
-        if not var_name:
-            var_name = node.args[0].id
+                value_node = kw.value  # eg: `a` for "value=a "
+        if not value_node:
+            value_node = node.args[0]
 
-        feed_var_name = unique_name.generate(var_name)  # eg: "a_0"
-        self.feed_name_to_arg_id[feed_var_name] = var_name  # eg: "a_0" : "a"
+        if not isinstance(value_node, gast.Name):
+            return
+        else:
+            var_name = value_node.id
+            feed_var_name = unique_name.generate(var_name)  # eg: "a_0"
+            self.feed_name_to_arg_id[
+                feed_var_name] = var_name  # eg: "a_0" : "a"
 
     def get_feed_name_to_arg_id(self):
         return self.feed_name_to_arg_id
