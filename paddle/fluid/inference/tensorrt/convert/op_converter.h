@@ -154,7 +154,7 @@ class OpConverter {
         engine->DeclareInput(
             input, FluidDataType2TRT(
                        var->Proto()->type().lod_tensor().tensor().data_type()),
-            Vec2TRT_Dims(var_shape));
+            Vec2TRT_Dims(var_shape, input));
       }
     }
     framework::proto::BlockDesc* block_proto = block_desc->Proto();
