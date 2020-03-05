@@ -132,7 +132,7 @@ class FusionGroupPassTestFP16(FusionGroupPassTest):
             tmp_4 = layers.relu(tmp_2 + tmp_3)
             tmp_5 = layers.cast(tmp_4, dtype=dtype)
 
-        self.fetch_list = [tmp_5]
+        self.fetch_list = [tmp_0, tmp_1, tmp_2, tmp_3, tmp_4, tmp_5]
         self.num_fused_ops = 2
 
 
@@ -155,11 +155,17 @@ class FusionGroupPassCastTest(FusionGroupPassTest):
             self.feed_vars = self._prepare_feed_vars([2, 2], dtype, 2)
 
             tmp_0 = layers.elementwise_add(self.feed_vars[0], self.feed_vars[1])
-            tmp_1 = layers.cast(tmp_0, dtype="float16")
+            tmp_1 = layers.cast(tmp_0, dtype="double")
             tmp_2 = layers.cast(tmp_1, dtype="float32")
 
-        self.fetch_list = [tmp_2]
+        self.fetch_list = [tmp_0, tmp_1, tmp_2]
         self.num_fused_ops = 1
+
+    def setUp(self):
+        self.build_program("float64")
+        self.feeds = self._feed_random_data(self.feed_vars)
+        self.pass_names = "fusion_group_pass"
+        self.fused_op_type = "fusion_group"
 
 
 if __name__ == "__main__":

@@ -64,7 +64,6 @@ class SubGraph {
   }
 
   int GetType() const { return type_; }
-  std::string GetDataType() const { return data_type_; }
 
   void SetFuncName(std::string func_name) { func_name_ = func_name; }
   std::string GetFuncName() const { return func_name_; }
