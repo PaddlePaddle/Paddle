@@ -319,9 +319,9 @@ void SetEvent(bool merge_thread, Event analyze_event, size_t *max_name_width,
 
       if (event_idx->find(event_name) == event_idx->end()) {
         event_idx->insert({event_name, event_items->size()});
-        EventItem event_item = {event_name, 1,          event_time,
-                                event_time, event_time, event_time,
-                                cpu_time,   gpu_time,   0.};
+        EventItem event_item = {event_name, 1,          event_time, event_time,
+                                event_time, event_time, cpu_time,   gpu_time,
+                                0.,         rit->role()};
         event_items->push_back(event_item);
       } else {
         int index = event_idx->at(event_name);
@@ -350,8 +350,10 @@ void SetEvent(bool merge_thread, Event analyze_event, size_t *max_name_width,
 
 void ComputeOverhead(const std::multimap<std::string, EventItem> &sub_child_map,
                      OverHead *overhead) {
-  EventItem memcpy_async = {"GpuMemcpyAsync", 0, 0., 0., 0., 0., 0., 0., 0.0f};
-  EventItem memcpy_sync = {"GpuMemcpySync", 0, 0., 0., 0., 0., 0., 0., 0.0f};
+  EventItem memcpy_async = {
+      "GpuMemcpyAsync", 0, 0., 0., 0., 0., 0., 0., 0.0f, EventRole::kOrdinary};
+  EventItem memcpy_sync = {"GpuMemcpySync",     0, 0., 0., 0., 0., 0., 0., 0.0f,
+                           EventRole::kOrdinary};
   for (auto it = sub_child_map.begin(); it != sub_child_map.end(); it++) {
     if (it->second.name.find("compute") != std::string::npos) {
       overhead->compute_ratio += it->second.ratio;
@@ -374,6 +376,29 @@ void ComputeOverhead(const std::multimap<std::string, EventItem> &sub_child_map,
   overhead->sub_memcpy_items = {memcpy_async, memcpy_sync};
 }
 
+std::string FindOrdinaryParent(
+    const std::multimap<std::string, EventItem> &sub_child_map,
+    std::string name) {
+  bool find_name = false;
+  std::string parent = name;
+  EventRole role;
+  for (auto it = sub_child_map.begin(); it != sub_child_map.end(); it++) {
+    if (it->second.name == name) {
+      role = it->second.role;
+      parent = it->first;
+      find_name = true;
+      break;
+    }
+  }
+  if (find_name && role == EventRole::kOrdinary) {
+    return name;
+  } else if (find_name && role != EventRole::kOrdinary) {
+    return FindOrdinaryParent(sub_child_map, parent);
+  } else {
+    return parent;
+  }
+}
+
 // When TracerOption is KDefault, OpDetail will be recorded but only default
 // profile result will be printed.
 // GpuMemcpy should be printed in kDefault setting, however it offten occurs
@@ -391,11 +416,7 @@ void GetChildMap(const std::multimap<std::string, EventItem> &sub_child_map,
   } else {
     for (auto it = sub_child_map.begin(); it != sub_child_map.end(); it++) {
       if (it->second.name.find("GpuMemcpy") != std::string::npos) {
-        std::string parent_name = it->first;
-        auto left_pos = it->first.find("/");
-        if (left_pos != std::string::npos) {
-          parent_name = it->first.substr(0, left_pos);
-        }
+        std::string parent_name = FindOrdinaryParent(sub_child_map, it->first);
         auto item = it->second;
         auto right_pos = item.name.rfind("/");
         if (right_pos != std::string::npos) {
@@ -404,6 +425,9 @@ void GetChildMap(const std::multimap<std::string, EventItem> &sub_child_map,
           item.name = parent_name + "/" + child_name;
         }
         child_map->insert(std::pair<std::string, EventItem>(parent_name, item));
+      } else if (it->second.role == EventRole::kOrdinary) {
+        child_map->insert(
+            std::pair<std::string, EventItem>(it->first, it->second));
       }
     }
   }
