@@ -52,9 +52,9 @@ def clean(pull_id):
     changed = []
 
     for file in get_files(pull_id):
-        changed.append('/paddle/build/{}.gcda'.format(file))
+        changed.append('/workspace/Paddle/build/{}.gcda'.format(file))
 
-    for parent, dirs, files in os.walk('/paddle/build/'):
+    for parent, dirs, files in os.walk('/workspace/Paddle/build/'):
         for gcda in files:
             if gcda.endswith('.gcda'):
                 trimmed = parent

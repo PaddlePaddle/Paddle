@@ -40,7 +40,7 @@ def get_files(args):
     pull = get_pull(args.pull_id)
 
     for file in pull.get_files():
-        print('/paddle/{}'.format(file.filename))
+        print('/workspace/Paddle/{}'.format(file.filename))
 
 
 def diff(args):
