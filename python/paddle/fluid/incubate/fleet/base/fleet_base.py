@@ -193,7 +193,7 @@ class Fleet(object):
         Returns:
             None
         """
-        self._executor = Executor(fluid.CPUPlace())
+        self._executor = Executor(CPUPlace())
 
         if role_maker and not isinstance(role_maker, RoleMakerBase):
             raise TypeError("role_maker must be an instance of RoleMakerBase")
