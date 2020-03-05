@@ -29,7 +29,9 @@ def dyfunc_tensor_shape_1(x):
 
 def dyfunc_tensor_shape_2(x):
     x = fluid.dygraph.to_variable(x)
-    res = fluid.layers.reshape(x, x.shape)
+    shape = x.shape
+    shape2 = shape
+    res = fluid.layers.reshape(x, shape2)
     return res
 
 
