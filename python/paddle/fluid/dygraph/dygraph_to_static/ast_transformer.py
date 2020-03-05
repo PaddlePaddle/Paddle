@@ -46,7 +46,7 @@ class IfElseTransformer(gast.NodeTransformer):
             wrapper_root)
         self.wrapper_root = wrapper_root
         self.root = wrapper_root.node
-        self.new_func_nodes = []
+        self.new_func_nodes = {}
 
     def ast_visit(self):
         """
@@ -63,10 +63,10 @@ class IfElseTransformer(gast.NodeTransformer):
             pred_node = node.test
             true_func_node, false_func_node, return_name_ids = transform_if_else(
                 node, self.root)
-            self.new_func_nodes += [true_func_node, false_func_node]
             # create layers.cond
             new_node = create_cond_node(return_name_ids, pred_node,
                                         true_func_node, false_func_node)
+            self.new_func_nodes[new_node] = [true_func_node, false_func_node]
             return new_node
         else:
             return node
@@ -86,10 +86,28 @@ class IfElseTransformer(gast.NodeTransformer):
         It can be used to add the created `true_fn/false_fn` in front of
         the node.body before they are called in cond layer.
         """
-        assert hasattr(node, 'body')
-        # add new ast.funcDef of `if/else`
-        if self.new_func_nodes:
-            node.body = self.new_func_nodes + node.body
+        self._insert_func_nodes(node)
+
+    def _insert_func_nodes(self, parent_node):
+        """
+        Defined `true_func` and `false_func` will be inserted in front of corresponding
+        `layers.cond` statement instead of inserting them all into body of parent node.
+        Because private variables of class or other external scope will be modified.
+        For example, `self.var_dict["key"]`. In this case, nested structure of newly
+        defined functions is easier to understand.
+        """
+        if not (self.new_func_nodes and hasattr(parent_node, 'body')):
+            return
+        idx = len(parent_node.body) - 1
+        while idx >= 0:
+            child_node = parent_node.body[idx]
+            if child_node in self.new_func_nodes:
+                parent_node.body[idx:idx] = self.new_func_nodes[child_node]
+                idx = idx + len(self.new_func_nodes[child_node]) - 1
+                del self.new_func_nodes[child_node]
+            else:
+                self._insert_func_nodes(child_node)
+                idx = idx - 1
 
     def get_new_func_nodes(self):
         return self.new_func_nodes

@@ -290,7 +290,7 @@ OpBase::OpBase(size_t id, const std::string& type, const NameVarBaseMap& ins,
 
   // Step 1: Run forward
   if (info.Checker() != nullptr) {
-    info.Checker()->Check(&attrs_);
+    info.Checker()->Check(&attrs_, true);
   }
 
   op_ = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
@@ -301,7 +301,7 @@ OpBase::OpBase(size_t id, const std::string& type, const NameVarBaseMap& ins,
 void OpBase::CreateOperatorBase() {
   const auto& info = framework::OpInfoMap::Instance().Get(type_);
   if (info.Checker() != nullptr) {
-    info.Checker()->Check(&attrs_);
+    info.Checker()->Check(&attrs_, true);
   }
   op_ = framework::OpRegistry::CreateOp(type_, {}, {}, {}, false);
 }
