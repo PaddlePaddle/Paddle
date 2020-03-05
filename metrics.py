@@ -16,13 +16,14 @@ from __future__ import absolute_import
 
 import six
 import abc
+import numpy as np
 
 import logging
 FORMAT = '%(asctime)s-%(levelname)s: %(message)s'
 logging.basicConfig(level=logging.INFO, format=FORMAT)
 logger = logging.getLogger(__name__)
 
-__all__ = ['Metric']
+__all__ = ['Metric', 'Accuracy']
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -57,4 +58,32 @@ class Metric(object):
         Accumulates statistics, computes and returns the metric value
         """
         raise NotImplementedError("function 'accumulate' not implemented in {}.".format(self.__class__.__name__))
+
+
+class Accuracy(Metric):
+    """
+    Encapsulates accuracy metric logic
+    """
+
+    def __init__(self, topk=(1, ), *args, **kwargs):
+       super(Accuracy, self).__init__(*args, **kwargs) 
+       self.topk = topk
+       self.maxk = max(topk)
+       self.reset()
+
+    def update(self, pred, label, *args, **kwargs):
+        pred = np.argsort(pred[0])[:, ::-1][:, :self.maxk]
+        corr = (pred == np.repeat(label[0], self.maxk, 1))
+        self.correct = np.append(self.correct, corr, axis=0)
+
+    def reset(self):
+       self.correct = np.empty((0, self.maxk), dtype="int32")
+
+    def accumulate(self):
+        res = []
+        num_samples = self.correct.shape[0]
+        for k in self.topk:
+            correct_k = self.correct[:, :k].sum()
+            res.append(round(100.0 * correct_k / num_samples, 2))
+        return res
 

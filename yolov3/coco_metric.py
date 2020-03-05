@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-
 import sys
 import json
 from pycocotools.cocoeval import COCOeval
 from pycocotools.coco import COCO
 
-from .metric import Metric
+from metrics import Metric
 
 import logging
 FORMAT = '%(asctime)s-%(levelname)s: %(message)s'
@@ -32,6 +30,7 @@ __all__ = ['COCOMetric']
 OUTFILE = './bbox.json'
 
 
+# considered to change to a callback later
 class COCOMetric(Metric):
     """
     Metrci for MS-COCO dataset, only support update with batch

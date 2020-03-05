@@ -27,6 +27,7 @@ from paddle.fluid.optimizer import Momentum
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
 
 from model import Model, CrossEntropy
+from metrics import Accuracy
 
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
@@ -143,7 +144,7 @@ def main():
         model = MNIST()
         optim = Momentum(learning_rate=FLAGS.lr, momentum=.9,
                          parameter_list=model.parameters())
-        model.prepare(optim, CrossEntropy())
+        model.prepare(optim, CrossEntropy(), metrics=Accuracy(topk=(1, 2)))
         if FLAGS.resume is not None:
             model.load(FLAGS.resume)
 
@@ -163,6 +164,10 @@ def main():
                 if idx % 10 == 0:
                     print("{:04d}: loss {:0.3f} top1: {:0.3f}%".format(
                         idx, train_loss / (idx + 1), train_acc / (idx + 1)))
+            for metric in model._metrics:
+                res = metric.accumulate()
+                print("train epoch {:03d}: top1: {:0.3f}%, top2: {:0.3f}".format(e, res[0], res[1]))
+                metric.reset()
 
             print("======== eval epoch {} ========".format(e))
             for idx, batch in enumerate(val_loader()):
@@ -175,6 +180,10 @@ def main():
                 if idx % 10 == 0:
                     print("{:04d}: loss {:0.3f} top1: {:0.3f}%".format(
                         idx, val_loss / (idx + 1), val_acc / (idx + 1)))
+            for metric in model._metrics:
+                res = metric.accumulate()
+                print("eval epoch {:03d}: top1: {:0.3f}%, top2: {:0.3f}".format(e, res[0], res[1]))
+                metric.reset()
             model.save('mnist_checkpoints/{:02d}'.format(e))
 
 

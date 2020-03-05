@@ -35,7 +35,6 @@ from paddle.fluid.regularizer import L2Decay
 
 from model import Model, Loss, shape_hints
 from resnet import ResNet, ConvBNLayer
-from metrics.coco import COCOMetric
 
 import logging
 FORMAT = '%(asctime)s-%(levelname)s: %(message)s'
@@ -174,7 +173,7 @@ class YOLOv3(Model):
                 route = self.route_blocks[idx](route)
                 route = fluid.layers.resize_nearest(route, scale=2)
 
-            if self.mode != 'train':
+            if self.mode == 'test':
                 anchor_mask = self.anchor_masks[idx]
                 mask_anchors = []
                 for m in anchor_mask:
@@ -195,10 +194,10 @@ class YOLOv3(Model):
 
             downsample //= 2
 
-        if self.mode == 'train':
-            return [outputs]
+        if self.mode != 'test':
+            return outputs
 
-        return [outputs, img_id, fluid.layers.multiclass_nms(
+        return [img_id, fluid.layers.multiclass_nms(
             bboxes=fluid.layers.concat(boxes, axis=1),
             scores=fluid.layers.concat(scores, axis=2),
             score_threshold=self.valid_thresh,
@@ -533,12 +532,15 @@ def main():
         anno_path = os.path.join(FLAGS.data, 'annotations', 'instances_val2017.json')
         model.prepare(optim,
                       YoloLoss(num_classes=NUM_CLASSES),
-                      metrics=COCOMetric(anno_path, with_background=False))
+                      # For YOLOv3, output variable in train/eval is different,
+                      # which is not supported by metric, add by callback later?
+                      # metrics=COCOMetric(anno_path, with_background=False)
+                      )
 
         for e in range(epoch):
-            # logger.info("======== train epoch {} ========".format(e))
-            # run(model, train_loader)
-            # model.save('yolo_checkpoints/{:02d}'.format(e))
+            logger.info("======== train epoch {} ========".format(e))
+            run(model, train_loader)
+            model.save('yolo_checkpoints/{:02d}'.format(e))
             logger.info("======== eval epoch {} ========".format(e))
             run(model, val_loader, mode='eval')
             # should be called in fit()

@@ -26,7 +26,7 @@ from paddle.fluid.framework import in_dygraph_mode, Variable
 from paddle.fluid.executor import global_scope
 from paddle.fluid.io import is_belong_to_optimizer
 from paddle.fluid.dygraph.base import to_variable
-from metrics.metric import Metric
+from metrics import Metric
 
 __all__ = ['shape_hints', 'Model', 'Loss', 'CrossEntropy']
 
@@ -297,6 +297,8 @@ class StaticGraphAdapter(object):
                 metric.update(outputs, labels)
             return outputs, losses
         else: # train
+            for metric in self.model._metrics:
+                metric.update(outputs, labels)
             return outputs, losses
 
     def _make_program(self, inputs):
@@ -311,7 +313,7 @@ class StaticGraphAdapter(object):
             if self.mode != 'test':
                 label_vars = self._infer_label_vars(outputs)
                 self._label_vars[self.mode] = label_vars
-                losses = self.model._loss_function(outputs[0], label_vars)
+                losses = self.model._loss_function(outputs, label_vars)
                 if self.mode == 'train':
                     self._loss_endpoint = fluid.layers.sum(losses)
                     self.model._optimizer.minimize(self._loss_endpoint)
@@ -319,7 +321,7 @@ class StaticGraphAdapter(object):
             prog = prog.clone(for_test=True)
         self._progs[self.mode] = prog
         self._endpoints[self.mode] = {
-            "output": outputs[1:],
+            "output": outputs,
             "label": label_vars,
             "loss": losses,
         }
@@ -419,12 +421,14 @@ class DynamicGraphAdapter(object):
         self.mode = 'train'
         inputs = to_list(inputs)
         labels = to_list(labels)
-        outputs = self.model.forward(*[to_variable(x) for x in inputs])[0]
+        outputs = self.model.forward(*[to_variable(x) for x in inputs])
         losses = self.model._loss_function(outputs, labels)
         final_loss = fluid.layers.sum(losses)
         final_loss.backward()
         self.model._optimizer.minimize(final_loss)
         self.model.clear_gradients()
+        for metric in self.model._metrics:
+            metric.update([to_numpy(o) for o in to_list(outputs)], labels)
         return [to_numpy(o) for o in to_list(outputs)], \
             [to_numpy(l) for l in losses]
 
@@ -436,18 +440,18 @@ class DynamicGraphAdapter(object):
         inputs = to_list(inputs)
         labels = to_list(labels)
         outputs = self.model.forward(*[to_variable(x) for x in inputs])
-        losses = self.model._loss_function(outputs[0], labels)
+        losses = self.model._loss_function(outputs, labels)
         for metric in self.model._metrics:
-            metric.update([to_numpy(o) for o in outputs[1:]], labels)
-        return [to_numpy(o) for o in to_list(outputs[0])], \
+            metric.update([to_numpy(o) for o in to_list(outputs)], labels)
+        return [to_numpy(o) for o in to_list(outputs)], \
             [to_numpy(l) for l in losses]
 
     def test(self, inputs, device='CPU', device_ids=None):
         super(Model, self.model).eval()
         self.mode = 'test'
         inputs = [to_variable(x) for x in to_list(inputs)]
-        outputs = self.model.forward(*inputs)[1:]
-        return [to_numpy(o) for o in to_list(outputs[1:])]
+        outputs = self.model.forward(*inputs)
+        return [to_numpy(o) for o in to_list(outputs)]
 
     def parameters(self, *args, **kwargs):
         return super(Model, self.model).parameters(*args, **kwargs)
