@@ -275,8 +275,8 @@ std::function<bool(const EventItem &, const EventItem &)> SetSortedFunc(
   return sorted_func;
 }
 
-void SetEvent(bool merge_thread, Event analyze_event, size_t *max_name_width,
-              std::list<Event> *pushed_events,
+void SetEvent(bool merge_thread, const Event &analyze_event,
+              size_t *max_name_width, std::list<Event> *pushed_events,
               std::vector<EventItem> *event_items,
               std::unordered_map<std::string, int> *event_idx) {
   if (analyze_event.type() == EventType::kPushRange) {
@@ -313,8 +313,12 @@ void SetEvent(bool merge_thread, Event analyze_event, size_t *max_name_width,
       }
       auto print_name_size = event_name.size();
       int found_pos = 0;
-      if ((found_pos = FindNthReversePos(event_name, '/', 2)) != -1)
+      if (rit->role() == EventRole::kInnerOp &&
+          (found_pos = FindNthReversePos(event_name, '/', 2)) != -1) {
         print_name_size = event_name.size() - (found_pos + 1);
+      } else if ((found_pos = FindNthReversePos(event_name, '/', 1)) != -1) {
+        print_name_size = event_name.size() - (found_pos + 1);
+      }
       *max_name_width = std::max(*max_name_width, print_name_size);
 
       if (event_idx->find(event_name) == event_idx->end()) {
@@ -535,7 +539,7 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
       int remove_len = 0;
       int Nth = 1;
       int found_pos = 0;
-      if (child_table.empty() && print_depth > 1) Nth = 2;
+      if (event_item.role == EventRole::kInnerOp) Nth = 2;
       found_pos = FindNthReversePos(event_item.name, '/', Nth);
       if (found_pos != -1) remove_len = found_pos + 1;
 
