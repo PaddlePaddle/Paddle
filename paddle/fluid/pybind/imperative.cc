@@ -393,6 +393,91 @@ void BindImperative(py::module *m_ptr) {
            py::arg("zero_copy") = false, py::arg("name") = "")
       .def("__init__", &InitVarBaseFromNumpyWithArgDefault, py::arg("value"))
       .def("__init__", &InitVarBaseFromNumpyWithKwargs)
+      .def("__getitem__",
+           [](imperative::VarBase &self, py::handle _index) {
+             // We allow indexing by integers, slices, ellipsis, None, and
+             // tuples of those types.
+             std::vector<int> decrease_axis, slice_axis, slice_start, slice_end,
+                 reverse_axis;
+             // wrap to tuple
+             PyObject *index = !PyTuple_Check(_index.ptr())
+                                   ? PyTuple_Pack(1, _index.ptr())
+                                   : _index.ptr();
+             int ndim = PyTuple_GET_SIZE(index);
+             int max_int = PyInt_GetMax();
+             for (int dim = 0; dim < ndim; ++dim) {
+               PyObject *slice_item = PyTuple_GetItem(index, dim);
+               if (!PySlice_Check(slice_item)) {
+                 // integer
+                 int slice_item_int = PyInt_AsLong(slice_item);
+                 decrease_axis.push_back(dim);
+                 slice_axis.push_back(dim);
+                 slice_start.push_back(slice_item_int);
+                 slice_end.push_back(slice_item_int != -1 ? slice_item_int + 1
+                                                          : max_int);
+               } else {
+                 auto _slice_item =
+                     reinterpret_cast<PySliceObject *>(slice_item);
+                 Py_ssize_t start, end, step;
+                 PySlice_GetIndices(_slice_item, max_int, &start, &end, &step);
+                 if (_slice_item->step == Py_None) step = 1;
+                 if (step == -1) {
+                   reverse_axis.push_back(dim);
+                 }
+                 if (_slice_item->start == Py_None &&
+                     _slice_item->stop == Py_None)
+                   continue;
+                 if (_slice_item->start == Py_None) start = 0;
+                 if (_slice_item->stop == Py_None) end = max_int;
+
+                 slice_axis.push_back(dim);
+                 slice_start.push_back(start);
+                 slice_end.push_back(end);
+               }
+             }
+             if (!PyTuple_Check(_index.ptr())) Py_DecRef(index);
+
+             const auto &tracer = imperative::GetCurrentTracer();
+             std::shared_ptr<imperative::VarBase> out(&self);
+             if (!slice_axis.empty()) {
+               imperative::NameVarBaseMap ins = {{"Input", {out}}};
+               framework::AttributeMap attrs = {
+                   {"axes", slice_axis},
+                   {"starts", slice_start},
+                   {"ends", slice_end},
+                   {"decrease_axis", decrease_axis}};
+               out = std::shared_ptr<imperative::VarBase>(
+                   new imperative::VarBase(tracer->GenerateUniqueName()));
+               imperative::NameVarBaseMap outs = {{"Out", {out}}};
+               tracer->TraceOp("slice", std::move(ins), std::move(outs),
+                               std::move(attrs));
+             }
+             if (!reverse_axis.empty()) {
+               imperative::NameVarBaseMap ins = {{"X", {out}}};
+               framework::AttributeMap attrs = {{"axes", reverse_axis}};
+               out = std::shared_ptr<imperative::VarBase>(
+                   new imperative::VarBase(tracer->GenerateUniqueName()));
+               imperative::NameVarBaseMap outs = {{"Out", {out}}};
+               tracer->TraceOp("slice", std::move(ins), std::move(outs),
+                               std::move(attrs));
+             }
+             return out;
+
+             //               // handle simple cases: None, Ellipsis, Integer,
+             //               Slice
+             //               if (index == Py_None) {
+             ////                 return wrap(self_.unsqueeze(0));
+             //               } else if (index == Py_Ellipsis) {
+             ////                 return wrap(at::alias(self_));
+             //               } else if (PyNumber_Check(index)) {
+             ////                 return wrap(applySelect(self_, 0, index));
+             //               } else if (PySlice_Check(index)) {
+             ////                 return wrap(applySlice(self_, 0, index,
+             /// true));
+             //               } else {
+             //
+             //               }
+           })
       .def("numpy",
            [](imperative::VarBase &self) -> py::array {
              const auto &tensor =
