@@ -43,7 +43,7 @@ class TrainerFactory(object):
     def _create_trainer(self, opt_info=None):
         trainer = None
         device_worker = None
-        if opt_info == None:
+        if not opt_info:
             # default is MultiTrainer + Hogwild
             trainer = MultiTrainer()
             device_worker = Hogwild()

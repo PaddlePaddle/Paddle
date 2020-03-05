@@ -876,6 +876,12 @@ def _append_backward_ops_(block,
         grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
             op.desc, cpt.to_text(no_grad_dict[block.idx]), grad_sub_block_list)
 
+        # Set device for grad_op according to forward Op
+        device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
+        op_device = op.desc.attr(device_attr_name)
+        for op_desc in grad_op_desc:
+            op_desc._set_attr(device_attr_name, op_device)
+
         # If input_grad_names_set is not None, extend grad_op_descs only when
         # any input grad in outputs of previous grad ops.
         # But this strategy is not suited for while op for some control flow,

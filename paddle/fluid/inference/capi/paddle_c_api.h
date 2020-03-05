@@ -117,8 +117,8 @@ PADDLE_CAPI_EXPORT extern PD_DataType PD_GetPaddleTensorDType(
 PADDLE_CAPI_EXPORT extern PD_PaddleBuf* PD_GetPaddleTensorData(
     const PD_Tensor* tensor);
 
-PADDLE_CAPI_EXPORT extern int* PD_GetPaddleTensorShape(const PD_Tensor* tensor,
-                                                       int** size);
+PADDLE_CAPI_EXPORT extern const int* PD_GetPaddleTensorShape(
+    const PD_Tensor* tensor, int* size);
 
 // AnalysisPredictor
 PADDLE_CAPI_EXPORT extern bool PD_PredictorRun(const PD_AnalysisConfig* config,
@@ -262,22 +262,32 @@ PADDLE_CAPI_EXPORT extern bool PD_ProfileEnabled(
 PADDLE_CAPI_EXPORT extern void PD_SetInValid(PD_AnalysisConfig* config);
 
 PADDLE_CAPI_EXPORT extern bool PD_IsValid(const PD_AnalysisConfig* config);
+
 PADDLE_CAPI_EXPORT extern void PD_DisableGlogInfo(PD_AnalysisConfig* config);
+
 PADDLE_CAPI_EXPORT extern void PD_DeletePass(PD_AnalysisConfig* config,
                                              char* pass_name);
 
 PADDLE_CAPI_EXPORT extern PD_Predictor* PD_NewPredictor(
     const PD_AnalysisConfig* config);
+
 PADDLE_CAPI_EXPORT extern void PD_DeletePredictor(PD_Predictor* predictor);
+
 PADDLE_CAPI_EXPORT extern int PD_GetInputNum(const PD_Predictor*);
+
 PADDLE_CAPI_EXPORT extern int PD_GetOutputNum(const PD_Predictor*);
+
 PADDLE_CAPI_EXPORT extern const char* PD_GetInputName(const PD_Predictor*, int);
+
 PADDLE_CAPI_EXPORT extern const char* PD_GetOutputName(const PD_Predictor*,
                                                        int);
+
 PADDLE_CAPI_EXPORT extern void PD_SetZeroCopyInput(
     PD_Predictor* predictor, const PD_ZeroCopyTensor* tensor);
+
 PADDLE_CAPI_EXPORT extern void PD_GetZeroCopyOutput(PD_Predictor* predictor,
                                                     PD_ZeroCopyTensor* tensor);
+
 PADDLE_CAPI_EXPORT extern void PD_ZeroCopyRun(PD_Predictor* predictor);
 
 #ifdef __cplusplus

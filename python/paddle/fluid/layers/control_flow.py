@@ -18,7 +18,7 @@ from ..wrapped_decorator import signature_safe_contextmanager
 from .layer_function_generator import autodoc, templatedoc
 from .tensor import assign, cast, fill_constant
 from .. import core
-from ..framework import Program, Variable, Operator
+from ..framework import Program, Variable, Operator, in_dygraph_mode
 from ..layer_helper import LayerHelper, unique_name
 from .nn import logical_and, logical_not, logical_or
 from .utils import assert_same_structure, map_structure
@@ -998,6 +998,20 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         raise TypeError(
             "the shape of the variable returned by cond should be [],"
             "but given shape as {0}.".format(list(pre_cond.shape)))
+
+    if in_dygraph_mode():
+        now_cond = pre_cond.numpy()[0]
+        while (now_cond):
+            output_vars = body(*loop_vars)
+            if not isinstance(output_vars, (list, tuple)):
+                output_vars = [output_vars]
+            if len(output_vars) != len(loop_vars):
+                raise ValueError(
+                    "body in while_loop should return the same arity "
+                    "(length and structure) and types as loop_vars")
+            now_cond = cond(*output_vars).numpy()[0]
+            loop_vars = output_vars
+        return loop_vars
 
     while_loop_block = While(pre_cond, is_test, name)
     with while_loop_block.block():
@@ -2021,13 +2035,35 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
             #           [ True  True  True]]
 
     """
+    if in_dygraph_mode():
+        assert isinstance(pred, Variable), "The pred in cond must be Variable"
+        assert pred.numpy().size == 1, "condition input's numel should be 1"
+        pred = pred.numpy()[0]
+        if pred:
+            if true_fn is not None:
+                if not callable(true_fn):
+                    raise TypeError(
+                        "The true_fn in cond must be callable, but received {}".
+                        format(type(true_fn).__name__))
+                return true_fn()
+        else:
+            if false_fn is not None:
+                if not callable(false_fn):
+                    raise TypeError(
+                        "The false_fn in cond must be callable, but received {}".
+                        format(type(false_fn).__name__))
+                return false_fn()
+        return None
+
     helper = LayerHelper('cond', **locals())
     true_output = None
     false_output = None
     copy_to_parent_func = lambda var: copy_var_to_parent_block(var, helper)
     if true_fn is not None:
         if not callable(true_fn):
-            raise TypeError("The true_fn in cond must be callable")
+            raise TypeError(
+                "The true_fn in cond must be callable, but received {}".format(
+                    type(true_fn).__name__))
         true_cond_block = ConditionalBlock([pred], is_scalar_condition=True)
         with true_cond_block.block():
             origin_true_output = true_fn()
@@ -2036,7 +2072,9 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
                                             origin_true_output)
     if false_fn is not None:
         if not callable(false_fn):
-            raise TypeError("The false_fn in cond must be callable")
+            raise TypeError(
+                "The false_fn in cond must be callable, but received {}".format(
+                    type(false_fn).__name__))
         false_cond_block = ConditionalBlock(
             [logical_not(pred)], is_scalar_condition=True)
         with false_cond_block.block():

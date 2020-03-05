@@ -138,5 +138,18 @@ class FusionGroupPassTestFP16(FusionGroupPassTest):
         self.num_fused_ops = 1
 
 
+class FusionGroupPassSumTest(FusionGroupPassTest):
+    def build_program(self, dtype):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            self.feed_vars = self._prepare_feed_vars([32, 128], dtype, 5)
+
+            tmp_0 = layers.elementwise_add(self.feed_vars[0], self.feed_vars[1])
+            tmp_1 = layers.sum([tmp_0, self.feed_vars[2], self.feed_vars[3]])
+            tmp_2 = layers.sum([tmp_1, self.feed_vars[4]])
+
+        self.fetch_list = [tmp_0, tmp_1]
+        self.num_fused_ops = 1
+
+
 if __name__ == "__main__":
     unittest.main()

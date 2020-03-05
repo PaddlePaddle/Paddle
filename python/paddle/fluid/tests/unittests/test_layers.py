@@ -1393,6 +1393,41 @@ class TestLayer(LayerTest):
 
         self.assertTrue(np.allclose(static_ret, dy_ret_rlt))
 
+    def test_while_loop(self):
+        with self.static_graph():
+            i = layers.fill_constant(shape=[1], dtype='int64', value=0)
+            ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
+
+            def cond(i):
+                return layers.less_than(i, ten)
+
+            def body(i):
+                return i + 1
+
+            out = layers.while_loop(cond, body, [i])
+            static_ret = self.get_static_graph_result(feed={}, fetch_list=out)
+
+        with self.dynamic_graph():
+            i = layers.fill_constant(shape=[1], dtype='int64', value=0)
+            ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
+
+            def cond(i):
+                return layers.less_than(i, ten)
+
+            def body(i):
+                return i + 1
+
+            dy_ret = layers.while_loop(cond, body, [i])
+            with self.assertRaises(ValueError):
+                j = layers.fill_constant(shape=[1], dtype='int64', value=0)
+
+                def body2(i):
+                    return i + 1, i + 2
+
+                layers.while_loop(cond, body2, [j])
+
+        self.assertTrue(np.array_equal(static_ret[0], dy_ret[0].numpy()))
+
     def test_compare(self):
         value_a = np.arange(3)
         value_b = np.arange(3)
@@ -1491,6 +1526,147 @@ class TestLayer(LayerTest):
 
             for i in range(len(static_ret5)):
                 self.assertTrue(dcond5.numpy()[i] == static_ret5[i])
+
+    def test_cond(self):
+        def less_than_branch(a, b):
+            return fluid.layers.elementwise_add(a, b)
+
+        def greater_equal_branch(a, b):
+            return fluid.layers.elementwise_sub(a, b)
+
+        with self.static_graph():
+            a = fluid.layers.fill_constant(
+                shape=[1], dtype='float32', value=0.1)
+            b = fluid.layers.fill_constant(
+                shape=[1], dtype='float32', value=0.23)
+            out = fluid.layers.cond(a >= b, lambda: greater_equal_branch(a, b),
+                                    lambda: less_than_branch(a, b))
+            place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+            ) else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            ret = exe.run(fetch_list=[out])
+            static_res = ret[0]
+
+        with self.dynamic_graph():
+            a = fluid.dygraph.to_variable(np.array([0.1]).astype('float32'))
+            b = fluid.dygraph.to_variable(np.array([0.23]).astype('float32'))
+            out = layers.cond(a < b, lambda: less_than_branch(a, b),
+                              lambda: greater_equal_branch(a, b))
+            out2 = layers.cond(a >= b, lambda: greater_equal_branch(a, b),
+                               lambda: less_than_branch(a, b))
+            dynamic_res = out.numpy()
+            dynamic_res2 = out2.numpy()
+            self.assertTrue(np.array_equal(dynamic_res, dynamic_res2))
+            with self.assertRaises(TypeError):
+                layers.cond(a < b, 'str', 'str')
+            with self.assertRaises(TypeError):
+                layers.cond(a >= b, 'str', 'str')
+
+        self.assertTrue(np.array_equal(static_res, dynamic_res))
+
+    def test_case(self):
+        def fn_1():
+            return layers.fill_constant(shape=[1, 2], dtype='float32', value=1)
+
+        def fn_2():
+            return layers.fill_constant(shape=[2, 2], dtype='int32', value=2)
+
+        def fn_3():
+            return layers.fill_constant(shape=[3], dtype='int32', value=3)
+
+        with self.static_graph():
+            x = layers.fill_constant(shape=[1], dtype='float32', value=0.3)
+            y = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
+            z = layers.fill_constant(shape=[1], dtype='float32', value=0.2)
+
+            pred_1 = layers.less_than(z, x)  # true: 0.2 < 0.3
+            pred_2 = layers.less_than(x, y)  # false: 0.3 < 0.1
+            pred_3 = layers.equal(x, y)  # false: 0.3 == 0.1
+
+            out_1 = layers.case(
+                pred_fn_pairs=[(pred_1, fn_1), (pred_2, fn_2)], default=fn_3)
+            out_2 = layers.case(pred_fn_pairs=[(pred_2, fn_2), (pred_3, fn_3)])
+
+            place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+            ) else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            static_res1, static_res2 = exe.run(fetch_list=[out_1, out_2])
+
+        with self.dynamic_graph():
+            x = layers.fill_constant(shape=[1], dtype='float32', value=0.3)
+            y = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
+            z = layers.fill_constant(shape=[1], dtype='float32', value=0.2)
+
+            pred_1 = layers.less_than(z, x)  # true: 0.2 < 0.3
+            pred_2 = layers.less_than(x, y)  # false: 0.3 < 0.1
+            pred_3 = layers.equal(x, y)  # false: 0.3 == 0.1
+
+            out_1 = layers.case(
+                pred_fn_pairs=[(pred_1, fn_1), (pred_2, fn_2)], default=fn_3)
+            out_2 = layers.case(pred_fn_pairs=[(pred_2, fn_2), (pred_3, fn_3)])
+            dynamic_res1 = out_1.numpy()
+            dynamic_res2 = out_2.numpy()
+
+        self.assertTrue(np.array_equal(static_res1, dynamic_res1))
+        self.assertTrue(np.array_equal(static_res2, dynamic_res2))
+
+    def test_switch_case(self):
+        def fn_1():
+            return layers.fill_constant(shape=[1, 2], dtype='float32', value=1)
+
+        def fn_2():
+            return layers.fill_constant(shape=[2, 2], dtype='int32', value=2)
+
+        def fn_3():
+            return layers.fill_constant(shape=[3], dtype='int32', value=3)
+
+        with self.static_graph():
+            index_1 = layers.fill_constant(shape=[1], dtype='int32', value=1)
+            index_2 = layers.fill_constant(shape=[1], dtype='int32', value=2)
+
+            out_1 = layers.switch_case(
+                branch_index=index_1,
+                branch_fns={1: fn_1,
+                            2: fn_2},
+                default=fn_3)
+            out_2 = layers.switch_case(
+                branch_index=index_2,
+                branch_fns=[(1, fn_1), (2, fn_2)],
+                default=fn_3)
+            out_3 = layers.switch_case(
+                branch_index=index_2,
+                branch_fns=[(0, fn_1), (4, fn_2), (7, fn_3)])
+
+            place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+            ) else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            static_res1, static_res2, static_res3 = exe.run(
+                fetch_list=[out_1, out_2, out_3])
+
+        with self.dynamic_graph():
+            index_1 = layers.fill_constant(shape=[1], dtype='int32', value=1)
+            index_2 = layers.fill_constant(shape=[1], dtype='int32', value=2)
+
+            out_1 = layers.switch_case(
+                branch_index=index_1,
+                branch_fns={1: fn_1,
+                            2: fn_2},
+                default=fn_3)
+            out_2 = layers.switch_case(
+                branch_index=index_2,
+                branch_fns=[(1, fn_1), (2, fn_2)],
+                default=fn_3)
+            out_3 = layers.switch_case(
+                branch_index=index_2,
+                branch_fns=[(0, fn_1), (4, fn_2), (7, fn_3)])
+
+            dynamic_res1 = out_1.numpy()
+            dynamic_res2 = out_2.numpy()
+            dynamic_res3 = out_3.numpy()
+
+        self.assertTrue(np.array_equal(static_res1, dynamic_res1))
+        self.assertTrue(np.array_equal(static_res2, dynamic_res2))
+        self.assertTrue(np.array_equal(static_res3, dynamic_res3))
 
     def test_crop_tensor(self):
         with self.static_graph():

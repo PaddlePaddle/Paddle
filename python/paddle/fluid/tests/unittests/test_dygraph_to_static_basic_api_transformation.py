@@ -20,7 +20,7 @@ import unittest
 import inspect
 import gast
 
-from paddle.fluid.dygraph.jit import dygraph_to_static_output
+from paddle.fluid.dygraph.jit import dygraph_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_dygraph_api
 
 SEED = 2020
@@ -47,7 +47,7 @@ class TestDygraphBasicApi_ToVariable(unittest.TestCase):
         main_program = fluid.Program()
         main_program.random_seed = SEED
         with fluid.program_guard(main_program):
-            static_out = dygraph_to_static_output(self.dygraph_func)(self.input)
+            static_out = dygraph_to_static_graph(self.dygraph_func)(self.input)
 
         exe = fluid.Executor(fluid.CPUPlace())
         static_res = exe.run(main_program, fetch_list=static_out)
@@ -190,7 +190,7 @@ class TestDygraphBasicApi(unittest.TestCase):
         main_program.random_seed = SEED
         with fluid.program_guard(main_program, startup_program):
             data = fluid.layers.assign(self.input)
-            static_out = dygraph_to_static_output(self.dygraph_func)(data)
+            static_out = dygraph_to_static_graph(self.dygraph_func)(data)
 
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(startup_program)
@@ -225,8 +225,8 @@ class TestDygraphBasicApi_BilinearTensorProduct(TestDygraphBasicApi):
         main_program = fluid.Program()
         main_program.random_seed = SEED
         with fluid.program_guard(main_program, startup_program):
-            static_out = dygraph_to_static_output(self.dygraph_func)(
-                self.input1, self.input2)
+            static_out = dygraph_to_static_graph(self.dygraph_func)(self.input1,
+                                                                    self.input2)
 
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(startup_program)
@@ -352,7 +352,7 @@ class TestDygraphBasicApi_CosineDecay(unittest.TestCase):
         main_program = fluid.Program()
         main_program.random_seed = SEED
         with fluid.program_guard(main_program, startup_program):
-            static_out = dygraph_to_static_output(self.dygraph_func)()
+            static_out = dygraph_to_static_graph(self.dygraph_func)()
 
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(startup_program)
