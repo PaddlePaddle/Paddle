@@ -437,8 +437,13 @@ void BindImperative(py::module *m_ptr) {
              }
              if (!PyTuple_Check(_index.ptr())) Py_DecRef(index);
 
-             const auto &tracer = imperative::GetCurrentTracer();
-             std::shared_ptr<imperative::VarBase> out(&self);
+             auto tracer = imperative::GetCurrentTracer();
+             std::shared_ptr<imperative::VarBase> out(
+                 new imperative::VarBase(tracer->GenerateUniqueName()));
+             out->MutableVar()
+                 ->GetMutable<framework::LoDTensor>()
+                 ->ShareDataWith(
+                     *(self.MutableVar()->GetMutable<framework::LoDTensor>()));
              if (!slice_axis.empty()) {
                imperative::NameVarBaseMap ins = {{"Input", {out}}};
                framework::AttributeMap attrs = {
@@ -449,8 +454,7 @@ void BindImperative(py::module *m_ptr) {
                out = std::shared_ptr<imperative::VarBase>(
                    new imperative::VarBase(tracer->GenerateUniqueName()));
                imperative::NameVarBaseMap outs = {{"Out", {out}}};
-               tracer->TraceOp("slice", std::move(ins), std::move(outs),
-                               std::move(attrs));
+               tracer->TraceOp("slice", ins, outs, std::move(attrs));
              }
              if (!reverse_axis.empty()) {
                imperative::NameVarBaseMap ins = {{"X", {out}}};
@@ -458,8 +462,7 @@ void BindImperative(py::module *m_ptr) {
                out = std::shared_ptr<imperative::VarBase>(
                    new imperative::VarBase(tracer->GenerateUniqueName()));
                imperative::NameVarBaseMap outs = {{"Out", {out}}};
-               tracer->TraceOp("slice", std::move(ins), std::move(outs),
-                               std::move(attrs));
+               tracer->TraceOp("slice", ins, outs, std::move(attrs));
              }
              return out;
 
