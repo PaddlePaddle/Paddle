@@ -44,7 +44,7 @@ class FindByIndexKernel : public framework::OpKernel<T> {
     auto input_dims = input_tensor.dims();
     auto index_dims = index_tensor.dims();
 
-    auto batch_size = input_dims[0];
+    int batch_size = input_dims[0];
     // auto value_length = input_dims[1];
     auto index_length = index_dims[1];
 
@@ -56,8 +56,9 @@ class FindByIndexKernel : public framework::OpKernel<T> {
     auto *input_data = input_tensor.data<int64_t>();
     auto *index_data = index_tensor.data<int64_t>();
     for (int i = 0; i < index_ids_num; i++) {
-      auto b = floor(i / batch_size);
-      int64_t v = input_data[b * batch_size + index_data[i]];
+      int b = floor(i / batch_size);
+      int v_i = b * batch_size + static_cast<int>(index_data[i]);
+      int64_t v = input_data[v_i];
       res.push_back(v);
     }
 
