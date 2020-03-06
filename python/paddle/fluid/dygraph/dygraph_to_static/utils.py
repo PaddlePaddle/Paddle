@@ -181,3 +181,12 @@ def update_args_of_func(node, dygraph_node, method_name):
 
     node.args = []
     node.keywords = added_keywords + node.keywords
+
+
+def create_api_shape_node(tensor_shape_node):
+    assert isinstance(tensor_shape_node, gast.Attribute)
+    api_shape_node = gast.Call(
+        func=gast.parse('fluid.layers.shape').body[0].value,
+        args=[tensor_shape_node.value],
+        keywords=[])
+    return api_shape_node
