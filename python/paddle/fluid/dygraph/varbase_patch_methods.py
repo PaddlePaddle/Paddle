@@ -270,10 +270,21 @@ def monkey_patch_varbase():
 
         return out
 
-    for method_name, method in (("set_value", set_value), ("block", block),
-                                ("backward", backward), ("gradient", gradient),
-                                ("__str__", __str__), ("to_string", to_string),
-                                ("__getitem__", __getitem__)):
+    def __nonzero__(self):
+        numel = np.prod(self.shape)
+        assert numel == 1, "bool value of Variable should contain only one value"
+        tensor = self.value().get_tensor()
+        assert tensor._is_initialized(), "tensor not initialized"
+        return bool(np.all(tensor.__array__() > 0))
+
+    def __bool__(self):
+        return self.__nonzero__()
+
+    for method_name, method in (
+        ("__bool__", __bool__), ("__nonzero__", __nonzero__),
+        ("set_value", set_value), ("block", block), ("backward", backward),
+        ("gradient", gradient), ("__str__", __str__), ("to_string", to_string),
+        ("__getitem__", __getitem__)):
         setattr(core.VarBase, method_name, method)
 
     # patch math methods for varbase

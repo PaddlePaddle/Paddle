@@ -364,7 +364,7 @@ class PrePostProcessLayer(Layer):
     def forward(self, prev_out, out, process_cmd, dropout_rate=0.):
         for cmd in process_cmd:
             if cmd == "a":  # add residual connection
-                out = out + prev_out if prev_out else out
+                out = out + prev_out if prev_out is not None else out
             elif cmd == "n":  # add layer normalization
                 out = self._layer_norm(out)
             elif cmd == "d":  # add dropout
@@ -443,7 +443,7 @@ class MultiHeadAttentionLayer(Layer):
             y=transpose_k,
             transpose_y=True,
             alpha=self._d_model**-0.5)
-        if attn_bias:
+        if attn_bias is not None:
             product += attn_bias
         weights = fluid.layers.softmax(product)
         if self._dropout_rate:

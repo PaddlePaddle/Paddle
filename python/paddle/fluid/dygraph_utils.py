@@ -55,7 +55,7 @@ def _append_bias_in_dygraph(
 
     Return the Variable after bias operation
     """
-    if not bias:
+    if bias is None:
         return input
 
     attrs = {'axis': axis}
