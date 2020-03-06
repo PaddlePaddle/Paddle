@@ -330,7 +330,7 @@ def get_cluster(node_ips, node_ip, paddle_port, selected_gpus):
 def terminate_local_procs(procs):
     for p in procs:
         if p.proc.poll() is None:
-            p.terminate()
+            p.proc.terminate()
             p.log_fn.close()
 
     # wait all process terminiated
