@@ -216,8 +216,8 @@ void elementwise_cuda_kernel_0(size_t n, float *x, float* y, float* z) {
     }
   };
 
-  std::vector<std::string> inputs_data_type(input_names.size(), "float32");
-  std::vector<std::string> outs_data_type(output_names.size(), "float32");
+  std::vector<std::string> inputs_data_type(input_names.size(), "float");
+  std::vector<std::string> outs_data_type(output_names.size(), "float");
   TestMain(input_names, input_shapes, output_names, 0, inputs_data_type,
            outs_data_type, "elementwise_cuda_kernel_0", kernel,
            elementwise_cpu_kernel_0);
