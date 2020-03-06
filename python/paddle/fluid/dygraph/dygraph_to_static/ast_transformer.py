@@ -27,6 +27,7 @@ import gast
 
 from paddle.fluid import unique_name
 from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import LoopTransformer
+from paddle.fluid.dygraph.dygraph_to_static.list_transformer import ListTransformer
 from .ast_utils import is_control_flow_if, create_cond_node, transform_if_else, ast_to_func
 from .static_analysis import AstNodeWrapper, NodeVarType, StaticAnalysisVisitor
 from .utils import *
@@ -142,6 +143,7 @@ class DygraphToStaticAst(gast.NodeTransformer):
         basic_api_trans.ast_visit()
         self.feed_name_to_arg_name = basic_api_trans.get_feed_name_to_arg_id()
 
+        ListTransformer(node_wrapper).transform()
         # Transform all if/else statement of Dygraph into Static Graph.
         IfElseTransformer(node_wrapper).ast_visit()
 
