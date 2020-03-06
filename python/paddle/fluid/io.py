@@ -21,6 +21,7 @@ import six
 import logging
 import pickle
 import contextlib
+import platform
 from functools import reduce
 
 import numpy as np
@@ -314,11 +315,14 @@ def save_vars(executor,
             if filename is None and save_to_memory is False:
                 save_file_path = os.path.join(
                     os.path.normpath(dirname), new_var.name)
+                save_file_path = os.path.normpath(save_file_path)
+                if platform.system() == "Windows":
+                    save_file_path = save_file_path.encode(encoding="gbk")
                 save_block.append_op(
                     type='save',
                     inputs={'X': [new_var]},
                     outputs={},
-                    attrs={'file_path': os.path.normpath(save_file_path)})
+                    attrs={'file_path': save_file_path})
             else:
                 save_var_map[new_var.name] = new_var
 
@@ -330,6 +334,9 @@ def save_vars(executor,
             save_path = str()
             if save_to_memory is False:
                 save_path = os.path.join(os.path.normpath(dirname), filename)
+                save_path = os.path.normpath(save_path)
+                if platform.system() == "Windows":
+                    save_path = save_path.encode(encoding="gbk")
 
             saved_params = save_block.create_var(
                 type=core.VarDesc.VarType.RAW, name=params_var_name)
@@ -766,11 +773,16 @@ def load_vars(executor,
                     raise ValueError(
                         "The directory path and params cannot be None at the same time."
                     )
+                load_file_path = os.path.join(dirname, new_var.name)
+                load_file_path = os.path.normpath(load_file_path)
+                if platform.system() == "Windows":
+                    load_file_path = load_file_path.encode(encoding="gbk")
+
                 load_block.append_op(
                     type='load',
                     inputs={},
                     outputs={'Out': [new_var]},
-                    attrs={'file_path': os.path.join(dirname, new_var.name)})
+                    attrs={'file_path': load_file_path})
             else:
                 load_var_map[new_var.name] = new_var
 
@@ -781,6 +793,10 @@ def load_vars(executor,
 
             if vars_from_memory is False:
                 filename = os.path.join(dirname, filename)
+
+            filename = os.path.normpath(filename)
+            if platform.system() == "Windows":
+                filename = filename.encode(encoding="gbk")
 
             load_block.append_op(
                 type='load_combine',
