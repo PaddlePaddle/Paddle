@@ -80,11 +80,11 @@ class NameVisitor(gast.NodeVisitor):
         return True
 
     def get_loop_var_names(self, node):
-        assert isinstance(node, gast.While) or isinstance(
-            while_node, gast.For), "Input node is not gast loop node"
+        assert isinstance(node, (gast.While,
+                                 gast.For)), "Input node is not gast loop node"
         loop_var_names = set()
         create_var_names = set()
-        read_context = {type(gast.Load), type(gast.AugLoad)}
+        read_context = {type(gast.Load()), type(gast.AugLoad())}
 
         in_loop_vars = self.in_loop_vars[node]
         in_loop_name_strs = set(name.id for name in in_loop_vars)
@@ -114,13 +114,13 @@ class NameVisitor(gast.NodeVisitor):
 
     def visit_For(self, node):
         self.current_loop.append(node)
-        self.before_loop_vars[node] = copy.deepcopy(self.current_seen_vars)
+        self.before_loop_vars[node] = copy.copy(self.current_seen_vars)
         self.generic_visit(node)
         self.current_loop.pop()
 
     def visit_While(self, node):
         self.current_loop.append(node)
-        self.before_loop_vars[node] = copy.deepcopy(self.current_seen_vars)
+        self.before_loop_vars[node] = copy.copy(self.current_seen_vars)
         self.generic_visit(node)
         self.current_loop.pop()
 
