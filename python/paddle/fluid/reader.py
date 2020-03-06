@@ -637,16 +637,14 @@ class DygraphGeneratorLoader(DataLoaderBase):
                 # start trying to get data from queue. At this time, the child thread needs
                 # to wait slightly longer
                 tensor_list = self._data_queue.get(timeout=QUEUE_GET_TIMEOUT)
-            except queue.Empty:
-                self._exit_thread_unexpectedly()
-                raise RuntimeError(
-                    "DataLoader reader thread has not read data for a long time (60s)."
-                )
             except:
                 # NOTE [ avoid handing ] After adding the shared memory mechanism, not only
                 # the queue.Empty exception will occur here, but other exceptions will also
                 # occur, such as mmap failure. If it is not handled here, it will hang.
                 self._exit_thread_unexpectedly()
+                logging.error(
+                    "DataLoader reader thread failed to read data from the multiprocessing.Queue."
+                )
                 six.reraise(*sys.exc_info())
 
             if not self._thread_done_event.is_set():
