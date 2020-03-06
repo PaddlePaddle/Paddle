@@ -121,6 +121,7 @@ endif()
 
 if(WITH_STATIC_LIB)
   if(WIN32)
+    #Don't remove it , it can make the dynamic library and static library of inference SDK compatible on Windows 
     add_definitions("/DPD_INFER_EXPORT=")
   endif()
   set(DEPS ${PADDLE_LIB}/paddle/lib/libpaddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX})
