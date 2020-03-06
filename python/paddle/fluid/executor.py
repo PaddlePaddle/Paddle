@@ -29,6 +29,7 @@ from . import compiler
 from .. import compat as cpt
 from .trainer_factory import TrainerFactory
 from .trainer_factory import FetchHandlerMonitor
+import copy
 
 __all__ = ['Executor', 'global_scope', 'scope_guard']
 
@@ -351,14 +352,23 @@ def _fetch_var(name, scope=None, return_numpy=True):
 
 
 def _to_name_str(var):
-    if isinstance(var, Variable):
-        return var.desc.name()
-    elif isinstance(var, str):
-        return var
-    elif isinstance(var, six.string_types):
-        return str(var)
+    def _to_str(var):
+        if isinstance(var, Variable):
+            return var.desc.name()
+        elif isinstance(var, str):
+            return var
+        elif isinstance(var, six.string_types):
+            return str(var)
+        elif isinstance(var, Operator):
+            return var.desc.type()
+        else:
+            raise TypeError(str(var) + " should be Variable, Operator or str")
+
+    if isinstance(var, list):
+        s = [_to_str(item) for item in var]
+        return ','.join(s)
     else:
-        raise TypeError(str(var) + " should be Variable or str")
+        return _to_str(var)
 
 
 def _get_strong_program_cache_key(program, feed, fetch_list):
@@ -637,7 +647,14 @@ class Executor(object):
         else:
             origin_program = program
 
-        feed_names = list(feed.keys())
+        if isinstance(feed, dict):
+            feed_names = list(feed.keys())
+
+        elif isinstance(feed, list) or isinstance(feed, tuple):
+            feed_names = []
+            for i, each in enumerate(feed):
+                feed_names += list(each.keys())
+
         print(feed_names)
 
         def _is_optimize_op(op):
@@ -683,6 +700,7 @@ class Executor(object):
         if compiled:
             program._program = pruned_program
             program._graph = core.Graph(pruned_program.desc)
+            program._compiled = False  # reset the flag so it can be compiled again.
         else:
             program = pruned_program
 
@@ -991,19 +1009,17 @@ class Executor(object):
             fetch_list = []
 
         if use_prune:
-            if use_program_cache:
-                cache_key = _get_strong_program_cache_key(program, feed,
-                                                          fetch_list)
-                cached_pruned_program = self._get_pruned_program_cache(
-                    cache_key)
-                if cached_pruned_program is None:
-                    pruned_program = self._prune_program(program, feed,
-                                                         fetch_list)
-                    self._add_pruned_program_cache(cache_key, pruned_program)
-                else:
-                    pruned_program = cached_pruned_program
-            else:
+            cache_key = _get_strong_program_cache_key(program, feed, fetch_list)
+            cached_pruned_program = self._get_pruned_program_cache(cache_key)
+            if cached_pruned_program is None:
+                if isinstance(program, compiler.CompiledProgram):
+                    program = copy.copy(
+                        program
+                    )  # copy the original program, so it can be cached.
                 pruned_program = self._prune_program(program, feed, fetch_list)
+                self._add_pruned_program_cache(cache_key, pruned_program)
+            else:
+                pruned_program = cached_pruned_program
 
             feed = self._update_feed(pruned_program, feed)
             program = pruned_program
