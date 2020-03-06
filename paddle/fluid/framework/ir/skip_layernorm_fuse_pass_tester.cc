@@ -35,19 +35,23 @@ TEST(SkipLayerNormFusePass, basic) {
   layers.layer_norm(elementwise_out, scale, bias);
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
-  auto pass =
-      PassRegistry::Instance().Get("skip_layernorm_fuse_pass");
+  auto pass = PassRegistry::Instance().Get("skip_layernorm_fuse_pass");
   int num_nodes_before = graph->Nodes().size();
   VLOG(3) << DebugString(graph);
 
   graph.reset(pass->Apply(graph.release()));
   int num_nodes_after = graph->Nodes().size();
-  int num_fused_nodes_after =
-      GetNumOpNodes(graph, "skip_layernorm");
+  int num_fused_nodes_after = GetNumOpNodes(graph, "skip_layernorm");
   VLOG(3) << DebugString(graph);
 
-  PADDLE_ENFORCE_EQ(num_nodes_before, num_nodes_after + 4);
-  PADDLE_ENFORCE_EQ(num_fused_nodes_after, 1);
+  PADDLE_ENFORCE_EQ(num_nodes_before, num_nodes_after + 4,
+                    platform::errors::PreconditionNotMet(
+                        "The number of nodes before and after the fuse does "
+                        "not meet expectations"));
+  PADDLE_ENFORCE_EQ(
+      num_fused_nodes_after, 1,
+      platform::errors::PreconditionNotMet(
+          "The number of fusion nodes does not meet expectations after fuse"));
 }
 
 }  // namespace ir
@@ -55,4 +59,3 @@ TEST(SkipLayerNormFusePass, basic) {
 }  // namespace paddle
 
 USE_PASS(skip_layernorm_fuse_pass);
-

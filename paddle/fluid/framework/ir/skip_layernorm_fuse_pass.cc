@@ -55,8 +55,7 @@ PDNode *SkipLayerNorm::operator()(PDNode *x, PDNode *y) {
                                   ->assert_is_op_output("elementwise_add");
 
   // Add links for elementwise_add op.
-  elementwise->LinksFrom({x, y})
-      .LinksTo({elementwise_out_var});
+  elementwise->LinksFrom({x, y}).LinksTo({elementwise_out_var});
 
   // Create nodes for layer_norm op.
   elementwise_out_var->AsIntermediate()->assert_is_op_input("layer_norm");
@@ -94,7 +93,8 @@ PDNode *SkipLayerNorm::operator()(PDNode *x, PDNode *y) {
 }  // namespace patterns
 
 void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
-  PADDLE_ENFORCE_NOT_NULL(graph);
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::PreconditionNotMet("graph should not be null."));
   FusePassBase::Init("skip_layernorm_fuse", graph);
   int found_subgraph_count = 0;
 
@@ -192,4 +192,3 @@ void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
 
 REGISTER_PASS(skip_layernorm_fuse_pass,
               paddle::framework::ir::SkipLayerNormFusePass);
-
