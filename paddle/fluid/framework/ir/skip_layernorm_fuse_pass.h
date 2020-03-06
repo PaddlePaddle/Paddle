@@ -31,4 +31,3 @@ class SkipLayerNormFusePass : public FusePassBase {
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
-
