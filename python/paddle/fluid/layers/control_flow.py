@@ -833,7 +833,7 @@ class While(object):
         OP :ref:`api_fluid_layers_while_loop` is easier to use and is called with less code but does the same thing as ``While`` .
 
     Notice:
-        Local variables created in ``While`` are similar it created in while in C++, and cannot be referenced externally, As a result, they cannot be obtained through ``fetch_list`` of ``Executor``. If you want to implement this function, PaddlePaddle provides ``assign`` interface to assign local variables to external, please refer to example code 2 or refer to `issue#22724 <https://github.com/PaddlePaddle/Paddle/issues/22724>`_.
+        Local variables created in ``While`` are similar to that created in while of C++, and cannot be referenced externally. As a result, they cannot be obtained through ``fetch_list`` of ``Executor``. If you would like to access the variable out of ``while`` , PaddlePaddle provides ``assign`` API to assign local variables to external. Please refer to example code 2 or refer to `issue#22724 <https://github.com/PaddlePaddle/Paddle/issues/22724>`_.
     Args:
         cond(Variable): A Tensor whose data type is bool controlling whether to continue looping.
         is_test(bool, optional): A flag indicating whether execution is in test phase. Default value is False.
@@ -959,7 +959,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
 
     Notice:
         Local variables defined in ``body`` cannot be obtained through ``fetch_list`` of ``Executor`` , variables should
-        be defined outside ``body`` and placed in ``loop_vars`` for looping, then thses variables can be obtained by ``fetch_list`` .
+        be defined outside ``body`` and placed in ``loop_vars`` for looping, then these variables can be fetched by ``fetch_list`` .
 
     Args:
         cond(Callable): A callable returning a boolean tensor controlling whether to continue looping. And ``cond`` takes
