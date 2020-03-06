@@ -395,8 +395,9 @@ void BindImperative(py::module *m_ptr) {
       .def("__init__", &InitVarBaseFromNumpyWithKwargs)
       .def("__getitem__",
            [](imperative::VarBase &self, py::handle _index) {
-             // We allow indexing by integers, slices, ellipsis, None, and
-             // tuples of those types.
+             // We allow indexing by Integers, Slices, and tuples of those
+             // types.
+             // Ellipsis and None are not supported yet.
              std::vector<int> decrease_axis, slice_axis, slice_start, slice_end,
                  reverse_axis;
              // wrap to tuple
@@ -407,7 +408,13 @@ void BindImperative(py::module *m_ptr) {
              int max_int = PyInt_GetMax();
              for (int dim = 0; dim < ndim; ++dim) {
                PyObject *slice_item = PyTuple_GetItem(index, dim);
-               if (!PySlice_Check(slice_item)) {
+               PADDLE_ENFORCE(
+                   PyNumber_Check(slice_item) || PySlice_Check(slice_item),
+                   platform::errors::InvalidArgument(
+                       "We allow indexing by Integers, Slices, and tuples of "
+                       "these types, but received %s in %dth slice item",
+                       std::string(Py_TYPE(slice_item)->tp_name), dim + 1));
+               if (PyNumber_Check(slice_item)) {
                  // integer
                  int slice_item_int = PyInt_AsLong(slice_item);
                  decrease_axis.push_back(dim);
@@ -437,6 +444,8 @@ void BindImperative(py::module *m_ptr) {
              }
              if (!PyTuple_Check(_index.ptr())) Py_DecRef(index);
 
+             // release gil and do tracing
+             py::gil_scoped_release release;
              auto tracer = imperative::GetCurrentTracer();
              std::shared_ptr<imperative::VarBase> out(
                  new imperative::VarBase(tracer->GenerateUniqueName()));
@@ -462,24 +471,9 @@ void BindImperative(py::module *m_ptr) {
                out = std::shared_ptr<imperative::VarBase>(
                    new imperative::VarBase(tracer->GenerateUniqueName()));
                imperative::NameVarBaseMap outs = {{"Out", {out}}};
-               tracer->TraceOp("slice", ins, outs, std::move(attrs));
+               tracer->TraceOp("reverse", ins, outs, std::move(attrs));
              }
              return out;
-
-             //               // handle simple cases: None, Ellipsis, Integer,
-             //               Slice
-             //               if (index == Py_None) {
-             ////                 return wrap(self_.unsqueeze(0));
-             //               } else if (index == Py_Ellipsis) {
-             ////                 return wrap(at::alias(self_));
-             //               } else if (PyNumber_Check(index)) {
-             ////                 return wrap(applySelect(self_, 0, index));
-             //               } else if (PySlice_Check(index)) {
-             ////                 return wrap(applySlice(self_, 0, index,
-             /// true));
-             //               } else {
-             //
-             //               }
            })
       .def("numpy",
            [](imperative::VarBase &self) -> py::array {
