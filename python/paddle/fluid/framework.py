@@ -51,6 +51,7 @@ __all__ = [
     'Variable',
     'load_op_library',
     'require_version',
+    'device_guard',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -61,6 +62,7 @@ CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 
 _dygraph_tracer_ = None
 _dygraph_current_expected_place_ = None
+_current_device = None
 
 
 def require_version(min_version, max_version=None):
@@ -173,7 +175,9 @@ def require_version(min_version, max_version=None):
 def in_dygraph_mode():
     """
     This function checks whether the program runs in dynamic graph mode or not.
-    You can turn on dynamic graph mode with :ref:`api_fluid_dygraph_guard` api.
+    You can enter dynamic graph mode with :ref:`api_fluid_dygraph_guard` api,
+    or enable and disable dynamic graph mode with :ref:`api_fluid_dygraph_enable`
+    and :ref:`api_fluid_dygraph_disable` api .
 
     Returns:
         bool: Whether the program is running in dynamic graph mode.
@@ -182,11 +186,11 @@ def in_dygraph_mode():
         .. code-block:: python
 
             import paddle.fluid as fluid
-            if fluid.in_dygraph_mode():
-                print('running in dygraph mode')
-            else:
-                print('not running in dygraph mode')
 
+            fluid.enable_dygraph()  # Now we are in dygragh mode
+            print(fluid.in_dygraph_mode())  # True
+            fluid.disable_dygraph()
+            print(fluid.in_dygraph_mode())  # False
     """
     return _dygraph_tracer_ is not None
 
@@ -1694,7 +1698,8 @@ class OpProtoHolder(object):
             core.op_proto_and_checker_maker.kOpRoleAttrName(),
             core.op_proto_and_checker_maker.kOpRoleVarAttrName(),
             core.op_proto_and_checker_maker.kOpNameScopeAttrName(),
-            core.op_proto_and_checker_maker.kOpCreationCallstackAttrName()
+            core.op_proto_and_checker_maker.kOpCreationCallstackAttrName(),
+            core.op_proto_and_checker_maker.kOpDeviceAttrName()
         }
 
 
@@ -1801,6 +1806,24 @@ class Operator(object):
 
             namescope_var_name = op_maker.kOpNameScopeAttrName()
             op_attrs[namescope_var_name] = _full_name_scope()
+
+            # set device for op with kernels, give warning for op without kernels
+            # when force_cpu and device_guard are used at the same time, a warning will be given.
+            # TODO(zhangting2020): when force_cpu is removed, clear warning below.
+            if _current_device is not None:
+                if self._has_kernel(type):
+                    op_device = op_maker.kOpDeviceAttrName()
+                    op_attrs[op_device] = _current_device
+                else:
+                    warnings.warn("The Op(%s) is not support to set device." %
+                                  type)
+                if 'force_cpu' in op_attrs:
+                    if (type is 'less_than' and op_attrs['force_cpu'] != None
+                        ) or op_attrs['force_cpu'] != False:
+                        warnings.warn(
+                            "The Attr(force_cpu) of Op(%s) will be deprecated in the future, "
+                            "please use 'device_guard' instead. 'device_guard' has higher priority when they are "
+                            "used at the same time." % type)
 
             def find_name(var_list, name):
                 for var_name in var_list:
@@ -3991,18 +4014,22 @@ class Program(object):
 
         The two code snippets above will generate and print same programs.
         """
+
+        #NOTE(zhiqiu): we sync the original program first, since its program may diff with
+        # its desc due to modifying desc in c++ space. E.g. save op will add kLookupTablePath in desc.
+        self._sync_with_cpp()
+
+        pruned_origin_block_id_map = None
         if for_test:
-            if self._appending_grad_times > 0:
-                forward_prog = Program()
-                forward_prog.desc = core.prune_backward(self.desc)
-                forward_prog.blocks = [
-                    Block(forward_prog, i)
-                    for i in six.moves.range(forward_prog.desc.num_blocks())
-                ]
-                forward_prog._sync_with_cpp()
-                p = forward_prog._inference_optimize(prune_read_op=False)
-            else:
-                p = self._inference_optimize(prune_read_op=False)
+            forward_prog = Program()
+            forward_prog.desc, pruned_origin_block_id_map = core.prune_backward(
+                self.desc)
+            forward_prog.blocks = [
+                Block(forward_prog, i)
+                for i in six.moves.range(forward_prog.desc.num_blocks())
+            ]
+            forward_prog._sync_with_cpp()
+            p = forward_prog._inference_optimize(prune_read_op=False)
         else:
             p = Program()
             p.current_block_idx = self.current_block_idx
@@ -4016,10 +4043,12 @@ class Program(object):
             p.__op_role_var = self.__op_role_var
             p._appending_grad_times = self._appending_grad_times
 
+            #NOTE(zhiqiu): we sync the cloned program, to update its program by
+            # its desc.
             p._sync_with_cpp()
 
         p._copy_param_info_from(self)
-        p._copy_data_info_from(self)
+        p._copy_data_info_from(self, pruned_origin_block_id_map)
         p._copy_dist_param_info_from(self)
         return p
 
@@ -4038,6 +4067,10 @@ class Program(object):
         Returns:
             Program:  A new, pruned program.
         """
+
+        #NOTE(zhiqiu): we sync the original program first, since its program may diff with
+        # its desc due to modifying desc in c++ space. E.g. save op will add kLookupTablePath in desc.
+        self._sync_with_cpp()
 
         if not isinstance(targets, list):
             targets = [targets]
@@ -4093,6 +4126,10 @@ class Program(object):
         Returns:
             Program:  A new, pruned program.
         """
+
+        #NOTE(zhiqiu): we sync the original program first, since its program may diff with
+        # its desc due to modifying desc in c++ space. E.g. save op will add kLookupTablePath in desc.
+        self._sync_with_cpp()
 
         if not isinstance(feeded_var_names, list):
             feeded_var_names = [feeded_var_names]
@@ -4445,9 +4482,6 @@ class Program(object):
             raise TypeError("_copy_param_info_from should be invoked with "
                             "Program")
 
-        if len(self.blocks) != len(other.blocks):
-            raise ValueError("_copy_param_info_from should be invoked with two "
-                             "program, with represent the same topology")
         self.global_block()._copy_param_info_from(other.global_block())
 
     def _copy_dist_param_info_from(self, other):
@@ -4470,7 +4504,7 @@ class Program(object):
         self._ps_endpoint = other._ps_endpoint
         self._distributed_lookup_table = other._distributed_lookup_table
 
-    def _copy_data_info_from(self, other):
+    def _copy_data_info_from(self, other, pruned_origin_block_id_map=None):
         """
         Copy the information of data variables from other program.
 
@@ -4479,6 +4513,10 @@ class Program(object):
 
         Args:
             other(Program): Other program
+            pruned_origin_block_id_map(dict{int:int}): A dict which maps the block id in program
+            self to the block id in program other. For example, {0:0, 1:1, 2:3} means block 0 in self is 
+            cloned from block 0 in other, etc. Default is None, which means default mapped, 
+            {0:0, 1:1,..., n:n}.
 
         Returns:
             None
@@ -4487,22 +4525,24 @@ class Program(object):
             raise TypeError("_copy_data_info_from should be invoked with "
                             "Program")
 
-        if len(self.blocks) != len(other.blocks):
-            raise ValueError("_copy_data_info_from should be invoked with two "
-                             "program, with represent the same topology")
+        if not pruned_origin_block_id_map:
+            pruned_origin_block_id_map = {
+                i: i
+                for i in six.moves.range(self.desc.num_blocks())
+            }
 
         # NOTE(zhiqiu): All vars in cloned program exist in original program.
         # The reverse is not true, due to backward pruning.
-        for i, block in enumerate(other.blocks):
+        for i, block in enumerate(self.blocks):
+            other_block = other.blocks[pruned_origin_block_id_map[i]]
             for var in list(block.vars.values()):
-                if not self.blocks[i].has_var(var.name):
-                    continue
-                if var.is_data:
-                    self.blocks[i].var(var.name).is_data = True
-                if var.desc.need_check_feed():
-                    self.blocks[i].var(var.name).desc.set_need_check_feed(True)
-                if var.stop_gradient:
-                    self.blocks[i].var(var.name).stop_gradient = True
+                other_var = other_block.var(var.name)
+                if other_var.is_data:
+                    var.is_data = True
+                if other_var.desc.need_check_feed():
+                    var.desc.set_need_check_feed(True)
+                if other_var.stop_gradient:
+                    var.stop_gradient = True
 
     @dygraph_not_support
     def list_vars(self):
@@ -5037,3 +5077,62 @@ def load_op_library(lib_filename):
     """
     core.load_op_library(lib_filename)
     OpProtoHolder.instance().update_op_proto()
+
+
+def switch_device(device):
+    global _current_device
+    pre_device = _current_device
+    _current_device = device
+    return pre_device
+
+
+@signature_safe_contextmanager
+def device_guard(device=None):
+    """
+    **Notes**:
+        **The API only supports static mode.**
+
+    A context manager that specifies the device on which the OP will be placed.
+
+    Args:
+        device(str|None): Specify the device to use in the context. It should be 'cpu' or 'gpu',
+            When it is set to 'cpu' or 'gpu', all OPs created in the context will be
+            placed on CPUPlace or CUDAPlace. When 'gpu' is set and the program runs on
+            single-card, the device index will be the same as the device on which the
+            executor runs. Default: None, OPs in this context will be automatically
+            assigned devices.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            support_gpu = fluid.is_compiled_with_cuda()
+            place = fluid.CPUPlace()
+            if support_gpu:
+                place = fluid.CUDAPlace(0)
+
+            # if GPU is supported, the three OPs below will be automatically assigned to CUDAPlace(0)
+            data1 = fluid.layers.fill_constant(shape=[1, 3, 8, 8], value=0.5, dtype='float32')
+            data2 = fluid.layers.fill_constant(shape=[1, 3, 5, 5], value=0.5, dtype='float32')
+            shape = fluid.layers.shape(data2)
+
+            with fluid.device_guard("cpu"):
+                # Ops created here will be placed on CPUPlace
+                shape = fluid.layers.slice(shape, axes=[0], starts=[0], ends=[4])
+            with fluid.device_guard('gpu'):
+                # if GPU is supported, OPs created here will be placed on CUDAPlace(0), otherwise on CPUPlace
+                out = fluid.layers.crop_tensor(data1, shape=shape)
+
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            result = exe.run(fetch_list=[out])
+    """
+
+    if device not in ['cpu', 'gpu', '', None]:
+        raise ValueError(
+            "The Attr(device) should be 'cpu' or 'gpu', and it can also be empty string or None "
+            "when there is no need to specify device. But received %s" % device)
+    pre_device = switch_device(device)
+    yield
+    switch_device(pre_device)

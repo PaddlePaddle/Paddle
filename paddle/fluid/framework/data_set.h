@@ -55,6 +55,8 @@ class Dataset {
   // set fs name and ugi
   virtual void SetHdfsConfig(const std::string& fs_name,
                              const std::string& fs_ugi) = 0;
+  // set customized download command, such as using afs api
+  virtual void SetDownloadCmd(const std::string& download_cmd) = 0;
   // set data fedd desc, which contains:
   //   data feed name, batch size, slots
   virtual void SetDataFeedDesc(const std::string& data_feed_desc_str) = 0;
@@ -78,6 +80,8 @@ class Dataset {
   virtual int64_t GetFleetSendBatchSize() = 0;
   // get hdfs config
   virtual std::pair<std::string, std::string> GetHdfsConfig() = 0;
+  // get download cmd
+  virtual std::string GetDownloadCmd() = 0;
   // get data fedd desc
   virtual const paddle::framework::DataFeedDesc& GetDataFeedDesc() = 0;
   // get channel num
@@ -152,6 +156,7 @@ class DatasetImpl : public Dataset {
   virtual void SetFleetSendBatchSize(int64_t size);
   virtual void SetHdfsConfig(const std::string& fs_name,
                              const std::string& fs_ugi);
+  virtual void SetDownloadCmd(const std::string& download_cmd);
   virtual void SetDataFeedDesc(const std::string& data_feed_desc_str);
   virtual void SetChannelNum(int channel_num);
   virtual void SetParseInsId(bool parse_ins_id);
@@ -167,6 +172,7 @@ class DatasetImpl : public Dataset {
   virtual std::pair<std::string, std::string> GetHdfsConfig() {
     return std::make_pair(fs_name_, fs_ugi_);
   }
+  virtual std::string GetDownloadCmd();
   virtual const paddle::framework::DataFeedDesc& GetDataFeedDesc() {
     return data_feed_desc_;
   }
