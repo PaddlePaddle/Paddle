@@ -314,9 +314,12 @@ void SetEvent(bool merge_thread, const Event &analyze_event,
       auto print_name_size = event_name.size();
       int found_pos = 0;
       if (rit->role() == EventRole::kInnerOp &&
+          g_tracer_option != TracerOption::kDefault &&
           (found_pos = FindNthReversePos(event_name, '/', 2)) != -1) {
         print_name_size = event_name.size() - (found_pos + 1);
-      } else if ((found_pos = FindNthReversePos(event_name, '/', 1)) != -1) {
+      } else if ((found_pos = FindNthReversePos(event_name, '/', 1)) != -1 &&
+                 (rit->role() != EventRole::kInnerOp ||
+                  g_tracer_option == TracerOption::kDefault)) {
         print_name_size = event_name.size() - (found_pos + 1);
       }
       *max_name_width = std::max(*max_name_width, print_name_size);
