@@ -222,7 +222,6 @@ void AsyncCommunicator::RecvThread() {
   while (running_) {
     int grad_num = grad_num_.load();
     if (grad_num > min_send_grad_num_before_recv_) {
-      VLOG(1) << "current grad num " << grad_num;
       RecvAll();
       grad_num_.store(0);
     } else {
