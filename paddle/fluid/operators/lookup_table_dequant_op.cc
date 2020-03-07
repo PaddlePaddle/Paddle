@@ -27,13 +27,18 @@ class LookupTableDequantOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true,
-                      "Input(W) of LookupTableDequantOp should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Ids"), true,
-                      "Input(Ids) of LookupTableDequantOp should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("W"), true,
+        platform::errors::InvalidArgument(
+            "Input(W) of LookupTableDequantOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Ids"), true,
+        platform::errors::InvalidArgument(
+            "Input(Ids) of LookupTableDequantOp should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("Out"), true,
-        "Output(Out) of LookupTableDequantOp should not be null.");
+        platform::errors::InvalidArgument(
+            "Output(Out) of LookupTableDequantOp should not be null."));
 
     auto table_dims = ctx->GetInputDim("W");
     auto ids_dims = ctx->GetInputDim("Ids");
@@ -41,23 +46,26 @@ class LookupTableDequantOp : public framework::OperatorWithKernel {
     VLOG(5) << "ids rank is " << ids_rank << std::endl;
     PADDLE_ENFORCE_EQ(
         table_dims.size(), 2,
-        "ShapeError: The dimensions of the 'lookup table' must be 2. "
-        "But received lookup table's dimensions = %d, "
-        "lookup table's shape = [%s].",
-        table_dims.size(), table_dims);
+        platform::errors::InvalidArgument(
+            "ShapeError: The dimensions of the 'lookup table' must be 2. "
+            "But received lookup table's dimensions = %d, "
+            "lookup table's shape = [%s].",
+            table_dims.size(), table_dims));
     PADDLE_ENFORCE_EQ(
         ids_dims[ids_rank - 1], 1,
-        "ShapeError: The last dimensions of the 'Ids' tensor must be 1. "
-        "But received Ids's last dimensions = %d, Ids's shape = [%s].",
-        ids_dims[ids_rank - 1], ids_dims);
+        platform::errors::InvalidArgument(
+            "ShapeError: The last dimensions of the 'Ids' tensor must be 1. "
+            "But received Ids's last dimensions = %d, Ids's shape = [%s].",
+            ids_dims[ids_rank - 1], ids_dims));
 
     auto output_dims =
         framework::vectorize(framework::slice_ddim(ids_dims, 0, ids_rank - 1));
     PADDLE_ENFORCE_GE(table_dims[1], 2,
-                      "the second dim of table_dims should be "
-                      "greater or equal to 2, but the actual shape "
-                      "is [%s]",
-                      table_dims);
+                      platform::errors::InvalidArgument(
+                          "the second dim of table_dims should be "
+                          "greater or equal to 2, but the actual shape "
+                          "is [%s]",
+                          table_dims));
 
     output_dims.push_back((table_dims[1] - 2) * 4);
     ctx->SetOutputDim("Out", framework::make_ddim(output_dims));

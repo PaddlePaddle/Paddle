@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/operators/math/blas.h"
 
 #ifdef PADDLE_WITH_DISTRIBUTE
@@ -60,12 +61,12 @@ class LookupTableDequantKernel : public framework::OpKernel<T> {
     auto out_name = context.OutputNames("Out").front();
 
     int64_t padding_idx = context.Attr<int64_t>("padding_idx");
-    // const int64_t *ids = const_cast<int64_t *>(ids_t->data<int64_t>());
     auto *ids = ids_t->data<int64_t>();
     int64_t ids_numel = ids_t->numel();
 
-    PADDLE_ENFORCE(table_var->IsType<LoDTensor>(),
-                   "lookup table must be LodTensor");
+    PADDLE_ENFORCE_GE(
+        table_var->Type(), framework::VarTypeTrait<LoDTensor>::kId,
+        platform::errors::InvalidArgument("lookup table must be LodTensor"));
     auto *table_t = context.Input<LoDTensor>("W");
     int64_t row_number = table_t->dims()[0];
     int64_t quant_number = table_t->dims()[1];
@@ -80,16 +81,18 @@ class LookupTableDequantKernel : public framework::OpKernel<T> {
       } else {
         PADDLE_ENFORCE_LT(
             ids[i], row_number,
-            "Variable value (input) of OP(fluid.layers.embedding) "
-            "expected >= 0 and < %ld, but got %ld. Please check input "
-            "value.",
-            row_number, ids[i]);
+            platform::errors::InvalidArgument(
+                "Variable value (input) of OP(fluid.layers.embedding) "
+                "expected >= 0 and < %ld, but got %ld. Please check input "
+                "value.",
+                row_number, ids[i]));
         PADDLE_ENFORCE_GE(
             ids[i], 0,
-            "Variable value (input) of OP(fluid.layers.embedding) "
-            "expected >= 0 and < %ld, but got %ld. Please check input "
-            "value.",
-            row_number, ids[i]);
+            platform::errors::InvalidArgument(
+                "Variable value (input) of OP(fluid.layers.embedding) "
+                "expected >= 0 and < %ld, but got %ld. Please check input "
+                "value.",
+                row_number, ids[i]));
         float min = *(table + ids[i] * quant_number);
         float max = *(table + ids[i] * quant_number + 1);
         int offset = ids[i] * quant_number + 2;
