@@ -35,14 +35,14 @@ using LoDTensor = framework::LoDTensor;
 using SelectedRows = framework::SelectedRows;
 using DDim = framework::DDim;
 
-float *dequant(const unsigned char *in, float *out, float min, float max,
-               int emb_size, int pow_2_bits) {
+template <typename T>
+void dequant(const unsigned char *in, T *out, float min, float max,
+             int emb_size, int pow_2_bits) {
   float scale = (max - min) / pow_2_bits;
   for (int i = 0; i < emb_size; ++i) {
-    float x = scale * static_cast<int>(in[i]) + min;
+    T x = scale * static_cast<int>(in[i]) + min;
     out[i] = x;
   }
-  return out;
 }
 
 constexpr int64_t kNoPadding = -1;
@@ -71,7 +71,7 @@ class LookupTableDequantKernel : public framework::OpKernel<T> {
     int64_t quant_number = table_t->dims()[1];
     int64_t row_width = (quant_number - 2) * 4;
 
-    auto *table = table_t->data<T>();
+    auto *table = table_t->data<float>();
     auto *output = output_t->mutable_data<T>(context.GetPlace());
     int pow_2_bits = static_cast<int>(pow(2, 8));
     for (int64_t i = 0; i < ids_numel; ++i) {

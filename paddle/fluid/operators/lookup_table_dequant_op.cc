@@ -117,4 +117,5 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(lookup_table_dequant,
-                       ops::LookupTableDequantKernel<float>);
+                       ops::LookupTableDequantKernel<float>,
+                       ops::LookupTableDequantKernel<double>);
