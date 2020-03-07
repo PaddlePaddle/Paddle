@@ -71,8 +71,8 @@ class LookupTableDequantOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "W");
-    return framework::OpKernelType(data_type, ctx.device_context());
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   platform::CPUPlace());
   }
 };
 

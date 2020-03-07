@@ -60,46 +60,44 @@ class LookupTableDequantKernel : public framework::OpKernel<T> {
     auto out_name = context.OutputNames("Out").front();
 
     int64_t padding_idx = context.Attr<int64_t>("padding_idx");
-    int64_t *ids = const_cast<int64_t *>(ids_t->data<int64_t>());
+    // const int64_t *ids = const_cast<int64_t *>(ids_t->data<int64_t>());
+    auto *ids = ids_t->data<int64_t>();
     int64_t ids_numel = ids_t->numel();
 
-    if (table_var->IsType<LoDTensor>()) {
-      auto *table_t = context.Input<LoDTensor>("W");
-      int64_t row_number = table_t->dims()[0];
-      int64_t quant_number = table_t->dims()[1];
-      int64_t row_width = (quant_number - 2) * 4;
+    PADDLE_ENFORCE(table_var->IsType<LoDTensor>(),
+                   "lookup table must be LodTensor");
+    auto *table_t = context.Input<LoDTensor>("W");
+    int64_t row_number = table_t->dims()[0];
+    int64_t quant_number = table_t->dims()[1];
+    int64_t row_width = (quant_number - 2) * 4;
 
-      auto *table = table_t->data<T>();
-      auto *output = output_t->mutable_data<T>(context.GetPlace());
-      int pow_2_bits = static_cast<int>(pow(2, 8));
-      for (int64_t i = 0; i < ids_numel; ++i) {
-        if (padding_idx != kNoPadding && ids[i] == padding_idx) {
-          memset(output + i * row_width, 0, row_width * sizeof(T));
-        } else {
-          PADDLE_ENFORCE_LT(
-              ids[i], row_number,
-              "Variable value (input) of OP(fluid.layers.embedding) "
-              "expected >= 0 and < %ld, but got %ld. Please check input "
-              "value.",
-              row_number, ids[i]);
-          PADDLE_ENFORCE_GE(
-              ids[i], 0,
-              "Variable value (input) of OP(fluid.layers.embedding) "
-              "expected >= 0 and < %ld, but got %ld. Please check input "
-              "value.",
-              row_number, ids[i]);
-          float min = *(table + ids[i] * quant_number);
-          float max = *(table + ids[i] * quant_number + 1);
-          int offset = ids[i] * quant_number + 2;
-          const unsigned char *tensor_buf =
-              reinterpret_cast<const unsigned char *>(table + offset);
-          dequant(tensor_buf, output + i * row_width, min, max, row_width,
-                  pow_2_bits);
-        }
+    auto *table = table_t->data<T>();
+    auto *output = output_t->mutable_data<T>(context.GetPlace());
+    int pow_2_bits = static_cast<int>(pow(2, 8));
+    for (int64_t i = 0; i < ids_numel; ++i) {
+      if (padding_idx != kNoPadding && ids[i] == padding_idx) {
+        memset(output + i * row_width, 0, row_width * sizeof(T));
+      } else {
+        PADDLE_ENFORCE_LT(
+            ids[i], row_number,
+            "Variable value (input) of OP(fluid.layers.embedding) "
+            "expected >= 0 and < %ld, but got %ld. Please check input "
+            "value.",
+            row_number, ids[i]);
+        PADDLE_ENFORCE_GE(
+            ids[i], 0,
+            "Variable value (input) of OP(fluid.layers.embedding) "
+            "expected >= 0 and < %ld, but got %ld. Please check input "
+            "value.",
+            row_number, ids[i]);
+        float min = *(table + ids[i] * quant_number);
+        float max = *(table + ids[i] * quant_number + 1);
+        int offset = ids[i] * quant_number + 2;
+        const unsigned char *tensor_buf =
+            reinterpret_cast<const unsigned char *>(table + offset);
+        dequant(tensor_buf, output + i * row_width, min, max, row_width,
+                pow_2_bits);
       }
-    } else if (table_var->IsType<SelectedRows>()) {
-      // not supportd
-      PADDLE_ENFORCE_EQ(1, 2);
     }
   }
 };
