@@ -35,17 +35,14 @@ using LoDTensor = framework::LoDTensor;
 using SelectedRows = framework::SelectedRows;
 using DDim = framework::DDim;
 
-float *dequant(char *in, float *out, float min, float max, int emb_size,
-               int bits) {
-  float scale = (max - min) / pow(2, bits);
+float *dequant(const char *in, float *out, float min, float max, int emb_size,
+               int pow_2_bits) {
+  float scale = (max - min) / pow_2_bits;
   VLOG(3) << "dequant: after get scale";
   for (int i = 0; i < emb_size; ++i) {
-    // int val = in[i];
     VLOG(3) << "dequant: after get val as in[i]";
-    // float x = scale * val + min;
-    float x = scale * ((static<int>(in[i]) + static<int>(pow(2, bits))) %
-                       static<int>(pow(2, bits))) +
-              min;
+    float x =
+        scale * ((static_cast<int>(in[i]) + pow_2_bits) % pow_2_bits) + min;
     VLOG(3) << "dequant: after get x as scale * val + min";
     out[i] = x;
     VLOG(3) << "dequant: after get out[i] = x";
@@ -83,7 +80,7 @@ class LookupTableDequantKernel : public framework::OpKernel<T> {
 
       auto *table = table_t->data<T>();
       auto *output = output_t->mutable_data<T>(context.GetPlace());
-
+      int pow_2_bits = static_cast<int>(pow(2, 8));
       for (int64_t i = 0; i < ids_numel; ++i) {
         VLOG(3) << "i: " << i;
         if (padding_idx != kNoPadding && ids[i] == padding_idx) {
@@ -108,18 +105,13 @@ class LookupTableDequantKernel : public framework::OpKernel<T> {
           int offset = ids[i] * quant_number + 2;
           VLOG(3) << "after get offset";
           VLOG(3) << "offset: " << offset;
-          char *tensor_buf = reinterpret_cast<char *>(table + offset);
+          const char *tensor_buf =
+              reinterpret_cast<const char *>(table + offset);
           VLOG(3) << "after get tensor_buf";
-          // for(int j = 0; j < quant_number - 2; j++){
-          // float to char
-          //  sprintf(tensor_buf + j * 4, "%f", *(table + offset + j));
-          //  VLOG(3) << "after sprintf, j: " << j;
-          //}
           VLOG(3) << "after sprintf";
-          dequant(tensor_buf, output + i * row_width, min, max, row_width, 8);
+          dequant(tensor_buf, output + i * row_width, min, max, row_width,
+                  pow_2_bits);
           VLOG(3) << "after dequant";
-          // memcpy(output + i * row_width, table + ids[i] * row_width,
-          //       row_width * sizeof(T));
         }
       }
     } else if (table_var->IsType<SelectedRows>()) {
