@@ -150,11 +150,27 @@ def to_static_ast(node, class_node):
     return node
 
 
-def to_assign_node(ori_node):
-    assert isinstance(ori_node, gast.Call)
+def to_assign_node(node):
+    # Transform dygraph api `fluid.dygraph.to_variable` to static api `fluid.layers.assign`.
+    # NOTE:
+    #   1. Api `to_variable` supports data type {float16, float32, float64, int16, int32, int64, uint8, uint16},
+    #   but api `assign` only supports {float32, float64, int32, int64, bool};
+    #   2. If the input of api `assign` is numpy.ndarray, its size cannot be greater than 1024 * 1024.
+    assert isinstance(node, gast.Call)
     assign_api = gast.parse('fluid.layers.assign').body[0].value
-    ori_node.func = assign_api
-    return ori_node
+    node.func = assign_api
+
+    if node.args:
+        node.args = [node.args[0]]
+        node.keywords = []
+    else:
+        for idx, kw in enumerate(node.keywords):
+            if kw.arg == 'value':
+                node.keywords[idx].arg = 'input'
+                node.keywords = [node.keywords[idx]]
+                node.args = []
+                break
+    return node
 
 
 def update_args_of_func(node, dygraph_node, method_name):
