@@ -35,14 +35,13 @@ using LoDTensor = framework::LoDTensor;
 using SelectedRows = framework::SelectedRows;
 using DDim = framework::DDim;
 
-float *dequant(const char *in, float *out, float min, float max, int emb_size,
-               int pow_2_bits) {
+float *dequant(const unsigned char *in, float *out, float min, float max,
+               int emb_size, int pow_2_bits) {
   float scale = (max - min) / pow_2_bits;
   VLOG(3) << "dequant: after get scale";
   for (int i = 0; i < emb_size; ++i) {
     VLOG(3) << "dequant: after get val as in[i]";
-    float x =
-        scale * ((static_cast<int>(in[i]) + pow_2_bits) % pow_2_bits) + min;
+    float x = scale * static_cast<int>(in[i]) + min;
     VLOG(3) << "dequant: after get x as scale * val + min";
     out[i] = x;
     VLOG(3) << "dequant: after get out[i] = x";
@@ -105,8 +104,9 @@ class LookupTableDequantKernel : public framework::OpKernel<T> {
           int offset = ids[i] * quant_number + 2;
           VLOG(3) << "after get offset";
           VLOG(3) << "offset: " << offset;
-          const char *tensor_buf =
-              reinterpret_cast<const char *>(table + offset);
+          VLOG(3) << "using unsigned char";
+          const unsigned char *tensor_buf =
+              reinterpret_cast<const unsigned char *>(table + offset);
           VLOG(3) << "after get tensor_buf";
           VLOG(3) << "after sprintf";
           dequant(tensor_buf, output + i * row_width, min, max, row_width,
