@@ -314,7 +314,7 @@ class Pad2dCUDAKernel : public framework::OpKernel<T> {
     GetPaddings(pads, context);
     auto mode = context.Attr<std::string>("mode");
     auto data_format = context.Attr<std::string>("data_format");
-    T value = context.Attr<T>("pad_value");
+    T value = static_cast<T>(context.Attr<float>("pad_value"));
 
     auto* x = context.Input<Tensor>("X");
     auto in_dims = x->dims();
