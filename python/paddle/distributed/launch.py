@@ -129,7 +129,7 @@ POD_IP (current node ip address, not needed for local training)
     parser.add_argument(
         "--started_port",
         type=int,
-        default=6170,
+        default=None,
         help="The trainer's started port on a single node")
 
     parser.add_argument(
@@ -241,10 +241,13 @@ paddlecloud environment.".format(args.cluster_node_ips, node_ips))
                     cloud_paddle_port))
 
     free_ports = None
-    if not args.use_paddlecloud and num_nodes <= 1:
+    if not args.use_paddlecloud and num_nodes <= 1 and args.started_port is None:
         free_ports = find_free_ports(selected_gpus_num)
         if free_ports is not None:
             free_ports = list(free_ports)
+
+    if args.started_port is None:
+        args.started_port = 6170
 
     if free_ports is None:
         free_ports = [
