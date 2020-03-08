@@ -246,10 +246,10 @@ paddlecloud environment.".format(args.cluster_node_ips, node_ips))
         if free_ports is not None:
             free_ports = list(free_ports)
 
-    if args.started_port is None:
-        args.started_port = 6170
-
     if free_ports is None:
+        if args.started_port is None:
+            args.started_port = 6170
+
         free_ports = [
             x
             for x in range(args.started_port, args.started_port +
