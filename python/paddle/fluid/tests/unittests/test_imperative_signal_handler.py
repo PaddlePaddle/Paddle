@@ -38,7 +38,7 @@ def set_child_signal_handler(self, child_pid):
 
 
 class TestDygraphDataLoaderSingalHandler(unittest.TestCase):
-    def test_child_process_exit_will_error(self):
+    def test_child_process_exit_with_error(self):
         def __test_process__():
             core._set_process_signal_handler()
             sys.exit(1)
@@ -69,7 +69,25 @@ class TestDygraphDataLoaderSingalHandler(unittest.TestCase):
             set_child_signal_handler(id(self), test_process.pid)
             time.sleep(3)
         except core.EnforceNotMet as ex:
-            self.assertIn("FatalError", cpt.get_exception_message(ex))
+            self.assertIn("Segmentation fault", cpt.get_exception_message(ex))
+            exception = ex
+
+        self.assertIsNotNone(exception)
+
+    def test_child_process_killed_by_sigbus(self):
+        def __test_process__():
+            core._set_process_signal_handler()
+            os.kill(os.getpid(), signal.SIGBUS)
+
+        exception = None
+        try:
+            test_process = multiprocessing.Process(target=__test_process__)
+            test_process.start()
+
+            set_child_signal_handler(id(self), test_process.pid)
+            time.sleep(3)
+        except core.EnforceNotMet as ex:
+            self.assertIn("Bus error", cpt.get_exception_message(ex))
             exception = ex
 
         self.assertIsNotNone(exception)

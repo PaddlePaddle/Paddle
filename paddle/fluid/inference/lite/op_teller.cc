@@ -28,7 +28,7 @@ namespace lite {
 struct SimpleOpTeller : public Teller {
   SimpleOpTeller() {
     const std::map<std::string, std::string>& op2path =
-        OpKernelInfoCollector::Global().GetOp2PathDict();
+        paddle::lite::GetOp2PathDict();
     auto is_non_inst = [](const std::string& op) -> bool {
       const std::vector<std::string> ops = {"feed", "fetch", "while"};
       return std::find(ops.begin(), ops.end(), op) != ops.end();

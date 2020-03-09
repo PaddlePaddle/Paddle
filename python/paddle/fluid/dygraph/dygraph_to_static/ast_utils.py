@@ -14,8 +14,8 @@
 
 from __future__ import print_function
 
-import astor
 import ast
+import astor
 import gast
 import six
 import copy
@@ -104,7 +104,7 @@ def get_name_ids(nodes, not_name_set=None, node_black_list=None):
 
     name_ids = defaultdict(list)
     for node in nodes:
-        if node_black_list and node in node_black_list: continue
+        if node_black_list and node in node_black_list: break
         if isinstance(node, gast.AST):
             # In two case, the ast.Name should be filtered.
             # 1. Function name like `my_func` of my_func(x)
@@ -360,7 +360,9 @@ def ast_to_func(ast_root, func_name, delete_on_exit=True):
     # TODO(Aurelius84): more elegant way to transform ast into callable object
     import_str = "import paddle\n" \
                  "import paddle.fluid as fluid\n" \
-                 "import paddle.fluid.layers as layers\n"
+                 "import paddle.fluid.layers as layers\n" \
+                 "import numpy as np\n" \
+                 "import numpy\n"
     with f:
         module_name = os.path.basename(f.name[:-3])
         f.write(import_str)

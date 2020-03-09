@@ -374,6 +374,14 @@ if(WITH_GPU AND TENSORRT_FOUND)
     inference_analysis_test(trt_quant_int8_test SRCS trt_quant_int8_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
             ARGS --infer_model=${TRT_MODEL_QUANT_RESNET_DIR})
+
+    set(TEST_TRT_DYNAMIC_MODEL "${TRT_MODEL_INSTALL_DIR}/test_trt_dy_conv")
+    if (NOT EXISTS ${TEST_TRT_DYNAMIC_MODEL})
+        inference_download_and_uncompress(${TEST_TRT_DYNAMIC_MODEL} ${INFERENCE_URL}/tensorrt_test "test_trt_dy_conv.tar.gz")
+    endif()
+    inference_analysis_test(trt_dynamic_shape_test SRCS trt_dynamic_shape_test.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+            ARGS --infer_model=${TEST_TRT_DYNAMIC_MODEL})
 endif()
 
 set(LITE_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/lite")
@@ -399,3 +407,7 @@ if(WITH_MKLDNN)
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
             ARGS --infer_model=${INT8_DATA_DIR}/resnet50/model)
  endif()
+
+inference_analysis_test(test_analyzer_capi_ner SRCS analyzer_capi_ner_tester.cc 
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
+        ARGS --infer_model=${CHINESE_NER_INSTALL_DIR}/model)

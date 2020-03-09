@@ -84,7 +84,7 @@ class OperationMap {
     return *map;
   }
 
-  std::unordered_set<std::string> Find(int type, int num_operands = -1);
+  std::unordered_set<std::string> Find(int type);
 
   bool Has(std::string op_type) {
     return operations_.find(op_type) != operations_.end();
@@ -106,6 +106,7 @@ class OperationMap {
 
   void InsertUnaryElementwiseOperations();
   void InsertBinaryElementwiseOperations();
+  void InsertMultivariateElementwiseOperations();
 
  private:
   static OperationMap* map;

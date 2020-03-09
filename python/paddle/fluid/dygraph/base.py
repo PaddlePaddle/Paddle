@@ -13,6 +13,7 @@
 # limitations under the License.
 from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 import contextlib
+import sys
 import numpy as np
 from paddle.fluid import core
 from paddle.fluid import framework
@@ -23,6 +24,9 @@ import objgraph
 __all__ = [
     'no_grad',
     'guard',
+    'enable_dygraph',
+    'disable_dygraph',
+    'enabled',
     'to_variable',
 ]
 
@@ -49,10 +53,83 @@ def program_desc_tracing_guard(enable):
         tracer._enable_program_desc_tracing = original_val
 
 
-# This function should be removed in V1.6, because it can easily lead to cyclic dependencies.
+_functional_dygraph_context_manager = None
+
+
 def enabled():
-    # Internal use only
+    """
+    This function checks whether the program runs in dynamic graph mode or not.
+    You can enter dynamic graph mode with :ref:`api_fluid_dygraph_guard` api,
+    or enable and disable dynamic graph mode with :ref:`api_fluid_dygraph_enable`
+    and :ref:`api_fluid_dygraph_disable` api .
+
+    **Note**:
+        ``fluid.dygraph.enabled`` is the alias of ``fluid.in_dygraph_mode``, and
+        ``fluid.in_dygraph_mode`` is recommended to use.
+
+    Returns:
+        bool: Whether the program is running in dynamic graph mode.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            fluid.enable_dygraph()  # Now we are in dygragh mode
+            print(fluid.dygraph.enabled())  # True
+            fluid.disable_dygraph()
+            print(fluid.dygraph.enabled())  # False
+    """
     return framework.in_dygraph_mode()
+
+
+def enable_dygraph(place=None):
+    """
+    This function enables dynamic graph mode.
+
+    Parameters:
+        place(fluid.CPUPlace or fluid.CUDAPlace, optional): Place to execute dygraph.
+            If None, the running place will be determined according to the way of paddle compilation. Default: None
+
+    return:
+        None
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            fluid.enable_dygraph()  # Now we are in dygragh mode
+            print(fluid.in_dygraph_mode())  # True
+            fluid.disable_dygraph()
+            print(fluid.in_dygraph_mode())  # False
+    """
+    global _functional_dygraph_context_manager
+    _functional_dygraph_context_manager = guard(place=place)
+    _functional_dygraph_context_manager.__enter__()
+
+
+def disable_dygraph():
+    """
+    This function disables dynamic graph mode.
+
+    return:
+        None
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            fluid.enable_dygraph()  # Now we are in dygragh mode
+            print(fluid.in_dygraph_mode())  # True
+            fluid.disable_dygraph()
+            print(fluid.in_dygraph_mode())  # False
+    """
+    global _functional_dygraph_context_manager
+    if _functional_dygraph_context_manager is not None:
+        _functional_dygraph_context_manager.__exit__(*sys.exc_info())
+        _functional_dygraph_context_manager = None
 
 
 @contextlib.contextmanager

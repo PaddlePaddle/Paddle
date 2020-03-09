@@ -107,6 +107,9 @@ class BasicEngine : public Engine {
   std::unordered_map<OpBase*, size_t> op_deps_;
   std::unordered_map<VarBase*, std::unique_ptr<GradientAccumulator>>
       accumulators_;
+
+  std::vector<std::pair<VarBase*, std::shared_ptr<VarBase>>>
+      need_accu_var_list_;
 };
 
 }  // namespace imperative
