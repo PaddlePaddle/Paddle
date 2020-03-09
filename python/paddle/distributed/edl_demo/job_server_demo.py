@@ -99,7 +99,7 @@ class JobInfoManager(object):
             assert pod_num < len(pods), "can't delete pod_num:%d".format(
                 pod_num)
             self.job[job_id] = pods[:-pod_num]
-            print("deleted pods {}".format(self.job[job_id]))
+            #print("deleted pods {}".format(self.job[job_id]))
 
     def _add_tail(self, job_id, pod_num, step_id):
         with self._lock:
@@ -110,7 +110,7 @@ class JobInfoManager(object):
 
             self._assign_pods_to_nodes(pods, self._ip_pod_num)
             self.job[self._job_id] = pods
-            print("added pods {}".format(pods))
+            #print("added pods {}".format(pods))
 
     def run(self):
         step_id = 0
@@ -119,12 +119,12 @@ class JobInfoManager(object):
             time.sleep(15)
             if modify:
                 step_id += 1
-                print("del 2 pods")
+                #print("del 2 pods")
                 self._del_tail(self._job_id, 2, step_id)
                 time.sleep(15)
 
                 step_id += 1
-                print("add 2 pods")
+                #print("add 2 pods")
                 self._add_tail(self._job_id, 2, step_id)
                 #modify = False
 
