@@ -6,6 +6,7 @@ usage: coverage_diff_list.py list_file max_rate > coverage-diff-list-90.out
 
 import sys
 
+paddle_root = os.getenv('PADDLE_ROOT', "/paddle")
 
 def filter_by(list_file, max_rate):
     """
@@ -26,8 +27,8 @@ def filter_by(list_file, max_rate):
 
             name = split[0].strip()
 
-            if name.startswith('/workspace/Paddle/'):
-                name = name[len('/workspace/Paddle/'):]
+            if name.startswith(paddle_root):
+                name = name[len(paddle_root):]
 
             # rate
 

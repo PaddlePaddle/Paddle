@@ -7,6 +7,7 @@ usage: python_coverage.py > python-coverage.info
 from os import path
 from xml.etree import ElementTree
 
+paddle_root = os.getenv('PADDLE_ROOT', "/paddle")
 tree = ElementTree.parse('python-coverage.xml')
 root = tree.getroot()
 
@@ -21,9 +22,9 @@ for clazz in root.findall('packages/package/classes/class'):
     clazz_filename = clazz.attrib.get('filename')
     clazz_filename = path.join(source, clazz_filename)
 
-    if clazz_filename.startswith('/workspace/Paddle/build/python/'):
-        clazz_filename = '/workspace/Paddle/python/' + clazz_filename[len(
-            '/workspace/Paddle/build/python/'):]
+    if clazz_filename.startswith('{}/build/python/'.format(paddle_root)):
+        clazz_filename = '{}/python/'.format(paddle_root) + clazz_filename[len(
+            '{}/build/python/').format(paddle_root):]
 
     if not path.exists(clazz_filename):
         continue

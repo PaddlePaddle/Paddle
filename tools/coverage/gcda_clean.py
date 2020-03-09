@@ -7,6 +7,8 @@ import sys
 
 from github import Github
 
+paddle_root = os.getenv('PADDLE_ROOT', "/paddle")
+
 
 def get_pull(pull_id):
     """Get pull.
@@ -52,9 +54,9 @@ def clean(pull_id):
     changed = []
 
     for file in get_files(pull_id):
-        changed.append('/workspace/Paddle/build/{}.gcda'.format(file))
+        changed.append('{}/build/{}.gcda'.format(paddle_root, file))
 
-    for parent, dirs, files in os.walk('/workspace/Paddle/build/'):
+    for parent, dirs, files in os.walk('{}/build/'.format(paddle_root)):
         for gcda in files:
             if gcda.endswith('.gcda'):
                 trimmed = parent

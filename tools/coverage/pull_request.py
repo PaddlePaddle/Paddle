@@ -11,7 +11,7 @@ import os
 from github import Github
 
 token = os.getenv('GITHUB_API_TOKEN')
-
+paddle_root = os.getenv('PADDLE_ROOT', "/paddle")
 
 def get_pull(pull_id):
     """
@@ -40,7 +40,7 @@ def get_files(args):
     pull = get_pull(args.pull_id)
 
     for file in pull.get_files():
-        print('/workspace/Paddle/{}'.format(file.filename))
+        print('{}/{}'.format(paddle_root, file.filename))
 
 
 def diff(args):
