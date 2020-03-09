@@ -35,6 +35,7 @@ if(WITH_GPU)
   set(enforce_deps ${enforce_deps} cuda_error_proto)
 endif()
 cc_library(enforce INTERFACE SRCS enforce.cc DEPS ${enforce_deps})
+cc_library(monitor SRCS monitor.cc)
 cc_test(enforce_test SRCS enforce_test.cc DEPS stringpiece enforce)
 
 set(CPU_INFO_DEPS gflags glog enforce)
@@ -44,7 +45,7 @@ ENDIF()
 cc_library(cpu_info SRCS cpu_info.cc DEPS ${CPU_INFO_DEPS})
 cc_test(cpu_info_test SRCS cpu_info_test.cc DEPS cpu_info)
 
-nv_library(gpu_info SRCS gpu_info.cc DEPS gflags glog enforce)
+nv_library(gpu_info SRCS gpu_info.cc DEPS gflags glog enforce monitor)
 
 cc_library(place SRCS place.cc DEPS enforce boost)
 cc_test(place_test SRCS place_test.cc DEPS place glog gflags)

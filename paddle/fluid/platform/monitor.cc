@@ -1,4 +1,4 @@
-//   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+//   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,22 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "pybind11/pybind11.h"
-#include "pybind11/stl.h"
-
-namespace py = pybind11;
+#include "paddle/fluid/platform/monitor.h"
 
 namespace paddle {
-namespace pybind {
-
-void BindMonitor(py::module* m);
-void BindMonitorStats(py::module* m);
-void BindBoxHelper(py::module* m);
-#ifdef PADDLE_WITH_BOX_PS
-void BindBoxWrapper(py::module* m);
-#endif
-
-}  // namespace pybind
+namespace platform {
+Monitor* Monitor::instance = nullptr;
+}  // namespace platform
 }  // namespace paddle
