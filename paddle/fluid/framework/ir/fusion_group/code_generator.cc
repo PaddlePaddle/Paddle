@@ -84,6 +84,17 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
       std::vector<int> output_ids;
       std::vector<std::string> output_names =
           OperationMap::Instance().Get(op->Type()).output_names;
+      // in backward some data stop_gradient is True, one of dx and dy
+      // may not need to calculate
+      if (op->Type().find("grad", 0) != std::string::npos) {
+        for (auto iter = output_names.begin(); iter != output_names.end();) {
+          if (op->Output(*iter).size() == 0) {
+            iter = output_names.erase(iter);
+          } else {
+            iter++;
+          }
+        }
+      }
       for (auto& name : output_names) {
         PADDLE_ENFORCE_EQ(
             op->Output(name).size(), 1U,

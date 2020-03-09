@@ -109,8 +109,8 @@ class FusionGroupPassTest2(PassTest):
                     name="data3", shape=[128, 32], dtype=dtype))
 
             # subgraph with 3 op node
-            tmp_0 = layers.assign(self.feed_vars[2])
-            tmp_1 = layers.relu((self.feed_vars[0] + self.feed_vars[1]) * tmp_0)
+            tmp_1 = layers.relu(
+                (self.feed_vars[0] + self.feed_vars[1]) * self.feed_vars[2])
             # subgraph with 2 op nodes
             tmp_2 = layers.relu(layers.sigmoid(self.feed_vars[3]))
             tmp_3 = layers.mul(tmp_1, tmp_2)
@@ -123,43 +123,6 @@ class FusionGroupPassTest2(PassTest):
         if self.backward:
             self.append_gradinets(tmp_3)
             self.num_fused_ops = 3
-
-    def setUp(self):
-        self.backward = True
-        self.build_program("float32")
-        self.feeds = self._feed_random_data(self.feed_vars)
-        self.pass_names = "fusion_group_pass"
-        self.fused_op_type = "fusion_group"
-
-    def _prepare_feed_vars(self, shape, dtype, num_data):
-        feed_vars = []
-        for i in range(num_data):
-            var = fluid.data(name=("data" + str(i)), shape=shape, dtype=dtype)
-            feed_vars.append(var)
-        return feed_vars
-
-    def _feed_random_data(self, feed_vars):
-        feeds = {}
-        for var in feed_vars:
-            if var.type != fluid.core.VarDesc.VarType.LOD_TENSOR:
-                raise TypeError("Feed data of non LoDTensor is not supported.")
-
-            shape = var.shape
-            if var.dtype == fluid.core.VarDesc.VarType.FP32:
-                dtype = "float32"
-            elif var.dtype == fluid.core.VarDesc.VarType.FP64:
-                dtype = "float64"
-            elif var.dtype == fluid.core.VarDesc.VarType.FP16:
-                dtype = "float16"
-            else:
-                raise ValueError("Unsupported dtype %s" % var.dtype)
-            feeds[var.name] = np.random.random(shape).astype(dtype)
-        return feeds
-
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            self.pass_attrs = {"fusion_group_pass": {"use_gpu": True}}
-            self.check_output_with_place(fluid.CUDAPlace(0))
 
 
 class FusionGroupPassTestFP64(FusionGroupPassTest):
