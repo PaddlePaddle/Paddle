@@ -66,26 +66,22 @@ class FusionGroupKernel : public framework::OpKernel<T> {
       for (size_t i = 0; i < num_ins; ++i) {
         if (inputs_type[i] == "::paddle::platform::float16") {
           ptrs[i] = ins[i]->data<paddle::platform::float16>();
-          args.push_back(&ptrs[i]);
         } else if (inputs_type[i] == "double") {
           ptrs[i] = ins[i]->data<double>();
-          args.push_back(&ptrs[i]);
         } else if (inputs_type[i] == "float") {
           ptrs[i] = ins[i]->data<float>();
-          args.push_back(&ptrs[i]);
         }
+        args.push_back(&ptrs[i]);
       }
       for (size_t j = 0; j < num_outs; ++j) {
         if (outs_type[j] == "::paddle::platform::float16") {
           ptrs[num_ins + j] = outs[j]->data<paddle::platform::float16>();
-          args.push_back(&ptrs[num_ins + j]);
         } else if (outs_type[j] == "double") {
           ptrs[num_ins + j] = outs[j]->data<double>();
-          args.push_back(&ptrs[num_ins + j]);
         } else if (outs_type[j] == "float") {
           ptrs[num_ins + j] = outs[j]->data<float>();
-          args.push_back(&ptrs[num_ins + j]);
         }
+        args.push_back(&ptrs[num_ins + j]);
       }
       dev_code->Launch(n, &args);
     }
