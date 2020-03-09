@@ -1032,6 +1032,8 @@ void HalfAsyncCommunicator::Clean() {
     while (var_queue->Size() > 0) {
       var_queue->Pop();
     }
+
+    VLOG(3) << "clean var: " << var_name << " done";
   }
 }
 
