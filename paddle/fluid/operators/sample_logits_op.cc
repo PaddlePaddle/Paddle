@@ -217,8 +217,7 @@ class SampleLogitsGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto* grad_op = new T();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("sample_logits_grad");
     grad_op->SetInput("LogitsDim", this->Output("LogitsDim"));
     grad_op->SetInput("LabelsDim", this->Output("LabelsDim"));
@@ -228,7 +227,6 @@ class SampleLogitsGradMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetOutput(framework::GradVarName("Logits"),
                        this->InputGrad("Logits"));
     grad_op->SetAttrMap(this->Attrs());
-    return std::unique_ptr<T>(grad_op);
   }
 };
 
