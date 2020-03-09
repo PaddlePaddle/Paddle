@@ -100,7 +100,7 @@ class FusionGroupPassTest1(FusionGroupPassTest):
         self.fetch_list = [tmp_2.name, tmp_1.name + "@GRAD"]
 
 
-class FusionGroupPassTest2(PassTest):
+class FusionGroupPassTest2(FusionGroupPassTest):
     def build_program(self, dtype):
         with fluid.program_guard(self.main_program, self.startup_program):
             self.feed_vars = self._prepare_feed_vars([32, 128], dtype, 3)
@@ -117,7 +117,7 @@ class FusionGroupPassTest2(PassTest):
 
         self.num_fused_ops = 2
         self.fetch_list = [
-            tmp_1.name, tmp_2.name, tmp_3.name, tmp_1.name + "@GRAD"
+            tmp_1.name, tmp_2.name, tmp_3.name, tmp_3.name + "@GRAD"
         ]
 
         if self.backward:
