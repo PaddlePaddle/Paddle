@@ -154,8 +154,7 @@ class BilinearTensorProductGradOpMaker
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("bilinear_tensor_product_grad");
     op->SetAttrMap(this->Attrs());
     op->SetInput("X", this->Input("X"));
@@ -169,8 +168,6 @@ class BilinearTensorProductGradOpMaker
     op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
     op->SetOutput(framework::GradVarName("Weight"), this->InputGrad("Weight"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
-
-    return op;
   }
 };
 
