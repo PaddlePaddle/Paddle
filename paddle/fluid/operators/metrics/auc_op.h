@@ -29,7 +29,6 @@ class AucKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto *predict = ctx.Input<Tensor>("Predict");
     auto *label = ctx.Input<Tensor>("Label");
-    const auto *label_data = label->data<int64_t>();
 
     int num_thresholds = ctx.Attr<int>("num_thresholds");
     int slide_steps = ctx.Attr<int>("slide_steps");
