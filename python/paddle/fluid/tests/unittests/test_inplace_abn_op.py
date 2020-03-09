@@ -55,17 +55,32 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                     dtype=self.dtype,
                     append_batch_size=False,
                     stop_gradient=False)
-                bn = fluid.layers.batch_norm(
-                    data,
-                    act=activation,
-                    param_attr=fluid.ParamAttr(name='bn_scale'),
-                    bias_attr=fluid.ParamAttr(name='bn_bias'),
-                    moving_mean_name='bn_moving_mean',
-                    moving_variance_name='bn_moving_variance',
-                    data_layout=layout,
-                    is_test=only_forward,
-                    in_place=inplace,
-                    act_alpha=alpha)
+                if inplace:
+                    bn = fluid.layers.inplace_abn(
+                        data,
+                        act=activation,
+                        param_attr=fluid.ParamAttr(name='bn_scale'),
+                        bias_attr=fluid.ParamAttr(name='bn_bias'),
+                        moving_mean_name='bn_moving_mean',
+                        moving_variance_name='bn_moving_variance',
+                        data_layout=layout,
+                        is_test=only_forward,
+                        act_alpha=alpha)
+                else:
+                    bn = fluid.layers.batch_norm(
+                        data,
+                        param_attr=fluid.ParamAttr(name='bn_scale'),
+                        bias_attr=fluid.ParamAttr(name='bn_bias'),
+                        moving_mean_name='bn_moving_mean',
+                        moving_variance_name='bn_moving_variance',
+                        data_layout=layout,
+                        is_test=only_forward,
+                        in_place=inplace)
+                    if activation == 'leaky_relu':
+                        bn = fluid.layers.leaky_relu(bn, alpha)
+                    if activation == 'elu':
+                        bn = fluid.layers.elu(bn, alpha)
+
                 # NOTE: in inplace mode input and output of bn
                 # may have same name, multiply 1. to generate 
                 # a new Variable for fetch
@@ -129,8 +144,8 @@ class TestInplaceANBOpTraining(unittest.TestCase):
             fetch_outs.append(bn_fetches)
             fetch_names.append(fetch_name)
 
-        for bn_val, inplace_abn_val, name1, name2 in zip(*(
-                fetch_outs + fetch_names)):
+        for bn_val, inplace_abn_val, name1, name2 in zip(*(fetch_outs +
+                                                           fetch_names)):
             self.assertTrue(
                 np.allclose(
                     bn_val, inplace_abn_val, atol=1e-2),
