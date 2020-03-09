@@ -82,9 +82,9 @@ std::string OperationExpression::GetRHS(std::unordered_set<int>* used,
       // to add general fp16 compute later.
       std::string var_name;
       if (rhs_type_ == "float16")
-        var_name = "__half2float(" + VarName(input_ids_[index]) + ")";
+        var_name = "__half2float(" + TmpName(input_ids_[index]) + ")";
       else
-        var_name = VarName(input_ids_[index]);
+        var_name = TmpName(input_ids_[index]);
       rhs.replace(pos, length + 3, var_name);
       used->insert(input_ids_[index]);
     }
@@ -94,7 +94,7 @@ std::string OperationExpression::GetRHS(std::unordered_set<int>* used,
 
 std::string OperationExpression::GetLHS(size_t i) const {
   std::stringstream ret;
-  ret << VarName(output_ids_[i]);
+  ret << lhs_type_ << " " << TmpName(output_ids_[i]);
   return ret.str();
 }
 

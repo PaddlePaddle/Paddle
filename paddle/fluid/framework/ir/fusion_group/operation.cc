@@ -166,7 +166,9 @@ void OperationMap::InsertMultivariateElementwiseOperations() {
     Insert(type, num_oprands, op_type, expr, grad_exprs, {"X"}, {"Out"});
   };
 
-  // here ? represent the number of input is positive
+  // here [] represent the number of input is positive(>=0).
+  // if input list size of Sum Op is 3, It will expand as
+  // ${0} + ${1} + ${2}
   insert_handler("sum", "${0}[ + ${?}]", {});
 }
 

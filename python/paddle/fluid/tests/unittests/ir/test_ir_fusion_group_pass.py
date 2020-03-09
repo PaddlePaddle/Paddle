@@ -127,8 +127,8 @@ class FusionGroupPassTestFP16(FusionGroupPassTest):
 
             tmp_0 = self.feed_vars[0] * self.feed_vars[1]
             tmp_1 = layers.mul(tmp_0, self.feed_vars[2])
-            tmp_2 = layers.cast(tmp_0, dtype="float16")
             tmp_3 = layers.cast(tmp_1, dtype="float16")
+            tmp_2 = layers.cast(tmp_0, dtype="float16")
             tmp_4 = layers.relu(tmp_2 + tmp_3)
             tmp_5 = layers.cast(tmp_4, dtype=dtype)
 

@@ -24,7 +24,7 @@ namespace framework {
 namespace ir {
 namespace fusion_group {
 
-std::string ExtractDataType(std::vector<Node*> nodes) {
+std::string ExtractDataType(const std::vector<Node*>& nodes) {
   bool is_first = true;
   std::string dtype_str = "";
   proto::VarType::Type data_type = proto::VarType::FP32;
@@ -134,7 +134,7 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
 
       std::string lhs_type = ExtractDataType(node->outputs);
       std::string rhs_type = ExtractDataType(node->inputs);
-      expressions.push_back(OperationExpression(
+      expressions.emplace_back(OperationExpression(
           node->Name(), input_ids, output_ids, rhs_type, lhs_type));
     }
   }
@@ -199,14 +199,14 @@ std::set<int> CodeGenerator::DistilOutputIds(
   }
   return output_ids;
 }
+
 std::unordered_map<int, std::string> CodeGenerator::DistilDtypes(
     const std::vector<OperationExpression>& expressions) {
   std::unordered_map<int, std::string> dtypes;
   for (const auto& expression : expressions) {
     for (auto id : expression.GetInputIds()) {
-      auto found = dtypes.find(id);
       auto dtype = expression.GetRHSType();
-      if (found == dtypes.end()) {
+      if (dtypes.find(id) == dtypes.end()) {
         dtypes[id] = dtype;
       } else {
         PADDLE_ENFORCE_EQ(
@@ -216,9 +216,8 @@ std::unordered_map<int, std::string> CodeGenerator::DistilDtypes(
       }
     }
     for (auto id : expression.GetOutputIds()) {
-      auto found = dtypes.find(id);
       auto dtype = expression.GetLHSType();
-      if (found == dtypes.end()) {
+      if (dtypes.find(id) == dtypes.end()) {
         dtypes[id] = dtype;
       } else {
         PADDLE_ENFORCE_EQ(
@@ -268,7 +267,22 @@ std::string CodeGenerator::EmitComputeBody(
     VLOG(3) << DebugString(expressions[i]);
     compute << expressions[i].GetExpression(&used);
   }
-  return compute.str();
+
+  // Load input to temporal variables.
+  std::ostringstream load;
+  for (auto id : input_ids) {
+    if (output_ids.find(id) == output_ids.end() &&
+        used.find(id) != used.end()) {
+      load << dtypes[id] << " " << TmpName(id) << " = " << VarName(id) << ";";
+    }
+  }
+  // Store temporal variables to memory.
+  std::ostringstream store;
+  for (auto id : output_ids) {
+    store << VarName(id) << " = " << TmpName(id) << ";";
+  }
+
+  return load.str() + compute.str() + store.str();
 }
 
 std::unordered_map<std::string, int> CodeGenerator::EncodeVarNodes(
