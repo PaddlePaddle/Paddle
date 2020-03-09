@@ -17,6 +17,7 @@ from __future__ import absolute_import
 import six
 import abc
 import numpy as np
+import paddle.fluid as fluid
 
 import logging
 FORMAT = '%(asctime)s-%(levelname)s: %(message)s'
@@ -59,6 +60,12 @@ class Metric(object):
         """
         raise NotImplementedError("function 'accumulate' not implemented in {}.".format(self.__class__.__name__))
 
+    def add_metric_op(self, pred, label):
+        """
+        Add process op for metric in program
+        """
+        return pred, label
+
 
 class Accuracy(Metric):
     """
@@ -71,19 +78,28 @@ class Accuracy(Metric):
        self.maxk = max(topk)
        self.reset()
 
-    def update(self, pred, label, *args, **kwargs):
-        pred = np.argsort(pred[0])[:, ::-1][:, :self.maxk]
-        corr = (pred == np.repeat(label[0], self.maxk, 1))
-        self.correct = np.append(self.correct, corr, axis=0)
+    def add_metric_op(self, pred, label, *args, **kwargs):
+        pred = fluid.layers.argsort(pred[0], descending=True)[1][:, :self.maxk]
+        correct = pred == label[0]
+        return correct
+
+    def update(self, correct, *args, **kwargs):
+        accs = []
+        for i, k in enumerate(self.topk):
+            num_corrects = correct[:, :k].sum()
+            num_samples = len(correct)
+            accs.append(float(num_corrects) / num_samples)
+            self.total[i] += num_corrects
+            self.count[i] += num_samples
+        return accs
 
     def reset(self):
-       self.correct = np.empty((0, self.maxk), dtype="int32")
+        self.total = [0.] * len(self.topk)
+        self.count = [0] * len(self.topk)
 
     def accumulate(self):
         res = []
-        num_samples = self.correct.shape[0]
-        for k in self.topk:
-            correct_k = self.correct[:, :k].sum()
-            res.append(round(100.0 * correct_k / num_samples, 2))
+        for t, c in zip(self.total, self.count):
+            res.append(float(t) / c)
         return res
 

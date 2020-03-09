@@ -45,6 +45,26 @@ def to_numpy(var):
     return np.array(t)
 
 
+def flatten_list(l):
+    assert isinstance(l, list), "not a list"
+    outl = []
+    splits = []
+    for sl in l:
+        assert isinstance(sl, list), "sub content not a list"
+        splits.append(len(sl))
+        outl += sl
+    return outl, splits
+
+
+def restore_flatten_list(l, splits):
+    outl = []
+    for split in splits:
+        assert len(l) >= split, "list length invalid"
+        sl, l = l[:split], l[split:]
+        outl.append(sl)
+    return outl
+
+
 def extract_args(func):
     if hasattr(inspect, 'getfullargspec'):
         return inspect.getfullargspec(func)[0]
@@ -278,28 +298,26 @@ class StaticGraphAdapter(object):
                 feed[v.name] = labels[idx]
 
         endpoints = self._endpoints[self.mode]
-        fetch_list = endpoints['output'] + endpoints['label'] + endpoints['loss']
-        num_output = len(endpoints['output'])
-        num_label = len(endpoints['label'])
+        if self.mode == 'test':
+            fetch_list = endpoints['output']
+        else:
+            metric_list, metric_splits = flatten_list(endpoints['metric'])
+            fetch_list = endpoints['loss'] + metric_list
+            num_loss = len(endpoints['loss'])
         rets = self._executor.run(
             compiled_prog, feed=feed,
             fetch_list=fetch_list,
             return_numpy=False)
         # LoDTensor cannot be fetch as numpy directly
         rets = [np.array(v) for v in rets]
-        outputs = rets[:num_output]
-        labels = rets[num_output:num_output+num_label]
-        losses = rets[num_output+num_label:]
         if self.mode == 'test':
-            return outputs
-        elif self.mode == 'eval':
-            for metric in self.model._metrics:
-                metric.update(outputs, labels)
-            return outputs, losses
-        else: # train
-            for metric in self.model._metrics:
-                metric.update(outputs, labels)
-            return outputs, losses
+            return rets[:]
+        losses = rets[:num_loss]
+        metric_states = restore_flatten_list(rets[num_loss:], metric_splits)
+        metrics = []
+        for metric, state in zip(self.model._metrics, metric_states):
+            metrics.append(metric.update(*state))
+        return losses, metrics
 
     def _make_program(self, inputs):
         prog = self._orig_prog.clone()
@@ -314,6 +332,9 @@ class StaticGraphAdapter(object):
                 label_vars = self._infer_label_vars(outputs)
                 self._label_vars[self.mode] = label_vars
                 losses = self.model._loss_function(outputs, label_vars)
+                metrics = []
+                for metric in self.model._metrics:
+                    metrics.append(to_list(metric.add_metric_op(outputs, label_vars)))
                 if self.mode == 'train':
                     self._loss_endpoint = fluid.layers.sum(losses)
                     self.model._optimizer.minimize(self._loss_endpoint)
@@ -322,8 +343,8 @@ class StaticGraphAdapter(object):
         self._progs[self.mode] = prog
         self._endpoints[self.mode] = {
             "output": outputs,
-            "label": label_vars,
             "loss": losses,
+            "metric": metrics,
         }
 
     def _infer_input_vars(self, inputs):
@@ -421,16 +442,18 @@ class DynamicGraphAdapter(object):
         self.mode = 'train'
         inputs = to_list(inputs)
         labels = to_list(labels)
-        outputs = self.model.forward(*[to_variable(x) for x in inputs])
+        outputs = to_list(self.model.forward(*[to_variable(x) for x in inputs]))
         losses = self.model._loss_function(outputs, labels)
         final_loss = fluid.layers.sum(losses)
         final_loss.backward()
         self.model._optimizer.minimize(final_loss)
         self.model.clear_gradients()
+        metrics = []
         for metric in self.model._metrics:
-            metric.update([to_numpy(o) for o in to_list(outputs)], labels)
-        return [to_numpy(o) for o in to_list(outputs)], \
-            [to_numpy(l) for l in losses]
+            metric_outs = metric.add_metric_op(outputs, [to_variable(l) for l in labels])
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
+            metrics.append(m)
+        return [to_numpy(l) for l in losses], metrics
 
     def eval(self, inputs, labels, device='CPU', device_ids=None):
         assert self.model._loss_function, \
@@ -439,12 +462,14 @@ class DynamicGraphAdapter(object):
         self.mode = 'eval'
         inputs = to_list(inputs)
         labels = to_list(labels)
-        outputs = self.model.forward(*[to_variable(x) for x in inputs])
+        outputs = to_list(self.model.forward(*[to_variable(x) for x in inputs]))
         losses = self.model._loss_function(outputs, labels)
+        metrics = []
         for metric in self.model._metrics:
-            metric.update([to_numpy(o) for o in to_list(outputs)], labels)
-        return [to_numpy(o) for o in to_list(outputs)], \
-            [to_numpy(l) for l in losses]
+            metric_outs = metric.add_metric_op(outputs, [to_variable(l) for l in labels])
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
+            metrics.append(m)
+        return [to_numpy(l) for l in losses], metrics
 
     def test(self, inputs, device='CPU', device_ids=None):
         super(Model, self.model).eval()
