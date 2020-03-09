@@ -116,7 +116,7 @@ class JobInfoManager(object):
         step_id = 0
         modify = True
         while (True):
-            time.sleep(15)
+            time.sleep(15)  # 20minutes
             if modify:
                 step_id += 1
                 #print("del 2 pods")

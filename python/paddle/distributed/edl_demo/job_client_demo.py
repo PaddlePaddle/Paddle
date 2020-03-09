@@ -50,6 +50,12 @@ def _parse_args():
         default="pod_log",
         help="The path for each pod's log.")
 
+    parser.add_argument(
+        "--package_sh",
+        type=str,
+        default=None,
+        help="The bash shell to make pod env.")
+
     #positional
     parser.add_argument(
         "training_script", type=str, help="The full path to start trainer proc")
