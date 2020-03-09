@@ -29,6 +29,7 @@ import urllib
 import sys
 from dist_test_utils import *
 
+cache_path = os.path.expanduser('~/.cache/paddle/dataset/')
 
 def run_trainer(use_cuda, sync_mode, ip, port, trainers, trainer_id):
     x = fluid.layers.data(name='x', shape=[1], dtype='float32')
@@ -40,11 +41,11 @@ def run_trainer(use_cuda, sync_mode, ip, port, trainers, trainer_id):
     # optimizer
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
     sgd_optimizer.minimize(avg_cost)
-    with open("trainer_recv_program.dms", "rb") as f:
+    with open("{}/trainer_recv_program.dms".format(cache_path), "rb") as f:
         trainer_recv_program_desc_str = f.read()
-    with open("trainer_main_program.dms", "rb") as f:
+    with open("{}/trainer_main_program.dms".format(cache_path), "rb") as f:
         trainer_main_program_desc_str = f.read()
-    with open("trainer_send_program.dms", "rb") as f:
+    with open("{}/trainer_send_program.dms".format(cache_path), "rb") as f:
         trainer_send_program_desc_str = f.read()
     recv_program = Program.parse_from_string(trainer_recv_program_desc_str)
     main_program = Program.parse_from_string(trainer_main_program_desc_str)
@@ -76,9 +77,9 @@ def run_pserver(use_cuda, sync_mode, ip, port, trainers, trainer_id):
     # optimizer
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
     sgd_optimizer.minimize(avg_cost)
-    with open("pserver_startup_program.dms", "rb") as f:
+    with open("{}/pserver_startup_program.dms".format(cache_path), "rb") as f:
         pserver_startup_program_desc_str = f.read()
-    with open("pserver_main_program.dms", "rb") as f:
+    with open("{}/pserver_main_program.dms".format(cache_path), "rb") as f:
         pserver_main_program_desc_str = f.read()
 
     startup_program = Program.parse_from_string(
@@ -146,16 +147,13 @@ class TestFlListenAndServOp(unittest.TestCase):
             pass
         else:
             print(sys.platform)
-            cmd = "wget --no-check-certificate https://paddlefl.bj.bcebos.com/test_fl_listen_and_serv/pserver_startup_program.dms"
-            os.system(cmd)
-            cmd = "wget --no-check-certificate https://paddlefl.bj.bcebos.com/test_fl_listen_and_serv/pserver_main_program.dms"
-            os.system(cmd)
-            cmd = "wget --no-check-certificate https://paddlefl.bj.bcebos.com/test_fl_listen_and_serv/trainer_recv_program.dms"
-            os.system(cmd)
-            cmd = "wget --no-check-certificate https://paddlefl.bj.bcebos.com/test_fl_listen_and_serv/trainer_main_program.dms"
-            os.system(cmd)
-            cmd = "wget --no-check-certificate https://paddlefl.bj.bcebos.com/test_fl_listen_and_serv/trainer_send_program.dms"
-            os.system(cmd)
+            file_list = ['pserver_startup_program.dms', 'pserver_main_program.dms', 
+                    'trainer_recv_program.dms' 'trainer_main_program.dms', 'trainer_send_program.dms']
+            prefix = 'wget --no-check-certificate https://paddlefl.bj.bcebos.com/test_fl_listen_and_serv/'
+            for f in file_list:
+                if not os.path.exists('{}/{}'.format(cache_path, f)):
+                    cmd = "wget --no-check-certificate https://paddlefl.bj.bcebos.com/test_fl_listen_and_serv/{} -P {}".format(f, cache_path)
+                    os.system(cmd)
             p1 = self._start_pserver(False, True, run_pserver)
             self._wait_ps_ready(p1.pid)
             time.sleep(5)
