@@ -79,8 +79,8 @@ class LookupTableDequantOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(framework::proto::VarType::FP32,
-                                   platform::CPUPlace());
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "W");
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
@@ -125,5 +125,4 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(lookup_table_dequant,
-                       ops::LookupTableDequantKernel<float>,
-                       ops::LookupTableDequantKernel<double>);
+                       ops::LookupTableDequantKernel<float>);
