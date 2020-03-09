@@ -70,21 +70,45 @@ class EmbeddingEltWiseLayerNormOp : public framework::OperatorWithKernel {
             "Output(Out) of EmbeddingEltWiseLayerNormOp should not be null."));
 
     // batch * seq_len * 1
-    auto dim_word_id = context->GetInputDim("WordId");
+    auto dims_word_id = context->GetInputDim("WordId");
     // word_num * hidden
-    auto dim_word_emb = context->GetInputDim("WordEmb");
+    auto dims_word_emb = context->GetInputDim("WordEmb");
+    auto dims_pos_emb = context->GetInputDim("PosEmb");
+    auto dims_sent_emb = context->GetInputDim("SentEmb");
     // hidden
-    auto dim_bias = context->GetInputDim("Bias");
+    auto dims_bias = context->GetInputDim("Bias");
     PADDLE_ENFORCE_EQ(
-        dim_word_emb[1], dim_bias[0],
+        dims_word_emb[1], dims_bias[0],
         platform::errors::InvalidArgument(
             "The second dims (%d) of the Word Embedding should be equal "
             "to the Bias's size(%d).",
-            dim_word_emb[1], dim_bias[0]));
+            dims_word_emb[1], dims_bias[0]));
+    PADDLE_ENFORCE_EQ(dims_word_emb.size(), 2,
+                      platform::errors::InvalidArgument(
+                          "The WordEmb dim's size shoule be 2, but found %d.",
+                          dims_word_emb.size()));
+    PADDLE_ENFORCE_EQ(dims_pos_emb.size(), 2,
+                      platform::errors::InvalidArgument(
+                          "The PosEmb dim's size shoule be 2, but found %d.",
+                          dims_pos_emb.size()));
+    PADDLE_ENFORCE_EQ(dims_sent_emb.size(), 2,
+                      platform::errors::InvalidArgument(
+                          "The SentEmb dim's size shoule be 2, but found %d.",
+                          dims_sent_emb.size()));
+    PADDLE_ENFORCE_EQ(
+        dims_word_emb[1], dims_pos_emb[1],
+        platform::errors::InvalidArgument(
+            "The WordEmb first dim size(%d) shoule equal to PosEmb ones(%d).",
+            dims_word_emb[1], dims_pos_emb[1]));
+    PADDLE_ENFORCE_EQ(
+        dims_word_emb[1], dims_sent_emb[1],
+        platform::errors::InvalidArgument(
+            "The WordEmb first dim size(%d) shoule equal to SentEmb ones(%d).",
+            dims_word_emb[1], dims_sent_emb[1]));
 
-    int batch = dim_word_id[0];
-    int seq_len = dim_word_id[1];
-    int hidden = dim_word_emb[1];
+    int batch = dims_word_id[0];
+    int seq_len = dims_word_id[1];
+    int hidden = dims_word_emb[1];
     auto dim_output = framework::make_ddim({batch, seq_len, hidden});
     context->SetOutputDim("Out", dim_output);
     context->ShareLoD("WordId", /*->*/ "Out");

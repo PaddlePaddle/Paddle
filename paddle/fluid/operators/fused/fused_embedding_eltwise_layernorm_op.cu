@@ -31,9 +31,9 @@ template <typename T>
 using cv2 = cub::CubVector<T, 2>;
 
 template <typename T, int TPB>
-__device__ inline void layer_norm(const cv2<T> &thread_data, const int ld,
-                                  const int offset, const float *bias,
-                                  const float *scale, T *output, float eps) {
+__device__ inline void LayerNorm(const cv2<T> &thread_data, const int ld,
+                                 const int offset, const float *bias,
+                                 const float *scale, T *output, float eps) {
   using BlockReduce = cub::BlockReduce<cv2<T>, TPB>;
   __shared__ typename BlockReduce::TempStorage temp_storage;
   __shared__ T mu;      // mean
@@ -57,7 +57,7 @@ __device__ inline void layer_norm(const cv2<T> &thread_data, const int ld,
 }
 
 template <typename T, unsigned TPB>
-__global__ void emb_eltwise_layernorm_kernel(
+__global__ void EmbEltwiseLayernormKernel(
     int hidden, const int64_t *word_id_d, const int64_t *pos_id_d,
     const int64_t *sent_id_d, const T *scale, const T *bias, const T *word_emb,
     const T *pos_emb, const T *sent_emb, T *output, float eps) {
@@ -104,7 +104,7 @@ __global__ void emb_eltwise_layernorm_kernel(
 
     thread_data = pair_sum(thread_data, temp_data);
   }
-  layer_norm<T, TPB>(thread_data, hidden, out_offset, bias, scale, output, eps);
+  LayerNorm<T, TPB>(thread_data, hidden, out_offset, bias, scale, output, eps);
 }
 
 template <typename DeviceContext, typename T>
@@ -150,8 +150,7 @@ class EmbeddingEltWiseLayerNormKernel : public framework::OpKernel<T> {
     const unsigned tpb = 256;
     const dim3 grid(seq_len, batch, 1);
     const dim3 block(tpb, 1, 1);
-    emb_eltwise_layernorm_kernel<T,
-                                 tpb><<<grid, block, 0, device_ctx.stream()>>>(
+    EmbEltwiseLayernormKernel<T, tpb><<<grid, block, 0, device_ctx.stream()>>>(
         hidden, word_id_d, pos_id_d, sent_id_d, scale_d, bias_d, word_emb_d,
         pos_emb_d, sent_emb_d, output_d, eps);
   }

@@ -25,7 +25,8 @@ namespace framework {
 namespace ir {
 namespace patterns {
 
-static int BuildFusion(Graph* graph, const std::string& name_scope) {
+static int BuildFusion(Graph* graph, const std::string& name_scope,
+                       const Scope* scope) {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
 
@@ -88,8 +89,25 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_variance, layer_norm_variance,
                               emb_eltwise_layernorm_pattern);
 
-    OpDesc new_op_desc;
+    auto get_persist_tensor_dims = [&](std::string name) -> framework::DDim {
+      auto* var = scope->FindVar(name);
+      PADDLE_ENFORCE_NOT_NULL(var,
+                              platform::errors::PreconditionNotMet(
+                                  "Cant not found the %d var in scope.", name));
+      return var->GetMutable<LoDTensor>()->dims();
+    };
 
+    // Check the weight dims.
+    auto word_emb_dims = get_persist_tensor_dims(lookup_table1_w->Name());
+    auto pos_emb_dims = get_persist_tensor_dims(lookup_table2_w->Name());
+    auto sent_emb_dims = get_persist_tensor_dims(lookup_table3_w->Name());
+    if (word_emb_dims.size() != 2 || pos_emb_dims.size() != 2 ||
+        sent_emb_dims.size() != 2 || word_emb_dims[1] != pos_emb_dims[1] ||
+        word_emb_dims[1] != sent_emb_dims[1]) {
+      return;
+    }
+
+    OpDesc new_op_desc;
     new_op_desc.SetType("fused_embedding_eltwise_layernorm");
     new_op_desc.SetInput("WordId", {lookup_table1_x->Name()});
     new_op_desc.SetInput("PosId", {lookup_table2_x->Name()});
@@ -132,28 +150,30 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
 
 PDNode* EmbeddingEltwiseLayerNormPattern::operator()() {
   // Create shared nodes.
-  auto* lookup_table1_x = pattern->NewNode(lookup_table1_x_repr())
-                              ->assert_is_op_input("lookup_table", "Ids")
-                              ->AsInput();
-  auto* lookup_table2_x = pattern->NewNode(lookup_table2_x_repr())
-                              ->assert_is_op_input("lookup_table", "Ids")
-                              ->AsInput();
-  auto* lookup_table3_x = pattern->NewNode(lookup_table3_x_repr())
-                              ->assert_is_op_input("lookup_table", "Ids")
-                              ->AsInput();
+  auto create_emb_vars = [&](const std::string& name, const std::string& arg,
+                             bool is_persist = false) -> PDNode* {
+    PDNode* node = pattern->NewNode(name)
+                       ->assert_is_op_input("lookup_table", arg)
+                       ->AsInput();
+    if (is_persist) return node->assert_is_persistable_var();
+    return node;
+  };
 
-  auto* lookup_table1_w = pattern->NewNode(lookup_table1_w_repr())
-                              ->assert_is_op_input("lookup_table", "W")
-                              ->AsInput()
-                              ->assert_is_persistable_var();
-  auto* lookup_table2_w = pattern->NewNode(lookup_table2_w_repr())
-                              ->assert_is_op_input("lookup_table", "W")
-                              ->AsInput()
-                              ->assert_is_persistable_var();
-  auto* lookup_table3_w = pattern->NewNode(lookup_table3_w_repr())
-                              ->assert_is_op_input("lookup_table", "W")
-                              ->AsInput()
-                              ->assert_is_persistable_var();
+  auto create_emb_out_vars = [&](const std::string& name,
+                                 const std::string& arg) -> PDNode* {
+    PDNode* node = pattern->NewNode(name)
+                       ->AsIntermediate()
+                       ->assert_is_op_output("lookup_table")
+                       ->assert_is_op_input("elementwise_add", arg);
+    return node;
+  };
+
+  auto* lookup_table1_x = create_emb_vars(lookup_table1_x_repr(), "Ids");
+  auto* lookup_table2_x = create_emb_vars(lookup_table2_x_repr(), "Ids");
+  auto* lookup_table3_x = create_emb_vars(lookup_table3_x_repr(), "Ids");
+  auto* lookup_table1_w = create_emb_vars(lookup_table1_w_repr(), "W", true);
+  auto* lookup_table2_w = create_emb_vars(lookup_table2_w_repr(), "W", true);
+  auto* lookup_table3_w = create_emb_vars(lookup_table3_w_repr(), "W", true);
 
   auto* lookup_table1 =
       pattern->NewNode(lookup_table1_repr())->assert_is_op("lookup_table");
@@ -162,18 +182,9 @@ PDNode* EmbeddingEltwiseLayerNormPattern::operator()() {
   auto* lookup_table3 =
       pattern->NewNode(lookup_table3_repr())->assert_is_op("lookup_table");
 
-  auto* lookup_table1_out = pattern->NewNode(lookup_table1_out_repr())
-                                ->AsIntermediate()
-                                ->assert_is_op_output("lookup_table")
-                                ->assert_is_op_input("elementwise_add", "X");
-  auto* lookup_table2_out = pattern->NewNode(lookup_table2_out_repr())
-                                ->AsIntermediate()
-                                ->assert_is_op_output("lookup_table")
-                                ->assert_is_op_input("elementwise_add", "Y");
-  auto* lookup_table3_out = pattern->NewNode(lookup_table3_out_repr())
-                                ->AsIntermediate()
-                                ->assert_is_op_output("lookup_table")
-                                ->assert_is_op_input("elementwise_add", "Y");
+  auto* lookup_table1_out = create_emb_out_vars(lookup_table1_out_repr(), "X");
+  auto* lookup_table2_out = create_emb_out_vars(lookup_table2_out_repr(), "Y");
+  auto* lookup_table3_out = create_emb_out_vars(lookup_table3_out_repr(), "Y");
 
   auto* eltwise_add_12 =
       pattern->NewNode(eltwise_add_12_repr())->assert_is_op("elementwise_add");
@@ -231,8 +242,11 @@ PDNode* EmbeddingEltwiseLayerNormPattern::operator()() {
 
 void EmbeddingEltwiseLayerNormFusePass::ApplyImpl(Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
-
-  int fusion_count = patterns::BuildFusion(graph, name_scope_);
+  auto* scope = param_scope();
+  PADDLE_ENFORCE_NOT_NULL(
+      scope, platform::errors::PreconditionNotMet(
+                 "The scope is null, please initialize the scope first."));
+  int fusion_count = patterns::BuildFusion(graph, name_scope_, scope);
   AddStatis(fusion_count);
 }
 
