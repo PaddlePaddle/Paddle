@@ -74,7 +74,7 @@ class NameVisitor(gast.NodeVisitor):
         self.current_loop = []
 
         # Mapping from gast.While/gast.For to string name of vars
-        self.before_loop_vars = defaultdict(set)
+        self.before_loop_body_vars = defaultdict(set)
         self.in_loop_vars = defaultdict(set)
 
         self.visit(root_node)
@@ -92,9 +92,9 @@ class NameVisitor(gast.NodeVisitor):
 
         in_loop_vars = self.in_loop_vars[node]
         in_loop_name_strs = set(name.id for name in in_loop_vars)
-        before_loop_vars = self.before_loop_vars[node]
-        before_loop_name_strs = set(name.id for name in before_loop_vars)
-        after_loop_vars = self.current_seen_vars - before_loop_vars - in_loop_vars
+        before_loop_body_vars = self.before_loop_body_vars[node]
+        before_loop_name_strs = set(name.id for name in before_loop_body_vars)
+        after_loop_vars = self.current_seen_vars - before_loop_body_vars - in_loop_vars
         after_loop_name_strs = set(
             name.id for name in after_loop_vars
             if type(name.ctx) in read_context)
@@ -118,13 +118,15 @@ class NameVisitor(gast.NodeVisitor):
 
     def visit_For(self, node):
         self.current_loop.append(node)
-        self.before_loop_vars[node] = copy.copy(self.current_seen_vars)
+        self.visit(node.target)
+        self.before_loop_body_vars[node] = copy.copy(self.current_seen_vars)
         self.generic_visit(node)
         self.current_loop.pop()
 
     def visit_While(self, node):
         self.current_loop.append(node)
-        self.before_loop_vars[node] = copy.copy(self.current_seen_vars)
+        self.visit(node.test)
+        self.before_loop_body_vars[node] = copy.copy(self.current_seen_vars)
         self.generic_visit(node)
         self.current_loop.pop()
 
@@ -165,7 +167,7 @@ class LoopTransformer(gast.NodeTransformer):
                 body_list[i:i + 1] = new_stmts
                 i += len(new_stmts)
             elif isinstance(body_list[i], gast.For):
-                new_stmts = self.get_while_stmt_nodes(body_list[i])
+                new_stmts = self.get_for_stmt_nodes(body_list[i])
                 body_list[i:i + 1] = new_stmts
                 i += len(new_stmts)
             else:
@@ -190,7 +192,7 @@ class LoopTransformer(gast.NodeTransformer):
            as "for i in range(10)" will create i = 9 after the loop. But using
            current conversion will make i = 10. We should find a way to change it
         '''
-        len_range_args = len(range_args)
+        len_range_args = len(args_list)
         assert len_range_args >= 1 and len_range_args <= 3, "range() function takes 1 to 3 arguments"
         if len_range_args == 1:
             init_stmt = get_constant_variable_node(iter_name, 0)
@@ -206,19 +208,20 @@ class LoopTransformer(gast.NodeTransformer):
                 value=args_list[0])
 
         range_max_node = args_list[0] if len_range_args == 1 else args_list[1]
-        step_node = args_list[2] if len_range_args == 3 else Constant(
+        step_node = args_list[2] if len_range_args == 3 else gast.Constant(
             value=1, kind=None)
 
-        cond_stmt = gast.Compare(left=gast.BinOp(
-            left=gast.Name(
-                id=iter_name,
-                ctx=gast.Load(),
-                annotation=None,
-                type_comment=None),
-            op=gast.Add(),
-            right=step_node,
-            ops=[gast.Lt()],
-            comparators=[range_max_node]))
+        cond_stmt = gast.Compare(
+            left=gast.BinOp(
+                left=gast.Name(
+                    id=iter_name,
+                    ctx=gast.Load(),
+                    annotation=None,
+                    type_comment=None),
+                op=gast.Add(),
+                right=step_node),
+            ops=[gast.LtE()],
+            comparators=[range_max_node])
 
         change_stmt = gast.AugAssign(
             target=gast.Name(
@@ -241,7 +244,7 @@ class LoopTransformer(gast.NodeTransformer):
         if range_call_node is None:
             return [node]
 
-        if not instance(node.target, gast.Name):
+        if not isinstance(node.target, gast.Name):
             return [node]
         iter_var_name = node.target.id
 
@@ -260,7 +263,12 @@ class LoopTransformer(gast.NodeTransformer):
         # We need to create static variable for those variables
         for name in create_var_names:
             new_stmts.append(create_static_variable_gast_node(name))
+
         new_stmts.append(init_stmt)
+
+        # for x in range(10) in dygraph should be convert into static tensor + 1 <= 10
+        for name in loop_var_names:
+            new_stmts.append(to_static_variable_gast_node(name))
 
         condition_func_node = gast.FunctionDef(
             name=unique_name.generate(FOR_CONDITION_PREFIX),
@@ -290,7 +298,7 @@ class LoopTransformer(gast.NodeTransformer):
             gast.Return(value=generate_name_node(
                 loop_var_names, ctx=gast.Load())))
         body_func_node = gast.FunctionDef(
-            name=unique_name.generate(WHILE_BODY_PREFIX),
+            name=unique_name.generate(FOR_BODY_PREFIX),
             args=gast.arguments(
                 args=[
                     gast.Name(

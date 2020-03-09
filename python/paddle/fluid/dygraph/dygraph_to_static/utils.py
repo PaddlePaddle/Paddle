@@ -209,5 +209,5 @@ def create_api_shape_node(tensor_shape_node):
 
 
 def get_constant_variable_node(name, value, shape=[1], dtype='int64'):
-    return gast.parse('%s = fluid.layers.fill_constant(%s, %s, %s)' %
+    return gast.parse('%s = fluid.layers.fill_constant(%s, "%s", %s)' %
                       (name, str(shape), dtype, str(value)))
