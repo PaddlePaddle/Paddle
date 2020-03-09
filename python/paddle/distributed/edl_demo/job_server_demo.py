@@ -8,9 +8,11 @@ import threading
 import time
 import argparse
 import copy
+import functools
+from .. import utils
 
 parser = argparse.ArgumentParser(description=__doc__)
-add_arg = functools.partial(add_arguments, argparser=parser)
+add_arg = functools.partial(utils.add_arguments, argparser=parser)
 
 add_arg(
     'node_ips', str, None,
@@ -30,33 +32,41 @@ class JobInfoManager(object):
         self._job_id = "test_job_id_1234"
         self.job[self._job_id] = []
         self._ip_list = None
-        self._ip_podnum = None
+        self._ip_pod_num = None
 
-    def _make_job_pods(self, ip_podnum, step_id=0):
-        """
-        ip_podnum:[(ip,pod_num),(ip, pod_num)]
-        """
-        assert type(node_ips) == list, "{} must be a list".format(node_ips)
+    def _make_new_pods(self, start_rank, pod_num, step_id=0):
         pods = []
+        for i in range(0, pod_num):
+            pod = {}
+            pod["pod_id"] = "pod_{}_{}".format(start_rank + i, step_id)
+            pods.append(pod)
+
+        return pods
+
+    def _assign_pods_to_nodes(self, pods, ip_pod_num):
+        """
+        ip_podnum:[[ip,pod_num],[ip, pod_num]]
+        """
+
         pod_rank = 0
-        for n_p in ip_podnum:
+        for node_rank, n_p in enumerate(ip_pod_num):
             ip = n_p[0]
             pod_num = n_p[1]
             port = 6070
             for i in range(0, pod_num):
-                pod = {}
-                pod["pod_id"] = "pod_{}_{}_{}".format(pod_rank, 0, step_id)
+                if pod_rank >= len(pods):
+                    return
+
+                pod = pods[pod_rank]
+                #pod["pod_id"] = "pod_{}_{}".format(pod_rank, step_id)
                 pod["running"] = True
                 pod["addr"] = ip
 
                 pod["pod_port"] = port
                 pod["trainer_ports"] = [port + 1]
 
-                pods.append(pod)
                 port += 2
                 pod_rank += 1
-
-        return pods
 
     def start(self, node_ips):
         assert self._t_id is None, "thread has been started"
@@ -65,11 +75,14 @@ class JobInfoManager(object):
         if node_ips is not None:
             self._ip_list = [x.strip() for x in node_ips.split(',')]
 
-        self._ip_podnum = []
+        self._ip_pod_num = []
+        pod_num = 0
         for ip in self._ip_list:
-            self._ip_podnum.append((ip, 8))
+            self._ip_pod_num.append([ip, 8])
+            pod_num += 8
 
-        pods = self._make_job_pods(ip_podnum)
+        pods = self._make_new_pods(0, pod_num)
+        self._assign_pods_to_nodes(pods, self._ip_pod_num)
         self.job[self._job_id] = pods
 
         thread = threading.Thread(target=self.run)
@@ -80,12 +93,24 @@ class JobInfoManager(object):
         with self._lock:
             return self.job[job_id]
 
-    def _change(self, job_id, node_rank, pods_num, step_id):
+    def _del_tail(self, job_id, pod_num, step_id):
         with self._lock:
-            self._ip_podnum[node_rank][1] = pods_num
-            pods = _make_job_pods(self._ip_podnum)
-            self.job[_job_id] = pods
-            print("changed pods {}".format(pods))
+            pods = self.job[job_id]
+            assert pod_num < len(pods), "can't delete pod_num:%d".format(
+                pod_num)
+            self.job[job_id] = pods[:-pod_num]
+            print("deleted pods {}".format(self.job[job_id]))
+
+    def _add_tail(self, job_id, pod_num, step_id):
+        with self._lock:
+            pods = self.job[job_id]
+            start_rank = len(pods)
+            new_pods = self._make_new_pods(start_rank, pod_num, step_id)
+            pods.extend(new_pods)
+
+            self._assign_pods_to_nodes(pods, self._ip_pod_num)
+            self.job[self._job_id] = pods
+            print("added pods {}".format(pods))
 
     def run(self):
         step_id = 0
@@ -95,12 +120,13 @@ class JobInfoManager(object):
             if modify:
                 step_id += 1
                 print("del 2 pods")
-                self._change(self._job_id, len(self._ip_list) - 1, 6, step_id)
+                self._del_tail(self._job_id, 2, step_id)
                 time.sleep(15)
 
+                step_id += 1
                 print("add 2 pods")
-                self._change(self._job_id, len(self._ip_list) - 1, 8, step_id)
-                modify = False
+                self._add_tail(self._job_id, 2, step_id)
+                #modify = False
 
 
 job_manager = JobInfoManager()

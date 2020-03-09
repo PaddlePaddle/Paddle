@@ -360,3 +360,20 @@ def get_host_name_ip():
         return host_name, host_ip
     except:
         return None
+
+
+def add_arguments(argname, type, default, help, argparser, **kwargs):
+    """Add argparse's argument.
+    Usage:
+    .. code-block:: python
+        parser = argparse.ArgumentParser()
+        add_argument("name", str, "Jonh", "User name.", parser)
+        args = parser.parse_args()
+    """
+    type = distutils.util.strtobool if type == bool else type
+    argparser.add_argument(
+        "--" + argname,
+        default=default,
+        type=type,
+        help=help + ' Default: %(default)s.',
+        **kwargs)
