@@ -51,7 +51,14 @@ def static_test_list(x):
 def basic_test(x):
     x = fluid.dygraph.to_variable(x)
     a = []
-    a.append(x)
+    if x.numpy()[0] > 0:
+        a.append(x)
+        # b = []
+        # b.append(x)
+    else:
+        a.append(
+            fluid.layers.fill_constant(
+                shape=[1, 2], value=9, dtype="int64"))
     return a
 
 
