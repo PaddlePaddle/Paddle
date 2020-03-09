@@ -398,15 +398,25 @@ void BindImperative(py::module *m_ptr) {
              // We allow indexing by Integers, Slices, and tuples of those
              // types.
              // Ellipsis and None are not supported yet.
-             std::vector<int> decrease_axis, slice_axis, slice_start, slice_end,
-                 reverse_axis;
+             std::vector<int> slice_axes, slice_starts, slice_ends,
+                 slice_strides;
              // wrap to tuple
              PyObject *index = !PyTuple_Check(_index.ptr())
                                    ? PyTuple_Pack(1, _index.ptr())
                                    : _index.ptr();
-             int ndim = PyTuple_GET_SIZE(index);
-             int max_int = PyInt_GetMax();
-             for (int dim = 0; dim < ndim; ++dim) {
+             const auto &tensor = self.Var().Get<framework::LoDTensor>();
+             PADDLE_ENFORCE(tensor.IsInitialized(),
+                            platform::errors::InvalidArgument(
+                                "%s has not been initialized", self.Name()));
+             const auto &shape = tensor.dims();
+             const int rank = shape.size();
+             const int size = PyTuple_GET_SIZE(index);
+             PADDLE_ENFORCE(
+                 size <= rank,
+                 platform::errors::InvalidArgument(
+                     "too many indices (%d) for tensor of dimension %d", size,
+                     rank));
+             for (int dim = 0; dim < size; ++dim) {
                PyObject *slice_item = PyTuple_GetItem(index, dim);
                PADDLE_ENFORCE(
                    PyNumber_Check(slice_item) || PySlice_Check(slice_item),
@@ -414,32 +424,32 @@ void BindImperative(py::module *m_ptr) {
                        "We allow indexing by Integers, Slices, and tuples of "
                        "these types, but received %s in %dth slice item",
                        std::string(Py_TYPE(slice_item)->tp_name), dim + 1));
+               int dim_len = shape[dim];
                if (PyNumber_Check(slice_item)) {
                  // integer
-                 int slice_item_int = PyInt_AsLong(slice_item);
-                 decrease_axis.push_back(dim);
-                 slice_axis.push_back(dim);
-                 slice_start.push_back(slice_item_int);
-                 slice_end.push_back(slice_item_int != -1 ? slice_item_int + 1
-                                                          : max_int);
+                 int start = PyInt_AsLong(slice_item);
+                 start = start < 0 ? start + dim_len : start;
+                 slice_axes.push_back(dim);
+                 slice_starts.push_back(start);
+                 slice_ends.push_back(start + 1);
+                 slice_strides.push_back(1);
                } else {
-                 auto _slice_item =
-                     reinterpret_cast<PySliceObject *>(slice_item);
+                 // slice
                  Py_ssize_t start, end, step;
-                 PySlice_GetIndices(_slice_item, max_int, &start, &end, &step);
-                 if (_slice_item->step == Py_None) step = 1;
-                 if (step == -1) {
-                   reverse_axis.push_back(dim);
-                 }
-                 if (_slice_item->start == Py_None &&
-                     _slice_item->stop == Py_None)
-                   continue;
-                 if (_slice_item->start == Py_None) start = 0;
-                 if (_slice_item->stop == Py_None) end = max_int;
-
-                 slice_axis.push_back(dim);
-                 slice_start.push_back(start);
-                 slice_end.push_back(end);
+// The parameter type for the slice parameter was PySliceObject* before 3.2
+#if PY_VERSION_HEX >= 0x03020000
+                 PySlice_GetIndices(slice_item, dim_len, &start, &end, &step);
+#else
+                 PySlice_GetIndices(
+                     reinterpret_cast<PySliceObject *>(slice_item), dim_len,
+                     &start, &end, &step);
+#endif
+                 // None:None:None or 0:dim_len:1
+                 if (start == 0 && end == dim_len && step == 1) continue;
+                 slice_axes.push_back(dim);
+                 slice_starts.push_back(start);
+                 slice_ends.push_back(end);
+                 slice_strides.push_back(step);
                }
              }
              if (!PyTuple_Check(_index.ptr())) Py_DecRef(index);
@@ -453,25 +463,25 @@ void BindImperative(py::module *m_ptr) {
                  ->GetMutable<framework::LoDTensor>()
                  ->ShareDataWith(
                      *(self.MutableVar()->GetMutable<framework::LoDTensor>()));
-             if (!slice_axis.empty()) {
+             if (!slice_axes.empty()) {
+               std::vector<int> infer_flags(size, 1);
                imperative::NameVarBaseMap ins = {{"Input", {out}}};
-               framework::AttributeMap attrs = {
-                   {"axes", slice_axis},
-                   {"starts", slice_start},
-                   {"ends", slice_end},
-                   {"decrease_axis", decrease_axis}};
+               framework::AttributeMap attrs = {{"axes", slice_axes},
+                                                {"starts", slice_starts},
+                                                {"ends", slice_ends},
+                                                {"infer_flags", infer_flags}};
                out = std::shared_ptr<imperative::VarBase>(
                    new imperative::VarBase(tracer->GenerateUniqueName()));
                imperative::NameVarBaseMap outs = {{"Out", {out}}};
-               tracer->TraceOp("slice", ins, outs, std::move(attrs));
-             }
-             if (!reverse_axis.empty()) {
-               imperative::NameVarBaseMap ins = {{"X", {out}}};
-               framework::AttributeMap attrs = {{"axes", reverse_axis}};
-               out = std::shared_ptr<imperative::VarBase>(
-                   new imperative::VarBase(tracer->GenerateUniqueName()));
-               imperative::NameVarBaseMap outs = {{"Out", {out}}};
-               tracer->TraceOp("reverse", ins, outs, std::move(attrs));
+               std::string op_type = "slice";
+               for (auto stride : slice_strides) {
+                 if (stride != 1) {
+                   op_type = "strided_slice";
+                   attrs.insert({"strides", slice_strides});
+                   break;
+                 }
+               }
+               tracer->TraceOp(op_type, ins, outs, std::move(attrs));
              }
              return out;
            })

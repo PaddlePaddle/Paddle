@@ -60,16 +60,16 @@ static void StridedSliceOutDims(
       continue;
     }
 
+    if (stride_index < 0) {
+      start_index = start_index + 1;
+      end_index = end_index + 1;
+    }
+
     if (start_index < 0) {
       start_index = start_index + axis_size;
     }
     if (end_index < 0) {
       end_index = end_index + axis_size;
-    }
-
-    if (stride_index < 0) {
-      start_index = start_index + 1;
-      end_index = end_index + 1;
     }
 
     bool zero_dim_condition =
@@ -109,14 +109,6 @@ static void StridedSliceFunctor(int* starts, int* ends, int* strides, int* axes,
         decrease_axis_affect = true;
       }
     }
-    // stride must not be zero
-    if (starts[axis_index] < 0) {
-      starts[axis_index] = starts[axis_index] + axis_size;
-    }
-
-    if (ends[axis_index] < 0) {
-      ends[axis_index] = ends[axis_index] + axis_size;
-    }
     if (decrease_axis_affect) {
       if (strides[axis_index] < 0) {
         ends[axis_index] = starts[axis_index] - 1;
@@ -136,6 +128,13 @@ static void StridedSliceFunctor(int* starts, int* ends, int* strides, int* axes,
     } else {
       reverse_axis[axis_index] = 0;
       strides[axis_index] = strides[axis_index];
+    }
+    // stride must not be zero
+    if (starts[axis_index] < 0) {
+      starts[axis_index] = starts[axis_index] + axis_size;
+    }
+    if (ends[axis_index] < 0) {
+      ends[axis_index] = ends[axis_index] + axis_size;
     }
   }
 }
