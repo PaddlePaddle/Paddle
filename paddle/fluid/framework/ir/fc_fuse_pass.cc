@@ -157,7 +157,6 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
 
     IR_NODE_LINK_TO(subgraph.at(x), fc_node);
     if (desc.GetAttrIfExists<bool>("padding_weights")) {
-      GraphSafeRemoveNodes(graph, {w});
       IR_NODE_LINK_TO(w_node, fc_node);
     } else {
       GraphSafeRemoveNodes(g, {w_node});
