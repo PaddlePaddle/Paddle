@@ -179,7 +179,7 @@ class Fleet(object):
                 if len(files)==0:
                     break
     
-    return return_list[trainer_id], sort_list[trainer_id]
+        return return_list[trainer_id], sort_list[trainer_id]
     
     def split_files(self, files):
         """
