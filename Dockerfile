@@ -137,8 +137,8 @@ RUN curl -s -q https://glide.sh/get | sh
 
 RUN wget -q https://paddlepaddledeps.bj.bcebos.com/TensorRT-4.0.1.6-ubuntu14.04.x86_64-gnu.cuda.8.0.cudnn7.0.tar.gz --no-check-certificate && \
     tar -zxf TensorRT-4.0.1.6-ubuntu14.04.x86_64-gnu.cuda.8.0.cudnn7.0.tar.gz -C /usr/local && \
-    cp -rf /usr/local/TensorRT/include /usr && \
-    cp -rf /usr/local/TensorRT/lib /usr
+    cp -rf /usr/local/TensorRT/include/* /usr/include/ && \
+    cp -rf /usr/local/TensorRT/lib/* /usr/lib/
 
 # git credential to skip password typing
 RUN git config --global credential.helper store

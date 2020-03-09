@@ -59,6 +59,7 @@ struct Argument {
 
   using unique_ptr_t = std::unique_ptr<void, std::function<void(void*)>>;
   using fusion_statis_t = std::unordered_map<std::string, int>;
+  using input_shape_t = std::map<std::string, std::vector<int>>;
 
   bool Has(const std::string& key) const { return valid_fields_.count(key); }
   // If we set the model using config.SetModelBuffer,
@@ -174,6 +175,12 @@ struct Argument {
   DECL_ARGUMENT_FIELD(use_gpu, UseGPU, bool);
   DECL_ARGUMENT_FIELD(use_fc_padding, UseFcPadding, bool);
   DECL_ARGUMENT_FIELD(gpu_device_id, GPUDeviceId, int);
+
+  // usually use for trt dynamic shape.
+  DECL_ARGUMENT_FIELD(min_input_shape, MinInputShape, input_shape_t);
+  DECL_ARGUMENT_FIELD(max_input_shape, MaxInputShape, input_shape_t);
+  DECL_ARGUMENT_FIELD(optim_input_shape, OptimInputShape, input_shape_t);
+
   DECL_ARGUMENT_FIELD(use_tensorrt, UseTensorRT, bool);
   DECL_ARGUMENT_FIELD(tensorrt_max_batch_size, TensorRtMaxBatchSize, int);
   DECL_ARGUMENT_FIELD(tensorrt_workspace_size, TensorRtWorkspaceSize, int);
