@@ -405,21 +405,22 @@ void BindImperative(py::module *m_ptr) {
                                    ? PyTuple_Pack(1, _index.ptr())
                                    : _index.ptr();
              const auto &tensor = self.Var().Get<framework::LoDTensor>();
-             PADDLE_ENFORCE(tensor.IsInitialized(),
-                            platform::errors::InvalidArgument(
-                                "%s has not been initialized", self.Name()));
+             PADDLE_ENFORCE_EQ(tensor.IsInitialized(), true,
+                               platform::errors::InvalidArgument(
+                                   "%s has not been initialized", self.Name()));
              const auto &shape = tensor.dims();
              const int rank = shape.size();
              const int size = PyTuple_GET_SIZE(index);
-             PADDLE_ENFORCE(
-                 size <= rank,
+             PADDLE_ENFORCE_EQ(
+                 size <= rank, true,
                  platform::errors::InvalidArgument(
                      "too many indices (%d) for tensor of dimension %d", size,
                      rank));
              for (int dim = 0; dim < size; ++dim) {
                PyObject *slice_item = PyTuple_GetItem(index, dim);
-               PADDLE_ENFORCE(
+               PADDLE_ENFORCE_EQ(
                    PyNumber_Check(slice_item) || PySlice_Check(slice_item),
+                   true,
                    platform::errors::InvalidArgument(
                        "We allow indexing by Integers, Slices, and tuples of "
                        "these types, but received %s in %dth slice item",
@@ -427,7 +428,7 @@ void BindImperative(py::module *m_ptr) {
                int dim_len = shape[dim];
                if (PyNumber_Check(slice_item)) {
                  // integer
-                 int start = PyInt_AsLong(slice_item);
+                 int start = static_cast<int>(PyLong_AsLong(slice_item));
                  start = start < 0 ? start + dim_len : start;
                  slice_axes.push_back(dim);
                  slice_starts.push_back(start);
@@ -456,7 +457,7 @@ void BindImperative(py::module *m_ptr) {
 
              // release gil and do tracing
              py::gil_scoped_release release;
-             auto tracer = imperative::GetCurrentTracer();
+             const auto &tracer = imperative::GetCurrentTracer();
              std::shared_ptr<imperative::VarBase> out(
                  new imperative::VarBase(tracer->GenerateUniqueName()));
              out->MutableVar()
