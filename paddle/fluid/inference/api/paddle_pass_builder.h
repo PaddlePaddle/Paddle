@@ -18,17 +18,7 @@
 #include <string>
 #include <vector>
 
-#if defined(_WIN32)
-#ifndef PD_INFER_EXPORT
-#ifdef PADDLE_DLL_INFERENCE
-#define PD_INFER_EXPORT __declspec(dllexport)
-#else
-#define PD_INFER_EXPORT __declspec(dllimport)
-#endif  // PADDLE_DLL_INFERENCE
-#endif  // PD_INFER_EXPORT
-#else
-#define PD_INFER_EXPORT __attribute__((visibility("default")))
-#endif  // _WIN32
+#include "paddle_infer_declare.h"  // NOLINT
 
 /*! \file */
 
@@ -37,7 +27,7 @@ namespace paddle {
 
 /** This is a pass builder based on string. It is part of inference API.
  */
-class PD_INFER_EXPORT PaddlePassBuilder {
+class PD_INFER_DECL PaddlePassBuilder {
  public:
   explicit PaddlePassBuilder(const std::vector<std::string> &passes)
       : passes_(passes) {}
@@ -92,7 +82,7 @@ class PD_INFER_EXPORT PaddlePassBuilder {
 
 /**Pass strategy to help control the IR passes.
  */
-class PD_INFER_EXPORT PassStrategy : public PaddlePassBuilder {
+class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
  public:
   explicit PassStrategy(const std::vector<std::string> &passes)
       : PaddlePassBuilder(passes) {}
@@ -126,7 +116,7 @@ class PD_INFER_EXPORT PassStrategy : public PaddlePassBuilder {
 
 /** The CPU passes controller, it is used in AnalysisPredictor with CPU mode.
  */
-class PD_INFER_EXPORT CpuPassStrategy : public PassStrategy {
+class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
  public:
   CpuPassStrategy();
 
@@ -152,7 +142,7 @@ class PD_INFER_EXPORT CpuPassStrategy : public PassStrategy {
 
 /** The GPU passes strategy, it is used in AnalysisPredictor with GPU mode.
  */
-class PD_INFER_EXPORT GpuPassStrategy : public PassStrategy {
+class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
  public:
   GpuPassStrategy();
 
@@ -173,7 +163,7 @@ class PD_INFER_EXPORT GpuPassStrategy : public PassStrategy {
   bool use_cudnn_{false};
 };
 
-PD_INFER_EXPORT extern const std::vector<std::string> kTRTSubgraphPasses;
-PD_INFER_EXPORT extern const std::vector<std::string> kLiteSubgraphPasses;
+PD_INFER_DECL extern const std::vector<std::string> kTRTSubgraphPasses;
+PD_INFER_DECL extern const std::vector<std::string> kLiteSubgraphPasses;
 
 }  // namespace paddle

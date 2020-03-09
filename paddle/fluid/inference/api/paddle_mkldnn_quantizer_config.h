@@ -20,19 +20,8 @@
 #include <unordered_set>
 #include <vector>
 
-#include "paddle_api.h"  // NOLINT
-
-#if defined(_WIN32)
-#ifndef PD_INFER_EXPORT
-#ifdef PADDLE_DLL_INFERENCE
-#define PD_INFER_EXPORT __declspec(dllexport)
-#else
-#define PD_INFER_EXPORT __declspec(dllimport)
-#endif  // PADDLE_DLL_INFERENCE
-#endif  // PD_INFER_EXPORT
-#else
-#define PD_INFER_EXPORT __attribute__((visibility("default")))
-#endif  // _WIN32
+#include "paddle_api.h"            // NOLINT
+#include "paddle_infer_declare.h"  // NOLINT
 
 namespace paddle {
 
@@ -46,7 +35,7 @@ enum class ScaleAlgo {
   KL,        // Find scale based on KL Divergence
 };
 
-struct PD_INFER_EXPORT MkldnnQuantizerConfig {
+struct PD_INFER_DECL MkldnnQuantizerConfig {
   MkldnnQuantizerConfig();
 
   /** Specify a quantization algorithm for a connection (input/output) of the

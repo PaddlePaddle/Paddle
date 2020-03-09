@@ -23,22 +23,11 @@
 
 /*! \file */
 
-#if defined(_WIN32)
-#ifndef PD_INFER_EXPORT
-#ifdef PADDLE_DLL_INFERENCE
-#define PD_INFER_EXPORT __declspec(dllexport)
-#else
-#define PD_INFER_EXPORT __declspec(dllimport)
-#endif  // PADDLE_DLL_INFERENCE
-#endif  // PD_INFER_EXPORT
-#else
-#define PD_INFER_EXPORT __attribute__((visibility("default")))
-#endif  // _WIN32
-
 // Here we include some header files with relative paths, for that in deploy,
 // the abstract path of this header file will be changed.
-#include "paddle_api.h"           // NOLINT
-#include "paddle_pass_builder.h"  // NOLINT
+#include "paddle_api.h"            // NOLINT
+#include "paddle_infer_declare.h"  // NOLINT
+#include "paddle_pass_builder.h"   // NOLINT
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle_mkldnn_quantizer_config.h"  // NOLINT
 #endif
@@ -49,7 +38,7 @@ class AnalysisPredictor;
 struct MkldnnQuantizerConfig;
 
 // NOTE WIP, not stable yet.
-struct PD_INFER_EXPORT AnalysisConfig {
+struct PD_INFER_DECL AnalysisConfig {
   AnalysisConfig() = default;
   explicit AnalysisConfig(const AnalysisConfig& other);
   explicit AnalysisConfig(const std::string& model_dir);

@@ -28,17 +28,7 @@
 #include <string>
 #include <vector>
 
-#if defined(_WIN32)
-#ifndef PD_INFER_EXPORT
-#ifdef PADDLE_DLL_INFERENCE
-#define PD_INFER_EXPORT __declspec(dllexport)
-#else
-#define PD_INFER_EXPORT __declspec(dllimport)
-#endif  // PADDLE_DLL_INFERENCE
-#endif  // PD_INFER_EXPORT
-#else
-#define PD_INFER_EXPORT __attribute__((visibility("default")))
-#endif  // _WIN32
+#include "paddle_infer_declare.h"  // NOLINT
 
 /*! \namespace paddle
  */
@@ -99,7 +89,7 @@ enum PaddleDType {
  * delete[] external_memory; // manage the memory lifetime outside.
  * \endcode
  */
-class PD_INFER_EXPORT PaddleBuf {
+class PD_INFER_DECL PaddleBuf {
  public:
   /** PaddleBuf allocate memory internally, and manage it.
    */
@@ -144,7 +134,7 @@ class PD_INFER_EXPORT PaddleBuf {
 
 /** Basic input and output data structure for PaddlePredictor.
  */
-struct PD_INFER_EXPORT PaddleTensor {
+struct PD_INFER_DECL PaddleTensor {
   PaddleTensor() = default;
   std::string name;  // variable name.
   std::vector<int> shape;
@@ -157,7 +147,7 @@ enum class PaddlePlace { kUNK = -1, kCPU, kGPU };
 
 /** Tensor without copy, currently only supports `AnalysisPredictor`.
  */
-class PD_INFER_EXPORT ZeroCopyTensor {
+class PD_INFER_DECL ZeroCopyTensor {
  public:
   void Reshape(const std::vector<int>& shape);
 
@@ -213,7 +203,7 @@ class PD_INFER_EXPORT ZeroCopyTensor {
 
 /** A simple Inference API for Paddle.
  */
-class PD_INFER_EXPORT PaddlePredictor {
+class PD_INFER_DECL PaddlePredictor {
  public:
   struct Config;
   PaddlePredictor() = default;
@@ -304,7 +294,7 @@ class PD_INFER_EXPORT PaddlePredictor {
   };
 };
 
-struct PD_INFER_EXPORT NativeConfig : public PaddlePredictor::Config {
+struct PD_INFER_DECL NativeConfig : public PaddlePredictor::Config {
   // GPU related fields.
   bool use_gpu{false};
   int device{0};
@@ -362,15 +352,15 @@ struct NativeConfig;
 struct DemoConfig;
 
 template <>
-PD_INFER_EXPORT std::unique_ptr<PaddlePredictor>
+PD_INFER_DECL std::unique_ptr<PaddlePredictor>
 CreatePaddlePredictor<AnalysisConfig>(const AnalysisConfig& config);
 
 template <>
-PD_INFER_EXPORT std::unique_ptr<PaddlePredictor>
+PD_INFER_DECL std::unique_ptr<PaddlePredictor>
 CreatePaddlePredictor<NativeConfig>(const NativeConfig& config);
 
 template <>
-PD_INFER_EXPORT std::unique_ptr<PaddlePredictor>
+PD_INFER_DECL std::unique_ptr<PaddlePredictor>
 CreatePaddlePredictor<DemoConfig>(const DemoConfig& config);
 
 /** NOTE The following APIs are too trivial, we will discard it in the following
@@ -386,15 +376,15 @@ template <typename ConfigT, PaddleEngineKind engine>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
 
 template <>
-PD_INFER_EXPORT std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
+PD_INFER_DECL std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     NativeConfig, PaddleEngineKind::kNative>(const NativeConfig& config);
 
 template <>
-PD_INFER_EXPORT std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
+PD_INFER_DECL std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig& config);
 
-PD_INFER_EXPORT int PaddleDtypeSize(PaddleDType dtype);
+PD_INFER_DECL int PaddleDtypeSize(PaddleDType dtype);
 
-PD_INFER_EXPORT std::string get_version();
+PD_INFER_DECL std::string get_version();
 
 }  // namespace paddle
