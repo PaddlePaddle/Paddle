@@ -5573,22 +5573,14 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
             warnings.warn(
                 "Inplace on reshape is not allowed and will be discarded in dygraph mode currently."
             )
+            inplace = False
         attrs = {}
-        if isinstance(shape, (list, tuple)):
-            if utils._contain_var(shape):
-                raise TypeError(
-                    "The type of 'shape' in reshape must be list[int] or tuple(int) in Dygraph mode, but "
-                    "received %s, which contains Variable." % type(shape))
+        if isinstance(shape, (list, tuple)) and not utils._contain_var(shape):
             attrs['shape'] = shape
-        else:
-            raise TypeError(
-                "The type of 'shape' in reshape must be list[int] or tuple(int) in Dygraph mode, but "
-                "received %s." % type(shape))
-
-        inputs = {'X': [x]}
-        outs = core.ops.reshape2(inputs, attrs)
-        out = outs['Out'][0]
-        return dygraph_utils._append_activation_in_dygraph(out, act)
+            inputs = {'X': [x]}
+            outs = core.ops.reshape2(inputs, attrs)
+            out = outs['Out'][0]
+            return dygraph_utils._append_activation_in_dygraph(out, act)
 
     check_variable_and_dtype(
         x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], 'reshape')
@@ -9326,19 +9318,11 @@ def expand(x, expand_times, name=None):
     attrs = {}
 
     if in_dygraph_mode():
-        if isinstance(expand_times, (list, tuple)):
-            if utils._contain_var(expand_times):
-                raise TypeError(
-                    "The type of 'expand_times' in expand must be list[int] or tuple(int) in Dygraph mode, but "
-                    "received %s, which contains Variable." % type(shape))
+        if isinstance(expand_times,
+                      (list, tuple)) and not utils._contain_var(expand_times):
             attrs['expand_times'] = expand_times
-        else:
-            raise TypeError(
-                "The type of 'expand_times' in expand must be list[int] or tuple(int) in Dygraph mode, but "
-                "received %s." % type(shape))
-
-        outs = core.ops.expand(inputs, attrs)
-        return outs['Out'][0]
+            outs = core.ops.expand(inputs, attrs)
+            return outs['Out'][0]
 
     check_variable_and_dtype(
         x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'expand')
@@ -9881,34 +9865,18 @@ def slice(input, axes, starts, ends):
         infer_flags = list(1 for i in range(len(axes)))
         inputs = {'Input': [input]}
 
-        if isinstance(starts, (list, tuple)):
-            if utils._contain_var(starts):
-                raise TypeError(
-                    "The type of 'starts' in slice must be list[int] or tuple(int) in Dygraph mode, but "
-                    "received %s, which contains Variable." % type(shape))
-        else:
-            raise TypeError(
-                "The type of 'starts' in slice must be list[int] or tuple(int) in Dygraph mode, but "
-                "received %s." % type(shape))
-
-        if isinstance(ends, (list, tuple)):
-            if utils._contain_var(ends):
-                raise TypeError(
-                    "The type of 'ends' in slice must be list[int] or tuple(int) in Dygraph mode, but "
-                    "received %s, which contains Variable." % type(shape))
-        else:
-            raise TypeError(
-                "The type of 'ends' in slice must be list[int] or tuple(int) in Dygraph mode, but "
-                "received %s." % type(shape))
-
-        attrs = {
-            'axes': axes,
-            'starts': starts,
-            'ends': ends,
-            'infer_flags': infer_flags
-        }
-        outs = core.ops.slice(inputs, attrs)
-        return outs['Out'][0]
+        if isinstance(
+                starts,
+            (list, tuple)) and not utils._contain_var(starts) and isinstance(
+                ends, (list, tuple)) and not utils._contain_var(ends):
+            attrs = {
+                'axes': axes,
+                'starts': starts,
+                'ends': ends,
+                'infer_flags': infer_flags
+            }
+            outs = core.ops.slice(inputs, attrs)
+            return outs['Out'][0]
 
     if not isinstance(starts, (list, tuple, Variable)):
         raise ValueError(
