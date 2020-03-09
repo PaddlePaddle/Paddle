@@ -194,7 +194,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 fluid.backward.append_backward(loss, parameter_list,
                                                no_grad_set),
                 key=lambda x: x[0].name)
-            
+
             if prog_id not in program_id_set:
                 program_id_set.add(prog_id)
                 sparse_table = self._find_multi_distributed_lookup_table([loss])
