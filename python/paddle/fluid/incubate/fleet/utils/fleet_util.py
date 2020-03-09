@@ -180,9 +180,8 @@ class FleetUtil(object):
                                                num_thresholds=4096)
 
         """
-        auc_value, ins_num = self.get_global_auc(scope, stat_pos, stat_neg)
-        self.rank0_print(print_prefix + " global auc = %s, ins num = %s" % (
-            auc_value, ins_num))
+        auc_value = self.get_global_auc(scope, stat_pos, stat_neg)
+        self.rank0_print(print_prefix + " global auc = %s" % auc_value)
 
     def get_global_auc(self,
                        scope=fluid.global_scope(),
@@ -258,7 +257,7 @@ class FleetUtil(object):
             auc_value = area / (pos * neg)
 
         fleet._role_maker._barrier_worker()
-        return auc_value, total_ins_num
+        return auc_value
 
     def load_fleet_model_one_table(self, table_id, path):
         """
@@ -1357,8 +1356,7 @@ class FleetUtil(object):
         fleet._role_maker._barrier_worker()
 
         # get auc
-        auc, total_ins_num_from_auc = self.get_global_auc(scope, stat_pos_name,
-                                                          stat_neg_name)
+        auc  = self.get_global_auc(scope, stat_pos_name, stat_neg_name)
         pos = np.array(scope.find_var(stat_pos_name).get_tensor())
         # auc pos bucket shape
         old_pos_shape = np.array(pos.shape)
@@ -1453,8 +1451,7 @@ class FleetUtil(object):
 
         return [
             auc, bucket_error, mae, rmse, return_actual_ctr, predicted_ctr,
-            copc, mean_predict_qvalue, int(total_ins_num),
-            int(total_ins_num_from_auc)
+            copc, mean_predict_qvalue, int(total_ins_num)
         ]
 
     def print_global_metrics(self,
@@ -1543,16 +1540,15 @@ class FleetUtil(object):
             return
 
         auc, bucket_error, mae, rmse, actual_ctr, predicted_ctr, copc,\
-            mean_predict_qvalue, total_ins_num, total_ins_num_from_auc = self.get_global_metrics(\
+            mean_predict_qvalue, total_ins_num = self.get_global_metrics(\
             scope, stat_pos_name, stat_neg_name, sqrerr_name, abserr_name,\
             prob_name, q_name, pos_ins_num_name, total_ins_num_name)
-        self.rank0_print(
-            "%s global AUC=%.6f BUCKET_ERROR=%.6f MAE=%.6f "
-            "RMSE=%.6f Actural_CTR=%.6f Predicted_CTR=%.6f "
-            "COPC=%.6f MEAN Q_VALUE=%.6f Ins number=%s, AUC Ins num=%s" %
-            (print_prefix, auc, bucket_error, mae, rmse, actual_ctr,
-             predicted_ctr, copc, mean_predict_qvalue, total_ins_num,
-             total_ins_num_from_auc))
+        self.rank0_print("%s global AUC=%.6f BUCKET_ERROR=%.6f MAE=%.6f "
+                         "RMSE=%.6f Actural_CTR=%.6f Predicted_CTR=%.6f "
+                         "COPC=%.6f MEAN Q_VALUE=%.6f Ins number=%s" %
+                         (print_prefix, auc, bucket_error, mae, rmse,
+                          actual_ctr, predicted_ctr, copc, mean_predict_qvalue,
+                          total_ins_num))
 
     def program_type_trans(self, prog_dir, prog_fn, is_text):
         return utils.program_type_trans(prog_dir, prog_fn, is_text)
