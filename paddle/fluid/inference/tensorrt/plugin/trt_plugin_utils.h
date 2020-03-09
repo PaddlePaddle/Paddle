@@ -18,11 +18,25 @@
 #include <type_traits>
 #include <vector>
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
+
+template <typename T>
+struct PluginTypeTraits;
+
+template <>
+struct PluginTypeTraits<half> {
+  typedef platform::float16 TYPE;
+};
+
+template <>
+struct PluginTypeTraits<float> {
+  typedef float TYPE;
+};
 
 // Some trt base classes lack of the destructor.
 // We use a assisted class to fix this.

@@ -52,7 +52,9 @@ struct SimpleOpTypeSetTeller : public Teller {
         teller_set.insert("layer_norm");
         teller_set.insert("multihead_matmul");
     */
+    teller_set.insert("multihead_matmul");
     teller_set.insert("fused_embedding_eltwise_layernorm");
+    teller_set.insert("fc");
   }
 
   bool operator()(const std::string& op_type, const framework::OpDesc& desc,
