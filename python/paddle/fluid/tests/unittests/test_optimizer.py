@@ -791,8 +791,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
             mean_out,
             startup_program=None,
             parameter_list=None,
-            no_grad_set=None,
-            checkpoints=[b1_out])
+            no_grad_set=None)
 
         # apply gradient
         program = mean_out.block.program
