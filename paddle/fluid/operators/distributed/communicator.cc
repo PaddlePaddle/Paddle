@@ -70,7 +70,7 @@ void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
   recv_scope_ = std::move(recv_scope);
 
   if (send_varname_to_ctx.size() == 0) {
-    VLOG(1) << "nothing need to be send, will not start send_thread";
+    VLOG(0) << "nothing need to be send, will not start send_thread";
   } else {
     send_scope_.reset(new Scope());
     for (auto &iter : send_varname_to_ctx_) {
@@ -82,7 +82,7 @@ void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
   }
 
   if (recv_varname_to_ctx.size() == 0) {
-    VLOG(1) << "nothing need to be received, will not start recv_thread";
+    VLOG(0) << "nothing need to be received, will not start recv_thread";
   } else {
     recv_threadpool_.reset(new ::ThreadPool(thread_pool_size_));
   }
@@ -269,7 +269,7 @@ void AsyncCommunicator::RecvAll() {
 void AsyncCommunicator::Start() {
   VLOG(1) << "Communicator start";
   if (!communicator_) {
-    VLOG(1) << "Communicator is not inited, do nothing";
+    VLOG(0) << "Communicator is not inited, do nothing";
   } else {
     VLOG(1) << "start send thread and recv thread";
     running_ = true;
@@ -287,7 +287,7 @@ void AsyncCommunicator::Stop() {
   VLOG(1) << "Communicator stop";
   running_ = false;
   if (!communicator_) {
-    VLOG(1) << "Communicator is not inited, do nothing";
+    VLOG(0) << "Communicator is not inited, do nothing";
   } else {
     if (send_thread_) {
       VLOG(1) << "stop send thread";
@@ -387,7 +387,7 @@ void GeoSgdCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
 void GeoSgdCommunicator::Start() {
   VLOG(1) << "Geo Sgd Communicator start";
   if (!communicator_) {
-    VLOG(1) << "Geo Sgd Communicator is not inited, do nothing";
+    VLOG(0) << "Geo Sgd Communicator is not inited, do nothing";
   } else {
     VLOG(1) << "start send thread ";
     running_ = true;
@@ -401,7 +401,7 @@ void GeoSgdCommunicator::Stop() {
   VLOG(1) << "Geo Sgd Communicator stop";
   running_ = false;
   if (!communicator_) {
-    VLOG(1) << "Geo Sgd Communicator is not inited, do nothing";
+    VLOG(0) << "Geo Sgd Communicator is not inited, do nothing";
   } else {
     if (send_thread_) {
       VLOG(1) << "stop send thread";
@@ -954,7 +954,7 @@ void HalfAsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
   recv_scope_ = std::move(recv_scope);
 
   if (send_varname_to_ctx.size() == 0) {
-    VLOG(1) << "nothing need to be send, will not start send_thread";
+    VLOG(0) << "nothing need to be send, will not start send_thread";
   } else {
     send_scope_.reset(new Scope());
     for (auto &iter : send_varname_to_ctx_) {
@@ -967,7 +967,7 @@ void HalfAsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
   }
 
   if (recv_varname_to_ctx.size() == 0) {
-    VLOG(1) << "nothing need to be received, will not start recv_thread";
+    VLOG(0) << "nothing need to be received, will not start recv_thread";
   } else {
     recv_threadpool_.reset(new ::ThreadPool(thread_pool_size_));
   }
@@ -1195,7 +1195,7 @@ void HalfAsyncCommunicator::BarrierWeakUp() {
 void HalfAsyncCommunicator::Start() {
   VLOG(1) << "Communicator start";
   if (!communicator_) {
-    VLOG(1) << "Communicator is not inited, do nothing";
+    VLOG(0) << "Communicator is not inited, do nothing";
   } else {
     VLOG(1) << "start send thread and recv thread";
 
@@ -1210,7 +1210,7 @@ void HalfAsyncCommunicator::Stop() {
   VLOG(1) << "Communicator stop";
   running_ = false;
   if (!communicator_) {
-    VLOG(1) << "Communicator is not inited, do nothing";
+    VLOG(0) << "Communicator is not inited, do nothing";
   } else {
     if (consume_thread_) {
       VLOG(4) << "stop send thread";
