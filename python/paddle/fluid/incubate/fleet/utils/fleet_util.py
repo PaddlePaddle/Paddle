@@ -1356,7 +1356,7 @@ class FleetUtil(object):
         fleet._role_maker._barrier_worker()
 
         # get auc
-        auc  = self.get_global_auc(scope, stat_pos_name, stat_neg_name)
+        auc = self.get_global_auc(scope, stat_pos_name, stat_neg_name)
         pos = np.array(scope.find_var(stat_pos_name).get_tensor())
         # auc pos bucket shape
         old_pos_shape = np.array(pos.shape)
