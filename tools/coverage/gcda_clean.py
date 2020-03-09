@@ -9,7 +9,6 @@ from github import Github
 
 paddle_root = os.getenv('PADDLE_ROOT', "/paddle")
 
-
 def get_pull(pull_id):
     """Get pull.
 
