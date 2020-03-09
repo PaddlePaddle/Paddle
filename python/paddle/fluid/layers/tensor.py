@@ -448,7 +448,7 @@ def assign(input, output=None):
 
     Parameters:
         input (Variable|numpy.ndarray): A tensor or numpy ndarray, its data type supports
-            float32, float64, int32 and int64.
+            float16, float32, float64, int32 and int64.
         output (Variable, optional): A tensor. If :attr:`output` is None, a new tensor will
             be created as :attr:`output`. Default: None.
 
@@ -469,9 +469,10 @@ def assign(input, output=None):
     helper = LayerHelper('assign', **locals())
     check_type(input, 'input', (Variable, numpy.ndarray), 'assign')
     if isinstance(input, Variable):
-        check_dtype(input.dtype, 'input',
-                    ['float32', 'float64', 'int32', 'int64', 'bool'], 'assign',
-                    '(When the type of input in assign is Variable.)')
+        check_dtype(
+            input.dtype, 'input',
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+            'assign', '(When the type of input in assign is Variable.)')
         if output is None:
             output = helper.create_variable_for_type_inference(
                 dtype=input.dtype)
