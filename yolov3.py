@@ -470,7 +470,7 @@ def run(model, loader, mode='train'):
     start = time.time()
 
     for idx, batch in enumerate(loader()):
-        outputs, losses = getattr(model, mode)(
+        losses, _ = getattr(model, mode)(
             batch[0], batch[1], device='gpu', device_ids=device_ids)
 
         total_loss += np.sum(losses)
