@@ -209,6 +209,7 @@ class TestFilterByInstagOp4(OpTest):
         self.check_grad(
             ['Ins'], 'Out', no_grad_set=set(['Ins_tag', 'Filter_tag']))
 
+
 class TestFilterByInstagOp6(OpTest):
     def setUp(self):
         self.op_type = 'filter_by_instag'
@@ -245,6 +246,7 @@ class TestFilterByInstagOp6(OpTest):
     def test_check_grad(self):
         pass
 
+
 class TestFilterByInstagOp7(OpTest):
     def setUp(self):
         self.op_type = 'filter_by_instag'
@@ -280,6 +282,7 @@ class TestFilterByInstagOp7(OpTest):
 
     def test_check_grad(self):
         pass
+
 
 if __name__ == '__main__':
     unittest.main()
