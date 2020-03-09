@@ -399,7 +399,7 @@ void BindImperative(py::module *m_ptr) {
              // types.
              // Ellipsis and None are not supported yet.
              std::vector<int> slice_axes, slice_starts, slice_ends,
-                 slice_strides;
+                 slice_strides, decrease_axis;
              // wrap to tuple
              PyObject *index = !PyTuple_Check(_index.ptr())
                                    ? PyTuple_Pack(1, _index.ptr())
@@ -434,6 +434,7 @@ void BindImperative(py::module *m_ptr) {
                  slice_starts.push_back(start);
                  slice_ends.push_back(start + 1);
                  slice_strides.push_back(1);
+                 decrease_axis.push_back(dim);
                } else {
                  // slice
                  Py_ssize_t start, end, step;
@@ -467,10 +468,12 @@ void BindImperative(py::module *m_ptr) {
              if (!slice_axes.empty()) {
                std::vector<int> infer_flags(size, 1);
                imperative::NameVarBaseMap ins = {{"Input", {out}}};
-               framework::AttributeMap attrs = {{"axes", slice_axes},
-                                                {"starts", slice_starts},
-                                                {"ends", slice_ends},
-                                                {"infer_flags", infer_flags}};
+               framework::AttributeMap attrs = {
+                   {"axes", slice_axes},
+                   {"starts", slice_starts},
+                   {"ends", slice_ends},
+                   {"infer_flags", infer_flags},
+                   {"decrease_axis", decrease_axis}};
                out = std::shared_ptr<imperative::VarBase>(
                    new imperative::VarBase(tracer->GenerateUniqueName()));
                imperative::NameVarBaseMap outs = {{"Out", {out}}};
@@ -479,6 +482,7 @@ void BindImperative(py::module *m_ptr) {
                  if (stride != 1) {
                    op_type = "strided_slice";
                    attrs.insert({"strides", slice_strides});
+                   attrs.erase("decrease_axis");
                    break;
                  }
                }
