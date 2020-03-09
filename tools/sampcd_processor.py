@@ -445,13 +445,9 @@ def test(file_list):
     return process_result
 
 
-def get_filenames(path):
+def get_filenames():
     '''
-    Given a path ``path``, this function will
-    get the modules that pending for check.
-
-    Args:
-        path(path): the path of API.spec
+    this function will get the modules that pending for check.
 
     Returns:
 
@@ -461,11 +457,11 @@ def get_filenames(path):
     filenames = []
     global methods
     methods = []
-    API_spec = '%s/%s' % (os.path.abspath(os.path.join(os.getcwd(), "..")),
-                          path)
+    get_incrementapi()
+    API_spec = 'dev_pr_diff_api.spec'
     with open(API_spec) as f:
         for line in f.readlines():
-            api = line.split(' ', 1)[0]
+            api = line.replace('\n', '')
             try:
                 module = eval(api).__module__
             except AttributeError:
@@ -499,7 +495,38 @@ def get_filenames(path):
             method = method + name
             if method not in methods:
                 methods.append(method)
+    os.remove(API_spec)
     return filenames
+
+
+def get_incrementapi():
+    '''
+    this function will get the apis that difference between API_DEV.spec and API_PR.spec.
+    '''
+
+    def get_api_md5(path):
+        api_md5 = {}
+        API_spec = '%s/%s' % (os.path.abspath(os.path.join(os.getcwd(), "..")),
+                              path)
+        with open(API_spec) as f:
+            for line in f.readlines():
+                api = line.split(' ', 1)[0]
+                md5 = line.split("'document', ")[1].replace(')', '').replace(
+                    '\n', '')
+                api_md5[api] = md5
+        return api_md5
+
+    dev_api = get_api_md5('paddle/fluid/API_DEV.spec')
+    pr_api = get_api_md5('paddle/fluid/API_PR.spec')
+    with open('dev_pr_diff_api.spec', 'w') as f:
+        for key in pr_api:
+            if key in dev_api:
+                if dev_api[key] != pr_api[key]:
+                    f.write(key)
+                    f.write('\n')
+            else:
+                f.write(key)
+                f.write('\n')
 
 
 '''
@@ -720,9 +747,16 @@ else:
     if not os.path.isdir("./samplecode_temp"):
         os.mkdir("./samplecode_temp")
     cpus = multiprocessing.cpu_count()
-    filenames = get_filenames('paddle/fluid/API_PR.spec')
-    filenames.remove('../python/paddle/fluid/core_avx.py')
+    filenames = get_filenames()
+    if len(filenames) == 0:
+        print("-----API_PR.spec is the same as API_DEV.spec-----")
+        exit(0)
+    elif '../python/paddle/fluid/core_avx.py' in filenames:
+        filenames.remove('../python/paddle/fluid/core_avx.py')
+    print("API_PR is diff from API_DEV: %s" % filenames)
     one_part_filenum = int(math.ceil(len(filenames) / cpus))
+    if one_part_filenum == 0:
+        one_part_filenum = 1
     divided_file_list = [
         filenames[i:i + one_part_filenum]
         for i in range(0, len(filenames), one_part_filenum)
