@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
@@ -103,31 +104,27 @@ class ConcatKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(place);
 
     // If axis is 0, the lod of the output is not the same as inputs.
-    if (axis == 0 && ins[0]->lod().size()) {
-      bool lod_size = 1;
+    if (axis == 0 && ins[0]->lod().size() > 0) {
+      size_t lod_size_0 = ins[0]->lod().size();
+      size_t lod_size = lod_size_0;
       for (size_t i = 1; i < ins.size(); ++i) {
-        if (ins[i]->lod().size() == 0) {
-          lod_size = 0;
-        }
-        if (i < ins.size() - 1) {
+        if (ins[i]->lod().size() > 0) {
           PADDLE_ENFORCE_EQ(
-              ins[i]->lod().size(), ins[i + 1]->lod().size(),
+              ins[i]->lod().size(), lod_size_0,
               platform::errors::Unimplemented(
                   "The lod level of all input LoDTensors should be same. "
                   "Maybe different lod level of input LoDTensors can concat,"
                   " it is not supported currently."));
+        } else {
+          lod_size = 0;
+          break;
         }
       }
       if (lod_size) {
-        auto& out_lod = *out->mutable_lod();
+        auto* out_lod = out->mutable_lod();
         for (size_t i = 1; i < ins.size(); ++i) {
-          const auto& in_lod = ins[i]->lod();
-          for (size_t j = 0; j < in_lod.size(); j++) {
-            auto lod_s = out_lod[j][out_lod[j].size() - 1];
-            for (size_t k = 1; k < in_lod[j].size(); k++) {
-              out_lod[j].push_back(lod_s + in_lod[j][k]);
-            }
-          }
+          auto in_lod = ConvertToLengthBasedLoD(ins[i]->lod());
+          AppendLoD(out_lod, in_lod);
         }
       }
     }
