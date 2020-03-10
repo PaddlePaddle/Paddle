@@ -70,7 +70,10 @@ class OperationMap {
   OperationMap();
 
   static OperationMap& Instance() {
-    PADDLE_ENFORCE_NOT_NULL(map, "Need to initialize OperationMap first!");
+    PADDLE_ENFORCE_NOT_NULL(
+        map, platform::errors::PreconditionNotMet(
+                 "Please initialize OperationMap first, by calling "
+                 "framework::fusion_group::OperationMap::Init()!"));
     return *map;
   }
 
@@ -81,7 +84,7 @@ class OperationMap {
     return *map;
   }
 
-  std::unordered_set<std::string> Find(int type, int num_operands = -1);
+  std::unordered_set<std::string> Find(int type);
 
   bool Has(std::string op_type) {
     return operations_.find(op_type) != operations_.end();
@@ -103,6 +106,7 @@ class OperationMap {
 
   void InsertUnaryElementwiseOperations();
   void InsertBinaryElementwiseOperations();
+  void InsertMultivariateElementwiseOperations();
 
  private:
   static OperationMap* map;

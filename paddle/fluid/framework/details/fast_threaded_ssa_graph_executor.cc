@@ -51,8 +51,8 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
   PrepareAtomicOpDeps();
 }
 
-FeedFetchList FastThreadedSSAGraphExecutor::Run(
-    const std::vector<std::string> &fetch_tensors) {
+FetchResultType FastThreadedSSAGraphExecutor::Run(
+    const std::vector<std::string> &fetch_tensors, bool return_merged) {
   VLOG(3) << "enter FastThreadedSSAGraphExecutor Run";
   std::unique_ptr<platform::RecordEvent> event(
       new platform::RecordEvent("FastThreadedSSAGraphExecutorPrepare"));
@@ -61,15 +61,19 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
   PrepareAtomicOpDeps();
   size_t num_ops = op_deps->size();
 
-  paddle::framework::FeedFetchList fetches;
-  fetches.resize(fetch_tensors.size());
+  FetchResultType fetches;
+  if (return_merged) {
+    fetches = FeedFetchList(fetch_tensors.size());
+  } else {
+    fetches = FetchUnmergedList(fetch_tensors.size());
+  }
   std::unordered_map<std::string, std::vector<VarHandleBase *>> fetched_vars;
   std::vector<OpHandleBase *> fetch_ops;
   std::vector<OpHandleBase *> ready_fetch_ops;
   exception_.Clear();
 
   InsertFetchOps(fetch_tensors, &fetches, &fetched_vars, op_deps.get(),
-                 &fetch_ops, &ready_fetch_ops);
+                 &fetch_ops, &ready_fetch_ops, return_merged);
   event.reset(nullptr);
   if (strategy_.num_threads_ == 1 && traced_ops_.size() == num_ops) {
     // If the num_threads is 1, we can record the order of operator's
@@ -120,11 +124,11 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
 }
 
 void FastThreadedSSAGraphExecutor::InsertFetchOps(
-    const std::vector<std::string> &fetch_tensors, FeedFetchList *fetches,
+    const std::vector<std::string> &fetch_tensors, FetchResultType *fetches,
     std::unordered_map<std::string, std::vector<VarHandleBase *>> *fetched_vars,
     std::unordered_map<OpHandleBase *, std::atomic<int>> *op_deps,
     std::vector<OpHandleBase *> *fetch_ops,
-    std::vector<OpHandleBase *> *ready_fetch_ops) {
+    std::vector<OpHandleBase *> *ready_fetch_ops, bool return_merged) {
   std::unordered_set<std::string> fetch_tensor_set(fetch_tensors.begin(),
                                                    fetch_tensors.end());
   for (auto &fetch_var_name : fetch_tensor_set) {
@@ -142,8 +146,11 @@ void FastThreadedSSAGraphExecutor::InsertFetchOps(
     PADDLE_ENFORCE_NE(
         fetched_var_it, fetched_vars->end(),
         platform::errors::PreconditionNotMet(
-            "Cannot find fetched variable(%s). Perhaps the main_program "
-            "is not set to ParallelExecutor.",
+            "Cannot find fetched variable(%s) in current computation graph. "
+            "Possible reasons are:\n"
+            "  1. The variable to be fetched is not defined in main program.\n"
+            "  2. The variable to be fetched is not an input or output of any "
+            "operator.",
             var_name));
 
     auto &vars = fetched_var_it->second;
@@ -151,7 +158,7 @@ void FastThreadedSSAGraphExecutor::InsertFetchOps(
     ir::Node *fetch_node =
         graph_->CreateEmptyNode("fetch", ir::Node::Type::kOperation);
     auto *op = new FetchOpHandle(fetch_node, fetches, i, &local_scopes_,
-                                 &local_exec_scopes_);
+                                 &local_exec_scopes_, return_merged);
     fetch_ops->emplace_back(op);
 
     for (auto &p : places_) {

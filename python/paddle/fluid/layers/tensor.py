@@ -16,13 +16,14 @@ from __future__ import print_function
 from six.moves import reduce
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
-from ..framework import convert_np_dtype_to_dtype_, in_dygraph_mode
+from ..framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator
 from ..framework import Variable
 from ..initializer import Constant, force_init_on_cpu
 from ..core import VarDesc
 from .. import core
 from .layer_function_generator import templatedoc
-from ..data_feeder import check_type_and_dtype, check_type, check_dtype, convert_dtype
+from . import utils
+from ..data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 import numpy
 import warnings
 
@@ -192,8 +193,8 @@ def cast(x, dtype):
             #  [ 0  4]] int32
     """
     helper = LayerHelper('cast', **locals())
-    check_type_and_dtype(
-        x, 'x', Variable,
+    check_variable_and_dtype(
+        x, 'x',
         ['bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
         'cast')
     out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -268,8 +269,8 @@ def concat(input, axis=0, name=None):
             (type(input)))
         input = [input]
     for id, x in enumerate(input):
-        check_type_and_dtype(
-            x, 'input[' + str(id) + ']', Variable,
+        check_variable_and_dtype(
+            x, 'input[' + str(id) + ']',
             ['float16', 'float32', 'float64', 'int32', 'int64'], 'concat')
     check_type(axis, 'axis', (int, Variable), 'concat')
     inputs = {'X': input}
@@ -511,9 +512,9 @@ def assign(input, output=None):
 def fill_constant(shape, dtype, value, force_cpu=False, out=None):
     """
     This OP creates a Tensor with specified `shape` and `dtype`, and
-    initializes it with a constant specifed by `value`.
+    initializes it with a constant specified by `value`.
 
-    The attribute `stop_gradient` of the created Tensor is setted to True.
+    The attribute `stop_gradient` of the created Tensor is set to True.
 
     Args:
         shape(list|tuple|Variable): Shape of the Tensor to be created.
@@ -523,7 +524,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
         dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output tensor which can
             be float16, float32, float64, int32, int64.
         value(float): The constant value used to initialize the Tensor to be created.
-        force_cpu(True): data should be on CPU if it's true, defalut value is False.
+        force_cpu(True): data should be on CPU if it's true, default value is False.
         out(Variable, optional): Optional output which can be any created 
             Variable that meets the requirements to store the result of operation.
             if out is None, a new Varibale will be create to store the result.
@@ -552,6 +553,35 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
           shape = fluid.layers.fill_constant([1,2], "int32", 2) # shape=[2,2]
           data4 = fluid.layers.fill_constant(shape=shape, dtype='bool', value=True) # data4=[[True,True],[True,True]]
     """
+    attrs = {
+        'value': float(value),
+        'force_cpu': force_cpu or force_init_on_cpu()
+    }
+
+    if convert_dtype(dtype) in ['int64', 'int32']:
+        attrs['str_value'] = str(int(value))
+    else:
+        attrs['str_value'] = str(float(value))
+
+    if in_dygraph_mode():
+        if isinstance(shape, (list, tuple)):
+            if utils._contain_var(shape):
+                raise TypeError(
+                    "The type of 'shape' in fill_constant must be list[int] or tuple(int) in Dygraph mode, but "
+                    "received %s, which contains Variable." % type(shape))
+            attrs['shape'] = shape
+        else:
+            raise TypeError(
+                "The type of 'shape' in fill_constant must be list[int] or tuple(int) in Dygraph mode, but "
+                "received %s." % type(shape))
+        if out is None:
+            out = _varbase_creator(dtype=dtype)
+        attrs['dtype'] = out.dtype
+        outputs = {'Out': [out]}
+        outs = core.ops.fill_constant({}, attrs, outputs)
+        out.stop_gradient = True
+        return out
+
     helper = LayerHelper("fill_constant", **locals())
     check_dtype(dtype, 'create data type',
                 ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
@@ -567,12 +597,6 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
         attrs['str_value'] = str(int(value))
     else:
         attrs['str_value'] = str(float(value))
-
-    def _contain_var(one_list):
-        for ele in one_list:
-            if isinstance(ele, Variable):
-                return True
-        return False
 
     def _get_attr_shape(list_shape):
         attr_shape = []
@@ -613,7 +637,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
             "The size of 'shape' in fill_constant can't be zero, "
             "but received %s." % len(shape))
         attrs["shape"] = _get_attr_shape(shape)
-        if _contain_var(shape):
+        if utils._contain_var(shape):
             inputs['ShapeTensorList'] = _get_shape_tensor(shape)
 
     if out is None:
@@ -644,7 +668,7 @@ def fill_constant_batch_size_like(input,
                                   output_dim_idx=0,
                                   force_cpu=False):
     """
-    This OP creates a Tesnor accroding the shape and dtype, and initializes the
+    This OP creates a Tesnor according the shape and dtype, and initializes the
     Tensor with the constants provided in ``value``. When the input is LoDTensor
     and the input_dim_idx is 0, the output_dim_idx dimension is set to the value
     of the batch_size input by the input, the Stop_gradient attribute of the created
@@ -662,7 +686,7 @@ def fill_constant_batch_size_like(input,
             The default value is 0.
         output_dim_idx(int): Used to specify which dimension of Tensor is created to be set
             the value of batch_size of input Tensor. The default value is 0.
-        force_cpu(bool): data should be on CPU if it's true, defalut value is False.
+        force_cpu(bool): data should be on CPU if it's true, default value is False.
 
     Returns:
         Variable: Tensor which will be created according to dtype.
@@ -756,6 +780,7 @@ def argmin(x, axis=0):
         inputs={'X': x},
         outputs={'Out': [out]},
         attrs={'axis': axis})
+    out.stop_gradient = True
     return out
 
 
@@ -815,6 +840,7 @@ def argmax(x, axis=0):
         inputs={'X': x},
         outputs={'Out': [out]},
         attrs={'axis': axis})
+    out.stop_gradient = True
     return out
 
 
@@ -1053,7 +1079,7 @@ def save_combine(x, file_path, overwrite=True):
 
 def load_combine(out, file_path):
     """
-    Loads a list of vairables from a single file.
+    Loads a list of variable from a single file.
 
     Args:
         out(list): The list of variables to be read from the disk file.
@@ -1158,7 +1184,7 @@ def range(start, end, step, dtype):
                                  it is a 1-D Tensor with shape [1].
         step(float32 | float64 | int32 | int64 | Variable): Spacing between values. For any output out, this is the
                                   distance between two adjacent values, out[i+1] - out[i].
-        dtype(str): the data type of the output tensor, can be float32, float64, int32, int64.
+        dtype(str|core.VarDesc.VarType): the data type of the output tensor, can be float32, float64, int32, int64.
 
     Returns: a 1-D Tensor which is evenly spaced values within a given interval. Its data type is set by dtype.
     
@@ -1174,12 +1200,26 @@ def range(start, end, step, dtype):
     """
     helper = LayerHelper("range", **locals())
 
+    check_dtype(dtype, 'create data type',
+                ['float32', 'float64', 'int32', 'int64'], 'range')
+
+    dtype = convert_dtype(dtype)
     if not isinstance(start, Variable):
         start = fill_constant([1], dtype, start)
+    elif convert_dtype(start.dtype) != dtype:
+        # make sure that start, end, step has the same dtype as
+        # `dtype`
+        start = cast(x=start, dtype=dtype)
+
     if not isinstance(end, Variable):
         end = fill_constant([1], dtype, end)
+    elif convert_dtype(end.dtype) != dtype:
+        end = cast(x=end, dtype=dtype)
+
     if not isinstance(step, Variable):
         step = fill_constant([1], dtype, step)
+    elif convert_dtype(step.dtype) != dtype:
+        step = cast(x=step, dtype=dtype)
 
     out = helper.create_variable_for_type_inference(dtype=start.dtype)
 
@@ -1248,7 +1288,7 @@ def zeros_like(x, out=None):
         x(Variable): The input tensor which specifies shape and dtype, the input data dtype could be bool, float32, float64, int32, int64.
         out(Variable, optional): If is :attr:`None` , the op will create the variable as output, the data type and shape of \
             this variable will be same as input :attr:`x`. If is a tensor, the data type and shape need to be same as input :attr:`x`. 
-            The defalut value is :attr:`None` .
+            The default value is :attr:`None` .
 
     Returns:
         Variable: The N-D tensor, the element in tensor is related to input data type, if the input data type is bool, \

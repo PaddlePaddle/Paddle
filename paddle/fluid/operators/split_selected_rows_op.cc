@@ -54,9 +54,10 @@ class SplitSelectedRowsOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "SplitSelectedRowsOp must has input X.");
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "SplitSelectedRowsOp must have input X.");
     PADDLE_ENFORCE(ctx->HasOutputs("Out"),
-                   "SplitSelectedRowsOp must has output Out.");
+                   "SplitSelectedRowsOp must have output Out.");
   }
 };
 

@@ -36,7 +36,7 @@ class CropOp : public framework::OperatorWithKernel {
       auto shape = ctx->Attrs().Get<std::vector<int>>("shape");
       PADDLE_ENFORCE_EQ(
           int64_t(shape.size()), x_dim.size(),
-          "Shape size should be equal to dimention size of input tensor.");
+          "Shape size should be equal to dimension size of input tensor.");
       std::vector<int64_t> tensor_shape(shape.size());
       for (size_t i = 0; i < shape.size(); ++i) {
         tensor_shape[i] = static_cast<int64_t>(shape[i]);
@@ -201,13 +201,16 @@ class CropGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(GropNoNeedBufferVarInference, "Y");
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(crop, ops::CropOp, ops::CropOpMaker,
                   ops::CropGradOpMaker<paddle::framework::OpDesc>,
-                  ops::CropGradOpMaker<paddle::imperative::OpBase>);
+                  ops::CropGradOpMaker<paddle::imperative::OpBase>,
+                  ops::GropNoNeedBufferVarInference);
 REGISTER_OPERATOR(crop_grad, ops::CropOpGrad);
 REGISTER_OP_CPU_KERNEL(
     crop, ops::CropKernel<paddle::platform::CPUDeviceContext, float>,

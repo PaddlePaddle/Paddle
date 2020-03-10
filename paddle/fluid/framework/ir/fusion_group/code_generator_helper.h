@@ -52,7 +52,8 @@ class OperationExpression {
 
  private:
   // TODO(wangchao): make offset more flexible we add stride and basic offset
-  std::string GetRHS(std::unordered_set<int>* used, size_t i = 0) const;
+  std::string GetRHS(std::unordered_set<int>* used,
+                     size_t exprs_index = 0) const;
   std::string GetLHS(size_t i = 0) const;
 
  private:
@@ -113,7 +114,8 @@ class CodeTemplate {
 
     for (auto iter : template_var.Get()) {
       PADDLE_ENFORCE_NE(found.find(iter.first), found.end(),
-                        "Keyword %s in template is not set.", iter.first);
+                        platform::errors::PreconditionNotMet(
+                            "Keyword %s in template is not set.", iter.first));
     }
 
     return EmitIndents(ret);
@@ -147,31 +149,6 @@ class CodeTemplate {
  private:
   std::string template_str_;
 };
-
-static const char predefined_cuda_functions[] = R"(
-__device__ float real_exp(float x) { return ::expf(x); }
-__device__ double real_exp(double x) { return ::exp(x); }
-
-__device__ float real_log(float x) { return ::logf(x); }
-__device__ double real_log(double x) { return ::log(x); }
-
-__device__ float real_min(float x, float y) { return ::fminf(x, y); }
-__device__ double real_min(double x, double y) { return ::fmin(x, y); }
-
-__device__ float real_max(float x, float y) { return ::fmaxf(x, y); }
-__device__ double real_max(double x, double y) { return ::fmax(x, y); }
-
-)";
-
-static const char elementwise_cuda_template[] = R"(
-extern "C" __global__ void $func_name($parameters) {
-  for(int idx = blockIdx.x * blockDim.x + threadIdx.x;
-      idx < N;
-      idx += gridDim.x * blockDim.x) {
-    $compute_body
-  }
-}
-)";
 
 static std::string DebugString(const OperationExpression& expr) {
   std::stringstream ret;

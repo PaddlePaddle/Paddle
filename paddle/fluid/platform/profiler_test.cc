@@ -40,6 +40,7 @@ TEST(RecordEvent, RecordEvent) {
   using paddle::platform::PopEvent;
   using paddle::platform::ProfilerState;
   using paddle::platform::EventSortingKey;
+  using paddle::platform::EventRole;
 
   ProfilerState state = ProfilerState::kCPU;
   EnableProfiler(state);
@@ -55,7 +56,7 @@ TEST(RecordEvent, RecordEvent) {
   for (int loop = 0; loop < 3; ++loop) {
     for (int i = 1; i < 5; ++i) {
       std::string name = "op_" + std::to_string(i);
-      PushEvent(name);
+      PushEvent(name, EventRole::kOrdinary);
       int counter = 1;
       while (counter != i * 1000) counter++;
       PopEvent(name);
@@ -107,7 +108,7 @@ TEST(RecordEvent, RecordEvent) {
   }
 
   // Bad Usage:
-  PushEvent("event_without_pop");
+  PushEvent("event_without_pop", EventRole::kOrdinary);
   PopEvent("event_without_push");
   std::vector<std::vector<Event>> events = paddle::platform::GetAllEvents();
 

@@ -65,6 +65,16 @@ class CPUQuantizeSquashPass : public FusePassBase {
   */
   void FcDequantSquash(Graph* graph) const;
 
+  /*
+  *  Squash quantize if several quatize ops have the same scale
+  */
+  void MultipleQuantizeSquash(Graph* graph) const;
+
+  /*
+  *  Squash scale if dequantize is before scale
+  */
+  void DequantScaleSquash(Graph* graph) const;
+
   const std::string name_scope_{"squash"};
 };
 

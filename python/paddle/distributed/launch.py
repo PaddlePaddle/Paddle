@@ -13,18 +13,18 @@
 # limitations under the License.
 """
 paddle.distributed.launch is a module that spawns multiple distributed 
-process on each trainning node for gpu trainning.
+process on each training node for gpu training.
 Usage:
     In both of single node training or multiple node training, this module 
 launch a process on each of the given gpu card.
-    1. for single node trainning with all visible gpu cards:
+    1. for single node training with all visible gpu cards:
        python -m paddle.distributed.launch \
          your_training_py (arg1 arg2 and all others)
     
-    2. for single node trainning with [0,4) cards
+    2. for single node training with [0,4) cards
        python -m paddle.distributed.launch --selected_gpus="0,1,2,3" \
          your_training_py (arg1 arg2 and all others)
-    3. for mulitple node training such as two node:192.168.0.16, 192.168.0.17
+    3. for multiple node training such as two node:192.168.0.16, 192.168.0.17
         on 192.168.0.16:
             python -m paddle.distributed.launch --cluster_node_ips="192.168.0.16,192.168.0.17" \
                 --node_ip=192.168.0.16 \
@@ -114,14 +114,14 @@ POD_IP (current node ip address, not needed for local training)
         "--selected_gpus",
         type=str,
         default=None,
-        help="It's for gpu trainning and the trainning process will run on the selected_gpus,"
-        "each process is bound to a single GPU. And if it's not setted, this module will use all the gpu cards for training."
+        help="It's for gpu training and the training process will run on the selected_gpus,"
+        "each process is bound to a single GPU. And if it's not set, this module will use all the gpu cards for training."
     )
 
     parser.add_argument(
         "--log_dir",
         type=str,
-        help="The path for each process's log.If it's not setted, the log will printed to default pipe."
+        help="The path for each process's log.If it's not set, the log will printed to default pipe."
     )
 
     #positional
@@ -184,8 +184,33 @@ paddlecloud environment.".format(args.cluster_node_ips, node_ips))
         gpus_num = fluid.core.get_cuda_device_count()
         selected_gpus = [str(x) for x in range(0, gpus_num)]
     else:
-        selected_gpus = [x.strip() for x in args.selected_gpus.split(',')]
+        cuda_visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
+        if cuda_visible_devices is None or cuda_visible_devices == "":
+            selected_gpus = [x.strip() for x in args.selected_gpus.split(',')]
+        else:
+            # change selected_gpus into relative values
+            # e.g. CUDA_VISIBLE_DEVICES=4,5,6,7; args.selected_gpus=4,5,6,7;
+            # therefore selected_gpus=0,1,2,3
+            cuda_visible_devices_list = cuda_visible_devices.split(',')
+            for x in args.selected_gpus.split(','):
+                assert x in cuda_visible_devices_list, "Can't find "\
+                "your selected_gpus %s in CUDA_VISIBLE_DEVICES[%s]."\
+                % (x, cuda_visible_devices)
+            selected_gpus = [
+                cuda_visible_devices_list.index(x.strip())
+                for x in args.selected_gpus.split(',')
+            ]
     selected_gpus_num = len(selected_gpus)
+
+    if args.use_paddlecloud and num_nodes > 1:
+        cloud_paddle_port = os.getenv("PADDLE_PORT", "")
+        cloud_paddle_port_num = os.getenv("PADDLE_PORTS_NUM", "")
+        if cloud_paddle_port != "" and cloud_paddle_port_num != "":
+            cloud_paddle_port_num = int(cloud_paddle_port_num)
+            if cloud_paddle_port_num >= selected_gpus_num:
+                args.started_port = int(cloud_paddle_port)
+                logger.warning("Use Cloud specified port:{}.".format(
+                    cloud_paddle_port))
 
     trainers_endpoints = ""
     for ip in node_ips:

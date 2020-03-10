@@ -303,15 +303,28 @@ DEFINE_double(memory_fraction_of_eager_deletion, 1.0,
  * Allocator related FLAG
  * Name: FLAGS_allocator_strategy
  * Since Version: 1.2
- * Value Range: string, {naive_best_fit, auto_growth}, default=naive_best_fit
+ * Value Range: string, {naive_best_fit, auto_growth}, default=auto_growth
  * Example:
  * Note: For selecting allocator policy of PaddlePaddle.
  */
-DEFINE_string(allocator_strategy, "naive_best_fit",
-              "The allocation strategy. naive_best_fit means the original best "
-              "fit allocator of Fluid. "
-              "auto_growth means the experimental auto-growth allocator. "
-              "Enum in [naive_best_fit, auto_growth].");
+#ifdef PADDLE_ON_INFERENCE
+static constexpr char kDefaultAllocatorStrategy[] = "naive_best_fit";
+#else
+static constexpr char kDefaultAllocatorStrategy[] = "auto_growth";
+#endif
+DEFINE_string(
+    allocator_strategy, kDefaultAllocatorStrategy,
+    "The allocation strategy, enum in [naive_best_fit, auto_growth]. "
+    "naive_best_fit means the original pre-allocated allocator of Paddle. "
+    "auto_growth means the auto-growth allocator. "
+    "These two strategies differ in GPU memory allocation. "
+    "naive_best_fit strategy would occupy almost all GPU memory by default, "
+    "which prevents users from starting several Paddle jobs on the same GPU "
+    "card but leads to less memory fragmentation (i.e., maximum batch "
+    "size of models may be larger). auto_growth strategy would allocate "
+    "GPU memory on demand, which allows users to start several Paddle jobs "
+    "on the same GPU card but may lead to more memory fragmentation "
+    "(i.e., maximum batch size of models may be smaller).");
 
 /**
  * Memory related FLAG
@@ -435,6 +448,14 @@ DEFINE_uint64(reallocate_gpu_memory_in_mb, 0ul,
               "If this flag is set, Paddle will reallocate the gpu memory with "
               "size specified by this flag. Else Paddle will reallocate by "
               "FLAGS_fraction_of_gpu_memory_to_use");
+
+DEFINE_uint64(gpu_memory_limit_mb, 0UL,
+              "The maximum gpu memory limit that the process can allocate. "
+              "If it is equal to 0, there would be no limit and all gpu memory "
+              "would be available to the process. If it is larger than 0, "
+              "the process would raise out of memory error if the allocated "
+              "memory exceeds the limit even though there is available "
+              "memory on the gpu card. The unit is MB and default value is 0.");
 
 #endif
 

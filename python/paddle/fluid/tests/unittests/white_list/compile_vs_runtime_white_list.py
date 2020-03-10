@@ -15,14 +15,24 @@
 # If the output after infershape() is a lod_tensor, commenly its lod_level
 # should be equal during compile time and run time.
 # For ops in this whitelist, the equality check of lod_level between
-# compiletime&runtime will not be required.
+# compiletime&runtime will be skipped. Ops in this whitelist need to declear
+# reasons for skipping compile_vs_runtime test or be fixed later.
+
 COMPILE_RUN_OP_WHITE_LIST = [
-    'lod_reset', 'sequence_pool', 'sequence_slice', 'generate_mask_labels',
-    'sequence_reshape', 'generate_proposals', 'mine_hard_examples',
-    'retinanet_detection_output', 'ctc_align', 'fusion_seqpool_cvm_concat',
-    'gru', 'sequence_erase', 'rpn_target_assign', 'retinanet_target_assign',
-    'filter_by_instag', 'fusion_seqpool_concat', 'multiclass_nms',
-    'multiclass_nms2', 'im2sequence', 'generate_proposal_labels',
-    'distribute_fpn_proposals', 'detection_map', 'locality_aware_nms',
+    'sequence_pool', \
+    'sequence_slice', \
+    'generate_proposals', \
+    'mine_hard_examples', \
+    'retinanet_detection_output', \
+    'ctc_align', \
+    'fusion_seqpool_cvm_concat', \
+    'gru', \
+    'rpn_target_assign', \
+    'retinanet_target_assign', \
+    'filter_by_instag', \
+    'im2sequence', \
+    'generate_proposal_labels', \
+    'detection_map', \
+    'locality_aware_nms', \
     'var_conv_2d'
 ]

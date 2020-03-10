@@ -146,7 +146,7 @@ class TestCrossEntropyOp3(TestCrossEntropyOp):
 
     def init_bs_class_num(self):
         self.batch_size = 5
-        self.class_num = 17
+        self.class_num = 27
 
     def test_check_grad(self):
         self.check_grad(

@@ -5,8 +5,7 @@
 预测库包含:
 
 - 头文件 `paddle_inference_api.h` 定义了所有的接口
-- 库文件`libpaddle_fluid.so` 或 `libpaddle_fluid.a`
-- 库文件 `libpaddle_inference_api.so` 或 `libpaddle_inference_api.a`
+- 库文件 `libpaddle_fluid.so/.a(Linux/Mac)` `libpaddle_fluid.lib/paddle_fluid.dll(Windows)` 
 
 下面是详细的一些 API 概念介绍
 
@@ -30,10 +29,9 @@ struct PaddleTensor {
 
 ## engine
 
-高层 API 底层有多种优化实现，我们称之为 engine，目前有三种 engine
+高层 API 底层有多种优化实现，我们称之为 engine，目前有两种 engine
 
 - 原生 engine，由 paddle 原生的 forward operator 组成，可以天然支持所有paddle 训练出的模型，
-- Anakin engine，封装了 [Anakin](https://github.com/PaddlePaddle/Anakin) ，在某些模型上性能不错，但只能接受自带模型格式，无法支持所有 paddle 模型，
 - TensorRT mixed engine，用子图的方式支持了 [TensorRT](https://developer.nvidia.com/tensorrt) ，支持所有paddle 模型，并自动切割部分计算子图到 TensorRT 上加速（WIP）
 
 其实现为
@@ -41,7 +39,6 @@ struct PaddleTensor {
 ```c++
 enum class PaddleEngineKind {
   kNative = 0,       // Use the native Fluid facility.
-  kAnakin,           // Use Anakin for inference.
   kAutoMixedTensorRT // Automatically mixing TensorRT with the Fluid ops.
 };
 ```
@@ -79,7 +76,7 @@ CHECK(predictor->Run(slots, &outputs));
 // 获取 outputs ...
 ```
 
-编译时，联编 `libpaddle_fluid.a/.so` 和 `libpaddle_inference_api.a/.so` 便可。 
+编译时，联编 `libpaddle_fluid.a/.so(Linux/Mac)` 或 `libpaddle_fluid.lib/paddle_fluid.dll(Windows)` 便可。
 
 ## 详细代码参考
 

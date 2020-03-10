@@ -16,6 +16,10 @@
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/fluid/operators/distributed/communicator.h"
+#endif
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -48,8 +52,8 @@ ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
   CopyOpDeps();
 }
 
-inline FeedFetchList ThreadedSSAGraphExecutor::RunImpl(
-    const std::vector<std::string> &fetch_tensors) {
+inline FetchResultType ThreadedSSAGraphExecutor::RunImpl(
+    const std::vector<std::string> &fetch_tensors, bool return_merged) {
   std::unique_ptr<platform::RecordEvent> event(
       new platform::RecordEvent("ThreadedSSAGraphExecutorPrepare"));
   std::unique_ptr<OpDependentData> op_deps = op_deps_futures_.get();
@@ -66,10 +70,15 @@ inline FeedFetchList ThreadedSSAGraphExecutor::RunImpl(
   // Step 2. Insert FetchOps
   std::vector<OpHandleBase *> fetch_ops;
   std::unordered_set<VarHandleBase *> fetch_dependencies;
-  FeedFetchList fetch_data(fetch_tensors.size());
+  FetchResultType fetch_data;
+  if (return_merged) {
+    fetch_data = FeedFetchList(fetch_tensors.size());
+  } else {
+    fetch_data = FetchUnmergedList(fetch_tensors.size());
+  }
 
   InsertFetchOps(fetch_tensors, &fetch_ops, &fetch_dependencies, &ready_ops,
-                 &pending_ops, &pending_vars, &fetch_data);
+                 &pending_ops, &pending_vars, &fetch_data, return_merged);
 
   exception_holder_.Clear();
   event.reset(nullptr);
@@ -138,12 +147,12 @@ inline FeedFetchList ThreadedSSAGraphExecutor::RunImpl(
   return fetch_data;
 }
 
-FeedFetchList ThreadedSSAGraphExecutor::Run(
-    const std::vector<std::string> &fetch_tensors) {
+FetchResultType ThreadedSSAGraphExecutor::Run(
+    const std::vector<std::string> &fetch_tensors, bool return_merged) {
   for (size_t j = 0; j < strategy_.num_iteration_per_run_ - 1; ++j) {
-    RunImpl({});
+    RunImpl({}, return_merged);
   }
-  return RunImpl(fetch_tensors);
+  return RunImpl(fetch_tensors, return_merged);
 }
 
 void ThreadedSSAGraphExecutor::InsertFetchOps(
@@ -153,7 +162,7 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
     std::unordered_set<OpHandleBase *> *ready_ops,
     std::unordered_map<OpHandleBase *, size_t> *pending_ops,
     std::unordered_set<VarHandleBase *> *pending_vars,
-    FeedFetchList *fetch_data) {
+    FetchResultType *fetch_data, bool return_merged) {
   std::unordered_map<std::string, std::vector<VarHandleBase *>> fetched_vars;
   std::unordered_set<VarHandleBase *> local_ready_vars;
   std::unordered_set<std::string> fetch_tensor_set(fetch_tensors.begin(),
@@ -170,17 +179,22 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
   for (size_t i = 0; i < fetch_tensors.size(); ++i) {
     auto &var_name = fetch_tensors[i];
     auto fetched_var_it = fetched_vars.find(var_name);
-    PADDLE_ENFORCE(fetched_var_it != fetched_vars.end(),
-                   "Cannot find fetched variable(%s).(Perhaps the main_program "
-                   "is not set to ParallelExecutor)",
-                   var_name);
+    PADDLE_ENFORCE_NE(
+        fetched_var_it, fetched_vars.end(),
+        platform::errors::PreconditionNotMet(
+            "Cannot find fetched variable(%s) in current computation graph. "
+            "Possible reasons are:\n"
+            "  1. The variable to be fetched is not defined in main program.\n"
+            "  2. The variable to be fetched is not an input or output of any "
+            "operator.",
+            var_name));
 
     auto &vars = fetched_var_it->second;
 
     ir::Node *fetch_node =
         graph_->CreateEmptyNode("fetch", ir::Node::Type::kOperation);
     auto *op = new FetchOpHandle(fetch_node, fetch_data, i, &local_scopes_,
-                                 &local_exec_scopes_);
+                                 &local_exec_scopes_, return_merged);
     fetch_ops->emplace_back(op);
 
     for (auto &p : places_) {
@@ -332,8 +346,16 @@ bool ThreadedSSAGraphExecutor::RunOpSync(OpHandleBase *op) {
 
 void ThreadedSSAGraphExecutor::ExecutionFinal(
     std::vector<OpHandleBase *> *fetch_ops) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+  if (strategy_.thread_barrier_) {
+    operators::distributed::Communicator::GetInstance()
+        ->BarrierTriggerDecrement();
+  }
+#endif
+
   VLOG(3) << "caught exception " << exception_holder_.Type() << ", rethrow it";
   ClearFetchOp(graph_, fetch_ops);
+
   exception_holder_.ReThrow();
 }
 

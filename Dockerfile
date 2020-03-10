@@ -36,6 +36,17 @@ RUN rm g++
 RUN ln -s gcc-4.8 gcc
 RUN ln -s g++-4.8 g++
 
+# Install cmake3.16.0
+RUN mkdir -p /root/cmake_build && wget -q https://cmake.org/files/v3.16/cmake-3.16.0.tar.gz && \
+    tar -zxvf cmake-3.16.0.tar.gz && rm cmake-3.16.0.tar.gz && \
+    cd cmake-3.16.0 && ./bootstrap > /dev/null && \
+    make -j8 > /dev/null && make install > /dev/null && \
+    ln -s /usr/local/bin/cmake /usr/bin/cmake
+
+ENV PATH=/usr/local/bin:$PATH
+
+RUN rm -r /root/cmake_build
+
 # Install Python3.6
 RUN mkdir -p /root/python_build/ && wget -q https://www.sqlite.org/2018/sqlite-autoconf-3250300.tar.gz && \
     tar -zxf sqlite-autoconf-3250300.tar.gz && cd sqlite-autoconf-3250300 && \
@@ -55,13 +66,13 @@ RUN rm -r /root/python_build
 
 RUN apt-get update && \
     apt-get install -y --allow-downgrades --allow-change-held-packages \
-    patchelf python3 python3-dev python3-pip \
+    python3 python3-dev python3-pip \
     git python-pip python-dev python-opencv openssh-server bison \
     libnccl2=2.1.2-1+cuda8.0 libnccl-dev=2.1.2-1+cuda8.0 \
     wget unzip unrar tar xz-utils bzip2 gzip coreutils ntp \
     curl sed grep graphviz libjpeg-dev zlib1g-dev  \
     python-matplotlib gcc-4.8 g++-4.8 \
-    automake locales clang-format swig cmake  \
+    automake locales clang-format swig  \
     liblapack-dev liblapacke-dev \
     clang-3.8 llvm-3.8 libclang-3.8-dev \
     net-tools libtool ccache && \
@@ -76,6 +87,7 @@ WORKDIR /home/Python-$version
 RUN ./configure --enable-unicode=ucs4 --enable-shared CFLAGS=-fPIC --prefix=/usr/local/python2.7.15
 RUN make && make install
 
+RUN echo "export PATH=/usr/local/bin:${PATH}" >> ~/.bashrc
 RUN echo "export PATH=/usr/local/python2.7.15/include:${PATH}" >> ~/.bashrc
 RUN echo "export PATH=/usr/local/python2.7.15/bin:${PATH}" >> ~/.bashrc
 RUN echo "export LD_LIBRARY_PATH=/usr/local/python2.7.15/lib:${LD_LIBRARY_PATH}" >> ~/.bashrc
@@ -125,8 +137,8 @@ RUN curl -s -q https://glide.sh/get | sh
 
 RUN wget -q https://paddlepaddledeps.bj.bcebos.com/TensorRT-4.0.1.6-ubuntu14.04.x86_64-gnu.cuda.8.0.cudnn7.0.tar.gz --no-check-certificate && \
     tar -zxf TensorRT-4.0.1.6-ubuntu14.04.x86_64-gnu.cuda.8.0.cudnn7.0.tar.gz -C /usr/local && \
-    cp -rf /usr/local/TensorRT/include /usr && \
-    cp -rf /usr/local/TensorRT/lib /usr
+    cp -rf /usr/local/TensorRT/include/* /usr/include/ && \
+    cp -rf /usr/local/TensorRT/lib/* /usr/lib/
 
 # git credential to skip password typing
 RUN git config --global credential.helper store
@@ -206,6 +218,19 @@ RUN wget -q https://launchpad.net/ubuntu/+archive/primary/+sourcefiles/binutils/
     tar -xzf binutils_2.27.orig.tar.gz && \
     cd binutils-2.27 && \
     ./configure && make -j && make install && cd .. && rm -rf binutils-2.27 binutils_2.27.orig.tar.gz
+
+RUN wget --no-check-certificate https://pslib.bj.bcebos.com/openmpi-1.4.5.tar.gz && tar -xzf openmpi-1.4.5.tar.gz && \
+    cd openmpi-1.4.5 && ./configure --prefix=/usr/local && make all -j8 && make install -j8 && \
+    export LD_LIBRARY_PATH=/usr/local/lib/:$LD_LIBRARY_PATH && export PATH=/usr/local/bin:$PATH && cd .. && \
+    rm -rf openmpi-1.4.5.tar.gz && pip --no-cache-dir install mpi4py && ln -fs /bin/bash /bin/sh && \
+    apt-get install libprotobuf-dev -y
+RUN pip --no-cache-dir install -U netifaces==0.10.9
+
+# Older versions of patchelf limited the size of the files being processed and were fixed in this pr.
+# https://github.com/NixOS/patchelf/commit/ba2695a8110abbc8cc6baf0eea819922ee5007fa
+# So install a newer version here.
+RUN wget -q http://mirrors.kernel.org/ubuntu/pool/universe/p/patchelf/patchelf_0.10-2_amd64.deb && \
+    dpkg -i patchelf_0.10-2_amd64.deb
 
 # Configure OpenSSH server. c.f. https://docs.docker.com/engine/examples/running_ssh_service
 RUN mkdir /var/run/sshd

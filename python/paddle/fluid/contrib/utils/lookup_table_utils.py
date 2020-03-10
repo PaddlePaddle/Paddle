@@ -137,7 +137,7 @@ def load_persistables_for_increment(dirname, executor, program,
                                     lookup_table_var, lookup_table_var_path):
     """
     WARNING: this function will only be used for distributed training with distributed lookup table.
-    for increment trainning, the pserver will not only load dense variables,
+    for increment training, the pserver will not only load dense variables,
     but also load the suitable lookup table var. Because of sliced lookup table
     var with HASH, we must load the correct sliced var.
 
@@ -417,10 +417,10 @@ def get_inference_model(main_program, feeded_var_names, target_vars):
 
     Args:
         main_program(Program|None): The original program, which will be pruned to
-                                    build the inference model. If is setted None,
+                                    build the inference model. If is set None,
                                     the default main program will be used.
                                     Default: None.
-        feeded_var_names(list[str]): Names of variables that need to be feeded data
+        feeded_var_names(list[str]): Names of variables that need to be fed data
                                      during inference.
         target_vars(list[Variable]): Variables from which we can get inference
                                      results.
