@@ -349,8 +349,11 @@ class StaticGraphAdapter(object):
         # change inputs to the same var in cloned program
         inputs = fluid.layers.utils.map_structure(
             lambda var: prog.global_block().var(var.name), inputs)
-        # prune unraleted ops in test program, mainly for ops inserted
-        # by learning rate scheduling
+        # NOTE: When defining learning rate scheduling in static-graph, ops to
+        # increase the global step var and calculate learning rate would be
+        # prepended into _orig_prog. test program maked by `_orig_prog.clone`
+        # also would include these ops. Thus must prune these ops in test
+        # program, otherwise the global step would be changed in test.
         if self.mode != 'train':
             for op in list(prog.global_block().ops):
                 prog.global_block()._remove_op(0)
