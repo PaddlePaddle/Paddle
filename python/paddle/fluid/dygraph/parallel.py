@@ -22,7 +22,7 @@ from .. import framework
 from ..layers import collective
 from . import to_variable, no_grad
 
-__all__ = ["prepare_context", "ParallelEnvironment", "DataParallel"]
+__all__ = ["prepare_context", "ParallelEnv", "DataParallel"]
 
 ParallelStrategy = core.ParallelStrategy
 
@@ -51,13 +51,62 @@ def prepare_context(strategy=None):
     return strategy
 
 
-class ParallelEnvironment(object):
+class ParallelEnv(object):
     """
+    **Notes**:
+        **The old class name was Env and will be deprecated. Please use new class name ParallelEnv.**
+
     This class is used to obtain the environment variables required for 
     the parallel execution of dynamic graph model.
 
     The dynamic graph parallel mode needs to be started using paddle.distributed.launch.
     By default, the related environment variable is automatically configured by this module.
+
+    This class is generally used in with `fluid.dygraph.DataParallel` to configure dynamic graph models
+    to run in parallel.
+
+    Examples:
+      .. code-block:: python
+
+        # This example needs to run with paddle.distributed.launch, The usage is:
+        #   python -m paddle.distributed.launch --selected_gpus=0,1 example.py
+        # And the content of `example.py` is the code of following example.
+
+        import numpy as np
+        import paddle.fluid as fluid
+        import paddle.fluid.dygraph as dygraph
+        from paddle.fluid.optimizer import AdamOptimizer
+        from paddle.fluid.dygraph.nn import Linear
+        from paddle.fluid.dygraph.base import to_variable
+
+        place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
+        with fluid.dygraph.guard(place=place):
+
+            # prepare the data parallel context
+            strategy=dygraph.prepare_context()
+
+            linear = Linear(1, 10, act="softmax")
+            adam = fluid.optimizer.AdamOptimizer()
+
+            # make the module become the data parallelism module
+            linear = dygraph.DataParallel(linear, strategy)
+
+            x_data = np.random.random(size=[10, 1]).astype(np.float32)
+            data = to_variable(x_data)
+
+            hidden = linear(data)
+            avg_loss = fluid.layers.mean(hidden)
+
+            # scale the loss according to the number of trainers.
+            avg_loss = linear.scale_loss(avg_loss)
+
+            avg_loss.backward()
+
+            # collect the gradients of trainers.
+            linear.apply_collective_grads()
+
+            adam.minimize(avg_loss)
+            linear.clear_gradients()
     """
 
     def __init__(self):
@@ -72,6 +121,7 @@ class ParallelEnvironment(object):
     def nranks(self):
         """
         The number of trainers, generally refers to the number of GPU cards used in training.
+
         Its value is equal to the value of the environment variable PADDLE_TRAINERS_NUM. The default value is 1.
 
         Examples:
@@ -80,7 +130,7 @@ class ParallelEnvironment(object):
             # execute this command in terminal: export PADDLE_TRAINERS_NUM=4
             import paddle.fluid as fluid
             
-            env = fluid.dygraph.ParallelEnvironment()
+            env = fluid.dygraph.ParallelEnv()
             print("The nranks is %d" % env.nranks)
             # The nranks is 4
         """
@@ -89,7 +139,9 @@ class ParallelEnvironment(object):
     @property
     def local_rank(self):
         """
-        The current trainer number. The default value is 0.
+        The current trainer number.
+
+        Its value is equal to the value of the environment variable PADDLE_TRAINER_ID. The default value is 0.
 
         Examples:
           .. code-block:: python
@@ -97,7 +149,7 @@ class ParallelEnvironment(object):
             # execute this command in terminal: export PADDLE_TRAINER_ID=0
             import paddle.fluid as fluid
             
-            env = fluid.dygraph.ParallelEnvironment()
+            env = fluid.dygraph.ParallelEnv()
             print("The local rank is %d" % env.local_rank)
             # The local rank is 0
         """
@@ -106,7 +158,9 @@ class ParallelEnvironment(object):
     @property
     def dev_id(self):
         """
-        The ID of selected GPU card for parallel training. The default value is 0.
+        The ID of selected GPU card for parallel training.
+
+        Its value is equal to the value of the environment variable FLAGS_selected_gpus. The default value is 0.
 
         Examples:
           .. code-block:: python
@@ -114,7 +168,7 @@ class ParallelEnvironment(object):
             # execute this command in terminal: export FLAGS_selected_gpus=1
             import paddle.fluid as fluid
             
-            env = fluid.dygraph.ParallelEnvironment()
+            env = fluid.dygraph.ParallelEnv()
             print("The device id are %d" % env.dev_id)
             # The device id are 1
         """
@@ -123,10 +177,9 @@ class ParallelEnvironment(object):
     @property
     def current_endpoint(self):
         """
-        The endpoint of current trainer. 
-        The endpoint is in the form of (node IP:port)
-        Such as 127.0.0.1:6170.
-        The default value is "".
+        The endpoint of current trainer, it is in the form of (node IP + port).
+
+        Its value is equal to the value of the environment variable PADDLE_CURRENT_ENDPOINT. The default value is "".
 
         Examples:
           .. code-block:: python
@@ -134,7 +187,7 @@ class ParallelEnvironment(object):
             # execute this command in terminal: export PADDLE_CURRENT_ENDPOINT=127.0.0.1:6170
             import paddle.fluid as fluid
             
-            env = fluid.dygraph.ParallelEnvironment()
+            env = fluid.dygraph.ParallelEnv()
             print("The current endpoint are %s" % env.current_endpoint)
             # The current endpoint are 127.0.0.1:6170
         """
@@ -145,7 +198,8 @@ class ParallelEnvironment(object):
         """
         The endpoints of all trainer nodes in the task, 
         which are used to broadcast the NCCL ID when NCCL2 is initialized.
-        The default value is "".
+
+        Its value is equal to the value of the environment variable PADDLE_TRAINER_ENDPOINTS. The default value is "".
 
         Examples:
           .. code-block:: python
@@ -153,17 +207,17 @@ class ParallelEnvironment(object):
             # execute this command in terminal: export PADDLE_TRAINER_ENDPOINTS=127.0.0.1:6170,127.0.0.1:6171
             import paddle.fluid as fluid
             
-            env = fluid.dygraph.ParallelEnvironment()
+            env = fluid.dygraph.ParallelEnv()
             print("The trainer endpoints are %s" % env.trainer_endpoints)
             # The trainer endpoints are ['127.0.0.1:6170', '127.0.0.1:6171']
         """
         return self._trainer_endpoints
 
 
-# NOTE: [ Compatible ] Originally this class name is `Env`. This class name
-# is not serious, so replace it with `ParallelEnvironment`, but to be compatible
-# with the old examples, here still need to keep this name
-Env = ParallelEnvironment
+# NOTE: [ Compatible ] Originally this class name is `Env`. The semantics of the old class names
+# are inaccurate and may confuse users, so replace it with `ParallelEnv`, but to be compatible
+# with the old examples, here still need to keep this name.
+Env = ParallelEnv
 
 
 class DataParallel(layers.Layer):
