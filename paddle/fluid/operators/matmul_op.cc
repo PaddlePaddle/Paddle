@@ -80,7 +80,7 @@ class MatMulKernel : public framework::OpKernel<T> {
     const auto &x_dims = x.dims();
     const auto &y_dims = y.dims();
     if (head_number <= 1 && x_dims.size() == 3 && y_dims.size() <= 2) {
-      // the transpose_X must be true, if is true, the transpose cost much time
+      // the transpose_X must be false, if is true, the transpose cost much time
       if (!context.Attr<bool>("transpose_X")) {
          mat_dim_a.height_ *= mat_dim_a.batch_size_;
          mat_dim_a.batch_size_ = 0;
@@ -230,7 +230,7 @@ class MatMulGradKernel : public framework::OpKernel<T> {
     #endif
 
     if (head_number <= 1 && a.dims().size() == 3 && b.dims().size() <= 2) {
-      // the transpose_X must be true, if is true, the transpose cost much time
+      // the transpose_X must be false, if is true, the transpose cost much time
       if (!trans_a) {
         mat_dim_a.height_ *= mat_dim_a.batch_size_;
         mat_dim_a.batch_size_ = 0;
