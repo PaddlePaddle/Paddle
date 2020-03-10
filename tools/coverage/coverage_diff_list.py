@@ -5,6 +5,7 @@ usage: coverage_diff_list.py list_file max_rate > coverage-diff-list-90.out
 """
 
 import sys
+import os
 
 paddle_root = os.getenv('PADDLE_ROOT', "/paddle")
 

@@ -5,6 +5,7 @@ usage: coverage_diff.py info_file diff_file > > coverage-diff.info
 """
 
 import sys
+import os
 
 paddle_root = os.getenv('PADDLE_ROOT', "/paddle")
 

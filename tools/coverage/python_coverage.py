@@ -4,6 +4,7 @@
 usage: python_coverage.py > python-coverage.info
 """
 
+import os
 from os import path
 from xml.etree import ElementTree
 
