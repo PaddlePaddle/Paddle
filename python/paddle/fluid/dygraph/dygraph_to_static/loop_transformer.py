@@ -23,6 +23,7 @@ from paddle.fluid.dygraph.dygraph_to_static.ast_utils import create_funcDef_node
 from paddle.fluid.dygraph.dygraph_to_static.ast_utils import generate_name_node
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_constant_variable_node
+from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_static_variable_gast_node
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable_gast_node
 
@@ -83,6 +84,16 @@ class NameVisitor(gast.NodeVisitor):
         # TODO: make a better condition
         return True
 
+    def _var_nodes_to_names(self, node_set, ctx_filter_set=None):
+        ret = set()
+        for node in node_set:
+            if ctx_filter_set is None or type(node.ctx) in ctx_filter_set:
+                if isinstance(node, gast.Name):
+                    ret.add(node.id)
+                elif isinstance(node, gast.Attribute):
+                    ret.add(get_attribute_full_name(node))
+        return ret
+
     def get_loop_var_names(self, node):
         assert isinstance(node, (gast.While,
                                  gast.For)), "Input node is not gast loop node"
@@ -91,13 +102,12 @@ class NameVisitor(gast.NodeVisitor):
         read_context = {type(gast.Load()), type(gast.AugLoad())}
 
         in_loop_vars = self.in_loop_vars[node]
-        in_loop_name_strs = set(name.id for name in in_loop_vars)
+        in_loop_name_strs = self._var_nodes_to_names(in_loop_vars)
         before_loop_body_vars = self.before_loop_body_vars[node]
-        before_loop_name_strs = set(name.id for name in before_loop_body_vars)
+        before_loop_name_strs = self._var_nodes_to_names(before_loop_body_vars)
         after_loop_vars = self.current_seen_vars - before_loop_body_vars - in_loop_vars
-        after_loop_name_strs = set(
-            name.id for name in after_loop_vars
-            if type(name.ctx) in read_context)
+        after_loop_name_strs = self._var_nodes_to_names(after_loop_vars,
+                                                        read_context)
         for name in in_loop_name_strs:
             if name in before_loop_name_strs:
                 # If a variable is used in loop and created before loop, it
@@ -115,6 +125,18 @@ class NameVisitor(gast.NodeVisitor):
         for loop_node in self.current_loop:
             self.in_loop_vars[loop_node].add(node)
         self.generic_visit(node)
+
+    def visit_Attribute(self, node):
+        attr_full_name = get_attribute_full_name(node)
+        if callable(attr_full_name):
+            # Not a variable
+            return
+
+        self.current_seen_vars.add(node)
+        for loop_node in self.current_loop:
+            self.in_loop_vars[loop_node].add(node)
+        # sub-nodes are visited during get_attribute_full_name and we shouldn't
+        # visit again
 
     def visit_For(self, node):
         self.current_loop.append(node)
