@@ -356,6 +356,16 @@ class CompiledProgram(object):
         if self._build_strategy.sync_batch_norm:
             self._build_strategy.enable_sequential_execution = True
 
+        if self._program is not None and self._program._enable_dgc:
+            assert use_cuda, "DGC only used under cuda"
+            assert self._build_strategy.num_trainers * len(
+                places) > 1, "DGC is not useful for single card training"
+            assert self._build_strategy.reduce_strategy == BuildStrategy.ReduceStrategy.AllReduce, "DGC \
+                only used for AllReduce BuildStrategy"
+
+            # DGC doesn't support fuse for now, close fuse.
+            self._build_strategy.fuse_all_reduce_ops = False
+
         self._persistable_vars = []
         for node in self._graph.nodes():
             if node.is_var() and node.var() is not None and node.var().persistable() and \
