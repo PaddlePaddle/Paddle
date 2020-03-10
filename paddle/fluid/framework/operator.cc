@@ -1198,11 +1198,17 @@ Scope* OperatorWithKernel::PrepareData(
         continue;
       }
 
-      auto out_var_names = OutputVars(true);
-      if (std::find(out_var_names.begin(), out_var_names.end(), var_name) !=
-          out_var_names.end()) {
-        transfered_inplace_vars->emplace_back(var_name);
-      }
+      // No need to handle inplace transfer. NOTE:
+      // op kernel would use the transfered var as input, while the output is
+      // still the var in scope rather than transfer scope. Actually the input
+      // and output would not be the same var, thus no need to keep these vars
+      // and tranfer back. Error happens if tranfer the input transfered var
+      // back to output var after op execution.
+      // auto out_var_names = OutputVars(true);
+      // if (std::find(out_var_names.begin(), out_var_names.end(), var_name) !=
+      //     out_var_names.end()) {
+      //   transfered_inplace_vars->emplace_back(var_name);
+      // }
 
       VLOG(3) << "Transform Variable " << var_name << " from "
               << kernel_type_for_var << " to " << expected_kernel_key;
