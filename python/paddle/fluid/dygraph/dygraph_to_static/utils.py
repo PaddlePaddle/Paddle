@@ -227,6 +227,8 @@ def get_attribute_full_name(node):
 
     if isinstance(node.value, gast.Name):
         return node.value.id + "." + node.attr
+    elif isinstance(node.value, gast.Constant):
+        return str(node.value.value) + "." + node.attr
     return get_attribute_full_name(node.value) + "." + node.attr
 
 
