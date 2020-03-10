@@ -93,19 +93,21 @@ class PodManager(object):
 
     def start_local_pods(self, cluster):
         host_name, host_ip = get_host_name_ip()
+        gpu_rank = 0
         for pod in cluster.pods:
             if pod.addr == "127.0.0.1" or \
                     pod.addr==host_name or \
                     pod.addr == ip:
-                self.start_local_pod(cluster.job_server, cluster.job_id, pod.id,
-                                     pod.rank)
+                self.start_local_pod(cluster.job_server, cluster.job_id, pod,
+                                     gpu_rank)
+                gpu_rank += 1
 
-    def start_local_pod(self, job_server, job_id, pod_id, pod_rank):
-        assert pod_id not in self.local_pods, "pod_id:{} local_pods:{}".format(
-            pod_id, [k for k, _ in self.local_pods.items()].sort())
+    def start_local_pod(self, job_server, job_id, pod, gpu_rank):
+        assert pod.id not in self.local_pods, "pod_id:{} local_pods:{}".format(
+            pod.id, [k for k, _ in self.local_pods.items()].sort())
 
         if args.package_sh is not None:
-            cmd = args.package_sh + " -pod_id {}".format(pod_id)
+            cmd = args.package_sh + " -pod_id {}".format(pod.id)
             print("execute cmd:", cmd)
             ret = os.system(cmd)
             assert ret == 0, "execute {} error!".format(cmd)
@@ -118,7 +120,9 @@ class PodManager(object):
             "PADDLE_RUNING_ENV": "PADDLE_EDL",
             "PADDLE_JOBSERVER": "%s" % job_server,
             "PADDLE_JOB_ID": "%s" % job_id,
-            "PADDLE_POD_ID": "%s" % pod_id
+            "PADDLE_POD_ID": "%s" % pod.id,
+            #"CUDA_VISIBLE_DEVICES": "%s" % pod.get_visible_gpus()
+            "CUDA_VISIBLE_DEVICES": "%s" % gpu_rank
         })
 
         current_env.update(pod_env)
@@ -126,13 +130,13 @@ class PodManager(object):
         fn = None
         if args.log_dir is not None:
             os.system("mkdir -p {}".format(args.log_dir))
-            fn = open("%s/pod_%s.log" % (args.log_dir, pod_id), "w")
+            fn = open("%s/pod_%s.log" % (args.log_dir, pod.id), "w")
 
         wd = os.getcwd()
-        pod_path = args.pod_path + "/{}".format(pod_id)
-        print("change to dir:", pod_path)
+        pod_path = args.pod_path + "/{}".format(pod.id)
+        #print("change to dir:", pod_path)
         os.chdir(pod_path)
-        print("changed dir:", os.getcwd())
+        #print("changed dir:", os.getcwd())
 
         #cmd = [sys.executable, "-u", args.training_script
         #       ] + args.training_script_args
@@ -142,7 +146,7 @@ class PodManager(object):
 
         if args.log_dir is not None:
             #os.system("mkdir -p {}".format(args.log_dir))
-            #fn = open("%s/pod_%s.log" % (args.log_dir, pod_id), "w")
+            #fn = open("%s/pod_%s.log" % (args.log_dir, pod.id), "w")
             proc = subprocess.Popen(cmd, env=current_env, stdout=fn, stderr=fn)
         else:
             proc = subprocess.Popen(cmd, env=current_env)
@@ -151,12 +155,12 @@ class PodManager(object):
 
         p = PodProc()
         p.proc = proc
-        p.rank = pod_rank
+        p.rank = pod.rank
         p.log_fn = fn
         p.cmd = cmd
         p.env = pod_env
 
-        self.local_pods[pod_id] = p
+        self.local_pods[pod.id] = p
 
     def kill_local_pod(self, pod_id):
         assert pod_id in self.local_pods, "pod_id:{} local_pods:{}".format(
@@ -203,9 +207,11 @@ def manage_pods():
 
             added_pods = get_added_pods(cluster, cluster2)
             logger.debug("added_pods:", added_pods)
+            gpu_rank = 0
             for pod in added_pods:
                 pod_manager.start_local_pod(cluster2.job_server,
-                                            cluster2.job_id, pod.id, pod.rank)
+                                            cluster2.job_id, pod, gpu_rank)
+                gpu_rank += 1
 
             cluster = cluster2
 

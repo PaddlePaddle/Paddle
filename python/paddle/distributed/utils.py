@@ -58,7 +58,7 @@ class Cluster(object):
             self.job_server, [str(pod) for pod in self.pods], self.hdfs)
 
     def __eq__(self, cluster):
-        print("pods length:", len(self.pods), len(cluster.pods))
+        #print("pods length:", len(self.pods), len(cluster.pods))
         if len(self.pods) != len(cluster.pods):
             return False
 
@@ -192,6 +192,17 @@ class Pod(object):
 
     def rank(self):
         return self.rank
+
+    def get_visible_gpus(self):
+        r = ""
+        for t in self.trainers:
+            for g in t.gpu:
+                r += "{},".format(g)
+
+        assert r != "", "this pod {} can't see any gpus".format(self)
+
+        r = r[:-1]
+        return r
 
 
 class Gloo(object):

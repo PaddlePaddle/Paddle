@@ -347,7 +347,7 @@ def launch(args):
                 procs = start_local_trainers(cluster, pod)
                 cluster = cluster2
 
-        print("cluster trainer_nranks:", cluster.trainers_nranks())
+        #print("cluster trainer_nranks:", cluster.trainers_nranks())
         alive = watch_local_trainers(procs, cluster.trainers_nranks())
 
         if not alive:
