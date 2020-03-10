@@ -46,11 +46,11 @@ class IfElseTransformer(gast.NodeTransformer):
             wrapper_root, AstNodeWrapper
         ), "Type of input node should be AstNodeWrapper, but received %s ." % type(
             wrapper_root)
-        self.wrapper_root = wrapper_root
         self.root = wrapper_root.node
+        self.static_analysis_visitor = StaticAnalysisVisitor(self.root)
         self.new_func_nodes = {}
 
-    def ast_visit(self):
+    def transform(self):
         """
         Main function to transform AST.
         """
@@ -59,7 +59,8 @@ class IfElseTransformer(gast.NodeTransformer):
 
     def visit_If(self, node):
         assert isinstance(node, gast.If)
-        need_transform = is_control_flow_if(node.test)
+        need_transform = is_control_flow_if(node.test,
+                                            self.static_analysis_visitor)
         self.generic_visit(node)
         if need_transform:
             pred_node = node.test
@@ -143,7 +144,7 @@ class DygraphToStaticAst(gast.NodeTransformer):
         self.feed_name_to_arg_name = basic_api_trans.get_feed_name_to_arg_id()
 
         # Transform all if/else statement of Dygraph into Static Graph.
-        IfElseTransformer(node_wrapper).ast_visit()
+        IfElseTransformer(node_wrapper).transform()
 
         LoopTransformer(node_wrapper).transform()
 

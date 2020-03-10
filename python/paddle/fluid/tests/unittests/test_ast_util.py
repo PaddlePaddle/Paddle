@@ -21,6 +21,7 @@ import inspect
 import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.dygraph_to_static.ast_utils import get_name_ids, ast_to_func, is_control_flow_if
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 
 from test_dygraph_to_static_basic import dyfunc_with_if_else, dyfunc_with_if_else2, nested_if_else
 
@@ -98,35 +99,89 @@ class TestIsControlFlowIf(unittest.TestCase):
     def test_expr(self):
         # node is not ast.Compare
         node = gast.parse("a + b")
-        self.assertFalse(is_control_flow_if(node))
+        self.assertFalse(is_control_flow_if(node.body[0].value))
 
     def test_expr2(self):
         node = gast.parse("a + x.numpy()[1]")
-        self.assertFalse(is_control_flow_if(node))
+        self.assertFalse(is_control_flow_if(node.body[0].value))
 
     def test_is_None(self):
         node = gast.parse("x is None")
-        self.assertFalse(is_control_flow_if(node))
+        self.assertFalse(is_control_flow_if(node.body[0].value))
 
     def test_is_None2(self):
         node = gast.parse("fluid.layers.sum(x) is None")
-        self.assertFalse(is_control_flow_if(node))
+        self.assertFalse(is_control_flow_if(node.body[0].value))
 
     def test_is_None3(self):
         node = gast.parse("fluid.layers.sum(x).numpy() != None")
-        self.assertFalse(is_control_flow_if(node))
+        self.assertFalse(is_control_flow_if(node.body[0].value))
 
     def test_if(self):
         node = gast.parse("x.numpy()[1] > 1")
-        self.assertTrue(is_control_flow_if(node))
+        self.assertTrue(is_control_flow_if(node.body[0].value))
 
     def test_if_with_and(self):
         node = gast.parse("x is not None and 1 < x.numpy()[1]")
-        self.assertTrue(is_control_flow_if(node))
+        self.assertTrue(is_control_flow_if(node.body[0].value))
 
     def test_if_with_or(self):
         node = gast.parse("1 < fluid.layers.sum(x).numpy()[2] or x+y < 0")
-        self.assertTrue(is_control_flow_if(node))
+        self.assertTrue(is_control_flow_if(node.body[0].value))
+
+    def test_shape(self):
+        code = """
+            def foo(x):
+                batch_size = fluid.layers.shape(x)
+                if batch_size[0] > 16:
+                    x = x + 1
+                return x
+        """
+        code = textwrap.dedent(code)
+        node = gast.parse(code)
+        visitor = StaticAnalysisVisitor(node)
+        test_node = node.body[0].body[1].test
+        self.assertTrue(is_control_flow_if(test_node, visitor))
+
+    def test_shape_with_andOr(self):
+        code = """
+            def foo(x):
+                batch_size = fluid.layers.shape(x)
+                if x is not None and batch_size[0] > 16 or 2 > 1:
+                    x = x + 1
+                return x
+        """
+        code = textwrap.dedent(code)
+        node = gast.parse(code)
+        visitor = StaticAnalysisVisitor(node)
+        test_node = node.body[0].body[1].test
+        self.assertTrue(is_control_flow_if(test_node, visitor))
+
+    def test_paddle_api(self):
+        code = """
+            def foo(x):
+                if fluid.layers.shape(x)[0] > 16:
+                    x = x + 1
+                return x
+        """
+        code = textwrap.dedent(code)
+        node = gast.parse(code)
+        visitor = StaticAnalysisVisitor(node)
+        test_node = node.body[0].body[0].test
+        self.assertTrue(is_control_flow_if(test_node, visitor))
+
+    def test_paddle_api_with_andOr(self):
+        code = """
+            def foo(x):
+                if 2 > 1 and fluid.layers.shape(x)[0] > 16 or x is not None :
+                    x = x + 1
+                return x
+        """
+        code = textwrap.dedent(code)
+        node = gast.parse(code)
+        visitor = StaticAnalysisVisitor(node)
+        test_node = node.body[0].body[0].test
+        self.assertTrue(is_control_flow_if(test_node, visitor))
 
     def test_raise_error(self):
         node = "a + b"
