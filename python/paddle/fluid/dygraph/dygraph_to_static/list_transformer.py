@@ -14,17 +14,9 @@
 
 from __future__ import print_function
 
-import copy
 import gast
 import astor
-
-from collections import defaultdict
-from paddle.fluid import unique_name
-from paddle.fluid.dygraph.dygraph_to_static.ast_utils import create_funcDef_node
-from paddle.fluid.dygraph.dygraph_to_static.ast_utils import generate_name_node
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
-from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_static_variable_gast_node
-from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable_gast_node
 from .static_analysis import AstNodeWrapper, NodeVarType, StaticAnalysisVisitor
 
 
@@ -49,24 +41,15 @@ class ListTransformer(gast.NodeTransformer):
         # TODO: Consider that Tensor.shape is used in sub function and sub_scopes is empty
         var_env.cur_scope = var_env.cur_scope.sub_scopes[0]
         self.scope_var_type_dict = var_env.get_scope_var_type()
-        self.is_after_visit = False
 
     def transform(self):
         self.visit(self.root)
-        self.after_visit(self.root)
+        self.replace_list_with_tensor_array(self.root)
 
     def visit_Assign(self, node):
         if self._update_list_name_to_updated(node):
             return node
         return node
-
-    # def visit_Expr(self, node):
-    #     value_node = node.value
-    #     if isinstance(value_node, gast.Call):
-    #         if self._is_list_append_tensor(value_node):
-    #             node.value = self._to_array_write_node(value_node)
-    #         return node
-    #     return node
 
     def visit_If(self, node):
         self.generic_visit(node)
@@ -84,13 +67,10 @@ class ListTransformer(gast.NodeTransformer):
 
         return False
 
-    def after_visit(self, node):
-        self.is_after_visit = True
+    def replace_list_with_tensor_array(self, node):
         for child_node in gast.walk(node):
             if isinstance(child_node, gast.Assign):
                 if self._need_to_create_tensor_array(child_node):
-
-                    # new_assign_node = self._create_tensor_array(child_node)
                     child_node.value = self._create_tensor_array()
 
     def _is_list_append_tensor(self, node):
@@ -106,20 +86,12 @@ class ListTransformer(gast.NodeTransformer):
 
         # 2. is list
         value_name = astor.to_source(gast.gast_to_ast(node.func.value))
-
-        # if not isinstance(node.func.value, gast.Name):
-        #     return False
-        # for ele in self.name_of_list_set:
-        #     print(ele, len(ele))
-
-        # if value_name.strip() not in self.name_of_list_set:
         if value_name.strip() not in self.list_name_to_updated:
             return False
 
         # 3. append Variable
         # Only one argument is supported in Python list.append()
         if len(node.args) != 1:
-            # print("len(node.args) != 1")
             return False
 
         arg = node.args[0]
@@ -143,61 +115,30 @@ class ListTransformer(gast.NodeTransformer):
         return True
 
     def _need_to_create_tensor_array(self, node):
-        print("_need_to_create_tensor_array")
         assert isinstance(node, gast.Assign)
         target_node = node.targets[0]
         try:
             target_id = target_node.id
         except AttributeError:
             return False
-        print("target_id : ", target_id)
-        print(self.list_name_to_updated)
         if self.list_name_to_updated.get(target_id):
             return True
         return False
 
     def _create_tensor_array(self):
-        x = "fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)"
-        i = "fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)"
-        func_code = "fluid.layers.array_write(x={}, i={}, array=None)".format(x,
-                                                                              i)
-        return gast.parse(func_code).body[0].value
-
-    # def _create_tensor_array(self, node):
-    #     assert isinstance(node, gast.Assign)
-    #     target = node.targets[0].id
-    #     x = "fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)"
-    #     i = "fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)"
-    #     func_code = "{} = fluid.layers.array_write(x={}, i={}, array=None)".format(
-    #         target, x, i)
-    #
-    #     result = gast.parse(func_code)
-    #     return result.body[0]
+        # Although `dtype='float32'`, other types such as `int32` can also be supported
+        func_code = "fluid.layers.create_array(dtype='float32')"
+        func_node = gast.parse(func_code).body[0].value
+        return func_node
 
     def _to_array_write_node(self, node):
         assert isinstance(node, gast.Call)
         array = astor.to_source(gast.gast_to_ast(node.func.value))
         x = astor.to_source(gast.gast_to_ast(node.args[0]))
         i = "fluid.layers.array_length({})".format(array)
-        new_code = "fluid.layers.array_write(x={}, i={}, array={})".format(
+        func_code = "fluid.layers.array_write(x={}, i={}, array={})".format(
             x, i, array)
-        return gast.parse(new_code)
-
-    def _update_name_of_list_set(self, node):
-        assert isinstance(node, gast.Assign)
-        target_node = node.targets[0]
-        # TODO: Consider node has more than one target. eg: x, y = a, []
-        try:
-            target_id = target_node.id
-        except AttributeError:
-            return False
-        value_node = node.value
-        if isinstance(value_node, gast.List):
-            self.name_of_list_set.add(target_id)
-            return True
-        elif target_id in self.name_of_list_set:
-            self.name_of_list_set.remove(target_id)
-        return False
+        return gast.parse(func_code).body[0].value
 
     def _update_list_name_to_updated(self, node):
         assert isinstance(node, gast.Assign)

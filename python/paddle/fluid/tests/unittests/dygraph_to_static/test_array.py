@@ -19,33 +19,8 @@ import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.jit import dygraph_to_static_graph
 
-
-def dygraph_test_list(x):
-    x = fluid.dygraph.to_variable(x)
-    a = fluid.LoDTensorArray()
-
-    if x.numpy()[0] > 0:
-        a.append(x)
-    else:
-        a.append(fluid.layers.fill_constant(shape=[1, 2], value=9, dtype="int"))
-    print(a)
-    return a
-
-
-def static_test_list(x):
-    x = fluid.layers.assign(x)
-    a = fluid.LoDTensorArray()
-    a.append(fluid.layers.fill_constant(shape=[1, 2], value=9, dtype='int32'))
-    # def true_fn_0(x):
-    #     a.append(x)
-    #     return a
-    #
-    # def false_fn_0():
-    #     a.append(fluid.layers.fill_constant(shape=[1, 2], value=9, dtype='int32'))
-    #     return a
-    #
-    # a = fluid.layers.cond(x[0] > 0, lambda : true_fn_0(x), lambda :false_fn_0())
-    return a
+SEED = 2020
+np.random.seed(SEED)
 
 
 def basic_test(x):
@@ -53,8 +28,6 @@ def basic_test(x):
     a = []
     if x.numpy()[0] > 0:
         a.append(x)
-        # b = []
-        # b.append(x)
     else:
         a.append(
             fluid.layers.fill_constant(
@@ -68,6 +41,7 @@ test_funcs = [basic_test]
 class TestArray(unittest.TestCase):
     def setUp(self):
         self.input = np.ones(5).astype("int32")
+        self.input = np.random.random((3)).astype('int32')
         self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
 
@@ -81,8 +55,12 @@ class TestArray(unittest.TestCase):
     def run_static_mode(self):
         main_program = fluid.Program()
         with fluid.program_guard(main_program):
-            static_out = dygraph_to_static_graph(self.dygraph_func)(self.input)
-
+            tensor_array = dygraph_to_static_graph(self.dygraph_func)(
+                self.input)
+            static_out = fluid.layers.array_read(
+                tensor_array,
+                i=fluid.layers.fill_constant(
+                    shape=[1], value=0, dtype='int64'))
         exe = fluid.Executor(self.place)
         static_res = exe.run(main_program, fetch_list=static_out)
 
@@ -93,8 +71,8 @@ class TestArray(unittest.TestCase):
             self.dygraph_func = func
             static_res = self.run_static_mode()
             dygraph_res = self.run_dygraph_mode()
-            # print(static_res)
-            # print(dygraph_res)
+            print(static_res)
+            print(dygraph_res)
             self.assertTrue(
                 np.allclose(dygraph_res, static_res),
                 msg='dygraph res is {}\nstatic_res is {}'.format(dygraph_res,
