@@ -326,7 +326,7 @@ def save_vars(executor,
                 outputs={},
                 attrs={'file_path': os.path.join(save_dirname, filename)})
 
-        #NOTE(zhiqiu): save op will add variable kLookupTablePath in save_program.desc,
+        # NOTE(zhiqiu): save op will add variable kLookupTablePath in save_program.desc,
         # which leads to diff on save_program and its desc. Call _sync_with_cpp
         # to keep consistency.
         save_program._sync_with_cpp()
@@ -484,6 +484,43 @@ def _save_distributed_persistables(executor, dirname, main_program):
 
         executor.run(prog)
 
+    def __save_params_on_pserver(executor, dirname, remote_params_map):
+        if not remote_params_map:
+            return
+
+        prog = Program()
+        block = prog.global_block()
+
+        # save vars on pserver
+        for name, remote_params in remote_params_map.items():
+            origin = remote_params[0].origin
+            is_slice = remote_params[0].is_slice
+
+            slices = [None] * len(remote_params)
+            remote_varnames = [None] * len(remote_params)
+            endpoints = [None] * len(remote_params)
+
+            for idx, optimizer in enumerate(remote_params):
+                block_id = optimizer.block_id
+                slice = optimizer.slice
+                endpoint = optimizer.endpoint
+
+                index = block_id if is_slice else idx
+                slices[index] = slice
+                remote_varnames[index] = slice.name
+                endpoints[index] = endpoint
+
+            block.append_op(
+                type='checkpoint_notify',
+                attrs={
+                    "varname": origin.name,
+                    "slice_varnames": remote_varnames,
+                    "dirname": remote_varnames,
+                    "endpoints": endpoints
+                })
+
+        executor.run(prog)
+
     def __save_distributed_lookup_tables(executor, dirname,
                                          distributed_lookup_table, endpoints):
         """
@@ -545,8 +582,7 @@ def _save_distributed_persistables(executor, dirname, main_program):
         executor, main_program=main_program, dirname=dirname, vars=local_vars)
 
     if main_program._is_chief:
-        if remote_params_map:
-            __save_remote_params(executor, dirname, remote_params_map)
+        __save_params_on_pserver(executor, dirname, remote_params_map)
         if main_program._distributed_lookup_table:
             __save_distributed_lookup_tables(
                 executor, dirname, main_program._distributed_lookup_table,
@@ -1671,9 +1707,9 @@ def load(program, model_path, executor=None, var_list=None):
                 _logger.error(e)
                 raise e
             except:
-                raise RuntimeError( "Failed to load model file , please make sure model file is saved with the " \
-                                    "the following APIs: [ save_params, save_persistables, save_vars ]. " \
-                                    "When these API called, filename CANNOT be None")
+                raise RuntimeError("Failed to load model file , please make sure model file is saved with the " \
+                                   "the following APIs: [ save_params, save_persistables, save_vars ]. " \
+                                   "When these API called, filename CANNOT be None")
 
             return
 

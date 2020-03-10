@@ -1362,8 +1362,6 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
             optimize_blocks.append(table_opt_block)
             lookup_table_var_name_to_block_id = self._create_prefetch_block(
                 pserver_index, pserver_program, table_opt_block)
-            checkpoint_block_id = self._create_checkpoint_save_block(
-                pserver_program, table_opt_block.idx)
 
             pserver_program._distributed_lookup_table = self.table_name
             prefetch_var_name_to_block_id.extend(
@@ -1992,26 +1990,6 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         grad_to_block_id.append(grad_var.name + ":" + str(table_opt_block.idx))
 
         return table_opt_block
-
-    def _create_checkpoint_save_block(self, pserver_program, pre_block_idx):
-        """
-        create a new block to handle save checkpoint.
-        """
-
-        pserver_program.global_block().create_var(
-            name="kLookupTablePath",
-            persistable=True,
-            type=core.VarDesc.VarType.RAW)
-
-        checkpoint_save_block = pserver_program._create_block(pre_block_idx)
-        # this 'file_path' do not be used in save lookup table variable
-        checkpoint_save_block.append_op(
-            type='save',
-            inputs={'X': [self.table_name]},
-            outputs={},
-            attrs={'file_path': "none"})
-
-        return checkpoint_save_block.idx
 
     def _create_vars_from_blocklist(self,
                                     program,

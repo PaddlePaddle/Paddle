@@ -65,8 +65,9 @@ class CheckpointNotifyOpMaker : public framework::OpProtoAndCheckerMaker {
         "Parameter Server endpoints in the order");
     AddAttr<std::string>("dirname",
                          "(string) indicate the folder checkpoint will use");
+    AddAttr<std::string>("varname", "(string)  the var need to be saved");
     AddAttr<std::vector<std::string>>(
-        "varnames", "(string vector) the var need to be saved");
+        "varnames", "(string vector) the slice vars need to be saved");
     AddComment(R"DOC(
 CheckpointNotify operator
 
