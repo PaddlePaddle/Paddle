@@ -116,7 +116,7 @@ class JobInfoManager(object):
         step_id = 0
         modify = True
         while (True):
-            time.sleep(20 * 60)  # 20minutes
+            time.sleep(30)  # 20minutes
             if modify:
                 step_id += 1
                 #print("del 2 pods")
@@ -126,7 +126,7 @@ class JobInfoManager(object):
                 step_id += 1
                 #print("add 2 pods")
                 self._add_tail(self._job_id, 2, step_id)
-                #modify = False
+                modify = False
 
 
 job_manager = JobInfoManager()

@@ -87,11 +87,11 @@ class Cluster(object):
                 r.append(t.endpoint)
         return r
 
-    def pods_endpints(self):
+    def pods_endpoints(self):
         r = []
         for pod in self.pods:
-            ep = "{}:{}".format(pod.ip, pod.port)
-            assert pod.port != None and pod.ip != None, "{} not a valid endpoint".format(
+            ep = "{}:{}".format(pod.addr, pod.port)
+            assert pod.port != None and pod.addr != None, "{} not a valid endpoint".format(
                 ep)
             r.append(ep)
 
@@ -222,7 +222,7 @@ class Gloo(object):
             self._endpoints == endpoints and \
             self._rank == rank
 
-    def _init(job_id, hdfs, endpoints, rank, try_num=3):
+    def _init(self, job_id, hdfs, endpoints, rank, try_num=3):
         if not self._is_changed(job_id, hdfs, endpoints, rank):
             self._job_id = job_id
             self._hdfs = hdfs
@@ -234,27 +234,30 @@ class Gloo(object):
             if not self._gloo.init(rank,
                                    len(self._endpoints),
                                    hdfs.hdfs_path.rstrip("/") + "/edl_job_gloo",
-                                   hdfs.hdfs_name, hdfs.hdfs_ugi, self.__iface,
+                                   hdfs.hdfs_name, hdfs.hdfs_ugi, iface,
                                    self._job_id):
                 self._clear()
+                logger.warning("can't init gloo")
                 return False
 
         return True
 
-    def _loop(func):
+    def _loop(self, func, name):
+        step = 0
         while True:
-            if func():
+            ret = func()
+            if ret == 0:
                 return True
-
-            if step > self._try_num:
-                break
 
             time.sleep(3)
             step += 1
+            if step >= self._try_num:
+                break
 
+        logger.warning("gloo {} error".format(name))
         return False
 
-    def init(job_id, hdfs, endpoints, rank, try_num=3):
+    def init(self, job_id, hdfs, endpoints, rank, try_num=3):
         func = functools.partial(
             self._init,
             job_id=job_id,
@@ -262,17 +265,17 @@ class Gloo(object):
             endpoints=endpoints,
             rank=rank,
             try_num=try_num)
-        return self._loop(func)
+        return self._loop(func, "init")
 
-    def barrier(timeout):
+    def barrier(self, timeout):
         #func = functools.partial(self._gloo.barrier, timeout=timeout)
         func = functools.partial(self._gloo.barrier)
-        return self._loop(func)
+        return self._loop(func, "barrier")
 
-    def allgather(input, output, timeout):
+    def allgather(self, input, output, timeout):
         func = functools.partial(
             self._gloo.allgather, input=input, output=output, timeout=timeout)
-        return self._loop(func)
+        return self._loop(func, "allgather")
 
     def __get_default_iface(self):
         """
@@ -328,7 +331,7 @@ def get_cluster(node_ips, node_ip, paddle_port, selected_gpus):
     for node_rank, ip in enumerate(node_ips):
         pod = Pod()
         pod.rank = node_rank
-        pod.ip = ip
+        pod.addr = ip
         for i in range(len(selected_gpus)):
             trainer = Trainer()
             trainer.gpu.append(selected_gpus[i])
@@ -348,6 +351,7 @@ def terminate_local_procs(procs):
         if p.proc.poll() is None:
             p.proc.terminate()
             p.log_fn.close()
+            logger.debug("terminate process id:{}".format(p.proc.pid))
 
     # wait all process terminiated
     time.sleep(3)

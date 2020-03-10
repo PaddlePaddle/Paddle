@@ -106,28 +106,21 @@ class Edlenv(object):
         return cluster, pod
 
 
-def barrier_terminate_world_trainers(cluster, pod, comm, timeout=10, try_num=3):
+def barrier_terminate_world_trainers(cluster, pod, comm, timeout=10, try_num=1):
     step = 0
-    while True:
-        r = comm.init(
-            cluster.job_id,
-            cluster.hdfs,
-            cluster.get_pods_endpoints(),
-            pod.rank,
-            try_num=try_num)
-        if not r:
-            logger.warning("can't init from context:{}".format(cluster))
-            return False
+    r = comm.init(
+        job_id=cluster.job_id,
+        hdfs=cluster.hdfs,
+        endpoints=cluster.pods_endpoints(),
+        rank=pod.rank,
+        try_num=try_num)
+    if not r:
+        logger.warning("can't init from context:{}".format(cluster))
+        return False
 
-        r = comm.barrier(timeout)
-        if not r:
-            logger.warning("barrier timeout context:{}".format(cluster))
-            return False
+    r = comm.barrier(timeout)
+    if not r:
+        logger.warning("barrier timeout context:{}".format(cluster))
+        return False
 
-        if step > 3:
-            time.sleep(1)
-            return False
-
-        return true
-
-    return False
+    return True

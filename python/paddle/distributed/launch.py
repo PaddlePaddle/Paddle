@@ -288,6 +288,29 @@ def get_hdfs_from_args(args):
     hdfs.hdfs_path = args.hdfs_path
 
     assert hdfs.is_valid()
+    return hdfs
+
+
+def edl_barrier_start(edl_env, comm, hdfs):
+    cluster = None
+    pod = None
+    while True:
+        cluster, pod = edl_env.get_cluster(hdfs)
+        ret = edl_utils.barrier_terminate_world_trainers(
+            cluster=cluster, pod=pod, comm=comm)
+        if ret:
+            break
+
+        if pod is None:  # me is dead
+            logger.info("This pod is not exist so exit(0)! Cluster:{} pod:{}".
+                        format(cluster, pod.id))
+            sys.exit(0)
+
+        logger.warning("Can't barrier in cluster:{}".format(cluster))
+        time.sleep(1)
+        continue
+
+    return cluster, pod
 
 
 def launch(args):
@@ -311,10 +334,10 @@ def launch(args):
         logger.info("get cluster from cloud:{}".format(cluster))
     elif use_edl:
         hdfs = get_hdfs_from_args(args)
-        cluster, pod = edl_env.get_cluster(hdfs)
-        logger.info("get cluster from edl:{}".format(cluster))
-
+        #cluster, pod = edl_env.get_cluster(hdfs)
         comm = Gloo()
+        cluster, pod = edl_barrier_start(edl_env, comm, hdfs)
+        logger.info("get cluster from edl:{}".format(cluster))
     else:
         cluster, pod = get_cluster_from_args(args, selected_gpus)
         logger.info("get cluster from args:{}".format(cluster))
@@ -324,30 +347,42 @@ def launch(args):
     else:
         procs = start_local_trainers(cluster, pod)
 
+    #try_step=0
     while True:
         if use_edl:
             cluster2, pod = edl_env.get_cluster(hdfs)
+            """
             if pod is None:  # me is dead
                 logger.info(
                     "Cluster changed. This pod is not exist so exit(0)! \
                     New cluster:{}. Old Cluster:{}".format(cluster2, cluster))
                 sys.exit(0)
+            """
 
             if cluster2 != cluster:
                 logger.info("Cluster changed. New cluster:{}. Old Cluster:{}".
                             format(cluster2, cluster))
                 terminate_local_procs(procs)
 
+                cluster, pod = edl_barrier_start(edl_env, comm, hdfs)
+                """
                 if not edl_utils.barrier_terminate_world_trainers(
                         cluster=cluster, pod=pod, comm=comm):
                     logger.warning("Can't barrier in cluster:{}".format(
                         cluster))
+                    try_step += 1
+                    if try_step >= 3:
+                        logger.fatal("can't barrier_terminate_world_trainers now")
+                        #sys.exit(1)
                     continue
+                """
 
                 procs = start_local_trainers(cluster, pod)
-                cluster = cluster2
+                #cluster = cluster2
 
-        #print("cluster trainer_nranks:", cluster.trainers_nranks())
+            #try_step=0
+
+            #print("cluster trainer_nranks:", cluster.trainers_nranks())
         alive = watch_local_trainers(procs, cluster.trainers_nranks())
 
         if not alive:
