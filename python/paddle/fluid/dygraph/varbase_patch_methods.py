@@ -163,6 +163,18 @@ def monkey_patch_varbase():
     def __str__(self):
         return self.to_string(True)
 
+    def __setitem__(self, index, value):
+        assert isinstance(
+            value, core.VarBase
+        ), "assignment to a Variable only accpets a Variable, but got {}".format(
+            type(value).__name__)
+        tensor_self = self.value().get_tensor()
+        tensor_value = value.value().get_tensor()
+        numpy_self = tensor_self.__array__()
+        numpy_value = tensor_value.__array__()
+        numpy_self[index] = numpy_value
+        tensor_self.set(numpy_self, framework._current_expected_place())
+
     @property
     def block(self):
         return framework.default_main_program().global_block()
@@ -204,7 +216,8 @@ def monkey_patch_varbase():
                 return 'name %s, shape: %s, not inited' % (self.name,
                                                            self.shape)
 
-    for method_name, method in (("set_value", set_value), ("block", block),
+    for method_name, method in (("__setitem__", __setitem__),
+                                ("set_value", set_value), ("block", block),
                                 ("backward", backward), ("gradient", gradient),
                                 ("__str__", __str__), ("to_string", to_string)):
         setattr(core.VarBase, method_name, method)
