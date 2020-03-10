@@ -48,9 +48,12 @@ class DistributedTranspiler(Fleet):
         self._transpile_config = None
         self._transpiler = None
         self._origin_program = None
+        self._communicator = None
+
         self.startup_program = None
         self.main_program = None
-        self._communicator = None
+
+        self.save_on_pserver = False
 
     def init_worker(self):
         """
@@ -269,6 +272,9 @@ class DistributedTranspiler(Fleet):
         if not main_program._is_distributed:
             raise ValueError(
                 "main_program is for local, may not use fleet.save_persistables")
+
+        if self.save_on_pserver:
+            main_program._save_on_pserver = True
 
         io.save_persistables(executor, dirname, main_program, None)
 

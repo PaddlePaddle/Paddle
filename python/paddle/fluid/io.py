@@ -585,7 +585,11 @@ def _save_distributed_persistables(executor, dirname, main_program):
         executor, main_program=main_program, dirname=dirname, vars=local_vars)
 
     if main_program._is_chief:
-        __save_params_on_pserver(executor, dirname, remote_params_map)
+        if main_program._save_on_pserver:
+            __save_params_on_pserver(executor, dirname, remote_params_map)
+        else:
+            __save_remote_params(executor, dirname, remote_params_map)
+
         if main_program._distributed_lookup_table:
             __save_distributed_lookup_tables(
                 executor, dirname, main_program._distributed_lookup_table,

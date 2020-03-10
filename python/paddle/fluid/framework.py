@@ -3666,6 +3666,8 @@ class Program(object):
         self._trainers_endpoints = []
         # the distributed lookup table names
         self._distributed_lookup_table = None
+        # save on parameter server
+        self._save_on_pserver = False
 
         # use Deep gradient comrepssion or not
         self._enable_dgc = False
@@ -4503,6 +4505,7 @@ class Program(object):
         self._endpoints = other._endpoints
         self._ps_endpoint = other._ps_endpoint
         self._distributed_lookup_table = other._distributed_lookup_table
+        self._save_on_pserver = other._save_on_pserver
 
     def _copy_data_info_from(self, other, pruned_origin_block_id_map=None):
         """
