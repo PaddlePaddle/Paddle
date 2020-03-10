@@ -97,7 +97,7 @@ class FusionGroupPassTest1(FusionGroupPassTest):
         else:
             self.num_fused_ops = 1
 
-        self.fetch_list = [tmp_2.name, tmp_1.name + "@GRAD"]
+        self.fetch_list = [tmp_2.name, tmp_0.name + "@GRAD"]
 
 
 class FusionGroupPassTest2(FusionGroupPassTest):
@@ -109,16 +109,14 @@ class FusionGroupPassTest2(FusionGroupPassTest):
                     name="data3", shape=[128, 32], dtype=dtype))
 
             # subgraph with 3 op node
-            tmp_1 = layers.relu(
-                (self.feed_vars[0] + self.feed_vars[1]) * self.feed_vars[2])
+            tmp_0 = self.feed_vars[0] + self.feed_vars[1]
+            tmp_1 = layers.relu(self.feed_vars[2] * tmp_0)
             # subgraph with 2 op nodes
             tmp_2 = layers.relu(layers.sigmoid(self.feed_vars[3]))
             tmp_3 = layers.mul(tmp_1, tmp_2)
 
         self.num_fused_ops = 2
-        self.fetch_list = [
-            tmp_1.name, tmp_2.name, tmp_3.name, tmp_3.name + "@GRAD"
-        ]
+        self.fetch_list = [tmp_3.name, tmp_0.name + "@GRAD"]
 
         if self.backward:
             self.append_gradinets(tmp_3)
