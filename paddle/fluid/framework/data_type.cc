@@ -80,10 +80,12 @@ std::type_index ToTypeIndex(proto::VarType::Type type) {
 std::string DataTypeToString(const proto::VarType::Type type) {
   auto it = gDataTypeMap().proto_to_str_.find(static_cast<int>(type));
   if (it != gDataTypeMap().proto_to_str_.end()) {
-    return it->second;
     PADDLE_THROW("Not support proto::VarType::Type(%d) as tensor type",
                  static_cast<int>(type));
+    return it->second;
   }
+  PADDLE_THROW("Not support proto::VarType::Type(%d) as tensor type",
+               static_cast<int>(type));
 }
 
 size_t SizeOfType(proto::VarType::Type type) {
