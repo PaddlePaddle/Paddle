@@ -14,9 +14,16 @@
 
 from __future__ import print_function
 
-import inspect
-import gast
+import ast
 import astor
+import atexit
+import copy
+import gast
+import imp
+import inspect
+import os
+import six
+import tempfile
 
 dygraph_class_to_static_api = {
     "CosineDecay": "cosine_decay",
@@ -221,3 +228,82 @@ def get_attribute_full_name(node):
     if isinstance(node.value, gast.Name):
         return node.value.id + "." + node.attr
     return get_attribute_full_name(node.value) + "." + node.attr
+
+
+def generate_name_node(name_ids, ctx=gast.Load()):
+    """
+    Generate list or gast.Tuple of ast.Name for Return statement.
+    """
+    if isinstance(name_ids, six.string_types):
+        name_ids = [name_ids]
+    if not isinstance(name_ids, (list, tuple, set)):
+        raise TypeError('name_ids must be list or tuple or set, but received %s'
+                        % type(type(name_ids)))
+    gast_names = [
+        gast.Name(
+            id=name_id, ctx=ctx, annotation=None, type_comment=None)
+        for name_id in name_ids
+    ]
+    if len(gast_names) == 1:
+        name_node = gast_names[0]
+    else:
+        name_node = gast.Tuple(elts=gast_names, ctx=ctx)
+    return name_node
+
+
+def create_funcDef_node(nodes, name, input_args, return_name_ids):
+    """
+    Wrapper all statements of nodes into one ast.FunctionDef, which can be
+    called by ast.Call.
+    """
+    nodes = copy.copy(nodes)
+    # add return statement
+    nodes.append(gast.Return(value=generate_name_node(return_name_ids)))
+    func_def_node = gast.FunctionDef(
+        name=name,
+        args=input_args,
+        body=nodes,
+        decorator_list=[],
+        returns=None,
+        type_comment=None)
+    return func_def_node
+
+
+def ast_to_func(ast_root, func_name, delete_on_exit=True):
+    """
+    Transform modified AST of decorated function into python callable object.
+    """
+    if not isinstance(ast_root, (gast.AST, ast.AST)):
+        raise TypeError(
+            "Type of ast_root should be gast.AST or ast.AST, but received %s." %
+            type(ast_root))
+    if isinstance(ast_root, gast.AST):
+        ast_root = gast.gast_to_ast(ast_root)
+    source = astor.to_source(ast_root)
+    if six.PY2:
+        source = source.encode('utf-8')
+        f = tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False)
+    else:
+        f = tempfile.NamedTemporaryFile(
+            mode='w', suffix='.py', delete=False, encoding='utf-8')
+
+    # TODO(Aurelius84): more elegant way to transform ast into callable object
+    import_str = "import paddle\n" \
+                 "import paddle.fluid as fluid\n" \
+                 "import paddle.fluid.layers as layers\n" \
+                 "import numpy as np\n" \
+                 "import numpy\n"
+    with f:
+        module_name = os.path.basename(f.name[:-3])
+        f.write(import_str)
+        f.write(source)
+
+    if delete_on_exit:
+        atexit.register(lambda: os.remove(f.name))
+    module = imp.load_source(module_name, f.name)
+    if not hasattr(module, func_name):
+        raise ValueError(
+            'Function: %s doesn\'t exist in the Module transformed from AST.' %
+            func_name)
+
+    return getattr(module, func_name), f.name
