@@ -8,6 +8,7 @@ import sys
 
 paddle_root = os.getenv('PADDLE_ROOT', "/paddle")
 
+
 def get_diff_file_lines(diff_file):
     """
     Args:

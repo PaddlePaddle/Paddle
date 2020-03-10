@@ -8,6 +8,7 @@ import sys
 
 paddle_root = os.getenv('PADDLE_ROOT', "/paddle")
 
+
 def filter_by(list_file, max_rate):
     """
     Args:
