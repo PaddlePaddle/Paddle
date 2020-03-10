@@ -498,6 +498,7 @@ def _save_distributed_persistables(executor, dirname, main_program):
 
             slices = [None] * len(remote_params)
             remote_varnames = [None] * len(remote_params)
+            slice_varnames = [None] * len(remote_params)
             endpoints = [None] * len(remote_params)
 
             for idx, optimizer in enumerate(remote_params):
@@ -508,14 +509,16 @@ def _save_distributed_persistables(executor, dirname, main_program):
                 index = block_id if is_slice else idx
                 slices[index] = slice
                 remote_varnames[index] = slice.name
+                slice_varnames[index] = "{}.slice.{}".format(slice.name, idx)
                 endpoints[index] = endpoint
 
             block.append_op(
                 type='checkpoint_notify',
                 attrs={
                     "varname": origin.name,
-                    "slice_varnames": remote_varnames,
-                    "dirname": remote_varnames,
+                    "remote_varnames": remote_varnames,
+                    "slice_varnames": slice_varnames,
+                    "dirname": dirname,
                     "endpoints": endpoints
                 })
 

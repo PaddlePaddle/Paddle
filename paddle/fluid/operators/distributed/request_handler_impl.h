@@ -131,7 +131,7 @@ class RequestCheckpointHandler final : public RequestHandler {
 
     auto attr = op_desc.mutable_attrs()->Add();
     attr->set_name("file_path");
-    attr->set_type(paddle::framework::proto::AttrType::STRINGS);
+    attr->set_type(paddle::framework::proto::AttrType::STRING);
     attr->set_s(file_path);
 
     auto op = paddle::framework::OpRegistry::CreateOp(op_desc);

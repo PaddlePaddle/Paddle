@@ -249,7 +249,7 @@ bool RequestCheckpointHandler::Handle(const std::string& varname,
 
   auto checkpoint_op = BuildCheckpointOp(varname, out_var_name);
   paddle::platform::CPUPlace cpu_place;
-  checkpoint_op->Run(*scope, cpu_place);
+  checkpoint_op->Run(*scope_, cpu_place);
 
   return true;
 }

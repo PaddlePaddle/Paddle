@@ -39,15 +39,21 @@ class CheckpointNotifyOp : public framework::OperatorBase {
         Attr<std::vector<std::string>>("endpoints");
     std::string dirname = Attr<std::string>("dirname");
     std::string varname = Attr<std::string>("varname");
+
     std::vector<std::string> slice_varnames =
         Attr<std::vector<std::string>>("slice_varnames");
+
+    std::vector<std::string> remote_varnames =
+        Attr<std::vector<std::string>>("remote_varnames");
 
     distributed::RPCClient* rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
 
     for (size_t i = 0; i < epmap.size(); i++) {
-      auto save_path = string::Sprintf("%s/%s", dirname, varname);
-      rpc_client->AsyncCheckpointNotify(epmap[i], save_path, slice_varnames[i]);
+      auto save_path =
+          string::Sprintf("%s/%s/%s", dirname, varname, slice_varnames[i]);
+      rpc_client->AsyncCheckpointNotify(epmap[i], save_path,
+                                        remote_varnames[i]);
 
       VLOG(3) << "checkpoint notify sending with path: " << save_path
               << " and var:" << slice_varnames[i] << " to " << epmap[i];
@@ -67,7 +73,9 @@ class CheckpointNotifyOpMaker : public framework::OpProtoAndCheckerMaker {
                          "(string) indicate the folder checkpoint will use");
     AddAttr<std::string>("varname", "(string)  the var need to be saved");
     AddAttr<std::vector<std::string>>(
-        "varnames", "(string vector) the slice vars need to be saved");
+        "slice_varnames", "(string vector) the slice vars need to be saved");
+    AddAttr<std::vector<std::string>>(
+        "remote_varnames", "(string vector) the slice vars need to be saved");
     AddComment(R"DOC(
 CheckpointNotify operator
 
