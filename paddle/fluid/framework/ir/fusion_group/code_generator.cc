@@ -24,40 +24,18 @@ namespace framework {
 namespace ir {
 namespace fusion_group {
 
-std::string ExtractDataType(const std::vector<Node*>& nodes) {
-  bool is_first = true;
-  std::string dtype_str = "";
-  proto::VarType::Type data_type = proto::VarType::FP32;
-  for (auto* n : nodes) {
-    if (n && n->IsVar() && n->Var()) {
-      if (n->Var()->GetType() != proto::VarType::LOD_TENSOR) {
-        // All var node in a subgraph should hold a LoDTensor.
-        return dtype_str;
-      }
-      if (is_first) {
-        data_type = n->Var()->GetDataType();
-        is_first = false;
-      } else if (n->Var()->GetDataType() != data_type) {
-        // DataType of VarDesc in a subgraph is not the same.
-        return dtype_str;
-      }
-    }
-  }
+std::string ExtractDataType(const std::vector<Node*> nodes) {
+  std::string dtype_str = "float";
+  auto data_type = nodes.back()->Var()->GetDataType();
+
   if (data_type == proto::VarType::FP32) {
     dtype_str = "float";
   } else if (data_type == proto::VarType::FP64) {
     dtype_str = "double";
   } else if (data_type == proto::VarType::FP16) {
     dtype_str = "float16";
-  } else {
-    PADDLE_ENFORCE_EQ(
-        (data_type == proto::VarType::FP32 ||
-         data_type == proto::VarType::FP64 ||
-         data_type == proto::VarType::FP16),
-        true, platform::errors::Unimplemented("Now only support fp32, fp64 "
-                                              "and fp16 in fusion_group."));
-    return dtype_str;
   }
+
   return dtype_str;
 }
 
