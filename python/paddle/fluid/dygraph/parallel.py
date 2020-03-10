@@ -22,7 +22,7 @@ from .. import framework
 from ..layers import collective
 from . import to_variable, no_grad
 
-__all__ = ["prepare_context"]
+__all__ = ["prepare_context", "ParallelEnvironment", "DataParallel"]
 
 ParallelStrategy = core.ParallelStrategy
 
@@ -51,7 +51,15 @@ def prepare_context(strategy=None):
     return strategy
 
 
-class Env(object):
+class ParallelEnvironment(object):
+    """
+    This class is used to obtain the environment variables required for 
+    the parallel execution of dynamic graph model.
+
+    The dynamic graph parallel mode needs to be started using paddle.distributed.launch.
+    By default, the related environment variable is automatically configured by this module.
+    """
+
     def __init__(self):
         self._nranks = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
         self._local_rank = int(os.getenv("PADDLE_TRAINER_ID", "0"))
@@ -62,23 +70,100 @@ class Env(object):
 
     @property
     def nranks(self):
+        """
+        The number of trainers, generally refers to the number of GPU cards used in training.
+        Its value is equal to the value of the environment variable PADDLE_TRAINERS_NUM. The default value is 1.
+
+        Examples:
+          .. code-block:: python
+
+            # execute this command in terminal: export PADDLE_TRAINERS_NUM=4
+            import paddle.fluid as fluid
+            
+            env = fluid.dygraph.ParallelEnvironment()
+            print("The nranks is %d" % env.nranks)
+            # The nranks is 4
+        """
         return self._nranks
 
     @property
     def local_rank(self):
+        """
+        The current trainer number. The default value is 0.
+
+        Examples:
+          .. code-block:: python
+
+            # execute this command in terminal: export PADDLE_TRAINER_ID=0
+            import paddle.fluid as fluid
+            
+            env = fluid.dygraph.ParallelEnvironment()
+            print("The local rank is %d" % env.local_rank)
+            # The local rank is 0
+        """
         return self._local_rank
 
     @property
     def dev_id(self):
+        """
+        The ID of selected GPU card for parallel training. The default value is 0.
+
+        Examples:
+          .. code-block:: python
+
+            # execute this command in terminal: export FLAGS_selected_gpus=1
+            import paddle.fluid as fluid
+            
+            env = fluid.dygraph.ParallelEnvironment()
+            print("The device id are %d" % env.dev_id)
+            # The device id are 1
+        """
         return self._dev_id
 
     @property
     def current_endpoint(self):
+        """
+        The endpoint of current trainer. 
+        The endpoint is in the form of (node IP:port)
+        Such as 127.0.0.1:6170.
+        The default value is "".
+
+        Examples:
+          .. code-block:: python
+            
+            # execute this command in terminal: export PADDLE_CURRENT_ENDPOINT=127.0.0.1:6170
+            import paddle.fluid as fluid
+            
+            env = fluid.dygraph.ParallelEnvironment()
+            print("The current endpoint are %s" % env.current_endpoint)
+            # The current endpoint are 127.0.0.1:6170
+        """
         return self._current_endpoint
 
     @property
     def trainer_endpoints(self):
+        """
+        The endpoints of all trainer nodes in the task, 
+        which are used to broadcast the NCCL ID when NCCL2 is initialized.
+        The default value is "".
+
+        Examples:
+          .. code-block:: python
+
+            # execute this command in terminal: export PADDLE_TRAINER_ENDPOINTS=127.0.0.1:6170,127.0.0.1:6171
+            import paddle.fluid as fluid
+            
+            env = fluid.dygraph.ParallelEnvironment()
+            print("The trainer endpoints are %s" % env.trainer_endpoints)
+            # The trainer endpoints are ['127.0.0.1:6170', '127.0.0.1:6171']
+        """
         return self._trainer_endpoints
+
+
+# NOTE: [ Compatible ] Originally this class name is `Env`. This class name
+# is not serious, so replace it with `ParallelEnvironment`, but to be compatible
+# with the old examples, here still need to keep this name
+Env = ParallelEnvironment
 
 
 class DataParallel(layers.Layer):
