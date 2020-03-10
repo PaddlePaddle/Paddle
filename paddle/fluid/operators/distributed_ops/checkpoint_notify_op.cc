@@ -40,7 +40,7 @@ class CheckpointNotifyOp : public framework::OperatorBase {
     std::string dirname = Attr<std::string>("dirname");
     std::string varname = Attr<std::string>("varname");
     std::vector<std::string> slice_varnames =
-        Attr<std::string>("slice_varnames");
+        Attr<std::vector<std::string>>("slice_varnames");
 
     distributed::RPCClient* rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
@@ -49,8 +49,8 @@ class CheckpointNotifyOp : public framework::OperatorBase {
       auto save_path = string::Sprintf("%s/%s", dirname, varname);
       rpc_client->AsyncCheckpointNotify(epmap[i], save_path, slice_varnames[i]);
 
-      VLOG(3) << "checkpoint notify sending lookup table: " << lookup_table_name
-              << " and dir:" << dir << " to " << epmap[i];
+      VLOG(3) << "checkpoint notify sending with path: " << save_path
+              << " and var:" << slice_varnames[i] << " to " << epmap[i];
     }
     PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
   }

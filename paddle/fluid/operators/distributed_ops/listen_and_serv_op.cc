@@ -367,8 +367,8 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
       new distributed::RequestGetHandler(distributed_mode, dc_sgd));
   request_prefetch_handler_.reset(
       new distributed::RequestPrefetchHandler(distributed_mode));
-  request_checkpoint_handler_.reset(new distributed::RequestCheckpointHandler(
-      distributed_mode, checkpoint_block_id));
+  request_checkpoint_handler_.reset(
+      new distributed::RequestCheckpointHandler(distributed_mode));
   request_get_no_barrier_handler_.reset(
       new distributed::RequestGetNoBarrierHandler());
   request_notify_handler_.reset(new distributed::RequestNotifyHandler(

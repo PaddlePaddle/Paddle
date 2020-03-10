@@ -127,12 +127,12 @@ class RequestCheckpointHandler final : public RequestHandler {
       const std::string& varname, const std::string& file_path) {
     paddle::framework::proto::OpDesc op_desc;
     op_desc.set_type("save");
-    BuildVar("X", {table_name.data()}, op_desc.add_inputs());
+    BuildVar("X", {varname.data()}, op_desc.add_inputs());
 
     auto attr = op_desc.mutable_attrs()->Add();
     attr->set_name("file_path");
     attr->set_type(paddle::framework::proto::AttrType::STRINGS);
-    attr->set_f(file_path);
+    attr->set_s(file_path);
 
     auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
     return op;
