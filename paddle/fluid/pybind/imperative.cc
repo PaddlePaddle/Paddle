@@ -25,9 +25,11 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 #include "paddle/fluid/imperative/backward_strategy.h"
+#include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/data_loader.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/nccl_context.h"
+#include "paddle/fluid/imperative/partial_grad_engine.h"
 #include "paddle/fluid/imperative/profiler.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
@@ -506,10 +508,9 @@ void BindImperative(py::module *m_ptr) {
              // TODO(jiabin): when we impl more backward execution we can select
              // them
 
-             imperative::Engine *engine = tracer.GetDefaultEngine();
+             imperative::BasicEngine engine(&self, bckst);
              VLOG(3) << "Start backward";
-             engine->Init(&self, bckst);
-             engine->Execute();
+             engine.Execute();
              VLOG(3) << "Finish backward";
            },
            py::call_guard<py::gil_scoped_release>())
@@ -678,6 +679,24 @@ void BindImperative(py::module *m_ptr) {
                     },
                     [](imperative::ParallelStrategy &self,
                        const std::string &ep) { self.current_endpoint_ = ep; });
+
+  m.def(
+      "dygraph_partial_grad",
+      [](const std::vector<std::shared_ptr<imperative::VarBase>> &input_targets,
+         const std::vector<std::shared_ptr<imperative::VarBase>>
+             &output_targets,
+         const std::vector<std::shared_ptr<imperative::VarBase>> &output_grads,
+         const platform::Place &place,
+         const imperative::detail::BackwardStrategy &strategy,
+         bool create_graph) {
+        imperative::PartialGradEngine engine(input_targets, output_targets,
+                                             output_grads, place, strategy,
+                                             create_graph);
+        engine.Execute();
+        return engine.GetResult();
+      },
+      py::call_guard<py::gil_scoped_release>());
+
 #if defined(PADDLE_WITH_NCCL)
   py::class_<imperative::NCCLParallelContext> nccl_ctx(m,
                                                        "NCCLParallelContext");

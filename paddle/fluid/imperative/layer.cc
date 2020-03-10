@@ -19,6 +19,10 @@
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable_helper.h"
+#include "paddle/fluid/imperative/execution_context.h"
+#include "paddle/fluid/imperative/infer_shape_context.h"
+#include "paddle/fluid/imperative/infer_var_type_context.h"
+#include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/prepared_operator.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -113,6 +117,39 @@ static framework::RuntimeContext PrepareRuntimeContext(
   return framework::RuntimeContext(std::move(inputs), std::move(outputs));
 }
 
+static const VariableWrapper* GetVariableWrapperPtrImpl(
+    const std::shared_ptr<VariableWrapper>& var) {
+  return var.get();
+}
+
+static const VariableWrapper* GetVariableWrapperPtrImpl(
+    const std::shared_ptr<VarBase>& var) {
+  return var->SharedVar().get();
+}
+
+template <typename T>
+static std::string GetVariableWrapperPtr(const T& var) {
+  const VariableWrapper* v = GetVariableWrapperPtrImpl(var);
+  std::stringstream ss;
+  ss << v;
+  if (v && v->Var().IsType<framework::LoDTensor>() &&
+      v->Var().Get<framework::LoDTensor>().IsInitialized()) {
+    auto& tensor = v->Var().Get<framework::LoDTensor>();
+    framework::Tensor cpu_tensor;
+    framework::TensorCopySync(tensor, platform::CPUPlace(), &cpu_tensor);
+    if (cpu_tensor.type() == framework::proto::VarType::FP32) {
+      auto* p = cpu_tensor.data<float>();
+      int64_t numel = cpu_tensor.numel();
+      ss << "[";
+      for (int64_t i = 0; i < numel; ++i) {
+        ss << p[i] << ", ";
+      }
+      ss << "]";
+    }
+  }
+  return ss.str();
+}
+
 template <typename VarType>
 static std::string DebugString(
     const std::string& name,
@@ -137,7 +174,8 @@ static std::string DebugString(
       if (tensor.IsInitialized()) {
         ss << framework::DataTypeToString(tensor.type()) << ", ";
         ss << tensor.place() << ", ";
-        ss << "(" << tensor.dims() << ")";
+        ss << "(" << tensor.dims() << "), ";
+        ss << GetVariableWrapperPtr(vars[i]);
       } else {
         ss << "NOT_INITED";
       }
@@ -180,7 +218,7 @@ static std::string LayerDebugStringImpl(const std::string& op_type,
   size_t i = 0;
   for (auto& pair : ins) {
     if (i > 0) ss << ", ";
-    ss << DebugString(pair.first, pair.second);
+    ss << DebugString<VarType>(pair.first, pair.second);
     ++i;
   }
 
@@ -188,7 +226,7 @@ static std::string LayerDebugStringImpl(const std::string& op_type,
   i = 0;
   for (auto& pair : outs) {
     if (i > 0) ss << ", ";
-    ss << DebugString(pair.first, pair.second);
+    ss << DebugString<VarType>(pair.first, pair.second);
     ++i;
   }
   return ss.str();
@@ -204,6 +242,27 @@ std::string LayerDebugString(const std::string& op_type,
                              const NameVarMap<VariableWrapper>& ins,
                              const NameVarMap<VariableWrapper>& outs) {
   return LayerDebugStringImpl<VariableWrapper>(op_type, ins, outs);
+}
+
+VarBase::VarBase(bool has_grad, const std::shared_ptr<VariableWrapper>& var)
+    : var_(var), grad_node_(var->GetGradNode()) {
+  if (has_grad) {
+    if (auto grad_var = var_->GetGradVar()) {
+      grad_var_ = std::make_shared<VarBase>(false, grad_var);
+    } else {
+      grad_var_ = std::make_shared<VarBase>(false, GradVarName());
+      var_->SetGradVar(grad_var_->var_);
+    }
+  }
+
+  if (IsDebugEnabled()) {
+    VLOG(10) << "Construct VarBase: " << Name();
+    name_set_.Insert(Name());
+  }
+}
+
+size_t VarBase::GradOpNum() const {
+  return grad_node_ ? grad_node_->size() : 0;
 }
 
 void VarBase::ClearGradient() {
@@ -292,8 +351,6 @@ void OpBase::SetType(const std::string& type) {
 }
 
 void OpBase::ClearBackwardTrace() {
-  grad_pending_ops_.clear();
-  allow_empty_vars_.clear();
   ins_.clear();
   outs_.clear();
 }
@@ -342,6 +399,64 @@ void OpBase::Run(const framework::OperatorBase& op,
                  const framework::AttributeMap& attrs,
                  const platform::Place& place) {
   OpBaseRunImpl<VariableWrapper>(op, ins, outs, attrs, place);
+}
+
+static void ClearNoNeedBufferInputs(OpBase* op) {
+  auto& inferer = op->Info().NoNeedBufferVarsInferer();
+  if (!inferer) return;
+  auto* ins = op->GetMutableInsMap();
+  const auto& no_need_buffer_slots =
+      inferer(*ins, op->GetOutsMap(), op->Attrs());
+  if (no_need_buffer_slots.empty()) return;
+
+  for (auto& slot : no_need_buffer_slots) {
+    auto iter = ins->find(slot);
+    if (iter == ins->end()) continue;
+    VLOG(2) << "Clear data buffer of " << slot << " in " << op->Type();
+
+    PADDLE_ENFORCE_EQ(
+        iter->second.IsGrad(), false,
+        platform::errors::InvalidArgument(
+            "Only forward variable buffers can be clear, this may be a bug"));
+
+    for (auto& each_var : *(iter->second.MutableVarList())) {
+      if (!each_var) continue;
+
+      auto& var = each_var->Var();
+      PADDLE_ENFORCE_EQ(var.IsType<framework::LoDTensor>(), true,
+                        "Only support LoDTensor");
+      // TODO(zjl): support higher order derivatives
+      auto new_var = new VariableWrapper(each_var->Name());
+      auto* new_tensor =
+          new_var->MutableVar()->GetMutable<framework::LoDTensor>();
+      auto& old_tensor = var.Get<framework::LoDTensor>();
+      new_tensor->Resize(old_tensor.dims());
+      new_tensor->set_lod(old_tensor.lod());
+      each_var.reset(new_var);
+    }
+  }
+}
+
+std::shared_ptr<GradOpNode> CreateGradOpNode(
+    const framework::OperatorBase& op, const NameVarBaseMap& ins,
+    const NameVarBaseMap& outs, const framework::AttributeMap& attrs,
+    const platform::Place& place) {
+  const auto& info = op.Info();
+  if (!info.dygraph_grad_op_maker_) {
+    return nullptr;
+  }
+
+  auto grad_node = info.dygraph_grad_op_maker_(op.Type(), ins, outs, attrs);
+  if (grad_node && !grad_node->empty()) {
+    for (auto& op : *grad_node) {
+      op.SetId(OpBase::GenerateUniqueId());
+      op.SetPlace(place);
+      ClearNoNeedBufferInputs(&op);
+    }
+    return grad_node;
+  } else {
+    return nullptr;
+  }
 }
 
 }  // namespace imperative

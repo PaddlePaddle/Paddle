@@ -23,6 +23,7 @@ import objgraph
 
 __all__ = [
     'no_grad',
+    'grad',
     'guard',
     'enable_dygraph',
     'disable_dygraph',
@@ -247,6 +248,40 @@ def _print_debug_msg(parameter_list, limit=5, is_test=False):
         objgraph.show_growth(limit=limit)
     else:
         return unique_name_size, tracer_var_size, alive_cpp_var_size
+
+
+@framework.dygraph_only
+def grad(outputs,
+         inputs,
+         grad_outputs=None,
+         create_graph=False,
+         backward_strategy=None):
+    def to_list(obj):
+        if obj is None:
+            return []
+        elif isinstance(obj, (list, tuple)):
+            for each_var in obj:
+                assert isinstance(each_var, core.VarBase)
+            return obj
+        else:
+            assert isinstance(obj, core.VarBase)
+            return [obj]
+
+    place = core.Place()
+    place.set_place(framework._current_expected_place())
+    if backward_strategy is None:
+        backward_strategy = core.BackwardStrategy()
+    else:
+        assert isinstance(backward_strategy, core.BackwardStrategy)
+
+    assert isinstance(create_graph, bool)
+
+    outputs = to_list(outputs)
+    inputs = to_list(inputs)
+    grad_outputs = to_list(grad_outputs)
+
+    return core.dygraph_partial_grad(inputs, outputs, grad_outputs, place,
+                                     backward_strategy, create_graph)
 
 
 @framework.dygraph_only

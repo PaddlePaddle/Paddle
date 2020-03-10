@@ -109,31 +109,29 @@ class MinusGradMaker : public imperative::GradOpBaseMakerBase {
  public:
   using imperative::GradOpBaseMakerBase::GradOpBaseMakerBase;
 
-  std::vector<std::shared_ptr<imperative::OpBase>> operator()() const override {
-    std::vector<std::shared_ptr<imperative::OpBase>> ops;
+  std::shared_ptr<imperative::GradOpNode> operator()() const override {
     auto x_g = this->InputGrad("X");
+    auto y_g = this->InputGrad("Y");
+
+    auto node = this->NewGradNode();
+
     if (!x_g.empty()) {
-      auto x_g_op = CreateOp();
-      imperative::TracedGradOp op(x_g_op);
+      imperative::TracedGradOp op(node);
       op.SetType("scale");
       op.SetInput("X", this->OutputGrad("Out"));
       op.SetOutput("Out", x_g);
       op.SetAttr("scale", 1.0f);
-      ops.emplace_back(x_g_op);
     }
 
-    auto y_g = this->InputGrad("Y");
     if (!y_g.empty()) {
-      auto y_g_op = CreateOp();
-      imperative::TracedGradOp op(y_g_op);
+      imperative::TracedGradOp op(node);
       op.SetType("scale");
       op.SetInput("X", this->OutputGrad("Out"));
       op.SetOutput("Out", y_g);
       op.SetAttr("scale", -1.0f);
-      ops.emplace_back(y_g_op);
     }
 
-    return ops;
+    return node;
   }
 };
 
