@@ -44,10 +44,22 @@ class SaveOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE(input_var != nullptr, "Cannot find variable %s for save_op",
                    iname);
 
+    auto filename = ctx.Attr<std::string>("file_path");
+    auto overwrite = ctx.Attr<bool>("overwrite");
+
+    VLOG(4) << "Save var output file_path: " << filename;
+
+    if (FileExists(filename) && !overwrite) {
+      PADDLE_THROW("%s is existed, cannot save to it when overwrite=false",
+                   filename, overwrite);
+    }
+
+    MkDirRecursively(DirName(filename).c_str());
+
     if (input_var->IsType<framework::LoDTensor>()) {
-      SaveLodTensor(ctx, place, input_var);
+      SaveLodTensor(ctx, place, input_var, filename);
     } else if (input_var->IsType<framework::SelectedRows>()) {
-      SaveSelectedRows(ctx, place, input_var);
+      SaveSelectedRows(ctx, place, input_var, filename);
     } else {
       PADDLE_ENFORCE(
           false,
@@ -58,17 +70,8 @@ class SaveOpKernel : public framework::OpKernel<T> {
 
   void SaveLodTensor(const framework::ExecutionContext &ctx,
                      const platform::Place &place,
-                     const framework::Variable *var) const {
-    auto filename = ctx.Attr<std::string>("file_path");
-    auto overwrite = ctx.Attr<bool>("overwrite");
-
-    if (FileExists(filename) && !overwrite) {
-      PADDLE_THROW("%s is existed, cannot save to it when overwrite=false",
-                   filename, overwrite);
-    }
-
-    MkDirRecursively(DirName(filename).c_str());
-
+                     const framework::Variable *var,
+                     const std::string &filename) const {
     auto &tensor = var->Get<framework::LoDTensor>();
 
     // get device context from pool
@@ -101,31 +104,8 @@ class SaveOpKernel : public framework::OpKernel<T> {
 
   void SaveSelectedRows(const framework::ExecutionContext &ctx,
                         const platform::Place &place,
-                        const framework::Variable *var) const {
-    auto file_path = ctx.Attr<std::string>("file_path");
-    auto overwrite = ctx.Attr<bool>("overwrite");
-
-    std::string filename = file_path;
-    VLOG(4) << "SaveSelectedRows output file_path: " << file_path;
-
-    framework::Variable *out_put_var = ctx.scope().FindVar(LOOKUP_TABLE_PATH);
-    if (out_put_var != nullptr) {
-      auto *lt_var = out_put_var->GetMutable<std::string>();
-      if (lt_var->length() > 0) {
-        VLOG(4) << "SaveSelectedRows output var name: " << *lt_var;
-        filename = *lt_var;
-      }
-    }
-
-    if (FileExists(filename) && !overwrite) {
-      PADDLE_THROW("%s is existed, cannot save to it when overwrite=false",
-                   filename, overwrite);
-    }
-
-    VLOG(4) << "SaveSelectedRows get File name: " << filename;
-
-    MkDirRecursively(DirName(filename).c_str());
-
+                        const framework::Variable *var,
+                        const std::string &filename) const {
     auto &selectedRows = var->Get<framework::SelectedRows>();
 
     // get device context from pool

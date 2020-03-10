@@ -245,17 +245,12 @@ bool RequestCheckpointHandler::Handle(const std::string& varname,
                                       const int trainer_id,
                                       const std::string& out_var_name,
                                       const std::string& table_name) {
-  PADDLE_ENFORCE(
-      checkpoint_notify_id != -1,
-      "when checkpoint_notify_id = -1, there should be no RPC invoke.");
+  VLOG(4) << "receive save var " << varname << " with path " << out_var_name;
 
-  // TODO(tangwei12): find out why scope will be error.
-  auto* lt_var = scope_->FindVar(LOOKUP_TABLE_PATH)->GetMutable<std::string>();
-  lt_var->clear();
-  lt_var->append(out_var_name);
-  VLOG(4) << "RequestCheckpointHandler update var kLookupTablePath to: "
-          << out_var_name;
-  executor_->RunPreparedContext(checkpoint_prepared_ctx_.get(), scope_);
+  auto checkpoint_op = BuildCheckpointOp(table_name, varname, out_var_name);
+  paddle::platform::CPUPlace cpu_place;
+  checkpoint_op->Run(*scope, cpu_place);
+
   return true;
 }
 

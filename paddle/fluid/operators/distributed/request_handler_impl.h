@@ -114,11 +114,8 @@ class RequestPrefetchHandler final : public RequestHandler {
 
 class RequestCheckpointHandler final : public RequestHandler {
  public:
-  explicit RequestCheckpointHandler(int distributed_mode,
-                                    int checkpoint_notify_id)
-      : RequestHandler(distributed_mode) {
-    this->checkpoint_notify_id = checkpoint_notify_id;
-  }
+  explicit RequestCheckpointHandler(int distributed_mode)
+      : RequestHandler(distributed_mode) {}
   virtual ~RequestCheckpointHandler() {}
   bool Handle(const std::string& varname, framework::Scope* scope,
               framework::Variable* var, framework::Variable** outvar,
@@ -126,7 +123,20 @@ class RequestCheckpointHandler final : public RequestHandler {
               const std::string& table_name = "") override;
 
  private:
-  int checkpoint_notify_id;
+  std::unique_ptr<paddle::framework::OperatorBase> BuildCheckpointOp(
+      const std::string& varname, const std::string& file_path) {
+    paddle::framework::proto::OpDesc op_desc;
+    op_desc.set_type("save");
+    BuildVar("X", {table_name.data()}, op_desc.add_inputs());
+
+    auto attr = op_desc.mutable_attrs()->Add();
+    attr->set_name("file_path");
+    attr->set_type(paddle::framework::proto::AttrType::STRINGS);
+    attr->set_f(file_path);
+
+    auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+    return op;
+  }
 };
 
 class RequestNotifyHandler final : public RequestHandler {

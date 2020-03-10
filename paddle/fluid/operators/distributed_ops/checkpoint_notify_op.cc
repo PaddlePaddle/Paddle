@@ -35,17 +35,20 @@ class CheckpointNotifyOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
-    std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
-    std::string dir = Attr<std::string>("dir");
-    std::string lookup_table_name = Attr<std::string>("lookup_table");
-    int trainer_id = Attr<int>("trainer_id");
+    std::vector<std::string> epmap =
+        Attr<std::vector<std::string>>("endpoints");
+    std::string dirname = Attr<std::string>("dirname");
+    std::string varname = Attr<std::string>("varname");
+    std::vector<std::string> slice_varnames =
+        Attr<std::string>("slice_varnames");
 
     distributed::RPCClient* rpc_client =
-        distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
+        distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
+
     for (size_t i = 0; i < epmap.size(); i++) {
-      auto lookup_table_save_dir =
-          string::Sprintf("%s/%s_%d", dir, lookup_table_name, i);
-      rpc_client->AsyncCheckpointNotify(epmap[i], lookup_table_save_dir);
+      auto save_path = string::Sprintf("%s/%s", dirname, varname);
+      rpc_client->AsyncCheckpointNotify(epmap[i], save_path, slice_varnames[i]);
+
       VLOG(3) << "checkpoint notify sending lookup table: " << lookup_table_name
               << " and dir:" << dir << " to " << epmap[i];
     }
@@ -56,15 +59,14 @@ class CheckpointNotifyOp : public framework::OperatorBase {
 class CheckpointNotifyOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
-    AddAttr<std::vector<std::string>>("epmap",
-                                      "(string vector, default  127.0.0.1:6164)"
-                                      "Parameter Server endpoints in the order")
-        .SetDefault({"127.0.0.1:6164"});
-    AddAttr<std::string>(
-        "dir", "(string, default '') indicate the folder checkpoint will use");
-    AddAttr<std::string>("lookup_table",
-                         "(string, default '') the lookup table name");
-    AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
+    AddAttr<std::vector<std::string>>(
+        "endpoints",
+        "(string vector)"
+        "Parameter Server endpoints in the order");
+    AddAttr<std::string>("dirname",
+                         "(string) indicate the folder checkpoint will use");
+    AddAttr<std::vector<std::string>>(
+        "varnames", "(string vector) the var need to be saved");
     AddComment(R"DOC(
 CheckpointNotify operator
 

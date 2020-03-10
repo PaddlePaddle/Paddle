@@ -77,8 +77,8 @@ class RPCClient {
       int64_t time_out = FLAGS_rpc_deadline) = 0;
 
   virtual VarHandlePtr AsyncCheckpointNotify(
-      const std::string& ep, const std::string& dir,
-      int64_t time_out = FLAGS_rpc_deadline) = 0;
+      const std::string& ep, const std::string& dirname,
+      const std::string& varname, int64_t time_out = FLAGS_rpc_deadline) = 0;
 
   virtual VarHandlePtr AsyncDistributeNotify(
       const std::string& ep, const platform::DeviceContext& ctx,
