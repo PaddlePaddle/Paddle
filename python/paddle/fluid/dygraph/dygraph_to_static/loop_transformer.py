@@ -19,8 +19,7 @@ import gast
 
 from collections import defaultdict
 from paddle.fluid import unique_name
-from paddle.fluid.dygraph.dygraph_to_static.ast_utils import create_funcDef_node
-from paddle.fluid.dygraph.dygraph_to_static.ast_utils import generate_name_node
+from paddle.fluid.dygraph.dygraph_to_static.utils import generate_name_node
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_static_variable_gast_node
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import to_static_variable_gast_node

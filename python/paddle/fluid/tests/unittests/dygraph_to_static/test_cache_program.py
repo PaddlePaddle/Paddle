@@ -21,7 +21,6 @@ from collections import Counter
 import paddle.fluid as fluid
 
 from paddle.fluid.dygraph.dygraph_to_static import AutoTracer
-from paddle.fluid.dygraph.jit import dygraph_to_static_output
 
 from test_fetch_feed import Pool2D, Linear
 
