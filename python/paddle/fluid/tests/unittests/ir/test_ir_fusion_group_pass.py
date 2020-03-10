@@ -116,11 +116,19 @@ class FusionGroupPassTest2(FusionGroupPassTest):
             tmp_3 = layers.mul(tmp_1, tmp_2)
 
         self.num_fused_ops = 2
-        self.fetch_list = [tmp_3.name, tmp_0.name + "@GRAD"]
+        self.fetch_list = [tmp_3.name]
 
+        #TODO(wangchaochaohu): we need to deal with the condition of stop gradient
         if self.backward:
             self.append_gradinets(tmp_3)
             self.num_fused_ops = 3
+
+    def setUp(self):
+        self.backward = False
+        self.build_program("float32")
+        self.feeds = self._feed_random_data(self.feed_vars)
+        self.pass_names = "fusion_group_pass"
+        self.fused_op_type = "fusion_group"
 
 
 class FusionGroupPassTestFP64(FusionGroupPassTest):
