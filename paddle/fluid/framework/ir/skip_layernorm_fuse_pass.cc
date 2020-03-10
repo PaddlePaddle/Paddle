@@ -102,11 +102,13 @@ void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
   auto *x = gpd.mutable_pattern()
                 ->NewNode("skip_layernorm_fuse/x")
                 ->AsInput()
-                ->assert_is_op_input("elementwise_add", "X");
+                ->assert_is_op_input("elementwise_add", "X")
+                ->assert_var_not_persistable();
   auto *y = gpd.mutable_pattern()
                 ->NewNode("skip_layernorm_fuse/y")
                 ->AsInput()
-                ->assert_is_op_input("elementwise_add", "Y");
+                ->assert_is_op_input("elementwise_add", "Y")
+                ->assert_var_not_persistable();
   patterns::SkipLayerNorm fused_pattern(gpd.mutable_pattern(),
                                         "skip_layernorm_fuse");
   fused_pattern(x, y);
@@ -144,16 +146,6 @@ void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
 
     // outputs
     new_desc.SetOutput("Out", {layer_norm_out->Name()});
-    if (layer_norm_mean->outputs.size() > 0U) {
-      new_desc.SetOutput("Mean", {layer_norm_mean->Name()});
-    } else {
-      del_node_set.insert(layer_norm_mean);
-    }
-    if (layer_norm_variance->outputs.size() > 0U) {
-      new_desc.SetOutput("Variance", {layer_norm_variance->Name()});
-    } else {
-      del_node_set.insert(layer_norm_variance);
-    }
 
     // attrs
     new_desc.SetAttr("epsilon", layer_norm->Op()->GetAttr("epsilon"));
@@ -165,6 +157,8 @@ void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     del_node_set.insert(elementwise);
     del_node_set.insert(layer_norm);
     del_node_set.insert(elementwise_out);
+    del_node_set.insert(layer_norm_mean);
+    del_node_set.insert(layer_norm_variance);
     GraphSafeRemoveNodes(graph, del_node_set);
 
     IR_NODE_LINK_TO(subgraph.at(x), fused_node);
@@ -172,12 +166,6 @@ void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     IR_NODE_LINK_TO(layer_norm_scale, fused_node);
     IR_NODE_LINK_TO(layer_norm_bias, fused_node);
     IR_NODE_LINK_TO(fused_node, layer_norm_out);
-    if (layer_norm_mean->outputs.size() > 0U) {
-      IR_NODE_LINK_TO(fused_node, layer_norm_mean);
-    }
-    if (layer_norm_variance->outputs.size() > 0U) {
-      IR_NODE_LINK_TO(fused_node, layer_norm_variance);
-    }
 
     found_subgraph_count++;
   };

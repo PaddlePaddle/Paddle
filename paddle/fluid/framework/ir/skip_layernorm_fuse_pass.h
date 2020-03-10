@@ -20,6 +20,15 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+//     |           |                            |            |
+// other_op1   other_op2                    other_op1    other_op2
+//     |           |              fuse           \          /
+//     |------elementwise_add      ->           skip_layernorm
+//                 |                                   |
+//             layer_norm                          other_op3
+//                 |                                   |
+//             other_op3
+//                 |
 class SkipLayerNormFusePass : public FusePassBase {
  public:
   virtual ~SkipLayerNormFusePass() {}
