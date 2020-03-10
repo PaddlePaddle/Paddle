@@ -49,8 +49,17 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
 
   auto size = src.numel() * SizeOfType(src.type());
 #ifdef PADDLE_WITH_MKLDNN
-  if (src.layout() == DataLayout::kMKLDNN)
-    size = std::min(src.memory_size(), dst->memory_size());
+  if (src.layout() == DataLayout::kMKLDNN) {
+    PADDLE_ENFORCE_EQ(
+        src.memory_size(), dst->memory_size(),
+        platform::errors::InvalidArgument(
+            "When copying tensor with MKL-DNN data layout, "
+            "memory size of source tensor should be the same as memory size of "
+            "destination tensor. "
+            "But received src.memory_size = %d, dst.memory_size = %d.",
+            src.memory_size(), dst->memory_size()));
+    size = src.memory_size();
+  }
 #endif
 
   if (platform::is_cpu_place(src_place) && platform::is_cpu_place(dst_place)) {
