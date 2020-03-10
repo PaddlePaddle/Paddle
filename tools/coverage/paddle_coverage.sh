@@ -2,7 +2,7 @@
 
 set -xe
 
-PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
+export PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
 
 # install lcov
 curl -o /lcov-1.14.tar.gz -s https://paddle-ci.gz.bcebos.com/coverage%2Flcov-1.14.tar.gz
@@ -12,7 +12,7 @@ make install
 
 # run paddle coverage
 
-cd /paddle/build
+cd $PADDLE_ROOT/build
 
 python ${PADDLE_ROOT}/tools/coverage/gcda_clean.py ${GIT_PR_ID}
 
@@ -22,24 +22,24 @@ lcov --capture -d ./ -o coverage.info --rc lcov_branch_coverage=0
 
 function gen_full_html_report() {
     lcov --extract coverage.info \
-        '/paddle/paddle/fluid/framework/*' \
-        '/paddle/paddle/fluid/imperative/*' \
-        '/paddle/paddle/fluid/inference/*' \
-        '/paddle/paddle/fluid/memory/*' \
-        '/paddle/paddle/fluid/operators/*' \
-        '/paddle/paddle/fluid/recordio/*' \
-        '/paddle/paddle/fluid/string/*' \
+        "$PADDLE_ROOT/paddle/fluid/framework/*" \
+        "$PADDLE_ROOT/paddle/fluid/imperative/*" \
+        "$PADDLE_ROOT/paddle/fluid/inference/*" \
+        "$PADDLE_ROOT/paddle/fluid/memory/*" \
+        "$PADDLE_ROOT/paddle/fluid/operators/*" \
+        "$PADDLE_ROOT/paddle/fluid/recordio/*" \
+        "$PADDLE_ROOT/paddle/fluid/string/*" \
         -o coverage-full.tmp \
         --rc lcov_branch_coverage=0
 
     mv -f coverage-full.tmp coverage-full.info
 
     lcov --remove coverage-full.info \
-        '/paddle/paddle/fluid/framework/*_test*' \
-        '/paddle/paddle/fluid/*/*test*' \
-        '/paddle/paddle/fluid/*/*/*test*' \
-        '/paddle/paddle/fluid/inference/tests/*' \
-        '/paddle/paddle/fluid/inference/api/demo_ci/*' \
+        "$PADDLE_ROOT/paddle/fluid/framework/*_test*" \
+        "$PADDLE_ROOT/paddle/fluid/*/*test*" \
+        "$PADDLE_ROOT/paddle/fluid/*/*/*test*" \
+        "$PADDLE_ROOT/paddle/fluid/inference/tests/*" \
+        "$PADDLE_ROOT/paddle/fluid/inference/api/demo_ci/*" \
         -o coverage-full.tmp \
         --rc lcov_branch_coverage=0
 
@@ -74,7 +74,7 @@ gen_diff_html_report || true
 
 # python coverage
 
-export COVERAGE_FILE=/paddle/build/python-coverage.data
+export COVERAGE_FILE=$PADDLE_ROOT/build/python-coverage.data
 
 set +x
 coverage combine `ls python-coverage.data.*`
@@ -88,7 +88,7 @@ python ${PADDLE_ROOT}/tools/coverage/python_coverage.py > python-coverage.info
 #
 function gen_python_full_html_report() {
     lcov --extract python-coverage.info \
-        '/paddle/python/*' \
+        '$PADDLE_ROOT/python/*' \
         -o python-coverage-full.tmp \
         --rc lcov_branch_coverage=0
 

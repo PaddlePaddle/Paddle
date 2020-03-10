@@ -7,6 +7,7 @@ import sys
 
 from github import Github
 
+paddle_root = os.getenv('PADDLE_ROOT', "/paddle")
 
 def get_pull(pull_id):
     """
@@ -51,14 +52,14 @@ def clean(pull_id):
     changed = []
 
     for file in get_files(pull_id):
-        #changed.append('/paddle/build/{}.gcda'.format(file))
         changed.append(file)
 
-    for parent, dirs, files in os.walk('/paddle/build/'):
+    for parent, dirs, files in os.walk('{}/build/'.format(paddle_root)):
         for gcda in files:
             if gcda.endswith('.gcda'):
                 file_name = gcda.replace('.gcda', '')
-                dir_name_list = parent.replace('/paddle/build/', '').split('/')
+                dir_name_list = parent.replace('{}/build/'.format(paddle_root),
+                                               '').split('/')
                 dir_name_list = dir_name_list[:-2]
                 dir_name = '/'.join(dir_name_list)
                 src_name = dir_name + '/' + file_name

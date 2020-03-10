@@ -6,6 +6,7 @@ usage: coverage_diff.py info_file diff_file > > coverage-diff.info
 
 import sys
 
+paddle_root = os.getenv('PADDLE_ROOT', "/paddle")
 
 def get_diff_file_lines(diff_file):
     """
@@ -71,8 +72,8 @@ def get_info_file_lines(info_file, diff_file):
             if line.startswith('SF:'):
                 current_file = line.lstrip('SF:')
 
-                if current_file.startswith('/paddle/'):
-                    current_file = current_file[len('/paddle/'):]
+                if current_file.startswith(paddle_root):
+                    current_file = current_file[len(paddle_root):]
 
                 current_lines = diff_file_lines.get(current_file, [])
 
@@ -90,12 +91,12 @@ def get_info_file_lines(info_file, diff_file):
                 continue
 
             elif line.startswith('LF:'):
-                print 'LF:{}'.format(current_lf)
+                print('LF:{}'.format(current_lf))
 
                 continue
 
             elif line.startswith('LH:'):
-                print 'LH:{}'.format(current_lh)
+                print('LH:{}'.format(current_lh))
 
                 continue
 
