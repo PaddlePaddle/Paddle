@@ -14,8 +14,7 @@
 
 from __future__ import print_function
 
-import version
-
+from paddle.fluid.incubate.fleet.parameter_server import version
 from paddle.fluid.incubate.fleet.parameter_server.distributed_strategy import TrainerRuntimeConfig
 from paddle.fluid.incubate.fleet.parameter_server.distributed_strategy import StrategyFactory
 
