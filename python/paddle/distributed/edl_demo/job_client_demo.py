@@ -56,6 +56,9 @@ def _parse_args():
         default=None,
         help="The bash shell to make pod env.")
 
+    parser.add_argument(
+        "--pod_path", type=str, help="The pod shell path to execute.")
+
     #positional
     parser.add_argument(
         "training_script", type=str, help="The full path to start trainer proc")
@@ -101,6 +104,12 @@ class PodManager(object):
         assert pod_id not in self.local_pods, "pod_id:{} local_pods:{}".format(
             pod_id, [k for k, _ in self.local_pods.items()].sort())
 
+        if args.package_sh is not None:
+            cmd = args.package_sh + " -pod_id {}".format(pod_id)
+            print("execute cmd:", cmd)
+            ret = os.system(cmd)
+            assert ret == 0, "execute {} error!".format(cmd)
+
         current_env = copy.copy(os.environ.copy())
         current_env.pop("http_proxy", None)
         current_env.pop("https_proxy", None)
@@ -114,18 +123,31 @@ class PodManager(object):
 
         current_env.update(pod_env)
 
-        cmd = [sys.executable, "-u", args.training_script
-               ] + args.training_script_args
-
-        logger.info("start pod proc env:{} cmd:{}".format(pod_env, cmd))
-
         fn = None
         if args.log_dir is not None:
             os.system("mkdir -p {}".format(args.log_dir))
             fn = open("%s/pod_%s.log" % (args.log_dir, pod_id), "w")
+
+        wd = os.getcwd()
+        pod_path = args.pod_path + "/{}".format(pod_id)
+        print("change to dir:", pod_path)
+        os.chdir(pod_path)
+        print("changed dir:", os.getcwd())
+
+        #cmd = [sys.executable, "-u", args.training_script
+        #       ] + args.training_script_args
+        cmd = ["bash", args.training_script]
+
+        logger.info("start pod proc env:{} cmd:{}".format(pod_env, cmd))
+
+        if args.log_dir is not None:
+            #os.system("mkdir -p {}".format(args.log_dir))
+            #fn = open("%s/pod_%s.log" % (args.log_dir, pod_id), "w")
             proc = subprocess.Popen(cmd, env=current_env, stdout=fn, stderr=fn)
         else:
             proc = subprocess.Popen(cmd, env=current_env)
+
+        os.chdir(wd)
 
         p = PodProc()
         p.proc = proc

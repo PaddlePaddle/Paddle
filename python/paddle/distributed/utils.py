@@ -137,7 +137,7 @@ class Trainer(object):
                 self.rank != t.rank :
             return False
 
-        for a, b in zip(self, gpu, t.gpu):
+        for a, b in zip(self.gpu, t.gpu):
             if a != b:
                 return False
 
@@ -168,13 +168,18 @@ class Pod(object):
                 self.id != pod.id or \
                 self.addr != pod.addr or \
                 self.port != pod.port:
+            logger.debug("pod {} != pod".format(self, pod))
             return False
 
-        if len(self.trainers) != pod.trainers:
+        if len(self.trainers) != len(pod.trainers):
+            logger.debug("trainers {} != {}".format(self.trainers,
+                                                    pod.trainers))
             return False
 
         for i in range(len(self.trainers)):
             if self.trainers[i] != pod.trainers[i]:
+                logger.debug("trainer {} != {}".format(self.trainers[i],
+                                                       pod.trainers[i]))
                 return False
 
         return True

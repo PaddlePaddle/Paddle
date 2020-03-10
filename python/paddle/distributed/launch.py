@@ -231,14 +231,15 @@ def start_local_trainers(cluster, pod):
 
 
 def watch_local_trainers(procs, nranks):
+    #print("procs num:", len(procs))
     try:
-        alive = True
         error = False
         error_rank = []
         # wait all process finish or one error
         alive = False
         for p in procs:
             ret = p.proc.poll()
+            #print("proc poll ret:", ret)
             if ret is None:
                 alive = True
             elif ret != 0:
@@ -326,7 +327,7 @@ def launch(args):
     while True:
         if use_edl:
             cluster2, pod = edl_env.get_cluster(hdfs)
-            if pod2 is None:  # me is dead
+            if pod is None:  # me is dead
                 logger.info(
                     "Cluster changed. This pod is not exist so exit(0)! \
                     New cluster:{}. Old Cluster:{}".format(cluster2, cluster))
@@ -335,9 +336,10 @@ def launch(args):
             if cluster2 != cluster:
                 logger.info("Cluster changed. New cluster:{}. Old Cluster:{}".
                             format(cluster2, cluster))
-                terminate_local_trainers(procs)
+                terminate_local_procs(procs)
 
-                if not barrier_terminate_world_trainers(cluster, comm):
+                if not edl_utils.barrier_terminate_world_trainers(
+                        cluster=cluster, pod=pod, comm=comm):
                     logger.warning("Can't barrier in cluster:{}".format(
                         cluster))
                     continue
@@ -345,6 +347,7 @@ def launch(args):
                 procs = start_local_trainers(cluster, pod)
                 cluster = cluster2
 
+        print("cluster trainer_nranks:", cluster.trainers_nranks())
         alive = watch_local_trainers(procs, cluster.trainers_nranks())
 
         if not alive:
