@@ -82,8 +82,8 @@ class MatMulKernel : public framework::OpKernel<T> {
     if (head_number <= 1 && x_dims.size() == 3 && y_dims.size() <= 2) {
       // the transpose_X must be false, if is true, the transpose cost much time
       if (!context.Attr<bool>("transpose_X")) {
-         mat_dim_a.height_ *= mat_dim_a.batch_size_;
-         mat_dim_a.batch_size_ = 0;
+        mat_dim_a.height_ *= mat_dim_a.batch_size_;
+        mat_dim_a.batch_size_ = 0;
       }
     }
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
@@ -225,9 +225,9 @@ class MatMulGradKernel : public framework::OpKernel<T> {
     auto mat_dim_b = math::CreateMatrixDescriptor(b.dims(), 0, trans_b);
 
     int head_number = 1;
-    #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
-       head_number = context.Attr<int>("head_number");
-    #endif
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+    head_number = context.Attr<int>("head_number");
+#endif
 
     if (head_number <= 1 && a.dims().size() == 3 && b.dims().size() <= 2) {
       // the transpose_X must be false, if is true, the transpose cost much time
