@@ -24,6 +24,10 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   set(LITE_SOURCES_DIR ${THIRD_PARTY_PATH}/lite)
   set(LITE_INSTALL_DIR ${THIRD_PARTY_PATH}/install/lite)
 
+  if(NOT LITE_GIT_TAG)
+    set(LITE_GIT_TAG 34c29406c27ee00cef033a98887403443eb2565f)
+  endif()
+
   # No quotes, so cmake can resolve it as a command with arguments.
   set(LITE_BUILD_COMMAND $(MAKE) publish_inference -j)
   set(LITE_OPTIONAL_ARGS -DWITH_MKL=ON
@@ -38,13 +42,14 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
                          -DLITE_BUILD_EXTRA=ON
                          -DCUDNN_ROOT=${CUDNN_ROOT}
                          -DLITE_WITH_STATIC_CUDA=OFF
+                         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME}
                          -DLITE_WITH_ARM=OFF)
 
   ExternalProject_Add(
       ${LITE_PROJECT}
       ${EXTERNAL_PROJECT_LOG_ARGS}
       GIT_REPOSITORY      "https://github.com/PaddlePaddle/Paddle-Lite.git"
-      GIT_TAG             0f875ef367bd2dbfa2e557eb2a2fc841bacdf6cf
+      GIT_TAG             ${LITE_GIT_TAG}
       PREFIX              ${LITE_SOURCES_DIR}
       UPDATE_COMMAND      ""
       BUILD_COMMAND       ${LITE_BUILD_COMMAND}
