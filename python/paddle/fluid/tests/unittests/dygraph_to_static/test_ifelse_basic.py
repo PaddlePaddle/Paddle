@@ -268,6 +268,7 @@ class TestIsControlFlowIf(unittest.TestCase):
 
     def test_raise_error(self):
         node = "a + b"
+        if_visitor = IfConditionVisitor(node)
         with self.assertRaises(Exception) as e:
             self.assertRaises(TypeError, IfConditionVisitor(node))
         self.assertTrue(

@@ -191,8 +191,6 @@ class IsControlFlowVisitor(gast.NodeVisitor):
 
     def visit_Compare(self, node):
         # Ignores child node with `if x` or `if x is None`
-        # TODO(Aurelius84): `if tensor` will be supported in dygraph
-        # and should be considered as is_control_flow.
         pre_control_flow_num = self.is_control_flow_num
         if not compare_with_none(node):
             self.generic_visit(node)
