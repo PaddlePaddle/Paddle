@@ -24,9 +24,9 @@ namespace imperative {
 
 class GradientAccumulator {
  public:
-  explicit GradientAccumulator(VarBase* var) : var_(var) {}
+  explicit GradientAccumulator(VariableWrapper* var) : var_(var) {}
 
-  virtual void Add(std::shared_ptr<VarBase> var, size_t trace_id) = 0;
+  virtual void Add(std::shared_ptr<VariableWrapper> var, size_t trace_id) = 0;
 
   virtual ~GradientAccumulator() = default;
 
@@ -35,7 +35,7 @@ class GradientAccumulator {
   inline size_t RefCnt() const { return ref_cnt_; }
 
  protected:
-  VarBase* var_;
+  VariableWrapper* var_;
   size_t ref_cnt_{0};
 };
 
@@ -43,7 +43,7 @@ class EagerGradientAccumulator : public GradientAccumulator {
  public:
   using GradientAccumulator::GradientAccumulator;
 
-  void Add(std::shared_ptr<VarBase> var, size_t trace_id) override;
+  void Add(std::shared_ptr<VariableWrapper> var, size_t trace_id) override;
 
  private:
   size_t cur_cnt_{0};
@@ -53,10 +53,11 @@ class SortedGradientAccumulator : public GradientAccumulator {
  public:
   using GradientAccumulator::GradientAccumulator;
 
-  void Add(std::shared_ptr<VarBase> var, size_t trace_id) override;
+  void Add(std::shared_ptr<VariableWrapper> var, size_t trace_id) override;
 
  private:
-  std::vector<std::pair<std::shared_ptr<VarBase>, size_t>> tmp_grad_vars_;
+  std::vector<std::pair<std::shared_ptr<VariableWrapper>, size_t>>
+      tmp_grad_vars_;
 };
 
 }  // namespace imperative

@@ -114,7 +114,7 @@ TEST(test_prepare_op, test_prepare_op) {
   ASSERT_NO_FATAL_FAILURE(PreparedOp preparedOp = PreparedOp::Prepare(
                               ins, outs,
                               dynamic_cast<framework::OperatorWithKernel&>(*op),
-                              place, &split_attr_map));
+                              place, split_attr_map));
 }
 
 const framework::Tensor* GetTensorFromVar(const framework::Variable& var);
@@ -165,7 +165,7 @@ TEST(test_prepare_op, test_prepare_data) {
   // test if it can be transformed to GPU place
   PreparedOp prepared_op = PreparedOp::Prepare(
       ins, outs, dynamic_cast<framework::OperatorWithKernel&>(*op), gpu_place,
-      &attr_map);
+      attr_map);
   for (const auto& name_pair : ins) {
     for (const auto& vb : name_pair.second) {
       ASSERT_TRUE(platform::is_same_place(
@@ -213,7 +213,7 @@ TEST(test_prepare_op, test_prepare_data_same_place) {
   // test if it never transferred on GPU place
   PreparedOp prepared_op = PreparedOp::Prepare(
       ins, outs, dynamic_cast<framework::OperatorWithKernel&>(*op), cpu_place,
-      &attr_map);
+      attr_map);
   for (const auto& name_pair : ins) {
     for (const auto& vb : name_pair.second) {
       ASSERT_TRUE(platform::is_same_place(

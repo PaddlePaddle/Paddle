@@ -1149,21 +1149,23 @@ class DGCMomentumOptimizer(Optimizer):
             self._num_trainers = num_trainers
             self._clip_norm = local_grad_clip_norm * (num_trainers**-0.5)
 
-        self._get_dgc_regularization_param()
+        self.regular_type, self.regular_coeff = self._get_regularization_param(
+            self.regularization)
 
-    def _get_dgc_regularization_param(self):
-        self.regular_coeff = 0.0
-        self.regular_type = 0
+    def _get_regularization_param(self, regularization):
+        regular_type = 0
+        regular_coeff = 0.0
 
-        if self.regularization is not None:
-            self.regular_coeff = self.regularization._regularization_coeff
+        if regularization is not None:
+            regular_coeff = regularization._regularization_coeff
             from .regularizer import L1Decay, L2Decay
-            if isinstance(self.regularization, L1Decay):
-                self.regular_type = 1
-            elif isinstance(self.regularization, L2Decay):
-                self.regular_type = 2
+            if isinstance(regularization, L1Decay):
+                regular_type = 1
+            elif isinstance(regularization, L2Decay):
+                regular_type = 2
             else:
                 assert False, 'regularization must be None|L1Decay|L2Deacy'
+        return regular_type, regular_coeff
 
     def _is_use_dgc(self, param_var, grad_var):
         var_numel = abs(reduce(lambda x, y: x * y, param_var.shape))
@@ -1364,6 +1366,13 @@ class DGCMomentumOptimizer(Optimizer):
         block = framework.default_main_program().global_block()
         op_maker = core.op_proto_and_checker_maker
 
+        regular_type = self.regular_type
+        regular_coeff = self.regular_coeff
+        # The regularizer of the Parameters have higher priority
+        if param_var.regularizer is not None:
+            regular_type, regular_coeff = self._get_regularization_param(
+                param_var.regularizer)
+
         dgc_op = block.append_op(
             type="dgc",
             inputs={
@@ -1388,8 +1397,8 @@ class DGCMomentumOptimizer(Optimizer):
                 "use_nesterov": self._use_nesterov,
                 "rampup_begin_step": float(self._rampup_begin_step),
                 "rampup_step": float(self._rampup_step),
-                "regular_coeff": float(self.regular_coeff),
-                "regular_type": int(self.regular_type),
+                "regular_coeff": float(regular_coeff),
+                "regular_type": int(regular_type),
             },
             stop_gradient=True)
 
@@ -3841,12 +3850,12 @@ class RecomputeOptimizer(Optimizer):
 
                 sgd = fluid.optimizer.Adam(learning_rate=0.01)
                 sgd = fluid.optimizer.RecomputeOptimizer(sgd)
+                sgd._set_checkpoints([fc_1, pred])
                 params_grads = sgd.backward(
                     cost,
                     startup_program=None,
                     parameter_list=None,
-                    no_grad_set=None,
-                    checkpoints=[fc_1, pred])
+                    no_grad_set=None)
 
                 program = cost.block.program
                 with framework.program_guard(program, None):
@@ -3862,8 +3871,7 @@ class RecomputeOptimizer(Optimizer):
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None,
-                 callbacks=None,
-                 checkpoints=None):
+                 callbacks=None):
         """
         call append_backward with checkpoints.
 
@@ -3897,12 +3905,12 @@ class RecomputeOptimizer(Optimizer):
     
                 sgd = fluid.optimizer.Adam(learning_rate=0.01)
                 sgd = fluid.optimizer.RecomputeOptimizer(sgd)
+                sgd._set_checkpoints([fc_1, pred])
                 params_grads = sgd.backward(
                     cost,
                     startup_program=None,
                     parameter_list=None,
-                    no_grad_set=None,
-                    checkpoints=[fc_1, pred])
+                    no_grad_set=None)
                 print("Finished backward")
         """
 
@@ -3949,12 +3957,12 @@ class RecomputeOptimizer(Optimizer):
                 
                 sgd = fluid.optimizer.Adam(learning_rate=0.01)
                 sgd = fluid.optimizer.RecomputeOptimizer(sgd)
+                sgd._set_checkpoints([fc_1, pred])
                 params_grads = sgd.backward(
                     cost,
                     startup_program=None,
                     parameter_list=None,
-                    no_grad_set=None,
-                    checkpoints=[fc_1, pred])
+                    no_grad_set=None)
                 
                 optimize_ops = sgd.apply_optimize(
                     cost, startup_program=None, params_grads=params_grads)
@@ -3984,8 +3992,7 @@ class RecomputeOptimizer(Optimizer):
             loss,
             startup_program=startup_program,
             parameter_list=parameter_list,
-            no_grad_set=no_grad_set,
-            checkpoints=self._checkpoints)
+            no_grad_set=no_grad_set)
 
         if grad_clip:
             # TODO(guru4elephant): should add grad_clip for static graph

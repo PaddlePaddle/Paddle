@@ -28,19 +28,25 @@ np.random.seed(SEED)
 
 
 def dyfunc_to_variable(x):
-    res = fluid.dygraph.to_variable(x)
+    res = fluid.dygraph.to_variable(x, name=None, zero_copy=None)
+    return res
+
+
+def dyfunc_to_variable_2(x):
+    res = fluid.dygraph.to_variable(value=np.zeros(shape=(1), dtype=np.int32))
     return res
 
 
 class TestDygraphBasicApi_ToVariable(unittest.TestCase):
     def setUp(self):
         self.input = np.ones(5).astype("int32")
-        self.dygraph_func = dyfunc_to_variable
+        self.test_funcs = [dyfunc_to_variable, dyfunc_to_variable_2]
+        self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
 
     def get_dygraph_output(self):
         with fluid.dygraph.guard():
             res = self.dygraph_func(self.input).numpy()
-
             return res
 
     def get_static_output(self):
@@ -49,18 +55,20 @@ class TestDygraphBasicApi_ToVariable(unittest.TestCase):
         with fluid.program_guard(main_program):
             static_out = dygraph_to_static_graph(self.dygraph_func)(self.input)
 
-        exe = fluid.Executor(fluid.CPUPlace())
+        exe = fluid.Executor(self.place)
         static_res = exe.run(main_program, fetch_list=static_out)
 
         return static_res[0]
 
     def test_transformed_static_result(self):
-        dygraph_res = self.get_dygraph_output()
-        static_res = self.get_static_output()
-        self.assertTrue(
-            np.allclose(dygraph_res, static_res),
-            msg='dygraph is {}\n static_res is {}'.format(dygraph_res,
-                                                          static_res))
+        for func in self.test_funcs:
+            self.dygraph_func = func
+            dygraph_res = self.get_dygraph_output()
+            static_res = self.get_static_output()
+            self.assertTrue(
+                np.allclose(dygraph_res, static_res),
+                msg='dygraph is {}\n static_res is {}'.format(dygraph_res,
+                                                              static_res))
 
 
 # 1. test Apis that inherit from layers.Layer
@@ -71,10 +79,10 @@ def dyfunc_BilinearTensorProduct(layer1, layer2):
         input1_dim=5,
         input2_dim=4,
         output_dim=1000,
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.99)),
-        bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.5)))
+        param_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.99)),
+        bias_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.5)))
 
     res = bilinearTensorProduct(
         fluid.dygraph.base.to_variable(layer1),
@@ -87,10 +95,10 @@ def dyfunc_Conv2D(input):
         num_channels=3,
         num_filters=2,
         filter_size=3,
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.99)),
-        bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.5)), )
+        param_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.99)),
+        bias_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.5)), )
     res = conv2d(input)
     return res
 
@@ -100,10 +108,10 @@ def dyfunc_Conv3D(input):
         num_channels=3,
         num_filters=2,
         filter_size=3,
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.99)),
-        bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.5)), )
+        param_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.99)),
+        bias_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.5)), )
     res = conv3d(input)
     return res
 
@@ -114,10 +122,10 @@ def dyfunc_Conv2DTranspose(input):
         num_filters=12,
         filter_size=12,
         use_cudnn=False,
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.99)),
-        bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.5)), )
+        param_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.99)),
+        bias_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.5)), )
     ret = conv2dTranspose(input)
     return ret
 
@@ -128,10 +136,10 @@ def dyfunc_Conv3DTranspose(input):
         num_filters=12,
         filter_size=12,
         use_cudnn=False,
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.99)),
-        bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.5)), )
+        param_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.99)),
+        bias_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.5)), )
     ret = conv3dTranspose(input)
     return ret
 
@@ -141,10 +149,10 @@ def dyfunc_Linear(input):
         input_dim=10,
         output_dim=5,
         act='relu',
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.99)),
-        bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.5)), )
+        param_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.99)),
+        bias_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.5)), )
     res = fc(input)
     return res
 

@@ -76,8 +76,7 @@ class ElementwiseAddDoubleGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("elementwise_add_grad_grad");
     op->SetInput("Y", this->Input("Y"));
     op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
@@ -87,7 +86,6 @@ class ElementwiseAddDoubleGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
 
     op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
-    return op;
   }
 };
 

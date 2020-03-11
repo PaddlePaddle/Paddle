@@ -21,6 +21,7 @@ import platform
 import inspect
 import paddle
 import paddle.fluid
+import json
 """
 please make sure to run in the tools path
 usage: python sample_test.py {arg1} 
@@ -529,203 +530,31 @@ def get_incrementapi():
                 f.write('\n')
 
 
-'''
-Important constant lists:
-
-    wlist : a list of API that should not trigger the example check .
-            It is composed of wlist_temp + wlist_inneed + wlist_ignore.
-    srcfile: the source .py code file
-'''
-
-wlist_inneed = [
-    "append_LARS", "BuildStrategy.debug_graphviz_path",
-    "BuildStrategy.enable_sequential_execution",
-    "BuildStrategy.fuse_elewise_add_act_ops",
-    "BuildStrategy.fuse_relu_depthwise_conv",
-    "BuildStrategy.gradient_scale_strategy", "BuildStrategy.reduce_strategy",
-    "BuildStrategy.remove_unnecessary_lock", "BuildStrategy.sync_batch_norm",
-    "DynamicRNN.step_input", "DynamicRNN.static_input", "DynamicRNN.block",
-    "DynamicRNN.update_memory", "DynamicRNN.output",
-    "transpiler.DistributeTranspilerConfig",
-    "transpiler.DistributeTranspilerConfig.slice_var_up",
-    "transpiler.DistributeTranspilerConfig.split_method",
-    "transpiler.DistributeTranspilerConfig.min_block_size",
-    "DistributeTranspilerConfig.slice_var_up",
-    "DistributeTranspilerConfig.split_method", "ModelAverage.apply",
-    "ModelAverage.restore", "DistributeTranspilerConfig",
-    "DistributeTranspilerConfig.min_block_size",
-    "ExecutionStrategy.allow_op_delay", "load", "Accuracy.update",
-    "ChunkEvaluator.update", "ExecutionStrategy.num_iteration_per_drop_scope",
-    "ExecutionStrategy.num_threads", "CompiledProgram._with_inference_optimize",
-    "CompositeMetric.add_metric", "CompositeMetric.update",
-    "CompositeMetric.eval", "DetectionMAP.get_map_var", "MetricBase",
-    "MetricBase.reset", "MetricBase.get_config", "MetricBase.update",
-    "MetricBase.eval", "Accuracy.eval", "Auc.update", "Auc.eval",
-    "EditDistance.update", "EditDistance.eval",
-    "ExponentialMovingAverage.apply", "ExponentialMovingAverage.restore",
-    "ExponentialMovingAverage.update", "StaticRNN.step", "StaticRNN.step_input",
-    "StaticRNN.step_output", "StaticRNN.update_memory", "DetectionMAP.reset",
-    'StaticRNN.output', "cuda_places", "CUDAPinnedPlace", "CUDAPlace",
-    "Program.parse_from_string"
-]
-
-wlist_nosample = [
-    'Compressor', 'Compressor.config', 'Compressor.run', 'run_check',
-    'HDFSClient.upload', 'HDFSClient.download', 'HDFSClient.is_exist',
-    'HDFSClient.is_dir', 'HDFSClient.delete', 'HDFSClient.rename',
-    'HDFSClient.makedirs', 'HDFSClient.ls', 'HDFSClient.lsr', 'multi_download',
-    'multi_upload', 'TrainingDecoder.block',
-    'QuantizeTranspiler.training_transpile',
-    'QuantizeTranspiler.freeze_program', 'AutoMixedPrecisionLists',
-    'Uniform.sample', 'Uniform.log_prob', 'Uniform.entropy',
-    'Categorical.kl_divergence', 'Categorical.entropy',
-    'MultivariateNormalDiag.entropy', 'MultivariateNormalDiag.kl_divergence',
-    'RNNCell', 'RNNCell.call', 'RNNCell.get_initial_states', 'GRUCell.call',
-    'LSTMCell.call', 'Decoder', 'Decoder.initialize', 'Decoder.step',
-    'Decoder.finalize', 'fused_elemwise_activation', 'search_pyramid_hash',
-    'convert_dist_to_sparse_program', 'load_persistables_for_increment',
-    'load_persistables_for_inference', 'cache', 'buffered', 'xmap_readers'
-]
-
-wlist_no_op_pass = ['gelu', 'erf']
-
-wlist_ci_nopass = [
-    'DecodeHelper', 'DecodeHelper.initialize', 'DecodeHelper.sample',
-    'DecodeHelper.next_inputs', 'TrainingHelper.initialize',
-    'TrainingHelper.sample', 'TrainingHelper.next_inputs',
-    'GreedyEmbeddingHelper.initialize', 'GreedyEmbeddingHelper.sample',
-    'GreedyEmbeddingHelper.next_inputs', 'LayerList.append', 'HDFSClient',
-    'InitState', 'TracedLayer', 'SampleEmbeddingHelper.sample',
-    'BasicDecoder.initialize', 'BasicDecoder.step', 'ParameterList.append',
-    'GreedyEmbeddingHelper', 'SampleEmbeddingHelper', 'BasicDecoder', 'lstm',
-    'partial_sum'
-]
-
-wlist_nopass = [
-    'StateCell', 'StateCell.compute_state', 'TrainingDecoder',
-    'TrainingDecoder.step_input', 'TrainingDecoder.static_input',
-    'TrainingDecoder.output', 'BeamSearchDecoder', 'GradClipByValue',
-    'GradClipByNorm', 'Variable.detach', 'Variable.numpy', 'Variable.set_value',
-    'Variable.gradient', 'BeamSearchDecoder.decode',
-    'BeamSearchDecoder.read_array', 'CompiledProgram',
-    'CompiledProgram.with_data_parallel', 'append_backward', 'guard',
-    'to_variable', 'op_freq_statistic', 'save_dygraph', 'load_dygraph',
-    'ParallelExecutor', 'ParallelExecutor.run',
-    'ParallelExecutor.drop_local_exe_scopes', 'GradClipByGlobalNorm',
-    'extend_with_decoupled_weight_decay', 'switch', 'Normal', 'memory_usage',
-    'decorate', 'PiecewiseDecay', 'InverseTimeDecay', 'PolynomialDecay',
-    'NoamDecay', 'start_profiler', 'profiler', 'tree_conv', 'multiclass_nms2',
-    'DataFeedDesc', 'Conv2D', 'Conv3D', 'Conv3DTranspose', 'Embedding', 'NCE',
-    'PRelu', 'BilinearTensorProduct', 'GroupNorm', 'SpectralNorm', 'TreeConv',
-    'prroi_pool'
-]
-
-wlist_temp = [
-    'ChunkEvaluator',
-    'EditDistance',
-    'ErrorClipByValue',
-    'Program.clone',
-    'cuda_pinned_places',
-    'DataFeeder',
-    'elementwise_floordiv',
-    'Layer',
-    'Layer.create_parameter',
-    'Layer.create_variable',
-    'Layer.sublayers',
-    'Layer.add_parameter',
-    'Layer.add_sublayer',
-    'Layer.parameters',
-    'Tracer',
-    'Layer.full_name',
-    'InMemoryDataset',
-    'layer_norm',
-    'bipartite_match',
-    'double_buffer',
-    'cumsum',
-    'thresholded_relu',
-    'group_norm',
-    'random_crop',
-    'py_func',
-    'row_conv',
-    'hard_shrink',
-    'ssd_loss',
-    'retinanet_target_assign',
-    'InMemoryDataset.global_shuffle',
-    'InMemoryDataset.get_memory_data_size',
-    'DetectionMAP',
-    'hash',
-    'InMemoryDataset.set_queue_num',
-    'LayerNorm',
-    'Preprocessor',
-    'chunk_eval',
-    'GRUUnit',
-    'ExponentialMovingAverage',
-    'QueueDataset.global_shuffle',
-    'NumpyArrayInitializer',
-    'create_py_reader_by_data',
-    'InMemoryDataset.local_shuffle',
-    'InMemoryDataset.get_shuffle_data_size',
-    'size',
-    'edit_distance',
-    'nce',
-    'BilinearInitializer',
-    'NaturalExpDecay',
-    'noam_decay',
-    'retinanet_detection_output',
-    'Pool2D',
-    'PipelineOptimizer',
-    'generate_mask_labels',
-    'isfinite',
-    'InMemoryDataset.set_fleet_send_batch_size',
-    'cuda_profiler',
-    'unfold',
-    'Executor',
-    'InMemoryDataset.load_into_memory',
-    'ExponentialDecay',
-    'BatchNorm',
-    'deformable_conv',
-    'InMemoryDataset.preload_into_memory',
-    'py_reader',
-    'linear_lr_warmup',
-    'InMemoryDataset.wait_preload_done',
-    'CosineDecay',
-    'roi_perspective_transform',
-    'unique',
-    'ones_like',
-    'LambOptimizer',
-    'InMemoryDataset.release_memory',
-    'Conv2DTranspose',
-    'QueueDataset.local_shuffle',
-    # wrong in dygraph/checkpoint.py  ok in io.py [duplicated name]
-    'save_persistables@dygraph/checkpoint.py',
-    'load_persistables@dygraph/checkpoint.py'
-]
-'''
-white list of private API/ redundant API
-'''
-wlist_ignore = [
-    'elementwise_pow', 'WeightedAverage.reset', 'ChunkEvaluator.eval',
-    'NCE.forward', 'elementwise_div', 'BilinearTensorProduct.forward',
-    'NoamDecay.step', 'elementwise_min', 'PiecewiseDecay.step',
-    'Conv3DTranspose.forward', 'elementwise_add', 'IfElse.output',
-    'IfElse.true_block', 'InverseTimeDecay.step', 'PolynomialDecay.step',
-    'Precision.eval', 'enabled', 'elementwise_max', 'stop_gperf_profiler',
-    'IfElse.false_block', 'WeightedAverage.add', 'Auc.trapezoid_area',
-    'elementwise_mul', 'GroupNorm.forward', 'SpectralNorm.forward',
-    'elementwise_sub', 'Switch.case', 'IfElse.input', 'prepare_context',
-    'PRelu.forward', 'Recall.update', 'start_gperf_profiler',
-    'TreeConv.forward', 'Conv2D.forward', 'Switch.default', 'elementwise_mod',
-    'Precision.update', 'WeightedAverage.eval', 'Conv3D.forward',
-    'Embedding.forward', 'Recall.eval', 'FC.forward', 'While.block',
-    'DGCMomentumOptimizer'
-]
 # only white on CPU
 gpu_not_white = [
     "deformable_conv", "cuda_places", "CUDAPinnedPlace", "CUDAPlace",
     "cuda_profiler", 'DGCMomentumOptimizer'
 ]
 
-wlist = wlist_temp + wlist_inneed + wlist_ignore + wlist_nosample + wlist_nopass + wlist_no_op_pass + wlist_ci_nopass
+
+def get_wlist():
+    '''
+    this function will get the white list of API.
+
+    Returns:
+
+        wlist: a list of API that should not trigger the example check .
+
+    '''
+    wlist = []
+    with open("wlist.json", 'r') as load_f:
+        load_dict = json.load(load_f)
+        for key in load_dict:
+            wlist = wlist + load_dict[key]
+    return wlist
+
+
+wlist = get_wlist()
 
 if len(sys.argv) < 2:
     print("Error: inadequate number of arguments")
