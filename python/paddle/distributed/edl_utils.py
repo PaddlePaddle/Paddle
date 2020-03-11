@@ -16,7 +16,7 @@ import os
 import requests
 import time
 import sys
-from utils import Cluster, logger, Pod, Trainer
+from utils import Cluster, Pod, Trainer, logger
 
 
 class Edlenv(object):

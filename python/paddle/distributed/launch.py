@@ -47,6 +47,7 @@ from argparse import ArgumentParser, REMAINDER
 import paddle.fluid as fluid
 
 from utils import *
+
 import cloud_utils
 import edl_utils
 
@@ -198,18 +199,22 @@ def start_local_trainers(cluster, pod):
 
     procs = []
     for idx, t in enumerate(pod.trainers):
-        current_env.update({
+        proc_env = {
             "FLAGS_selected_gpus": "%s" % ",".join([str(g) for g in t.gpu]),
             "PADDLE_TRAINER_ID": "%d" % t.rank,
             "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
-        })
+        }
+
+        current_env.update(proc_env)
 
         logger.debug("trainer proc env:{}".format(current_env))
 
         cmd = [sys.executable, "-u", args.training_script
                ] + args.training_script_args
+
+        logger.info("start trainer proc:{} env:{}".format(cmd, proc_env))
 
         fn = None
         if args.log_dir is not None:
@@ -313,6 +318,7 @@ def edl_barrier_start(edl_env, comm, hdfs, timeout=-1):
             sys.exit(1)
         continue
 
+    logger.info("edl_barrier_start ok!")
     return cluster, pod
 
 
@@ -354,13 +360,6 @@ def launch(args):
     while True:
         if use_edl:
             cluster2, pod = edl_env.get_cluster(hdfs)
-            """
-            if pod is None:  # me is dead
-                logger.info(
-                    "Cluster changed. This pod is not exist so exit(0)! \
-                    New cluster:{}. Old Cluster:{}".format(cluster2, cluster))
-                sys.exit(0)
-            """
 
             if cluster2 != cluster:
                 logger.info("Cluster changed. New cluster:{}. Old Cluster:{}".
@@ -369,37 +368,22 @@ def launch(args):
 
                 cluster, pod = edl_barrier_start(
                     edl_env, comm, hdfs, timeout=30 * 60)
-                """
-                if not edl_utils.barrier_terminate_world_trainers(
-                        cluster=cluster, pod=pod, comm=comm):
-                    logger.warning("Can't barrier in cluster:{}".format(
-                        cluster))
-                    try_step += 1
-                    if try_step >= 3:
-                        logger.fatal("can't barrier_terminate_world_trainers now")
-                        #sys.exit(1)
-                    continue
-                """
 
                 procs = start_local_trainers(cluster, pod)
-                #cluster = cluster2
 
-            #try_step=0
-
-            #print("cluster trainer_nranks:", cluster.trainers_nranks())
         alive = watch_local_trainers(procs, cluster.trainers_nranks())
 
         if not alive:
             logger.info("Local procs complete, POD info:{}".format(pod))
             return
 
-        time.sleep(1)
+        time.sleep(3)
 
 
 if __name__ == "__main__":
     args = _parse_args()
 
-    get_logger(args.log_level)
+    logger = get_logger(args.log_level)
 
     if args.print_config:
         _print_arguments(args)

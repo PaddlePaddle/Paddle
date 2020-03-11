@@ -20,7 +20,9 @@ import time
 import os
 import signal
 
+#loggers={}
 logger = logging.getLogger()
+logger.propagate = False
 
 
 class Hdfs(object):
@@ -315,16 +317,17 @@ class Gloo(object):
 
 
 def get_logger(log_level):
-    # initial log with loglevel
-    #logger = logging.getLogger()
-    global logger
-    logger.setLevel(log_level)
+    logger = logging.getLogger()
+    if not logger.handlers:
+        logger.setLevel(log_level)
 
-    log_handler = logging.StreamHandler()
-    log_format = logging.Formatter(
-        '%(levelname)s %(asctime)s %(filename)s:%(lineno)d] %(message)s')
-    log_handler.setFormatter(log_format)
-    logger.addHandler(log_handler)
+        log_handler = logging.StreamHandler()
+        log_format = logging.Formatter(
+            '%(levelname)s %(asctime)s %(filename)s:%(lineno)d] %(message)s')
+        log_handler.setFormatter(log_format)
+        logger.addHandler(log_handler)
+
+    return logger
 
 
 def get_cluster(node_ips, node_ip, paddle_port, selected_gpus):
