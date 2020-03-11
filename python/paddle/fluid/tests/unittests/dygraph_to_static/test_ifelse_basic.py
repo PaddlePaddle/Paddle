@@ -17,7 +17,8 @@ from __future__ import print_function
 import unittest
 import textwrap
 import gast
-from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import get_name_ids, IfConditionVisitor
+from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import get_name_ids
+from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import IfConditionVisitor
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 
 
@@ -164,9 +165,9 @@ class TestIsControlFlowIf(unittest.TestCase):
         """
         code = textwrap.dedent(code)
         node = gast.parse(code)
-        sa = StaticAnalysisVisitor(node)
+        static_analysis_visitor = StaticAnalysisVisitor(node)
         test_node = node.body[0].body[1].test
-        if_visitor = IfConditionVisitor(test_node, sa)
+        if_visitor = IfConditionVisitor(test_node, static_analysis_visitor)
         self.assertTrue(if_visitor.is_control_flow())
         # No transformation will be applied.
         new_node, assign_nodes = if_visitor.transform()
@@ -183,9 +184,9 @@ class TestIsControlFlowIf(unittest.TestCase):
         """
         code = textwrap.dedent(code)
         node = gast.parse(code)
-        sa = StaticAnalysisVisitor(node)
+        static_analysis_visitor = StaticAnalysisVisitor(node)
         test_node = node.body[0].body[1].test
-        if_visitor = IfConditionVisitor(test_node, sa)
+        if_visitor = IfConditionVisitor(test_node, static_analysis_visitor)
         self.assertTrue(if_visitor.is_control_flow())
 
         new_node, assign_nodes = if_visitor.transform()
@@ -207,9 +208,9 @@ class TestIsControlFlowIf(unittest.TestCase):
         """
         code = textwrap.dedent(code)
         node = gast.parse(code)
-        sa = StaticAnalysisVisitor(node)
+        static_analysis_visitor = StaticAnalysisVisitor(node)
         test_node = node.body[0].body[0].test
-        if_visitor = IfConditionVisitor(test_node, sa)
+        if_visitor = IfConditionVisitor(test_node, static_analysis_visitor)
         self.assertTrue(if_visitor.is_control_flow())
 
         # No transformation will be applied.
@@ -232,9 +233,9 @@ class TestIsControlFlowIf(unittest.TestCase):
         """
         code = textwrap.dedent(code)
         node = gast.parse(code)
-        sa = StaticAnalysisVisitor(node)
+        static_analysis_visitor = StaticAnalysisVisitor(node)
         test_node = node.body[0].body[0].test
-        if_visitor = IfConditionVisitor(test_node, sa)
+        if_visitor = IfConditionVisitor(test_node, static_analysis_visitor)
         self.assertTrue(if_visitor.is_control_flow())
 
         new_node, assign_nodes = if_visitor.transform()
@@ -249,9 +250,8 @@ class TestIsControlFlowIf(unittest.TestCase):
 
     def test_raise_error(self):
         node = "a + b"
-        if_visitor = IfConditionVisitor(node)
         with self.assertRaises(Exception) as e:
-            self.assertRaises(TypeError, if_visitor.is_control_flow_if())
+            self.assertRaises(TypeError, IfConditionVisitor(node))
         self.assertTrue(
             "Type of input node should be gast.AST" in str(e.exception))
 
