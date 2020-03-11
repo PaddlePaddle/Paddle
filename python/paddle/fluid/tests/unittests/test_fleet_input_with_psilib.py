@@ -36,11 +36,14 @@ class FleetPSLibTest(unittest.TestCase):
             worker_num=2,
             server_endpoints=["127.0.0.1:36011", "127.0.0.1:36012"])
 
+        optimizer = fluid.optimizer.SGD(0.1)
+        # case5
+        self.assertRaises(Exception, fleet.distributed_optimizer, optimizer,
+                          "Adam")
         fleet.init(role)
 
         avg_cost, _, _ = train_network(128, False, True)
 
-        optimizer = fluid.optimizer.SGD(0.1)
         # case1
         strategy = StrategyFactory.create_async_strategy()
         fleet.distributed_optimizer(optimizer, strategy)
@@ -51,6 +54,10 @@ class FleetPSLibTest(unittest.TestCase):
 
         # case3
         self.assertRaises(Exception, fleet.distributed_optimizer, optimizer,
+                          "Adam")
+
+        # case4
+        self.assertRaises(Exception, fleet.distributed_optimizer, "Adam",
                           "Adam")
 
 
