@@ -14,10 +14,7 @@
 
 from __future__ import print_function
 
-import astor
 import gast
-import inspect
-import six
 import warnings
 from .utils import is_paddle_api, is_dygraph_api, is_numpy_api
 
@@ -109,7 +106,7 @@ class AstNodeWrapper(object):
 class AstVarScope(object):
     """
     AstVarScope is a class holding the map from current scope variable to its
-    type. 
+    type.
     """
     SCOPE_TYPE_SCRIPT = 0
     SCOPE_TYPE_FUNCTION = 1
