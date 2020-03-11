@@ -62,10 +62,15 @@ static bool IsEqualAndNotEmpty(const std::vector<int64_t>& l,
 
 bool ElementwiseGroupDetector::IsElementwiseOp(const Node* n) {
   if (IsSpecifiedOp(GetElementwiseOpTypes(), n)) {
+    // Check whether all inputs are LOD_TENSOR and the shapes are the same.
     std::vector<int64_t> shape_0;
     for (size_t i = 0; i < n->inputs.size(); ++i) {
       auto* in_i = n->inputs[i];
       if (!(in_i && in_i->IsVar() && in_i->Var())) {
+        return false;
+      }
+
+      if (in_i->Var()->GetType() != proto::VarType::LOD_TENSOR) {
         return false;
       }
 

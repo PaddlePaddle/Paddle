@@ -86,7 +86,12 @@ class SubGraph {
     int num_operations = 0;
     for (auto* n : nodes_set_) {
       if (n && n->IsOp() && n->Op()) {
-        num_operations++;
+        if (n->Op()->Type() == "sum") {
+          // Some multiple operators are treated as multiple operations.
+          num_operations += n->inputs.size() - 1;
+        } else {
+          num_operations++;
+        }
       }
     }
     return num_operations;
