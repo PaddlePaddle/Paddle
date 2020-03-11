@@ -15,13 +15,248 @@
 
 __all__ = ["DistributedAdam"]
 import paddle.fluid as fluid
-from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
-from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table_inputs
-from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table_outputs
 from google.protobuf import text_format
 from collections import OrderedDict
 from .node import DownpourWorker, DownpourServer
 from . import ps_pb2 as pslib
+
+
+class TranspilerOptimizer(DistributedOptimizer):
+    """
+    DistributedOptimizer is a wrapper for paddle.fluid.optimizer
+    A user should pass a paddle.fluid.optimizer to DistributedOptimizer
+    minimize() function is implemented.
+    DistributedOptimizer is the starting point for a user who wants to
+    run distributed training. The optimized information will be stored in
+    Fleet() instance who holds the global information about current distributed
+    training.
+
+    Args:
+        optimizer(Optimizer): subclass of Optimizer.
+        strategy(DistributeTranspilerConfig): instance of DistributeTranspilerConfig.
+
+    Returns:
+        None
+    """
+
+    def __init__(self, optimizer, strategy=None):
+        super(TranspilerOptimizer, self).__init__(optimizer, strategy)
+
+        self.opt_info = dict()
+        if strategy:
+            if isinstance(strategy, DistributeTranspilerConfig):
+                self._strategy = strategy
+            elif isinstance(strategy, DistributedStrategy):
+                self._strategy = strategy
+            else:
+                raise TypeError(
+                    "In {} mode, strategy must be an instance of DistributeTranspilerConfig, SyncStrategy, HalfAsyncStrategy, AsyncStrategy, or GeoStrategy".
+                    format(fleet._mode))
+        else:
+            self._strategy = StrategyFactory.create_sync_strategy()
+
+        if isinstance(self._strategy, DistributedStrategy):
+            self.opt_info = self._strategy.get_debug_opt()
+            self.opt_info["mpi_rank"] = fleet.worker_index()
+            self.opt_info["mpi_size"] = fleet.worker_num()
+            self.opt_info["trainer"] = "MultiTrainer"
+            self.opt_info["device_worker"] = "Hogwild"
+            fleet._set_opt_info(self.opt_info)
+
+    def backward(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None,
+                 callbacks=None):
+        """
+        First part of `minimize`, do auto-diff to append backward ops for
+        the current program.
+
+        Args:
+            loss (Variable): loss variable to run optimizations.
+            startup_program (Program): startup_program for initializing parameters
+                in `parameter_list`.
+            parameter_list (list): list of Variables to update.
+            no_grad_set (set|None): set of Variables should be ignored.
+            callbacks (list|None): list of callables to run when appending backward
+                operator for one parameter.
+
+        Return:
+            list: list of (param, grad) pair, grad is the output of backward.
+
+        Examples:
+            See examples in `apply_gradients`.
+        """
+        return self._optimizer.backward(loss, startup_program, parameter_list,
+                                        no_grad_set, callbacks)
+
+    def apply_gradients(self, params_grads):
+        """
+        Second part of `minimize`, appending optimization operators for
+        given `params_grads` pairs.
+
+        Args:
+            params_grads (list): list of (param, grad) pair to do optimization.
+
+        Returns:
+            list: A list of operators appended to the current program.
+
+        Examples:
+            .. code-block:: python
+
+                loss = network()
+                optimizer = fluid.optimizer.SGD(learning_rate=0.1)
+                params_grads = optimizer.backward(loss)
+                # you may append operations for params_grads here
+                # ...
+                optimizer.apply_gradients(params_grads)
+        """
+        return self._optimizer.apply_gradients(params_grads)
+
+    def minimize(self,
+                 loss,
+                 scopes=None,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None):
+        """
+        Add operations to minimize `loss` by updating `parameter_list`.
+
+        This method combines interface `backward()` and
+        `apply_gradients()` into one.
+
+        Args:
+            loss (Variable): loss variable to run optimizations.
+            scopes (None): TranspilerOptimizer doesn't need scope parameter.
+            startup_program (Program): startup_program for initializing parameters
+                in `parameter_list`.
+            parameter_list (list): list of Variables to update.
+            no_grad_set (set|None): set of Variables should be ignored.
+
+        Returns:
+            tuple: (optimize_ops, params_grads) which are, list of operators appended;
+            and list of (param, grad) Variables pair for optimization.
+        """
+        if isinstance(loss, list):
+            raise TypeError(
+                "DistributedTranspiler's minimize can not accept loss with list")
+
+        if isinstance(startup_program, list):
+            raise TypeError(
+                "DistributedTranspiler's minimize can not accept program with list"
+            )
+
+        optimize_ops, params_grads = self._optimizer.minimize(
+            loss, startup_program, parameter_list, no_grad_set)
+        fleet._transpile(config=self._strategy)
+        loss.block.program._fleet_opt = self.opt_info
+        return optimize_ops, params_grads
+
+
+class DownpourOptimizer(DistributedOptimizer):
+    """
+    DistributedOptimizer is a wrapper for paddle.fluid.optimizer
+    A user should pass a paddle.fluid.optimizer to DistributedOptimizer
+    minimize() function is implemented.
+    DistributedOptimizer is the starting point for a user who wants to
+    run distributed training. The optimized information will be stored in
+    Fleet() instance who holds the global information about current distributed
+    training.
+
+    Args:
+        optimizer(Optimizer): subclass of Optimizer.
+        strategy(any): config for DownpourOptimizer.
+
+    Returns:
+        None
+    """
+
+    def __init__(self, optimizer, strategy=None):
+        super(DownpourOptimizer, self).__init__(optimizer, strategy)
+
+        self._optimizer = optimizer
+        self._optimizer_name = "Distributed%s" % optimizer.type.capitalize()
+        if optimizer.type != "adam":
+            print("Currently, distributed optimizer only support Adam"
+                  "Will config built-in adam for you."
+                  "We will support more functions in DistributedOptimizer",
+                  sys.stderr)
+            self._optimizer_name = "DistributedAdam"
+
+        self._distributed_optimizer = globals()[self._optimizer_name](optimizer)
+
+    def backward(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None,
+                 callbacks=None):
+        """
+        Currently, backward function can not be called through DistributedOptimizer
+        """
+        raise NotImplementedError()
+
+    def apply_gradients(self, params_grads):
+        """
+        Currently, apply_gradients function can not be called through DistributedOptimizer
+        """
+        raise NotImplementedError()
+
+    def minimize(self,
+                 losses,
+                 scopes=None,
+                 startup_programs=None,
+                 parameter_list=None,
+                 no_grad_set=None):
+        """
+        minimize a program through loss, loss can be a list in DistributedOptimizer.
+        Note that in parameter server mode, a worker will not get anything about optimize_os
+        Because optimizer algorithms run on pserver side. We will make this usable in pserver
+        process, but currently the optimization part is written into Fleet(). A user does not
+        need to care about how to startup a pserver node.
+
+        Args:
+            losses (Variable|Variable List): loss variable or loss variable list to run optimization.
+            scopes (Scope| Scope List): scope instance.
+            startup_programs (Program|Program List): startup_program for initializing parameters
+                in `parameter_list`.
+            parameter_list (list): list of Variables to update.
+            no_grad_set (set|None): set of Variables should be ignored.
+
+        Returns:
+            tuple: (optimize_ops, params_grads) which are, list of operators appended;
+            and list of (param, grad) Variables pair for optimization.
+        """
+
+        if not isinstance(losses, list):
+            losses = [losses]
+
+        optimize_ops, param_grads, opt_info = \
+            self._distributed_optimizer._minimize(
+                losses,
+                startup_programs,
+                parameter_list,
+                no_grad_set,
+                self._strategy)
+        opt_info["mpi_rank"] = fleet.worker_index()
+        opt_info["mpi_size"] = fleet.worker_num()
+        fleet._set_opt_info(opt_info)
+
+        programs = [loss.block.program for loss in losses]
+
+        if scopes is None:
+            scopes = [fluid.global_scope()] * len(programs)
+
+        if len(scopes) != len(programs):
+            raise ValueError(
+                "You should make sure len(scopes) == len(programs) or set scopes None"
+            )
+
+        fleet._main_programs = programs
+        fleet._scopes = scopes
+
+        return [optimize_ops, param_grads]
 
 
 class DistributedOptimizerImplBase(object):
