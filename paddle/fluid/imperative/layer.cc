@@ -312,10 +312,14 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
     info.infer_var_type_(&infer_var_type_ctx);
   }
 
-  // Initialize output var type
-  for (auto& var_pair : outs) {
-    for (auto& var : var_pair.second) {
-      InitializeVariable(var->MutableVar(), var->Type());
+  {
+    // Initialize output var type
+    platform::RecordEvent run_event("mutable_var",
+                                    platform::EventRole::kInnerOp);
+    for (auto& var_pair : outs) {
+      for (auto& var : var_pair.second) {
+        InitializeVariable(var->MutableVar(), var->Type());
+      }
     }
   }
 
@@ -333,6 +337,7 @@ void OpBase::Run(const framework::OperatorBase& op,
                  const NameVarMap<VarBase>& outs,
                  const framework::AttributeMap& attrs,
                  const platform::Place& place) {
+  platform::RecordEvent op_event(op.Type());
   OpBaseRunImpl<VarBase>(op, ins, outs, attrs, place);
 }
 
@@ -341,6 +346,7 @@ void OpBase::Run(const framework::OperatorBase& op,
                  const NameVarMap<VariableWrapper>& outs,
                  const framework::AttributeMap& attrs,
                  const platform::Place& place) {
+  platform::RecordEvent op_event(op.Type());
   OpBaseRunImpl<VariableWrapper>(op, ins, outs, attrs, place);
 }
 

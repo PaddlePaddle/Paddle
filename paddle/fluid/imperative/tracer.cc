@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #include "paddle/fluid/imperative/tracer.h"
 #include <set>
 #include <unordered_set>
@@ -87,6 +88,7 @@ static void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad) {
 void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                      const NameVarBaseMap& outs, framework::AttributeMap attrs,
                      const platform::Place& place, bool trace_backward) {
+  platform::RecordEvent op_event("trace::" + type);
   VLOG(1) << "Trace Op: " << type;
   auto op = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
   const auto& op_info = op->Info();
