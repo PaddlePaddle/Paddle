@@ -244,17 +244,19 @@ class Gloo(object):
 
     def _loop(self, func, name):
         step = 0
+        err = None
         while True:
-            ret = func()
-            if ret == 0:
+            try:
+                ret = func()
                 return True
+            except Exception as e:
+                err = e
+                time.sleep(3)
+                step += 1
+                if step >= self._try_num:
+                    break
 
-            time.sleep(3)
-            step += 1
-            if step >= self._try_num:
-                break
-
-        logger.warning("gloo {} error".format(name))
+        logger.warning("gloo {} error exception:{}".format(name, err))
         return False
 
     def init(self, job_id, hdfs, endpoints, rank, try_num=3):

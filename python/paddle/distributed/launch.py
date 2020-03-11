@@ -291,7 +291,7 @@ def get_hdfs_from_args(args):
     return hdfs
 
 
-def edl_barrier_start(edl_env, comm, hdfs):
+def edl_barrier_start(edl_env, comm, hdfs, timeout=-1):
     cluster = None
     pod = None
     while True:
@@ -308,6 +308,9 @@ def edl_barrier_start(edl_env, comm, hdfs):
 
         logger.warning("Can't barrier in cluster:{}".format(cluster))
         time.sleep(1)
+        if timeout > 0 and step >= timeout:
+            logger.warning("can't barrier to start now!so exit")
+            sys.exit(1)
         continue
 
     return cluster, pod
@@ -336,7 +339,7 @@ def launch(args):
         hdfs = get_hdfs_from_args(args)
         #cluster, pod = edl_env.get_cluster(hdfs)
         comm = Gloo()
-        cluster, pod = edl_barrier_start(edl_env, comm, hdfs)
+        cluster, pod = edl_barrier_start(edl_env, comm, hdfs, timeout=15 * 60)
         logger.info("get cluster from edl:{}".format(cluster))
     else:
         cluster, pod = get_cluster_from_args(args, selected_gpus)
@@ -364,7 +367,8 @@ def launch(args):
                             format(cluster2, cluster))
                 terminate_local_procs(procs)
 
-                cluster, pod = edl_barrier_start(edl_env, comm, hdfs)
+                cluster, pod = edl_barrier_start(
+                    edl_env, comm, hdfs, timeout=30 * 60)
                 """
                 if not edl_utils.barrier_terminate_world_trainers(
                         cluster=cluster, pod=pod, comm=comm):
