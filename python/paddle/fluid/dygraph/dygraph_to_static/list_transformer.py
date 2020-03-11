@@ -52,11 +52,24 @@ class ListTransformer(gast.NodeTransformer):
 
     def visit_If(self, node):
         self.generic_visit(node)
+        self._transform_list_append_in_control_flow(node)
+        return node
+
+    def visit_While(self, node):
+        self.generic_visit(node)
+        self._transform_list_append_in_control_flow(node)
+        return node
+
+    def visit_For(self, node):
+        self.generic_visit(node)
+        self._transform_list_append_in_control_flow(node)
+        return node
+
+    def _transform_list_append_in_control_flow(self, node):
         for child_node in gast.walk(node):
             if self._need_to_array_write_node(child_node):
                 child_node.value = \
                     self._to_array_write_node(child_node.value)
-        return node
 
     def _need_to_array_write_node(self, node):
         if isinstance(node, gast.Expr):
