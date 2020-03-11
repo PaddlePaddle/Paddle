@@ -16,8 +16,8 @@ from __future__ import print_function
 
 import gast
 import astor
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
-from .static_analysis import AstNodeWrapper, NodeVarType, StaticAnalysisVisitor
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper, NodeVarType, StaticAnalysisVisitor
+from paddle.fluid.dygraph.dygraph_to_static.utils import is_control_flow_to_transform
 
 
 class ListTransformer(gast.NodeTransformer):
@@ -46,24 +46,32 @@ class ListTransformer(gast.NodeTransformer):
         self.replace_list_with_tensor_array(self.root)
 
     def visit_Assign(self, node):
-        if self._update_list_name_to_updated(node):
-            return node
+        self._update_list_name_to_updated(node)
         return node
 
     def visit_If(self, node):
         self.generic_visit(node)
-        self._transform_list_append_in_control_flow(node)
+        if is_control_flow_to_transform(node, self.scope_var_type_dict):
+            self._transform_list_append_in_control_flow(node)
         return node
 
     def visit_While(self, node):
         self.generic_visit(node)
-        self._transform_list_append_in_control_flow(node)
+        if is_control_flow_to_transform(node, self.scope_var_type_dict):
+            self._transform_list_append_in_control_flow(node)
         return node
 
     def visit_For(self, node):
         self.generic_visit(node)
-        self._transform_list_append_in_control_flow(node)
+        if is_control_flow_to_transform(node, self.scope_var_type_dict):
+            self._transform_list_append_in_control_flow(node)
         return node
+
+    def replace_list_with_tensor_array(self, node):
+        for child_node in gast.walk(node):
+            if isinstance(child_node, gast.Assign):
+                if self._need_to_create_tensor_array(child_node):
+                    child_node.value = self._create_tensor_array()
 
     def _transform_list_append_in_control_flow(self, node):
         for child_node in gast.walk(node):
@@ -79,33 +87,27 @@ class ListTransformer(gast.NodeTransformer):
 
         return False
 
-    def replace_list_with_tensor_array(self, node):
-        for child_node in gast.walk(node):
-            if isinstance(child_node, gast.Assign):
-                if self._need_to_create_tensor_array(child_node):
-                    child_node.value = self._create_tensor_array()
-
     def _is_list_append_tensor(self, node):
         """
         a.append(b): a is list, b is Tensor
+        self.x.append(b): self.x is list, b is Tensor
         """
         assert isinstance(node, gast.Call)
-        # 1. is .append
+        # 1. The func is `append`.
         if not isinstance(node.func, gast.Attribute):
             return False
         if node.func.attr != 'append':
             return False
 
-        # 2. is list
-        value_name = astor.to_source(gast.gast_to_ast(node.func.value))
-        if value_name.strip() not in self.list_name_to_updated:
+        # 2. It's a `python list` to call append().
+        value_name = astor.to_source(gast.gast_to_ast(node.func.value)).strip()
+        if value_name not in self.list_name_to_updated:
             return False
 
-        # 3. append Variable
+        # 3. The arg of append() is one `Tensor`
         # Only one argument is supported in Python list.append()
         if len(node.args) != 1:
             return False
-
         arg = node.args[0]
         if isinstance(arg, gast.Name):
             # TODO: `arg.id` may be not in scope_var_type_dict if `arg.id` is the arg of decorated function

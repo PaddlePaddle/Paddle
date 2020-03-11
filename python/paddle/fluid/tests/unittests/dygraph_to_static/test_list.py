@@ -24,6 +24,7 @@ np.random.seed(SEED)
 
 
 def test_list_without_control_flow(x):
+    # Python list will not be transformed.
     x = fluid.dygraph.to_variable(x)
     a = []
     a.append(x)
@@ -57,7 +58,7 @@ def test_list_in_while_loop(x, iter_num):
         shape=[1], value=iter_num, dtype="int32")
     a = []
     i = 0
-    # Note: `i < iter_num` can't be support in dygraph mode now,
+    # Note: `i < iter_num` can't be supported in dygraph mode now,
     # but PR22892 is fixing it https://github.com/PaddlePaddle/Paddle/pull/22892.
     # If PR22892 merged, change `i < iter_num.numpy()[0]` to `i < iter_num`.
     while i < iter_num.numpy()[0]:
