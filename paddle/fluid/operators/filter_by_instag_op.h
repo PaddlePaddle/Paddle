@@ -47,7 +47,7 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
     // Dim [batch size, embedding size]
     auto* x1 = context.Input<LoDTensor>("Ins");
     bool is_x1_lod = context.Attr<bool>("is_lod");
-    int64_t out_val_ifempty = context.Attr<int64_t>("out_val_ifempty");
+    int64_t out_val_if_empty = context.Attr<int64_t>("out_val_if_empty");
     // X2 is ins tag list
     // LoD [[0, Sum(ins1), Sum(ins1, ins2), ... ]]
     auto* x2 = context.Input<LoDTensor>("Ins_tag");
@@ -160,11 +160,11 @@ class FilterByInstagKernel : public framework::OpKernel<T> {
       out->set_lod(out_lod_info);
       for (int64_t oi = 0; oi < out->numel(); ++oi) {
         if (std::is_same<T, int32_t>::value) {
-          out_data[oi] = (int32_t)out_val_ifempty;
+          out_data[oi] = (int32_t)out_val_if_empty;
         } else if (std::is_same<T, int64_t>::value) {
-          out_data[oi] = (int64_t)out_val_ifempty;
+          out_data[oi] = (int64_t)out_val_if_empty;
         } else {
-          out_data[oi] = static_cast<double>(out_val_ifempty);
+          out_data[oi] = static_cast<double>(out_val_if_empty);
         }
       }
       loss_weight_data[0] = 0;
