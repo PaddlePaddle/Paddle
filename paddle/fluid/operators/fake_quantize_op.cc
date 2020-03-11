@@ -58,11 +58,17 @@ struct ClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
                   const framework::Tensor& in, const framework::Tensor& scale,
                   const int bin_cnt, framework::Tensor* out) {
     T s = scale.data<T>()[0];
+    T inv_s;
+    if (s - 0 <= 1e-30) {
+      inv_s = 0;
+    } else {
+      inv_s = 1.0 / s;
+    }
     platform::Transform<platform::CPUDeviceContext> trans;
     trans(ctx, in.data<T>(), in.data<T>() + in.numel(),
           out->mutable_data<T>(ctx.GetPlace()), ClipFunctor<T>(-s, s));
     auto out_e = framework::EigenVector<T>::Flatten(*out);
-    out_e.device(*ctx.eigen_device()) = (bin_cnt / s * out_e).round();
+    out_e.device(*ctx.eigen_device()) = (bin_cnt * inv_s * out_e).round();
   }
 };
 
@@ -74,12 +80,19 @@ struct ClipAndFakeQuantDequantFunctor<platform::CPUDeviceContext, T> {
                   const framework::Tensor& in, const framework::Tensor& scale,
                   const int bin_cnt, framework::Tensor* out) {
     T s = scale.data<T>()[0];
+    T inv_s;
+    if (s - 0 <= 1e-30) {
+      inv_s = 0;
+    } else {
+      inv_s = 1.0 / s;
+    }
+
     platform::Transform<platform::CPUDeviceContext> trans;
     trans(ctx, in.data<T>(), in.data<T>() + in.numel(),
           out->mutable_data<T>(ctx.GetPlace()), ClipFunctor<T>(-s, s));
     auto out_e = framework::EigenVector<T>::Flatten(*out);
     out_e.device(*ctx.eigen_device()) =
-        (s / bin_cnt) * (bin_cnt / s * out_e).round();
+        (s / bin_cnt) * (bin_cnt * inv_s * out_e).round();
   }
 };
 template struct ClipAndFakeQuantDequantFunctor<platform::CPUDeviceContext,
@@ -105,9 +118,15 @@ struct ChannelClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
     }
     for (int i = 0; i < channel; i++) {
       T s = scale_data[i];
+      T inv_s;
+      if (s - 0 <= 1e-30) {
+        inv_s = 0;
+      } else {
+        inv_s = 1.0 / s;
+      }
       framework::Tensor one_channel_out = out->Slice(i, i + 1);
       auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
-      out_e.device(*ctx.eigen_device()) = (bin_cnt / s * out_e).round();
+      out_e.device(*ctx.eigen_device()) = (bin_cnt * inv_s * out_e).round();
     }
   }
 };
