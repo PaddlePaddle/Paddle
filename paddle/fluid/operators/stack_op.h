@@ -54,21 +54,39 @@ class StackKernel : public framework::OpKernel<T> {
 
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto x = ctx.MultiInput<Tensor>("X");
+    // Determine whether the element of X is LoDTensorArray.
+    const std::vector<framework::Variable *> &x_vars = ctx.MultiInputVar("X");
+    bool is_tensor_array = x_vars[0]->IsType<framework::LoDTensorArray>();
+
     auto *y = ctx.Output<Tensor>("Y");
-
     int axis = ctx.Attr<int>("axis");
-    if (axis < 0) axis += (x[0]->dims().size() + 1);
+    std::vector<const Tensor *> x;
+    framework::LoDTensorArray x_array;
 
-    int n = static_cast<int>(x.size());
-    auto *y_data = y->mutable_data<T>(ctx.GetPlace());
+    if (is_tensor_array) {
+      auto x_array_list = ctx.MultiInput<framework::LoDTensorArray>("X");
+      x_array = x_array_list[0][0];  // a vector of LoDTensor
+      if (axis < 0) axis += (x_array[0].dims().size() + 1);
+    } else {
+      x = ctx.MultiInput<Tensor>("X");
+      if (axis < 0) axis += (x[0]->dims().size() + 1);
+    }
+
+    int n = is_tensor_array ? static_cast<int>(x_array.size())
+                            : static_cast<int>(x.size());
+    framework::DDim dim = is_tensor_array ? x_array[0].dims() : x[0]->dims();
     std::vector<const T *> x_datas(n);
-    for (int i = 0; i < n; i++) x_datas[i] = x[i]->data<T>();
+    for (int i = 0; i < n; i++) {
+      x_datas[i] = is_tensor_array ? x_array[i].data<T>() : x[i]->data<T>();
+    }
 
+    auto vec = framework::vectorize<int>(dim);
     int pre = 1, post = 1;
-    auto &dim = x[0]->dims();
     for (auto i = 0; i < axis; ++i) pre *= dim[i];
     for (auto i = axis; i < dim.size(); ++i) post *= dim[i];
+    vec.insert(vec.begin() + axis, n);
+    y->Resize(framework::make_ddim(vec));
+    auto *y_data = y->mutable_data<T>(ctx.GetPlace());
 
     auto x_data_arr = x_datas.data();
 

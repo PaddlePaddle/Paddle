@@ -27,6 +27,19 @@ class StackOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
+    // If the var type of input LOD_TENSOR_ARRAY,
+    // 1, the input vector size must be 1;
+    // 2, the output shape is determined by StackKernel:Compute in runtime.
+    auto x_var_type = ctx->GetInputsVarType("X")[0];
+    if (x_var_type == framework::proto::VarType::LOD_TENSOR_ARRAY) {
+      PADDLE_ENFORCE_EQ(ctx->Inputs("X").size(), 1,
+                        platform::errors::InvalidArgument(
+                            "Number of Inputs(X) must be 1 if Inputs(X) of "
+                            "stack_op is LoDTensorArray, but"
+                            " received value is:%d.",
+                            ctx->Inputs("X").size()));
+      if (ctx->IsRuntime()) return;
+    }
     PADDLE_ENFORCE_GT(ctx->Inputs("X").size(), 0,
                       platform::errors::InvalidArgument(
                           "Number of Inputs(X) must be larger than 0, but"
@@ -68,7 +81,12 @@ class StackOp : public framework::OperatorWithKernel {
     if (axis < 0) axis += (rank + 1);
 
     auto vec = framework::vectorize<int>(input_dims[0]);
-    vec.insert(vec.begin() + axis, input_dims.size());
+    if (x_var_type == framework::proto::VarType::LOD_TENSOR_ARRAY) {
+      vec.insert(vec.begin() + axis, -1);
+    } else {
+      vec.insert(vec.begin() + axis, input_dims.size());
+    }
+
     ctx->SetOutputDim("Y", framework::make_ddim(vec));
   }
 };

@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from op_test import OpTest
 import numpy as np
 import unittest
+
+import paddle.fluid as fluid
+from op_test import OpTest
 
 
 class TestStackOpBase(OpTest):
@@ -86,6 +88,47 @@ class TestStackOp5(TestStackOpBase):
 class TestStackOp6(TestStackOpBase):
     def initParameters(self):
         self.axis = 3
+
+
+class TestStackAPI(unittest.TestCase):
+    """
+    Test stack api when the input(x) is a LoDTensorArray.
+    """
+
+    def setUp(self):
+        self.axis = 0
+        self.iter_num = 3
+        self.input_shape = [2, 3]
+        self.x = np.random.random(self.input_shape).astype("float32")
+        self.place = fluid.CUDAPlace(0) \
+            if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+
+    def test_case(self):
+        tensor_list = []
+        main_program = fluid.Program()
+
+        with fluid.program_guard(main_program):
+            input = fluid.layers.assign(self.x)
+            tensor_array = fluid.layers.create_array(dtype='float32')
+            zero = fluid.layers.fill_constant(shape=[1], value=0, dtype="int64")
+
+            for i in range(self.iter_num):
+                fluid.layers.array_write(input, zero + i, tensor_array)
+                tensor_list.append(input)
+
+            out1 = fluid.layers.stack(tensor_array, axis=self.axis)
+            out2 = fluid.layers.stack(tensor_list, axis=self.axis)
+
+            self.assertTrue(out1.shape[0] == -1)
+
+        exe = fluid.Executor(self.place)
+        res1, res2 = exe.run(main_program, fetch_list=[out1, out2])
+
+        self.assertTrue(np.array_equal(res1, res2))
+        self.assertTrue(
+            np.array_equal(
+                res1, np.stack(
+                    [self.x] * self.iter_num, axis=self.axis)))
 
 
 if __name__ == '__main__':
