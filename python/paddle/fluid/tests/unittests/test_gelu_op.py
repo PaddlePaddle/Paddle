@@ -21,33 +21,43 @@ import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
 
 
-class TestGeluOp(unittest.TestCase):
-    def _test_case1_cpu(self):
-        x = np.random.uniform(-1, 1, size=(11, 17)).astype(np.float32)
+def gelu(x, approximate):
+    if approximate:
+        y_ref = 0.5 * x * (1.0 + np.tanh(
+            np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3))))
+    else:
         y_ref = 0.5 * x * (1 + erf(x / np.sqrt(2)))
+    return y_ref.astype(x.dtype)
+
+
+class TestGeluOp(unittest.TestCase):
+    def _test_case1_cpu(self, approximate):
+        x = np.random.uniform(-1, 1, size=(11, 17)).astype(np.float32)
+        y_ref = gelu(x, approximate)
 
         place = fluid.CPUPlace()
         with dg.guard(place) as g:
             x_var = dg.to_variable(x)
-            y_var = fluid.layers.gelu(x_var)
+            y_var = fluid.layers.gelu(x_var, approximate)
             y_test = y_var.numpy()
         self.assertTrue(np.allclose(y_ref, y_test, rtol=1e-05, atol=1e-08))
 
-    def _test_case1_gpu(self):
+    def _test_case1_gpu(self, approximate):
         x = np.random.uniform(-1, 1, size=(11, 17)).astype(np.float32)
-        y_ref = 0.5 * x * (1 + erf(x / np.sqrt(2)))
+        y_ref = gelu(x, approximate)
 
         place = fluid.CUDAPlace(0)
         with dg.guard(place) as g:
             x_var = dg.to_variable(x)
-            y_var = fluid.layers.gelu(x_var)
+            y_var = fluid.layers.gelu(x_var, approximate)
             y_test = y_var.numpy()
         self.assertTrue(np.allclose(y_ref, y_test, rtol=1e-05, atol=1e-08))
 
     def test_cases(self):
-        self._test_case1_cpu()
-        if fluid.is_compiled_with_cuda():
-            self._test_case1_gpu()
+        for approximate in [True, False]:
+            self._test_case1_cpu(approximate)
+            if fluid.is_compiled_with_cuda():
+                self._test_case1_gpu(approximate)
 
 
 if __name__ == '__main__':

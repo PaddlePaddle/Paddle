@@ -411,16 +411,44 @@ class TestLeakyRelu(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
+def gelu(x, approximate):
+    if approximate:
+        y_ref = 0.5 * x * (1.0 + np.tanh(
+            np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3))))
+    else:
+        y_ref = 0.5 * x * (1 + erf(x / np.sqrt(2)))
+    return y_ref.astype(x.dtype)
+
+
+class TestGeluApproximate(TestActivation):
+    def setUp(self):
+        self.op_type = "gelu"
+        self.init_dtype()
+        approximate = True
+        x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+        out = gelu(x, approximate)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {"approximate": approximate}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out')
+
+
 class TestGelu(TestActivation):
     def setUp(self):
         self.op_type = "gelu"
         self.init_dtype()
-
+        approximate = False
         x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
-        out = 0.5 * x * (1.0 + erf(x / np.sqrt(2.0)))
+        out = gelu(x, approximate)
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
+        self.attrs = {"approximate": approximate}
 
     def test_check_grad(self):
         if self.dtype == np.float16:
