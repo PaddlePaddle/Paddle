@@ -64,6 +64,7 @@ class JobInfoManager(object):
 
                 pod["pod_port"] = port
                 pod["trainer_ports"] = [port + 1]
+                pod["gpu"] = [i]
 
                 port += 2
                 pod_rank += 1
@@ -116,12 +117,12 @@ class JobInfoManager(object):
         step_id = 0
         modify = True
         while (True):
-            time.sleep(30)  # 20minutes
+            time.sleep(15 * 60)  # 20minutes
             if modify:
                 step_id += 1
                 #print("del 2 pods")
                 self._del_tail(self._job_id, 2, step_id)
-                time.sleep(20 * 60)
+                time.sleep(15 * 60)
 
                 step_id += 1
                 #print("add 2 pods")

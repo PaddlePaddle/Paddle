@@ -43,6 +43,7 @@ class Edlenv(object):
             pod.id = r_pod["pod_id"]
             pod.addr = r_pod["addr"]
             pod.port = r_pod["pod_port"]
+            pod.gpu = r_pod["gpu"]
             pod.trainers = []
 
             for idx, t_port in enumerate(r_pod["trainer_ports"]):

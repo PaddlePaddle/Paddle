@@ -98,11 +98,10 @@ class PodManager(object):
             if pod.addr == "127.0.0.1" or \
                     pod.addr==host_name or \
                     pod.addr == ip:
-                self.start_local_pod(cluster.job_server, cluster.job_id, pod,
-                                     gpu_rank)
+                self.start_local_pod(cluster.job_server, cluster.job_id, pod)
                 gpu_rank += 1
 
-    def start_local_pod(self, job_server, job_id, pod, gpu_rank):
+    def start_local_pod(self, job_server, job_id, pod):
         assert pod.id not in self.local_pods, "pod_id:{} local_pods:{}".format(
             pod.id, [k for k, _ in self.local_pods.items()].sort())
 
@@ -121,8 +120,7 @@ class PodManager(object):
             "PADDLE_JOBSERVER": "%s" % job_server,
             "PADDLE_JOB_ID": "%s" % job_id,
             "PADDLE_POD_ID": "%s" % pod.id,
-            #"CUDA_VISIBLE_DEVICES": "%s" % pod.get_visible_gpus()
-            "CUDA_VISIBLE_DEVICES": "%s" % gpu_rank
+            "CUDA_VISIBLE_DEVICES": "%s" % pod.get_visible_gpus()
         })
 
         current_env.update(pod_env)
@@ -208,7 +206,7 @@ def manage_pods():
             gpu_rank = 0
             for pod in added_pods:
                 pod_manager.start_local_pod(cluster2.job_server,
-                                            cluster2.job_id, pod, gpu_rank)
+                                            cluster2.job_id, pod)
                 gpu_rank += 1
 
             cluster = cluster2

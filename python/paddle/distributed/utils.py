@@ -159,10 +159,11 @@ class Pod(object):
         self.addr = None
         self.port = None
         self.trainers = []
+        self.gpu = []
 
     def __str__(self):
-        return "rank:{} id:{} addr:{} port:{} trainers:{}".format(
-            self.rank, self.id, self.addr, self.port,
+        return "rank:{} id:{} addr:{} port:{} visible_gpu:{} trainers:{}".format(
+            self.rank, self.id, self.addr, self.port, self.gpu,
             [str(t) for t in self.trainers])
 
     def __eq__(self, pod):
@@ -197,9 +198,8 @@ class Pod(object):
 
     def get_visible_gpus(self):
         r = ""
-        for t in self.trainers:
-            for g in t.gpu:
-                r += "{},".format(g)
+        for g in self.gpu:
+            r += "{},".format(g)
 
         assert r != "", "this pod {} can't see any gpus".format(self)
 
