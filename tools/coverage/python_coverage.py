@@ -25,7 +25,7 @@ for clazz in root.findall('packages/package/classes/class'):
 
     if clazz_filename.startswith('{}/build/python/'.format(paddle_root)):
         clazz_filename = '{}/python/'.format(paddle_root) + clazz_filename[len(
-            '{}/build/python/').format(paddle_root):]
+            '{}/build/python/'.format(paddle_root)):]
 
     if not path.exists(clazz_filename):
         continue
