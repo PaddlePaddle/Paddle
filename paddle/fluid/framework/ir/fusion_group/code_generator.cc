@@ -66,7 +66,6 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
       for (auto& name : input_names) {
         // Some input vars are not used in grad ops, such as
         // "elementwise_add_grad", where "X", "Y" and "Out" are not used.
-
         if ((HasInput(node, name) && op->Input(name).size() >= 1U)) {
           for (size_t i = 0; i < op->Input(name).size(); i++) {
             PADDLE_ENFORCE_NE(

@@ -33,6 +33,8 @@ void FusionGroupPass::ApplyImpl(ir::Graph* graph) const {
     fusion_group::OperationMap::Init();
     int num_elementwise_groups = DetectFusionGroup(graph, 0);
     AddStatis(num_elementwise_groups);
+    LOG(INFO) << "Detect " << num_elementwise_groups
+              << " elementwise fusion groups.";
   }
 }
 
