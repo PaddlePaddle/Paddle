@@ -95,12 +95,12 @@ void OperationMap::InsertUnaryElementwiseOperations() {
   // sigmoid:
   //  out = f(x) = 1.0 / (1.0 + exp(-x))
   //  dx = dout * out * (1 - out)
-  insert_handler("sigmoid", "1.0 / (1.0 + real_exp(- ${0}))",
+  insert_handler("sigmoid", "1.0 / (1.0 + Exp(- ${0}))",
                  {"${2} * ${1} * (1.0 - ${1})"});
   // tanh:
   //  out = f(x) = 2.0 / (1.0 + exp(-2.0 * x)) - 1.0;
   //  dx = dout * (1 - out * out)
-  insert_handler("tanh", "2.0 / (1.0 + real_exp(-2.0 * ${0})) - 1.0",
+  insert_handler("tanh", "2.0 / (1.0 + Exp(-2.0 * ${0})) - 1.0",
                  {"${2} * (1.0 - ${1} * ${1})"});
 }
 

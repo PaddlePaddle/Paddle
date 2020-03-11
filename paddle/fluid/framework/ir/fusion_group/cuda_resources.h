@@ -20,22 +20,23 @@ namespace ir {
 namespace fusion_group {
 
 static constexpr char predefined_cuda_functions_fp32[] = R"(
-//__device__ inline float real_max(float x) { return ::fmaxf(x); }
-__device__ inline float real_exp(float x) { return ::expf(x); }
-__device__ inline float real_log(float x) { return ::logf(x); }
+__device__ inline float Max(float x, float y) { return fmaxf(x, y); }
+__device__ inline float Exp(float x) { return expf(x); }
+__device__ inline float Log(float x) { return logf(x); }
 
 )";
 
 static constexpr char predefined_cuda_functions_fp64[] = R"(
-//__device__ inline double real_max(float x) { return ::fmax(x); }
-__device__ inline double real_exp(double x) { return ::exp(x); }
-__device__ inline double real_log(double x) { return ::log(x); }
+__device__ inline double Max(double x) { return fmax(x, y); }
+__device__ inline double Exp(double x) { return exp(x); }
+__device__ inline double Log(double x) { return log(x); }
 
 )";
 
 static constexpr char predefined_cuda_functions_fp16[] = R"(
-__device__ inline float real_exp(float x) { return ::expf(x); }
-__device__ inline float real_log(float x) { return ::logf(x); }
+__device__ inline float Max(float x, float y) { return fmaxf(x, y); }
+__device__ inline float Exp(float x) { return expf(x); }
+__device__ inline float Log(float x) { return logf(x); }
 
 #define __HALF_TO_US(var) *(reinterpret_cast<unsigned short *>(&(var)))
 #define __HALF_TO_CUS(var) *(reinterpret_cast<const unsigned short *>(&(var)))
