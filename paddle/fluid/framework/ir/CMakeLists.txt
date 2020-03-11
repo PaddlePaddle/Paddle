@@ -78,6 +78,7 @@ pass_library(fc_elementwise_layernorm_fuse_pass base)
 pass_library(multihead_matmul_fuse_pass inference)
 if(WITH_GPU)
     pass_library(cudnn_placement_pass base DEPS placement_pass_base)
+    pass_library(embedding_eltwise_layernorm_fuse_pass inference)
 endif()
 
 if(WITH_MKLDNN)
