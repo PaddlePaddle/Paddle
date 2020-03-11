@@ -477,7 +477,7 @@ class DataParallel(layers.Layer):
 
                 import paddle.fluid as fluid
                 with fluid.dygraph.guard():
-                    strategy=dygraph.prepare_context()
+                    strategy=fluid.dygraph.prepare_context()
                     emb = fluid.dygraph.Embedding([10, 10])
                     emb = fluid.dygraph.DataParallel(emb, strategy)
 
@@ -511,7 +511,7 @@ class DataParallel(layers.Layer):
 
                 import paddle.fluid as fluid
                 with fluid.dygraph.guard():
-                    strategy=dygraph.prepare_context()
+                    strategy=fluid.dygraph.prepare_context()
                     emb = fluid.dygraph.Embedding([10, 10])
                     emb = fluid.dygraph.DataParallel(emb, strategy)
 
@@ -551,7 +551,7 @@ class DataParallel(layers.Layer):
 
                 import paddle.fluid as fluid
                 with fluid.dygraph.guard():
-                    strategy=dygraph.prepare_context()
+                    strategy=fluid.dygraph.prepare_context()
                     emb = fluid.dygraph.Embedding([10, 10])
                     emb = fluid.dygraph.DataParallel(emb, strategy)
 
