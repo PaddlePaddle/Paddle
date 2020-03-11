@@ -20,9 +20,7 @@ from paddle.fluid.core import CPUPlace
 from paddle.fluid.executor import Executor
 from paddle.fluid.optimizer import SGD
 
-from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase
-from paddle.fluid.incubate.fleet.base.role_maker import UserDefinedRoleMaker
 from paddle.fluid.contrib.mixed_precision.decorator import OptimizerWithMixedPrecision
 
 
@@ -30,9 +28,8 @@ class Mode:
     """
     There are various mode for fleet, each of them is designed for different model.
     """
-    TRANSPILER = 1
-    PSLIB = 2
-    COLLECTIVE = 3
+    PS = 1
+    COLLECTIVE = 2
 
 
 class Fleet(object):
@@ -223,7 +220,7 @@ class Fleet(object):
         pass
 
     @abc.abstractmethod
-    def init_server(self, model_dir=None):
+    def init_server(self, model_dir=None, **kwargs):
         pass
 
     @abc.abstractmethod
