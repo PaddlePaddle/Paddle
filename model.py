@@ -317,7 +317,7 @@ class StaticGraphAdapter(object):
         metrics = []
         for metric, state in zip(self.model._metrics, metric_states):
             metrics.append(metric.update(*state))
-        return losses, metrics
+        return (losses, metrics) if len(metrics) > 0 else losses
 
     def _make_program(self, inputs):
         prog = self._orig_prog.clone()
@@ -453,7 +453,8 @@ class DynamicGraphAdapter(object):
             metric_outs = metric.add_metric_op(outputs, [to_variable(l) for l in labels])
             m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
-        return [to_numpy(l) for l in losses], metrics
+        return ([to_numpy(l) for l in losses], metrics) \
+                if len(metrics) > 0 else [to_numpy(l) for l in losses]
 
     def eval(self, inputs, labels, device='CPU', device_ids=None):
         assert self.model._loss_function, \
@@ -469,7 +470,8 @@ class DynamicGraphAdapter(object):
             metric_outs = metric.add_metric_op(outputs, [to_variable(l) for l in labels])
             m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
-        return [to_numpy(l) for l in losses], metrics
+        return ([to_numpy(l) for l in losses], metrics) \
+                if len(metrics) > 0 else [to_numpy(l) for l in losses]
 
     def test(self, inputs, device='CPU', device_ids=None):
         super(Model, self.model).eval()
