@@ -538,6 +538,31 @@ static int BuildFusionV2(Graph* graph, const std::string& name_scope,
     multihead_op_desc.SetAttr("alpha", scale_attr);
     multihead_op_desc.SetAttr("head_number", head_number);
 
+    auto* mul0_op_desc = mul0->Op();
+    auto* mul1_op_desc = mul1->Op();
+    auto* mul2_op_desc = mul2->Op();
+
+    if (mul0_op_desc->HasAttr("enable_int8")) {
+      PADDLE_ENFORCE_EQ(mul0_op_desc->HasAttr("Input_scale") &&
+                            mul0_op_desc->HasAttr("weight_scale") &&
+                            mul1_op_desc->HasAttr("weight_scale") &&
+                            mul2_op_desc->HasAttr("weight_scale"),
+                        true,
+                        platform::errors::InvalidArgument(
+                            "mul in multihead_matmul is set to use int8, but "
+                            "no input scale or weight scales found."));
+      multihead_op_desc.SetAttr("enable_int8",
+                                mul0_op_desc->GetAttr("enable_int8"));
+      multihead_op_desc.SetAttr("X_scale",
+                                mul0_op_desc->GetAttr("Input_scale"));
+      multihead_op_desc.SetAttr("weight0_scale",
+                                mul0_op_desc->GetAttr("weight_scale"));
+      multihead_op_desc.SetAttr("weight1_scale",
+                                mul1_op_desc->GetAttr("weight_scale"));
+      multihead_op_desc.SetAttr("weight2_scale",
+                                mul2_op_desc->GetAttr("weight_scale"));
+    }
+
     auto* multihead = graph->CreateOpNode(&multihead_op_desc);
 
     IR_NODE_LINK_TO(layer_norm_out, multihead);
