@@ -215,6 +215,18 @@ def create_api_shape_node(tensor_shape_node):
     return api_shape_node
 
 
+def get_constant_variable_node(name, value, shape=[1], dtype='int64'):
+    return gast.parse('%s = fluid.layers.fill_constant(%s, "%s", %s)' %
+                      (name, str(shape), dtype, str(value)))
+
+
+def get_attribute_full_name(node):
+    assert isinstance(
+        node,
+        gast.Attribute), "Input non-Attribute node to get attribute full name"
+    return astor.to_source(gast.gast_to_ast(node)).strip()
+
+
 def generate_name_node(name_ids, ctx=gast.Load()):
     """
     Generate list or gast.Tuple of ast.Name for Return statement.
