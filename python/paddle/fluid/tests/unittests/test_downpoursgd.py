@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Testcases for Downpour."""
+"""Test cases for Downpour."""
 
 from __future__ import print_function
 
@@ -31,14 +31,16 @@ from google.protobuf import text_format
 import paddle.fluid.incubate.fleet.parameter_server.pslib.ps_pb2 as pslib
 from paddle.fluid.trainer_factory import TrainerFactory
 
+cache_path = os.path.expanduser('~/.cache/paddle/dataset')
 
-cache_path = os.path.expanduser('~/.cache/paddle/dataset/')
 
 class TestListenAndServOp(unittest.TestCase):
-    """TestListenAndServOp."""
+    """This class is Test Listen And ServOp."""
 
     def setUp(self):
-        pass
+        """This function is set Up."""
+        if not os.path.exits(cache_path):
+            os.makedirs(cache_path)
 
     def test_device_work_use_cvm(self):
         """test device work use_cvm."""
@@ -46,8 +48,10 @@ class TestListenAndServOp(unittest.TestCase):
             pass
         else:
             print(sys.platform)
-            if not os.path.exists('{}/{}'.format(cache_path, 'fleet_desc.prototxt')):
-                cmd = "wget --no-check-certificate https://pslib.bj.bcebos.com/fleet_desc.prototxt -P {}".format(cache_path)
+            if not os.path.exists('{}/{}'.format(cache_path,
+                                                 'fleet_desc.prototxt')):
+                cmd = "wget --no-check-certificate https://pslib.bj.bcebos.com/fleet_desc.prototxt -P {}/".format(
+                    cache_path)
                 os.system(cmd)
             x = fluid.layers.data(name='x', shape=[1], dtype='int64')
             x_emb = fluid.layers.embedding(
@@ -96,13 +100,15 @@ class TestListenAndServOp(unittest.TestCase):
             trainer._gen_trainer_desc()
 
     def test_device_work(self):
-        """test devicve worker."""
+        """This function is test devicve worker."""
         if sys.platform == 'win32' or sys.platform == 'sys.platform':
             pass
         else:
             print(sys.platform)
-            if not os.path.exists('{}/{}'.format(cache_path, 'fleet_desc.prototxt')):
-                cmd = "wget --no-check-certificate https://pslib.bj.bcebos.com/fleet_desc.prototxt -P {}".format(cache_path)
+            if not os.path.exists('{}/{}'.format(cache_path,
+                                                 'fleet_desc.prototxt')):
+                cmd = "wget --no-check-certificate https://pslib.bj.bcebos.com/fleet_desc.prototxt -P {}/".format(
+                    cache_path)
                 os.system(cmd)
             x = fluid.layers.data(name='x', shape=[1], dtype='int64')
             x_emb = fluid.layers.embedding(
@@ -151,13 +157,15 @@ class TestListenAndServOp(unittest.TestCase):
             trainer._gen_trainer_desc()
 
     def test_downpour_opt_work(self):
-        """test devicve worker."""
+        """This function is test devicve worker."""
         if sys.platform == 'win32' or sys.platform == 'sys.platform':
             pass
         else:
             print(sys.platform)
-            if not os.path.exists('{}/{}'.format(cache_path, 'fleet_desc.prototxt')):
-                cmd = "wget --no-check-certificate https://pslib.bj.bcebos.com/fleet_desc.prototxt -P {}".format(cache_path)
+            if not os.path.exists('{}/{}'.format(cache_path,
+                                                 'fleet_desc.prototxt')):
+                cmd = "wget --no-check-certificate https://pslib.bj.bcebos.com/fleet_desc.prototxt -P {}/".format(
+                    cache_path)
                 os.system(cmd)
             x = fluid.layers.data(name='x', shape=[1], dtype='int64')
             x_emb = fluid.layers.embedding(
