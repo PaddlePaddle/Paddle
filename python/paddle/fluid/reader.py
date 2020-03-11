@@ -166,6 +166,21 @@ class DataLoaderBase(object):
 
 
 class DataLoader(object):
+
+    # def __init__(self,
+    #              dataset,
+    #              feed_list=None,
+    #              batch_sampler=None,
+    #              collate_fn=None,
+    #              shuffle=False,
+    #              batch_size=1,
+    #              drop_last=False,
+    #              num_workers=0,
+    #              use_buffer_reader=True,
+    #              timeout=0,
+    #              worker_init_fn):
+    #     pass
+
     @staticmethod
     def from_generator(feed_list=None,
                        capacity=None,
