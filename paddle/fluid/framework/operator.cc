@@ -1052,6 +1052,7 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
         "There are no kernels which are registered in the %s operator.", type_);
   }
 
+  VLOG(3) << "SetFeedVariable name=";
   OpKernelMap& kernels = kernels_iter->second;
 
   auto expected_kernel_key = this->GetExpectedKernelType(
