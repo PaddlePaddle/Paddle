@@ -370,8 +370,7 @@ template <typename T>
 class LRNGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("Out", this->Output("Out"));
@@ -379,7 +378,6 @@ class LRNGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
-    return std::unique_ptr<T>(op);
   }
 };
 

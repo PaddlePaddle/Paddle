@@ -40,7 +40,6 @@ test_funcs = [basic_test]
 
 class TestArray(unittest.TestCase):
     def setUp(self):
-        self.input = np.ones(5).astype("int32")
         self.input = np.random.random((3)).astype('int32')
         self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
@@ -71,8 +70,6 @@ class TestArray(unittest.TestCase):
             self.dygraph_func = func
             static_res = self.run_static_mode()
             dygraph_res = self.run_dygraph_mode()
-            print(static_res)
-            print(dygraph_res)
             self.assertTrue(
                 np.allclose(dygraph_res, static_res),
                 msg='dygraph res is {}\nstatic_res is {}'.format(dygraph_res,

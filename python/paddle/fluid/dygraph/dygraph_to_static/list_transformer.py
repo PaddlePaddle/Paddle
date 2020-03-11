@@ -38,7 +38,6 @@ class ListTransformer(gast.NodeTransformer):
         self.node_to_wrapper_map = self.static_analysis_visitor.get_node_to_wrapper_map(
         )
         var_env = self.static_analysis_visitor.get_var_env()
-        # TODO: Consider that Tensor.shape is used in sub function and sub_scopes is empty
         var_env.cur_scope = var_env.cur_scope.sub_scopes[0]
         self.scope_var_type_dict = var_env.get_scope_var_type()
 

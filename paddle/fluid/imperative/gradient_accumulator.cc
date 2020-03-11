@@ -144,8 +144,8 @@ void SelectedRowsAddToTensor(const framework::Variable& src,
 // Note(chenweihang): when two selected rows need to be added,
 //   adding one to another is not equal to merging two selected rows
 //   to one then add it to a empty selected rows, the after is correct
-std::shared_ptr<VarBase> SelectedRowsMerge(const framework::Variable& src1,
-                                           const framework::Variable& src2) {
+std::shared_ptr<VariableWrapper> SelectedRowsMerge(
+    const framework::Variable& src1, const framework::Variable& src2) {
   auto& src_selected_rows1 = src1.Get<framework::SelectedRows>();
   auto& src_selected_rows2 = src2.Get<framework::SelectedRows>();
   auto place = src_selected_rows1.value().place();
@@ -155,7 +155,7 @@ std::shared_ptr<VarBase> SelectedRowsMerge(const framework::Variable& src1,
   std::vector<const framework::SelectedRows*> src_selected_rows;
   src_selected_rows.emplace_back(&src_selected_rows1);
   src_selected_rows.emplace_back(&src_selected_rows2);
-  auto dst_var = std::make_shared<VarBase>(false, "Temp");
+  auto dst_var = std::make_shared<VariableWrapper>("Temp");
   auto* dst_selected_rows =
       dst_var->MutableVar()->GetMutable<framework::SelectedRows>();
 
@@ -188,7 +188,8 @@ std::shared_ptr<VarBase> SelectedRowsMerge(const framework::Variable& src1,
       framework::DataTypeToString(data_type)));
 }
 
-void VarBaseAdd(std::shared_ptr<VarBase> var, VarBase* var_) {
+void VariableWrapperAdd(std::shared_ptr<VariableWrapper> var,
+                        VariableWrapper* var_) {
   auto& src = var->Var();
   auto* dst = var_->MutableVar();
   if (dst->IsType<framework::LoDTensor>()) {
@@ -208,7 +209,7 @@ void VarBaseAdd(std::shared_ptr<VarBase> var, VarBase* var_) {
       *dst = std::move(*(var->MutableVar()));
       var_->SetType(framework::proto::VarType::LOD_TENSOR);
     } else if (src.IsType<framework::SelectedRows>()) {
-      std::shared_ptr<VarBase> temp = SelectedRowsMerge(src, *dst);
+      auto temp = SelectedRowsMerge(src, *dst);
       *dst = std::move(*(temp->MutableVar()));
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -218,7 +219,8 @@ void VarBaseAdd(std::shared_ptr<VarBase> var, VarBase* var_) {
   }
 }
 
-platform::Place GetPlaceOfVarBase(const std::shared_ptr<VarBase>& var) {
+static platform::Place GetPlaceOfVar(
+    const std::shared_ptr<VariableWrapper>& var) {
   platform::Place place;
   if (var->Var().IsType<framework::LoDTensor>()) {
     place = var->Var().Get<framework::LoDTensor>().place();
@@ -231,10 +233,10 @@ platform::Place GetPlaceOfVarBase(const std::shared_ptr<VarBase>& var) {
   return place;
 }
 
-void EagerGradientAccumulator::Add(std::shared_ptr<VarBase> var,
+void EagerGradientAccumulator::Add(std::shared_ptr<VariableWrapper> var,
                                    size_t trace_id) {
   auto* dst_var = var_->MutableVar();
-  platform::Place place = GetPlaceOfVarBase(var);
+  platform::Place place = GetPlaceOfVar(var);
   if (!var_->OverridedStopGradient()) {
     VLOG(3) << "Sum Gradient for: " << var_->Name();
     if (cur_cnt_ == 0) {
@@ -243,7 +245,7 @@ void EagerGradientAccumulator::Add(std::shared_ptr<VarBase> var,
       }
       *dst_var = std::move(*(var->MutableVar()));
     } else {
-      VarBaseAdd(var, var_);
+      VariableWrapperAdd(var, var_);
     }
   } else {
     if (!var_->Var().IsInitialized() ||
@@ -268,10 +270,10 @@ void EagerGradientAccumulator::Add(std::shared_ptr<VarBase> var,
   ++cur_cnt_;
 }
 
-void SortedGradientAccumulator::Add(std::shared_ptr<VarBase> var,
+void SortedGradientAccumulator::Add(std::shared_ptr<VariableWrapper> var,
                                     size_t trace_id) {
   auto* dst_var = var_->MutableVar();
-  platform::Place place = GetPlaceOfVarBase(var);
+  platform::Place place = GetPlaceOfVar(var);
   if (!var_->OverridedStopGradient()) {
     if (ref_cnt_ == 1) {
       if (var->Var().IsType<framework::SelectedRows>()) {
@@ -291,11 +293,12 @@ void SortedGradientAccumulator::Add(std::shared_ptr<VarBase> var,
         return;
       }
 
-      std::sort(tmp_grad_vars_.begin(), tmp_grad_vars_.end(),
-                [](const std::pair<std::shared_ptr<VarBase>, size_t>& p1,
-                   const std::pair<std::shared_ptr<VarBase>, size_t>& p2) {
-                  return p1.second > p2.second;
-                });
+      std::sort(
+          tmp_grad_vars_.begin(), tmp_grad_vars_.end(),
+          [](const std::pair<std::shared_ptr<VariableWrapper>, size_t>& p1,
+             const std::pair<std::shared_ptr<VariableWrapper>, size_t>& p2) {
+            return p1.second > p2.second;
+          });
 
 #ifdef PADDLE_WITH_CUDA
       if (paddle::platform::is_gpu_place(place)) {
@@ -310,7 +313,7 @@ void SortedGradientAccumulator::Add(std::shared_ptr<VarBase> var,
               var_->SetType(framework::proto::VarType::SELECTED_ROWS);
               *dst_var = std::move(*(tmp_grad_vars_[i].first->MutableVar()));
             } else {
-              VarBaseAdd(tmp_grad_vars_[i].first, var_);
+              VariableWrapperAdd(tmp_grad_vars_[i].first, var_);
             }
           }
         }
@@ -321,7 +324,7 @@ void SortedGradientAccumulator::Add(std::shared_ptr<VarBase> var,
             *dst_var = std::move(*(tmp_grad_vars_[0].first->MutableVar()));
           }
           if (tmp_grad_vars_[i].first->Var().IsType<framework::LoDTensor>()) {
-            VarBaseAdd(tmp_grad_vars_[i].first, var_);
+            VariableWrapperAdd(tmp_grad_vars_[i].first, var_);
           }
         }
       } else {
@@ -333,7 +336,7 @@ void SortedGradientAccumulator::Add(std::shared_ptr<VarBase> var,
           *dst_var = std::move(*(tmp_grad_vars_[0].first->MutableVar()));
         }
         for (size_t i = 1; i < tmp_grad_vars_.size(); ++i) {
-          VarBaseAdd(tmp_grad_vars_[i].first, var_);
+          VariableWrapperAdd(tmp_grad_vars_[i].first, var_);
         }
 #ifdef PADDLE_WITH_CUDA
       }

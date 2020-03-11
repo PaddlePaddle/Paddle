@@ -28,8 +28,9 @@ const framework::Tensor* GetTensorFromVar(const framework::Variable& var) {
   }
 }
 
-void PreparedOp::PrepareData(
-    const platform::Place& place, const NameVarBaseMap& ins,
+template <typename VarType>
+static void PrepareDataImpl(
+    const platform::Place& place, const NameVarMap<VarType>& ins,
     const framework::OperatorWithKernel& op,
     const framework::OpKernelType& expected_kernel_key) {
   for (const auto& name_pair : ins) {
@@ -59,22 +60,37 @@ void PreparedOp::PrepareData(
   }
 }
 
+void PreparedOp::PrepareData(
+    const platform::Place& place, const NameVarMap<VarBase>& ins,
+    const framework::OperatorWithKernel& op,
+    const framework::OpKernelType& expected_kernel_key) {
+  PrepareDataImpl<VarBase>(place, ins, op, expected_kernel_key);
+}
+
+void PreparedOp::PrepareData(
+    const platform::Place& place, const NameVarMap<VariableWrapper>& ins,
+    const framework::OperatorWithKernel& op,
+    const framework::OpKernelType& expected_kernel_key) {
+  PrepareDataImpl<VariableWrapper>(place, ins, op, expected_kernel_key);
+}
+
 PreparedOp::PreparedOp(const framework::OperatorBase& op,
                        const framework::RuntimeContext& ctx,
-                       framework::OperatorWithKernel::OpKernelFunc func,
+                       const framework::OperatorWithKernel::OpKernelFunc& func,
                        platform::DeviceContext* dev_ctx,
                        std::vector<framework::KernelConfig>* kernel_configs)
     : op_(op),
       ctx_(ctx),
-      func_(std::move(func)),
+      func_(func),
       dev_ctx_(dev_ctx),
       kernel_configs_(kernel_configs) {}
 
-PreparedOp PreparedOp::Prepare(const NameVarBaseMap& ins,
-                               const NameVarBaseMap& outs,
-                               const framework::OperatorWithKernel& op,
-                               platform::Place place,
-                               const framework::AttributeMap* attrs) {
+template <typename VarType>
+PreparedOp PrepareOpImpl(const NameVarMap<VarType>& ins,
+                         const NameVarMap<VarType>& outs,
+                         const framework::OperatorWithKernel& op,
+                         platform::Place place,
+                         const framework::AttributeMap& attrs) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
@@ -90,8 +106,9 @@ PreparedOp PreparedOp::Prepare(const NameVarBaseMap& ins,
   auto& kernels = kernels_iter->second;
 
   framework::RuntimeContext ctx({}, {});
-  auto expected_kernel_key = op.GetExpectedKernelType(DygraphExecutionContext(
-      op, framework::Scope(), *dev_ctx, ctx, nullptr, ins, outs, attrs));
+  auto expected_kernel_key =
+      op.GetExpectedKernelType(DygraphExecutionContext<VarType>(
+          op, framework::Scope(), *dev_ctx, ctx, nullptr, ins, outs, attrs));
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
   auto kernel_iter = kernels.find(expected_kernel_key);
@@ -108,24 +125,57 @@ PreparedOp PreparedOp::Prepare(const NameVarBaseMap& ins,
     place = dev_ctx->GetPlace();
   }
 
-  PrepareData(place, ins, op, expected_kernel_key);
+  PrepareDataImpl<VarType>(place, ins, op, expected_kernel_key);
   return PreparedOp(op, ctx, kernel_iter->second, dev_ctx, kernel_configs);
 }
 
-void PreparedOp::Run(const NameVarBaseMap* in, const NameVarBaseMap* out,
-                     const framework::AttributeMap* attrs) {
+PreparedOp PreparedOp::Prepare(const NameVarMap<VarBase>& ins,
+                               const NameVarMap<VarBase>& outs,
+                               const framework::OperatorWithKernel& op,
+                               const platform::Place& place,
+                               const framework::AttributeMap& attrs) {
+  return PrepareOpImpl<VarBase>(ins, outs, op, place, attrs);
+}
+
+PreparedOp PreparedOp::Prepare(const NameVarMap<VariableWrapper>& ins,
+                               const NameVarMap<VariableWrapper>& outs,
+                               const framework::OperatorWithKernel& op,
+                               const platform::Place& place,
+                               const framework::AttributeMap& attrs) {
+  return PrepareOpImpl<VariableWrapper>(ins, outs, op, place, attrs);
+}
+
+template <typename VarType>
+static void PreparedOpRunImpl(
+    const framework::OperatorBase& op, const framework::RuntimeContext& ctx,
+    const framework::OperatorWithKernel::OpKernelFunc& func,
+    platform::DeviceContext* dev_ctx,
+    std::vector<framework::KernelConfig>* kernel_configs,
+    const NameVarMap<VarType>& ins, const NameVarMap<VarType>& outs,
+    const framework::AttributeMap& attrs) {
   // TODO(zjl): remove scope in dygraph
   framework::Scope scope;
 
-  DygraphInferShapeContext infer_shape_ctx(in, out, attrs);
+  DygraphInferShapeContext<VarType> infer_shape_ctx(&ins, &outs, &attrs);
+  static_cast<const framework::OperatorWithKernel&>(op).InferShape(
+      &infer_shape_ctx);
 
-  framework::OperatorWithKernel* op_ker =
-      (framework::OperatorWithKernel*)(&op_);
+  func(DygraphExecutionContext<VarType>(op, scope, *dev_ctx, ctx,
+                                        kernel_configs, ins, outs, attrs));
+}
 
-  op_ker->InferShape(&infer_shape_ctx);
+void PreparedOp::Run(const NameVarMap<VarBase>& ins,
+                     const NameVarMap<VarBase>& outs,
+                     const framework::AttributeMap& attrs) {
+  PreparedOpRunImpl<VarBase>(op_, ctx_, func_, dev_ctx_, kernel_configs_, ins,
+                             outs, attrs);
+}
 
-  func_(DygraphExecutionContext(op_, scope, *dev_ctx_, ctx_, kernel_configs_,
-                                *in, *out, attrs));
+void PreparedOp::Run(const NameVarMap<VariableWrapper>& ins,
+                     const NameVarMap<VariableWrapper>& outs,
+                     const framework::AttributeMap& attrs) {
+  PreparedOpRunImpl<VariableWrapper>(op_, ctx_, func_, dev_ctx_,
+                                     kernel_configs_, ins, outs, attrs);
 }
 
 }  // namespace imperative
