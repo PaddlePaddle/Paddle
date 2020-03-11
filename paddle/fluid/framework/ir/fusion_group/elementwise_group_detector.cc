@@ -66,7 +66,8 @@ bool GroupDetector::IsFusionGroupOp(const Node* n) {
   proto::VarType::Type i_data_type = proto::VarType::FP32;
   proto::VarType::Type o_data_type = proto::VarType::FP32;
 
-  for (const auto& i_node : n->inputs) {
+  for (auto* i_node : n->inputs) {
+    if (!i_node->Var()) return false;
     if (i_node->Var()->GetType() != proto::VarType::LOD_TENSOR) {
       return false;
     }
@@ -79,7 +80,8 @@ bool GroupDetector::IsFusionGroupOp(const Node* n) {
   }
 
   is_first = true;
-  for (const auto& o_node : n->outputs) {
+  for (auto* o_node : n->outputs) {
+    if (!o_node->Var()) return false;
     if (o_node->Var()->GetType() != proto::VarType::LOD_TENSOR) {
       return false;
     }
