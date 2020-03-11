@@ -189,7 +189,7 @@ class TestFlListenAndServOp(unittest.TestCase):
                 'trainer_recv_program.dms', 'trainer_main_program.dms',
                 'trainer_send_program.dms'
             ]
-            if not os.path.exits(cache_path):
+            if not os.path.exists(cache_path):
                 os.makedirs(cache_path)
             prefix = 'wget --no-check-certificate https://paddlefl.bj.bcebos.com/test_fl_listen_and_serv/'
             for f in file_list:
