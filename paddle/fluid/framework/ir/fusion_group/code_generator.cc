@@ -60,18 +60,21 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
       //  - X, Y in forward operations
       //  - X, Y, Out, out@GRAD in backward operations
       std::vector<int> input_ids;
-      std::vector<std::string> input_names =
-          OperationMap::Instance().Get(op->Type()).input_names;
+      auto operation = OperationMap::Instance().Get(op->Type());
+      std::vector<std::string> input_names = operation.input_names;
+
       for (auto& name : input_names) {
         // Some input vars are not used in grad ops, such as
         // "elementwise_add_grad", where "X", "Y" and "Out" are not used.
-        if (HasInput(node, name) && op->Input(name).size() >= 1U) {
-          // TODO(liuyiqun): support duplicated input.
-          PADDLE_ENFORCE_NE(
-              var_ids.find(op->Input(name)[0]), var_ids.end(),
-              platform::errors::InvalidArgument(
-                  "Input(%s) of operation %s is not set.", name, op->Type()));
-          input_ids.push_back(var_ids[op->Input(name)[0]]);
+
+        if ((HasInput(node, name) && op->Input(name).size() >= 1U)) {
+          for (size_t i = 0; i < op->Input(name).size(); i++) {
+            PADDLE_ENFORCE_NE(
+                var_ids.find(op->Input(name)[i]), var_ids.end(),
+                platform::errors::InvalidArgument(
+                    "Input(%s) of operation %s is not set.", name, op->Type()));
+            input_ids.push_back(var_ids[op->Input(name)[i]]);
+          }
         } else {
           input_ids.push_back(-1);
         }

@@ -212,8 +212,7 @@ class GRUUnitGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("gru_unit_grad");
 
     op->SetInput("Input", this->Input("Input"));
@@ -232,7 +231,6 @@ class GRUUnitGradOpMaker : public framework::SingleGradOpMaker<T> {
                   this->InputGrad("HiddenPrev"));
     op->SetOutput(framework::GradVarName("Weight"), this->InputGrad("Weight"));
     op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
-    return std::unique_ptr<T>(op);
   }
 };
 
