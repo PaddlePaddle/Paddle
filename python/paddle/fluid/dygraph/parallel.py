@@ -37,10 +37,10 @@ def prepare_context(strategy=None):
     if strategy.nranks < 2:
         return
     assert framework.in_dygraph_mode() is True, \
-        "dygraph.parallel.prepare_context should be used with dygrahp mode."
+        "dygraph.prepare_context should be used with dygrahp mode."
     place = framework._current_expected_place()
     assert place is not None, \
-        "dygraph.parallel.prepare_context should be used in fluid.dygraph.guard(place) guard."
+        "dygraph.prepare_context should be used in fluid.dygraph.guard(place) guard."
     if isinstance(place, core.CUDAPlace):
         parallel_helper._set_parallel_ctx(
             core.NCCLParallelContext(strategy, place))
@@ -222,12 +222,20 @@ Env = ParallelEnv
 
 class DataParallel(layers.Layer):
     """
-    Runs the module with data parallelism.
+    Run the dygraph module with data parallelism.
 
-    Currently, DataParallel only supports to run the dynamic graph
+    Currently, DataParallel class only supports to run the dynamic graph
     with multi-process. The usage is:
-    `python -m paddle.distributed.launch --gpus 2 dynamic_graph_test.py`.
+    `python -m paddle.distributed.launch --selected_gpus=0,1 dynamic_graph_test.py`.
     And the content of `dynamic_graph_test.py` is the code of examples.
+
+    Args:
+        layers(Layer): The module that should be executed by data parallel.
+        strategy(ParallelStrategy): The strategy of data parallelism, contains 
+            environment configuration related to parallel execution.
+
+    Returns:
+        Layer: The data paralleled module.
 
     Examples:
         .. code-block:: python
@@ -239,17 +247,17 @@ class DataParallel(layers.Layer):
            from paddle.fluid.dygraph.nn import Linear
            from paddle.fluid.dygraph.base import to_variable
 
-           place = fluid.CUDAPlace(0)
+           place = place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
            with fluid.dygraph.guard(place=place):
 
                # prepare the data parallel context
-               strategy=dygraph.parallel.prepare_context()
+               strategy=dygraph.prepare_context()
 
                linear = Linear(1, 10, act="softmax")
                adam = fluid.optimizer.AdamOptimizer()
 
                # make the module become the data parallelism module
-               linear = dygraph.parallel.DataParallel(linear, strategy)
+               linear = dygraph.DataParallel(linear, strategy)
 
                x_data = np.random.random(size=[10, 1]).astype(np.float32)
                data = to_variable(x_data)
@@ -267,13 +275,6 @@ class DataParallel(layers.Layer):
 
                adam.minimize(avg_loss)
                linear.clear_gradients()
-
-    Args:
-        layers(Layer): The module that should be executed by data parallel.
-        strategy(ParallelStrategy): The strategy of data parallelism.
-
-    Returns:
-        Layer: The data paralleled module.
     """
 
     def __init__(self, layers, strategy):
@@ -293,10 +294,41 @@ class DataParallel(layers.Layer):
         directly.
 
         Args:
-            loss(Layer): The loss of the current Model.
+            loss(Variable): The loss of the current Model.
 
         Returns:
-            Layer: the scaled loss.
+            Variable: the scaled loss.
+
+        Examples:
+            .. code-block:: python
+
+                import numpy as np
+                import paddle.fluid as fluid
+                import paddle.fluid.dygraph as dygraph
+                from paddle.fluid.optimizer import AdamOptimizer
+                from paddle.fluid.dygraph.nn import Linear
+                from paddle.fluid.dygraph.base import to_variable
+
+                place = place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
+                with fluid.dygraph.guard(place=place):
+                    strategy=dygraph.prepare_context()
+                    linear = Linear(1, 10, act="softmax")
+                    adam = fluid.optimizer.AdamOptimizer()
+                    linear = dygraph.DataParallel(linear, strategy)
+
+                    x_data = np.random.random(size=[10, 1]).astype(np.float32)
+                    data = to_variable(x_data)
+                    hidden = linear(data)
+                    avg_loss = fluid.layers.mean(hidden)
+
+                    # scale the loss according to the number of trainers.
+                    avg_loss = linear.scale_loss(avg_loss)
+
+                    avg_loss.backward()
+                    linear.apply_collective_grads()
+
+                    adam.minimize(avg_loss)
+                    linear.clear_gradients()
         """
         if not self._is_data_parallel_mode():
             return loss
@@ -350,6 +382,36 @@ class DataParallel(layers.Layer):
     def apply_collective_grads(self):
         """
         AllReduce the Parameters' gradient.
+
+        Examples:
+            .. code-block:: python
+
+                import numpy as np
+                import paddle.fluid as fluid
+                import paddle.fluid.dygraph as dygraph
+                from paddle.fluid.optimizer import AdamOptimizer
+                from paddle.fluid.dygraph.nn import Linear
+                from paddle.fluid.dygraph.base import to_variable
+
+                place = place = fluid.CUDAPlace(fluid.dygraph.ParallelEnv().dev_id)
+                with fluid.dygraph.guard(place=place):
+                    strategy=dygraph.prepare_context()
+                    linear = Linear(1, 10, act="softmax")
+                    adam = fluid.optimizer.AdamOptimizer()
+                    linear = dygraph.DataParallel(linear, strategy)
+
+                    x_data = np.random.random(size=[10, 1]).astype(np.float32)
+                    data = to_variable(x_data)
+                    hidden = linear(data)
+                    avg_loss = fluid.layers.mean(hidden)
+                    avg_loss = linear.scale_loss(avg_loss)
+                    avg_loss.backward()
+
+                    # collect the gradients of trainers.
+                    linear.apply_collective_grads()
+
+                    adam.minimize(avg_loss)
+                    linear.clear_gradients()
         """
         if not self._is_data_parallel_mode():
             return
@@ -415,9 +477,9 @@ class DataParallel(layers.Layer):
 
                 import paddle.fluid as fluid
                 with fluid.dygraph.guard():
-                    strategy=dygraph.parallel.prepare_context()
+                    strategy=dygraph.prepare_context()
                     emb = fluid.dygraph.Embedding([10, 10])
-                    emb = dygraph.parallel.DataParallel(emb, strategy)
+                    emb = fluid.dygraph.DataParallel(emb, strategy)
 
                     state_dict = emb.state_dict()
                     fluid.save_dygraph( state_dict, "paddle_dy")
@@ -449,9 +511,9 @@ class DataParallel(layers.Layer):
 
                 import paddle.fluid as fluid
                 with fluid.dygraph.guard():
-                    strategy=dygraph.parallel.prepare_context()
+                    strategy=dygraph.prepare_context()
                     emb = fluid.dygraph.Embedding([10, 10])
-                    emb = dygraph.parallel.DataParallel(emb, strategy)
+                    emb = fluid.dygraph.DataParallel(emb, strategy)
 
                     state_dict = emb.state_dict()
                     fluid.save_dygraph( state_dict, "paddle_dy")
@@ -489,9 +551,9 @@ class DataParallel(layers.Layer):
 
                 import paddle.fluid as fluid
                 with fluid.dygraph.guard():
-                    strategy=dygraph.parallel.prepare_context()
+                    strategy=dygraph.prepare_context()
                     emb = fluid.dygraph.Embedding([10, 10])
-                    emb = dygraph.parallel.DataParallel(emb, strategy)
+                    emb = fluid.dygraph.DataParallel(emb, strategy)
 
                     state_dict = emb.state_dict()
                     fluid.save_dygraph( state_dict, "paddle_dy")
