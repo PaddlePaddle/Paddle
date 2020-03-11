@@ -68,12 +68,15 @@ class NameVisitor(gast.NodeVisitor):
     '''
 
     def __init__(self, root_node):
-        # Set of gast.Name
+        # Set of gast.Name or gast.Attribute for variables
         self.current_seen_vars = set()
+        # list of nodes of current visit node
+        self.ancestor_nodes = []
+
         # List of gast.While/gast.For nodes
         self.current_loop = []
 
-        # Mapping from gast.While/gast.For to string name of vars
+        # Mapping from gast.While/gast.For to variable nodes
         self.before_loop_body_vars = defaultdict(set)
         self.in_loop_vars = defaultdict(set)
 
@@ -82,16 +85,6 @@ class NameVisitor(gast.NodeVisitor):
     def is_control_flow_loop(self, node):
         # TODO: make a better condition
         return True
-
-    def _var_nodes_to_names(self, node_set, ctx_filter_set=None):
-        ret = set()
-        for node in node_set:
-            if ctx_filter_set is None or type(node.ctx) in ctx_filter_set:
-                if isinstance(node, gast.Name):
-                    ret.add(node.id)
-                elif isinstance(node, gast.Attribute):
-                    ret.add(get_attribute_full_name(node))
-        return ret
 
     def get_loop_var_names(self, node):
         assert isinstance(node, (gast.While,
@@ -120,17 +113,28 @@ class NameVisitor(gast.NodeVisitor):
         return loop_var_names, create_var_names
 
     def visit_Name(self, node):
+        if self._is_call_func_name_node(node):
+            self.generic_visit(node)
+            return
+
         self.current_seen_vars.add(node)
         for loop_node in self.current_loop:
             self.in_loop_vars[loop_node].add(node)
         self.generic_visit(node)
 
+    def visit(self, node):
+        self.ancestor_nodes.append(node)
+        method = 'visit_' + node.__class__.__name__
+        visitor = getattr(self, method, self.generic_visit)
+        ret = visitor(node)
+        self.ancestor_nodes.pop()
+        return ret
+
     def visit_Attribute(self, node):
-        attr_full_name = get_attribute_full_name(node)
-        if callable(attr_full_name):
-            # Not a variable
+        if self._is_call_func_name_node(node):
             return
 
+        attr_full_name = get_attribute_full_name(node)
         self.current_seen_vars.add(node)
         for loop_node in self.current_loop:
             self.in_loop_vars[loop_node].add(node)
@@ -150,6 +154,23 @@ class NameVisitor(gast.NodeVisitor):
         self.before_loop_body_vars[node] = copy.copy(self.current_seen_vars)
         self.generic_visit(node)
         self.current_loop.pop()
+
+    def _var_nodes_to_names(self, node_set, ctx_filter_set=None):
+        ret = set()
+        for node in node_set:
+            if ctx_filter_set is None or type(node.ctx) in ctx_filter_set:
+                if isinstance(node, gast.Name):
+                    ret.add(node.id)
+                elif isinstance(node, gast.Attribute):
+                    ret.add(get_attribute_full_name(node))
+        return ret
+
+    def _is_call_func_name_node(self, node):
+        if self.ancestor_nodes:
+            parent_node = self.ancestor_nodes[-1]
+            if isinstance(parent_node, gast.Call) and parent_node.func == node:
+                return True
+        return False
 
 
 class LoopTransformer(gast.NodeTransformer):

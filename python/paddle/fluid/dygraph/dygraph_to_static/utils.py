@@ -224,12 +224,7 @@ def get_attribute_full_name(node):
     assert isinstance(
         node,
         gast.Attribute), "Input non-Attribute node to get attribute full name"
-
-    if isinstance(node.value, gast.Name):
-        return node.value.id + "." + node.attr
-    elif isinstance(node.value, gast.Constant):
-        return str(node.value.value) + "." + node.attr
-    return get_attribute_full_name(node.value) + "." + node.attr
+    return astor.to_source(gast.gast_to_ast(node)).strip()
 
 
 def generate_name_node(name_ids, ctx=gast.Load()):
