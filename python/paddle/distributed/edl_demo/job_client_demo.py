@@ -134,9 +134,7 @@ class PodManager(object):
 
         wd = os.getcwd()
         pod_path = args.pod_path + "/{}".format(pod.id)
-        #print("change to dir:", pod_path)
         os.chdir(pod_path)
-        #print("changed dir:", os.getcwd())
 
         #cmd = [sys.executable, "-u", args.training_script
         #       ] + args.training_script_args

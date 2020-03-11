@@ -21,7 +21,7 @@ import os
 import signal
 
 #loggers={}
-logger = logging.getLogger()
+logger = logging.getLogger("root")
 logger.propagate = False
 
 
@@ -233,16 +233,16 @@ class Gloo(object):
             self._try_num = try_num
 
             iface = self.__get_default_iface()
-            if not self._gloo.init(rank,
-                                   len(self._endpoints),
-                                   hdfs.hdfs_path.rstrip("/") + "/edl_job_gloo",
-                                   hdfs.hdfs_name, hdfs.hdfs_ugi, iface,
-                                   self._job_id):
+            try:
+                self._gloo.init(rank,
+                                len(self._endpoints),
+                                hdfs.hdfs_path.rstrip("/") + "/edl_job_gloo",
+                                hdfs.hdfs_name, hdfs.hdfs_ugi, iface,
+                                self._job_id)
+            except Exception as e:
                 self._clear()
                 logger.warning("can't init gloo")
-                return False
-
-        return True
+                raise e
 
     def _loop(self, func, name):
         step = 0
@@ -316,16 +316,15 @@ class Gloo(object):
         return "lo"
 
 
-def get_logger(log_level):
-    logger = logging.getLogger()
-    if not logger.handlers:
-        logger.setLevel(log_level)
+def get_logger(log_level, name="root"):
+    logger = logging.getLogger(name)
+    logger.setLevel(log_level)
 
-        log_handler = logging.StreamHandler()
-        log_format = logging.Formatter(
-            '%(levelname)s %(asctime)s %(filename)s:%(lineno)d] %(message)s')
-        log_handler.setFormatter(log_format)
-        logger.addHandler(log_handler)
+    log_handler = logging.StreamHandler()
+    log_format = logging.Formatter(
+        '%(levelname)s %(asctime)s %(filename)s:%(lineno)d] %(message)s')
+    log_handler.setFormatter(log_format)
+    logger.addHandler(log_handler)
 
     return logger
 

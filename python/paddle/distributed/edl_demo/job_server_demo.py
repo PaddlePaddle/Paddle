@@ -121,7 +121,7 @@ class JobInfoManager(object):
                 step_id += 1
                 #print("del 2 pods")
                 self._del_tail(self._job_id, 2, step_id)
-                time.sleep(15)
+                time.sleep(20 * 60)
 
                 step_id += 1
                 #print("add 2 pods")

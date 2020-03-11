@@ -301,15 +301,15 @@ def edl_barrier_start(edl_env, comm, hdfs, timeout=-1):
     pod = None
     while True:
         cluster, pod = edl_env.get_cluster(hdfs)
+        if pod is None:  # me is dead
+            logger.info("This pod is not exist so exit(0)! Cluster:{} pod:{}".
+                        format(cluster, pod))
+            sys.exit(0)
+
         ret = edl_utils.barrier_terminate_world_trainers(
             cluster=cluster, pod=pod, comm=comm)
         if ret:
             break
-
-        if pod is None:  # me is dead
-            logger.info("This pod is not exist so exit(0)! Cluster:{} pod:{}".
-                        format(cluster, pod.id))
-            sys.exit(0)
 
         logger.warning("Can't barrier in cluster:{}".format(cluster))
         time.sleep(1)
