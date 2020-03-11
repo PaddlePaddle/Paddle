@@ -31,6 +31,7 @@ void SetFeedVariable(Scope* scope, const LoDTensor& input,
   Variable* g_feed_value = scope->Var(var_name);
   auto& feed_inputs = *(g_feed_value->GetMutable<FeedFetchList>());
   if (index >= feed_inputs.size()) {
+    VLOG(3) << "SetFeedVariable name=" << var_name << " index=" << index;
     feed_inputs.resize(index + 1);
   }
   // shared data with input tensor
