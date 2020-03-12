@@ -24,11 +24,6 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-#define SPLIT_PLUGIN_COMMON_FUNC                                        \
-  const char* getPluginType() const override { return "split_plugin"; } \
-  int getNbOutputs() const override { return output_length_.size(); }   \
-  int initialize() override
-
 class SplitPlugin : public PluginTensorRT {
  public:
   SplitPlugin() {}
@@ -45,7 +40,10 @@ class SplitPlugin : public PluginTensorRT {
     return new SplitPlugin(axis_, output_length_);
   }
 
-  SPLIT_PLUGIN_COMMON_FUNC;
+  const char* getPluginType() const override { return "split_plugin"; }
+  int getNbOutputs() const override { return output_length_.size(); }
+  int initialize() override;
+
   bool supportsFormat(nvinfer1::DataType type,
                       nvinfer1::PluginFormat format) const override;
   nvinfer1::Dims getOutputDimensions(int index,
@@ -85,17 +83,19 @@ class SplitPluginDynamic : public DynamicPluginTensorRT {
       : axis_(axis), output_length_(output_lengths) {}
 
   SplitPluginDynamic(void const* serial_data, size_t serial_length) {
-    deserializeBase(serial_data, serial_length);
-    DeserializeValue(&serial_data, &serial_length, &axis_);
-    DeserializeValue(&serial_data, &serial_length, &output_length_);
+    //  deserializeBase(serial_data, serial_length);
+    //  DeserializeValue(&serial_data, &serial_length, &axis_);
+    // DeserializeValue(&serial_data, &serial_length, &output_length_);
   }
 
-  ~SplitPluginDynamic() {}
   nvinfer1::IPluginV2DynamicExt* clone() const override {
     return new SplitPluginDynamic(axis_, output_length_);
   }
 
-  SPLIT_PLUGIN_COMMON_FUNC;
+  const char* getPluginType() const override { return "split_plugin"; }
+  int getNbOutputs() const override { return output_length_.size(); }
+  int initialize() override;
+
   size_t getSerializationSize() const override;
   void serialize(void* buffer) const override;
 

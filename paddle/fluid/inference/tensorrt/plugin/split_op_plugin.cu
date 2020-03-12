@@ -130,7 +130,8 @@ int SplitPlugin::enqueue(int batchSize, const void* const* inputs,
         cudaMemcpyAsync(output_ptrs, h_odatas,
                         d_output_ptrs.size() * sizeof(float*),
                         cudaMemcpyHostToDevice, stream),
-        platform::errors::External("CUDA Memcpy failed."));
+        platform::errors::External(
+            "CUDA Memcpy failed during split plugin run."));
 
     split_kernel<<<grid, block, 0, stream>>>(
         d_segment_offsets_.size(), d_segment_offsets_ptr, input_ptr,
@@ -147,7 +148,8 @@ int SplitPlugin::enqueue(int batchSize, const void* const* inputs,
         cudaMemcpyAsync(output_ptrs, h_odatas,
                         d_output_ptrs.size() * sizeof(half*),
                         cudaMemcpyHostToDevice, stream),
-        platform::errors::External("CUDA Memcpy failed."));
+        platform::errors::External(
+            "CUDA Memcpy failed during split plugin run."));
     split_kernel<<<grid, block, 0, stream>>>(
         d_segment_offsets_.size(), d_segment_offsets_ptr, input_ptr,
         output_ptrs, inner_cols_, axis_shape_, outer_rows);
@@ -160,15 +162,16 @@ int SplitPlugin::enqueue(int batchSize, const void* const* inputs,
 int SplitPluginDynamic::initialize() { return 0; }
 
 size_t SplitPluginDynamic::getSerializationSize() const {
-  return SerializedSize(getPluginType()) + SerializedSize(axis_) +
-         SerializedSize(output_length_) + getBaseSerializationSize();
+  // return SerializedSize(getPluginType()) + SerializedSize(axis_) +
+  //       SerializedSize(output_length_) + getBaseSerializationSize();
+  return 0;
 }
 
 void SplitPluginDynamic::serialize(void* buffer) const {
-  SerializeValue(&buffer, getPluginType());
-  serializeBase(buffer);
-  SerializeValue(&buffer, axis_);
-  SerializeValue(&buffer, output_length_);
+  // SerializeValue(&buffer, getPluginType());
+  // serializeBase(buffer);
+  // SerializeValue(&buffer, axis_);
+  // SerializeValue(&buffer, output_length_);
 }
 
 nvinfer1::DimsExprs SplitPluginDynamic::getOutputDimensions(
@@ -266,7 +269,8 @@ int SplitPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
         cudaMemcpyAsync(output_ptrs, h_odatas,
                         d_output_ptrs.size() * sizeof(float*),
                         cudaMemcpyHostToDevice, stream),
-        platform::errors::External("CUDA Memcpy failed."));
+        platform::errors::External(
+            "CUDA Memcpy failed during split plugin run."));
 
     split_kernel<<<grid, block, 0, stream>>>(
         d_segment_offsets.size(), d_segment_offsets_ptr, input_ptr, output_ptrs,
@@ -283,7 +287,8 @@ int SplitPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
         cudaMemcpyAsync(output_ptrs, h_odatas,
                         d_output_ptrs.size() * sizeof(half*),
                         cudaMemcpyHostToDevice, stream),
-        platform::errors::External("CUDA Memcpy failed."));
+        platform::errors::External(
+            "CUDA Memcpy failed during split plugin run."));
 
     split_kernel<<<grid, block, 0, stream>>>(
         d_segment_offsets.size(), d_segment_offsets_ptr, input_ptr, output_ptrs,

@@ -64,10 +64,9 @@ class SwishPluginDynamic : public DynamicPluginTensorRT {
  public:
   explicit SwishPluginDynamic(const float beta) : beta_(beta) {}
   SwishPluginDynamic(void const* serialData, size_t serialLength) {
-    deserializeBase(serialData, serialLength);
-    DeserializeValue(&serialData, &serialLength, &beta_);
+    // deserializeBase(serialData, serialLength);
+    // DeserializeValue(&serialData, &serialLength, &beta_);
   }
-  ~SwishPluginDynamic() {}
   nvinfer1::IPluginV2DynamicExt* clone() const override {
     return new SwishPluginDynamic(beta_);
   }

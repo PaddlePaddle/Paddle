@@ -118,17 +118,22 @@ bool SwishPlugin::supportsFormat(nvinfer1::DataType type,
 // Dynamic Plugin below.
 #if IS_TRT_VERSION_GE(6000)
 
-int SwishPluginDynamic::initialize() { return 0; }
+int SwishPluginDynamic::initialize() {
+  setPluginNamespace("swish");
+  getPluginNamespace();
+  return 0;
+}
 
 size_t SwishPluginDynamic::getSerializationSize() const {
-  return getBaseSerializationSize() + SerializedSize(beta_) +
-         SerializedSize(getPluginType());
+  // return getBaseSerializationSize() + SerializedSize(beta_) +
+  //       SerializedSize(getPluginType());
+  return 0;
 }
 
 void SwishPluginDynamic::serialize(void *buffer) const {
-  SerializeValue(&buffer, getPluginType());
-  serializeBase(buffer);
-  SerializeValue(&buffer, beta_);
+  // SerializeValue(&buffer, getPluginType());
+  // serializeBase(buffer);
+  // SerializeValue(&buffer, beta_);
 }
 
 nvinfer1::DimsExprs SwishPluginDynamic::getOutputDimensions(

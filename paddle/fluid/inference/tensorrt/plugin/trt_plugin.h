@@ -33,13 +33,6 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-#define PLUGIN_COMMON_FUNC                                     \
-  virtual const char* getPluginVersion() const { return "1"; } \
-  virtual const char* getPluginType() const = 0;               \
-  int getNbOutputs() const { return 1; }                       \
-  int initialize() override { return 0; }                      \
-  void terminate() override {}
-
 class PluginTensorRT;
 
 typedef std::function<PluginTensorRT*(const void*, size_t)>
@@ -55,7 +48,12 @@ class PluginTensorRT : public nvinfer1::IPluginExt {
   PluginTensorRT(const void* serialized_data, size_t length) {}
   virtual ~PluginTensorRT() {}
 
-  PLUGIN_COMMON_FUNC;
+  virtual const char* getPluginVersion() const { return "1"; }
+  virtual const char* getPluginType() const = 0;
+  int getNbOutputs() const { return 1; }
+  int initialize() override { return 0; }
+  void terminate() override{};
+
   virtual size_t getSerializationSize() = 0;
   virtual void serialize(void* buffer) = 0;
 
@@ -113,10 +111,14 @@ class DynamicPluginTensorRT : public nvinfer1::IPluginV2DynamicExt {
  public:
   DynamicPluginTensorRT() {}
   DynamicPluginTensorRT(const void* serialized_data, size_t length) {}
-  virtual ~DynamicPluginTensorRT() {}
 
   // The Func in IPluginExt or IpluginExtV2
-  PLUGIN_COMMON_FUNC;
+  virtual const char* getPluginVersion() const { return "1"; }
+  virtual const char* getPluginType() const = 0;
+  int getNbOutputs() const { return 1; }
+  int initialize() override { return 0; }
+  void terminate() override{};
+
   virtual size_t getSerializationSize() const = 0;
   virtual void serialize(void* buffer) const = 0;
 
