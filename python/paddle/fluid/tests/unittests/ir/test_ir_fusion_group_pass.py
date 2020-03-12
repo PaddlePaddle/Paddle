@@ -155,10 +155,10 @@ class FusionGroupPassTestFP16(FusionGroupPassTest):
             tmp_5 = layers.cast(tmp_4, dtype=dtype)
 
         self.num_fused_ops = 1
-        self.fetch_list = [tmp_5]
+        self.fetch_list = [tmp_5.name]
 
         if self.backward:
-            self.num_fused_ops = 2
+            self.num_fused_ops = 4
             self.append_gradinets(tmp_5)
 
 
@@ -184,8 +184,12 @@ class FusionGroupPassCastTest(FusionGroupPassTest):
             tmp_1 = layers.cast(tmp_0, dtype="double")
             tmp_2 = layers.cast(tmp_1, dtype="float32")
 
-        self.fetch_list = [tmp_0, tmp_1, tmp_2]
+        self.fetch_list = [tmp_0.name, tmp_1.name, tmp_2.name]
         self.num_fused_ops = 1
+
+        if self.backward:
+            self.num_fused_ops = 2
+            self.append_gradinets(tmp_2)
 
     def setUp(self):
         self.build_program("float64")

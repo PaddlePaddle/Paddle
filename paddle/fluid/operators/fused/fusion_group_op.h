@@ -25,7 +25,7 @@ namespace operators {
 static void MutableMultiTypeData(
     std::vector<paddle::framework::LoDTensor*>* var,
     const std::vector<std::string>& data_type, const platform::Place& place) {
-  for (size_t i = 0; i < (*var).size(); i++) {
+  for (size_t i = 0; i < var->size(); i++) {
     if (data_type[i] == "float") {
       (*var)[i]->mutable_data<float>(place);
     } else if (data_type[i] == "double") {
