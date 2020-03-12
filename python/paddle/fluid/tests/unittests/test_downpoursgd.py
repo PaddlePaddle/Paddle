@@ -39,7 +39,7 @@ class TestListenAndServOp(unittest.TestCase):
 
     def setUp(self):
         """This function is set Up."""
-        if not os.path.exsits(cache_path):
+        if not os.path.exists(cache_path):
             os.makedirs(cache_path)
 
     def test_device_work_use_cvm(self):
