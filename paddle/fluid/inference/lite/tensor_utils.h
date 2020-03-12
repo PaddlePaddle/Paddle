@@ -27,6 +27,9 @@ template <typename DstTensor, typename SrcTensor>
 void TensorCopyAsync(DstTensor* dst, const SrcTensor& src,
                      const platform::DeviceContext& ctx);
 
+template <typename DstTensor, typename SrcTensor>
+void TensorDataShare(DstTensor* dst, SrcTensor* src);
+
 }  // namespace utils
 }  // namespace lite
 }  // namespace inference
