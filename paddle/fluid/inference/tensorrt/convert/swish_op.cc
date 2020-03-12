@@ -36,10 +36,20 @@ class SwishOpConverter : public OpConverter {
     // Get attrs
     float beta = boost::get<float>(op_desc.GetAttr("beta"));
 
-    plugin::SwishPlugin* plugin = new plugin::SwishPlugin(beta);
-
-    nvinfer1::IPluginLayer* layer =
-        engine_->AddPlugin(&input, input_num, plugin);
+    nvinfer1::ILayer* layer = nullptr;
+    if (engine_->with_dynamic_shape()) {
+#if IS_TRT_VERSION_GE(6000)
+      plugin::SwishPluginDynamic* plugin = new plugin::SwishPluginDynamic(beta);
+      layer = engine_->AddPluginV2(&input, input_num, plugin);
+#else
+      PADDLE_THROW(platform::errors::Fatal(
+          "You are running the TRT Dynamic Shape mode, need to confirm that "
+          "your TRT version is no less than 6.0"));
+#endif
+    } else {
+      plugin::SwishPlugin* plugin = new plugin::SwishPlugin(beta);
+      layer = engine_->AddPlugin(&input, input_num, plugin);
+    }
 
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "swish", {output_name}, test_mode);
