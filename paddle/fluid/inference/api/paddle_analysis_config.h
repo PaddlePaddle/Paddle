@@ -319,6 +319,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void EnableLiteEngine(
       AnalysisConfig::Precision precision_mode = Precision::kFloat32,
+      bool zero_copy = false,
       const std::vector<std::string>& passes_filter = {},
       const std::vector<std::string>& ops_filter = {});
 
@@ -579,6 +580,7 @@ struct PD_INFER_DECL AnalysisConfig {
   std::vector<std::string> lite_passes_filter_;
   std::vector<std::string> lite_ops_filter_;
   Precision lite_precision_mode_;
+  bool lite_zero_copy_;
 
   bool thread_local_stream_{false};
 

@@ -465,6 +465,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetLitePrecisionMode(config_.lite_precision_mode_);
     argument_.SetLitePassesFilter(config_.lite_passes_filter_);
     argument_.SetLiteOpsFilter(config_.lite_ops_filter_);
+    argument_.SetLiteZeroCopy(config_.lite_zero_copy_);
     LOG(INFO) << "Lite subgraph engine is enabled";
   }
 

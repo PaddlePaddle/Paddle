@@ -248,6 +248,9 @@ void LiteSubgraphPass::SetUpEngine(
   serialize_params(&config.param, scope, repetitive_params);
   config.model = program->Proto()->SerializeAsString();
   config.valid_places = {
+      // Notice: The ordering here determines the device where the
+      // input tensor of the Lite engine is located, and then affects
+      // whether tensor sharing is feasible.
       paddle::lite::Place({target_type, precision_type}),
       paddle::lite::Place({target_type, PRECISION(kFloat)}),
       paddle::lite::Place({TARGET(kHost), PRECISION(kFloat)}),
@@ -283,6 +286,7 @@ void LiteSubgraphPass::BuildOperator(
   op_desc->SetAttr("engine_key", unique_key);
   op_desc->SetAttr("enable_int8", Get<bool>("enable_int8"));
   op_desc->SetAttr("use_gpu", Get<bool>("use_gpu"));
+  op_desc->SetAttr("zero_copy", Get<bool>("zero_copy"));
 }
 
 void LiteSubgraphPass::ApplyImpl(framework::ir::Graph* graph) const {

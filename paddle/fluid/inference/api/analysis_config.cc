@@ -132,6 +132,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(lite_precision_mode_);
   CP_MEMBER(lite_passes_filter_);
   CP_MEMBER(lite_ops_filter_);
+  CP_MEMBER(lite_zero_copy_);
 
   // profile related.
   CP_MEMBER(with_profile_);
@@ -464,13 +465,14 @@ void AnalysisConfig::DisableGlogInfo() {
 }
 
 void AnalysisConfig::EnableLiteEngine(
-    AnalysisConfig::Precision precision_mode,
+    AnalysisConfig::Precision precision_mode, bool zero_copy,
     const std::vector<std::string> &passes_filter,
     const std::vector<std::string> &ops_filter) {
   use_lite_ = true;
   lite_precision_mode_ = precision_mode;
   lite_passes_filter_ = passes_filter;
   lite_ops_filter_ = ops_filter;
+  lite_zero_copy_ = zero_copy;
   Update();
 }
 
