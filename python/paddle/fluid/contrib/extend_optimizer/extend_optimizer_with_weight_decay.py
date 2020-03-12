@@ -90,9 +90,7 @@ class DecoupledWeightDecay(object):
                 paddle.fluid.layers.assign(input=updated_param, output=param)
 
         optimize_ops = self.apply_optimize(
-            loss=loss,
-            params_grads=params_grads,
-            startup_program=startup_program)
+            params_grads=params_grads, startup_program=startup_program)
         return optimize_ops, params_grads
 
     def __str__(self):

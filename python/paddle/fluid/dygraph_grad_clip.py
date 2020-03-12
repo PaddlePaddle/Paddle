@@ -23,11 +23,11 @@ from . import layers
 from . import framework
 from . import core
 from .dygraph import base as imperative_base
+from .clip import grad_clip_global_norm, grad_clip_norm, grad_clip_value
 
 __all__ = [
-    'GradClipByValue',
-    'GradClipByNorm',
-    'GradClipByGlobalNorm',
+    'GradClipBase', 'GradClipByValue', 'GradClipByNorm', 'GradClipByGlobalNorm',
+    'ClipByValue', 'ClipByNorm', 'ClipByGlobalNorm'
 ]
 
 
@@ -90,20 +90,21 @@ class GradClipByValue(GradClipBase):
 
     @imperative_base.no_grad
     def __init__(self, min_value, max_value=None):
-
-        if min_value is None:
-            assert (max_value > 0.0)
-            min_value = -max_value
-        else:
-            min_value = float(min_value)
-        self.max_value = max_value
-        self.min_value = min_value
+        if max_value is None:
+            assert (min_value < 0.0)
+            max_value = -min_value
+        self.max_value = float(max_value)
+        self.min_value = float(min_value)
 
     def __str__(self):
-        return "ClipByValue, min = %f, max=%f" % (self.min_value,
-                                                  self.max_value)
+        return "Gradient Clip By Value, min = %f, max=%f" % (self.min_value,
+                                                             self.max_value)
 
     def _clip(self, para_and_grad):
+        if not framework.in_dygraph_mode():
+            return grad_clip_value(
+                para_and_grad, max=self.max_value, min=self.min_value)
+
         out = []
         for p, g in para_and_grad:
             if g is None:
@@ -111,7 +112,6 @@ class GradClipByValue(GradClipBase):
                 continue
 
             new_grad = layers.clip(x=g, min=self.min_value, max=self.max_value)
-
             out.append((p, new_grad))
 
         return out
@@ -169,20 +169,21 @@ class GradClipByNorm(GradClipBase):
 
     @imperative_base.no_grad
     def __init__(self, clip_norm):
-        self.clip_norm = clip_norm
+        self.clip_norm = float(clip_norm)
 
     def __str__(self):
-        return "ClipByNorm, clip_norm=%f" % self.clip_norm
+        return "Gradient Clip By Norm, clip_norm=%f" % self.clip_norm
 
     def _clip(self, para_and_grad):
-        out = []
+        if not framework.in_dygraph_mode():
+            return grad_clip_norm(para_and_grad, self.clip_norm)
 
+        out = []
         for p, g in para_and_grad:
             if g is None:
                 out.append((p, g))
                 continue
             new_g = layers.clip_by_norm(x=g, max_norm=self.clip_norm)
-
             out.append((p, new_g))
 
         return out
@@ -247,17 +248,17 @@ class GradClipByGlobalNorm(GradClipBase):
     """
 
     @imperative_base.no_grad
-    def __init__(self, max_global_norm, dtype='float32'):
-        self.max_global_norm = layers.fill_constant(
-            shape=[1], dtype=dtype, value=max_global_norm)
+    def __init__(self, clip_norm):
+        self.clip_norm = float(clip_norm)
 
     def __str__(self):
-        return "ClipByGlobalNorm, max_global_norm=%f" % (self.max_global_norm)
+        return "Gradient Clip By GlobalNorm, global_norm=%f" % (self.clip_norm)
 
     def _clip(self, para_and_grad):
+        if not framework.in_dygraph_mode():
+            return grad_clip_global_norm(para_and_grad, self.clip_norm)
 
         out = []
-
         norm_arr = []
         for p, g in para_and_grad:
             if g is None:
@@ -273,17 +274,21 @@ class GradClipByGlobalNorm(GradClipBase):
         norm_global = layers.concat(norm_arr)
         norm_global = layers.reduce_sum(norm_global)
         norm_global = layers.sqrt(norm_global)
-
-        clip_scale = self.max_global_norm / (layers.elementwise_max(
-            x=norm_global, y=self.max_global_norm))
-
+        max_global_norm = layers.fill_constant(
+            shape=[1], dtype='float32', value=self.clip_norm)
+        clip_scale = max_global_norm / (layers.elementwise_max(
+            x=norm_global, y=max_global_norm))
         for p, g in para_and_grad:
             if g is None:
                 out.append((p, g))
                 continue
 
             new_grad = g * clip_scale
-
             out.append((p, new_grad))
 
         return out
+
+
+ClipByValue = GradClipByValue
+ClipByNorm = GradClipByNorm
+ClipByGlobalNorm = GradClipByGlobalNorm

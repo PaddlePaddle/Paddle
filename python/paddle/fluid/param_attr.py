@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import six
+import warnings
 
 from .initializer import Initializer, Xavier, Constant
 from .regularizer import WeightDecayRegularizer
@@ -43,8 +44,10 @@ class ParamAttr(object):
         regularizer (WeightDecayRegularizer, optional): Regularization factor. Default None, meaning
                 there is no regularization.
         trainable (bool): Whether this parameter is trainable. Default True.
-        gradient_clip (BaseGradientClipAttr, optional): The method to clip this parameter's
-                gradient. Default None, meaning that there is no gradient clip.
+        gradient_clip (BaseGradientClipAttr, optional): This attribute is deprecated since 2.0. 
+                Please do not use it. The better gradient clip strategy is to clip gradient by 
+                :ref:`api_fluid_grad_clip_value` , :ref:`api_fluid_grad_clip_norm` , 
+                :ref:`api_fluid_grad_clip_global_norm` .
         do_model_average (bool): Whether this parameter should do model average
                 when model average is enabled. Default False.
 
@@ -78,8 +81,19 @@ class ParamAttr(object):
         self.learning_rate = learning_rate
         self.regularizer = regularizer
         self.trainable = trainable
-        self.gradient_clip = gradient_clip
         self.do_model_average = do_model_average
+
+        if gradient_clip is not None:
+            warnings.warn(
+                "Caution! gradient_clip of paddle.fluid.ParamAttr() is deprecated since 2.0 "
+                "and not maintained any more, because it is easily to be misused.\n"
+                "After that, we recommend a new gradient clipping strategy where you "
+                "do gradient clipping through the following API:\n"
+                "1. paddle.fluid.grad_clip_value: clip gradient by value.\n"
+                "2. paddle.fluid.grad_clip_norm: clip gradient by norm.\n"
+                "3. paddle.fluid.grad_clip_global_norm: clip gradient by global norm.\n"
+                "This method can reduce the mistakes, please see documention of these "
+                "gradient clip APIs")
 
     def _set_default_initializer(self, initializer):
         """
@@ -176,7 +190,6 @@ class ParamAttr(object):
             },
             'regularizer': self.regularizer,
             'trainable': self.trainable,
-            'gradient_clip_attr': self.gradient_clip,
             'do_model_average': self.do_model_average
         }
         if with_initializer:

@@ -2409,7 +2409,6 @@ class Block(object):
             trainable = v.trainable
             optimize_attr = v.optimize_attr
             regularizer = v.regularizer
-            gradient_clip_attr = v.gradient_clip_attr
             error_clip = v.error_clip
         elif type(v) == Variable:
             var_type = "Variable"
@@ -2432,7 +2431,6 @@ class Block(object):
                     trainable=trainable,
                     optimize_attr=optimize_attr,
                     regularizer=regularizer,
-                    gradient_clip_attr=gradient_clip_attr,
                     error_clip=error_clip)
             else:
                 var = Parameter(
@@ -2445,7 +2443,6 @@ class Block(object):
                     trainable=trainable,
                     optimize_attr=optimize_attr,
                     regularizer=regularizer,
-                    gradient_clip_attr=gradient_clip_attr,
                     error_clip=error_clip)
         elif var_type == "Variable":
             var = Variable(
@@ -2723,7 +2720,6 @@ class Block(object):
                     trainable=p.trainable,
                     optimize_attr=p.optimize_attr,
                     regularizer=p.regularizer,
-                    gradient_clip_attr=p.gradient_clip_attr,
                     error_clip=p.error_clip,
                     name=v.name)
             else:
@@ -2737,7 +2733,6 @@ class Block(object):
                     trainable=p.trainable,
                     optimize_attr=p.optimize_attr,
                     regularizer=p.regularizer,
-                    gradient_clip_attr=p.gradient_clip_attr,
                     error_clip=p.error_clip,
                     name=v.name)
             self.vars[new_p.name] = new_p
@@ -4646,8 +4641,6 @@ class Parameter(Variable):
             Default: {'learning_rate': 1.0}
         regularizer(WeightDecayRegularizer): The Regularizer which will
             be applied on the parameter. Default: None
-        gradient_clip_attr(BaseGradientClipAttr): The gradient clip strategy
-            which will be applied on the parameter. Default: None
         do_model_average(bool): True if the model average strategy will
             be applied on this parameter.
     """
@@ -4687,8 +4680,6 @@ class Parameter(Variable):
 
         self.regularizer = kwargs.get('regularizer', None)
 
-        self.gradient_clip_attr = kwargs.get('gradient_clip_attr', None)
-
         self.do_model_average = kwargs.get('do_model_average', None)
 
         self.is_distributed = False
@@ -4723,7 +4714,7 @@ class Parameter(Variable):
         if with_details:
             res_str = Variable.to_string(self, throw_on_error, True)
             additional_attr = ("trainable", "optimize_attr", "regularizer",
-                               "gradient_clip_attr", "do_model_average")
+                               "do_model_average")
             for attr_name in additional_attr:
                 res_str += "%s: %s\n" % (attr_name,
                                          cpt.to_text(getattr(self, attr_name)))
@@ -4752,8 +4743,6 @@ class ParamBase(core.VarBase):
             Default: {'learning_rate': 1.0}
         regularizer(WeightDecayRegularizer): The Regularizer which will
             be applied on the ParamBase. Default: None
-        gradient_clip_attr(BaseGradientClipAttr): The gradient clip strategy
-            which will be applied on the ParamBase. Default: None
         do_model_average(bool): True if the model average strategy will
             be applied on this ParamBase.
     """
@@ -4791,8 +4780,6 @@ class ParamBase(core.VarBase):
         self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
 
         self.regularizer = kwargs.get('regularizer', None)
-
-        self.gradient_clip_attr = kwargs.get('gradient_clip_attr', None)
 
         self.do_model_average = kwargs.get('do_model_average', None)
 

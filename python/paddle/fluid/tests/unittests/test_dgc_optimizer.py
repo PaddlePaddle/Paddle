@@ -82,8 +82,7 @@ class TestDGCMomentumOptimizer(unittest.TestCase):
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(
             len(dgc_momentum_optimizer.get_accumulators()), accumulator_count)
-        with framework.program_guard(program, init_program):
-            opts = dgc_momentum_optimizer.apply_gradients(params_grads)
+        opts = dgc_momentum_optimizer.apply_optimize(params_grads, init_program)
         self.assertEqual(len(opts), 2)
         sgd_op = opts[-1]
         self.assertEqual([op.type for op in opts], ["scale", name])

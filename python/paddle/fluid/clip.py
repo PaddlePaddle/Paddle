@@ -16,19 +16,18 @@ from __future__ import print_function
 
 import copy
 import six
+import warnings
 
 import functools
 from . import layers
 from . import framework
 from . import core
 from . import name_scope
+from .dygraph import base as imperative_base
 
 __all__ = [
-    'set_gradient_clip',
-    'ErrorClipByValue',
-    'GradientClipByValue',
-    'GradientClipByNorm',
-    'GradientClipByGlobalNorm',
+    'set_gradient_clip', 'ErrorClipByValue', 'grad_clip_value',
+    'grad_clip_norm', 'grad_clip_global_norm'
 ]
 
 
@@ -116,182 +115,216 @@ def error_clip_callback(block, context):
             error_clip._append_clip_op(block, grad_n)
 
 
-class BaseGradientClipAttr(object):
-    def __str__(self):
-        raise NotImplementedError()
-
-    def _process_context(self, context, param, grad):
-        raise NotImplementedError()
-
-    def _create_operators(self, param, grad):
-        raise NotImplementedError()
-
-
-class NullGradientClipAttr(BaseGradientClipAttr):
-    def __str__(self):
-        return "Null"
-
-    def _process_context(self, context, param, grad):
-        pass
-
-    def _create_operators(self, param, grad):
-        return param, grad
-
-
-class GradientClipByValue(BaseGradientClipAttr):
+@framework.dygraph_not_support
+def set_gradient_clip(clip, param_list=None, program=None):
     """
-    Clips gradient values to the range [min, max].
+    This API is deprecated since 2.0. Please do not use it. The better
+    gradient clip strategy is to clip by :ref:`api_fluid_grad_clip_value` ,
+    :ref:`api_fluid_grad_clip_norm` , :ref:`api_fluid_grad_clip_global_norm` .
+    """
+    warnings.warn(
+        "Caution! paddle.fluid.clip.set_gradient_clip is deprecated since 2.0 "
+        "and not maintained any more, because it is easily to be misused.\n"
+        "After that, we recommend a new gradient clipping strategy where you "
+        "do gradient clipping through the following API:\n"
+        "1. paddle.fluid.grad_clip_value: clip gradient by value.\n"
+        "2. paddle.fluid.grad_clip_norm: clip gradient by norm.\n"
+        "3. paddle.fluid.grad_clip_global_norm: clip gradient by global norm.\n"
+        "This method can reduce the mistakes, please see documention of these "
+        "gradient clip APIs")
 
-    Given a tensor ``t``, this operation clips its value to ``min`` and ``max`` inplace.
 
-    - Any values less than min are set to ``min``.
-    - Any values greater than max are set to ``max``.
+def _correct_clip_op_role_var(params_grads):
+    for param, grad in params_grads:
+        if grad is None:
+            continue
+        for op in param.block.program.global_block().ops:
+            if 'op_namescope' in op.all_attrs() and op.attr(
+                    "op_namescope") is "gradient_clip":
+                if op.attr('op_role_var'):
+                    param_name = op.attr('op_role_var')[0]
+                    index = 0
+                    for i in range(len(params_grads)):
+                        if params_grads[i][0].name == param_name:
+                            index = i
+                    correct_p_g = [param_name, params_grads[index][1].name]
+                    op._set_attr('op_role_var', correct_p_g)
+
+
+def grad_clip_value(params_grads, max, min=None):
+    """
+    This API is used to clip gradient values to the range [min, max].
+
+    Given a list ``params_grads``, this operation clips its grads to ``min`` and ``max`` inplace.
+    
+    Every element of list ``params_grads`` is pair (param, grad), and  ``params_grads``can be obtained 
+    by optimizer.backward(loss).
+    
+    - Any gradient values less than min are set to ``min``.
+    - Any gradient values greater than max are set to ``max``.
 
     Args:
+        params_grads (list): list of (param, grad) pair to do gradient clipping, it can be obtained by
+            optimizer.backward(loss).
         max (float): The maximum value to clip by.
         min (float, optional): The minimum value to clip by. if not set by user, \
-        will be set to -max by framework.
+            will be set to -max by framework.
 
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
-            w_param_attrs = fluid.ParamAttr(name=None,
-              initializer=fluid.initializer.UniformInitializer(
-                  low=-1.0, high=1.0, seed=0),
-              learning_rate=1.0,
-              regularizer=fluid.regularizer.L1Decay(1.0),
-              trainable=True,
-              gradient_clip=fluid.clip.GradientClipByValue(-1.0, 1.0))
-            x = fluid.layers.data(name='x', shape=[10], dtype='float32')
-            y_predict = fluid.layers.fc(
-                input=x, size=1, param_attr=w_param_attrs)
+            import numpy as np
+                        
+            main_prog = fluid.Program()
+            startup_prog = fluid.Program()
+            with fluid.program_guard(
+                    main_program=main_prog, startup_program=startup_prog):
+                image = fluid.data(
+                    name='x', shape=[-1, 2], dtype='float32')
+                predict = fluid.layers.fc(input=image, size=3, act='relu')
+                loss = fluid.layers.mean(predict)
+                
+                sgd_optimizer = fluid.optimizer.SGDOptimizer(learning_rate=0.1)
+                params_grads = sgd_optimizer.backward(loss)
+                params_grads = fluid.grad_clip_value(params_grads, max=1.0, min=0.5)
+                sgd_optimizer.apply_optimize(params_grads)
+                
+                grads = [elem[1] for elem in params_grads]
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            x = np.random.uniform(-100, 100, (10, 2)).astype('float32')
+            exe.run(startup_prog)
+            out = exe.run(main_prog, feed={'x': x}, fetch_list=grads)
+            print("The weights'gradient of fc after clipping is:\n {}"
+                "\n\nThe bias'gradient of fc after clipping is:\n {}"
+                .format(out[0], out[1]))         
     """
 
-    def __init__(self, max, min=None):
-        max = float(max)
-        if min is None:
-            min = -max
-        else:
-            min = float(min)
-        self.max = max
-        self.min = min
+    max = float(max)
+    if min is None:
+        min = -max
+    else:
+        min = float(min)
+    params_and_grads = []
+    with framework.name_scope('gradient_clip'):
+        for p, g in params_grads:
+            if g is None:
+                params_and_grads.append((p, g))
+                continue
 
-    def __str__(self):
-        return "ByValue, min=%f, max=%f" % (self.min, self.max)
+            with p.block.program._optimized_guard([p, g]):
+                new_g = layers.clip(x=g, max=max, min=min)
 
-    def _process_context(self, context, param, grad):
-        pass
+            params_and_grads.append((p, new_g))
 
-    def _create_operators(self, param, grad):
-        new_grad = layers.clip(x=grad, min=self.min, max=self.max)
-        return param, new_grad
+    _correct_clip_op_role_var(params_and_grads)
+    return params_and_grads
 
 
-class GradientClipByNorm(BaseGradientClipAttr):
+def grad_clip_norm(params_grads, clip_norm):
     """
-    Convert the input multidimensional Tensor :math:`X` to a multidimensional Tensor whose L2 norm does not exceed the given two-norm maximum ( :math:`clip\_norm` ).
+    This API is used to clip gradient values by L2 norm.
 
-    The tensor is not passed through this class, but passed through the parameter of ``main_program`` in ``fluid.program_guard``.
-
-    This class limits the L2 norm of the input :math:`X` within :math:`clip\_norm`.
-
+    Given a list ``params_grads``, every element of list ``params_grads`` is pair (param, grad).
+    `grad` is a multidimensional Tensor, this operation limits the L2 norm of `grad` within 
+    `clip_norm`. 
+    
+    - If the L2 norm of `grad` is less than or equal to `clip_norm`, Out will be the same as `grad`. 
+    - If the L2 norm of `grad` is greater than `clip_norm`, `grad` will be linearly scaled to make 
+    the L2 norm of Out equal to `clip_norm`, as shown in the following formula: 
+    
+    
     .. math::
         Out =
         \\left \{
         \\begin{aligned}
-        & X & & if (norm(X) \\leq clip\_norm) \\\\
-        & \\frac{clip\_norm*X}{norm(X)} & & if (norm(X) > clip\_norm) \\\\
+        & grad & & if (norm(grad) \\leq clip\_norm) \\\\
+        & \\frac{clip\_norm*grad}{norm(grad)} & & if (norm(grad) > clip\_norm) \\\\
         \\end{aligned}
         \\right.
 
 
-    where :math:`norm(X)` represents the L2 norm of :math:`X`.
+    where :math:`norm(grad)` represents the L2 norm of :math:`grad`.
 
     .. math::
-        norm(X) = ( \\sum_{i=1}^{n}|x\_i|^2)^{ \\frac{1}{2}}
+        norm(grad) = ( \\sum_{i=1}^{n}|grad\_i|^2)^{ \\frac{1}{2}}
 
     Args:
-        clip_norm(float): The maximum norm value
+        params_grads (list): list of (param, grad) pair to do gradient clipping, it can be obtained by
+            optimizer.backward(loss).
+        clip_norm (float): The maximum norm value
 
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            import paddle.fluid.core as core
             import paddle
-            place = core.CPUPlace()
-            prog = fluid.framework.Program()
-            startup_program = fluid.framework.Program()
+            import paddle.fluid as fluid
+            import numpy as np
+                        
+            main_prog = fluid.Program()
+            startup_prog = fluid.Program()
             with fluid.program_guard(
-                        main_program=prog, startup_program=startup_program):
+                    main_program=main_prog, startup_program=startup_prog):
                 image = fluid.data(
-                    name='x', shape=[None, 784], dtype='float32', lod_level=0)
-                label = fluid.data(
-                    name='y', shape=[None, 1], dtype='int64', lod_level=0)
-                hidden1 = fluid.layers.fc(input=image, size=128, act='relu')
-                hidden2 = fluid.layers.fc(input=hidden1, size=64, act='relu')
-                predict = fluid.layers.fc(
-                    input=hidden2, size=10, act='softmax')
-                cost = fluid.layers.cross_entropy(input=predict, label=label)
-                avg_cost = fluid.layers.mean(cost)
-            prog_clip = prog.clone()
-            avg_cost_clip = prog_clip.block(0).var(avg_cost.name)
-            p_g = fluid.backward.append_backward(loss=avg_cost)
-            p_g_clip = fluid.backward.append_backward(loss=avg_cost_clip)
-            with fluid.program_guard(main_program=prog_clip, startup_program=startup_program):
-                fluid.clip.set_gradient_clip(
-                    fluid.clip.GradientClipByNorm(clip_norm=2.0))
-                p_g_clip = fluid.clip.append_gradient_clip_ops(p_g_clip)
-            grad_list = [elem[1] for elem in p_g]
-            grad_clip_list = [elem[1] for elem in p_g_clip]
-            train_reader = paddle.batch(
-                paddle.reader.shuffle(
-                    paddle.dataset.mnist.train(), buf_size=8192),
-                batch_size=128)
+                    name='x', shape=[-1, 2], dtype='float32')
+                predict = fluid.layers.fc(input=image, size=3, act='relu')
+                loss = fluid.layers.mean(predict)
+                
+                sgd_optimizer = fluid.optimizer.SGDOptimizer(learning_rate=0.1)
+                params_grads = sgd_optimizer.backward(loss)
+                params_grads = fluid.grad_clip_norm(params_grads, clip_norm=5.0)
+                sgd_optimizer.apply_optimize(params_grads)
+                
+                grads = [elem[1] for elem in params_grads]
+                grads_norm = []
+                for grad in grads:
+                    squre = fluid.layers.square(grad)
+                    squre_sum = fluid.layers.reduce_sum(squre)
+                    grad_norm = fluid.layers.sqrt(squre_sum)
+                    grads_norm.append(grad_norm)
+                grads.extend(grads_norm)
 
+            place = fluid.CPUPlace()
             exe = fluid.Executor(place)
-            feeder = fluid.DataFeeder(feed_list=[image, label], place=place)
-            exe.run(startup_program)
-
-            count = 0
-            for data in train_reader():
-                count += 1
-                print("count:%s" % count)
-                if count > 5:
-                   break
-                out = exe.run(prog, feed=feeder.feed(
-                    data), fetch_list=grad_list)
-                out_clip = exe.run(prog_clip,
-                                   feed=feeder.feed(data),
-                                   fetch_list=grad_clip_list)
-
+            x = np.random.uniform(-100, 100, (10, 2)).astype('float32')
+            exe.run(startup_prog)
+            out = exe.run(main_prog, feed={'x': x}, fetch_list=grads)
+            print("The weights'gradient of fc after clipping is:\n {}"
+                "\n\nThe corresponding norm:\n {} "
+                "\n\nThe bias'gradient of fc after clipping is:\n {}"
+                "\n\nThe corresponding norm:\n {}"
+                .format(out[0], out[2], out[1], out[3]))
     """
+    clip_norm = float(clip_norm)
+    params_and_grads = []
+    with framework.name_scope('gradient_clip'):
+        for p, g in params_grads:
+            if g is None:
+                params_and_grads.append((p, g))
+                continue
 
-    def __init__(self, clip_norm):
-        self.clip_norm = clip_norm
+            with p.block.program._optimized_guard([p, g]):
+                new_g = layers.clip_by_norm(x=g, max_norm=clip_norm)
 
-    def __str__(self):
-        return "ByNorm, clip_norm=%f" % self.clip_norm
+            params_and_grads.append((p, new_g))
 
-    def _process_context(self, context, param, grad):
-        pass
-
-    def _create_operators(self, param, grad):
-        new_grad = layers.clip_by_norm(x=grad, max_norm=self.clip_norm)
-        return param, new_grad
+    _correct_clip_op_role_var(params_and_grads)
+    return params_and_grads
 
 
-class GradientClipByGlobalNorm(BaseGradientClipAttr):
+def grad_clip_global_norm(params_grads, clip_norm):
     """
-    Clips values of multiple tensors by the ratio of the sum of their norms.
+    This API is used to clip gradient values by the sum of all `grad's` L2 norm.
 
-    Given a list of tensors ``t_list`` , and a clipping ratio ``clip_norm``,
-    this operation returns a instance of this class as first parameter of
-    ``set_gradient_clip`` method, second parameter of ``set_gradient_clip``
-    is used to compute clipped tensors list ``list_clipped`` (default value
-    is ``None``, compute global norm ``global_norm`` based in all tensors).
-    global norm (global_norm) of all tensors in t_list.
+    Given a list ``params_grads``, every element of list ``params_grads`` is pair (param, grad).
+    `grad` is a multidimensional Tensor, this operation limits the sum of all `grad's` L2 norm within 
+    `clip_norm`. 
+    
+    - If the sum of all `grad's` L2 norm is less than or equal to `clip_norm`, every `grad` will remain the same. 
+    - If the sum of all `grad's` L2 norm is greater than `clip_norm`, every `grad` will be linearly scaled. 
 
     To perform the clipping, the values :math:`t\_list[i]` are set to:
 
@@ -309,250 +342,92 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
     otherwise they're all shrunk by the global ratio.
 
     Args:
+        params_grads (list): list of (param, grad) pair to do gradient clipping, it can be obtained by
+            optimizer.backward(loss).
         clip_norm (float): The maximum norm value
-        group_name (str, optional): The group name for this clip.
 
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            import paddle.fluid.core as core
             import paddle
-
-            place = core.CPUPlace()
-            prog = fluid.framework.Program()
-            startup_program = fluid.framework.Program()
+            import paddle.fluid as fluid
+            import numpy as np
+                        
+            main_prog = fluid.Program()
+            startup_prog = fluid.Program()
             with fluid.program_guard(
-                    main_program=prog, startup_program=startup_program):
-                image = fluid.layers.data(
-                    name='x', shape=[784], dtype='float32')
-                label = fluid.layers.data(name='y', shape=[1], dtype='int64')
-                hidden1 = fluid.layers.fc(input=image, size=128, act='relu')
-                hidden2 = fluid.layers.fc(input=hidden1, size=64, act='relu')
-                predict = fluid.layers.fc(
-                    input=hidden2, size=10, act='softmax')
-                cost = fluid.layers.cross_entropy(input=predict, label=label)
-                avg_cost = fluid.layers.mean(cost)
+                    main_program=main_prog, startup_program=startup_prog):
+                image = fluid.data(
+                    name='x', shape=[-1, 2], dtype='float32')
+                predict = fluid.layers.fc(input=image, size=3, act='relu')
+                loss = fluid.layers.mean(predict)
+                
+                sgd_optimizer = fluid.optimizer.SGDOptimizer(learning_rate=0.1)
+                params_grads = sgd_optimizer.backward(loss)
+                params_grads = fluid.grad_clip_global_norm(params_grads, clip_norm=5.0)
+                sgd_optimizer.apply_optimize(params_grads)
+                
+                grads = [elem[1] for elem in params_grads]
+                squres_sum = []
+                for grad in grads:
+                    squre = fluid.layers.square(grad)
+                    squre_sum = fluid.layers.reduce_sum(squre)
+                    squres_sum.append(squre_sum)
+                    
+                squres_sum = fluid.layers.sums(squres_sum)
+                global_norm = fluid.layers.sqrt(squres_sum)
+                grads.append(global_norm)
 
-            prog_clip = prog.clone()
-            avg_cost_clip = prog_clip.block(0).var(avg_cost.name)
-
-            p_g = fluid.backward.append_backward(loss=avg_cost)
-            p_g_clip = fluid.backward.append_backward(loss=avg_cost_clip)
-
-            with fluid.program_guard(main_program=prog_clip, startup_program=startup_program):
-                fluid.clip.set_gradient_clip(
-                    fluid.clip.GradientClipByGlobalNorm(clip_norm=2.0))
-                p_g_clip = fluid.clip.append_gradient_clip_ops(p_g_clip)
-
-            grad_list = [elem[1] for elem in p_g]
-            grad_clip_list = [elem[1] for elem in p_g_clip]
-
-            train_reader = paddle.batch(
-                paddle.reader.shuffle(
-                    paddle.dataset.mnist.train(), buf_size=8192),
-                batch_size=128)
-
+            place = fluid.CPUPlace()
             exe = fluid.Executor(place)
-            feeder = fluid.DataFeeder(feed_list=[image, label], place=place)
-            exe.run(startup_program)
-
-            count = 0
-            for data in train_reader():
-                count += 1
-                print("count:%s" % count)
-                if count > 5:
-                    break
-                out = exe.run(prog, feed=feeder.feed(
-                    data), fetch_list=grad_list)
-                out_clip = exe.run(prog_clip,
-                                   feed=feeder.feed(data),
-                                   fetch_list=grad_clip_list)
-
+            x = np.random.uniform(-100, 100, (10, 2)).astype('float32')
+            exe.run(startup_prog)
+            out = exe.run(main_prog, feed={'x': x}, fetch_list=grads)
+            print("The weights'gradient of fc after clipping is:\n {}"
+                "\n\nThe bias'gradient of fc after clipping is:\n {}"
+                "\n\nThe corresponding global norm:\n {}"
+                .format(out[0], out[1], out[2]))
     """
 
-    def __init__(self, clip_norm, group_name="default_group"):
-        if not isinstance(group_name, six.string_types):
-            raise TypeError("'group_name' must be a %s." % (six.string_types))
+    clip_norm = float(clip_norm)
+    params_and_grads = []
+    square_list = []
+    with framework.name_scope('gradient_clip'):
+        for p, g in params_grads:
+            if g is None:
+                continue
 
-        self.clip_norm = clip_norm
-        self.group_name = group_name
+            merge_grad = g
+            with p.block.program._optimized_guard([p, g]):
+                if g.type == core.VarDesc.VarType.SELECTED_ROWS:
+                    merge_grad = layers.merge_selected_rows(g)
+                    merge_grad = layers.get_tensor_from_selected_rows(
+                        merge_grad)
 
-    def __str__(self):
-        return "ByGlobalNorm, group_name=%s, clip_norm=%f" % (self.group_name,
-                                                              self.clip_norm)
+                square = layers.square(merge_grad)
+                local_norm_var = layers.reduce_sum(input=square)
+                square_list.append(local_norm_var)
 
-    def _process_context(self, context, param, grad):
-        if self.group_name not in context:
-            context[self.group_name] = []
-            context[self.group_name + "_clip_value"] = self.clip_norm
-            context[self.group_name + "_clip"] = layers.fill_constant(
-                shape=[1], dtype="float32", value=self.clip_norm)
-        else:
-            if not self.clip_norm == context[self.group_name + "_clip_value"]:
-                raise ValueError(
-                    "All parameters' 'clip_norm' of a same group should be the same"
-                )
+        with p.block.program._optimized_guard([p, g]):
+            global_norm_var = layers.sums(square_list)
+            global_norm_var = layers.sqrt(x=global_norm_var)
 
-        merge_grad = grad
-        if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
-            merge_grad = layers.merge_selected_rows(grad)
-            merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
+            clip_var = layers.fill_constant(
+                shape=[1], dtype="float32", value=clip_norm)
 
-        square = layers.square(merge_grad)
-        local_norm_var = layers.reduce_sum(input=square)
-        context[self.group_name].append(local_norm_var)
-
-        self.context = context
-
-    def _create_operators(self, param, grad):
-        group_scale_name = self.group_name + "_scale"
-        if group_scale_name not in self.context:
-            group_norm_var = layers.sums(input=self.context[self.group_name])
-            group_norm_var = layers.sqrt(x=group_norm_var)
-            clip_var = self.context[self.group_name + "_clip"]
-            group_scale_var = layers.elementwise_div(
+            scale_var = layers.elementwise_div(
                 x=clip_var,
                 y=layers.elementwise_max(
-                    x=clip_var, y=group_norm_var))
-            assert group_scale_var.shape == (1, )
-            self.context[group_scale_name] = group_scale_var
+                    x=clip_var, y=global_norm_var))
 
-        new_grad = layers.elementwise_mul(
-            x=grad, y=self.context[group_scale_name])
+        for p, g in params_grads:
+            if g is None:
+                params_and_grads.append((p, g))
+                continue
 
-        return param, new_grad
+            with p.block.program._optimized_guard([p, g]):
+                new_grad = layers.elementwise_mul(x=g, y=scale_var)
+            params_and_grads.append((p, new_grad))
 
-
-@framework.dygraph_not_support
-def set_gradient_clip(clip, param_list=None, program=None):
-    """
-    To specify parameters that require gradient clip.
-
-    Args:
-        clip (BaseGradientClipAttr): An instance of some derived class of BaseGradientClipAttr,
-                for example :ref:`api_fluid_clip_GradientClipByGlobalNorm` ,
-                which describes the type and detailed attributes of required gradient clip.
-        param_list (list(Variable), optional): Parameters that require gradient clip.
-                It can be a list of parameter or a list of parameter's name.
-                Default None, meaning that all parameters in the program will be included.
-        program (Program, optional): The program where parameters are located.
-                Default None, meaning that using :ref:`api_fluid_default_main_program` .
-
-    Returns:
-        None
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-
-            def network():
-                image = fluid.data(name='image', shape=[
-                                   None, 28], dtype='float32')
-                param_attr1 = fluid.ParamAttr("fc1_param")
-                fc1 = fluid.layers.fc(image, size=10, param_attr=param_attr1)
-                param_attr2 = fluid.ParamAttr("fc2_param")
-                fc2 = fluid.layers.fc(fc1, size=10, param_attr=param_attr2)
-                loss = fluid.layers.reduce_mean(fc2)
-                return loss
-
-
-            # network 1: clip all parameter gradient
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
-                loss = network()
-                fluid.clip.set_gradient_clip(
-                    fluid.clip.GradientClipByGlobalNorm(clip_norm=2.0))
-                sgd = fluid.optimizer.SGD(learning_rate=1e-3)
-                sgd.minimize(loss)
-
-            # network 2: clip parameter gradient by name
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
-                loss = network()
-                fluid.clip.set_gradient_clip(
-                    fluid.clip.GradientClipByValue(min=-1.0, max=1.0),
-                    param_list=["fc1_param", "fc2_param"])
-                sgd = fluid.optimizer.SGD(learning_rate=1e-3)
-                sgd.minimize(loss)
-
-            # network 3: clip parameter gradient by var
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
-                loss = network()
-                param_var1 = fluid.default_main_program().global_block().var("fc1_param")
-                param_var2 = fluid.default_main_program().global_block().var("fc2_param")
-                fluid.clip.set_gradient_clip(
-                    fluid.clip.GradientClipByValue(min=-1.0, max=1.0),
-                    param_list=[param_var1, param_var2])
-                sgd = fluid.optimizer.SGD(learning_rate=1e-3)
-                sgd.minimize(loss)
-    """
-    if not isinstance(clip, BaseGradientClipAttr):
-        raise TypeError(
-            "'clip' should be an instance of BaseGradientClipAttr's derived class"
-        )
-    if program is None:
-        program = framework.default_main_program()
-    if param_list is None:
-        param_list = program.block(0).all_parameters()
-    if all(isinstance(elem, six.string_types) for elem in param_list):
-        param_list = [program.block(0).var(elem) for elem in param_list]
-    if not all(isinstance(elem, framework.Parameter) for elem in param_list):
-        raise TypeError(
-            "'param_list' should be a list of Parameter or basestring(parameter's name)."
-        )
-
-    for param in param_list:
-        param.gradient_clip_attr = copy.deepcopy(clip)
-
-
-def append_gradient_clip_ops(param_grads):
-    context = dict()
-    for p, g in param_grads:
-        if g is None:
-            continue
-        with p.block.program._optimized_guard(
-            [p, g]), framework.name_scope('append_clip_@CLIP'):
-            clip_attr = getattr(p, 'gradient_clip_attr', NullGradientClipAttr())
-            if clip_attr is None:
-                clip_attr = NullGradientClipAttr()
-            if not isinstance(clip_attr, BaseGradientClipAttr):
-                raise TypeError(
-                    "clip attribute should be an instance of BaseGradientClipAttr"
-                )
-
-            clip_attr._process_context(context=context, param=p, grad=g)
-
-    res = []
-    param_new_grad_dict = dict()
-    for p, g in param_grads:
-        if g is None:
-            continue
-        with p.block.program._optimized_guard(
-            [p, g]), framework.name_scope('append_graident_clip_@CLIP'):
-            param, new_grad = clip_attr._create_operators(param=p, grad=g)
-            param_new_grad_dict[param.name] = new_grad.name
-            res.append([param, new_grad])
-
-    # change wrong mapping relation between param & grad in clip op
-    clip_flag = '@CLIP'
-    block_id_list = []
-    for p, g in param_grads:
-        if g is None:
-            continue
-        block_id = p.block.idx
-        if block_id in block_id_list:
-            continue
-        block_id_list.append(block_id)
-        for op in p.block.program.global_block().ops:
-            if 'op_namescope' in op.all_attrs() and clip_flag in op.attr(
-                    "op_namescope"):
-                if op.attr('op_role_var'):
-                    param_name = op.attr('op_role_var')[0]
-                    correct_p_g = [param_name, param_new_grad_dict[param_name]]
-                    op._set_attr('op_role_var', correct_p_g)
-    return res
-
-
-ClipByValue = GradientClipByValue
-ClipByNorm = GradientClipByNorm
-ClipByGlobalNorm = GradientClipByGlobalNorm
+    _correct_clip_op_role_var(params_and_grads)
+    return params_and_grads
