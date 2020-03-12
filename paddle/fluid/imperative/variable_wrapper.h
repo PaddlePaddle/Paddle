@@ -99,7 +99,9 @@ class VariableWrapper {
     }
   }
 
-  std::shared_ptr<GradOpNode> GetGradNode() { return grad_node_.lock(); }
+  std::shared_ptr<GradOpNode> GetGradNode() const { return grad_node_.lock(); }
+
+  bool HasGradNode() const { return !grad_node_.expired(); }
 
   framework::proto::VarType::Type DataType() const {
     const framework::Tensor* tensor = nullptr;

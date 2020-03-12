@@ -117,39 +117,6 @@ static framework::RuntimeContext PrepareRuntimeContext(
   return framework::RuntimeContext(std::move(inputs), std::move(outputs));
 }
 
-static const VariableWrapper* GetVariableWrapperPtrImpl(
-    const std::shared_ptr<VariableWrapper>& var) {
-  return var.get();
-}
-
-static const VariableWrapper* GetVariableWrapperPtrImpl(
-    const std::shared_ptr<VarBase>& var) {
-  return var->SharedVar().get();
-}
-
-template <typename T>
-static std::string GetVariableWrapperPtr(const T& var) {
-  const VariableWrapper* v = GetVariableWrapperPtrImpl(var);
-  std::stringstream ss;
-  ss << v;
-  if (v && v->Var().IsType<framework::LoDTensor>() &&
-      v->Var().Get<framework::LoDTensor>().IsInitialized()) {
-    auto& tensor = v->Var().Get<framework::LoDTensor>();
-    framework::Tensor cpu_tensor;
-    framework::TensorCopySync(tensor, platform::CPUPlace(), &cpu_tensor);
-    if (cpu_tensor.type() == framework::proto::VarType::FP32) {
-      auto* p = cpu_tensor.data<float>();
-      int64_t numel = cpu_tensor.numel();
-      ss << "[";
-      for (int64_t i = 0; i < numel; ++i) {
-        ss << p[i] << ", ";
-      }
-      ss << "]";
-    }
-  }
-  return ss.str();
-}
-
 template <typename VarType>
 static std::string DebugString(
     const std::string& name,
@@ -174,8 +141,7 @@ static std::string DebugString(
       if (tensor.IsInitialized()) {
         ss << framework::DataTypeToString(tensor.type()) << ", ";
         ss << tensor.place() << ", ";
-        ss << "(" << tensor.dims() << "), ";
-        ss << GetVariableWrapperPtr(vars[i]);
+        ss << "(" << tensor.dims() << ")";
       } else {
         ss << "NOT_INITED";
       }
@@ -365,7 +331,7 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
   PADDLE_ENFORCE_NOT_NULL(op_kernel, "only support op with kernel");
   auto& info = op.Info();
   if (info.infer_var_type_) {
-    RuntimeInferVarTypeContext<VarType> infer_var_type_ctx(ins, &outs, attrs);
+    RuntimeInferVarTypeContext<VarType> infer_var_type_ctx(ins, outs, attrs);
     info.infer_var_type_(&infer_var_type_ctx);
   }
 
@@ -424,7 +390,8 @@ static void ClearNoNeedBufferInputs(OpBase* op) {
 
       auto& var = each_var->Var();
       PADDLE_ENFORCE_EQ(var.IsType<framework::LoDTensor>(), true,
-                        "Only support LoDTensor");
+                        platform::errors::PermissionDenied(
+                            "NoNeedBufferVars only support LoDTensor"));
       // TODO(zjl): support higher order derivatives
       auto new_var = new VariableWrapper(each_var->Name());
       auto* new_tensor =
@@ -456,6 +423,17 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
     return grad_node;
   } else {
     return nullptr;
+  }
+}
+
+platform::Place GetPlaceOfVar(const std::shared_ptr<VariableWrapper>& var) {
+  if (var->Var().IsType<framework::LoDTensor>()) {
+    return var->Var().Get<framework::LoDTensor>().place();
+  } else if (var->Var().IsType<framework::SelectedRows>()) {
+    return var->Var().Get<framework::SelectedRows>().place();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "only support LoDTensor and SelectedRows in dygraph"));
   }
 }
 

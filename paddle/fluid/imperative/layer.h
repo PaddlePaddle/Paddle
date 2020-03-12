@@ -216,5 +216,7 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
     const NameVarBaseMap& outs, const framework::AttributeMap& attrs,
     const platform::Place& place);
 
+platform::Place GetPlaceOfVar(const std::shared_ptr<VariableWrapper>& var);
+
 }  // namespace imperative
 }  // namespace paddle

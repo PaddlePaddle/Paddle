@@ -33,27 +33,6 @@
 namespace paddle {
 namespace imperative {
 
-static std::string GetVariableWrapperStr(const VariableWrapper* v) {
-  std::stringstream ss;
-  ss << v;
-  if (v && v->Var().IsType<framework::LoDTensor>() &&
-      v->Var().Get<framework::LoDTensor>().IsInitialized()) {
-    auto& tensor = v->Var().Get<framework::LoDTensor>();
-    framework::Tensor cpu_tensor;
-    framework::TensorCopySync(tensor, platform::CPUPlace(), &cpu_tensor);
-    if (cpu_tensor.type() == framework::proto::VarType::FP32) {
-      auto* p = cpu_tensor.data<float>();
-      int64_t numel = cpu_tensor.numel();
-      ss << "[";
-      for (int64_t i = 0; i < numel; ++i) {
-        ss << p[i] << ", ";
-      }
-      ss << "]";
-    }
-  }
-  return ss.str();
-}
-
 BasicEngine::BasicEngine(VarBase* var,
                          const detail::BackwardStrategy& strategy) {
   backward_strategy_ = strategy;
@@ -69,8 +48,10 @@ BasicEngine::BasicEngine(VarBase* var,
 
   VLOG(3) << "start backward";
 
-  PADDLE_ENFORCE_EQ(var->HasGradVar(), true,
-                    "Grad variable not exist for variable %s", var->Name());
+  PADDLE_ENFORCE_EQ(
+      var->HasGradVar(), true,
+      platform::errors::NotFound("Grad variable not exist for variable %s",
+                                 var->Name()));
 
   auto& fwd_var = var->Var().Get<framework::LoDTensor>();
   auto* grad_var =
@@ -84,8 +65,7 @@ BasicEngine::BasicEngine(VarBase* var,
   operators::math::set_constant(*dev_ctx, grad_var, 1.0);
 }
 
-void BasicEngine::CheckBackwardInputs(const OpBase& op,
-                                      const platform::Place& place) {
+void BasicEngine::CheckBackwardInputs(const OpBase& op) {
   for (auto& pair : op.GetInsMap()) {
     if (!pair.second.IsGrad()) {
       continue;
@@ -106,48 +86,48 @@ void BasicEngine::CheckBackwardInputs(const OpBase& op,
       if (tensor && !tensor->IsInitialized()) {
         // if grad var has OverridedStopGradient skip this Op
         VLOG(6) << "Set ungenerated Grad: " << var->Name() << " as zero";
-        auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-        tensor->mutable_data(place, var->DataType());
+        auto* dev_ctx = platform::DeviceContextPool::Instance().Get(op.place());
+        tensor->mutable_data(op.place(), var->DataType());
         operators::math::set_constant(*dev_ctx, tensor, 0.0);
       }
     }
   }
 }
 
-void BasicEngine::PrepareGradAccumulators(const GradOpNode& node) {
-  for (auto& op : node) {
-    for (const auto& pair : op.GetOutsMap()) {
-      if (!pair.second.IsGrad()) {
-        continue;
-      }
+void BasicEngine::PrepareGradAccumulators(const OpBase& op) {
+  for (const auto& pair : op.GetOutsMap()) {
+    if (!pair.second.IsGrad()) {
+      continue;
+    }
 
-      for (const auto& var : pair.second) {
-        if (!var) continue;
+    for (const auto& var : pair.second) {
+      if (!var) continue;
 
-        auto& accumulator = accumulators_[var.get()];
-        if (!accumulator) {
-          if (backward_strategy_.sorted_sum_gradient_) {
-            accumulator.reset(new SortedGradientAccumulator(var.get()));
-          } else {
-            accumulator.reset(new EagerGradientAccumulator(var.get()));
-          }
+      auto& accumulator = accumulators_[var.get()];
+      if (!accumulator) {
+        if (backward_strategy_.sorted_sum_gradient_) {
+          accumulator.reset(new SortedGradientAccumulator(var.get()));
+        } else {
+          accumulator.reset(new EagerGradientAccumulator(var.get()));
         }
-
-        accumulator->IncreaseRefCnt();
-
-        VLOG(1) << "Prepare to acccumulate variable grad " << var->Name() << "("
-                << var.get() << ")  with reference count "
-                << accumulator->RefCnt();
       }
+
+      accumulator->IncreaseRefCnt();
+
+      VLOG(3) << "Prepare to acccumulate variable grad " << var->Name() << "("
+              << var.get() << ")  with reference count "
+              << accumulator->RefCnt();
     }
   }
 }
 
 void BasicEngine::PrepareDeps() {
-  PADDLE_ENFORCE_EQ(node_deps_.empty(), true,
-                    "Op deps must be initialized here");
-  PADDLE_ENFORCE_EQ(accumulators_.empty(), true,
-                    "Accumulators must be initialized here");
+  PADDLE_ENFORCE_EQ(
+      node_deps_.empty(), true,
+      platform::errors::AlreadyExists("Op deps must be initialized here"));
+  PADDLE_ENFORCE_EQ(
+      accumulators_.empty(), true,
+      platform::errors::AlreadyExists("Accumulators must be initialized here"));
 
   std::queue<GradOpNode*> q;
   std::unordered_set<GradOpNode*> visited;
@@ -170,13 +150,14 @@ void BasicEngine::PrepareDeps() {
               "\"backward()\" "
               "calls.",
               cur_op.Type()));
+      PrepareGradAccumulators(cur_op);
     }
-
-    PrepareGradAccumulators(*cur_node);
 
     const auto& grad_pending_nodes = cur_node->GradPendingNodes();
     for (auto& grad_pending_node : grad_pending_nodes) {
-      PADDLE_ENFORCE_NOT_NULL(grad_pending_node);
+      PADDLE_ENFORCE_NOT_NULL(
+          grad_pending_node,
+          platform::errors::NotFound("Grad pending node should not be null"));
       ++node_deps_[grad_pending_node.get()];
       if (visited.count(grad_pending_node.get()) == 0) {
         visited.insert(grad_pending_node.get());
@@ -190,9 +171,9 @@ void BasicEngine::SumGradient(const OpBase& op,
                               std::shared_ptr<VariableWrapper> src,
                               VariableWrapper* dst) {
   auto iter = accumulators_.find(dst);
-
   PADDLE_ENFORCE_EQ(iter != accumulators_.end(), true,
-                    "Cannot find gradient of variable %s", dst->Name());
+                    platform::errors::NotFound(
+                        "Cannot find gradient of variable %s", dst->Name()));
   iter->second->Add(std::move(src), op.id());
 }
 
@@ -216,7 +197,7 @@ void BasicEngine::Execute() {
       ++op_num;
 
       // CheckBackWardInput
-      CheckBackwardInputs(cur_op, cur_op.place());
+      CheckBackwardInputs(cur_op);
 
       // Step 1: Run Backward
       auto& bwd_ins = cur_op.GetInsMap();
@@ -225,18 +206,18 @@ void BasicEngine::Execute() {
       NameVarMap<VariableWrapper> tmp_outs(bwd_outs);
       // 1. construct the output map 2. replace the element in the map
       // A var may be coresponding to several grad var in one op
-      for (auto it = tmp_outs.begin(); it != tmp_outs.end(); ++it) {
-        if (!it->second.IsGrad()) {
+      for (auto& pair : tmp_outs) {
+        if (!pair.second.IsGrad()) {
           continue;
         }
-        for (size_t i = 0; i < it->second.size(); ++i) {
-          auto var = it->second[i];
+
+        for (auto& var : pair.second) {
           if (!var) {
             continue;
           }
-          auto tmp_var = std::make_shared<VariableWrapper>(var->Name());
-          it->second[i] = tmp_var;
-          need_accu_var_list_.emplace_back(var.get(), std::move(tmp_var));
+          auto tmp_var = std::make_shared<VariableWrapper>("Gtmp@");
+          need_accu_var_list_.emplace_back(var.get(), tmp_var);
+          var = std::move(tmp_var);
         }
       }
 
@@ -249,10 +230,6 @@ void BasicEngine::Execute() {
       // Step 2: Sum Gradient
       for (auto& pair : need_accu_var_list_) {
         SumGradient(cur_op, pair.second, pair.first);
-        VLOG(1) << "Sum gradient of variable " << pair.first->Name()
-                << " after op " << cur_op.Type() << " : " << pair.second.get()
-                << " -> " << pair.first << " "
-                << GetVariableWrapperStr(pair.first);
       }
 
       need_accu_var_list_.clear();
@@ -262,9 +239,10 @@ void BasicEngine::Execute() {
     }
 
     // Step 3: Collect ready ops
-
     for (auto& grad_pending_node : shared_cur_node->GradPendingNodes()) {
-      PADDLE_ENFORCE_NOT_NULL(grad_pending_node);
+      PADDLE_ENFORCE_NOT_NULL(grad_pending_node,
+                              platform::errors::NotFound(
+                                  "Grad pending node should not be nullptr"));
       auto iter = node_deps_.find(grad_pending_node.get());
       if (iter == node_deps_.end()) {
         continue;

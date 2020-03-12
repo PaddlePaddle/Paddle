@@ -23,7 +23,6 @@ import objgraph
 
 __all__ = [
     'no_grad',
-    'grad',
     'guard',
     'enable_dygraph',
     'disable_dygraph',
@@ -256,30 +255,53 @@ def grad(outputs,
          grad_outputs=None,
          create_graph=False,
          backward_strategy=None):
-    def to_list(obj):
-        if obj is None:
-            return []
-        elif isinstance(obj, (list, tuple)):
-            for each_var in obj:
-                assert isinstance(each_var, core.VarBase)
-            return obj
+    def check_in_out(in_out_list, name):
+        if in_out_list is None:
+            assert "{} should not be None".format(name)
+        elif isinstance(in_out_list, (list, tuple)):
+            assert len(in_out_list) > 0, "{} cannot be empty".format(name)
+            for each_var in in_out_list:
+                assert isinstance(
+                    each_var,
+                    core.VarBase), "Elements of {} must be Variable".format(
+                        name)
+            return in_out_list
         else:
-            assert isinstance(obj, core.VarBase)
-            return [obj]
+            assert isinstance(
+                in_out_list,
+                core.VarBase), "{} must be Variable or list of Variable".format(
+                    name)
+            return [in_out_list]
+
+    outputs = check_in_out(outputs, 'outputs')
+    inputs = check_in_out(inputs, 'inputs')
+
+    if grad_outputs is not None:
+        if not isinstance(grad_outputs, (list, tuple)):
+            grad_outputs = [grad_outputs]
+
+        for each_var in grad_outputs:
+            if each_var is not None:
+                assert isinstance(
+                    each_var, core.VarBase
+                ), "grad_outputs must be None, a Variable or a list containing None or Variables"
+    else:
+        grad_outputs = []
+
+    if len(grad_outputs) > 0:
+        assert len(grad_outputs) == len(
+            outputs), "The length of grad_outputs must be equal to outputs"
+
+    if backward_strategy is None:
+        backward_strategy = core.BackwardStrategy()
+
+    assert isinstance(backward_strategy, core.BackwardStrategy), \
+        "backward_strategy must be type paddle.fluid.dygraph.BackwardStrategy"
+
+    assert isinstance(create_graph, bool), "create_graph must be True or False"
 
     place = core.Place()
     place.set_place(framework._current_expected_place())
-    if backward_strategy is None:
-        backward_strategy = core.BackwardStrategy()
-    else:
-        assert isinstance(backward_strategy, core.BackwardStrategy)
-
-    assert isinstance(create_graph, bool)
-
-    outputs = to_list(outputs)
-    inputs = to_list(inputs)
-    grad_outputs = to_list(grad_outputs)
-
     return core.dygraph_partial_grad(inputs, outputs, grad_outputs, place,
                                      backward_strategy, create_graph)
 

@@ -90,7 +90,8 @@ class OpBase {
   }
 
   void SetBlockAttr(const std::string& name, framework::BlockDesc* block) {
-    PADDLE_THROW("SetBlockAttr is not support in dygraph OpBase");
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "SetBlockAttr is not support in dygraph OpBase"));
   }
 
   const framework::AttributeMap& Attrs() { return attrs_; }
@@ -99,8 +100,9 @@ class OpBase {
 
   const framework::Attribute& GetAttr(const std::string& name) const {
     auto it = attrs_.find(name);
-    PADDLE_ENFORCE(it != attrs_.end(), "can not find attribute [%s]", name);
-
+    PADDLE_ENFORCE_NE(
+        it, attrs_.end(),
+        platform::errors::NotFound("can not find attribute [%s]", name));
     return it->second;
   }
 

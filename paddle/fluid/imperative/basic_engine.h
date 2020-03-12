@@ -37,15 +37,16 @@ class BasicEngine : public Engine {
  private:
   void PrepareDeps();
 
-  void CheckBackwardInputs(const OpBase& op, const platform::Place& place);
+  void CheckBackwardInputs(const OpBase& op);
 
-  void PrepareGradAccumulators(const GradOpNode& node);
+  void PrepareGradAccumulators(const OpBase& op);
 
   void SumGradient(const OpBase& op, std::shared_ptr<VariableWrapper> src,
                    VariableWrapper* dst);
 
   void Clear();
 
+ private:
   std::shared_ptr<GradOpNode> init_node_;
   detail::BackwardStrategy backward_strategy_;
   std::unordered_map<GradOpNode*, size_t> node_deps_;
