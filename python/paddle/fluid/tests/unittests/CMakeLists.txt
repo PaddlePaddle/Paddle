@@ -197,7 +197,7 @@ list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
 if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_dataset)
   list(REMOVE_ITEM TEST_OPS test_dataset_dataloader)
-  list(REMOVE_ITEM TEST_OPS test_imperative_data_loader)
+  list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_base)
   list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
   list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_process)
   list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_fds_clear)
@@ -364,3 +364,9 @@ set_tests_properties(test_parallel_executor_test_while_train test_parallel_execu
         test_data_norm_op test_imperative_using_non_zero_gpu test_fuse_bn_act_pass
         test_optimizer_in_control_flow test_fetch_unmerged
         test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
+
+if(NOT WIN32 AND NOT APPLE)
+    set_tests_properties(test_imperative_data_loader_base PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
+    set_tests_properties(test_imperative_data_loader_exception PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
+    set_tests_properties(test_imperative_data_loader_fds_clear PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
+endif()

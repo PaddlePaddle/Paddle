@@ -199,14 +199,12 @@ class PadConstantLikeOpGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto *bind = new T();
+  void Apply(GradOpPtr<T> bind) const override {
     bind->SetType("pad_constant_like_grad");
     bind->SetInput("Y", this->Input("Y"));
     bind->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     bind->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
     bind->SetAttrMap(this->Attrs());
-    return std::unique_ptr<T>(bind);
   }
 };
 

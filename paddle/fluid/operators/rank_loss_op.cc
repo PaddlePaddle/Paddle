@@ -162,8 +162,7 @@ class RankLossGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("rank_loss_grad");
     op->SetInput("Label", this->Input("Label"));
     op->SetInput("Left", this->Input("Left"));
@@ -172,7 +171,6 @@ class RankLossGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("Left"), this->InputGrad("Left"));
     op->SetOutput(framework::GradVarName("Right"), this->InputGrad("Right"));
     op->SetAttrMap(this->Attrs());
-    return op;
   }
 };
 

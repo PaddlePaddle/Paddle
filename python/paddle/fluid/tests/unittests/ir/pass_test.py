@@ -142,8 +142,8 @@ class PassTest(unittest.TestCase):
             self.assertTrue(
                 np.allclose(
                     outs_opt[i], outs[i], atol=atol),
-                "Output < {} > has diff at {}".format(self.fetch_list[i].name,
-                                                      str(place)))
+                "Output < {} > has diff at {}, expected {} but got {}".format(
+                    self.fetch_list[i].name, str(place), outs_opt[i], outs[i]))
 
     def _check_fused_ops(self, program):
         '''
