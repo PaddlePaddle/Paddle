@@ -26,94 +26,19 @@ import astor
 import gast
 
 from paddle.fluid import unique_name
+from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
+from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_api, is_dygraph_api, is_to_variable
+from paddle.fluid.dygraph.dygraph_to_static.utils import to_assign_node, to_static_ast, update_args_of_func
+from paddle.fluid.dygraph.dygraph_to_static.utils import dygraph_class_to_static_api, create_api_shape_node
+from paddle.fluid.dygraph.dygraph_to_static.list_transformer import ListTransformer
 from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import LoopTransformer
-from .ast_utils import is_control_flow_if, create_cond_node, transform_if_else, ast_to_func
-from .static_analysis import AstNodeWrapper, NodeVarType, StaticAnalysisVisitor
-from .utils import *
+from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import IfElseTransformer
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper, NodeVarType
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 
 __all__ = ['DygraphToStaticAst', 'convert_to_static']
 
 DECORATOR_NAMES = ['dygraph_to_static_output', 'dygraph_to_static_graph']
-
-
-class IfElseTransformer(gast.NodeTransformer):
-    """
-    Transform if/else statement of Dygraph into Static Graph.
-    """
-
-    def __init__(self, wrapper_root):
-        assert isinstance(
-            wrapper_root, AstNodeWrapper
-        ), "Type of input node should be AstNodeWrapper, but received %s ." % type(
-            wrapper_root)
-        self.root = wrapper_root.node
-        self.static_analysis_visitor = StaticAnalysisVisitor(self.root)
-        self.new_func_nodes = {}
-
-    def transform(self):
-        """
-        Main function to transform AST.
-        """
-        self.visit(self.root)
-        self.after_visit(self.root)
-
-    def visit_If(self, node):
-        assert isinstance(node, gast.If)
-        need_transform = is_control_flow_if(node.test,
-                                            self.static_analysis_visitor)
-        self.generic_visit(node)
-        if need_transform:
-            pred_node = node.test
-            true_func_node, false_func_node, return_name_ids = transform_if_else(
-                node, self.root)
-            # create layers.cond
-            new_node = create_cond_node(return_name_ids, pred_node,
-                                        true_func_node, false_func_node)
-            self.new_func_nodes[new_node] = [true_func_node, false_func_node]
-            return new_node
-        else:
-            return node
-
-    def visit_Call(self, node):
-        # Remove `numpy()` statement, like `Tensor.numpy()[i]` -> `Tensor[i]`
-        # TODO: should be removed. it may be considered as basic api transformation.
-        if isinstance(node.func, gast.Attribute):
-            attribute = node.func
-            if attribute.attr == 'numpy':
-                node = attribute.value
-        return node
-
-    def after_visit(self, node):
-        """
-        This function will add some postprocessing operations with node.
-        It can be used to add the created `true_fn/false_fn` in front of
-        the node.body before they are called in cond layer.
-        """
-        self._insert_func_nodes(node)
-
-    def _insert_func_nodes(self, parent_node):
-        """
-        Defined `true_func` and `false_func` will be inserted in front of corresponding
-        `layers.cond` statement instead of inserting them all into body of parent node.
-        Because private variables of class or other external scope will be modified.
-        For example, `self.var_dict["key"]`. In this case, nested structure of newly
-        defined functions is easier to understand.
-        """
-        if not (self.new_func_nodes and hasattr(parent_node, 'body')):
-            return
-        idx = len(parent_node.body) - 1
-        while idx >= 0:
-            child_node = parent_node.body[idx]
-            if child_node in self.new_func_nodes:
-                parent_node.body[idx:idx] = self.new_func_nodes[child_node]
-                idx = idx + len(self.new_func_nodes[child_node]) - 1
-                del self.new_func_nodes[child_node]
-            else:
-                self._insert_func_nodes(child_node)
-                idx = idx - 1
-
-    def get_new_func_nodes(self):
-        return self.new_func_nodes
 
 
 class DygraphToStaticAst(gast.NodeTransformer):
@@ -143,6 +68,7 @@ class DygraphToStaticAst(gast.NodeTransformer):
         basic_api_trans.ast_visit()
         self.feed_name_to_arg_name = basic_api_trans.get_feed_name_to_arg_id()
 
+        ListTransformer(node_wrapper).transform()
         # Transform all if/else statement of Dygraph into Static Graph.
         IfElseTransformer(node_wrapper).transform()
 

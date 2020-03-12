@@ -14,23 +14,104 @@
 
 from __future__ import print_function
 
-import ast
-import astor
-import gast
-import six
 import copy
-import tempfile
-import imp
-import os
-import atexit
 from collections import defaultdict
 
+# gast is a generic AST to represent Python2 and Python3's Abstract Syntax Tree(AST).
+# It provides a compatibility layer between the AST of various Python versions,
+# as produced by ast.parse from the standard ast module.
+# See details in https://github.com/serge-sans-paille/gast/
+import gast
 from paddle.fluid import unique_name
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import NodeVarType, StaticAnalysisVisitor
+
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_api
+from paddle.fluid.dygraph.dygraph_to_static.utils import create_funcDef_node
+from paddle.fluid.dygraph.dygraph_to_static.utils import generate_name_node
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper, NodeVarType
 
 TRUE_FUNC_PREFIX = 'true_fn'
 FALSE_FUNC_PREFIX = 'false_fn'
+
+
+class IfElseTransformer(gast.NodeTransformer):
+    """
+    Transform if/else statement of Dygraph into Static Graph.
+    """
+
+    def __init__(self, wrapper_root):
+        assert isinstance(
+            wrapper_root, AstNodeWrapper
+        ), "Type of input node should be AstNodeWrapper, but received %s ." % type(
+            wrapper_root)
+        self.root = wrapper_root.node
+        self.static_analysis_visitor = StaticAnalysisVisitor(self.root)
+        self.new_func_nodes = {}
+
+    def transform(self):
+        """
+        Main function to transform AST.
+        """
+        self.visit(self.root)
+        self.after_visit(self.root)
+
+    def visit_If(self, node):
+        assert isinstance(node, gast.If)
+        need_transform = is_control_flow_if(node.test,
+                                            self.static_analysis_visitor)
+        self.generic_visit(node)
+        if need_transform:
+            pred_node = node.test
+            true_func_node, false_func_node, return_name_ids = transform_if_else(
+                node, self.root)
+            # create layers.cond
+            new_node = create_cond_node(return_name_ids, pred_node,
+                                        true_func_node, false_func_node)
+            self.new_func_nodes[new_node] = [true_func_node, false_func_node]
+            return new_node
+        else:
+            return node
+
+    def visit_Call(self, node):
+        # Remove `numpy()` statement, like `Tensor.numpy()[i]` -> `Tensor[i]`
+        # TODO: should be removed. it may be considered as basic api transformation.
+        if isinstance(node.func, gast.Attribute):
+            attribute = node.func
+            if attribute.attr == 'numpy':
+                node = attribute.value
+        return node
+
+    def after_visit(self, node):
+        """
+        This function will add some postprocessing operations with node.
+        It can be used to add the created `true_fn/false_fn` in front of
+        the node.body before they are called in cond layer.
+        """
+        self._insert_func_nodes(node)
+
+    def _insert_func_nodes(self, parent_node):
+        """
+        Defined `true_func` and `false_func` will be inserted in front of corresponding
+        `layers.cond` statement instead of inserting them all into body of parent node.
+        Because private variables of class or other external scope will be modified.
+        For example, `self.var_dict["key"]`. In this case, nested structure of newly
+        defined functions is easier to understand.
+        """
+        if not (self.new_func_nodes and hasattr(parent_node, 'body')):
+            return
+        idx = len(parent_node.body) - 1
+        while idx >= 0:
+            child_node = parent_node.body[idx]
+            if child_node in self.new_func_nodes:
+                parent_node.body[idx:idx] = self.new_func_nodes[child_node]
+                idx = idx + len(self.new_func_nodes[child_node]) - 1
+                del self.new_func_nodes[child_node]
+            else:
+                self._insert_func_nodes(child_node)
+                idx = idx - 1
+
+    def get_new_func_nodes(self):
+        return self.new_func_nodes
 
 
 class IsControlFlowIfVisitor(gast.NodeTransformer):
@@ -112,7 +193,8 @@ class IsControlFlowIfVisitor(gast.NodeTransformer):
         if isinstance(node, gast.Compare):
             for child in [node.left, node.comparators]:
                 # node.comparators is a list.
-                if isinstance(child, list): child = child[0]
+                if isinstance(child, list):
+                    child = child[0]
                 if (isinstance(child, gast.Constant) and
                         child.value is None) or (
                             isinstance(child, gast.Name) and
@@ -151,7 +233,8 @@ def get_name_ids(nodes, not_name_set=None, node_black_list=None):
 
     name_ids = defaultdict(list)
     for node in nodes:
-        if node_black_list and node in node_black_list: break
+        if node_black_list and node in node_black_list:
+            break
         if isinstance(node, gast.AST):
             # In two case, the ast.Name should be filtered.
             # 1. Function name like `my_func` of my_func(x)
@@ -271,45 +354,6 @@ def parse_cond_return(parent_vars_dict, if_vars_dict, else_vars_dict):
     return return_ids, list(modified_vars - new_vars)
 
 
-def generate_name_node(name_ids, ctx=gast.Load()):
-    """
-    Generate list or gast.Tuple of ast.Name for Return statement.
-    """
-    if isinstance(name_ids, six.string_types):
-        name_ids = [name_ids]
-    if not isinstance(name_ids, (list, tuple, set)):
-        raise TypeError('name_ids must be list or tuple or set, but received %s'
-                        % type(type(name_ids)))
-    gast_names = [
-        gast.Name(
-            id=name_id, ctx=ctx, annotation=None, type_comment=None)
-        for name_id in name_ids
-    ]
-    if len(gast_names) == 1:
-        name_node = gast_names[0]
-    else:
-        name_node = gast.Tuple(elts=gast_names, ctx=ctx)
-    return name_node
-
-
-def create_funcDef_node(nodes, name, input_args, return_name_ids):
-    """
-    Wrapper all statements of nodes into one ast.FunctionDef, which can be
-    called by ast.Call.
-    """
-    nodes = copy.copy(nodes)
-    # add return statement
-    nodes.append(gast.Return(value=generate_name_node(return_name_ids)))
-    func_def_node = gast.FunctionDef(
-        name=name,
-        args=input_args,
-        body=nodes,
-        decorator_list=[],
-        returns=None,
-        type_comment=None)
-    return func_def_node
-
-
 def transform_if_else(node, root):
     """
     Transform ast.If into control flow statement of Paddle static graph.
@@ -380,47 +424,9 @@ def create_cond_node(return_name_ids, pred, true_func, false_func):
         func=cond_api,
         args=[pred, true_func_lambda, false_func_lambda],
         keywords=[])
-    targets = [generate_name_node(return_name_ids, ctx=gast.Store())]
-    assign_node = gast.Assign(targets=targets, value=cond_layer)
-
-    return assign_node
-
-
-def ast_to_func(ast_root, func_name, delete_on_exit=True):
-    """
-    Transform modified AST of decorated function into python callable object.
-    """
-    if not isinstance(ast_root, (gast.AST, ast.AST)):
-        raise TypeError(
-            "Type of ast_root should be gast.AST or ast.AST, but received %s." %
-            type(ast_root))
-    if isinstance(ast_root, gast.AST):
-        ast_root = gast.gast_to_ast(ast_root)
-    source = astor.to_source(ast_root)
-    if six.PY2:
-        source = source.encode('utf-8')
-        f = tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False)
+    if return_name_ids:
+        targets = [generate_name_node(return_name_ids, ctx=gast.Store())]
+        assign_node = gast.Assign(targets=targets, value=cond_layer)
+        return assign_node
     else:
-        f = tempfile.NamedTemporaryFile(
-            mode='w', suffix='.py', delete=False, encoding='utf-8')
-
-    # TODO(Aurelius84): more elegant way to transform ast into callable object
-    import_str = "import paddle\n" \
-                 "import paddle.fluid as fluid\n" \
-                 "import paddle.fluid.layers as layers\n" \
-                 "import numpy as np\n" \
-                 "import numpy\n"
-    with f:
-        module_name = os.path.basename(f.name[:-3])
-        f.write(import_str)
-        f.write(source)
-
-    if delete_on_exit:
-        atexit.register(lambda: os.remove(f.name))
-    module = imp.load_source(module_name, f.name)
-    if not hasattr(module, func_name):
-        raise ValueError(
-            'Function: %s doesn\'t exist in the Module transformed from AST.' %
-            func_name)
-
-    return getattr(module, func_name), f.name
+        return gast.Expr(value=cond_layer)
