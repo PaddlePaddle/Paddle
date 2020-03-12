@@ -189,10 +189,10 @@ void TensorDataShare(paddle::lite::Tensor* dst, framework::LoDTensor* src) {
       static_cast<size_t>(src->numel()) * framework::SizeOfType(src->type());
   auto buf = std::make_shared<paddle::lite::Buffer>(paddle::lite::Buffer(
       src->data<void>(), GetLiteTargetType(src->place()), src->memory_size()));
-  dst->ResetBuffer(buf, bytes);
   dst->Resize(framework::vectorize(src->dims()));
   dst->set_precision(GetLitePrecisionType(src->type()));
   SetLoD(dst->mutable_lod(), src->lod());
+  dst->ResetBuffer(buf, bytes);
 }
 
 template <>
@@ -203,9 +203,9 @@ void TensorDataShare(framework::LoDTensor* dst, paddle::lite::Tensor* src) {
   std::shared_ptr<memory::allocation::Allocation> holder(
       new memory::allocation::Allocation(src_raw_data, src->memory_size(),
                                          GetNativePlace(src->target())));
-  dst->ResetHolderWithType(holder, dtype);
   dst->Resize(paddle::framework::make_ddim(src->dims().Vectorize()));
   SetLoD(dst->mutable_lod(), src->lod());
+  dst->ResetHolderWithType(holder, dtype);
 }
 
 }  // namespace utils

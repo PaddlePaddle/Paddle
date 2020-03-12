@@ -30,6 +30,18 @@ void TensorCopyAsync(DstTensor* dst, const SrcTensor& src,
 template <typename DstTensor, typename SrcTensor>
 void TensorDataShare(DstTensor* dst, SrcTensor* src);
 
+template <typename DstTensor, typename SrcTensor>
+void TensorCopy(DstTensor* dst, SrcTensor* src,
+                const platform::DeviceContext& ctx, bool shared = true) {
+  if (shared) {
+    VLOG(3) << "TensorDataShare is running";
+    TensorDataShare(dst, src);
+  } else {
+    VLOG(3) << "TensorCopyAsync is running";
+    TensorCopyAsync(dst, *src, ctx);
+  }
+}
+
 }  // namespace utils
 }  // namespace lite
 }  // namespace inference

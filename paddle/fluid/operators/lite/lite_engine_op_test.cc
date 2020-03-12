@@ -100,6 +100,7 @@ TEST(LiteEngineOp, engine_op) {
   engine_op_desc.SetAttr("engine_key", engine_key);
   engine_op_desc.SetAttr("enable_int8", false);
   engine_op_desc.SetAttr("use_gpu", true);
+  engine_op_desc.SetAttr("zero_copy", true);
   engine_op_desc.SetBlockAttr("sub_block", &block_desc);
   inference::Singleton<inference::lite::EngineManager>::Global().Create(
       engine_key, config);

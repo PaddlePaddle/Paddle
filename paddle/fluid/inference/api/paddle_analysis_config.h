@@ -175,6 +175,7 @@ struct AnalysisConfig {
    */
   void EnableLiteEngine(
       AnalysisConfig::Precision precision_mode = Precision::kFloat32,
+      bool zero_copy = false,
       const std::vector<std::string>& passes_filter = {},
       const std::vector<std::string>& ops_filter = {});
 
@@ -358,6 +359,7 @@ struct AnalysisConfig {
   std::vector<std::string> lite_passes_filter_;
   std::vector<std::string> lite_ops_filter_;
   Precision lite_precision_mode_;
+  bool lite_zero_copy_;
 
   // mkldnn related.
   int mkldnn_cache_capacity_{0};
