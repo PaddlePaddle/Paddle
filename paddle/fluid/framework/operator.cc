@@ -924,11 +924,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   if (!all_kernels_must_compute_runtime_shape_ &&
       HasAttr(kAllKernelsMustComputeRuntimeShape))
     all_kernels_must_compute_runtime_shape_ = true;
+  const Scope* cur_scope = &scope;
   if (!enable_cache_runtime_context_) {
     RuntimeContext ctx(Inputs(), Outputs(), scope);
     RunImpl(scope, place, &ctx);
+    pre_scope_ = cur_scope;
   } else {
-    const Scope* cur_scope = &scope;
     if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
       std::lock_guard<std::mutex> lock(cache_update_mutex_);
       if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
@@ -1254,17 +1255,15 @@ Scope* OperatorWithKernel::PrepareData(
       SetTensorToVariable(*var, out, trans_var);
     }
   }
-  // If new_scope = nullptr, it means that for each input of this Op, there is
-  // no need to do PrepareData. However, after the Op is completed, its input
-  // may change in subsequent Ops.
-  // Therefore, we determine whether the operator needs to prepare data at the
-  // second iteration.
-  // PrepareData could be skipped only at the third and the rest iterations of
-  // this Op's execution to save the elapsed time.
-  if (new_scope == nullptr && !run_at_the_first_iter_) {
+  // If pre_scope = &scope, it means that scope is cached and the op is not in
+  // while block. If new_scope = nullptr, it means that for each input of this
+  // Op, there is no need to do PrepareData. So PrepareData could be skipped at
+  // the rest iterations to save the elapsed time.
+  // We do not support skipping PrepareData in while block, because the Op's
+  // input may be changed by subsequent Ops, which may cause an error.
+  if (pre_scope_ == &scope && new_scope == nullptr) {
     need_prepare_data_ = false;
   }
-  run_at_the_first_iter_ = false;
 
   return new_scope;
 }
