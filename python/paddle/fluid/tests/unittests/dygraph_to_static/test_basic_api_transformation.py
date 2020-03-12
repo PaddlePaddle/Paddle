@@ -79,10 +79,10 @@ def dyfunc_BilinearTensorProduct(layer1, layer2):
         input1_dim=5,
         input2_dim=4,
         output_dim=1000,
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.99)),
-        bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.5)))
+        param_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.99)),
+        bias_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.5)))
 
     res = bilinearTensorProduct(
         fluid.dygraph.base.to_variable(layer1),
@@ -95,10 +95,10 @@ def dyfunc_Conv2D(input):
         num_channels=3,
         num_filters=2,
         filter_size=3,
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.99)),
-        bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.5)), )
+        param_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.99)),
+        bias_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.5)), )
     res = conv2d(input)
     return res
 
@@ -108,10 +108,10 @@ def dyfunc_Conv3D(input):
         num_channels=3,
         num_filters=2,
         filter_size=3,
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.99)),
-        bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.5)), )
+        param_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.99)),
+        bias_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.5)), )
     res = conv3d(input)
     return res
 
@@ -122,10 +122,10 @@ def dyfunc_Conv2DTranspose(input):
         num_filters=12,
         filter_size=12,
         use_cudnn=False,
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.99)),
-        bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.5)), )
+        param_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.99)),
+        bias_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.5)), )
     ret = conv2dTranspose(input)
     return ret
 
@@ -136,10 +136,10 @@ def dyfunc_Conv3DTranspose(input):
         num_filters=12,
         filter_size=12,
         use_cudnn=False,
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.99)),
-        bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.5)), )
+        param_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.99)),
+        bias_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.5)), )
     ret = conv3dTranspose(input)
     return ret
 
@@ -149,10 +149,10 @@ def dyfunc_Linear(input):
         input_dim=10,
         output_dim=5,
         act='relu',
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.99)),
-        bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.5)), )
+        param_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.99)),
+        bias_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.5)), )
     res = fc(input)
     return res
 
