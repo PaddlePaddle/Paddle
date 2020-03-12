@@ -426,16 +426,5 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
   }
 }
 
-platform::Place GetPlaceOfVar(const std::shared_ptr<VariableWrapper>& var) {
-  if (var->Var().IsType<framework::LoDTensor>()) {
-    return var->Var().Get<framework::LoDTensor>().place();
-  } else if (var->Var().IsType<framework::SelectedRows>()) {
-    return var->Var().Get<framework::SelectedRows>().place();
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "only support LoDTensor and SelectedRows in dygraph"));
-  }
-}
-
 }  // namespace imperative
 }  // namespace paddle

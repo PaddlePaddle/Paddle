@@ -299,6 +299,20 @@ void VariableWrapperAdd(std::shared_ptr<VariableWrapper> var,
   }
 }
 
+static platform::Place GetPlaceOfVar(
+    const std::shared_ptr<VariableWrapper>& var) {
+  platform::Place place;
+  if (var->Var().IsType<framework::LoDTensor>()) {
+    place = var->Var().Get<framework::LoDTensor>().place();
+  } else if (var->Var().IsType<framework::SelectedRows>()) {
+    place = var->Var().Get<framework::SelectedRows>().place();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "only support LoDTensor and SelectedRows in dygraph"));
+  }
+  return place;
+}
+
 void EagerGradientAccumulator::Add(std::shared_ptr<VariableWrapper> var,
                                    size_t trace_id, bool unchange_input) {
   /**

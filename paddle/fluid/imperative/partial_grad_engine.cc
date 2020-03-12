@@ -840,8 +840,6 @@ void PartialGradTask::RunEachOp(const OpBase *op) {
           accumulator_info->GradVarBase()->MutableGradVarBase();
       sum_grad_var_grad->SetOverridedStopGradient(false);
 
-      auto var_place = GetPlaceOfVar(sum_grad_var_grad->SharedVar());
-
       auto assign_node = std::make_shared<GradOpNode>();
       sum_grad_var_grad->SetGradNode(assign_node);
 
@@ -855,7 +853,7 @@ void PartialGradTask::RunEachOp(const OpBase *op) {
         assign_op->SetOutput("Out", {grad_grad}, true);
         assign_op->CheckAttrs();
         assign_op->SetId(OpBase::GenerateUniqueId());
-        assign_op->SetPlace(var_place);
+        assign_op->SetPlace(op->place());
 
         if (auto grad_pending_node = grad_grad->GetGradNode()) {
           assign_node->InsertGradPendingNode(std::move(grad_pending_node));

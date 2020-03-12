@@ -29,7 +29,7 @@ class SavedVariableWrapperList {
 
   template <typename... Args>
   explicit SavedVariableWrapperList(bool is_grad, Args&&... args)
-      : is_grad_(is_grad), vars_(std::forward<Args>(args)...) {}
+      : vars_(std::forward<Args>(args)...), is_grad_(is_grad) {}
 
   bool IsGrad() const { return is_grad_; }
 
