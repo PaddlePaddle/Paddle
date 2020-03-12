@@ -184,7 +184,7 @@ class FusionGroupPassCastTest(FusionGroupPassTest):
             tmp_1 = layers.cast(tmp_0, dtype="double")
             tmp_2 = layers.cast(tmp_1, dtype="float32")
 
-        self.fetch_list = [tmp_0.name, tmp_1.name, tmp_2.name]
+        self.fetch_list = [tmp_2.name, tmp_1.name + "@GRAD"]
         self.num_fused_ops = 1
 
         if self.backward:
