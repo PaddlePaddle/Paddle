@@ -17,12 +17,8 @@ from __future__ import print_function
 import unittest
 import textwrap
 import gast
-import inspect
-import numpy as np
-import paddle.fluid as fluid
-from paddle.fluid.dygraph.dygraph_to_static.ast_utils import get_name_ids, ast_to_func, is_control_flow_if
-
-from test_dygraph_to_static_basic import dyfunc_with_if_else, dyfunc_with_if_else2, nested_if_else
+from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import get_name_ids, is_control_flow_if
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 
 
 class TestGetNameIds(unittest.TestCase):
@@ -98,35 +94,89 @@ class TestIsControlFlowIf(unittest.TestCase):
     def test_expr(self):
         # node is not ast.Compare
         node = gast.parse("a + b")
-        self.assertFalse(is_control_flow_if(node))
+        self.assertFalse(is_control_flow_if(node.body[0].value))
 
     def test_expr2(self):
         node = gast.parse("a + x.numpy()[1]")
-        self.assertFalse(is_control_flow_if(node))
+        self.assertFalse(is_control_flow_if(node.body[0].value))
 
     def test_is_None(self):
         node = gast.parse("x is None")
-        self.assertFalse(is_control_flow_if(node))
+        self.assertFalse(is_control_flow_if(node.body[0].value))
 
     def test_is_None2(self):
         node = gast.parse("fluid.layers.sum(x) is None")
-        self.assertFalse(is_control_flow_if(node))
+        self.assertFalse(is_control_flow_if(node.body[0].value))
 
     def test_is_None3(self):
         node = gast.parse("fluid.layers.sum(x).numpy() != None")
-        self.assertFalse(is_control_flow_if(node))
+        self.assertFalse(is_control_flow_if(node.body[0].value))
 
     def test_if(self):
         node = gast.parse("x.numpy()[1] > 1")
-        self.assertTrue(is_control_flow_if(node))
+        self.assertTrue(is_control_flow_if(node.body[0].value))
 
     def test_if_with_and(self):
         node = gast.parse("x is not None and 1 < x.numpy()[1]")
-        self.assertTrue(is_control_flow_if(node))
+        self.assertTrue(is_control_flow_if(node.body[0].value))
 
     def test_if_with_or(self):
         node = gast.parse("1 < fluid.layers.sum(x).numpy()[2] or x+y < 0")
-        self.assertTrue(is_control_flow_if(node))
+        self.assertTrue(is_control_flow_if(node.body[0].value))
+
+    def test_shape(self):
+        code = """
+            def foo(x):
+                batch_size = fluid.layers.shape(x)
+                if batch_size[0] > 16:
+                    x = x + 1
+                return x
+        """
+        code = textwrap.dedent(code)
+        node = gast.parse(code)
+        visitor = StaticAnalysisVisitor(node)
+        test_node = node.body[0].body[1].test
+        self.assertTrue(is_control_flow_if(test_node, visitor))
+
+    def test_shape_with_andOr(self):
+        code = """
+            def foo(x):
+                batch_size = fluid.layers.shape(x)
+                if x is not None and batch_size[0] > 16 or 2 > 1:
+                    x = x + 1
+                return x
+        """
+        code = textwrap.dedent(code)
+        node = gast.parse(code)
+        visitor = StaticAnalysisVisitor(node)
+        test_node = node.body[0].body[1].test
+        self.assertTrue(is_control_flow_if(test_node, visitor))
+
+    def test_paddle_api(self):
+        code = """
+            def foo(x):
+                if fluid.layers.shape(x)[0] > 16:
+                    x = x + 1
+                return x
+        """
+        code = textwrap.dedent(code)
+        node = gast.parse(code)
+        visitor = StaticAnalysisVisitor(node)
+        test_node = node.body[0].body[0].test
+        self.assertTrue(is_control_flow_if(test_node, visitor))
+
+    def test_paddle_api_with_andOr(self):
+        code = """
+            def foo(x):
+                if 2 > 1 and fluid.layers.shape(x)[0] > 16 or x is not None :
+                    x = x + 1
+                return x
+        """
+        code = textwrap.dedent(code)
+        node = gast.parse(code)
+        visitor = StaticAnalysisVisitor(node)
+        test_node = node.body[0].body[0].test
+        self.assertTrue(is_control_flow_if(test_node, visitor))
 
     def test_raise_error(self):
         node = "a + b"
@@ -134,58 +184,6 @@ class TestIsControlFlowIf(unittest.TestCase):
             self.assertRaises(TypeError, is_control_flow_if(node))
         self.assertTrue(
             "Type of input node should be gast.AST" in str(e.exception))
-
-
-class TestAST2Func(unittest.TestCase):
-    """
-    TestCase for the transformation from ast.AST into python callable function.
-    """
-
-    def _ast2func(self, func):
-        source = inspect.getsource(func)
-        source = textwrap.dedent(source)
-        ast_root = gast.parse(source)
-        transformed_func, _ = ast_to_func(ast_root, func.__name__)
-        return transformed_func
-
-    def test_ast2func(self):
-        def func(x, y):
-            return x + y
-
-        x, y = 10, 20
-        self.assertEqual(func(x, y), self._ast2func(func)(x, y))
-
-    def test_ast2func_dygraph(self):
-        funcs = [dyfunc_with_if_else, dyfunc_with_if_else, nested_if_else]
-        x_data = np.random.random([10, 16]).astype('float32')
-        for func in funcs:
-            with fluid.dygraph.guard():
-                x_v = fluid.dygraph.to_variable(x_data)
-                true_ret = func(x_v).numpy()
-                test_ret = self._ast2func(func)(x_v).numpy()
-                self.assertTrue((true_ret == test_ret).all())
-
-    def test_ast2func_static(self):
-        def func(x):
-            y = fluid.layers.relu(x)
-            loss = fluid.layers.mean(y)
-            return loss
-
-        x_data = np.random.random([10, 16]).astype('float32')
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
-            x_v = fluid.layers.assign(x_data)
-            true_ret = func(x_v)
-            test_ret = self._ast2func(func)(x_v)
-            exe = fluid.Executor(fluid.CPUPlace())
-            ret = exe.run(main_program, fetch_list=[true_ret, test_ret])
-            self.assertTrue((ret[0] == ret[1]).all())
-
-    def test_ast2func_error(self):
-        with self.assertRaises(Exception) as e:
-            self.assertRaises(TypeError, ast_to_func("x = a + b", 'foo'))
-        self.assertTrue("Type of ast_root should be gast.AST or ast.AST" in
-                        str(e.exception))
 
 
 if __name__ == '__main__':

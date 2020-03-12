@@ -215,15 +215,13 @@ class WriteToArrayGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto *grad_op = new T();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("read_from_array");
     grad_op->SetInput("I", this->Input("I"));
     grad_op->SetInput("X", this->OutputGrad("Out"));
     grad_op->SetInput("X_W", this->Input("X"));
     grad_op->SetOutput("Out", this->InputGrad("X"));
     grad_op->SetAttrMap(this->Attrs());
-    return std::unique_ptr<T>(grad_op);
   }
 };
 
@@ -233,14 +231,12 @@ class ReadFromArrayGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto *grad_op = new T();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("write_to_array");
     grad_op->SetInput("I", this->Input("I"));
     grad_op->SetInput("X", this->OutputGrad("Out"));
     grad_op->SetOutput("Out", this->InputGrad("X"));
     grad_op->SetAttrMap(this->Attrs());
-    return std::unique_ptr<T>(grad_op);
   }
 };
 

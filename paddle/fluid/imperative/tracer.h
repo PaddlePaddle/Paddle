@@ -64,9 +64,6 @@ class Tracer {
   bool ComputeRequiredGrad(const NameVarBaseMap& ins,
                            const NameVarBaseMap& outs, bool trace_backward);
 
-  void TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
-                     const NameVarBaseMap& ins, const NameVarBaseMap& outs);
-
   Engine* GetDefaultEngine() const { return engine_.get(); }
 
   void SetEnableProgramDescTracing(bool enabled) {
@@ -94,6 +91,11 @@ class Tracer {
   void SetNoGrad(bool no_grad) { no_grad_ = no_grad; }
 
  private:
+  void TraceBackward(const framework::OpInfo& info, const std::string& type,
+                     const NameVarBaseMap& ins, const NameVarBaseMap& outs,
+                     const framework::AttributeMap& attrs,
+                     const platform::Place& place);
+
   static size_t GenerateUniqueId() {
     static std::atomic<size_t> id{0};
     return id.fetch_add(1);
