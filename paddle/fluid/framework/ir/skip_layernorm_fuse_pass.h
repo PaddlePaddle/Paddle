@@ -14,29 +14,29 @@ limitations under the License. */
 
 #pragma once
 
-#include <vector>
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/node.h"
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
-namespace fusion_group {
 
-class GroupDetector {
- protected:
-  bool IsFusionGroupOp(const Node* n);
-};
-
-class ElementwiseGroupDetector : GroupDetector {
+//     |           |                            |            |
+// other_op1   other_op2                    other_op1    other_op2
+//     |           |              fuse           \          /
+//     |------elementwise_add      ->           skip_layernorm
+//                 |                                   |
+//             layer_norm                          other_op3
+//                 |                                   |
+//             other_op3
+//                 |
+class SkipLayerNormFusePass : public FusePassBase {
  public:
-  std::vector<std::vector<Node*>> operator()(Graph* graph);
+  virtual ~SkipLayerNormFusePass() {}
 
- private:
-  bool IsElementwiseOp(const Node* n);
+ protected:
+  void ApplyImpl(ir::Graph* graph) const override;
 };
 
-}  // namespace fusion_group
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
