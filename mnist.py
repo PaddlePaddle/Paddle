@@ -76,8 +76,8 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
 
 
 class MNIST(Model):
-    def __init__(self, inputs=None, targets=None):
-        super(MNIST, self).__init__(inputs, targets)
+    def __init__(self):
+        super(MNIST, self).__init__()
         self._simple_img_conv_pool_1 = SimpleImgConvPool(
             1, 20, 5, 2, 2, act="relu")
 
@@ -140,15 +140,15 @@ def main():
     device_ids = list(range(FLAGS.num_devices))
 
     with guard:
-        inputs = [Input([None, 1, 28, 28], 'float32', name='image')]
-        labels = [Input([None, 1], 'int64', name='label')]
-        model = MNIST(inputs, labels)
-        #model = MNIST()
+        model = MNIST()
         optim = Momentum(
             learning_rate=FLAGS.lr,
             momentum=.9,
             parameter_list=model.parameters())
-        model.prepare(optim, CrossEntropy())
+        inputs = [Input([None, 1, 28, 28], 'float32', name='image')]
+        #inputs = {'inputs': Input([None, 1, 28, 28], 'float32', name='image')}
+        labels = [Input([None, 1], 'int64', name='label')]
+        model.prepare(optim, CrossEntropy(), inputs, labels)
         if FLAGS.resume is not None:
             model.load(FLAGS.resume)
 
@@ -199,7 +199,7 @@ if __name__ == '__main__':
     parser.add_argument(
         "-b", "--batch_size", default=128, type=int, help="batch size")
     parser.add_argument(
-        "-n", "--num_devices", default=4, type=int, help="number of devices")
+        "-n", "--num_devices", default=1, type=int, help="number of devices")
     parser.add_argument(
         "-r",
         "--resume",

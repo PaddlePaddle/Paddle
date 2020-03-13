@@ -30,16 +30,6 @@ from paddle.fluid.dygraph.base import to_variable
 __all__ = ['Model', 'Loss', 'CrossEntropy', 'Input']
 
 
-class Input(fluid.dygraph.Layer):
-    def __init__(self, shape=None, dtype=None, name=None):
-        self.shape = shape
-        self.dtype = dtype
-        self.name = name
-
-    def forward(self):
-        return fluid.data(self.name, shape=self.shape, dtype=self.dtype)
-
-
 def to_list(value):
     if value is None:
         return value
@@ -54,6 +44,23 @@ def to_numpy(var):
         return var.numpy()
     t = global_scope().find_var(var.name).get_tensor()
     return np.array(t)
+
+
+def extract_args(func):
+    if hasattr(inspect, 'getfullargspec'):
+        return inspect.getfullargspec(func)[0]
+    else:
+        return inspect.getargspec(func)[0]
+
+
+class Input(fluid.dygraph.Layer):
+    def __init__(self, shape=None, dtype=None, name=None):
+        self.shape = shape
+        self.dtype = dtype
+        self.name = name
+
+    def forward(self):
+        return fluid.data(self.name, shape=self.shape, dtype=self.dtype)
 
 
 class Loss(object):
@@ -231,25 +238,28 @@ class StaticGraphAdapter(object):
         t.set(ndarray, place)
 
     def _run(self, inputs, labels=None, device='CPU', device_ids=None):
-        inputs = to_list(inputs)
-        if labels is not None:
-            labels = to_list(labels)
-        assert len(inputs) == len(self.model._inputs), "number of inputs" \
-            + " does not match number of arguments of `forward` method"
 
         if self._progs.get(self.mode, None) is None:
-            if self.model._inputs is None:
-                raise ValueError("The inputs of Model must be not None.")
-            self._input_vars = [
-                k.forward() for k in to_list(self.model._inputs)
-            ]
-            self._make_program(self._input_vars)
+            if isinstance(self.model._inputs, dict):
+                ins = [self.model._inputs[n] \
+                    for n in extract_args(self.model.forward) if n != 'self']
+            else:
+                ins = self.model._inputs
+            self._input_vars[self.mode] = [k.forward() for k in to_list(ins)]
+
+            self._make_program(self._input_vars[self.mode])
 
         compiled_prog = self._compile_and_initialize(self._progs[self.mode],
                                                      device, device_ids)
 
+        inputs = to_list(inputs)
+        if labels is not None:
+            labels = to_list(labels)
+        assert len(inputs) == len(self._input_vars[self.mode]), "number of inputs" \
+            + " does not match number of arguments of `forward` method"
+
         feed = {}
-        input_names = [v.name for v in self._input_vars]
+        input_names = [v.name for v in self._input_vars[self.mode]]
         for idx, n in enumerate(input_names):
             # train and test may take different arguments
             if inputs[idx] is not None:
@@ -261,7 +271,7 @@ class StaticGraphAdapter(object):
         endpoints = self._endpoints[self.mode]
         fetch_list = endpoints['output']
         if 'loss' in endpoints:
-            fetch_list += endpoints['loss']
+            fetch_list = endpoints['output'] + endpoints['loss']
         num_output = len(endpoints['output'])
         out = self._executor.run(compiled_prog,
                                  feed=feed,
@@ -296,19 +306,10 @@ class StaticGraphAdapter(object):
         }
 
     def _get_loss(self, outputs):
-        if self.model._loss_function and self.model._loss:
-            raise ValueError(
-                "Do not set loss by model.set_loss() and "
-                "loss_function in model.prepare() at the same time.")
-        if self.model._loss_function is not None:
-            if self.model._labels is None:
-                raise ValueError("The labels of Model must be not None.")
-            label_vars = [k.forward() for k in to_list(self.model._labels)]
-            self._label_vars[self.mode] = label_vars
-            losses = self.model._loss_function(outputs, label_vars)
-        else:
-            assert self.model._loss
-            losses = to_list(self.model._loss)
+        assert self.model._loss_function
+        label_vars = [k.forward() for k in to_list(self.model._labels)]
+        self._label_vars[self.mode] = label_vars
+        losses = self.model._loss_function(outputs, label_vars)
         return losses
 
     def _compile_and_initialize(self, prog, device='CPU', device_ids=None):
@@ -415,14 +416,8 @@ class DynamicGraphAdapter(object):
         return [to_numpy(o) for o in to_list(outputs)]
 
     def _get_loss(self, outputs, labels):
-        if self.model._loss_function and self.model._loss:
-            raise ValueError(
-                "Do not set loss by model.set_loss() and "
-                "loss_function in model.prepare() at the same time.")
-        if self.model._loss_function is not None:
-            return self.model._loss_function(outputs, labels)
-        else:
-            return to_list(self.model._loss)
+        assert self.model._loss_function
+        return self.model._loss_function(outputs, labels)
 
     def parameters(self, *args, **kwargs):
         return super(Model, self.model).parameters(*args, **kwargs)
@@ -447,23 +442,13 @@ class DynamicGraphAdapter(object):
 class Model(fluid.dygraph.Layer):
     """
     FIXME: add more comments and usage
-
-    Args:
-        inputs (Input|list of Input|None): inputs, entry points of network,
-            could be a Input layer of lits of Input layers, or None.
-            For static graph, inputs must be set. For dynamic graph, it could
-            be None.
-        labels (Input|list of Input|None): labels, entry points of network,
-            could be a Input layer of lits of Input layers, or None.
-            For static graph, if set loss_function in Model.prepare(), it
-            must be set. Otherwise, it could be None.
     """
 
-    def __init__(self, inputs=None, labels=None):
+    def __init__(self):
         super(Model, self).__init__(self.__class__.__name__)
         self.mode = 'train'
-        self._inputs = to_list(inputs)
-        self._labels = to_list(labels)
+        self._inputs = None
+        self._labels = None
         self._loss_function = None
         self._loss_weights = None
         self._loss = None
@@ -488,22 +473,33 @@ class Model(fluid.dygraph.Layer):
     def load(self, *args, **kwargs):
         return self._adapter.load(*args, **kwargs)
 
-    def prepare(self, optimizer, loss_function=None):
+    def prepare(self, optimizer, loss_function=None, inputs=None, labels=None):
+        """
+        FIXME: add comments
+        Args:
+            inputs (Input|list|dict|None): inputs, entry points of network,
+                could be a Input layer, or lits of Input layers, or dict (name: ), or None.
+                For static graph, inputs must be set. For dynamic graph, it could
+                be None.
+            labels (Input|list|dict|None): labels, entry points of network,
+                could be a Input layer or lits of Input layers, or None.
+                For static graph, if set loss_function in Model.prepare(), it
+                must be set. Otherwise, it could be None.
+        """
         self._optimizer = optimizer
         if loss_function:
             if not isinstance(loss_function, Loss):
                 raise TypeError(
                     "'loss_function' must be sub classes of 'Loss'")
         self._loss_function = loss_function
+        if not in_dygraph_mode():
+            if not isinstance(inputs, (list, dict, Input)):
+                raise TypeError(
+                    "'inputs' must be list or dict in static graph mode")
+            if loss_function and not isinstance(labels, (list, Input)):
+                raise TypeError("'labels' must be list in static graph mode")
+        self._inputs = inputs
+        self._labels = labels
 
     def parameters(self, *args, **kwargs):
         return self._adapter.parameters(*args, **kwargs)
-
-    def set_loss(self, loss):
-        if loss and self._loss_function:
-            raise ValueError(
-                "Do not set loss by model.set_loss() and "
-                "loss_function in model.prepare() at the same time.")
-        if not isinstance(loss, (Variable, fluid.core.VarBase)):
-            raise TypeError("loss type should be a Variable or VarBase.")
-        self._loss = loss
