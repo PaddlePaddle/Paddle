@@ -22,6 +22,7 @@ from collections import defaultdict
 # as produced by ast.parse from the standard ast module.
 # See details in https://github.com/serge-sans-paille/gast/
 import gast
+import six
 from paddle.fluid import unique_name
 
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_api
@@ -141,7 +142,7 @@ def compare_with_none(node):
     return False
 
 
-class IsControlFlowIfVisitor(gast.NodeVisitor):
+class IsControlFlowVisitor(gast.NodeVisitor):
     """
     Judge whether the node.test from Dygraph code dependent on paddle Tensor.
     If does, it should satisfy:
@@ -159,18 +160,20 @@ class IsControlFlowIfVisitor(gast.NodeVisitor):
              because reshape_op may be called before this statement.
     """
 
-    def __init__(self, ast_node, static_analysis_visitor=None):
+    def __init__(self,
+                 ast_node,
+                 static_analysis_visitor=None,
+                 node_var_type_map=None):
         assert isinstance(
             ast_node, gast.AST
         ), "Type of input node should be gast.AST, but received %s." % type(
             ast_node)
         self.ast_root = ast_node
         if static_analysis_visitor is None:
-            self.static_analysis_visitor = StaticAnalysisVisitor(ast_node)
-        else:
-            self.static_analysis_visitor = static_analysis_visitor
-        self.node_to_wrapper_map = self.static_analysis_visitor.get_node_to_wrapper_map(
-        )
+            static_analysis_visitor = StaticAnalysisVisitor(ast_node)
+        self.static_analysis_visitor = static_analysis_visitor
+        self.node_var_type_map = node_var_type_map
+
         self.is_control_flow_num = 0
         self._compare_node_tenor_set = set()
 
@@ -188,6 +191,8 @@ class IsControlFlowIfVisitor(gast.NodeVisitor):
 
     def visit_Compare(self, node):
         # Ignores child node with `if x` or `if x is None`
+        # TODO(Aurelius84): `if tensor` will be supported in dygraph
+        # and should be considered as is_control_flow.
         pre_control_flow_num = self.is_control_flow_num
         if not compare_with_none(node):
             self.generic_visit(node)
@@ -217,19 +222,39 @@ class IsControlFlowIfVisitor(gast.NodeVisitor):
         return node
 
     def visit_Name(self, node):
-        wrapper_node = self.node_to_wrapper_map.get(node, None)
-        if wrapper_node is not None:
-            if wrapper_node.node_var_type & {
-                    NodeVarType.TENSOR, NodeVarType.PADDLE_RETURN_TYPES
-            }:
-                self.is_control_flow_num += 1
+        if self._is_node_with_tensor(node, node.id):
+            self.is_control_flow_num += 1
         return node
+
+    def visit_Constant(self, node):
+        if self._is_node_with_tensor(node, node.value):
+            self.is_control_flow_num += 1
+        return node
+
+    def _is_node_with_tensor(self, node, name_id):
+        tensor_types = set(
+            [NodeVarType.TENSOR, NodeVarType.PADDLE_RETURN_TYPES])
+        # Look up the node_var_type_map by name_id.
+        if self.node_var_type_map:
+            if name_id and isinstance(name_id, six.string_types):
+                var_type = self.node_var_type_map.get(name_id, None)
+                if var_type and var_type & tensor_types:
+                    return True
+        # if not found, look up the node_to_wrapper_map by node.
+        node_to_wrapper_map = self.static_analysis_visitor.get_node_to_wrapper_map(
+        )
+        wrapper_node = node_to_wrapper_map.get(node, None)
+        if wrapper_node is not None:
+            if wrapper_node.node_var_type & tensor_types:
+                return True
+
+        return False
 
     def get_compare_nodes_with_tensor(self):
         return self._compare_node_tenor_set
 
 
-class IfNodeTestTransformer(gast.NodeTransformer):
+class NodeTestTransformer(gast.NodeTransformer):
     def __init__(self, ast_node, compare_nodes_with_tensor=set()):
         self.ast_root = ast_node
         self._compare_nodes_with_tensor = compare_nodes_with_tensor
@@ -308,11 +333,15 @@ class IfNodeTestTransformer(gast.NodeTransformer):
 
 
 class IfConditionVisitor(object):
-    def __init__(self, node, static_analysis_visitor=None):
+    def __init__(self,
+                 node,
+                 static_analysis_visitor=None,
+                 node_var_type_map=None):
         self.node = node
         self.static_analysis_visitor = static_analysis_visitor
-        self.visitor = IsControlFlowIfVisitor(node, static_analysis_visitor)
-        self.transformer = IfNodeTestTransformer(node)
+        self.visitor = IsControlFlowVisitor(node, static_analysis_visitor,
+                                            node_var_type_map)
+        self.transformer = NodeTestTransformer(node)
         self.compare_nodes_with_tensor = set()
         self._is_control_flow_if = False
 

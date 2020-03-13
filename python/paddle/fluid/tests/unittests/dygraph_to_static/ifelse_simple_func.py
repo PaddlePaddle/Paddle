@@ -32,7 +32,6 @@ def dyfunc_with_if_else(x_v, label=None):
 
 def dyfunc_with_if_else2(x, col=100):
     row = 0
-    # plain if in python
     if abs(col) > x.shape[-1]:
         col = -1
     if fluid.layers.reduce_mean(x).numpy()[0] > x.numpy()[row][col]:
@@ -47,7 +46,6 @@ def nested_if_else(x_v):
     batch_size = 16
     feat_size = x_v.shape[-1]
     bias = fluid.layers.fill_constant([feat_size], dtype='float32', value=1)
-    # plain if in python
     if x_v.shape[0] != batch_size:
         batch_size = x_v.shape[0]
     if fluid.layers.mean(x_v).numpy()[0] < 0:
@@ -84,7 +82,6 @@ class NetWithControlFlowIf(fluid.dygraph.Layer):
     @dygraph_to_static_graph
     def forward(self, input):
         hidden_dim = input.shape[-1]
-        # Plain `if` statement in Python
         if hidden_dim != self.hidden_dim:
             raise ValueError(
                 "hidden_dim {} of input is not equal to FC.weight[0]: {}"
