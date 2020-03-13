@@ -2,7 +2,7 @@
 from flask import Flask, jsonify, abort, request, make_response, url_for
 from contextlib import closing
 import socket
-from flask import request
+from flask import request, url_for
 import random
 import threading
 import time
@@ -94,8 +94,43 @@ def update_data():
         value = request.json["value"]
         assert scope is not None and value is not None and key is not None
     except:
-        return jsonify({'invalid arguments'})
+        return jsonify('invalid arguments')
     kv_store.post(scope, key, value)
+
+
+def has_no_empty_params(rule):
+    defaults = rule.defaults if rule.defaults is not None else ()
+    arguments = rule.arguments if rule.arguments is not None else ()
+    return len(defaults) >= len(arguments)
+
+
+@app.route("/site-map", methods=['Get'])
+def site_map():
+    links = []
+    for rule in app.url_map.iter_rules():
+        # Filter out rules we can't navigate to in a browser
+        # and rules that require parameters
+        if has_no_empty_params(rule):
+            url = url_for(rule.endpoint, **(rule.defaults or {}))
+            links.append((url, rule.endpoint))
+
+    return jsonify(links)
+
+
+@app.route('/')
+def hello_world():
+    return 'hello world'
+
+
+@app.route('/register', methods=['POST'])
+def register():
+    print request.headers
+    print request.form
+    print request.form['name']
+    print request.form.get('name')
+    print request.form.getlist('name')
+    print request.form.get('nickname', default='little apple')
+    return 'welcome'
 
 
 class HttpServer(object):

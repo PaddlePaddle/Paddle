@@ -113,7 +113,7 @@ def _post_kv(url, scope, key, value):
     kv = {"scope": scope, "key": key, "value": value}
     url = "{}/rest/1.0/post/pod".format(url)
     try:
-        r = requests.post(url, params=kv)
+        r = requests.post(url, data=kv)
         d = r.json()
         logger.info("url:{} response:{}".format(r.url, d))
         return True
