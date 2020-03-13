@@ -123,22 +123,6 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
   }
 };
 
-class RNNMemoryHelperGradOpInfoMaker
-    : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput(framework::GradVarName("Out"), "");
-    AddInput("X", "");
-    AddInput("Out", "");
-    AddOutput(framework::GradVarName("X"), "");
-    AddAttr<int>("dtype",
-                 "(int, default 5 (FP32)) "
-                 "Output data type")
-        .SetDefault(framework::proto::VarType::FP32);
-    AddComment("");
-  }
-};
-
 class RNNMemoryHelperGradOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
@@ -164,5 +148,4 @@ REGISTER_OPERATOR(
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
 REGISTER_OPERATOR(rnn_memory_helper_grad,
                   paddle::operators::RNNMemoryHelperGradOp,
-                  paddle::operators::RNNMemoryHelperGradOpInfoMaker,
                   paddle::operators::RNNMemoryHelperGradOpShapeInference);

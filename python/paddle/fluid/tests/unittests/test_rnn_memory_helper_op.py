@@ -50,11 +50,13 @@ class RNNMemoryHelperOpTest(unittest.TestCase):
 
 
 class RNNMemoryHelperGradOpTest(unittest.TestCase):
-    def setUp(self):
-        self.program = Program()
+    def setup(self, input_names):
         self.place = core.CPUPlace()
 
-        self.input_names = ['X', 'Out', 'Out@GRAD']
+        fwd_program = Program()
+        self.program = Program()
+
+        self.input_names = input_names
         self.input_vars = {
             name: self.program.global_block().create_var(
                 name=name, shape=[2, 3], dtype='float32')
@@ -68,13 +70,30 @@ class RNNMemoryHelperGradOpTest(unittest.TestCase):
             for name in self.output_names
         }
 
-        self.program.global_block().append_op(
-            type='rnn_memory_helper_grad',
-            inputs=self.input_vars,
-            outputs=self.output_vars,
+        fwd_op = fwd_program.global_block().append_op(
+            type='rnn_memory_helper',
+            inputs={"X": self.input_vars['X']},
+            outputs={"Out": self.input_vars['Out']},
             attrs={})
 
+        # construct grad operator by forward operator
+        grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(fwd_op.desc,
+                                                                  set(), [])
+        grad_op_desc = grad_op_desc_list[0]
+        grad_block = self.program.global_block()
+        op = grad_block.desc.append_op()
+        op.copy_from(grad_op_desc)
+
+        self.program._sync_with_cpp()
+
+    def setup_with_input(self):
+        self.setup(input_names=['X', 'Out', 'Out@GRAD'])
+
+    def setup_without_input(self):
+        self.setup(input_names=['X', 'Out'])
+
     def test_backward(self):
+        self.setup_with_input()
         self.feed_map = {
             name: np.random.normal(size=(2, 3)).astype("float32")
             for name in self.input_names
@@ -87,37 +106,8 @@ class RNNMemoryHelperGradOpTest(unittest.TestCase):
                       fetch_list=self.fetch_list)
         np.isclose(out[0], self.feed_map['Out@GRAD'], rtol=1e-5)
 
-
-class RNNMemoryHelperGradOpWithoutInputTest(unittest.TestCase):
-    def setUp(self):
-        self.program = Program()
-        self.fake_program = Program()
-        self.place = core.CPUPlace()
-
-        self.input_names = ['X', 'Out']
-        self.input_vars = {
-            name: self.program.global_block().create_var(
-                name=name, shape=[2, 3], dtype='float32')
-            for name in self.input_names
-        }
-        self.input_vars["Out@GRAD"] = \
-            self.fake_program.global_block().create_var(
-                name="Out@GRAD", shape=[2, 3], dtype='float32')
-
-        self.output_names = ['X@GRAD']
-        self.output_vars = {
-            name: self.program.global_block().create_var(
-                name=name, shape=[2, 3], dtype='float32')
-            for name in self.output_names
-        }
-
-        self.program.global_block().append_op(
-            type='rnn_memory_helper_grad',
-            inputs=self.input_vars,
-            outputs=self.output_vars,
-            attrs={})
-
-    def test_backward(self):
+    def test_backward_without_Input(self):
+        self.setup_without_input()
         self.feed_map = {
             name: np.random.normal(size=(2, 3)).astype("float32")
             for name in ['X', 'Out']
