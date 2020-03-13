@@ -146,8 +146,7 @@ def _is_scope_full(cluster, scope_kvs):
 def barrier(cluster, pod):
     # check to start a httpserver
     # post job_stage_flag,pod_id,pod_id to httpstore
-    #url = "{}:{}".format(pod.addr, pod.port)
-    url = "{}:{}".format("10.255.100.13", cluster.pods[0].port)
+    url = "{}:{}".format(cluster.pods[0].addr, cluster.pods[0].port)
     if not _post_kv(url, cluster.job_stage_flag, pod.id, pod.id):
         return False
 

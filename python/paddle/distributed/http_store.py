@@ -94,10 +94,10 @@ def update_data():
         value = request.args.get("value")
         assert scope is not None and value is not None and key is not None
         kv_store.post(scope, key, value)
-        return jsonify({'ret': 'succeed'})
     except Exception as e:
         logger.warning("request:{}, error:{}".format(request, e))
         return jsonify({"err": 'invalid arguments'})
+    return jsonify({'ret': 'succeed'})
 
 
 class HttpServer(object):
@@ -112,19 +112,19 @@ class HttpServer(object):
         current_env.pop("https_proxy", None)
         current_env["PYTHONUNBUFFERED"] = "1"
 
-        #self._cmd = [sys.executable, "-m", "paddle.distributed.http_store", "--host={}".format(host), "--port={}".format(port)]
         self._cmd = [
             sys.executable, "-m", "paddle.distributed.http_store",
             "--host={}".format(host), "--port={}".format(port)
         ]
         logger.info("start http store:{}".format(self._cmd))
-        #self._fn = open("paddle_edl_launch_http_store.log" , "a")
+        self._fn = open("paddle_edl_launch_http_store.log", "a")
+        #self._proc = subprocess.Popen(
+        #    self._cmd, env=current_env, stdout=sys.stdout, stderr=sys.stderr)
         self._proc = subprocess.Popen(
-            self._cmd, env=current_env, stdout=sys.stdout, stderr=sys.stderr)
-        #self._proc = subprocess.Popen(self._cmd, stdout=self._fn, stderr=self._fn)
+            self._cmd, env=current_env, stdout=self._fn, stderr=self._fn)
 
     def stop(self):
-        if self._proc and self._proc.is_alive():
+        if self._proc and self.is_alive():
             self._proc.terminate()
 
     def is_alive(self):

@@ -317,7 +317,7 @@ def edl_barrier(edl_env, hdfs, timeout=-1):
 
         logger.warning("Can't barrier in cluster:{}:{}".format(pod.addr,
                                                                pod.port))
-        time.sleep(5)
+        time.sleep(1)
         if timeout > 0 and step >= timeout:
             logger.warning("can't barrier to start now!so exit")
             sys.exit(1)
@@ -379,7 +379,7 @@ def launch(args):
             logger.info("Local procs complete, POD info:{}".format(pod))
             break
 
-        time.sleep(3)
+        time.sleep(5)
 
     edl_barrier(edl_env, hdfs)
 
