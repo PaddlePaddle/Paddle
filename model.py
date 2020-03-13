@@ -110,8 +110,6 @@ class StaticGraphAdapter(object):
         self._progs = {}
         self._compiled_progs = {}
 
-        self._lazy_load_optimizer = None
-
     @property
     def mode(self):
         return self.model.mode
@@ -120,19 +118,19 @@ class StaticGraphAdapter(object):
     def mode(self, value):
         self.model.mode = value
 
-    def train(self, inputs, labels=None, device='CPU', device_ids=None):
+    def train(self, inputs, labels=None):
         assert self.model._optimizer, \
             "model not ready, please call `model.prepare()` first"
         self.mode = 'train'
-        return self._run(inputs, labels, device, device_ids)
+        return self._run(inputs, labels)
 
-    def eval(self, inputs, labels=None, device='CPU', device_ids=None):
+    def eval(self, inputs, labels=None):
         self.mode = 'eval'
-        return self._run(inputs, labels, device, device_ids)
+        return self._run(inputs, labels)
 
-    def test(self, inputs, device='CPU', device_ids=None):
+    def test(self, inputs):
         self.mode = 'test'
-        return self._run(inputs, None, device, device_ids)
+        return self._run(inputs, None)
 
     def parameters(self, *args, **kwargs):
         return None
@@ -203,10 +201,8 @@ class StaticGraphAdapter(object):
         assert '__static_graph_only__' in optim_state, \
             "optimizer saved in dygraph mode is not usable in static graph"
 
-        if self._executor is not None:
-            self._load_optimizer(optim_state)
-        else:
-            self._lazy_load_optimizer = optim_state
+        assert self._executor
+        self._load_optimizer(optim_state)
 
     def _load_optimizer(self, state):
         prog = self._progs.get('train', None)
@@ -237,25 +233,14 @@ class StaticGraphAdapter(object):
 
         t.set(ndarray, place)
 
-    def _run(self, inputs, labels=None, device='CPU', device_ids=None):
-
-        if self._progs.get(self.mode, None) is None:
-            if isinstance(self.model._inputs, dict):
-                ins = [self.model._inputs[n] \
-                    for n in extract_args(self.model.forward) if n != 'self']
-            else:
-                ins = self.model._inputs
-            self._input_vars[self.mode] = [k.forward() for k in to_list(ins)]
-
-            self._make_program(self._input_vars[self.mode])
-
-        compiled_prog = self._compile_and_initialize(self._progs[self.mode],
-                                                     device, device_ids)
+    def _run(self, inputs, labels=None, device='CPU'):
+        compiled_prog = self.prepare()
 
         inputs = to_list(inputs)
         if labels is not None:
             labels = to_list(labels)
-        assert len(inputs) == len(self._input_vars[self.mode]), "number of inputs" \
+        assert len(inputs) == len(self._input_vars[self.mode]), \
+            "number of inputs" \
             + " does not match number of arguments of `forward` method"
 
         feed = {}
@@ -281,6 +266,13 @@ class StaticGraphAdapter(object):
         else:
             return out[:num_output], out[num_output:]
 
+    def _get_loss(self, outputs):
+        assert self.model._loss_function
+        label_vars = [k.forward() for k in to_list(self.model._labels)]
+        self._label_vars[self.mode] = label_vars
+        losses = self.model._loss_function(outputs, label_vars)
+        return losses
+
     def _make_program(self, inputs):
         prog = self._orig_prog.clone()
         if self.mode == 'train' and self.model._optimizer._learning_rate_map:
@@ -292,7 +284,7 @@ class StaticGraphAdapter(object):
             outputs = to_list(self.model.forward(*inputs))
             if self.mode != 'test':
                 losses = self._get_loss(outputs)
-                if self.mode == 'train':
+                if self.mode == 'train' and self.model._optimizer:
                     self._loss_endpoint = fluid.layers.sum(losses)
                     self.model._optimizer.minimize(self._loss_endpoint)
         if self.mode != 'train':  # clone again to put it in test mode
@@ -305,22 +297,32 @@ class StaticGraphAdapter(object):
             'output': outputs
         }
 
-    def _get_loss(self, outputs):
-        assert self.model._loss_function
-        label_vars = [k.forward() for k in to_list(self.model._labels)]
-        self._label_vars[self.mode] = label_vars
-        losses = self.model._loss_function(outputs, label_vars)
-        return losses
-
-    def _compile_and_initialize(self, prog, device='CPU', device_ids=None):
+    def prepare(self):
         compiled_prog = self._compiled_progs.get(self.mode, None)
         if compiled_prog is not None:
             return compiled_prog
 
-        places = [
-            device.lower() == 'gpu' and fluid.CUDAPlace(i) or fluid.CPUPlace()
-            for i in device_ids
-        ]
+        if isinstance(self.model._inputs, dict):
+            ins = [self.model._inputs[n] \
+                for n in extract_args(self.model.forward) if n != 'self']
+        else:
+            ins = self.model._inputs
+        self._input_vars[self.mode] = [k.forward() for k in to_list(ins)]
+        self._make_program(self._input_vars[self.mode])
+        return self._compile_and_initialize(self._progs[self.mode])
+
+    def _compile_and_initialize(self, prog):
+        compiled_prog = self._compiled_progs.get(self.mode, None)
+        if compiled_prog is not None:
+            return compiled_prog
+
+        device = self.model._device
+        device_ids = self.model._device_ids
+
+        if device.lower() == 'gpu':
+            places = fluid.cuda_places(device_ids)
+        else:
+            places = fluid.cpu_places(len(device_ids) if device_ids else None)
 
         # XXX *ALL WEIGHTS* should be initialized upon model construction
         # even if `forward()` may run different code path for different mode
@@ -338,12 +340,8 @@ class StaticGraphAdapter(object):
                 startup_prog = self._startup_prog._prune(uninitialized)
                 self._executor.run(startup_prog)
 
-            if self.mode == 'train' and self._lazy_load_optimizer:
-                self._load_optimizer(self._lazy_load_optimizer)
-                self._lazy_load_optimizer = None
-
         compiled_prog = fluid.CompiledProgram(prog)
-        if len(device_ids) > 1:
+        if len(places) > 1:
             loss_name = None
             if self.mode == 'train' and self._loss_endpoint is not None:
                 loss_name = self._loss_endpoint.name
@@ -356,12 +354,10 @@ class StaticGraphAdapter(object):
             # program will be run before the train program
             if self.mode == 'train' and 'eval' in self._compiled_progs:
                 del self._compiled_progs['eval']
-
             compiled_prog = compiled_prog.with_data_parallel(
                 loss_name=loss_name,
                 places=places,
                 share_vars_from=share_vars_from)
-
         self._compiled_progs[self.mode] = compiled_prog
         return compiled_prog
 
@@ -380,7 +376,7 @@ class DynamicGraphAdapter(object):
         self.model.mode = value
 
     # TODO multi device in dygraph mode not implemented at present time
-    def train(self, inputs, labels=None, device='CPU', device_ids=None):
+    def train(self, inputs, labels=None):
         assert self.model._optimizer, \
             "model not ready, please call `model.prepare()` first"
         super(Model, self.model).train()
@@ -397,7 +393,7 @@ class DynamicGraphAdapter(object):
         return [to_numpy(o) for o in to_list(outputs)], \
             [to_numpy(l) for l in losses]
 
-    def eval(self, inputs, labels=None, device='CPU', device_ids=None):
+    def eval(self, inputs, labels=None):
         super(Model, self.model).eval()
         self.mode = 'eval'
         inputs = to_list(inputs)
@@ -408,7 +404,7 @@ class DynamicGraphAdapter(object):
         return [to_numpy(o) for o in to_list(outputs)], \
             [to_numpy(l) for l in losses]
 
-    def test(self, inputs, device='CPU', device_ids=None):
+    def test(self, inputs):
         super(Model, self.model).eval()
         self.mode = 'test'
         inputs = [to_variable(x) for x in to_list(inputs)]
@@ -453,6 +449,9 @@ class Model(fluid.dygraph.Layer):
         self._loss_weights = None
         self._loss = None
         self._optimizer = None
+        self._device = None
+        self._device_ids = None
+        self._optimizer = None
         if in_dygraph_mode():
             self._adapter = DynamicGraphAdapter(self)
         else:
@@ -473,18 +472,45 @@ class Model(fluid.dygraph.Layer):
     def load(self, *args, **kwargs):
         return self._adapter.load(*args, **kwargs)
 
-    def prepare(self, optimizer, loss_function=None, inputs=None, labels=None):
+    def prepare(self,
+                optimizer=None,
+                loss_function=None,
+                inputs=None,
+                labels=None,
+                device=None,
+                device_ids=None):
         """
         FIXME: add comments
         Args:
+            optimizer (Optimizer|None): optimizer must be set in training
+                and should be a Optimizer instance. It can be None in eval
+                and test mode.
+            loss_function (Loss|None): loss function must be set in training
+                and should be a Loss instance. It can be None when there is
+                no loss.
             inputs (Input|list|dict|None): inputs, entry points of network,
-                could be a Input layer, or lits of Input layers, or dict (name: ), or None.
-                For static graph, inputs must be set. For dynamic graph, it could
-                be None.
+            inputs (Input|list|dict|None): inputs, entry points of network,
+                could be a Input layer, or lits of Input layers,
+                or dict (name: Input), or None. For static graph,
+                inputs must be set. For dynamic graph, it could be None.
             labels (Input|list|dict|None): labels, entry points of network,
                 could be a Input layer or lits of Input layers, or None.
                 For static graph, if set loss_function in Model.prepare(), it
                 must be set. Otherwise, it could be None.
+            device (str|None): specify device type, 'CPU' or 'GPU'.
+                If None, automatically select device according to
+                installation package version.
+            device_ids (list[int]|None): specify device index. If None,
+                the available device will be obtained from the environment
+                variable when the model is executed: If the GPU is used, the
+                currently available device ID is obtained from the environment
+                variable FLAGS_selected_gpus or CUDA_VISIBLE_DEVICES when the
+                model is executed; CPU, when the model is executed,
+                the currently available CPU number is obtained from the
+                environment variable CPU_NUM. For example, export CPU_NUM=4,
+                if the environment variable is not set, the executor will add
+                the variable to the environment variable and set its value to 1.
+                The default is None.
         """
         self._optimizer = optimizer
         if loss_function:
@@ -500,6 +526,12 @@ class Model(fluid.dygraph.Layer):
                 raise TypeError("'labels' must be list in static graph mode")
         self._inputs = inputs
         self._labels = labels
+        self._device = device
+        if device is None:
+            self._device = 'GPU' if fluid.is_compiled_with_cuda() else 'CPU'
+        self._device_ids = device_ids
+        if not in_dygraph_mode():
+            self._adapter.prepare()
 
     def parameters(self, *args, **kwargs):
         return self._adapter.parameters(*args, **kwargs)

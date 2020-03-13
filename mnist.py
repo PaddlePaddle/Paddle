@@ -137,8 +137,6 @@ def main():
         paddle.batch(paddle.dataset.mnist.test(),
                      batch_size=FLAGS.batch_size, drop_last=True), 1, 1)
 
-    device_ids = list(range(FLAGS.num_devices))
-
     with guard:
         model = MNIST()
         optim = Momentum(
@@ -159,8 +157,7 @@ def main():
             val_acc = 0.0
             print("======== train epoch {} ========".format(e))
             for idx, batch in enumerate(train_loader()):
-                outputs, losses = model.train(
-                    batch[0], batch[1], device='gpu', device_ids=device_ids)
+                outputs, losses = model.train(batch[0], batch[1])
 
                 acc = accuracy(outputs[0], batch[1])[0]
                 train_loss += np.sum(losses)
@@ -171,8 +168,7 @@ def main():
 
             print("======== eval epoch {} ========".format(e))
             for idx, batch in enumerate(val_loader()):
-                outputs, losses = model.eval(
-                    batch[0], batch[1], device='gpu', device_ids=device_ids)
+                outputs, losses = model.eval(batch[0], batch[1])
 
                 acc = accuracy(outputs[0], batch[1])[0]
                 val_loss += np.sum(losses)
