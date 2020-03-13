@@ -49,7 +49,6 @@ class SubGraph {
         }
       }
     }
-    ExtractDataType();
   }
 
   bool IsValid(int min_subgraph_size) {
@@ -61,11 +60,10 @@ class SubGraph {
       return false;
     }
 
-    return ExtractDataType();
+    return true;
   }
 
   int GetType() const { return type_; }
-  std::string GetDataType() const { return data_type_; }
 
   void SetFuncName(std::string func_name) { func_name_ = func_name; }
   std::string GetFuncName() const { return func_name_; }
@@ -162,37 +160,6 @@ class SubGraph {
   }
 
  private:
-  bool ExtractDataType() {
-    bool is_first = true;
-    proto::VarType::Type data_type = proto::VarType::FP32;
-    for (auto* n : nodes_set_) {
-      if (n && n->IsVar() && n->Var()) {
-        if (n->Var()->GetType() != proto::VarType::LOD_TENSOR) {
-          // All var node in a subgraph should hold a LoDTensor.
-          return false;
-        }
-        if (is_first) {
-          data_type = n->Var()->GetDataType();
-          is_first = false;
-        } else if (n->Var()->GetDataType() != data_type) {
-          // DataType of VarDesc in a subgraph is not the same.
-          return false;
-        }
-      }
-    }
-    if (data_type == proto::VarType::FP32) {
-      data_type_ = "float";
-    } else if (data_type == proto::VarType::FP64) {
-      data_type_ = "double";
-    } else if (data_type == proto::VarType::FP16) {
-      data_type_ = "float16";
-    } else {
-      VLOG(2) << "Only support fp32, fp64 and fp16 in fusion_group.";
-      return false;
-    }
-    return true;
-  }
-
   void TopologicalSort() {
     if (!is_sorted_) {
       std::unordered_map<Node*, std::vector<Node*>> inputs_map;

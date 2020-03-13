@@ -576,6 +576,6 @@ def create_cond_node(return_name_ids, pred, true_func, false_func):
     if return_name_ids:
         _, cond_node = create_assign_node(return_name_ids, cond_layer)
     else:  # No variables can be returned if no assign statement in if.body.
-        cond_node = cond_layer
+        cond_node = gast.Expr(value=cond_layer)
 
     return cond_node

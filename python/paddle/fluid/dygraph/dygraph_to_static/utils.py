@@ -77,6 +77,29 @@ def is_numpy_api(node):
         return False
 
 
+def is_control_flow_to_transform(node, var_name_to_type):
+    """
+    Determines whether the node is a Paddle control flow statement which needs to
+    transform into a static graph control flow statement.
+    """
+    assert isinstance(node, gast.AST), \
+        "The type of input node must be gast.AST, but received %s." % type(node)
+
+    if isinstance(node, gast.If):
+        # TODO: make a better condition
+        return True
+
+    if isinstance(node, gast.For):
+        # TODO: make a better condition
+        return True
+
+    if isinstance(node, gast.While):
+        # TODO: make a better condition
+        return True
+
+    return False
+
+
 def _delete_keywords_from(node):
     assert isinstance(node, gast.Call)
     func_src = astor.to_source(gast.gast_to_ast(node.func))
@@ -213,6 +236,18 @@ def create_api_shape_node(tensor_shape_node):
         args=[tensor_shape_node.value],
         keywords=[])
     return api_shape_node
+
+
+def get_constant_variable_node(name, value, shape=[1], dtype='int64'):
+    return gast.parse('%s = fluid.layers.fill_constant(%s, "%s", %s)' %
+                      (name, str(shape), dtype, str(value)))
+
+
+def get_attribute_full_name(node):
+    assert isinstance(
+        node,
+        gast.Attribute), "Input non-Attribute node to get attribute full name"
+    return astor.to_source(gast.gast_to_ast(node)).strip()
 
 
 def generate_name_node(name_ids, ctx=gast.Load()):

@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import six
 import gast
 
 from paddle.fluid.layers import fill_constant
@@ -39,8 +40,15 @@ def to_static_variable(x):
     '''
     if isinstance(x, bool):
         return fill_constant(shape=[1], dtype='bool', value=x)
-    if isinstance(x, int):
-        return fill_constant(shape=[1], dtype='int64', value=x)
     if isinstance(x, float):
         return fill_constant(shape=[1], dtype='float64', value=x)
+
+    if six.PY2:
+        if isinstance(x, int):
+            return fill_constant(shape=[1], dtype='int32', value=x)
+        if isinstance(x, long):
+            return fill_constant(shape=[1], dtype='int64', value=x)
+    else:
+        if isinstance(x, int):
+            return fill_constant(shape=[1], dtype='int64', value=x)
     return x
