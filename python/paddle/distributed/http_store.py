@@ -16,7 +16,7 @@ import utils
 import subprocess
 from utils import logger
 
-app = Flask(__name__, static_url_path="")
+app = Flask(__name__)
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(utils.add_arguments, argparser=parser)
@@ -36,15 +36,15 @@ class ScopeKV(object):
                 return self._scope[scope][key]
         return None
 
-    def post(self, scope, key, data):
+    def post(self, scope, key, value):
         with self._lock:
-            if scope not in self._scope[scope]:
+            if scope not in self._scope:
                 self._scope[scope] = {}
-            self.job[scope][key] = data
+            self._scope[scope][key] = value
 
     def get_scope(self, scope):
         with self._lock:
-            if scope in self._scope[scope]:
+            if scope in self._scope:
                 return self._scope[scope]
         return None
 
@@ -69,7 +69,8 @@ def get_value():
         key = request.args.get('scope')
         assert scope is not None and key is not None
         value = kv_store.get_value(scope, key)
-    except:
+    except Exception as e:
+        logger.warning("request:{}, error:{}".format(request, e))
         return jsonify({})
     return jsonify({'scope': scope, 'key': key, "value": value})
 
@@ -79,58 +80,24 @@ def get_scope():
     try:
         scope = request.args.get('scope')
         value = kv_store.get_scope(scope)
-        assert scope is not None and value is not None
-    except:
+    except Exception as e:
+        logger.warning("request:{}, error:{}".format(request, e))
         return jsonify({})
-    return jsonify({'scope': scope, "value": data})
+    return jsonify({'scope': scope, "value": value})
 
 
-@app.route('/rest/1.0/post/pod', methods=['POST'])
+@app.route('/rest/1.0/post/pod', methods=['GET'])
 def update_data():
-    print("get_request:", request)
     try:
-        scope = request.json["scope"]
-        key = request.json["key"]
-        value = request.json["value"]
+        scope = request.args.get("scope")
+        key = request.args.get("key")
+        value = request.args.get("value")
         assert scope is not None and value is not None and key is not None
-    except:
-        return jsonify('invalid arguments')
-    kv_store.post(scope, key, value)
-
-
-def has_no_empty_params(rule):
-    defaults = rule.defaults if rule.defaults is not None else ()
-    arguments = rule.arguments if rule.arguments is not None else ()
-    return len(defaults) >= len(arguments)
-
-
-@app.route("/site-map", methods=['Get'])
-def site_map():
-    links = []
-    for rule in app.url_map.iter_rules():
-        # Filter out rules we can't navigate to in a browser
-        # and rules that require parameters
-        if has_no_empty_params(rule):
-            url = url_for(rule.endpoint, **(rule.defaults or {}))
-            links.append((url, rule.endpoint))
-
-    return jsonify(links)
-
-
-@app.route('/')
-def hello_world():
-    return 'hello world'
-
-
-@app.route('/register', methods=['POST'])
-def register():
-    print request.headers
-    print request.form
-    print request.form['name']
-    print request.form.get('name')
-    print request.form.getlist('name')
-    print request.form.get('nickname', default='little apple')
-    return 'welcome'
+        kv_store.post(scope, key, value)
+        return jsonify({'ret': 'succeed'})
+    except Exception as e:
+        logger.warning("request:{}, error:{}".format(request, e))
+        return jsonify({"err": 'invalid arguments'})
 
 
 class HttpServer(object):
@@ -147,10 +114,8 @@ class HttpServer(object):
 
         #self._cmd = [sys.executable, "-m", "paddle.distributed.http_store", "--host={}".format(host), "--port={}".format(port)]
         self._cmd = [
-            "stdbuf", "-oL", sys.executable, "-m",
-            "paddle.distributed.http_store", "--host={}".format(
-                "yq01-sys-hic-v100-box-a223-0155.yq01.baidu.com"),
-            "--port={}".format(port)
+            sys.executable, "-m", "paddle.distributed.http_store",
+            "--host={}".format(host), "--port={}".format(port)
         ]
         logger.info("start http store:{}".format(self._cmd))
         #self._fn = open("paddle_edl_launch_http_store.log" , "a")

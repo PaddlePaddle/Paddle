@@ -111,9 +111,10 @@ class Edlenv(object):
 
 def _post_kv(url, scope, key, value):
     kv = {"scope": scope, "key": key, "value": value}
-    url = "{}/rest/1.0/post/pod".format(url)
+    url = "http://{}/rest/1.0/post/pod".format(url)
+    print("post:", kv)
     try:
-        r = requests.post(url, data=kv)
+        r = requests.get(url, params=kv)
         d = r.json()
         logger.info("url:{} response:{}".format(r.url, d))
         return True
@@ -124,13 +125,14 @@ def _post_kv(url, scope, key, value):
 
 def _get_scope(url, scope):
     kv = {"scope": scope}
-    url = "{}/rest/1.0/get/scope".format(url)
+    url = "http://{}/rest/1.0/get/scope".format(url)
     try:
         r = requests.get(url, params=kv)
         d = r.json()
-        logger.debug("job_server:{} response:{}".format(r.url, d))
+        logger.info("url:{} response:{}".format(r.url, d))
         return d["value"]
     except Exception as e:
+        logger.warning("url:{}, error:{}".format(url, e))
         return None
 
 
@@ -144,7 +146,8 @@ def _is_scope_full(cluster, scope_kvs):
 def barrier(cluster, pod):
     # check to start a httpserver
     # post job_stage_flag,pod_id,pod_id to httpstore
-    url = "{}:{}".format(pod.addr, pod.port)
+    #url = "{}:{}".format(pod.addr, pod.port)
+    url = "{}:{}".format("10.255.100.13", cluster.pods[0].port)
     if not _post_kv(url, cluster.job_stage_flag, pod.id, pod.id):
         return False
 

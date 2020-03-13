@@ -309,7 +309,7 @@ def edl_barrier(edl_env, hdfs, timeout=-1):
             sys.exit(0)
 
         if not kv_server.is_alive():
-            kv_server.start(pod.addr, pod.port)
+            kv_server.start("0.0.0.0", pod.port)
 
         ret = edl_utils.barrier(cluster=cluster, pod=pod)
         if ret:
@@ -349,11 +349,6 @@ def launch(args):
     elif use_edl:
         hdfs = get_hdfs_from_args(args)
         cluster, pod = edl_barrier(edl_env, hdfs, timeout=15 * 60)
-
-        if not os.system(cmd):
-            print("start kv store error!")
-            sys.exit(1)
-
         logger.info("get cluster from edl:{}".format(cluster))
     else:
         cluster, pod = get_cluster_from_args(args, selected_gpus)
