@@ -424,7 +424,9 @@ def create_cond_node(return_name_ids, pred, true_func, false_func):
         func=cond_api,
         args=[pred, true_func_lambda, false_func_lambda],
         keywords=[])
-    targets = [generate_name_node(return_name_ids, ctx=gast.Store())]
-    assign_node = gast.Assign(targets=targets, value=cond_layer)
-
-    return assign_node
+    if return_name_ids:
+        targets = [generate_name_node(return_name_ids, ctx=gast.Store())]
+        assign_node = gast.Assign(targets=targets, value=cond_layer)
+        return assign_node
+    else:
+        return gast.Expr(value=cond_layer)
