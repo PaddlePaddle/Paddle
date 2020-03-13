@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/operators/conv_cudnn_helper.h"
 #include "paddle/fluid/operators/conv_transpose_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/padding.h"
@@ -24,10 +25,10 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+using DataLayout = platform::DataLayout;
 using ScopedTensorDescriptor = platform::ScopedTensorDescriptor;
 using ScopedFilterDescriptor = platform::ScopedFilterDescriptor;
 using ScopedConvolutionDescriptor = platform::ScopedConvolutionDescriptor;
-using DataLayout = platform::DataLayout;
 
 static constexpr size_t kConvCUDNNWorkspaceLimitBytes = 1024 * 1024 * 1024;
 
@@ -68,7 +69,6 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
     // cudnn v5 does not support dilations
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
     int groups = ctx.Attr<int>("groups");
-    int user_workspace_size = ctx.Attr<int>("workspace_size_MB");
     const T* filter_data = filter->data<T>();
     const std::string data_layout_str = ctx.Attr<std::string>("data_format");
     const paddle::operators::DataLayout data_layout =
@@ -200,12 +200,15 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
     }
     T* transformed_output_data = transformed_output.data<T>();
 
-    // ------------------- cudnn descriptors ---------------------
-    ScopedTensorDescriptor input_desc;
-    ScopedTensorDescriptor output_desc;
-    ScopedFilterDescriptor filter_desc;
-    ScopedConvolutionDescriptor conv_desc;
     DataLayout layout;
+
+    int iwo_groups = groups;
+    int c_groups = 1;
+#if CUDNN_VERSION_MIN(7, 0, 1)
+    iwo_groups = 1;
+    c_groups = groups;
+    groups = 1;
+#endif
 
     if (strides.size() == 2U) {
       layout = DataLayout::kNCHW;
@@ -213,47 +216,30 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
       layout = DataLayout::kNCDHW;
     }
 
-    // (N, M, H, W) or (N, M, D, H, W)
-    cudnnTensorDescriptor_t cudnn_input_desc =
-        input_desc.descriptor<T>(layout, input_vec, groups);
-    // (N, C, O_h, O_w) or (N, C, O_d, O_h, O_w)
-    cudnnTensorDescriptor_t cudnn_output_desc =
-        output_desc.descriptor<T>(layout, transformed_output_vec, groups);
-    // (M, C, K_h, K_w) or (M, C, K_d, K_h, K_w)
-    cudnnFilterDescriptor_t cudnn_filter_desc = filter_desc.descriptor<T>(
-        layout, framework::vectorize<int>(filter->dims()), groups);
-    cudnnConvolutionDescriptor_t cudnn_conv_desc =
-        conv_desc.descriptor<T>(padding_common, strides, dilations);
-
-    // ------------------- cudnn conv workspace ---------------------
-    size_t workspace_size_in_bytes;  // final workspace to allocate.
-    size_t workspace_size_limit = kConvCUDNNWorkspaceLimitBytes;
-    if (user_workspace_size > 0) {
-      workspace_size_limit = user_workspace_size * 1024 * 1024;
-    }
+    auto layout_tensor = GetCudnnTensorFormat(layout);
+    size_t workspace_size = 0;
+    cudnnConvolutionBwdDataAlgo_t algo{};
     // ------------------- cudnn conv algorithm ---------------------
-    cudnnConvolutionBwdDataAlgo_t algo;
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
-    // Get the algorithm
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnGetConvolutionBackwardDataAlgorithm(
-            handle, cudnn_filter_desc, cudnn_input_desc, cudnn_conv_desc,
-            // dxDesc: Handle to the previously initialized output tensor
-            // descriptor.
-            cudnn_output_desc,
-            CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT,
-            workspace_size_limit, &algo));
 
     if (FLAGS_cudnn_deterministic) {
       algo = static_cast<cudnnConvolutionBwdDataAlgo_t>(1);
     }
+    auto dtype = platform::CudnnDataType<T>::type;
+    // ------------------- cudnn descriptors ---------------------
+    ConvArgs args{
+        &transformed_output, filter, input, strides, paddings, dilations};
+    args.handle = handle;
+    args.cdesc.set(dtype, paddings, strides, dilations, c_groups);
+    args.idesc.set(transformed_output, iwo_groups);
+    args.wdesc.set(*filter, layout_tensor, iwo_groups);
+    args.odesc.set(*input, iwo_groups);
 
-    // get workspace size able to allocate
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnGetConvolutionBackwardDataWorkspaceSize(
-            handle, cudnn_filter_desc, cudnn_input_desc, cudnn_conv_desc,
-            cudnn_output_desc, algo, &workspace_size_in_bytes));
+    using search = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
+    algo = search::Find<T>(args, false, false, 2, ctx);
+    workspace_size =
+        std::max(workspace_size, search::GetWorkspaceSize(args, algo));
 
     // ------------------- cudnn conv transpose forward ---------------------
     int input_offset =
@@ -267,16 +253,14 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
       auto cudnn_func = [&](void* cudnn_workspace) {
         PADDLE_ENFORCE_CUDA_SUCCESS(
             platform::dynload::cudnnConvolutionBackwardData(
-                handle, &alpha, cudnn_filter_desc,
-                filter_data + filter_offset * g, cudnn_input_desc,
-                input_data + input_offset * g, cudnn_conv_desc, algo,
-                cudnn_workspace, workspace_size_in_bytes, &beta,
-                cudnn_output_desc,
+                handle, &alpha, args.wdesc.desc(),
+                filter_data + filter_offset * g, args.odesc.desc(),
+                input_data + input_offset * g, args.cdesc.desc(), algo,
+                cudnn_workspace, workspace_size, &beta, args.idesc.desc(),
                 transformed_output_data + output_offset * g));
       };
-      workspace_handle.RunFunc(cudnn_func, workspace_size_in_bytes);
+      workspace_handle.RunFunc(cudnn_func, workspace_size);
     }
-
     if (!is_sys_pad && strides.size() == 2U) {
       Slice<paddle::platform::CUDADeviceContext, T, 4>(
           ctx, &transformed_output, output, starts, ends, axes);
