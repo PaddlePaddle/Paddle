@@ -300,6 +300,7 @@ def get_hdfs_from_args(args):
 def edl_barrier(edl_env, hdfs, timeout=-1):
     cluster = None
     pod = None
+    step = 0
     while True:
         cluster, pod = edl_env.get_cluster(hdfs)
         if pod is None:  # me is dead
@@ -314,8 +315,9 @@ def edl_barrier(edl_env, hdfs, timeout=-1):
         if ret:
             break
 
-        logger.warning("Can't barrier in cluster:{}".format(cluster))
-        time.sleep(1)
+        logger.warning("Can't barrier in cluster:{}:{}".format(pod.addr,
+                                                               pod.port))
+        time.sleep(5)
         if timeout > 0 and step >= timeout:
             logger.warning("can't barrier to start now!so exit")
             sys.exit(1)
@@ -347,6 +349,11 @@ def launch(args):
     elif use_edl:
         hdfs = get_hdfs_from_args(args)
         cluster, pod = edl_barrier(edl_env, hdfs, timeout=15 * 60)
+
+        if not os.system(cmd):
+            print("start kv store error!")
+            sys.exit(1)
+
         logger.info("get cluster from edl:{}".format(cluster))
     else:
         cluster, pod = get_cluster_from_args(args, selected_gpus)
@@ -377,7 +384,7 @@ def launch(args):
             logger.info("Local procs complete, POD info:{}".format(pod))
             break
 
-        time.sleep(1)
+        time.sleep(3)
 
     edl_barrier(edl_env, hdfs)
 

@@ -33,7 +33,7 @@ class JobInfoManager(object):
 
         self._job_id = "test_job_id_1234"
         self.job[self._job_id] = []
-        self.job_stage[self._job_id] = None
+        self.job_stage[self._job_id] = -1
         self._ip_list = None
         self._ip_pod_num = None
 
@@ -55,7 +55,7 @@ class JobInfoManager(object):
         for node_rank, n_p in enumerate(ip_pod_num):
             ip = n_p[0]
             pod_num = n_p[1]
-            port = 6070
+            port = 8070
             for i in range(0, pod_num):
                 if pod_rank >= len(pods):
                     return
@@ -122,7 +122,7 @@ class JobInfoManager(object):
         step_id = 0
         modify = True
         while (True):
-            time.sleep(15 * 60)  # 20minutes
+            time.sleep(20)  # 20minutes
             if modify:
                 step_id += 1
                 #print("del 2 pods")
@@ -166,6 +166,30 @@ def update_job_static():
     if not request.json or not 'job_id' in request.json or not 'estimated_run_time' in request.json:
         abort(400)
     #print(requests.json)
+
+
+class ScopeKV(object):
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._scope = {}
+
+    def get_value(self, scope, key):
+        with self._lock:
+            if scope in self._scope and key in self._scope[scope]:
+                return self._scope[scope][key]
+        return None
+
+    def post(self, scope, key, data):
+        with self._lock:
+            if scope not in self._scope[scope]:
+                self._scope[scope] = {}
+            self.job[scope][key] = data
+
+    def get_scope(self, scope):
+        with self._lock:
+            if scope in self._scope[scope]:
+                return self._scope[scope]
+        return None
 
 
 if __name__ == '__main__':

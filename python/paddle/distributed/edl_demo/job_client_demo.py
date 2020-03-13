@@ -94,9 +94,11 @@ class PodManager(object):
         host_name, host_ip = get_host_name_ip()
         gpu_rank = 0
         for pod in cluster.pods:
+            print("pod.addr:", pod.addr, "host_name:", host_name, "host_ip:",
+                  host_ip)
             if pod.addr == "127.0.0.1" or \
                     pod.addr==host_name or \
-                    pod.addr == ip:
+                    pod.addr == host_ip:
                 self.start_local_pod(cluster.job_server, cluster.job_id, pod)
                 gpu_rank += 1
 
@@ -158,8 +160,10 @@ class PodManager(object):
         self.local_pods[pod.id] = p
 
     def kill_local_pod(self, pod_id):
-        assert pod_id in self.local_pods, "pod_id:{} local_pods:{}".format(
-            pod_id, [k for k, _ in self.local_pods.items()])
+        if pod_id not in self.local_pods:
+            return
+            #"pod_id:{} local_pods:{}".format(pod_id, [k for k, _ in self.local_pods.items()])
+
         procs = [self.local_pods[pod_id]]
         logger.info("kill pod_id:{} pod:{}".format(
             pod_id, [str(proc) for proc in procs]))
