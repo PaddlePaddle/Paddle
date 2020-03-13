@@ -228,13 +228,13 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
     }
     auto dtype = platform::CudnnDataType<T>::type;
     // ------------------- cudnn descriptors ---------------------
-    ConvArgs args{
-        &transformed_output, filter, input, strides, paddings, dilations};
+    ConvArgs args{&transformed_output, filter,   &transformed_input, strides,
+                  padding_common,      dilations};
     args.handle = handle;
-    args.cdesc.set(dtype, paddings, strides, dilations, c_groups);
+    args.cdesc.set(dtype, padding_common, strides, dilations, c_groups);
     args.idesc.set(transformed_output, iwo_groups);
     args.wdesc.set(*filter, layout_tensor, iwo_groups);
-    args.odesc.set(*input, iwo_groups);
+    args.odesc.set(transformed_input, iwo_groups);
 
     using search = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
     algo = search::Find<T>(args, false, false, 2, ctx);
