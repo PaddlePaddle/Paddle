@@ -111,8 +111,7 @@ class InplaceABNOpGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     op->SetInput("Y", this->Output("Y"));
     op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
@@ -133,8 +132,6 @@ class InplaceABNOpGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetOutput(framework::GradVarName("Scale"), this->InputGrad("Scale"));
     op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
-
-    return std::unique_ptr<T>(op);
   }
 };
 
@@ -188,9 +185,10 @@ class InplaceABNGradKernel
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(inplace_abn, ops::InplaceABNOp, ops::InplaceABNOpMaker,
+                  ops::BatchNormOpInferVarType,
                   ops::InplaceABNOpGradMaker<paddle::framework::OpDesc>,
                   ops::InplaceABNOpGradMaker<paddle::imperative::OpBase>,
-                  ops::InplaceABNInplaceInferer, ops::BatchNormOpInferVarType)
+                  ops::InplaceABNInplaceInferer)
 REGISTER_OPERATOR(inplace_abn_grad, ops::InplaceABNGradOp,
                   ops::InplaceABNGradInplaceInferer)
 
