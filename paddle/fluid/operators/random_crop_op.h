@@ -16,7 +16,6 @@
 
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/for_range.h"
 #ifdef PADDLE_WITH_CUDA
@@ -152,7 +151,7 @@ class RandomCropKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& ctx) const {
     int64_t seed = 0;
-    auto& seed_tensor = detail::Ref(ctx.Input<framework::LoDTensor>("Seed"));
+    auto& seed_tensor = *ctx.Input<framework::LoDTensor>("Seed");
     if (seed_tensor.IsInitialized()) {
       if (platform::is_cpu_place(seed_tensor.place())) {
         seed = *seed_tensor.data<int64_t>();
@@ -169,8 +168,8 @@ class RandomCropKernel : public framework::OpKernel<T> {
       seed = ctx.Attr<int>("startup_seed");
     }
     auto shape = ctx.Attr<std::vector<int>>("shape");
-    auto& x = detail::Ref(ctx.Input<framework::LoDTensor>("X"));
-    auto& out = detail::Ref(ctx.Output<framework::LoDTensor>("Out"));
+    auto& x = *ctx.Input<framework::LoDTensor>("X");
+    auto& out = *ctx.Output<framework::LoDTensor>("Out");
 
     int num_batchsize_dims = x.dims().size() - shape.size();
     RandomCropFunctor<DeviceContext, T> functor(

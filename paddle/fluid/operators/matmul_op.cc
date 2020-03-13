@@ -16,7 +16,6 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/math/blas.h"
 
 namespace paddle {
@@ -58,10 +57,8 @@ template <typename DeviceContext, typename T>
 class MatMulKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto &x =
-        detail::Ref(context.Input<framework::Tensor>("X"), "Cannot find X");
-    auto &y =
-        detail::Ref(context.Input<framework::Tensor>("Y"), "Cannot find Y");
+    auto &x = *context.Input<framework::Tensor>("X");
+    auto &y = *context.Input<framework::Tensor>("Y");
     auto *out = context.Output<framework::Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
 

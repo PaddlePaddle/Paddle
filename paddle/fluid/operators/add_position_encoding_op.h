@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 
 namespace paddle {
 namespace operators {

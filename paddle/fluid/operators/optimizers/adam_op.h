@@ -20,7 +20,6 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/threadpool.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/math/algorithm.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/for_range.h"
@@ -384,7 +383,6 @@ class AdamOpKernel : public framework::OpKernel<T> {
                    framework::ToTypeName(param_var->Type()));
 
     using paddle::framework::LoDTensor;
-    using paddle::operators::detail::Ref;
 
     int64_t min_row_size_to_use_multithread =
         ctx.Attr<int64_t>("min_row_size_to_use_multithread");

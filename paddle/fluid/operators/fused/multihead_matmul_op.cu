@@ -17,7 +17,6 @@
 #include <algorithm>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/math/blas.h"
 
 namespace paddle {
@@ -438,8 +437,7 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
     auto *w = context.Input<framework::Tensor>("W");
     auto *bias = context.Input<framework::Tensor>("Bias");
 
-    auto &bias_qk = detail::Ref(context.Input<framework::Tensor>("BiasQK"),
-                                "Cannot find QK");
+    auto &bias_qk = *context.Input<framework::Tensor>("BiasQK");
 
     auto *input_d = input->data<T>();
     auto *w_d = w->data<T>();

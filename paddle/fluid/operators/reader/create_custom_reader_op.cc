@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/executor.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
 
 namespace paddle {
@@ -171,8 +170,8 @@ void CustomReader::ReadNextImpl(std::vector<framework::LoDTensor>* out) {
   // 3. Copy LoDTensors from sink variables to out.
   out->resize(sink_var_names_.size());
   for (size_t i = 0; i < sink_var_names_.size(); ++i) {
-    const auto& tensor = detail::Ref(exe_scope->FindVar(sink_var_names_[i]))
-                             .Get<framework::LoDTensor>();
+    const auto& tensor =
+        *exe_scope->FindVar(sink_var_names_[i]).Get<framework::LoDTensor>();
     framework::TensorCopySync(tensor, platform::CPUPlace(), &(*out)[i]);
   }
   scope_.DeleteScope(exe_scope);

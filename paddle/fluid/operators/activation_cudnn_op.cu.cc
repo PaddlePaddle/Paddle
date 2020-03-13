@@ -37,7 +37,7 @@ struct CudnnActivationFunctor {
     act_desc.set(mode_, coef_);
     TensorDescriptor x_desc, out_desc;
     x_desc.set(x);
-    out_desc.set(detail::Ref(out));
+    out_desc.set(*out);
     PADDLE_ENFORCE(platform::dynload::cudnnActivationForward(
         ctx_.cudnn_handle(), act_desc.desc(),
         platform::CudnnDataType<T>::kOne(), x_desc.desc(), x.data<T>(),
@@ -63,7 +63,7 @@ struct CudnnActivationGradFunctor {
     x_desc.set(x);
     out_desc.set(out);
     dout_desc.set(dout);
-    dx_desc.set(detail::Ref(dx));
+    dx_desc.set(*dx);
     PADDLE_ENFORCE(platform::dynload::cudnnActivationBackward(
         ctx_.cudnn_handle(), act_desc.desc(),
         platform::CudnnDataType<T>::kOne(), out_desc.desc(), out.data<T>(),
@@ -141,7 +141,7 @@ class CudnnActivationKernel
     Out->mutable_data<T>(context.GetPlace());
     auto& dev_ctx = context.template device_context<CUDADeviceContext>();
     Functor functor(dev_ctx);
-    functor(detail::Ref(X), Out);
+    functor(*X, Out);
   }
 };
 
@@ -161,7 +161,7 @@ class CudnnActivationGradKernel
     dX->mutable_data<T>(context.GetPlace());
     auto& dev_ctx = context.template device_context<CUDADeviceContext>();
     Functor functor(dev_ctx);
-    functor(detail::Ref(X), detail::Ref(Out), detail::Ref(dOut), dX);
+    functor(*X, *Out, *dOut, dX);
   }
 };
 

@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include <thread>  // NOLINT
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/gpu_info.h"
@@ -57,9 +56,7 @@ class GetPlacesOp : public framework::OperatorBase {
 
     auto out_var_name = Output("Out");
     auto &places =
-        *(detail::Ref(scope.FindVar(out_var_name),
-                      "Output variable %s cannot be found", out_var_name)
-              .GetMutable<platform::PlaceList>());
+        *(scope.FindVar(out_var_name)->GetMutable<platform::PlaceList>());
     places.reserve(device_count);
     if (is_gpu) {
       PADDLE_ENFORCE_LE(device_count, CUDADevCount(),

@@ -17,8 +17,6 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
-#include "paddle/fluid/operators/detail/safe_ref.h"
-
 namespace paddle {
 namespace operators {
 

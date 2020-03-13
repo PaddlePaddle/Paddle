@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/platform/errors.h"
 
 namespace paddle {
