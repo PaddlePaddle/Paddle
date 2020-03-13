@@ -60,13 +60,15 @@ def get_attr_default_value(op_name):
     return core.get_op_attrs_default_value(cpt.to_bytes(op_name))
 
 
-def get_vars_info(op_vars_proto):
+def get_vars_info(op_type, op_vars_proto):
     vars_info = {}
     for var_proto in op_vars_proto:
         name = str(var_proto.name)
         vars_info[name] = {}
         vars_info[name][DUPLICABLE] = var_proto.duplicable
         vars_info[name][DISPENSABLE] = var_proto.dispensable
+        if var_proto.duplicable:
+            print('|', op_type, '|', name, '|')
         vars_info[name][INTERMEDIATE] = var_proto.intermediate
     return vars_info
 
@@ -84,11 +86,11 @@ def get_attrs_info(op_proto, op_attrs_proto):
     return attrs_info
 
 
-def get_op_desc(op_proto):
+def get_op_desc(op_type, op_proto):
     op_info = {}
-    op_info[INPUTS] = get_vars_info(op_proto.inputs)
-    op_info[OUTPUTS] = get_vars_info(op_proto.outputs)
-    op_info[ATTRS] = get_attrs_info(op_proto, op_proto.attrs)
+    #op_info[INPUTS] = get_vars_info(op_type, op_proto.inputs)
+    op_info[OUTPUTS] = get_vars_info(op_type, op_proto.outputs)
+    #op_info[ATTRS] = get_attrs_info(op_proto, op_proto.attrs)
     return op_info
 
 
@@ -97,11 +99,11 @@ def get_all_ops_desc():
     all_op_protos = framework.get_all_op_protos()
     for op_proto in all_op_protos:
         op_type = str(op_proto.type)
-        all_op_protos_dict[op_type] = get_op_desc(op_proto)
+        all_op_protos_dict[op_type] = get_op_desc(op_type, op_proto)
 
     return all_op_protos_dict
 
 
 all_op_protos_dict = get_all_ops_desc()
 result = json.dumps(all_op_protos_dict)
-print(result)
+#print(result)

@@ -28,6 +28,18 @@
 const char* OUT_INITIALIZER_TEMPLATE =
     R"({"%s", {std::shared_ptr<imperative::VarBase>(new imperative::VarBase(tracer->GenerateUniqueName()))}})";
 
+
+const char* INPUT_INITIALIZER_TEMPLATE =
+    R"({"%s", {%s}})";
+
+// if inputs is list, no need {}
+const char* INPUT_LIST_INITIALIZER_TEMPLATE =
+    R"({"%s", %s})";
+
+// if inputs is list, no need {}
+const char* ARG_OUT_NUM =
+    R"(size_t %sNum)";
+
 const char* OP_FUNCTION_TEMPLATE =
 R"(
 inline imperative::NameVarBaseMap %s(const imperative::NameVarBaseMap& ins, const framework::AttributeMap& attrs, 
@@ -58,6 +70,13 @@ const char* VAR_LIST_TYPE = R"(std::vector<std::shared_ptr<imperative::VarBase>>
 const char* ATTR_TYPE = R"(framework::Attribute)";
 const char* ARG_TEMPLATE = R"(%s %s)";
 
+const char* RETURN_TUPLE_TYPE = R"(std::tuple<%s>)";
+const char* RETURN_TYPE = R"(%s)";
+
+const char* RETURN_TUPLE_TEMPLATE = R"(std::make_tuple(%s))";
+const char* RETURN_LIST_TEMPLATE = R"(outs_["%s"])";
+const char* RETURN_TEMPLATE = R"(outs_["%s"][0])";
+
 // like elementwise_*, no list in args and only one result in return.
 const char* OP_FUNCTION_NO_LIST_SINGLE_RETURN_TEMPLATE =
 R"(
@@ -83,11 +102,36 @@ inline std::shared_ptr<imperative::VarBase> %s(%s, const framework::AttributeMap
   return outs;
 })";
 
+
+const char* FUNCTION_ARGS = R"(%s, const py::args& args)";
+const char* FUNCTION_ARGS_NO_INPUT = R"(const py::args& args)";
+
+// like elementwise_*, no list in args and only one result in return.
+// return_type, func_name, inputs_args, outs_initializer, ins_initializer,
+//   op_name, return_str
+const char* OP_FUNCTION_TEMPLATE2 =
+R"(
+%s %s(%s)
+{
+  framework::AttributeMap attrs_;
+  ConstructAttrMapFromPyArgs(&attrs_, args);
+  {
+    py::gil_scoped_release release;
+    
+    auto tracer = imperative::GetCurrentTracer();
+    imperative::NameVarBaseMap outs_ = %s;
+    imperative::NameVarBaseMap ins_ = %s;
+
+    tracer->TraceOp("%s", ins_, outs_, attrs_);
+    return %s; 
+  }
+   
+})";
+
 const char* PYBIND_ITEM_TEMPLATE =
 R"(
-  %s.def("%s", &%s, py::arg("ins"), py::arg("attrs")=framework::AttributeMap(), py::arg("outs")=imperative::NameVarBaseMap(), 
-    py::arg("out_nums")=std::map<std::string, size_t>(), py::call_guard<py::gil_scoped_release>());)";
-
+  %s.def("%s", &%s);)";
+const char* PYBIND_PY_ARG_TEMPLATE = R"(py::arg("%s"))";
 // clang-format on
 
 const std::vector<std::string> specialization = {
@@ -110,11 +154,13 @@ GenerateOpFunctions(const std::string& module_name) {
   std::vector<std::string> op_function_list, bind_function_list;
   for (auto& pair : op_info_map) {
     auto& op_info = pair.second;
+
     auto op_proto = op_info.proto_;
     if (op_proto == nullptr) {
       continue;
     }
     auto& op_type = op_proto->type();
+
     if (find(specialization.begin(), specialization.end(), op_type) !=
         specialization.end())
       continue;
@@ -164,60 +210,132 @@ GenerateOpFunctions2(const std::string& module_name) {
     }
 
     auto& op_type = op_proto->type();
-    if (op_type != "elementwise_add") continue;
+    if (op_type == "listen_and_serv") continue;
 
-    std::string args = "";
+    // Skip ooerator which is not inherit form OperatorWithKernel, like while,
+    // since only OperatorWithKernel can run in dygraph mode.
+    std::cout << op_type << std::endl;
+    try {
+      auto op =
+          paddle::framework::OpRegistry::CreateOp(op_type, {}, {}, {}, false);
+      std::cout << op_type << std::endl;
+      if (!dynamic_cast<paddle::framework::OperatorWithKernel*>(op.get())) {
+        std::cout << op_type << std::endl;
+        continue;
+      }
+    } catch (...) {
+      std::cout << op_type << std::endl;
+    }
+    std::string input_args = "";
+    std::string ins_initializer = "{";
+    std::string py_arg = "";
     for (auto& input : op_proto->inputs()) {
+      // skip those dispensable inputs, like ResidualData in conv2d
+      if (input.dispensable()) {
+        continue;
+      }
+
       auto& in_name = input.name();
       // If input is duplicable, use list
       auto in_type = input.duplicable() ? VAR_LIST_TYPE : VAR_TYPE;
+
       auto input_arg = paddle::string::Sprintf(ARG_TEMPLATE, in_type, in_name);
-      args += input_arg;
-      args += ",";
+      input_args += input_arg;
+      input_args += ",";
+
+      auto in_template = input.duplicable() ? INPUT_LIST_INITIALIZER_TEMPLATE
+                                            : INPUT_INITIALIZER_TEMPLATE;
+      ins_initializer += paddle::string::Sprintf(in_template, in_name, in_name);
+      ins_initializer += ",";
+      // py_arg += paddle::string::Sprintf(PYBIND_PY_ARG_TEMPLATE, in_name);
+      // py_arg += ",";
     }
 
-    for (auto& attr : op_proto->attrs()) {
-      auto& attr_name = attr.name();
-      // If input is duplicable, use list
-      auto attr_arg =
-          paddle::string::Sprintf(ARG_TEMPLATE, ATTR_TYPE, attr_name);
-      args += attr_arg;
-      args += ",";
+    if (ins_initializer.back() == ',') {
+      ins_initializer.pop_back();
     }
-    std::cout << args << std::endl;
+    ins_initializer += "}";
+
+    if (input_args.back() == ',') {
+      input_args.pop_back();
+      // py_arg.pop_back();
+    }
+
+    // Generate outs initializer
+    std::string outs_initializer = "{";
+    std::string return_type = "";
+    std::string return_str = "";
+
+    int outs_num = 0;
+    for (auto& output : op_proto->outputs()) {
+      if (output.dispensable()) {
+        continue;
+      }
+      auto out_type = output.duplicable() ? VAR_LIST_TYPE : VAR_TYPE;
+      auto return_template =
+          output.duplicable() ? RETURN_LIST_TEMPLATE : RETURN_TEMPLATE;
+
+      auto& out_name = output.name();
+      auto out_initializer_str =
+          paddle::string::Sprintf(OUT_INITIALIZER_TEMPLATE, out_name);
+
+      outs_initializer += out_initializer_str;
+      outs_initializer += ",";
+      return_type += out_type;
+      return_type += ",";
+      return_str += paddle::string::Sprintf(return_template, out_name);
+      return_str += ",";
+      outs_num += 1;
+      // There are few Operators that have duplicable output, like `Out` in
+      // split op. We need to specify the number of variables for the duplicable
+      // output, as the argument OutNum;
+      if (output.duplicable()) {
+        if (input_args != "") {
+          input_args += ",";
+        }
+
+        input_args += paddle::string::Sprintf(ARG_OUT_NUM, out_name);
+      }
+    }
+    if (outs_initializer.back() == ',') {
+      outs_initializer.pop_back();
+      return_type.pop_back();
+      return_str.pop_back();
+    }
+    outs_initializer += "}";
+    if (outs_num == 0) {
+      return_type = "void";
+    }
+    if (outs_num > 1) {
+      return_str = paddle::string::Sprintf(RETURN_TUPLE_TEMPLATE, return_str);
+      return_type = paddle::string::Sprintf(RETURN_TUPLE_TYPE, return_type);
+    }
+    std::string function_args = "";
+    if (input_args == "") {
+      function_args =
+          paddle::string::Sprintf(FUNCTION_ARGS_NO_INPUT, input_args);
+    } else {
+      function_args = paddle::string::Sprintf(FUNCTION_ARGS, input_args);
+    }
+
+    std::string func_name = "imperative_" + op_type;
+    // generate op funtcion body
+    // return_type, func_name, inputs_args, outs_initializer, ins_initializer,
+    // op_name, return_str
+    auto op_function_str = paddle::string::Sprintf(
+        OP_FUNCTION_TEMPLATE2, return_type, func_name, function_args,
+        outs_initializer, ins_initializer, op_type, return_str);
+    // std::cout << op_function_str << std::endl;
+
+    // generate pybind item
+    auto bind_function_str = paddle::string::Sprintf(
+        PYBIND_ITEM_TEMPLATE, module_name, op_type, func_name);
+
+    op_function_list.emplace_back(std::move(op_function_str));
+    bind_function_list.emplace_back(std::move(bind_function_str));
   }
 
-  //   // Generate outs initializer
-  //   std::string outs_initializer = "{";
-
-  //   for (auto& output : op_proto->outputs()) {
-  //     auto& out_name = output.name();
-  //     auto out_initializer_str =
-  //         paddle::string::Sprintf(OUT_INITIALIZER_TEMPLATE, out_name);
-  //     outs_initializer += out_initializer_str;
-  //     outs_initializer += ",";
-  //   }
-  //   if (outs_initializer.back() == ',') {
-  //     outs_initializer.pop_back();
-  //   }
-  //   outs_initializer += "}";
-
-  //   std::string func_name = "imperative_" + op_type;
-
-  //   // generate op funtcion body
-  //   auto op_function_str = paddle::string::Sprintf(
-  //       OP_FUNCTION_TEMPLATE, func_name, outs_initializer, op_type);
-
-  //   // generate pybind item
-  //   auto bind_function_str = paddle::string::Sprintf(
-  //       PYBIND_ITEM_TEMPLATE, module_name, op_type, func_name);
-
-  //   op_function_list.emplace_back(std::move(op_function_str));
-  //   bind_function_list.emplace_back(std::move(bind_function_str));
-  // }
-
-  // return std::make_tuple(op_function_list, bind_function_list);
-  return {};
+  return std::make_tuple(op_function_list, bind_function_list);
 }
 
 int main(int argc, char* argv[]) {
@@ -236,9 +354,9 @@ int main(int argc, char* argv[]) {
     out << "#include  " + header + "\n";
   }
 
-  auto res = GenerateOpFunctions2("");
+  auto op_funcs = GenerateOpFunctions2("m");
   // all op functions
-  auto op_funcs = GenerateOpFunctions("m");
+  // auto op_funcs = GenerateOpFunctions("m");
 
   out << "namespace py = pybind11;"
       << "\n";

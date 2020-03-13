@@ -18,14 +18,27 @@
 #include <pybind11/complex.h>
 #include <pybind11/functional.h>
 #include <pybind11/stl.h>
+#include <string>
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
-
 #include "paddle/fluid/pybind/imperative.h"
+
+namespace py = pybind11;
+namespace paddle {
+static void ConstructAttrMapFromPyArgs(framework::AttributeMap* attrs,
+                                       const py::args& args) {
+  for (size_t i = 0; i < args.size(); i += 2) {
+    auto name = args[i].cast<std::string>();
+    auto value = args[i + 1].cast<framework::Attribute>();
+    (*attrs)[name] = value;
+  }
+}
+
+}  // namespace paddle
 
 // This include must be the last line
 #include "paddle/fluid/pybind/op_function_impl.h"
-#include "paddle/fluid/pybind/op_function_impl2.h"
+// #include "paddle/fluid/pybind/op_function_impl2.h"

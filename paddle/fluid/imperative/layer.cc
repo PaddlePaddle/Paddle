@@ -289,6 +289,7 @@ OpBase::OpBase(size_t id, const std::string& type, const NameVarBaseMap& ins,
   const auto& info = framework::OpInfoMap::Instance().Get(type);
 
   // Step 1: Run forward
+  // check attrs
   if (info.Checker() != nullptr) {
     info.Checker()->Check(&attrs_);
   }

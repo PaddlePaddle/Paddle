@@ -219,7 +219,6 @@ void BindImperative(py::module *m_ptr) {
   auto &m = *m_ptr;
 
   BindOpFunctions(&m);
-  BindOpFunctions2(&m);
 
   py::class_<imperative::detail::BackwardStrategy> backward_strategy(
       m, "BackwardStrategy", R"DOC(
