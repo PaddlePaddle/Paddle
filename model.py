@@ -198,10 +198,7 @@ class StaticGraphAdapter(object):
         assert param_state, "failed to load parameters, please check path"
 
         if self._executor is None:
-            # TODO: loading to CPU seems to some transform error, and only
-            # the first step get the right result
-            # executor = fluid.Executor(fluid.CPUPlace())._default_executor
-            executor = fluid.Executor(fluid.CUDAPlace(0))._default_executor
+            executor = fluid.Executor(fluid.CPUPlace())._default_executor
         else:
             executor = self._executor._default_executor
 
