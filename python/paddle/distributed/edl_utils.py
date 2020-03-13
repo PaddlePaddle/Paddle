@@ -125,3 +125,11 @@ def barrier_terminate_world_trainers(cluster, pod, comm, timeout=10, try_num=1):
         return False
 
     return True
+
+
+def barrier(cluster, pod, timeout=10):
+    # start a process
+    # pod 0 post the now cluster info on flask server
+    # wait all the pods' request
+    # pod 0 clean the cluster info on flask server 
+    pass
