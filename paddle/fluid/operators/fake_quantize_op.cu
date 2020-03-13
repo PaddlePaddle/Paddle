@@ -120,7 +120,7 @@ __global__ void ClipAndQuantKernel(const T* in, const T* scale,
   int tid = threadIdx.x;
 
   T s = scale[0];
-  T inv_s = s - 0 < 1e-30 ? 0 : 1.0 / s;
+  T inv_s = inverse(s);
   for (int i = bid; i < n; i += blockDim.x * gridDim.x) {
     T x = in[i];
     T v = x > s ? s : x;
@@ -140,7 +140,7 @@ __global__ void ClipAndQuantDequantKernel(const T* in, const T* scale,
   T s = scale[0];
   for (int i = bid; i < n; i += blockDim.x * gridDim.x) {
     T x = in[i];
-    T inv_s = s - 0 < 1e-30 ? 0 : 1.0 / s;
+    T inv_s = inverse(s);
     T v = x > s ? s : x;
     v = v < -s ? -s : v;
     v = bin_cnt * inv_s * v;
@@ -200,7 +200,7 @@ __global__ void ChannelClipAndQuantKernel(const T* in, const T* scale,
   T* out_c = out + blockIdx.x * channel_size;
 
   T s = scale[blockIdx.x];
-  T inv_s = s - 0 < 1e-30 ? 0 : 1.0 / s;
+  T inv_s = inverse(s);
 
   for (int i = tid; i < channel_size; i += blockDim.x) {
     T x = in_c[i];

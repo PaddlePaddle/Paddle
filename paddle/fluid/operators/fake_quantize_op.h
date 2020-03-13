@@ -20,9 +20,15 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/platform/hostdevice.h"
 
 namespace paddle {
 namespace operators {
+
+template <typename T>
+inline HOSTDEVICE T inverse(T s) {
+  return s <= 1e-30 ? 0 : 1.0 / s;
+}
 
 template <typename DeviceContext, typename T>
 struct FindAbsMaxFunctor {
