@@ -313,6 +313,10 @@ class StaticAnalysisVisitor(object):
             return self.var_env.get_var_type(node.id)
 
         if isinstance(node, gast.Return):
+            # If return nothing:
+            if node.value is None:
+                return {NodeVarType.NONE}
+
             return_type = self.node_to_wrapper_map[node.value].node_var_type
             assert self.var_env.cur_scope.scope_type == AstVarScope.SCOPE_TYPE_FUNCTION, "Return at non-function scope"
             func_name = self.var_env.cur_scope.scope_name

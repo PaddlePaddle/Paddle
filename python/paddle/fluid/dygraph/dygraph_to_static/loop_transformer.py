@@ -20,7 +20,7 @@ import gast
 from collections import defaultdict
 from paddle.fluid import unique_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import generate_name_node
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper, StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_constant_variable_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_static_variable_gast_node
@@ -79,6 +79,10 @@ class NameVisitor(gast.NodeVisitor):
         # Mapping from gast.While/gast.For to variable nodes
         self.before_loop_body_vars = defaultdict(set)
         self.in_loop_vars = defaultdict(set)
+
+        self.static_analysis_visitor = StaticAnalysisVisitor(root_node)
+        self.node_to_wrapper_map = self.static_analysis_visitor.get_node_to_wrapper_map(
+        )
 
         self.visit(root_node)
 
@@ -160,8 +164,18 @@ class NameVisitor(gast.NodeVisitor):
         for node in node_set:
             if ctx_filter_set is None or type(node.ctx) in ctx_filter_set:
                 if isinstance(node, gast.Name):
+                    parent_node = self.node_to_wrapper_map[node].parent.node
+                    if isinstance(parent_node,
+                                  gast.Call) and parent_node.func == node:
+                        # Don't add the name of gast.Name if it is "len" in `len(x)`.
+                        continue
                     ret.add(node.id)
                 elif isinstance(node, gast.Attribute):
+                    parent_node = self.node_to_wrapper_map[node].parent.node
+                    if isinstance(parent_node,
+                                  gast.Call) and parent_node.func == node:
+                        # Don't add the name of gast.Attribute if it is like `fluid.layers.shape(x)`.
+                        continue
                     ret.add(get_attribute_full_name(node))
         return ret
 
