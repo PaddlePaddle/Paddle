@@ -316,6 +316,9 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         dst_memory_p = handler.AcquireDstMemoryFromResidualDataMemory(
             user_residual_memory_p, to_void_cast<T>(output_data), pipeline);
       } else {
+        // Changing ShareDataWith to TensorCopy results in performance drop
+        // on ResNet architectures
+        // (https://github.com/PaddlePaddle/Paddle/issues/22964)
         output->ShareDataWith(*residual_param);
         auto output_data = output->mutable_data<T>(ctx.GetPlace());
         dst_memory_p =
