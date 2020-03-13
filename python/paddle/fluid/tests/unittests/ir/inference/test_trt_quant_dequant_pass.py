@@ -94,15 +94,6 @@ class QuantDequantFusePassTRTTest(InferencePassTest):
         freeze_pass.apply(main_graph)
         self.main_program = main_graph.to_program()
 
-        fluid.io.save_inference_model(
-            dirname=self.path,
-            feeded_var_names=list(self.feeds.keys()),
-            target_vars=self.fetch_list,
-            executor=executor,
-            main_program=self.main_program,
-            model_filename="__model__",
-            params_filename="__params__")
-
     def test_check_output(self):
         use_gpu = [False]
         if core.is_compiled_with_cuda():
