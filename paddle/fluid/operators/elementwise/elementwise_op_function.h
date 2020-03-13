@@ -1151,28 +1151,75 @@ void ElemwiseGradComputeWithBroadcast(
     const framework::Tensor &dout, int axis, framework::Tensor *dx,
     framework::Tensor *dy, DX_OP dx_op, DY_OP dy_op) {
   bool is_xsize_larger = true;
-  int max_dim = x_dims.size();
-  if (x_dims.size() < y_dims.size()) {
-    is_xsize_larger = false;
-    max_dim = y_dims.size();
+  std::vector<int> vx_dims;
+  std::vector<int> vy_dims;
+  framework::DDim real_x_dims;
+  framework::DDim real_y_dims;
+
+  // trim 1 at the head of x_dim and y_dim.
+  int one_num = 0;
+  for (int i = 0; i < x_dims.size(); ++i) {
+    if (x_dims[i] == 1) {
+      ++one_num;
+    } else {
+      if (one_num) {
+        for (int j = one_num; j < x_dims.size(); ++j) {
+          vx_dims.push_back(x_dims[j]);
+        }
+      }
+      break;
+    }
+  }
+  if (one_num) {
+    real_x_dims = framework::make_ddim(vx_dims);
+  } else {
+    real_x_dims = x_dims;
   }
 
-  axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
+  one_num = 0;
+  for (int i = 0; i < y_dims.size(); ++i) {
+    if (y_dims[i] == 1) {
+      ++one_num;
+    } else {
+      if (one_num) {
+        for (int j = one_num; j < y_dims.size(); ++j) {
+          vy_dims.push_back(y_dims[j]);
+        }
+      }
+      break;
+    }
+  }
+
+  if (one_num) {
+    real_y_dims = framework::make_ddim(vy_dims);
+  } else {
+    real_y_dims = y_dims;
+  }
+
+  int max_dim = real_x_dims.size();
+  if (real_x_dims.size() < real_y_dims.size()) {
+    is_xsize_larger = false;
+    max_dim = real_y_dims.size();
+  }
+
+  axis =
+      (axis == -1 ? std::abs(real_x_dims.size() - real_y_dims.size()) : axis);
   PADDLE_ENFORCE_GE(axis, 0, "Axis should be in range [0, %d)", axis);
   PADDLE_ENFORCE_LT(axis, max_dim, "Axis should be in range [0, %d)", axis);
 
   int pre, n, post, is_run_common_broadcast, axis_trim = 0;
   if (is_xsize_larger) {
-    auto y_dims_trimed = trim_trailing_singular_dims(y_dims);
-    axis_trim = (y_dims_trimed.size() == 0) ? x_dims.size() : axis;
-    get_mid_dims(x_dims, y_dims_trimed, axis_trim, &pre, &n, &post,
+    auto y_dims_trimed = trim_trailing_singular_dims(real_y_dims);
+    axis_trim = (y_dims_trimed.size() == 0) ? real_x_dims.size() : axis;
+    get_mid_dims(real_x_dims, y_dims_trimed, axis_trim, &pre, &n, &post,
                  &is_run_common_broadcast);
   } else {
-    auto x_dims_trimed = trim_trailing_singular_dims(x_dims);
-    axis_trim = (x_dims_trimed.size() == 0) ? y_dims.size() : axis;
-    get_mid_dims(y_dims, x_dims_trimed, axis_trim, &pre, &n, &post,
+    auto x_dims_trimed = trim_trailing_singular_dims(real_x_dims);
+    axis_trim = (x_dims_trimed.size() == 0) ? real_y_dims.size() : axis;
+    get_mid_dims(real_y_dims, x_dims_trimed, axis_trim, &pre, &n, &post,
                  &is_run_common_broadcast);
   }
+
   // special case for common backward implementation.
   if (is_run_common_broadcast) {
     CommonElementwiseBroadcastBackward<DeviceContext, T, DX_OP, DY_OP>(
