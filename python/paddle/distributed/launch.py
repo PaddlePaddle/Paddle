@@ -50,6 +50,7 @@ from utils import *
 
 import cloud_utils
 import edl_utils
+from http_store import kv_server
 
 
 def _print_arguments(args):
@@ -296,7 +297,7 @@ def get_hdfs_from_args(args):
     return hdfs
 
 
-def edl_barrier_start(edl_env, comm, hdfs, timeout=-1):
+def edl_barrier(edl_env, hdfs, timeout=-1):
     cluster = None
     pod = None
     while True:
@@ -306,8 +307,10 @@ def edl_barrier_start(edl_env, comm, hdfs, timeout=-1):
                         format(cluster, pod))
             sys.exit(0)
 
-        ret = edl_utils.barrier_terminate_world_trainers(
-            cluster=cluster, pod=pod, comm=comm)
+        if not kv_server.is_alive():
+            kv_server.start(pod.addr, pod.port)
+
+        ret = edl_utils.barrier(cluster=cluster, pod=pod)
         if ret:
             break
 
@@ -331,7 +334,7 @@ def launch(args):
 
     cluster = None
     pod = None
-    comm = None
+    #comm = None
     hdfs = None
 
     edl_env = edl_utils.Edlenv()
@@ -343,9 +346,7 @@ def launch(args):
         logger.info("get cluster from cloud:{}".format(cluster))
     elif use_edl:
         hdfs = get_hdfs_from_args(args)
-        #cluster, pod = edl_env.get_cluster(hdfs)
-        comm = Gloo()
-        cluster, pod = edl_barrier_start(edl_env, comm, hdfs, timeout=15 * 60)
+        cluster, pod = edl_barrier(edl_env, hdfs, timeout=15 * 60)
         logger.info("get cluster from edl:{}".format(cluster))
     else:
         cluster, pod = get_cluster_from_args(args, selected_gpus)
@@ -366,8 +367,7 @@ def launch(args):
                             format(cluster2, cluster))
                 terminate_local_procs(procs)
 
-                cluster, pod = edl_barrier_start(
-                    edl_env, comm, hdfs, timeout=30 * 60)
+                cluster, pod = edl_barrier(edl_env, hdfs, timeout=30 * 60)
 
                 procs = start_local_trainers(cluster, pod)
 
@@ -375,9 +375,11 @@ def launch(args):
 
         if not alive:
             logger.info("Local procs complete, POD info:{}".format(pod))
-            return
+            break
 
-        time.sleep(3)
+        time.sleep(1)
+
+    edl_barrier(edl_env, hdfs)
 
 
 if __name__ == "__main__":

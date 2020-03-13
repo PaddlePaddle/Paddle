@@ -26,11 +26,14 @@ app = Flask(__name__, static_url_path="")
 class JobInfoManager(object):
     def __init__(self):
         self.job = {}
+        self.job_stage = {}
+
         self._t_id = None
         self._lock = threading.Lock()
 
         self._job_id = "test_job_id_1234"
         self.job[self._job_id] = []
+        self.job_stage[self._job_id] = None
         self._ip_list = None
         self._ip_pod_num = None
 
@@ -92,7 +95,7 @@ class JobInfoManager(object):
 
     def get_job_pods(self, job_id):
         with self._lock:
-            return self.job[job_id]
+            return self.job[job_id], self.job_stage[job_id]
 
     def _del_tail(self, job_id, pod_num, step_id):
         with self._lock:
@@ -100,6 +103,7 @@ class JobInfoManager(object):
             assert pod_num < len(pods), "can't delete pod_num:%d".format(
                 pod_num)
             self.job[job_id] = pods[:-pod_num]
+            self.job_stage[self._job_id] = step_id
             #print("deleted pods {}".format(self.job[job_id]))
 
     def _add_tail(self, job_id, pod_num, step_id):
@@ -111,6 +115,7 @@ class JobInfoManager(object):
 
             self._assign_pods_to_nodes(pods, self._ip_pod_num)
             self.job[self._job_id] = pods
+            self.job_stage[self._job_id] = step_id
             #print("added pods {}".format(pods))
 
     def run(self):
@@ -151,9 +156,9 @@ def get_job_pods():
         job_id = "test_job_id_1234"
     except:
         return jsonify({'job_id': {}})
-    job_pods = job_manager.get_job_pods("test_job_id_1234")
+    job_pods, flag = job_manager.get_job_pods("test_job_id_1234")
     #print("job_pods:", job_pods)
-    return jsonify({'job_id': job_id, "pods": job_pods})
+    return jsonify({'job_id': job_id, "pods": job_pods, "job_stage_flag": flag})
 
 
 @app.route('/rest/1.0/post/job_runtime_static', methods=['POST'])

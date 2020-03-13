@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import requests
 import sys
 from paddle.distributed.edl_utils import Edlenv
 from paddle.distributed.utils import logger, get_logger, terminate_local_procs, get_host_name_ip

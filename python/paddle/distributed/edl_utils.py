@@ -72,6 +72,7 @@ class Edlenv(object):
                 assert self.job_id == d["job_id"], "job_id is not {}".format(
                     self.job_id)
                 pods = d["pods"]
+                flag = d["job_stage_flag"]
                 logger.debug("job_server:{} response:{}".format(r.url, pods))
                 break
             except Exception as e:
@@ -87,18 +88,19 @@ class Edlenv(object):
                     format(url, job_id, str(e)))
                 time.sleep(3)
 
-        return self._parse_response_pods(pods)
+        return self._parse_response_pods(pods), flag
 
     def get_cluster(self, hdfs):
         assert self.is_under_edl(), "Edlenv only used under edl environments"
 
-        pods = self._get_pods_from_job_server()
+        pods, flag = self._get_pods_from_job_server()
 
         cluster = Cluster(hdfs)
         cluster.job_server = self.job_server
         cluster.job_id = self.job_id
         cluster.pods = pods
         cluster.hdfs = hdfs
+        cluster.job_stage_flag = flag
 
         logger.debug("get clsuter:{} from jobserver edl_env:{}".format(cluster,
                                                                        self))
@@ -107,29 +109,53 @@ class Edlenv(object):
         return cluster, pod
 
 
-def barrier_terminate_world_trainers(cluster, pod, comm, timeout=10, try_num=1):
-    step = 0
-    r = comm.init(
-        job_id=cluster.job_id,
-        hdfs=cluster.hdfs,
-        endpoints=cluster.pods_endpoints(),
-        rank=pod.rank,
-        try_num=try_num)
-    if not r:
-        logger.warning("can't init from context:{}".format(cluster))
+def _post_kv(url, scope, key, value):
+    kv = {"scope": scope, "key": key, "value": value}
+    url = "{}/rest/1.0/get/scope".format(url)
+    logger.debug("query pods from url:{}".format(url))
+
+    try:
+        r = requests.post(url, params=kv)
+        d = r.json()
+        logger.debug("job_server:{} response:{}".format(r.url, d))
+        return True
+    except Exception as e:
         return False
 
-    r = comm.barrier(timeout)
-    if not r:
-        logger.warning("barrier timeout context:{}".format(cluster))
-        return False
 
+def _get_scope(url, scope):
+    kv = {"scope": scope}
+    url = "{}/rest/1.0/get/scope".format(url)
+    logger.debug("query pods from url:{}".format(url))
+
+    try:
+        r = requests.get(url, params=kv)
+        d = r.json()
+        logger.debug("job_server:{} response:{}".format(r.url, d))
+        return d["value"]
+    except Exception as e:
+        return None
+
+
+def _is_scope_full(cluster, scope_kvs):
+    for pod in cluster.pods:
+        if pod.id not in scope_kvs:
+            return False
     return True
 
 
-def barrier(cluster, pod, timeout=10):
-    # start a process
-    # pod 0 post the now cluster info on flask server
-    # wait all the pods' request
-    # pod 0 clean the cluster info on flask server 
-    pass
+def barrier(cluster, pod):
+    # check to start a httpserver
+    # post job_stage_flag,pod_id,pod_id to httpstore
+    url = "{}:{}".format(cluster.pods[0].addr, cluster.pods[0].port)
+    if not _post_kv(url, cluster.job_stage_flag, pod.id, pod.id):
+        return False
+
+    scope_kvs = _get_scope(url, cluster.job_stage_flag)
+    if scope_kvs is None:
+        return False
+
+    if not _is_scope_full(cluster, scope_kvs):
+        return False
+
+    return True

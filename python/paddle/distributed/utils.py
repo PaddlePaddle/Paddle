@@ -54,10 +54,12 @@ class Cluster(object):
         self.job_server = None
         self.pods = []
         self.hdfs = None
+        self.job_stage_flag = None
 
     def __str__(self):
-        return "job_server:{} pods:{} hdfs:{}".format(
-            self.job_server, [str(pod) for pod in self.pods], self.hdfs)
+        return "job_server:{} pods:{} job_stage_flag:{} hdfs:{}".format(
+            self.job_server, [str(pod) for pod in self.pods],
+            self.job_stage_flag, self.hdfs)
 
     def __eq__(self, cluster):
         #print("pods length:", len(self.pods), len(cluster.pods))
@@ -67,6 +69,9 @@ class Cluster(object):
         for a, b in zip(self.pods, cluster.pods):
             if a != b:
                 return False
+
+        if self.job_stage_flag != cluster.job_stage_flag:
+            return False
 
         return True
 
