@@ -21,4 +21,5 @@ from paddle.fluid.incubate.fleet.parameter_server.distributed_strategy import St
 
 __all__ = ['TrainerRuntimeConfig', 'StrategyFactory', 'fleet']
 
+# fleet is a global instance for parameter server.
 fleet = FleetTranspiler()

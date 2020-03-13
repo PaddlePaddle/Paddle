@@ -11,13 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+Convert the fluid program to distributed data-parallelism programs.
+"""
 
 import os
 import sys
 import warnings
-"""
-Convert the fluid program to distributed data-parallelism programs.
-"""
+from google.protobuf import text_format
+
 import paddle.fluid.io as io
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -44,6 +46,7 @@ from paddle.fluid.incubate.fleet.parameter_server.distributed_strategy import Tr
     SyncStrategy, AsyncStrategy, HalfAsyncStrategy, GeoStrategy, StrategyFactory
 
 from paddle.fluid.incubate.fleet.parameter_server.mode import PSMode
+from paddle.fluid.incubate.fleet.parameter_server.optimizer import ParameterServerOptimizer
 
 
 class FleetTranspiler(Fleet):
@@ -89,49 +92,43 @@ class FleetTranspiler(Fleet):
         Returns:
             None
         """
+
+        def geo_strategy_envs():
+            kwargs = {}
+            kwargs["push_vars"] = self.vars_info
+            kwargs["trainers"] = self.worker_num()
+            kwargs["push_nums"] = self._strategy.get_program_config(
+            ).geo_sgd_need_push_nums
+            return kwargs
+
+        def sync_strategy_envs():
+            kwargs = {}
+            kwargs[
+                "pserver_endpoints"] = self._role_maker.get_pserver_endpoints()
+            kwargs["trainer_id"] = self._role_maker.worker_index()
+            return kwargs
+
         # if MPISymetricRoleMaker is defined
         # we suppose a user wants to submit job on mpi cluster
         if isinstance(self._role_maker, MPISymetricRoleMaker):
             # check whether server has been initialized
             from paddle.fluid.transpiler.details.checkport import wait_server_ready
             wait_server_ready(self.server_endpoints(to_string=False))
+
         trainer_config = self._strategy.get_trainer_runtime_config()
 
         print(trainer_config)
 
+        kwargs = None
+
         if isinstance(self._strategy, GeoStrategy):
-            kwargs = {}
-            kwargs["push_vars"] = self.vars_info
-            kwargs["trainers"] = self.worker_num()
-            kwargs["push_nums"] = self._strategy.get_program_config(
-            ).geo_sgd_need_push_nums
+            kwargs = geo_strategy_envs()
+        if isinstance(self._strategy, GeoStrategy):
+            kwargs = sync_strategy_envs()
 
-            self._communicator = Communicator(
-                self.main_program, DistributedMode.GEO, kwargs,
-                trainer_config.get_communicator_flags())
-
-        elif isinstance(self._strategy, AsyncStrategy):
-            self._communicator = Communicator(
-                self.main_program, DistributedMode.ASYNC, None,
-                trainer_config.get_communicator_flags())
-
-        elif isinstance(self._strategy, HalfAsyncStrategy):
-            self._communicator = Communicator(
-                self.main_program, DistributedMode.HALF_ASYNC, None,
-                trainer_config.get_communicator_flags())
-
-        elif isinstance(self._strategy, SyncStrategy):
-            kwargs = {}
-            kwargs[
-                "pserver_endpoints"] = self._role_maker.get_pserver_endpoints()
-            kwargs["trainer_id"] = self._role_maker.worker_index()
-
-            self._communicator = Communicator(
-                self.main_program, DistributedMode.SYNC, kwargs,
-                trainer_config.get_communicator_flags())
-
-        else:
-            raise TypeError("Training MODE do not supported")
+        self._communicator = Communicator(
+            self.main_program, trainer_config.mode, kwargs,
+            trainer_config.get_communicator_flags())
 
         if not self._communicator.is_running():
             self._communicator.start()
@@ -355,7 +352,12 @@ class FleetTranspiler(Fleet):
             raise ValueError(
                 "fleet.init(role) to initialize before optimizer.minimize(loss)")
 
-        self._optimizer = ParameterServerOptimizer(optimizer, strategy)
+        _strategy = strategy
+        if self._inner_mode == PSMode.PSLIB and isinstance(strategy, dict):
+            _strategy = StrategyFactory.create_async_strategy()
+            _strategy.set_pslib_runtime_config(strategy)
+
+        self._optimizer = ParameterServerOptimizer(optimizer, _strategy)
         return self._optimizer
 
     def save_inference_model(self,
@@ -556,7 +558,7 @@ class FleetTranspiler(Fleet):
 
         if self._role_maker.is_first_worker():
             cache_threshold = self._fleet_ptr.get_cache_threshold(table_id)
-        #check cache threshold right or not
+        # check cache threshold right or not
         self._role_maker._barrier_worker()
 
         if self._role_maker.is_first_worker():
