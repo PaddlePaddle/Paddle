@@ -583,7 +583,6 @@ function check_change_of_unittest() {
 }
 
 function check_sequence_op_unittest(){
-    cat ${PADDLE_ROOT}/tools/check_sequence_op.sh
     /bin/bash -x ${PADDLE_ROOT}/tools/check_sequence_op.sh
 }
 
