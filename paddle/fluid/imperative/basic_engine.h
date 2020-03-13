@@ -30,7 +30,7 @@ class OpBase;
 
 class BasicEngine : public Engine {
  public:
-  BasicEngine(VarBase* var, const detail::BackwardStrategy& strategy);
+  void Init(VarBase* var, const detail::BackwardStrategy& strategy);
 
   void Execute() override;
 
@@ -41,9 +41,6 @@ class BasicEngine : public Engine {
 
   void PrepareGradAccumulators(const OpBase& op);
 
-  void SumGradient(const OpBase& op, std::shared_ptr<VariableWrapper> src,
-                   VariableWrapper* dst);
-
   void Clear();
 
  private:
@@ -52,7 +49,7 @@ class BasicEngine : public Engine {
   std::unordered_map<GradOpNode*, size_t> node_deps_;
   std::unordered_map<VariableWrapper*, std::unique_ptr<GradientAccumulator>>
       accumulators_;
-  std::vector<std::pair<VariableWrapper*, std::shared_ptr<VariableWrapper>>>
+  std::vector<std::pair<GradientAccumulator*, std::shared_ptr<VariableWrapper>>>
       need_accu_var_list_;
 };
 

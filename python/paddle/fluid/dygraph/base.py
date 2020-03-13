@@ -256,9 +256,9 @@ def grad(outputs,
          create_graph=False,
          backward_strategy=None):
     def check_in_out(in_out_list, name):
-        if in_out_list is None:
-            assert "{} should not be None".format(name)
-        elif isinstance(in_out_list, (list, tuple)):
+        assert in_out_list is not None, "{} should not be None".format(name)
+
+        if isinstance(in_out_list, (list, tuple)):
             assert len(in_out_list) > 0, "{} cannot be empty".format(name)
             for each_var in in_out_list:
                 assert isinstance(

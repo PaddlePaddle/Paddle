@@ -33,8 +33,7 @@
 namespace paddle {
 namespace imperative {
 
-BasicEngine::BasicEngine(VarBase* var,
-                         const detail::BackwardStrategy& strategy) {
+void BasicEngine::Init(VarBase* var, const detail::BackwardStrategy& strategy) {
   backward_strategy_ = strategy;
   init_node_ = var->GradVarBase()->GradNode();
   var->GradVarBase()->ClearGradNode();
@@ -167,16 +166,6 @@ void BasicEngine::PrepareDeps() {
   }
 }
 
-void BasicEngine::SumGradient(const OpBase& op,
-                              std::shared_ptr<VariableWrapper> src,
-                              VariableWrapper* dst) {
-  auto iter = accumulators_.find(dst);
-  PADDLE_ENFORCE_EQ(iter != accumulators_.end(), true,
-                    platform::errors::NotFound(
-                        "Cannot find gradient of variable %s", dst->Name()));
-  iter->second->Add(std::move(src), op.id());
-}
-
 void BasicEngine::Execute() {
   if (init_node_ == nullptr) {
     return;
@@ -215,9 +204,18 @@ void BasicEngine::Execute() {
           if (!var) {
             continue;
           }
-          auto tmp_var = std::make_shared<VariableWrapper>("Gtmp@");
-          need_accu_var_list_.emplace_back(var.get(), tmp_var);
-          var = std::move(tmp_var);
+
+          auto iter = accumulators_.find(var.get());
+          PADDLE_ENFORCE_EQ(
+              iter != accumulators_.end(), true,
+              platform::errors::NotFound("Cannot find gradient of variable %s",
+                                         var->Name()));
+          if (!var->OverridedStopGradient() && iter->second->RefCnt() == 1) {
+            continue;
+          }
+
+          var = std::make_shared<VariableWrapper>("Gtmp@");
+          need_accu_var_list_.emplace_back(iter->second.get(), var);
         }
       }
 
@@ -229,7 +227,7 @@ void BasicEngine::Execute() {
 
       // Step 2: Sum Gradient
       for (auto& pair : need_accu_var_list_) {
-        SumGradient(cur_op, pair.second, pair.first);
+        pair.first->Add(std::move(pair.second), cur_op.id());
       }
 
       need_accu_var_list_.clear();

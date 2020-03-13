@@ -14,11 +14,16 @@
 
 #pragma once
 
+#include "paddle/fluid/platform/macros.h"
+
 namespace paddle {
 namespace imperative {
 
 class Engine {
+  DISABLE_COPY_AND_ASSIGN(Engine);
+
  public:
+  Engine() = default;
   virtual ~Engine() = default;
   virtual void Execute() = 0;
 };

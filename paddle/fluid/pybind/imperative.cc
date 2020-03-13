@@ -507,10 +507,10 @@ void BindImperative(py::module *m_ptr) {
               const imperative::Tracer &tracer) {
              // TODO(jiabin): when we impl more backward execution we can select
              // them
-
-             imperative::BasicEngine engine(&self, bckst);
+             auto *engine = tracer.GetEngine();
+             engine->Init(&self, bckst);
              VLOG(3) << "Start backward";
-             engine.Execute();
+             engine->Execute();
              VLOG(3) << "Finish backward";
            },
            py::call_guard<py::gil_scoped_release>())

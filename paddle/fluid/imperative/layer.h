@@ -61,7 +61,17 @@ class VarBase {
 
  public:
   explicit VarBase(bool has_grad, const std::string& name)
-      : VarBase(has_grad, std::make_shared<VariableWrapper>(name)) {}
+      : var_(std::make_shared<VariableWrapper>(name)),
+        grad_var_(has_grad ? new VarBase(false, GradVarName()) : nullptr) {
+    if (has_grad) {
+      var_->SetGradVar(grad_var_->var_);
+    }
+
+    if (IsDebugEnabled()) {
+      VLOG(10) << "Construct VarBase: " << Name();
+      name_set_.Insert(Name());
+    }
+  }
 
   explicit VarBase(const std::string& name) : VarBase(true, name) {}
 

@@ -54,6 +54,29 @@ class TestDygraphDoubleGrad(TestCase):
             backward_strategy=backward_strategy)
 
     @dygraph_guard
+    def test_exception(self):
+        with self.assertRaises(AssertionError):
+            self.grad(None, None)
+
+        shape = [3, 4]
+
+        with self.assertRaises(AssertionError):
+            self.grad(1, random_var(shape))
+
+        with self.assertRaises(AssertionError):
+            self.grad(random_var(shape), 1)
+
+        with self.assertRaises(AssertionError):
+            self.grad([1], [random_var(shape)])
+
+        with self.assertRaises(AssertionError):
+            self.grad([random_var(shape)], [1])
+
+        with self.assertRaises(AssertionError):
+            self.grad([random_var(shape), random_var(shape)],
+                      [random_var(shape)], [random_var(shape)])
+
+    @dygraph_guard
     def test_simple_example(self):
         x = random_var([100, 200])
         x.stop_gradient = False

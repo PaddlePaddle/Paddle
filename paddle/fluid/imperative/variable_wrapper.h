@@ -87,18 +87,6 @@ class VariableWrapper {
     return grad_var_;
   }
 
-  std::shared_ptr<VariableWrapper> GetOrCreateGradVar() {
-    if (auto var = grad_var_.lock()) {
-      return var;
-    } else {
-      auto new_var =
-          std::make_shared<VariableWrapper>(framework::GradVarName(name_));
-      grad_var_ = new_var;
-      InnerSetOverridedStopGradient(false);
-      return new_var;
-    }
-  }
-
   std::shared_ptr<GradOpNode> GetGradNode() const { return grad_node_.lock(); }
 
   bool HasGradNode() const { return !grad_node_.expired(); }

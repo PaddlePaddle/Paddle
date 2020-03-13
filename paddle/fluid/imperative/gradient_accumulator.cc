@@ -36,6 +36,7 @@ static void MoveOrCopyVar(framework::Variable* dst, framework::Variable* src,
     return;
   }
 
+  VLOG(10) << "Copy occurs when accumulating gradients";
   if (src->IsType<framework::LoDTensor>()) {
     auto& src_tensor = src->Get<framework::LoDTensor>();
     if (!dst->IsType<framework::LoDTensor>()) {
