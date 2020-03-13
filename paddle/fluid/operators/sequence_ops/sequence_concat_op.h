@@ -28,13 +28,13 @@ template <typename Container>
 inline framework::LoD ConcatLoD(const Container &xs,
                                 std::vector<framework::Tensor> *xs_in_order) {
   std::vector<size_t> result;
-  result.resize(xs[0]->lod()[0].size());
+  result.resize(xs[0].get().lod()[0].size());
 
   for (size_t i = 1; i < result.size(); ++i) {
     size_t sum = 0;
     for (size_t j = 0; j < xs.size(); ++j) {
-      auto &x_lod = xs[j]->lod()[0];
-      const framework::Tensor &tensor = *xs[j];
+      auto &x_lod = xs[j].get().lod()[0];
+      const framework::Tensor &tensor = xs[j].get();
       if (x_lod[i - 1] < x_lod[i]) {
         xs_in_order->emplace_back(tensor.Slice(x_lod[i - 1], x_lod[i]));
       }
@@ -46,25 +46,36 @@ inline framework::LoD ConcatLoD(const Container &xs,
   lod.emplace_back(result);
   return lod;
 }
+
+template <typename T, typename... ARGS>
+inline std::vector<std::reference_wrapper<T>> VectorRef(
+    const std::vector<T *> &vec, ARGS &&... args) {
+  std::vector<std::reference_wrapper<T>> result;
+  result.reserve(vec.size());
+  for (auto *ptr : vec) {
+    result.emplace_back(*ptr);
+  }
+  return result;
+}
 }  // namespace detail
 
 template <typename DeviceContext, typename T>
 class SeqConcatKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto xs = context.MultiInput<framework::LoDTensor>("X");
-    auto out = *context.Output<framework::LoDTensor>("Out");
+    auto xs = detail::VectorRef(context.MultiInput<framework::LoDTensor>("X"));
+    auto &out = *context.Output<framework::LoDTensor>("Out");
 
     size_t lod_size = 0;
     for (auto &x : xs) {
       if (lod_size == 0) {
-        PADDLE_ENFORCE_EQ(x->lod().empty(), false,
+        PADDLE_ENFORCE_EQ(x.get().lod().empty(), false,
                           "Input(X) Tensor of SequenceConcatOp does not "
                           "contain LoD information.");
-        lod_size = x->lod()[0].size();
+        lod_size = x.get().lod()[0].size();
       } else {
         PADDLE_ENFORCE_EQ(
-            lod_size, x->lod()[0].size(),
+            lod_size, x.get().lod()[0].size(),
             "The number of sequence must be same between each input");
       }
     }
