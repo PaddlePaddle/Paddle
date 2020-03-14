@@ -5,6 +5,12 @@
 FROM nvidia/cuda:10.1-cudnn7-devel-ubuntu18.04
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 
+ARG UBUNTU_MIRROR
+ENV UBUNTU_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu
+RUN /bin/bash -c 'if [[ -n ${UBUNTU_MIRROR} ]]; then sed -i 's#http://archive.ubuntu.com/ubuntu#${UBUNTU_MIRROR}#g' /etc/apt/sources.list; fi'
+RUN /bin/bash -c 'if [[ -n ${UBUNTU_MIRROR} ]]; then sed -i 's#http://security.ubuntu.com/ubuntu#${UBUNTU_MIRROR}#g' /etc/apt/sources.list; fi'
+
+
 # ENV variables
 ARG WITH_GPU
 ARG WITH_AVX
@@ -19,6 +25,7 @@ ENV HOME /root
 COPY ./paddle/scripts/docker/root/ /root/
 RUN rm -rf /etc/apt/sources.list.d/skype-stable.list*
 
+
 # Prepare packages for Python
 RUN apt-get update && \
  DEBIAN_FRONTEND=noninteractive apt-get install -y make build-essential libssl-dev zlib1g-dev libbz2-dev \
@@ -28,12 +35,12 @@ RUN apt-get install -y python-dev python-pip wget vim git
 
 # install cmake
 WORKDIR /home
-RUN wget -q https://cmake.org/files/v3.16/cmake-3.16.0-Linux-x86_64.tar.gz
-RUN tar -zxvf cmake-3.16.0-Linux-x86_64.tar.gz
+RUN wget --no-proxy https://paddle-docker-tar.cdn.bcebos.com/cmake-3.10.0-Linux-x86_64.tar.gz 
+RUN tar -xvf cmake-3.10.0-Linux-x86_64.tar.gz
 RUN apt install libidn11
-ENV PATH=/home/cmake-3.16.0-Linux-x86_64/bin:$PATH
+ENV PATH=/home/cmake-3.10.0-Linux-x86_64/bin:$PATH
 WORKDIR /usr/bin
-RUN wget -q http://mirror.linux-ia64.org/gnu/gcc/releases/gcc-8.2.0/gcc-8.2.0.tar.xz && \
+RUN wget -q --no-proxy https://paddle-ci.cdn.bcebos.com/gcc-8.2.0.tar.xz && \
   tar -xvf gcc-8.2.0.tar.xz && \
   cd gcc-8.2.0 && \
   unset LIBRARY_PATH CPATH C_INCLUDE_PATH PKG_CONFIG_PATH CPLUS_INCLUDE_PATH INCLUDE && \
@@ -76,7 +83,7 @@ RUN apt-get update && \
     wget unzip unrar tar xz-utils bzip2 gzip coreutils ntp \
     curl sed grep graphviz libjpeg-dev zlib1g-dev  \
     python-matplotlib \
-    automake locales clang-format swig  \
+    automake locales clang-format swig cmake  \
     liblapack-dev liblapacke-dev \
     net-tools libtool ccache module-init-tools && \
     apt-get clean -y
