@@ -22,16 +22,21 @@ from collections import defaultdict
 # as produced by ast.parse from the standard ast module.
 # See details in https://github.com/serge-sans-paille/gast/
 import gast
+import six
 from paddle.fluid import unique_name
 
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_api
+from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import create_funcDef_node
-from paddle.fluid.dygraph.dygraph_to_static.utils import generate_name_node
+from paddle.fluid.dygraph.dygraph_to_static.utils import create_assign_node
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper, NodeVarType
 
 TRUE_FUNC_PREFIX = 'true_fn'
 FALSE_FUNC_PREFIX = 'false_fn'
+LOGIC_AND_PREFIX = 'logic_and'
+LOGIC_OR_PREFIX = 'logic_or'
+PLAIN_TENSOR_PREFIX = 'bool_tensor'
 
 
 class IfElseTransformer(gast.NodeTransformer):
@@ -57,24 +62,25 @@ class IfElseTransformer(gast.NodeTransformer):
 
     def visit_If(self, node):
         assert isinstance(node, gast.If)
-        need_transform = is_control_flow_if(node.test,
-                                            self.static_analysis_visitor)
+        if_condition_visitor = IfConditionVisitor(node.test,
+                                                  self.static_analysis_visitor)
+        need_transform = if_condition_visitor.is_control_flow()
         self.generic_visit(node)
         if need_transform:
-            pred_node = node.test
+            pred_node, new_assign_nodes = if_condition_visitor.transform()
             true_func_node, false_func_node, return_name_ids = transform_if_else(
                 node, self.root)
             # create layers.cond
             new_node = create_cond_node(return_name_ids, pred_node,
                                         true_func_node, false_func_node)
-            self.new_func_nodes[new_node] = [true_func_node, false_func_node]
+            self.new_func_nodes[new_node] = [true_func_node, false_func_node
+                                             ] + new_assign_nodes
             return new_node
         else:
             return node
 
     def visit_Call(self, node):
         # Remove `numpy()` statement, like `Tensor.numpy()[i]` -> `Tensor[i]`
-        # TODO: should be removed. it may be considered as basic api transformation.
         if isinstance(node.func, gast.Attribute):
             attribute = node.func
             if attribute.attr == 'numpy':
@@ -114,7 +120,29 @@ class IfElseTransformer(gast.NodeTransformer):
         return self.new_func_nodes
 
 
-class IsControlFlowIfVisitor(gast.NodeTransformer):
+def is_candidate_node(node):
+    """
+    Nodes with specified type will be dependent on tensor.
+    """
+    return isinstance(node, (gast.Compare, gast.BoolOp))
+
+
+def compare_with_none(node):
+    """
+    Whether the comparator of `gast.Compare` node is `None`.
+    """
+    if isinstance(node, gast.Compare):
+        for child in [node.left, node.comparators]:
+            # node.comparators is a list.
+            if isinstance(child, list):
+                child = child[0]
+            if (isinstance(child, gast.Constant) and child.value is None) or (
+                    isinstance(child, gast.Name) and child.id == 'None'):
+                return True
+    return False
+
+
+class IsControlFlowVisitor(gast.NodeVisitor):
     """
     Judge whether the node.test from Dygraph code dependent on paddle Tensor.
     If does, it should satisfy:
@@ -132,31 +160,47 @@ class IsControlFlowIfVisitor(gast.NodeTransformer):
              because reshape_op may be called before this statement.
     """
 
-    def __init__(self, static_analysis_visitor):
+    def __init__(self,
+                 ast_node,
+                 static_analysis_visitor=None,
+                 node_var_type_map=None):
+        assert isinstance(
+            ast_node, gast.AST
+        ), "Type of input node should be gast.AST, but received %s." % type(
+            ast_node)
+        self.ast_root = ast_node
+        if static_analysis_visitor is None:
+            static_analysis_visitor = StaticAnalysisVisitor(ast_node)
         self.static_analysis_visitor = static_analysis_visitor
-        self.node_to_wrapper_map = self.static_analysis_visitor.get_node_to_wrapper_map(
-        )
-        self.is_control_flow = False
+        self.node_var_type_map = node_var_type_map
 
-    def transform(self, node):
-        if self._is_candidate_node(node):
+        self.is_control_flow_num = 0
+        self._compare_node_tenor_set = set()
+
+    def transform(self):
+        node = self.ast_root
+        if is_candidate_node(node):
             self.visit(node)
-        return self.is_control_flow
+        return self.is_control_flow_num > 0
 
     def visit_BoolOp(self, node):
-        for child in node.values:
-            if not self._is_candidate_node(child):
-                continue
-            self.generic_visit(node)
+        for i, child in enumerate(node.values):
+            if is_candidate_node(child):
+                self.visit(child)
         return node
 
     def visit_Compare(self, node):
         # Ignores child node with `if x` or `if x is None`
-        if not self._compare_with_none(node):
+        # TODO(Aurelius84): `if tensor` will be supported in dygraph
+        # and should be considered as is_control_flow.
+        pre_control_flow_num = self.is_control_flow_num
+        if not compare_with_none(node):
             self.generic_visit(node)
             for child in gast.walk(node):
                 if isinstance(child, gast.Subscript):
                     self._visit_Subscript(child)
+        if self.is_control_flow_num > pre_control_flow_num:
+            self._compare_node_tenor_set.add(node)
         return node
 
     def _visit_Subscript(self, node):
@@ -170,50 +214,156 @@ class IsControlFlowIfVisitor(gast.NodeTransformer):
         if isinstance(node.func, gast.Attribute):
             attr_node = node.func
             if attr_node.attr == 'numpy':
-                self.is_control_flow = True
+                self.is_control_flow_num += 1
 
     def visit_Call(self, node):
         if is_paddle_api(node):
-            self.is_control_flow = True
+            self.is_control_flow_num += 1
         return node
 
     def visit_Name(self, node):
-        wrapper_node = self.node_to_wrapper_map.get(node, None)
-        if wrapper_node is not None:
-            if wrapper_node.node_var_type & {
-                    NodeVarType.TENSOR, NodeVarType.PADDLE_RETURN_TYPES
-            }:
-                self.is_control_flow = True
+        if self._is_node_with_tensor(node, node.id):
+            self.is_control_flow_num += 1
         return node
 
-    def _is_candidate_node(self, node):
-        return isinstance(node, (gast.Compare, gast.BoolOp))
+    def visit_Constant(self, node):
+        if self._is_node_with_tensor(node, node.value):
+            self.is_control_flow_num += 1
+        return node
 
-    def _compare_with_none(self, node):
-        if isinstance(node, gast.Compare):
-            for child in [node.left, node.comparators]:
-                # node.comparators is a list.
-                if isinstance(child, list):
-                    child = child[0]
-                if (isinstance(child, gast.Constant) and
-                        child.value is None) or (
-                            isinstance(child, gast.Name) and
-                            child.id == 'None'):
+    def _is_node_with_tensor(self, node, name_id):
+        tensor_types = set(
+            [NodeVarType.TENSOR, NodeVarType.PADDLE_RETURN_TYPES])
+        # Look up the node_var_type_map by name_id.
+        if self.node_var_type_map:
+            if name_id and isinstance(name_id, six.string_types):
+                var_type = self.node_var_type_map.get(name_id, None)
+                if var_type and var_type & tensor_types:
                     return True
+        # if not found, look up the node_to_wrapper_map by node.
+        node_to_wrapper_map = self.static_analysis_visitor.get_node_to_wrapper_map(
+        )
+        wrapper_node = node_to_wrapper_map.get(node, None)
+        if wrapper_node is not None:
+            if wrapper_node.node_var_type & tensor_types:
+                return True
+
         return False
 
+    def get_compare_nodes_with_tensor(self):
+        return self._compare_node_tenor_set
 
-def is_control_flow_if(node, static_analysis_visitor=None):
-    """
-    Determine whether the node is a plain python `if statement` or
-    control flow in Paddle.
-    """
-    assert isinstance(
-        node, gast.AST
-    ), "Type of input node should be gast.AST, but received %s." % type(node)
-    if static_analysis_visitor is None:
-        static_analysis_visitor = StaticAnalysisVisitor(node)
-    return IsControlFlowIfVisitor(static_analysis_visitor).transform(node)
+
+class NodeTestTransformer(gast.NodeTransformer):
+    def __init__(self, ast_node, compare_nodes_with_tensor=set()):
+        self.ast_root = ast_node
+        self._compare_nodes_with_tensor = compare_nodes_with_tensor
+        self._new_assign_nodes = []
+
+    def transform(self):
+        return self.visit(self.ast_root)
+
+    def visit_BoolOp(self, node):
+        for i, child in enumerate(node.values):
+            if not is_candidate_node(child):
+                node.values[i] = self._create_bool_node(child)
+                continue
+        self.generic_visit(node)
+        new_node = self._create_logic_node(node)
+        return new_node
+
+    def visit_Compare(self, node):
+        if compare_with_none(
+                node) or node not in self._compare_nodes_with_tensor:
+            return self._create_bool_node(node)
+        return node
+
+    def _create_bool_node(self, node):
+        node_code = ast_to_source_code(node)
+        new_node_str = "fluid.layers.fill_constant(shape=[1], dtype='bool', value=bool({}))".format(
+            node_code)
+        # gast.parse return Module(body=[expr(value=...)])
+        new_node = gast.parse(new_node_str).body[0].value
+        bool_tensor_name = unique_name.generate(PLAIN_TENSOR_PREFIX)
+        assign_name, assign_node = create_assign_node(bool_tensor_name,
+                                                      new_node)
+
+        self._new_assign_nodes.append(assign_node)
+
+        return assign_name
+
+    def _create_logic_node(self, node):
+        def _create_node(nodes, api_type):
+            assert len(
+                nodes
+            ) > 1, "The length of BoolOp should be at least 2, but received {}.".format(
+                len(nodes))
+            if len(nodes) > 2:
+                # Creates logic_and/logic_or node recursively.
+                pre_assign_node = _create_node(nodes[:2], api_type)
+                nodes = [pre_assign_node] + nodes[2:]
+            args = [ast_to_source_code(child) for child in nodes]
+            new_node_str = "fluid.layers.logical_{}(x={}, y={})".format(
+                api_type, args[0], args[1])
+            # gast.parse return Module(body=[expr(value=...)])
+            new_node = gast.parse(new_node_str).body[0].value
+            logic_tensor_name = unique_name.generate(
+                LOGIC_AND_PREFIX if 'and' in api_type else LOGIC_OR_PREFIX)
+            assign_name, assign_node = create_assign_node(logic_tensor_name,
+                                                          new_node)
+            self._new_assign_nodes.append(assign_node)
+
+            return assign_name
+
+        if isinstance(node.op, gast.And):
+            node = _create_node(node.values, 'and')
+        elif isinstance(node.op, gast.Or):
+            node = _create_node(node.values, 'or')
+        else:
+            raise TypeError(
+                "Only supports and/or syntax in control flow if statement.")
+        return node
+
+    def get_new_assign_nodes(self):
+        return self._new_assign_nodes
+
+    def set_compare_nodes_with_tensor(self, nodes_set):
+        self._compare_nodes_with_tensor = set(nodes_set)
+        return self._compare_nodes_with_tensor
+
+
+class IfConditionVisitor(object):
+    def __init__(self,
+                 node,
+                 static_analysis_visitor=None,
+                 node_var_type_map=None):
+        self.node = node
+        self.static_analysis_visitor = static_analysis_visitor
+        self.visitor = IsControlFlowVisitor(node, static_analysis_visitor,
+                                            node_var_type_map)
+        self.transformer = NodeTestTransformer(node)
+        self.compare_nodes_with_tensor = set()
+        self._is_control_flow_if = False
+
+    def is_control_flow(self):
+        """
+        Determine whether the node is a plain python `if statement` or
+        control flow in Paddle.
+        """
+        self._is_control_flow_if = self.visitor.transform()
+        return self._is_control_flow_if
+
+    def transform(self):
+        if not self._is_control_flow_if:
+            return self.node, []
+        else:
+            self.compare_nodes_with_tensor = self.visitor.get_compare_nodes_with_tensor(
+            )
+            self.transformer.set_compare_nodes_with_tensor(
+                self.compare_nodes_with_tensor)
+            new_node = self.transformer.transform()
+            new_assign_nodes = self.transformer.get_new_assign_nodes()
+            return new_node, new_assign_nodes
 
 
 def get_name_ids(nodes, not_name_set=None, node_black_list=None):
@@ -384,7 +534,6 @@ def create_cond_node(return_name_ids, pred, true_func, false_func):
     Create `fluid.layers.cond(pred, true_fn, false_fn)` to replace
     original `python if/else` statement.
     """
-    # TODO(Aurelius84): should replace the api hard code.
     cond_api = gast.parse('fluid.layers.cond').body[0].value
     true_func_lambda = gast.Lambda(
         args=gast.arguments(
@@ -425,8 +574,8 @@ def create_cond_node(return_name_ids, pred, true_func, false_func):
         args=[pred, true_func_lambda, false_func_lambda],
         keywords=[])
     if return_name_ids:
-        targets = [generate_name_node(return_name_ids, ctx=gast.Store())]
-        assign_node = gast.Assign(targets=targets, value=cond_layer)
-        return assign_node
-    else:
-        return gast.Expr(value=cond_layer)
+        _, cond_node = create_assign_node(return_name_ids, cond_layer)
+    else:  # No variables can be returned if no assign statement in if.body.
+        cond_node = gast.Expr(value=cond_layer)
+
+    return cond_node
