@@ -383,7 +383,7 @@ class GRUCPUKernel : public framework::OpKernel<T> {
     BatchCompute(context);
   }
 
-  void ComputeTest(const framework::ExecutionContext& context) const override {
+  void ComputeTest(const framework::ExecutionContext& context) const {
     BatchCompute(context);
   }
 };
