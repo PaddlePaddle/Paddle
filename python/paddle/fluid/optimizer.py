@@ -664,6 +664,9 @@ class Optimizer(object):
             with program_guard(program, startup_program):
                 params_grads = append_backward(loss, parameter_list,
                                                act_no_grad_set, callbacks)
+                # Note: since we can't use all_reduce_op now,
+                #  dgc_op should be the last op of one grad.
+                self._append_dgc_ops(params_grads)
         return params_grads
 
     def apply_gradients(self, params_grads):
@@ -729,9 +732,6 @@ class Optimizer(object):
         else:
             program = loss.block.program
             with program_guard(program, startup_program):
-                # Note: since we can't use all_reduce_op now,
-                #  dgc_op should be the last op of one grad.
-                self._append_dgc_ops(params_grads)
                 optimize_ops = self.apply_gradients(params_grads)
         return optimize_ops
 
@@ -3926,6 +3926,9 @@ class RecomputeOptimizer(Optimizer):
                 parameter_list,
                 no_grad_set,
                 checkpoints=self._checkpoints)
+            # Note: since we can't use all_reduce_op now,
+            #  dgc_op should be the last op of one grad.
+            self._optimizer._append_dgc_ops(params_grads)
         return params_grads
 
     def apply_optimize(self, loss, startup_program, params_grads):
