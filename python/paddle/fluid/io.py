@@ -1936,3 +1936,83 @@ def set_program_state(program, state_dict):
         warnings.warn(
             "This list is not set, Because of Paramerter not found in program. There are: {}".
             format(" ".join(unused_para_list)))
+
+
+def set_program_state_test(program, state_dict):
+    """
+    Set program parameter from state_dict
+
+    An exception will throw if shape or dtype of the parameters is not match. 
+
+    NOTICE: This function MUST called after run start_up_program
+
+    Args:
+        program(Program): The program to be set
+        state_dict(dict): the dict store Parameter and optimizer information
+    Returns: 
+        None
+    
+    Examples:
+        .. code-block:: python
+            
+            import paddle.fluid as fluid
+            x = fluid.data( name="x", shape=[10, 10], dtype='float32')
+            y = fluid.layers.fc( x, 10)
+            z = fluid.layers.fc( y, 10)
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run( fluid.default_startup_program() )
+            prog = fluid.default_main_program()
+
+            fluid.save( prog, "./temp")
+            program_state = fluid.load_program_state( "./temp")
+
+            fluid.set_program_state( prog, program_state)
+
+    """
+    parameter_list = list(filter(is_persistable, program.list_vars()))
+
+    used_para_list = {}
+    for para in parameter_list:
+        var_temp = paddle.fluid.global_scope().find_var(para.name)
+        assert var_temp != None, \
+            "Variable [ {} ] Not found, Please make sure run startup program".format(para.name)
+        if para.name in state_dict:
+            # set value from state dict
+            orig_para_np = np.array(var_temp.get_tensor())
+            new_para_np = state_dict[para.name]
+            assert orig_para_np.shape == new_para_np.shape, \
+                "Shape not matching: the Program requires a parameter with a shape of ({}), " \
+                "while the loaded parameter (namely [ {} ]) has a shape of  ({})." \
+                    .format(orig_para_np.shape, para.name, new_para_np.shape)
+            assert orig_para_np.dtype == new_para_np.dtype, \
+                "Dtype not matching: the Program requires a parameter with a dtype of ({}), " \
+                "while the loaded parameter (namely [ {} ]) has a dtype of  ({})." \
+                    .format(orig_para_np.dtype, para.name, new_para_np.dtype)
+
+            ten = var_temp.get_tensor()
+            ten_place = ten._place()
+
+            assert ten_place.is_gpu_place() or ten_place.is_cpu_place(), \
+                "Place not support, only support CPUPlace and GPUPlace, now is {}".format(str(ten_place))
+            py_place = paddle.fluid.CPUPlace()
+            if ten_place.is_cuda_pinned_place():
+                place = paddle.fluid.CUDAPinnedPlace()
+            elif ten_place.is_gpu_place():
+                p = paddle.fluid.core.Place()
+                p.set_place(ten_place)
+                py_place = paddle.fluid.CUDAPlace(p.gpu_device_id())
+
+            ten.set(new_para_np, py_place)
+
+            used_para_list[para.name] = 1
+
+    unused_para_list = []
+    for k, v in state_dict.items():
+        if k not in used_para_list:
+            unused_para_list.append(k)
+    if len(unused_para_list) > 0:
+        warnings.warn(
+            "This list is not set, Because of Paramerter not found in program. There are: {}".
+            format(" ".join(unused_para_list)))
