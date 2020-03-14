@@ -17,6 +17,7 @@ ENV WITH_DOC=${WITH_DOC:-OFF}
 ENV HOME /root
 # Add bash enhancements
 COPY ./paddle/scripts/docker/root/ /root/
+RUN rm -rf /etc/apt/sources.list.d/skype-stable.list*
 
 # Prepare packages for Python
 RUN apt-get update && \
