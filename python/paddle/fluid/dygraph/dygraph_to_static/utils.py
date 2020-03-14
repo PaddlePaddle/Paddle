@@ -294,13 +294,7 @@ def ast_to_func(ast_root, func_name, delete_on_exit=True):
     """
     Transform modified AST of decorated function into python callable object.
     """
-    if not isinstance(ast_root, (gast.AST, ast.AST)):
-        raise TypeError(
-            "Type of ast_root should be gast.AST or ast.AST, but received %s." %
-            type(ast_root))
-    if isinstance(ast_root, gast.AST):
-        ast_root = gast.gast_to_ast(ast_root)
-    source = astor.to_source(ast_root)
+    source = ast_to_source_code(ast_root)
     if six.PY2:
         source = source.encode('utf-8')
         f = tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False)
@@ -328,3 +322,26 @@ def ast_to_func(ast_root, func_name, delete_on_exit=True):
             func_name)
 
     return getattr(module, func_name), f.name
+
+
+def ast_to_source_code(ast_node):
+    """
+    Transformers ast node into source code.
+    """
+    if not isinstance(ast_node, (gast.AST, ast.AST)):
+        raise TypeError(
+            "Type of ast_root should be gast.AST or ast.AST, but received %s." %
+            type(ast_node))
+    if isinstance(ast_node, gast.AST):
+        ast_node = gast.gast_to_ast(ast_node)
+    source_code = astor.to_source(ast_node)
+    return source_code
+
+
+def create_assign_node(name, node):
+    """
+    Creates a `gast.Assign` node by given name_id as target and node as value.
+    """
+    targets = generate_name_node(name, ctx=gast.Store())
+    assign_node = gast.Assign(targets=[targets], value=node)
+    return targets, assign_node
