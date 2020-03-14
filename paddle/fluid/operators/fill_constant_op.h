@@ -105,8 +105,10 @@ class FillConstantKernel : public framework::OpKernel<T> {
       tensor = out_var->GetMutable<framework::LoDTensor>();
       tensor->Resize(shape);
     } else if (out_var->IsType<framework::SelectedRows>()) {
-      tensor = out_var->GetMutable<framework::SelectedRows>()->mutable_value();
+      auto *selected_rows = out_var->GetMutable<framework::SelectedRows>();
+      tensor = selected_rows->mutable_value();
       tensor->Resize(shape);
+      selected_rows->InitDataShards();
     } else {
       PADDLE_THROW(
           "fill constant op's output only"

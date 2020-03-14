@@ -200,6 +200,11 @@ class RequestGetNoBarrier final : public RequestBase {
     request_handler_->Handle(varname, scope, invar, &outvar, trainer_id,
                              out_varname);
 
+    if (outvar->IsType<framework::SelectedRows>()) {
+      auto* slr = outvar->GetMutable<framework::SelectedRows>();
+      slr->SyncIndex();
+    }
+    
     if (outvar) {
       SerializeToByteBuffer(out_varname, outvar, *request_handler_->dev_ctx(),
                             &reply_);

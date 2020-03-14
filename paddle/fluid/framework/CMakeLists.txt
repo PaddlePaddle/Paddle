@@ -218,7 +218,9 @@ cc_library(prune SRCS prune.cc DEPS framework_proto boost)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
 cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
         proto_desc)
-cc_library(selected_rows SRCS selected_rows.cc DEPS tensor)
+cc_library(data_shard SRCS data_shard.cc DEPS enforce)
+cc_library(selected_rows SRCS selected_rows.cc DEPS tensor data_shard simple_threadpool)
+
 cc_test(selected_rows_test SRCS selected_rows_test.cc DEPS selected_rows)
 
 cc_test(op_kernel_type_test SRCS op_kernel_type_test.cc DEPS place device_context framework_proto op_kernel_type)

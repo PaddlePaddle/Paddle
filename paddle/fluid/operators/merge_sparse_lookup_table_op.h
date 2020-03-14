@@ -21,6 +21,16 @@
 namespace paddle {
 namespace operators {
 
+int64_t GetDelimiterForShard(const std::vector<int64_t>& rows, int start_idx, int shard_id, int shard_num) {
+  int64_t rows_num = rows.size() / 2;
+  for(int64_t i = start_idx; i < rows_num; ++i) {
+    if (rows[i] % shard_num != shard_id) {
+      return i;
+    }
+  }
+  return rows_num;
+}
+
 template <typename DeviceContext, typename T>
 class MergeSparseLookupTableKernel : public framework::OpKernel<T> {
  public:
@@ -29,36 +39,61 @@ class MergeSparseLookupTableKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<framework::SelectedRows>("Out");
 
     int64_t height = 0;
-    int64_t ids_num = 0;
+    int64_t rows_num = 0;
     int64_t width = 0;
     PADDLE_ENFORCE_GT(inputs.size(), 0);
 
     width = inputs[0]->value().dims()[1];
 
     for (auto& in : inputs) {
-      ids_num += in->rows().size();
+      rows_num += in->rows().size();
       height += in->height();
     }
 
-    T* out_data = out->mutable_value()->mutable_data<T>({ids_num, width},
+    T* out_data = out->mutable_value()->mutable_data<T>({height, width},
                                                         platform::CPUPlace());
 
     out->set_height(height);
-    std::vector<int64_t> all_ids;
-    all_ids.reserve(ids_num);
-    for (auto& in : inputs) {
-      all_ids.insert(all_ids.end(), in->rows().begin(), in->rows().end());
-    }
-    out->set_rows(all_ids);
+    std::vector<int64_t> all_rows;
+    all_rows.reserve(rows_num);
 
     int64_t cnt = 0;
-
-    for (auto& in : inputs) {
-      auto rows = in->rows().size();
-      const T* in_data = in->value().data<T>();
-      std::copy_n(in_data, rows * width, out_data + cnt);
-      cnt += rows * width;
+    std::vector<int64_t> start_indexs;
+    start_indexs.reserve(inputs.size());
+    for(int j = 0; j < inputs.size(); ++j) {
+      PADDLE_ENFORCE_EQ(inputs[j]->rows().size() % 2, 0, "rows should have n * 2 elements");
+      start_indexs[j] = 0;
     }
+
+    auto shard_num = out->shard_num();
+    int64_t out_shard_size = height / shard_num;
+
+    std::vector<int64_t> indexs;
+    indexs.reserve(rows_num/2);
+    for(int i = 0; i < shard_num; ++i) {
+      for(int j = 0; j < inputs.size(); ++j) {
+        auto start_index = start_indexs[j];
+        auto end_index = GetDelimiterForShard(inputs[j]->rows(), start_index, i, shard_num);
+        int64_t in_shard_size = inputs[j]->height() / shard_num; 
+        auto ids_num = inputs[j]->rows().size() / 2;
+        const T* in_data = inputs[j]->value().data<T>(); 
+        std::copy_n(in_data + i * in_shard_size * width, (end_index - start_index) * width, out_data + (i * out_shard_size + cnt) * width);
+        for(int m = start_index; m < end_index; ++m) {
+          auto original_index = inputs[j]->rows()[ids_num + m];
+          auto original_offset = original_index - i * in_shard_size;
+          auto idx = i * out_shard_size + cnt + original_offset; 
+          PADDLE_ENFORCE_LT(idx, height,
+                        "idx should be less then table height");
+          all_rows.emplace_back(inputs[j]->rows()[m]);
+          indexs.emplace_back(idx);
+        }
+        cnt += end_index - start_index;
+        start_indexs[j] = end_index;
+      }
+      cnt = 0;
+    } 
+    all_rows.insert(all_rows.end(), indexs.begin(), indexs.end());
+    out->set_rows(all_rows);
   }
 };
 

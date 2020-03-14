@@ -21,10 +21,12 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/data_shard.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/framework/threadpool.h"
 
 namespace paddle {
 namespace framework {
@@ -46,17 +48,9 @@ class SelectedRows {
    *
    */
  public:
-  SelectedRows(const std::vector<int64_t>& rows, const int64_t& height)
-      : rows_(rows), height_(height) {
-    value_.reset(new Tensor());
-    rwlock_.reset(new RWLock);
-  }
+  SelectedRows(const std::vector<int64_t>& rows, const int64_t& height);
 
-  SelectedRows() {
-    height_ = 0;
-    value_.reset(new Tensor());
-    rwlock_.reset(new RWLock);
-  }
+  SelectedRows();
 
   const platform::Place& place() const { return value_->place(); }
 
@@ -66,6 +60,8 @@ class SelectedRows {
 
   int64_t height() const { return height_; }
 
+  int64_t shard_num() const {return shard_num_;}
+
   void set_height(int64_t height) { height_ = height; }
 
   const Vector<int64_t>& rows() const { return rows_; }
@@ -73,6 +69,8 @@ class SelectedRows {
   Vector<int64_t>* mutable_rows() { return &rows_; }
 
   void set_rows(const Vector<int64_t>& rows) { rows_ = rows; }
+
+  void InitDataShards();
 
   /*
    * @brief Get the index of key in rows
@@ -106,6 +104,10 @@ class SelectedRows {
   void Get(const framework::Tensor& ids, framework::Tensor* value,
            bool auto_grown = false, bool is_test = false);
 
+  int64_t GetIndexById(int64_t id,
+                        bool auto_grown,
+                        bool is_test=false);
+
   /*
    * @brief Get the index of the key from id_to_index_ map. If the key not
    * exist,
@@ -117,7 +119,10 @@ class SelectedRows {
    *
    * @return index of the key.
    */
-  int64_t AutoGrownIndex(int64_t key, bool auto_grown, bool is_test = false);
+
+  void GetIndexsByIds(const std::vector<int64_t>& ids,
+                      std::vector<int64_t>* indexs, bool auto_grown, bool is_test);
+
 
   /*
    * @brief Get the index of the key from id_to_index_ map.
@@ -132,6 +137,8 @@ class SelectedRows {
   }
 
   void SyncIndex();
+
+  void ReconstructShardAfterLoad();
   /*
    * @brief Get complete Dims before
    */
@@ -141,7 +148,13 @@ class SelectedRows {
     return make_ddim(dims);
   }
 
+  const std::unordered_map<int64_t, int64_t>& GetIdToIndex() const {
+    return id_to_index_;
+  }
+
+
  private:
+  int64_t ShardId(int64_t id) const { return id % shard_num_; }
   // Notice: rows can be duplicate. We can have {0, 4, 7, 0, 5, 7, 9} here.
   // SelectedRows are simply concated when adding together. Until a
   // SelectedRows add a Tensor, will the duplicate rows be handled.
@@ -150,7 +163,9 @@ class SelectedRows {
       id_to_index_;  // should not be used when rows_ has duplicate member
   std::unique_ptr<Tensor> value_{nullptr};
   int64_t height_;  // height indicates the underline tensor's height
-  std::unique_ptr<RWLock> rwlock_{nullptr};
+  std::vector<std::unique_ptr<DataShard>> data_shards_;
+  const int64_t shard_num_;  // magic number
+
 };
 
 /*

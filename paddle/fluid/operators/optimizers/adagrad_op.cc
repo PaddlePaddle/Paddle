@@ -178,9 +178,15 @@ struct SparseAdagradFunctor<platform::CPUDeviceContext, T> {
     auto* moment_data = moment->mutable_value()->data<T>();
     auto* grad_data = grad_square.value().template data<T>();
 
+    std::vector<int64_t> param_val_idxs(merge_rows.size());
+    std::vector<int64_t> moment_val_idxs(merge_rows.size());
+    param->GetIndexsByIds(merge_rows, &param_val_idxs, false, false);
+    moment->GetIndexsByIds(merge_rows, &moment_val_idxs, true, false);    
+
+
     for (size_t i = 0; i < merge_rows.size(); i++) {
-      auto param_val_idx = param->AutoGrownIndex(merge_rows[i], false);
-      auto moment_val_idx = moment->AutoGrownIndex(merge_rows[i], true);
+      auto param_val_idx = param_val_idxs[i];
+      auto moment_val_idx = moment_val_idxs[i];
 
       for (int64_t j = 0; j < grad_width; j++) {
         moment_data[moment_val_idx * grad_width + j] +=

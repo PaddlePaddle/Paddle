@@ -670,9 +670,9 @@ class AdamOpKernel : public framework::OpKernel<T> {
       std::vector<int64_t> cpurows(grad_merge.rows());
       for (size_t row_index = 0; row_index < row_count; ++row_index) {
         auto sparse_id = cpurows[row_index];
-        auto param_val_idx = param_out.AutoGrownIndex(sparse_id, false);
-        auto moment_1_idx = mom1_out.AutoGrownIndex(sparse_id, true);
-        auto moment_2_idx = mom2_out.AutoGrownIndex(sparse_id, true);
+        auto param_val_idx = param_out.GetIndexById(sparse_id, false, false);
+        auto moment_1_idx = mom1_out.GetIndexById(sparse_id, true, false);
+        auto moment_2_idx = mom2_out.GetIndexById(sparse_id, true, false);
 
         for (size_t offset = 0; offset < row_numel; ++offset) {
           functor.adam_update(moment_1_idx * row_numel + offset,

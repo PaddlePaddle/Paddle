@@ -46,6 +46,7 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
       if (!new_shape.empty()) shape = new_shape;
       tensor->Resize(framework::make_ddim(shape));
       selected_rows->mutable_rows()->reserve(shape[0]);
+      selected_rows->InitDataShards();
     } else if (out_var->IsType<framework::LoDTensor>()) {
       tensor = out_var->GetMutable<framework::LoDTensor>();
       if (!new_shape.empty()) tensor->Resize(framework::make_ddim(new_shape));
