@@ -216,25 +216,27 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
       layout = DataLayout::kNCDHW;
     }
 
-    auto layout_tensor = GetCudnnTensorFormat(layout);
     size_t workspace_size = 0;
     cudnnConvolutionBwdDataAlgo_t algo{};
     // ------------------- cudnn conv algorithm ---------------------
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
+    auto layout_tensor = GetCudnnTensorFormat(layout);
 
     if (FLAGS_cudnn_deterministic) {
       algo = static_cast<cudnnConvolutionBwdDataAlgo_t>(1);
     }
     auto dtype = platform::CudnnDataType<T>::type;
+    // VLOG(0) << "transpose forward: "<< transformed_output.dims() << "; " <<
+    // filter->dims() << "; " << transformed_input.dims();
     // ------------------- cudnn descriptors ---------------------
     ConvArgs args{&transformed_output, filter,   &transformed_input, strides,
                   padding_common,      dilations};
     args.handle = handle;
-    args.cdesc.set(dtype, padding_common, strides, dilations, c_groups);
     args.idesc.set(transformed_output, iwo_groups);
     args.wdesc.set(*filter, layout_tensor, iwo_groups);
     args.odesc.set(transformed_input, iwo_groups);
+    args.cdesc.set(dtype, padding_common, strides, dilations, c_groups);
 
     using search = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
     algo = search::Find<T>(args, false, false, 2, ctx);
@@ -310,14 +312,6 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
     const std::string data_layout_str = ctx.Attr<std::string>("data_format");
     const paddle::operators::DataLayout data_layout =
         (data_layout_str != "NHWC" ? DataLayout::kNCHW : DataLayout::kNHWC);
-
-    int iwo_groups = groups;
-    int c_groups = 1;
-#if CUDNN_VERSION_MIN(7, 0, 1)
-    iwo_groups = 1;
-    c_groups = groups;
-    groups = 1;
-#endif
 
     // if channel_last, transpose to channel_first
     Tensor input_transpose;
@@ -432,10 +426,19 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
       layout = DataLayout::kNCDHW;
     }
 
-    ConvArgs args1{input_grad, filter,         &transformed_output_grad,
-                   strides,    padding_common, dilations};
-    ConvArgs args2{&input_transpose, filter_grad,    &transformed_output_grad,
-                   strides,          padding_common, dilations};
+    int iwo_groups = groups;
+    int c_groups = 1;
+#if CUDNN_VERSION_MIN(7, 0, 1)
+    iwo_groups = 1;
+    c_groups = groups;
+    groups = 1;
+#endif
+    ConvArgs args1{&transformed_output_grad, filter,
+                   &input_transpose,         strides,
+                   padding_common,           dilations};
+    ConvArgs args2{&transformed_output_grad, filter,
+                   &input_transpose,         strides,
+                   padding_common,           dilations};
     cudnnConvolutionFwdAlgo_t data_algo{};
     cudnnConvolutionBwdFilterAlgo_t filter_algo{};
 
@@ -446,18 +449,35 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
     auto dtype = platform::CudnnDataType<T>::type;
     T* input_grad_data = nullptr;
     T* filter_grad_data = nullptr;
+    if (input_grad)
+      input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
+    if (filter_grad)
+      filter_grad_data = filter_grad->mutable_data<T>(ctx.GetPlace());
 
     if (input_grad) {
       input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
       args1.handle = handle;
       args1.idesc.set(transformed_output_grad, iwo_groups);
       args1.wdesc.set(*filter, layout_tensor, iwo_groups);
-      args1.odesc.set(*input_grad, iwo_groups);
+      args1.odesc.set(input_transpose, iwo_groups);
       args1.cdesc.set(dtype, padding_common, strides, dilations, c_groups);
       using search1 = SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
       data_algo = search1::Find<T>(args1, false, false, 0, ctx);
       workspace_size =
           std::max(workspace_size, search1::GetWorkspaceSize(args1, data_algo));
+    }
+
+    if (filter_grad) {
+      filter_grad_data = filter_grad->mutable_data<T>(ctx.GetPlace());
+      args2.handle = handle;
+      args2.idesc.set(transformed_output_grad, iwo_groups);
+      args2.wdesc.set(*filter_grad, layout_tensor, iwo_groups);
+      args2.odesc.set(input_transpose, iwo_groups);
+      args2.cdesc.set(dtype, padding_common, strides, dilations, c_groups);
+      using search2 = SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
+      filter_algo = search2::Find<T>(args2, false, false, 1, ctx);
+      workspace_size = std::max(workspace_size,
+                                search2::GetWorkspaceSize(args2, filter_algo));
     }
 
     // ------------------- cudnn conv backward data ---------------------
@@ -502,22 +522,8 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
       }
     }
 
-    if (filter_grad) {
-      filter_grad_data = filter_grad->mutable_data<T>(ctx.GetPlace());
-      args2.handle = handle;
-      args2.idesc.set(transformed_output_grad, iwo_groups);
-      args2.wdesc.set(*filter_grad, layout_tensor, iwo_groups);
-      args2.odesc.set(input_transpose, iwo_groups);
-      args2.cdesc.set(dtype, padding_common, strides, dilations, c_groups);
-      using search2 = SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
-      filter_algo = search2::Find<T>(args2, false, false, 1, ctx);
-      workspace_size = std::max(workspace_size,
-                                search2::GetWorkspaceSize(args2, filter_algo));
-    }
-
     // ------------------- cudnn conv backward filter ---------------------
     if (filter_grad) {
-      T* filter_grad_data = filter_grad->mutable_data<T>(ctx.GetPlace());
       // Because beta is zero, it is unnecessary to reset filter_grad.
       // Gradient with respect to the filter
       for (int g = 0; g < groups; g++) {
