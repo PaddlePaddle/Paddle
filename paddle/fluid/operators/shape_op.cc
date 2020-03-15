@@ -30,6 +30,14 @@ class ShapeOp : public framework::OperatorWithKernel {
     auto in_dim = ctx->GetInputDim("Input");
     ctx->SetOutputDim("Out", {in_dim.size()});
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
+  }
 };
 
 class ShapeOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -56,6 +64,9 @@ REGISTER_OPERATOR(
     shape, ops::ShapeOp, ops::ShapeOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(shape, ops::ShapeKernel<int>, ops::ShapeKernel<int32_t>,
-                       ops::ShapeKernel<int64_t>, ops::ShapeKernel<float>,
-                       ops::ShapeKernel<double>);
+REGISTER_OP_CPU_KERNEL(
+    shape, ops::ShapeKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::ShapeKernel<paddle::platform::CPUDeviceContext, int32_t>,
+    ops::ShapeKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::ShapeKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ShapeKernel<paddle::platform::CPUDeviceContext, double>);
