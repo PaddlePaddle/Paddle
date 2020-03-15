@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <algorithm>
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -21,13 +22,13 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename T>
+template <typename DeviceContext, typename T>
 class ShapeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in_t = ctx.Input<Tensor>("Input");
     auto* out_t = ctx.Output<Tensor>("Out");
-    auto out_data = out_t->mutable_data<int32_t>(platform::CPUPlace());
+    auto out_data = out_t->mutable_data<int32_t>(ctx.GetPlace());
     auto in_dims = in_t->dims();
     for (int i = 0; i < in_dims.size(); ++i) {
       out_data[i] = in_dims[i];
