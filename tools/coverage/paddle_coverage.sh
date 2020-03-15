@@ -10,13 +10,20 @@ tar -xf /lcov-1.14.tar.gz -C /
 cd /lcov-1.14
 make install
 
+alias lcov=/lcov-1.14/bin/lcov
+alias genhtml=/lcov-1.14/bin/genhtml
+
+which lcov
+which genhtml
+lcov --version
+genhtml --version
 # run paddle coverage
 
 cd $PADDLE_ROOT/build
 
 python ${PADDLE_ROOT}/tools/coverage/gcda_clean.py ${GIT_PR_ID}
 
-lcov --capture -d ./ -o coverage.info --gcov-tool /usr/bin/gcov-4.8 --rc lcov_branch_coverage=0
+lcov -capture -d ./ -o coverage.info --gcov-tool /usr/bin/gcov-4.8 --rc lcov_branch_coverage=0
 
 # full html report
 
