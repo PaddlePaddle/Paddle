@@ -133,9 +133,11 @@ void SyncBatchNormFunctor(const framework::ExecutionContext &ctx,
                           ) {
   const auto &x_dims = x->dims();
   PADDLE_ENFORCE_GE(x_dims.size(), 2,
-                    "The Input dim size should be larger than 1.");
+                    platform::errors::InvalidArgument(
+                        "The Input dim size should be larger than 1."));
   PADDLE_ENFORCE_LE(x_dims.size(), 5,
-                    "The Input dim size should be less than 6.");
+                    platform::errors::InvalidArgument(
+                        "The Input dim size should be less than 6."));
   int N, C, H, W, D;
   ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
   int x_numel = x->numel();
@@ -375,16 +377,19 @@ void SyncBatchNormGradFunctor(
   const auto &x_dims = x->dims();
 
   PADDLE_ENFORCE_GE(x_dims.size(), 2,
-                    "The Input X dim size should be larger than 1.");
+                    platform::errors::InvalidArgument(
+                        "The Input X dim size should be larger than 1."));
   PADDLE_ENFORCE_LE(x_dims.size(), 5,
-                    "The Input X dim size should be less than 6.");
+                    platform::errors::InvalidArgument(
+                        "The Input X dim size should be less than 6."));
 
   int N, C, H, W, D;
   ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
   PADDLE_ENFORCE_EQ(scale->dims()[0], C,
-                    "Expected first dim for input parameter(scale) of "
-                    "OP(sync_batch_norm) be (%d), but given (%d).",
-                    C, scale->dims()[0]);
+                    platform::errors::InvalidArgument(
+                        "Expected first dim for input parameter(scale) of "
+                        "OP(sync_batch_norm) be (%d), but given (%d).",
+                        C, scale->dims()[0]));
 
   d_x->mutable_data<T>(ctx.GetPlace());
   if (d_scale && d_bias) {
@@ -392,9 +397,10 @@ void SyncBatchNormGradFunctor(
     d_bias->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
   }
   PADDLE_ENFORCE_EQ(scale->dims().size(), 1UL,
-                    "Expected rank for input parameter(scale) of "
-                    "OP(sync_batch_norm) be (1), but given (%d).",
-                    scale->dims().size());
+                    platform::errors::InvalidArgument(
+                        "Expected rank for input parameter(scale) of "
+                        "OP(sync_batch_norm) be (1), but given (%d).",
+                        scale->dims().size()));
 
   std::vector<int> dims;
   std::vector<int> strides;

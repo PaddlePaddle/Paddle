@@ -41,7 +41,8 @@ inline InplaceABNActivationType GetInplaceABNActivationType(
   } else if (type == "identity" || type == "") {
     return InplaceABNActivationType::identity;
   } else {
-    PADDLE_THROW("unsupported activation type %s for Op(inplace_abn)", type);
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "unsupported activation type %s for Op(inplace_abn)", type));
   }
 }
 
@@ -76,7 +77,8 @@ class InplaceABNActivation {
       ELUFunctor<T> functor;
       compute(ctx, &functor, d, x, y);
     } else {
-      PADDLE_THROW("unsupported activation type");
+      PADDLE_THROW(
+          platform::errors::InvalidArgument("unsupported activation type"));
     }
   }
 
@@ -105,7 +107,8 @@ class InplaceABNActivation {
       ELUGradFunctor<T> functor;
       compute(ctx, &functor, d, x, y, dy, dx);
     } else {
-      PADDLE_THROW("unsupported activation type");
+      PADDLE_THROW(
+          platform::errors::InvalidArgument("unsupported activation type"));
     }
   }
 };

@@ -82,16 +82,18 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
 
   PADDLE_ENFORCE_GE(
       x_dims.size(), 2,
-      "ShapeError: the dimension of input X must greater than or equal to 2."
-      "But received: the shape of input X = [%s], the dimension of input X ="
-      "[%d]",
-      x_dims, x_dims.size());
+      platform::errors::InvalidArgument(
+          "ShapeError: the dimension of input "
+          "X must greater than or equal to 2. But received: the shape of input "
+          "X = [%s], the dimension of input X =[%d]",
+          x_dims, x_dims.size()));
   PADDLE_ENFORCE_LE(
       x_dims.size(), 5,
-      "ShapeError: the dimension of input X must smaller than or equal to 5."
-      "But received: the shape of input X = [%s], the dimension of input X ="
-      "[%d]",
-      x_dims, x_dims.size());
+      platform::errors::InvalidArgument(
+          "ShapeError: the dimension of input X "
+          "must smaller than or equal to 5. But received: the shape of input X "
+          "= [%s], the dimension of input X = [%d]",
+          x_dims, x_dims.size()));
 
   const int64_t C =
       ((this->IsMKLDNNType() == true) || (data_layout == DataLayout::kNCHW)
@@ -146,14 +148,18 @@ framework::OpKernelType BatchNormOp::GetExpectedKernelType(
   if (input_data_type == framework::proto::VarType::FP64) {
     bn_param_type = framework::proto::VarType::FP64;
   }
-  PADDLE_ENFORCE_EQ(bn_param_type, ctx.Input<Tensor>("Scale")->type(),
-                    "Scale input should be of float type");
-  PADDLE_ENFORCE_EQ(bn_param_type, ctx.Input<Tensor>("Bias")->type(),
-                    "Bias input should be of float type");
-  PADDLE_ENFORCE_EQ(bn_param_type, ctx.Input<Tensor>("Mean")->type(),
-                    "Mean input should be of float type");
+  PADDLE_ENFORCE_EQ(
+      bn_param_type, ctx.Input<Tensor>("Scale")->type(),
+      platform::errors::InvalidArgument("Scale input should be of float type"));
+  PADDLE_ENFORCE_EQ(
+      bn_param_type, ctx.Input<Tensor>("Bias")->type(),
+      platform::errors::InvalidArgument("Bias input should be of float type"));
+  PADDLE_ENFORCE_EQ(
+      bn_param_type, ctx.Input<Tensor>("Mean")->type(),
+      platform::errors::InvalidArgument("Mean input should be of float type"));
   PADDLE_ENFORCE_EQ(bn_param_type, ctx.Input<Tensor>("Variance")->type(),
-                    "Variance input should be of float type");
+                    platform::errors::InvalidArgument(
+                        "Variance input should be of float type"));
 
   // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
   framework::LibraryType library = framework::LibraryType::kPlain;
@@ -204,8 +210,13 @@ void BatchNormOpMaker::Make() {
   AddAttr<float>("epsilon", "")
       .SetDefault(1e-5)
       .AddCustomChecker([](const float &epsilon) {
-        PADDLE_ENFORCE_GE(epsilon, 0.0f, "'epsilon' should be GE 0.0.");
-        PADDLE_ENFORCE_LE(epsilon, 0.001f, "'epsilon' should be LE 0.001.");
+        PADDLE_ENFORCE_GE(
+            epsilon, 0.0f,
+            platform::errors::InvalidArgument(
+                "'epsilon' should be greater or equal than 0.0."));
+        PADDLE_ENFORCE_LE(epsilon, 0.001f,
+                          platform::errors::InvalidArgument(
+                              "'epsilon' should be less or euqal than 0.001."));
       });
   AddAttr<std::string>("data_layout", "").SetDefault("NCHW");
   AddInput("X", "The input tensor");
@@ -292,9 +303,11 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
     const auto *x = ctx.Input<Tensor>("X");
     const auto &x_dims = x->dims();
     PADDLE_ENFORCE_GE(x_dims.size(), 2,
-                      "The Input X dim size should be larger than 1.");
+                      platform::errors::InvalidArgument(
+                          "The Input X dim size should be larger than 1."));
     PADDLE_ENFORCE_LE(x_dims.size(), 5,
-                      "The Input X dim size should be less than 6.");
+                      platform::errors::InvalidArgument(
+                          "The Input X dim size should be less than 6."));
     const int N = x_dims[0];
     const int C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]
@@ -436,14 +449,18 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
 
 void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
   // check input
-  PADDLE_ENFORCE_EQ(ctx->HasInput("Scale"), true,
-                    "Input(scale) should not be null.");
-  PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Y")), true,
-                    "Input(Y@GRAD) should not be null.");
+  PADDLE_ENFORCE_EQ(
+      ctx->HasInput("Scale"), true,
+      platform::errors::InvalidArgument("Input(scale) should not be null."));
+  PADDLE_ENFORCE_EQ(
+      ctx->HasInput(framework::GradVarName("Y")), true,
+      platform::errors::InvalidArgument("Input(Y@GRAD) should not be null."));
   PADDLE_ENFORCE_EQ(ctx->HasInput("SavedMean"), true,
-                    "Input(SavedMean) should not be null.");
+                    platform::errors::InvalidArgument(
+                        "Input(SavedMean) should not be null."));
   PADDLE_ENFORCE_EQ(ctx->HasInput("SavedVariance"), true,
-                    "Input(SavedVariance) should not be null");
+                    platform::errors::InvalidArgument(
+                        "Input(SavedVariance) should not be null"));
 
   // check output
   PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")), "");
@@ -460,9 +477,11 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
 
   const bool use_global_stats = ctx->Attrs().Get<bool>("use_global_stats");
   if (use_global_stats) {
-    PADDLE_ENFORCE_EQ(!ctx->Attrs().Get<bool>("use_mkldnn"), true,
-                      "Using global stats during training is not supported "
-                      "in gradient op kernel of batch_norm_mkldnn_op now.");
+    PADDLE_ENFORCE_EQ(
+        !ctx->Attrs().Get<bool>("use_mkldnn"), true,
+        platform::errors::InvalidArgument(
+            "Using global stats during training is not supported "
+            "in gradient op kernel of batch_norm_mkldnn_op now."));
   }
 
   // batch_norm_grad with inplace takes Y as input, without inplace
@@ -470,7 +489,8 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
   // so only infer shape in run time here.
   if (ctx->IsRuntime()) {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X") || ctx->HasInput("Y"), true,
-                      "Input(X) and Input(Y) should not be all null.");
+                      platform::errors::InvalidArgument(
+                          "Input(X) and Input(Y) should not be all null."));
     auto input_name = "Y";
     if (ctx->HasInput("X")) input_name = "X";
     const auto x_dims = ctx->GetInputDim(input_name);
@@ -495,7 +515,7 @@ framework::OpKernelType BatchNormGradOp::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
   const auto *var = ctx.InputVar(framework::GradVarName("Y"));
   if (var == nullptr) {
-    PADDLE_THROW("can't find Y@GRAD");
+    PADDLE_THROW(platform::errors::InvalidArgument("can't find Y@GRAD"));
   }
   const Tensor *t = nullptr;
   if (var->IsType<Tensor>()) {
@@ -504,7 +524,7 @@ framework::OpKernelType BatchNormGradOp::GetExpectedKernelType(
     t = &var->Get<LoDTensor>();
   }
   if (t == nullptr) {
-    PADDLE_THROW("can't find Y@GRAD");
+    PADDLE_THROW(platform::errors::InvalidArgument("can't find Y@GRAD"));
   }
 
   // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
@@ -592,9 +612,11 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     // NCHW [batch_size, in_channels, in_height, in_width]
     const auto &x_dims = x->dims();
     PADDLE_ENFORCE_GE(x_dims.size(), 2,
-                      "The Input X dim size should be larger than 1.");
+                      platform::errors::InvalidArgument(
+                          "The Input X dim size should be larger than 1."));
     PADDLE_ENFORCE_LE(x_dims.size(), 5,
-                      "The Input X dim size should be less than 6.");
+                      platform::errors::InvalidArgument(
+                          "The Input X dim size should be less than 6."));
     const int N = x_dims[0];
     const int C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]

@@ -28,10 +28,11 @@ class SyncBatchNormKernel<platform::CUDADeviceContext, T>
     const std::string layout_str = ctx.Attr<std::string>("data_layout");
     const DataLayout layout = framework::StringToDataLayout(layout_str);
     const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
-    PADDLE_ENFORCE_EQ(
-        use_global_stats, false,
-        "sync_batch_norm doesn't support to set use_global_stats True. ",
-        "Please use batch_norm in this case.");
+    PADDLE_ENFORCE_EQ(use_global_stats, false,
+                      platform::errors::InvalidArgument(
+                          "sync_batch_norm doesn't support "
+                          "to set use_global_stats True. Please use batch_norm "
+                          "in this case."));
 
     const auto *x = ctx.Input<Tensor>("X");
     auto *y = ctx.Output<Tensor>("Y");
