@@ -14,6 +14,8 @@
 
 from __future__ import print_function
 
+from . import compression
+from .compression import *
 from . import decoder
 from .decoder import *
 from . import memory_usage_calc
@@ -38,6 +40,7 @@ from . import layers
 from .layers import *
 
 __all__ = []
+__all__ += compression.__all__
 __all__ += decoder.__all__
 __all__ += memory_usage_calc.__all__
 __all__ += op_frequence.__all__
