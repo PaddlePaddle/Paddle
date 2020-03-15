@@ -190,5 +190,21 @@ void SaveVars(const framework::Scope& scope,
   exe.Run(prog, const_cast<framework::Scope*>(&scope), 0, true, true);
 }
 
+void SaveVarsTest(const framework::Scope& scope,
+                  const std::vector<std::string>& vars,
+                  const std::string& dirname, bool predicate) {
+  framework::ProgramDesc prog;
+  auto* block = prog.MutableBlock(0);
+  auto* op = block->AppendOp();
+  op->SetType("save_combine");
+  op->SetInput("X", vars);
+  op->SetAttr("file_path", dirname + "/param");
+  op->CheckAttrs();
+
+  platform::CPUPlace place;
+  framework::Executor exe(place);
+  exe.Run(prog, const_cast<framework::Scope*>(&scope), 0, true, true);
+}
+
 }  // namespace inference
 }  // namespace paddle

@@ -86,6 +86,15 @@ std::string DataTypeToString(const proto::VarType::Type type) {
                static_cast<int>(type));
 }
 
+std::string DataTypeToStringTest(const proto::VarType::Type type) {
+  auto it = gDataTypeMap().proto_to_str_.find(static_cast<int>(type));
+  if (it != gDataTypeMap().proto_to_str_.end()) {
+    return it->second;
+  }
+  PADDLE_THROW("Not support proto::VarType::Type(%d) as tensor type",
+               static_cast<int>(type));
+}
+
 size_t SizeOfType(proto::VarType::Type type) {
   auto it = gDataTypeMap().proto_to_size_.find(static_cast<int>(type));
   if (it != gDataTypeMap().proto_to_size_.end()) {

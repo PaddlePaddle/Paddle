@@ -382,6 +382,10 @@ class GRUCPUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     BatchCompute(context);
   }
+
+  void ComputeTest(const framework::ExecutionContext& context) const {
+    BatchCompute(context);
+  }
 };
 
 template <typename T>

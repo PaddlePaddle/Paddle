@@ -429,3 +429,12 @@ class DetectionMAP(Evaluator):
             layers.fill_constant(
                 shape=var.shape, value=0, dtype=var.dtype, out=var)
         executor.run(reset_program)
+
+    def reset_test(self, executor, reset_program=None):
+        if reset_program is None:
+            reset_program = Program()
+        with program_guard(main_program=reset_program):
+            var = _clone_var_(reset_program.current_block(), self.has_state)
+            layers.fill_constant(
+                shape=var.shape, value=0, dtype=var.dtype, out=var)
+        executor.run(reset_program)
