@@ -295,6 +295,8 @@ def _create_loss_op_desc_(loss):
             core.op_proto_and_checker_maker.kOpRoleAttrName():
             int(core.op_proto_and_checker_maker.OpRole.Backward) |
             int(core.op_proto_and_checker_maker.OpRole.Loss),
+            core.op_proto_and_checker_maker.kOpDeviceAttrName():
+            loss.op.attr(core.op_proto_and_checker_maker.kOpDeviceAttrName())
         })
     return op_desc
 
@@ -369,14 +371,18 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
     var_rename_count = collections.defaultdict(int)
     renamed_vars = collections.defaultdict(list)
     renamed_var_start_idx = collections.defaultdict(list)
+    renamed_vars_device = collections.defaultdict(str)
+    op_device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
     for idx, op_desc in enumerate(op_descs):
         for var_name in op_desc.input_arg_names():
             if "@GRAD" not in var_name:
                 continue
             if len(renamed_vars[var_name]) > 1:
                 pending_sum_ops.append((_create_op_desc_(
-                    "sum", {"X": renamed_vars[var_name]}, {"Out": [var_name]},
-                    {"use_mkldnn": False}), idx))
+                    "sum", {"X": renamed_vars[var_name]}, {"Out": [var_name]}, {
+                        "use_mkldnn": False,
+                        op_device_attr_name: renamed_vars_device[var_name]
+                    }), idx))
                 renamed_vars[var_name] = [var_name]
         for param_idx, param_name in enumerate(op_desc.output_names()):
             arg_names = op_desc.output(param_name)
@@ -393,6 +399,8 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
                     # it's the first time we get the variable
                     renamed_vars[var_name] = [var_name]
                     renamed_var_start_idx[var_name] = idx
+                    renamed_vars_device[var_name] = op_desc.attr(
+                        op_device_attr_name)
                 else:
                     if len(renamed_vars[var_name]) == 1:
                         new_name = var_name + "@RENAME@block" + str(block_idx) + "@" + \
@@ -427,6 +435,9 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
                     arg_names[arg_idx] = new_name
                     op_desc.set_output(param_name, arg_names)
                     renamed_vars[var_name].append(new_name)
+                    if renamed_vars_device[var_name] != op_desc.attr(
+                            op_device_attr_name):
+                        renamed_vars_device[var_name] = ''
 
     for var_name, inputs in six.iteritems(renamed_vars):
         if len(inputs) > 1:
