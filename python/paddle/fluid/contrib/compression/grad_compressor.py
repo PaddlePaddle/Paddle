@@ -55,9 +55,7 @@ def fp16_compression(param_and_grads):
         op = grad.op
         block = grad.block
         var_attr = op.all_attrs()[op_maker.kOpRoleVarAttrName()]
-        if param.name not in var_attr:
-            new_param_and_grads.append((param, grad, False))
-            continue
+        assert param.name in var_attr, "param not in grad.op var_attr"
 
         # remove (param, grad) from op_role_var
         var_attr.remove(param.name)
