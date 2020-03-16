@@ -22,7 +22,7 @@ import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
 
-from test_basic import dyfunc_with_if_else, dyfunc_with_if_else2, nested_if_else
+from ifelse_simple_func import dyfunc_with_if_else, dyfunc_with_if_else2, nested_if_else
 
 
 class TestAST2Func(unittest.TestCase):

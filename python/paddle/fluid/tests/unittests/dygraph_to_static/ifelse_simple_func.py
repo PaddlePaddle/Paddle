@@ -66,15 +66,14 @@ def nested_if_else(x_v):
 
 
 def nested_if_else_2(x):
-    x = fluid.dygraph.to_variable(x)
     y = fluid.layers.reshape(x, [-1, 1])
     b = 2
     if b < 1:
         # var `z` is not visible for outer scope
         z = y
-
-    if fluid.layers.shape(x)[0] < 1:
-        if fluid.layers.shape(y)[0] > 1:
+    x_shape_0 = x.shape[0]
+    if x_shape_0 < 1:
+        if fluid.layers.shape(y).numpy()[0] < 1:
             res = fluid.layers.fill_constant(
                 value=2, shape=x.shape, dtype="int32")
             # `z` is a new var here.
@@ -88,7 +87,6 @@ def nested_if_else_2(x):
 
 
 def nested_if_else_3(x):
-    x = fluid.dygraph.to_variable(x)
     y = fluid.layers.reshape(x, [-1, 1])
     b = 2
     # var `z` is visible for func.body
@@ -105,7 +103,8 @@ def nested_if_else_3(x):
         else:
             out = x - 1
     else:
-        if fluid.layers.shape(y)[0] > 1:
+        y_shape = fluid.layers.shape(y)
+        if y_shape.numpy()[0] < 1:
             res = fluid.layers.fill_constant(
                 value=2, shape=x.shape, dtype="int32")
             # `z` is created in above code block.
