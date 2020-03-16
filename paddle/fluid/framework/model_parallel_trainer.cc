@@ -80,14 +80,16 @@ void ModelParallelTrainer::Initialize(const TrainerDesc& trainer_desc,
   SetDebug(trainer_desc.debug());
 }
 
-void ModelParallelTrainer::CopyParameters(Scope& scope, int macrobatch_id,
+// void ModelParallelTrainer::CopyParameters(const Scope& scope, int
+// macrobatch_id,
+void ModelParallelTrainer::CopyParameters(int macrobatch_id,
                                           const ProgramDesc& main_program) {
   auto& global_block = main_program.Block(0);
   for (auto& var : global_block.AllVars()) {
     int is_feed_var =
         std::count(feed_var_names_.begin(), feed_var_names_.end(), var->Name());
     if ((var->Persistable() || is_feed_var) && macrobatch_id == 0) {
-      auto* ptr = scope.Var(var->Name());
+      auto* ptr = root_scope_->Var(var->Name());
       InitializeVariable(ptr, var->GetType());
       VLOG(3) << "Create variable " << var->Name()
               << " globally for root scope";
@@ -116,7 +118,8 @@ void ModelParallelTrainer::InitTrainerEnv(const ProgramDesc& main_program,
   // auto* scope = &root_scope_->NewScope();
   for (int i = 0; i < num_macrobatches_; ++i) {
     macrobatch_scopes_[i] = &root_scope_->NewScope();
-    CopyParameters(*root_scope_, i, main_program);
+    // CopyParameters(*root_scope_, i, main_program);
+    CopyParameters(i, main_program);
   }
 
   for (int i = 0; i < section_num_; ++i) {

@@ -201,8 +201,8 @@ class ModelParallelTrainer : public TrainerBase {
 
   std::vector<DataFeed*> readers_;
 
-  void CopyParameters(const Scope& scope, int pipeline_id,
-                      const ProgramDesc& main_program);
+  // void CopyParameters(const Scope& scope, int pipeline_id,
+  void CopyParameters(int pipeline_id, const ProgramDesc& main_program);
   int concurrency_;
 };
 
